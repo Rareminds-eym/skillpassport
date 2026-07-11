@@ -32,8 +32,8 @@ entrypoint = "SsoWorker"
 
 [[services]]
 binding = "EMBEDDING_SERVICE"
-service = "embedding-worker"
-entrypoint = "EmbeddingWorker"
+service = "embedding-api"
+entrypoint = "EmbeddingService"
 
 [[queues.producers]]
 binding = "REALTIME_EVENTS_QUEUE"

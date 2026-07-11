@@ -20,9 +20,15 @@ import { saveResponseHandler } from './handlers/save-response';
 import { updateProgressHandler } from './handlers/update-progress';
 import { submitHandler } from './handlers/submit';
 import { abandonHandler } from './handlers/abandon';
+// Legacy save path — used by the high school (Grades 9-10) flow, where the frontend
+// submission hook posts the /api/analyze-assessment report here (bypasses RLS).
+import { saveResultsHandler } from './handlers/save-results';
 import { checkInProgressHandler } from './handlers/check-in-progress';
 import { analyzeHandler } from './handlers/analyze';
 import { resultHandler } from './handlers/result';
+import { getCapabilitiesHandler } from './handlers/get-capabilities';
+import { getCoursesbyCapabilitiesHandler } from './handlers/get-courses-by-capabilities';
+import { generateStrengthsGrowthPlanHandler } from './handlers/generate-strengths-growth-plan';
 import {
   handleGetSavedQuestions,
   handleSaveQuestions,
@@ -47,8 +53,17 @@ export const onRequestPost = withAuth(async (context: any) => {
       return submitHandler(context);
     } else if (path === '/abandon') {
       return abandonHandler(context);
+    } else if (path === '/save-results') {
+      // Restored for the legacy high school submission flow (see handlers/save-results.ts)
+      return saveResultsHandler(context);
     } else if (path === '/analyze') {
       return analyzeHandler(context);
+    } else if (path === '/get-capabilities') {
+      return getCapabilitiesHandler(context);
+    } else if (path === '/get-courses-by-capabilities') {
+      return getCoursesbyCapabilitiesHandler(context);
+    } else if (path === '/generate-strengths-growth-plan') {
+      return generateStrengthsGrowthPlanHandler(context);
     } else if (path === '/questions/save') {
       return handleSaveQuestions(context.request, context);
     } else if (path === '/questions/clear') {

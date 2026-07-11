@@ -121,7 +121,16 @@ export async function generateStreamKnowledgeQuestions(
   
   if (isCollegeLearner) {
     effectiveStreamId = streamId;
-    effectiveStreamName = streamId;
+    // COLLEGE ONLY: streamId is the normalized slug (e.g. 'bca'), and sending it as the
+    // stream name gave the AI no subject signal ("studying bca" → generic questions).
+    // Recover the readable program name from the catalog; higher_secondary keeps the
+    // previous behavior unchanged.
+    if (gradeLevel === 'college') {
+      const catalogInfo = STREAM_KNOWLEDGE_PROMPTS[streamId] as StreamInfo | undefined;
+      effectiveStreamName = catalogInfo?.name || streamId;
+    } else {
+      effectiveStreamName = streamId;
+    }
     effectiveTopics = null;
   } else {
     const normalizedStreamId = normalizeStreamId(streamId);

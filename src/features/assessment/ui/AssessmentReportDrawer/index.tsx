@@ -258,7 +258,8 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
             const processedlearnerInfo = {
                 name: assessmentResult?.learner_name || learner?.name || providedlearnerInfo?.name || 'Learner',
                 grade: learner?.learner_grade || learner?.grade || assessmentResult?.grade_level || providedlearnerInfo?.grade || 'Not Specified',
-                school: assessmentResult?.college_name || learner?.college_name || learner?.college || learner?.school_name || providedlearnerInfo?.school || 'School',
+                // For school students: school_name first; for college students: college/college_school_name first
+                school: learner?.school_name || learner?.college || assessmentResult?.college_name || learner?.college_name || providedlearnerInfo?.school || 'School',
                 rollNumber: learner?.roll_number || providedlearnerInfo?.rollNumber || 'N/A',
                 assessmentDate: assessmentResult?.created_at ? 
                     new Date(assessmentResult.created_at).toLocaleDateString('en-GB') : 

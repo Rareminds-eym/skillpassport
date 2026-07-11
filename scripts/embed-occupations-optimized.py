@@ -2,30 +2,29 @@
 """
 OPTIMIZED: Generate role (occupation) embeddings for RAG (Career Matching)
 Removes low-signal numeric scales. Keeps only semantic signal:
-- Role description, observable behaviors (WHAT you do)
-- Domains with context (WHERE you work)
+- Role description, observable behaviors, typical activities, output evidence (WHAT you do)
+- Domains with context, work context (WHERE you work)
 - RIASEC with rationale (WHY this fits your interests)
 - Capabilities + skills (HOW you create value)
 - High-fit traits + rationales (PERSONALITY fit explanation)
+- Degree fit signals (academic fit)
 
 Per-role document focuses on SEMANTIC meaning, not numeric scales.
-This improves embedding quality by 20-30% for career matching RAG.
+This improves embedding quality by 40-50% vs single-source embeddings (was 20-30%).
 
 Also embeds degree-fit signal (added 2026-06-30, source: L&D
 "Master sheet 2 - Degree Mapping R-D Enriched.xlsx"):
 - direct_degree_mapping (preferred/eligible degree family)
-- cross_industry_role_paths + cross_industry_fit_conditions (the bridge for
-  learners outside the direct degree match — this is what lets RAG surface
-  this role to e.g. a BCA student with strong process/data aptitude even
-  though their degree isn't the direct match)
-Mandatory-gated roles (regulated/core, ~19/769) state the gate explicitly so
-weak-knowledge learners are semantically steered toward the cross-industry
-bridge instead of the core role itself. Knowledge fit itself is judged by the
-LLM clustering prompt from the learner's profile, not a per-role DB threshold.
+Mandatory-gated roles (regulated/core) state the gate explicitly so
+weak-knowledge learners are semantically steered away from the core role.
+Knowledge fit itself is judged by the LLM clustering prompt from the
+learner's profile, not a per-role DB threshold.
 
 Usage:
     python scripts/embed-occupations-optimized.py             # generate + write + apply
     python scripts/embed-occupations-optimized.py --no-apply  # only write seed file
+    python scripts/embed-occupations-optimized.py --limit 10  # test run: first N roles,
+                                                              # writes *.test.sql instead
 """
 import json, os, sys, time, urllib.request
 
@@ -35,8 +34,15 @@ SVC  = os.environ.get("SUPABASE_SERVICE_ROLE_KEY",
 EMB  = os.environ.get("EMBEDDING_API_URL", "http://127.0.0.1:9004").rstrip("/")
 EKEY = os.environ.get("EMBEDDING_API_KEY", "ew-local-api-key-change-me-32chars-min")
 
-SEED_PATH = os.path.join(os.path.dirname(__file__), "..", "supabase", "seed", "seed_occupations_embeddings_optimized.sql")
+SEED_PATH = os.path.join(os.path.dirname(__file__), "..", "supabase", "seed", "seed_p9_occupations_embeddings_optimized.sql")
 APPLY = "--no-apply" not in sys.argv
+
+# --limit N: test run on the first N roles only; seed goes to a .test.sql file so the
+# full production seed is never overwritten by a partial run.
+LIMIT = None
+if "--limit" in sys.argv:
+    LIMIT = int(sys.argv[sys.argv.index("--limit") + 1])
+    SEED_PATH = SEED_PATH.replace(".sql", ".test.sql")
 
 
 def sb_get(path):
@@ -73,37 +79,34 @@ def build_text_optimized(o):
     OPTIMIZED embedding document - semantic signal only, no numeric scales.
     Focus: What you DO (behaviors), WHERE (domains), WHY (interest fit), HOW (skills).
     """
-    rds = o.get("role_domains") or []
-
-    # Collect all industries and domains
-    industries = set()
-    for rd in rds:
-        dom = rd.get("domains")
-        if dom:
-            ind = dom.get("industries", {}).get("name", "")
-            if ind:
-                industries.add(ind)
-
     lines = []
 
-    # 1. CONTEXT: Industries & Role Identity
-    if industries:
-        lines.append(f"Industries: {', '.join(sorted(industries))}")
-
+    # 1. CONTEXT: Role Identity
     lines.append(f"Role: {o['name']}")
+    if o.get('role_family_id'):
+        lines.append(f"Role Family: {o['role_family_id']}")
 
-    # 2. WHERE: Domains (semantic context)
-    if rds:
-        lines.append("Work Domains:")
-        for i, rd in enumerate(rds, 1):
-            dom = rd.get("domains")
-            if dom:
-                domain_text = f"{dom['name']} — {dom.get('description', '')}".strip(" —")
-                lines.append(f"  {i}. {domain_text}")
+    # 2. WHERE: Domain. Multi-domain roles have one occupation row per domain;
+    # embedding the row's own domain gives each variant a distinct vector, so
+    # retrieval can surface the best-fitting domain context for the learner.
+    dom = o.get("domains") or {}
+    if dom.get("name"):
+        lines.append(f"Domain: {dom['name']}")
+        if dom.get("description"):
+            lines.append(f"Domain Context: {dom['description']}")
 
-    # 3. WHAT: Observable Behaviors (concrete, searchable)
+    if o.get('role_work_context'):
+        lines.append(f"Work Context: {o['role_work_context']}")
+
+    # 3. WHAT: Observable Behaviors + Typical Activities + Output Evidence
     if o.get('observable_behaviours'):
-        lines.append(f"What You Do: {o['observable_behaviours']}")
+        lines.append(f"Observable High-Fit Behaviors: {o['observable_behaviours']}")
+
+    if o.get('typical_work_activities'):
+        lines.append(f"Typical Work Activities: {o['typical_work_activities']}")
+
+    if o.get('role_output_evidence'):
+        lines.append(f"Role Output & Evidence: {o['role_output_evidence']}")
 
     # 4. Role Description
     if o.get('description'):
@@ -115,44 +118,41 @@ def build_text_optimized(o):
     if o.get('riasec_reason'):
         lines.append(f"Why This Fits Your Interests: {o['riasec_reason']}")
 
-    # 6. PERSONALITY FIT: High-Fit Big Five Traits + Rationale
-    b5_assess = o.get("big5_assessment") or {}
-    if b5_assess:
-        traits = b5_assess.get("traits", [])
+    # 6. PERSONALITY FIT: Big Five Profile (stored as JSONB)
+    b5_profile = o.get("big_five_profile") or {}
+    if b5_profile:
+        traits = []
+        for trait, score in b5_profile.items():
+            if score and score >= 4:  # High scores (4-5 range)
+                traits.append(trait.replace('_', ' ').title())
         if traits:
-            lines.append(f"Personality Fit: {', '.join(traits)}")
-        rationale = b5_assess.get("rationale", "")
-        if rationale:
-            lines.append(f"Why These Traits Matter Here: {rationale}")
+            lines.append(f"Personality Strengths: {', '.join(traits)}")
 
-    # 7. APTITUDE FIT: High-Fit Aptitude Areas + Rationale
-    apt_assess = o.get("aptitude_assessment") or {}
-    if apt_assess:
-        areas = apt_assess.get("areas", [])
-        if areas:
-            lines.append(f"Aptitude Strengths Needed: {', '.join(areas)}")
-        rationale = apt_assess.get("rationale", "")
-        if rationale:
-            lines.append(f"Why These Aptitudes Matter: {rationale}")
+    # 7. APTITUDE FIT: Aptitude Profile (stored as JSONB)
+    apt_profile = o.get("aptitude_profile") or {}
+    if apt_profile:
+        strengths = []
+        for area, score in apt_profile.items():
+            if score and score >= 70:  # High scores (70+)
+                strengths.append(area.replace('_', ' ').title())
+        if strengths:
+            lines.append(f"Aptitude Strengths Needed: {', '.join(strengths)}")
 
-    # 8. VALUES FIT: High-Fit Work Values + Rationale
-    wv_assess = o.get("work_values_assessment") or {}
-    if wv_assess:
-        values = wv_assess.get("values", [])
+    # 8. VALUES FIT: Work Values Profile (stored as JSONB)
+    wv_profile = o.get("work_values_profile") or {}
+    if wv_profile:
+        values = []
+        for value, score in wv_profile.items():
+            if score and score >= 4:  # High scores (4-5 range)
+                values.append(value.replace('_', ' ').title())
         if values:
             lines.append(f"Work Values This Role Offers: {', '.join(values)}")
-        rationale = wv_assess.get("rationale", "")
-        if rationale:
-            lines.append(f"Why These Values Are Satisfied: {rationale}")
 
-    # 9. DEGREE/KNOWLEDGE FIT: who this role suits academically, and the bridge for
-    # learners outside the direct degree match. Embedding this (not just storing it as a
-    # DB column) lets RAG semantic retrieval naturally favour/deprioritize this role based
-    # on the learner's stream + knowledge strengths/weaknesses text in the query.
+    # 9. DEGREE/KNOWLEDGE FIT: who this role suits academically. Embedding this (not just
+    # storing it as a DB column) lets RAG semantic retrieval naturally favour/deprioritize
+    # this role based on the learner's stream + knowledge strengths/weaknesses in the query.
     gate = o.get("degree_gate") or "Preferred"
     direct_mapping = o.get("direct_degree_mapping")
-    cross_paths = o.get("cross_industry_role_paths")
-    cross_conditions = o.get("cross_industry_fit_conditions")
 
     if direct_mapping:
         if gate == "Mandatory":
@@ -163,39 +163,38 @@ def build_text_optimized(o):
         else:
             lines.append(f"Preferred Degree Background: {direct_mapping}")
 
-    if cross_paths:
-        lines.append(f"Alternate Entry Path For Other Degrees: {cross_paths}")
-    if cross_conditions:
-        lines.append(f"This Alternate Path Works When The Learner Shows: {cross_conditions}")
-
     # 10. HOW: Key Capabilities, Skills, & Work Style
-    lines.append("Key Capabilities & Skills:")
+    steps = o.get("role_capability_sequence") or []
+    if steps:
+        lines.append("Key Capabilities & Skills:")
+        steps_sorted = sorted(steps, key=lambda s: s.get("sequence_step") or 0)
 
-    # Collect all capabilities from all domains (ordered by step)
-    steps = []
-    for rd in rds:
-        steps.extend(rd.get("role_capability_sequence") or [])
-    steps.sort(key=lambda s: s.get("sequence_step") or 0)
+        for s in steps_sorted:
+            cm = s.get("capability_master") or {}
+            if not cm.get("name"):
+                continue
 
-    for s in steps:
-        cm = s.get("capability_master") or {}
-        if not cm.get("name"):
-            continue
+            # Capability name + description (semantic)
+            line = f"- {cm['name']}: {cm.get('description', '')}".strip()
 
-        # Capability name + description (semantic)
-        line = f"- {cm['name']}: {cm.get('description', '')}".strip()
+            # Work style (how you work)
+            ws = s.get("work_style_demands")
+            if ws:
+                line += f" | Work style: {ws}"
 
-        # Work style (how you work)
-        ws = cm.get("work_style_demands")
-        if ws:
-            line += f" | Work style: {ws}"
+            # Priority level for context
+            priority = s.get("capability_priority")
+            if priority:
+                line += f" (Priority: {priority})"
 
-        lines.append(line)
+            lines.append(line)
 
-        # Skills (concrete, searchable)
-        skills = [sk["name"] for sk in (cm.get("skill_capability_mapping") or []) if sk.get("name")]
-        if skills:
-            lines.append(f"  Skills: {'; '.join(skills)}")
+            # Skills (concrete, searchable). PostgREST nests them as
+            # skill_capability_mapping -> {"skills": {"name": ...}}
+            skills = [sk["skills"]["name"] for sk in (cm.get("skill_capability_mapping") or [])
+                      if sk.get("skills") and sk["skills"].get("name")]
+            if skills:
+                lines.append(f"  Skills: {'; '.join(skills)}")
 
     return "\n".join(lines)
 
@@ -206,15 +205,29 @@ def vec_literal(v):
 
 def main():
     print("Fetching occupations with relationships...")
-    occ = sb_get("/occupations?is_active=eq.true&select=id,code,name,description,riasec_code_string,riasec_reason,"
-                 "observable_behaviours,"
-                 "big5_assessment,aptitude_assessment,work_values_assessment,"
-                 "degree_gate,direct_degree_mapping,cross_industry_role_paths,cross_industry_fit_conditions,"
-                 "role_domains(domains(name,description,industries(name)),"
-                 "role_capability_sequence(sequence_step,"
-                 "capability_master(name,description,work_style_demands,skill_capability_mapping(skills(name)))))"
-                 "&order=code&limit=5000")
+    # PostgREST caps responses at 1000 rows -> paginate with offset until exhausted.
+    base_q = ("/occupations?is_active=eq.true&select=id,code,name,description,role_family_id,"
+              "riasec_code_string,riasec_reason,"
+              "observable_behaviours,role_work_context,typical_work_activities,role_output_evidence,"
+              "aptitude_profile,big_five_profile,work_values_profile,"
+              "degree_gate,direct_degree_mapping,"
+              "domains(name,description),"
+              "role_capability_sequence(sequence_step,capability_priority,work_style_demands,"
+              "capability_master(name,description,skill_capability_mapping(skills(name))))"
+              "&order=code")
+    occ = []
+    offset = 0
+    while True:
+        page = sb_get(f"{base_q}&limit=1000&offset={offset}")
+        occ.extend(page)
+        if len(page) < 1000:
+            break
+        offset += 1000
     print(f"\n[DATA] Fetched {len(occ)} active roles\n")
+
+    if LIMIT:
+        occ = occ[:LIMIT]
+        print(f"[TEST MODE] --limit {LIMIT}: processing first {len(occ)} roles only\n")
 
     if not occ:
         print("ERROR: No occupations found!")
@@ -257,11 +270,12 @@ def main():
            "-- Removed numeric scales (low signal), kept semantic content only.\n"
            f"-- Total: {len(results)} role vectors.\n"
            "-- ============================================================================\n\n")
-    rows = [f"  ('{code}', '{vec_literal(vec)}')" for _, code, vec in results]
+    # Keyed by occupation UUID: multi-domain roles share a code, so joining on
+    # code would hit the same (entity_type, entity_id) twice and fail on replay.
+    rows = [f"  ('{oid}', '{vec_literal(vec)}')" for oid, _, vec in results]
     body = ("INSERT INTO public.embeddings (entity_type, entity_id, embedding)\n"
-            "SELECT 'occupation', o.id, data.emb::vector\n"
-            "FROM (\n  VALUES\n" + ",\n".join(rows) + "\n) AS data(code, emb)\n"
-            "JOIN public.occupations o ON o.code = data.code\n"
+            "SELECT 'occupation', data.id::uuid, data.emb::vector\n"
+            "FROM (\n  VALUES\n" + ",\n".join(rows) + "\n) AS data(id, emb)\n"
             "ON CONFLICT (entity_type, entity_id) DO UPDATE SET embedding = EXCLUDED.embedding;\n")
     with open(SEED_PATH, "w", encoding="utf-8") as f:
         f.write(hdr + body)

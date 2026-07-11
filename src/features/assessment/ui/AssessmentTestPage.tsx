@@ -24,7 +24,7 @@ import { normalizeStreamId } from '../api/careerAssessmentAIService';
 // Hooks
 import { useLearnerGrade } from '../model/useLearnerGrade';
 import { useAnswerSync } from '../hooks/useAnswerSync';
-import { useAdaptiveAptitude } from '../model';
+import { useAdaptiveAptitude, useAssessmentSubmission } from '../model';
 import { useAIQuestions } from '../model/useAIQuestions';
 
 // Components
@@ -635,12 +635,58 @@ const AssessmentTestPage: React.FC = () => {
     // useAnswerSync hook handles backend sync - no direct save needed
   }, [store]);
 
+  // Legacy submission hook — restored for HIGH SCHOOL (Grades 9-10) only.
+  // It preps the answers and calls the /api/analyze-assessment Gemini pipeline
+  // (buildHighSchoolPrompt), saves everything via completeAttempt (including the
+  // full report in gemini_results), and navigates directly to the result page.
+  const { submit: submitAssessmentLegacy } = useAssessmentSubmission();
+
   // Handle submit assessment
   const handleSubmit = useCallback(async (): Promise<void> => {
     if (!store.attemptId) return;
 
     store.setStatus('submitting');
     store.setLoading(true);
+
+    // ============================================================================
+    // HIGH SCHOOL (9-10), HIGHER SECONDARY (11-12), AFTER 10th & AFTER 12th:
+    // legacy AI-report flow.
+    // DEPRECATED for these grade levels: the newer submitAssessment + analyzeAssessment
+    // path below (backend /api/assessment/analyze with OpenRouter synthesis +
+    // career-cluster generation) is intentionally NOT used for them.
+    // They revert to the original /api/analyze-assessment Gemini report
+    // (grade-specific prompts) saved via completeAttempt.
+    // Middle school and college keep the new path.
+    // ============================================================================
+    const LEGACY_FLOW_GRADES = ['highschool', 'higher_secondary', 'after10', 'after12'];
+    if (LEGACY_FLOW_GRADES.includes(store.gradeLevel || '')) {
+      try {
+        setCurrentScreen('analyzing');
+        await submitAssessmentLegacy({
+          answers: store.answers,
+          sections: store.sections as any,
+          learnerStream: store.streamId || null,
+          gradeLevel: store.gradeLevel,
+          sectionTimings: {},
+          currentAttempt: { id: store.attemptId },
+          userId: user?.id || null,
+          timeRemaining: null,
+          elapsedTime: 0,
+          selectedCategory: undefined,
+          learnerProgram: learnerProgram || undefined,
+        });
+        // The legacy hook navigates to the result page itself on success.
+        store.setStatus('completed');
+      } catch (err: unknown) {
+        const error = err instanceof Error ? err.message : 'Unknown error';
+        console.error('[AssessmentTestPage] Legacy high school submit error:', error);
+        store.setError(error);
+        setCurrentScreen('error');
+      } finally {
+        store.setLoading(false);
+      }
+      return;
+    }
 
     try {
       const result = await submitAssessment({
@@ -674,7 +720,7 @@ const AssessmentTestPage: React.FC = () => {
     } finally {
       store.setLoading(false);
     }
-  }, [store, navigate]);
+  }, [store, navigate, submitAssessmentLegacy, user, learnerProgram]);
 
   // Handle next question
   const handleNextQuestion = useCallback((): void => {
@@ -799,19 +845,6 @@ const AssessmentTestPage: React.FC = () => {
       return () => clearInterval(timer);
     }
   }, [store.currentSectionIndex, currentScreen, showSectionIntro, adaptiveHook.currentQuestion, store.sections]);
-
-  // AI section per-question countdown (59 → 0, loops back to 59)
-  useEffect(() => {
-    if (store.sections.length === 0) return;
-    const currentSection = store.sections[store.currentSectionIndex];
-    if (!isAISection(currentSection) || currentScreen !== 'assessment' || showSectionIntro) return;
-
-    const timer = setInterval(() => {
-      setAiSectionTimer(prev => (prev <= 1 ? 59 : prev - 1));
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [store.currentSectionIndex, store.currentQuestionIndex, currentScreen, showSectionIntro, store.sections]);
 
   // Reset AI section timer to 59 when question changes
   useEffect(() => {
@@ -1010,7 +1043,29 @@ const AssessmentTestPage: React.FC = () => {
 
   if (currentScreen === 'assessment' && store.sections.length > 0) {
     const currentSection = store.sections[store.currentSectionIndex];
-    const currentQuestion = currentSection?.questions[store.currentQuestionIndex];
+    if (!currentSection) {
+      return null;
+    }
+
+    const isAdaptive = isAdaptiveSection(currentSection);
+
+    // If not adaptive and no questions, reset to first section with questions
+    if (!isAdaptive && !currentSection.questions?.length) {
+      const firstSectionWithQuestions = store.sections.findIndex(s => s.questions?.length > 0);
+      if (firstSectionWithQuestions === -1) return null;
+      store.setCurrentQuestion(firstSectionWithQuestions, 0);
+      return null;
+    }
+
+    // If adaptive but no session loaded yet, also reset (adaptive state wasn't persisted on resume)
+    if (isAdaptive && !store.adaptiveSessionId) {
+      const firstSectionWithQuestions = store.sections.findIndex(s => s.questions?.length > 0);
+      if (firstSectionWithQuestions === -1) return null;
+      store.setCurrentQuestion(firstSectionWithQuestions, 0);
+      return null;
+    }
+
+    const currentQuestion = currentSection.questions[store.currentQuestionIndex];
     if (isAdaptiveSection(currentSection)) {
       // Show error if exists
       if (adaptiveHook.error) {

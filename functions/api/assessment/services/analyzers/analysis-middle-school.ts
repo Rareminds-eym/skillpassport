@@ -15,26 +15,7 @@
 
 import type { StrengthScore, AdaptiveAptitudeData } from '../../types';
 import { getTopStrengths } from '../../lib/analysis-helpers';
-import { generateMiddleSchoolCareerClusters } from '../core/career-cluster-generator';
-import type { StudentProfile } from '../core/scoring-service';
-
-/**
- * Flatten the adaptive `accuracy_by_subtag` shape ({ subtag: { total, correct, accuracy } })
- * into the { subtag: number } form the scoring service expects. Accuracy stays on the 0-100 scale.
- */
-function flattenAccuracyBySubtag(
-  raw: Record<string, any> | null | undefined
-): Record<string, number> | undefined {
-  if (!raw || typeof raw !== 'object') return undefined;
-  const out: Record<string, number> = {};
-  for (const [subtag, value] of Object.entries(raw)) {
-    if (typeof value === 'number') out[subtag] = value;
-    else if (value && typeof value === 'object' && typeof value.accuracy === 'number') {
-      out[subtag] = value.accuracy;
-    }
-  }
-  return Object.keys(out).length > 0 ? out : undefined;
-}
+import { generateMiddleSchoolReports } from '../core/report-generator';
 
 /**
  * Status label conversion (evalution.txt section 6/9) — same scale used across all grade bands.
@@ -113,13 +94,16 @@ export async function analyzeMiddleSchool(
     }
 
     // Index questions by UUID for O(1) lookup
-    const questionMap = new Map(questions.map((q) => [q.id, q]));
+    const questionMap = new Map<string, any>(questions.map((q: any) => [q.id, q]));
 
     // Step 2b: Look up section names/scales to identify learning preference questions
     // and to know each section's max rating value (scales differ: 1-5 for most sections, 0-4 for exposure_index).
     const sectionIds = [...new Set(questions.map((q: any) => q.section_id).filter(Boolean))];
     let learningPrefSectionId: string | null = null;
     const sectionScaleMax = new Map<string, number>();
+    // Section name lookup (e.g. 'middle_interest_discovery') so the growth map can
+    // group the same rating responses by the section they came from.
+    const sectionNameById = new Map<string, string>();
     if (sectionIds.length > 0) {
       const { data: sections } = await supabase
         .from('personal_assessment_sections')
@@ -130,6 +114,7 @@ export async function analyzeMiddleSchool(
         learningPrefSectionId = lpSection?.id ?? null;
 
         for (const section of sections) {
+          sectionNameById.set(section.id, section.name);
           const scale = Array.isArray(section.response_scale) ? section.response_scale : [];
           const maxValue = scale.length > 0
             ? Math.max(...scale.map((s: any) => s.value))
@@ -191,6 +176,113 @@ export async function analyzeMiddleSchool(
         status: getCapabilityStatusLabel(scoreOutOf5),
       };
     });
+
+    // Step 3c: Build the learner-facing "Growth Map" — per-section groupings that a flat
+    // strength_scores list cannot represent unambiguously (e.g. "Leadership"/"Reflection"
+    // appear in both middle_strengths_character and middle_eq_sq). Everything here is derived
+    // from the same rating responses; this is purely presentation grouping for the frontend
+    // "My Beyond Marks Growth Map" and adds no new scoring logic.
+    type GrowthItem = {
+      label: string;
+      capability_area: string | null;
+      mission_trigger: string | null;
+      score: number;
+      max: number;
+      percentage: number;
+      score_out_of_5: number;
+      status: string;
+    };
+
+    const interestWorlds: GrowthItem[] = [];
+    const characterStrengths: GrowthItem[] = [];
+    const selfEq: GrowthItem[] = [];
+    const socialSq: GrowthItem[] = [];
+    const exposureExplored: GrowthItem[] = [];
+    const exposureToExplore: GrowthItem[] = [];
+
+    for (const [uuid, answer] of Object.entries(allResponses)) {
+      const question = questionMap.get(uuid);
+      if (!question || typeof answer !== 'number' || !question.metadata) continue;
+
+      const meta = question.metadata as any;
+      const strengthType: string | undefined = meta.strength_type;
+      if (!strengthType) continue;
+
+      const sectionName = sectionNameById.get(question.section_id) ?? '';
+      const maxValue = sectionScaleMax.get(question.section_id) ?? 5;
+      const percentage = maxValue > 0 ? Math.round((answer / maxValue) * 10000) / 100 : 0;
+      const scoreOutOf5 = Math.round((percentage / 20) * 100) / 100;
+
+      const item: GrowthItem = {
+        label: strengthType,
+        capability_area: meta.capability_area ?? null,
+        mission_trigger: meta.mission_trigger ?? null,
+        score: answer,
+        max: maxValue,
+        percentage,
+        score_out_of_5: scoreOutOf5,
+        status: getCapabilityStatusLabel(scoreOutOf5),
+      };
+
+      switch (sectionName) {
+        case 'middle_interest_discovery':
+          interestWorlds.push(item);
+          break;
+        case 'middle_strengths_character':
+          characterStrengths.push(item);
+          break;
+        case 'middle_eq_sq':
+          if (meta.capability_area === 'Social / SQ') socialSq.push(item);
+          else selfEq.push(item);
+          break;
+        case 'exposure_index':
+          // Exposure scale (0-4): 3-4 visited/tried => already explored; 0-2 => next to explore.
+          if (answer >= 3) exposureExplored.push(item);
+          else if (answer <= 2) exposureToExplore.push(item);
+          break;
+        default:
+          break;
+      }
+    }
+
+    const byScoreDesc = (a: GrowthItem, b: GrowthItem) => b.score - a.score || b.percentage - a.percentage;
+    interestWorlds.sort(byScoreDesc);
+    characterStrengths.sort(byScoreDesc);
+    selfEq.sort(byScoreDesc);
+    socialSq.sort(byScoreDesc);
+    exposureExplored.sort(byScoreDesc);
+    exposureToExplore.sort((a, b) => a.score - b.score);
+
+    // "What I Have" = capability areas the learner is already strong in (Growing and above);
+    // "What I Need Next" = areas still Starting/Practicing. Both drawn from the same wheel scores.
+    const capabilitySorted = [...capabilityScores].sort((a, b) => b.score_out_of_5 - a.score_out_of_5);
+    const whatIHave = capabilitySorted.filter((c) => c.score_out_of_5 >= 3.0).slice(0, 4);
+    const whatINeedNext = [...capabilityScores]
+      .sort((a, b) => a.score_out_of_5 - b.score_out_of_5)
+      .filter((c) => c.score_out_of_5 < 3.0)
+      .slice(0, 4);
+
+    // Recommended missions: the learner's strongest interest worlds carry a mission_trigger
+    // (e.g. "Maker mission"); surface the top few as suggested next actions.
+    const recommendedMissions = interestWorlds
+      .filter((i) => i.mission_trigger)
+      .slice(0, 3)
+      .map((i) => ({
+        title: i.mission_trigger as string,
+        interest: i.label,
+        capability_area: i.capability_area,
+      }));
+
+    const growthMap = {
+      interest_worlds: interestWorlds,
+      character_strengths: characterStrengths,
+      self_social: { self_eq: selfEq, social_sq: socialSq },
+      explorer_map: { explored: exposureExplored, to_explore: exposureToExplore },
+      capability_wheel: capabilityScores,
+      what_i_have: whatIHave,
+      what_i_need_next: whatINeedNext,
+      recommended_missions: recommendedMissions,
+    };
 
     // Step 4: Aggregate strength scores
     const strengthScores: StrengthScore[] = Array.from(strengthsByDimension.entries()).map(
@@ -295,6 +387,7 @@ export async function analyzeMiddleSchool(
       completed_at: new Date().toISOString(),
       top_strengths: getTopStrengths(strengthScores, 3),
       capability_scores: capabilityScores,
+      growth_map: growthMap,
       reflections,
     };
 
@@ -324,6 +417,7 @@ export async function analyzeMiddleSchool(
           aptitude_overall: aptitudeOverall,
           adaptive_aptitude_session_id: resolvedSessionId,
           profile_snapshot: profileSnapshot,
+          growth_map: growthMap, // Dedicated column for faster querying
           created_at: new Date().toISOString(),
         },
         { onConflict: 'attempt_id' }
@@ -346,6 +440,7 @@ export async function analyzeMiddleSchool(
           aptitude_scores: adaptiveData,
           aptitude_overall: aptitudeOverall,
           adaptive_aptitude_session_id: resolvedSessionId,
+          growth_map: growthMap, // Keep growth_map in sync
         })
         .eq('attempt_id', attemptId);
 
@@ -354,50 +449,67 @@ export async function analyzeMiddleSchool(
       }
     }
 
-    // Step 11: Generate career clusters (deterministic retrieval/scoring + OpenRouter narrative)
-    // and merge them into gemini_results.careerFit. Non-fatal: analysis succeeds regardless.
-    // Note: middle school no longer computes a RIASEC code (see file header), so
-    // generateMiddleSchoolCareerClusters will skip cluster generation gracefully
-    // (it already no-ops on an empty riasec_code) until it's updated to score by
-    // the 8-area capability wheel instead.
-    let careerFit: { clusters: unknown[] } | null = null;
-    try {
-      const student: StudentProfile = {
-        strength_scores: strengthScores,
-        // Adaptive overall_accuracy is 0-100; the scorer expects a 0-1 fraction.
-        aptitude_overall: aptitudeOverall != null ? aptitudeOverall / 100 : undefined,
-        accuracy_by_subtag: flattenAccuracyBySubtag(adaptiveData?.accuracyBySubtag as any),
-        learning_preferences: learningPreferences,
-      };
+    // Step 11: Generate learner and school context for reports
+    let learnerName = 'Learner';
+    let schoolName = 'School';
 
-      careerFit = await generateMiddleSchoolCareerClusters(
-        supabase,
-        student,
-        context.env as Record<string, string>,
-        { adaptive: adaptiveData as any, reflections }
-      );
+    const { data: learner } = await supabase
+      .from('users')
+      .select('first_name, last_name')
+      .eq('id', learnerId)
+      .maybeSingle();
 
-      if (careerFit) {
-        // Preserve existing gemini_results fields; only merge/overwrite the careerFit key.
-        const { data: existing } = await supabase
-          .from('personal_assessment_results')
-          .select('gemini_results')
-          .eq('attempt_id', attemptId)
-          .single();
+    if (learner?.first_name) {
+      learnerName = `${learner.first_name} ${learner.last_name || ''}`.trim();
+    }
 
-        const mergedGemini = { ...(existing?.gemini_results || {}), careerFit };
+    const { data: school } = await supabase
+      .from('schools')
+      .select('name')
+      .eq('id', attempt.school_id)
+      .maybeSingle();
 
-        const { error: geminiUpdateError } = await supabase
-          .from('personal_assessment_results')
-          .update({ gemini_results: mergedGemini })
-          .eq('attempt_id', attemptId);
+    if (school?.name) {
+      schoolName = school.name;
+    }
 
-        if (geminiUpdateError) {
-          console.error('[ANALYZE-MIDDLE] Failed to store careerFit:', geminiUpdateError.message);
-        }
+    // Step 12: Generate reports using LLM (non-fatal: continues if fails)
+    // Generates all 8 outputs: character strengths, capability insights, assessment report, missions, interest worlds, explorer insights, thinking styles, what I have/need
+    // Pass aptitude scores so thinking_styles is based on actual problem-solving performance
+    const reports = await generateMiddleSchoolReports(
+      growthMap,
+      learnerName,
+      attempt.grade_level,
+      schoolName,
+      context.env as Record<string, string>,
+      adaptiveData  // ← Pass adaptive aptitude data for thinking_styles
+    );
+
+    // Step 13: Store reports in gemini_results (non-fatal update)
+    // Stores complete growthMap (evaluated data) + all LLM-generated insights including what_i_have/what_i_need (BRD FR-33)
+    if (reports) {
+      const { error: reportUpdateError } = await supabase
+        .from('personal_assessment_results')
+        .update({
+          gemini_results: {
+            ...growthMap,
+            character_strengths_descriptions: reports.character_strengths_descriptions,
+            capability_insights: reports.capability_insights,
+            assessmentReport: reports.assessmentReport,
+            mission_recommendations: reports.mission_recommendations,
+            my_interest_worlds: reports.my_interest_worlds,
+            explorer_insights: reports.explorer_insights,
+            thinking_styles: reports.thinking_styles,
+            what_i_have: reports.what_i_have,
+            what_i_need: reports.what_i_need,
+          },
+        })
+        .eq('attempt_id', attemptId);
+
+      if (reportUpdateError) {
+        console.error('[MIDDLE-SCHOOL-ANALYSIS] Failed to store reports:', reportUpdateError.message);
+        // Non-fatal — continue even if report storage fails
       }
-    } catch (clusterError) {
-      console.error('[ANALYZE-MIDDLE] Career cluster generation failed (non-fatal):', clusterError);
     }
 
     return Response.json(
@@ -405,12 +517,13 @@ export async function analyzeMiddleSchool(
         success: true,
         strengthScores,
         capabilityScores,
+        growthMap,
         learningPreferences,
         adaptiveData,
         aptitudeOverall,
         adaptiveSessionId: resolvedSessionId,
-        careerFit,
         profileSnapshot,
+        reportsGenerated: !!reports,
       },
       { status: 200 }
     );

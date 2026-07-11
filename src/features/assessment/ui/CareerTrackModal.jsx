@@ -7,6 +7,7 @@ import { generateRoleOverview, getFallbackRoleOverview } from '@/features/counse
 import { matchCoursesForRole as matchCoursesForRoleRAG } from '@/features/courses';
 import { apiPost, apiGet } from '@/shared/api/apiClient';
 import { useAuthStore } from '@/shared/model/authStore';
+// import { useStrengthsGrowthPlan } from '@/features/assessment/lib/useStrengthsGrowthPlan';
 import jsPDF from 'jspdf';
 
 /**
@@ -28,14 +29,15 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results, 
     const [aiMatchedCourses, setAiMatchedCourses] = useState([]);
     const [courseMatchingLoading, setCourseMatchingLoading] = useState(false);
     const [courseMatchingError, setCourseMatchingError] = useState(null);
+    const [courseCapabilities, setCourseCapabilities] = useState({});
 
     const accentColor = selectedTrack.index === 0 ? '#2563eb' : 
                        selectedTrack.index === 1 ? '#3b82f6' : '#60a5fa';
 
     const pages = [
         { id: 1, title: 'Overview', subtitle: 'Why You Fit', icon: Target },
-        { id: 2, title: 'Roadmap', subtitle: '6-Month Plan', icon: TrendingUp },
-        { id: 3, title: 'Courses', subtitle: 'Learn & Grow', icon: BookOpen },
+        { id: 2, title: 'Courses', subtitle: 'Learn & Grow', icon: BookOpen },
+        { id: 3, title: 'Roadmap', subtitle: '6-Month Plan', icon: TrendingUp },
         { id: 4, title: 'Strengths', subtitle: 'Your Plan', icon: Zap },
         { id: 5, title: 'Get Started', subtitle: 'Take Action', icon: ChevronRight }
     ];
@@ -82,6 +84,24 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results, 
         return role?.name || '';
     };
 
+    // Get learner profile from results
+    const learnerProfile = results?.learner_profile || {
+      riasec: results?.riasec,
+      aptitudes: results?.aptitude,
+      bigFive: results?.bigfive,
+      workValues: results?.workValues,
+      employability: results?.employability,
+      knowledge: results?.knowledge
+    };
+
+    // // Fetch AI-generated Strengths & Growth Plan
+    // const { data: strengthsGrowthPlan, loading: planLoading } = useStrengthsGrowthPlan(
+    //   selectedRole ? getRoleName(selectedRole) : null,
+    //   learnerProfile,
+    //   effectiveAssessmentResultId,
+    //   currentPage === 4 && !!selectedRole // Only fetch when on Strengths page and role selected
+    // );
+
     // Get AI-generated role overview (responsibilities + industry demand + career progression + learning roadmap + action items + suggested projects) in a single API call
     const {
         responsibilities: rawResponsibilities,
@@ -111,128 +131,110 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results, 
         console.warn('[CareerTrackModal] API error, using fallback data:', overviewError.message);
     }
 
-    // RAG-powered course matching - fetch when role is selected and platform courses are available
+    // Fetch role capabilities in sequence order
     useEffect(() => {
-        const fetchAIMatchedCourses = async () => {
-            // Check if recommendations already exist for this assessment attempt + current role
-            if (effectiveLearnerId && attemptId && selectedRole) {
-                try {
-                    const roleName = getRoleName(selectedRole);
-                    const existing = await apiGet(`/courses/recommendations/saved?learnerId=${effectiveLearnerId}&assessmentResultId=${effectiveAssessmentResultId}&status=active`);
-                    if (existing?.data?.length > 0) {
-                        const matchesCurrentRole = existing.data.some(r =>
-                            r.match_reasons?.some((reason) =>
-                                reason.toLowerCase().includes(roleName.toLowerCase())
-                            )
-                        );
-                        if (matchesCurrentRole) {
-                            console.log(`[CareerTrackModal] Found ${existing.data.length} stored recommendations for current role (${roleName}), skipping RAG`);
-                            const stored = existing.data.map(r => ({
-                                course_id: r.course_id,
-                                id: r.course_id,
-                                title: r.course?.title || '',
-                                name: r.course?.title || '',
-                                description: r.course?.description || '',
-                                duration: r.course?.duration || '',
-                                category: r.course?.category || '',
-                                relevance_score: r.relevance_score,
-                                match_reason: r.match_reasons?.[0] || '',
-                                skill_gaps_addressed: r.skill_gaps_addressed || [],
-                                skills: []
-                            }));
-                            setAiMatchedCourses(stored.slice(0, 4));
-                            return;
-                        }
-                        console.log('[CareerTrackModal] Stored recommendations exist but for a different role, running RAG');
-                    }
-                } catch (err) {
-                    console.warn('[CareerTrackModal] Failed to fetch stored recommendations:', err);
-                }
-            }
-
-            // Fetch platform courses from database if not in results
-            let coursesToMatch = results?.platformCourses;
-            
-            if (!coursesToMatch || coursesToMatch.length === 0) {
-                console.log('[CareerTrackModal] No courses in results, fetching from database...');
-                try {
-                    // Fetch the active course catalog. apiGet returns the API envelope
-                    // { success, data: { courses, total } }.
-                    const result = await apiGet('/courses/list?limit=100&status=Active');
-                    const courses = result?.data?.courses || [];
-                    console.log(`[CareerTrackModal] Fetched ${courses.length} courses from database`);
-                    // Map to the shape matchCoursesForRole expects. IMPORTANT: keep
-                    // `embedding` — the RAG matcher filters out courses without it and
-                    // ranks by cosine similarity on it.
-                    coursesToMatch = courses.map((c) => ({
-                        course_id: c.course_id,
-                        title: c.title,
-                        description: c.description,
-                        category: c.category,
-                        skills: c.skills || c.skill_tags || [],
-                        embedding: c.embedding,
-                    }));
-                } catch (err) {
-                    console.error('[CareerTrackModal] Error fetching courses:', err);
-                    coursesToMatch = [];
-                }
-            }
-            
-            if (!selectedRole || !coursesToMatch || coursesToMatch.length === 0) {
-                console.log('[CareerTrackModal] Skipping RAG matching:', {
-                    hasRole: !!selectedRole,
-                    hasPlatformCourses: !!coursesToMatch,
-                    courseCount: coursesToMatch?.length || 0
-                });
+        const fetchRoleCapabilities = async () => {
+            if (!selectedRole) {
                 setAiMatchedCourses([]);
                 return;
             }
 
             const roleName = getRoleName(selectedRole);
-            const clusterTitle = selectedTrack.cluster?.title || '';
-
-            console.log('[CareerTrackModal] Starting course matching:', {
-                roleName,
-                clusterTitle,
-                roleObject: selectedRole
-            });
-
             setCourseMatchingLoading(true);
-            setCourseMatchingError(null);
 
             try {
-                console.log(`[CareerTrackModal] Using RAG-based course matching for: ${roleName}`, {
-                    coursesAvailable: coursesToMatch.length,
-                    clusterTitle: clusterTitle
+                console.log(`[CareerTrackModal] Fetching capabilities in sequence for: ${roleName}`);
+                const capResponse = await fetch('/api/assessment/get-capabilities', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ roleName })
                 });
 
-                // Use RAG-based matching (vector similarity)
-                const matchedCourses = await matchCoursesForRoleRAG(
-                    roleName, 
-                    clusterTitle, 
-                    coursesToMatch,
-                    4 // Request exactly 4 courses
-                );
+                if (capResponse.ok) {
+                    const capData = await capResponse.json();
+                    console.log(`[CareerTrackModal] Found ${capData.capabilities.length} capabilities in sequence for: ${roleName}`);
 
-                console.log(`[CareerTrackModal] RAG matched ${matchedCourses.length} courses:`, 
-                    matchedCourses.map(c => ({ title: c.title, relevance: c.relevance_score }))
-                );
-                setAiMatchedCourses(matchedCourses);
+                    if (capData.capabilities.length > 0) {
+                        // Transform capabilities into course-like cards for display
+                        const capCards = capData.capabilities.map((cap, idx) => ({
+                            id: cap.id,
+                            course_id: cap.id,
+                            title: cap.name,
+                            description: cap.description,
+                            duration: `Step ${cap.step}`,
+                            level: cap.priority === 'Core' ? 'Intermediate' : 'Beginner',
+                            category: 'Capability',
+                            matchedCapabilities: [cap]
+                        }));
+
+                        setAiMatchedCourses(capCards);
+                    } else if (results?.gradeLevel === 'highschool') {
+                        // HIGH SCHOOL FALLBACK: AI-generated role names for Grades 9-10
+                        // (e.g. "Join Art/Design Club") rarely exist in the occupations
+                        // table, so the capability sequence comes back empty. Fall back
+                        // to the existing RAG course matcher: embed the role + cluster
+                        // and rank platform courses by vector similarity.
+                        console.log(`[CareerTrackModal] No capabilities for "${roleName}" — using RAG course fallback (highschool)`);
+                        const coursesWithEmbeddings = await apiGet('/courses/embeddings');
+                        const ragCourses = await matchCoursesForRoleRAG(
+                            roleName,
+                            selectedTrack.cluster?.title || '',
+                            coursesWithEmbeddings || [],
+                            4
+                        );
+                        setAiMatchedCourses(ragCourses.map((c) => ({
+                            id: c.course_id,
+                            course_id: c.course_id,
+                            title: c.title,
+                            description: c.description,
+                            duration: c.duration,
+                            category: c.category,
+                            matchedCapabilities: []
+                        })));
+                    } else {
+                        setAiMatchedCourses([]);
+                    }
+                } else {
+                    setAiMatchedCourses([]);
+                }
             } catch (error) {
-                console.error('[CareerTrackModal] RAG course matching failed:', error);
-                setCourseMatchingError(error);
-                // Use fallback on error - still ensure 4 courses
-                const roleName = getRoleName(selectedRole);
-                const clusterTitle = selectedTrack.cluster?.title || '';
-                const fallbackCourses = ensureFourCourses([], roleName, clusterTitle, coursesToMatch);
-                setAiMatchedCourses(fallbackCourses);
+                console.error('[CareerTrackModal] Error fetching capabilities:', error);
+                setAiMatchedCourses([]);
             } finally {
                 setCourseMatchingLoading(false);
             }
         };
 
-        fetchAIMatchedCourses();
-    }, [selectedRole, results?.platformCourses, selectedTrack.cluster?.title]);
+        fetchRoleCapabilities();
+    }, [selectedRole]);
+
+    // Fetch capabilities for each course (all of them, not limited)
+    const fetchCourseCapabilities = async (courseId) => {
+        if (!courseId || courseCapabilities[courseId]) {
+            return courseCapabilities[courseId] || [];
+        }
+
+        try {
+            const response = await fetch('/api/assessment/get-capabilities', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ courseId })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                const allCapabilities = data.capabilities || [];
+                setCourseCapabilities(prev => ({
+                    ...prev,
+                    [courseId]: allCapabilities
+                }));
+                return allCapabilities;
+            }
+        } catch (error) {
+            console.error('Error fetching course capabilities:', error);
+        }
+        return [];
+    };
 
     // Ensure we ALWAYS return exactly 4 courses
     const ensureFourCourses = (ragMatchedCourses, roleName, clusterTitle, platformCourses) => {
@@ -1138,8 +1140,8 @@ END:VCALENDAR`;
                             </motion.div>
                         )}
 
-                        {/* Page 2: 6-Month Learning Roadmap */}
-                        {currentPage === 2 && (
+                        {/* Page 3: 6-Month Learning Roadmap */}
+                        {currentPage === 3 && (
                             <motion.div
                                 initial={{ opacity: 0, x: 20 }}
                                 animate={{ opacity: 1, x: 0 }}
@@ -1286,8 +1288,8 @@ END:VCALENDAR`;
                             </motion.div>
                         )}
 
-                        {/* Page 3: Recommended Courses */}
-                        {currentPage === 3 && (
+                        {/* Page 2: Recommended Courses */}
+                        {currentPage === 2 && (
                             <motion.div
                                 initial={{ opacity: 0, x: 20 }}
                                 animate={{ opacity: 1, x: 0 }}
@@ -1298,9 +1300,58 @@ END:VCALENDAR`;
                                         Recommended Courses
                                     </h3>
                                     <p className="text-gray-500">
-                                        Intelligently matched courses for your {getRoleName(selectedRole)} career path
+                                        Learning sequence for {getRoleName(selectedRole)} role
                                     </p>
                                 </div>
+
+                                {/* All Required Capabilities Section */}
+                                {courseCapabilities && Object.keys(courseCapabilities).length > 0 && (
+                                    Object.entries(courseCapabilities).find(([_, caps]) => caps && caps.length > 0) ? (
+                                        <div className="mb-8 p-5 bg-blue-50 rounded-xl border border-blue-200">
+                                            <h4 className="text-sm font-bold text-blue-900 mb-4 flex items-center gap-2">
+                                                <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-bold">
+                                                    {Object.values(courseCapabilities)
+                                                        .flat()
+                                                        .filter((cap, idx, arr) => arr.findIndex(c => c.id === cap.id) === idx)
+                                                        .length}
+                                                </span>
+                                                Required Capabilities for {getRoleName(selectedRole)}
+                                            </h4>
+                                            <div className="grid grid-cols-1 gap-3">
+                                                {Object.values(courseCapabilities)
+                                                    .flat()
+                                                    .filter((cap, idx, arr) => arr.findIndex(c => c.id === cap.id) === idx)
+                                                    .map((cap, idx) => (
+                                                        <div key={idx} className="bg-white p-3 rounded-lg border border-blue-100">
+                                                            <div className="flex items-start justify-between gap-3">
+                                                                <div className="flex-1">
+                                                                    <h5 className="font-semibold text-gray-800 text-sm">{cap.name}</h5>
+                                                                    {cap.description && (
+                                                                        <p className="text-xs text-gray-600 mt-1 line-clamp-2">{cap.description}</p>
+                                                                    )}
+                                                                </div>
+                                                                <div className="flex gap-2 shrink-0">
+                                                                    {cap.priority && (
+                                                                        <span className={`px-2 py-1 rounded text-xs font-medium whitespace-nowrap ${
+                                                                            cap.priority === 'Core' ? 'bg-red-100 text-red-700' :
+                                                                            'bg-yellow-100 text-yellow-700'
+                                                                        }`}>
+                                                                            {cap.priority}
+                                                                        </span>
+                                                                    )}
+                                                                    {cap.level && (
+                                                                        <span className="px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-700 whitespace-nowrap">
+                                                                            {cap.level}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                            </div>
+                                        </div>
+                                    ) : null
+                                )}
 
                                 {/* Platform Courses - RAG filtered by relevance to role */}
                                 <div className="mb-6">
@@ -1338,54 +1389,37 @@ END:VCALENDAR`;
                                         </div>
                                     ) : relevantCourses.length > 0 ? (
                                         <div className="grid md:grid-cols-2 gap-4">
-                                            {relevantCourses.map((course, idx) => (
-                                                <div 
-                                                    key={idx} 
-                                                    onClick={() => handleCourseClick(course)}
+                                            {relevantCourses.map((capability, idx) => (
+                                                <div
+                                                    key={idx}
                                                     className="p-4 rounded-xl bg-white border border-gray-200 shadow-sm hover:shadow-md hover:border-blue-300 transition-all cursor-pointer"
                                                 >
                                                     <div className="flex items-start justify-between">
                                                         <div className="flex-1">
-                                                            <h5 className="text-gray-800 font-semibold text-sm">{course.title || course.name}</h5>
-                                                            {course.duration && <p className="text-gray-500 text-xs mt-1">{course.duration}</p>}
+                                                            <h5 className="text-gray-800 font-semibold text-sm">{capability.title}</h5>
                                                         </div>
-                                                        {course.level && (
+                                                        {capability.matchedCapabilities?.[0]?.priority && (
                                                             <span className={`px-2 py-1 rounded text-xs font-medium shrink-0 ${
-                                                                course.level === 'Beginner' ? 'bg-green-100 text-green-700' :
-                                                                course.level === 'Intermediate' ? 'bg-yellow-100 text-yellow-700' :
-                                                                course.level === 'Advanced' ? 'bg-orange-100 text-orange-700' :
-                                                                'bg-purple-100 text-purple-700'
+                                                                capability.matchedCapabilities[0].priority === 'Core' ? 'bg-blue-100 text-blue-700' :
+                                                                'bg-yellow-100 text-yellow-700'
                                                             }`}>
-                                                                {course.level}
+                                                                {capability.matchedCapabilities[0].priority}
                                                             </span>
                                                         )}
                                                     </div>
-                                                    {course.description && <p className="text-gray-500 text-xs mt-2 line-clamp-2">{course.description}</p>}
-                                                    {course.skills && course.skills.length > 0 && (
-                                                        <div className="flex flex-wrap gap-1 mt-2">
-                                                            {course.skills.slice(0, 3).map((skill, sIdx) => (
-                                                                <span key={sIdx} className="px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-600">{skill}</span>
-                                                            ))}
-                                                        </div>
-                                                    )}
+                                                    {capability.description && <p className="text-gray-500 text-xs mt-2 line-clamp-2">{capability.description}</p>}
+
                                                     <div className="mt-3 flex items-center justify-end text-xs text-blue-600 font-medium">
-                                                        <span>Start Learning</span>
+                                                        <span>Learn More</span>
                                                         <ChevronRight className="w-3 h-3 ml-1" />
                                                     </div>
                                                 </div>
                                             ))}
                                         </div>
-                                    ) : !results?.platformCourses || results.platformCourses.length === 0 ? (
-                                        <div className="p-6 rounded-xl bg-gray-50 border border-gray-200 text-center">
-                                            <p className="text-gray-500 text-sm">
-                                                No platform courses available yet. Check back soon!
-                                            </p>
-                                        </div>
                                     ) : (
-                                        // This shouldn't happen since we always ensure 4 courses, but just in case
                                         <div className="p-6 rounded-xl bg-gray-50 border border-gray-200 text-center">
-                                            <p className="text-gray-500 text-sm">
-                                                Loading courses...
+                                            <p className="text-gray-600 text-sm">
+                                                No capabilities defined for this role yet.
                                             </p>
                                         </div>
                                     )}
@@ -1393,7 +1427,8 @@ END:VCALENDAR`;
                             </motion.div>
                         )}
 
-                        {/* Page 4: Strengths & Growth Plan */}
+                       
+                         {/* Page 4: Strengths & Growth Plan */}
                         {currentPage === 4 && (
                             <motion.div
                                 initial={{ opacity: 0, x: 20 }}

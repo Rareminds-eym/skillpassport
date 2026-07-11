@@ -1,0 +1,118 @@
+/* growth-map-journey.css */
+
+@keyframes float-slow {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-8px) rotate(2deg);
+  }
+}
+
+@keyframes float-medium {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+@keyframes glow-pulse-blue {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.1), 0 0 20px rgba(59, 130, 246, 0.05);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.3), 0 0 35px rgba(59, 130, 246, 0.15);
+  }
+}
+
+@keyframes glow-pulse-emerald {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.1), 0 0 20px rgba(16, 185, 129, 0.05);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.3), 0 0 35px rgba(16, 185, 129, 0.15);
+  }
+}
+
+@keyframes glow-pulse-gold {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.1), 0 0 20px rgba(245, 158, 11, 0.05);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(245, 158, 11, 0.3), 0 0 35px rgba(245, 158, 11, 0.15);
+  }
+}
+
+@keyframes dash {
+  to {
+    stroke-dashoffset: -40;
+  }
+}
+
+@keyframes shimmer-fast {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-float-slow {
+  animation: float-slow 6s ease-in-out infinite;
+}
+
+.animate-float-medium {
+  animation: float-medium 4s ease-in-out infinite;
+}
+
+.animate-glow-blue {
+  animation: glow-pulse-blue 3s infinite ease-in-out;
+}
+
+.animate-glow-emerald {
+  animation: glow-pulse-emerald 3s infinite ease-in-out;
+}
+
+.animate-glow-gold {
+  animation: glow-pulse-gold 3s infinite ease-in-out;
+}
+
+.animate-dash {
+  stroke-dasharray: 8, 8;
+  animation: dash 5s linear infinite;
+}
+
+/* Glassmorphism / Clean Card Classes styled for Pure White backgrounds */
+.glass-panel-light {
+  background: #FFFFFF;
+  border: 1.5px solid #F1F5F9;
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.03), 0 1px 3px rgba(0, 0, 0, 0.01);
+}
+
+.glass-panel-dark {
+  background: rgba(17, 20, 90, 0.03);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* RPG skill bar transitions */
+.rpg-bar-fill {
+  transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Scroll-based layout adjustments */
+.journey-stage-container {
+  position: relative;
+  transition: all 0.5s ease;
+}
+
+/* Shimmer overlay for unlocked components */
+.shimmer-overlay {
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+  background-size: 200% 100%;
+  animation: shimmer-fast 3s infinite linear;
+}

@@ -7,6 +7,7 @@
  * - TODO(grade-levels): High School, Higher Secondary, After10, After12 formulas to be extended
  */
 
+import type { GradeLevel, StudentProfile, MatchScores, CollegeMatchScores } from '../../types';
 export type { GradeLevel, StudentProfile, MatchScores, CollegeMatchScores } from '../../types';
 
 
@@ -133,7 +134,19 @@ export function calculateCapabilityFit(
   accuracyBySubtag?: Record<string, number>,
   jobRIASEC?: string
 ): number {
-  if (!strengthScores || strengthScores.length === 0) return 50;
+  // Cognitive Fit Component — real per-subtag accuracy vs job's cognitive demands when available,
+  // else the overall adaptive-aptitude accuracy, else neutral.
+  let cognitivePercent = (aptitudeOverall || 0.5) * 100;
+  if (accuracyBySubtag && jobRIASEC && Object.keys(accuracyBySubtag).length > 0) {
+    cognitivePercent = calculateCognitiveProfileFit(accuracyBySubtag, jobRIASEC);
+  }
+
+  // College/higher grades have no character-strengths section (they use Big Five instead),
+  // so strengthScores is always empty there — fall back to Cognitive Fit alone rather than
+  // defaulting to a flat neutral 50, which would discard real adaptive-aptitude data.
+  if (!strengthScores || strengthScores.length === 0) {
+    return Math.max(0, Math.min(100, cognitivePercent));
+  }
 
   // Character Strength Component (60%)
   const characterStrengthPercent = strengthScores.reduce(
@@ -141,33 +154,34 @@ export function calculateCapabilityFit(
     0
   ) / strengthScores.length;
 
-  // Cognitive Fit Component (40%)
-  let cognitivePercent = (aptitudeOverall || 0.5) * 100;
-
-  if (accuracyBySubtag && jobRIASEC && Object.keys(accuracyBySubtag).length > 0) {
-    cognitivePercent = calculateCognitiveProfileFit(accuracyBySubtag, jobRIASEC);
-  }
-
   const combined = characterStrengthPercent * 0.6 + cognitivePercent * 0.4;
   return Math.max(0, Math.min(100, combined));
 }
 
 /**
- * Calculate Cognitive Fit based on O*NET cognitive ability requirements
- * Maps student's adaptive aptitude subtags to job cognitive demands
+ * Calculate Cognitive Fit based on the job's cognitive demands vs the student's
+ * adaptive-aptitude subtag accuracies.
+ *
+ * IMPORTANT: the requirement keywords MUST be expressed in the adaptive assessment's own
+ * subtag taxonomy — the engine only ever measures these six areas:
+ *   verbal_reasoning, logical_reasoning, spatial_reasoning,
+ *   numerical_reasoning, data_interpretation, pattern_recognition
+ * Keywords substring-match those names (e.g. 'data' → data_interpretation). Do NOT use
+ * O*NET ability names ('abstract', 'divergent', 'empathy'...) — they never match any
+ * subtag and would silently score the requirement as unmeasured.
  */
 function calculateCognitiveProfileFit(
   accuracyBySubtag: Record<string, number>,
   jobRIASEC: string
 ): number {
-  // O*NET-based RIASEC to cognitive ability mapping
+  // RIASEC letter → demands over the six MEASURED subtags (weights = relative importance)
   const cognitiveRequirements: Record<string, Record<string, number>> = {
-    r: { spatial: 0.5, mechanical: 0.4, manual: 0.3 },
-    i: { abstract: 0.4, logical: 0.35, analytical: 0.35, verbal: 0.3 },
-    a: { divergent: 0.4, visual: 0.35, creativity: 0.3 },
-    s: { interpersonal: 0.35, verbal: 0.35, empathy: 0.3 },
-    e: { verbal: 0.35, leadership: 0.3, numerical: 0.25 },
-    c: { numerical: 0.4, attention: 0.35, organization: 0.3 },
+    r: { spatial: 0.5, numerical: 0.3, pattern: 0.2 },
+    i: { logical: 0.35, numerical: 0.25, data: 0.25, pattern: 0.15 },
+    a: { spatial: 0.4, verbal: 0.35, pattern: 0.25 },
+    s: { verbal: 0.6, logical: 0.2, data: 0.2 },
+    e: { verbal: 0.4, numerical: 0.3, data: 0.3 },
+    c: { numerical: 0.4, data: 0.35, pattern: 0.25 },
   };
 
   const jobCode = jobRIASEC[0].toLowerCase();
@@ -179,17 +193,20 @@ function calculateCognitiveProfileFit(
   let totalWeight = 0;
 
   for (const [requirement, weight] of Object.entries(requirements)) {
-    let bestMatch = 0;
+    // Only count abilities we actually measured: a requirement with no matching subtag
+    // must be skipped, not scored as 0 — otherwise unmeasured demands crater the score.
+    let bestMatch: number | undefined;
     for (const [subtag, score] of Object.entries(accuracyBySubtag)) {
       if (subtag.toLowerCase().includes(requirement.toLowerCase())) {
-        bestMatch = Math.max(bestMatch, score);
+        bestMatch = Math.max(bestMatch ?? 0, score);
       }
     }
+    if (bestMatch == null) continue;
     totalWeightedFit += bestMatch * weight;
     totalWeight += weight;
   }
 
-  if (totalWeight === 0) return 50;
+  if (totalWeight === 0) return 50; // nothing measured for this job's demands — neutral
   const cognitivePercent = totalWeightedFit / totalWeight;
   return Math.max(0, Math.min(100, cognitivePercent));
 }
@@ -330,10 +347,24 @@ export function calculateValuesFit(
 }
 
 /**
- * College / Higher-Secondary 5-component match score.
- * final = IF×0.35 + CF×0.25 + PF×0.20 + KF×0.12 + VF×0.08
+ * Stream Aptitude Fit — the scored stream-specific aptitude percentage (0-100), from the
+ * AI-generated stream MCQ set (career_assessment_ai_questions, question_type='aptitude').
+ * Distinct from the general adaptive-aptitude Cognitive Fit: this measures aptitude specific
+ * to the learner's program/stream (e.g. BCA/BBA), not generic cross-domain reasoning.
+ */
+export function calculateStreamAptitudeFit(streamAptitudeScore?: number): number {
+  if (streamAptitudeScore == null) return 50;
+  return Math.max(0, Math.min(100, streamAptitudeScore));
+}
+
+/**
+ * College / Higher-Secondary 6-component match score.
+ * final = IF×0.25 + CF×0.20 + SAF×0.15 + PF×0.18 + KF×0.12 + VF×0.10
  *
  * Interest Fit is computed from the full RIASEC code via hexagon distance (no C-Index).
+ * Stream Aptitude Fit (SAF) is the learner's stream-specific MCQ score, separate from the
+ * general adaptive-aptitude Cognitive Fit (CF) — together they replace the single "Aptitude"
+ * signal with both a generic and a stream-specific component.
  */
 export function calculateCollegeMatchScore(
   student: StudentProfile,
@@ -343,21 +374,24 @@ export function calculateCollegeMatchScore(
   const cognitiveFit = calculateCapabilityFit(
     student.strength_scores, student.aptitude_overall, student.accuracy_by_subtag, jobRIASEC
   );
+  const streamAptitudeFit = calculateStreamAptitudeFit(student.stream_aptitude_score);
   const personalityFit = calculateBigFivePersonalityFit(student.big_five_scores, jobRIASEC);
   const knowledgeFit = calculateKnowledgeFit(student.knowledge_score);
   const valuesFit = calculateValuesFit(student.work_values, jobRIASEC);
 
-  // College 5-component weights (sum to 1.0): IF 0.35, CF 0.25, PF 0.20, KF 0.12, VF 0.08
+  // College 6-component weights (sum to 1.0): IF 0.25, CF 0.20, SAF 0.15, PF 0.18, KF 0.12, VF 0.10
   const final = Math.round(
-    interestFit * 0.35 +
-    cognitiveFit * 0.25 +
-    personalityFit * 0.20 +
+    interestFit * 0.25 +
+    cognitiveFit * 0.20 +
+    streamAptitudeFit * 0.15 +
+    personalityFit * 0.18 +
     knowledgeFit * 0.12 +
-    valuesFit * 0.08
+    valuesFit * 0.10
   );
   return {
     interestFit: Math.round(Math.max(0, Math.min(100, interestFit))),
     cognitiveFit: Math.round(Math.max(0, Math.min(100, cognitiveFit))),
+    streamAptitudeFit: Math.round(Math.max(0, Math.min(100, streamAptitudeFit))),
     personalityFit: Math.round(Math.max(0, Math.min(100, personalityFit))),
     knowledgeFit: Math.round(Math.max(0, Math.min(100, knowledgeFit))),
     valuesFit: Math.round(Math.max(0, Math.min(100, valuesFit))),
@@ -575,8 +609,8 @@ function findBestMatchScore(
 
 
 /**
- * College 5-component match score.
- * Formula: IF×0.35 + CF×0.25 + PF×0.20 + KF×0.12 + VF×0.08
+ * College 6-component match score (demand-aware variant).
+ * Formula: IF×0.25 + CF×0.20 + SAF×0.15 + PF×0.18 + KF×0.12 + VF×0.10
  */
 export function calculateCollegeMatchScoreFromDemand(
   student: StudentProfile,
@@ -585,17 +619,20 @@ export function calculateCollegeMatchScoreFromDemand(
 ): CollegeMatchScores {
   const interestFit = calculateInterestFitFullCode(student.riasec_scores, jobRIASEC);
   const cognitiveFit = cognitiveFitFromDemand(student.accuracy_by_subtag, jobRIASEC);
+  const streamAptitudeFit = calculateStreamAptitudeFit(student.stream_aptitude_score);
   const personalityFit = personalityFitFromDemand(student.big_five_scores, demand?.bigFive || {});
   const knowledgeFit = knowledgeFitFromDemand(student.knowledge_score, student.knowledge_strengths, student.knowledge_weaknesses, demand?.knowledgeAreas);
   const valuesFit = valuesFitFromDemand(student.work_values, demand?.workValues || {});
 
   const final = Math.round(
-    interestFit * 0.35 + cognitiveFit * 0.25 + personalityFit * 0.20 + knowledgeFit * 0.12 + valuesFit * 0.08
+    interestFit * 0.25 + cognitiveFit * 0.20 + streamAptitudeFit * 0.15 +
+    personalityFit * 0.18 + knowledgeFit * 0.12 + valuesFit * 0.10
   );
 
   return {
     interestFit: Math.round(Math.max(0, Math.min(100, interestFit))),
     cognitiveFit: Math.round(Math.max(0, Math.min(100, cognitiveFit))),
+    streamAptitudeFit: Math.round(Math.max(0, Math.min(100, streamAptitudeFit))),
     personalityFit: Math.round(Math.max(0, Math.min(100, personalityFit))),
     knowledgeFit: Math.round(Math.max(0, Math.min(100, knowledgeFit))),
     valuesFit: Math.round(Math.max(0, Math.min(100, valuesFit))),
@@ -606,7 +643,7 @@ export function calculateCollegeMatchScoreFromDemand(
 /**
  * Middle-school (3-component) match score: IF + CF + PF(learning preferences).
  * Middle School: (Interest Fit × 0.50) + (Capability Fit × 0.35) + (Personality Fit × 0.15)
- * (College uses the 5-component calculateCollegeMatchScore instead.)
+ * (College uses the 6-component calculateCollegeMatchScore instead.)
  */
 export function calculateMiddleSchoolMatchScore(
   student: StudentProfile,
@@ -643,7 +680,7 @@ export function calculateMiddleSchoolMatchScore(
  * TODO(grade-levels): Add weights for high, higher, after10, after12
  */
 function getWeightsForGradeLevel(gradeLevel: GradeLevel) {
-  // Partial: college is intentionally absent — it uses the 5-component
+  // Partial: college is intentionally absent — it uses the 6-component
   // calculateCollegeMatchScore(), not this 3-component path. Missing keys fall back to middle.
   const weights: Partial<Record<GradeLevel, { interestFit: number; capabilityFit: number; personalityFit: number }>> = {
     // Middle School: RIASEC is the strongest signal at this age (Knowledge/Values not collected),
@@ -655,5 +692,5 @@ function getWeightsForGradeLevel(gradeLevel: GradeLevel) {
     after12: { interestFit: 0.4, capabilityFit: 0.35, personalityFit: 0.25 },
   };
 
-  return weights[gradeLevel] || weights.middle;
+  return weights[gradeLevel] ?? weights.middle!;
 }

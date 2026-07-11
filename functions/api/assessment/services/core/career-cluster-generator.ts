@@ -3,11 +3,10 @@
  *
  * Produces the `careerFit.clusters` structure consumed by the report page.
  *
- * Simplified flow:
- * 1. RAG retrieval: semantic search for candidate occupations.
- * 2. Score and rank: top 15 by match score.
- * 3. OpenRouter: group into 3 clusters + narratives.
- * 4. Deterministic rescore: inject computed matchScores and fit bands.
+ * Flow:
+ * 1. RAG retrieval: hybrid (keyword + semantic) search for candidate occupations.
+ * 2. OpenRouter: select 6-9, group into 3 clusters + narratives (no scoring).
+ * 3. Deterministic scoring: 6-component match scores + fit bands, card reconciliation.
  */
 
 import { callOpenRouterWithRetry, repairAndParseJSON, getAPIKeys } from '../../../shared/ai-config';
@@ -17,8 +16,6 @@ import { EMBEDDING_TASK_TYPES } from '../../../embedding/config/constants';
 import { getClusterPrompt } from '../../prompts';
 import type { ClusterNarrativeContext } from '../../types';
 import {
-  compareBigFiveProfiles,
-  compareWorkValues,
   buildAssessmentRagContext,
 } from './assessment-context-builder';
 import { calculateCollegeMatchScore } from './scoring-service';
@@ -31,15 +28,9 @@ export type { ClusterNarrativeContext } from '../../types';
  * Candidate pool pulled from RAG retrieval.
  * Optimized for cost and quality — 50 candidates provide good coverage while reducing token usage.
  */
-const CANDIDATE_POOL_SIZE = 30;
+const CANDIDATE_POOL_SIZE = 50;
 
-/**
- * OpenRouter configuration.
- * llama-3.3-70b leads because it reliably returns JSON content in ~1s. deepseek-r1
- * is a reasoning model that returns its output in a `reasoning` field, so the content
- * parser sees an empty response and wastes all retries (~100s) — keep it only as a
- * last-resort fallback, not first.
- */
+/** OpenRouter configuration. */
 const CLUSTER_GENERATION_CONFIG = {
   // gpt-4o-mini primary (matches production): strong instruction-following keeps the cluster
   // narrative + overallSummary concise and rule-compliant; gemini-2.0-flash is a cheap fallback.
@@ -57,19 +48,15 @@ interface ScoredOccupation {
   code: string;
   name: string;
   riasecCodes: string[];
-  score: number;
   semanticScore?: number;
-  riasecAlignment?: number;  // 0-1 scale from RPC (how well occupation RIASEC matches learner)
+  riasecAlignment?: number;
+  streamAligned?: boolean;
   description?: string;
-  // Win 1: Observable behaviours
-  observable_behaviours?: string;
-  // Wins 4, 5, 6: Profiles for profile matching
-  aptitude_profile?: Record<string, number>;
-  big_five_profile?: Record<string, number>;
-  work_values_profile?: Record<string, number>;
-  // Degree-gate signal (from occupations table, L&D degree mapping).
   degreeGate?: 'Mandatory' | 'Preferred';
-  crossIndustryRolePaths?: string;
+  domainName?: string;
+  aptitudeProfile?: Record<string, unknown>;
+  bigFiveProfile?: Record<string, unknown>;
+  workValuesProfile?: Record<string, unknown>;
 }
 
 /**
@@ -147,20 +134,22 @@ async function generateCareerClusters(
   }
 
   console.log(`[RAG] Retrieved ${candidates.length} candidates | Top 3: ${candidates.slice(0, 3).map(c => c.name).join(' → ')}`);
-  candidates.slice(0, 50).forEach((occ, i) => {
+  candidates.slice(0, 30).forEach((occ, i) => {
     console.log(`[RAG-${(i + 1).toString().padStart(2)}] ${occ.name.substring(0, 38).padEnd(38)} | ${(occ.riasecCodes?.join('/') || 'n/a').padEnd(8)} | Sem=${(occ.semanticScore || 0).toFixed(2)} | RIASEC=${(occ.riasecAlignment || 0).toFixed(2)}`);
   });
 
+  // Pass top 50 for broader candidate evaluation
+  // RAG hybrid score already ranks by relevance, so top 50 are highest-confidence matches
+  const llmCandidates = candidates.slice(0, 50);
+  console.log(`[LLM-INPUT] Sending ${llmCandidates.length} candidates to LLM (top 50 by RAG score, descriptions stripped)`);
 
-  // OpenRouter: group + narrative only.
-  // Phase 1 LLM receives ALL candidates and uses full learner profile to intelligently select 12-15 best fits
   const apiKeys = getAPIKeys(env);
   if (!apiKeys.openRouter) {
     console.error('[CLUSTER-GEN] OpenRouter API key not configured — skipping');
     return null;
   }
 
-  const { system, user } = getClusterPrompt(gradeLevel, student, candidates, context);
+  const { system, user } = getClusterPrompt(gradeLevel, student, llmCandidates, context);
 
   const messages = [
     { role: 'system', content: system },
@@ -185,7 +174,7 @@ async function generateCareerClusters(
   console.log(`[LLM] Generated ${aiClusters.length} clusters`);
   aiClusters.forEach((cluster, i) => {
     const roleCount = cluster.occupationIds?.length || 0;
-    console.log(`[CLUSTER-${i + 1}] ${cluster.title || 'Untitled'} | Roles=${roleCount} | Score=${cluster.matchScore}`);
+    console.log(`[CLUSTER-${i + 1}] ${cluster.title || 'Untitled'} | Roles=${roleCount}`);
   });
 
   const specificOptions = sanitizeSpecificOptions(parsed?.specificOptions || parsed?.careerFit?.specificOptions);
@@ -193,9 +182,8 @@ async function generateCareerClusters(
     ? parsed.overallSummary.trim()
     : undefined;
 
-  // Extract selected occupationIds from Phase 1 clusters
+  // Extract selected occupationIds from the LLM's clusters
   const selectedOccupationIds: string[] = [];
-  const occupationMap: Record<string, { name: string; riasecCodes: string[] }> = {};
   const clusterCounts: number[] = [];
 
   aiClusters.forEach((cluster) => {
@@ -209,15 +197,7 @@ async function generateCareerClusters(
     }
   });
 
-  // Build occupationMap from all candidates for Phase 2
-  candidates.forEach((occ) => {
-    occupationMap[occ.occupation_id] = {
-      name: occ.name,
-      riasecCodes: occ.riasecCodes,
-    };
-  });
-
-  // Step 4: Match Score Calculation & Validation
+  // Structure validation
   const totalSelected = selectedOccupationIds.length;
   const isCountValid = totalSelected >= 6 && totalSelected <= 9;
   const eachClusterValid = clusterCounts.every(count => count >= 2 && count <= 3);
@@ -229,17 +209,13 @@ async function generateCareerClusters(
     return null;
   }
 
-  // Step 5: Roles extraction
   console.log(`[ROLES] Processing ${totalSelected} selected roles across ${aiClusters.length} clusters`);
 
-  // Extract roleData from LLM response (embedded in each cluster)
-
-  // Compute cluster scores from LLM-selected occupations using DB occupation assessment profiles.
+  // Validate each cluster's membership (id/name repair, stream filter) and score deterministically.
   const scoreById = new Map(candidates.map((o) => [o.occupation_id, o]));
-  const clusterResults = await Promise.all(
-    aiClusters.map((c, idx) => finalizeCluster(c, scoreById, student, supabase, idx))
-  );
-  const clusters = clusterResults.filter((c): c is Record<string, unknown> => c !== null);
+  const clusters = aiClusters
+    .map((c, idx) => finalizeCluster(c, scoreById, student, idx))
+    .filter((c): c is Record<string, unknown> => c !== null);
 
   if (clusters.length === 0) {
     console.error('[ROLES] No valid clusters after scoring');
@@ -259,7 +235,70 @@ async function generateCareerClusters(
     console.log(`[CLUSTER-FINAL-${i + 1}] ${cluster.title} [${cluster.fit}] | Score=${cluster.matchScore?.toFixed(0) || '—'}`);
   });
 
-  return { clusters, specificOptions, overallSummary };
+  // The LLM writes specificOptions separately from occupationIds and regularly contradicts
+  // itself (phantom roles with salaries that were never selected/scored). Reconcile: each
+  // cluster's scored roles are the source of truth for what appears on the report cards.
+  const reconciledOptions = reconcileSpecificOptions(specificOptions, clusters);
+
+  return { clusters, specificOptions: reconciledOptions, overallSummary };
+}
+
+/**
+ * Force specificOptions groups (highFit/mediumFit/exploreLater) to contain ONLY roles that were
+ * actually selected and scored in the corresponding cluster (1→highFit, 2→mediumFit, 3→exploreLater).
+ * - LLM entries whose name doesn't match a cluster role are dropped (they were never scored).
+ * - Cluster roles missing from the group are backfilled, reusing the group's median salary band
+ *   as an approximation so the card still renders a range.
+ */
+function reconcileSpecificOptions(
+  specificOptions: Record<string, unknown> | undefined,
+  clusters: Record<string, unknown>[]
+): Record<string, unknown> | undefined {
+  if (!specificOptions) return specificOptions;
+  const keys = ['highFit', 'mediumFit', 'exploreLater'] as const;
+  const norm = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim();
+  // Long-form names ("Applied AI Engineer — Applied Industry AI Solutions") match their short form.
+  const namesMatch = (a: string, b: string) => {
+    const na = norm(a), nb = norm(b);
+    return na === nb || na.includes(nb) || nb.includes(na);
+  };
+
+  const result: Record<string, unknown> = { ...specificOptions };
+  clusters.forEach((cluster, i) => {
+    const key = keys[i];
+    if (!key) return;
+    const clusterRoles: string[] = Array.isArray((cluster as any).examples) ? (cluster as any).examples : [];
+    if (clusterRoles.length === 0) return;
+    const llmEntries: Array<{ name: string; salary?: { min: number; max: number } }> =
+      Array.isArray((specificOptions as any)[key]) ? (specificOptions as any)[key] : [];
+
+    // Keep only entries that correspond to a scored cluster role
+    const kept = llmEntries.filter((e) => clusterRoles.some((r) => namesMatch(e.name, r)));
+    const dropped = llmEntries.filter((e) => !clusterRoles.some((r) => namesMatch(e.name, r)));
+    if (dropped.length > 0) {
+      console.log(`[OPTIONS-RECONCILE] ${key}: dropped unscored role(s): ${dropped.map((d) => d.name).join(', ')}`);
+    }
+
+    // Median salary band for backfilled roles: prefer kept entries; if nothing was kept,
+    // fall back to the dropped entries' bands — the LLM priced those for this same cluster,
+    // so they're a reasonable approximation (better than rendering no salary at all).
+    const salaries = kept.map((e) => e.salary).filter((s): s is { min: number; max: number } => !!s);
+    const droppedSalaries = dropped.map((e) => e.salary).filter((s): s is { min: number; max: number } => !!s);
+    const pool = salaries.length ? salaries : droppedSalaries;
+    const fallbackSalary = pool.length
+      ? pool.sort((a, b) => a.min - b.min)[Math.floor(pool.length / 2)]
+      : undefined;
+
+    // Backfill scored cluster roles the LLM left off the card
+    const missing = clusterRoles.filter((r) => !kept.some((e) => namesMatch(e.name, r)));
+    for (const name of missing) {
+      kept.push(fallbackSalary ? { name, salary: { ...fallbackSalary } } : { name });
+      console.log(`[OPTIONS-RECONCILE] ${key}: backfilled scored role: ${name}`);
+    }
+
+    result[key] = kept;
+  });
+  return result;
 }
 
 /**
@@ -278,7 +317,7 @@ function sanitizeSpecificOptions(raw: any): Record<string, unknown> | undefined 
         const min = Number(it?.salary?.min);
         const max = Number(it?.salary?.max);
         const salary = !isNaN(min) && !isNaN(max) ? { min, max } : undefined;
-        return salary ? { name, salary } : { name };
+        return (salary ? { name, salary } : { name }) as Record<string, unknown> | null;
       })
       .filter((x): x is Record<string, unknown> => x !== null);
   };
@@ -289,10 +328,6 @@ function sanitizeSpecificOptions(raw: any): Record<string, unknown> | undefined 
   return { highFit, mediumFit, exploreLater };
 }
 
-/**
- * Build the student "query" document embedded for semantic retrieval.
- * College adds the richer signals (Big Five, work values, knowledge) to sharpen the query.
- */
 /**
  * Build RAG embedding query text from student profile and context.
  * Uses assessment-context-builder as the single source for context generation.
@@ -314,6 +349,19 @@ function buildStudentEmbeddingText(
 }
 
 /**
+ * Build the keyword (BM25) query for the hybrid search. Deliberately SHORT and built only from
+ * measured data: the program name and the student's proven strong topics. The full profile
+ * context is far too long for full-text matching (it is used for the EMBEDDING instead) —
+ * passing it as query_text made the keyword arm of the hybrid search match nothing.
+ */
+function buildKeywordQuery(student: StudentProfile): string {
+  const parts: string[] = [];
+  if (student.stream) parts.push(student.stream);
+  for (const topic of student.knowledge_strengths || []) parts.push(topic);
+  return parts.join(' ');
+}
+
+/**
  * RAG retrieval for all grades. Embeds the student query, asks match_occupations_by_embedding
  * for the top-K occupations by semantic similarity, and scores each with the grade-appropriate
  * scorer (college = 5-component, others = 3-component). Interest Fit uses the Holland hexagon —
@@ -332,8 +380,9 @@ async function retrieveByEmbedding(
     const queryVec = await callEmbeddingWorker(text, env, EMBEDDING_TASK_TYPES.RETRIEVAL_QUERY);
     const literal = '[' + queryVec.map((x) => x.toFixed(6)).join(',') + ']';
 
+    const keywordQuery = buildKeywordQuery(student);
     const { data, error } = await supabase.rpc('hybrid_search_occupations', {
-      query_text: text,
+      query_text: keywordQuery,
       query_embedding: literal,
       learner_riasec_code: riasecCode,
       match_count: CANDIDATE_POOL_SIZE,
@@ -345,27 +394,58 @@ async function retrieveByEmbedding(
     }
     if (!data || data.length === 0) return [];
 
-    // Build candidates - keep RAG order (no reranking here)
-    // Profiles fetched on-demand in finalizeCluster() for actual scoring
+    // Build candidates with job demand profiles for proper scoring
     const candidates: ScoredOccupation[] = (data as any[]).map((occ) => {
       const riasecCodes: string[] = occ.occupation_codes || [];
       const hybridScore = Number(occ.hybrid_score);
       const alignment = Number(occ.riasec_alignment);
-      const domain = occ.domain_name || 'Unclassified';
 
       return {
         occupation_id: occ.occupation_id,
         code: occ.occupation_code,
         name: occ.occupation_name,
         riasecCodes,
-        score: 0,
         semanticScore: !isNaN(hybridScore) ? Math.round(hybridScore * 1000) / 10 : undefined,
         riasecAlignment: !isNaN(alignment) ? Math.round(alignment * 100) : undefined,
-        description: `[${domain}] ${occ.description || occ.occupation_name}`,
+        description: occ.description || occ.occupation_name,
         degreeGate: occ.degree_gate || 'Preferred',
-        crossIndustryRolePaths: occ.cross_industry_role_paths || undefined,
+        domainName: occ.domain_name && occ.domain_name !== 'Unclassified' ? occ.domain_name : undefined,
+        streamAligned: isStreamAligned(student.stream, occ.direct_degree_mapping),
+        // Job demand profiles for accurate fit scoring
+        aptitudeProfile: occ.aptitude_profile ? (typeof occ.aptitude_profile === 'string' ? JSON.parse(occ.aptitude_profile) : occ.aptitude_profile) : undefined,
+        bigFiveProfile: occ.big_five_profile ? (typeof occ.big_five_profile === 'string' ? JSON.parse(occ.big_five_profile) : occ.big_five_profile) : undefined,
+        workValuesProfile: occ.work_values_profile ? (typeof occ.work_values_profile === 'string' ? JSON.parse(occ.work_values_profile) : occ.work_values_profile) : undefined,
       };
     });
+
+    const alignedCount = candidates.filter((c) => c.streamAligned).length;
+    console.log(`[RAG] Stream-aligned candidates: ${alignedCount}/${candidates.length} for stream "${student.stream}"`);
+
+    // Fetch job demand profiles for all candidates
+    const candidateIds = candidates.map(c => c.occupation_id);
+    if (candidateIds.length > 0) {
+      try {
+        const { data: profiles, error: profileError } = await supabase
+          .from('occupations')
+          .select('id, aptitude_profile, big_five_profile, work_values_profile')
+          .in('id', candidateIds);
+
+        if (!profileError && profiles && Array.isArray(profiles) && profiles.length > 0) {
+          const profileMap = new Map(profiles.map((p: Record<string, unknown>) => [p.id as string, p]));
+          candidates.forEach(c => {
+            const profile = profileMap.get(c.occupation_id) as Record<string, unknown> | undefined;
+            if (profile) {
+              c.aptitudeProfile = profile['aptitude_profile'] as Record<string, unknown>;
+              c.bigFiveProfile = profile['big_five_profile'] as Record<string, unknown>;
+              c.workValuesProfile = profile['work_values_profile'] as Record<string, unknown>;
+            }
+          });
+          console.log(`[RAG] Loaded job demand profiles for ${profileMap.size} occupations`);
+        }
+      } catch (profileErr) {
+        console.warn('[RAG] Could not load job demand profiles (non-fatal):', profileErr instanceof Error ? profileErr.message : 'unknown error');
+      }
+    }
 
     return candidates;
   } catch (e) {
@@ -374,74 +454,295 @@ async function retrieveByEmbedding(
   }
 }
 
+/**
+ * True when the learner's degree/stream appears in an occupation's direct_degree_mapping.
+ * Matching layers (mappings store acronyms + subject names like "BCA, B.Sc CS, Hospitality, ..."):
+ *  1. Full stream name as substring ("psychology", "hospitality")
+ *  2. Acronym from significant words ("Bachelor of Computer Applications" → "bca")
+ *  3. Individual SIGNIFICANT words as token-prefix matches ("Bachelor of Business Management" →
+ *     "business"; "BBA Human Resources" → "bba"; "B.Pharma" → "pharma" matching "Pharmacy").
+ *     Generic degree words (bachelor/management/science/...) are excluded so "...Management"
+ *     degrees don't falsely match "Event Management" in unrelated mappings.
+ */
+function isStreamAligned(stream: string | undefined, degreeMapping: string | undefined): boolean {
+  if (!stream || !degreeMapping) return false;
+  const mapping = degreeMapping.toLowerCase();
+  const streamLower = stream.toLowerCase().trim();
+  if (!streamLower) return false;
+
+  // 1. Direct substring match on the full stream name
+  if (mapping.includes(streamLower)) return true;
+
+  // Words that appear in nearly every degree name or mapping — useless as evidence on their own
+  const genericWords = new Set([
+    'of', 'in', 'and', 'the', 'for', 'with', 'bachelor', 'bachelors', 'master', 'masters',
+    'degree', 'diploma', 'doctorate', 'management', 'science', 'sciences', 'arts', 'studies',
+    'general', 'honours', 'honors', 'applications', 'technology',
+  ]);
+  const words = streamLower.split(/[^a-z]+/).filter((w) => w.length > 0);
+  const significantWords = words.filter((w) => w.length >= 3 && !genericWords.has(w));
+
+  const tokensToTry = new Set<string>();
+  // 2. Acronym from non-connector words (keeps generic words so BCA/BBA derive correctly)
+  const stopWords = new Set(['of', 'in', 'and', 'the', 'for', 'with']);
+  const acronymWords = words.filter((w) => !stopWords.has(w));
+  if (acronymWords.length >= 2) tokensToTry.add(acronymWords.map((w) => w[0]).join(''));
+  // The stream may already be an acronym/id ("BCA", "MBA HR", "bca")
+  if (streamLower.length <= 8) tokensToTry.add(streamLower.replace(/[^a-z]/g, ''));
+  // 3. Each significant word as its own token
+  for (const w of significantWords) tokensToTry.add(w);
+
+  for (const token of tokensToTry) {
+    if (token.length < 2) continue;
+    // Short tokens (acronyms like "bba", "com") must match as EXACT standalone words —
+    // otherwise "com" (B.Com) would prefix-match "Computer". Longer words may prefix-match
+    // to catch word families ("pharma" → "Pharmacy", "finance" → "Finance").
+    const re = token.length <= 3
+      ? new RegExp(`(^|[^a-z])${token}([^a-z]|$)`, 'i')
+      : new RegExp(`(^|[^a-z])${token}`, 'i');
+    if (re.test(mapping)) return true;
+  }
+  return false;
+}
+
 
 
 /**
- * Validate one AI cluster against the candidate list, compute matchScores from LLM roleData
- * demands, and inject the code-derived matchScore and fit band. Returns null if the cluster
- * references no valid candidate occupations.
+ * Validate cluster coherence: ensure roles grouped together are actually related by RIASEC,
+ * domain, and work type. Rejects clusters where the LLM mixed unrelated domains
+ * (e.g., ML Model Developer in Automation cluster).
+ *
+ * Returns true if cluster passes coherence validation.
  */
+function validateClusterCoherence(
+  occupations: ScoredOccupation[],
+  clusterIndex: number,
+  clusterTitle: string
+): boolean {
+  if (occupations.length < 2) return true; // Single or no occupations always cohere
+
+  // Extract RIASEC primary letters (first char of code)
+  const riasecPrimaries = occupations
+    .map((o) => (o.riasecCodes?.[0]?.charAt(0) || '').toUpperCase())
+    .filter((c) => c.length > 0);
+
+  // Reject if primary RIASEC letters are too diverse
+  // Allow 1-2 different primary letters (e.g., I-types can be ICR/IAE), but not 3+
+  const uniquePrimaries = new Set(riasecPrimaries);
+  if (uniquePrimaries.size > 2) {
+    console.warn(
+      `[COHERENCE-${clusterIndex + 1}] ❌ REJECTED: Cluster "${clusterTitle}" has roles with ${uniquePrimaries.size} different RIASEC primaries [${[...uniquePrimaries].join(', ')}]`
+    );
+    return false;
+  }
+
+  // Reject if role names suggest fundamentally different work types
+  // (e.g., "ML Model Developer" should not be with "Test Automation Engineer")
+  const roleNames = occupations.map((o) => o.name.toLowerCase());
+  const workTypeKeywords: Record<string, RegExp> = {
+    ml_ai: /\b(ml|machine learning|ai|artificial intelligence|deep learning|computer vision|neural|model|training)\b/i,
+    automation: /\b(automation|test|qa|quality assurance|selenium|testing)\b/i,
+    systems: /\b(system|infrastructure|devops|cloud|kubernetes|docker)\b/i,
+    data: /\b(data|analytics|bi|business intelligence|data engineering|data science|sql)\b/i,
+    frontend: /\b(frontend|web|react|vue|angular|ui|ux|javascript)\b/i,
+    backend: /\b(backend|server|api|database|django|spring|java|python)\b/i,
+  };
+
+  const typesPerRole = roleNames.map((name) => {
+    const matches = Object.keys(workTypeKeywords).filter((type) =>
+      workTypeKeywords[type].test(name)
+    );
+    return matches.length > 0 ? matches : ['generic'];
+  });
+
+  // If any two roles have zero overlap in work type, reject
+  for (let i = 0; i < typesPerRole.length; i++) {
+    for (let j = i + 1; j < typesPerRole.length; j++) {
+      const hasOverlap = typesPerRole[i].some((t) => typesPerRole[j].includes(t));
+      if (!hasOverlap && typesPerRole[i][0] !== 'generic' && typesPerRole[j][0] !== 'generic') {
+        console.warn(
+          `[COHERENCE-${clusterIndex + 1}] ❌ REJECTED: "${roleNames[i]}" (${typesPerRole[i].join(',')}) and "${roleNames[j]}" (${typesPerRole[j].join(',')}) have no work-type overlap`
+        );
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
 /**
- * Compute matchScore from learner profile vs occupation assessment profiles (DB-sourced).
- * Uses normalized distance formula: ((5 - abs_difference) / 5.0) * 100 for 1-5 scale,
- * then weights: aptitude (35%), big_five (25%), work_values (40%).
+ * Validate one AI cluster against the candidate list (id/name repair, dedup, stream filter),
+ * compute the deterministic 6-component matchScore, and return the cluster payload.
+ * Returns null if the cluster references no valid candidate occupations.
  */
-async function finalizeCluster(
+function finalizeCluster(
   aiCluster: any,
   scoreById: Map<string, ScoredOccupation>,
   student: StudentProfile,
-  supabase: any,
   clusterIndex: number = 0
-): Promise<Record<string, unknown> | null> {
+): Record<string, unknown> | null {
   // Accept occupation ids from the model's grouping, keep only those in the candidate set.
   const requestedIds: string[] = Array.isArray(aiCluster?.occupationIds)
     ? aiCluster.occupationIds
     : [];
+  const requestedNames: string[] = Array.isArray(aiCluster?.occupationNames)
+    ? aiCluster.occupationNames
+    : [];
 
-  const validOccupations = requestedIds
-    .map((id) => scoreById.get(id))
-    .filter((o): o is ScoredOccupation => !!o);
+  // The LLM sometimes copies the WRONG UUID for the role it means (e.g. names a "Cloud & Edge"
+  // cluster with cloud role names but ids of unrelated roles). Names are what the model actually
+  // reasons with, so when the id's role contradicts the stated name, trust the NAME and resolve
+  // the candidate by name instead.
+  const normName = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim();
+  const rolesNamesMatch = (a: string, b: string) => {
+    const na = normName(a), nb = normName(b);
+    return na === nb || na.includes(nb) || nb.includes(na);
+  };
+  const findByName = (name: string): ScoredOccupation | undefined => {
+    for (const o of scoreById.values()) if (rolesNamesMatch(o.name, name)) return o;
+    return undefined;
+  };
+
+  const resolved: ScoredOccupation[] = [];
+  requestedIds.forEach((id, i) => {
+    const byId = scoreById.get(id);
+    const statedName = requestedNames[i];
+    if (byId && (!statedName || rolesNamesMatch(byId.name, statedName))) {
+      resolved.push(byId);
+      return;
+    }
+    // id missing from candidates, or id's role contradicts the stated name — resolve by name
+    if (statedName) {
+      const byName = findByName(statedName);
+      if (byName) {
+        console.log(`[FINALIZE-${clusterIndex + 1}] Repaired id/name mismatch: id resolved to "${byId?.name ?? 'unknown'}" but LLM meant "${statedName}" — using name`);
+        resolved.push(byName);
+        return;
+      }
+    }
+    if (byId) resolved.push(byId);
+  });
+
+  // De-duplicate (repair can map two entries onto the same candidate)
+  const seen = new Set<string>();
+  let validOccupations = resolved.filter((o) => {
+    if (seen.has(o.occupation_id)) return false;
+    seen.add(o.occupation_id);
+    return true;
+  });
+
+  // Code-level stream enforcement for clusters 1-2 only: those tracks are degree-anchored, so a
+  // non-stream role the LLM slips in (e.g. a career-services role inside an AI cluster) is
+  // removed as long as the cluster keeps the minimum 2 roles. Cluster 3 is the deliberate
+  // CROSS-INDUSTRY exposure track — non-stream roles there are by design, so it is exempt.
+  if (clusterIndex < 2) {
+    const streamOnly = validOccupations.filter((o) => o.streamAligned !== false);
+    if (streamOnly.length >= 2 && streamOnly.length < validOccupations.length) {
+      const removed = validOccupations.filter((o) => o.streamAligned === false).map((o) => o.name);
+      console.log(`[FINALIZE-${clusterIndex + 1}] Removed non-stream role(s) from "${aiCluster?.title}": ${removed.join(', ')}`);
+      validOccupations = streamOnly;
+    }
+  }
 
   if (validOccupations.length === 0) {
     console.warn(`[FINALIZE-${clusterIndex + 1}] No valid occupations in candidate set for "${aiCluster?.title}" (requested: ${requestedIds.length})`);
     return null;
   }
 
-  // Fetch occupation assessment profiles from DB for all occupations in this cluster.
-  const { data: occupationProfiles, error } = await supabase
-    .from('occupations')
-    .select('id, code, aptitude_profile, big_five_profile, work_values_profile')
-    .in('id', validOccupations.map((o) => o.occupation_id));
+  // Note: Cluster coherence validation is informational only; all clusters are retained
+  // for the learner to explore different career directions (even if unconventional combinations)
+  validateClusterCoherence(validOccupations, clusterIndex, aiCluster?.title || '');
 
-  if (error) {
-    console.error(`[FINALIZE-${clusterIndex + 1}] Error fetching occupation profiles: ${error.message}`);
-    return null;
-  }
-
-  // Build a map of occupation_id -> profiles
-  const profileMap = new Map(
-    (occupationProfiles || []).map((p: any) => [
-      p.id,
-      {
-        aptitude_profile: p.aptitude_profile || {},
-        big_five_profile: p.big_five_profile || {},
-        work_values_profile: p.work_values_profile || {},
-      },
-    ])
-  );
-
-  // Compute matchScore for each occupation using proper career fit scoring
+  // Compute matchScore using job demand profiles when available, otherwise use base scoring
   const occupationScores = validOccupations
     .map((occ, idx) => {
       try {
-        // Use college match scoring algorithm (5-component: interest + cognitive + personality + knowledge + values)
-        const scores = calculateCollegeMatchScore(student, occ.riasecCodes?.[0] || '');
+        // Get base 5-component score from deterministic formula
+        const baseScores = calculateCollegeMatchScore(student, occ.riasecCodes?.[0] || '');
+        let finalScore = baseScores.final;
 
-        if (idx < 3) {
-          console.log(`[CLUSTER-GEN] ${occ.name}: Interest=${scores.interestFit} | Cognitive=${scores.cognitiveFit} | Personality=${scores.personalityFit} | Knowledge=${scores.knowledgeFit} | Values=${scores.valuesFit} → Final=${scores.final}`);
+        if (idx === 0) {
+          // Debug: Log student profile for first role
+          console.log(`[DEBUG-STUDENT] Aptitude by subtag:`, Object.entries(student.accuracy_by_subtag || {}).map(([k, v]) => `${k}=${v}%`).join(', '));
+          console.log(`[DEBUG-STUDENT] Big Five:`, Object.entries(student.big_five_scores || {}).map(([k, v]) => `${k}=${(v as number).toFixed(1)}`).join(', '));
+          console.log(`[DEBUG-STUDENT] Work Values:`, Object.entries(student.work_values || {}).map(([k, v]) => `${k}=${(v as number).toFixed(1)}`).join(', '));
         }
 
-        return scores.final;
+        // Apply job-specific demand adjustments if available.
+        // Occupation profiles are complete numeric maps (every key always present,
+        // e.g. {"numerical_reasoning": 53, ...}), so demand must be judged by the
+        // VALUE thresholds (aptitude >= 70, big5/values >= 4 = the role demands it),
+        // never by key-name presence — every name exists in every profile.
+        if (occ.aptitudeProfile || occ.bigFiveProfile || occ.workValuesProfile) {
+          let adjustment = 0;
+          const adjustmentFactors: string[] = [];
+          const numVal = (obj: Record<string, unknown>, key: string): number | undefined => {
+            const v = obj[key];
+            return typeof v === 'number' ? v : undefined;
+          };
+
+          // Aptitude fit: role demands an ability when its profile score >= 70.
+          // Student strong (>70%) in a demanded ability = boost; weak (<40%) = penalty.
+          if (occ.aptitudeProfile && student.accuracy_by_subtag) {
+            for (const [ability, score] of Object.entries(student.accuracy_by_subtag)) {
+              const studentScore = typeof score === 'object' && score !== null
+                ? (score as { accuracy?: number }).accuracy
+                : (score as number);
+              if (typeof studentScore !== 'number') continue;
+              const demand = numVal(occ.aptitudeProfile, ability.toLowerCase());
+              if (demand === undefined || demand < 70) continue; // role doesn't demand this ability
+              if (studentScore > 70) {
+                adjustment += 5;
+                adjustmentFactors.push(`str_${ability.split('_')[0]}`);
+              } else if (studentScore < 40) {
+                adjustment -= 5;
+                adjustmentFactors.push(`wk_${ability.split('_')[0]}`);
+              }
+            }
+          }
+
+          // Big Five fit: role demands a trait when its profile level >= 4 (1-5 scale).
+          if (occ.bigFiveProfile && student.big_five_scores) {
+            for (const [trait, score] of Object.entries(student.big_five_scores)) {
+              if ((score as number) < 4) continue; // only student's strong traits
+              const demand = numVal(occ.bigFiveProfile, trait.toLowerCase());
+              if (demand !== undefined && demand >= 4) {
+                adjustment += 4;
+                adjustmentFactors.push(`big5_${trait.charAt(0).toUpperCase()}`);
+              }
+            }
+          }
+
+          // Work Values fit: role rewards a value when its profile level >= 4 (1-5 scale).
+          if (occ.workValuesProfile && student.work_values) {
+            const topValues = Object.entries(student.work_values)
+              .sort(([, a], [, b]) => (b as number) - (a as number))
+              .slice(0, 2)
+              .map(([name]) => name);
+
+            for (const value of topValues) {
+              const demand = numVal(occ.workValuesProfile, value.toLowerCase());
+              if (demand !== undefined && demand >= 4) {
+                adjustment += 5;
+                adjustmentFactors.push(`val_${value}`);
+              }
+            }
+          }
+
+          // Apply adjustment cap (-5 to +25 for realistic bounds)
+          adjustment = Math.max(-5, Math.min(25, adjustment));
+          finalScore = Math.max(0, Math.min(100, baseScores.final + adjustment));
+
+          if (idx < 3) {
+            const factors = adjustmentFactors.length > 0 ? ` [${adjustmentFactors.join(', ')}]` : '';
+            console.log(`[CLUSTER-GEN] ${occ.name}: Base=${baseScores.final} + Demand=${adjustment}${factors} → Final=${finalScore}`);
+          }
+        } else if (idx < 3) {
+          console.log(`[CLUSTER-GEN] ${occ.name}: Base=${baseScores.final} (no demand profiles available)`);
+        }
+
+        return finalScore;
       } catch (err) {
         console.warn(`[CLUSTER-GEN] Score calculation failed for ${occ.name}:`, err instanceof Error ? err.message : err);
         return null;
@@ -483,100 +784,6 @@ async function finalizeCluster(
     futureOutlook: str(aiCluster?.futureOutlook),
     occupationIds: validOccupations.map((o) => o.occupation_id),
   };
-}
-
-/**
- * Convert accuracy_by_subtag (percentage-based) to 1-5 aptitude scale.
- * Formula: score = (accuracy_percent / 100) * 5, clamped to [1, 5]
- */
-/**
- * Extract and normalize accuracy_by_subtag to 0-100 scale (same as occupation aptitude_profile).
- * The adaptive_aptitude_results.accuracy_by_subtag is an object with { accuracy: percentage },
- * so we extract the accuracy value. If it's a direct percentage, use it as-is.
- * This ensures learner and occupation aptitude values are on the same 0-100 scale for comparison.
- */
-function convertAccuracyToAptitudeProfile(accuracy: Record<string, number | any> | undefined): Record<string, number> {
-  if (!accuracy || Object.keys(accuracy).length === 0) {
-    return {};
-  }
-
-  const profile: Record<string, number> = {};
-  for (const [key, value] of Object.entries(accuracy)) {
-    let percentValue = 0;
-
-    // Handle two formats:
-    // 1. Direct value: { "verbal_reasoning": 86.36 }
-    // 2. Object with accuracy field: { "verbal_reasoning": { "accuracy": 86.36 } }
-    if (typeof value === 'number' && !isNaN(value)) {
-      percentValue = value; // Direct percentage (0-100)
-    } else if (typeof value === 'object' && value !== null && 'accuracy' in value) {
-      const acc = Number(value.accuracy);
-      if (!isNaN(acc)) {
-        percentValue = acc; // Extract accuracy from object (0-100)
-      }
-    }
-
-    // Keep on 0-100 scale (same as occupation aptitude_profile)
-    if (percentValue > 0) {
-      profile[key] = Math.round(percentValue * 10) / 10; // Round to 1 decimal
-    }
-  }
-  return profile;
-}
-
-/**
- * Compute normalized distance match score between learner and occupation profiles.
- * Data is on 0-100 scale: score = 100 - abs(learner - occupation)
- * Result: 0-100 scale score, or null if no matching data.
- *
- * Handles key mismatches by matching similar keys.
- */
-function computeAssessmentMatchScore(
-  learnerProfile: Record<string, number>,
-  occupationProfile: Record<string, number>
-): number | null {
-  if (Object.keys(learnerProfile).length === 0 || Object.keys(occupationProfile).length === 0) {
-    return null; // No data to compute
-  }
-
-  const scores: number[] = [];
-
-  // Try direct key matches first
-  for (const [key, learnerValue] of Object.entries(learnerProfile)) {
-    const occupationValue = occupationProfile[key];
-    if (occupationValue !== undefined && !isNaN(learnerValue) && !isNaN(occupationValue)) {
-      const absDiff = Math.abs(learnerValue - occupationValue);
-      // Data is 0-100 scale: max diff is 100, so score = 100 - absDiff
-      const normalizedScore = Math.max(0, 100 - absDiff);
-      scores.push(normalizedScore);
-    }
-  }
-
-  // If no direct matches, try fuzzy key matching (for key name variations)
-  if (scores.length === 0) {
-    for (const [lKey, learnerValue] of Object.entries(learnerProfile)) {
-      for (const [oKey, occupationValue] of Object.entries(occupationProfile)) {
-        // Match if keys are similar (same words, different order/format)
-        if (similarKeys(lKey, oKey) && !isNaN(learnerValue) && !isNaN(occupationValue)) {
-          const absDiff = Math.abs(learnerValue - occupationValue);
-          // Data is 0-100 scale: max diff is 100, so score = 100 - absDiff
-          const normalizedScore = Math.max(0, 100 - absDiff);
-          scores.push(normalizedScore);
-        }
-      }
-    }
-  }
-
-  if (scores.length === 0) return null; // No matching dimensions
-  return Math.round(scores.reduce((sum, s) => sum + s, 0) / scores.length);
-}
-
-/**
- * Check if two keys are similar (handles variations like "verbal_reasoning" vs "verbalReasoning")
- */
-function similarKeys(key1: string, key2: string): boolean {
-  const normalize = (k: string) => k.toLowerCase().replace(/[-_]/g, '');
-  return normalize(key1) === normalize(key2);
 }
 
 const str = (v: unknown): string => (typeof v === 'string' ? v : '');

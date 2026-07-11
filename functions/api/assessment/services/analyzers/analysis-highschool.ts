@@ -1,9 +1,16 @@
 /**
  * High School Assessment Analysis (Grades 9-10)
  *
+ * ⚠️ DEPRECATED FOR THE APP FLOW: the frontend no longer routes high school
+ * submissions through /api/assessment/analyze. Grades 9-10 were reverted to the
+ * legacy pipeline — the useAssessmentSubmission hook calls /api/analyze-assessment
+ * (buildHighSchoolPrompt Gemini report) and saves results via completeAttempt.
+ * This analyzer (OpenRouter synthesis + career-cluster generation) is retained
+ * only for direct API callers; do not re-wire the frontend to it without approval.
+ *
  * Calculates RIASEC, character strengths, learning preferences, aptitude,
  * and introduces basic career exploration dimensions.
- * 
+ *
  * Scoring: 3-component (Interest + Capability + Personality)
  * More sophisticated than middle school with career readiness focus.
  */

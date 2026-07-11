@@ -82,6 +82,11 @@ export async function analyzeHandler(context: AuthenticatedContext) {
       case 'middle':
         return analyzeMiddleSchool(context, supabase, attemptId, learnerId);
 
+      // DEPRECATED (highschool, higher_secondary, after10, after12): the frontend
+      // no longer calls this endpoint for these grade levels. Their submissions were
+      // reverted to the legacy flow (useAssessmentSubmission → /api/analyze-assessment
+      // Gemini report → completeAttempt), so these analyzers are kept only for direct
+      // API callers. Middle school and college still use this endpoint.
       case 'highschool':
         return analyzeHighSchool(context, supabase, attemptId, learnerId);
 

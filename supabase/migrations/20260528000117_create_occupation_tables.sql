@@ -40,8 +40,8 @@ CREATE INDEX idx_industries_code ON public.industries(code);
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS public.domains (
   id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  code        VARCHAR(16) UNIQUE NOT NULL,   -- e.g. 'D01' (HTT) or 'HR-D01' (industry-prefixed)
-  name        VARCHAR(255) UNIQUE NOT NULL,
+  code        VARCHAR(50) UNIQUE NOT NULL,   -- e.g. 'D01' (HTT) or 'IND_AFF_D01' (custom format)
+  name        VARCHAR(500) UNIQUE NOT NULL,
   description TEXT,
   industry_id UUID REFERENCES public.industries(id) ON DELETE SET NULL,
   created_at  TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
@@ -53,27 +53,24 @@ CREATE INDEX idx_domains_industry_id ON public.domains(industry_id);
 COMMENT ON TABLE public.domains IS '7 HTT domains (D01..D07): Customer Service, Accommodation, Food & Beverage, Transport, Travel Booking, Destination, Safety & Compliance';
 
 -- ============================================================================
--- TABLE 2: capability_master  (27 canonical capabilities, IND-CAP-01..27)
--- Intrinsic attributes only (shared across all roles that use the capability).
--- Role-specific usage (order, priority, level, duration) lives in role_capability_sequence.
+-- TABLE 2: capability_master  (299 unique capabilities)
+-- Base capability info only (name, description, sequence).
+-- Role-family-specific attributes (status, RIASEC, work_style, level, duration)
+-- live in role_capability_sequence.
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS public.capability_master (
-  id                 UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  code               VARCHAR(20) UNIQUE NOT NULL,   -- e.g. 'IND-CAP-01' (HTT) or 'HR-IND-CAP-01'
-  name               TEXT NOT NULL,
-  description        TEXT NOT NULL,
-  master_sequence    INTEGER,                              -- sequence order within role; can repeat across roles
-  capability_status  public.capability_status_enum,        -- Core / Important / Supporting
-  primary_riasec     TEXT[],                               -- explanatory only; does NOT feed match score
-  secondary_riasec   TEXT[],
-  work_style_demands TEXT,
-  created_at         TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-  updated_at         TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+  id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  code            VARCHAR(50) UNIQUE NOT NULL,   -- e.g. 'IND-CAP-01', 'CAP-AFF-001', 'CAP-CS-015'
+  name            TEXT NOT NULL,
+  description     TEXT NOT NULL,
+  master_sequence INTEGER,                       -- canonical sequence order (informational)
+  created_at      TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  updated_at      TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX idx_capability_master_code ON public.capability_master(code);
-COMMENT ON TABLE public.capability_master IS '27 canonical capabilities. RIASEC fields are explanatory only (capabilities are not recommended from RIASEC).';
-COMMENT ON COLUMN public.capability_master.master_sequence IS 'Canonical catalog order 1..27. NOT the learner/plan order (that is role_capability_sequence.sequence_step). Stage buckets = ceil(master_sequence/9).';
+COMMENT ON TABLE public.capability_master IS '299 unique capabilities (base info only). Role-family-specific attributes (status, RIASEC, work_style, level, duration) stored in role_capability_sequence.';
+COMMENT ON COLUMN public.capability_master.master_sequence IS 'Canonical catalog order. NOT the learner/plan order (that is role_capability_sequence.sequence_step).';
 
 -- ============================================================================
 -- TABLE 3: occupations  (86 roles; RIASEC + match-score weights live here)
@@ -82,95 +79,73 @@ COMMENT ON COLUMN public.capability_master.master_sequence IS 'Canonical catalog
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS public.occupations (
   id                    UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  code                  VARCHAR(50) UNIQUE NOT NULL,   -- e.g. 'HTT-ROLE-001', 'HR-ROLE-001'
-  name                  VARCHAR(255) UNIQUE NOT NULL,
+  code                  VARCHAR(50) NOT NULL,
+  name                  VARCHAR(255) NOT NULL,
+  domain_id             UUID REFERENCES public.domains(id) ON DELETE RESTRICT,
+  role_family_id        VARCHAR(100),
   description           TEXT,
-  primary_riasec        CHAR(1),                            -- R/I/A/S/E/C
-  secondary_riasec      CHAR(1),
-  tertiary_riasec       CHAR(1),
-  riasec_code_string    VARCHAR(3),                         -- e.g. 'ESC'
-  riasec_reason         TEXT,                               -- EMBEDDING SOURCE (unique per role)
+  primary_riasec        CHAR(1) CHECK (primary_riasec IN ('R','I','A','S','E','C')),
+  secondary_riasec      CHAR(1) CHECK (secondary_riasec IN ('R','I','A','S','E','C')),
+  tertiary_riasec       CHAR(1) CHECK (tertiary_riasec IN ('R','I','A','S','E','C')),
+  riasec_code_string    VARCHAR(3),
+  riasec_reason         TEXT,
   observable_behaviours TEXT,
+  role_work_context     TEXT,
+  typical_work_activities TEXT,
+  role_output_evidence  TEXT,
   aptitude_profile      JSONB DEFAULT '{}'::jsonb,
   big_five_profile      JSONB DEFAULT '{}'::jsonb,
   work_values_profile   JSONB DEFAULT '{}'::jsonb,
-  big5_assessment       JSONB DEFAULT '{}'::jsonb,         -- Assessment traits + rationale
-  aptitude_assessment   JSONB DEFAULT '{}'::jsonb,         -- Assessment areas + rationale
-  work_values_assessment JSONB DEFAULT '{}'::jsonb,        -- Assessment values + rationale
-  is_active             BOOLEAN DEFAULT TRUE,
-  degree_gate                  VARCHAR(20) DEFAULT 'Preferred', 
-  direct_degree_mapping        TEXT,                              
-  cross_industry_role_paths    TEXT,                              
-  cross_industry_fit_conditions TEXT,                            
+  big5_assessment       JSONB DEFAULT '{}'::jsonb,
+  aptitude_assessment   JSONB DEFAULT '{}'::jsonb,
+  work_values_assessment JSONB DEFAULT '{}'::jsonb,
+  degree_gate           VARCHAR(20) DEFAULT 'Preferred' CHECK (degree_gate IN ('Mandatory','Preferred')),
+  direct_degree_mapping TEXT,
   metadata              JSONB DEFAULT '{}'::jsonb,
+  is_active             BOOLEAN DEFAULT TRUE,
   created_at            TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
   updated_at            TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT chk_primary_riasec   CHECK (primary_riasec   IN ('R','I','A','S','E','C')),
-  CONSTRAINT chk_secondary_riasec CHECK (secondary_riasec IN ('R','I','A','S','E','C')),
-  CONSTRAINT chk_tertiary_riasec  CHECK (tertiary_riasec  IN ('R','I','A','S','E','C')),
-  CONSTRAINT chk_degree_gate      CHECK (degree_gate IN ('Mandatory','Preferred'))
+  CONSTRAINT unique_code_domain UNIQUE(code, domain_id)
 );
 
 CREATE INDEX idx_occupations_code ON public.occupations(code);
-CREATE INDEX idx_occupations_riasec ON public.occupations(primary_riasec, secondary_riasec, tertiary_riasec);
-CREATE INDEX idx_occupations_aptitude_profile ON public.occupations USING GIN (aptitude_profile);
-CREATE INDEX idx_occupations_big_five_profile ON public.occupations USING GIN (big_five_profile);
-CREATE INDEX idx_occupations_work_values_profile ON public.occupations USING GIN (work_values_profile);
-CREATE INDEX idx_occupations_big5_assessment ON public.occupations USING GIN (big5_assessment);
-CREATE INDEX idx_occupations_aptitude_assessment ON public.occupations USING GIN (aptitude_assessment);
-CREATE INDEX idx_occupations_work_values_assessment ON public.occupations USING GIN (work_values_assessment);
-CREATE INDEX idx_occupations_degree_gate ON public.occupations(degree_gate);
-COMMENT ON TABLE public.occupations IS '86 HTT roles (table named occupations to avoid collision with RBAC public.roles). riasec_code_string drives the Holland-hexagon match score; riasec_reason is the embedding source.';
-COMMENT ON COLUMN public.occupations.riasec_reason IS 'Per-row unique text (86/86) used as the embedding source for RAG.';
-COMMENT ON COLUMN public.occupations.big5_assessment IS 'JSONB: {traits: [array of Big5 traits], rationale: "explanation of fit"}. Used for RAG and learner matching.';
-COMMENT ON COLUMN public.occupations.aptitude_assessment IS 'JSONB: {areas: [array of aptitude areas], rationale: "explanation of fit"}. Used for RAG and learner matching.';
-COMMENT ON COLUMN public.occupations.work_values_assessment IS 'JSONB: {values: [array of work values], rationale: "explanation of fit"}. Used for RAG and learner matching.';
-COMMENT ON COLUMN public.occupations.degree_gate IS 'Mandatory = hard eligibility filter (regulated/core roles, ~19/769 in source sheet); Preferred = soft ranking/tie-breaker signal only (~750/769). Source: L&D direct_degree_gate.';
-COMMENT ON COLUMN public.occupations.direct_degree_mapping IS 'Eligible degree family text for this role. Source: L&D direct_degree_mapping.';
-COMMENT ON COLUMN public.occupations.cross_industry_role_paths IS 'Redirect role paths for learners outside the direct degree mapping (e.g. weak stream knowledge). Source: L&D cross_industry_role_paths.';
-COMMENT ON COLUMN public.occupations.cross_industry_fit_conditions IS 'Assessment-evidence condition required to unlock the cross-industry redirect (e.g. strong logical reasoning + conscientiousness). Source: L&D cross_industry_fit_conditions.';
+CREATE INDEX idx_occupations_domain_id ON public.occupations(domain_id);
+CREATE INDEX idx_occupations_role_family ON public.occupations(role_family_id);
+COMMENT ON TABLE public.occupations IS 'Occupations with domain context. Each record = occupation in one domain. Multi-domain roles = duplicate records (same code, different domain). UNIQUE by (code, domain_id) pair.';
 
 -- ============================================================================
--- TABLE 4: role_domains  (M:N context label: which domains a role touches)
--- 15 roles span >1 domain. This pairing is a plain label; it does NOT own capabilities.
--- ============================================================================
-CREATE TABLE IF NOT EXISTS public.role_domains (
-  id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  role_id    UUID NOT NULL REFERENCES public.occupations(id) ON DELETE CASCADE,  -- FK to occupations
-  domain_id  UUID NOT NULL REFERENCES public.domains(id) ON DELETE RESTRICT,
-  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT unique_role_domain UNIQUE(role_id, domain_id)
-);
-
-CREATE INDEX idx_role_domains_role ON public.role_domains(role_id);
-CREATE INDEX idx_role_domains_domain ON public.role_domains(domain_id);
-COMMENT ON TABLE public.role_domains IS 'M:N role<->domain context label. Multi-domain combined cells (e.g. "D06; D01") are split into separate rows on load.';
-
--- ============================================================================
--- TABLE 5: role_capability_sequence  (the ordered 6-month learning plan)
--- Hangs off a single role_domains context (Option A: multi-domain roles attach
--- their plan to the primary/first-listed domain). One ordered plan per role.
+-- TABLE 5: role_capability_sequence  (ordered learning plan with role-family context)
+-- Direct FK to occupations. Each occupation has ordered capabilities with
+-- role-family-specific attributes (status, RIASEC, work_style, level, duration).
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS public.role_capability_sequence (
-  id                  UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  role_domain_id      UUID NOT NULL REFERENCES public.role_domains(id) ON DELETE CASCADE,
-  capability_id       UUID NOT NULL REFERENCES public.capability_master(id) ON DELETE RESTRICT,
-  sequence_step       INTEGER NOT NULL,                     -- 1..N order within the plan
-  capability_priority VARCHAR(20),                          -- Core / Important / Supporting
-  required_level      VARCHAR(4),                           -- L1 / L2 / L3 / L4 / L5
-  duration_weeks      INTEGER,
-  cumulative_weeks    INTEGER,
-  created_at          TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT unique_context_step       UNIQUE(role_domain_id, sequence_step),
-  CONSTRAINT unique_context_capability UNIQUE(role_domain_id, capability_id),
-  CONSTRAINT chk_required_level CHECK (required_level IN ('L1','L2','L3','L4','L5'))
+  id                           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  occupation_id                UUID NOT NULL REFERENCES public.occupations(id) ON DELETE CASCADE,
+  capability_id                UUID NOT NULL REFERENCES public.capability_master(id) ON DELETE RESTRICT,
+  sequence_step                INTEGER NOT NULL,
+  capability_priority          VARCHAR(20) CHECK (capability_priority IN ('Core','Important','Supporting')),  -- role-family-specific status
+  required_level               VARCHAR(4) CHECK (required_level IN ('L1','L2','L3','L4','L5')),              -- role-family-specific max level
+  duration_weeks               INTEGER,                                                                      -- role-family-specific duration
+  primary_riasec_context       CHAR(1) CHECK (primary_riasec_context IN ('R','I','A','S','E','C')),         -- role-family-specific RIASEC
+  secondary_riasec_context     CHAR(1) CHECK (secondary_riasec_context IN ('R','I','A','S','E','C')),       -- role-family-specific RIASEC
+  work_style_demands           TEXT,                                                                        -- role-family-specific work style demands
+  created_at                   TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT unique_occupation_step UNIQUE(occupation_id, sequence_step),
+  CONSTRAINT unique_occupation_capability UNIQUE(occupation_id, capability_id)
 );
 
-CREATE INDEX idx_rcs_context ON public.role_capability_sequence(role_domain_id);
+CREATE INDEX idx_rcs_occupation ON public.role_capability_sequence(occupation_id);
 CREATE INDEX idx_rcs_capability ON public.role_capability_sequence(capability_id);
-CREATE INDEX idx_rcs_order ON public.role_capability_sequence(role_domain_id, sequence_step);
-COMMENT ON TABLE public.role_capability_sequence IS 'Ordered role learning plan. FK to role_domains guarantees every step runs in a real (role+domain) context. Sort by sequence_step to build the 6-month plan.';
-COMMENT ON COLUMN public.role_capability_sequence.role_domain_id IS 'FK to role_domains (the role+domain context). Replaces separate role_id+domain_id; enforces the pair exists.';
+CREATE INDEX idx_rcs_order ON public.role_capability_sequence(occupation_id, sequence_step);
+CREATE INDEX idx_rcs_riasec ON public.role_capability_sequence(primary_riasec_context, secondary_riasec_context);
+COMMENT ON TABLE public.role_capability_sequence IS 'Ordered learning plan with role-family-specific capability context. Maps occupations to capabilities with role-specific attributes.';
+COMMENT ON COLUMN public.role_capability_sequence.occupation_id IS 'FK to occupations. Each occupation = one role in one domain = one learning path.';
+COMMENT ON COLUMN public.role_capability_sequence.capability_priority IS 'Role-family-specific priority (Core/Important/Supporting) for this capability in this role.';
+COMMENT ON COLUMN public.role_capability_sequence.required_level IS 'Role-family-specific maximum required proficiency level (L1-L5) for this capability.';
+COMMENT ON COLUMN public.role_capability_sequence.duration_weeks IS 'Role-family-specific duration in weeks for this capability.';
+COMMENT ON COLUMN public.role_capability_sequence.primary_riasec_context IS 'Role-family-specific primary RIASEC code for this capability context.';
+COMMENT ON COLUMN public.role_capability_sequence.secondary_riasec_context IS 'Role-family-specific secondary RIASEC code for this capability context.';
+COMMENT ON COLUMN public.role_capability_sequence.work_style_demands IS 'Role-family-specific work style demands and behavioral expectations for this capability.';
 
 -- ============================================================================
 -- TABLE 6: embeddings  (generic RAG vector storage)
@@ -195,3 +170,31 @@ CREATE INDEX idx_embeddings_entity ON public.embeddings(entity_type, entity_id);
 
 COMMENT ON TABLE public.embeddings IS 'Generic embedding storage for RAG. entity_type=''occupation'' uses occupations.riasec_reason-based document as source text.';
 COMMENT ON COLUMN public.embeddings.entity_id IS 'UUID of the embedded entity (e.g. occupations.id when entity_type=''occupation'').';
+
+-- ============================================================================
+-- TABLE 7: skill-capability mapping  (many-to-many)
+-- ============================================================================
+
+-- Create junction table for skill-capability mapping
+CREATE TABLE IF NOT EXISTS public.skill_capability_mapping (
+  id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  skill_id      UUID NOT NULL REFERENCES public.skills(id) ON DELETE CASCADE,
+  capability_id UUID NOT NULL REFERENCES public.capability_master(id) ON DELETE CASCADE,
+  created_at    TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT unique_skill_capability UNIQUE(skill_id, capability_id)
+);
+
+-- Create indexes for efficient queries
+CREATE INDEX idx_skill_capability_mapping_skill_id ON public.skill_capability_mapping(skill_id);
+CREATE INDEX idx_skill_capability_mapping_capability_id ON public.skill_capability_mapping(capability_id);
+
+-- Add comments
+COMMENT ON TABLE public.skill_capability_mapping IS
+'Junction table mapping skills to capabilities. Allows one skill to be associated with multiple capabilities without duplication.';
+
+COMMENT ON COLUMN public.skill_capability_mapping.skill_id IS
+'Foreign key to skills. The skill being mapped.';
+
+COMMENT ON COLUMN public.skill_capability_mapping.capability_id IS
+'Foreign key to capability_master. The capability that uses this skill.';
+

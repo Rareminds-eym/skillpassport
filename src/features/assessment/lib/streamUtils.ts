@@ -26,6 +26,29 @@ export function normalizeStreamId(programName: string | null | undefined): strin
 
   // Common program name mappings - ALL VALUES MUST BE <= 20 CHARS
   const programMappings: Record<string, string> = {
+    // ============================================================
+    // MBA (Postgraduate Business) — must appear BEFORE BBA entries
+    // so partial matching hits 'mba' before 'bba' substrings
+    // ============================================================
+    'master of business administration': 'mba',
+    'mba': 'mba',
+    'mba marketing': 'mba_marketing',
+    'mba finance': 'mba_finance',
+    'mba hr': 'mba_hr',
+    'mba human resources': 'mba_hr',
+    'mba operations': 'mba_operations',
+    'mba international business': 'mba_intl',
+    // ============================================================
+    // MCA (Postgraduate Computer Applications)
+    // ============================================================
+    'master of computer applications': 'mca',
+    'mca': 'mca',
+    // ============================================================
+    // M.Com (Postgraduate Commerce)
+    // ============================================================
+    'master of commerce': 'mcom',
+    'm.com': 'mcom',
+    'mcom': 'mcom',
     // B.Tech variations -> short keys
     'bachelor of technology in electronics': 'btech_ece',
     'bachelor of technology in electronics and communication': 'btech_ece',
@@ -298,7 +321,8 @@ export function normalizeStreamId(programName: string | null | undefined): strin
   if (normalized.includes('b.com') || normalized.includes('bcom') || normalized.includes('commerce')) {
     return 'bcom';
   }
-  if (normalized.includes('ba') || normalized.includes('arts')) {
+  // Use word-boundary check to avoid falsely matching 'mba', 'bba', etc.
+  if (/\bba\b/.test(normalized) || normalized.includes('arts')) {
     return 'ba';
   }
   if (normalized.includes('law') || normalized.includes('llb')) {

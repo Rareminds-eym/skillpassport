@@ -66,6 +66,9 @@ import { normalizeCourseRecommendations } from '../index';
 // Import Debug Panel for development
 import AssessmentDebugPanel from './AssessmentDebugPanel';
 
+// Import Middle School Growth Map for Grade 6-8
+import { MiddleSchoolGrowthMap } from './growth-map';
+
 // Import Tour Components - Now handled globally
 // Tours are managed by GlobalTourManager in App.tsx
 
@@ -936,6 +939,77 @@ const AssessmentResult = () => {
 
     if (!results) return null;
 
+    // Check if this is a middle school student (Grade 6-8)
+    const actualGrade = learnerInfo?.grade;
+    let actualGradeNum = null;
+    if (actualGrade) {
+        const match = actualGrade.toString().match(/\d+/);
+        if (match) {
+            actualGradeNum = parseInt(match[0], 10);
+        }
+    }
+
+    // For Grade 6-8, show the Beyond Marks Growth Map UI with existing header
+    if (actualGradeNum >= 6 && actualGradeNum <= 8 && results?.gemini_results) {
+        return (
+            <>
+                {/* Existing Header - Full Width */}
+                <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-blue-100 py-3 px-3 sm:px-8 lg:px-12 xl:px-16 print:hidden print-hidden">
+                    <div className="relative w-full flex items-center justify-between gap-2">
+                        <Button
+                            variant="ghost"
+                            onClick={() => navigate('/learner/dashboard')}
+                            className="text-slate-600 hover:text-slate-900 h-8 text-sm px-2 sm:px-3 shrink-0"
+                        >
+                            <ArrowLeft className="w-4 h-4" />
+                            <span className="hidden sm:inline ml-2">Back to Dashboard</span>
+                        </Button>
+
+                        {/* Center logo — hidden on small screens where it would overlap the buttons */}
+                        <div className="absolute left-1/2 -translate-x-1/2 hidden md:block pointer-events-none">
+                            <img
+                                src="/RareMinds.webp"
+                                alt="RareMinds Logo"
+                                className="h-8 w-auto object-contain"
+                            />
+                        </div>
+
+                        <div className="flex gap-1.5 sm:gap-2 shrink-0">
+                            <Button
+                                variant="outline"
+                                onClick={handleRetry}
+                                disabled={retrying}
+                                className="border-slate-300 text-slate-600 hover:bg-slate-100 hover:text-slate-900 hover:border-slate-400 h-8 text-sm px-2.5 sm:px-3"
+                            >
+                                <RefreshCw className={`w-3.5 h-3.5 ${retrying ? 'animate-spin' : ''}`} />
+                                <span className="hidden sm:inline ml-1.5">
+                                    {retrying ? 'Regenerating...' : 'Regenerate'}
+                                </span>
+                            </Button>
+                            <Button
+                                onClick={handlePrint}
+                                className="bg-slate-800 text-white hover:bg-slate-700 shadow-sm h-8 text-sm font-medium px-2.5 sm:px-3"
+                            >
+                                <Download className="w-3.5 h-3.5" />
+                                <span className="hidden sm:inline ml-1.5">Download PDF</span>
+                            </Button>
+                        </div>
+                    </div>
+                </header>
+
+                {/* Growth Map Content */}
+                <MiddleSchoolGrowthMap
+                    learnerInfo={{
+                        name: learnerInfo?.name || 'Student',
+                        grade: learnerInfo?.grade || '6',
+                        school: learnerInfo?.school || 'School',
+                    }}
+                    reports={results.gemini_results}
+                />
+            </>
+        );
+    }
+
     const { riasec, aptitude, knowledge, careerFit, skillGap, roadmap, employability, streamRecommendation } = results;
     const missingFields = validateResults();
     const hasIncompleteData = missingFields.length > 0;
@@ -1525,10 +1599,12 @@ const AssessmentResult = () => {
                                         </p>
                                     </motion.div>
 
-                                    {/* Career Cards */}
+                                    {/* Career Cards - Only show clusters with valid roles */}
                                     <div data-tour="career-tracks">
                                     {careerFit && careerFit.clusters && careerFit.clusters.length > 0 ? (
-                                        careerFit.clusters.map((cluster, index) => (
+                                        careerFit.clusters
+                                            .filter(c => c && c.title && c.roles && (c.roles.entry?.length > 0 || c.roles.mid?.length > 0))
+                                            .map((cluster, index) => (
                                             <CareerCard
                                                 key={index}
                                                 cluster={cluster}

@@ -30,16 +30,7 @@ INTERPRETATION GUIDANCE:
 
 Return ONLY valid JSON in this exact shape:
 {
-  "profileNarrative": "<300-400 words: COMPREHENSIVE STUDENT PROFILE that serves as the foundation for all career recommendations. MUST include:
-  1. STUDENT IDENTITY: Name (if available), program/stream (e.g., 'Master of Computer Applications'), study level (undergraduate/postgraduate), current status
-  2. RIASEC ANALYSIS: Interpret the 3-letter code through Holland's model + actual RIASEC scores. Explain what this means for work orientation (e.g., 'IRC profile indicates strong investigative + realistic + conventional traits, suggesting technical problem-solving with systematic approach')
-  3. PERSONALITY (BIG FIVE): Key traits (openness, conscientiousness, extraversion, agreeableness, neuroticism) and how they shape work style + collaboration style
-  4. WORK VALUES: What motivates them (leadership, impact, autonomy, creativity, security, financial reward, learning, relationships) based on scores
-  5. APTITUDE PROFILE: Overall aptitude score + breakdown by area (logical reasoning, spatial, verbal, numerical, pattern recognition). Cognitive strengths + learning pattern
-  6. DOMAIN EXPERTISE: What they know deeply (strong topics from program) + gaps. Real-world knowledge in their field
-  7. INFERRED CAREER DOMAINS: Based on honest synthesis of all 7 matrices above, identify 1-4 domains they're genuinely suited for (NO hardcoding—must emerge from analysis). Example: 'This IRC profile with strong system design aptitude and impact values is well-aligned with software architecture, cloud infrastructure, and technical leadership roles'
-
-  Write as coherent professional narrative (not bullet points). This narrative becomes the foundation for matching this student with suitable careers and learning paths. Every claim must be grounded in actual assessment data. Be specific and honest about strengths and realistic limitations.>",
+  "profileNarrative": "<150-220 words: who this student is — interests (RIASEC), personality (Big Five), values, aptitude strengths, knowledge — written as a coherent professional synthesis, ANCHORED to their program/stream and technical domain (see RIASEC + NARRATIVE rules below)>",
   "employability": {
     "overallReadiness": "<High|Medium|Low>",
     "strengthAreas": ["<skill>"],
@@ -76,7 +67,7 @@ RIASEC ACCURACY RULES:
 NARRATIVE GROUNDING:
 - The narrative MUST be grounded in the student's actual program, knowledge domain, RIASEC code, and Big Five
 - Use domain-specific language that reflects their field of study
-- Include domain context naturally (not forced) so matching and clustering work authentically
+- The narrative goes into the RAG context and influences career matching, so accuracy is critical
 - Do NOT name specific occupations — describe the type of work and domain they fit within
 
 OVERALL SUMMARY:
@@ -161,13 +152,16 @@ ${aptitudeInsightsText}
 
 NARRATIVE GENERATION RULES:
 1. Use the domain expertise (strong topics, stream, aptitude pattern) to write a rich, field-specific narrative.
-2. CRITICAL: Include actual keywords from their domain expertise in the narrative for RAG semantic matching:
-   - For technical streams (MCA, BCA, etc.): emphasize programming, software development, data, systems, architecture, engineering
-   - Include specific competencies from their field (Database, Web Development, OS, etc.)
-   - Reference their degree program explicitly (e.g., "Master of Computer Applications")
+2. CRITICAL: The narrative vocabulary must come from the student's MEASURED data only:
+   - Use the exact strong topics listed under DOMAIN EXPERTISE (e.g. if "Web Development" and
+     "Operating Systems" are strong topics, those are the words to use)
+   - Reference their degree program explicitly by name
+   - Do NOT add domain keywords the data doesn't show — no emphasizing a sub-field (e.g. AI,
+     finance, design) unless it appears in their strong topics, stream name, or scores
 3. Interpret their RIASEC code and Big Five through the lens of their actual program and knowledge.
 4. Balance RIASEC profile with domain context (e.g., "Enterprising orientation in technical leadership" not just "Enterprising")
-5. Avoid generic language that could match non-technical careers.
+5. Describe weaknesses as honestly as strengths — the narrative influences career matching, so
+   inflating or narrowing the student's profile produces wrong recommendations.
 
 Interpret this student's profile and return the JSON exactly as specified.`;
 }

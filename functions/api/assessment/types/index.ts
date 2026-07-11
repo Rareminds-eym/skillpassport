@@ -45,15 +45,16 @@ export interface MatchScores {
 }
 
 /**
- * College / higher-secondary 5-component match result.
- * final = IF×0.35 + CF×0.25 + PF×0.20 + KF×0.12 + VF×0.08
+ * College / higher-secondary 6-component match result.
+ * final = IF×0.25 + CF×0.20 + SAF×0.15 + PF×0.18 + KF×0.12 + VF×0.10
  */
 export interface CollegeMatchScores {
-  interestFit: number;     // IF: RIASEC hexagon-distance alignment, full code (0-100)
-  cognitiveFit: number;    // CF: aptitude + strengths (0-100)
-  personalityFit: number;  // PF: Big Five alignment (0-100)
-  knowledgeFit: number;    // KF: scored domain knowledge (0-100)
-  valuesFit: number;       // VF: work-values alignment (0-100)
+  interestFit: number;        // IF: RIASEC hexagon-distance alignment, full code (0-100)
+  cognitiveFit: number;       // CF: adaptive aptitude + strengths (0-100)
+  streamAptitudeFit: number;  // SAF: stream-specific MCQ aptitude score (0-100)
+  personalityFit: number;     // PF: Big Five alignment (0-100)
+  knowledgeFit: number;       // KF: scored domain knowledge (0-100)
+  valuesFit: number;          // VF: work-values alignment (0-100)
   final: number;
 }
 
@@ -476,7 +477,12 @@ export interface PromptOccupation {
   description?: string;  // Role description for LLM to understand importance & differences
   // Degree-gate signal (source: occupations table, L&D degree mapping).
   degreeGate?: 'Mandatory' | 'Preferred';
-  crossIndustryRolePaths?: string;       
+  // True when the learner's degree/stream appears in the occupation's direct_degree_mapping.
+  streamAligned?: boolean;
+  // Occupation's domain (from hybrid_search_occupations.domain_name). Role names alone are
+  // ambiguous across 38 industries ("Technician", "Product Engineer"); the domain lets the
+  // LLM apply the work-type/domain coherence rules in the cluster prompt.
+  domainName?: string;
 }
 
 /**
