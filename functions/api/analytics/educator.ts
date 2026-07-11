@@ -14,6 +14,13 @@ export interface EducatorScopeParams {
   assignedClassIds?: string[];
 }
 
+/** A row from `program_sections` as selected by `.select('program_id, semester, section')` in this file's college-educator scoping queries. */
+interface ProgramSection {
+  program_id: string;
+  semester: string;
+  section: string;
+}
+
 async function getFilteredLearnerIds(supabase: SupabaseClient, params: EducatorScopeParams, userId: string): Promise<string[]> {
   const { schoolId, collegeId, educatorType, educatorRole, assignedClassIds } = params;
   if (!schoolId && !collegeId) return [];
@@ -25,13 +32,13 @@ async function getFilteredLearnerIds(supabase: SupabaseClient, params: EducatorS
           .from('learners').select('user_id')
           .eq('school_id', schoolId).eq('is_deleted', false)
           .is('college_id', null).not('learner_id', 'is', null);
-        return data?.map((s: any) => s.user_id).filter(Boolean) || [];
+        return data?.map((s: { user_id: string }) => s.user_id).filter(Boolean) || [];
       } else if (assignedClassIds?.length > 0) {
         const { data } = await supabase
           .from('learners').select('user_id')
           .eq('school_id', schoolId).in('school_class_id', assignedClassIds)
           .eq('is_deleted', false).is('college_id', null).not('learner_id', 'is', null);
-        return data?.map((s: any) => s.user_id).filter(Boolean) || [];
+        return data?.map((s: { user_id: string }) => s.user_id).filter(Boolean) || [];
       }
       return [];
     } else if (educatorType === 'college' && collegeId) {
@@ -42,7 +49,7 @@ async function getFilteredLearnerIds(supabase: SupabaseClient, params: EducatorS
 
       if (!programSections?.length) return [];
 
-      const orConditions = programSections.map((s: any) =>
+      const orConditions = programSections.map((s: ProgramSection) =>
         `and(program_id.eq.${s.program_id},semester.eq.${s.semester},section.eq.${s.section})`
       ).join(',');
 
@@ -52,7 +59,7 @@ async function getFilteredLearnerIds(supabase: SupabaseClient, params: EducatorS
         .is('school_id', null).not('learner_id', 'is', null)
         .or(orConditions);
 
-      return learners?.filter((s: any) => s.user_id != null).map((s: any) => s.user_id) || [];
+      return learners?.filter((s: { user_id: string }) => s.user_id != null).map((s: { user_id: string }) => s.user_id) || [];
     }
     return [];
   } catch (error: unknown) {
@@ -77,13 +84,13 @@ export async function getFilteredLearnerRecordIds(supabase: SupabaseClient, para
           .from('learners').select('id')
           .eq('school_id', schoolId).eq('is_deleted', false)
           .is('college_id', null).not('learner_id', 'is', null);
-        return data?.map((s: any) => s.id).filter(Boolean) || [];
+        return data?.map((s: { id: string }) => s.id).filter(Boolean) || [];
       } else if (assignedClassIds?.length > 0) {
         const { data } = await supabase
           .from('learners').select('id')
           .eq('school_id', schoolId).in('school_class_id', assignedClassIds)
           .eq('is_deleted', false).is('college_id', null).not('learner_id', 'is', null);
-        return data?.map((s: any) => s.id).filter(Boolean) || [];
+        return data?.map((s: { id: string }) => s.id).filter(Boolean) || [];
       }
       return [];
     } else if (educatorType === 'college' && collegeId) {
@@ -94,7 +101,7 @@ export async function getFilteredLearnerRecordIds(supabase: SupabaseClient, para
 
       if (!programSections?.length) return [];
 
-      const orConditions = programSections.map((s: any) =>
+      const orConditions = programSections.map((s: ProgramSection) =>
         `and(program_id.eq.${s.program_id},semester.eq.${s.semester},section.eq.${s.section})`
       ).join(',');
 
@@ -104,7 +111,7 @@ export async function getFilteredLearnerRecordIds(supabase: SupabaseClient, para
         .is('school_id', null).not('learner_id', 'is', null)
         .or(orConditions);
 
-      return learners?.map((s: any) => s.id).filter(Boolean) || [];
+      return learners?.map((s: { id: string }) => s.id).filter(Boolean) || [];
     }
     return [];
   } catch (error: unknown) {
@@ -376,7 +383,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
           if (!programSections?.length) return apiSuccess([], context.request, { startTime });
 
-          const orConditions = programSections.map((s: any) =>
+          const orConditions = programSections.map((s: ProgramSection) =>
             `and(program_id.eq.${s.program_id},semester.eq.${s.semester},section.eq.${s.section})`
           ).join(',');
 

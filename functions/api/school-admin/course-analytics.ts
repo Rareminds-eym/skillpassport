@@ -45,7 +45,7 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const user = getContextUser(context);
-  const supabase = getServiceClient(context.env as unknown as PagesEnv);
+  const supabase = getServiceClient(context.env as PagesEnv);
 
   let body: CourseAnalyticsRequestBody;
   try {

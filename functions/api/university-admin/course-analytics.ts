@@ -52,13 +52,51 @@ interface CourseAnalyticsRequestBody {
   pageSize?: number;
 }
 
+/** A `university_colleges` row as selected by `.select('id, name, college_id')` in 'get-directory-tree'. */
+interface UniversityCollege {
+  id: string;
+  name: string;
+  college_id: string | null;
+}
+
+/** A mapped (non-null `college_id`) university_colleges row, after the {@link UniversityCollege} filter narrows `college_id` to `string`. */
+interface MappedCollege {
+  id: string;
+  name: string;
+  college_id: string;
+}
+
+/** A `program_sections` row as selected by `.select('id')` in 'get-learner-directory'. */
+interface SectionRow {
+  id: string;
+}
+
+/** A `university_colleges` row as selected by `.select('id')` in 'get-learner-directory'. */
+interface UniversityCollegeRow {
+  id: string;
+}
+
+/** A `courses` row as selected by `.select('course_id, code')` in 'get-learner-directory'. */
+interface CourseRow {
+  course_id: string;
+  code: string;
+}
+
+/** A `learners` row as selected by `.select('id, name, email, program_section_id')` in 'get-learner-directory'. */
+interface LearnerRow {
+  id: string;
+  name: string | null;
+  email: string;
+  program_section_id: string | null;
+}
+
 export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   return apiMethodNotAllowed(context.request);
 });
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const user = getContextUser(context);
-  const supabase = getServiceClient(context.env as unknown as PagesEnv);
+  const supabase = getServiceClient(context.env as PagesEnv);
 
   let body: CourseAnalyticsRequestBody;
   try {
@@ -292,11 +330,11 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         if (universityCollegesError) return apiDbError(universityCollegesError, context.request, { startTime });
 
         const mappedColleges = (universityColleges || []).filter(
-          (uc: { college_id: string | null }) => Boolean(uc.college_id),
+          (uc: UniversityCollege) => Boolean(uc.college_id),
         );
 
         const collegeSubtrees = await Promise.all(
-          mappedColleges.map(async (uc: { id: string; name: string; college_id: string }) => {
+          mappedColleges.map(async (uc: MappedCollege) => {
             const children: DirectoryTreeNode[] = await buildCollegeStyleDirectoryTree(supabase, uc.college_id);
             const count = children.reduce((sum, dept) => sum + dept.count, 0);
             return {
@@ -355,7 +393,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
             .eq('department_id', departmentId)
             .eq('status', 'active');
           if (deptSectionsError) return apiDbError(deptSectionsError, context.request, { startTime });
-          const deptSectionIds = (deptSections || []).map((s: { id: string }) => s.id);
+          const deptSectionIds = (deptSections || []).map((s: SectionRow) => s.id);
           learnersQuery = deptSectionIds.length > 0
             ? learnersQuery.in('program_section_id', deptSectionIds)
             : learnersQuery.eq('id', '00000000-0000-0000-0000-000000000000');
@@ -371,7 +409,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
             .from('university_colleges')
             .select('id')
             .eq('university_id', orgId);
-          const allCollegeIds = universityColleges?.map((c: { id: string }) => c.id) || [];
+          const allCollegeIds = universityColleges?.map((c: UniversityCollegeRow) => c.id) || [];
           learnersQuery = allCollegeIds.length > 0
             ? learnersQuery.in('university_college_id', allCollegeIds)
             : learnersQuery.eq('id', '00000000-0000-0000-0000-000000000000');
@@ -415,7 +453,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
             .select('course_id, code')
             .in('course_id', courseIds);
           if (coursesError) return apiDbError(coursesError, context.request, { startTime });
-          courseCodeById = new Map((courses || []).map((c: { course_id: string; code: string }) => [c.course_id, c.code]));
+          courseCodeById = new Map((courses || []).map((c: CourseRow) => [c.course_id, c.code]));
         }
 
         const mapStatus = (status: string | null): 'completed' | 'in_progress' | 'not_started' => {
@@ -426,7 +464,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           return 'not_started';
         };
 
-        const learnerDirectory = (universityLearnersForDirectory || []).map((learner: { id: string; name: string | null; email: string; program_section_id: string | null }) => {
+        const learnerDirectory = (universityLearnersForDirectory || []).map((learner: LearnerRow) => {
           const enrollment = latestEnrollmentByLearnerId.get(learner.id);
           return {
             id: learner.id,
