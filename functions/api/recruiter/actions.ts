@@ -158,6 +158,7 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
       console.log('[recruiter/actions] list-recruiters called:', {
         userId: user.id,
+        userEmail: user.email,
         organizationId,
         hasOrgId: !!organizationId
       });
@@ -170,54 +171,40 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         return apiError(500, 'INTERNAL_ERROR', 'Organization context not found. Please contact support.', context.request);
       }
 
-      // 🔒 SECURITY: Fetch recruiters from the same organization
-      // WORKAROUND: Use email matching instead of user_id because:
-      // - recruiters.user_id references legacy app users
-      // - organization_members.user_id references SSO synced users
-      // - These are different UUIDs, so we match by email instead
-
-      const { data, error } = await supabase
+      // Step 1: Get all active recruiters
+      const { data: allRecruiters, error: recruitersError } = await supabase
         .from('recruiters')
-        .select(`
-          id, 
-          name, 
-          email,
-          user_id
-        `)
+        .select('id, name, email, user_id')
         .eq('isactive', true)
         .order('name');
 
-      if (error) {
+      if (recruitersError) {
         console.error('[recruiter/actions] ❌ Error fetching recruiters:', {
-          error,
-          code: error.code,
-          message: error.message,
-          details: error.details
+          error: recruitersError,
+          code: recruitersError.code,
+          message: recruitersError.message
         });
-        return apiDbError(error, context.request);
+        return apiDbError(recruitersError, context.request);
       }
 
-      console.log('[recruiter/actions] ✓ Fetched recruiters from DB:', {
-        count: data?.length || 0,
-        recruiters: data?.map(r => ({ id: r.id, name: r.name, email: r.email, user_id: r.user_id }))
+      console.log('[recruiter/actions] ✓ Fetched all recruiters from DB:', {
+        count: allRecruiters?.length || 0,
+        recruiters: allRecruiters?.map(r => ({
+          id: r.id,
+          name: r.name,
+          email: r.email,
+          user_id: r.user_id
+        }))
       });
 
-      // Get recruiter emails
-      const recruiterEmails = (data || []).map(r => r.email).filter(Boolean);
-
-      if (recruiterEmails.length === 0) {
-        console.log('[recruiter/actions] No recruiters with email found');
+      // If no recruiters at all, return empty
+      if (!allRecruiters || allRecruiters.length === 0) {
+        console.log('[recruiter/actions] No recruiters found in database');
         return apiSuccess([], context.request);
       }
 
-      console.log('[recruiter/actions] Checking organization membership for emails:', {
-        organizationId,
-        recruiterEmails,
-        emailCount: recruiterEmails.length
-      });
-
-      // Find organization members by email (via users table join)
-      const { data: members, error: membersError } = await supabase
+      // Step 2: Get organization members for this org
+      const { data: orgMembers, error: membersError } = await supabase
         .from('organization_members')
         .select(`
           user_id,
@@ -226,24 +213,21 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           users!inner(id, email)
         `)
         .eq('organization_id', organizationId)
-        .eq('status', 'active')
-        .in('users.email', recruiterEmails);
+        .eq('status', 'active');
 
       if (membersError) {
         console.error('[recruiter/actions] ❌ Error fetching organization members:', {
           error: membersError,
           code: membersError.code,
           message: membersError.message,
-          details: membersError.details,
-          organizationId,
-          recruiterEmails
+          organizationId
         });
         return apiDbError(membersError, context.request);
       }
 
       console.log('[recruiter/actions] ✓ Organization members found:', {
-        count: members?.length || 0,
-        members: members?.map((m: any) => ({
+        count: orgMembers?.length || 0,
+        members: orgMembers?.map((m: any) => ({
           userId: m.user_id,
           email: m.users?.email,
           role: m.role,
@@ -251,17 +235,36 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         }))
       });
 
-      // Get emails that belong to the organization
-      const orgEmails = new Set((members || []).map((m: any) => m.users?.email).filter(Boolean));
+      // Step 3: Create a set of user_ids that belong to this organization
+      const orgUserIds = new Set((orgMembers || []).map((m: any) => m.user_id));
 
-      // Filter recruiters to only include those in the organization
-      const filteredRecruiters = (data || []).filter(r => r.email && orgEmails.has(r.email));
+      console.log('[recruiter/actions] Organization user IDs:', {
+        userIds: Array.from(orgUserIds),
+        count: orgUserIds.size
+      });
 
-      console.log('[recruiter/actions] Filtered recruiters:', {
-        totalRecruiters: data?.length || 0,
-        orgMembers: orgEmails.size,
+      // Step 4: Filter recruiters - match by user_id (direct match)
+      const filteredRecruiters = (allRecruiters || []).filter(r => {
+        const matches = r.user_id && orgUserIds.has(r.user_id);
+        console.log('[recruiter/actions] Checking recruiter:', {
+          recruiterId: r.id,
+          recruiterUserId: r.user_id,
+          recruiterEmail: r.email,
+          inOrg: matches
+        });
+        return matches;
+      });
+
+      console.log('[recruiter/actions] ✅ Final filtered recruiters:', {
+        totalRecruiters: allRecruiters?.length || 0,
+        orgMembers: orgUserIds.size,
         filteredCount: filteredRecruiters.length,
-        filteredRecruiters: filteredRecruiters.map(r => ({ id: r.id, name: r.name, email: r.email }))
+        filteredRecruiters: filteredRecruiters.map(r => ({
+          id: r.id,
+          name: r.name,
+          email: r.email,
+          user_id: r.user_id
+        }))
       });
 
       return apiSuccess(filteredRecruiters, context.request);

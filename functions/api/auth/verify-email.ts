@@ -12,24 +12,60 @@ export async function onRequestPost(context: { request: Request; env: any }): Pr
   const { request, env } = context;
 
   try {
+    console.log('[verify-email] Request received');
+
     const body = await request.json() as any;
     const { token } = body;
 
+    console.log('[verify-email] Token:', token ? `${token.substring(0, 8)}...` : 'missing');
+
     if (!token) {
+      console.error('[verify-email] ❌ Token missing');
       return apiError(400, 'VALIDATION_ERROR', 'token is required', request);
     }
 
-    // Call sso-worker via RPC for email verification
-    const ssoResult = await env.SSO_SERVICE.verifyEmail({ token });
-
-    if (!ssoResult.success) {
-      return apiError(400, 'VERIFY_FAILED', ssoResult.error || 'Email verification failed', request);
+    // Check if SSO_SERVICE binding exists
+    if (!env.SSO_SERVICE) {
+      console.error('[verify-email] ❌ SSO_SERVICE binding not found in env:', {
+        availableBindings: Object.keys(env).filter(k => k.includes('SSO') || k.includes('SERVICE'))
+      });
+      return apiError(500, 'INTERNAL_ERROR', 'SSO service not configured. Please contact support.', request);
     }
 
-    return apiSuccess({ verified: true }, request);
+    console.log('[verify-email] Calling SSO_SERVICE /auth/verify-email endpoint...');
+
+    // Call sso-worker HTTP endpoint for email verification
+    // Pass through the origin from the original request for CORS
+    const ssoResponse = await env.SSO_SERVICE.fetch(
+      new Request('http://sso-worker/auth/verify-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Origin': request.headers.get('Origin') || 'http://localhost:8788'
+        },
+        body: JSON.stringify({ token })
+      })
+    );
+
+    console.log('[verify-email] SSO response status:', ssoResponse.status);
+
+    if (!ssoResponse.ok) {
+      const errorData = await ssoResponse.json().catch(() => ({ error: 'Unknown error' }));
+      console.error('[verify-email] ❌ Verification failed:', errorData);
+      return apiError(ssoResponse.status, 'VERIFY_FAILED', errorData.error || 'Email verification failed', request);
+    }
+
+    const ssoResult = await ssoResponse.json();
+    console.log('[verify-email] ✓ Email verified successfully');
+    return apiSuccess({ verified: true, ...ssoResult }, request);
 
   } catch (error) {
+    console.error('[verify-email] ❌ Exception:', {
+      error,
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
+    });
     logger.error('Verify email error', error as Error);
-    return apiError(500, 'INTERNAL_ERROR', 'Internal server error', request);
+    return apiError(500, 'INTERNAL_ERROR', `Internal server error: ${error instanceof Error ? error.message : 'Unknown error'}`, request);
   }
 }

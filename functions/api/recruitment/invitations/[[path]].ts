@@ -437,6 +437,7 @@ async function handleAcceptInvitation(context: any): Promise<Response> {
                 membershipId = createResult.membership_id;
                 console.log('[accept-invitation] ✓ User created via SSO:', userId);
                 console.log('[accept-invitation] Membership ID:', membershipId);
+                console.log('[accept-invitation] NOTE: ssoCreateMember auto-verifies email for admin-created members');
 
                 // STEP 4: Directly sync to SkillPassport DB (bypassing queue for dev)
                 console.log('[accept-invitation] Step 4: Directly syncing user to SkillPassport DB');
