@@ -114,7 +114,7 @@ const AdmissionNoteModal: React.FC<AdmissionNoteModalProps> = ({
               educatorId = lecturerRes.data.id;
               organizationId = lecturerRes.data.collegeId;
               const adminDesignations = ['principal', 'dean', 'hod', 'admin', 'director'];
-              const isAdmin = lecturerRes.data.designation &&
+              const isAdmin = lecturerRes.data?.designation &&
                              adminDesignations.some((d: string) => lecturerRes.data?.designation?.toLowerCase().includes(d));
               userType = isAdmin ? 'college_admin' : 'college_educator';
             }
@@ -139,6 +139,9 @@ const AdmissionNoteModal: React.FC<AdmissionNoteModalProps> = ({
         throw new Error('Learner user_id is required for messaging');
       }
 
+      // educatorId is guaranteed non-null here for educator types due to the guard above
+      const validatedEducatorId = educatorId ?? '';
+
       let conversation;
 
       // Create or get conversation based on user type
@@ -151,14 +154,14 @@ const AdmissionNoteModal: React.FC<AdmissionNoteModalProps> = ({
       } else if (userType === 'school_educator') {
         conversation = await MessageService.getOrCreatelearnerEducatorConversation(
           conversationLearnerId,
-          educatorId ?? (() => { throw new Error('educatorId is required'); })(),
+          validatedEducatorId,
           undefined, // classId
           'Mentor Note'
         );
       } else if (userType === 'college_educator') {
         conversation = await MessageService.getOrCreatelearnerCollegeLecturerConversation(
           conversationLearnerId,
-          educatorId ?? (() => { throw new Error('educatorId is required'); })(),
+          validatedEducatorId,
           organizationId,
           undefined, // programSectionId
           'Mentor Note'
@@ -207,14 +210,12 @@ const AdmissionNoteModal: React.FC<AdmissionNoteModalProps> = ({
   return (
     <div className="fixed inset-0 z-[60] overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div
-          className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+        <button
+          type="button"
+          className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity w-full h-full cursor-default"
           onClick={onClose}
-          onKeyDown={(e) => e.key === 'Escape' && onClose()}
-          role="button"
-          tabIndex={0}
           aria-label="Close modal"
-        ></div>
+        />
 
         <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
           <div className="flex items-center justify-between mb-4">
