@@ -6,7 +6,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { PagesEnv } from '../../lib/types';
 
 /** Educator scope params, as sent by the frontend's EducatorCourseAnalyticsScope (entities/course-analytics/api/queries.ts) and consumed by every action in this file. */
-interface EducatorScopeParams {
+export interface EducatorScopeParams {
   schoolId?: string;
   collegeId?: string;
   educatorType?: 'school' | 'college' | null;

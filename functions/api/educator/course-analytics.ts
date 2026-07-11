@@ -26,7 +26,7 @@ import {
   buildAcademicStatusOverview,
   buildCourseFilterOptions,
 } from '../../lib/courseAnalyticsKpis';
-import { getFilteredLearnerRecordIds } from '../analytics/educator';
+import { getFilteredLearnerRecordIds, type EducatorScopeParams } from '../analytics/educator';
 import {
   buildCollegeStyleDirectoryTree,
   buildSchoolStyleDirectoryTree,
@@ -36,6 +36,18 @@ import {
 } from '../../lib/directoryTree';
 import type { PagesEnv } from '../../lib/types';
 
+/** POST body for this action router — extends the shared educator scope with the course-analytics-specific fields this router also destructures from `params`. */
+interface CourseAnalyticsRequestBody extends EducatorScopeParams {
+  action: string;
+  courseId?: string;
+  departmentId?: string;
+  academicYear?: string;
+  sectionId?: string;
+  grade?: string;
+  page?: number;
+  pageSize?: number;
+}
+
 export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   return apiMethodNotAllowed(context.request);
 });
@@ -44,9 +56,9 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const user = getContextUser(context);
   const supabase = getServiceClient(context.env as unknown as PagesEnv);
 
-  let body: Record<string, any>;
+  let body: CourseAnalyticsRequestBody;
   try {
-    body = await context.request.json() as Record<string, any>;
+    body = await context.request.json() as CourseAnalyticsRequestBody;
   } catch {
     return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON body', context.request);
   }

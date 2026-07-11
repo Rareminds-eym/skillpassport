@@ -27,6 +27,18 @@ import {
 } from '../../lib/courseAnalyticsKpis';
 import { buildCollegeStyleDirectoryTree, resolveSectionIdsForYear } from '../../lib/directoryTree';
 
+/** POST body for this action router, as sent by the frontend's college-admin course-analytics queries (src/entities/course-analytics/api/queries.ts). */
+interface CourseAnalyticsRequestBody {
+  action: string;
+  collegeId?: string;
+  courseId?: string;
+  departmentId?: string;
+  academicYear?: string;
+  sectionId?: string;
+  page?: number;
+  pageSize?: number;
+}
+
 export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   return apiMethodNotAllowed(context.request);
 });
@@ -35,9 +47,9 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const user = getContextUser(context);
   const supabase = getServiceClient(context.env as unknown as PagesEnv);
 
-  let body: Record<string, any>;
+  let body: CourseAnalyticsRequestBody;
   try {
-    body = await context.request.json() as Record<string, any>;
+    body = await context.request.json() as CourseAnalyticsRequestBody;
   } catch {
     return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON body', context.request);
   }
