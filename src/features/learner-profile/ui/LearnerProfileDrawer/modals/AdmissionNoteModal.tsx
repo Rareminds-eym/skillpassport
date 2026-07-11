@@ -3,7 +3,7 @@ import { ChatBubbleLeftRightIcon, DocumentTextIcon, XMarkIcon } from '@heroicons
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 import MessageService from '@/shared/api/messageService';
-import { Learner } from '@/features/learner-profile/model';
+import type { Learner } from '@/features/learner-profile/model';
 import { getLogger } from '@/shared/config/logging';
 import { apiPost } from '@/shared/api/apiClient';
 
@@ -115,7 +115,7 @@ const AdmissionNoteModal: React.FC<AdmissionNoteModalProps> = ({
               organizationId = lecturerRes.data.collegeId;
               const adminDesignations = ['principal', 'dean', 'hod', 'admin', 'director'];
               const isAdmin = lecturerRes.data.designation &&
-                             adminDesignations.some((d: string) => lecturerRes.data!.designation.toLowerCase().includes(d));
+                             adminDesignations.some((d: string) => lecturerRes.data?.designation?.toLowerCase().includes(d));
               userType = isAdmin ? 'college_admin' : 'college_educator';
             }
           } catch (err) {
@@ -129,38 +129,45 @@ const AdmissionNoteModal: React.FC<AdmissionNoteModalProps> = ({
         throw new Error('Could not determine user type or organization');
       }
 
+      if ((userType === 'school_educator' || userType === 'college_educator') && !educatorId) {
+        throw new Error('Could not determine educator ID');
+      }
+
       // conversations.learner_id references learners.user_id
       const conversationLearnerId = learner.user_id;
+      if (!conversationLearnerId) {
+        throw new Error('Learner user_id is required for messaging');
+      }
 
       let conversation;
 
       // Create or get conversation based on user type
       if (userType === 'school_admin') {
         conversation = await MessageService.getOrCreatelearnerAdminConversation(
-          conversationLearnerId!,
-          organizationId!,
+          conversationLearnerId,
+          organizationId,
           'Mentor Note'
         );
       } else if (userType === 'school_educator') {
         conversation = await MessageService.getOrCreatelearnerEducatorConversation(
-          conversationLearnerId!,
-          educatorId!,
+          conversationLearnerId,
+          educatorId ?? (() => { throw new Error('educatorId is required'); })(),
           undefined, // classId
           'Mentor Note'
         );
       } else if (userType === 'college_educator') {
         conversation = await MessageService.getOrCreatelearnerCollegeLecturerConversation(
-          conversationLearnerId!,
-          educatorId!,
-          organizationId!,
+          conversationLearnerId,
+          educatorId ?? (() => { throw new Error('educatorId is required'); })(),
+          organizationId,
           undefined, // programSectionId
           'Mentor Note'
         );
       } else {
         // college_admin
         conversation = await MessageService.getOrCreatelearnerCollegeAdminConversation(
-          conversationLearnerId!,
-          organizationId!,
+          conversationLearnerId,
+          organizationId,
           'Admission Note'
         );
       }
@@ -200,12 +207,19 @@ const AdmissionNoteModal: React.FC<AdmissionNoteModalProps> = ({
   return (
     <div className="fixed inset-0 z-[60] overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
+        <div
+          className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+          onClick={onClose}
+          onKeyDown={(e) => e.key === 'Escape' && onClose()}
+          role="button"
+          tabIndex={0}
+          aria-label="Close modal"
+        ></div>
 
         <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-medium text-gray-900">Add Mentor Note</h3>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600">
               <XMarkIcon className="h-6 w-6" />
             </button>
           </div>
@@ -247,6 +261,7 @@ const AdmissionNoteModal: React.FC<AdmissionNoteModalProps> = ({
 
           <div className="mt-6 flex items-center justify-end space-x-3">
             <button
+              type="button"
               onClick={onClose}
               disabled={isSubmitting}
               className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
@@ -254,6 +269,7 @@ const AdmissionNoteModal: React.FC<AdmissionNoteModalProps> = ({
               Cancel
             </button>
             <button
+              type="button"
               onClick={handleSubmit}
               disabled={isSubmitting || !note.trim()}
               className="px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md hover:bg-primary-700 disabled:opacity-50 flex items-center space-x-2"

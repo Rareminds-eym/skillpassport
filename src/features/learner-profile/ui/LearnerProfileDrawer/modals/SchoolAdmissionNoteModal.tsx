@@ -1,4 +1,4 @@
-import { Learner } from '@/features/learner-profile/model';
+import type { Learner } from '@/features/learner-profile/model';
 import MessageService from '@/shared/api/messageService';
 import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
@@ -63,14 +63,14 @@ const SchoolAdmissionNoteModal: React.FC<SchoolAdmissionNoteModalProps> = ({
 
       let schoolId: string | null = null;
 
-      const educatorRes = await apiPost<any>('/learner-profile/actions', {
+      const educatorRes = await apiPost<{ data?: { id: string; school_id: string } | null }>('/learner-profile/actions', {
         action: 'fetch-school-educator-by-user',
         userId: user.id,
       });
       if (educatorRes?.data?.school_id) {
         schoolId = educatorRes.data.school_id;
       } else {
-        const orgRes = await apiPost<any>('/learner-profile/actions', {
+        const orgRes = await apiPost<{ data?: { id: string; name: string } | null }>('/learner-profile/actions', {
           action: 'fetch-org-by-admin',
           userId: user.id,
           email: user.email,
@@ -91,6 +91,9 @@ const SchoolAdmissionNoteModal: React.FC<SchoolAdmissionNoteModalProps> = ({
 
       // conversations.learner_id references learners.user_id
       const conversationLearnerId = learner.user_id;
+      if (!conversationLearnerId) {
+        throw new Error('Learner user_id is required for messaging');
+      }
 
       const conversation = await MessageService.getOrCreatelearnerAdminConversation(
         conversationLearnerId,
@@ -108,9 +111,9 @@ const SchoolAdmissionNoteModal: React.FC<SchoolAdmissionNoteModalProps> = ({
         subject: 'Admission Note',
       };
 
-      await apiPost<any>('/learner-profile/actions', { action: 'send-learner-message', ...messageData });
+      await apiPost<{ data?: { id: number; conversation_id: string; message_text: string } }>('/learner-profile/actions', { action: 'send-learner-message', ...messageData });
 
-      await apiPost<any>('/learner-profile/actions', {
+      await apiPost<{ data?: { updated: boolean } }>('/learner-profile/actions', {
         action: 'update-conversation-last-message',
         conversationId: conversation.id,
       });
@@ -130,6 +133,10 @@ const SchoolAdmissionNoteModal: React.FC<SchoolAdmissionNoteModalProps> = ({
         <div
           className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
           onClick={onClose}
+          onKeyDown={(e) => e.key === 'Escape' && onClose()}
+          role="button"
+          tabIndex={0}
+          aria-label="Close modal"
         ></div>
 
         <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">

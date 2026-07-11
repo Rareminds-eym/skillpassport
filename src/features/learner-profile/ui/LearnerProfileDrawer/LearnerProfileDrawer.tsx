@@ -16,7 +16,7 @@ import { useNavigate } from 'react-router-dom';
 import { isCollegeLearner as checkIsCollegeLearner, isSchoolLearner as checkIsSchoolLearner } from '@/entities/learner/lib/learnerType';
 
 // Types
-import { LearnerProfileDrawerProps, TabConfig, ActionConfig } from '@/features/learner-profile/model';
+import type { LearnerProfileDrawerProps, TabConfig, ActionConfig } from '@/features/learner-profile/model';
 
 // Hooks
 import { useLearnerData, useLearnerActions } from './hooks';
