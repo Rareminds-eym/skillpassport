@@ -55,8 +55,8 @@ async function getFilteredLearnerIds(supabase: SupabaseClient, params: EducatorS
       return learners?.filter((s: any) => s.user_id != null).map((s: any) => s.user_id) || [];
     }
     return [];
-  } catch (error: any) {
-    console.error('[getFilteredLearnerIds] Error:', error?.message || error);
+  } catch (error: unknown) {
+    console.error('[getFilteredLearnerIds] Error:', error instanceof Error ? error.message : error);
     return [];
   }
 }
@@ -107,8 +107,8 @@ export async function getFilteredLearnerRecordIds(supabase: SupabaseClient, para
       return learners?.map((s: any) => s.id).filter(Boolean) || [];
     }
     return [];
-  } catch (error: any) {
-    console.error('[getFilteredLearnerRecordIds] Error:', error?.message || error);
+  } catch (error: unknown) {
+    console.error('[getFilteredLearnerRecordIds] Error:', error instanceof Error ? error.message : error);
     return [];
   }
 }
@@ -590,7 +590,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       default:
         return apiError(400, 'INVALID_ACTION', `Unknown action: ${action}`, context.request, { startTime });
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     return apiDbError(error, context.request, { startTime });
   }
 });

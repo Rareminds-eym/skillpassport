@@ -34,6 +34,7 @@ import {
   resolveEducatorSchoolClassIds,
   resolveSectionIdsForYear,
 } from '../../lib/directoryTree';
+import type { PagesEnv } from '../../lib/types';
 
 export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   return apiMethodNotAllowed(context.request);
@@ -41,12 +42,11 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const user = getContextUser(context);
-  const env = context.env as Record<string, string>;
-  const supabase = getServiceClient(env as any);
+  const supabase = getServiceClient(context.env as unknown as PagesEnv);
 
   let body: Record<string, any>;
   try {
-    body = await context.request.json() as any;
+    body = await context.request.json() as Record<string, any>;
   } catch {
     return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON body', context.request);
   }
@@ -397,8 +397,8 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       default:
         return apiError(400, 'VALIDATION_ERROR', `Unknown action: ${action}`, context.request, { startTime });
     }
-  } catch (error: any) {
-    console.error(`[educator course-analytics POST] action=${action}:`, error?.message || error);
+  } catch (error: unknown) {
+    console.error(`[educator course-analytics POST] action=${action}:`, error instanceof Error ? error.message : error);
     return apiDbError(error, context.request, { startTime });
   }
 });
