@@ -71,16 +71,19 @@ async function handleSendMessage(supabase: SupabaseClient, params: SendMessagePa
   const convId = String(conversationId);
 
   // Resolve learner user_id if sender/receiver is a learner (notifications FK requires user_id not learners.id)
+  // Batch both lookups into a single query to avoid N+1
   let sendId = String(senderId);
-  if (senderType === 'learner') {
-    const { data: lr } = await supabase.from('learners').select('user_id').eq('id', sendId).maybeSingle();
-    if (lr?.user_id) sendId = String(lr.user_id);
-  }
-
   let recvId = String(receiverId);
-  if (receiverType === 'learner') {
-    const { data: lr } = await supabase.from('learners').select('user_id').eq('id', recvId).maybeSingle();
-    if (lr?.user_id) recvId = String(lr.user_id);
+
+  const learnerIdsToResolve: string[] = [];
+  if (senderType === 'learner') learnerIdsToResolve.push(sendId);
+  if (receiverType === 'learner' && recvId !== sendId) learnerIdsToResolve.push(recvId);
+
+  if (learnerIdsToResolve.length > 0) {
+    const { data: learners } = await supabase.from('learners').select('id, user_id').in('id', learnerIdsToResolve);
+    const learnerMap = new Map((learners || []).map((l: { id: string; user_id: string }) => [l.id, l.user_id]));
+    if (senderType === 'learner' && learnerMap.get(sendId)) sendId = String(learnerMap.get(sendId));
+    if (receiverType === 'learner' && learnerMap.get(recvId)) recvId = String(learnerMap.get(recvId));
   }
 
   const applicationIdOld = await convertApplicationId(supabase, applicationId);
@@ -603,6 +606,15 @@ async function handleFetchRecipients(supabase: SupabaseClient, params: any): Pro
       }));
     }
   } else if (conversationType === 'admin-learner' || conversationType === 'college-admin-learner') {
+    type LearnerRow = {
+      id: string;
+      name: string | null;
+      email: string | null;
+      university: string | null;
+      branch_field: string | null;
+      grade: string | null;
+      section: string | null;
+    };
     const ctxId = String(contextId);
     if (conversationType === 'admin-learner') {
       const { data: learnerData, error } = await supabase
@@ -611,20 +623,24 @@ async function handleFetchRecipients(supabase: SupabaseClient, params: any): Pro
         .eq('school_id', ctxId)
         .order('name');
       if (!error && learnerData) {
-        data = learnerData.map((s: any) => ({
+        data = learnerData.map((s: LearnerRow) => ({
           id: s.id, name: s.name || 'Unnamed Learner', email: s.email,
           university: s.university, branch_field: s.branch_field, grade: s.grade, section: s.section,
         }));
       }
     } else {
       // college-admin-learner: check both college_id and university_college_id
+      // UUID validation ensures ctxId is safe to use in .or() filter (PostgREST parameterizes internally)
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(ctxId)) {
+        return [];
+      }
       const { data: learnerData, error } = await supabase
         .from('learners')
         .select('id, name, email, university, branch_field, grade, section')
         .or(`college_id.eq.${ctxId},university_college_id.eq.${ctxId}`)
         .order('name');
       if (!error && learnerData) {
-        data = learnerData.map((s: any) => ({
+        data = learnerData.map((s: LearnerRow) => ({
           id: s.id, name: s.name || 'Unnamed Learner', email: s.email,
           university: s.university, branch_field: s.branch_field, grade: s.grade, section: s.section,
         }));

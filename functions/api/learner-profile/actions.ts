@@ -1119,7 +1119,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           if (lookupLearnerId !== clubLearnerId) {
             const [extraClubsRes, extraCompRegRes, extraEventsRes] = await Promise.allSettled([
               supabase.from('competition_registrations').select('*, competitions!inner(id, name, type, date, status)').eq('learner_id', lookupLearnerId),
-              supabase.from('college_event_registrations').select('event_id, registered_at, attended, college_events!inner(id, title, description, event_type, start_date, end_date, venue, status, organizer, max_participants, created_at)').eq('learner_id', lookupLearnerId),
+              supabase.from('college_event_registrations').select('event_id, registered_at, attended, college_events!inner(id, title, description, event_type, start_date, end_date, venue, status, capacity, created_at)').eq('learner_id', lookupLearnerId),
             ]);
             const extraCompReg = extraCompRegRes.status === 'fulfilled' ? extraCompRegRes.value.data || [] : [];
             const compRegData = compRegRes.status === 'fulfilled' ? compRegRes.value.data || [] : [];

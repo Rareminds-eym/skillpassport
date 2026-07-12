@@ -142,7 +142,8 @@ export const useLearnerActions = (learner: Learner | null, onRefresh?: () => voi
       });
 
       toast.success(`Learner ${action === 'approve' ? 'approved' : 'rejected'} successfully!`);
-      window.location.reload();
+      queryClient.invalidateQueries({ queryKey: ['learners'] });
+      onRefresh?.();
     } catch (error: any) {
       logger.error('Error updating learner status', error as Error);
       toast.error(`Failed to ${action} learner: ${error?.message || 'Please try again.'}`);
@@ -213,7 +214,8 @@ export const useLearnerActions = (learner: Learner | null, onRefresh?: () => voi
         totalSemesters: getTotalSemesters(),
       });
       toast.success('Learner marked as graduated successfully!');
-      window.location.reload();
+      queryClient.invalidateQueries({ queryKey: ['learners'] });
+      onRefresh?.();
     } catch (error: any) {
       logger.error('Error marking learner as graduated', error as Error);
       toast.error(`Failed to mark learner as graduated: ${error?.message || 'Please try again.'}`);

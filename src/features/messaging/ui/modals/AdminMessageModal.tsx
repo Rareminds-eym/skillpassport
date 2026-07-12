@@ -97,6 +97,7 @@ const AdminMessageModal: React.FC<AdminMessageModalProps> = ({
     queryFn: () => MessageService.getConversationMessages(conversation!.id),
     enabled: !!conversation?.id,
     refetchInterval: 5000,
+    refetchIntervalInBackground: false,
   });
 
   // Send message mutation
@@ -178,7 +179,7 @@ const AdminMessageModal: React.FC<AdminMessageModalProps> = ({
                 {learner.email && <p className="text-sm text-gray-500">{learner.email}</p>}
               </div>
             </div>
-            <button type="button" onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+            <button type="button" onClick={onClose} aria-label="Close dialog" className="p-2 hover:bg-gray-100 rounded-full transition-colors">
               <X className="w-5 h-5 text-gray-500" />
             </button>
           </div>
@@ -229,6 +230,7 @@ const AdminMessageModal: React.FC<AdminMessageModalProps> = ({
               <button
                 type="submit"
                 disabled={!newMessage.trim() || sendMutation.isPending || loading || !!conversationError}
+                aria-label={sendMutation.isPending ? 'Sending message' : 'Send message'}
                 className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
               >
                 {sendMutation.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}

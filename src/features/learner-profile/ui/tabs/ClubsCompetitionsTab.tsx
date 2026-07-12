@@ -126,8 +126,6 @@ const ClubsCompetitionsTab: React.FC<ClubsCompetitionsTabProps> = ({ learner, lo
           setClubMemberships(result.data.clubs || []);
           setCompetitionRegistrations(result.data.competitions || []);
           setCompetitionResults(result.data.competitionResults || []);
-          setEventRegistrations(result.data.events || []);
-        }
       }
 
       if (isCollegeLearner) {
@@ -137,10 +135,18 @@ const ClubsCompetitionsTab: React.FC<ClubsCompetitionsTabProps> = ({ learner, lo
           learnerEmail: learner.email,
         });
         if (result?.data) {
-          const mappedEvents = (result.data.events || []).map((r: { event_id: string; registered_at: string; attended: boolean; college_events: CollegeEvent }) => ({
-            ...r,
-            event: r.college_events,
-          }));
+          type RawEventRegistration = {
+            event_id: string;
+            registered_at: string;
+            attended: boolean;
+            college_events: CollegeEvent | null | undefined;
+          };
+          const mappedEvents = (result.data.events || [])
+            .filter((r: RawEventRegistration) => !!r.college_events)
+            .map((r: RawEventRegistration) => ({
+              ...r,
+              event: r.college_events,
+            }));
           setEventRegistrations(mappedEvents);
           setCompetitionRegistrations(result.data.competitions || []);
           setCompetitionResults(result.data.competitionResults || []);

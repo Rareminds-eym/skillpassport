@@ -152,8 +152,10 @@ async function handleGetOrCreateLearnerAdminConversation(supabase: SupabaseClien
     .eq('id', String(learnerId))
     .maybeSingle();
   if (learnerErr) throw learnerErr;
-  const lrnId = learnerRow?.user_id ? String(learnerRow.user_id) : String(learnerId);
-
+  if (!learnerRow?.user_id) {
+  throw new Error(`Learner not found or missing user_id for learnerId=${learnerId}`);
+}
+const lrnId = String(learnerRow.user_id);
   const schId = String(schoolId);
 
   const { data: existing, error: fetchError } = await supabase
@@ -201,7 +203,10 @@ async function handleGetOrCreateLearnerCollegeAdminConversation(supabase: Supaba
     .eq('id', String(learnerId))
     .maybeSingle();
   if (learnerErr) throw learnerErr;
-  const lrnId = learnerRow?.user_id ? String(learnerRow.user_id) : String(learnerId);
+  if (!learnerRow?.user_id) {
+  throw new Error(`Learner not found or missing user_id for learnerId=${learnerId}`);
+}
+const lrnId = String(learnerRow.user_id);
 
   const collId = String(collegeId);
 
