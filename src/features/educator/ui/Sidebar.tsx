@@ -145,11 +145,14 @@ const Sidebar: React.FC<SidebarProps> = ({
   // For rareminds educators: only show Courses, Dashboard, Teaching Intelligence, Digital Portfolio, Communication, Settings
   // For school/college educators: show all items
   const coursesItem = { name: "Courses", path: "/educator/browse-courses", icon: BookOpenIcon };
-  
-  const bottomItems = isRaremindsEducator 
+
+  const bottomItems = isRaremindsEducator
     ? [
         // Rareminds educators only see these items
         { name: "Digital Portfolio", path: "/educator/digital-portfolio", icon: FolderIcon },
+        // Course Analytics Dashboard, scoped to this educator's assigned
+        // classes/sections (Assigned Course -> Assigned Section hierarchy).
+        { name: "Course Analytics", path: "/educator/course-analytics", icon: ChartBarIcon },
         { name: "Communication", path: "/educator/communication", icon: ChatBubbleLeftRightIcon },
         { name: "Settings", path: "/educator/settings", icon: Cog6ToothIcon },
       ]
@@ -157,6 +160,9 @@ const Sidebar: React.FC<SidebarProps> = ({
         // School/College educators see all items
         { name: "Digital Portfolio", path: "/educator/digital-portfolio", icon: FolderIcon },
         { name: "Reports & Analytics", path: "/educator/reports", icon: DocumentChartBarIcon },
+        // Course Analytics Dashboard, scoped to this educator's assigned
+        // classes/sections (Assigned Course -> Assigned Section hierarchy).
+        { name: "Course Analytics", path: "/educator/course-analytics", icon: ChartBarIcon },
         { name: "Media Manager", path: "/educator/media", icon: PhotoIcon },
         // { name: "Communication", path: "/educator/communication", icon: ChatBubbleLeftRightIcon },
         { 
