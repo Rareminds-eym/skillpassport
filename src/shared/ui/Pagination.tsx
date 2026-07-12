@@ -2,7 +2,7 @@ import * as React from "react"
 import { ChevronLeft, ChevronRight, MoreHorizontal } from "lucide-react"
 
 import { cn } from '@/shared/lib/utils'
-import { buttonVariants } from "./ButtonNew"
+import { buttonVariants, type ButtonProps } from "./ButtonNew"
 
 const Pagination = ({
   className,
@@ -22,7 +22,7 @@ const PaginationContent = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <ul
     ref={ref}
-    className={cn("flex flex-row items-center gap-1", className)}
+    className={cn("flex flex-row flex-nowrap items-center gap-2", className)}
     {...props} />
 ))
 PaginationContent.displayName = "PaginationContent"
@@ -37,19 +37,29 @@ PaginationItem.displayName = "PaginationItem"
 
 type PaginationLinkProps = {
   isActive?: boolean
+  size?: ButtonProps["size"]
 } & Pick<React.ComponentProps<"a">, "className"> &
   React.ComponentProps<"a">
 
+// Single source of truth for every pagination button's classes: exactly one
+// buttonVariants() call, with `size` a real prop (default "icon", matching
+// the original shadcn/ui PaginationLink) instead of hardcoded — so
+// PaginationPrevious/PaginationNext can ask for size="default" through the
+// same call site rather than generating a second, independent class string
+// that has to be merged against this one via twMerge (which previously left
+// a leftover, unremoved `w-9` from this component's own icon-sized call,
+// since "default" size has no `w-*` utility to conflict with it).
 const PaginationLink = ({
   className,
   isActive,
+  size = "icon",
   ...props
 }: PaginationLinkProps) => (
   <a
     aria-current={isActive ? "page" : undefined}
     className={cn(buttonVariants({
       variant: isActive ? "outline" : "ghost",
-      size: "icon",
+      size,
     }), className)}
     {...props} />
 )
@@ -61,7 +71,8 @@ const PaginationPrevious = ({
 }: React.ComponentProps<typeof PaginationLink>) => (
   <PaginationLink
     aria-label="Go to previous page"
-    className={cn("gap-1 pl-2.5", className)}
+    size="default"
+    className={cn("gap-1", className)}
     {...props}>
     <ChevronLeft className="h-4 w-4" />
     <span className="hidden sm:inline">Previous</span>
@@ -75,7 +86,8 @@ const PaginationNext = ({
 }: React.ComponentProps<typeof PaginationLink>) => (
   <PaginationLink
     aria-label="Go to next page"
-    className={cn("gap-1 pr-2.5", className)}
+    size="default"
+    className={cn("gap-1", className)}
     {...props}>
     <span className="hidden sm:inline">Next</span>
     <ChevronRight className="h-4 w-4" />
