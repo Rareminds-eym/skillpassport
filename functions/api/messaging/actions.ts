@@ -69,8 +69,19 @@ async function handleSendMessage(supabase: SupabaseClient, params: SendMessagePa
 
   // Ensure all IDs are strings
   const convId = String(conversationId);
-  const sendId = String(senderId);
-  const recvId = String(receiverId);
+
+  // Resolve learner user_id if sender/receiver is a learner (notifications FK requires user_id not learners.id)
+  let sendId = String(senderId);
+  if (senderType === 'learner') {
+    const { data: lr } = await supabase.from('learners').select('user_id').eq('id', sendId).maybeSingle();
+    if (lr?.user_id) sendId = String(lr.user_id);
+  }
+
+  let recvId = String(receiverId);
+  if (receiverType === 'learner') {
+    const { data: lr } = await supabase.from('learners').select('user_id').eq('id', recvId).maybeSingle();
+    if (lr?.user_id) recvId = String(lr.user_id);
+  }
 
   const applicationIdOld = await convertApplicationId(supabase, applicationId);
   const opportunityIdOld = await convertOpportunityId(supabase, opportunityId);
@@ -593,16 +604,31 @@ async function handleFetchRecipients(supabase: SupabaseClient, params: any): Pro
     }
   } else if (conversationType === 'admin-learner' || conversationType === 'college-admin-learner') {
     const ctxId = String(contextId);
-    const { data: learnerData, error } = await supabase
-      .from('learners')
-      .select('id, name, email, university, branch_field, grade, section')
-      .eq(conversationType === 'admin-learner' ? 'school_id' : 'university_college_id', ctxId)
-      .order('name');
-    if (!error && learnerData) {
-      data = learnerData.map((s: any) => ({
-        id: s.id, name: s.name || 'Unnamed Learner', email: s.email,
-        university: s.university, branch_field: s.branch_field, grade: s.grade, section: s.section,
-      }));
+    if (conversationType === 'admin-learner') {
+      const { data: learnerData, error } = await supabase
+        .from('learners')
+        .select('id, name, email, university, branch_field, grade, section')
+        .eq('school_id', ctxId)
+        .order('name');
+      if (!error && learnerData) {
+        data = learnerData.map((s: any) => ({
+          id: s.id, name: s.name || 'Unnamed Learner', email: s.email,
+          university: s.university, branch_field: s.branch_field, grade: s.grade, section: s.section,
+        }));
+      }
+    } else {
+      // college-admin-learner: check both college_id and university_college_id
+      const { data: learnerData, error } = await supabase
+        .from('learners')
+        .select('id, name, email, university, branch_field, grade, section')
+        .or(`college_id.eq.${ctxId},university_college_id.eq.${ctxId}`)
+        .order('name');
+      if (!error && learnerData) {
+        data = learnerData.map((s: any) => ({
+          id: s.id, name: s.name || 'Unnamed Learner', email: s.email,
+          university: s.university, branch_field: s.branch_field, grade: s.grade, section: s.section,
+        }));
+      }
     }
   } else if (conversationType === 'college-lecturer') {
     const ctxId = String(contextId);

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { apiPost } from '@/shared/api/apiClient';
 import { Learner } from '@/features/learner-profile/model';
 import toast from 'react-hot-toast';
@@ -8,7 +9,8 @@ import { useAuthStore } from '@/shared/model/authStore';
 
 const logger = getLogger('learner-actions');
 
-export const useLearnerActions = (learner: Learner | null) => {
+export const useLearnerActions = (learner: Learner | null, onRefresh?: () => void) => {
+  const queryClient = useQueryClient();
   const [actionLoading, setActionLoading] = useState(false);
 
   const calculateAcademicYear = (admissionYear: string, currentSemester: number): string => {
@@ -135,7 +137,8 @@ export const useLearnerActions = (learner: Learner | null) => {
       });
 
       toast.success(`Learner promoted successfully from Semester ${currentSem} to ${nextSem}!`);
-      setTimeout(() => window.location.reload(), 1500);
+      queryClient.invalidateQueries({ queryKey: ['learners'] });
+      onRefresh?.();
     } catch (error: any) {
       logger.error('Error promoting learner', error as Error);
       toast.error(`Failed to promote learner: ${error?.message || 'Please try again.'}`);

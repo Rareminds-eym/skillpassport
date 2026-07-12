@@ -145,8 +145,15 @@ async function handleGetOrCreateLearnerCollegeLecturerConversation(supabase: Sup
 async function handleGetOrCreateLearnerAdminConversation(supabase: SupabaseClient, params: LearnerAdminParams): Promise<Conversation> {
   const { learnerId, schoolId, subject } = params;
 
-  // Ensure IDs are strings
-  const lrnId = String(learnerId);
+  // Resolve learner's user_id — conversations.learner_id FK references learners.user_id, not learners.id
+  const { data: learnerRow, error: learnerErr } = await supabase
+    .from('learners')
+    .select('user_id')
+    .eq('id', String(learnerId))
+    .maybeSingle();
+  if (learnerErr) throw learnerErr;
+  const lrnId = learnerRow?.user_id ? String(learnerRow.user_id) : String(learnerId);
+
   const schId = String(schoolId);
 
   const { data: existing, error: fetchError } = await supabase
@@ -187,8 +194,15 @@ async function handleGetOrCreateLearnerAdminConversation(supabase: SupabaseClien
 async function handleGetOrCreateLearnerCollegeAdminConversation(supabase: SupabaseClient, params: LearnerCollegeAdminParams): Promise<Conversation> {
   const { learnerId, collegeId, subject } = params;
 
-  // Ensure IDs are strings
-  const lrnId = String(learnerId);
+  // Resolve learner's user_id — conversations.learner_id FK references learners.user_id, not learners.id
+  const { data: learnerRow, error: learnerErr } = await supabase
+    .from('learners')
+    .select('user_id')
+    .eq('id', String(learnerId))
+    .maybeSingle();
+  if (learnerErr) throw learnerErr;
+  const lrnId = learnerRow?.user_id ? String(learnerRow.user_id) : String(learnerId);
+
   const collId = String(collegeId);
 
   const { data: existing, error: fetchError } = await supabase

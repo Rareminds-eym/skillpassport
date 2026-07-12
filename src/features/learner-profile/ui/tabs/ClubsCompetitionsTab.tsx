@@ -137,7 +137,11 @@ const ClubsCompetitionsTab: React.FC<ClubsCompetitionsTabProps> = ({ learner, lo
           learnerEmail: learner.email,
         });
         if (result?.data) {
-          setEventRegistrations(result.data.events || []);
+          const mappedEvents = (result.data.events || []).map((r: { event_id: string; registered_at: string; attended: boolean; college_events: CollegeEvent }) => ({
+            ...r,
+            event: r.college_events,
+          }));
+          setEventRegistrations(mappedEvents);
           setCompetitionRegistrations(result.data.competitions || []);
           setCompetitionResults(result.data.competitionResults || []);
         }

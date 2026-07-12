@@ -12,8 +12,7 @@ interface Event {
   venue?: string; // college_events uses 'venue' not 'location'
   status?: string;
   organizer?: string;
-  max_participants?: number;
-  registered_count?: number;
+  capacity?: number;
   is_registered?: boolean;
   attended?: boolean; // college_event_registrations has 'attended' field
   registered_at?: string;
@@ -213,10 +212,10 @@ const EventsTab: React.FC<EventsTabProps> = ({ learner, loading: externalLoading
                       </div>
                     )}
                     
-                    {event.max_participants && (
+                    {event.capacity && (
                       <div className="flex items-center">
                         <UserGroupIcon className="h-4 w-4 mr-1" />
-                        {event.registered_count || 0}/{event.max_participants} participants
+                        {event.capacity} capacity
                       </div>
                     )}
                   </div>
