@@ -39,6 +39,30 @@ interface CourseAnalyticsRequestBody {
   pageSize?: number;
 }
 
+/** A `program_sections` row as selected by `.select('id')` in 'get-learner-directory'. */
+interface SectionRow {
+  id: string;
+}
+
+/** A `learners` row as selected by `.select('id, name, email, program_section_id')`, referenced by `id` only in 'get-learner-directory'. */
+interface LearnerIdRow {
+  id: string;
+}
+
+/** A `courses` row as selected by `.select('course_id, code')` in 'get-learner-directory'. */
+interface CourseRow {
+  course_id: string;
+  code: string;
+}
+
+/** A `learners` row as selected by `.select('id, name, email, program_section_id')` in 'get-learner-directory'. */
+interface LearnerRow {
+  id: string;
+  name: string | null;
+  email: string;
+  program_section_id: string | null;
+}
+
 export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   return apiMethodNotAllowed(context.request);
 });
@@ -272,7 +296,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
             .eq('department_id', departmentId)
             .eq('status', 'active');
           if (deptSectionsError) return apiDbError(deptSectionsError, context.request, { startTime });
-          const deptSectionIds = (deptSections || []).map((s: { id: string }) => s.id);
+          const deptSectionIds = (deptSections || []).map((s: SectionRow) => s.id);
           learnersQuery = deptSectionIds.length > 0
             ? learnersQuery.in('program_section_id', deptSectionIds)
             : learnersQuery.eq('id', '00000000-0000-0000-0000-000000000000');
@@ -280,7 +304,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const { data: collegeLearners, error: learnersError } = await learnersQuery;
         if (learnersError) return apiDbError(learnersError, context.request, { startTime });
 
-        const learnerIds = (collegeLearners || []).map((l: { id: string }) => l.id);
+        const learnerIds = (collegeLearners || []).map((l: LearnerIdRow) => l.id);
         let enrollments: {
           learner_id: string; course_id: string | null; course_title: string | null;
           status: string | null; progress: number | null; last_accessed: string | null;
@@ -316,7 +340,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
             .select('course_id, code')
             .in('course_id', courseIds);
           if (coursesError) return apiDbError(coursesError, context.request, { startTime });
-          courseCodeById = new Map((courses || []).map((c: { course_id: string; code: string }) => [c.course_id, c.code]));
+          courseCodeById = new Map((courses || []).map((c: CourseRow) => [c.course_id, c.code]));
         }
 
         const mapStatus = (status: string | null): 'completed' | 'in_progress' | 'not_started' => {
@@ -327,7 +351,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           return 'not_started';
         };
 
-        const learnerDirectory = (collegeLearners || []).map((learner: { id: string; name: string | null; email: string; program_section_id: string | null }) => {
+        const learnerDirectory = (collegeLearners || []).map((learner: LearnerRow) => {
           const enrollment = latestEnrollmentByLearnerId.get(learner.id);
           return {
             id: learner.id,
