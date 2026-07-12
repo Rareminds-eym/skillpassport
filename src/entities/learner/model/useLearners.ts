@@ -1,12 +1,6 @@
-/**
- * DEPENDENCY INJECTION PATTERN APPLIED
- * 
- * This file should receive getProgramSectionlearners as a parameter/prop.
- * Import from @/features/courses/api/programService in the parent component and pass it down.
- */
-
 import { useEffect, useMemo, useState } from 'react'
 import { apiPost } from '@/shared/api/apiClient'
+import { getProgramSectionlearners } from '@/shared/api/collegeAcademicApi'
 // Skill from skills table
 interface Skill {
   id: string

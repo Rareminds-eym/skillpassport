@@ -3,7 +3,7 @@ import { ChatBubbleLeftRightIcon, DocumentTextIcon, XMarkIcon } from '@heroicons
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 import MessageService from '@/shared/api/messageService';
-import { Learner } from '@/features/learner-profile/model';
+import type { Learner } from '@/features/learner-profile/model';
 import { getLogger } from '@/shared/config/logging';
 import { apiPost } from '@/shared/api/apiClient';
 
@@ -14,13 +14,15 @@ interface AdmissionNoteModalProps {
   onClose: () => void;
   learner: Learner;
   onSuccess?: () => void;
+  userRole?: 'school_admin' | 'college_admin' | 'university_admin' | 'educator';
 }
 
-const AdmissionNoteModal: React.FC<AdmissionNoteModalProps> = ({ 
-  isOpen, 
-  onClose, 
-  learner, 
-  onSuccess 
+const AdmissionNoteModal: React.FC<AdmissionNoteModalProps> = ({
+  isOpen,
+  onClose,
+  learner,
+  onSuccess,
+  userRole,
 }) => {
   const [note, setNote] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -64,44 +66,61 @@ const AdmissionNoteModal: React.FC<AdmissionNoteModalProps> = ({
       }
 
       // Detect user type and get appropriate IDs
-      let userType: 'college_admin' | 'college_educator' | 'school_educator' | null = null;
+      let userType: 'school_admin' | 'college_admin' | 'college_educator' | 'school_educator' | null = null;
       let organizationId: string | null = null;
       let educatorId: string | null = null;
 
-      // Check if user is a school educator
-      const schoolEducatorRes = await apiPost('/learner-profile/actions', { action: 'fetch-school-educator-by-user', userId: user.id });
-      const schoolEducatorData = schoolEducatorRes?.data;
-
-      if (schoolEducatorData) {
-        userType = 'school_educator';
-        educatorId = schoolEducatorData.id;
-        organizationId = schoolEducatorData.school_id;
-      } else {
-        // Check if user is a college lecturer
-        const lecturerRes = await apiPost('/learner-profile/actions', { action: 'fetch-user-college-lecturer', userId: user.id });
-        const lecturerData = lecturerRes?.data;
-        
-        if (lecturerData) {
-          educatorId = lecturerData.id;
-          organizationId = lecturerData.collegeId;
-          
-          const adminDesignations = ['principal', 'dean', 'hod', 'admin', 'director'];
-          const isAdmin = lecturerData.designation && 
-                         adminDesignations.some((d: string) => lecturerData.designation.toLowerCase().includes(d));
-          
-          if (isAdmin) {
-            userType = 'college_admin';
-          } else {
-            userType = 'college_educator';
+      if (userRole === 'school_admin') {
+        try {
+          const orgRes = await apiPost<{ data?: { id: string } }>('/learner-profile/actions', { action: 'fetch-organization', adminId: user.id, type: 'school' });
+          if (orgRes?.data?.id) {
+            userType = 'school_admin';
+            organizationId = orgRes.data.id;
           }
-        } else {
-          // Fallback: check if user is college owner in organizations table
-          const orgRes = await apiPost('/learner-profile/actions', { action: 'fetch-org-by-admin', adminId: user.id });
-          const orgData = orgRes?.data;
-          
-          if (orgData?.id) {
+        } catch (err) {
+          logger.error('Failed to fetch school organization', err as Error);
+          throw new Error('Failed to fetch school organization');
+        }
+      } else if (userRole === 'college_admin') {
+        try {
+          const orgRes = await apiPost<{ data?: { id: string } }>('/learner-profile/actions', { action: 'fetch-organization', adminId: user.id, type: 'college' });
+          if (orgRes?.data?.id) {
             userType = 'college_admin';
-            organizationId = orgData.id;
+            organizationId = orgRes.data.id;
+          }
+        } catch (err) {
+          logger.error('Failed to fetch college organization', err as Error);
+          throw new Error('Failed to fetch college organization');
+        }
+      } else {
+        // Check if user is a school educator
+        try {
+          const schoolEducatorRes = await apiPost<{ data?: { id: string; school_id: string } }>('/learner-profile/actions', { action: 'fetch-school-educator-by-user', userId: user.id });
+          if (schoolEducatorRes?.data) {
+            userType = 'school_educator';
+            educatorId = schoolEducatorRes.data.id;
+            organizationId = schoolEducatorRes.data.school_id;
+          }
+        } catch (err) {
+          logger.error('Failed to fetch school educator', err as Error);
+          // don't throw — fall through to check college lecturer
+        }
+
+        if (!userType) {
+          // Check if user is a college lecturer
+          try {
+            const lecturerRes = await apiPost<{ data?: { id: string; collegeId: string; designation: string } }>('/learner-profile/actions', { action: 'fetch-user-college-lecturer', userId: user.id });
+            if (lecturerRes?.data) {
+              educatorId = lecturerRes.data.id;
+              organizationId = lecturerRes.data.collegeId;
+              const adminDesignations = ['principal', 'dean', 'hod', 'admin', 'director'];
+              const isAdmin = lecturerRes.data?.designation &&
+                             adminDesignations.some((d: string) => lecturerRes.data?.designation?.toLowerCase().includes(d));
+              userType = isAdmin ? 'college_admin' : 'college_educator';
+            }
+          } catch (err) {
+            logger.error('Failed to fetch college lecturer', err as Error);
+            throw new Error('Failed to fetch educator details');
           }
         }
       }
@@ -110,20 +129,39 @@ const AdmissionNoteModal: React.FC<AdmissionNoteModalProps> = ({
         throw new Error('Could not determine user type or organization');
       }
 
+      if ((userType === 'school_educator' || userType === 'college_educator') && !educatorId) {
+        throw new Error('Could not determine educator ID');
+      }
+
+      // conversations.learner_id references learners.user_id
+      const conversationLearnerId = learner.user_id;
+      if (!conversationLearnerId) {
+        throw new Error('Learner user_id is required for messaging');
+      }
+
+      // educatorId is guaranteed non-null here for educator types due to the guard above
+      const validatedEducatorId = educatorId ?? '';
+
       let conversation;
 
       // Create or get conversation based on user type
-      if (userType === 'school_educator') {
+      if (userType === 'school_admin') {
+        conversation = await MessageService.getOrCreatelearnerAdminConversation(
+          conversationLearnerId,
+          organizationId,
+          'Mentor Note'
+        );
+      } else if (userType === 'school_educator') {
         conversation = await MessageService.getOrCreatelearnerEducatorConversation(
-          learner.id,
-          educatorId!,
+          conversationLearnerId,
+          validatedEducatorId,
           undefined, // classId
           'Mentor Note'
         );
       } else if (userType === 'college_educator') {
         conversation = await MessageService.getOrCreatelearnerCollegeLecturerConversation(
-          learner.id,
-          educatorId!,
+          conversationLearnerId,
+          validatedEducatorId,
           organizationId,
           undefined, // programSectionId
           'Mentor Note'
@@ -131,26 +169,27 @@ const AdmissionNoteModal: React.FC<AdmissionNoteModalProps> = ({
       } else {
         // college_admin
         conversation = await MessageService.getOrCreatelearnerCollegeAdminConversation(
-          learner.id,
+          conversationLearnerId,
           organizationId,
           'Admission Note'
         );
       }
 
       // Send the note as a message
-      const senderType = userType === 'school_educator' ? 'educator' : 
-                        userType === 'college_educator' ? 'college_educator' : 
+      const senderType = userType === 'school_admin' ? 'school_admin' :
+                        userType === 'school_educator' ? 'educator' :
+                        userType === 'college_educator' ? 'college_educator' :
                         'college_admin';
-      
-      const notePrefix = userType === 'college_admin' ? 'Admission' : 'Mentor';
+
+      const notePrefix = userType === 'school_admin' || userType === 'college_admin' ? 'Admission' : 'Mentor';
 
       const messageData = {
-        conversation_id: conversation.id,
-        sender_id: user.id,
-        sender_type: senderType,
-        receiver_id: learner.id,
-        receiver_type: 'learner',
-        message_text: `📝 ${notePrefix} Note:\n\n${note}`,
+        conversationId: conversation.id,
+        senderId: user.id,
+        senderType,
+        receiverId: conversationLearnerId,
+        receiverType: 'learner',
+        messageText: `📝 ${notePrefix} Note:\n\n${note}`,
         subject: `${notePrefix} Note`
       };
 
@@ -171,21 +210,26 @@ const AdmissionNoteModal: React.FC<AdmissionNoteModalProps> = ({
   return (
     <div className="fixed inset-0 z-[60] overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
+        <button
+          type="button"
+          className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity w-full h-full cursor-default"
+          onClick={onClose}
+          aria-label="Close modal"
+        />
 
         <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-medium text-gray-900">Add Mentor Note</h3>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600">
               <XMarkIcon className="h-6 w-6" />
             </button>
           </div>
 
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <p className="block text-sm font-medium text-gray-700 mb-2">
                 Learner: {learner.name}
-              </label>
+              </p>
               <textarea
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
@@ -218,6 +262,7 @@ const AdmissionNoteModal: React.FC<AdmissionNoteModalProps> = ({
 
           <div className="mt-6 flex items-center justify-end space-x-3">
             <button
+              type="button"
               onClick={onClose}
               disabled={isSubmitting}
               className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
@@ -225,6 +270,7 @@ const AdmissionNoteModal: React.FC<AdmissionNoteModalProps> = ({
               Cancel
             </button>
             <button
+              type="button"
               onClick={handleSubmit}
               disabled={isSubmitting || !note.trim()}
               className="px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md hover:bg-primary-700 disabled:opacity-50 flex items-center space-x-2"

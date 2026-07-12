@@ -13,6 +13,14 @@ interface EducatorInfo {
   assignedClassIds: string[];
 }
 
+interface ActivityApprovalRow {
+  approval_status: string | null;
+}
+
+interface AssessmentStatusRow {
+  status: string;
+}
+
 interface DashboardKPIs {
   totallearners: number;
   activelearners: number;
@@ -228,11 +236,11 @@ async function getKPIs(supabase: SupabaseClient, educator: EducatorInfo): Promis
     const learnerIds = learnersData.map(s => s.id).filter(Boolean);
 
     const [projectsData, trainingsData, certificatesData, attendanceData, assessmentData, assignmentData, mentorNotesData] = await Promise.all([
-      safeQuery(supabase.from('projects').select('approval_status').in('learner_id', learnerUserIds), [] as any[]),
-      safeQuery(supabase.from('trainings').select('approval_status').in('learner_id', learnerUserIds), [] as any[]),
-      safeQuery(supabase.from('certificates').select('approval_status').in('learner_id', learnerUserIds), [] as any[]),
+      safeQuery(supabase.from('projects').select('approval_status').in('learner_id', learnerIds), [] as ActivityApprovalRow[]),
+      safeQuery(supabase.from('trainings').select('approval_status').in('learner_id', learnerIds), [] as ActivityApprovalRow[]),
+      safeQuery(supabase.from('certificates').select('approval_status').in('learner_id', learnerIds), [] as ActivityApprovalRow[]),
       safeQuery(supabase.from('attendance_records').select('status').in('learner_id', learnerIds), [] as any[]),
-      safeQuery(supabase.from('personal_assessment_results').select('status').in('learner_id', learnerUserIds).eq('status', 'completed'), [] as any[]),
+      safeQuery(supabase.from('personal_assessment_results').select('status').in('learner_id', learnerIds).eq('status', 'completed'), [] as AssessmentStatusRow[]),
       safeQuery(supabase.from('learner_assignments').select('status').in('learner_id', learnerIds).in('status', ['submitted', 'graded']), [] as any[]),
       safeQuery(supabase.from('mentor_notes').select('id').eq('school_educator_id', educatorData.id).in('learner_id', learnerIds), [] as any[]),
     ]);
@@ -293,11 +301,11 @@ async function getKPIs(supabase: SupabaseClient, educator: EducatorInfo): Promis
   const learnerIds = learnersData.map(s => s.id).filter(Boolean);
 
   const [projectsData, trainingsData, certificatesData, attendanceData, assessmentData, assignmentData, mentorNotesData] = await Promise.all([
-    safeQuery(supabase.from('projects').select('approval_status').in('learner_id', learnerUserIds), [] as any[]),
-    safeQuery(supabase.from('trainings').select('approval_status').in('learner_id', learnerUserIds), [] as any[]),
-    safeQuery(supabase.from('certificates').select('approval_status').in('learner_id', learnerUserIds), [] as any[]),
+    safeQuery(supabase.from('projects').select('approval_status').in('learner_id', learnerIds), [] as ActivityApprovalRow[]),
+    safeQuery(supabase.from('trainings').select('approval_status').in('learner_id', learnerIds), [] as ActivityApprovalRow[]),
+    safeQuery(supabase.from('certificates').select('approval_status').in('learner_id', learnerIds), [] as ActivityApprovalRow[]),
     safeQuery(supabase.from('college_attendance_records').select('status, learner_id, date, college_id').in('learner_id', learnerIds), [] as any[]),
-    safeQuery(supabase.from('personal_assessment_results').select('status').in('learner_id', learnerUserIds).eq('status', 'completed'), [] as any[]),
+    safeQuery(supabase.from('personal_assessment_results').select('status').in('learner_id', learnerIds).eq('status', 'completed'), [] as AssessmentStatusRow[]),
     safeQuery(supabase.from('learner_assignments').select('status').in('learner_id', learnerIds).in('status', ['submitted', 'graded']), [] as any[]),
     safeQuery(supabase.from('mentor_notes').select('id').eq('college_lecturer_id', educatorData.id).in('learner_id', learnerIds), [] as any[]),
   ]);

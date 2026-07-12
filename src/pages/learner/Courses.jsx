@@ -56,8 +56,8 @@ const Courses = () => {
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [initialLoad, setInitialLoad] = useState(true);
-  const [learnerGrade, setlearnerGrade] = useState(null);
-  const [learnerBranch, setlearnerBranch] = useState(null);
+  const [learnerGrade, setLearnerGrade] = useState(null);
+  const [learnerBranch, setLearnerBranch] = useState(null);
   const [filterByBranch, setFilterByBranch] = useState(true); // Toggle for branch filtering
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -233,8 +233,8 @@ const Courses = () => {
         });
         
         if (res?.data) {
-          setlearnerGrade(res.data.grade);
-          setlearnerBranch(res.data.branch_field);
+          setLearnerGrade(res.data.grade);
+          setLearnerBranch(res.data.branch_field);
           
           // Note: No need to manually call fetchCourses() here
           // The filter-watching useEffect will automatically trigger when learnerGrade/learnerBranch change
@@ -409,7 +409,11 @@ const Courses = () => {
         return;
       }
       
-      const learnerData = await apiGet(`/learners/by-email?email=${encodeURIComponent(user.email)}`);
+      const learnerResponse = await apiGet(`/learners/by-email?email=${encodeURIComponent(user.email)}`);
+      const learnerData = learnerResponse?.data || null;
+      if (!learnerData) {
+        throw new Error('Invalid API response structure');
+      }
       const learnerError = !learnerData ? new Error('Not found') : null;
       
       if (learnerError) {
@@ -420,6 +424,12 @@ const Courses = () => {
       
       if (!learnerData) {
         toast.error('Learner profile not found. Please complete your profile first.');
+        return;
+      }
+
+      if (!learnerData?.id) {
+        logger.error('Learner profile response missing required id field', { learnerData, learnerResponse });
+        toast.error('Learner profile is incomplete. Please refresh and try again.');
         return;
       }
       
@@ -654,7 +664,7 @@ const Courses = () => {
                   transition={{ delay: 0.3 }}
                   className="mt-6"
                 >
-                  <p className="text-xl font-semibold text-gray-800 mb-2">Loading Courses...</p>
+                  <p className="text-xl font-semibold text-gray-800 mb-2">Loading Resource Studio...</p>
                   <p className="text-sm text-gray-500 flex items-center justify-center gap-2">
                     Powered by <span className="font-semibold text-indigo-600">RareMinds</span>
                   </p>
@@ -690,10 +700,10 @@ const Courses = () => {
                         <h1 className={`font-bold text-2xl ${
                           activeTab === 'courses' ? 'text-indigo-600' : 'text-gray-900'
                         }`}>
-                          Courses
+                          Resource Studio
                         </h1>
                         <p className="text-sm text-gray-600 mt-1">
-                          Explore and enroll in courses to enhance your skills
+                          Explore learning resources and activities to grow your skills
                         </p>
                       </div>
                     </div>
