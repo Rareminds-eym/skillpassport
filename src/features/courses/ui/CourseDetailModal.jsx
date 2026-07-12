@@ -1,3 +1,4 @@
+import { showDemoModal } from '@/shared/ui/demoGuard';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Award, BookOpen, CheckCircle, Clock, Lock, Play, RotateCcw, Users, X } from 'lucide-react';
 import { useState } from 'react';
@@ -49,6 +50,10 @@ const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentP
 
   // Handle start course with plan-based access control
   const handleStartCourse = () => {
+    // Demo mode: action disabled
+    showDemoModal();
+    return;
+
     if (!hasAccess) {
       setShowUpgradePrompt(true);
       return;

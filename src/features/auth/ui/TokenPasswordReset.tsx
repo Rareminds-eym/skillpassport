@@ -1,3 +1,4 @@
+import { showDemoModal } from '@/shared/ui/demoGuard';
 import { useState, FormEvent, ChangeEvent, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { 
@@ -81,6 +82,11 @@ const TokenPasswordReset = () => {
 
   const handleSendResetLink = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    // Demo mode: action disabled
+    showDemoModal();
+    return;
+
+    e.preventDefault();
 
     if (!state.email) {
       setState(prev => ({ ...prev, error: 'Please enter your email address' }));
@@ -120,6 +126,11 @@ const TokenPasswordReset = () => {
   };
 
   const handlePasswordReset = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    // Demo mode: action disabled
+    showDemoModal();
+    return;
+
     e.preventDefault();
 
     if (!state.newPassword) {

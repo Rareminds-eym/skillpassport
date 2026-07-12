@@ -7,6 +7,7 @@ import { generateRoleOverview, getFallbackRoleOverview } from '@/features/counse
 import { matchCoursesForRole as matchCoursesForRoleRAG } from '@/features/courses';
 import { apiPost, apiGet } from '@/shared/api/apiClient';
 import { useAuthStore } from '@/shared/model/authStore';
+import { showDemoModal } from '@/shared/ui/demoGuard';
 import jsPDF from 'jspdf';
 
 /**
@@ -81,6 +82,11 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results, 
         // Fallback to 'name' property (from other sources)
         return role?.name || '';
     };
+
+    const isSelectedJourneyActive =
+        selectedTrack?.cluster?.isActive === true &&
+        typeof selectedRole === 'object' &&
+        selectedRole?.isActive === true;
 
     // Get AI-generated role overview (responsibilities + industry demand + career progression + learning roadmap + action items + suggested projects) in a single API call
     console.log('[CareerTrackModal] attemptId prop:', attemptId);
@@ -364,6 +370,22 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results, 
 
     // Handle enrolling in first relevant course
     const handleEnrollFirstCourse = () => {
+        // Only the role marked active inside the learner's active track
+        // continues to LTE; every other role shows the demo popup.
+        if (!isSelectedJourneyActive) {
+            showDemoModal(
+                'This role is available for demo purposes only. Please select your active role to start your learning journey.'
+            );
+            return;
+        }
+        // Active track: journey continues in the LTE app. The email is passed
+        // so LTE auto-logs into the matching accounts row (no login screen).
+        const userEmail = useAuthStore.getState().user?.email || '';
+        const lteUrl = new URL('https://lte.rareminds.in');
+        if (userEmail) lteUrl.searchParams.set('email', userEmail);
+        window.open(lteUrl.toString(), '_blank');
+        return;
+        // eslint-disable-next-line no-unreachable
         if (relevantCourses.length > 0) {
             const firstCourse = relevantCourses[0];
             const courseId = firstCourse.course_id || firstCourse.id;
@@ -821,6 +843,8 @@ END:VCALENDAR`;
                                     {selectedTrack.specificRoles?.map((role, idx) => {
                                         const roleName = getRoleName(role);
                                         const salary = getSalary(role);
+                                        const isActiveRole = selectedTrack?.cluster?.isActive === true &&
+                                            typeof role === 'object' && role?.isActive === true;
                                         return (
                                             <motion.div
                                                 key={idx}
@@ -837,7 +861,14 @@ END:VCALENDAR`;
                                                         {idx + 1}
                                                     </div>
                                                     <div className="flex-1">
-                                                        <h4 className="text-gray-800 font-semibold mb-1">{roleName}</h4>
+                                                        <div className="flex items-center gap-2 mb-1">
+                                                            <h4 className="text-gray-800 font-semibold">{roleName}</h4>
+                                                            {isActiveRole && (
+                                                                <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-bold">
+                                                                    ACTIVE
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                         {salary && (
                                                             <p className="text-green-600 text-sm">{salary}</p>
                                                         )}
@@ -1626,10 +1657,7 @@ END:VCALENDAR`;
                                             onClick={handleEnrollFirstCourse}
                                         >
                                             <BookOpen className="w-5 h-5" />
-                                            {relevantCourses.length > 0 
-                                                ? `Start: ${relevantCourses[0]?.title || relevantCourses[0]?.name || 'First Course'}`
-                                                : 'Browse Courses'
-                                            }
+                                            Start Learning Journey
                                         </motion.button>
 
                                         <div className="grid grid-cols-2 gap-3">

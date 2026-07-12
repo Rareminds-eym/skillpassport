@@ -460,6 +460,7 @@
 
 import React from 'react';
 import ReactDOM from 'react-dom';
+import { showDemoModal } from '@/shared/ui/demoGuard';
 import { MapPin, Briefcase, X, ExternalLink, Star, Bookmark, Clock, Users, TrendingUp, Award, CheckCircle2, Calendar, AlertCircle, Send } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/Card';
 import { Button } from '@/shared/ui/ButtonNew';
@@ -1502,10 +1503,9 @@ const OpportunityPreview = ({
         isOpen={showApplicationModal}
         onClose={() => setShowApplicationModal(false)}
         onConfirm={() => {
-          if (onApply) {
-            onApply(opportunity);
-            setShowDetailsModal(false);
-          }
+          // Demo mode: applying is disabled
+          showDemoModal();
+          setShowApplicationModal(false);
         }}
         isApplying={isApplying}
       />

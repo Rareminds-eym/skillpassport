@@ -30,7 +30,7 @@ import { PASSWORD_MIN } from '@/shared/constants';
 import { isLocalhost } from '@/shared/lib';
 import { trackSignup } from '@/shared/lib/analytics';
 import { useAuthStore } from '@/shared/model/authStore';
-import { OtpInput } from '@/shared/ui';
+import { DemoModal, OtpInput } from '@/shared/ui';
 import { AuthFetchError } from '@rareminds-eym/auth-client';
 // `UserRole` is canonically defined ONCE in the generated module (task 6.2).
 import type { UserRole } from '@/shared/types/generated/roles';
@@ -320,6 +320,7 @@ const UnifiedSignup = () => {
   const [states, setStates] = useState<any[]>([]);
   const [cities, setCities] = useState<any[]>([]);
   const [countryCodeDropdownOpen, setCountryCodeDropdownOpen] = useState(false);
+  const [showDemoModal, setShowDemoModal] = useState(false);
   const countryCodeRef = useRef<HTMLDivElement>(null);
   const verifyingOtpRef = useRef(false);
   const stateRef = useRef(state);
@@ -576,6 +577,14 @@ const UnifiedSignup = () => {
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!validateForm()) return;
+
+    // Demo build: account creation is disabled — show the demo modal instead
+    // of submitting (same behavior as the `demo` branch).
+    const SIGNUP_DISABLED_FOR_DEMO = true;
+    if (SIGNUP_DISABLED_FOR_DEMO) {
+      setShowDemoModal(true);
+      return;
+    }
 
     console.log('=== SIGNUP FORM SUBMITTED ===');
     console.log('[UnifiedSignup] Checking invitation token at form submit');
@@ -1445,6 +1454,13 @@ const UnifiedSignup = () => {
           </p>
         </div>
       </div>
+
+      {/* Demo Modal */}
+      <DemoModal
+        isOpen={showDemoModal}
+        onClose={() => setShowDemoModal(false)}
+        message="This feature is available in the full version. You are currently viewing the demo. Please contact us to get complete access."
+      />
     </div>
   );
 };

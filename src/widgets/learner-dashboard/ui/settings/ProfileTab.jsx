@@ -1,3 +1,4 @@
+import { showDemoModal } from '@/shared/ui/demoGuard';
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import { User, FileText, Briefcase, Shield, Globe, Upload, Save, CheckCircle, Award, FolderGit2 } from "lucide-react";
 import { Button } from '@/shared/ui/ButtonNew';
@@ -311,7 +312,7 @@ const ProfileTab = ({
 
             {/* Upload Resume Button */}
             <Button
-              onClick={() => setShowResumeParser(true)}
+              onClick={() => showDemoModal()}
               className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 font-medium flex items-center gap-2 text-sm sm:text-base"
             >
               <Upload className="w-4 h-4" />

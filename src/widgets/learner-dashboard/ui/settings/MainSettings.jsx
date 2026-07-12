@@ -1,3 +1,4 @@
+import { showDemoModal } from '@/shared/ui/demoGuard';
 import React, { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { apiPost } from '@/shared/api/apiClient';
@@ -883,6 +884,10 @@ const MainSettings = () => {
 
   // General profile save handler - validates and saves all profile data
   const handleSaveProfile = async () => {
+    // Demo mode: saving is disabled
+    showDemoModal();
+    return;
+    // eslint-disable-next-line no-unreachable
     // Validate Aadhar number before saving (only if it has a value and is not empty)
     if (profileData.aadharNumber && profileData.aadharNumber.trim() !== '') {
       if (profileData.aadharNumber.length !== 12) {
@@ -924,6 +929,10 @@ const MainSettings = () => {
   
   // Personal Info Tab - save basic personal information
   const handleSavePersonalInfo = async () => {
+    // Demo mode: saving is disabled
+    showDemoModal();
+    return;
+    // eslint-disable-next-line no-unreachable
     setIsSaving(true);
     
     const personalInfoFields = {
@@ -969,6 +978,10 @@ const MainSettings = () => {
 
   // Additional Info Tab - save additional fields including Aadhar
   const handleSaveAdditionalInfo = async () => {
+    // Demo mode: saving is disabled
+    showDemoModal();
+    return;
+    // eslint-disable-next-line no-unreachable
     setIsSaving(true);
     
     // Only send fields relevant to Additional Info tab
@@ -1013,6 +1026,10 @@ const MainSettings = () => {
 
   // Institution Details Tab - save institution information
   const handleSaveInstitutionDetails = async () => {
+    // Demo mode: saving is disabled
+    showDemoModal();
+    return;
+    // eslint-disable-next-line no-unreachable
     setIsSaving(true);
     
     try {
@@ -1230,6 +1247,10 @@ const MainSettings = () => {
 
   // Academic Details Tab - save academic-related fields
   const handleSaveAcademicDetails = async () => {
+    // Demo mode: saving is disabled
+    showDemoModal();
+    return;
+    // eslint-disable-next-line no-unreachable
     setIsSaving(true);
     try {
       const academicFields = {
@@ -1264,6 +1285,10 @@ const MainSettings = () => {
 
   // Guardian Info Tab - save guardian information
   const handleSaveGuardianInfo = async () => {
+    // Demo mode: saving is disabled
+    showDemoModal();
+    return;
+    // eslint-disable-next-line no-unreachable
     setIsSaving(true);
     
     const guardianFields = {
@@ -1301,6 +1326,10 @@ const MainSettings = () => {
 
   // Social Links Tab - save social media and bio
   const handleSaveSocialLinks = async () => {
+    // Demo mode: saving is disabled
+    showDemoModal();
+    return;
+    // eslint-disable-next-line no-unreachable
     setIsSaving(true);
     
     const socialFields = {
@@ -1340,6 +1369,10 @@ const MainSettings = () => {
   };
 
   const handleSavePassword = async () => {
+    // Demo mode: saving is disabled
+    showDemoModal();
+    return;
+    // eslint-disable-next-line no-unreachable
     // Validation
     if (!passwordData.currentPassword) {
       toast.error("Please enter your current password");

@@ -444,6 +444,12 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
                                             >
                                                 {fitType}
                                             </span>
+                                            {cluster.isActive === true && (
+                                                <span className="inline-flex items-center gap-1 px-3 py-1 ml-2 text-white text-xs font-semibold rounded-full mb-1 bg-emerald-500">
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                                                    ACTIVE
+                                                </span>
+                                            )}
                                             <h3 className="text-lg sm:text-xl font-bold text-white">{cluster.title}</h3>
                                         </div>
                                     </div>

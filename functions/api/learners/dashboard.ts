@@ -117,7 +117,9 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
     ] = await Promise.all([
       supabase.from('education').select('*').eq('learner_id', learnerId).order('created_at', { ascending: false }),
       supabase.from('experience').select('*').eq('learner_id', learnerId).order('created_at', { ascending: false }),
-      supabase.from('skills').select('*').eq('learner_id', learnerId).is('training_id', null).order('created_at', { ascending: false }),
+      // Include training-linked skills too — migrated profiles often have all
+      // technical skills attached to trainings, and by-email returns them all
+      supabase.from('skills').select('*').eq('learner_id', learnerId).order('created_at', { ascending: false }),
       supabase.from('projects').select('*').eq('learner_id', learnerId).order('created_at', { ascending: false }),
       supabase.from('certificates').select('*').eq('learner_id', learnerId).order('created_at', { ascending: false }),
       supabase.from('trainings').select('*').eq('learner_id', learnerId).order('created_at', { ascending: false }),

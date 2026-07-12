@@ -1,3 +1,4 @@
+import { showDemoModal } from '@/shared/ui/demoGuard';
 import { ArrowRight, ArrowUpDown, Award, BarChart3, BookOpen, Filter, GraduationCap, Grid3X3, List, Plus, RefreshCw, Search, TrendingUp, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -246,8 +247,8 @@ const MyLearning = () => {
   useLearnerMessageNotifications({ learnerId, enabled: !!learnerId, playSound: true });
 
   const toggleSkillExpand = (id) => setExpandedSkills((prev) => ({ ...prev, [id]: !prev[id] }));
-  const handleEditItem = (item) => { setEditingItem(item); setActiveModal("edit"); };
-  const handleDeleteItem = (item) => { setDeletingItem(item); setActiveModal("delete"); };
+  const handleEditItem = () => { showDemoModal(); };
+  const handleDeleteItem = () => { showDemoModal(); };
   
   const confirmDelete = async () => {
     if (!deletingItem) return;

@@ -1,3 +1,4 @@
+import { showDemoModal } from '@/shared/ui/demoGuard';
 import {
     AlertCircle,
     Award,
@@ -265,6 +266,10 @@ export default function AddLearningCourseModal({ isOpen, onClose, learnerId, onS
 
 
   const handleSubmit = async () => {
+    // Demo mode: action disabled
+    showDemoModal();
+    return;
+
     setError('');
     setLoading(true);
 

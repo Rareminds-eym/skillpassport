@@ -193,7 +193,9 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       case 'fetch-skills': {
         const { learnerId } = params;
         if (!learnerId) return apiError(400, 'VALIDATION_ERROR', 'Missing learnerId', context.request, { startTime });
-        const { data, error } = await supabase.from('skills').select('*').eq('learner_id', learnerId).is('training_id', null).order('created_at', { ascending: false });
+        // Include training-linked skills — migrated profiles have most
+        // technical skills attached to trainings and would otherwise show empty
+        const { data, error } = await supabase.from('skills').select('*').eq('learner_id', learnerId).order('created_at', { ascending: false });
         if (error) return apiDbError(error, context.request, { startTime });
         return apiSuccess(data || [], context.request, { startTime });
       }

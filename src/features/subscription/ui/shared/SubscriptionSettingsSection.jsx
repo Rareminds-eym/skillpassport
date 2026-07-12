@@ -8,6 +8,7 @@
  * @requirement Task - Add subscription management to all user settings pages
  */
 
+import { showDemoModal } from '@/shared/ui/demoGuard';
 import {
   AlertCircle,
   Building2,
@@ -75,7 +76,7 @@ export function SubscriptionSettingsSection({ className = '' }) {
             
             <div className="space-y-2">
               <button
-                onClick={() => navigate(`${basePath}/subscription/organization`)}
+                onClick={() => showDemoModal()}
                 className="w-full flex items-center justify-between px-4 py-3 bg-purple-50 hover:bg-purple-100 rounded-lg border border-purple-200 transition-colors group"
               >
                 <div className="flex items-center gap-3">
@@ -89,7 +90,7 @@ export function SubscriptionSettingsSection({ className = '' }) {
               </button>
 
               <button
-                onClick={() => navigate(`${basePath}/subscription/bulk-purchase`)}
+                onClick={() => showDemoModal()}
                 className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition-colors group"
               >
                 <div className="flex items-center gap-3">
@@ -202,7 +203,7 @@ export function SubscriptionSettingsSection({ className = '' }) {
         {/* Action Buttons */}
         <div className="space-y-2 pt-2">
           <button
-            onClick={() => navigate(`${basePath}/subscription/manage`)}
+            onClick={() => showDemoModal()}
             className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition-colors group"
           >
             <div className="flex items-center gap-3">
@@ -213,7 +214,7 @@ export function SubscriptionSettingsSection({ className = '' }) {
           </button>
 
           <button
-            onClick={() => navigate(`${basePath}/subscription/add-ons`)}
+            onClick={() => showDemoModal()}
             className="w-full flex items-center justify-between px-4 py-3 bg-indigo-50 hover:bg-indigo-100 rounded-lg border border-indigo-200 transition-colors group"
           >
             <div className="flex items-center gap-3">
@@ -262,7 +263,7 @@ export function SubscriptionSettingsSection({ className = '' }) {
             
             <div className="space-y-2">
               <button
-                onClick={() => navigate(`${basePath}/subscription/organization`)}
+                onClick={() => showDemoModal()}
                 className="w-full flex items-center justify-between px-4 py-3 bg-purple-50 hover:bg-purple-100 rounded-lg border border-purple-200 transition-colors group"
               >
                 <div className="flex items-center gap-3">
@@ -276,7 +277,7 @@ export function SubscriptionSettingsSection({ className = '' }) {
               </button>
 
               <button
-                onClick={() => navigate(`${basePath}/subscription/bulk-purchase`)}
+                onClick={() => showDemoModal()}
                 className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition-colors group"
               >
                 <div className="flex items-center gap-3">

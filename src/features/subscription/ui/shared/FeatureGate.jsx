@@ -2,6 +2,7 @@
  * FeatureGate Component - Premium locked feature UI
  */
 
+import { showDemoModal } from '@/shared/ui/demoGuard';
 import { ArrowLeft, ArrowRight, Check, Lock, Shield, Sparkles, X, Zap, AlertCircle } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -311,6 +312,10 @@ function PurchaseModal({ addOn, upgradePrice, onClose, onPurchase, isPurchasing 
   const savingsPct = monthly > 0 && annual > 0 ? Math.round(((monthly * 12 - annual) / (monthly * 12)) * 100) : 0;
 
   const handlePurchase = async () => {
+    // Demo mode: action disabled
+    showDemoModal();
+    return;
+
     if (!addOn?.feature_key) {
       console.error('[PurchaseModal] No feature_key found in addOn:', addOn);
       setError('Unable to process purchase - missing feature information');

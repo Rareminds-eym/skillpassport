@@ -1,3 +1,4 @@
+import { showDemoModal } from '@/shared/ui/demoGuard';
 import { useAuthStore } from '@/shared/model/authStore';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
@@ -94,6 +95,12 @@ const DigitalPortfolioSideDrawer: React.FC<DigitalPortfolioSideDrawerProps> = ({
 
   // Handle navigation
   const handleNavigate = (path: string) => {
+    // Demo mode: these portfolio tools are disabled
+    if (path.includes('/video') || path.includes('/settings/export') || path.includes('/settings/sharing')) {
+      showDemoModal();
+      onClose();
+      return;
+    }
     navigate(path);
     onClose();
   };

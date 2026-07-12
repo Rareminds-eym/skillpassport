@@ -1,12 +1,11 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import { useMemo, useCallback } from 'react';
+import type * as React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   MessageSquarePlus,
   MessageSquare,
-  Trash2,
   ChevronLeft,
   ChevronRight,
-  MoreHorizontal,
   Clock
 } from 'lucide-react';
 import { VirtualMessage } from '@/features/career-assistant/hooks/useVirtualMessage';
@@ -38,16 +37,12 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   currentConversationId,
   onSelectConversation,
   onNewConversation,
-  onDeleteConversation,
   sidebarCollapsed,
   onToggleSidebar,
   conversationsLoading,
   hasMore,
   onLoadMore,
 }) => {
-
-  const [hoveredId, setHoveredId] = useState<string | null>(null);
-  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
 
   // Memoize formatDate callback to avoid recreating on every render
   const formatDate = useCallback(formatConversationDate, []);
@@ -69,14 +64,6 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
 
     return groups;
   }, [conversations]);
-
-  const handleDelete = (e: React.MouseEvent, id: string) => {
-    e.stopPropagation();
-    if (window.confirm('Delete this conversation?')) {
-      onDeleteConversation(id);
-    }
-    setMenuOpenId(null);
-  };
 
   if (sidebarCollapsed) {
     return (
@@ -170,11 +157,6 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
                           initial={{ opacity: 0, x: -10 }}
                           animate={{ opacity: 1, x: 0 }}
                           exit={{ opacity: 0, x: -10 }}
-                          onMouseEnter={() => setHoveredId(conv.id)}
-                          onMouseLeave={() => {
-                            setHoveredId(null);
-                            if (menuOpenId === conv.id) setMenuOpenId(null);
-                          }}
                           onClick={() => onSelectConversation(conv.id)}
                           className={`mx-2 px-3 py-2.5 rounded-lg cursor-pointer transition-all relative group ${
                             currentConversationId === conv.id
@@ -200,42 +182,11 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
                               </div>
                             </div>
 
-                            {/* Actions */}
-                            {(hoveredId === conv.id || menuOpenId === conv.id) && (
-                              <motion.div
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                className="flex items-center"
-                              >
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setMenuOpenId(menuOpenId === conv.id ? null : conv.id);
-                                  }}
-                                  className="p-1 hover:bg-gray-300 rounded transition-colors"
-                            >
-                              <MoreHorizontal className="w-4 h-4 text-gray-500" />
-                            </button>
-                          </motion.div>
-                        )}
-                      </div>
-
-                      {/* Dropdown Menu */}
-                      {menuOpenId === conv.id && (
-                        <motion.div
-                          initial={{ opacity: 0, y: -5 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className="absolute right-2 top-full mt-1 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10"
-                        >
-                          <button
-                            onClick={(e) => handleDelete(e, conv.id)}
-                            className="flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 w-full"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                            Delete
-                          </button>
-                        </motion.div>
-                      )}
+                            {/* Actions — hidden in demo build: deleting a
+                                conversation would reset the one-prompt demo
+                                limit (usage is derived from stored
+                                conversations). */}
+                          </div>
                     </motion.div>
                   </VirtualMessage>
                     );

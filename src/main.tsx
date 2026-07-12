@@ -6,6 +6,7 @@ import App from './App.tsx';
 import './index.css';
 import { QueryProvider } from './app/providers/QueryProvider';
 import { GlobalErrorBoundary } from './app/providers/GlobalErrorBoundary';
+import { DemoModalHost } from '@/shared/ui/demoGuard';
 import { validateFileSizeConfig } from './shared/config/fileSizeLimits';
 import { getLogger } from '@/shared/config/logging';
 import { getAnalyticsConfig, validateAnalyticsConfig } from '@/shared/config/analytics';
@@ -86,6 +87,7 @@ createRoot(document.getElementById('root')!).render(
       <QueryProvider>
         <GlobalErrorBoundary>
           <App />
+          <DemoModalHost />
         </GlobalErrorBoundary>
       </QueryProvider>
     </HelmetProvider>

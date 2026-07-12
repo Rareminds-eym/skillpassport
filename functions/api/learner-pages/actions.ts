@@ -50,6 +50,22 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         return apiSuccess({ cleared: true }, context.request, { startTime });
       }
 
+      // ───────── Career AI demo limit ─────────
+      // Demo build: learners get a single Career AI prompt. Usage is derived
+      // from their stored conversations (career_ai_conversations), keyed to
+      // the authenticated user — no extra column needed and it can't be
+      // reset from the client.
+
+      case 'get-career-ai-demo-status': {
+        const { count, error } = await supabase
+          .from('career_ai_conversations')
+          .select('id', { count: 'exact', head: true })
+          .eq('learner_id', user.id)
+          .gt('message_count', 0);
+        if (error) return apiDbError(error, context.request, { startTime });
+        return apiSuccess({ demoUsed: (count ?? 0) > 0 }, context.request, { startTime });
+      }
+
       // ───────── Applications ─────────
 
       case 'fetch-recruiter': {

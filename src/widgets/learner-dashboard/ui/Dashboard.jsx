@@ -282,20 +282,30 @@ const Dashboard = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 bg-gradient-to-br from-[#5378f1]/5 to-[#5378f1]/10">
-            {userData.training?.filter(training => training.enabled !== false).slice(0, 2).map((training, index) => (
+            {userData.training?.filter(training => training.enabled !== false).slice(0, 2).map((training, index) => {
+              // trainings from the table have no progress field; derive it from status/modules
+              const progress = training.progress ?? (
+                training.status === 'completed'
+                  ? 100
+                  : (training.totalModules > 0
+                    ? Math.round(((training.completedModules || 0) / training.totalModules) * 100)
+                    : 0)
+              );
+              return (
               <div key={index} className="space-y-3 p-4 bg-gradient-to-br from-[#5378f1]/20 to-[#5378f1]/30 rounded-lg border border-[#5378f1]/40 shadow-sm">
                 <div className="flex justify-between items-start">
-                  <p className="text-sm font-semibold text-[#5378f1]">{training.course}</p>
-                  <Badge className={training.status === 'completed' 
-                    ? 'bg-emerald-500 hover:bg-emerald-500 text-white' 
+                  <p className="text-sm font-semibold text-[#5378f1]">{training.course || training.title}</p>
+                  <Badge className={training.status === 'completed'
+                    ? 'bg-emerald-500 hover:bg-emerald-500 text-white'
                     : 'bg-[#5378f1] hover:bg-[#4267d9] text-white'}>
                     {training.status}
                   </Badge>
                 </div>
-                <Progress value={training.progress} className="h-3 bg-[#5378f1]/30" />
-                <p className="text-xs text-[#5378f1] font-medium">{training.progress}% Complete</p>
+                <Progress value={progress} className="h-3 bg-[#5378f1]/30" />
+                <p className="text-xs text-[#5378f1] font-medium">{progress}% Complete</p>
               </div>
-            ))}
+              );
+            })}
             <Button 
               variant="outline" 
               onClick={() => setActiveModal('training')}

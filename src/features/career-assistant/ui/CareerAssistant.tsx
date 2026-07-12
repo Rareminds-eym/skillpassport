@@ -31,6 +31,8 @@ import { useAIFeedback, AIFeedback } from '@/features/career-assistant/hooks/use
 import { ConversationSidebar } from './ConversationSidebar';
 import { EnhancedMessage, SimpleMessage } from './EnhancedMessage';
 import CareerAIToolsGrid from '@/shared/ui/CareerAIToolsGrid';
+import { DemoModal } from '@/shared/ui';
+import { apiPost } from '@/shared/api/apiClient';
 
 // Import optimized hooks
 import { useOptimizedMessages, Message } from '@/features/career-assistant/hooks/useOptimizedMessages';
@@ -110,7 +112,14 @@ const CareerAssistantContainer: React.FC = () => {
   const [selectedChips, setSelectedChips] = useState<string[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [autoSendQuery, setAutoSendQuery] = useState(false);
-  
+
+  // Demo build: learners get exactly one prompt. Usage is derived from their
+  // stored conversations server-side (see learner-pages actions), so it
+  // survives refreshes and can't be reset client-side.
+  const [demoLocked, setDemoLocked] = useState(false);
+  const [showDemoModal, setShowDemoModal] = useState(false);
+  const demoJustUsedRef = useRef(false);
+
   // Sidebar state - collapsed on mobile by default
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -167,6 +176,32 @@ const CareerAssistantContainer: React.FC = () => {
   }, []);
 
   /**
+   * Demo build: load the one-prompt-used flag from the DB on mount
+   */
+  useEffect(() => {
+    if (!user?.id) return;
+    apiPost('/learner-pages/actions', { action: 'get-career-ai-demo-status' })
+      .then((res: any) => {
+        if (res?.data?.demoUsed) {
+          setDemoLocked(true);
+          setShowDemoModal(true);
+        }
+      })
+      .catch((err) => logger.warn('Failed to load Career AI demo status', err));
+  }, [user?.id]);
+
+  /**
+   * Demo build: once the single allowed response finishes streaming,
+   * surface the demo modal.
+   */
+  useEffect(() => {
+    if (demoJustUsedRef.current && !loading && !isTyping) {
+      demoJustUsedRef.current = false;
+      setShowDemoModal(true);
+    }
+  }, [loading, isTyping]);
+
+  /**
    * Handle query from navigation state (e.g., from other pages)
    */
   useEffect(() => {
@@ -214,6 +249,12 @@ const CareerAssistantContainer: React.FC = () => {
   const handleSend = useCallback(async () => {
     if (!input.trim() || loading) return;
 
+    // Demo build: only one prompt allowed — show the demo modal instead
+    if (demoLocked) {
+      setShowDemoModal(true);
+      return;
+    }
+
     // Rate limiting check
     const now = Date.now();
     if (now - lastSendTimeRef.current < MIN_MESSAGE_INTERVAL_MS) {
@@ -231,6 +272,12 @@ const CareerAssistantContainer: React.FC = () => {
     }
 
     lastSendTimeRef.current = now;
+
+    // Demo build: the single allowed prompt is now consumed. No explicit
+    // persistence needed — the saved conversation itself records the usage
+    // (see get-career-ai-demo-status).
+    setDemoLocked(true);
+    demoJustUsedRef.current = true;
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -457,6 +504,7 @@ const CareerAssistantContainer: React.FC = () => {
   // ==================== RENDER ====================
   
   return (
+    <>
     <CareerAssistantUI
       showWelcome={showWelcome}
       selectedChips={selectedChips}
@@ -466,6 +514,7 @@ const CareerAssistantContainer: React.FC = () => {
       messages={messages}
       loading={loading}
       isTyping={isTyping}
+      demoLocked={demoLocked}
       input={input}
       setInput={setInput}
       onSendMessage={handleSend}
@@ -492,6 +541,13 @@ const CareerAssistantContainer: React.FC = () => {
       hasMore={hasMore}
       loadMore={loadMore}
     />
+    {/* Demo Modal — shown once the single allowed prompt is consumed */}
+    <DemoModal
+      isOpen={showDemoModal}
+      onClose={() => setShowDemoModal(false)}
+      message="This feature is available in the full version. You are currently viewing the demo. Please contact us to get complete access."
+    />
+    </>
   );
 };
 
@@ -504,6 +560,7 @@ interface CareerAssistantUIProps {
   messages: Message[];
   loading: boolean;
   isTyping: boolean;
+  demoLocked: boolean;
   input: string;
   setInput: React.Dispatch<React.SetStateAction<string>>;
   onSendMessage: () => void;
@@ -541,6 +598,7 @@ const CareerAssistantUI: React.FC<CareerAssistantUIProps> = ({
   messages,
   loading,
   isTyping,
+  demoLocked,
   input,
   setInput,
   onSendMessage,
@@ -794,8 +852,8 @@ const CareerAssistantUI: React.FC<CareerAssistantUIProps> = ({
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && onSendMessage()}
-                placeholder={showWelcome ? "Ask me anything about your career..." : "Type your message..."}
-                disabled={loading || isTyping}
+                placeholder={demoLocked ? "Demo limit reached — contact us for full access" : showWelcome ? "Ask me anything about your career..." : "Type your message..."}
+                disabled={loading || isTyping || demoLocked}
                 className="w-full px-5 py-4 pr-32 text-gray-900 placeholder-gray-500 bg-gray-50 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed transition-all"
               />
               
@@ -808,7 +866,7 @@ const CareerAssistantUI: React.FC<CareerAssistantUIProps> = ({
                 </button>
                 <button
                   onClick={onSendMessage}
-                  disabled={loading || isTyping || !input.trim()}
+                  disabled={loading || isTyping || demoLocked || !input.trim()}
                   className="p-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 disabled:bg-gray-300 disabled:cursor-not-allowed transition-all"
                   title="Send message"
                 >

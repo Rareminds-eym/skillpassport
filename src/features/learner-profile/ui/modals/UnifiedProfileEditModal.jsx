@@ -1,3 +1,4 @@
+import { showDemoModal } from '@/shared/ui/demoGuard';
 import toast from 'react-hot-toast';
 import { getLogger } from '@/shared/config/logging';
 import {
@@ -507,6 +508,10 @@ const UnifiedProfileEditModal = ({
   };
 
   const saveAndClose = async () => {
+    // Demo mode: action disabled
+    showDemoModal();
+    return;
+
     if (!validateForm()) return;
 
     setIsSaving(true);
@@ -551,6 +556,10 @@ const UnifiedProfileEditModal = ({
   };
 
   const deleteItem = async (index) => {
+    // Demo mode: action disabled
+    showDemoModal();
+    return;
+
     const item = items[index];
     const itemTitle = config.getDisplayTitle(item);
 

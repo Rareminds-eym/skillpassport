@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { useUser } from '@/shared/model/authStore';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { Card, CardContent, Button } from '@/shared/ui';
+import { showDemoModal } from '@/shared/ui/demoGuard';
 
 // Store
 import { useAssessmentStore } from '../model/assessmentStore';
@@ -1066,12 +1067,16 @@ const AssessmentTestPage: React.FC = () => {
         aiError={hasAIError ? aiQuestionsHook.error : undefined}
         onRetryAI={hasAIError ? aiQuestionsHook.reload : undefined}
         onStart={() => {
+          // Demo mode blocker
+          showDemoModal();
+          return;
+
           // Don't allow starting if AI questions are still loading or if there are no questions
           if (isLoadingAI || (isAISection && hasNoQuestions && !hasAIError)) {
             toast.error('Please wait for questions to load');
             return;
           }
-          
+
           if (hasAIError) {
             toast.error('Please retry loading questions');
             return;

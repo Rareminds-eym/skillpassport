@@ -1,3 +1,4 @@
+import { showDemoModal } from '@/shared/ui/demoGuard';
 import toast from 'react-hot-toast';
 import { getLogger } from '@/shared/config/logging';
 import {
@@ -228,6 +229,10 @@ const ProfileItemModal = ({
 
   // Skills management functions
   const addSkill = () => {
+    // Demo mode: action disabled
+    showDemoModal();
+    return;
+
     const skillName = formData.newSkillName?.trim();
     if (!skillName) {
       toast.error("Please enter a skill name.");
@@ -350,6 +355,10 @@ const ProfileItemModal = ({
   }, [formData, config]);
 
   const handleSave = async () => {
+    // Demo mode: action disabled
+    showDemoModal();
+    return;
+
     if (!validateForm()) return;
 
     setIsSaving(true);

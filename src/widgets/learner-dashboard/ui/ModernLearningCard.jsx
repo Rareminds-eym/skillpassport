@@ -1,3 +1,4 @@
+import { showDemoModal } from '@/shared/ui/demoGuard';
 import {
     Award,
     BookOpen,
@@ -210,6 +211,10 @@ const ModernLearningCard = ({
 
   // Handle continue/resume button click
   const handleContinue = () => {
+    // Demo mode: action disabled
+    showDemoModal();
+    return;
+
     if (isCourseEnrollment && item.course_id) {
       // Navigate to course player for enrolled courses
       navigate(`/learner/courses/${item.course_id}/learn`);
@@ -239,6 +244,10 @@ const ModernLearningCard = ({
    * @param {Event} e - Click event (for stopPropagation)
    */
   const handleGetCertificate = async (e) => {
+    // Demo mode: action disabled
+    showDemoModal();
+    return;
+
     e?.stopPropagation();
     
     // If certificate already exists, view it directly
@@ -349,6 +358,10 @@ const ModernLearningCard = ({
    * @param {Event} e - Click event (for stopPropagation)
    */
   const handleDownloadCertificate = async (e) => {
+    // Demo mode: action disabled
+    showDemoModal();
+    return;
+
     e?.stopPropagation();
     
     if (!certificateUrl) {
@@ -440,7 +453,7 @@ const ModernLearningCard = ({
 
   const renderListCertificateButton = () => (
     <button
-      onClick={() => window.open(certificateUrl, "_blank")}
+      onClick={() => showDemoModal()}
       className="flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 rounded-xl sm:rounded-2xl font-semibold text-sm bg-gradient-to-r from-green-500 to-green-600 text-white hover:from-green-600 hover:to-green-700 transition-all duration-300 hover:scale-105 shadow-lg shadow-green-500/25"
     >
       <Award className="w-4 h-4" />
@@ -480,15 +493,7 @@ const ModernLearningCard = ({
 
   const renderListAssessmentButton = () => (
     <button
-      onClick={() => navigate("/learner/assessment/platform", {
-        state: {
-          courseName: item.course || item.title,
-          certificateName: item.course || item.title,
-          level: item.level || 'Intermediate',
-          courseId: item.id,
-          useDynamicGeneration: true
-        }
-      })}
+      onClick={() => showDemoModal()}
       className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl sm:rounded-2xl font-semibold text-sm border-2 border-blue-500 text-blue-600 hover:bg-blue-50 hover:border-blue-600 transition-all duration-300 hover:scale-105"
     >
       <Target className="w-4 h-4" />
@@ -553,7 +558,7 @@ const ModernLearningCard = ({
   // Helper function to render certificate button (for external courses - just "View")
   const renderCertificateButton = () => (
     <button
-      onClick={() => window.open(certificateUrl, "_blank")}
+      onClick={() => showDemoModal()}
       className="flex items-center justify-center gap-2 w-full py-3 rounded-xl sm:rounded-2xl font-bold text-sm bg-gradient-to-r from-green-500 to-green-600 text-white hover:from-green-600 hover:to-green-700 transition-all duration-300 hover:scale-105 shadow-lg shadow-green-500/25"
     >
       <Award className="w-4 sm:w-5 h-4 sm:h-5" />
@@ -599,15 +604,7 @@ const ModernLearningCard = ({
   // Helper function to render take assessment button
   const renderAssessmentButton = () => (
     <button
-      onClick={() => navigate("/learner/assessment/platform", {
-        state: {
-          courseName: item.course || item.title,
-          certificateName: item.course || item.title,
-          level: item.level || 'Intermediate',
-          courseId: item.id,
-          useDynamicGeneration: true
-        }
-      })}
+      onClick={() => showDemoModal()}
       className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl sm:rounded-2xl font-semibold text-sm border-2 border-blue-500 text-blue-600 hover:bg-blue-50 hover:border-blue-600 transition-all duration-300 hover:scale-105"
     >
       <Target className="w-4 h-4" />
@@ -977,9 +974,7 @@ const ModernLearningCard = ({
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (certificateUrl) {
-                            viewCertificate(certificateUrl);
-                          }
+                          showDemoModal();
                           setShowDropdown(false);
                         }}
                         className="flex items-center gap-3 w-full px-4 py-2 text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
@@ -1135,9 +1130,7 @@ const ModernLearningCard = ({
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (certificateUrl) {
-                          viewCertificate(certificateUrl);
-                        }
+                        showDemoModal();
                         setShowDropdown(false);
                       }}
                       className="flex items-center gap-3 w-full px-4 py-2 text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
