@@ -39,6 +39,30 @@ interface CourseAnalyticsRequestBody {
   pageSize?: number;
 }
 
+/** A `school_classes` row as selected by `.select('id')` in 'get-learner-directory'. */
+interface SchoolClassRow {
+  id: string;
+}
+
+/** A `learners` row as selected by `.select('id, name, email, school_class_id')`, referenced by `id` only in 'get-learner-directory'. */
+interface LearnerIdRow {
+  id: string;
+}
+
+/** A `courses` row as selected by `.select('course_id, code')` in 'get-learner-directory'. */
+interface CourseRow {
+  course_id: string;
+  code: string;
+}
+
+/** A `learners` row as selected by `.select('id, name, email, school_class_id')` in 'get-learner-directory'. */
+interface LearnerRow {
+  id: string;
+  name: string | null;
+  email: string;
+  school_class_id: string | null;
+}
+
 export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   return apiMethodNotAllowed(context.request);
 });
@@ -257,7 +281,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
             .eq('grade', grade)
             .eq('account_status', 'active');
           if (gradeClassesError) return apiDbError(gradeClassesError, context.request, { startTime });
-          const gradeClassIds = (gradeClasses || []).map((c: { id: string }) => c.id);
+          const gradeClassIds = (gradeClasses || []).map((c: SchoolClassRow) => c.id);
           learnersQuery = gradeClassIds.length > 0
             ? learnersQuery.in('school_class_id', gradeClassIds)
             : learnersQuery.eq('id', '00000000-0000-0000-0000-000000000000');
@@ -265,7 +289,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const { data: schoolLearnersForDirectory, error: learnersError } = await learnersQuery;
         if (learnersError) return apiDbError(learnersError, context.request, { startTime });
 
-        const learnerIds = (schoolLearnersForDirectory || []).map((l: { id: string }) => l.id);
+        const learnerIds = (schoolLearnersForDirectory || []).map((l: LearnerIdRow) => l.id);
         let enrollments: {
           learner_id: string; course_id: string | null; course_title: string | null;
           status: string | null; progress: number | null; last_accessed: string | null;
@@ -301,7 +325,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
             .select('course_id, code')
             .in('course_id', courseIds);
           if (coursesError) return apiDbError(coursesError, context.request, { startTime });
-          courseCodeById = new Map((courses || []).map((c: { course_id: string; code: string }) => [c.course_id, c.code]));
+          courseCodeById = new Map((courses || []).map((c: CourseRow) => [c.course_id, c.code]));
         }
 
         const mapStatus = (status: string | null): 'completed' | 'in_progress' | 'not_started' => {
@@ -312,7 +336,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           return 'not_started';
         };
 
-        const learnerDirectory = (schoolLearnersForDirectory || []).map((learner: { id: string; name: string | null; email: string; school_class_id: string | null }) => {
+        const learnerDirectory = (schoolLearnersForDirectory || []).map((learner: LearnerRow) => {
           const enrollment = latestEnrollmentByLearnerId.get(learner.id);
           return {
             id: learner.id,

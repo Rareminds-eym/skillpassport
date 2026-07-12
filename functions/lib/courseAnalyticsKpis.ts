@@ -53,6 +53,17 @@
  * enrollment, and course rows the caller has already fetched.
  */
 
+const DEFAULT_PAGE = 1;
+const DEFAULT_PAGE_SIZE = 6;
+const DEFAULT_TOP_COURSES = 6;
+
+const SEGMENT_COLORS = {
+  active: '#22c55e',
+  learning: '#3b82f6',
+  atRisk: '#f59e0b',
+  inactive: '#ef4444',
+} as const;
+
 export interface KpiSourceLearner {
   id: string;
 }
@@ -302,8 +313,8 @@ export interface PaginatedCoursePerformance {
 export function buildCoursePerformanceRows(
   enrollments: KpiSourceEnrollment[],
   courses: KpiSourceCourse[],
-  page = 1,
-  pageSize = 6,
+  page = DEFAULT_PAGE,
+  pageSize = DEFAULT_PAGE_SIZE,
 ): PaginatedCoursePerformance {
   const allRows = groupEnrollmentsByCourse(enrollments, courses);
   const start = (page - 1) * pageSize;
@@ -343,7 +354,7 @@ export interface EnrollmentDatum {
 export function buildEnrollmentOverview(
   enrollments: KpiSourceEnrollment[],
   courses: KpiSourceCourse[],
-  topN = 6,
+  topN = DEFAULT_TOP_COURSES,
 ): EnrollmentDatum[] {
   const rows = groupEnrollmentsByCourse(enrollments, courses).slice(0, topN);
 
@@ -436,7 +447,7 @@ export function buildAcademicStatusOverview(
       percentage: pct(completed),
       icon: 'check-circle',
       tone: 'success',
-      color: '#22c55e',
+      color: SEGMENT_COLORS.active,
     },
     {
       id: 'actively-learning',
@@ -446,7 +457,7 @@ export function buildAcademicStatusOverview(
       percentage: pct(activelyLearning),
       icon: 'play-circle',
       tone: 'info',
-      color: '#3b82f6',
+      color: SEGMENT_COLORS.learning,
     },
     {
       id: 'registered-not-started',
@@ -456,7 +467,7 @@ export function buildAcademicStatusOverview(
       percentage: pct(registeredNotStarted),
       icon: 'help-circle',
       tone: 'warning',
-      color: '#f59e0b',
+      color: SEGMENT_COLORS.atRisk,
     },
     {
       id: 'inactive-at-risk',
@@ -466,7 +477,7 @@ export function buildAcademicStatusOverview(
       percentage: pct(inactiveAtRisk),
       icon: 'alert-triangle',
       tone: 'danger',
-      color: '#ef4444',
+      color: SEGMENT_COLORS.inactive,
     },
   ];
 
