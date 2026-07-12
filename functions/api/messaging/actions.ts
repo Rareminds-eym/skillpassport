@@ -1,6 +1,6 @@
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { getContextUser, withAuth } from '../../lib/auth';
+import { withAuth } from '../../lib/auth';
 import { notifyRealtime } from '../../lib/realtime';
 import { apiDbError, apiError, apiMethodNotAllowed, apiSuccess } from '../../lib/response';
 import { getServiceClient } from '../../lib/supabase';
@@ -176,7 +176,7 @@ async function handleGetUserConversations(supabase: SupabaseClient, params: any)
     } else {
       query = query.eq(deletedColumn, false);
     }
-  } catch (e) { }
+  } catch { }
 
   if (conversationType) query = query.eq('conversation_type', conversationType);
   if (!includeArchived) query = query.neq('status', 'archived');
@@ -227,7 +227,6 @@ async function handleMarkConversationAsRead(supabase: SupabaseClient, params: an
     const conversation = conversationResult.value.data;
     const isLearner = conversation.learner_id === usrId;
     const isRecruiter = conversation.recruiter_id === usrId;
-    const isEducator = conversation.educator_id === usrId;
 
     if (conversation.conversation_type === 'learner_admin') {
       // FINALIZED (task 22.3 / deferred display reconciliation to task 13): this is a
@@ -293,7 +292,7 @@ async function handleMarkConversationAsRead(supabase: SupabaseClient, params: an
 }
 
 async function handleDeleteConversationForUser(supabase: SupabaseClient, params: any): Promise<void> {
-  const { conversationId, userId, userType } = params;
+  const { conversationId, userType } = params;
   const convId = String(conversationId);
   let deletedColumn: string, deletedAtColumn: string;
   switch (userType) {
@@ -309,7 +308,7 @@ async function handleDeleteConversationForUser(supabase: SupabaseClient, params:
 }
 
 async function handleRestoreConversation(supabase: SupabaseClient, params: any): Promise<void> {
-  const { conversationId, userId, userType } = params;
+  const { conversationId, userType } = params;
   const convId = String(conversationId);
   let deletedColumn: string, deletedAtColumn: string;
   switch (userType) {
@@ -433,7 +432,7 @@ async function handleFetchEducatorDetails(supabase: SupabaseClient, params: any)
 }
 
 async function handleArchiveConversationForUser(supabase: SupabaseClient, params: any): Promise<void> {
-  const { conversationId, userId, userType } = params;
+  const { conversationId, userType } = params;
   const convId = String(conversationId);
   let archiveColumn: string;
   switch (userType) {
@@ -449,7 +448,7 @@ async function handleArchiveConversationForUser(supabase: SupabaseClient, params
 }
 
 async function handleUnarchiveConversationForUser(supabase: SupabaseClient, params: any): Promise<void> {
-  const { conversationId, userId, userType } = params;
+  const { conversationId, userType } = params;
   const convId = String(conversationId);
   let archiveColumn: string;
   switch (userType) {
@@ -675,7 +674,6 @@ async function handleFetchRecipients(supabase: SupabaseClient, params: any): Pro
 }
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
-  const user = getContextUser(context);
   const env = context.env as Record<string, string>;
   const supabase = getServiceClient(env as any);
   const startTime = Date.now();

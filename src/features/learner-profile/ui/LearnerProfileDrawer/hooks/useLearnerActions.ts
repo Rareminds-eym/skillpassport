@@ -9,6 +9,12 @@ import { useAuthStore } from '@/shared/model/authStore';
 
 const logger = getLogger('learner-actions');
 
+/**
+ * Hook providing learner management actions such as approval, promotion, and graduation.
+ *
+ * @param learner - The learner record to act upon. Pass null when no learner is selected.
+ * @param onRefresh - Optional callback invoked after a successful action to trigger a data refresh in the parent component.
+ */
 export const useLearnerActions = (learner: Learner | null, onRefresh?: () => void) => {
   const queryClient = useQueryClient();
   const [actionLoading, setActionLoading] = useState(false);

@@ -105,7 +105,7 @@ const AdminMessageModal: React.FC<AdminMessageModalProps> = ({
     mutationFn: async (text: string) => {
       if (!conversation) throw new Error('No conversation');
 
-      const senderType = userRole as 'school_admin' | 'college_admin' | 'educator' | 'college_educator';
+      const senderType = userRole;
       // receiver is always the learner
       const receiverId = learner.user_id || learner.id;
 

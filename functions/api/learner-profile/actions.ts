@@ -1115,22 +1115,25 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           learnerEmail ? supabase.from('learners').select('id').eq('email', learnerEmail).maybeSingle() : Promise.resolve({ data: null }),
         ]);
         let mergedCompetitions = compRegRes.status === 'fulfilled' ? compRegRes.value.data || [] : [];
+        let mergedEvents = eventsRes.status === 'fulfilled' ? eventsRes.value.data || [] : [];
         if (learnerEmail && learnerLookupRes.status === 'fulfilled' && learnerLookupRes.value.data) {
           const lookupLearnerId = learnerLookupRes.value.data.id;
           if (lookupLearnerId !== clubLearnerId) {
-            const [extraCompRegRes] = await Promise.allSettled([
+            const [extraCompRegRes, extraEventRegRes] = await Promise.allSettled([
               supabase.from('competition_registrations').select('*, competitions!inner(id, name, type, date, status)').eq('learner_id', lookupLearnerId),
               supabase.from('college_event_registrations').select('event_id, registered_at, attended, college_events!inner(id, title, description, event_type, start_date, end_date, venue, status, capacity, created_at)').eq('learner_id', lookupLearnerId),
             ]);
             const extraCompReg = extraCompRegRes.status === 'fulfilled' ? extraCompRegRes.value.data || [] : [];
+            const extraEvents = extraEventRegRes.status === 'fulfilled' ? extraEventRegRes.value.data || [] : [];
             mergedCompetitions = [...mergedCompetitions, ...extraCompReg];
+            mergedEvents = [...mergedEvents, ...extraEvents];
           }
         }
         return apiSuccess({
           clubs: clubsRes.status === 'fulfilled' ? clubsRes.value.data || [] : [],
           competitions: mergedCompetitions,
           competitionResults: compResultRes.status === 'fulfilled' ? compResultRes.value.data || [] : [],
-          events: eventsRes.status === 'fulfilled' ? eventsRes.value.data || [] : [],
+          events: mergedEvents,
         }, context.request, { startTime });
       }
 
