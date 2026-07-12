@@ -80,10 +80,20 @@ async function handleSendMessage(supabase: SupabaseClient, params: SendMessagePa
   if (receiverType === 'learner' && recvId !== sendId) learnerIdsToResolve.push(recvId);
 
   if (learnerIdsToResolve.length > 0) {
-    const { data: learners } = await supabase.from('learners').select('id, user_id').in('id', learnerIdsToResolve);
+    const { data: learners, error: learnersError } = await supabase.from('learners').select('id, user_id').in('id', learnerIdsToResolve);
+    if (learnersError) throw learnersError;
     const learnerMap = new Map((learners || []).map((l: { id: string; user_id: string }) => [l.id, l.user_id]));
-    if (senderType === 'learner' && learnerMap.get(sendId)) sendId = String(learnerMap.get(sendId));
-    if (receiverType === 'learner' && learnerMap.get(recvId)) recvId = String(learnerMap.get(recvId));
+    if (senderType === 'learner') {
+      const resolved = learnerMap.get(sendId);
+      if (!resolved) throw new Error(`Could not resolve user_id for learner sender (learnerId=${sendId})`);
+      sendId = String(resolved);
+    }
+
+    if (receiverType === 'learner') {
+      const resolved = learnerMap.get(recvId);
+      if (!resolved) throw new Error(`Could not resolve user_id for learner receiver (learnerId=${recvId})`);
+      recvId = String(resolved);
+    }
   }
 
   const applicationIdOld = await convertApplicationId(supabase, applicationId);
@@ -632,7 +642,7 @@ async function handleFetchRecipients(supabase: SupabaseClient, params: any): Pro
       // college-admin-learner: check both college_id and university_college_id
       // UUID validation ensures ctxId is safe to use in .or() filter (PostgREST parameterizes internally)
       if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(ctxId)) {
-        return [];
+        throw new Error(`Invalid contextId format: ${ctxId}`);
       }
       const { data: learnerData, error } = await supabase
         .from('learners')

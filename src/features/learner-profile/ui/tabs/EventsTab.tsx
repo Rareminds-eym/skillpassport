@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CalendarIcon, MapPinIcon, ClockIcon, UserGroupIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
+import { CalendarIcon, MapPinIcon, UserGroupIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import { apiPost } from '@/shared/api/apiClient';
 
 interface Event {
@@ -11,7 +11,6 @@ interface Event {
   end_date?: string;
   venue?: string; // college_events uses 'venue' not 'location'
   status?: string;
-  organizer?: string;
   capacity?: number;
   is_registered?: boolean;
   attended?: boolean; // college_event_registrations has 'attended' field
@@ -136,6 +135,7 @@ const EventsTab: React.FC<EventsTabProps> = ({ learner, loading: externalLoading
           {(['all', 'upcoming', 'past'] as const).map(f => (
             <button
               key={f}
+              type="button"
               onClick={() => setFilter(f)}
               className={`px-3 py-1.5 text-sm rounded-full transition-colors ${
                 filter === f

@@ -22,7 +22,7 @@ interface AdminMessageModalProps {
   isOpen: boolean;
   onClose: () => void;
   learner: Learner;
-  userRole: 'school_admin' | 'college_admin' | 'university_admin' | 'educator' | 'college_educator';
+  userRole: 'school_admin' | 'college_admin' | 'educator' | 'college_educator';
 }
 
 const AdminMessageModal: React.FC<AdminMessageModalProps> = ({
@@ -47,7 +47,7 @@ const AdminMessageModal: React.FC<AdminMessageModalProps> = ({
     queryFn: async () => {
       const learnerId = learner.id;
 
-      if (userRole === 'college_admin' || userRole === 'university_admin') {
+      if (userRole === 'college_admin') {
         const collegeId = learner.college_id;
         if (!collegeId) throw new Error('Learner has no associated college');
         return MessageService.getOrCreatelearnerCollegeAdminConversation(learnerId, collegeId, 'General Inquiry');
@@ -96,7 +96,7 @@ const AdminMessageModal: React.FC<AdminMessageModalProps> = ({
     queryKey: ['admin-conversation-messages', conversation?.id],
     queryFn: () => MessageService.getConversationMessages(conversation!.id),
     enabled: !!conversation?.id,
-    refetchInterval: 5000,
+    refetchInterval: 15000,
     refetchIntervalInBackground: false,
   });
 
