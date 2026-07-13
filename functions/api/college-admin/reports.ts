@@ -6,11 +6,11 @@
 import { withAuth, getContextUser } from '../../lib/auth';
 import { getServiceClient } from '../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import { apiSuccess, apiDbError, apiError, apiMethodNotAllowed } from '../../lib/response';
+import { apiSuccess, apiDbError, apiError } from '../../lib/response';
 import { buildCourseAnalyticsKpis } from '../../lib/courseAnalyticsKpis';
 
 export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
-  const user = getContextUser(context);
+  getContextUser(context);
   const env = context.env as Record<string, string>;
   const supabase = getServiceClient(env as any);
 
@@ -39,7 +39,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON body', context.request);
   }
 
-  const { action, collegeId, dateRange, department, semester } = body;
+  const { action, collegeId } = body;
   if (!action) {
     return apiError(400, 'VALIDATION_ERROR', 'Missing action parameter', context.request);
   }

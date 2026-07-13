@@ -46,7 +46,7 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }:
   const navigate = useNavigate();
   const location = useLocation();
   const { role } = useUserRole();
-  const user = useUser();
+  useUser();
 
   // Initialize all groups as open by default
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
@@ -847,7 +847,7 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }:
                   
                   // Check if this is an exact match or if it's a parent path with no other longer matching paths
                   const isExactMatch = currentPath === itemPath;
-                  const isParentMatch = currentPath.startsWith(itemPath + '/');
+                  const isParentMatch = currentPath.startsWith(`${itemPath}/`);
                   
                   // Find if there's a more specific path that matches better
                   const hasMoreSpecificMatch = group.items.some(otherItem => 
