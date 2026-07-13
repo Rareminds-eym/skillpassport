@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import { isCollegeLearner as checkIsCollegeLearner, isSchoolLearner as checkIsSchoolLearner } from '@/entities/learner/lib/learnerType';
 import { getLogger } from '@/shared/config/logging';
 import { useAuthStore } from '@/shared/model/authStore';
+import { queryKeys } from '@/shared/lib/queryKeys';
 
 const logger = getLogger('learner-actions');
 
@@ -148,7 +149,7 @@ export const useLearnerActions = (learner: Learner | null, onRefresh?: () => voi
       });
 
       toast.success(`Learner ${action === 'approve' ? 'approved' : 'rejected'} successfully!`);
-      queryClient.invalidateQueries({ queryKey: ['learners'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.learner.all });
       onRefresh?.();
     } catch (error: any) {
       logger.error('Error updating learner status', error as Error);
@@ -197,7 +198,7 @@ export const useLearnerActions = (learner: Learner | null, onRefresh?: () => voi
       });
 
       toast.success(`Learner promoted successfully from Semester ${currentSem} to ${nextSem}!`);
-      queryClient.invalidateQueries({ queryKey: ['learners'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.learner.all });
       onRefresh?.();
     } catch (error: any) {
       logger.error('Error promoting learner', error as Error);
@@ -220,7 +221,7 @@ export const useLearnerActions = (learner: Learner | null, onRefresh?: () => voi
         totalSemesters: getTotalSemesters(),
       });
       toast.success('Learner marked as graduated successfully!');
-      queryClient.invalidateQueries({ queryKey: ['learners'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.learner.all });
       onRefresh?.();
     } catch (error: any) {
       logger.error('Error marking learner as graduated', error as Error);

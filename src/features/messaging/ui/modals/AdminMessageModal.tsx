@@ -45,6 +45,7 @@ const AdminMessageModal: React.FC<AdminMessageModalProps> = ({
   } = useQuery({
     queryKey: ['admin-conversation', userRole, currentUser?.id, learner?.id],
     queryFn: async () => {
+      if (!learner?.id) throw new Error('Learner not available');
       const learnerId = learner.id;
 
       if (userRole === 'college_admin') {

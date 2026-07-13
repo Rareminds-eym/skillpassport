@@ -1,7 +1,10 @@
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { withAuth } from '../../lib/auth';
+import { createLogger } from '../../lib/logger';
 import { notifyRealtime } from '../../lib/realtime';
+
+const logger = createLogger('messaging-actions');
 import { apiDbError, apiError, apiMethodNotAllowed, apiSuccess } from '../../lib/response';
 import { getServiceClient } from '../../lib/supabase';
 import { convertApplicationId, convertOpportunityId, fetchEducatorDetailsForConversations } from './utils';
@@ -176,7 +179,10 @@ async function handleGetUserConversations(supabase: SupabaseClient, params: any)
     } else {
       query = query.eq(deletedColumn, false);
     }
-  } catch { }
+  } catch (err) {
+    // deleted_by column may not exist on older schema versions — silently skip the filter
+    logger.warn('[handleGetUserConversations] deleted_by filter skipped', { error: err instanceof Error ? err.message : String(err) });
+  }
 
   if (conversationType) query = query.eq('conversation_type', conversationType);
   if (!includeArchived) query = query.neq('status', 'archived');
