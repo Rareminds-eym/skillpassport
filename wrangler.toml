@@ -27,7 +27,7 @@ entrypoint = "PaymentService"
 
 [[services]]
 binding = "SSO_SERVICE"
-service = "sso-api"
+service = "sso-api-demo"
 entrypoint = "SsoWorker"
 
 [[services]]
