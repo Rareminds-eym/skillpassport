@@ -5,6 +5,21 @@ import { apiSuccess, apiError, apiDbError } from '../../lib/response';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { PagesEnv } from '../../lib/types';
 
+/**
+ * Map get-or-create: returns the existing value for `key`, or creates it via
+ * `factory`, stores it, and returns that — replaces the `!m.has(k)) ...set(...)`
+ * + `.get(k)!` pattern with an equivalent implementation that needs no
+ * non-null assertion, since the returned value's presence is established by
+ * this function's own control flow rather than asserted after the fact.
+ */
+function getOrCreate<K, V>(map: Map<K, V>, key: K, factory: () => V): V {
+  const existing = map.get(key);
+  if (existing !== undefined) return existing;
+  const created = factory();
+  map.set(key, created);
+  return created;
+}
+
 /** Educator scope params, as sent by the frontend's EducatorCourseAnalyticsScope (entities/course-analytics/api/queries.ts) and consumed by every action in this file. */
 export interface EducatorScopeParams {
   schoolId?: string;
@@ -567,8 +582,8 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
         certificates.forEach((cert: CertificateStatsRow) => {
           const monthName = new Date(cert.created_at).toLocaleDateString('en-US', { month: 'short' });
-          if (monthlyStats.has(monthName)) {
-            const stats = monthlyStats.get(monthName)!;
+          const stats = monthlyStats.get(monthName);
+          if (stats) {
             if (cert.approval_status === 'approved') stats.issued++;
             else if (cert.approval_status === 'pending') stats.pending++;
             else if (cert.approval_status === 'rejected') stats.rejected++;
@@ -601,8 +616,8 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
         learnerAssignments.forEach((assignment: LearnerAssignmentStatusRow) => {
           const monthName = new Date(assignment.submission_date || now).toLocaleDateString('en-US', { month: 'short' });
-          if (monthlyStats.has(monthName)) {
-            const stats = monthlyStats.get(monthName)!;
+          const stats = monthlyStats.get(monthName);
+          if (stats) {
             if (assignment.status === 'todo' || assignment.status === 'in-progress') stats.pending++;
             else if (assignment.status === 'submitted') stats.submitted++;
             else if (assignment.status === 'graded') stats.graded++;
@@ -667,8 +682,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
         const skillMap = new Map<string, { count: number; totalLevel: number }>();
         skills.forEach((skill: SkillNameRow) => {
-          if (!skillMap.has(skill.name)) skillMap.set(skill.name, { count: 0, totalLevel: 0 });
-          const data = skillMap.get(skill.name)!;
+          const data = getOrCreate(skillMap, skill.name, () => ({ count: 0, totalLevel: 0 }));
           data.count++; data.totalLevel += skill.level || 0;
         });
 

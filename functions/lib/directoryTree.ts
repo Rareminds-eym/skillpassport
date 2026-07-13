@@ -31,6 +31,21 @@ import type { SupabaseClient } from '@supabase/supabase-js';
  * learners still render (count: 0), never dropped from the tree.
  */
 
+/**
+ * Map get-or-create: returns the existing value for `key`, or creates it via
+ * `factory`, stores it, and returns that — replaces the `!byM.has(k)) ...set(...)`
+ * + `.get(k)!` pattern with an equivalent implementation that needs no
+ * non-null assertion, since the returned value's presence is established by
+ * this function's own control flow rather than asserted after the fact.
+ */
+function getOrCreate<K, V>(map: Map<K, V>, key: K, factory: () => V): V {
+  const existing = map.get(key);
+  if (existing !== undefined) return existing;
+  const created = factory();
+  map.set(key, created);
+  return created;
+}
+
 /** Minimal shape returned by every builder — matches the frontend's DirectoryNode. */
 export interface DirectoryTreeNode {
   id: string;
@@ -144,10 +159,8 @@ export async function buildCollegeStyleDirectoryTree(
   const byDepartment = new Map<string, Map<string, SectionRow[]>>();
   for (const row of (sections || []) as SectionRow[]) {
     const label = yearOfStudyLabel(row.semester);
-    if (!byDepartment.has(row.department_id)) byDepartment.set(row.department_id, new Map());
-    const byYear = byDepartment.get(row.department_id)!;
-    if (!byYear.has(label)) byYear.set(label, []);
-    byYear.get(label)!.push(row);
+    const byYear = getOrCreate(byDepartment, row.department_id, () => new Map<string, SectionRow[]>());
+    getOrCreate(byYear, label, () => []).push(row);
   }
 
   return departments
@@ -250,8 +263,7 @@ export async function buildSchoolStyleDirectoryTree(
   type ClassRow = { id: string; grade: string; section: string | null };
   const byGrade = new Map<string, ClassRow[]>();
   for (const row of (classes || []) as ClassRow[]) {
-    if (!byGrade.has(row.grade)) byGrade.set(row.grade, []);
-    byGrade.get(row.grade)!.push(row);
+    getOrCreate(byGrade, row.grade, () => []).push(row);
   }
 
   return Array.from(byGrade.entries())

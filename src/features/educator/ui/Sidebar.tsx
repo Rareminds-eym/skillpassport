@@ -28,14 +28,12 @@ function classNames(...classes: string[]) {
 }
 
 interface SidebarProps {
-  activeTab: string;
   setActiveTab: (tab: string) => void;
   showMobileMenu: boolean;
   onMobileMenuClose?: () => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
-  activeTab,
   setActiveTab,
   showMobileMenu,
   onMobileMenuClose,
@@ -183,6 +181,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       <nav className="flex-1 overflow-y-auto px-3 py-5 space-y-3">
         {/* 1️⃣ Dashboard */}
         <button
+          type="button"
           onClick={() => handleNavigation(topItem.name, topItem.path)}
           className={classNames(
             location.pathname.startsWith(topItem.path)
@@ -204,6 +203,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
         {/* 🌟 Teaching Intelligence - Featured */}
         <button
+          type="button"
           onClick={() => handleNavigation(aiCopilotItem.name, aiCopilotItem.path)}
           className={classNames(
             location.pathname.startsWith(aiCopilotItem.path)
@@ -227,6 +227,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         {/* 📚 Courses - Only shown as standalone for Rareminds educators */}
         {isRaremindsEducator && (
           <button
+            type="button"
             onClick={() => handleNavigation(coursesItem.name, coursesItem.path)}
             className={classNames(
               location.pathname.startsWith(coursesItem.path)
@@ -251,6 +252,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         {navGroups.map((group) => (
           <div key={group.key} className="pt-3 border-t border-gray-100">
             <button
+              type="button"
               onClick={() => toggleGroup(group.key)}
               className="w-full flex items-center justify-between text-sm font-semibold text-gray-700 hover:text-indigo-600 px-2 py-2 rounded-md transition-colors"
             >
@@ -274,6 +276,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                   const isActive = location.pathname.startsWith(item.path);
                   return (
                     <button
+                      type="button"
                       key={item.name}
                       onClick={() => !(item as any).disabled && handleNavigation(item.name, item.path)}
                       disabled={(item as any).disabled}
@@ -314,6 +317,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             const isActive = location.pathname.startsWith(item.path);
             return (
               <button
+                type="button"
                 key={item.name}
                 onClick={() => !(item as any).disabled && handleNavigation(item.name, item.path)}
                 disabled={(item as any).disabled}
