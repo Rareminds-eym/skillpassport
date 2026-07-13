@@ -7,7 +7,32 @@
  */
 
 interface Env {
-    SSO_SERVICE: any;
+    SSO_SERVICE: {
+        signup: (params: {
+            email: string;
+            password: string;
+            org_name: string | null;
+            role: string;
+            redirect_url: string;
+            ip?: string;
+            ua?: string;
+        }) => Promise<{
+            success: boolean;
+            access_token?: string;
+            refresh_token?: string;
+            user?: {
+                id: string;
+                email: string;
+            };
+            org?: {
+                id: string;
+                name: string | null;
+            };
+            email_sent?: boolean;
+            error?: string;
+            status?: number;
+        }>;
+    };
 }
 
 function getCorsHeaders(request: Request): Record<string, string> {
@@ -67,8 +92,7 @@ export async function onRequest(context: any) {
         });
 
         // Call SSO Worker signup via true RPC method
-        const ssoService = env.SSO_SERVICE as any;
-        const ssoResult = await ssoService.signup({
+        const ssoResult = await env.SSO_SERVICE.signup({
             email,
             password,
             org_name: null, // Will be set during onboarding Step 1

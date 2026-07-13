@@ -177,6 +177,7 @@ export const Step1BasicInfo: React.FC<Step1BasicInfoProps> = ({
 
                 <div className="flex justify-end">
                     <button
+                        type="button"
                         onClick={handleSubmit}
                         disabled={loading}
                         className="px-6 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
@@ -203,12 +204,13 @@ export const Step1BasicInfo: React.FC<Step1BasicInfoProps> = ({
             <form onSubmit={handleSubmit} className="space-y-4">
                 {/* Organization Name */}
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label htmlFor="org-name" className="block text-sm font-medium text-gray-700 mb-2">
                         Organization Name <span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
                         <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                         <input
+                            id="org-name"
                             type="text"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
@@ -221,12 +223,13 @@ export const Step1BasicInfo: React.FC<Step1BasicInfoProps> = ({
 
                 {/* Work Email */}
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label htmlFor="work-email" className="block text-sm font-medium text-gray-700 mb-2">
                         Work Email <span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
                         <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                         <input
+                            id="work-email"
                             type="email"
                             value={workEmail}
                             onChange={(e) => setWorkEmail(e.target.value)}
