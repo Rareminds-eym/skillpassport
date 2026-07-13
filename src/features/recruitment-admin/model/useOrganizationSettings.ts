@@ -42,8 +42,9 @@ export const useOrganizationSettings = (organizationId: string) => {
     try {
       const response = await fetchOrganizationSettings(organizationId);
       setData(response);
-    } catch (err: any) {
-      setError(err.message || 'Failed to fetch settings');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch settings';
+      setError(errorMessage);
       console.error('Error fetching settings:', err);
     } finally {
       setLoading(false);
@@ -62,8 +63,8 @@ export const useOrganizationSettings = (organizationId: string) => {
           company_names: response.data,
         }));
         return response.data;
-      } catch (err: any) {
-        const errorMsg = err.message || 'Failed to update profile';
+      } catch (err: unknown) {
+        const errorMsg = err instanceof Error ? err.message : 'Failed to update profile';
         setError(errorMsg);
         throw err;
       } finally {
@@ -85,8 +86,8 @@ export const useOrganizationSettings = (organizationId: string) => {
           contact_info: response.data,
         }));
         return response.data;
-      } catch (err: any) {
-        const errorMsg = err.message || 'Failed to update contacts';
+      } catch (err: unknown) {
+        const errorMsg = err instanceof Error ? err.message : 'Failed to update contacts';
         setError(errorMsg);
         throw err;
       } finally {
@@ -108,8 +109,8 @@ export const useOrganizationSettings = (organizationId: string) => {
           verification: response.data,
         }));
         return response.data;
-      } catch (err: any) {
-        const errorMsg = err.message || 'Failed to update verification';
+      } catch (err: unknown) {
+        const errorMsg = err instanceof Error ? err.message : 'Failed to update verification';
         setError(errorMsg);
         throw err;
       } finally {
@@ -132,8 +133,8 @@ export const useOrganizationSettings = (organizationId: string) => {
           verification: response.data.verification,
         });
         return response.data;
-      } catch (err: any) {
-        const errorMsg = err.message || 'Failed to update settings';
+      } catch (err: unknown) {
+        const errorMsg = err instanceof Error ? err.message : 'Failed to update settings';
         setError(errorMsg);
         throw err;
       } finally {

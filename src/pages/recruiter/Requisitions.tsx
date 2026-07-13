@@ -63,6 +63,47 @@ interface Opportunity {
   recruiter_id?: string;
 }
 
+interface Recruiter {
+  id: string;
+  name?: string;
+  email: string;
+}
+
+interface ModalProps {
+  onClose: () => void;
+}
+
+interface RequisitionModalProps extends ModalProps {
+  requisition: Opportunity;
+}
+
+interface CreateRequisitionModalProps extends ModalProps {
+  recruiters: Recruiter[];
+  currentRecruiterId: string | null;
+  onSuccess: () => void;
+}
+
+interface EditRequisitionModalProps extends ModalProps {
+  requisition: Opportunity;
+  recruiters: Recruiter[];
+  onSuccess: () => void;
+}
+
+interface LearnerProfile {
+  passport_id: string;
+  name?: string;
+  email?: string;
+  phone_number?: string;
+  alternate_number?: string;
+}
+
+interface Application {
+  id: string;
+  application_status: string;
+  applied_at: string;
+  profile: LearnerProfile;
+}
+
 const Requisitions = () => {
   const user = useUser();
   const [requisitions, setRequisitions] = useState<Opportunity[]>([]);
@@ -77,7 +118,7 @@ const Requisitions = () => {
   const [showImportModal, setShowImportModal] = useState(false);
   const [selectedRequisition, setSelectedRequisition] = useState<Opportunity | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [recruiters, setRecruiters] = useState<any[]>([]);
+  const [recruiters, setRecruiters] = useState<Recruiter[]>([]);
   const [currentRecruiterId, setCurrentRecruiterId] = useState<string | null>(null);
 
   // Sorting State
@@ -460,8 +501,8 @@ const Requisitions = () => {
             <button
               onClick={() => setViewMode('grid')}
               className={`px-3 py-2 border rounded-md ${viewMode === 'grid'
-                  ? 'bg-primary-50 border-primary-300 text-primary-700'
-                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                ? 'bg-primary-50 border-primary-300 text-primary-700'
+                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
                 }`}
             >
               Grid
@@ -469,8 +510,8 @@ const Requisitions = () => {
             <button
               onClick={() => setViewMode('list')}
               className={`px-3 py-2 border rounded-md ${viewMode === 'list'
-                  ? 'bg-primary-50 border-primary-300 text-primary-700'
-                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                ? 'bg-primary-50 border-primary-300 text-primary-700'
+                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
                 }`}
             >
               List
@@ -733,7 +774,7 @@ const Requisitions = () => {
 
                   {/* Page Numbers */}
                   {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                    let pageNum;
+                    let pageNum: number;
 
                     if (totalPages <= 5) {
                       pageNum = i + 1;
@@ -750,8 +791,8 @@ const Requisitions = () => {
                         key={pageNum}
                         onClick={() => goToPage(pageNum)}
                         className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold ${currentPage === pageNum
-                            ? 'z-10 bg-primary-600 text-white'
-                            : 'text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50'
+                          ? 'z-10 bg-primary-600 text-white'
+                          : 'text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50'
                           }`}
                       >
                         {pageNum}
@@ -1002,7 +1043,7 @@ const RequisitionCard = ({ requisition, onView, onEdit, onDelete, onStatusChange
 };
 
 // Modal Components (unchanged - they already work with the interface)
-const CreateRequisitionModal = ({ recruiters, currentRecruiterId, onClose, onSuccess }: any) => {
+const CreateRequisitionModal = ({ recruiters, currentRecruiterId, onClose, onSuccess }: CreateRequisitionModalProps) => {
   const [formData, setFormData] = useState({
     job_title: '',
     company_name: '',
@@ -1045,7 +1086,14 @@ const CreateRequisitionModal = ({ recruiters, currentRecruiterId, onClose, onSuc
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
+        <div
+          className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+          onClick={onClose}
+          onKeyDown={(e) => e.key === 'Escape' && onClose()}
+          role="button"
+          tabIndex={0}
+          aria-label="Close modal"
+        ></div>
 
         <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full sm:p-6">
           <div className="flex items-center justify-between mb-6">
@@ -1368,7 +1416,7 @@ const CreateRequisitionModal = ({ recruiters, currentRecruiterId, onClose, onSuc
   );
 };
 
-const EditRequisitionModal = ({ requisition, recruiters, onClose, onSuccess }: any) => {
+const EditRequisitionModal = ({ requisition, recruiters, onClose, onSuccess }: EditRequisitionModalProps) => {
   const [formData, setFormData] = useState({
     job_title: requisition.job_title,
     company_name: requisition.company_name,  // ADD THIS
@@ -1420,7 +1468,14 @@ const EditRequisitionModal = ({ requisition, recruiters, onClose, onSuccess }: a
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
+        <div
+          className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+          onClick={onClose}
+          onKeyDown={(e) => e.key === 'Escape' && onClose()}
+          role="button"
+          tabIndex={0}
+          aria-label="Close modal"
+        ></div>
 
         <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full sm:p-6">
           <div className="flex items-center justify-between mb-6">
@@ -1648,11 +1703,18 @@ const EditRequisitionModal = ({ requisition, recruiters, onClose, onSuccess }: a
   );
 };
 
-const ViewRequisitionModal = ({ requisition, onClose }: any) => {
+const ViewRequisitionModal = ({ requisition, onClose }: RequisitionModalProps) => {
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20">
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75" onClick={onClose}></div>
+        <div
+          className="fixed inset-0 bg-gray-500 bg-opacity-75"
+          onClick={onClose}
+          onKeyDown={(e) => e.key === 'Escape' && onClose()}
+          role="button"
+          tabIndex={0}
+          aria-label="Close modal"
+        ></div>
         <div className="relative bg-white rounded-lg max-w-4xl w-full p-6">
           <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
             <XCircleIcon className="h-6 w-6" />
@@ -1686,10 +1748,10 @@ const ViewRequisitionModal = ({ requisition, onClose }: any) => {
   );
 };
 
-const ApplicationsModal = ({ requisition, onClose }: any) => {
-  const [applications, setApplications] = useState<any[]>([]);
+const ApplicationsModal = ({ requisition, onClose }: RequisitionModalProps) => {
+  const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedLearner, setSelectedLearner] = useState<any>(null);
+  const [selectedLearner, setSelectedLearner] = useState<Application | null>(null);
 
   useEffect(() => {
     loadApplications();
@@ -1755,7 +1817,14 @@ const ApplicationsModal = ({ requisition, onClose }: any) => {
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20">
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75" onClick={onClose}></div>
+        <div
+          className="fixed inset-0 bg-gray-500 bg-opacity-75"
+          onClick={onClose}
+          onKeyDown={(e) => e.key === 'Escape' && onClose()}
+          role="button"
+          tabIndex={0}
+          aria-label="Close modal"
+        ></div>
         <div className="relative bg-white rounded-lg max-w-6xl w-full p-6 max-h-[90vh] overflow-y-auto">
           <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
             <XCircleIcon className="h-6 w-6" />
@@ -1899,7 +1968,14 @@ const ApplicationsModal = ({ requisition, onClose }: any) => {
 
           {/* Learner Detail Modal */}
           {selectedLearner && (
-            <div className="fixed inset-0 z-60 overflow-y-auto" onClick={() => setSelectedLearner(null)}>
+            <div
+              className="fixed inset-0 z-60 overflow-y-auto"
+              onClick={() => setSelectedLearner(null)}
+              onKeyDown={(e) => e.key === 'Escape' && setSelectedLearner(null)}
+              role="button"
+              tabIndex={0}
+              aria-label="Close learner details modal"
+            >
               <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20">
                 <div className="fixed inset-0 bg-gray-900 bg-opacity-75"></div>
                 <div className="relative bg-white rounded-lg max-w-3xl w-full p-6" onClick={(e) => e.stopPropagation()}>
@@ -1983,11 +2059,18 @@ const ApplicationsModal = ({ requisition, onClose }: any) => {
   );
 };
 
-const MessagesModal = ({ requisition, onClose }: any) => {
+const MessagesModal = ({ requisition, onClose }: RequisitionModalProps) => {
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20">
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75" onClick={onClose}></div>
+        <div
+          className="fixed inset-0 bg-gray-500 bg-opacity-75"
+          onClick={onClose}
+          onKeyDown={(e) => e.key === 'Escape' && onClose()}
+          role="button"
+          tabIndex={0}
+          aria-label="Close modal"
+        ></div>
         <div className="relative bg-white rounded-lg max-w-4xl w-full p-6">
           <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
             <XCircleIcon className="h-6 w-6" />

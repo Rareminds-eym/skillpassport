@@ -35,6 +35,18 @@ interface Env {
     };
 }
 
+interface RequestContext {
+    request: Request;
+    env: Env;
+}
+
+interface SignupRequestBody {
+    email: string;
+    password: string;
+    user_metadata?: Record<string, unknown>;
+    redirect_url?: string;
+}
+
 function getCorsHeaders(request: Request): Record<string, string> {
     const origin = request.headers.get('Origin') || '';
     return {
@@ -45,8 +57,8 @@ function getCorsHeaders(request: Request): Record<string, string> {
     };
 }
 
-export async function onRequest(context: any) {
-    const { request, env } = context as { request: Request; env: Env };
+export async function onRequest(context: RequestContext) {
+    const { request, env } = context;
     const corsHeaders = getCorsHeaders(request);
 
     // Handle CORS preflight
@@ -65,7 +77,7 @@ export async function onRequest(context: any) {
     }
 
     try {
-        const body = await request.json();
+        const body = await request.json() as SignupRequestBody;
         const { email, password, user_metadata, redirect_url } = body;
 
         if (!email || !password) {
@@ -150,11 +162,12 @@ export async function onRequest(context: any) {
             headers: responseHeaders,
         });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : 'Signup failed';
         console.error('[recruiter-admin-signup] Error:', error);
 
         return new Response(JSON.stringify({
-            error: error?.message || 'Signup failed',
+            error: errorMessage,
         }), {
             status: 500,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
