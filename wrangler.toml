@@ -22,7 +22,7 @@ script_name = "realtime-worker-demo"
 
 [[services]]
 binding = "PAYMENT_WORKER"
-service = "razorpay-api"
+service = "razorpay-api-demo"
 entrypoint = "PaymentService"
 
 [[services]]
@@ -32,7 +32,7 @@ entrypoint = "SsoWorker"
 
 [[services]]
 binding = "EMBEDDING_SERVICE"
-service = "embedding-worker"
+service = "embedding-worker-demo"
 entrypoint = "EmbeddingWorker"
 
 [[queues.producers]]
@@ -45,7 +45,7 @@ queue = "sso-reverse-sync-queue"
 
 [[services]]
 binding = "EMAIL_SERVICE"
-service = "shared-email-api"
+service = "shared-email-api-demo"
 entrypoint = "EmailService"
 
 # ============================================================================
