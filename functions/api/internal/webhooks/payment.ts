@@ -335,9 +335,12 @@ async function generateAndSendReceipt(env: PagesEnv, subscription: any, paymentE
 
     // Store receipt key in subscription record
     try {
+      // Check if SSO_SERVICE binding is available (expected optional dependency)
       if (!env.SSO_SERVICE) {
-        logger.warn('SSO_SERVICE not configured, skipping receipt key storage');
-        // Explicitly continue — receipt generation succeeded even if storage failed.
+        logger.warn(
+          'SSO_SERVICE binding not configured; skipping non-critical receipt key storage in SSO database'
+        );
+        // Explicitly continue — SSO integration is optional and must not block receipt generation.
         return;
       }
       
@@ -349,12 +352,19 @@ async function generateAndSendReceipt(env: PagesEnv, subscription: any, paymentE
         ) => Promise<void>;
       }
       
+      // Import SSO client module (should always succeed since module is bundled)
       let ssoClient: SSOClientModule | null = null;
       try {
         ssoClient = (await import('../../../lib/sso-client.js')) as unknown as SSOClientModule;
       } catch (importErr) {
-        logger.error('Failed to load sso-client module', importErr instanceof Error ? importErr : new Error(String(importErr)));
-        // Explicitly continue — SSO subscription update is non-critical.
+        // Module import failure is an UNEXPECTED deployment or build problem.
+        // The module is always bundled; only the SSO_SERVICE binding is optional (checked above).
+        logger.error(
+          'Failed to load sso-client module (unexpected deployment/build problem); skipping non-critical SSO subscription update',
+          importErr instanceof Error ? importErr : new Error(String(importErr))
+        );
+        // Explicitly continue — SSO subscription update is non-critical and must not block payment processing.
+        return;
       }
       
       if (ssoClient && typeof ssoClient.ssoUpdateSubscriptionField === 'function') {
@@ -368,14 +378,20 @@ async function generateAndSendReceipt(env: PagesEnv, subscription: any, paymentE
           );
           logger.info('Receipt key saved to subscription', { receiptKey });
         } catch (ssoErr) {
-          logger.error('SSO subscription field update failed', ssoErr instanceof Error ? ssoErr : new Error(String(ssoErr)));
+          logger.error(
+            'SSO subscription field update failed; skipping non-critical update',
+            ssoErr instanceof Error ? ssoErr : new Error(String(ssoErr))
+          );
           // Explicitly continue — payment/webhook flow should not fail because SSO metadata update failed.
         }
       } else {
-        logger.warn('SSO client unavailable, subscription field update skipped');
+        logger.warn('SSO client module loaded but ssoUpdateSubscriptionField method not available');
       }
     } catch (updateErr) {
-      logger.error('Failed to save receipt key (non-critical)', updateErr instanceof Error ? updateErr : new Error(String(updateErr)));
+      logger.error(
+        'Failed to save receipt key (non-critical)',
+        updateErr instanceof Error ? updateErr : new Error(String(updateErr))
+      );
       // Explicitly continue — receipt generation succeeded even if storage failed.
     }
 

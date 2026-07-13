@@ -34,18 +34,11 @@ import { downloadFileFromUrl, generateReceiptFilename } from '@/shared/utils/dow
 import { getPaymentReceiptPresignedUrl } from '@/shared/api';
 import toast from 'react-hot-toast';
 import { getLogger } from '@/shared/config/logging';
-
 import { useUser, useUserRole, useAuthLoading } from '@/shared/model/authStore';
-
-const logger = getLogger('my-subscription');
 import { calculateDaysRemaining, calculateProgressPercentage, deactivateSubscription, formatDate, getSubscriptionStatusChecks, pauseSubscription, resumeSubscription } from '@/features/subscription';
 import { getUserSubscriptions } from '@/features/subscription/api';
-
-
-import { useAuthLoading, useUser, useUserRole } from '@/shared/model/authStore';
 import { useLearnerDataByEmail } from '@/entities/learner';
 import { openZohoChat } from '@/shared/utils/zohoChat';
-import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('my-subscription');
 

@@ -4,9 +4,12 @@
  * Provides robust file download functionality with:
  * - Memory leak prevention via proper cleanup
  * - Fallback mechanisms for CORS issues
+ * - Timeout protection for network operations
  * - Error handling and logging
  */
 
+import { DEFAULT_TIMEOUT } from '@/shared/api/httpClient';
+import { createTimeoutSignal } from '@/shared/lib/create-timeout-signal';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('download-helpers');
@@ -42,7 +45,11 @@ export async function downloadFileFromUrl(url: string, filename?: string): Promi
 
   try {
     // Primary strategy: fetch + blob for better control
-    const response = await fetch(url);
+    const timeoutSignal = createTimeoutSignal(DEFAULT_TIMEOUT);
+    
+    const response = await fetch(url, {
+      signal: timeoutSignal,
+    });
     
     if (!response.ok) {
       throw new Error(`Fetch failed with status ${response.status}`);

@@ -81,6 +81,42 @@ function getUserTypeFromUrl(pathname) {
 
 // Removed FALLBACK_PLANS as per requirement to use DB data only
 
+/**
+ * Validate presigned URL format
+ * Ensures URL is HTTPS with valid hostname
+ */
+function isValidPresignedUrl(url) {
+  if (!url || typeof url !== 'string') return false;
+  if (!url.startsWith('https://')) return false;
+  
+  try {
+    const parsedUrl = new URL(url);
+    return parsedUrl.protocol === 'https:' && Boolean(parsedUrl.hostname);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Resolve payment ID from available sources
+ * Priority: invoice payment ID > subscription payment ID > order ID > subscription ID
+ */
+function resolvePaymentId(invoiceData, subscriptionData) {
+  // Safely normalize invoice payment ID if provided
+  const invoicePaymentId =
+    typeof invoiceData?.razorpay_payment_id === 'string'
+      ? invoiceData.razorpay_payment_id.trim()
+      : '';
+  
+  // Priority order: invoice payment ID > subscription payment ID > order ID > subscription ID
+  if (invoicePaymentId) return invoicePaymentId;
+  if (subscriptionData?.razorpayPaymentId) return subscriptionData.razorpayPaymentId;
+  if (subscriptionData?.razorpayOrderId) return subscriptionData.razorpayOrderId;
+  if (subscriptionData?.razorpaySubscriptionId) return subscriptionData.razorpaySubscriptionId;
+  
+  return null;
+}
+
 function MySubscription() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -279,12 +315,12 @@ function MySubscription() {
   };
 
   const handleDownloadInvoice = async (invoiceData = null) => {
+    // Early validation guards
     if (!subscriptionData && !invoiceData) {
       toast.error('Subscription details are not available. Please try again.');
       return;
     }
 
-    // Validate invoiceData structure when passed
     if (
       invoiceData &&
       (typeof invoiceData !== 'object' || Array.isArray(invoiceData))
@@ -303,18 +339,6 @@ function MySubscription() {
       toast.error('System configuration error. Please contact support.');
       return;
     }
-
-    const isValidPresignedUrl = (url) => {
-      if (!url || typeof url !== 'string') return false;
-      if (!url.startsWith('https://')) return false;
-      
-      try {
-        const parsedUrl = new URL(url);
-        return parsedUrl.protocol === 'https:' && Boolean(parsedUrl.hostname);
-      } catch {
-        return false;
-      }
-    };
 
     setIsDownloadingInvoice(true);
     
@@ -347,76 +371,50 @@ function MySubscription() {
             errorMessage = 'Failed to download receipt. A copy has been sent to your email.';
           }
         }
-      } else {
-        // PRIORITY 2: Determine which payment ID to use for constructing receipt path
-        let paymentId = null;
         
-        // Safely normalize invoice payment ID if provided
-        const invoicePaymentId =
-          typeof invoiceData?.razorpay_payment_id === 'string'
-            ? invoiceData.razorpay_payment_id.trim()
-            : '';
-        
-        // If invoice data is passed (from billing history), use that
-        if (invoicePaymentId) {
-          paymentId = invoicePaymentId;
-        } else if (subscriptionData?.razorpayPaymentId) {
-          // Use current subscription's payment ID
-          paymentId = subscriptionData.razorpayPaymentId;
-        } else if (subscriptionData?.razorpayOrderId) {
-          // Fallback to order ID if payment ID not available
-          paymentId = subscriptionData.razorpayOrderId;
-        } else if (subscriptionData?.razorpaySubscriptionId) {
-          // Last resort: use subscription ID
-          paymentId = subscriptionData.razorpaySubscriptionId;
-        }
-
-        if (!paymentId) {
-          logger.error('No payment information found', new Error('Missing payment ID'));
-          errorOccurred = true;
-          errorMessage = 'Receipt not available. Payment information not found.';
-        } else {
-          // Validate regex configuration before use
-          if (
-            !RECEIPT_CONFIG?.PAYMENT_ID_SANITIZE_REGEX ||
-            !(RECEIPT_CONFIG.PAYMENT_ID_SANITIZE_REGEX instanceof RegExp)
-          ) {
-            logger.error('Invalid PAYMENT_ID_SANITIZE_REGEX configuration');
-            errorOccurred = true;
-            errorMessage = 'System configuration error. Please contact support.';
-          } else {
-            // Construct the receipt key pattern - matches what the backend generates
-            // Pattern: payment_pdf/user_{shortUserId}/{sanitizedPaymentId}_{timestamp}.pdf
-            const RECEIPT_FILE_PREFIX = 'payment_pdf/user_';
-            const userPrefix = user?.id
-              ? user.id.substring(0, Math.min(user.id.length, RECEIPT_CONFIG.USER_ID_PREFIX_LENGTH))
-              : '';
-            const sanitizedPaymentId = paymentId.replace(RECEIPT_CONFIG.PAYMENT_ID_SANITIZE_REGEX, '');
-            
-            // The exact key format may vary by timestamp, so we use the payment ID as identifier
-            // The backend will handle key extraction from payment ID
-            const fileIdentifier = `${RECEIPT_FILE_PREFIX}${userPrefix}/${sanitizedPaymentId}`;
-            
-            // Get presigned URL for the receipt
-            const presignedUrl = await getPaymentReceiptPresignedUrl(fileIdentifier, 3600);
-            
-            if (!isValidPresignedUrl(presignedUrl)) {
-              logger.error('Invalid presigned URL received', new Error('Invalid URL'));
-              errorOccurred = true;
-              errorMessage = 'Failed to generate download link. Receipt may not exist yet.';
-            } else {
-              // Use shared download helper with fallback mechanism
-              try {
-                await downloadFileFromUrl(presignedUrl, generateReceiptFilename());
-                successfulDownload = true;
-              } catch (downloadError) {
-                logger.error('Download helper failed', downloadError);
-                errorOccurred = true;
-                errorMessage = 'Failed to download receipt. A copy has been sent to your email.';
-              }
-            }
-          }
-        }
+        // Exit early after handling receipt URL path
+        return;
+      }
+      
+      // PRIORITY 2: Construct receipt path from payment ID
+      const paymentId = resolvePaymentId(invoiceData, subscriptionData);
+      
+      if (!paymentId) {
+        logger.error('No payment information found', new Error('Missing payment ID'));
+        toast.error('Receipt not available. Payment information not found.');
+        return;
+      }
+      
+      // Construct the receipt key pattern - matches what the backend generates
+      // Pattern: payment_pdf/user_{shortUserId}/{sanitizedPaymentId}_{timestamp}.pdf
+      const RECEIPT_FILE_PREFIX = 'payment_pdf/user_';
+      const userPrefix = user?.id
+        ? user.id.substring(0, Math.min(user.id.length, RECEIPT_CONFIG.USER_ID_PREFIX_LENGTH))
+        : '';
+      const sanitizedPaymentId = paymentId.replace(RECEIPT_CONFIG.PAYMENT_ID_SANITIZE_REGEX, '');
+      
+      // The exact key format may vary by timestamp, so we use the payment ID as identifier
+      // The backend will handle key extraction from payment ID
+      const fileIdentifier = `${RECEIPT_FILE_PREFIX}${userPrefix}/${sanitizedPaymentId}`;
+      
+      // Get presigned URL for the receipt
+      const presignedUrl = await getPaymentReceiptPresignedUrl(fileIdentifier, 3600);
+      
+      if (!isValidPresignedUrl(presignedUrl)) {
+        logger.error('Invalid presigned URL received', new Error('Invalid URL'));
+        errorOccurred = true;
+        errorMessage = 'Failed to generate download link. Receipt may not exist yet.';
+        return;
+      }
+      
+      // Use shared download helper with fallback mechanism
+      try {
+        await downloadFileFromUrl(presignedUrl, generateReceiptFilename());
+        successfulDownload = true;
+      } catch (downloadError) {
+        logger.error('Download helper failed', downloadError);
+        errorOccurred = true;
+        errorMessage = 'Failed to download receipt. A copy has been sent to your email.';
       }
     } catch (error) {
       logger.error('Receipt download failed', error);

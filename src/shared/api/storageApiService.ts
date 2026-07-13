@@ -5,6 +5,8 @@ import { ssoClient } from '@/shared/api/ssoClient';
  */
 
 import { getApiUrl } from '@/shared/api/apiUtils';
+import { DEFAULT_TIMEOUT } from '@/shared/api/httpClient';
+import { createTimeoutSignal } from '@/shared/lib/create-timeout-signal';
 
 import { getLogger } from '@/shared/config/logging';
 
@@ -386,11 +388,14 @@ export async function getPaymentReceiptPresignedUrl(fileKeyOrUrl: string, expire
     }
   }
   
+  const timeoutSignal = createTimeoutSignal(DEFAULT_TIMEOUT);
+  
   const response = await ssoClient.fetch(
     `${API_URL}/payment-receipt/presigned?key=${encodeURIComponent(fileKey)}&expires=${expiresIn}`,
     {
       method: 'GET',
       headers: getAuthHeaders(authToken),
+      signal: timeoutSignal,
     }
   );
 

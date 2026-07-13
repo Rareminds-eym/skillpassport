@@ -94,8 +94,23 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
 
     // Step 2: Signature valid — prepare subscription data
     const plan = body.plan as Record<string, unknown> | undefined;
-    if (!plan || !plan.id || !plan.name || !plan.price || !plan.duration) {
-      logger.warn('Signature verified but no plan data provided');
+    
+    // Validate plan data runtime types (plan comes from untrusted client request body)
+    const hasValidPlanData =
+      plan !== null &&
+      typeof plan === 'object' &&
+      typeof plan.id === 'string' &&
+      plan.id.trim().length > 0 &&
+      typeof plan.name === 'string' &&
+      plan.name.trim().length > 0 &&
+      typeof plan.price === 'number' &&
+      Number.isFinite(plan.price) &&
+      plan.price >= 0 &&
+      typeof plan.duration === 'string' &&
+      plan.duration.trim().length > 0;
+
+    if (!hasValidPlanData) {
+      logger.warn('Signature verified but invalid plan data provided');
       return apiSuccess(verifyResult, context.request);
     }
 
@@ -423,18 +438,11 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
                 phone: userPhone,
               },
             });
-          })().catch((err) => {
-            try {
-              logger.error(
-                'Async receipt generation failed',
-                err instanceof Error ? err : new Error(String(err))
-              );
-            } catch {
-              console.error(
-                '[Receipt Generation Error]',
-                err instanceof Error ? err.message : String(err)
-              );
-            }
+          })().catch((error: unknown) => {
+            logger.error(
+              'Async receipt generation failed',
+              error instanceof Error ? error : new Error(String(error))
+            );
           })
         );
       } else {
