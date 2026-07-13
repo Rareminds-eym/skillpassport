@@ -53,9 +53,9 @@ entrypoint = "EmailService"
 # ============================================================================
 
 [vars]
-ENVIRONMENT = "production"
+ENVIRONMENT = "demo"
 REALTIME_PARTITIONS = "10"
-SUPABASE_URL = "https://dpooleduinyyzxgrcwko.supabase.co"
+SUPABASE_URL = "https://esvtysejqyvlzjmiwtbm.supabase.co"
 
 # ============================================================================
 # SECRETS (DO NOT COMMIT VALUES)
