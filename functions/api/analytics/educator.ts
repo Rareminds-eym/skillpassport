@@ -277,10 +277,18 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         ]);
 
         const activeLearnerSet = new Set<string>();
-        (allSkills as Array<{ learner_id: string }> | null)?.forEach(s => s.learner_id && activeLearnerSet.add(s.learner_id));
-        (projectLearners as Array<{ learner_id: string }> | null)?.forEach(p => p.learner_id && activeLearnerSet.add(p.learner_id));
-        (certLearners as Array<{ learner_id: string }> | null)?.forEach(c => c.learner_id && activeLearnerSet.add(c.learner_id));
-        (trainingLearners as Array<{ learner_id: string }> | null)?.forEach(t => t.learner_id && activeLearnerSet.add(t.learner_id));
+        (allSkills as Array<{ learner_id: string }> | null)?.forEach(s => {
+          if (s.learner_id) activeLearnerSet.add(s.learner_id);
+        });
+        (projectLearners as Array<{ learner_id: string }> | null)?.forEach(p => {
+          if (p.learner_id) activeLearnerSet.add(p.learner_id);
+        });
+        (certLearners as Array<{ learner_id: string }> | null)?.forEach(c => {
+          if (c.learner_id) activeLearnerSet.add(c.learner_id);
+        });
+        (trainingLearners as Array<{ learner_id: string }> | null)?.forEach(t => {
+          if (t.learner_id) activeLearnerSet.add(t.learner_id);
+        });
 
         const activelearners = activeLearnerSet.size;
         const totalApproved = (approvedProjects || 0) + (approvedCerts || 0) + (approvedTrainings || 0);
