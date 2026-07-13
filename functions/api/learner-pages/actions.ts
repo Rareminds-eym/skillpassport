@@ -1,10 +1,9 @@
-import { withAuth, getContextUser } from '../../lib/auth';
+import { withAuth } from '../../lib/auth';
 import { getServiceClient } from '../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { apiSuccess, apiDbError, apiError } from '../../lib/response';
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
-  const user = getContextUser(context);
   const env = context.env as Record<string, string>;
   const supabase = getServiceClient(env as any);
   const startTime = Date.now();
@@ -425,7 +424,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         if (!email) return apiError(400, 'VALIDATION_ERROR', 'email required', context.request, { startTime });
         const { data, error } = await supabase
           .from('learners')
-          .select('grade, branch_field')
+          .select('grade, branch_field, learner_type')
           .eq('email', email)
           .maybeSingle();
         if (error && error.code !== 'PGRST116') return apiDbError(error, context.request, { startTime });
