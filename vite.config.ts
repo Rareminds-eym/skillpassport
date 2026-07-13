@@ -10,7 +10,7 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
-   
+
   },
   optimizeDeps: {
     exclude: ['lucide-react'],
@@ -72,36 +72,47 @@ export default defineConfig({
           }
 
           // Charts - group together
-          if (packageName.startsWith('victory') || packageName === 'victory-vendor' || 
-              packageName.startsWith('d3-') || packageName === 'recharts' ||
-              packageName === 'apexcharts' || packageName === 'react-apexcharts') {
+          if (packageName.startsWith('victory') || packageName === 'victory-vendor' ||
+            packageName.startsWith('d3-') || packageName === 'recharts' ||
+            packageName === 'apexcharts' || packageName === 'react-apexcharts') {
             return 'vendor-charts';
           }
 
           // UI/Animation libraries - group together
-          if (packageName === 'framer-motion' || packageName === 'gsap' || 
-              packageName === 'lottie-react' || packageName.startsWith('@tsparticles/') ||
-              packageName.startsWith('@lottiefiles/')) {
+          if (packageName === 'framer-motion' || packageName === 'gsap' ||
+            packageName === 'lottie-react' || packageName.startsWith('@tsparticles/') ||
+            packageName.startsWith('@lottiefiles/')) {
             return 'vendor-animation';
           }
 
           // PDF/Document libraries - group together
           if (packageName === 'jspdf' || packageName === 'jspdf-autotable' ||
-              packageName === 'pdfjs-dist' || packageName === 'pdf-lib' ||
-              packageName === 'html2canvas' || packageName === 'docx') {
+            packageName === 'pdfjs-dist' || packageName === 'pdf-lib' ||
+            packageName === 'html2canvas' || packageName === 'docx') {
             return 'vendor-pdf';
           }
 
           // Icons - group together
           if (packageName === 'react-icons' || packageName === '@heroicons/react' ||
-              packageName === '@tabler/icons-react' || packageName === 'lucide-react') {
+            packageName === '@tabler/icons-react' || packageName === 'lucide-react') {
             return 'vendor-icons';
           }
 
-          // Large data/utility libraries
-          if (packageName === 'xlsx' || packageName === 'country-state-city' ||
-              packageName === 'indian-pincodes' || packageName === 'papaparse') {
-            return 'vendor-data';
+          // Split large data libraries into separate chunks to stay under 25MB limit
+          if (packageName === 'country-state-city') {
+            return 'vendor-geo-data';
+          }
+
+          if (packageName === 'xlsx') {
+            return 'vendor-xlsx';
+          }
+
+          if (packageName === 'indian-pincodes') {
+            return 'vendor-pincodes';
+          }
+
+          if (packageName === 'papaparse' || packageName === 'csv-parse') {
+            return 'vendor-csv';
           }
 
           // Everything else
