@@ -7,7 +7,7 @@
  */
 
 interface Env {
-    SSO_URL: string;
+    SSO_SERVICE: any;
 }
 
 function getCorsHeaders(request: Request): Record<string, string> {
@@ -52,72 +52,73 @@ export async function onRequest(context: any) {
             });
         }
 
+        if (!env.SSO_SERVICE) {
+            console.error('[recruiter-admin-signup] SSO_SERVICE binding not configured');
+            return new Response(JSON.stringify({
+                error: 'Authentication service unavailable'
+            }), {
+                status: 500,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+        }
+
         console.log('[recruiter-admin-signup] Creating user with null org name (to be set in onboarding):', {
             email,
         });
 
-        // Call SSO signup endpoint directly with null org_name
-        const ssoUrl = env.SSO_URL || 'http://localhost:8787';
-        const signupUrl = `${ssoUrl}/auth/signup`;
-
-        const signupPayload = {
+        // Call SSO Worker signup via true RPC method
+        const ssoService = env.SSO_SERVICE as any;
+        const ssoResult = await ssoService.signup({
             email,
             password,
             org_name: null, // Will be set during onboarding Step 1
             role: 'owner',
-            user_metadata: user_metadata || {},
             redirect_url: redirect_url || request.headers.get('origin') || 'http://localhost:5173',
-        };
-
-        console.log('[recruiter-admin-signup] Calling SSO at:', signupUrl);
-
-        const ssoResponse = await fetch(signupUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Origin': request.headers.get('origin') || 'http://localhost:5173',
-            },
-            body: JSON.stringify(signupPayload),
+            ip: request.headers.get('CF-Connecting-IP') || undefined,
+            ua: request.headers.get('User-Agent') || undefined,
         });
 
-        if (!ssoResponse.ok) {
-            const errorData = await ssoResponse.json().catch(() => ({ error: 'Unknown error' }));
-            console.error('[recruiter-admin-signup] SSO error:', errorData);
-            throw new Error(errorData.error || 'SSO signup failed');
+        if (!ssoResult.success || !ssoResult.access_token) {
+            const errorMsg = ssoResult?.error || 'SSO signup failed';
+            console.error('[recruiter-admin-signup] SSO error:', errorMsg);
+            return new Response(JSON.stringify({
+                error: errorMsg
+            }), {
+                status: ssoResult?.status || 500,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
         }
 
-        const result = await ssoResponse.json();
-
         console.log('[recruiter-admin-signup] Success:', {
-            userId: result.user?.id,
-            orgId: result.org?.id,
-            emailSent: result.email_sent,
+            userId: ssoResult.user?.id,
+            orgId: ssoResult.org?.id,
+            emailSent: ssoResult.email_sent,
         });
 
-        // Extract Set-Cookie headers from SSO response to forward to client
-        const setCookieHeaders = ssoResponse.headers.getSetCookie?.() || [];
-
-        // Build response headers with cookies
+        // Build response headers with refresh token cookie
         const responseHeaders = new Headers({
             ...corsHeaders,
             'Content-Type': 'application/json',
             'X-Signup-Timestamp': Date.now().toString(),
         });
 
-        // Forward all Set-Cookie headers from SSO
-        setCookieHeaders.forEach(cookie => {
-            responseHeaders.append('Set-Cookie', cookie);
-        });
+        // Set refresh token as HTTP-Only cookie
+        if (ssoResult.refresh_token) {
+            responseHeaders.append(
+                'Set-Cookie',
+                `refresh_token=${ssoResult.refresh_token}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=604800`
+            );
+        }
 
         // Return success (org name is null, will be set in onboarding)
         return new Response(JSON.stringify({
-            access_token: result.access_token,
-            user: result.user,
+            access_token: ssoResult.access_token,
+            user: ssoResult.user,
             org: {
-                id: result.org?.id,
+                id: ssoResult.org?.id,
                 name: null, // Explicitly null until onboarding Step 1
             },
-            email_sent: result.email_sent,
+            email_sent: ssoResult.email_sent,
             // Include timestamp for retry logic (helps frontend know this is a new signup)
             signup_timestamp: Date.now(),
         }), {
