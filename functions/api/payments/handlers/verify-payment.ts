@@ -136,7 +136,12 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
     }
 
     // Authoritative price from DB — never trust client-supplied price
-    const pricingMatrix = validPlan.pricing_matrix as Record<string, any>;
+    interface PricingEntry {
+      monthly?: number;
+      yearly?: number;
+    }
+    
+    const pricingMatrix = validPlan.pricing_matrix as Record<string, PricingEntry> | null;
     const clientPrice = plan.price as number;
     let planPrice: number | undefined;
 
@@ -498,6 +503,20 @@ async function sendPaymentSuccessEmail(
 }
 
 /**
+ * Check if error indicates unsupported RPC method
+ * Isolates fragile string matching in single type-safe helper
+ */
+function isUnsupportedRpcMethod(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'message' in error &&
+    typeof error.message === 'string' &&
+    error.message.includes('not implemented')
+  );
+}
+
+/**
  * Generate and upload payment receipt PDF, then update subscription with receipt URL
  */
 async function generateAndUploadReceipt(params: {
@@ -654,7 +673,7 @@ async function generateAndUploadReceipt(params: {
           const error = txUpdateErr instanceof Error ? txUpdateErr : new Error(String(txUpdateErr));
           
           // Graceful degradation: If SSO RPC method is not implemented yet, log warning and continue
-          if (error.message?.includes('not implemented')) {
+          if (isUnsupportedRpcMethod(error)) {
             logger.warn('Transaction update skipped: SSO RPC method not yet available');
           } else {
             logger.error('Failed to update transaction with receipt_url (non-critical)', error);

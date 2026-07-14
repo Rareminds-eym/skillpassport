@@ -26,13 +26,12 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import toast from 'react-hot-toast';
 
 import { useUsageStatistics } from '@/features/analytics/model/useUsageStatistics';
 import { RECEIPT_CONFIG } from '@/shared/config/constants';
 import { downloadFileFromUrl, generateReceiptFilename } from '@/shared/utils/downloadHelpers';
-
 import { getPaymentReceiptPresignedUrl } from '@/shared/api';
-import toast from 'react-hot-toast';
 import { getLogger } from '@/shared/config/logging';
 import { useUser, useUserRole, useAuthLoading } from '@/shared/model/authStore';
 import { calculateDaysRemaining, calculateProgressPercentage, deactivateSubscription, formatDate, getSubscriptionStatusChecks, pauseSubscription, resumeSubscription } from '@/features/subscription';
@@ -1403,10 +1402,11 @@ function MySubscription() {
             {/* Additional Feedback */}
             {cancelReason && (
               <div className="mb-6">
-                <label className="block text-sm font-semibold text-slate-900 mb-3 uppercase tracking-wider">
+                <label htmlFor="cancel-feedback" className="block text-sm font-semibold text-slate-900 mb-3 uppercase tracking-wider">
                   Tell us more (optional)
                 </label>
                 <textarea
+                  id="cancel-feedback"
                   value={additionalFeedback}
                   onChange={(e) => setAdditionalFeedback(e.target.value)}
                   placeholder="Your feedback helps us improve..."
@@ -1428,6 +1428,7 @@ function MySubscription() {
                     : 'Not using it right now? Pause your subscription for 1-3 months instead of canceling.'}
                 </p>
                 <button
+                  type="button"
                   onClick={() => {
                     if (cancelReason === 'Too expensive') {
                       alert('Discount offer applied! Redirecting to payment...');
@@ -1445,6 +1446,7 @@ function MySubscription() {
 
             <div className="flex gap-3">
               <button
+                type="button"
                 onClick={() => {
                   setShowCancelModal(false);
                   setCancelReason('');
@@ -1457,6 +1459,7 @@ function MySubscription() {
                 Keep Subscription
               </button>
               <button
+                type="button"
                 onClick={confirmCancelSubscription}
                 disabled={isCancelling || !cancelReason}
                 className="flex-1 px-4 py-3 bg-gradient-to-r from-slate-800 to-slate-900 text-white rounded-2xl text-sm font-semibold hover:from-slate-900 hover:to-black transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:scale-105"
@@ -1514,6 +1517,7 @@ function MySubscription() {
 
             <div className="flex gap-3">
               <button
+                type="button"
                 onClick={() => setShowPauseModal(false)}
                 disabled={isPausing}
                 className="flex-1 px-4 py-3 border-2 border-slate-300 text-slate-900 rounded-2xl text-sm font-semibold hover:bg-slate-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1521,6 +1525,7 @@ function MySubscription() {
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={handlePauseSubscription}
                 disabled={isPausing}
                 className="flex-1 px-4 py-3 bg-gradient-to-r from-amber-600 to-amber-700 text-white rounded-2xl text-sm font-semibold hover:from-amber-700 hover:to-amber-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:scale-105"

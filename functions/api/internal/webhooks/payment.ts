@@ -68,16 +68,18 @@ export const onRequestPost: PagesFunction<PagesEnv> = async (context) => {
     }
 
     // 2. Extract Razorpay entity details with proper typing
+    interface PaymentEntity {
+      id: string;
+      order_id: string;
+      amount: number;
+      currency?: string;
+      method: string;
+      notes?: Record<string, string>;
+    }
+
     interface PaymentPayload {
       payment?: {
-        entity?: {
-          id: string;
-          order_id: string;
-          amount: number;
-          currency?: string;
-          method: string;
-          notes?: Record<string, string>;
-        };
+        entity?: PaymentEntity;
       };
     }
 
@@ -275,7 +277,31 @@ export const onRequestPost: PagesFunction<PagesEnv> = async (context) => {
   }
 };
 
-async function generateAndSendReceipt(env: PagesEnv, subscription: any, paymentEntity: any, userId: string, razorpay_order_id: string, razorpay_payment_id: string, amount: number) {
+interface SubscriptionForReceipt {
+  id: string;
+  plan_type: string;
+  billing_cycle: string;
+  subscription_start_date: string;
+  subscription_end_date: string;
+  full_name?: string;
+  email: string;
+  phone?: string;
+}
+
+interface PaymentEntityForReceipt {
+  currency?: string;
+  method?: string;
+}
+
+async function generateAndSendReceipt(
+  env: PagesEnv,
+  subscription: SubscriptionForReceipt,
+  paymentEntity: PaymentEntityForReceipt,
+  userId: string,
+  razorpay_order_id: string,
+  razorpay_payment_id: string,
+  amount: number
+) {
   try {
     const supabase = getServiceClient(env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string });
     let receiptUrl: string | null = null;
@@ -297,16 +323,16 @@ async function generateAndSendReceipt(env: PagesEnv, subscription: any, paymentE
         status: 'Success',
       },
       subscription: {
-        plan_name: subscription.plan_type as string,
-        plan_type: subscription.plan_type as string,
-        billing_cycle: subscription.billing_cycle as string,
-        subscription_start_date: subscription.subscription_start_date as string,
-        subscription_end_date: subscription.subscription_end_date as string,
+        plan_name: subscription.plan_type,
+        plan_type: subscription.plan_type,
+        billing_cycle: subscription.billing_cycle,
+        subscription_start_date: subscription.subscription_start_date,
+        subscription_end_date: subscription.subscription_end_date,
       },
       user: {
-        name: learner?.name || (subscription.full_name as string) || '',
-        email: (subscription.email as string) || '',
-        phone: (subscription.phone as string) || undefined,
+        name: learner?.name || subscription.full_name || '',
+        email: subscription.email,
+        phone: subscription.phone,
       },
       company: {
         name: 'Rareminds',
@@ -396,12 +422,12 @@ async function generateAndSendReceipt(env: PagesEnv, subscription: any, paymentE
     }
 
     const emailData: EventConfirmationTemplateData = {
-      name: subscription.full_name as string,
-      email: (subscription.email as string) || '',
-      phone: (subscription.phone as string) || '',
+      name: subscription.full_name || subscription.email,
+      email: subscription.email,
+      phone: subscription.phone || '',
       amount: amount / 100,
       orderId: razorpay_order_id,
-      campaign: subscription.plan_type as string,
+      campaign: subscription.plan_type,
       receiptUrl: receiptUrl || undefined,
     };
 

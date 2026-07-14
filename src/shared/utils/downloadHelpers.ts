@@ -9,7 +9,6 @@
  */
 
 import { DEFAULT_TIMEOUT } from '@/shared/api/httpClient';
-import { createTimeoutSignal } from '@/shared/lib/create-timeout-signal';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('download-helpers');
@@ -43,12 +42,14 @@ export async function downloadFileFromUrl(url: string, filename?: string): Promi
     filename = `download-${getDateString()}.pdf`;
   }
 
+  // Use AbortController with explicit timeout management
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT);
+  
   try {
     // Primary strategy: fetch + blob for better control
-    const timeoutSignal = createTimeoutSignal(DEFAULT_TIMEOUT);
-    
     const response = await fetch(url, {
-      signal: timeoutSignal,
+      signal: controller.signal,
     });
     
     if (!response.ok) {
@@ -101,6 +102,9 @@ export async function downloadFileFromUrl(url: string, filename?: string): Promi
       logger.error('Both fetch and direct link failed', fallbackErr);
       throw new Error(`Download failed: ${fallbackErr.message}`);
     }
+  } finally {
+    // Clear timeout to prevent memory leaks
+    clearTimeout(timeoutId);
   }
 }
 
