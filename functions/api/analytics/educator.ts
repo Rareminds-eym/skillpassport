@@ -2,8 +2,127 @@ import { withAuth, getContextUser } from '../../lib/auth';
 import { getServiceClient } from '../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { apiSuccess, apiError, apiDbError } from '../../lib/response';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { PagesEnv } from '../../lib/types';
 
-async function getFilteredLearnerIds(supabase: any, params: any, userId: string): Promise<string[]> {
+/**
+ * Map get-or-create: returns the existing value for `key`, or creates it via
+ * `factory`, stores it, and returns that — replaces the `!m.has(k)) ...set(...)`
+ * + `.get(k)!` pattern with an equivalent implementation that needs no
+ * non-null assertion, since the returned value's presence is established by
+ * this function's own control flow rather than asserted after the fact.
+ */
+function getOrCreate<K, V>(map: Map<K, V>, key: K, factory: () => V): V {
+  const existing = map.get(key);
+  if (existing !== undefined) return existing;
+  const created = factory();
+  map.set(key, created);
+  return created;
+}
+
+/** Educator scope params, as sent by the frontend's EducatorCourseAnalyticsScope (entities/course-analytics/api/queries.ts) and consumed by every action in this file. */
+export interface EducatorScopeParams {
+  schoolId?: string;
+  collegeId?: string;
+  educatorType?: 'school' | 'college' | null;
+  educatorRole?: string | null;
+  assignedClassIds?: string[];
+}
+
+/** A row from `program_sections` as selected by `.select('program_id, semester, section')` in this file's college-educator scoping queries. */
+interface ProgramSection {
+  program_id: string;
+  semester: string;
+  section: string;
+}
+
+/** A row from `attendance_records`/`college_attendance_records` as selected by `.select('status, learner_id')` in 'get-kpi-data'. */
+interface AttendanceRecordRow {
+  status: string;
+  learner_id: string;
+}
+
+/** A `skills` row as selected by `.select('type, verified, level, learner_id, enabled')` in 'get-skill-summary'. */
+interface SkillSummaryRow {
+  type: string | null;
+  verified: boolean | null;
+  level: number | null;
+  learner_id: string;
+}
+
+/** A `skills` row as selected by `.select('type, level')` in 'get-skill-growth'. */
+interface SkillGrowthRow {
+  type: string | null;
+  level: number | null;
+}
+
+/** A `learners` row as selected by `.select('id, user_id, name, learner_id')` in 'get-leaderboard'. */
+interface LeaderboardLearnerRow {
+  id: string;
+  user_id: string | null;
+  name: string | null;
+  learner_id: string | null;
+}
+
+/** A `projects`/`certificates`/`trainings` row as selected by `.select('learner_id, approval_status')` in 'get-leaderboard'. */
+interface ActivityStatusRow {
+  learner_id: string;
+  approval_status: string | null;
+}
+
+/** A `projects`/`certificates`/`trainings` row as selected by `.select('created_at')` in 'get-activity-heatmap'. */
+interface CreatedAtRow {
+  created_at: string | null;
+}
+
+/** A computed leaderboard row, before the final rank is assigned. */
+interface LeaderboardEntry {
+  learnerId: string;
+  learnerName: string;
+  totalActivities: number;
+  verifiedActivities: number;
+  awards: number;
+  progress: number;
+}
+
+/** A `certificates` row as selected by `.select('created_at, approval_status')` in 'get-certificate-stats'. */
+interface CertificateStatsRow {
+  created_at: string;
+  approval_status: string | null;
+}
+
+/** A `learner_assignments` row as selected by `.select('status, submission_date, is_deleted')` in 'get-assignment-stats'. */
+interface LearnerAssignmentStatusRow {
+  status: string | null;
+  submission_date: string | null;
+}
+
+/** An `assignments` row as selected by `.select('assignment_id, title, is_deleted')` in 'get-assignment-details'. */
+interface AssignmentRow {
+  assignment_id: string;
+  title: string | null;
+}
+
+/** A `learner_assignments` row as selected by `.select('assignment_id, status, grade_percentage, is_deleted')` in 'get-assignment-details'. */
+interface LearnerAssignmentGradeRow {
+  assignment_id: string;
+  status: string | null;
+  grade_percentage: number | null;
+}
+
+/** A `skills` row as selected by `.select('name, learner_id, level, enabled')` in 'get-top-skills'. */
+interface SkillNameRow {
+  name: string;
+  learner_id: string;
+  level: number | null;
+}
+
+/** POST body for this action router — every action reads only `action` plus the shared {@link EducatorScopeParams} fields via the `...params` rest-spread. */
+interface EducatorAnalyticsRequestBody extends EducatorScopeParams {
+  action: string;
+}
+
+async function getFilteredLearnerIds(supabase: SupabaseClient, params: EducatorScopeParams, userId: string): Promise<string[]> {
   const { schoolId, collegeId, educatorType, educatorRole, assignedClassIds } = params;
   if (!schoolId && !collegeId) return [];
 
@@ -14,13 +133,13 @@ async function getFilteredLearnerIds(supabase: any, params: any, userId: string)
           .from('learners').select('user_id')
           .eq('school_id', schoolId).eq('is_deleted', false)
           .is('college_id', null).not('learner_id', 'is', null);
-        return data?.map((s: any) => s.user_id).filter(Boolean) || [];
+        return data?.map((s: { user_id: string }) => s.user_id).filter(Boolean) || [];
       } else if (assignedClassIds?.length > 0) {
         const { data } = await supabase
           .from('learners').select('user_id')
           .eq('school_id', schoolId).in('school_class_id', assignedClassIds)
           .eq('is_deleted', false).is('college_id', null).not('learner_id', 'is', null);
-        return data?.map((s: any) => s.user_id).filter(Boolean) || [];
+        return data?.map((s: { user_id: string }) => s.user_id).filter(Boolean) || [];
       }
       return [];
     } else if (educatorType === 'college' && collegeId) {
@@ -31,7 +150,7 @@ async function getFilteredLearnerIds(supabase: any, params: any, userId: string)
 
       if (!programSections?.length) return [];
 
-      const orConditions = programSections.map((s: any) =>
+      const orConditions = programSections.map((s: ProgramSection) =>
         `and(program_id.eq.${s.program_id},semester.eq.${s.semester},section.eq.${s.section})`
       ).join(',');
 
@@ -41,15 +160,21 @@ async function getFilteredLearnerIds(supabase: any, params: any, userId: string)
         .is('school_id', null).not('learner_id', 'is', null)
         .or(orConditions);
 
-      return learners?.filter((s: any) => s.user_id != null).map((s: any) => s.user_id) || [];
+      return learners?.filter((s: { user_id: string }) => s.user_id != null).map((s: { user_id: string }) => s.user_id) || [];
     }
     return [];
-  } catch {
+  } catch (error: unknown) {
+    console.error('[getFilteredLearnerIds] Error:', error instanceof Error ? error.message : error);
     return [];
   }
 }
 
-async function getFilteredLearnerRecordIds(supabase: any, params: any, userId: string): Promise<string[]> {
+/**
+ * Exported so functions/api/educator/course-analytics.ts can reuse the exact
+ * same educator→learner scoping logic (school class assignment / college
+ * program_sections.faculty_id) instead of duplicating it.
+ */
+export async function getFilteredLearnerRecordIds(supabase: SupabaseClient, params: EducatorScopeParams, userId: string): Promise<string[]> {
   const { schoolId, collegeId, educatorType, educatorRole, assignedClassIds } = params;
   if (!schoolId && !collegeId) return [];
 
@@ -60,13 +185,13 @@ async function getFilteredLearnerRecordIds(supabase: any, params: any, userId: s
           .from('learners').select('id')
           .eq('school_id', schoolId).eq('is_deleted', false)
           .is('college_id', null).not('learner_id', 'is', null);
-        return data?.map((s: any) => s.id).filter(Boolean) || [];
+        return data?.map((s: { id: string }) => s.id).filter(Boolean) || [];
       } else if (assignedClassIds?.length > 0) {
         const { data } = await supabase
           .from('learners').select('id')
           .eq('school_id', schoolId).in('school_class_id', assignedClassIds)
           .eq('is_deleted', false).is('college_id', null).not('learner_id', 'is', null);
-        return data?.map((s: any) => s.id).filter(Boolean) || [];
+        return data?.map((s: { id: string }) => s.id).filter(Boolean) || [];
       }
       return [];
     } else if (educatorType === 'college' && collegeId) {
@@ -77,7 +202,7 @@ async function getFilteredLearnerRecordIds(supabase: any, params: any, userId: s
 
       if (!programSections?.length) return [];
 
-      const orConditions = programSections.map((s: any) =>
+      const orConditions = programSections.map((s: ProgramSection) =>
         `and(program_id.eq.${s.program_id},semester.eq.${s.semester},section.eq.${s.section})`
       ).join(',');
 
@@ -87,22 +212,22 @@ async function getFilteredLearnerRecordIds(supabase: any, params: any, userId: s
         .is('school_id', null).not('learner_id', 'is', null)
         .or(orConditions);
 
-      return learners?.map((s: any) => s.id).filter(Boolean) || [];
+      return learners?.map((s: { id: string }) => s.id).filter(Boolean) || [];
     }
     return [];
-  } catch {
+  } catch (error: unknown) {
+    console.error('[getFilteredLearnerRecordIds] Error:', error instanceof Error ? error.message : error);
     return [];
   }
 }
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const user = getContextUser(context);
-  const env = context.env as Record<string, string>;
-  const supabase = getServiceClient(env as any);
+  const supabase = getServiceClient(context.env as PagesEnv);
 
-  let body: Record<string, any>;
+  let body: EducatorAnalyticsRequestBody;
   try {
-    body = await context.request.json();
+    body = await context.request.json() as EducatorAnalyticsRequestBody;
   } catch {
     return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON body', context.request);
   }
@@ -152,10 +277,18 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         ]);
 
         const activeLearnerSet = new Set<string>();
-        (allSkills as Array<{ learner_id: string }> | null)?.forEach(s => s.learner_id && activeLearnerSet.add(s.learner_id));
-        (projectLearners as Array<{ learner_id: string }> | null)?.forEach(p => p.learner_id && activeLearnerSet.add(p.learner_id));
-        (certLearners as Array<{ learner_id: string }> | null)?.forEach(c => c.learner_id && activeLearnerSet.add(c.learner_id));
-        (trainingLearners as Array<{ learner_id: string }> | null)?.forEach(t => t.learner_id && activeLearnerSet.add(t.learner_id));
+        (allSkills as Array<{ learner_id: string }> | null)?.forEach(s => {
+          if (s.learner_id) activeLearnerSet.add(s.learner_id);
+        });
+        (projectLearners as Array<{ learner_id: string }> | null)?.forEach(p => {
+          if (p.learner_id) activeLearnerSet.add(p.learner_id);
+        });
+        (certLearners as Array<{ learner_id: string }> | null)?.forEach(c => {
+          if (c.learner_id) activeLearnerSet.add(c.learner_id);
+        });
+        (trainingLearners as Array<{ learner_id: string }> | null)?.forEach(t => {
+          if (t.learner_id) activeLearnerSet.add(t.learner_id);
+        });
 
         const activelearners = activeLearnerSet.size;
         const totalApproved = (approvedProjects || 0) + (approvedCerts || 0) + (approvedTrainings || 0);
@@ -179,7 +312,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
               .eq(idField, entityId).in('learner_id', learnerRecordIds);
 
             if (records?.length) {
-              const presentCount = records.filter((r: any) => r.status === 'present' || r.status === 'late').length;
+              const presentCount = records.filter((r: AttendanceRecordRow) => r.status === 'present' || r.status === 'late').length;
               attendanceRate = Math.round((presentCount / records.length) * 100);
             }
           }
@@ -208,7 +341,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const totallearners = learnerIds.length;
         const categoryMap: Record<string, { total: number; verified: number; totalLevels: number; learnerSet: Set<string> }> = {};
 
-        skills.forEach((skill: any) => {
+        skills.forEach((skill: SkillSummaryRow) => {
           const category = skill.type || 'Other';
           if (!categoryMap[category]) categoryMap[category] = { total: 0, verified: 0, totalLevels: 0, learnerSet: new Set() };
           categoryMap[category].total++;
@@ -297,13 +430,13 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
             .lte('created_at', month.endDate).eq('enabled', true)
             .eq('approval_status', 'approved').in('learner_id', learnerIds);
 
-          const technical = skills?.filter((s: any) => s.type === 'technical') || [];
-          const softSkills = skills?.filter((s: any) => s.type === 'soft') || [];
+          const technical = skills?.filter((s: SkillGrowthRow) => s.type === 'technical') || [];
+          const softSkills = skills?.filter((s: SkillGrowthRow) => s.type === 'soft') || [];
 
           const avgTechnical = technical.length
-            ? Math.round((technical.reduce((sum: number, s: any) => sum + (s.level || 0), 0) / technical.length) * 20) : 0;
+            ? Math.round((technical.reduce((sum: number, s: SkillGrowthRow) => sum + (s.level || 0), 0) / technical.length) * 20) : 0;
           const avgSoft = softSkills.length
-            ? Math.round((softSkills.reduce((sum: number, s: any) => sum + (s.level || 0), 0) / softSkills.length) * 20) : 0;
+            ? Math.round((softSkills.reduce((sum: number, s: SkillGrowthRow) => sum + (s.level || 0), 0) / softSkills.length) * 20) : 0;
 
           return { month: month.label, technical: avgTechnical, communication: avgSoft, leadership: Math.max(0, avgSoft - 5), creativity: Math.max(0, avgTechnical - 10) };
         });
@@ -338,7 +471,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
       case 'get-leaderboard': {
         const { schoolId, collegeId, educatorType, educatorRole, assignedClassIds } = params;
-        let learnersQuery: any;
+        let learnersQuery: PromiseLike<{ data: LeaderboardLearnerRow[] | null }>;
 
         if (educatorType === 'school' && schoolId) {
           if (educatorRole === 'admin' || educatorRole === 'school_admin') {
@@ -359,7 +492,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
           if (!programSections?.length) return apiSuccess([], context.request, { startTime });
 
-          const orConditions = programSections.map((s: any) =>
+          const orConditions = programSections.map((s: ProgramSection) =>
             `and(program_id.eq.${s.program_id},semester.eq.${s.semester},section.eq.${s.section})`
           ).join(',');
 
@@ -374,7 +507,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const { data: learners } = await learnersQuery;
         if (!learners?.length) return apiSuccess([], context.request, { startTime });
 
-        const learnerUserIds = learners.map((s: any) => s.user_id || s.id).filter(Boolean);
+        const learnerUserIds = learners.map((s: LeaderboardLearnerRow) => s.user_id || s.id).filter(Boolean);
 
         const [projectsResult, certificatesResult, trainingsResult] = await Promise.all([
           supabase.from('projects').select('learner_id, approval_status').in('learner_id', learnerUserIds).eq('enabled', true),
@@ -383,9 +516,9 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         ]);
 
         const activityMap: Record<string, { total: number; verified: number }> = {};
-        learners.forEach((s: any) => { const key = s.user_id || s.id; activityMap[key] = { total: 0, verified: 0 }; });
+        learners.forEach((s: LeaderboardLearnerRow) => { const key = s.user_id || s.id; activityMap[key] = { total: 0, verified: 0 }; });
 
-        [...(projectsResult.data || []), ...(certificatesResult.data || []), ...(trainingsResult.data || [])].forEach((activity: any) => {
+        [...(projectsResult.data || []), ...(certificatesResult.data || []), ...(trainingsResult.data || [])].forEach((activity: ActivityStatusRow) => {
           if (activity && activityMap[activity.learner_id]) {
             activityMap[activity.learner_id].total++;
             if (activity.approval_status === 'sent_to_admin' || activity.approval_status === 'approved') {
@@ -395,7 +528,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         });
 
         const leaderboardData = learners
-          .map((learner: any) => {
+          .map((learner: LeaderboardLearnerRow): LeaderboardEntry => {
             const key = learner.user_id || learner.id;
             const { total, verified } = activityMap[key] || { total: 0, verified: 0 };
             return {
@@ -404,8 +537,8 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
               progress: total > 0 ? Math.round((verified / total) * 100) : 0,
             };
           })
-          .sort((a: any, b: any) => b.verifiedActivities !== a.verifiedActivities ? b.verifiedActivities - a.verifiedActivities : b.totalActivities - a.totalActivities)
-          .map((entry: any, index: number) => ({ ...entry, rank: index + 1 }));
+          .sort((a: LeaderboardEntry, b: LeaderboardEntry) => b.verifiedActivities !== a.verifiedActivities ? b.verifiedActivities - a.verifiedActivities : b.totalActivities - a.totalActivities)
+          .map((entry: LeaderboardEntry, index: number) => ({ ...entry, rank: index + 1 }));
 
         return apiSuccess(leaderboardData, context.request, { startTime });
       }
@@ -425,7 +558,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         ]);
 
         const dateCountMap: Record<string, number> = {};
-        [...(projectsResult.data || []), ...(certificatesResult.data || []), ...(trainingsResult.data || [])].forEach((activity: any) => {
+        [...(projectsResult.data || []), ...(certificatesResult.data || []), ...(trainingsResult.data || [])].forEach((activity: CreatedAtRow) => {
           const date = activity.created_at?.split('T')[0];
           if (date) dateCountMap[date] = (dateCountMap[date] || 0) + 1;
         });
@@ -453,12 +586,12 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
         const monthlyStats = new Map<string, { issued: number; pending: number; rejected: number }>();
         const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        months.forEach(m => monthlyStats.set(m, { issued: 0, pending: 0, rejected: 0 }));
+        months.forEach(m => void monthlyStats.set(m, { issued: 0, pending: 0, rejected: 0 }));
 
-        certificates.forEach((cert: any) => {
+        certificates.forEach((cert: CertificateStatsRow) => {
           const monthName = new Date(cert.created_at).toLocaleDateString('en-US', { month: 'short' });
-          if (monthlyStats.has(monthName)) {
-            const stats = monthlyStats.get(monthName)!;
+          const stats = monthlyStats.get(monthName);
+          if (stats) {
             if (cert.approval_status === 'approved') stats.issued++;
             else if (cert.approval_status === 'pending') stats.pending++;
             else if (cert.approval_status === 'rejected') stats.rejected++;
@@ -489,10 +622,10 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           monthlyStats.set(date.toLocaleDateString('en-US', { month: 'short' }), { pending: 0, submitted: 0, graded: 0 });
         }
 
-        learnerAssignments.forEach((assignment: any) => {
+        learnerAssignments.forEach((assignment: LearnerAssignmentStatusRow) => {
           const monthName = new Date(assignment.submission_date || now).toLocaleDateString('en-US', { month: 'short' });
-          if (monthlyStats.has(monthName)) {
-            const stats = monthlyStats.get(monthName)!;
+          const stats = monthlyStats.get(monthName);
+          if (stats) {
             if (assignment.status === 'todo' || assignment.status === 'in-progress') stats.pending++;
             else if (assignment.status === 'submitted') stats.submitted++;
             else if (assignment.status === 'graded') stats.graded++;
@@ -511,7 +644,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
         if (!assignments?.length) return apiSuccess([], context.request, { startTime });
 
-        const assignmentIds = assignments.map((a: any) => a.assignment_id);
+        const assignmentIds = assignments.map((a: AssignmentRow) => a.assignment_id);
         const { data: learnerAssignments } = await supabase
           .from('learner_assignments').select('assignment_id, status, grade_percentage, is_deleted')
           .in('assignment_id', assignmentIds).eq('is_deleted', false).in('learner_id', learnerIds);
@@ -519,11 +652,11 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         if (!learnerAssignments) return apiSuccess([], context.request, { startTime });
 
         const detailsMap: Record<string, { title: string; total: number; submitted: number; graded: number; pending: number; totalGrade: number; gradeCount: number }> = {};
-        assignments.forEach((a: any) => {
+        assignments.forEach((a: AssignmentRow) => {
           detailsMap[a.assignment_id] = { title: a.title || 'Untitled', total: 0, submitted: 0, graded: 0, pending: 0, totalGrade: 0, gradeCount: 0 };
         });
 
-        learnerAssignments.forEach((sa: any) => {
+        learnerAssignments.forEach((sa: LearnerAssignmentGradeRow) => {
           if (detailsMap[sa.assignment_id]) {
             const d = detailsMap[sa.assignment_id];
             d.total++;
@@ -534,13 +667,13 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         });
 
         const result = assignments
-          .map((a: any) => ({
+          .map((a: AssignmentRow) => ({
             assignmentId: a.assignment_id, title: detailsMap[a.assignment_id].title,
             total: detailsMap[a.assignment_id].total, submitted: detailsMap[a.assignment_id].submitted,
             graded: detailsMap[a.assignment_id].graded, pending: detailsMap[a.assignment_id].pending,
             averageGrade: detailsMap[a.assignment_id].gradeCount > 0 ? Math.round(detailsMap[a.assignment_id].totalGrade / detailsMap[a.assignment_id].gradeCount) : 0,
           }))
-          .sort((a: any, b: any) => b.total - a.total);
+          .sort((a, b) => b.total - a.total);
 
         return apiSuccess(result, context.request, { startTime });
       }
@@ -556,9 +689,8 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         if (!skills?.length) return apiSuccess([], context.request, { startTime });
 
         const skillMap = new Map<string, { count: number; totalLevel: number }>();
-        skills.forEach((skill: any) => {
-          if (!skillMap.has(skill.name)) skillMap.set(skill.name, { count: 0, totalLevel: 0 });
-          const data = skillMap.get(skill.name)!;
+        skills.forEach((skill: SkillNameRow) => {
+          const data = getOrCreate(skillMap, skill.name, () => ({ count: 0, totalLevel: 0 }));
           data.count++; data.totalLevel += skill.level || 0;
         });
 
@@ -573,7 +705,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       default:
         return apiError(400, 'INVALID_ACTION', `Unknown action: ${action}`, context.request, { startTime });
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     return apiDbError(error, context.request, { startTime });
   }
 });
