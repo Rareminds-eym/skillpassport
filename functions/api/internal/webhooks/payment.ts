@@ -379,21 +379,32 @@ async function generateAndSendReceipt(
       }
       
       // Import SSO client module (should always succeed since module is bundled)
-      let ssoClient: SSOClientModule | null = null;
+      let ssoClient: SSOClientModule;
       try {
         ssoClient = (await import('../../../lib/sso-client.js')) as unknown as SSOClientModule;
-      } catch (importErr) {
+      } catch (importErr: unknown) {
         // Module import failure is an UNEXPECTED deployment or build problem.
         // The module is always bundled; only the SSO_SERVICE binding is optional (checked above).
+        const error = importErr instanceof Error ? importErr : new Error(String(importErr));
         logger.error(
           'Failed to load sso-client module (unexpected deployment/build problem); skipping non-critical SSO subscription update',
-          importErr instanceof Error ? importErr : new Error(String(importErr))
+          error
         );
         // Explicitly continue — SSO subscription update is non-critical and must not block payment processing.
         return;
       }
       
-      if (ssoClient && typeof ssoClient.ssoUpdateSubscriptionField === 'function') {
+      if (typeof ssoClient.ssoUpdateSubscriptionField === 'function') {
+        // Validate subscription data before making SSO call
+        if (
+          !subscription ||
+          typeof subscription.id !== 'string' ||
+          subscription.id.trim().length === 0
+        ) {
+          logger.warn('Missing or invalid subscription ID for SSO update; skipping non-critical SSO update');
+          return;
+        }
+        
         try {
           await ssoClient.ssoUpdateSubscriptionField(
             env as unknown as { SSO_SERVICE: Fetcher },
