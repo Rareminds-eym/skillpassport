@@ -586,7 +586,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
         const monthlyStats = new Map<string, { issued: number; pending: number; rejected: number }>();
         const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        months.forEach(m => monthlyStats.set(m, { issued: 0, pending: 0, rejected: 0 }));
+        months.forEach(m => void monthlyStats.set(m, { issued: 0, pending: 0, rejected: 0 }));
 
         certificates.forEach((cert: CertificateStatsRow) => {
           const monthName = new Date(cert.created_at).toLocaleDateString('en-US', { month: 'short' });
