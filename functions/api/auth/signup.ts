@@ -7,6 +7,7 @@ interface SignupBody {
   org_name: string;
   role: string;
   redirect_url?: string;
+  user_metadata?: Record<string, unknown>;
 }
 
 /**
@@ -21,7 +22,7 @@ export async function onRequestPost(context: { request: Request; env: Env }): Pr
 
   try {
     const body = await request.json() as SignupBody;
-    const { email, password, org_name, role, redirect_url } = body;
+    const { email, password, org_name, role, redirect_url, user_metadata } = body;
 
     if (!email || !password || !org_name || !role) {
       return new Response(JSON.stringify({
@@ -50,7 +51,8 @@ export async function onRequestPost(context: { request: Request; env: Env }): Pr
       password,
       org_name,
       role,
-      redirect_url
+      redirect_url,
+      user_metadata
     });
 
     // Handle RPC error response

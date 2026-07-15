@@ -7,6 +7,7 @@ interface SignupMemberBody {
   role: string;
   org_id?: string;
   redirect_url?: string;
+  user_metadata?: Record<string, unknown>;
 }
 
 export async function onRequestPost(context: {
@@ -40,6 +41,7 @@ export async function onRequestPost(context: {
       role: body.role,
       org_id: body.org_id,
       redirect_url: body.redirect_url,
+      user_metadata: body.user_metadata,
       ip,
       ua,
     });

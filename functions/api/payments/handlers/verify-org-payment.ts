@@ -111,7 +111,6 @@ export async function handleVerifyOrgPayment(context: AuthenticatedContext): Pro
         features: [],
         full_name: (user as any).name || user.email || '',
         email: user.email || '',
-        phone: (user as any).phone || undefined,
         razorpay_order_id: body.razorpay_order_id as string,
         razorpay_payment_id: body.razorpay_payment_id as string,
         organization_id: body.org_id as string,

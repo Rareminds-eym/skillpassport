@@ -266,7 +266,6 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
           features: validPlan.base_features || [],
           full_name: (user as any).name || user.email || '',
           email: user.email || '',
-          phone: (user as any).phone || undefined,
           razorpay_order_id: body.razorpay_order_id as string,
           razorpay_payment_id: body.razorpay_payment_id as string,
         });
