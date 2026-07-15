@@ -45,14 +45,25 @@ export async function onRequestPost(context: { request: Request; env: Env }): Pr
       });
     }
 
+    // Allow-list user_metadata to the fields the frontend actually sends,
+    // stripping any unexpected keys before they reach the SSO Worker/JWT.
+    const safeUserMetadata = user_metadata && typeof user_metadata === 'object'
+      ? {
+          firstName: typeof user_metadata.firstName === 'string' ? user_metadata.firstName : undefined,
+          lastName: typeof user_metadata.lastName === 'string' ? user_metadata.lastName : undefined,
+          phone: typeof user_metadata.phone === 'string' || user_metadata.phone === null ? user_metadata.phone : undefined,
+          avatarUrl: typeof user_metadata.avatarUrl === 'string' || user_metadata.avatarUrl === null ? user_metadata.avatarUrl : undefined,
+        }
+      : undefined;
+
     // Call RPC method directly on SSO Worker
-    const ssoResult = await (env.SSO_SERVICE as any).signup({
+    const ssoResult = await env.SSO_SERVICE.signup({
       email,
       password,
       org_name,
       role,
       redirect_url,
-      user_metadata
+      user_metadata: safeUserMetadata
     });
 
     // Handle RPC error response
