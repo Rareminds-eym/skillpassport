@@ -772,10 +772,7 @@ const LearnerCollegeAdminCommunication = () => {
         setMessageInput(messageToSend);
       }
     } finally {
-      // Reset ref after a delay
-      setTimeout(() => {
-        isSendingRef.current = false;
-      }, 500);
+      isSendingRef.current = false;
     }
   }, [messageInput, currentChat, collegeAdminId, sendMessage, sendNotification, selectedConversationId, setTyping, activeTab, isSending]);
 
@@ -826,6 +823,7 @@ const LearnerCollegeAdminCommunication = () => {
                   {/* New Button */}
                   {!showArchived && (
                     <button
+                      type="button"
                       onClick={() => setShowNewConversationModal(true)}
                       className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
                       title={`Start new conversation with ${activeTab === 'learners' ? 'learner' : 'college educator'}`}
@@ -842,6 +840,7 @@ const LearnerCollegeAdminCommunication = () => {
                   {/* Tab Dropdown */}
                   <div className="relative" ref={tabDropdownRef}>
                     <button
+                      type="button"
                       onClick={() => setShowTabDropdown(!showTabDropdown)}
                       className="flex items-center gap-2 px-3 py-2 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
                     >
@@ -865,6 +864,7 @@ const LearnerCollegeAdminCommunication = () => {
                     {showTabDropdown && (
                       <div className="absolute top-full left-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
                         <button
+                          type="button"
                           onClick={() => {
                             setActiveTab('learners');
                             setShowTabDropdown(false);
@@ -886,6 +886,7 @@ const LearnerCollegeAdminCommunication = () => {
                           )}
                         </button>
                         <button
+                          type="button"
                           onClick={() => {
                             setActiveTab('college_educators');
                             setShowTabDropdown(false);
@@ -929,6 +930,7 @@ const LearnerCollegeAdminCommunication = () => {
                 />
                 {searchQuery && (
                   <button
+                    type="button"
                     onClick={() => setSearchQuery('')}
                     className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-200 rounded-full transition-colors"
                     title="Clear search"
@@ -946,6 +948,7 @@ const LearnerCollegeAdminCommunication = () => {
                 !loadingConversations &&
                 (activeTab === 'learners' ? archivedConversations : archivedEducatorConversations).length > 0 && (
                   <button
+                    type="button"
                     onClick={() => {
                       setShowArchived(true);
                       setIsTransitioning(true);
@@ -1002,6 +1005,7 @@ const LearnerCollegeAdminCommunication = () => {
                   </p>
                   {searchQuery && (
                     <button
+                      type="button"
                       onClick={() => setSearchQuery('')}
                       className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition-colors"
                     >
@@ -1011,6 +1015,7 @@ const LearnerCollegeAdminCommunication = () => {
                   {!showArchived && !searchQuery && (
                     <div className="space-y-3">
                       <button
+                        type="button"
                         onClick={() => setShowNewConversationModal(true)}
                         className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
                       >
@@ -1018,6 +1023,7 @@ const LearnerCollegeAdminCommunication = () => {
                         Start New Conversation
                       </button>
                       <button
+                        type="button"
                         onClick={() => {
                           toast('Learners will initiate conversations with you from their Messages page', {
                             icon: 'ℹ️',
@@ -1041,6 +1047,7 @@ const LearnerCollegeAdminCommunication = () => {
                       }`}
                   >
                     <button
+                      type="button"
                       onClick={() => setSelectedConversationId(contact.id)}
                       className="flex-1 px-4 py-3 flex items-center gap-3 transition-all text-left"
                     >
@@ -1081,6 +1088,7 @@ const LearnerCollegeAdminCommunication = () => {
                     <div className="flex items-center gap-1 pr-2 opacity-0 group-hover:opacity-100 transition-opacity">
                       {/* Archive/Unarchive Button */}
                       <button
+                        type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleToggleArchive(contact.id, !showArchived);
@@ -1097,6 +1105,7 @@ const LearnerCollegeAdminCommunication = () => {
 
                       {/* Delete Button */}
                       <button
+                        type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           openDeleteModal(contact.id, contact.name);
@@ -1145,17 +1154,6 @@ const LearnerCollegeAdminCommunication = () => {
                       </p>
                     </div>
                   </div>
-                  {/* <div className="flex items-center gap-2">
-                    <button className="p-2 hover:bg-gray-100 rounded-full transition-colors" title="Voice Call">
-                      <PhoneIcon className="w-5 h-5 text-gray-700" />
-                    </button>
-                    <button className="p-2 hover:bg-gray-100 rounded-full transition-colors" title="Video Call">
-                      <VideoCameraIcon className="w-5 h-5 text-gray-700" />
-                    </button>
-                    <button className="p-2 hover:bg-gray-100 rounded-full transition-colors" title="More">
-                      <EllipsisVerticalIcon className="w-5 h-5 text-gray-700" />
-                    </button>
-                  </div> */}
                 </div>
 
                 {/* Messages Area */}
@@ -1225,13 +1223,6 @@ const LearnerCollegeAdminCommunication = () => {
                 {/* Message Input */}
                 <div className="px-6 py-4 border-t border-gray-200 bg-white">
                   <form onSubmit={handleSendMessage} className="flex items-end gap-3">
-                    {/* <button
-                      type="button"
-                      className="p-2 hover:bg-gray-100 rounded-full transition-colors flex-shrink-0"
-                      title="Attach file"
-                    >
-                      <PaperClipIcon className="w-5 h-5 text-gray-500" />
-                    </button> */}
                     <div className="flex-1 relative">
                       <textarea
                         value={messageInput}
@@ -1250,13 +1241,6 @@ const LearnerCollegeAdminCommunication = () => {
                         rows={1}
                         style={{ minHeight: '44px', maxHeight: '100px' }}
                       />
-                      {/* <button
-                        type="button"
-                        className="absolute right-3 bottom-2.5 p-1.5 hover:bg-gray-100 rounded-full transition-colors"
-                        title="Emoji"
-                      >
-                        <FaceSmileIcon className="w-5 h-5 text-gray-400" />
-                      </button> */}
                     </div>
                     <button
                       type="submit"
@@ -1361,11 +1345,3 @@ const LearnerCollegeAdminCommunication = () => {
 };
 
 export default LearnerCollegeAdminCommunication;
-
-
-
-
-
-
-
-

@@ -83,9 +83,22 @@ async function handleSendMessage(supabase: SupabaseClient, params: SendMessagePa
   if (receiverType === 'learner' && recvId !== sendId) learnerIdsToResolve.push(recvId);
 
   if (learnerIdsToResolve.length > 0) {
-    const { data: learners, error: learnersError } = await supabase.from('learners').select('id, user_id').in('id', learnerIdsToResolve);
-    if (learnersError) throw learnersError;
-    const learnerMap = new Map((learners || []).map((l: { id: string; user_id: string }) => [l.id, l.user_id]));
+    // First try lookup by learners.id (used by AdminMessageModal)
+    const { data: learnersById, error: learnersByIdError } = await supabase.from('learners').select('id, user_id').in('id', learnerIdsToResolve);
+    if (learnersByIdError) throw learnersByIdError;
+
+    // For any IDs not resolved, try lookup by learners.user_id (used by communication page where conv.learner_id = user_id)
+    const resolvedByIdMap = new Map((learnersById || []).map((l: { id: string; user_id: string }) => [l.id, l.user_id]));
+    const stillUnresolved = learnerIdsToResolve.filter(id => !resolvedByIdMap.has(id));
+
+    let resolvedByUserIdMap = new Map<string, string>();
+    if (stillUnresolved.length > 0) {
+      const { data: learnersByUserId } = await supabase.from('learners').select('id, user_id').in('user_id', stillUnresolved);
+      resolvedByUserIdMap = new Map((learnersByUserId || []).map((l: { id: string; user_id: string }) => [l.user_id, l.user_id]));
+    }
+
+    const learnerMap = new Map([...resolvedByIdMap, ...resolvedByUserIdMap]);
+
     if (senderType === 'learner') {
       const resolved = learnerMap.get(sendId);
       if (!resolved) throw new Error(`Could not resolve user_id for learner sender (learnerId=${sendId})`);
@@ -110,7 +123,9 @@ async function handleSendMessage(supabase: SupabaseClient, params: SendMessagePa
   if (attachments && attachments.length > 0) messageData.attachments = attachments;
 
   const { data, error } = await supabase.from('messages').insert(messageData).select('id, conversation_id, sender_id, sender_type, receiver_id, receiver_type, message_text, is_read, read_at, created_at, updated_at').single();
-  if (error) throw error;
+  // Ignore FK errors from the notifications trigger — the message itself was saved
+  if (error && !(error.code === '23503' && error.message?.includes('notifications'))) throw error;
+  if (!data) throw new Error('Message insert returned no data');
   return data;
 }
 
@@ -665,14 +680,22 @@ async function handleFetchRecipients(supabase: SupabaseClient, params: any): Pro
     const ctxId = String(contextId);
     const { data: lecturerData, error } = await supabase
       .from('college_lecturers')
-      .select('id, first_name, last_name, email, department, specialization, user_id')
+      .select('id, first_name, last_name, email, department, specialization, user_id, metadata')
       .eq('collegeId', ctxId)
       .order('first_name');
     if (!error && lecturerData) {
-      data = lecturerData.map((l: any) => ({
-        id: l.id, userId: l.user_id, name: `${l.first_name} ${l.last_name}`, email: l.email,
-        type: 'college_lecturer', department: l.department, specialization: l.specialization,
-      }));
+      data = lecturerData.map((l: any) => {
+        const meta = typeof l.metadata === 'object' && l.metadata !== null ? l.metadata : {};
+        const firstName = l.first_name || meta.first_name || '';
+        const lastName = l.last_name || meta.last_name || '';
+        return {
+          id: l.id, userId: l.user_id,
+          name: `${firstName} ${lastName}`.trim() || l.email,
+          first_name: firstName, last_name: lastName,
+          email: l.email || meta.email,
+          type: 'college_lecturer', department: l.department, specialization: l.specialization,
+        };
+      });
     }
   }
 

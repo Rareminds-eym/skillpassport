@@ -73,9 +73,17 @@ export async function handleFetchEducatorConversations(params: any, context: Aut
   const educatorIds = [...new Set((data || []).map((c: any) => c.educator_id).filter(Boolean))];
   let educatorMap: Record<string, any> = {};
   if (educatorIds.length > 0) {
-    const { data: educators } = await supabase.from('college_lecturers').select('id, first_name, last_name, email, department, specialization, user_id').in('id', educatorIds);
+    const { data: educators } = await supabase.from('college_lecturers').select('id, first_name, last_name, email, department, specialization, user_id, metadata').in('id', educatorIds);
     if (educators) {
-      educatorMap = Object.fromEntries(educators.map((e: any) => [e.id, e]));
+      educatorMap = Object.fromEntries(educators.map((e: any) => {
+        const meta = typeof e.metadata === 'object' && e.metadata !== null ? e.metadata : {};
+        return [e.id, {
+          ...e,
+          first_name: e.first_name || meta.first_name || '',
+          last_name: e.last_name || meta.last_name || '',
+          department: e.department || meta.department || '',
+        }];
+      }));
     }
   }
 

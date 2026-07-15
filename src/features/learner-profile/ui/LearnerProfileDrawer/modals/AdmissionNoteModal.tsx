@@ -133,10 +133,10 @@ const AdmissionNoteModal: React.FC<AdmissionNoteModalProps> = ({
         throw new Error('Could not determine educator ID');
       }
 
-      // conversations.learner_id references learners.user_id
-      const conversationLearnerId = learner.user_id;
+      // Pass learner.id (learners PK) — server handler resolves user_id internally
+      const conversationLearnerId = learner.id;
       if (!conversationLearnerId) {
-        throw new Error('Learner user_id is required for messaging');
+        throw new Error('Learner id is required for messaging');
       }
 
       // educatorId is guaranteed non-null here for educator types due to the guard above
@@ -187,7 +187,7 @@ const AdmissionNoteModal: React.FC<AdmissionNoteModalProps> = ({
         conversationId: conversation.id,
         senderId: user.id,
         senderType,
-        receiverId: conversationLearnerId,
+        receiverId: learner.user_id || learner.id,
         receiverType: 'learner',
         messageText: `📝 ${notePrefix} Note:\n\n${note}`,
         subject: `${notePrefix} Note`

@@ -107,8 +107,8 @@ const AdminMessageModal: React.FC<AdminMessageModalProps> = ({
       if (!conversation) throw new Error('No conversation');
 
       const senderType = userRole;
-      // receiver is always the learner
-      const receiverId = learner.user_id || learner.id;
+      // receiver is always the learner — pass learners.id so server can resolve user_id
+      const receiverId = learner.id;
 
       return MessageService.sendMessage(
         conversation.id,
