@@ -99,6 +99,15 @@ export async function handleVerifyOrgPayment(context: AuthenticatedContext): Pro
     const durationMonths = parseDurationMonths(billingCycle);
     endDate.setMonth(endDate.getMonth() + durationMonths);
 
+    // learners.name is the source of truth for the subscription's full_name
+    // (subscriptions.full_name is used for Sales Dashboard name search, so it
+    // must hold the real name, not the email).
+    const { data: learnerForOrgSubscription } = await supabase
+      .from('learners')
+      .select('name')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
     let subscription: Record<string, unknown>;
     try {
       subscription = await ssoCreateSubscription(env, {
@@ -109,7 +118,7 @@ export async function handleVerifyOrgPayment(context: AuthenticatedContext): Pro
         plan_amount: planAmount / 100,
         billing_cycle: billingCycle,
         features: [],
-        full_name: (user as any).name || user.email || '',
+        full_name: learnerForOrgSubscription?.name || user.email || '',
         email: user.email || '',
         razorpay_order_id: body.razorpay_order_id as string,
         razorpay_payment_id: body.razorpay_payment_id as string,
@@ -120,12 +129,15 @@ export async function handleVerifyOrgPayment(context: AuthenticatedContext): Pro
         is_bulk_purchase: true,
         purchased_by: user.id,
       });
-    } catch (createError: any) {
-      if (createError.message?.includes('duplicate key') || createError.message?.includes('23505') || createError.status === 409) {
+    } catch (createError: unknown) {
+      const createErrorMessage = createError instanceof Error ? createError.message : String(createError);
+      const createErrorStatus = (createError as { status?: number })?.status;
+
+      if (createErrorMessage.includes('duplicate key') || createErrorMessage.includes('23505') || createErrorStatus === 409) {
         console.log('[VerifyOrgPayment] Org subscription already created by webhook (duplicate caught). Syncing shadow cache before return.');
-        
+
         try {
-          await syncUserShadow(supabase, user.id, (user as any).email);
+          await syncUserShadow(supabase, user.id, user.email);
           const syncData = await ssoSyncSubscription(env, user.id);
           if (syncData.subscription) {
             await syncSubscriptionCache(supabase, syncData.subscription, syncData.plan);
@@ -136,14 +148,14 @@ export async function handleVerifyOrgPayment(context: AuthenticatedContext): Pro
 
         return apiSuccess({ ...verifyResult, subscription_created: true, already_fulfilled: true }, context.request);
       }
-      console.error('[VerifyOrgPayment] Subscription creation failed:', createError.message);
+      console.error('[VerifyOrgPayment] Subscription creation failed:', createErrorMessage);
       return apiSuccess({
         ...verifyResult,
         subscription_created: false,
         error: {
           code: 'SUBSCRIPTION_CREATE_FAILED',
           message: 'Payment verified but org subscription creation failed. Please contact support.',
-          details: createError.message,
+          details: createErrorMessage,
         },
       }, context.request, 207);
     }
@@ -172,7 +184,7 @@ export async function handleVerifyOrgPayment(context: AuthenticatedContext): Pro
     // Step 4: Sync shadow table in app DB
     try {
       // Ensure user exists in users_shadow (FK constraint for subscription_cache)
-      await syncUserShadow(supabase, user.id, (user as any).email);
+      await syncUserShadow(supabase, user.id, user.email);
 
       const syncData = await ssoSyncSubscription(env, user.id);
       if (syncData.subscription) {

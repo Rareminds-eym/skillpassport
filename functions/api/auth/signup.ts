@@ -115,11 +115,12 @@ export async function onRequestPost(context: { request: Request; env: Env }): Pr
       headers
     });
 
-  } catch (error: any) {
-    apiLogger.error('Signup RPC call failed', error as Error);
+  } catch (error: unknown) {
+    apiLogger.error('Signup RPC call failed', error);
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
     return new Response(JSON.stringify({
       success: false,
-      error: error?.message || 'Internal server error'
+      error: errorMessage
     }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }

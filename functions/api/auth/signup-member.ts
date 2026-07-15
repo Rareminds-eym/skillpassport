@@ -108,8 +108,8 @@ export async function onRequestPost(context: {
       status: 201,
       headers,
     });
-  } catch (err: any) {
-    const errMsg = err?.message ?? 'Signup failed';
+  } catch (err: unknown) {
+    const errMsg = err instanceof Error ? err.message : 'Signup failed';
     console.error('[SignupMember] RPC error:', err);
 
     if (errMsg.includes('duplicate') || errMsg.includes('already exists')) {
