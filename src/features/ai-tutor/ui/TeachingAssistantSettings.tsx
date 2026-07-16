@@ -39,7 +39,7 @@ const TeachingAssistantSettings = ({
 
   return (
     <div className="relative" ref={dropdownRef}>
-      <button
+      <button type="button"
         onClick={() => setIsOpen(!isOpen)}
         className="p-2 hover:bg-white/20 rounded-lg transition-colors"
         title="Teaching Assistant Mode"
@@ -58,7 +58,7 @@ const TeachingAssistantSettings = ({
             const isActive = currentMode === mode.value;
             
             return (
-              <button
+              <button type="button"
                 key={mode.value}
                 onClick={() => {
                   onModeChange(mode.value);

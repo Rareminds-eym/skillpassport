@@ -587,6 +587,8 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
           <button type="button"
             onClick={() => setIsConfigExpanded(!isConfigExpanded)}
             className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+            aria-expanded={isConfigExpanded}
+            aria-controls="config-panel-content"
           >
             <span className="font-medium text-sm text-gray-800 flex items-center gap-2">
               {assistantMode === 'worksheet' ? 'Worksheet Settings' : 'Lesson Plan Settings'}
@@ -601,6 +603,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
           <AnimatePresence>
             {isConfigExpanded && (
               <motion.div
+                id="config-panel-content"
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: 'auto', opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
