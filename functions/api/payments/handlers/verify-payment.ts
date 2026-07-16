@@ -210,6 +210,16 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
           auto_renew: true,
           status: 'active',
         });
+
+        // learners.name is the source of truth for the receipt's display name;
+        // fetched here (mirroring the new-subscription path below) so both
+        // branches initialize learnerName before receipt generation.
+        const { data: learnerForUpgrade } = await supabase
+          .from('learners')
+          .select('name')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        learnerName = learnerForUpgrade?.name;
       } catch (upgradeError: unknown) {
         const upgradeErrorMessage = upgradeError instanceof Error ? upgradeError.message : String(upgradeError);
         const upgradeErrorStatus = hasNumericStatus(upgradeError) ? upgradeError.status : undefined;
