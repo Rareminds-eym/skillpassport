@@ -38,7 +38,7 @@ export async function onRequestPost(context: {
     ? {
         firstName: typeof rawMetadata.firstName === 'string' ? rawMetadata.firstName : undefined,
         lastName: typeof rawMetadata.lastName === 'string' ? rawMetadata.lastName : undefined,
-        phone: typeof rawMetadata.phone === 'string' || rawMetadata.phone === null ? rawMetadata.phone : undefined,
+        phone: typeof rawMetadata.phone === 'string' ? rawMetadata.phone : undefined,
         avatarUrl: typeof rawMetadata.avatarUrl === 'string' || rawMetadata.avatarUrl === null ? rawMetadata.avatarUrl : undefined,
       }
     : undefined;

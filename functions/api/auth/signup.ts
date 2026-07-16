@@ -51,7 +51,7 @@ export async function onRequestPost(context: { request: Request; env: Env }): Pr
       ? {
           firstName: typeof user_metadata.firstName === 'string' ? user_metadata.firstName : undefined,
           lastName: typeof user_metadata.lastName === 'string' ? user_metadata.lastName : undefined,
-          phone: typeof user_metadata.phone === 'string' || user_metadata.phone === null ? user_metadata.phone : undefined,
+          phone: typeof user_metadata.phone === 'string' ? user_metadata.phone : undefined,
           avatarUrl: typeof user_metadata.avatarUrl === 'string' || user_metadata.avatarUrl === null ? user_metadata.avatarUrl : undefined,
         }
       : undefined;
