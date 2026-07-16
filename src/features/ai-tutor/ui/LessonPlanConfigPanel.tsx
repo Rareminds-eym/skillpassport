@@ -36,10 +36,11 @@ const LessonPlanConfigPanel = ({
     <div className="space-y-6">
       {/* Grade/Class Level */}
       <div>
-        <label className="block text-sm font-medium text-gray-900 mb-2">
+        <label htmlFor="lesson-plan-grade" className="block text-sm font-medium text-gray-900 mb-2">
           Grade/Class Level
         </label>
         <select
+          id="lesson-plan-grade"
           value={config.gradeLevel || ''}
           onChange={(e) => handleChange('gradeLevel', e.target.value)}
           className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white"
@@ -61,10 +62,11 @@ const LessonPlanConfigPanel = ({
 
       {/* Template Type */}
       <div>
-        <label className="block text-sm font-medium text-gray-900 mb-2">
+        <label htmlFor="lesson-plan-template" className="block text-sm font-medium text-gray-900 mb-2">
           Lesson Plan Type
         </label>
         <select
+          id="lesson-plan-template"
           value={config.templateType}
           onChange={(e) => handleChange('templateType', e.target.value as LessonPlanTemplateType)}
           className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white"
@@ -82,16 +84,17 @@ const LessonPlanConfigPanel = ({
 
       {/* Duration */}
       <div>
-        <label className="block text-sm font-medium text-gray-900 mb-2">
+        <label htmlFor="lesson-plan-duration" className="block text-sm font-medium text-gray-900 mb-2">
           Duration: <span className="text-purple-600 font-semibold">{config.duration} minutes</span>
         </label>
         <input
+          id="lesson-plan-duration"
           type="range"
           min="15"
           max="120"
           step="15"
           value={config.duration}
-          onChange={(e) => handleChange('duration', parseInt(e.target.value))}
+          onChange={(e) => handleChange('duration', parseInt(e.target.value, 10))}
           className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600"
         />
         <div className="flex justify-between text-xs text-gray-500 mt-1">
@@ -102,9 +105,9 @@ const LessonPlanConfigPanel = ({
 
       {/* Main Sections */}
       <div>
-        <label className="block text-sm font-medium text-gray-900 mb-3">
+        <p className="block text-sm font-medium text-gray-900 mb-3">
           Include Sections:
-        </label>
+        </p>
         <div className="space-y-2.5">
           <label className="flex items-center gap-2.5 cursor-pointer">
             <input
@@ -159,7 +162,7 @@ const LessonPlanConfigPanel = ({
       </div>
 
       {/* Generate Button */}
-      <button
+      <button type="button"
         onClick={onGenerate}
         disabled={isGenerateDisabled}
         className="w-full mt-2 px-4 py-3.5 bg-purple-600 text-white rounded-xl hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2.5 font-semibold text-sm shadow-sm hover:shadow-md"

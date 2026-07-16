@@ -1,5 +1,5 @@
 import { ssoClient } from '@/shared/api/ssoClient';
-import { apiPost } from '@/shared/api/apiClient';
+import { apiPost, ApiError } from '@/shared/api/apiClient';
 import { getApiUrl } from '@/shared/api/apiUtils';
 import { getLogger } from '@/shared/config/logging';
 import type { WorksheetConfig, LessonPlanConfig } from '../types';
@@ -23,6 +23,23 @@ interface MessageData {
   role: 'user' | 'assistant';
   content: string;
   timestamp: string;
+}
+
+interface RawConversation {
+  id: string;
+  title?: string;
+  course_id: string;
+  lesson_id: string | null;
+  created_at: string;
+  updated_at: string;
+  messages?: MessageData[];
+}
+
+interface ErrorResponseBody {
+  error?: {
+    message?: string;
+    code?: string;
+  };
 }
 
 export interface Conversation {
@@ -94,7 +111,7 @@ export async function* sendMessage(request: ChatRequest): AsyncGenerator<StreamC
   );
 
   if (!response.ok) {
-    const body: any = await response.json().catch(() => ({}));
+    const body = await response.json().catch(() => ({})) as ErrorResponseBody;
     const message = body?.error?.message || body?.error?.code || 'Failed to send message';
     throw new Error(message);
   }
@@ -182,7 +199,7 @@ export async function getConversations(courseId: string): Promise<Conversation[]
   try {
     const response = await apiPost('/ai-tutor/actions', { action: 'get-conversations', course_id: courseId });
     const data = response?.data || [];
-    return data.map((conv: any) => ({
+    return data.map((conv: RawConversation) => ({
       id: conv.id,
       title: conv.title || 'Untitled Conversation',
       courseId: conv.course_id,
@@ -225,7 +242,7 @@ export async function getConversation(conversationId: string): Promise<Conversat
       }))
     };
   } catch (error) {
-    if ((error as any)?.status === 404) return null;
+    if (error instanceof ApiError && error.status === 404) return null;
     logger.error('Error fetching conversation', error instanceof Error ? error : new Error(String(error)), { conversationId });
     throw error;
   }
@@ -292,7 +309,7 @@ export async function getCourseProgress(courseId: string): Promise<CourseProgres
   );
 
   if (!response.ok) {
-    const body: any = await response.json().catch(() => ({}));
+    const body = await response.json().catch(() => ({})) as ErrorResponseBody;
     throw new Error(body?.error?.message || body?.error?.code || 'Failed to get progress');
   }
 
@@ -316,7 +333,7 @@ export async function updateLessonProgress(
   );
 
   if (!response.ok) {
-    const body: any = await response.json().catch(() => ({}));
+    const body = await response.json().catch(() => ({})) as ErrorResponseBody;
     throw new Error(body?.error?.message || body?.error?.code || 'Failed to update progress');
   }
 }
@@ -353,7 +370,7 @@ export async function submitFeedback(
   );
 
   if (!response.ok) {
-    const body: any = await response.json().catch(() => ({}));
+    const body = await response.json().catch(() => ({})) as ErrorResponseBody;
     throw new Error(body?.error?.message || body?.error?.code || 'Failed to submit feedback');
   }
 }

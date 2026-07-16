@@ -36,10 +36,11 @@ const WorksheetConfigPanel = ({
     <div className="space-y-6">
       {/* Grade/Class Level */}
       <div>
-        <label className="block text-sm font-medium text-gray-900 mb-2">
+        <label htmlFor="worksheet-grade" className="block text-sm font-medium text-gray-900 mb-2">
           Grade/Class Level
         </label>
         <select
+          id="worksheet-grade"
           value={config.gradeLevel || ''}
           onChange={(e) => handleChange('gradeLevel', e.target.value)}
           className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
@@ -61,10 +62,11 @@ const WorksheetConfigPanel = ({
 
       {/* Template Type */}
       <div>
-        <label className="block text-sm font-medium text-gray-900 mb-2">
+        <label htmlFor="worksheet-template" className="block text-sm font-medium text-gray-900 mb-2">
           Question Type
         </label>
         <select
+          id="worksheet-template"
           value={config.templateType}
           onChange={(e) => handleChange('templateType', e.target.value as WorksheetTemplateType)}
           className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
@@ -82,16 +84,17 @@ const WorksheetConfigPanel = ({
 
       {/* Question Count */}
       <div>
-        <label className="block text-sm font-medium text-gray-900 mb-2">
+        <label htmlFor="worksheet-count" className="block text-sm font-medium text-gray-900 mb-2">
           Number of Questions: <span className="text-blue-600 font-semibold">{config.questionCount}</span>
         </label>
         <input
+          id="worksheet-count"
           type="range"
           min="5"
           max="30"
           step="5"
           value={config.questionCount}
-          onChange={(e) => handleChange('questionCount', parseInt(e.target.value))}
+          onChange={(e) => handleChange('questionCount', parseInt(e.target.value, 10))}
           className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
         />
         <div className="flex justify-between text-xs text-gray-500 mt-1">
@@ -118,9 +121,9 @@ const WorksheetConfigPanel = ({
 
       {/* Checkboxes */}
       <div>
-        <label className="block text-sm font-medium text-gray-900 mb-3">
+        <p className="block text-sm font-medium text-gray-900 mb-3">
           Include Sections:
-        </label>
+        </p>
         <div className="space-y-2.5">
           <label className="flex items-center gap-2.5 cursor-pointer">
             <input
@@ -155,7 +158,7 @@ const WorksheetConfigPanel = ({
       </div>
 
       {/* Generate Button */}
-      <button
+      <button type="button"
         onClick={onGenerate}
         disabled={isGenerateDisabled}
         className="w-full mt-2 px-4 py-3.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2.5 font-semibold text-sm shadow-sm hover:shadow-md"
