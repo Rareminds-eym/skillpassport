@@ -103,7 +103,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
 
     // Authoritative price from DB — never trust client-supplied price
     const pricingMatrix = validPlan.pricing_matrix as Record<string, { yearly?: number; monthly?: number; currency?: string }> | undefined;
-    if (!pricingMatrix || typeof pricingMatrix !== 'object') {
+    if (!pricingMatrix || typeof pricingMatrix !== 'object' || Array.isArray(pricingMatrix)) {
       console.error('[VerifyPayment] No pricing matrix found for plan:', plan.id);
       return apiError(400, 'VALIDATION_ERROR', 'Plan pricing data is invalid', context.request);
     }
