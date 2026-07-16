@@ -62,7 +62,6 @@ export interface SsoWorkerRpc {
     features: unknown[];
     full_name: string;
     email: string;
-    phone?: string;
     razorpay_order_id?: string;
     razorpay_payment_id?: string;
     organization_id?: string;

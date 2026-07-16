@@ -80,7 +80,7 @@ export async function onRequestPost(context: { request: Request; env: Env }): Pr
     }
 
     // Verify tokens present
-    if (!ssoResult.access_token || !ssoResult.refresh_token) {
+    if (!ssoResult?.access_token || !ssoResult?.refresh_token) {
       apiLogger.error('Missing tokens in signup RPC response', { email });
       return new Response(JSON.stringify({
         success: false,
