@@ -95,7 +95,10 @@ const AdminMessageModal: FC<AdminMessageModalProps> = ({
   // Fetch messages for the conversation
   const { data: messages = [], isLoading: loadingMessages } = useQuery({
     queryKey: ['admin-conversation-messages', conversation?.id],
-    queryFn: () => MessageService.getConversationMessages(conversation!.id),
+    queryFn: () => {
+    if (!conversation?.id) throw new Error('Conversation not available');
+    return MessageService.getConversationMessages(conversation.id);
+    },
     enabled: !!conversation?.id,
     refetchInterval: 15000,
     refetchIntervalInBackground: false,
@@ -105,14 +108,14 @@ const AdminMessageModal: FC<AdminMessageModalProps> = ({
   const sendMutation = useMutation({
     mutationFn: async (text: string) => {
       if (!conversation) throw new Error('No conversation');
-
+      if (!currentUser?.id) throw new Error('User not authenticated');
       const senderType = userRole;
       const receiverId = learner.id;
       if (!receiverId) throw new Error('Learner ID is required');
 
       return MessageService.sendMessage(
         conversation.id,
-        currentUser!.id,
+        currentUser.id,
         senderType,
         receiverId,
         'learner',

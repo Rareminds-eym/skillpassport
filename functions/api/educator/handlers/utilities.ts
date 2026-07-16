@@ -111,7 +111,9 @@ export async function handleCreateCourseNotification(params: any, context: Authe
     if (error) return apiDbError(error, context.request, { startTime });
 
     if (insertedNotifications) {
-      insertedNotifications.forEach(notification => context.waitUntil(notifyRealtime(env as any, 'notifications', 'INSERT', notification)));
+      insertedNotifications.forEach(notification => {
+    context.waitUntil(notifyRealtime(env as any, 'notifications', 'INSERT', notification));
+   });
     }
   }
   return apiSuccess({ sent: true }, context.request, { startTime });

@@ -3,11 +3,8 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { withAuth } from '../../lib/auth';
 import { createLogger } from '../../lib/logger';
 import { notifyRealtime } from '../../lib/realtime';
-
-const logger = createLogger('messaging-actions');
 import { apiDbError, apiError, apiMethodNotAllowed, apiSuccess } from '../../lib/response';
 import { getServiceClient } from '../../lib/supabase';
-import { convertApplicationId, convertOpportunityId, fetchEducatorDetailsForConversations } from './utils';
 import {
   handleGetOrCreateConversation,
   handleGetOrCreateLearnerEducatorConversation,
@@ -19,6 +16,9 @@ import {
   handleArchiveConversation,
   handleUnarchiveConversation
 } from './handlers/conversation';
+import { convertApplicationId, convertOpportunityId, fetchEducatorDetailsForConversations } from './utils';
+
+const logger = createLogger('messaging-actions'); 
 
 interface Message {
   id: string;
@@ -120,7 +120,7 @@ async function handleSendMessage(supabase: SupabaseClient, params: SendMessagePa
   if (opportunityIdOld) messageData.opportunity_id = opportunityIdOld;
   if (classId) messageData.class_id = classId;
   if (subject) messageData.subject = subject;
-  if (attachments && attachments.length > 0) messageData.attachments = attachments;
+  if (attachments?.length) messageData.attachments = attachments;
 
   const { data, error } = await supabase.from('messages').insert(messageData).select('id, conversation_id, sender_id, sender_type, receiver_id, receiver_type, message_text, is_read, read_at, created_at, updated_at').single();
   // Ignore FK errors from the notifications trigger — the message itself was saved

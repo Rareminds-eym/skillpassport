@@ -115,9 +115,6 @@ const LearnerCollegeAdminCommunication = () => {
         ...conv,
         college: collegeData?.colleges || null
       }));
-
-      if (error) throw error;
-      return data || [];
     },
     enabled: !!collegeId,
     staleTime: 60000,
@@ -217,7 +214,7 @@ const LearnerCollegeAdminCommunication = () => {
   }, [isUserOnlineGlobal]);
 
   // Presence tracking for current conversation
-  const { } = useRealtimePresence({
+  useRealtimePresence({
     channelName: selectedConversationId ? `conversation:${selectedConversationId}` : 'none',
     userPresence: {
       userId: collegeAdminId || '',
@@ -466,15 +463,16 @@ const LearnerCollegeAdminCommunication = () => {
         : unarchiveConversation(conversationId)
       );
 
-      await Promise.all([refetchActive(), refetchArchived()]);
+      await Promise.all([refetchActive(), refetchArchived(), refetchArchivedEducators()]);
     } catch (error) {
       logger.error(`Error ${isArchiving ? 'archiving' : 'unarchiving'} conversation:`, error as Error);
       refetchActive();
       refetchArchived();
+      refetchArchivedEducators();
     } finally {
       setTimeout(() => setIsTransitioning(false), 300);
     }
-  }, [selectedConversationId, refetchActive, refetchArchived, archiveConversation, unarchiveConversation]);
+  }, [selectedConversationId, refetchActive, refetchArchived, refetchArchivedEducators, archiveConversation, unarchiveConversation]);
 
   // Handle new conversation creation
   const handleNewConversation = useCallback(async (learnerId: string, subject: string, initialMessage?: string) => {
@@ -506,7 +504,7 @@ const LearnerCollegeAdminCommunication = () => {
       logger.info('New conversation created:', conversation);
 
       // Send initial message if provided
-      if (initialMessage && initialMessage.trim()) {
+      if (initialMessage?.trim()) {
         await MessageService.sendMessage(
           conversation.id,
           collegeAdminId,
@@ -552,18 +550,23 @@ const LearnerCollegeAdminCommunication = () => {
 
     deleteMutation.mutate({ conversationId });
 
-    // Show undo toast
-    toast.success(`Conversation with ${contactName} deleted`, {
-      duration: 5000,
-    });
-
-    // Add undo button functionality (simplified)
-    setTimeout(() => {
-      toast('Click here to undo', {
-        duration: 3000,
-      });
-    }, 500);
-  }, [deleteModal.conversationId, deleteModal.contactName, collegeAdminId, selectedConversationId, deleteMutation]);
+    // Show undo toast with undo button
+    toast((t) => (
+      <span className="flex items-center gap-3">
+        <span>{`Conversation with ${contactName} deleted`}</span>
+        <button
+          type="button"
+          className="font-semibold text-blue-600 hover:text-blue-800 underline cursor-pointer"
+          onClick={() => {
+            undoMutation.mutate({ conversationId });
+            toast.dismiss(t.id);
+          }}
+        >
+          Undo
+        </button>
+      </span>
+    ), { duration: 5000 });
+  }, [deleteModal.conversationId, deleteModal.contactName, collegeAdminId, selectedConversationId, deleteMutation, undoMutation]);
 
   // Open delete confirmation modal
   const openDeleteModal = useCallback((conversationId: string, contactName: string) => {
@@ -1313,7 +1316,7 @@ const LearnerCollegeAdminCommunication = () => {
               );
 
               // Send the initial message if provided
-              if (initialMessage && initialMessage.trim()) {
+              if (initialMessage?.trim()) {
                 await MessageService.sendMessage(
                   conversation.id,
                   adminId,
