@@ -43,6 +43,16 @@ interface ErrorResponseBody {
   };
 }
 
+async function parseErrorResponse(response: Response, fallback: string): Promise<Error> {
+  let body: ErrorResponseBody = {};
+  try {
+    body = await response.json() as ErrorResponseBody;
+  } catch (parseErr) {
+    logger.warn('Failed to parse error response body', { parseError: String(parseErr) });
+  }
+  return new Error(body?.error?.message || body?.error?.code || fallback);
+}
+
 export interface Conversation {
   id: string;
   title: string;
@@ -112,14 +122,7 @@ export async function* sendMessage(request: ChatRequest): AsyncGenerator<StreamC
   );
 
   if (!response.ok) {
-    let body: ErrorResponseBody = {};
-    try {
-      body = await response.json() as ErrorResponseBody;
-    } catch (parseErr) {
-      logger.warn('Failed to parse error response body', { parseError: String(parseErr) });
-    }
-    const message = body?.error?.message || body?.error?.code || 'Failed to send message';
-    throw new Error(message);
+    throw await parseErrorResponse(response, 'Failed to send message');
   }
 
   const reader = response.body?.getReader();
@@ -315,13 +318,7 @@ export async function getCourseProgress(courseId: string): Promise<CourseProgres
   );
 
   if (!response.ok) {
-    let body: ErrorResponseBody = {};
-    try {
-      body = await response.json() as ErrorResponseBody;
-    } catch (parseErr) {
-      logger.warn('Failed to parse error response body', { parseError: String(parseErr) });
-    }
-    throw new Error(body?.error?.message || body?.error?.code || 'Failed to get progress');
+    throw await parseErrorResponse(response, 'Failed to get progress');
   }
 
   return response.json();
@@ -344,13 +341,7 @@ export async function updateLessonProgress(
   );
 
   if (!response.ok) {
-    let body: ErrorResponseBody = {};
-    try {
-      body = await response.json() as ErrorResponseBody;
-    } catch (parseErr) {
-      logger.warn('Failed to parse error response body', { parseError: String(parseErr) });
-    }
-    throw new Error(body?.error?.message || body?.error?.code || 'Failed to update progress');
+    throw await parseErrorResponse(response, 'Failed to update progress');
   }
 }
 
@@ -386,12 +377,6 @@ export async function submitFeedback(
   );
 
   if (!response.ok) {
-    let body: ErrorResponseBody = {};
-    try {
-      body = await response.json() as ErrorResponseBody;
-    } catch (parseErr) {
-      logger.warn('Failed to parse error response body', { parseError: String(parseErr) });
-    }
-    throw new Error(body?.error?.message || body?.error?.code || 'Failed to submit feedback');
+    throw await parseErrorResponse(response, 'Failed to submit feedback');
   }
 }
