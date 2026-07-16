@@ -1,7 +1,6 @@
 import { ssoClient } from '@/shared/api/ssoClient';
 import { apiPost } from '@/shared/api/apiClient';
-import { useAuthStore } from '@/shared/model/authStore';
-import { getApiUrl, getAuthHeaders } from '@/shared/api/apiUtils';
+import { getApiUrl } from '@/shared/api/apiUtils';
 import { getLogger } from '@/shared/config/logging';
 import type { WorksheetConfig, LessonPlanConfig } from '../types';
 
@@ -86,15 +85,6 @@ export interface StreamChunk {
  * Returns an async generator that yields content and reasoning chunks
  */
 export async function* sendMessage(request: ChatRequest): AsyncGenerator<StreamChunk, void, unknown> {
-  const user = useAuthStore.getState().user;
-    const sessionError = null;
-
-  if (sessionError) {
-    logger.error('Session error in sendMessage', sessionError instanceof Error ? sessionError : new Error(String(sessionError)));
-    throw new Error('Authentication error. Please try logging in again.');
-  }
-
-  
   const response = await ssoClient.fetch(
     `${API_URL}/chat`,
     {
@@ -249,14 +239,6 @@ export async function getConversation(conversationId: string): Promise<Conversat
  */
 export async function getSuggestedQuestions(lessonId: string): Promise<string[]> {
   try {
-    const user = useAuthStore.getState().user;
-    const sessionError = null;
-
-    if (sessionError) {
-      logger.error('Session error in getSuggestedQuestions', sessionError instanceof Error ? sessionError : new Error(String(sessionError)), { lessonId });
-      return getDefaultSuggestions();
-    }
-
     const response = await ssoClient.fetch(
       `${API_URL}/suggestions`,
       {
@@ -302,8 +284,6 @@ function getDefaultSuggestions(): string[] {
  * Get learner progress for a course
  */
 export async function getCourseProgress(courseId: string): Promise<CourseProgress> {
-  const user = useAuthStore.getState().user;
-  
   const response = await ssoClient.fetch(
     `${API_URL}/progress?courseId=${courseId}`,
     {
@@ -327,8 +307,6 @@ export async function updateLessonProgress(
   lessonId: string,
   status: 'not_started' | 'in_progress' | 'completed'
 ): Promise<void> {
-  const user = useAuthStore.getState().user;
-  
   const response = await ssoClient.fetch(
     `${API_URL}/progress`,
     {
@@ -366,18 +344,16 @@ export async function submitFeedback(
   rating: 1 | -1,
   feedbackText?: string
 ): Promise<void> {
-  const user = useAuthStore.getState().user;
-  
   const response = await ssoClient.fetch(
     `${API_URL}/feedback`,
     {
       method: 'POST',
-            body: JSON.stringify({ conversationId, messageIndex, rating, feedbackText }),
+      body: JSON.stringify({ conversationId, messageIndex, rating, feedbackText }),
     }
   );
 
   if (!response.ok) {
-    const errorData = await response.json() as { error?: string };
-    throw new Error(errorData.error || 'Failed to submit feedback');
+    const body: any = await response.json().catch(() => ({}));
+    throw new Error(body?.error?.message || body?.error?.code || 'Failed to submit feedback');
   }
 }

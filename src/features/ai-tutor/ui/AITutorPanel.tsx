@@ -216,15 +216,17 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
     // Hide config panel after starting generation
     setIsConfigExpanded(false);
     
-    await sendMessage(generateMessage);
-    
-    // Refetch count after generation to ensure UI is in sync
-    if (isTeacher) {
-      try {
+    try {
+      await sendMessage(generateMessage);
+      
+      // Refetch count after generation to ensure UI is in sync
+      if (isTeacher) {
         await fetchGenerationCount();
-      } catch (err) {
-        logger.error('Failed to refetch generation count after generation', err instanceof Error ? err : new Error(String(err)));
       }
+    } catch (err) {
+      // Re-expand config panel on failure so user can retry
+      setIsConfigExpanded(true);
+      logger.error('Failed to generate content', err instanceof Error ? err : new Error(String(err)));
     }
   };
 
