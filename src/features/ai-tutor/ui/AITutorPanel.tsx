@@ -33,6 +33,7 @@ import type { LessonPlanConfig } from '../types';
 import { DEFAULT_LESSON_PLAN_CONFIG } from '../types';
 
 import { Link } from 'react-router-dom';
+import toast from 'react-hot-toast';
 
 import { useUser, useUserRole } from '@/shared/model';
 import { useLearnerType } from '@/features/ai-tutor/model';
@@ -226,6 +227,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
     } catch (err) {
       // Re-expand config panel on failure so user can retry
       setIsConfigExpanded(true);
+      toast.error('Generation failed. Check your settings and try again.');
       logger.error('Failed to generate content', err instanceof Error ? err : new Error(String(err)));
     }
   };
@@ -287,10 +289,10 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isExpanded]);
 
-  // Auto-scroll to bottom
+  // Auto-scroll to bottom on new messages, reasoning updates, or errors
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isReasoning]);
+  }, [messages, isReasoning, error]);
 
   // Focus input when expanded
   useEffect(() => {
@@ -850,14 +852,14 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
       </AnimatePresence>
 
       {/* Error Message */}
-      {error && (
+      {error ? (
         <div className="px-4 py-3 bg-red-50 border-t border-red-200 flex items-center gap-2 text-red-700">
           <span className="text-sm flex-1">{error}</span>
           <button type="button" onClick={() => window.location.reload()} className="p-1 hover:bg-red-100 rounded">
             <RefreshCw className="w-4 h-4" />
           </button>
         </div>
-      )}
+      ) : null}
 
       {/* Input Area - Only for Learners */}
       {!isEducator && (
