@@ -111,7 +111,12 @@ export async function* sendMessage(request: ChatRequest): AsyncGenerator<StreamC
   );
 
   if (!response.ok) {
-    const body = await response.json().catch(() => ({})) as ErrorResponseBody;
+    let body: ErrorResponseBody = {};
+    try {
+      body = await response.json() as ErrorResponseBody;
+    } catch (parseErr) {
+      logger.warn('Failed to parse error response body', { parseError: String(parseErr) });
+    }
     const message = body?.error?.message || body?.error?.code || 'Failed to send message';
     throw new Error(message);
   }
@@ -309,7 +314,12 @@ export async function getCourseProgress(courseId: string): Promise<CourseProgres
   );
 
   if (!response.ok) {
-    const body = await response.json().catch(() => ({})) as ErrorResponseBody;
+    let body: ErrorResponseBody = {};
+    try {
+      body = await response.json() as ErrorResponseBody;
+    } catch (parseErr) {
+      logger.warn('Failed to parse error response body', { parseError: String(parseErr) });
+    }
     throw new Error(body?.error?.message || body?.error?.code || 'Failed to get progress');
   }
 
@@ -333,7 +343,12 @@ export async function updateLessonProgress(
   );
 
   if (!response.ok) {
-    const body = await response.json().catch(() => ({})) as ErrorResponseBody;
+    let body: ErrorResponseBody = {};
+    try {
+      body = await response.json() as ErrorResponseBody;
+    } catch (parseErr) {
+      logger.warn('Failed to parse error response body', { parseError: String(parseErr) });
+    }
     throw new Error(body?.error?.message || body?.error?.code || 'Failed to update progress');
   }
 }
@@ -370,7 +385,12 @@ export async function submitFeedback(
   );
 
   if (!response.ok) {
-    const body = await response.json().catch(() => ({})) as ErrorResponseBody;
+    let body: ErrorResponseBody = {};
+    try {
+      body = await response.json() as ErrorResponseBody;
+    } catch (parseErr) {
+      logger.warn('Failed to parse error response body', { parseError: String(parseErr) });
+    }
     throw new Error(body?.error?.message || body?.error?.code || 'Failed to submit feedback');
   }
 }

@@ -105,10 +105,11 @@ const WorksheetConfigPanel = ({
 
       {/* Difficulty */}
       <div>
-        <label className="block text-sm font-medium text-gray-900 mb-2">
+        <label htmlFor="worksheet-difficulty" className="block text-sm font-medium text-gray-900 mb-2">
           Difficulty
         </label>
         <select
+          id="worksheet-difficulty"
           value={config.difficulty}
           onChange={(e) => handleChange('difficulty', e.target.value as DifficultyLevel)}
           className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
