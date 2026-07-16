@@ -67,7 +67,7 @@ export async function onRequestPost(context: { request: Request; env: Env }): Pr
     });
 
     // Handle RPC error response
-    if (!ssoResult || !ssoResult.success) {
+    if (!ssoResult?.success) {
       const errorMsg = ssoResult?.error || 'Signup failed';
       apiLogger.warn('Signup failed from SSO', { email, error: errorMsg });
       return new Response(JSON.stringify({
@@ -116,7 +116,8 @@ export async function onRequestPost(context: { request: Request; env: Env }): Pr
     });
 
   } catch (error: unknown) {
-    apiLogger.error('Signup RPC call failed', error);
+    const logErrorMessage = error instanceof Error ? error.message : String(error);
+    apiLogger.error('Signup RPC call failed', new Error(logErrorMessage));
     const errorMessage = error instanceof Error ? error.message : 'Internal server error';
     return new Response(JSON.stringify({
       success: false,

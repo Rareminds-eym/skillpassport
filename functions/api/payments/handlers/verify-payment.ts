@@ -365,9 +365,9 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
       });
     } catch (txError: unknown) {
       const txErrorMessage = txError instanceof Error ? txError.message : String(txError);
-      const txErrorStatus = hasNumericStatus(txError) ? txError.status : undefined;
+      const isTxErrorStatus409 = hasNumericStatus(txError) && txError.status === 409;
 
-      if (txErrorMessage.includes('duplicate key') || txErrorMessage.includes('23505') || txErrorStatus === 409) {
+      if (txErrorMessage.includes('duplicate key') || txErrorMessage.includes('23505') || isTxErrorStatus409) {
         console.log('[VerifyPayment] Transaction already recorded (duplicate caught). Skipping further duplicate handling.');
       } else {
         console.error('[VerifyPayment] Transaction recording failed (non-critical):', txErrorMessage);
@@ -397,7 +397,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
     if (userRecordForContactError) {
       console.error('[VerifyPayment] Failed to fetch user phone for contact (non-critical):', userRecordForContactError);
     }
-    const contactPhone = userRecordForContact?.phone || undefined;
+    const contactPhone = userRecordForContact?.phone ?? undefined;
 
     // Step 4: Generate receipt PDF and upload to R2 (unchanged)
     let receiptUrl: string | null = null;
