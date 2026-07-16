@@ -103,7 +103,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
 
     // Authoritative price from DB — never trust client-supplied price
     const pricingMatrix = validPlan.pricing_matrix as Record<string, { yearly?: number; monthly?: number; currency?: string }> | undefined;
-    if (!pricingMatrix) {
+    if (!pricingMatrix || typeof pricingMatrix !== 'object') {
       console.error('[VerifyPayment] No pricing matrix found for plan:', plan.id);
       return apiError(400, 'VALIDATION_ERROR', 'Plan pricing data is invalid', context.request);
     }
@@ -357,7 +357,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
       if (txErrorMessage.includes('duplicate key') || txErrorMessage.includes('23505') || txErrorStatus === 409) {
         console.log('[VerifyPayment] Transaction already recorded (duplicate caught). Skipping further duplicate handling.');
       } else {
-        console.error('[VerifyPayment] Transaction recording failed (non-critical):', txError);
+        console.error('[VerifyPayment] Transaction recording failed (non-critical):', txErrorMessage);
       }
     }
 
