@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Settings, FileText, BookOpen } from 'lucide-react';
 
 export type AssistantMode = 'worksheet' | 'lesson-plan' | null;
@@ -36,8 +36,6 @@ const TeachingAssistantSettings = ({
     { value: 'worksheet' as const, label: 'Worksheet Generator', icon: FileText },
     { value: 'lesson-plan' as const, label: 'Lesson Planner', icon: BookOpen },
   ];
-
-  const currentModeData = modes.find(m => m.value === currentMode);
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -86,6 +84,4 @@ const TeachingAssistantSettings = ({
   );
 };
 
-const MemoizedTeachingAssistantSettings = React.memo(TeachingAssistantSettings);
-MemoizedTeachingAssistantSettings.displayName = 'TeachingAssistantSettings';
-export default MemoizedTeachingAssistantSettings;
+export default TeachingAssistantSettings;
