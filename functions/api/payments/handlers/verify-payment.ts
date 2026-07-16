@@ -117,6 +117,9 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
 
     if (pricingMatrix) {
       for (const key in pricingMatrix) {
+        if (typeof pricingMatrix[key] !== 'object' || pricingMatrix[key] === null) {
+          continue;
+        }
         const price = pricingMatrix[key]?.[cycleKey];
         if (typeof price === 'number' && price === clientPrice) {
           planPrice = price;
@@ -376,11 +379,14 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
 
     // users.phone is the source of truth for phone numbers (subscriptions.phone
     // no longer exists); fetched once here and reused for the email step below.
-    const { data: userRecordForContact } = await supabase
+    const { data: userRecordForContact, error: userRecordForContactError } = await supabase
       .from('users')
       .select('phone')
       .eq('id', user.id)
       .maybeSingle();
+    if (userRecordForContactError) {
+      console.error('[VerifyPayment] Failed to fetch user phone for contact (non-critical):', userRecordForContactError);
+    }
     const contactPhone = userRecordForContact?.phone || undefined;
 
     // Step 4: Generate receipt PDF and upload to R2 (unchanged)
