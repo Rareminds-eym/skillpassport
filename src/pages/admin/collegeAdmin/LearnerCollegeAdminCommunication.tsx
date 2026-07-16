@@ -14,7 +14,7 @@ import {
 import { CheckIcon } from '@heroicons/react/24/solid';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useLocation } from 'react-router-dom';
 import { DeleteConversationModal } from '@/features/messaging';
@@ -261,7 +261,7 @@ const LearnerCollegeAdminCommunication = () => {
 
   // Subscribe to conversation updates
   useEffect(() => {
-    if (!collegeId) return;
+    if (!collegeId || !collegeAdminId) return;
 
     const subscription = MessageService.subscribeToUserConversations(
       collegeId,
@@ -509,7 +509,7 @@ const LearnerCollegeAdminCommunication = () => {
       if (initialMessage && initialMessage.trim()) {
         await MessageService.sendMessage(
           conversation.id,
-          collegeAdminId!,
+          collegeAdminId,
           'college_admin',
           learnerId,
           'learner',
@@ -698,11 +698,11 @@ const LearnerCollegeAdminCommunication = () => {
     [filteredContacts, selectedConversationId]
   );
 
-  const handleSendMessage = useCallback(async (e: React.FormEvent) => {
+  const handleSendMessage = useCallback(async (e: FormEvent) => {
     e.preventDefault();
 
     // Basic validation
-    if (!messageInput.trim() || !currentChat || !collegeAdminId) {
+    if (!messageInput.trim() || !currentChat || !collegeAdminId || !selectedConversationId) {
       return;
     }
 
@@ -724,7 +724,7 @@ const LearnerCollegeAdminCommunication = () => {
       if (activeTab === 'learners') {
         // Send message to learner
         await sendMessage({
-          conversationId: selectedConversationId!,
+          conversationId: selectedConversationId,
           receiverId: currentChat.learnerId,
           receiverType: 'learner',
           messageText: messageToSend,
@@ -734,7 +734,7 @@ const LearnerCollegeAdminCommunication = () => {
         try {
           await sendNotification(currentChat.learnerId, {
             title: 'New Message from College Admin',
-            message: messageToSend.length > 50 ? messageToSend.substring(0, 50) + '...' : messageToSend,
+            message: messageToSend.length > 50 ? `${messageToSend.substring(0, 50)}...` : messageToSend,
             type: 'message',
             link: `/learner/messages?tab=college_admin&conversation=${selectedConversationId}`
           });
@@ -744,7 +744,7 @@ const LearnerCollegeAdminCommunication = () => {
       } else {
         // Send message to college educator
         await sendMessage({
-          conversationId: selectedConversationId!,
+          conversationId: selectedConversationId,
           receiverId: currentChat.educatorId,
           receiverType: 'college_educator',
           messageText: messageToSend,
@@ -754,7 +754,7 @@ const LearnerCollegeAdminCommunication = () => {
         try {
           await sendNotification(currentChat.educatorId, {
             title: 'New Message from College Admin',
-            message: messageToSend.length > 50 ? messageToSend.substring(0, 50) + '...' : messageToSend,
+            message: messageToSend.length > 50 ? `${messageToSend.substring(0, 50)}...` : messageToSend,
             type: 'message',
             link: `/educator/messages?tab=college_admin&conversation=${selectedConversationId}`
           });

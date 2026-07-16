@@ -76,9 +76,10 @@ export async function handleFetchEducatorConversations(params: any, context: Aut
     const { data: educators } = await supabase.from('college_lecturers').select('id, first_name, last_name, email, department, specialization, user_id, metadata').in('id', educatorIds);
     if (educators) {
       educatorMap = Object.fromEntries(educators.map((e: any) => {
-        const meta = typeof e.metadata === 'object' && e.metadata !== null ? e.metadata : {};
+        const meta = typeof e.metadata === 'object' && e.metadata !== null && !Array.isArray(e.metadata) ? e.metadata : {};
+        const { first_name, last_name, department, ...rest } = e;
         return [e.id, {
-          ...e,
+          ...rest,
           first_name: e.first_name || meta.first_name || '',
           last_name: e.last_name || meta.last_name || '',
           department: e.department || meta.department || '',
@@ -148,6 +149,7 @@ export async function handleDbUpdate(params: any, context: AuthenticatedContext,
 
 export async function handleUpdateEducatorTable(params: any, context: AuthenticatedContext, startTime: number) {
   const supabase = getSub(context);
+  const { table, values, id, idField } = params;
   const allowedTables2 = ['school_educators', 'college_lecturers'];
   if (!table || !allowedTables2.includes(table)) return apiError(400, 'VALIDATION_ERROR', `Table not allowed: ${table}`, context.request, { startTime });
   if (!values || !id || !idField) return apiError(400, 'VALIDATION_ERROR', 'Missing values, id, or idField', context.request, { startTime });
@@ -159,6 +161,7 @@ export async function handleUpdateEducatorTable(params: any, context: Authentica
 
 export async function handleUpdateCollegeAssignment(params: any, context: AuthenticatedContext, startTime: number) {
   const supabase = getSub(context);
+  const { assignmentId, updateData } = params;
   if (!assignmentId || !updateData) {
     return apiError(400, 'VALIDATION_ERROR', 'Missing assignmentId or updateData', context.request, { startTime });
   }
@@ -172,6 +175,7 @@ export async function handleUpdateCollegeAssignment(params: any, context: Authen
 
 export async function handleDeleteCollegeAssignment(params: any, context: AuthenticatedContext, startTime: number) {
   const supabase = getSub(context);
+  const { assignmentId } = params;
   if (!assignmentId) {
     return apiError(400, 'VALIDATION_ERROR', 'Missing assignmentId', context.request, { startTime });
   }
@@ -185,6 +189,7 @@ export async function handleDeleteCollegeAssignment(params: any, context: Authen
 
 export async function handleGetAssignedLearners(params: any, context: AuthenticatedContext, startTime: number) {
   const supabase = getSub(context);
+  const { assignmentId } = params;
   if (!assignmentId) {
     return apiError(400, 'VALIDATION_ERROR', 'Missing assignmentId', context.request, { startTime });
   }

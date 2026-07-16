@@ -125,7 +125,10 @@ async function handleSendMessage(supabase: SupabaseClient, params: SendMessagePa
   const { data, error } = await supabase.from('messages').insert(messageData).select('id, conversation_id, sender_id, sender_type, receiver_id, receiver_type, message_text, is_read, read_at, created_at, updated_at').single();
   // Ignore FK errors from the notifications trigger — the message itself was saved
   if (error && !(error.code === '23503' && error.message?.includes('notifications'))) throw error;
-  if (!data) throw new Error('Message insert returned no data');
+  if (!data) {
+  logger.warn('Message insert succeeded but returned no data', { error });
+  throw new Error('Message insert returned no data');
+}
   return data;
 }
 
@@ -376,7 +379,7 @@ async function handleSendLearnerAdminMessage(supabase: SupabaseClient, params: a
   const schoolId = String(conversation.school_id);
   const { data: org, error: orgError } = await supabase.from('organizations').select('admin_id').eq('id', schoolId).maybeSingle();
   if (orgError) throw orgError;
-  if (!org || !org.admin_id) throw new Error('School admin not found');
+  if (!org?.admin_id) throw new Error('School admin not found');
 
   return handleSendMessage(supabase, {
     conversationId, senderId: learnerId, senderType: 'learner', receiverId: org.admin_id, receiverType: 'school_admin', messageText, applicationId: undefined, opportunityId: undefined, classId: undefined, subject: subject || conversation.subject, attachments
@@ -395,7 +398,7 @@ async function handleSendLearnerCollegeAdminMessage(supabase: SupabaseClient, pa
   const collegeId = String(conversation.college_id);
   const { data: org, error: orgError } = await supabase.from('organizations').select('admin_id').eq('id', collegeId).maybeSingle();
   if (orgError) throw orgError;
-  if (!org || !org.admin_id) throw new Error('College admin not found');
+  if (!org?.admin_id) throw new Error('College admin not found');
 
   return handleSendMessage(supabase, {
     conversationId, senderId: learnerId, senderType: 'learner', receiverId: org.admin_id, receiverType: 'college_admin', messageText, applicationId: undefined, opportunityId: undefined, classId: undefined, subject: subject || conversation.subject, attachments
@@ -414,7 +417,7 @@ async function handleSendEducatorAdminMessage(supabase: SupabaseClient, params: 
   const schoolId = String(conversation.school_id);
   const { data: org, error: orgError } = await supabase.from('organizations').select('admin_id').eq('id', schoolId).maybeSingle();
   if (orgError) throw orgError;
-  if (!org || !org.admin_id) throw new Error('School admin not found');
+  if (!org?.admin_id) throw new Error('School admin not found');
 
   return handleSendMessage(supabase, {
     conversationId, senderId: educatorId, senderType: 'educator', receiverId: org.admin_id, receiverType: 'school_admin', messageText, applicationId: undefined, opportunityId: undefined, classId: undefined, subject: subject || conversation.subject, attachments
@@ -433,7 +436,7 @@ async function handleSendCollegeEducatorAdminMessage(supabase: SupabaseClient, p
   const collegeId = String(conversation.college_id);
   const { data: org, error: orgError } = await supabase.from('organizations').select('admin_id').eq('id', collegeId).maybeSingle();
   if (orgError) throw orgError;
-  if (!org || !org.admin_id) throw new Error('College admin not found');
+  if (!org?.admin_id) throw new Error('College admin not found');
 
   return handleSendMessage(supabase, {
     conversationId, senderId: educatorId, senderType: 'college_educator', receiverId: org.admin_id, receiverType: 'college_admin', messageText, applicationId: undefined, opportunityId: undefined, classId: undefined, subject: subject || conversation.subject, attachments
@@ -688,11 +691,12 @@ async function handleFetchRecipients(supabase: SupabaseClient, params: any): Pro
         const meta = typeof l.metadata === 'object' && l.metadata !== null ? l.metadata : {};
         const firstName = l.first_name || meta.first_name || '';
         const lastName = l.last_name || meta.last_name || '';
+        const resolvedEmail = l.email || meta.email || '';
         return {
           id: l.id, userId: l.user_id,
-          name: `${firstName} ${lastName}`.trim() || l.email,
+          name: `${firstName} ${lastName}`.trim() || resolvedEmail,
           first_name: firstName, last_name: lastName,
-          email: l.email || meta.email,
+          email: resolvedEmail,
           type: 'college_lecturer', department: l.department, specialization: l.specialization,
         };
       });

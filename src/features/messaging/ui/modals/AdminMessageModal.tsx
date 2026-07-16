@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { type FC, type FormEvent, useState, useEffect, useRef, useCallback } from 'react';
 import { X, Send, Loader2, User } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -25,7 +25,7 @@ interface AdminMessageModalProps {
   userRole: 'school_admin' | 'college_admin' | 'educator' | 'college_educator';
 }
 
-const AdminMessageModal: React.FC<AdminMessageModalProps> = ({
+const AdminMessageModal: FC<AdminMessageModalProps> = ({
   isOpen,
   onClose,
   learner,
@@ -107,8 +107,8 @@ const AdminMessageModal: React.FC<AdminMessageModalProps> = ({
       if (!conversation) throw new Error('No conversation');
 
       const senderType = userRole;
-      // receiver is always the learner — pass learners.id so server can resolve user_id
       const receiverId = learner.id;
+      if (!receiverId) throw new Error('Learner ID is required');
 
       return MessageService.sendMessage(
         conversation.id,
@@ -143,7 +143,7 @@ const AdminMessageModal: React.FC<AdminMessageModalProps> = ({
   }, [messages]);
 
   const handleSend = useCallback(
-    async (e: React.FormEvent) => {
+    async (e: FormEvent) => {
       e.preventDefault();
       if (!newMessage.trim() || sendMutation.isPending) return;
       await sendMutation.mutateAsync(newMessage.trim());

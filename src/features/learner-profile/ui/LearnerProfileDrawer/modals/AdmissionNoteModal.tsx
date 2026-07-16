@@ -1,6 +1,6 @@
 import { useAuthStore } from '@/shared/model/authStore';
 import { ChatBubbleLeftRightIcon, DocumentTextIcon, XMarkIcon } from '@heroicons/react/24/outline';
-import React, { useState } from 'react';
+import { type FC, useState } from 'react';
 import toast from 'react-hot-toast';
 import MessageService from '@/shared/api/messageService';
 import type { Learner } from '@/features/learner-profile/model';
@@ -17,7 +17,7 @@ interface AdmissionNoteModalProps {
   userRole?: 'school_admin' | 'college_admin' | 'university_admin' | 'educator';
 }
 
-const AdmissionNoteModal: React.FC<AdmissionNoteModalProps> = ({
+const AdmissionNoteModal: FC<AdmissionNoteModalProps> = ({
   isOpen,
   onClose,
   learner,
@@ -183,11 +183,16 @@ const AdmissionNoteModal: React.FC<AdmissionNoteModalProps> = ({
 
       const notePrefix = userType === 'school_admin' || userType === 'college_admin' ? 'Admission' : 'Mentor';
 
+      const learnerUserId = learner.user_id;
+      if (!learnerUserId) {
+        throw new Error('Learner user_id is required for sending messages');
+      }
+
       const messageData = {
         conversationId: conversation.id,
         senderId: user.id,
         senderType,
-        receiverId: learner.user_id || learner.id,
+        receiverId: learnerUserId,
         receiverType: 'learner',
         messageText: `📝 ${notePrefix} Note:\n\n${note}`,
         subject: `${notePrefix} Note`
