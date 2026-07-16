@@ -8,10 +8,10 @@ interface TeachingAssistantSettingsProps {
   onModeChange: (mode: AssistantMode) => void;
 }
 
-const TeachingAssistantSettings: React.FC<TeachingAssistantSettingsProps> = ({ 
+const TeachingAssistantSettings = ({ 
   currentMode, 
   onModeChange 
-}) => {
+}: TeachingAssistantSettingsProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -86,4 +86,6 @@ const TeachingAssistantSettings: React.FC<TeachingAssistantSettingsProps> = ({
   );
 };
 
-export default TeachingAssistantSettings;
+const MemoizedTeachingAssistantSettings = React.memo(TeachingAssistantSettings);
+MemoizedTeachingAssistantSettings.displayName = 'TeachingAssistantSettings';
+export default MemoizedTeachingAssistantSettings;

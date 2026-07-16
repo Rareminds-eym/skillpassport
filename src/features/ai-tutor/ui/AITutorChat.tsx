@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useTutorChat } from '@/features/ai-tutor/model/useTutorChat';
-import { ChatMessage } from '@/features/ai-tutor';
+import type { ChatMessage } from '../api/tutorService';
 import { getLogger } from '@/shared/config/logging';
 import { useUserRole } from '@/shared/model/authStore';
 import WorksheetConfigPanel from './WorksheetConfigPanel.tsx';

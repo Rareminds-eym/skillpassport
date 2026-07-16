@@ -2,7 +2,8 @@ import { ssoClient } from '@/shared/api/ssoClient';
 import { apiPost, ApiError } from '@/shared/api/apiClient';
 import { getApiUrl } from '@/shared/api/apiUtils';
 import { getLogger } from '@/shared/config/logging';
-import type { WorksheetConfig, LessonPlanConfig } from '../types';
+import type { WorksheetConfig } from '../types/worksheet';
+import type { LessonPlanConfig } from '../types/lesson-plan';
 
 const logger = getLogger('tutor-service');
 
@@ -32,7 +33,7 @@ interface RawConversation {
   lesson_id: string | null;
   created_at: string;
   updated_at: string;
-  messages?: MessageData[];
+  messages: MessageData[];
 }
 
 interface ErrorResponseBody {
