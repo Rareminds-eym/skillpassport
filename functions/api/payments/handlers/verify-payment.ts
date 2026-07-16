@@ -38,6 +38,34 @@ function hasNumericStatus(error: unknown): error is Record<string, unknown> & { 
   return typeof error === 'object' && error !== null && typeof (error as Record<string, unknown>).status === 'number';
 }
 
+// plans_cache.pricing_matrix is a JSONB column with no DB-level shape
+// constraint; this validates the real structure at runtime instead of
+// trusting a bare type assertion.
+type PricingMatrix = Record<string, { yearly?: number; monthly?: number; currency?: string }>;
+
+function isPricingMatrix(value: unknown): value is PricingMatrix {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return false;
+  }
+  for (const key in value as Record<string, unknown>) {
+    const entry = (value as Record<string, unknown>)[key];
+    if (typeof entry !== 'object' || entry === null) {
+      return false;
+    }
+    const { yearly, monthly, currency } = entry as Record<string, unknown>;
+    if (yearly !== undefined && typeof yearly !== 'number') {
+      return false;
+    }
+    if (monthly !== undefined && typeof monthly !== 'number') {
+      return false;
+    }
+    if (currency !== undefined && typeof currency !== 'string') {
+      return false;
+    }
+  }
+  return true;
+}
+
 export async function handleVerifyPayment(context: AuthenticatedContext): Promise<Response> {
   const user = getContextUser(context);
   const env = context.env as unknown as PaymentWorkerEnv & { SSO_SERVICE: Fetcher };
@@ -102,11 +130,12 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
     }
 
     // Authoritative price from DB — never trust client-supplied price
-    const pricingMatrix = validPlan.pricing_matrix as Record<string, { yearly?: number; monthly?: number; currency?: string }> | undefined;
-    if (!pricingMatrix || typeof pricingMatrix !== 'object' || Array.isArray(pricingMatrix)) {
+    const rawPricingMatrix = validPlan.pricing_matrix;
+    if (!isPricingMatrix(rawPricingMatrix)) {
       console.error('[VerifyPayment] No pricing matrix found for plan:', plan.id);
       return apiError(400, 'VALIDATION_ERROR', 'Plan pricing data is invalid', context.request);
     }
+    const pricingMatrix = rawPricingMatrix;
     const clientPrice = plan.price as number;
     let planPrice: number | undefined;
 
@@ -117,9 +146,6 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
 
     if (pricingMatrix) {
       for (const key in pricingMatrix) {
-        if (typeof pricingMatrix[key] !== 'object' || pricingMatrix[key] === null) {
-          continue;
-        }
         const price = pricingMatrix[key]?.[cycleKey];
         if (typeof price === 'number' && price === clientPrice) {
           planPrice = price;
@@ -162,8 +188,9 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
 
     let subscription: Record<string, unknown>;
     let isUpgrade = false;
-    // Populated on the new-subscription path below and reused for the receipt,
-    // avoiding a second identical learners.name lookup for the same user_id.
+    // Populated by both the new-subscription and upgrade paths below (each
+    // fetches it once it's committed to proceeding), then reused as-is for
+    // the receipt; the receipt step only re-fetches if neither path set it.
     let learnerName: string | null | undefined;
 
     if (existingCache) {
