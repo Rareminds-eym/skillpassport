@@ -689,9 +689,9 @@ async function handleFetchRecipients(supabase: SupabaseClient, params: any): Pro
     if (!error && lecturerData) {
       data = lecturerData.map((l: any) => {
         const meta = typeof l.metadata === 'object' && l.metadata !== null ? l.metadata : {};
-        const firstName = l.first_name || meta.first_name || '';
-        const lastName = l.last_name || meta.last_name || '';
-        const resolvedEmail = l.email || meta.email || '';
+        const firstName = typeof l.first_name === 'string' ? l.first_name : (typeof meta.first_name === 'string' ? meta.first_name : '');
+        const lastName = typeof l.last_name === 'string' ? l.last_name : (typeof meta.last_name === 'string' ? meta.last_name : '');
+        const resolvedEmail = typeof l.email === 'string' ? l.email : (typeof meta.email === 'string' ? meta.email : '');
         return {
           id: l.id, userId: l.user_id,
           name: `${firstName} ${lastName}`.trim() || resolvedEmail,

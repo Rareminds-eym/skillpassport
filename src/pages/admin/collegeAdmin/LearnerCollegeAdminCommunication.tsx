@@ -28,7 +28,7 @@ import { useNotificationBroadcast } from '@/features/broadcast';
 import { useRealtimePresence } from '@/shared/lib/hooks';
 import { useTypingIndicator } from '@/shared/lib/hooks';
 import MessageService from '@/shared/api/messageService';
-import type { Conversation } from '@/features/messaging';
+import { type Conversation } from '@/features/messaging';
 import { getLogger } from '@/shared/config/logging';
 
 import { queryKeys } from '@/shared/lib/queryKeys';
