@@ -104,8 +104,9 @@ export async function* sendMessage(request: ChatRequest): AsyncGenerator<StreamC
   );
 
   if (!response.ok) {
-    const errorData = await response.json() as { error?: string };
-    throw new Error(errorData.error || 'Failed to send message');
+    const body: any = await response.json().catch(() => ({}));
+    const message = body?.error?.message || body?.error?.code || 'Failed to send message';
+    throw new Error(message);
   }
 
   const reader = response.body?.getReader();
@@ -311,8 +312,8 @@ export async function getCourseProgress(courseId: string): Promise<CourseProgres
   );
 
   if (!response.ok) {
-    const errorData = await response.json() as { error?: string };
-    throw new Error(errorData.error || 'Failed to get progress');
+    const body: any = await response.json().catch(() => ({}));
+    throw new Error(body?.error?.message || body?.error?.code || 'Failed to get progress');
   }
 
   return response.json();
@@ -337,8 +338,8 @@ export async function updateLessonProgress(
   );
 
   if (!response.ok) {
-    const errorData = await response.json() as { error?: string };
-    throw new Error(errorData.error || 'Failed to update progress');
+    const body: any = await response.json().catch(() => ({}));
+    throw new Error(body?.error?.message || body?.error?.code || 'Failed to update progress');
   }
 }
 

@@ -4,6 +4,8 @@ import {
   Brain,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   History,
   Loader2,
   LogIn,
@@ -70,6 +72,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
   const isEducator = isTeacher || roleIsEducator;
   
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
+  const [isConfigExpanded, setIsConfigExpanded] = useState(true);
   const [input, setInput] = useState('');
   const [showHistory, setShowHistory] = useState(false);
   const [feedbackGiven, setFeedbackGiven] = useState<Record<number, 1 | -1>>({});
@@ -209,6 +212,9 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
     const generateMessage = assistantMode === 'worksheet' 
       ? 'Generate a worksheet based on the configured settings.'
       : 'Generate a lesson plan based on the configured settings.';
+    
+    // Hide config panel after starting generation
+    setIsConfigExpanded(false);
     
     await sendMessage(generateMessage);
     
@@ -574,31 +580,61 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
       </div>
 
       {/* Config Panel (Educators Only) */}
-      {isEducator && assistantMode === 'worksheet' && (
-        <WorksheetConfigPanel
-          key={`worksheet-${teacherGenerationCount}`}
-          config={worksheetConfig}
-          onChange={setWorksheetConfig}
-          onGenerate={handleGenerate}
-          isGenerating={isStreaming}
-          generationLimit={isTeacher ? teacherGenerationLimit : undefined}
-          remainingGenerations={isTeacher ? remainingTeacherGenerations : undefined}
-          isGenerationLimitReached={isGenerationLocked}
-          isUsageLoading={isCheckingGenerationUsage}
-        />
-      )}
-      {isEducator && assistantMode === 'lesson-plan' && (
-        <LessonPlanConfigPanel
-          key={`lesson-plan-${teacherGenerationCount}`}
-          config={lessonPlanConfig}
-          onChange={setLessonPlanConfig}
-          onGenerate={handleGenerate}
-          isGenerating={isStreaming}
-          generationLimit={isTeacher ? teacherGenerationLimit : undefined}
-          remainingGenerations={isTeacher ? remainingTeacherGenerations : undefined}
-          isGenerationLimitReached={isGenerationLocked}
-          isUsageLoading={isCheckingGenerationUsage}
-        />
+      {isEducator && (
+        <div className="bg-white flex-shrink-0 z-10 border-b border-gray-100 shadow-sm relative">
+          <button
+            onClick={() => setIsConfigExpanded(!isConfigExpanded)}
+            className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+          >
+            <span className="font-medium text-sm text-gray-800 flex items-center gap-2">
+              {assistantMode === 'worksheet' ? 'Worksheet Settings' : 'Lesson Plan Settings'}
+            </span>
+            {isConfigExpanded ? (
+              <ChevronUp className="w-4 h-4 text-gray-500" />
+            ) : (
+              <ChevronDown className="w-4 h-4 text-gray-500" />
+            )}
+          </button>
+          
+          <AnimatePresence>
+            {isConfigExpanded && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                className="overflow-hidden"
+              >
+                <div className="p-4 pt-0 max-h-[50vh] overflow-y-auto">
+                  {assistantMode === 'worksheet' ? (
+                    <WorksheetConfigPanel
+                      key={`worksheet-${teacherGenerationCount}`}
+                      config={worksheetConfig}
+                      onChange={setWorksheetConfig}
+                      onGenerate={handleGenerate}
+                      isGenerating={isStreaming}
+                      generationLimit={isTeacher ? teacherGenerationLimit : undefined}
+                      remainingGenerations={isTeacher ? remainingTeacherGenerations : undefined}
+                      isGenerationLimitReached={isGenerationLocked}
+                      isUsageLoading={isCheckingGenerationUsage}
+                    />
+                  ) : (
+                    <LessonPlanConfigPanel
+                      key={`lesson-plan-${teacherGenerationCount}`}
+                      config={lessonPlanConfig}
+                      onChange={setLessonPlanConfig}
+                      onGenerate={handleGenerate}
+                      isGenerating={isStreaming}
+                      generationLimit={isTeacher ? teacherGenerationLimit : undefined}
+                      remainingGenerations={isTeacher ? remainingTeacherGenerations : undefined}
+                      isGenerationLimitReached={isGenerationLocked}
+                      isUsageLoading={isCheckingGenerationUsage}
+                    />
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       )}
 
       {/* Messages Area */}

@@ -13,10 +13,10 @@ interface LessonPlanConfigPanelProps {
   isUsageLoading?: boolean;
 }
 
-const LessonPlanConfigPanel = ({ 
-  config, 
-  onChange, 
-  onGenerate, 
+const LessonPlanConfigPanel = ({
+  config,
+  onChange,
+  onGenerate,
   isGenerating,
   generationLimit,
   remainingGenerations,
@@ -57,23 +57,6 @@ const LessonPlanConfigPanel = ({
           <option value="Grade 12">Grade 12</option>
           <option value="College/University">College/University</option>
         </select>
-      </div>
-
-      {/* Subject */}
-      <div>
-        <label className="block text-sm font-medium text-gray-900 mb-2">
-          Subject
-        </label>
-        <input
-          type="text"
-          value={config.subject || ''}
-          onChange={(e) => handleChange('subject', e.target.value)}
-          placeholder="e.g., Mathematics, Science, History, English"
-          className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white placeholder-gray-400"
-        />
-        <p className="text-xs text-gray-500 mt-1.5">
-          Enter the subject for the lesson plan
-        </p>
       </div>
 
       {/* Template Type */}
@@ -132,7 +115,7 @@ const LessonPlanConfigPanel = ({
             />
             <span className="text-sm text-gray-700">Learning Objectives</span>
           </label>
-          
+
           <label className="flex items-center gap-2.5 cursor-pointer">
             <input
               type="checkbox"
@@ -142,7 +125,7 @@ const LessonPlanConfigPanel = ({
             />
             <span className="text-sm text-gray-700">Materials List</span>
           </label>
-          
+
           <label className="flex items-center gap-2.5 cursor-pointer">
             <input
               type="checkbox"
@@ -152,7 +135,7 @@ const LessonPlanConfigPanel = ({
             />
             <span className="text-sm text-gray-700">Assessment</span>
           </label>
-          
+
           <label className="flex items-center gap-2.5 cursor-pointer">
             <input
               type="checkbox"
@@ -162,7 +145,7 @@ const LessonPlanConfigPanel = ({
             />
             <span className="text-sm text-gray-700">Differentiation</span>
           </label>
-          
+
           <label className="flex items-center gap-2.5 cursor-pointer">
             <input
               type="checkbox"
@@ -205,7 +188,7 @@ const LessonPlanConfigPanel = ({
       </button>
       {generationLimit !== undefined && remainingGenerations !== undefined && !isUsageLoading && (
         <p className={`text-xs text-center mt-2 ${isGenerationLimitReached ? 'text-red-600 font-semibold' : 'text-gray-600'}`}>
-          {isGenerationLimitReached 
+          {isGenerationLimitReached
             ? `Generation limit reached (${generationLimit}/${generationLimit} used)`
             : `${remainingGenerations} of ${generationLimit} generations remaining`
           }

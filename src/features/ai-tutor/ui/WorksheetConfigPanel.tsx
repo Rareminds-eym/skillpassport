@@ -59,23 +59,6 @@ const WorksheetConfigPanel = ({
         </select>
       </div>
 
-      {/* Topic */}
-      <div>
-        <label className="block text-sm font-medium text-gray-900 mb-2">
-          Topic
-        </label>
-        <input
-          type="text"
-          value={config.topic || ''}
-          onChange={(e) => handleChange('topic', e.target.value)}
-          placeholder="e.g., Photosynthesis, World War II, Quadratic Equations"
-          className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white placeholder-gray-400"
-        />
-        <p className="text-xs text-gray-500 mt-1.5">
-          Enter the subject or topic for the worksheet
-        </p>
-      </div>
-
       {/* Template Type */}
       <div>
         <label className="block text-sm font-medium text-gray-900 mb-2">
