@@ -32,6 +32,12 @@ import { fetchImageBytes, generateReceiptPDF, type ReceiptData } from '../../sto
 import { R2Client } from '../../storage/utils/r2-client';
 import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../lib/paymentBinding';
 
+// RPC calls throw errors of unknown shape; some carry an HTTP-like numeric
+// `status` (e.g. 409 on a duplicate-key race). This narrows without `any`.
+function hasNumericStatus(error: unknown): error is Record<string, unknown> & { status: number } {
+  return typeof error === 'object' && error !== null && typeof (error as Record<string, unknown>).status === 'number';
+}
+
 export async function handleVerifyPayment(context: AuthenticatedContext): Promise<Response> {
   const user = getContextUser(context);
   const env = context.env as unknown as PaymentWorkerEnv & { SSO_SERVICE: Fetcher };
@@ -96,7 +102,11 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
     }
 
     // Authoritative price from DB — never trust client-supplied price
-    const pricingMatrix = validPlan.pricing_matrix as Record<string, { yearly?: number; monthly?: number; currency: string }>;
+    const pricingMatrix = validPlan.pricing_matrix as Record<string, { yearly?: number; monthly?: number; currency?: string }> | undefined;
+    if (!pricingMatrix) {
+      console.error('[VerifyPayment] No pricing matrix found for plan:', plan.id);
+      return apiError(400, 'VALIDATION_ERROR', 'Plan pricing data is invalid', context.request);
+    }
     const clientPrice = plan.price as number;
     let planPrice: number | undefined;
 
@@ -149,6 +159,9 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
 
     let subscription: Record<string, unknown>;
     let isUpgrade = false;
+    // Populated on the new-subscription path below and reused for the receipt,
+    // avoiding a second identical learners.name lookup for the same user_id.
+    let learnerName: string | null | undefined;
 
     if (existingCache) {
       // Upgrade flow — update existing subscription in auth DB
@@ -196,7 +209,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
         });
       } catch (upgradeError: unknown) {
         const upgradeErrorMessage = upgradeError instanceof Error ? upgradeError.message : String(upgradeError);
-        const upgradeErrorStatus = (upgradeError as { status?: number })?.status;
+        const upgradeErrorStatus = hasNumericStatus(upgradeError) ? upgradeError.status : undefined;
 
         if (upgradeErrorMessage.includes('duplicate key') || upgradeErrorMessage.includes('23505') || upgradeErrorStatus === 409) {
           console.log('[VerifyPayment] Subscription already updated by webhook (duplicate caught). Syncing shadow cache before return.');
@@ -266,6 +279,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
         .select('name')
         .eq('user_id', user.id)
         .maybeSingle();
+      learnerName = learnerForSubscription?.name;
 
       try {
         subscription = await ssoCreateSubscription(env, {
@@ -283,7 +297,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
         });
       } catch (createError: unknown) {
         const createErrorMessage = createError instanceof Error ? createError.message : String(createError);
-        const createErrorStatus = (createError as { status?: number })?.status;
+        const createErrorStatus = hasNumericStatus(createError) ? createError.status : undefined;
 
         // Handle race condition: Webhook or other synchronous flow already created the subscription
         if (createErrorMessage.includes('duplicate key') || createErrorMessage.includes('23505') || createErrorStatus === 409) {
@@ -338,7 +352,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
       });
     } catch (txError: unknown) {
       const txErrorMessage = txError instanceof Error ? txError.message : String(txError);
-      const txErrorStatus = (txError as { status?: number })?.status;
+      const txErrorStatus = hasNumericStatus(txError) ? txError.status : undefined;
 
       if (txErrorMessage.includes('duplicate key') || txErrorMessage.includes('23505') || txErrorStatus === 409) {
         console.log('[VerifyPayment] Transaction already recorded (duplicate caught). Skipping further duplicate handling.');
@@ -375,11 +389,16 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
     try {
       const pagesEnv = env as unknown as PagesEnv;
 
-      const { data: learner } = await supabase
-        .from('learners')
-        .select('name')
-        .eq('user_id', user.id)
-        .maybeSingle();
+      // Reuse the learners.name lookup done above on the new-subscription path;
+      // the upgrade path never fetched it, so fetch it here instead.
+      if (learnerName === undefined) {
+        const { data: learner } = await supabase
+          .from('learners')
+          .select('name')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        learnerName = learner?.name;
+      }
 
       const logoUrl = `${APP_URL}/RareMinds ISO Logo-01.png`;
       const logoBytes: Uint8Array | undefined = await fetchImageBytes(logoUrl);
@@ -403,7 +422,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
           subscription_end_date: subscription.subscription_end_date as string,
         },
         user: {
-          name: learner?.name || (subscription.full_name as string) || '',
+          name: learnerName || (subscription.full_name as string) || '',
           email: (subscription.email as string) || user.email || '',
           phone: contactPhone,
         },

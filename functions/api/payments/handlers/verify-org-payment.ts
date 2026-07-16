@@ -23,6 +23,12 @@ import {
 import { syncSubscriptionCache, syncUserShadow } from '../../../lib/sync-shadow';
 import { apiSuccess, apiError } from '../../../lib/response';
 
+// RPC calls throw errors of unknown shape; some carry an HTTP-like numeric
+// `status` (e.g. 409 on a duplicate-key race). This narrows without `any`.
+function hasNumericStatus(error: unknown): error is Record<string, unknown> & { status: number } {
+  return typeof error === 'object' && error !== null && typeof (error as Record<string, unknown>).status === 'number';
+}
+
 export async function handleVerifyOrgPayment(context: AuthenticatedContext): Promise<Response> {
   const user = getContextUser(context);
   const env = context.env as unknown as PaymentWorkerEnv & { SSO_SERVICE: Fetcher };
@@ -131,7 +137,7 @@ export async function handleVerifyOrgPayment(context: AuthenticatedContext): Pro
       });
     } catch (createError: unknown) {
       const createErrorMessage = createError instanceof Error ? createError.message : String(createError);
-      const createErrorStatus = (createError as { status?: number })?.status;
+      const createErrorStatus = hasNumericStatus(createError) ? createError.status : undefined;
 
       if (createErrorMessage.includes('duplicate key') || createErrorMessage.includes('23505') || createErrorStatus === 409) {
         console.log('[VerifyOrgPayment] Org subscription already created by webhook (duplicate caught). Syncing shadow cache before return.');
