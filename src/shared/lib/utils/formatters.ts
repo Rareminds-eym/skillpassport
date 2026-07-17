@@ -77,3 +77,22 @@ export const formatStreamId = (streamId: string | null | undefined): string => {
     .replace(/_/g, ' ')
     .replace(/\b\w/g, letter => letter.toUpperCase());
 };
+
+/**
+ * Derives up-to-2-character uppercase initials from a full name, for avatars.
+ *
+ * Consolidates the same logic currently duplicated inline across several
+ * feature components (recruiter pipeline, educator settings). Safe fallback to
+ * "?" for empty/whitespace input.
+ *
+ * @param name - Full display name, e.g. "Ayesha Rahman".
+ * @returns Initials, e.g. "AR". Single-word names use their first two letters.
+ * @example getInitials('Ayesha Rahman') // 'AR'
+ * @example getInitials('Cher')          // 'CH'
+ */
+export const getInitials = (name: string): string => {
+  const parts = (name ?? '').trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '?';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+};

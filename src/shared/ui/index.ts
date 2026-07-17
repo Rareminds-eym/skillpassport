@@ -2,6 +2,7 @@ export { Badge, badgeVariants } from './Badge';
 export { BoltStyleChat } from './BoltStyleChat';
 export { Button, buttonVariants } from './ButtonNew';
 export { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './Card';
+export { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from './Command';
 export { CareerPathConnector, CareerPathEffect } from './CareerPathEffect';
 export { CertificateNameModal } from './CertificateNameModal';
 export { default as ConfirmationModal } from './ConfirmationModal';
