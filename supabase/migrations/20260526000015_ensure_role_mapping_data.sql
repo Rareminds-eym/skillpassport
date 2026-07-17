@@ -1,6 +1,33 @@
 -- =====================================================
--- Ensure Role Mapping Data Exists
--- This migration ensures recruitment_role_mapping has data
+-- Migration: Ensure Role Mapping Data Exists
+-- =====================================================
+-- Phase: 1 of 1 (Single-phase migration - data seeding)
+-- Breaking: No
+-- Rollback: DELETE FROM public.recruitment_role_mapping;
+--          (Safe - table will be recreated on next deployment)
+-- 
+-- Context:
+--   Ensures recruitment_role_mapping table exists and contains the required
+--   role mappings for recruiter permissions. This table maps SSO roles
+--   (owner, admin, member) to recruitment-specific permissions.
+--
+-- Related ADR: None (data seeding only)
+-- Related Tables: recruitment_role_mapping
+--
+-- Deployment order:
+--   1. Run this migration (creates/seeds table)
+--   2. No application code changes needed
+--   3. Idempotent - safe to re-run
+--
+-- Data Impact:
+--   - Creates table if not exists
+--   - Deletes existing data and re-inserts (ensures consistency)
+--   - Always results in exactly 3 role mappings
+--   - Validation check ensures 3 rows exist after insert
+--
+-- Rollback:
+--   DELETE FROM public.recruitment_role_mapping;
+--   Safe to rollback - no dependencies
 -- =====================================================
 
 BEGIN;

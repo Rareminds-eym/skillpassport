@@ -1,5 +1,49 @@
 -- =====================================================
--- Phase 1: Replace FDW with Local organization_members Table
+-- Migration: Replace FDW with Local organization_members Table
+-- =====================================================
+-- Phase: 1 of 1 (Single-phase migration - architectural change)
+-- Breaking: No (backward compatible - RPCs rewritten but API unchanged)
+-- Rollback: Cannot rollback - would require recreating FDW setup
+--          Forward-only migration
+-- 
+-- Context:
+--   ARCHITECTURE CHANGE: Abandoning Foreign Data Wrapper (FDW) approach.
+--   Moving from cross-database queries to queue-based sync system.
+--   
+--   Old Architecture (FDW):
+--   - SkillPassport DB queries SSO-Worker DB directly via FDW
+--   - Tight coupling, performance issues, debugging difficulty
+--   
+--   New Architecture (Queue Sync):
+--   - auth-sync-consumer queue syncs SSO-Worker data to local tables
+--   - Loose coupling, better performance, eventual consistency
+--
+-- Related ADR: ADR-045 (Abandon FDW Cross-Database Architecture) - to be created
+-- Related Tables: organization_members (new), organizations (existing)
+-- Related Functions: 6 RPCs rewritten to use local tables
+--
+-- Deployment order:
+--   1. Deploy auth-sync-consumer queue consumer first
+--   2. Backfill organization_members from SSO-Worker
+--   3. Run this migration (creates table, rewrites functions)
+--   4. Verify functions work with local data
+--   5. Remove FDW configuration (separate cleanup)
+--
+-- Data Impact:
+--   - Creates new organization_members table
+--   - Rewrites 6 RPC functions to use local tables
+--   - No data loss (FDW tables remain, just unused)
+--   - Membership data synced via queue going forward
+--
+-- Rollback:
+--   Cannot rollback - would need to recreate FDW foreign tables
+--   Forward-only migration
+--   If issues: Fix auth-sync-consumer, manually sync data
+--
+-- Monitoring:
+--   - Track auth-sync-consumer queue lag
+--   - Monitor organization_members table growth
+--   - Alert if sync lag > 1 minute
 -- =====================================================
 -- 
 -- ARCHITECTURE CHANGE (Updated 2026):

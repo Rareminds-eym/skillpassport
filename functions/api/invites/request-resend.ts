@@ -6,24 +6,43 @@
  */
 
 import { getServiceClient } from '../../lib/supabase';
+import { createLogger } from '../../lib/logger';
 
 export async function onRequestPost(context: any): Promise<Response> {
-    console.log('=== REQUEST RESEND INVITATION API CALLED ===');
-
     const env = context.env as Record<string, string>;
+
+    // Create structured logger
+    const logger = createLogger('invites-request-resend', env.ENVIRONMENT || 'production');
+
+    // Generate request ID for tracing
+    const requestId = context.request.headers.get('X-Request-ID') || crypto.randomUUID();
+
     const supabase = getServiceClient(env as any);
 
     // Get token from query params
     const url = new URL(context.request.url);
     const token = url.searchParams.get('token');
 
+    logger.info('resend_request_received', {
+        requestId,
+        hasToken: !!token,
+        path: url.pathname,
+    });
+
     if (!token) {
+        logger.warn('validation_failed_missing_token', {
+            requestId,
+        });
+
         return Response.json({ error: 'Token is required' }, { status: 400 });
     }
 
     try {
         // Get invitation details
-        console.log('[request-resend] Looking up invitation');
+        logger.info('looking_up_invitation', {
+            requestId,
+        });
+
         const { data: invitation, error: inviteError } = await supabase
             .from('organization_invitations')
             .select(`
@@ -35,11 +54,20 @@ export async function onRequestPost(context: any): Promise<Response> {
             .single();
 
         if (inviteError || !invitation) {
-            console.error('[request-resend] Invitation not found:', inviteError);
+            logger.warn('invitation_not_found', {
+                requestId,
+                error: inviteError?.message,
+            });
+
             return Response.json({ error: 'Invitation not found' }, { status: 404 });
         }
 
-        console.log('[request-resend] ✓ Invitation found:', invitation.id);
+        logger.info('invitation_found', {
+            requestId,
+            invitationId: invitation.id,
+            inviteeEmail: invitation.invitee_email,
+            role: invitation.invitee_role,
+        });
 
         // Get organization and inviter data
         const orgData = Array.isArray(invitation.organization)
@@ -57,7 +85,13 @@ export async function onRequestPost(context: any): Promise<Response> {
         const organizationName = orgData?.name || 'your organization';
 
         // Send notification email to admin
-        console.log('[request-resend] Sending notification to admin:', adminEmail);
+        logger.info('sending_notification_to_admin', {
+            requestId,
+            adminEmail,
+            invitationId: invitation.id,
+            inviteeEmail: invitation.invitee_email,
+            organizationName,
+        });
 
         try {
             const { sendEmail } = await import('../../lib/emailService');
@@ -154,6 +188,7 @@ This is an automated notification from SkillPassport
 © ${currentYear} SkillPassport. All rights reserved.
             `.trim();
 
+            const startTime = Date.now();
             await sendEmail(
                 {
                     to: adminEmail,
@@ -168,8 +203,15 @@ This is an automated notification from SkillPassport
                 },
                 env as any
             );
+            const duration = Date.now() - startTime;
 
-            console.log('[request-resend] ✓ Notification email sent to admin');
+            logger.info('notification_email_sent', {
+                requestId,
+                adminEmail,
+                invitationId: invitation.id,
+                inviteeEmail: invitation.invitee_email,
+                duration,
+            });
 
             return Response.json({
                 success: true,
@@ -177,18 +219,26 @@ This is an automated notification from SkillPassport
             });
 
         } catch (emailError: any) {
-            console.error('[request-resend] Failed to send notification email:', emailError);
+            logger.error('notification_email_failed', emailError, {
+                requestId,
+                adminEmail,
+                invitationId: invitation.id,
+            });
+
+            // Generic message to client (no internal details exposed)
             return Response.json({
-                error: 'Failed to send notification email',
-                details: emailError.message
+                error: 'Failed to send notification. Please try again later.',
             }, { status: 500 });
         }
 
     } catch (error: any) {
-        console.error('=== REQUEST RESEND INVITATION API ERROR ===');
-        console.error('[request-resend] Unexpected error:', error);
+        logger.error('resend_request_unexpected_error', error, {
+            requestId,
+        });
+
+        // Generic message to client (no internal details exposed)
         return Response.json(
-            { error: 'Failed to process resend request', details: error.message },
+            { error: 'An unexpected error occurred. Please try again later.' },
             { status: 500 }
         );
     }

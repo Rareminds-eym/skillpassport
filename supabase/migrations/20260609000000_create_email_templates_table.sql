@@ -1,3 +1,41 @@
+-- =====================================================
+-- Migration: Create Email Templates Table
+-- =====================================================
+-- Phase: 1 of 1 (Single-phase migration - new table)
+-- Breaking: No
+-- Rollback: DROP TABLE IF EXISTS organization_email_templates CASCADE;
+--          (Safe - no dependencies yet)
+-- 
+-- Context:
+--   Creates table for storing customized email templates for recruitment
+--   communications. Allows organizations to customize invitation, role_change,
+--   and welcome emails with their own branding and messaging.
+--
+-- Related ADR: None (simple table creation)
+-- Related Tables: organizations (foreign key)
+-- Related Features: Recruitment invitations, role management
+--
+-- Deployment order:
+--   1. Run this migration (creates table with RLS)
+--   2. Deploy application code that uses email templates
+--   3. Seed default templates (optional, via separate seed file)
+--
+-- Data Impact:
+--   - Creates new table organization_email_templates
+--   - No existing data affected
+--   - RLS policies require owner/admin role to manage templates
+--   - One template per type per organization (unique constraint)
+--
+-- Rollback:
+--   DROP TABLE IF EXISTS organization_email_templates CASCADE;
+--   Safe to rollback - no dependencies on this table yet
+--
+-- Template Types:
+--   - 'invitation': Email sent when inviting recruiters
+--   - 'role_change': Email sent when user role changes
+--   - 'welcome': Email sent when user joins organization
+-- =====================================================
+
 -- Create organization_email_templates table
 -- Stores customized email templates for recruitment communications
 

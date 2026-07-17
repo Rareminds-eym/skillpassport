@@ -1,7 +1,45 @@
--- Migration: Fix create_local_organization to not use slug or created_by columns
--- The organizations table in skillpassport doesn't have these columns
--- Also fixes plan_tier to use 'starter' instead of 'free'
--- Date: 2026-07-02
+-- =====================================================
+-- Migration: Remove slug Column from create_local_organization
+-- =====================================================
+-- Phase: 1 of 1 (Function fix - schema correction)
+-- Breaking: No (API unchanged)
+-- Rollback: Restore previous function version from 20260702000001
+-- 
+-- Context:
+--   Discovered organizations table in skillpassport doesn't have slug or
+--   created_by columns. These are SSO-Worker-specific columns that don't
+--   exist in the skillpassport database schema.
+--   
+--   Changes:
+--   - Removed slug generation logic entirely
+--   - Changed created_by to admin_id (skillpassport column name)
+--   - Changed plan_tier from 'free' to 'starter' (matches CHECK constraint)
+--   - Added user existence check before creating membership
+--   - Fixed schema mismatch causing runtime errors
+--
+-- Related ADR: ADR-042 (Allow Null Organization Names During Onboarding)
+-- Related Tables:
+--   - organizations (id, name, admin_id) - NO slug or created_by columns
+--   - organization_members
+--   - organization_recruitment_settings
+--
+-- Deployment order:
+--   1. Run this migration (replaces function)
+--   2. Test organization creation from SSO sync
+--   3. Verify membership creation works correctly
+--   4. Confirm no column errors in logs
+--
+-- Data Impact:
+--   - No data changes (function definition only)
+--   - Fixes runtime errors from missing columns (slug, created_by)
+--   - Future organization syncs won't fail with "column does not exist" error
+--
+-- Rollback:
+--   Restore previous version from 20260702000001_fix_create_local_organization.sql:
+--   - Extract previous CREATE OR REPLACE FUNCTION definition
+--   - Re-run migration
+--   - Safe to rollback (no data loss)
+-- =====================================================
 
 CREATE OR REPLACE FUNCTION public.create_local_organization(
     p_organization_id UUID,

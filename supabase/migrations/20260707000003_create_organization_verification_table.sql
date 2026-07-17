@@ -1,6 +1,54 @@
--- Migration: Create organization_recruitment_verification table
--- Stores CIN/Business Registration, GST, and Tax Identification details
--- Timestamp: 2026-07-07
+-- =====================================================
+-- Migration: Create Organization Verification Table
+-- =====================================================
+-- Phase: 1 of 1 (New table creation)
+-- Breaking: No (new table, no dependencies)
+-- Rollback: DROP TABLE organization_recruitment_verification CASCADE
+-- 
+-- Context:
+--   Creates table to store organization verification and compliance data
+--   for the recruitment module. Part of recruiter onboarding Step 3
+--   (Organization Verification).
+--   
+--   Stores:
+--   - CIN/Business Registration Number
+--   - GST Number (India tax compliance)
+--   - Tax Identification Number (TIN)
+--   - Incorporation Date
+--   - Verification Status (pending/approved/rejected/under_review)
+--   - Admin notes and timestamps
+--
+-- Related ADR: None (compliance feature)
+-- Related Tables:
+--   - organizations (foreign key, one-to-one relationship)
+--   - organization_recruitment_verification (this table)
+-- Related Features:
+--   - Recruiter onboarding Step 3
+--   - Admin verification workflow
+--   - Compliance reporting
+--
+-- Deployment order:
+--   1. Run this migration (creates table + 4 indexes)
+--   2. Deploy frontend form for Step 3 verification
+--   3. Deploy API endpoints:
+--      - POST /api/organizations/:id/verification (submit)
+--      - GET /api/organizations/:id/verification (read)
+--      - PATCH /api/organizations/:id/verification (admin update status)
+--   4. Add RLS policies for organization members
+--   5. Create admin dashboard for verification approval
+--
+-- Data Impact:
+--   - No existing data affected (new table)
+--   - One row per organization (enforced by UNIQUE constraint)
+--   - Indexes for common queries (organization_id, status, CIN, GST)
+--   - Storage: ~500 bytes per organization
+--
+-- Rollback:
+--   -- Safe to rollback before application code deployed:
+--   DROP TABLE IF EXISTS public.organization_recruitment_verification CASCADE;
+--   
+--   -- WARNING: After data exists, rollback destroys verification records
+-- =====================================================
 
 BEGIN;
 

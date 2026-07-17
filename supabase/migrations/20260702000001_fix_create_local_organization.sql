@@ -1,7 +1,45 @@
--- Migration: Fix create_local_organization to work with actual organizations table structure
--- The organizations table doesn't have recruitment_enabled and max_recruiters columns
--- Those are in organization_recruitment_settings table
--- Date: 2026-07-02
+-- =====================================================
+-- Migration: Fix create_local_organization Function (Schema Alignment)
+-- =====================================================
+-- Phase: 1 of 1 (Function fix - schema alignment)
+-- Breaking: No (API unchanged, implementation fixed)
+-- Rollback: Restore previous function version from migration 20260608000001
+-- 
+-- Context:
+--   Fixes create_local_organization to match actual skillpassport schema.
+--   Previous migration assumed organizations table had recruitment_enabled
+--   and max_recruiters columns, but these are in organization_recruitment_settings.
+--   
+--   Changes:
+--   - Generates unique slug with random suffix
+--   - Handles NULL names (onboarding flow)
+--   - Creates organization_recruitment_settings entry separately
+--   - Adds unique name conflict resolution (appends counter)
+--
+-- Related ADR: ADR-042 (Allow Null Organization Names During Onboarding)
+-- Related Tables:
+--   - organizations (id, name, slug, created_by)
+--   - organization_members (user_id, organization_id, role, status)
+--   - organization_recruitment_settings (recruitment_enabled, max_recruiters)
+--
+-- Deployment order:
+--   1. Run this migration (replaces function)
+--   2. No application code changes needed (API unchanged)
+--   3. Test with NULL and non-NULL org names
+--   4. Verify organization_recruitment_settings created correctly
+--
+-- Data Impact:
+--   - No data changes (function definition only)
+--   - Future organization creations use new logic
+--   - Handles duplicate names by appending counter (e.g., "Acme 1", "Acme 2")
+--   - Supports NULL names temporarily (recruiter onboarding)
+--
+-- Rollback:
+--   Restore previous version from 20260608000001_replace_fdw_with_organization_members.sql:
+--   - Extract previous CREATE OR REPLACE FUNCTION definition
+--   - Re-run with original parameters
+--   - Safe to rollback (no data loss, only function definition)
+-- =====================================================
 
 CREATE OR REPLACE FUNCTION public.create_local_organization(
     p_organization_id UUID,
