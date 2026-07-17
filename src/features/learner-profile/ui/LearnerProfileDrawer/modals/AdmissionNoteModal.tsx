@@ -1,11 +1,11 @@
-import { useAuthStore } from '@/shared/model/authStore';
 import { ChatBubbleLeftRightIcon, DocumentTextIcon, XMarkIcon } from '@heroicons/react/24/outline';
-import React, { useState } from 'react';
+import { type FC, useState } from 'react';
 import toast from 'react-hot-toast';
-import MessageService from '@/shared/api/messageService';
 import type { Learner } from '@/features/learner-profile/model';
-import { getLogger } from '@/shared/config/logging';
 import { apiPost } from '@/shared/api/apiClient';
+import MessageService, { type Conversation } from '@/shared/api/messageService';
+import { getLogger } from '@/shared/config/logging';
+import { useAuthStore } from '@/shared/model/authStore';
 
 const logger = getLogger('admission-note-modal');
 
@@ -17,7 +17,7 @@ interface AdmissionNoteModalProps {
   userRole?: 'school_admin' | 'college_admin' | 'university_admin' | 'educator';
 }
 
-const AdmissionNoteModal: React.FC<AdmissionNoteModalProps> = ({
+const AdmissionNoteModal: FC<AdmissionNoteModalProps> = ({
   isOpen,
   onClose,
   learner,
@@ -133,16 +133,16 @@ const AdmissionNoteModal: React.FC<AdmissionNoteModalProps> = ({
         throw new Error('Could not determine educator ID');
       }
 
-      // conversations.learner_id references learners.user_id
-      const conversationLearnerId = learner.user_id;
+      // Pass learner.id (learners PK) — server handler resolves user_id internally
+      const conversationLearnerId = learner.id;
       if (!conversationLearnerId) {
-        throw new Error('Learner user_id is required for messaging');
+        throw new Error('Learner id is required for messaging');
       }
 
       // educatorId is guaranteed non-null here for educator types due to the guard above
       const validatedEducatorId = educatorId ?? '';
 
-      let conversation;
+      let conversation: Conversation | undefined;
 
       // Create or get conversation based on user type
       if (userType === 'school_admin') {
@@ -183,11 +183,16 @@ const AdmissionNoteModal: React.FC<AdmissionNoteModalProps> = ({
 
       const notePrefix = userType === 'school_admin' || userType === 'college_admin' ? 'Admission' : 'Mentor';
 
+      const learnerUserId = learner.user_id;
+      if (!learnerUserId) {
+        throw new Error('Learner user_id is required for sending messages');
+      }
+
       const messageData = {
         conversationId: conversation.id,
         senderId: user.id,
         senderType,
-        receiverId: conversationLearnerId,
+        receiverId: learnerUserId,
         receiverType: 'learner',
         messageText: `📝 ${notePrefix} Note:\n\n${note}`,
         subject: `${notePrefix} Note`

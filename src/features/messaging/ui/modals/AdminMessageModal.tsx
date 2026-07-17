@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { X, Send, Loader2, User } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Loader2, Send, User, X } from 'lucide-react';
+import { type FC, type FormEvent, useCallback, useEffect, useRef, useState, } from 'react';
 import toast from 'react-hot-toast';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import MessageService, { type Message } from '@/shared/api/messageService';
-import { useUser } from '@/shared/model/authStore';
 import { apiPost } from '@/shared/api/apiClient';
+import MessageService, { type Message } from '@/shared/api/messageService';
 import { getLogger } from '@/shared/config/logging';
+import { useUser } from '@/shared/model/authStore';
 
 const logger = getLogger('AdminMessageModal');
 
@@ -25,7 +25,7 @@ interface AdminMessageModalProps {
   userRole: 'school_admin' | 'college_admin' | 'educator' | 'college_educator';
 }
 
-const AdminMessageModal: React.FC<AdminMessageModalProps> = ({
+const AdminMessageModal: FC<AdminMessageModalProps> = ({
   isOpen,
   onClose,
   learner,
@@ -95,7 +95,10 @@ const AdminMessageModal: React.FC<AdminMessageModalProps> = ({
   // Fetch messages for the conversation
   const { data: messages = [], isLoading: loadingMessages } = useQuery({
     queryKey: ['admin-conversation-messages', conversation?.id],
-    queryFn: () => MessageService.getConversationMessages(conversation!.id),
+    queryFn: () => {
+    if (!conversation) throw new Error('Conversation not available');
+    return MessageService.getConversationMessages(conversation.id);
+    },
     enabled: !!conversation?.id,
     refetchInterval: 15000,
     refetchIntervalInBackground: false,
@@ -105,14 +108,14 @@ const AdminMessageModal: React.FC<AdminMessageModalProps> = ({
   const sendMutation = useMutation({
     mutationFn: async (text: string) => {
       if (!conversation) throw new Error('No conversation');
-
+      if (!currentUser?.id) throw new Error('User not authenticated');
       const senderType = userRole;
-      // receiver is always the learner
-      const receiverId = learner.user_id || learner.id;
+      const receiverId = learner.id;
+      if (!receiverId) throw new Error('Learner ID is required');
 
       return MessageService.sendMessage(
         conversation.id,
-        currentUser!.id,
+        currentUser.id,
         senderType,
         receiverId,
         'learner',
@@ -143,7 +146,7 @@ const AdminMessageModal: React.FC<AdminMessageModalProps> = ({
   }, [messages]);
 
   const handleSend = useCallback(
-    async (e: React.FormEvent) => {
+    async (e: FormEvent) => {
       e.preventDefault();
       if (!newMessage.trim() || sendMutation.isPending) return;
       await sendMutation.mutateAsync(newMessage.trim());
