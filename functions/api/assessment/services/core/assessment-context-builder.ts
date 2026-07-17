@@ -460,9 +460,21 @@ ${occupationContextData.top_skills}`);
   // Join with blank lines between sections
   const context = sections.filter(Boolean).join('\n\n');
 
-  console.log('[ASSESSMENT-CONTEXT] Generated RAG context:');
+  // DEBUG: Log full context
+  console.log('\n' + '='.repeat(80));
+  console.log('[ASSESSMENT-CONTEXT] FULL RAG CONTEXT OUTPUT');
+  console.log('='.repeat(80));
+  console.log(context);
+  console.log('='.repeat(80));
+  console.log(`[ASSESSMENT-CONTEXT] Generated RAG context:`);
+  console.log(`[ASSESSMENT-CONTEXT] Stream: ${stream}`);
   console.log(`[ASSESSMENT-CONTEXT] Total length: ${context.length} characters`);
-  console.log(`[ASSESSMENT-CONTEXT] Contains ${sections.length} sections`);
+  console.log(`[ASSESSMENT-CONTEXT] Number of sections: ${sections.length}`);
+  console.log(`[ASSESSMENT-CONTEXT] Sections: ${sections.filter(Boolean).map((s, i) => {
+    const title = s.split('\n')[0];
+    return `${i + 1}. ${title.slice(0, 40)}`;
+  }).join(' | ')}`);
+  console.log('='.repeat(80) + '\n');
 
   return context;
 }

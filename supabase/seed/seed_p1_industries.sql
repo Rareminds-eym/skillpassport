@@ -1,7 +1,8 @@
 -- ============================================================================
--- Seed Data: Industries
--- Source: Master sheet.xlsx - Industry list (Column 3: Description)
--- Date: 2026-06-22
+-- Seed Data: Industries (consolidated, 41 industries)
+-- Source: Master sheet.xlsx - Industry list (batches 2026-06-22 / 07-10 / 07-12)
+-- Regenerated 2026-07-16 for the 2-DB split migration
+-- (20260528000117_create_occupation_tables.sql). is_active/metadata use defaults.
 -- Table: public.industries
 -- ============================================================================
 
@@ -41,4 +42,14 @@ VALUES
   ('IND_HWS_032', 'HR & Workforce Services', 'Includes recruitment, payroll, benefits, workforce management, HR technology, employee experience, staffing, learning, and talent operations.', now(), now()),
   ('IND_DFM_033', 'Defense Manufacturing', 'Covers design, production, assembly, testing, and sustainment of defense equipment, systems, components, and mission-critical manufacturing capabilities.', now(), now()),
   ('IND_SPT_034', 'Sports', 'Includes sports leagues, teams, venues, fitness, sports media, sponsorships, athlete management, fan engagement, and sports technology.', now(), now()),
-  ('IND_SPC_035', 'Space Economy', 'Covers commercial space activities including launch, satellites, space data, in-orbit services, ground infrastructure, exploration technologies, and downstream applications.', now(), now());
+  ('IND_SPC_035', 'Space Economy', 'Covers commercial space activities including launch, satellites, space data, in-orbit services, ground infrastructure, exploration technologies, and downstream applications.', now(), now()),
+  ('IND_TAT_036', 'Textiles, Apparel & Technical Textiles', 'Covers textiles, apparel and technical textiles including fibre and yarn processing, fabric formation and finishing, garment manufacturing, technical textile applications such as packtech and agrotech, quality assurance and testing, and merchandising, sourcing and export documentation.', now(), now()),
+  ('IND_G&J_037', 'Gems & Jewellery', 'Covers rough diamond planning, cutting and polishing, gemstone grading and certification, lab-grown diamond production, jewellery design and manufacturing, quality control, and retail-facing traceability across the gems and jewellery value chain.', now(), now()),
+  ('IND_E&S_038', 'Electronics & Semiconductors', 'Includes semiconductor design, verification, wafer fabrication, assembly and test (OSAT), PCB and electronics manufacturing, yield and process engineering, and quality/reliability operations across the chip and electronics product lifecycle.', now(), now()),
+  ('IND_LFA_039', 'Leather, Footwear & Accessories', 'Covers tannery and leather processing, footwear and apparel design, sampling and merchandising, cutting and production line operations, quality assurance, and export documentation across leather goods, footwear, and garment manufacturing value chains.', now(), now()),
+  ('IND_MBE_040', 'Marine / Blue Economy', 'Covers marine and blue economy operations including port and harbour services, fishing and aquaculture value chains, shipbuilding and repair support, coastal logistics, marine environmental monitoring, and ocean-resource compliance documentation.', now(), now()),
+  ('IND_WBC_041', 'Warehousing & Data Centres', 'Covers warehousing and data centre operations including inbound and outbound goods handling, inventory control, cold-chain and bonded storage, data centre facility operations, rack and power infrastructure support, and uptime, safety and compliance evidence.', now(), now())
+ON CONFLICT (code) DO UPDATE SET
+  name = EXCLUDED.name,
+  description = EXCLUDED.description,
+  updated_at = now();

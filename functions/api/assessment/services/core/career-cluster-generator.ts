@@ -151,6 +151,23 @@ async function generateCareerClusters(
 
   const { system, user } = getClusterPrompt(gradeLevel, student, llmCandidates, context);
 
+  // DEBUG: Log LLM prompt content
+  console.log(`\n[LLM-PROMPT] System message length: ${system.length} chars`);
+  console.log(`[LLM-PROMPT] User message length: ${user.length} chars`);
+  console.log(`[LLM-PROMPT] System preview (first 300 chars):\n${system.substring(0, 300)}`);
+  console.log(`[LLM-PROMPT] User profile section (first 500 chars):\n${user.substring(0, 500)}`);
+
+  // Check if context is included in user prompt
+  const hasRIASEC = user.includes('RIASEC code');
+  const hasAptitude = user.includes('COGNITIVE CAPABILITIES') || user.includes('Adaptive aptitude');
+  const hasKnowledge = user.includes('DOMAIN KNOWLEDGE') || user.includes('knowledge') || user.includes('Strong in');
+  const hasPersonality = user.includes('Big Five') || user.includes('personality');
+  const hasValues = user.includes('Autonomy') || user.includes('Financial') || user.includes('Work values');
+  const hasProfile = user.includes('profile') || user.includes('PROFILE') || user.includes('Program / stream');
+
+  console.log(`[LLM-PROMPT] Context sections included: RIASEC=${hasRIASEC} | Aptitude=${hasAptitude} | Knowledge=${hasKnowledge} | Personality=${hasPersonality} | Values=${hasValues} | Profile=${hasProfile}`);
+  console.log(`[LLM-PROMPT] Candidate list included: ${user.includes('CANDIDATE OCCUPATIONS') ? 'YES' : 'NO'} | Count: ${llmCandidates.length}`);
+
   const messages = [
     { role: 'system', content: system },
     { role: 'user', content: user },
@@ -362,8 +379,8 @@ function buildKeywordQuery(student: StudentProfile): string {
 }
 
 /**
- * RAG retrieval for all grades. Embeds the student query, asks match_occupations_by_embedding
- * for the top-K occupations by semantic similarity, and scores each with the grade-appropriate
+ * RAG retrieval for all grades. Embeds the student query, asks hybrid_search_roles
+ * for the top-K role contexts by hybrid relevance, and scores each with the grade-appropriate
  * scorer (college = 5-component, others = 3-component). Interest Fit uses the Holland hexagon —
  * C-Index is not used. Non-fatal: returns [] on any failure (caller then skips clusters).
  */
@@ -376,12 +393,23 @@ async function retrieveByEmbedding(
   gradeLevel: GradeLevel
 ): Promise<ScoredOccupation[]> {
   try {
+    // STEP 1: Build RAG context text
     const text = buildStudentEmbeddingText(student, context, gradeLevel);
+    console.log(`\n[RAG-CONTEXT] Text length: ${text.length} chars`);
+    console.log(`[RAG-CONTEXT] Stream: ${student.stream} | RIASEC: ${riasecCode} | Grade: ${gradeLevel}`);
+
+    // STEP 2: Embed the context
     const queryVec = await callEmbeddingWorker(text, env, EMBEDDING_TASK_TYPES.RETRIEVAL_QUERY);
     const literal = '[' + queryVec.map((x) => x.toFixed(6)).join(',') + ']';
+    console.log(`[RAG-EMBED] Vector generated: ${queryVec.length} dimensions`);
 
+    // STEP 3: Build keyword query
     const keywordQuery = buildKeywordQuery(student);
-    const { data, error } = await supabase.rpc('hybrid_search_occupations', {
+    console.log(`[RAG-KEYWORD] Query: "${keywordQuery}"`);
+
+    // STEP 4: Call hybrid_search_roles RPC
+    console.log(`[RAG-CALL] Calling hybrid_search_roles(match_count=${CANDIDATE_POOL_SIZE}, alpha=0.6, riasec=${riasecCode})`);
+    const { data, error } = await supabase.rpc('hybrid_search_roles', {
       query_text: keywordQuery,
       query_embedding: literal,
       learner_riasec_code: riasecCode,
@@ -389,25 +417,36 @@ async function retrieveByEmbedding(
       alpha: 0.6,
     });
     if (error) {
-      console.error('[CLUSTER-GEN] hybrid_search_occupations failed:', error.message);
+      console.error('[RAG-ERROR] hybrid_search_roles failed:', error.message);
       return [];
     }
-    if (!data || data.length === 0) return [];
+    if (!data || data.length === 0) {
+      console.warn('[RAG-RESULT] No data returned from hybrid_search_roles');
+      return [];
+    }
 
-    // Build candidates with job demand profiles for proper scoring
-    const candidates: ScoredOccupation[] = (data as any[]).map((occ) => {
-      const riasecCodes: string[] = occ.occupation_codes || [];
+    console.log(`[RAG-RESULT] Retrieved ${data.length} candidates from database`);
+
+    // Build candidates with job demand profiles for proper scoring.
+    // occupation_id carries role_family_role_id (the context id mirrored by LTE).
+    const candidates: ScoredOccupation[] = (data as any[]).map((occ, idx) => {
+      const riasecCodes: string[] = occ.riasec_codes || [];
       const hybridScore = Number(occ.hybrid_score);
       const alignment = Number(occ.riasec_alignment);
 
+      // DEBUG: Log first 5 candidates' raw data
+      if (idx < 5) {
+        console.log(`[RAG-DATA-${idx + 1}] id=${occ.role_family_role_id} | name=${occ.role_name} | riasec=${riasecCodes.join('/')} | domain=${occ.domain_name} | gate=${occ.degree_gate} | has_aptitude=${!!occ.aptitude_profile} | has_big5=${!!occ.big_five_profile} | has_values=${!!occ.work_values_profile}`);
+      }
+
       return {
-        occupation_id: occ.occupation_id,
-        code: occ.occupation_code,
-        name: occ.occupation_name,
+        occupation_id: occ.role_family_role_id,
+        code: occ.role_code,
+        name: occ.role_name,
         riasecCodes,
         semanticScore: !isNaN(hybridScore) ? Math.round(hybridScore * 1000) / 10 : undefined,
         riasecAlignment: !isNaN(alignment) ? Math.round(alignment * 100) : undefined,
-        description: occ.description || occ.occupation_name,
+        description: occ.description || occ.role_name,
         degreeGate: occ.degree_gate || 'Preferred',
         domainName: occ.domain_name && occ.domain_name !== 'Unclassified' ? occ.domain_name : undefined,
         streamAligned: isStreamAligned(student.stream, occ.direct_degree_mapping),
@@ -419,37 +458,11 @@ async function retrieveByEmbedding(
     });
 
     const alignedCount = candidates.filter((c) => c.streamAligned).length;
-    console.log(`[RAG] Stream-aligned candidates: ${alignedCount}/${candidates.length} for stream "${student.stream}"`);
-
-    // Fetch job demand profiles for all candidates
-    const candidateIds = candidates.map(c => c.occupation_id);
-    if (candidateIds.length > 0) {
-      try {
-        const { data: profiles, error: profileError } = await supabase
-          .from('occupations')
-          .select('id, aptitude_profile, big_five_profile, work_values_profile')
-          .in('id', candidateIds);
-
-        if (!profileError && profiles && Array.isArray(profiles) && profiles.length > 0) {
-          const profileMap = new Map(profiles.map((p: Record<string, unknown>) => [p.id as string, p]));
-          candidates.forEach(c => {
-            const profile = profileMap.get(c.occupation_id) as Record<string, unknown> | undefined;
-            if (profile) {
-              c.aptitudeProfile = profile['aptitude_profile'] as Record<string, unknown>;
-              c.bigFiveProfile = profile['big_five_profile'] as Record<string, unknown>;
-              c.workValuesProfile = profile['work_values_profile'] as Record<string, unknown>;
-            }
-          });
-          console.log(`[RAG] Loaded job demand profiles for ${profileMap.size} occupations`);
-        }
-      } catch (profileErr) {
-        console.warn('[RAG] Could not load job demand profiles (non-fatal):', profileErr instanceof Error ? profileErr.message : 'unknown error');
-      }
-    }
+    console.log(`[RAG-SUMMARY] Stream-aligned: ${alignedCount}/${candidates.length} | Total passed to LLM: ${candidates.length}\n`);
 
     return candidates;
   } catch (e) {
-    console.error('[CLUSTER-GEN] RAG retrieval skipped (non-fatal):', e instanceof Error ? e.message : e);
+    console.error('[RAG-ERROR] RAG retrieval exception:', e instanceof Error ? e.message : e);
     return [];
   }
 }
@@ -669,77 +682,101 @@ function finalizeCluster(
           console.log(`[DEBUG-STUDENT] Work Values:`, Object.entries(student.work_values || {}).map(([k, v]) => `${k}=${(v as number).toFixed(1)}`).join(', '));
         }
 
-        // Apply job-specific demand adjustments if available.
-        // Occupation profiles are complete numeric maps (every key always present,
-        // e.g. {"numerical_reasoning": 53, ...}), so demand must be judged by the
-        // VALUE thresholds (aptitude >= 70, big5/values >= 4 = the role demands it),
-        // never by key-name presence — every name exists in every profile.
+        // PROPER COMPONENT-BASED SCORING (no penalties, just proper weighting)
+        // Calculate each component properly, then apply 6-component formula
         if (occ.aptitudeProfile || occ.bigFiveProfile || occ.workValuesProfile) {
-          let adjustment = 0;
-          const adjustmentFactors: string[] = [];
           const numVal = (obj: Record<string, unknown>, key: string): number | undefined => {
             const v = obj[key];
             return typeof v === 'number' ? v : undefined;
           };
 
-          // Aptitude fit: role demands an ability when its profile score >= 70.
-          // Student strong (>70%) in a demanded ability = boost; weak (<40%) = penalty.
+          // 1. Interest Fit (already calculated in baseScores) → 0-100
+          const interestFit = baseScores.interestFit || 60;
+
+          // 2. Cognitive Fit: Compare student's aptitude strengths vs role's cognitive demands
+          let cognitiveFitScore = 50; // neutral default
           if (occ.aptitudeProfile && student.accuracy_by_subtag) {
+            let totalScore = 0;
+            let demandCount = 0;
             for (const [ability, score] of Object.entries(student.accuracy_by_subtag)) {
               const studentScore = typeof score === 'object' && score !== null
                 ? (score as { accuracy?: number }).accuracy
                 : (score as number);
               if (typeof studentScore !== 'number') continue;
               const demand = numVal(occ.aptitudeProfile, ability.toLowerCase());
-              if (demand === undefined || demand < 70) continue; // role doesn't demand this ability
-              if (studentScore > 70) {
-                adjustment += 5;
-                adjustmentFactors.push(`str_${ability.split('_')[0]}`);
-              } else if (studentScore < 40) {
-                adjustment -= 5;
-                adjustmentFactors.push(`wk_${ability.split('_')[0]}`);
+              if (demand !== undefined && demand >= 70) {
+                // Role demands this ability: score is weighted by demand importance
+                totalScore += studentScore;
+                demandCount++;
               }
+            }
+            if (demandCount > 0) {
+              cognitiveFitScore = Math.round(totalScore / demandCount);
             }
           }
 
-          // Big Five fit: role demands a trait when its profile level >= 4 (1-5 scale).
+          // 3. Stream Aptitude Fit (already in baseScores)
+          const streamAptitudeFit = student.stream_aptitude_score || 50;
+
+          // 4. Personality Fit: Big Five alignment with role's personality demands
+          let personalityFitScore = 50; // neutral default
           if (occ.bigFiveProfile && student.big_five_scores) {
+            let totalScore = 0;
+            let matchCount = 0;
             for (const [trait, score] of Object.entries(student.big_five_scores)) {
-              if ((score as number) < 4) continue; // only student's strong traits
               const demand = numVal(occ.bigFiveProfile, trait.toLowerCase());
               if (demand !== undefined && demand >= 4) {
-                adjustment += 4;
-                adjustmentFactors.push(`big5_${trait.charAt(0).toUpperCase()}`);
+                // Role rewards this trait: alignment = how close they match (1-5 scale)
+                const alignment = 100 - Math.abs((score as number) - 3) * 25; // Map 1-5 scale to 0-100
+                totalScore += alignment;
+                matchCount++;
               }
+            }
+            if (matchCount > 0) {
+              personalityFitScore = Math.round(totalScore / matchCount);
             }
           }
 
-          // Work Values fit: role rewards a value when its profile level >= 4 (1-5 scale).
+          // 5. Knowledge Fit (already in baseScores)
+          const knowledgeFit = baseScores.knowledgeFit || 50;
+
+          // 6. Values Fit: Work values alignment with role rewards
+          let valuesFitScore = 50; // neutral default
           if (occ.workValuesProfile && student.work_values) {
             const topValues = Object.entries(student.work_values)
               .sort(([, a], [, b]) => (b as number) - (a as number))
-              .slice(0, 2)
-              .map(([name]) => name);
-
-            for (const value of topValues) {
+              .slice(0, 2);
+            let totalScore = 0;
+            for (const [value, score] of topValues) {
               const demand = numVal(occ.workValuesProfile, value.toLowerCase());
               if (demand !== undefined && demand >= 4) {
-                adjustment += 5;
-                adjustmentFactors.push(`val_${value}`);
+                // Role rewards this value: alignment based on overlap
+                totalScore += (score as number) / 5 * 100;
+              } else {
+                totalScore += 30; // Partial alignment if role doesn't reward it
               }
+            }
+            if (topValues.length > 0) {
+              valuesFitScore = Math.round(totalScore / topValues.length);
             }
           }
 
-          // Apply adjustment cap (-5 to +25 for realistic bounds)
-          adjustment = Math.max(-5, Math.min(25, adjustment));
-          finalScore = Math.max(0, Math.min(100, baseScores.final + adjustment));
+          // Apply 6-component formula with proper weights
+          finalScore = Math.round(
+            (interestFit * 0.25) +
+            (cognitiveFitScore * 0.20) +
+            (streamAptitudeFit * 0.15) +
+            (personalityFitScore * 0.18) +
+            (knowledgeFit * 0.12) +
+            (valuesFitScore * 0.10)
+          );
+          finalScore = Math.max(0, Math.min(100, finalScore));
 
           if (idx < 3) {
-            const factors = adjustmentFactors.length > 0 ? ` [${adjustmentFactors.join(', ')}]` : '';
-            console.log(`[CLUSTER-GEN] ${occ.name}: Base=${baseScores.final} + Demand=${adjustment}${factors} → Final=${finalScore}`);
+            console.log(`[CLUSTER-GEN] ${occ.name}: IF=${interestFit} CF=${cognitiveFitScore} SAF=${streamAptitudeFit} PF=${personalityFitScore} KF=${knowledgeFit} VF=${valuesFitScore} → Final=${finalScore}`);
           }
         } else if (idx < 3) {
-          console.log(`[CLUSTER-GEN] ${occ.name}: Base=${baseScores.final} (no demand profiles available)`);
+          console.log(`[CLUSTER-GEN] ${occ.name}: Using base score=${baseScores.final} (no demand profiles)`);
         }
 
         return finalScore;

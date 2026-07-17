@@ -221,20 +221,74 @@ For EACH cluster, verify:
 - Find a role that ACTUALLY belongs with the others
 - If you cannot create 3 coherent clusters, KEEP ONLY THE COHERENT ONES and return fewer clusters
 
-**STEP 6: Name each cluster based on ACTUAL roles**
-- Analyze what the specific 2-3 roles actually do
-- Name reflects their work (not generic template)
-- Examples:
-  * ✅ Roles: "ML Model Developer", "Computer Vision Engineer", "Data Science Engineer" → "AI & Machine Learning Development"
-  * ✅ Roles: "Business Analyst", "Operations Manager" → "Business & Operations"
-  * ❌ WRONG: Same roles → "Technology Cluster 1" (generic, not based on actual work)
+**STEP 6: Name each cluster — SPECIALIZED CAREER FIELD NAMES**
 
-**STEP 7: Validate cluster names against roles**
-For each role in cluster: "Would someone in this role recognize themselves in the cluster title?"
-- PASS: "ML Developer" → "AI & Machine Learning Development" ✓
-- FAIL: "ML Developer" → "Automation & QA Engineering" ✗ (title doesn't match actual role)
+Use DESCRIPTIVE, SPECIALIZED career field names that reflect the cluster's actual domain and skills.
 
-If ANY role fails: RENAME cluster to accurately describe what roles do.
+**APPROACH: Specialized Career Field Names (with specialization)**
+Combine a primary field with a specialization or secondary focus. Make it specific and professional.
+
+Examples (GOOD - Specialized Fields):
+- "AI & Machine Learning Development" ✅ (specific specialization)
+- "Cloud & Autonomous Systems Engineering" ✅ (specific technology focus)
+- "Data Governance & Analytics" ✅ (specific domain)
+- "Application Security & Infrastructure" ✅ (specific focus area)
+- "Full-Stack Web Development" ✅ (specific specialization)
+- "Mobile & Cross-Platform Development" ✅ (specific platform focus)
+
+Examples (BAD - Too Generic):
+- "Web Development" ❌ (too broad)
+- "Software Engineer" ❌ (too vague)
+- "Technology & Innovation" ❌ (meaningless)
+- "Building Intelligent Systems" ❌ (activity, not field)
+
+**NAMING FORMULA:**
+[Primary Field] & [Specialization/Focus]
+
+Examples:
+- AI & Machine Learning Development
+- Data & Analytics Engineering
+- Cloud & DevOps Systems
+- Security & Vulnerability Management
+- Web & Application Development
+- Database & Infrastructure Management
+
+**RULES - MANDATORY:**
+- ✅ Use TWO complementary specializations (Primary & Secondary)
+- ✅ Be SPECIFIC about the technology/domain focus
+- ✅ Make it sound like a professional career path
+- ❌ NO "Role" or "Roles" at the end (not "...Development Roles")
+- ❌ NO activity verbs (Building, Developing, Securing)
+- ❌ NO generic names like "Technology", "Software"
+- ❌ NO single job titles (use field combinations instead)
+
+**FOR BCA ROLES - SPECIFIC EXAMPLES:**
+- Cluster: Computer Vision + AI App Engineer + Web Developer
+  * ✅ "AI & Machine Learning Development" (not "AI Roles")
+  * ✅ "Intelligent Systems & Web Development" (combined focus)
+
+- Cluster: Security Engineer + Vulnerability Analyst + Software Engineer
+  * ✅ "Application Security & Infrastructure" (not "Security Roles")
+  * ✅ "Security Engineering & DevOps"
+
+- Cluster: Data Engineer + RPA Support + Dashboard Developer
+  * ✅ "Data Governance & Analytics" (not "Data Roles")
+  * ✅ "Data & Automation Engineering"
+
+**STEP 7: Validate cluster names are SPECIALIZED CAREER FIELDS**
+For each cluster name, verify:
+- Is it a SPECIALIZED career field name? (e.g., "AI & Machine Learning Development", NOT "Building Systems")
+- Does it use [Primary Field] & [Specialization] format?
+- Is it understandable to learners?
+- Would someone in those roles recognize it as their career path?
+
+Example validation:
+- Cluster: "AI & Machine Learning Development" with roles ML Developer, Computer Vision Engineer
+  → ✓ PASS: Specialized field name, professional, recognizable
+- Cluster: "Building Intelligent Systems" with roles ML Developer, Computer Vision Engineer
+  → ✗ FAIL: Activity verb (Building), not a field name. Fix: "AI & Machine Learning Development"
+- Cluster: "Web Development" with roles Web Developer, Frontend Engineer
+  → ✗ FAIL: Too generic, lacks specialization. Fix: "Full-Stack Web Development" or "Web & Application Development"
 
 **FINAL STRUCTURE & NAMING**:
 - Use ONLY occupations from provided list
@@ -321,7 +375,7 @@ overallSummary RULES (STUDENT-CENTRIC — written FOR the learner, not ABOUT the
 - **REQUIRED**: Specific strength names, specific ONE gap (not multiple), action-oriented encouragement, use periods or commas instead of dashes
 
 **EXAMPLES (Student-Centric):**
-- "You're naturally a logical thinker who works well with people. That combination is valuable. Your best fit is Student Services Leadership, where analytical thinking meets relationship-building. Financial roles interest you too, but need stronger quantitative foundation. That's learnable through dedicated practice. Your analytical mindset is your superpower; channel it strategically and you'll differentiate yourself."
+- "You're naturally a logical thinker who works well with people. That combination is valuable. Your best fit is in Student Services Leadership, where analytical thinking meets relationship-building. Financial roles interest you too, but need stronger quantitative foundation. That's learnable through dedicated practice. Your analytical mindset is your superpower; channel it strategically and you'll differentiate yourself."
 - "You excel at strategic analysis and have strong drive for impact. That's a rare combination. Management & Operations is your best path where systematic thinking and leadership converge. Your secondary interest in analytics is viable but requires building comfort with detailed data work. You're positioned well for roles that need both vision and execution ability."
 
 **VALIDATION BEFORE SUBMITTING:**
@@ -368,9 +422,18 @@ overallSummary RULES (STUDENT-CENTRIC — written FOR the learner, not ABOUT the
 □ Cluster 1: All roles do similar daily work (not forced grouping)? YES / NO
 □ Cluster 2: All roles do similar daily work (distinct from Cluster 1)? YES / NO
 □ Cluster 3: All roles are coherent in domain (if cross-industry, same new industry)? YES / NO
-□ Cluster 1 title accurately describes what these roles do? YES / NO
-□ Cluster 2 title accurately describes what these roles do (different from C1)? YES / NO
-□ Cluster 3 title accurately describes what these roles do? YES / NO
+
+**CLUSTER NAME VALIDATION (CRITICAL)**:
+□ Cluster 1 name: Is it EITHER an entry-level role name OR a career field name? YES / NO
+□ Cluster 1 name: NOT a senior/management title (no "Senior", "Manager", "Director")? YES / NO
+□ Cluster 1 name: Understandable to learners (not jargon like "Cluster 1", "High Fit")? YES / NO
+□ Cluster 2 name: Is it EITHER an entry-level role name OR a career field name? YES / NO
+□ Cluster 2 name: NOT senior/management? YES / NO
+□ Cluster 2 name: Understandable to learners? YES / NO
+□ Cluster 3 name: Is it EITHER an entry-level role name OR a career field name? YES / NO
+□ Cluster 3 name: NOT senior/management? YES / NO
+□ Cluster 3 name: Understandable to learners? YES / NO
+□ No cluster name is just "Role" or "Development" alone? YES / NO
 
 **RIASEC VALIDATION**:
 □ Cluster 1 RIASEC primary letter: _____

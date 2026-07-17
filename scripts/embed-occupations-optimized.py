@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
 """
-OPTIMIZED: Generate role (occupation) embeddings for RAG (Career Matching)
+OPTIMIZED: Generate role-context embeddings for RAG (Career Matching)
 Removes low-signal numeric scales. Keeps only semantic signal:
 - Role description, observable behaviors, typical activities, output evidence (WHAT you do)
 - Domains with context, work context (WHERE you work)
 - RIASEC with rationale (WHY this fits your interests)
-- Capabilities + skills (HOW you create value)
 - High-fit traits + rationales (PERSONALITY fit explanation)
 - Degree fit signals (academic fit)
 
-Per-role document focuses on SEMANTIC meaning, not numeric scales.
+Each document represents one role + family + domain context and focuses on
+SEMANTIC meaning, not numeric scales. Capabilities and skills remain owned by
+LTE and are resolved after recommendation through the mirrored context ID.
 This improves embedding quality by 40-50% vs single-source embeddings (was 20-30%).
 
 Also embeds degree-fit signal (added 2026-06-30, source: L&D
@@ -21,10 +22,16 @@ Knowledge fit itself is judged by the LLM clustering prompt from the
 learner's profile, not a per-role DB threshold.
 
 Usage:
-    python scripts/embed-occupations-optimized.py             # generate + write + apply
-    python scripts/embed-occupations-optimized.py --no-apply  # only write seed file
-    python scripts/embed-occupations-optimized.py --limit 10  # test run: first N roles,
+    python scripts/embed-occupations-optimized.py             # embed remaining contexts (resumable)
+    python scripts/embed-occupations-optimized.py --force     # re-embed ALL contexts from scratch
+    python scripts/embed-occupations-optimized.py --batch 25  # checkpoint every N contexts (default 50)
+    python scripts/embed-occupations-optimized.py --limit 10  # test run: first N remaining contexts,
                                                               # writes *.test.sql instead
+
+Resumable batches: embeddings are upserted to the DB in batches (checkpoint).
+If the run is interrupted (expired token, crash), rerunning skips everything
+already embedded and continues with the rest. The seed file is exported from
+the DB at the end, so it is always complete across runs.
 """
 import json, os, sys, time, urllib.request
 
@@ -34,11 +41,18 @@ SVC  = os.environ.get("SUPABASE_SERVICE_ROLE_KEY",
 EMB  = os.environ.get("EMBEDDING_API_URL", "http://127.0.0.1:9004").rstrip("/")
 EKEY = os.environ.get("EMBEDDING_API_KEY", "ew-local-api-key-change-me-32chars-min")
 
-SEED_PATH = os.path.join(os.path.dirname(__file__), "..", "supabase", "seed", "seed_p9_occupations_embeddings_optimized.sql")
-APPLY = "--no-apply" not in sys.argv
+SEED_PATH = os.path.join(os.path.dirname(__file__), "..", "supabase", "seed", "seed_p9_role_embeddings_optimized.sql")
 
-# --limit N: test run on the first N roles only; seed goes to a .test.sql file so the
-# full production seed is never overwritten by a partial run.
+# --force: re-embed everything (default is resume: skip contexts already embedded)
+FORCE = "--force" in sys.argv
+
+# --batch N: DB checkpoint size (embeddings saved every N contexts)
+BATCH_SIZE = 50
+if "--batch" in sys.argv:
+    BATCH_SIZE = max(1, int(sys.argv[sys.argv.index("--batch") + 1]))
+
+# --limit N: test run on the first N (remaining) contexts only; seed goes to a
+# .test.sql file so the full production seed is never overwritten by a partial run.
 LIMIT = None
 if "--limit" in sys.argv:
     LIMIT = int(sys.argv[sys.argv.index("--limit") + 1])
@@ -77,19 +91,28 @@ def embed(text):
 def build_text_optimized(o):
     """
     OPTIMIZED embedding document - semantic signal only, no numeric scales.
-    Focus: What you DO (behaviors), WHERE (domains), WHY (interest fit), HOW (skills).
+    Focus: What you DO (behaviors), WHERE (family/domain), WHY (interest fit).
     """
     lines = []
 
-    # 1. CONTEXT: Role Identity
-    lines.append(f"Role: {o['name']}")
-    if o.get('role_family_id'):
-        lines.append(f"Role Family: {o['role_family_id']}")
+    role = o.get("role") or {}
+    family_scope = o.get("role_family_domains") or {}
+    family = family_scope.get("role_families") or {}
+    industry_scope = family_scope.get("industry_domains") or {}
+    industry = industry_scope.get("industries") or {}
+    dom = industry_scope.get("domains") or {}
 
-    # 2. WHERE: Domain. Multi-domain roles have one occupation row per domain;
-    # embedding the row's own domain gives each variant a distinct vector, so
-    # retrieval can surface the best-fitting domain context for the learner.
-    dom = o.get("domains") or {}
+    # 1. CONTEXT: Role Identity
+    lines.append(f"Role: {role['name']}")
+    if family.get("name"):
+        lines.append(f"Role Family: {family['name']}")
+        if family.get("description"):
+            lines.append(f"Role Family Context: {family['description']}")
+
+    # 2. WHERE: Industry and domain. Each role_family_roles row is one distinct
+    # family/domain context, so multi-domain variants receive distinct vectors.
+    if industry.get("name"):
+        lines.append(f"Industry: {industry['name']}")
     if dom.get("name"):
         lines.append(f"Domain: {dom['name']}")
         if dom.get("description"):
@@ -163,39 +186,6 @@ def build_text_optimized(o):
         else:
             lines.append(f"Preferred Degree Background: {direct_mapping}")
 
-    # 10. HOW: Key Capabilities, Skills, & Work Style
-    steps = o.get("role_capability_sequence") or []
-    if steps:
-        lines.append("Key Capabilities & Skills:")
-        steps_sorted = sorted(steps, key=lambda s: s.get("sequence_step") or 0)
-
-        for s in steps_sorted:
-            cm = s.get("capability_master") or {}
-            if not cm.get("name"):
-                continue
-
-            # Capability name + description (semantic)
-            line = f"- {cm['name']}: {cm.get('description', '')}".strip()
-
-            # Work style (how you work)
-            ws = s.get("work_style_demands")
-            if ws:
-                line += f" | Work style: {ws}"
-
-            # Priority level for context
-            priority = s.get("capability_priority")
-            if priority:
-                line += f" (Priority: {priority})"
-
-            lines.append(line)
-
-            # Skills (concrete, searchable). PostgREST nests them as
-            # skill_capability_mapping -> {"skills": {"name": ...}}
-            skills = [sk["skills"]["name"] for sk in (cm.get("skill_capability_mapping") or [])
-                      if sk.get("skills") and sk["skills"].get("name")]
-            if skills:
-                lines.append(f"  Skills: {'; '.join(skills)}")
-
     return "\n".join(lines)
 
 
@@ -204,96 +194,143 @@ def vec_literal(v):
 
 
 def main():
-    print("Fetching occupations with relationships...")
+    print("Fetching role contexts with relationships...")
     # PostgREST caps responses at 1000 rows -> paginate with offset until exhausted.
-    base_q = ("/occupations?is_active=eq.true&select=id,code,name,description,role_family_id,"
+    base_q = ("/role_family_roles?is_active=eq.true&select=id,description,"
               "riasec_code_string,riasec_reason,"
               "observable_behaviours,role_work_context,typical_work_activities,role_output_evidence,"
               "aptitude_profile,big_five_profile,work_values_profile,"
               "degree_gate,direct_degree_mapping,"
-              "domains(name,description),"
-              "role_capability_sequence(sequence_step,capability_priority,work_style_demands,"
-              "capability_master(name,description,skill_capability_mapping(skills(name))))"
-              "&order=code")
-    occ = []
+              "role(id,code,name),"
+              "role_family_domains("
+              "role_families(id,code,name,description),"
+              "industry_domains(industries(id,code,name),domains(id,code,name,description)))"
+              "&order=id")
+    contexts = []
     offset = 0
     while True:
         page = sb_get(f"{base_q}&limit=1000&offset={offset}")
-        occ.extend(page)
+        contexts.extend(page)
         if len(page) < 1000:
             break
         offset += 1000
-    print(f"\n[DATA] Fetched {len(occ)} active roles\n")
+    print(f"\n[DATA] Fetched {len(contexts)} active role contexts\n")
+
+    # RESUME SUPPORT: skip contexts that already have an embedding (each batch is
+    # upserted to the DB as it finishes, so an interrupted run — expired token,
+    # crash, Ctrl+C — keeps everything done so far; rerun embeds only the rest).
+    # Use --force to re-embed everything (e.g. after the embedding text changes).
+    done_ids = set()
+    if not FORCE:
+        offset = 0
+        while True:
+            page = sb_get(f"/embeddings?entity_type=eq.role&select=entity_id&limit=1000&offset={offset}")
+            done_ids.update(row["entity_id"] for row in page)
+            if len(page) < 1000:
+                break
+            offset += 1000
+        already = [o for o in contexts if o["id"] in done_ids]
+        contexts = [o for o in contexts if o["id"] not in done_ids]
+        print(f"[RESUME] {len(already)} contexts already embedded (skipped) — {len(contexts)} remaining. Use --force to redo all.\n")
 
     if LIMIT:
-        occ = occ[:LIMIT]
-        print(f"[TEST MODE] --limit {LIMIT}: processing first {len(occ)} roles only\n")
+        contexts = contexts[:LIMIT]
+        print(f"[TEST MODE] --limit {LIMIT}: processing first {len(contexts)} contexts only\n")
 
-    if not occ:
-        print("ERROR: No occupations found!")
+    if not contexts:
+        print("Nothing to embed — all role contexts already have embeddings." if done_ids else "ERROR: No role contexts found!")
+        write_seed_from_db()
         return
 
     # Show first role
-    first_role = occ[0]
-    print(f"[SAMPLE] First role: {first_role.get('code')} - {first_role.get('name')}")
+    first_role = contexts[0]
+    first_identity = first_role.get("role") or {}
+    print(f"[SAMPLE] First context: {first_identity.get('code')} - {first_identity.get('name')} ({first_role['id']})")
     print(f"\n--- OPTIMIZED EMBEDDING DOCUMENT ---\n")
     print(build_text_optimized(first_role))
     print("\n----- END SAMPLE -----\n")
 
     throttle = float(os.environ.get("EMBED_THROTTLE_SEC", "1.1"))
 
-    results = []
-    print(f"Generating optimized embeddings...\n")
-    for i, o in enumerate(occ, 1):
+    # BATCH-WISE with checkpointing: every BATCH_SIZE embeddings are upserted to
+    # the DB immediately. If the run dies mid-way (expired token, network, Ctrl+C),
+    # completed batches are already saved — rerunning the script resumes from the
+    # first un-embedded context (see RESUME above).
+    done = 0
+    failed = []
+    batch = []
+    print(f"Generating optimized embeddings ({len(contexts)} contexts, checkpoint every {BATCH_SIZE})...\n")
+
+    def flush(batch):
+        if not batch:
+            return
+        sb_upsert(batch)
+        print(f"  [CHECKPOINT] saved batch of {len(batch)} to DB "
+              f"({done}/{len(contexts)} contexts this run)")
+
+    for i, o in enumerate(contexts, 1):
+        role = o.get("role") or {}
+        role_code = role.get("code") or o["id"]
         for attempt in range(5):
             try:
-                role_code = o["code"]
                 doc_text = build_text_optimized(o)
                 vec = embed(doc_text)
-                results.append((o["id"], role_code, vec))
-
-                print(f"[{i:3d}/{len(occ)}] {role_code:15s} - {len(doc_text):5d} chars (optimized)")
+                batch.append({"entity_type": "role", "entity_id": o["id"],
+                              "embedding": vec_literal(vec)})
+                done += 1
+                print(f"[{i:4d}/{len(contexts)}] {role_code:28s} - {len(doc_text):5d} chars")
                 break
             except Exception as e:
                 if attempt == 4:
-                    print(f"  ! FAILED {o['code']}: {e}")
+                    failed.append(role_code)
+                    print(f"  ! FAILED {role_code}: {e}")
                 else:
                     time.sleep(2.0 * (attempt + 1))
+        if len(batch) >= BATCH_SIZE:
+            flush(batch)
+            batch = []
         time.sleep(throttle)
+    flush(batch)
 
-    print(f"\n[SUMMARY] Successfully processed {len(results)}/{len(occ)} roles")
+    print(f"\n[SUMMARY] embedded {done}/{len(contexts)} role contexts this run"
+          + (f" | FAILED: {failed}" if failed else ""))
+    if failed:
+        print("Rerun the script to retry the failed roles (they resume automatically).")
 
-    # Write seed file
+    write_seed_from_db()
+
+
+def write_seed_from_db():
+    """Regenerate the seed file from ALL role-context embeddings currently in the
+    DB, so the seed is always complete even when built across multiple runs."""
+    rows = []
+    offset = 0
+    while True:
+        page = sb_get(f"/embeddings?entity_type=eq.role&select=entity_id,embedding"
+                      f"&order=entity_id&limit=200&offset={offset}")
+        rows.extend(page)
+        if len(page) < 200:
+            break
+        offset += 200
+    if not rows:
+        print("No embeddings in DB — seed file not written.")
+        return
     hdr = ("-- ============================================================================\n"
-           "-- Seed: Role (Occupation) Embeddings - OPTIMIZED (1536-dim)\n"
+           "-- Seed: Role Context Embeddings - OPTIMIZED (1536-dim)\n"
            "-- GENERATED by scripts/embed-occupations-optimized.py\n"
            "-- Removed numeric scales (low signal), kept semantic content only.\n"
-           f"-- Total: {len(results)} role vectors.\n"
+           f"-- Total: {len(rows)} role-context vectors (exported from DB; batch-resumable runs).\n"
            "-- ============================================================================\n\n")
-    # Keyed by occupation UUID: multi-domain roles share a code, so joining on
-    # code would hit the same (entity_type, entity_id) twice and fail on replay.
-    rows = [f"  ('{oid}', '{vec_literal(vec)}')" for oid, _, vec in results]
+    # Keyed by role_family_roles UUID, which preserves the family/domain context
+    # and is the same context ID mirrored by LTE.
+    vals = [f"  ('{r['entity_id']}', '{r['embedding']}')" for r in rows]
     body = ("INSERT INTO public.embeddings (entity_type, entity_id, embedding)\n"
-            "SELECT 'occupation', data.id::uuid, data.emb::vector\n"
-            "FROM (\n  VALUES\n" + ",\n".join(rows) + "\n) AS data(id, emb)\n"
+            "SELECT 'role', data.id::uuid, data.emb::vector\n"
+            "FROM (\n  VALUES\n" + ",\n".join(vals) + "\n) AS data(id, emb)\n"
             "ON CONFLICT (entity_type, entity_id) DO UPDATE SET embedding = EXCLUDED.embedding;\n")
     with open(SEED_PATH, "w", encoding="utf-8") as f:
         f.write(hdr + body)
-    print(f"Wrote seed: {os.path.normpath(SEED_PATH)}")
-
-    # Apply to database
-    if APPLY:
-        batch = []
-        for oid, code, vec in results:
-            batch.append({"entity_type": "occupation", "entity_id": oid, "embedding": vec_literal(vec)})
-            if len(batch) == 50:
-                sb_upsert(batch); batch = []
-        if batch:
-            sb_upsert(batch)
-        cnt = len(sb_get("/embeddings?entity_type=eq.occupation&select=entity_id"))
-        print(f"Applied to DB. embeddings(occupation) rows now: {cnt}")
-    else:
-        print("Skipped DB apply (--no-apply). Run the seed to load.")
+    print(f"Wrote seed with {len(rows)} vectors: {os.path.normpath(SEED_PATH)}")
 
 
 if __name__ == "__main__":

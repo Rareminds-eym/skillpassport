@@ -475,11 +475,11 @@ export interface PromptOccupation {
   name: string;
   riasecCodes: string[];
   description?: string;  // Role description for LLM to understand importance & differences
-  // Degree-gate signal (source: occupations table, L&D degree mapping).
+  // Degree-gate signal (source: role_family_roles, L&D degree mapping).
   degreeGate?: 'Mandatory' | 'Preferred';
   // True when the learner's degree/stream appears in the occupation's direct_degree_mapping.
   streamAligned?: boolean;
-  // Occupation's domain (from hybrid_search_occupations.domain_name). Role names alone are
+  // Occupation's domain (from hybrid_search_roles.domain_name). Role names alone are
   // ambiguous across 38 industries ("Technician", "Product Engineer"); the domain lets the
   // LLM apply the work-type/domain coherence rules in the cluster prompt.
   domainName?: string;
