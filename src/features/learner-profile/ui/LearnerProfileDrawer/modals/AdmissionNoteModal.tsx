@@ -142,7 +142,7 @@ const AdmissionNoteModal: FC<AdmissionNoteModalProps> = ({
       // educatorId is guaranteed non-null here for educator types due to the guard above
       const validatedEducatorId = educatorId ?? '';
 
-      let conversation: Conversation;
+      let conversation: Conversation | undefined;
 
       // Create or get conversation based on user type
       if (userType === 'school_admin') {

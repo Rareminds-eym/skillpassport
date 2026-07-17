@@ -96,7 +96,7 @@ const AdminMessageModal: FC<AdminMessageModalProps> = ({
   const { data: messages = [], isLoading: loadingMessages } = useQuery({
     queryKey: ['admin-conversation-messages', conversation?.id],
     queryFn: () => {
-    if (!conversation?.id) throw new Error('Conversation not available');
+    if (!conversation) throw new Error('Conversation not available');
     return MessageService.getConversationMessages(conversation.id);
     },
     enabled: !!conversation?.id,

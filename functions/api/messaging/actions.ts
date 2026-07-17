@@ -18,7 +18,13 @@ import {
 } from './handlers/conversation';
 import { convertApplicationId, convertOpportunityId, fetchEducatorDetailsForConversations } from './utils';
 
-const logger = createLogger('messaging-actions'); 
+const logger = createLogger('messaging-actions');
+
+const resolveString = (primary: unknown, fallback: unknown): string => {
+  if (typeof primary === 'string') return primary;
+  if (typeof fallback === 'string') return fallback;
+  return '';
+}; 
 
 interface Message {
   id: string;
@@ -689,9 +695,9 @@ async function handleFetchRecipients(supabase: SupabaseClient, params: any): Pro
     if (!error && lecturerData) {
       data = lecturerData.map((l: any) => {
         const meta = typeof l.metadata === 'object' && l.metadata !== null ? l.metadata : {};
-        const firstName = typeof l.first_name === 'string' ? l.first_name : (typeof meta.first_name === 'string' ? meta.first_name : '');
-        const lastName = typeof l.last_name === 'string' ? l.last_name : (typeof meta.last_name === 'string' ? meta.last_name : '');
-        const resolvedEmail = typeof l.email === 'string' ? l.email : (typeof meta.email === 'string' ? meta.email : '');
+        const firstName = resolveString(l.first_name, meta.first_name);
+        const lastName = resolveString(l.last_name, meta.last_name);
+        const resolvedEmail = resolveString(l.email, meta.email);
         return {
           id: l.id, userId: l.user_id,
           name: `${firstName} ${lastName}`.trim() || resolvedEmail,
