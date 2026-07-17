@@ -1,11 +1,11 @@
-import { type FC, type FormEvent, useState, useEffect, useRef, useCallback } from 'react';
-import { X, Send, Loader2, User } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Loader2, Send, User, X } from 'lucide-react';
+import { type FC, type FormEvent, useCallback, useEffect, useRef, useState, } from 'react';
 import toast from 'react-hot-toast';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import MessageService, { type Message } from '@/shared/api/messageService';
-import { useUser } from '@/shared/model/authStore';
 import { apiPost } from '@/shared/api/apiClient';
+import MessageService, { type Message } from '@/shared/api/messageService';
 import { getLogger } from '@/shared/config/logging';
+import { useUser } from '@/shared/model/authStore';
 
 const logger = getLogger('AdminMessageModal');
 

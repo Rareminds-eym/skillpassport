@@ -1,11 +1,11 @@
-import { useAuthStore } from '@/shared/model/authStore';
 import { ChatBubbleLeftRightIcon, DocumentTextIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { type FC, useState } from 'react';
 import toast from 'react-hot-toast';
-import MessageService from '@/shared/api/messageService';
 import type { Learner } from '@/features/learner-profile/model';
-import { getLogger } from '@/shared/config/logging';
 import { apiPost } from '@/shared/api/apiClient';
+import MessageService, { type Conversation } from '@/shared/api/messageService';
+import { getLogger } from '@/shared/config/logging';
+import { useAuthStore } from '@/shared/model/authStore';
 
 const logger = getLogger('admission-note-modal');
 
@@ -142,7 +142,7 @@ const AdmissionNoteModal: FC<AdmissionNoteModalProps> = ({
       // educatorId is guaranteed non-null here for educator types due to the guard above
       const validatedEducatorId = educatorId ?? '';
 
-      let conversation;
+      let conversation: Conversation;
 
       // Create or get conversation based on user type
       if (userType === 'school_admin') {

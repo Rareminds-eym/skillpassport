@@ -3,13 +3,13 @@ import {
   ArchiveBoxIcon,
   ArrowUturnLeftIcon,
   ChatBubbleLeftRightIcon,
-  ChevronRightIcon,
   ChevronDownIcon,
+  ChevronRightIcon,
   MagnifyingGlassIcon,
   PaperAirplaneIcon,
   TrashIcon,
   UserIcon,
-  XMarkIcon
+  XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { CheckIcon } from '@heroicons/react/24/solid';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -17,24 +17,24 @@ import { formatDistanceToNow } from 'date-fns';
 import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useLocation } from 'react-router-dom';
-import { DeleteConversationModal } from '@/features/messaging';
-import { NewLearnerConversationModalCollegeAdmin } from '@/features/messaging';
-import { NewCollegeAdminEducatorConversationModal } from '@/features/college-admin';
-
-
-import { useAdminMessages, useConversationActions } from '@/features/messaging';
-import { useCollegeEducatorAdminConversationsForAdmin } from '@/features/educator';
 import { useNotificationBroadcast } from '@/features/broadcast';
-import { useRealtimePresence } from '@/shared/lib/hooks';
-import { useTypingIndicator } from '@/shared/lib/hooks';
+import { NewCollegeAdminEducatorConversationModal } from '@/features/college-admin';
+import { useCollegeEducatorAdminConversationsForAdmin } from '@/features/educator';
+import { 
+  type Conversation, 
+  DeleteConversationModal, 
+  NewLearnerConversationModalCollegeAdmin, 
+  useAdminMessages, 
+  useConversationActions,
+} from '@/features/messaging';
+import { apiPost } from '@/shared/api/apiClient';
 import MessageService from '@/shared/api/messageService';
-import { type Conversation } from '@/features/messaging';
 import { getLogger } from '@/shared/config/logging';
-
+import { useRealtimePresence, useTypingIndicator } from '@/shared/lib/hooks';
 import { queryKeys } from '@/shared/lib/queryKeys';
 import { useUser } from '@/shared/model/authStore';
 import { useGlobalPresence } from '@/shared/model/globalPresenceStore';
-import { apiPost } from '@/shared/api/apiClient';
+
 const LearnerCollegeAdminCommunication = () => {
   const logger = getLogger('college-admin-communication');
   const location = useLocation();
@@ -476,7 +476,7 @@ const LearnerCollegeAdminCommunication = () => {
 
   // Handle new conversation creation
   const handleNewConversation = useCallback(async (learnerId: string, subject: string, initialMessage?: string) => {
-    if (!collegeId) return;
+    if (!collegeId || !collegeAdminId) return;
 
     try {
       logger.info('Creating new conversation with learner:', learnerId, 'subject:', subject);

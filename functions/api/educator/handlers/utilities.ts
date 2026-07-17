@@ -1,7 +1,7 @@
 ﻿import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import { getServiceClient } from '../../../lib/supabase';
-import { apiSuccess, apiDbError, apiError } from '../../../lib/response';
 import { notifyRealtime } from '../../../lib/realtime';
+import { apiDbError, apiError, apiSuccess  } from '../../../lib/response';
+import { getServiceClient } from '../../../lib/supabase';
 
 const getSub = (context: AuthenticatedContext) => getServiceClient(context.env as any);
 
@@ -80,9 +80,9 @@ export async function handleFetchEducatorConversations(params: any, context: Aut
         const { first_name, last_name, department, ...rest } = e;
         return [e.id, {
           ...rest,
-          first_name: e.first_name || meta.first_name || '',
-          last_name: e.last_name || meta.last_name || '',
-          department: e.department || meta.department || '',
+          first_name: typeof e.first_name === 'string' ? e.first_name : (typeof meta.first_name === 'string' ? meta.first_name : ''),
+          last_name: typeof e.last_name === 'string' ? e.last_name : (typeof meta.last_name === 'string' ? meta.last_name : ''),
+          department: typeof e.department === 'string' ? e.department : (typeof meta.department === 'string' ? meta.department : ''),
         }];
       }));
     }

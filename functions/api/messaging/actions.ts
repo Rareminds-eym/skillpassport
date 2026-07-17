@@ -6,15 +6,15 @@ import { notifyRealtime } from '../../lib/realtime';
 import { apiDbError, apiError, apiMethodNotAllowed, apiSuccess } from '../../lib/response';
 import { getServiceClient } from '../../lib/supabase';
 import {
+  handleArchiveConversation,
+  handleGetOrCreateCollegeEducatorAdminConversation,
   handleGetOrCreateConversation,
-  handleGetOrCreateLearnerEducatorConversation,
-  handleGetOrCreateLearnerCollegeLecturerConversation,
+  handleGetOrCreateEducatorAdminConversation,
   handleGetOrCreateLearnerAdminConversation,
   handleGetOrCreateLearnerCollegeAdminConversation,
-  handleGetOrCreateEducatorAdminConversation,
-  handleGetOrCreateCollegeEducatorAdminConversation,
-  handleArchiveConversation,
-  handleUnarchiveConversation
+  handleGetOrCreateLearnerCollegeLecturerConversation,
+  handleGetOrCreateLearnerEducatorConversation,
+  handleUnarchiveConversation,
 } from './handlers/conversation';
 import { convertApplicationId, convertOpportunityId, fetchEducatorDetailsForConversations } from './utils';
 
@@ -168,7 +168,7 @@ async function handleGetUserConversations(supabase: SupabaseClient, params: any)
   const column = userType === 'learner' ? 'learner_id' : userType === 'recruiter' ? 'recruiter_id' : 'educator_id';
   const deletedColumn = userType === 'learner' ? 'deleted_by_learner' : userType === 'recruiter' ? 'deleted_by_recruiter' : 'deleted_by_educator';
 
-  let query;
+  let query: any;
   if (userType === 'educator') {
     query = supabase
       .from('conversations')
