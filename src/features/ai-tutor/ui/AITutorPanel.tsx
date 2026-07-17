@@ -856,14 +856,14 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
       </AnimatePresence>
 
       {/* Error Message */}
-      {error ? (
+      {error && (
         <div className="px-4 py-3 bg-red-50 border-t border-red-200 flex items-center gap-2 text-red-700">
           <span className="text-sm flex-1">{error}</span>
           <button type="button" onClick={() => window.location.reload()} className="p-1 hover:bg-red-100 rounded">
             <RefreshCw className="w-4 h-4" />
           </button>
         </div>
-      ) : null}
+      )}
 
       {/* Input Area - Only for Learners */}
       {!isEducator && (
