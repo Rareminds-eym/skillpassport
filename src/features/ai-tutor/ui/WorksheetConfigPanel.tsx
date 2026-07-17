@@ -187,7 +187,7 @@ const WorksheetConfigPanel = ({
         )}
       </button>
       {generationLimit !== undefined && remainingGenerations !== undefined && !isUsageLoading && (
-        <p className={`text-xs text-center mt-2 ${isGenerationLimitReached ? 'text-red-600 font-semibold' : 'text-gray-600'}`}>
+        <p className={`text-xs text-center mt-2 ${isGenerationLimitReached ? 'text-red-600 font-semibold' : 'text-muted-foreground'}`}>
           {isGenerationLimitReached 
             ? `Generation limit reached (${generationLimit}/${generationLimit} used)`
             : `${remainingGenerations} of ${generationLimit} generations remaining`
