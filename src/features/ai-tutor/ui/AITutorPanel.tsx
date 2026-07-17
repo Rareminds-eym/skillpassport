@@ -219,16 +219,20 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
     
     try {
       await sendMessage(generateMessage);
-      
-      // Refetch count after generation to ensure UI is in sync
-      if (isTeacher) {
-        await fetchGenerationCount();
-      }
     } catch (err) {
-      // Re-expand config panel on failure so user can retry
       setIsConfigExpanded(true);
       toast.error('Generation failed. Check your settings and try again.');
       logger.error('Failed to generate content', err instanceof Error ? err : new Error(String(err)));
+      return;
+    }
+
+    if (isTeacher) {
+      try {
+        await fetchGenerationCount();
+      } catch (err) {
+        logger.error('Failed to refetch generation count', err instanceof Error ? err : new Error(String(err)));
+        toast.error('Unable to update generation count. Your limit may not refresh.');
+      }
     }
   };
 
