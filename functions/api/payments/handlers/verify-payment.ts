@@ -98,7 +98,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
 
     // Step 2: Signature valid — prepare subscription data
     const plan = body.plan as Record<string, unknown> | undefined;
-    if (!plan || !plan.id || !plan.name || !plan.price || !plan.duration) {
+    if (!plan?.id || !plan?.name || !plan?.price || !plan?.duration) {
       console.warn('[VerifyPayment] Signature verified but no plan data provided');
       return apiSuccess(verifyResult, context.request);
     }
