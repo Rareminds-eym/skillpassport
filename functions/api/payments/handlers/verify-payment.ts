@@ -49,7 +49,7 @@ function isPricingMatrix(value: unknown): value is PricingMatrix {
   }
   for (const key in value as Record<string, unknown>) {
     const entry = (value as Record<string, unknown>)[key];
-    if (typeof entry !== 'object' || entry === null) {
+    if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) {
       return false;
     }
     const { yearly, monthly, currency } = entry as Record<string, unknown>;
@@ -255,7 +255,10 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
           console.log('[VerifyPayment] Subscription already updated by webhook (duplicate caught). Syncing shadow cache before return.');
 
           try {
-            await syncUserShadow(supabase, user.id, (typeof body.email === 'string' ? body.email : undefined) || user.email);
+            // user.email (AuthUser) is always a non-empty string, so this
+            // fallback can never resolve to undefined.
+            const bodyEmail = typeof body.email === 'string' ? body.email : undefined;
+            await syncUserShadow(supabase, user.id, bodyEmail || user.email);
             const syncData = await ssoSyncSubscription(env, user.id);
             if (syncData.subscription) {
               await syncSubscriptionCache(supabase, syncData.subscription, syncData.plan);
@@ -344,7 +347,10 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
           console.log('[VerifyPayment] Subscription already created (duplicate caught). Order fulfilled asynchronously. Syncing shadow cache before return.');
 
           try {
-            await syncUserShadow(supabase, user.id, (typeof body.email === 'string' ? body.email : undefined) || user.email);
+            // user.email (AuthUser) is always a non-empty string, so this
+            // fallback can never resolve to undefined.
+            const bodyEmail = typeof body.email === 'string' ? body.email : undefined;
+            await syncUserShadow(supabase, user.id, bodyEmail || user.email);
             const syncData = await ssoSyncSubscription(env, user.id);
             if (syncData.subscription) {
               await syncSubscriptionCache(supabase, syncData.subscription, syncData.plan);
@@ -404,7 +410,10 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
     // Step 3.5: Sync shadow table in app DB
     try {
       // Ensure user exists in users_shadow (FK constraint for subscription_cache)
-      await syncUserShadow(supabase, user.id, (typeof body.email === 'string' ? body.email : undefined) || user.email);
+      // user.email (AuthUser) is always a non-empty string, so this fallback
+      // can never resolve to undefined.
+      const bodyEmail = typeof body.email === 'string' ? body.email : undefined;
+      await syncUserShadow(supabase, user.id, bodyEmail || user.email);
 
       const syncData = await ssoSyncSubscription(env, user.id);
       if (syncData.subscription) {
