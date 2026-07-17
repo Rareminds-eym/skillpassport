@@ -7,6 +7,7 @@ interface SignupBody {
   org_name?: string | null; // Optional - can be set later during onboarding
   role: string;
   redirect_url?: string;
+  user_metadata?: Record<string, unknown>;
 }
 
 /**
@@ -21,7 +22,7 @@ export async function onRequestPost(context: { request: Request; env: Env }): Pr
 
   try {
     const body = await request.json() as SignupBody;
-    const { email, password, org_name, role, redirect_url } = body;
+    const { email, password, org_name, role, redirect_url, user_metadata } = body;
 
     // Validate required fields (org_name is optional for deferred org setup)
     if (!email || !password || !role) {
@@ -97,11 +98,13 @@ export async function onRequestPost(context: { request: Request; env: Env }): Pr
       headers
     });
 
-  } catch (error: any) {
-    apiLogger.error('Signup RPC call failed', error as Error);
+  } catch (error: unknown) {
+    const logErrorMessage = error instanceof Error ? error.message : String(error);
+    apiLogger.error('Signup RPC call failed', new Error(logErrorMessage));
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
     return new Response(JSON.stringify({
       success: false,
-      error: error?.message || 'Internal server error'
+      error: errorMessage
     }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }

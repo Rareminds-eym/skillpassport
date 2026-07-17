@@ -22,6 +22,26 @@ export interface SsoWorkerRpc {
   getMe(accessToken: string): Promise<Record<string, unknown>>;
   getJWKS(): Promise<{ keys: any[] }>;
   login(params: { email?: string; password?: string; ip?: string; ua?: string }): Promise<any>;
+  signup(params: {
+    email: string;
+    password: string;
+    org_name: string;
+    role: string;
+    redirect_url?: string;
+    user_metadata?: Record<string, unknown>;
+    ip?: string;
+    ua?: string;
+  }): Promise<any>;
+  signupMember(params: {
+    email: string;
+    password: string;
+    role: string;
+    org_id?: string;
+    redirect_url?: string;
+    user_metadata?: Record<string, unknown>;
+    ip?: string;
+    ua?: string;
+  }): Promise<any>;
   refreshSession(refreshToken: string, ip?: string, ua?: string): Promise<{ access_token: string; refresh_token: string }>;
   validateSession(refreshToken: string): Promise<{ valid: boolean; roles: string[] }>;
   forgotPassword(params: { email?: string; redirect_url?: string }, ip?: string, ua?: string): Promise<{ message?: string }>;
@@ -42,7 +62,6 @@ export interface SsoWorkerRpc {
     features: unknown[];
     full_name: string;
     email: string;
-    phone?: string;
     razorpay_order_id?: string;
     razorpay_payment_id?: string;
     organization_id?: string;
