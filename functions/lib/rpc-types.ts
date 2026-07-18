@@ -47,6 +47,19 @@ export interface SsoWorkerRpc {
   forgotPassword(params: { email?: string; redirect_url?: string }, ip?: string, ua?: string): Promise<{ message?: string }>;
   resetPassword(params: { token?: string; password?: string }, ip?: string, ua?: string): Promise<{ reset?: boolean }>;
   logoutSession(refreshToken: string, ip?: string, ua?: string): Promise<{ success: boolean }>;
+  generateAuthorizationCode(params: {
+    accessToken: string;
+    targetApp: 'lte';
+    redirectUri: string;
+    ip?: string;
+    ua?: string;
+  }): Promise<{
+    code: string;
+    state: string;
+    redirectUrl?: string;
+    expiresAt?: string;
+    codeExpiresAt?: string;
+  }>;
 
   // User lookup
   getUserByEmail(email: string): Promise<{ id: string; email: string; is_email_verified: boolean } | null>;

@@ -30,3 +30,6 @@ export {
 
 // SSO Login Helper
 export { ssoLoginWithRoleCheck, type SsoLoginResult } from './ssoLogin';
+
+// LTE SSO handoff
+export { navigateToLTE } from './navigateToLTE';

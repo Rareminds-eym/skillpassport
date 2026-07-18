@@ -69,3 +69,6 @@ export const verifyOtpAndResetPassword = async () => ({ success: false });
 export const getCurrentAdmin = async () => null;
 export const logoutAdmin = async () => { };
 export const checkEmailExists = async () => false;
+
+export { generateLteCode } from './lteSsoApi';
+export type { GenerateLteCodeResponse } from '../model/lteSsoTypes';

@@ -21,6 +21,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import { useNotifications } from '@/features/notifications';
+import { navigateToLTE } from '@/features/auth/lib';
 import { useLearnerDataByEmail } from '@/entities/learner';
 import { isLearner } from '@/entities/learner/lib/learnerType';
 import DigitalPortfolioSideDrawer from "./DigitalPortfolioSideDrawer";
@@ -35,7 +36,8 @@ import { PLAN_IDS } from '@/shared/config/subscriptionPlans';
 const ICON_MAP = {
   BookmarkIcon,
   Cog6ToothIcon,
-  ArrowRightOnRectangleIcon
+  ArrowRightOnRectangleIcon,
+  RocketLaunchIcon
 };
 
 const Header = ({ activeTab }) => {
@@ -45,11 +47,12 @@ const Header = ({ activeTab }) => {
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
   const [showFreemiumBanner, setShowFreemiumBanner] = useState(true);
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
+  const [isLteNavigating, setIsLteNavigating] = useState(false);
   const [lastScrollY, setLastScrollY] = useState(0);
   const navigate = useNavigate();
   const location = useLocation();
   const user = useUser();
-  const { logout } = useAuthActions();
+  const { logout, showErrorNotification } = useAuthActions();
   const notificationRef = useRef(null);
   const profileRef = useRef(null);
 
@@ -149,6 +152,21 @@ const Header = ({ activeTab }) => {
       navigate("/login");
     }
   }, [logout, navigate]);
+
+  const handleGoToLTE = useCallback(async () => {
+    setIsLteNavigating(true);
+    try {
+      await navigateToLTE();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to start LTE session';
+      showErrorNotification({
+        title: 'LTE access failed',
+        message,
+        type: 'error'
+      });
+      setIsLteNavigating(false);
+    }
+  }, [showErrorNotification]);
 
   useEffect(() => {
     setMobileMenuOpen(false);
@@ -305,15 +323,18 @@ const Header = ({ activeTab }) => {
                               onClick={() => {
                                 if (item.id === 'logout') {
                                   handleLogout();
+                                } else if (item.id === 'go-to-lte') {
+                                  handleGoToLTE();
                                 } else {
                                   navigate(item.path);
                                   setActiveModal(null);
                                 }
                               }}
+                              disabled={item.id === 'go-to-lte' && isLteNavigating}
                               className={`w-full flex items-center px-4 py-2 text-sm ${item.className} text-left`}
                             >
                               <Icon className="w-4 h-4 mr-2" />
-                              {item.label}
+                              {item.id === 'go-to-lte' && isLteNavigating ? 'Opening LTE...' : item.label}
                             </button>
                           </div>
                         );

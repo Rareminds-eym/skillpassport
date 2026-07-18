@@ -5,13 +5,12 @@
  * No SERVICE_AUTH_SECRET needed — the binding itself is the trust boundary.
  */
 
-import type { Fetcher } from '@cloudflare/workers-types';
 
 // ─── RPC Interface Types ───────────────────────────────────────
 // These define the SsoWorker RPC methods available via the SSO_SERVICE binding.
 
 interface SsoClientEnv {
-  SSO_SERVICE: Fetcher;
+  SSO_SERVICE?: unknown;
 }
 
 interface SsoSubscriptionData {
@@ -57,7 +56,23 @@ interface SsoTransactionData {
   metadata?: Record<string, unknown>;
 }
 
-type SsoFetcher = Fetcher & {
+export interface GenerateAuthorizationCodeParams {
+  accessToken: string;
+  targetApp: 'lte';
+  redirectUri: string;
+  ip?: string;
+  ua?: string;
+}
+
+export interface GenerateAuthorizationCodeResult {
+  code: string;
+  state: string;
+  redirectUrl?: string;
+  expiresAt?: string;
+  codeExpiresAt?: string;
+}
+
+type SsoFetcher = {
   createSubscription(data: unknown): Promise<Record<string, unknown>>;
   createFreemiumSubscription(data: unknown): Promise<Record<string, unknown>>;
   createMember(data: { email: string; password: string; role: string; org_id: string }):
@@ -75,6 +90,7 @@ type SsoFetcher = Fetcher & {
   createMembership(data: { user_id: string; org_id: string; status: string }): Promise<{ id: string; status: string }>;
   updateMembershipStatus(data: { membership_id: string; status: string }): Promise<{ success: boolean }>;
   assignMembershipRole(data: { membership_id: string; role_id: string }): Promise<{ success: boolean }>;
+  generateAuthorizationCode(params: GenerateAuthorizationCodeParams): Promise<GenerateAuthorizationCodeResult>;
   recordAddonPurchase(data: unknown): Promise<Record<string, unknown>>;
   recordBundlePurchase(data: unknown): Promise<Record<string, unknown>>;
   listAddonCatalog(): Promise<any>;
@@ -115,6 +131,13 @@ export async function ssoCreateFreemiumSubscription(
   data: { user_id: string; email: string; full_name?: string },
 ): Promise<Record<string, unknown>> {
   return getSsoService(env).createFreemiumSubscription(data);
+}
+
+export async function ssoGenerateAuthorizationCode(
+  env: SsoClientEnv,
+  params: GenerateAuthorizationCodeParams,
+): Promise<GenerateAuthorizationCodeResult> {
+  return getSsoService(env).generateAuthorizationCode(params);
 }
 
 /**
