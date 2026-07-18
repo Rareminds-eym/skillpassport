@@ -4,6 +4,8 @@ import {
   Brain,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   History,
   Loader2,
   LogIn,
@@ -31,6 +33,7 @@ import type { LessonPlanConfig } from '../types';
 import { DEFAULT_LESSON_PLAN_CONFIG } from '../types';
 
 import { Link } from 'react-router-dom';
+import toast from 'react-hot-toast';
 
 import { useUser, useUserRole } from '@/shared/model';
 import { useLearnerType } from '@/features/ai-tutor/model';
@@ -70,6 +73,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
   const isEducator = isTeacher || roleIsEducator;
   
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
+  const [isConfigExpanded, setIsConfigExpanded] = useState(true);
   const [input, setInput] = useState('');
   const [showHistory, setShowHistory] = useState(false);
   const [feedbackGiven, setFeedbackGiven] = useState<Record<number, 1 | -1>>({});
@@ -210,14 +214,24 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
       ? 'Generate a worksheet based on the configured settings.'
       : 'Generate a lesson plan based on the configured settings.';
     
-    await sendMessage(generateMessage);
+    // Hide config panel after starting generation
+    setIsConfigExpanded(false);
     
-    // Refetch count after generation to ensure UI is in sync
+    try {
+      await sendMessage(generateMessage);
+    } catch (err) {
+      setIsConfigExpanded(true);
+      toast.error('Generation failed. Check your settings and try again.');
+      logger.error('Failed to generate content', err instanceof Error ? err : new Error(String(err)));
+      return;
+    }
+
     if (isTeacher) {
       try {
         await fetchGenerationCount();
       } catch (err) {
-        logger.error('Failed to refetch generation count after generation', err instanceof Error ? err : new Error(String(err)));
+        logger.error('Failed to refetch generation count', err instanceof Error ? err : new Error(String(err)));
+        toast.error('Unable to update generation count. Your limit may not refresh.');
       }
     }
   };
@@ -279,10 +293,10 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isExpanded]);
 
-  // Auto-scroll to bottom
+  // Auto-scroll to bottom on new messages, reasoning updates, or errors
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isReasoning]);
+  }, [messages, isReasoning, error]);
 
   // Focus input when expanded
   useEffect(() => {
@@ -381,7 +395,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
         animate={{ x: 0, opacity: 1 }}
         className="fixed right-0 top-1/2 -translate-y-1/2 z-50"
       >
-        <button
+        <button type="button"
           onClick={() => setIsExpanded(true)}
           className={`group flex flex-col items-center gap-2 bg-gradient-to-b ${uiConfig.gradientFrom} ${uiConfig.gradientTo} text-white px-3 py-4 rounded-l-xl shadow-lg hover:shadow-xl transition-all duration-200 hover:px-4`}
           aria-label={`Open ${uiConfig.title}`}
@@ -420,7 +434,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
       >
         {/* History Header */}
         <div className="p-4 border-b bg-gray-50 flex items-center gap-3">
-          <button
+          <button type="button"
             onClick={() => setShowHistory(false)}
             className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
           >
@@ -431,7 +445,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
 
         {/* History List */}
         <div className="flex-1 overflow-y-auto p-4">
-          <button
+          <button type="button"
             onClick={() => {
               startNewConversation();
               setShowHistory(false);
@@ -456,14 +470,14 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
                     <div className="p-3 rounded-xl border border-red-300 bg-red-50">
                       <p className="text-sm text-red-700 mb-2">Delete this conversation permanently?</p>
                       <div className="flex gap-2">
-                        <button
+                        <button type="button"
                           onClick={() => handleDeleteConversation(conv.id)}
                           disabled={isDeleting}
                           className="flex-1 px-3 py-1.5 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 disabled:opacity-50"
                         >
                           {isDeleting ? 'Deleting...' : 'Delete'}
                         </button>
-                        <button
+                        <button type="button"
                           onClick={() => setDeleteConfirmId(null)}
                           disabled={isDeleting}
                           className="flex-1 px-3 py-1.5 bg-gray-200 text-gray-700 text-sm rounded-lg hover:bg-gray-300 disabled:opacity-50"
@@ -474,7 +488,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
                     </div>
                   ) : (
                     <div className="flex items-center gap-2">
-                      <button
+                      <button type="button"
                         onClick={() => {
                           loadConversation(conv.id);
                           setShowHistory(false);
@@ -489,7 +503,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
                           {new Set(conv.messages.map(m => m.id)).size} messages · {conv.updatedAt.toLocaleDateString()}
                         </p>
                       </button>
-                      <button
+                      <button type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           setDeleteConfirmId(conv.id);
@@ -538,7 +552,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
                 onModeChange={handleModeChange}
               />
             )}
-            <button
+            <button type="button"
               onClick={() => {
                 refreshConversations();
                 setShowHistory(true);
@@ -548,7 +562,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
             >
               <History className="w-4 h-4" />
             </button>
-            <button
+            <button type="button"
               onClick={() => setIsExpanded(false)}
               className="p-2 hover:bg-white/20 rounded-lg transition-colors"
               title="Collapse (Esc)"
@@ -574,31 +588,64 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
       </div>
 
       {/* Config Panel (Educators Only) */}
-      {isEducator && assistantMode === 'worksheet' && (
-        <WorksheetConfigPanel
-          key={`worksheet-${teacherGenerationCount}`}
-          config={worksheetConfig}
-          onChange={setWorksheetConfig}
-          onGenerate={handleGenerate}
-          isGenerating={isStreaming}
-          generationLimit={isTeacher ? teacherGenerationLimit : undefined}
-          remainingGenerations={isTeacher ? remainingTeacherGenerations : undefined}
-          isGenerationLimitReached={isGenerationLocked}
-          isUsageLoading={isCheckingGenerationUsage}
-        />
-      )}
-      {isEducator && assistantMode === 'lesson-plan' && (
-        <LessonPlanConfigPanel
-          key={`lesson-plan-${teacherGenerationCount}`}
-          config={lessonPlanConfig}
-          onChange={setLessonPlanConfig}
-          onGenerate={handleGenerate}
-          isGenerating={isStreaming}
-          generationLimit={isTeacher ? teacherGenerationLimit : undefined}
-          remainingGenerations={isTeacher ? remainingTeacherGenerations : undefined}
-          isGenerationLimitReached={isGenerationLocked}
-          isUsageLoading={isCheckingGenerationUsage}
-        />
+      {isEducator && (
+        <div className="bg-white flex-shrink-0 z-10 border-b border-gray-100 shadow-sm relative">
+          <button type="button"
+            onClick={() => setIsConfigExpanded(!isConfigExpanded)}
+            className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+            aria-expanded={isConfigExpanded}
+            aria-controls="config-panel-content"
+          >
+            <span className="font-medium text-sm text-gray-800 flex items-center gap-2">
+              {assistantMode === 'worksheet' ? 'Worksheet Settings' : 'Lesson Plan Settings'}
+            </span>
+            {isConfigExpanded ? (
+              <ChevronUp className="w-4 h-4 text-gray-500" />
+            ) : (
+              <ChevronDown className="w-4 h-4 text-gray-500" />
+            )}
+          </button>
+          
+          <AnimatePresence>
+            {isConfigExpanded && (
+              <motion.div
+                id="config-panel-content"
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                className="overflow-hidden"
+              >
+                <div className="p-4 pt-0 max-h-[50vh] overflow-y-auto">
+                  {assistantMode === 'worksheet' ? (
+                    <WorksheetConfigPanel
+                      key={`worksheet-${teacherGenerationCount}`}
+                      config={worksheetConfig}
+                      onChange={setWorksheetConfig}
+                      onGenerate={handleGenerate}
+                      isGenerating={isStreaming}
+                      generationLimit={isTeacher ? teacherGenerationLimit : undefined}
+                      remainingGenerations={isTeacher ? remainingTeacherGenerations : undefined}
+                      isGenerationLimitReached={isGenerationLocked}
+                      isUsageLoading={isCheckingGenerationUsage}
+                    />
+                  ) : (
+                    <LessonPlanConfigPanel
+                      key={`lesson-plan-${teacherGenerationCount}`}
+                      config={lessonPlanConfig}
+                      onChange={setLessonPlanConfig}
+                      onGenerate={handleGenerate}
+                      isGenerating={isStreaming}
+                      generationLimit={isTeacher ? teacherGenerationLimit : undefined}
+                      remainingGenerations={isTeacher ? remainingTeacherGenerations : undefined}
+                      isGenerationLimitReached={isGenerationLocked}
+                      isUsageLoading={isCheckingGenerationUsage}
+                    />
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       )}
 
       {/* Messages Area */}
@@ -636,7 +683,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
                 <p className="text-xs text-gray-500 mb-2 font-medium">Try asking:</p>
                 <div className="space-y-2">
                   {suggestedQuestions.slice(0, 3).map((q, i) => (
-                    <button
+                    <button type="button"
                       key={i}
                       onClick={() => setInput(q)}
                       className="w-full p-3 text-left text-sm bg-white border border-gray-200 rounded-xl hover:border-violet-400 hover:bg-violet-50 transition-all group"
@@ -671,14 +718,14 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
                         disabled={isStreaming}
                       />
                       <div className="flex items-center justify-end gap-3 mt-2">
-                        <button
+                        <button type="button"
                           onClick={handleCancelEdit}
                           disabled={isStreaming}
                           className="text-sm text-gray-500 hover:text-gray-700 transition-colors disabled:opacity-50"
                         >
                           Cancel
                         </button>
-                        <button
+                        <button type="button"
                           onClick={handleSaveEdit}
                           disabled={!editedContent.trim() || isStreaming}
                           className="px-4 py-1.5 text-sm text-white bg-violet-600 rounded-full hover:bg-violet-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
@@ -734,7 +781,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
 
                       {/* Edit button for user messages - appears on hover */}
                       {isUser && !isStreaming && (
-                        <button
+                        <button type="button"
                           onClick={() => handleStartEdit(msg.id, msg.content)}
                           className="absolute -left-8 top-1/2 -translate-y-1/2 p-1.5 text-gray-400 hover:text-violet-600 hover:bg-violet-50 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
                           title="Edit message"
@@ -760,14 +807,14 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
                       {/* Feedback buttons */}
                       {!isUser && msg.content && (
                         <div className="flex items-center gap-1">
-                          <button
+                          <button type="button"
                             onClick={() => handleFeedback(index, 1)}
                             className={`p-1 rounded hover:bg-gray-200 transition-colors ${feedbackGiven[index] === 1 ? 'text-green-600' : 'text-gray-400'
                               }`}
                           >
                             <ThumbsUp className="w-3 h-3" />
                           </button>
-                          <button
+                          <button type="button"
                             onClick={() => handleFeedback(index, -1)}
                             className={`p-1 rounded hover:bg-gray-200 transition-colors ${feedbackGiven[index] === -1 ? 'text-red-600' : 'text-gray-400'
                               }`}
@@ -812,7 +859,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
       {error && (
         <div className="px-4 py-3 bg-red-50 border-t border-red-200 flex items-center gap-2 text-red-700">
           <span className="text-sm flex-1">{error}</span>
-          <button onClick={() => window.location.reload()} className="p-1 hover:bg-red-100 rounded">
+          <button type="button" onClick={() => window.location.reload()} className="p-1 hover:bg-red-100 rounded">
             <RefreshCw className="w-4 h-4" />
           </button>
         </div>
@@ -833,7 +880,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
               className="flex-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-200 disabled:bg-gray-100 disabled:cursor-not-allowed text-sm resize-none max-h-32"
               style={{ minHeight: '44px' }}
             />
-            <button
+            <button type="button"
               onClick={handleSend}
               disabled={!input.trim() || isStreaming || !isAuthenticated}
               className="w-11 h-11 bg-violet-600 text-white rounded-xl flex items-center justify-center hover:bg-violet-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex-shrink-0"

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Settings, FileText, BookOpen } from 'lucide-react';
 
 export type AssistantMode = 'worksheet' | 'lesson-plan' | null;
@@ -8,10 +8,10 @@ interface TeachingAssistantSettingsProps {
   onModeChange: (mode: AssistantMode) => void;
 }
 
-const TeachingAssistantSettings: React.FC<TeachingAssistantSettingsProps> = ({ 
+const TeachingAssistantSettings = ({ 
   currentMode, 
   onModeChange 
-}) => {
+}: TeachingAssistantSettingsProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -37,11 +37,9 @@ const TeachingAssistantSettings: React.FC<TeachingAssistantSettingsProps> = ({
     { value: 'lesson-plan' as const, label: 'Lesson Planner', icon: BookOpen },
   ];
 
-  const currentModeData = modes.find(m => m.value === currentMode);
-
   return (
     <div className="relative" ref={dropdownRef}>
-      <button
+      <button type="button"
         onClick={() => setIsOpen(!isOpen)}
         className="p-2 hover:bg-white/20 rounded-lg transition-colors"
         title="Teaching Assistant Mode"
@@ -60,7 +58,7 @@ const TeachingAssistantSettings: React.FC<TeachingAssistantSettingsProps> = ({
             const isActive = currentMode === mode.value;
             
             return (
-              <button
+              <button type="button"
                 key={mode.value}
                 onClick={() => {
                   onModeChange(mode.value);
