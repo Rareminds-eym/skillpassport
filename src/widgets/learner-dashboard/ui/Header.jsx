@@ -47,7 +47,6 @@ const Header = ({ activeTab }) => {
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
   const [showFreemiumBanner, setShowFreemiumBanner] = useState(true);
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
-  const [isLteNavigating, setIsLteNavigating] = useState(false);
   const [lastScrollY, setLastScrollY] = useState(0);
   const navigate = useNavigate();
   const location = useLocation();
@@ -154,7 +153,6 @@ const Header = ({ activeTab }) => {
   }, [logout, navigate]);
 
   const handleGoToLTE = useCallback(async () => {
-    setIsLteNavigating(true);
     try {
       await navigateToLTE();
     } catch (error) {
@@ -164,7 +162,6 @@ const Header = ({ activeTab }) => {
         message,
         type: 'error'
       });
-      setIsLteNavigating(false);
     }
   }, [showErrorNotification]);
 
@@ -330,11 +327,10 @@ const Header = ({ activeTab }) => {
                                   setActiveModal(null);
                                 }
                               }}
-                              disabled={item.id === 'go-to-lte' && isLteNavigating}
                               className={`w-full flex items-center px-4 py-2 text-sm ${item.className} text-left`}
                             >
                               <Icon className="w-4 h-4 mr-2" />
-                              {item.id === 'go-to-lte' && isLteNavigating ? 'Opening LTE...' : item.label}
+                              {item.label}
                             </button>
                           </div>
                         );
