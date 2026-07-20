@@ -88,6 +88,13 @@ interface EventRegistration {
   attended: boolean;
 }
 
+type RawEventRegistration = {
+  event_id: string;
+  registered_at: string;
+  attended: boolean;
+  college_events: CollegeEvent | null | undefined;
+};
+
 interface ClubsCompetitionsTabProps {
   learner: any;
   loading: boolean;
@@ -126,7 +133,6 @@ const ClubsCompetitionsTab: React.FC<ClubsCompetitionsTabProps> = ({ learner, lo
           setClubMemberships(result.data.clubs || []);
           setCompetitionRegistrations(result.data.competitions || []);
           setCompetitionResults(result.data.competitionResults || []);
-          setEventRegistrations(result.data.events || []);
         }
       }
 
@@ -137,7 +143,13 @@ const ClubsCompetitionsTab: React.FC<ClubsCompetitionsTabProps> = ({ learner, lo
           learnerEmail: learner.email,
         });
         if (result?.data) {
-          setEventRegistrations(result.data.events || []);
+          const mappedEvents = (result.data.events || [])
+            .filter((r: RawEventRegistration) => !!r.college_events)
+            .map((r: RawEventRegistration) => ({
+              ...r,
+              event: r.college_events,
+            }));
+          setEventRegistrations(mappedEvents);
           setCompetitionRegistrations(result.data.competitions || []);
           setCompetitionResults(result.data.competitionResults || []);
         }
@@ -234,6 +246,7 @@ const ClubsCompetitionsTab: React.FC<ClubsCompetitionsTabProps> = ({ learner, lo
         {isSchoolLearner && (
           <>
             <button
+              type="button"
               onClick={() => setActiveSection('clubs')}
               className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors ${activeSection === 'clubs'
                   ? 'bg-white text-gray-900'
@@ -243,6 +256,7 @@ const ClubsCompetitionsTab: React.FC<ClubsCompetitionsTabProps> = ({ learner, lo
               Clubs ({clubMemberships.length})
             </button>
             <button
+              type="button"
               onClick={() => setActiveSection('competitions')}
               className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors ${activeSection === 'competitions'
                   ? 'bg-white text-gray-900'
@@ -255,6 +269,7 @@ const ClubsCompetitionsTab: React.FC<ClubsCompetitionsTabProps> = ({ learner, lo
         )}
         {isCollegeLearner && (
           <button
+            type="button"
             onClick={() => setActiveSection('events')}
             className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors ${activeSection === 'events'
                 ? 'bg-white text-gray-900'

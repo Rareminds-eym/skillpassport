@@ -7,6 +7,7 @@ interface SignupBody {
   org_name: string;
   role: string;
   redirect_url?: string;
+  user_metadata?: Record<string, unknown>;
 }
 
 /**
@@ -21,7 +22,7 @@ export async function onRequestPost(context: { request: Request; env: Env }): Pr
 
   try {
     const body = await request.json() as SignupBody;
-    const { email, password, org_name, role, redirect_url } = body;
+    const { email, password, org_name, role, redirect_url, user_metadata } = body;
 
     if (!email || !password || !org_name || !role) {
       return new Response(JSON.stringify({
@@ -44,17 +45,29 @@ export async function onRequestPost(context: { request: Request; env: Env }): Pr
       });
     }
 
+    // Allow-list user_metadata to the fields the frontend actually sends,
+    // stripping any unexpected keys before they reach the SSO Worker/JWT.
+    const safeUserMetadata = user_metadata && typeof user_metadata === 'object'
+      ? {
+          firstName: typeof user_metadata.firstName === 'string' ? user_metadata.firstName : undefined,
+          lastName: typeof user_metadata.lastName === 'string' ? user_metadata.lastName : undefined,
+          phone: typeof user_metadata.phone === 'string' ? user_metadata.phone : undefined,
+          avatarUrl: (typeof user_metadata.avatarUrl === 'string' || user_metadata.avatarUrl === null) ? user_metadata.avatarUrl : undefined,
+        }
+      : undefined;
+
     // Call RPC method directly on SSO Worker
-    const ssoResult = await (env.SSO_SERVICE as any).signup({
+    const ssoResult = await env.SSO_SERVICE.signup({
       email,
       password,
       org_name,
       role,
-      redirect_url
+      redirect_url,
+      user_metadata: safeUserMetadata
     });
 
     // Handle RPC error response
-    if (!ssoResult || !ssoResult.success) {
+    if (!ssoResult?.success) {
       const errorMsg = ssoResult?.error || 'Signup failed';
       apiLogger.warn('Signup failed from SSO', { email, error: errorMsg });
       return new Response(JSON.stringify({
@@ -67,7 +80,7 @@ export async function onRequestPost(context: { request: Request; env: Env }): Pr
     }
 
     // Verify tokens present
-    if (!ssoResult.access_token || !ssoResult.refresh_token) {
+    if (!ssoResult?.access_token || !ssoResult?.refresh_token) {
       apiLogger.error('Missing tokens in signup RPC response', { email });
       return new Response(JSON.stringify({
         success: false,
@@ -102,11 +115,13 @@ export async function onRequestPost(context: { request: Request; env: Env }): Pr
       headers
     });
 
-  } catch (error: any) {
-    apiLogger.error('Signup RPC call failed', error as Error);
+  } catch (error: unknown) {
+    const logErrorMessage = error instanceof Error ? error.message : String(error);
+    apiLogger.error('Signup RPC call failed', new Error(logErrorMessage));
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
     return new Response(JSON.stringify({
       success: false,
-      error: error?.message || 'Internal server error'
+      error: errorMessage
     }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }

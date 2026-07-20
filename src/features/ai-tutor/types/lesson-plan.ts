@@ -7,7 +7,6 @@ export type LessonPlanTemplateType =
 export interface LessonPlanConfig {
   templateType: LessonPlanTemplateType;
   duration: number; // in minutes
-  subject?: string;
   gradeLevel?: string;
   
   // Optional sections to include
