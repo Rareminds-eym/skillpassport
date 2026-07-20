@@ -5,12 +5,13 @@
  * No SERVICE_AUTH_SECRET needed — the binding itself is the trust boundary.
  */
 
+import type { Fetcher } from "@cloudflare/workers-types";
 
 // ─── RPC Interface Types ───────────────────────────────────────
 // These define the SsoWorker RPC methods available via the SSO_SERVICE binding.
 
 interface SsoClientEnv {
-  SSO_SERVICE?: unknown;
+  SSO_SERVICE: Fetcher;
 }
 
 interface SsoSubscriptionData {
@@ -72,7 +73,7 @@ export interface GenerateAuthorizationCodeResult {
   codeExpiresAt?: string;
 }
 
-type SsoFetcher = {
+type SsoFetcher = Fetcher & {
   createSubscription(data: unknown): Promise<Record<string, unknown>>;
   createFreemiumSubscription(data: unknown): Promise<Record<string, unknown>>;
   createMember(data: { email: string; password: string; role: string; org_id: string }):
@@ -114,7 +115,7 @@ function getSsoService(env: SsoClientEnv): SsoFetcher {
       'Add [[services]] to wrangler.toml or use --service SSO_SERVICE=sso-api in local dev.'
     );
   }
-  return env.SSO_SERVICE as SsoFetcher;
+  return env.SSO_SERVICE as  SsoFetcher;
 }
 
 // ─── RPC Client Functions ──────────────────────────────────────
