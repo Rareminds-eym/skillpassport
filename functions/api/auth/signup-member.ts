@@ -7,6 +7,7 @@ interface SignupMemberBody {
   role: string;
   org_id?: string;
   redirect_url?: string;
+  user_metadata?: Record<string, unknown>;
 }
 
 export async function onRequestPost(context: {
@@ -30,16 +31,31 @@ export async function onRequestPost(context: {
   const ip = request.headers.get('CF-Connecting-IP') || undefined;
   const ua = request.headers.get('User-Agent') || undefined;
 
-  try {
-    const ssoService = env.SSO_SERVICE as any;
+  // Allow-list user_metadata to the fields the frontend actually sends,
+  // stripping any unexpected keys before they reach the SSO Worker/JWT.
+  const rawMetadata = body.user_metadata;
+  const user_metadata = rawMetadata && typeof rawMetadata === 'object'
+    ? {
+        firstName: typeof rawMetadata.firstName === 'string' ? rawMetadata.firstName : undefined,
+        lastName: typeof rawMetadata.lastName === 'string' ? rawMetadata.lastName : undefined,
+        phone: typeof rawMetadata.phone === 'string' ? rawMetadata.phone : undefined,
+        avatarUrl: typeof rawMetadata.avatarUrl === 'string' || rawMetadata.avatarUrl === null ? rawMetadata.avatarUrl : undefined,
+      }
+    : undefined;
 
+  if (!env.SSO_SERVICE) {
+    return apiError(500, 'SERVICE_UNAVAILABLE', 'Authentication service unavailable', request);
+  }
+
+  try {
     // Call RPC method directly
-    const result = await ssoService.signupMember({
+    const result = await env.SSO_SERVICE.signupMember({
       email: body.email,
       password: body.password,
       role: body.role,
       org_id: body.org_id,
       redirect_url: body.redirect_url,
+      user_metadata,
       ip,
       ua,
     });
@@ -92,8 +108,8 @@ export async function onRequestPost(context: {
       status: 201,
       headers,
     });
-  } catch (err: any) {
-    const errMsg = err?.message ?? 'Signup failed';
+  } catch (err: unknown) {
+    const errMsg = err instanceof Error ? err.message : 'Signup failed';
     console.error('[SignupMember] RPC error:', err);
 
     if (errMsg.includes('duplicate') || errMsg.includes('already exists')) {

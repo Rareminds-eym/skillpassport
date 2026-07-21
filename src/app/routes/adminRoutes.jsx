@@ -70,6 +70,21 @@ const FinanceManagement = lazy(() =>
 const ReportsAnalytics = lazy(() =>
   import("@/pages/admin/collegeAdmin/ReportsAnalytics")
 );
+// Course Analytics Dashboard for College Admin (Department -> Academic Year ->
+// Section hierarchy). School Admin and University Admin have their own
+// role-specific pages, registered separately below.
+const CourseAnalyticsDashboard = lazy(() =>
+  import("@/pages/admin/collegeAdmin/CourseAnalyticsDashboard")
+);
+// Course Analytics Dashboard for School Admin (Grade -> Section hierarchy).
+const SchoolCourseAnalyticsDashboard = lazy(() =>
+  import("@/pages/admin/schoolAdmin/CourseAnalyticsDashboard")
+);
+// Course Analytics Dashboard for University Admin (Faculty -> Department ->
+// Program -> Academic Year -> Section hierarchy).
+const UniversityCourseAnalyticsDashboard = lazy(() =>
+  import("@/pages/admin/universityAdmin/CourseAnalyticsDashboard")
+);
 const AttendanceTracking = lazy(() =>
   import("@/pages/admin/collegeAdmin/Attendancetracking")
 );
@@ -362,6 +377,7 @@ export const collegeAdminRoutes = (
     <Route path="finance" element={<FinanceManagement />} />
     <Route path="library" element={<CollegeLibrary />} />
     <Route path="reports" element={<ReportsAnalytics />} />
+    <Route path="course-analytics" element={<CourseAnalyticsDashboard />} />
     <Route path="users" element={<CollegeUserManagement />} />
     <Route path="settings" element={<CollegeSettings />} />
     <Route path="subscription/manage" element={<SubscriptionManage />} />
@@ -416,6 +432,8 @@ export const schoolAdminRoutes = (
     <Route path="skills/clubs" element={<SkillCurricular />} />
     <Route path="skills/badges" element={<SkillBadges />} />
     <Route path="skills/reports" element={<Reports />} />
+    {/* Course Analytics Dashboard: Grade -> Section hierarchy. */}
+    <Route path="course-analytics" element={<SchoolCourseAnalyticsDashboard />} />
     <Route path="finance/fees" element={<SchoolFinanceModule />} />
     <Route path="infrastructure/library" element={<Library />} />
     <Route path="settings" element={<SchoolAdminSettings />} />
@@ -459,6 +477,9 @@ export const universityAdminRoutes = (
     <Route path="placements/readiness" element={<PlacementReadiness />} />
     <Route path="analytics/obe-tracking" element={<OutcomeBasedEducation />} />
     <Route path="analytics/reports" element={<DistrictCollegeReports />} />
+    {/* Course Analytics Dashboard: Faculty -> Department -> Program ->
+        Academic Year -> Section hierarchy. */}
+    <Route path="analytics/course-analytics" element={<UniversityCourseAnalyticsDashboard />} />
     <Route path="ai-counselling" element={<AICounselling />} />
     <Route path="examinations" element={<UniversityExaminationManagement />} />
     <Route path="examinations/grades" element={<UniversityGradeCalculation />} />

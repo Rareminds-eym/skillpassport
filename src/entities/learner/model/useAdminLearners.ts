@@ -5,6 +5,7 @@ import { useAuthStore } from '@/shared/model/authStore'
 // Raw DB row type (minimal)
 interface LearnerRow {
   id: string
+  user_id?: string
   universityId?: string
   profile?: any
   createdAt?: string
@@ -89,6 +90,7 @@ export interface LearnerProfile {
 
 export interface UICandidate {
   id: string
+  user_id?: string
   name: string
   email?: string
   phone?: string
@@ -266,6 +268,7 @@ function mapToUICandidate(row: LearnerRow): UICandidate {
 
   return {
     id: row.id,
+    user_id: row.user_id,
     name,
     email,
     phone,
