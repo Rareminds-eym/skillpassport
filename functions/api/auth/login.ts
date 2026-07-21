@@ -1,5 +1,6 @@
 import type { Env } from '../../lib/types';
 import { apiLogger } from '../../lib/logger';
+import { createRefreshCookie } from '../../lib/cookies';
 
 interface LoginBody {
   email: string;
@@ -89,11 +90,7 @@ export async function onRequestPost(context: { request: Request; env: Env }): Pr
 
     // Set refresh token as HttpOnly cookie for auth-core implicit refresh
     if (ssoResult.refresh_token) {
-      // Note: Secure flag omitted for localhost development (HTTP); production should use Secure
-      headers.append(
-        'Set-Cookie',
-        `refresh_token=${ssoResult.refresh_token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800`
-      );
+      headers.append('Set-Cookie', createRefreshCookie(ssoResult.refresh_token, request, env));
     }
 
     apiLogger.info('Login successful via RPC', { email, userId: ssoResult.user?.id });

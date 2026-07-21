@@ -1,4 +1,5 @@
 import { apiError } from '../../lib/response';
+import { createRefreshCookie } from '../../lib/cookies';
 import type { Env } from '../../lib/types';
 
 interface RefreshBody {
@@ -70,10 +71,7 @@ export async function onRequestPost(context: {
 
     // Set new refresh_token as HttpOnly cookie
     if (result.refresh_token) {
-      headers.append(
-        'Set-Cookie',
-        `refresh_token=${result.refresh_token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800`
-      );
+      headers.append('Set-Cookie', createRefreshCookie(result.refresh_token, request, env));
     }
 
     // Return new tokens

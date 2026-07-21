@@ -21,8 +21,12 @@ const GuestOnlyRoute: React.FC<GuestOnlyRouteProps> = ({ children }) => {
 
   // If the user is authenticated, redirect them away from the guest-only route (like Login/Signup)
   if (isAuthenticated && !authLoading) {
-    // If they have a returnUrl in the query params, honor it (but prevent redirect loops)
     const params = new URLSearchParams(location.search);
+    const targetApp = params.get('target_app') || params.get('redirect_app');
+    if (targetApp === 'lte') {
+      return <>{children}</>;
+    }
+
     const returnUrl = params.get('returnUrl') || params.get('redirect');
 
     if (returnUrl && !returnUrl.includes('/login') && !returnUrl.includes('/signup')) {
