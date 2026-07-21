@@ -62,7 +62,12 @@ export async function onRequestPost(context: { request: Request; env: Env }): Pr
     if (!ssoResult.success || !ssoResult.access_token) {
       const errorMsg = ssoResult?.error || 'Signup failed';
       const status = ssoResult?.status || 400;
-      apiLogger.warn('Signup failed from SSO', { email, error: errorMsg, status });
+      apiLogger.warn('Signup failed from SSO', {
+        email,
+        errorMessage: errorMsg,
+        status,
+        ssoResult: JSON.stringify(ssoResult)
+      });
       return new Response(JSON.stringify({
         success: false,
         error: errorMsg
