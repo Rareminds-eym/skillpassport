@@ -49,10 +49,8 @@ CREATE TABLE IF NOT EXISTS public.recruitment_role_mapping (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Delete existing data and re-insert to ensure consistency
-DELETE FROM public.recruitment_role_mapping;
-
--- Insert role mappings
+-- Use UPSERT pattern instead of DELETE + INSERT to preserve custom mappings
+-- This is idempotent and safe to re-run
 INSERT INTO public.recruitment_role_mapping 
     (sso_role_name, recruitment_role, can_manage_team, can_create_jobs, can_edit_jobs, 
      can_delete_jobs, can_view_candidates, can_manage_candidates, can_view_analytics, description)
@@ -62,7 +60,19 @@ VALUES
     ('admin', 'company_admin', TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, 
      'Organization admin - full recruitment access'),
     ('member', 'recruiter', FALSE, TRUE, TRUE, FALSE, TRUE, TRUE, TRUE, 
-     'Organization member - recruiter access');
+     'Organization member - recruiter access')
+ON CONFLICT (sso_role_name) 
+DO UPDATE SET
+    recruitment_role = EXCLUDED.recruitment_role,
+    can_manage_team = EXCLUDED.can_manage_team,
+    can_create_jobs = EXCLUDED.can_create_jobs,
+    can_edit_jobs = EXCLUDED.can_edit_jobs,
+    can_delete_jobs = EXCLUDED.can_delete_jobs,
+    can_view_candidates = EXCLUDED.can_view_candidates,
+    can_manage_candidates = EXCLUDED.can_manage_candidates,
+    can_view_analytics = EXCLUDED.can_view_analytics,
+    description = EXCLUDED.description,
+    updated_at = NOW();
 
 -- Verify the data
 DO $$

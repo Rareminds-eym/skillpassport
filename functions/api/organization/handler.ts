@@ -16,6 +16,42 @@ type OrganizationType = 'school' | 'college' | 'university';
 type MemberType = 'educator' | 'learner';
 
 // ============================================================================
+// Access Control Helper
+// ============================================================================
+
+/**
+ * Verifies that the user is a member of the specified organization
+ * @returns Member data with role if user is a member, null otherwise
+ */
+async function verifyOrgMembership(
+  supabase: any,
+  userId: string,
+  orgId: string
+): Promise<{ role: string; status: string } | null> {
+  const { data, error } = await supabase
+    .from('organization_members')
+    .select('role, status')
+    .eq('user_id', userId)
+    .eq('organization_id', orgId)
+    .eq('status', 'active')
+    .maybeSingle();
+
+  if (error) {
+    console.error('[verifyOrgMembership] Database error:', error);
+    return null;
+  }
+
+  return data;
+}
+
+/**
+ * Verifies user has admin privileges (owner or admin role)
+ */
+function isAdmin(role: string): boolean {
+  return role === 'owner' || role === 'admin';
+}
+
+// ============================================================================
 // License Pools
 // ============================================================================
 
@@ -23,6 +59,17 @@ async function createPool(context: AuthenticatedContext, body: any) {
   const supabase = getSupabase(context);
   const userId = getUserId(context);
   const { organizationSubscriptionId, organizationId, organizationType, poolName, memberType, allocatedSeats, autoAssignNewMembers, assignmentCriteria } = body;
+
+  // 🔒 SECURITY: Verify user is a member of the organization
+  const membership = await verifyOrgMembership(supabase, userId, organizationId);
+  if (!membership) {
+    return apiError(403, 'FORBIDDEN', 'Not a member of this organization', context.request);
+  }
+
+  // 🔒 SECURITY: Only admins can create license pools
+  if (!isAdmin(membership.role)) {
+    return apiError(403, 'FORBIDDEN', 'Insufficient permissions. Admin role required.', context.request);
+  }
 
   const { data: subscription } = await supabase
     .from('subscription_cache')
@@ -60,10 +107,17 @@ async function createPool(context: AuthenticatedContext, body: any) {
 
 async function getLicensePools(context: AuthenticatedContext) {
   const supabase = getSupabase(context);
+  const userId = getUserId(context);
   const url = new URL(context.request.url);
   const orgId = url.searchParams.get('orgId');
   const orgType = url.searchParams.get('orgType');
   if (!orgId) return apiError(400, 'VALIDATION_ERROR', 'orgId is required', context.request);
+
+  // 🔒 SECURITY: Verify user is a member of the organization
+  const membership = await verifyOrgMembership(supabase, userId, orgId);
+  if (!membership) {
+    return apiError(403, 'FORBIDDEN', 'Not a member of this organization', context.request);
+  }
 
   let query = supabase.from('license_pools').select('*').eq('organization_id', orgId);
   if (orgType) query = query.eq('organization_type', orgType);
@@ -171,6 +225,17 @@ async function inviteMember(context: AuthenticatedContext, body: any) {
   const user = getUserId(context);
   const { organizationId, organizationType, email, memberType, autoAssignSubscription, licensePoolId, invitationMessage, metadata } = body;
 
+  // 🔒 SECURITY: Verify user is a member of the organization
+  const membership = await verifyOrgMembership(supabase, user, organizationId);
+  if (!membership) {
+    return apiError(403, 'FORBIDDEN', 'Not a member of this organization', context.request);
+  }
+
+  // 🔒 SECURITY: Only admins can invite members
+  if (!isAdmin(membership.role)) {
+    return apiError(403, 'FORBIDDEN', 'Insufficient permissions. Admin role required to send invitations.', context.request);
+  }
+
   const { data: existing } = await supabase.from('organization_invitations').select('*').eq('organization_id', organizationId).eq('invitee_email', email.toLowerCase()).eq('status', 'pending').maybeSingle();
   if (existing) return apiError(409, 'DUPLICATE', 'An invitation is already pending for this email', context.request);
 
@@ -277,10 +342,17 @@ async function linkUserToOrganization(supabase: any, userId: string, organizatio
 
 async function getPendingInvitations(context: AuthenticatedContext) {
   const supabase = getSupabase(context);
+  const userId = getUserId(context);
   const url = new URL(context.request.url);
   const orgId = url.searchParams.get('orgId');
   const orgType = url.searchParams.get('orgType');
   if (!orgId) return apiError(400, 'VALIDATION_ERROR', 'orgId is required', context.request);
+
+  // 🔒 SECURITY: Verify user is a member of the organization
+  const membership = await verifyOrgMembership(supabase, userId, orgId);
+  if (!membership) {
+    return apiError(403, 'FORBIDDEN', 'Not a member of this organization', context.request);
+  }
 
   let query = supabase.from('organization_invitations').select('*').eq('organization_id', orgId).eq('status', 'pending').order('created_at', { ascending: false });
   if (orgType) query = query.eq('organization_type', orgType);
@@ -291,12 +363,19 @@ async function getPendingInvitations(context: AuthenticatedContext) {
 
 async function getAllInvitations(context: AuthenticatedContext) {
   const supabase = getSupabase(context);
+  const userId = getUserId(context);
   const url = new URL(context.request.url);
   const orgId = url.searchParams.get('orgId');
   const status = url.searchParams.get('status');
   const memberType = url.searchParams.get('memberType');
   const limit = url.searchParams.get('limit') ? parseInt(url.searchParams.get('limit')!) : undefined;
   if (!orgId) return apiError(400, 'VALIDATION_ERROR', 'orgId is required', context.request);
+
+  // 🔒 SECURITY: Verify user is a member of the organization
+  const membership = await verifyOrgMembership(supabase, userId, orgId);
+  if (!membership) {
+    return apiError(403, 'FORBIDDEN', 'Not a member of this organization', context.request);
+  }
 
   let query = supabase.from('organization_invitations').select('*').eq('organization_id', orgId).order('created_at', { ascending: false });
   if (status) query = query.eq('status', status);
