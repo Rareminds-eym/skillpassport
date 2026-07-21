@@ -139,32 +139,3 @@ END;
 $cambridge_grade8_assessment$;
 
 COMMIT;
-
--- ============================================================
--- Verification
--- ============================================================
-SELECT
-  attempt."id" AS attempt_id,
-  attempt."learner_id",
-  attempt."stream_id",
-  attempt."grade_level",
-  attempt."status"
-FROM "public"."personal_assessment_attempts" AS attempt
-WHERE attempt."id" = '7f8f2a33-61d9-52ea-a94d-26633964c94d';
-
-SELECT
-  result."id" AS result_id,
-  result."attempt_id",
-  result."learner_id",
-  result."stream_id",
-  result."grade_level",
-  result."status",
-  result."career_fit" -> 'clusters' -> 0 ->> 'title' AS track_1,
-  result."career_fit" -> 'clusters' -> 1 ->> 'title' AS track_2,
-  result."career_fit" -> 'clusters' -> 2 ->> 'title' AS track_3,
-  jsonb_array_length(result."platform_courses") AS platform_course_count
-FROM "public"."personal_assessment_results" AS result
-WHERE result."id" = 'b6dd9176-b385-5da1-9a67-9c13784d5009';
-
--- Expected result URL:
--- /learner/assessment/result?attemptId=7f8f2a33-61d9-52ea-a94d-26633964c94d

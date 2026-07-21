@@ -33,6 +33,16 @@ INSERT INTO "public"."users" ("email", "organizationId", "isActive", "metadata",
   ('amrutha.grade8@cambridgeschool.edu.in', NULL, TRUE, '{"imported_via":"school_seed","school_name":"Cambridge School","school_email":"admin@cambridgeschool.edu.in","organization_type":"school","board":"CBSE","grade":"8","section":"A"}', NOW(), NOW(), '8c8f6c10-8e7a-4f66-9a20-a75cd6fd8002', 'R', 'Amrutha', NULL, 'learner', NULL, FALSE, NULL)
 ON CONFLICT DO NOTHING;
 
+-- Insert R Amrutha into users_shadow (required for foreign key constraint)
+INSERT INTO "public"."users_shadow"
+  ("id", "email", "created_at", "updated_at")
+VALUES
+  ('8c8f6c10-8e7a-4f66-9a20-a75cd6fd8002', 'amrutha.grade8@cambridgeschool.edu.in', NOW(), NOW())
+ON CONFLICT ("id") DO UPDATE
+SET
+  "email" = EXCLUDED."email",
+  "updated_at" = NOW();
+
 -- ------------------------------------------------------------
 -- 2. learners
 -- ------------------------------------------------------------
@@ -432,32 +442,154 @@ SET
   "updated_at" = NOW()
 WHERE "email" = 'amrutha.grade8@cambridgeschool.edu.in';
 
--- ------------------------------------------------------------
--- 10. VERIFICATION
--- ------------------------------------------------------------
-SELECT
-  org."id" AS organization_id,
-  org."name" AS organization_name
-FROM "public"."organizations" AS org
-WHERE org."id" = '8c8f6c10-8e7a-4f66-9a20-a75cd6fd8001';
 
-SELECT
-  usr."id" AS amrutha_user_id,
-  usr."email",
-  usr."organizationId",
-  usr."role",
-  usr."metadata" ->> 'organization_type' AS organization_type
-FROM "public"."users" AS usr
-WHERE usr."email" = 'amrutha.grade8@cambridgeschool.edu.in';
+-- ============================================================
+-- SUBSCRIPTION DATA - SCHOOL ENTERPRISE
+-- ============================================================
 
-SELECT
-  learner."id" AS learner_id,
-  learner."user_id",
-  learner."email",
-  learner."college_school_name",
-  learner."school_id",
-  learner."grade",
-  learner."section",
-  learner."learner_type"
-FROM "public"."learners" AS learner
-WHERE learner."email" = 'amrutha.grade8@cambridgeschool.edu.in';
+-- ------------------------------------------------------------
+-- 10. SCHOOL ADMIN USER
+-- ------------------------------------------------------------
+INSERT INTO "public"."users"
+  ("email", "organizationId", "isActive", "metadata", "createdAt", "updatedAt", "id", "firstName", "lastName", "last_activity_at", "role", "temporary_password", "password_changed", "phone")
+VALUES
+  ('admin@cambridgeschool.edu.in', '8c8f6c10-8e7a-4f66-9a20-a75cd6fd8001', TRUE, '{"organization_type":"school","school_name":"Cambridge School","role":"school_admin","board":"CBSE","city":"Bengaluru","state":"Karnataka","country":"India"}'::jsonb, NOW(), NOW(), '8c8f6c10-8e7a-4f66-9a20-a75cd6fd80b1', 'Cambridge School', 'Admin', NULL, 'school_admin', NULL, TRUE, '+91-80-12345678')
+ON CONFLICT ("email") DO UPDATE
+SET
+  "organizationId" = EXCLUDED."organizationId",
+  "isActive" = TRUE,
+  "role" = 'school_admin',
+  "metadata" = EXCLUDED."metadata",
+  "updatedAt" = NOW();
+
+-- Insert into users_shadow table (required for foreign key constraint)
+INSERT INTO "public"."users_shadow"
+  ("id", "email", "created_at", "updated_at")
+VALUES
+  ('8c8f6c10-8e7a-4f66-9a20-a75cd6fd80b1', 'admin@cambridgeschool.edu.in', NOW(), NOW())
+ON CONFLICT ("id") DO UPDATE
+SET
+  "email" = EXCLUDED."email",
+  "updated_at" = NOW();
+
+-- Ensure the user ID exists before creating subscription cache
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM "public"."users" WHERE "id" = '8c8f6c10-8e7a-4f66-9a20-a75cd6fd80b1') THEN
+    INSERT INTO "public"."users"
+      ("email", "organizationId", "isActive", "metadata", "createdAt", "updatedAt", "id", "firstName", "lastName", "last_activity_at", "role", "temporary_password", "password_changed", "phone")
+    VALUES
+      ('admin@cambridgeschool.edu.in', '8c8f6c10-8e7a-4f66-9a20-a75cd6fd8001', TRUE, '{"organization_type":"school","school_name":"Cambridge School","role":"school_admin","board":"CBSE","city":"Bengaluru","state":"Karnataka","country":"India"}'::jsonb, NOW(), NOW(), '8c8f6c10-8e7a-4f66-9a20-a75cd6fd80b1', 'Cambridge School', 'Admin', NULL, 'school_admin', NULL, TRUE, '+91-80-12345678');
+  END IF;
+  
+  -- Also ensure users_shadow entry exists
+  IF NOT EXISTS (SELECT 1 FROM "public"."users_shadow" WHERE "id" = '8c8f6c10-8e7a-4f66-9a20-a75cd6fd80b1') THEN
+    INSERT INTO "public"."users_shadow"
+      ("id", "email", "created_at", "updated_at")
+    VALUES
+      ('8c8f6c10-8e7a-4f66-9a20-a75cd6fd80b1', 'admin@cambridgeschool.edu.in', NOW(), NOW());
+  END IF;
+END $$;
+
+-- ------------------------------------------------------------
+-- 11. SCHOOL ENTERPRISE PLAN CACHE
+-- ------------------------------------------------------------
+INSERT INTO "public"."plans_cache"
+  ("id", "plan_code", "name", "business_type", "applicable_entities", "pricing_matrix", "base_features", "entity_config", "display_order", "is_active", "synced_at", "created_at", "updated_at", "product_id")
+VALUES
+  ('a0000000-0000-4000-8000-000000000013', 'school_enterprise', 'School Enterprise', 'b2b', ARRAY['school'], '{"school": {"yearly": 29999, "currency": "INR"}}'::jsonb, '["dashboard_access", "profile_creation", "marketplace_access", "view_pricing", "opportunities_access", "courses_listing_access", "advanced_analytics", "advanced_portfolio", "all_career_paths", "mock_interviews", "linkedin_opt", "resume_builder", "verified_certs", "unlimited_assessments", "unlimited_projects", "50gb_storage", "priority_support", "mentorship", "placement_assist", "organization_management", "bulk_learner_import", "advanced_reports", "custom_branding", "api_access", "dedicated_success_manager", "white_label", "sso_integration", "custom_integrations", "priority_onboarding"]'::jsonb, '{"school": {"tagline": "Enterprise-grade solution for schools", "duration": "yearly", "ideal_for": "Large schools needing comprehensive enterprise features", "max_users": 1000, "description": "Full-featured enterprise solution for schools with custom requirements", "positioning": "Enterprise school management platform", "display_name": "School Enterprise", "storage_limit": "50GB", "is_recommended": false}}'::jsonb, 13, true, NOW(), NOW(), NOW(), '912d5049-e195-46e9-a319-49e3502bf7e7')
+ON CONFLICT ("id") DO UPDATE
+SET
+  "plan_code" = EXCLUDED."plan_code",
+  "name" = EXCLUDED."name",
+  "pricing_matrix" = EXCLUDED."pricing_matrix",
+  "synced_at" = NOW(),
+  "updated_at" = NOW();
+
+-- ------------------------------------------------------------
+-- 12. FREEMIUM PLAN CACHE FOR STUDENTS
+-- ------------------------------------------------------------
+INSERT INTO "public"."plans_cache"
+  ("id", "plan_code", "name", "business_type", "applicable_entities", "pricing_matrix", "base_features", "entity_config", "display_order", "is_active", "synced_at", "created_at", "updated_at", "product_id")
+VALUES
+  ('ef4a94ac-17b7-4a35-b47a-3a031f049b31', 'freemium', 'Freemium', 'b2c', ARRAY['all'], '{"all": {"yearly": 0, "monthly": 0, "currency": "INR"}}'::jsonb, '["dashboard_access", "profile_creation", "marketplace_access", "view_pricing", "opportunities_access", "courses_listing_access"]'::jsonb, '{"all": {"tagline": "Start free, upgrade anytime", "duration": "lifetime", "ideal_for": "Users who want to explore the platform", "max_users": 1, "description": "Free forever plan with basic features", "positioning": "Start free. Upgrade anytime to unlock all features.", "storage_limit": "0GB", "is_recommended": false}}'::jsonb, 0, true, NOW(), NOW(), NOW(), '912d5049-e195-46e9-a319-49e3502bf7e7')
+ON CONFLICT ("id") DO UPDATE
+SET
+  "plan_code" = EXCLUDED."plan_code",
+  "name" = EXCLUDED."name",
+  "pricing_matrix" = EXCLUDED."pricing_matrix",
+  "synced_at" = NOW(),
+  "updated_at" = NOW();
+
+-- ------------------------------------------------------------
+-- 13. SCHOOL ADMIN ENTERPRISE SUBSCRIPTION CACHE
+-- ------------------------------------------------------------
+INSERT INTO "public"."subscription_cache"
+  ("id", "user_id", "organization_id", "plan_id", "plan_code", "plan_name", "plan_type", "plan_amount", "billing_cycle", "status", "features", "subscription_start_date", "subscription_end_date", "is_organization_subscription", "organization_type", "seat_count", "assigned_seats", "synced_at", "auth_updated_at", "created_at", "updated_at", "product_id")
+VALUES
+  ('8c8f6c10-8e7a-4f66-9a20-a75cd6fd80c1',
+   '8c8f6c10-8e7a-4f66-9a20-a75cd6fd80b1',
+   '8c8f6c10-8e7a-4f66-9a20-a75cd6fd8001',
+   'a0000000-0000-4000-8000-000000000013',
+   'school_enterprise',
+   'School Enterprise',
+   'School Enterprise',
+   '29999.00',
+   'yearly',
+   'active',
+   '["up_to_1000_learners", "career_assessment_reports", "class_wise_analytics", "student_capability_wheel", "counsellor_dashboard", "parent_report_exports"]'::jsonb,
+   '2026-07-21 02:15:15.752+00',
+   '2027-07-21 02:15:15.752+00',
+   true,
+   'school',
+   46,
+   0,
+   '2026-07-21 02:15:15.955+00',
+   '2026-07-21 02:15:15.823943+00',
+   '2026-07-21 02:14:19.393005+00',
+   '2026-07-21 02:14:19.393005+00',
+   '912d5049-e195-46e9-a319-49e3502bf7e7')
+ON CONFLICT ("id") DO UPDATE
+SET
+  "plan_id" = EXCLUDED."plan_id",
+  "plan_code" = EXCLUDED."plan_code",
+  "plan_name" = EXCLUDED."plan_name",
+  "plan_type" = EXCLUDED."plan_type",
+  "plan_amount" = EXCLUDED."plan_amount",
+  "subscription_end_date" = EXCLUDED."subscription_end_date",
+  "synced_at" = NOW(),
+  "updated_at" = NOW();
+
+-- ------------------------------------------------------------
+-- 14. R AMRUTHA STUDENT SUBSCRIPTION CACHE
+-- ------------------------------------------------------------
+INSERT INTO "public"."subscription_cache"
+  ("id", "user_id", "organization_id", "plan_id", "plan_code", "plan_name", "plan_type", "plan_amount", "billing_cycle", "status", "features", "subscription_start_date", "subscription_end_date", "is_organization_subscription", "organization_type", "seat_count", "assigned_seats", "synced_at", "auth_updated_at", "created_at", "updated_at", "product_id")
+VALUES
+  ('8c8f6c10-8e7a-4f66-9a20-a75cd6fd80d1',
+   '8c8f6c10-8e7a-4f66-9a20-a75cd6fd8002',
+   '8c8f6c10-8e7a-4f66-9a20-a75cd6fd8001',
+   'ef4a94ac-17b7-4a35-b47a-3a031f049b31',
+   'freemium',
+   'Discover',
+   'Discover',
+   '0.00',
+   'lifetime',
+   'active',
+   '["learner_profile_creation", "marketplace_explore", "sample_career_paths", "limited_dashboard_access", "1_basic_assessment", "basic_opportunity_view"]'::jsonb,
+   '2026-07-21 01:42:05.264795+00',
+   NULL,
+   false,
+   'school',
+   1,
+   0,
+   '2026-07-21 02:17:04.996+00',
+   '2026-07-21 01:42:05.264795+00',
+   '2026-07-21 02:17:05.002458+00',
+   '2026-07-21 02:17:05.002458+00',
+   '912d5049-e195-46e9-a319-49e3502bf7e7')
+ON CONFLICT ("id") DO UPDATE
+SET
+  "features" = EXCLUDED."features",
+  "synced_at" = NOW(),
+  "updated_at" = NOW();
