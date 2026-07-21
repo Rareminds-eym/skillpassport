@@ -359,3 +359,19 @@ export const CONSTANTS = {
 
 // Default export for convenience
 export default CONSTANTS;
+
+// =============================================================================
+// LEGACY EXPORTS (for backward compatibility)
+// =============================================================================
+
+/**
+ * @deprecated Use AUTH_CONSTANTS.PASSWORD_MIN_LENGTH instead
+ * Legacy export for backward compatibility
+ */
+export const PASSWORD_MIN = AUTH_CONSTANTS.PASSWORD_MIN_LENGTH;
+
+/**
+ * @deprecated Use AUTH_CONSTANTS.PASSWORD_MAX_LENGTH instead
+ * Legacy export for backward compatibility
+ */
+export const PASSWORD_MAX = AUTH_CONSTANTS.PASSWORD_MAX_LENGTH;

@@ -276,3 +276,17 @@ export function createChildLogger(logger: Logger, inheritedContext: LogContext):
     },
   };
 }
+
+/**
+ * Default API logger instance for general use
+ * Pre-configured with 'api' service name
+ * 
+ * @example
+ * ```typescript
+ * import { apiLogger } from './logger';
+ * 
+ * apiLogger.info('Request received');
+ * apiLogger.error('Operation failed', error);
+ * ```
+ */
+export const apiLogger = createLogger('api');
