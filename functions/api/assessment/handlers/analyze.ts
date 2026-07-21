@@ -36,10 +36,10 @@ export async function analyzeHandler(context: AuthenticatedContext) {
       return Response.json({ error: 'attemptId required' }, { status: 400 });
     }
 
-    // Step 0: Get learner ID from user
+    // Step 0: Get learner ID and user ID from user
     const { data: learnerData, error: learnerError } = await supabase
       .from('learners')
-      .select('id')
+      .select('id, user_id')
       .or(`user_id.eq.${user.sub},id.eq.${user.sub}`)
       .maybeSingle();
 
@@ -48,6 +48,7 @@ export async function analyzeHandler(context: AuthenticatedContext) {
     }
 
     const learnerId = learnerData.id;
+    const userId = learnerData.user_id;
 
     // If gradeLevel not provided, fetch it from attempt
     if (!gradeLevel) {
@@ -100,7 +101,7 @@ export async function analyzeHandler(context: AuthenticatedContext) {
         return analyzeAfter12(context, supabase, attemptId, learnerId);
 
       case 'college':
-        return analyzeCollege(context, supabase, attemptId, learnerId);
+        return analyzeCollege(context, supabase, attemptId, learnerId, userId);
 
       default:
         return Response.json(

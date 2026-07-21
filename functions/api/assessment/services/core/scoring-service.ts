@@ -359,7 +359,7 @@ export function calculateStreamAptitudeFit(streamAptitudeScore?: number): number
 
 /**
  * College / Higher-Secondary 6-component match score.
- * final = IF×0.25 + CF×0.20 + SAF×0.15 + PF×0.18 + KF×0.12 + VF×0.10
+ * final = IF×0.35 + CF×0.20 + SAF×0.12 + PF×0.15 + KF×0.10 + VF×0.08
  *
  * Interest Fit is computed from the full RIASEC code via hexagon distance (no C-Index).
  * Stream Aptitude Fit (SAF) is the learner's stream-specific MCQ score, separate from the
@@ -379,14 +379,14 @@ export function calculateCollegeMatchScore(
   const knowledgeFit = calculateKnowledgeFit(student.knowledge_score);
   const valuesFit = calculateValuesFit(student.work_values, jobRIASEC);
 
-  // College 6-component weights (sum to 1.0): IF 0.25, CF 0.20, SAF 0.15, PF 0.18, KF 0.12, VF 0.10
+  // College 6-component weights (sum to 1.0): IF 0.35, CF 0.20, SAF 0.12, PF 0.15, KF 0.10, VF 0.08
   const final = Math.round(
-    interestFit * 0.25 +
+    interestFit * 0.35 +
     cognitiveFit * 0.20 +
-    streamAptitudeFit * 0.15 +
-    personalityFit * 0.18 +
-    knowledgeFit * 0.12 +
-    valuesFit * 0.10
+    streamAptitudeFit * 0.12 +
+    personalityFit * 0.15 +
+    knowledgeFit * 0.10 +
+    valuesFit * 0.08
   );
   return {
     interestFit: Math.round(Math.max(0, Math.min(100, interestFit))),
@@ -610,7 +610,7 @@ function findBestMatchScore(
 
 /**
  * College 6-component match score (demand-aware variant).
- * Formula: IF×0.25 + CF×0.20 + SAF×0.15 + PF×0.18 + KF×0.12 + VF×0.10
+ * Formula: IF×0.35 + CF×0.20 + SAF×0.12 + PF×0.15 + KF×0.10 + VF×0.08
  */
 export function calculateCollegeMatchScoreFromDemand(
   student: StudentProfile,
@@ -625,8 +625,8 @@ export function calculateCollegeMatchScoreFromDemand(
   const valuesFit = valuesFitFromDemand(student.work_values, demand?.workValues || {});
 
   const final = Math.round(
-    interestFit * 0.25 + cognitiveFit * 0.20 + streamAptitudeFit * 0.15 +
-    personalityFit * 0.18 + knowledgeFit * 0.12 + valuesFit * 0.10
+    interestFit * 0.35 + cognitiveFit * 0.20 + streamAptitudeFit * 0.12 +
+    personalityFit * 0.15 + knowledgeFit * 0.10 + valuesFit * 0.08
   );
 
   return {

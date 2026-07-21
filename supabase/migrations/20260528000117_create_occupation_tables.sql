@@ -122,7 +122,7 @@ CREATE INDEX idx_role_family_domains_industry_domain_id ON public.role_family_do
 CREATE TABLE IF NOT EXISTS public.role (
   id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   code       VARCHAR(50) UNIQUE NOT NULL,
-  name       VARCHAR(255) NOT NULL,
+  name       VARCHAR(255) UNIQUE NOT NULL,
   is_active  BOOLEAN DEFAULT TRUE NOT NULL,
   metadata   JSONB DEFAULT '{}'::jsonb,
   created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,

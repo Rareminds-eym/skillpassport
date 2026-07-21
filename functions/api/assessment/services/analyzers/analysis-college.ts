@@ -10,6 +10,7 @@ import type { RIASECScores, AdaptiveAptitudeData, StudentProfile } from '../../t
 import { getTopCategories, getTopScores } from '../../lib/analysis-helpers';
 import { generateCollegeCareerClusters } from '../core/career-cluster-generator';
 import { generateCollegeSynthesis } from '../generators/synthesis-college';
+import { createLTEClient } from '../../../../lib/lte-client';
 
 /**
  * Flatten adaptive `accuracy_by_subtag` ({ subtag: { accuracy } }) into { subtag: number }
@@ -161,7 +162,8 @@ export async function analyzeCollege(
   context: AuthenticatedContext,
   supabase: any,
   attemptId: string,
-  learnerId: string
+  learnerId: string,
+  userId?: string
 ) {
   try {
     // Step 1: Fetch attempt with all_responses
@@ -641,7 +643,7 @@ export async function analyzeCollege(
     }
 
     // Step 16: Store results — upsert so re-running analyze on the same attempt updates rather than errors
-    const { error: insertError } = await supabase
+    const { data: resultData, error: insertError } = await supabase
       .from('personal_assessment_results')
       .upsert(
         {
@@ -674,7 +676,9 @@ export async function analyzeCollege(
           created_at: new Date().toISOString(),
         },
         { onConflict: 'attempt_id' }
-      );
+      )
+      .select('id')
+      .single();
 
     if (insertError) {
       return Response.json(
@@ -682,6 +686,8 @@ export async function analyzeCollege(
         { status: 500 }
       );
     }
+
+    const resultId = resultData?.id;
 
     // Step 17: Follow-up UPDATE to guarantee adaptive aptitude data is correct
     if (adaptiveData !== null || aptitudeOverall !== null) {
@@ -739,6 +745,14 @@ export async function analyzeCollege(
       if (geminiUpdateError) {
         console.error('[ANALYZE-COLLEGE] Failed to store gemini_results:', geminiUpdateError.message);
       }
+
+      // Step 19: Fetch and save capabilities for recommended roles
+      if (careerFit?.clusters && Array.isArray(careerFit.clusters) && userId && resultId) {
+        console.log('[CAPABILITIES] Starting capability fetch with:', { userId, resultId, clusterCount: careerFit.clusters.length });
+        await fetchAndSaveCapabilities(supabase, userId, resultId, careerFit.clusters, context.env as Record<string, string>);
+      } else {
+        console.warn('[CAPABILITIES] Skipping - missing required data:', { hasCluster: !!careerFit?.clusters, userId, resultId });
+      }
     } catch (clusterError) {
       // Clustering failed — delete incomplete result and return error for frontend to retry
       console.error('[ANALYZE-COLLEGE] Career cluster generation failed:', clusterError);
@@ -790,5 +804,77 @@ export async function analyzeCollege(
       },
       { status: 500 }
     );
+  }
+}
+
+/**
+ * Fetch capabilities for recommended roles and save to learner_course_recommendations
+ */
+async function fetchAndSaveCapabilities(
+  supabase: any,
+  userId: string,
+  assessmentResultId: string,
+  clusters: any[],
+  env: Record<string, string>
+) {
+  try {
+    // Validate required parameters
+    if (!userId || !assessmentResultId) {
+      console.warn('[CAPABILITIES] Missing required parameters:', { userId, assessmentResultId });
+      return;
+    }
+
+    const lteClient = createLTEClient(env);
+    const recommendations: any[] = [];
+
+    for (const cluster of clusters) {
+      if (!cluster.occupationIds || !Array.isArray(cluster.occupationIds)) continue;
+
+      for (const occupationId of cluster.occupationIds) {
+        try {
+          const response = await lteClient.request<any>(
+            '/api/capabilities',
+            { roleId: occupationId }
+          );
+
+          if (response.success && response.capabilities && Array.isArray(response.capabilities)) {
+            // Transform capabilities into recommendations, tracking which role each is for
+            response.capabilities.forEach((cap: any, idx: number) => {
+              recommendations.push({
+                learner_id: userId,  // Use user_id for FK to learners table
+                course_id: cap.id, // Store capability ID in course_id column
+                role_id: occupationId, // Track which role this capability is for
+                assessment_result_id: assessmentResultId,
+                relevance_score: 100 - (idx * 5), // Priority based on sequence
+                match_reasons: [cap.name, cap.description || ''].filter(Boolean),
+                skill_gaps_addressed: [cap.code || cap.name],
+                recommendation_type: 'assessment',
+                status: 'active',
+                recommended_at: new Date().toISOString(),
+              });
+            });
+            console.log(`[CAPABILITIES] Saved ${response.capabilities.length} capabilities for role ${occupationId}`);
+          }
+        } catch (err) {
+          console.warn(`[CAPABILITIES] Failed to fetch for role ${occupationId}:`, err instanceof Error ? err.message : err);
+        }
+      }
+    }
+
+    if (recommendations.length > 0) {
+      const { error } = await supabase
+        .from('learner_course_recommendations')
+        .upsert(recommendations, { onConflict: 'learner_id,course_id,role_id,assessment_result_id', ignoreDuplicates: false });
+
+      if (error) {
+        console.error('[CAPABILITIES] Failed to save to database:', { error: error.message, code: error.code, details: error.details, userId });
+      } else {
+        console.log(`[CAPABILITIES] Successfully saved ${recommendations.length} capability recommendations for user ${userId}`);
+      }
+    } else {
+      console.log('[CAPABILITIES] No capabilities to save');
+    }
+  } catch (err) {
+    console.error('[CAPABILITIES] Fetch and save failed:', err instanceof Error ? err.message : err);
   }
 }

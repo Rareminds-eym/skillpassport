@@ -255,7 +255,8 @@ async function generateCareerClusters(
   // The LLM writes specificOptions separately from occupationIds and regularly contradicts
   // itself (phantom roles with salaries that were never selected/scored). Reconcile: each
   // cluster's scored roles are the source of truth for what appears on the report cards.
-  const reconciledOptions = reconcileSpecificOptions(specificOptions, clusters);
+  // Pass occupationIds to preserve role identities for backend queries (e.g., capability lookup).
+  const reconciledOptions = reconcileSpecificOptions(specificOptions, clusters, scoreById);
 
   return { clusters, specificOptions: reconciledOptions, overallSummary };
 }
@@ -266,10 +267,12 @@ async function generateCareerClusters(
  * - LLM entries whose name doesn't match a cluster role are dropped (they were never scored).
  * - Cluster roles missing from the group are backfilled, reusing the group's median salary band
  *   as an approximation so the card still renders a range.
+ * - Each role includes its occupationId (role_family_role_id) for backend queries.
  */
 function reconcileSpecificOptions(
   specificOptions: Record<string, unknown> | undefined,
-  clusters: Record<string, unknown>[]
+  clusters: Record<string, unknown>[],
+  scoreById: Map<string, ScoredOccupation>
 ): Record<string, unknown> | undefined {
   if (!specificOptions) return specificOptions;
   const keys = ['highFit', 'mediumFit', 'exploreLater'] as const;
@@ -290,8 +293,21 @@ function reconcileSpecificOptions(
       Array.isArray((specificOptions as any)[key]) ? (specificOptions as any)[key] : [];
 
     // Keep only entries that correspond to a scored cluster role
-    const kept = llmEntries.filter((e) => clusterRoles.some((r) => namesMatch(e.name, r)));
-    const dropped = llmEntries.filter((e) => !clusterRoles.some((r) => namesMatch(e.name, r)));
+    const kept = llmEntries
+      .filter((e) => clusterRoles.some((r) => namesMatch(e.name, r)))
+      .map((e) => {
+        // Look up occupationId from scoreById using role name
+        let occupationId: string | undefined;
+        for (const [id, occupation] of scoreById.entries()) {
+          if (namesMatch(e.name, occupation.name)) {
+            occupationId = id;
+            break;
+          }
+        }
+        return { ...e, occupationId };
+      });
+
+    const dropped = llmEntries.filter((e) => clusterRoles.some((r) => namesMatch(e.name, r)) === false);
     if (dropped.length > 0) {
       console.log(`[OPTIONS-RECONCILE] ${key}: dropped unscored role(s): ${dropped.map((d) => d.name).join(', ')}`);
     }
@@ -309,7 +325,14 @@ function reconcileSpecificOptions(
     // Backfill scored cluster roles the LLM left off the card
     const missing = clusterRoles.filter((r) => !kept.some((e) => namesMatch(e.name, r)));
     for (const name of missing) {
-      kept.push(fallbackSalary ? { name, salary: { ...fallbackSalary } } : { name });
+      let occupationId: string | undefined;
+      for (const [id, occupation] of scoreById.entries()) {
+        if (namesMatch(name, occupation.name)) {
+          occupationId = id;
+          break;
+        }
+      }
+      kept.push(fallbackSalary ? { name, salary: { ...fallbackSalary }, occupationId } : { name, occupationId });
       console.log(`[OPTIONS-RECONCILE] ${key}: backfilled scored role: ${name}`);
     }
 
@@ -458,7 +481,8 @@ async function retrieveByEmbedding(
     });
 
     const alignedCount = candidates.filter((c) => c.streamAligned).length;
-    console.log(`[RAG-SUMMARY] Stream-aligned: ${alignedCount}/${candidates.length} | Total passed to LLM: ${candidates.length}\n`);
+    const withDomain = candidates.filter((c) => c.domainName).length;
+    console.log(`[RAG-SUMMARY] Stream-aligned: ${alignedCount}/${candidates.length} | With domain: ${withDomain}/${candidates.length} | Total passed to LLM: ${candidates.length}\n`);
 
     return candidates;
   } catch (e) {

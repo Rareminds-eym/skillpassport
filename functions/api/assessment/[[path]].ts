@@ -26,8 +26,6 @@ import { saveResultsHandler } from './handlers/save-results';
 import { checkInProgressHandler } from './handlers/check-in-progress';
 import { analyzeHandler } from './handlers/analyze';
 import { resultHandler } from './handlers/result';
-import { getCapabilitiesHandler } from './handlers/get-capabilities';
-import { getCoursesbyCapabilitiesHandler } from './handlers/get-courses-by-capabilities';
 import { generateStrengthsGrowthPlanHandler } from './handlers/generate-strengths-growth-plan';
 import {
   handleGetSavedQuestions,
@@ -58,10 +56,6 @@ export const onRequestPost = withAuth(async (context: any) => {
       return saveResultsHandler(context);
     } else if (path === '/analyze') {
       return analyzeHandler(context);
-    } else if (path === '/get-capabilities') {
-      return getCapabilitiesHandler(context);
-    } else if (path === '/get-courses-by-capabilities') {
-      return getCoursesbyCapabilitiesHandler(context);
     } else if (path === '/generate-strengths-growth-plan') {
       return generateStrengthsGrowthPlanHandler(context);
     } else if (path === '/questions/save') {
