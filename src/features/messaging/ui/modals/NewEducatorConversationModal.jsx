@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { X, Search, GraduationCap, MessageCircle } from 'lucide-react';
 import { apiPost } from '@/shared/api/apiClient';
+import { getLogger } from '@/shared/config/logging';
 
-// Small Message Modal Component
+const logger = getLogger('new-educator-conversation-modal');
 const MessageModal = ({ educator, isOpen, onClose, onSend, isLoading }) => {
   const [message, setMessage] = useState('');
   const [subject, setSubject] = useState('');
@@ -221,10 +222,10 @@ const NewEducatorConversationModal = ({ isOpen, onClose, learnerId, onConversati
         }
       }
 
-      // Fetch college lecturers if learner has university_college_id
-      if (learnerData?.university_college_id) {
-        console.log('🎓 Fetching college lecturers for college_id:', learnerData.university_college_id);
-        const { data: allCollegeLecturers } = await apiPost('/messaging/actions', { action: 'fetch-recipients', conversationType: 'college-lecturer', contextId: learnerData.university_college_id });
+      // Fetch college lecturers if learner has college_id
+      if (learnerData?.college_id) {
+        logger.info('Fetching college lecturers', { collegeId: learnerData.college_id });
+        const { data: allCollegeLecturers } = await apiPost('/messaging/actions', { action: 'fetch-recipients', conversationType: 'college-lecturer', contextId: learnerData.college_id });
         if (allCollegeLecturers && allCollegeLecturers.length > 0) {
           const collegeEducators = allCollegeLecturers.map(lecturer => ({
             id: lecturer.id,

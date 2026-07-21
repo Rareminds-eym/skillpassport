@@ -81,15 +81,15 @@ const Messages = () => {
   const learnerId = learnerIdForConversations;
   const learnerName = learnerData?.profile?.name || user?.name || 'Learner';
 
-  // Determine available tabs based on learner's school_id and university_college_id
+  // Determine available tabs based on learner's school_id and college_id
   const hasSchoolId = !!learnerData?.school_id;
-  const hasCollegeId = !!learnerData?.university_college_id;
+  const hasCollegeId = !!(learnerData?.college_id || learnerData?.university_college_id);
 
   // Available tabs logic:
   // - Recruiters: Always available
   // - Educators: Available for school/college learners
   // - School Admin: Only if learner has school_id
-  // - College Admin: Only if learner has university_college_id
+  // - College Admin: Only if learner has college_id
   const availableTabs = useMemo(() => {
     const tabs = ['recruiters'];
 
@@ -1846,7 +1846,7 @@ const Messages = () => {
               conversation = await MessageService.getOrCreatelearnerCollegeLecturerConversation(
                 learnerId,
                 educatorId,
-                learnerData?.university_college_id, // collegeId
+                learnerData?.college_id || learnerData?.university_college_id, // collegeId
                 null, // programSectionId - will be set by backend if available
                 subject
               );
@@ -1957,14 +1957,14 @@ const Messages = () => {
         isOpen={showNewCollegeAdminConversationModal}
         onClose={() => setShowNewCollegeAdminConversationModal(false)}
         learnerId={learnerId}
-        collegeId={learnerData?.university_college_id}
+        collegeId={learnerData?.college_id || learnerData?.university_college_id}
         onConversationCreated={async (conversationData) => {
           try {
             logger.info('Creating conversation with college admin', conversationData);
             
             const conversation = await MessageService.getOrCreatelearnerCollegeAdminConversation(
               learnerId,
-              learnerData?.university_college_id,
+              learnerData?.college_id || learnerData?.university_college_id,
               conversationData.subject || 'General Inquiry'
             );
 

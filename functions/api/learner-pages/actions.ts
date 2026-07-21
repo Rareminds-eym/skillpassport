@@ -518,8 +518,8 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         if (!collegeId) return apiError(400, 'VALIDATION_ERROR', 'collegeId required', context.request, { startTime });
         const { data, error } = await supabase
           .from('college_lecturers')
-          .select('id, user_id, userId')
-          .or(`collegeId.eq.${collegeId},college_id.eq.${collegeId}`)
+          .select('id, user_id')
+          .eq('collegeId', collegeId)
           .limit(1)
           .maybeSingle();
         if (error && error.code !== 'PGRST116') return apiDbError(error, context.request, { startTime });

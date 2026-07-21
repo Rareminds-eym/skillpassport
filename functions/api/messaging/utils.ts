@@ -1,6 +1,12 @@
 // Utility functions for messaging
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+const resolveString = (primary: unknown, fallback: unknown): string => {
+  if (typeof primary === 'string') return primary;
+  if (typeof fallback === 'string') return fallback;
+  return '';
+};
+
 interface Conversation {
   id: string;
   learner_id: string;
@@ -51,9 +57,20 @@ async function fetchEducatorDetailsForConversations(supabase: SupabaseClient, co
   if (collegeEducatorConvs.length > 0) {
     const ids = collegeEducatorConvs.map((c: Conversation) => c.educator_id).filter(Boolean);
     if (ids.length > 0) {
-      const { data: lecturers } = await supabase.from('college_lecturers').select('id, user_id, first_name, last_name, email, phone, department, specialization').in('id', ids);
+      const { data: lecturers } = await supabase.from('college_lecturers').select('id, user_id, first_name, last_name, email, phone, department, specialization, metadata').in('id', ids);
       if (lecturers) {
-        collegeEducatorConvs.forEach((conv: Conversation) => { const e = lecturers?.find((x) => x.id === conv.educator_id); if (e) conv.educator = e; });
+        collegeEducatorConvs.forEach((conv: Conversation) => {
+          const e = lecturers?.find((x) => x.id === conv.educator_id);
+          if (e) {
+            const meta = typeof e.metadata === 'object' && e.metadata !== null && !Array.isArray(e.metadata) ? e.metadata : {};
+            conv.educator = {
+              ...e,
+              first_name: resolveString(e.first_name, meta.first_name),
+              last_name: resolveString(e.last_name, meta.last_name),
+              department: resolveString(e.department, meta.department),
+            };
+          }
+        });
       }
     }
   }

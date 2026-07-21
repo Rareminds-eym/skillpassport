@@ -197,12 +197,23 @@ async function handleGetOrCreateLearnerCollegeAdminConversation(supabase: Supaba
   const { learnerId, collegeId, subject } = params;
 
   // Resolve learner's user_id — conversations.learner_id FK references learners.user_id, not learners.id
-  const { data: learnerRow, error: learnerErr } = await supabase
+  let { data: learnerRow, error: learnerErr } = await supabase
     .from('learners')
     .select('user_id')
     .eq('id', String(learnerId))
     .maybeSingle();
   if (learnerErr) throw learnerErr;
+
+  // Fallback: learnerId might already be a user_id (sent from learner frontend)
+  if (!learnerRow?.user_id) {
+    const { data: byUserId } = await supabase
+      .from('learners')
+      .select('user_id')
+      .eq('user_id', String(learnerId))
+      .maybeSingle();
+    learnerRow = byUserId;
+  }
+
   if (!learnerRow?.user_id) {
   throw new Error(`Learner not found or missing user_id for learnerId=${learnerId}`);
 }
