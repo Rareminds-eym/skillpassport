@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('RecruiterOverview');
@@ -19,6 +19,9 @@ import { getDashboardData } from '@/features/analytics';
 import { ActivityFeed } from '@/features/recruiter';
 import { useRealtimeActivities } from '@/features/analytics/model/useRealtimeActivities';
 import { trackSearchUsage } from '@/features/opportunities';
+import { OrgSetupBanner, OrgSetupModal } from '@/components/recruitment/OrgSetupChecklist';
+import { useAuthStore } from '@/shared/model/authStore';
+import { ssoClient } from '@/shared/api/ssoClient';
 
 const KpiCard = ({ title, value, icon: Icon, trend, color = 'primary' }) => {
   const colorClasses = {
@@ -43,9 +46,8 @@ const KpiCard = ({ title, value, icon: Icon, trend, color = 'primary' }) => {
               <dd className="flex items-baseline">
                 <div className="text-2xl font-semibold text-gray-900">{value}</div>
                 {trend && (
-                  <div className={`ml-2 flex items-baseline text-sm font-semibold ${
-                    trend > 0 ? 'text-success-600' : 'text-danger-600'
-                  }`}>
+                  <div className={`ml-2 flex items-baseline text-sm font-semibold ${trend > 0 ? 'text-success-600' : 'text-danger-600'
+                    }`}>
                     {trend > 0 ? '+' : ''}{trend}%
                   </div>
                 )}
@@ -100,17 +102,135 @@ const AlertCard = ({ type, title, message, time, urgent = false, action, onActio
 
 const Overview = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const user = useAuthStore((state) => state.user);
+
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isActivityExpanded, setIsActivityExpanded] = useState(false);
-  
+
+  // Org setup state
+  const [showOrgSetup, setShowOrgSetup] = useState(false);
+  const [orgSetupComplete, setOrgSetupComplete] = useState(true); // Assume complete until we check
+  const [setupDismissed, setSetupDismissed] = useState(false);
+  const [completedSteps, setCompletedSteps] = useState(0);
+  const [progressPercentage, setProgressPercentage] = useState(0);
+  const [isSetupModalOpen, setIsSetupModalOpen] = useState(false);
+  const [setupProgress, setSetupProgress] = useState(null);
+  const [orgData, setOrgData] = useState(null);
+
   // Real-time activities hook
   const { activities: realtimeActivities, isLoading: activitiesLoading } = useRealtimeActivities(15);
-  
+
   // Show only 4 activities by default, all when expanded
   const displayedActivities = isActivityExpanded ? realtimeActivities : realtimeActivities.slice(0, 4);
-  
+
+  // Check if org setup should be shown (from location.state or API)
+  useEffect(() => {
+    const checkOrgSetupStatus = async () => {
+      // Check if redirected from subscription with showOrgSetup flag
+      const stateShowSetup = location.state?.showOrgSetup;
+
+      if (stateShowSetup) {
+        setShowOrgSetup(true);
+        // Clear the state to prevent showing on refresh
+        window.history.replaceState({}, document.title);
+      }
+
+      // Check org setup progress from new API
+      try {
+        const response = await fetch('/api/recruitment/setup/progress', {
+          headers: {
+            'Authorization': `Bearer ${ssoClient.getAccessToken()}`,
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+
+          // Check if setup is complete
+          const setupProgress = data.setup_progress || {};
+          const isComplete = setupProgress.step1_completed &&
+            setupProgress.step2_completed &&
+            (setupProgress.step3_completed || setupProgress.step3_skipped) &&
+            setupProgress.step4_completed;
+
+          setSetupProgress(setupProgress);
+          setOrgData(data.orgData);
+          setOrgSetupComplete(isComplete);
+          setSetupDismissed(setupProgress.banner_dismissed || false);
+
+          // Calculate completed steps
+          const completed = [
+            setupProgress.step1_completed,
+            setupProgress.step2_completed,
+            (setupProgress.step3_completed || setupProgress.step3_skipped),
+            setupProgress.step4_completed
+          ].filter(Boolean).length;
+
+          setCompletedSteps(completed);
+          setProgressPercentage(completed * 25);
+
+          // Show banner if setup is incomplete and not dismissed
+          if (!isComplete && !setupProgress.banner_dismissed) {
+            setShowOrgSetup(true);
+          }
+        }
+      } catch (error) {
+        console.error('[Overview] Error checking org setup status:', error);
+      }
+    };
+
+    checkOrgSetupStatus();
+  }, [location.state]);
+
+  const handleDismissSetup = async () => {
+    try {
+      await fetch('/api/recruitment/setup/dismiss-banner', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${ssoClient.getAccessToken()}`,
+        },
+      });
+      setSetupDismissed(true);
+      setShowOrgSetup(false);
+    } catch (error) {
+      console.error('[Overview] Error dismissing setup:', error);
+    }
+  };
+
+  const handleOpenModal = () => {
+    setIsSetupModalOpen(true);
+  };
+
+  const handleSetupComplete = async () => {
+    setOrgSetupComplete(true);
+    setShowOrgSetup(false);
+    setIsSetupModalOpen(false);
+
+    // Refresh org setup data
+    try {
+      const response = await fetch('/api/recruitment/setup/progress', {
+        headers: {
+          'Authorization': `Bearer ${ssoClient.getAccessToken()}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const setupProgress = data.setup_progress || {};
+
+        setSetupProgress(setupProgress);
+        setOrgData(data.orgData);
+        setCompletedSteps(4);
+        setProgressPercentage(100);
+      }
+    } catch (error) {
+      console.error('[Overview] Error refreshing org data:', error);
+    }
+  };
+
   // Handle quick search click
   const handleQuickSearchClick = async (search) => {
     try {
@@ -118,11 +238,11 @@ const Overview = () => {
       if (search.id && !search.id.startsWith('default-')) {
         await trackSearchUsage(search.id);
       }
-      
+
       // Navigate to talent pool with search criteria
       const searchCriteria = search.search_criteria || {};
       const params = new URLSearchParams();
-      
+
       if (searchCriteria.query) {
         params.append('q', searchCriteria.query);
       }
@@ -135,7 +255,7 @@ const Overview = () => {
       if (searchCriteria.experience) {
         params.append('experience', searchCriteria.experience);
       }
-      
+
       navigate(`/recruitment/talent-pool?${params.toString()}`);
     } catch (error) {
       logger.error('Error handling quick search', error);
@@ -143,13 +263,13 @@ const Overview = () => {
       navigate('/recruitment/talent-pool');
     }
   };
-  
+
   // Handle alert action clicks
   const handleAlertAction = (alert) => {
     // Route based on alert source and ID
     const alertId = alert.id || alert;
     const source = alert.source;
-    
+
     // Handle by source - navigate to basic pages without advanced filters
     if (source === 'talent_pool' || alertId.startsWith('talent-pool')) {
       navigate('/recruitment/talent-pool');
@@ -185,10 +305,10 @@ const Overview = () => {
     const fetchDashboardData = async () => {
       setLoading(true);
       setError(null);
-      
+
       try {
         const result = await getDashboardData();
-        
+
         if (result.data) {
           setDashboardData(result.data);
           setError(null);
@@ -297,6 +417,34 @@ const Overview = () => {
 
   return (
     <div className="space-y-6 pb-20 md:pb-6">
+      {/* Org Setup Banner */}
+      {showOrgSetup && !orgSetupComplete && !setupDismissed && (
+        <OrgSetupBanner
+          completedSteps={completedSteps}
+          totalSteps={4}
+          progressPercentage={progressPercentage}
+          onOpenModal={handleOpenModal}
+          onDismiss={handleDismissSetup}
+        />
+      )}
+
+      {/* Org Setup Modal */}
+      {setupProgress && orgData && (
+        <OrgSetupModal
+          isOpen={isSetupModalOpen}
+          onClose={() => setIsSetupModalOpen(false)}
+          onComplete={handleSetupComplete}
+          initialProgress={{
+            step1_completed: setupProgress.step1_completed,
+            step2_completed: setupProgress.step2_completed,
+            step3_completed: setupProgress.step3_completed,
+            step3_skipped: setupProgress.step3_skipped,
+            step4_completed: setupProgress.step4_completed,
+          }}
+          orgData={orgData}
+        />
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">Dashboard Overview</h1>
@@ -373,8 +521,8 @@ const Overview = () => {
             </div>
             <div className="p-6 space-y-4">
               {alerts.map((alert) => (
-                <AlertCard 
-                  key={alert.id} 
+                <AlertCard
+                  key={alert.id}
                   {...alert}
                   action="View Details"
                   onActionClick={() => handleAlertAction(alert)}
@@ -392,10 +540,10 @@ const Overview = () => {
               <div className="flex flex-wrap gap-2">
                 {(data.savedSearches || []).map((search, index) => {
                   const searchName = typeof search === 'string' ? search : search.name;
-                  const searchObj = typeof search === 'string' 
+                  const searchObj = typeof search === 'string'
                     ? { id: `search-${index}`, name: search, search_criteria: { query: search } }
                     : search;
-                  
+
                   return (
                     <button
                       key={searchObj.id || index}
@@ -461,8 +609,8 @@ const Overview = () => {
               </div>
             </button>
             <div className="p-6">
-              <ActivityFeed 
-                activities={displayedActivities} 
+              <ActivityFeed
+                activities={displayedActivities}
                 loading={activitiesLoading}
                 showRealtimeIndicator={true}
               />

@@ -98,6 +98,7 @@ const TokenPasswordReset = lazy(() => import("@/pages/auth/TokenPasswordReset"))
 const VerifyEmail = lazy(() => import("@/pages/auth/VerifyEmail"));
 const AcceptInvite = lazy(() => import("@/pages/auth/AcceptInvite"));
 const CompanySignup = lazy(() => import("@/pages/auth/CompanySignup"));
+const InvitationError = lazy(() => import("@/pages/auth/InvitationError"));
 const SignupRecruiter = lazy(() =>
   import("@/pages/auth/components/SignIn/recruitment/SignupRecruiter")
 );
@@ -167,6 +168,7 @@ export const publicRoutes = [
     <Route path="/reset-password" element={<TokenPasswordReset />} />
     <Route path="/verify-email" element={<VerifyEmail />} />
     <Route path="/invite/accept" element={<AcceptInvite />} />
+    <Route path="/invitation-error" element={<InvitationError />} />
 
     {/* Registration routes */}
     <Route path="/signup/recruitment" element={<GuestOnlyRoute><Register /></GuestOnlyRoute>} />

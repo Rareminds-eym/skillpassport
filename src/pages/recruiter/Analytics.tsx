@@ -23,7 +23,7 @@ import {
   DrillDownModal,
   SectionHeaderWithActions
 } from '@/features/recruiter';
-import { TrendLineChart, AreaChart, ColumnChart, BarChart, ProgressRing, Sparkline } from '@/features/recruiter';
+import { TrendLineChart, AreaChart, ColumnChart, BarChart, ProgressRing } from '@/features/recruiter';
 import { exportSectionToCSV, exportComprehensiveAnalytics } from '@/shared/lib/export-utils';
 import { getDataForPeriod, getPeriodDisplayName } from '@/shared/lib/mock-data-generator';
 

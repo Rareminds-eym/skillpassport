@@ -312,6 +312,15 @@ const UnifiedLogin = () => {
       // Track login_success — login complete, role verified, store updated
       trackLogin.success(useAuthStore.getState().user?.id || '', actualRole);
 
+      // Check for post-login redirect (set after invitation acceptance during verification)
+      const postLoginRedirect = sessionStorage.getItem('post_login_redirect');
+      if (postLoginRedirect) {
+        console.log('[UnifiedLogin] Post-login redirect found:', postLoginRedirect);
+        sessionStorage.removeItem('post_login_redirect');
+        navigate(postLoginRedirect, { replace: true });
+        return;
+      }
+
       // Redirect to the intended destination
       if (returnUrl) {
         sessionStorage.removeItem('invitation_return_url');

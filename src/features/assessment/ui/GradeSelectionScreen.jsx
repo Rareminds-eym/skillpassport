@@ -11,7 +11,7 @@ import { Award, AlertCircle, ChevronRight, Clock, Loader2, Sparkles } from 'luci
 import { Button } from "@/shared/ui/ButtonNew";
 import { Card, CardContent } from '@/shared/ui';
 import { Label } from '@/shared/ui';
-import { ProfileCompletionModal } from '@/features/digital-portfolio';
+import { ProfileCompletionModal } from './ProfileCompletionModal';
 import { useUser } from '@/shared/model/authStore';
 
 
@@ -395,11 +395,10 @@ export const GradeSelectionScreen = ({
       {/* Profile Completion Modal */}
       <ProfileCompletionModal
         isOpen={showProfileModal}
-        incompleteSections={[]}
-        onComplete={handleProfileComplete}
-        onSkip={() => setShowProfileModal(false)}
-        onNeverShow={() => setShowProfileModal(false)}
         onClose={() => setShowProfileModal(false)}
+        onComplete={handleProfileComplete}
+        userEmail={user?.email || ''}
+        profileData={profileData}
       />
     </div>
   );
