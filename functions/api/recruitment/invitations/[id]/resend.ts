@@ -78,7 +78,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
         // Send invitation email
         const baseUrl = new URL(context.request.url).origin;
-        const invitationUrl = `${baseUrl}/accept-invitation?token=${newToken}`;
+        const invitationUrl = `${baseUrl}/invite/accept?token=${newToken}`;
 
         try {
             const { sendRecruitmentInvitationEmail } = await import('../../../../lib/emailService');

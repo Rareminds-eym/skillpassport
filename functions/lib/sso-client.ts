@@ -34,6 +34,8 @@ interface SsoSubscriptionData {
   is_organization_subscription?: boolean;
   is_bulk_purchase?: boolean;
   purchased_by?: string;
+  is_recruiter_subscription?: boolean;
+  is_b2b?: boolean;
 }
 
 interface SsoTransactionData {

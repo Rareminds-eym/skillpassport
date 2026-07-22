@@ -1,16 +1,64 @@
 -- =====================================================
--- Phase 1: Replace FDW with Local organization_members Table
+-- Migration: Replace FDW with Local organization_members Table
+-- =====================================================
+-- Phase: 1 of 1 (Single-phase migration - architectural change)
+-- Breaking: No (backward compatible - RPCs rewritten but API unchanged)
+-- Rollback: Cannot rollback - would require recreating FDW setup
+--          Forward-only migration
+-- 
+-- Context:
+--   ARCHITECTURE CHANGE: Abandoning Foreign Data Wrapper (FDW) approach.
+--   Moving from cross-database queries to queue-based sync system.
+--   
+--   Old Architecture (FDW):
+--   - SkillPassport DB queries SSO-Worker DB directly via FDW
+--   - Tight coupling, performance issues, debugging difficulty
+--   
+--   New Architecture (Queue Sync):
+--   - auth-sync-consumer queue syncs SSO-Worker data to local tables
+--   - Loose coupling, better performance, eventual consistency
+--
+-- Related ADR: ADR-045 (Abandon FDW Cross-Database Architecture) - to be created
+-- Related Tables: organization_members (new), organizations (existing)
+-- Related Functions: 6 RPCs rewritten to use local tables
+--
+-- Deployment order:
+--   1. Deploy auth-sync-consumer queue consumer first
+--   2. Backfill organization_members from SSO-Worker
+--   3. Run this migration (creates table, rewrites functions)
+--   4. Verify functions work with local data
+--   5. Remove FDW configuration (separate cleanup)
+--
+-- Data Impact:
+--   - Creates new organization_members table
+--   - Rewrites 6 RPC functions to use local tables
+--   - No data loss (FDW tables remain, just unused)
+--   - Membership data synced via queue going forward
+--
+-- Rollback:
+--   Cannot rollback - would need to recreate FDW foreign tables
+--   Forward-only migration
+--   If issues: Fix auth-sync-consumer, manually sync data
+--
+-- Monitoring:
+--   - Track auth-sync-consumer queue lag
+--   - Monitor organization_members table growth
+--   - Alert if sync lag > 1 minute
 -- =====================================================
 -- 
--- ARCHITECTURE CHANGE:
--- Previously, membership data was queried via Foreign Data Wrapper (FDW)
--- from the SSO-Worker database (sso_foreign.memberships, etc.).
--- Since FDW is not set up/not available, we now store membership
--- data locally in public.organization_members.
+-- ARCHITECTURE CHANGE (Updated 2026):
+-- We use a queue-based sync system (auth-sync-consumer) to sync data from
+-- SSO-Worker database to local Skillpassport tables in real-time.
+-- 
+-- Data Flow:
+-- 1. SSO-Worker creates user/org/membership
+-- 2. SSO-Worker publishes events to Cloudflare Queue
+-- 3. auth-sync-consumer processes queue messages
+-- 4. Data synced to local tables (users, organizations, organization_members)
 --
 -- This migration:
--- 1. Creates organization_members table
--- 2. Rewrites all RPC functions to use local table instead of sso_foreign.*
+-- 1. Creates organization_members table (synced via queue)
+-- 2. Rewrites all RPC functions to use local table
 -- 3. Updates create_local_organization to accept creator user ID
 --
 -- Phase: 1 of 1 (no phase 2/3 needed - no old columns to drop)
@@ -47,7 +95,8 @@ CREATE INDEX IF NOT EXISTS idx_organization_members_status
     ON public.organization_members(status);
 
 COMMENT ON TABLE public.organization_members IS
-'Local membership table replacing FDW-based sso_foreign.memberships. Stores which users belong to which organizations and their role.';
+'Local membership table synced from SSO-Worker via queue-based sync (auth-sync-consumer). Stores which users belong to which organizations and their role.';
+
 
 -- =====================================================
 -- STEP 2: Rewrite is_org_member (was FDW-based)

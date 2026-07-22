@@ -19,7 +19,7 @@
     "pages:dev": "wrangler pages dev dist --compatibility-date=2026-06-08 --port=8788 --service PAYMENT_WORKER=razorpay-api --service SSO_SERVICE=sso-api --service REALTIME_WORKER=realtime-worker --service EMBEDDING_SERVICE=embedding-worker --service EMAIL_SERVICE=shared-email-api",
     "pages:build": "npm run build",
     "workers:email": "cd ../email-worker && wrangler dev --port=9001 --inspector-port=9229",
-    "workers:payments": "cd ../payment-worker && wrangler dev --port=9003 --inspector-port=9232",
+    "workers:payments": "cd ../payments-worker && wrangler dev --port=9003 --inspector-port=9232",
     "workers:sso": "cd ../sso-worker && wrangler dev --port=8787",
     "workers:realtime": "cd ../realtime-worker && wrangler dev --port=8790",
     "workers:all": "npm run workers:dev",
@@ -65,6 +65,7 @@
     "@radix-ui/react-tooltip": "1.2.8",
     "@rareminds-eym/auth-client": "^1.0.12",
     "@rareminds-eym/auth-core": "^2.1.2",
+    "@rareminds-eym/supabase-typegen": "^1.0.0",
     "@supabase/supabase-js": "2.57.4",
     "@tabler/icons-react": "2.47.0",
     "@tanstack/react-query": "5.90.3",
@@ -124,7 +125,7 @@
     "uuid": "13.0.0",
     "worker-mailer": "1.2.1",
     "xlsx": "0.18.5",
-    "zod": "^4.4.3",
+    "zod": "3.24.0",
     "zustand": "5.0.8"
   },
   "devDependencies": {
@@ -172,5 +173,8 @@
     "vite": "5.4.2",
     "vitest": "^2.1.8",
     "wrangler": "^4.94.0"
+  },
+  "optionalDependencies": {
+    "@rollup/rollup-linux-x64-gnu": "4.62.2"
   }
 }

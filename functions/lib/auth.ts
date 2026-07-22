@@ -54,8 +54,12 @@ async function verifyEmailOrBlock(
   let isVerifiedInDb = false;
   try {
     const supabase = getServiceClient(env as any);
+
+    // CRITICAL: Check SSO database (via FDW) for verification status
+    // The JWT may not be updated immediately after verification
+    // User verification status is stored in SSO DB, not local Skillpassport DB
     const { data: dbUser, error } = await supabase
-      .from('users')
+      .from('sso_foreign.users')
       .select('is_email_verified')
       .eq('id', user.sub)
       .single();

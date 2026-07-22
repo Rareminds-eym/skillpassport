@@ -130,12 +130,18 @@ export const CompanySignup: React.FC = () => {
 
         try {
             console.log('[CompanySignup] Starting signup process...');
+            console.log('[CompanySignup] Signup data:', {
+                email: state.workEmail,
+                firstName: state.firstName,
+                lastName: state.lastName,
+                hasPassword: !!state.password
+            });
 
-            // Step 1: Create organization and user in SSO
+            // Step 1: Create user in SSO (org setup happens after email verification)
             const ssoResult = await ssoClient.signup({
                 email: state.workEmail,
                 password: state.password,
-                org_name: state.companyName,
+                org_name: null, // Org setup happens after email verification
                 role: 'owner',
                 redirect_url: window.location.origin,
             });
@@ -159,8 +165,6 @@ export const CompanySignup: React.FC = () => {
             });
 
             // Step 3: Create user profile in Supabase
-            // Must run before createLocalOrganization because organization_members
-            // has a FK constraint referencing public.users(id)
             console.log('[CompanySignup] Creating user profile...');
             await apiPost('/user/handler', {
                 action: 'createUserProfile',
@@ -173,43 +177,10 @@ export const CompanySignup: React.FC = () => {
             });
             console.log('[CompanySignup] User profile created successfully');
 
-            // Step 4: Create local organization record in SkillPassport database
-            // This also inserts the creator as 'owner' in organization_members
-            console.log('[CompanySignup] Creating local organization record...', {
-                orgId,
-                companyName: state.companyName,
-                recruitment_enabled: true,
-                max_recruiters: 10
-            });
+            // NOTE: Organization setup (company name, industry, etc.) will happen AFTER email verification
+            // in the onboarding flow. For now, a placeholder org was created in SSO.
 
-            const orgData = await apiPost('/organization/handler', {
-                action: 'createLocalOrganization',
-                p_organization_id: orgId,
-                p_organization_name: state.companyName,
-                p_recruitment_enabled: true,
-                p_max_recruiters: 10,
-            });
-
-            console.log('[CompanySignup] Local organization record created successfully:', orgData);
-
-            // Step 5: Create recruitment settings for the organization
-            console.log('[CompanySignup] Creating recruitment settings...');
-            const adminName = `${state.firstName} ${state.lastName}`.trim();
-            const settingsData = await apiPost('/organization/handler', {
-                action: 'createOrganizationRecruitmentSettings',
-                p_organization_id: orgId,
-                p_industry: state.industry,
-                p_company_size: state.companySize,
-                p_admin_name: adminName,
-                p_phone: state.phone || null,
-                p_email: state.workEmail,
-                p_address: state.address,
-            });
-
-            console.log('[CompanySignup] Recruitment settings created:', settingsData);
-
-            // Step 6: Set auth store with recruiter role
-            // Note: The user has 'owner' role in SSO, but we map it to 'recruiter' in the app
+            // Step 4: Set auth store with recruiter role
             console.log('[CompanySignup] Setting auth store...');
             useAuthStore.setState({
                 user: {
@@ -229,8 +200,8 @@ export const CompanySignup: React.FC = () => {
 
             console.log('[CompanySignup] Signup complete, redirecting to email verification...');
 
-            // Step 7: Redirect to email verification page (same flow as normal signup)
-            // After email verification, user will be redirected to /recruitment/subscription/plans
+            // Step 5: Redirect to email verification page
+            // After verification, user will go through onboarding to set up their organization
             navigate('/verify-email', {
                 replace: true, // Replace history to prevent back button issues
             });

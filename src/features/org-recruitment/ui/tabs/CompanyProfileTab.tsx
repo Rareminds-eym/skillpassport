@@ -18,6 +18,7 @@ import {
     type OrganizationProfile,
 } from '@/entities/recruitment';
 import { getLogger } from '@/shared/config/logging';
+import { ssoClient } from '@/shared/api/ssoClient';
 
 const logger = getLogger('CompanyProfileTab');
 
@@ -29,6 +30,14 @@ const INDUSTRIES = [
     'Retail',
     'Manufacturing',
     'Consulting',
+    'Energy',
+    'Telecommunications',
+    'Transportation',
+    'Hospitality',
+    'Real Estate',
+    'Legal Services',
+    'Accounting',
+    'Insurance',
     'Other',
 ];
 
@@ -72,22 +81,42 @@ export const CompanyProfileTab = () => {
             return;
         }
 
-        if (file.size > 2 * 1024 * 1024) {
-            alert('Image size must be less than 2MB');
+        if (file.size > 5 * 1024 * 1024) {
+            alert('Image size must be less than 5MB');
             return;
         }
 
         setUploadingLogo(true);
 
         try {
-            const result = await uploadDocument.mutateAsync({
-                file,
-                documentType: 'logo',
-                bucket: 'company-documents',
+            // Use dedicated logo upload endpoint to R2
+            const orgId = profileData?.profile?.id;
+            if (!orgId) {
+                throw new Error('Organization ID not found');
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('org_id', orgId);
+
+            // Use ssoClient.fetch() for authenticated requests with automatic token refresh
+            const response = await ssoClient.fetch('/api/recruitment/organization/upload-logo', {
+                method: 'POST',
+                body: formData,
             });
 
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Upload failed');
+            }
+
+            const result = await response.json();
+
             handleChange('logo_url', result.file_url);
-            logger.info('Logo uploaded successfully');
+            logger.info('Logo uploaded successfully to R2', { 
+                path: result.file_path,
+                storage: result.storage_type 
+            });
         } catch (error: any) {
             logger.error('Logo upload failed', { error: error.message });
             alert('Failed to upload logo: ' + error.message);
@@ -159,11 +188,16 @@ export const CompanyProfileTab = () => {
                     <div className="flex items-start gap-4">
                         <div className="flex-shrink-0">
                             {form.logo_url ? (
-                                <img
-                                    src={form.logo_url}
-                                    alt="Company logo"
-                                    className="w-24 h-24 rounded-lg object-cover border-2 border-gray-200"
-                                />
+                                <div className="w-24 h-24 rounded-lg border-2 border-gray-200 bg-white flex items-center justify-center overflow-hidden">
+                                    <img
+                                        src={form.logo_url}
+                                        alt="Company logo"
+                                        className="h-full w-full object-contain"
+                                        onError={(event) => {
+                                            event.currentTarget.style.display = 'none';
+                                        }}
+                                    />
+                                </div>
                             ) : (
                                 <div className="w-24 h-24 rounded-lg bg-gray-100 flex items-center justify-center border-2 border-gray-200">
                                     <PhotoIcon className="w-12 h-12 text-gray-400" />
