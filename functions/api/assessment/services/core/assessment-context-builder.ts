@@ -71,12 +71,6 @@ interface StudentContext {
 }
 
 // ============================================================================
-// NO HARDCODED FILTERS
-// All assessment signals pass through without threshold filtering.
-// Context builder interprets all available data, RAG determines relevance.
-// ============================================================================
-
-// ============================================================================
 // INTERPRETATION HELPERS
 // ============================================================================
 
@@ -101,7 +95,7 @@ function interpretRIASEC(code: string, scores?: Record<string, number>): string 
   const dominant = topTypes.join('');
   let domainKeywords = '';
   if (dominant.includes('A')) {
-    domainKeywords = 'creative design innovation artistic UX product vision';
+    domainKeywords += 'creative design innovation artistic UX product vision';
   }
   if (dominant.includes('I')) {
     domainKeywords += ' analytical research investigation technical depth systems';
@@ -147,10 +141,10 @@ function interpretAptitudes(
   const allAptitudes: Array<[string, number]> = [];
 
   Object.entries(subtags).forEach(([name, data]) => {
-    const total = data.total as number;
-    const accuracy = data.accuracy as number;
+    const total = (data?.total ?? 0) as number;
+    const accuracy = (data?.accuracy ?? 0) as number;
 
-    if (total > 0) {
+    if (total > 0 && accuracy > 0) {
       allAptitudes.push([name.replace(/_/g, ' '), accuracy]);
     }
   });
@@ -204,7 +198,9 @@ function interpretAptitudes(
     const { pattern, strengths: strengthAreas, weaknesses: weaknessAreas } =
       streamDetails.aptitudeInsights;
 
-    lines.push(`\nLearning Pattern: ${pattern}`);
+    if (pattern) {
+      lines.push(`\nLearning Pattern: ${pattern}`);
+    }
 
     if (strengthAreas && strengthAreas.length > 0) {
       lines.push(
@@ -222,7 +218,7 @@ function interpretAptitudes(
 }
 
 /**
- * Interpret Big Five personality traits - top 3 only
+ * Interpret Big Five personality traits - top 2 primary traits
  */
 function interpretBigFive(scores?: Record<string, number>): string {
   if (!scores) return '';
@@ -235,7 +231,6 @@ function interpretBigFive(scores?: Record<string, number>): string {
     extraversion: 'Energetic, thrives in interactive settings',
   };
 
-  // Get top 3 traits only
   const allTraits: Array<[string, number]> = [];
   Object.entries(scores).forEach(([name, score]) => {
     allTraits.push([name, score]);
@@ -246,7 +241,7 @@ function interpretBigFive(scores?: Record<string, number>): string {
   }
 
   allTraits.sort((a, b) => b[1] - a[1]);
-  const topTraits = allTraits.slice(0, 2); // Top 2 instead of 3
+  const topTraits = allTraits.slice(0, 2);
 
   if (topTraits.length === 0) return '';
 
@@ -264,7 +259,7 @@ function interpretBigFive(scores?: Record<string, number>): string {
 }
 
 /**
- * Interpret work values - high-signal only (≥3.5)
+ * Interpret work values - top 3 priorities
  */
 function interpretWorkValues(scores?: Record<string, number>): string {
   if (!scores) return '';
@@ -280,7 +275,6 @@ function interpretWorkValues(scores?: Record<string, number>): string {
     Lifestyle: 'work-life balance and scheduling flexibility',
   };
 
-  // No thresholds — include all work values
   const allValues: Array<[string, number]> = [];
 
   Object.entries(scores).forEach(([name, score]) => {
@@ -295,7 +289,7 @@ function interpretWorkValues(scores?: Record<string, number>): string {
 
   const lines: string[] = ['CAREER VALUES & DRIVERS:'];
 
-  // Top values only
+  // Top 3 priorities only
   const topValues = allValues.slice(0, 3);
   if (topValues.length > 0) {
     const topDesc = topValues.map(([name]) => valueDescriptions[name] || name).join(', ');
@@ -306,8 +300,8 @@ function interpretWorkValues(scores?: Record<string, number>): string {
 }
 
 /**
- * Interpret knowledge domain - strong topics with career context
- * Filters generic topics and focuses on actual technical/domain expertise
+ * Interpret knowledge domain - strong topics only
+ * Filters generic topics and lists actual technical/domain expertise
  */
 function interpretKnowledge(
   score?: number,
@@ -325,47 +319,12 @@ function interpretKnowledge(
 
   const lines: string[] = [];
 
-  // Core domain expertise
+  // Core domain expertise only (pure assessment data)
   lines.push(`DOMAIN EXPERTISE (${Math.round(score)}% mastery):`);
   lines.push(`Competencies: ${strong.join(', ')}`);
 
-  // Map expertise to career applications (used by RAG for matching)
-  const expertise = strong.map(t => t.toLowerCase()).join(' ');
-
-  if (expertise.includes('algorithm') || expertise.includes('data structure') || expertise.includes('architecture')) {
-    lines.push(`Technical focus: Systems design, algorithms, computational problem-solving`);
-  }
-  if (expertise.includes('database') || expertise.includes('data model') || expertise.includes('sql')) {
-    lines.push(`Technical focus: Database design, data management, query optimization`);
-  }
-  if (expertise.includes('financial') || expertise.includes('strategy') || expertise.includes('operations')) {
-    lines.push(`Business focus: Financial analysis, strategic planning, operations management`);
-  }
-  if (expertise.includes('programming') || expertise.includes('development') || expertise.includes('software')) {
-    lines.push(`Technical focus: Software development, implementation, coding practices`);
-  }
-  if (expertise.includes('web') || expertise.includes('frontend') || expertise.includes('backend')) {
-    lines.push(`Technical focus: Web technologies, full-stack development, user interfaces`);
-  }
-
   return lines.join('\n');
 }
-
-/**
- * Interpret employability - strong skills only (≥75)
- */
-function interpretEmployability(scores?: Record<string, number>, readiness?: string): string {
-  if (!scores) return '';
-
-  const allScores = Object.entries(scores).sort((a, b) => b[1] - a[1]);
-  const strengths = allScores.filter(([, score]) => score >= 75);
-
-  if (strengths.length === 0) return '';
-
-  const skillNames = strengths.map(([skill]) => skill).join(', ');
-  return `WORKPLACE READINESS: Strong in ${skillNames}`;
-}
-
 
 // ============================================================================
 // MAIN FUNCTION
@@ -440,41 +399,9 @@ Program: ${stream} | Education Level: ${degree}
     sections.push(interpretWorkValues(student.work_values));
   }
 
-  // Professional Competencies
-  if (student.employability_scores) {
-    sections.push(interpretEmployability(student.employability_scores, student.employability_readiness));
-  }
-
-  // Win 1: Add observable_behaviours and work_style_demands summary if provided
-  if (occupationContextData?.observable_behaviours) {
-    sections.push(`BEHAVIORAL PATTERNS & WORK DEMANDS:
-${occupationContextData.observable_behaviours}`);
-  }
-
-  // Win 3: Add top skills if provided
-  if (occupationContextData?.top_skills) {
-    sections.push(`KEY TECHNICAL & SOFT SKILLS:
-${occupationContextData.top_skills}`);
-  }
-
   // Join with blank lines between sections
+  // 7 core assessment components: RIASEC, stream knowledge, aptitude, Big Five, work values, stream, degree
   const context = sections.filter(Boolean).join('\n\n');
-
-  // DEBUG: Log full context
-  console.log('\n' + '='.repeat(80));
-  console.log('[ASSESSMENT-CONTEXT] FULL RAG CONTEXT OUTPUT');
-  console.log('='.repeat(80));
-  console.log(context);
-  console.log('='.repeat(80));
-  console.log(`[ASSESSMENT-CONTEXT] Generated RAG context:`);
-  console.log(`[ASSESSMENT-CONTEXT] Stream: ${stream}`);
-  console.log(`[ASSESSMENT-CONTEXT] Total length: ${context.length} characters`);
-  console.log(`[ASSESSMENT-CONTEXT] Number of sections: ${sections.length}`);
-  console.log(`[ASSESSMENT-CONTEXT] Sections: ${sections.filter(Boolean).map((s, i) => {
-    const title = s.split('\n')[0];
-    return `${i + 1}. ${title.slice(0, 40)}`;
-  }).join(' | ')}`);
-  console.log('='.repeat(80) + '\n');
 
   return context;
 }

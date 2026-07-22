@@ -27,9 +27,14 @@ Allows the same capability to appear in recommendations for multiple roles with 
 
 -- 5. Update the unique constraint to include role_id
 -- This allows the same capability to appear for different roles
+-- Drop the old constraint (multiple possible names for this constraint)
 ALTER TABLE learner_course_recommendations
 DROP CONSTRAINT IF EXISTS learner_course_recommendations_unique;
 
 ALTER TABLE learner_course_recommendations
-ADD CONSTRAINT learner_course_recommendations_unique
+DROP CONSTRAINT IF EXISTS learner_course_recommendation_learner_id_course_id_assessme_key;
+
+-- Add the new constraint with role_id included
+ALTER TABLE learner_course_recommendations
+ADD CONSTRAINT learner_course_recommendation_unique
 UNIQUE(learner_id, course_id, role_id, assessment_result_id);

@@ -318,7 +318,7 @@ export async function analyzeCollege(
       }
 
       // Process Big Five section — dimension letter (O/C/E/A/N) is in category_mapping.type
-      if (sectionName === 'bigfive' && typeof answer === 'number') {
+      if (sectionName === 'bigfive' && typeof answer === 'number' && question.category_mapping) {
         const letter = (question.category_mapping as any)?.type;
         const dimension = letter ? BIGFIVE_LETTER_MAP[letter] : undefined;
         if (dimension && bigFiveScores[dimension]) {
@@ -367,17 +367,17 @@ export async function analyzeCollege(
       }
 
       // Process Aptitude section (stream-based aptitude)
-      if (sectionName === 'aptitude' && question.correct_answer) {
+      if (sectionName === 'aptitude' && question.correct_answer && answer != null) {
         aptitudeTotal++;
-        if (answer === question.correct_answer) {
+        if (String(answer).trim() === String(question.correct_answer).trim()) {
           aptitudeCorrect++;
         }
       }
 
       // Process Knowledge section (stream knowledge)
-      if (sectionName === 'knowledge' && question.correct_answer) {
+      if (sectionName === 'knowledge' && question.correct_answer && answer != null) {
         knowledgeTotal++;
-        if (answer === question.correct_answer) {
+        if (String(answer).trim() === String(question.correct_answer).trim()) {
           knowledgeCorrect++;
         }
       }
@@ -456,7 +456,8 @@ export async function analyzeCollege(
               averageResponseTimeMs: fallback.results?.average_response_time_ms ?? null,
             };
             if (fallback.results?.overall_accuracy != null) {
-              aptitudeOverall = parseFloat(fallback.results.overall_accuracy);
+              const parsed = parseFloat(String(fallback.results.overall_accuracy));
+              aptitudeOverall = !isNaN(parsed) ? parsed : null;
             }
           }
         }
@@ -476,7 +477,8 @@ export async function analyzeCollege(
           averageResponseTimeMs: fetched.results?.average_response_time_ms ?? null,
         };
         if (fetched.results?.overall_accuracy != null) {
-          aptitudeOverall = parseFloat(fetched.results.overall_accuracy);
+          const parsed = parseFloat(String(fetched.results.overall_accuracy));
+          aptitudeOverall = !isNaN(parsed) ? parsed : null;
         }
       }
     }
@@ -827,33 +829,42 @@ async function fetchAndSaveCapabilities(
     const lteClient = createLTEClient(env);
     const recommendations: any[] = [];
 
+    console.log('[CAPABILITIES] Starting with assessmentResultId:', assessmentResultId);
+
     for (const cluster of clusters) {
       if (!cluster.occupationIds || !Array.isArray(cluster.occupationIds)) continue;
 
       for (const occupationId of cluster.occupationIds) {
         try {
           const response = await lteClient.request<any>(
-            '/api/capabilities',
+            '/api/v1/capabilities',
             { roleId: occupationId }
           );
 
           if (response.success && response.capabilities && Array.isArray(response.capabilities)) {
             // Transform capabilities into recommendations, tracking which role each is for
             response.capabilities.forEach((cap: any, idx: number) => {
-              recommendations.push({
+              const rec = {
                 learner_id: userId,  // Use user_id for FK to learners table
                 course_id: cap.id, // Store capability ID in course_id column
                 role_id: occupationId, // Track which role this capability is for
-                assessment_result_id: assessmentResultId,
+                assessment_result_id: assessmentResultId, // MUST be set here
                 relevance_score: 100 - (idx * 5), // Priority based on sequence
                 match_reasons: [cap.name, cap.description || ''].filter(Boolean),
                 skill_gaps_addressed: [cap.code || cap.name],
                 recommendation_type: 'assessment',
                 status: 'active',
                 recommended_at: new Date().toISOString(),
-              });
+              };
+
+              // Validate assessment_result_id is set before adding
+              if (!rec.assessment_result_id) {
+                console.warn('[CAPABILITIES] Skipping recommendation with null assessment_result_id:', { learner: rec.learner_id, role: rec.role_id });
+              } else {
+                recommendations.push(rec);
+              }
             });
-            console.log(`[CAPABILITIES] Saved ${response.capabilities.length} capabilities for role ${occupationId}`);
+            console.log(`[CAPABILITIES] Processed ${response.capabilities.length} capabilities for role ${occupationId}`);
           }
         } catch (err) {
           console.warn(`[CAPABILITIES] Failed to fetch for role ${occupationId}:`, err instanceof Error ? err.message : err);
@@ -862,14 +873,17 @@ async function fetchAndSaveCapabilities(
     }
 
     if (recommendations.length > 0) {
-      const { error } = await supabase
+      console.log('[CAPABILITIES] Recommendations before save:', JSON.stringify(recommendations.slice(0, 1)));
+      const { data, error } = await supabase
         .from('learner_course_recommendations')
-        .upsert(recommendations, { onConflict: 'learner_id,course_id,role_id,assessment_result_id', ignoreDuplicates: false });
+        .upsert(recommendations, { onConflict: 'learner_id,course_id,role_id,assessment_result_id', ignoreDuplicates: false })
+        .select();
 
       if (error) {
         console.error('[CAPABILITIES] Failed to save to database:', { error: error.message, code: error.code, details: error.details, userId });
       } else {
-        console.log(`[CAPABILITIES] Successfully saved ${recommendations.length} capability recommendations for user ${userId}`);
+        const savedWithId = data?.filter((r: any) => r.assessment_result_id).length || 0;
+        console.log(`[CAPABILITIES] Successfully saved ${recommendations.length} capability recommendations for user ${userId} (${savedWithId} with assessment_result_id)`);
       }
     } else {
       console.log('[CAPABILITIES] No capabilities to save');

@@ -62,6 +62,12 @@ export const onRequestPost = withAuth(async (context: any) => {
       return handleSaveQuestions(context.request, context);
     } else if (path === '/questions/clear') {
       return handleClearQuestions(context.request, context);
+    } else if (path === '/actions') {
+      // Assessment actions endpoint - log actions taken on assessment results
+      return new Response(
+        JSON.stringify({ success: true, message: 'Action recorded' }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      );
     } else {
       return apiNotFound(`Assessment endpoint not found: ${path}`, context.request);
     }

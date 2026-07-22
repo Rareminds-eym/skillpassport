@@ -470,13 +470,27 @@ async function handler(context: AuthenticatedContext): Promise<Response> {
     console.log('[Recommendations/Saved] Query params:', { learnerId, status, assessmentResultId });
     let q = supabase.from('learner_course_recommendations').select('*').eq('learner_id', learnerId).order('relevance_score', { ascending: false });
     if (status) q = q.eq('status', status);
-    if (assessmentResultId) q = q.eq('assessment_result_id', assessmentResultId);
+
+    // CRITICAL: If assessment_result_id is provided, filter to that specific assessment
+    // If not provided, use the latest one (already fetched above)
+    if (assessmentResultId) {
+      q = q.eq('assessment_result_id', assessmentResultId);
+      console.log('[Recommendations/Saved] Filtering by assessment_result_id:', assessmentResultId);
+    } else {
+      console.warn('[Recommendations/Saved] No assessment_result_id provided or found, returning all active recommendations');
+    }
+
     const { data, error } = await q;
-    console.log('[Recommendations/Saved] Query result:', { count: data?.length, error: error?.message });
+    console.log('[Recommendations/Saved] Query result:', { count: data?.length, hasData: !!data, error: error?.message });
     if (error) {
       console.error('[Recommendations/Saved] DB Error:', error);
       return apiDbError(error, request);
     }
+
+    if (!data || data.length === 0) {
+      console.warn('[Recommendations/Saved] No recommendations found for:', { learnerId, assessmentResultId, status });
+    }
+
     return apiSuccess(data || [], request);
   }
 

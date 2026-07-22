@@ -352,11 +352,11 @@ function sanitizeSpecificOptions(raw: any): Record<string, unknown> | undefined 
     if (!Array.isArray(items)) return [];
     return items
       .map((it) => {
-        const name = typeof it === 'string' ? it : str(it?.name);
+        const name = typeof it === 'string' ? it : String(it?.name || '');
         if (!name) return null;
         const min = Number(it?.salary?.min);
         const max = Number(it?.salary?.max);
-        const salary = !isNaN(min) && !isNaN(max) ? { min, max } : undefined;
+        const salary = !isNaN(min) && !isNaN(max) && min > 0 && max > 0 ? { min, max } : undefined;
         return (salary ? { name, salary } : { name }) as Record<string, unknown> | null;
       })
       .filter((x): x is Record<string, unknown> => x !== null);
@@ -531,12 +531,14 @@ function isStreamAligned(stream: string | undefined, degreeMapping: string | und
 
   for (const token of tokensToTry) {
     if (token.length < 2) continue;
+    // Escape token for safe regex use
+    const escaped = token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     // Short tokens (acronyms like "bba", "com") must match as EXACT standalone words —
     // otherwise "com" (B.Com) would prefix-match "Computer". Longer words may prefix-match
     // to catch word families ("pharma" → "Pharmacy", "finance" → "Finance").
     const re = token.length <= 3
-      ? new RegExp(`(^|[^a-z])${token}([^a-z]|$)`, 'i')
-      : new RegExp(`(^|[^a-z])${token}`, 'i');
+      ? new RegExp(`(^|[^a-z])${escaped}([^a-z]|$)`, 'i')
+      : new RegExp(`(^|[^a-z])${escaped}`, 'i');
     if (re.test(mapping)) return true;
   }
   return false;
@@ -723,10 +725,13 @@ function finalizeCluster(
             let totalScore = 0;
             let demandCount = 0;
             for (const [ability, score] of Object.entries(student.accuracy_by_subtag)) {
-              const studentScore = typeof score === 'object' && score !== null
-                ? (score as { accuracy?: number }).accuracy
-                : (score as number);
-              if (typeof studentScore !== 'number') continue;
+              let studentScore: number | undefined;
+              if (typeof score === 'object' && score !== null) {
+                studentScore = (score as { accuracy?: number }).accuracy;
+              } else if (typeof score === 'number') {
+                studentScore = score;
+              }
+              if (typeof studentScore !== 'number' || studentScore < 0) continue;
               const demand = numVal(occ.aptitudeProfile, ability.toLowerCase());
               if (demand !== undefined && demand >= 70) {
                 // Role demands this ability: score is weighted by demand importance
@@ -748,10 +753,11 @@ function finalizeCluster(
             let totalScore = 0;
             let matchCount = 0;
             for (const [trait, score] of Object.entries(student.big_five_scores)) {
+              if (typeof score !== 'number') continue;
               const demand = numVal(occ.bigFiveProfile, trait.toLowerCase());
               if (demand !== undefined && demand >= 4) {
                 // Role rewards this trait: alignment = how close they match (1-5 scale)
-                const alignment = 100 - Math.abs((score as number) - 3) * 25; // Map 1-5 scale to 0-100
+                const alignment = 100 - Math.abs(score - 3) * 25; // Map 1-5 scale to 0-100
                 totalScore += alignment;
                 matchCount++;
               }
@@ -772,10 +778,11 @@ function finalizeCluster(
               .slice(0, 2);
             let totalScore = 0;
             for (const [value, score] of topValues) {
+              if (typeof score !== 'number' || score < 0) continue;
               const demand = numVal(occ.workValuesProfile, value.toLowerCase());
               if (demand !== undefined && demand >= 4) {
                 // Role rewards this value: alignment based on overlap
-                totalScore += (score as number) / 5 * 100;
+                totalScore += (score / 5) * 100;
               } else {
                 totalScore += 30; // Partial alignment if role doesn't reward it
               }
