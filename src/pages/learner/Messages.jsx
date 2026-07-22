@@ -81,15 +81,15 @@ const Messages = () => {
   const learnerId = learnerIdForConversations;
   const learnerName = learnerData?.profile?.name || user?.name || 'Learner';
 
-  // Determine available tabs based on learner's school_id and university_college_id
+  // Determine available tabs based on learner's school_id and college_id
   const hasSchoolId = !!learnerData?.school_id;
-  const hasCollegeId = !!learnerData?.university_college_id;
+  const hasCollegeId = !!(learnerData?.college_id || learnerData?.university_college_id);
 
   // Available tabs logic:
   // - Recruiters: Always available
   // - Educators: Available for school/college learners
   // - School Admin: Only if learner has school_id
-  // - College Admin: Only if learner has university_college_id
+  // - College Admin: Only if learner has college_id
   const availableTabs = useMemo(() => {
     const tabs = ['recruiters'];
 
@@ -458,6 +458,19 @@ const Messages = () => {
     }
     return false;
   }, [globalOnlineUsers, adminUserIds]);
+
+  // Global presence — joins shared channel on page load so sidebar online dots work
+  useRealtimePresence({
+    channelName: 'messaging:global',
+    userPresence: {
+      userId: learnerId || '',
+      userName: learnerName,
+      userType: 'learner',
+      status: 'online',
+      lastSeen: new Date().toISOString(),
+    },
+    enabled: !!learnerId
+  });
 
   // Presence tracking for current conversation (for chat header)
   const { onlineUsers } = useRealtimePresence({
@@ -1193,6 +1206,7 @@ const Messages = () => {
             </div>
           </div>
           <button
+            type="button"
             onClick={handleUndo}
             className="flex-shrink-0 px-5 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white text-[15px] font-semibold rounded-xl shadow-sm hover:shadow-lg active:scale-95 transition-all duration-200"
           >
@@ -1262,6 +1276,7 @@ const Messages = () => {
               {/* New Button - Show for Educators tab */}
               {activeTab === 'educators' && (
                 <button
+                  type="button"
                   onClick={() => setShowNewEducatorConversationModal(true)}
                   className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
                   title="Start new conversation with educator"
@@ -1274,6 +1289,7 @@ const Messages = () => {
               {/* New Button - Show for School Admin tab */}
               {activeTab === 'admin' && (
                 <button
+                  type="button"
                   onClick={() => setShowNewAdminConversationModal(true)}
                   className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
                   title="Start new conversation with school admin"
@@ -1286,6 +1302,7 @@ const Messages = () => {
               {/* New Button - Show for College Admin tab */}
               {activeTab === 'college_admin' && (
                 <button
+                  type="button"
                   onClick={() => setShowNewCollegeAdminConversationModal(true)}
                   className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
                   title="Start new conversation with college admin"
@@ -1298,6 +1315,7 @@ const Messages = () => {
               {/* Tab Dropdown */}
               <div className="relative" ref={tabDropdownRef}>
                 <button
+                  type="button"
                   onClick={() => setShowTabDropdown(!showTabDropdown)}
                   className="flex items-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
                 >
@@ -1356,6 +1374,7 @@ const Messages = () => {
                     <div className="py-1">
                       {/* Recruiters Tab - Always available */}
                       <button
+                        type="button"
                         onClick={async () => {
                           logger.debug('Switching to recruiters tab');
                           setIsTabSwitching(true);
@@ -1394,6 +1413,7 @@ const Messages = () => {
                       {/* Educators Tab */}
                       {(hasSchoolId || hasCollegeId) && (
                         <button
+                          type="button"
                           onClick={async () => {
                             logger.debug('Switching to educators tab');
                             setIsTabSwitching(true);
@@ -1433,6 +1453,7 @@ const Messages = () => {
                       {/* School Admin Tab - Only if learner has school_id */}
                       {hasSchoolId && (
                         <button
+                          type="button"
                           onClick={async () => {
                             logger.debug('Switching to admin tab');
                             setIsTabSwitching(true);
@@ -1472,6 +1493,7 @@ const Messages = () => {
                       {/* College Admin Tab - Only if learner has university_college_id */}
                       {hasCollegeId && (
                         <button
+                          type="button"
                           onClick={async () => {
                             logger.debug('Switching to college_admin tab');
                             setIsTabSwitching(true);
@@ -1548,6 +1570,7 @@ const Messages = () => {
                   <p className="text-gray-500 text-sm font-medium">No educator conversations yet</p>
                   <p className="text-gray-400 text-xs mt-2 mb-4">Start a conversation with your teachers</p>
                   <button
+                    type="button"
                     onClick={() => setShowNewEducatorConversationModal(true)}
                     className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2 mx-auto"
                   >
@@ -1561,6 +1584,7 @@ const Messages = () => {
                   <p className="text-gray-500 text-sm font-medium">No school admin conversations yet</p>
                   <p className="text-gray-400 text-xs mt-2 mb-4">Start a conversation with school administration</p>
                   <button
+                    type="button"
                     onClick={() => setShowNewAdminConversationModal(true)}
                     className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2 mx-auto"
                   >
@@ -1574,6 +1598,7 @@ const Messages = () => {
                   <p className="text-gray-500 text-sm font-medium">No college admin conversations yet</p>
                   <p className="text-gray-400 text-xs mt-2 mb-4">Start a conversation with college administration</p>
                   <button
+                    type="button"
                     onClick={() => setShowNewCollegeAdminConversationModal(true)}
                     className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2 mx-auto"
                   >
@@ -1639,6 +1664,7 @@ const Messages = () => {
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   {/* Delete Button - Direct action */}
                   <button
+                    type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       openDeleteModal(contact.id, contact.name, e);
@@ -1648,18 +1674,6 @@ const Messages = () => {
                   >
                     <Trash2 className="w-4 h-4 text-red-600" />
                   </button>
-
-                  {/* Archive Button - Can add if needed */}
-                  {/* <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    // Archive action
-                  }}
-                  className="p-2 hover:bg-gray-200 rounded-full transition-colors"
-                  title="Archive conversation"
-                >
-                  <Archive className="w-4 h-4 text-gray-600" />
-                </button> */}
                 </div>
               </div>
             ))
@@ -1846,7 +1860,7 @@ const Messages = () => {
               conversation = await MessageService.getOrCreatelearnerCollegeLecturerConversation(
                 learnerId,
                 educatorId,
-                learnerData?.university_college_id, // collegeId
+                learnerData?.college_id || learnerData?.university_college_id, // collegeId
                 null, // programSectionId - will be set by backend if available
                 subject
               );
@@ -1957,14 +1971,14 @@ const Messages = () => {
         isOpen={showNewCollegeAdminConversationModal}
         onClose={() => setShowNewCollegeAdminConversationModal(false)}
         learnerId={learnerId}
-        collegeId={learnerData?.university_college_id}
+        collegeId={learnerData?.college_id || learnerData?.university_college_id}
         onConversationCreated={async (conversationData) => {
           try {
             logger.info('Creating conversation with college admin', conversationData);
             
             const conversation = await MessageService.getOrCreatelearnerCollegeAdminConversation(
               learnerId,
-              learnerData?.university_college_id,
+              learnerData?.college_id || learnerData?.university_college_id,
               conversationData.subject || 'General Inquiry'
             );
 

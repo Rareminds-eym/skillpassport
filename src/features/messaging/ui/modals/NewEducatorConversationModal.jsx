@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { X, Search, GraduationCap, MessageCircle } from 'lucide-react';
 import { apiPost } from '@/shared/api/apiClient';
+import { getLogger } from '@/shared/config/logging';
 
-// Small Message Modal Component
+const logger = getLogger('new-educator-conversation-modal');
 const MessageModal = ({ educator, isOpen, onClose, onSend, isLoading }) => {
   const [message, setMessage] = useState('');
   const [subject, setSubject] = useState('');
@@ -42,6 +43,7 @@ const MessageModal = ({ educator, isOpen, onClose, onSend, isLoading }) => {
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
             className="p-1 hover:bg-gray-100 rounded-full transition-colors"
           >
@@ -120,6 +122,7 @@ const MessageModal = ({ educator, isOpen, onClose, onSend, isLoading }) => {
                   "Can you explain this topic?"
                 ]).map((suggestion, idx) => (
                   <button
+                    type="button"
                     key={idx}
                     onClick={() => setMessage(suggestion)}
                     className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full transition-colors"
@@ -135,12 +138,14 @@ const MessageModal = ({ educator, isOpen, onClose, onSend, isLoading }) => {
         {/* Footer */}
         <div className="flex items-center justify-between p-4 border-t border-gray-200 bg-gray-50 rounded-b-2xl">
           <button
+            type="button"
             onClick={onClose}
             className="px-4 py-2 text-gray-600 hover:bg-gray-200 rounded-lg transition-colors font-medium text-sm"
           >
             Cancel
           </button>
           <button
+            type="button"
             onClick={handleSend}
             disabled={
               !message.trim() || 
@@ -221,10 +226,10 @@ const NewEducatorConversationModal = ({ isOpen, onClose, learnerId, onConversati
         }
       }
 
-      // Fetch college lecturers if learner has university_college_id
-      if (learnerData?.university_college_id) {
-        console.log('🎓 Fetching college lecturers for college_id:', learnerData.university_college_id);
-        const { data: allCollegeLecturers } = await apiPost('/messaging/actions', { action: 'fetch-recipients', conversationType: 'college-lecturer', contextId: learnerData.university_college_id });
+      // Fetch college lecturers if learner has college_id
+      if (learnerData?.college_id) {
+        logger.info('Fetching college lecturers', { collegeId: learnerData.college_id });
+        const { data: allCollegeLecturers } = await apiPost('/messaging/actions', { action: 'fetch-recipients', conversationType: 'college-lecturer', contextId: learnerData.college_id });
         if (allCollegeLecturers && allCollegeLecturers.length > 0) {
           const collegeEducators = allCollegeLecturers.map(lecturer => ({
             id: lecturer.id,
@@ -305,6 +310,7 @@ const NewEducatorConversationModal = ({ isOpen, onClose, learnerId, onConversati
               </div>
             </div>
             <button
+              type="button"
               onClick={handleClose}
               className="p-2 hover:bg-gray-100 rounded-full transition-colors"
             >
@@ -340,6 +346,7 @@ const NewEducatorConversationModal = ({ isOpen, onClose, learnerId, onConversati
                 <div className="space-y-3">
                   {filteredEducators.map((educator) => (
                     <button
+                      type="button"
                       key={educator.id}
                       onClick={() => handleEducatorSelect(educator)}
                       className="w-full text-left p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-all group"
@@ -380,6 +387,7 @@ const NewEducatorConversationModal = ({ isOpen, onClose, learnerId, onConversati
           {/* Footer */}
           <div className="p-6 border-t border-gray-200 bg-gray-50">
             <button
+              type="button"
               onClick={handleClose}
               className="w-full px-4 py-2 text-gray-600 hover:bg-gray-200 rounded-lg transition-colors font-medium"
             >

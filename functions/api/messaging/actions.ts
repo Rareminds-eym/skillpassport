@@ -588,12 +588,12 @@ async function handleFetchLearnerContext(supabase: SupabaseClient, params: any):
   const { learnerId, userId } = params;
   if (learnerId) {
     const lrnId = String(learnerId);
-    const { data } = await supabase.from('learners').select('id, user_id, school_id, university_college_id, program_section_id, program_id').eq('id', lrnId).maybeSingle();
+    const { data } = await supabase.from('learners').select('id, user_id, school_id, college_id, program_section_id, program_id').eq('id', lrnId).maybeSingle();
     return data;
   }
   if (userId) {
     const usrId = String(userId);
-    const { data } = await supabase.from('learners').select('id, user_id, school_id, university_college_id, program_section_id, program_id').eq('user_id', usrId).maybeSingle();
+    const { data } = await supabase.from('learners').select('id, user_id, school_id, college_id, program_section_id, program_id').eq('user_id', usrId).maybeSingle();
     return data;
   }
   return null;
@@ -618,9 +618,9 @@ async function handleFetchProgramsByDepartments(supabase: SupabaseClient, params
 
 async function handleFetchLearnersByPrograms(supabase: SupabaseClient, params: any): Promise<any[]> {
   const { programIds, collegeId, limit = 200 } = params;
-  let query = supabase.from('learners').select('id, name, email, university, branch_field, program_id, program_section_id');
+  let query = supabase.from('learners').select('id, user_id, name, email, university, branch_field, program_id, program_section_id');
   if (programIds?.length) query = query.in('program_id', programIds.map((id: any) => String(id)));
-  if (collegeId) query = query.eq('university_college_id', String(collegeId));
+  if (collegeId) query = query.eq('college_id', String(collegeId));
   const { data } = await query.limit(Math.min(limit, 500)).order('name');
   return data || [];
 }

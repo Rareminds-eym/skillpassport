@@ -191,14 +191,11 @@ export const useLearnerEducatorConversations = (learnerId, enabled = true) => {
     queryKey: queryKeys.learner.conversations.byLearner(learnerId, 'learner_educator'),
     queryFn: async () => {
       if (!learnerId) return [];
-      // Use getUserConversations with learner userType and filter by conversation type
-      return await MessageService.getUserConversations(
-        learnerId,
-        'learner',
-        false, // includeArchived
-        true, // useCache
-        'learner_educator' // conversationType filter - This ensures we only get educator conversations
-      );
+      const [schoolConvs, collegeConvs] = await Promise.all([
+        MessageService.getUserConversations(learnerId, 'learner', false, true, 'learner_educator'),
+        MessageService.getUserConversations(learnerId, 'learner', false, true, 'learner_college_educator'),
+      ]);
+      return [...(schoolConvs || []), ...(collegeConvs || [])];
     },
     enabled: !!learnerId && enabled,
     staleTime: 30000,
