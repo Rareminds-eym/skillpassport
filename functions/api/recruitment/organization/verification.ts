@@ -33,9 +33,9 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
     }
 
     try {
-        // Fetch verification data
+        // Fetch verification data from organization_recruitment_verification
         const { data: verificationData, error: verificationError } = await supabase
-            .from('company_verification')
+            .from('organization_recruitment_verification')
             .select('*')
             .eq('organization_id', orgId)
             .single();
@@ -45,8 +45,13 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
             return Response.json({
                 verification: {
                     organization_id: orgId,
+                    cin_business_reg_no: null,
+                    gst_number: null,
+                    tax_identification_number: null,
+                    incorporation_date: null,
                     verification_status: 'pending',
-                    domain_verification_status: 'pending',
+                    verified_at: null,
+                    notes: null,
                 },
                 exists: false,
             });
@@ -107,6 +112,15 @@ export const onRequestPut = withAuth(async (context: AuthenticatedContext) => {
     }
 
     try {
+        // Map UI field names to database column names
+        const fieldMapping: Record<string, string> = {
+            'registration_number': 'cin_business_reg_no',
+            'registration_certificate_url': 'registration_certificate_url',
+            'gst_certificate_url': 'gst_certificate_url',
+            'business_license_url': 'business_license_url',
+            'verification_notes': 'notes',
+        };
+
         // Allowed fields for update
         const allowedFields = [
             'registration_number',
@@ -125,7 +139,9 @@ export const onRequestPut = withAuth(async (context: AuthenticatedContext) => {
 
         for (const field of allowedFields) {
             if (field in verificationData) {
-                updateData[field] = verificationData[field];
+                // Use mapped column name if it exists, otherwise use field name as-is
+                const dbField = fieldMapping[field] || field;
+                updateData[dbField] = verificationData[field];
             }
         }
 
@@ -136,9 +152,9 @@ export const onRequestPut = withAuth(async (context: AuthenticatedContext) => {
             fields: Object.keys(updateData),
         });
 
-        // Upsert verification data
+        // Upsert verification data in organization_recruitment_verification (create if not exists)
         const { data: updatedVerification, error: upsertError } = await supabase
-            .from('company_verification')
+            .from('organization_recruitment_verification')
             .upsert(updateData, {
                 onConflict: 'organization_id',
             })
@@ -203,8 +219,8 @@ export const onRequest_submit = withAuth(async (context: AuthenticatedContext) =
     try {
         // Validate required documents are uploaded
         const { data: verificationData, error: fetchError } = await supabase
-            .from('company_verification')
-            .select('registration_number, registration_certificate_url')
+            .from('organization_recruitment_verification')
+            .select('cin_business_reg_no, registration_certificate_url')
             .eq('organization_id', org_id)
             .single();
 
@@ -214,7 +230,7 @@ export const onRequest_submit = withAuth(async (context: AuthenticatedContext) =
             }, { status: 400 });
         }
 
-        if (!verificationData.registration_number || !verificationData.registration_certificate_url) {
+        if (!verificationData.cin_business_reg_no || !verificationData.registration_certificate_url) {
             return Response.json({
                 error: 'Registration number and certificate are required for verification',
             }, { status: 400 });
@@ -222,7 +238,7 @@ export const onRequest_submit = withAuth(async (context: AuthenticatedContext) =
 
         // Update status to 'in_review'
         const { error: updateError } = await supabase
-            .from('company_verification')
+            .from('organization_recruitment_verification')
             .update({
                 verification_status: 'in_review',
                 updated_at: new Date().toISOString(),
@@ -303,16 +319,14 @@ export const onRequest_verifyDomain = withAuth(async (context: AuthenticatedCont
 
         // Update verification data with domain and token
         const { error: updateError } = await supabase
-            .from('company_verification')
-            .upsert({
-                organization_id: org_id,
+            .from('organization_recruitment_verification')
+            .update({
                 verified_domain: domain,
                 domain_verification_token: verificationToken,
                 domain_verification_status: 'pending',
                 updated_at: new Date().toISOString(),
-            }, {
-                onConflict: 'organization_id',
-            });
+            })
+            .eq('organization_id', org_id);
 
         if (updateError) {
             console.error('[verification API] Failed to update domain:', updateError);

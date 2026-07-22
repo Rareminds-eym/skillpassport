@@ -33,8 +33,9 @@ const GuestOnlyRoute: React.FC<GuestOnlyRouteProps> = ({ children }) => {
       return <Navigate to={returnUrl} replace />;
     }
 
-    // Default routing based on role — delegates to canonical ROLE_DASHBOARD_MAP
-    return <Navigate to={getRouteForRole(role ?? '')} replace />;
+    // Use the canonical role-based routing from roleBasedRouter.ts
+    const dashboardRoute = getRouteForRole(role || '');
+    return <Navigate to={dashboardRoute} replace />;
   }
 
   // User is not authenticated, render the children (e.g. Login form)

@@ -44,6 +44,7 @@ dist-ssr
 # Build files
 /build
 /dist
+/dist-functions
 
 # Cloudflare Wrangler
 .wrangler

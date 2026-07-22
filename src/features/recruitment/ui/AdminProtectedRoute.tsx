@@ -53,20 +53,23 @@ const AdminProtectedRoute: React.FC<AdminProtectedRouteProps> = ({ children }) =
     // Check if user is admin
     const isAdmin = orgContext?.isAdmin || orgContext?.ssoRoleName === 'owner' || orgContext?.recruitmentRole === 'company_admin';
 
-    console.log('[AdminProtectedRoute] Access check:', {
-        isAdmin,
-        ssoRoleName: orgContext?.ssoRoleName,
-        recruitmentRole: orgContext?.recruitmentRole,
-        orgContextIsAdmin: orgContext?.isAdmin,
-    });
+    // 🔒 Production logging disabled - uncomment for debugging
+    // if (import.meta.env.DEV) {
+    //     console.log('[AdminProtectedRoute] Access check:', {
+    //         isAdmin,
+    //         ssoRoleName: orgContext?.ssoRoleName,
+    //         recruitmentRole: orgContext?.recruitmentRole,
+    //         orgContextIsAdmin: orgContext?.isAdmin,
+    //     });
+    // }
 
     // If not admin, redirect to overview
     if (!isAdmin) {
-        console.log('[AdminProtectedRoute] ❌ Access denied - User is not an admin, redirecting to overview');
+        // console.log('[AdminProtectedRoute] ❌ Access denied - User is not an admin, redirecting to overview');
         return <Navigate to="/recruitment/overview" replace />;
     }
 
-    console.log('[AdminProtectedRoute] ✓ Access granted - User is admin');
+    // console.log('[AdminProtectedRoute] ✓ Access granted - User is admin');
     return <>{children}</>;
 };
 

@@ -1,3 +1,41 @@
+-- =====================================================
+-- Migration: Create Email Templates Table
+-- =====================================================
+-- Phase: 1 of 1 (Single-phase migration - new table)
+-- Breaking: No
+-- Rollback: DROP TABLE IF EXISTS organization_email_templates CASCADE;
+--          (Safe - no dependencies yet)
+-- 
+-- Context:
+--   Creates table for storing customized email templates for recruitment
+--   communications. Allows organizations to customize invitation, role_change,
+--   and welcome emails with their own branding and messaging.
+--
+-- Related ADR: None (simple table creation)
+-- Related Tables: organizations (foreign key)
+-- Related Features: Recruitment invitations, role management
+--
+-- Deployment order:
+--   1. Run this migration (creates table with RLS)
+--   2. Deploy application code that uses email templates
+--   3. Seed default templates (optional, via separate seed file)
+--
+-- Data Impact:
+--   - Creates new table organization_email_templates
+--   - No existing data affected
+--   - RLS policies require owner/admin role to manage templates
+--   - One template per type per organization (unique constraint)
+--
+-- Rollback:
+--   DROP TABLE IF EXISTS organization_email_templates CASCADE;
+--   Safe to rollback - no dependencies on this table yet
+--
+-- Template Types:
+--   - 'invitation': Email sent when inviting recruiters
+--   - 'role_change': Email sent when user role changes
+--   - 'welcome': Email sent when user joins organization
+-- =====================================================
+
 -- Create organization_email_templates table
 -- Stores customized email templates for recruitment communications
 
@@ -29,14 +67,10 @@ CREATE POLICY "Organization admins can view their email templates"
     FOR SELECT
     USING (
         organization_id IN (
-            SELECT m.org_id 
-            FROM sso_foreign.memberships m
-            JOIN sso_foreign.membership_roles mr ON m.id = mr.membership_id
-            JOIN sso_foreign.roles r ON mr.role_id = r.id
-            JOIN recruitment_role_mapping rrm ON r.name = rrm.sso_role_name
-            WHERE m.user_id = auth.uid() 
-            AND m.status = 'active'
-            AND rrm.recruitment_role = 'company_admin'
+            SELECT om.organization_id 
+            FROM organization_members om
+            WHERE om.user_id = auth.uid() 
+            AND om.role IN ('owner', 'admin')
         )
     );
 
@@ -45,14 +79,10 @@ CREATE POLICY "Organization admins can insert their email templates"
     FOR INSERT
     WITH CHECK (
         organization_id IN (
-            SELECT m.org_id 
-            FROM sso_foreign.memberships m
-            JOIN sso_foreign.membership_roles mr ON m.id = mr.membership_id
-            JOIN sso_foreign.roles r ON mr.role_id = r.id
-            JOIN recruitment_role_mapping rrm ON r.name = rrm.sso_role_name
-            WHERE m.user_id = auth.uid() 
-            AND m.status = 'active'
-            AND rrm.recruitment_role = 'company_admin'
+            SELECT om.organization_id 
+            FROM organization_members om
+            WHERE om.user_id = auth.uid() 
+            AND om.role IN ('owner', 'admin')
         )
     );
 
@@ -61,14 +91,10 @@ CREATE POLICY "Organization admins can update their email templates"
     FOR UPDATE
     USING (
         organization_id IN (
-            SELECT m.org_id 
-            FROM sso_foreign.memberships m
-            JOIN sso_foreign.membership_roles mr ON m.id = mr.membership_id
-            JOIN sso_foreign.roles r ON mr.role_id = r.id
-            JOIN recruitment_role_mapping rrm ON r.name = rrm.sso_role_name
-            WHERE m.user_id = auth.uid() 
-            AND m.status = 'active'
-            AND rrm.recruitment_role = 'company_admin'
+            SELECT om.organization_id 
+            FROM organization_members om
+            WHERE om.user_id = auth.uid() 
+            AND om.role IN ('owner', 'admin')
         )
     );
 
@@ -77,14 +103,10 @@ CREATE POLICY "Organization admins can delete their email templates"
     FOR DELETE
     USING (
         organization_id IN (
-            SELECT m.org_id 
-            FROM sso_foreign.memberships m
-            JOIN sso_foreign.membership_roles mr ON m.id = mr.membership_id
-            JOIN sso_foreign.roles r ON mr.role_id = r.id
-            JOIN recruitment_role_mapping rrm ON r.name = rrm.sso_role_name
-            WHERE m.user_id = auth.uid() 
-            AND m.status = 'active'
-            AND rrm.recruitment_role = 'company_admin'
+            SELECT om.organization_id 
+            FROM organization_members om
+            WHERE om.user_id = auth.uid() 
+            AND om.role IN ('owner', 'admin')
         )
     );
 

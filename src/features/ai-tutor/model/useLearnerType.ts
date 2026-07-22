@@ -25,6 +25,14 @@ const logger = getLogger('use-learner-type');
 // API URL for learner type endpoint
 const API_URL = getApiUrl('ai-tutor');
 
+interface LearnerTypeApiResponse {
+  success: boolean;
+  data: {
+    learnerType: string | null;
+    isTeacher: boolean;
+  };
+}
+
 export interface LearnerTypeData {
   learnerType: string | null;
   isTeacher: boolean;
@@ -77,12 +85,12 @@ export function useLearnerType(userId: string | undefined): LearnerTypeData {
           throw new Error(errorData.error || `HTTP ${response.status}`);
         }
 
-        const data = await response.json() as { learnerType?: string | null; isTeacher?: boolean };
+        const body = await response.json() as LearnerTypeApiResponse;
 
         if (cancelled) return;
 
-        const type = data.learnerType || null;
-        const isTeacherValue = data.isTeacher ?? false; // Use backend value
+        const { learnerType, isTeacher: isTeacherValue } = body.data;
+        const type = learnerType ?? null;
         
         logger.info('Fetched learner_type via API', { userId, learnerType: type, isTeacher: isTeacherValue });
         setLearnerType(type);

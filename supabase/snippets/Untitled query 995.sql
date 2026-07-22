@@ -1,14 +1,24 @@
--- Drop the organization_id foreign key constraint
--- Organizations are in SSO-Worker database, not local
+-- Migration: Add offer template type to organization_email_templates
+-- Adds support for offer letter templates in the existing email templates table
+-- Timestamp: 2026-07-08
 
-ALTER TABLE public.organization_invitations 
-DROP CONSTRAINT IF EXISTS organization_invitations_organization_id_fkey;
+BEGIN;
 
--- Verify it's dropped
-SELECT 
-    constraint_name,
-    table_name
-FROM information_schema.table_constraints
-WHERE table_name = 'organization_invitations'
-    AND constraint_type = 'FOREIGN KEY'
-    AND constraint_name = 'organization_invitations_organization_id_fkey';
+-- Update the CHECK constraint to include 'offer' type
+ALTER TABLE public.organization_email_templates
+DROP CONSTRAINT IF EXISTS organization_email_templates_template_type_check;
+
+ALTER TABLE public.organization_email_templates
+ADD CONSTRAINT organization_email_templates_template_type_check CHECK (
+  template_type = ANY (ARRAY[
+    'invitation'::text,
+    'role_change'::text,
+    'welcome'::text,
+    'offer'::text
+  ])
+);
+
+-- Add comment about the new template type
+COMMENT ON COLUMN public.organization_email_templates.template_type IS 'Email template type: invitation, role_change, welcome, or offer';
+
+COMMIT;
