@@ -1,3 +1,4 @@
+import { apiLogger } from './logger';
 import type { Env } from './types';
 
 const REFRESH_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
@@ -12,8 +13,8 @@ export function getCookieDomain(request: Request, env: { COOKIE_DOMAIN?: string 
     if (parts.length >= 2) {
       return `.${parts.slice(-2).join('.')}`;
     }
-  } catch {
-    // Ignore invalid URL
+  } catch (err) {
+    apiLogger.warn('[Cookies] Failed to parse request URL for domain extraction:', err);
   }
 
   return null;
@@ -33,7 +34,7 @@ export function createRefreshCookie(
   ];
 
   if (!isLocalHttpRequest(request)) {
-    parts.splice(3, 0, 'Secure');
+    parts.push('Secure');
     const domain = getCookieDomain(request, env);
     if (domain) {
       parts.push(`Domain=${domain}`);

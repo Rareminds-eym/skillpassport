@@ -1,8 +1,10 @@
-import { apiError } from "../../lib/response";
 import { createRefreshCookie } from "../../lib/cookies";
 import { ssoGenerateAuthorizationCode } from "../../lib/sso-client";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../../lib/cors";
 import type { Env } from "../../lib/types";
+import { createLogger } from "../../lib/logger";
+
+const logger = createLogger("silent-sso");
 
 interface SilentSsoResponse {
   redirectUrl: string;
@@ -10,14 +12,12 @@ interface SilentSsoResponse {
 }
 
 const LTE_CALLBACK_PATH = "/auth/callback";
-const DEFAULT_LTE_APP_URL = "http://127.0.0.1:8789";
-
 function getLteAppUrl(env: Env): string {
   const configuredUrl = env.LTE_APP_URL?.trim();
-  if (configuredUrl) {
-    return configuredUrl.replace(/\/+$/, "");
+  if (!configuredUrl) {
+    throw new Error("LTE_APP_URL is not configured");
   }
-  return DEFAULT_LTE_APP_URL;
+  return configuredUrl.replace(/\/+$/, "");
 }
 
 function buildRedirectUrl(lteAppUrl: string, code: string, state: string): string {
@@ -62,7 +62,10 @@ export async function onRequestGet(context: { request: Request; env: Env }): Pro
   const ua = request.headers.get("User-Agent") || undefined;
 
   try {
-    const ssoService = env.SSO_SERVICE as any;
+    const ssoService = env.SSO_SERVICE;
+    if (!ssoService) {
+      throw new Error("SSO_SERVICE is not configured");
+    }
 
     // 2. Validate session and get fresh access token from sso-worker
     const result = await ssoService.refreshSession(refreshToken, ip, ua);
@@ -115,9 +118,10 @@ export async function onRequestGet(context: { request: Request; env: Env }): Pro
       status: 200,
       headers,
     });
-  } catch (err: any) {
-    console.error("[Silent SSO] Error:", err);
-    return new Response(JSON.stringify({ error: err?.message || "Internal server error", code: "SERVER_ERROR" }), {
+  } catch (err: unknown) {
+    logger.error("Silent SSO execution failure", err);
+    const errorMessage = err instanceof Error ? err.message : "Internal server error";
+    return new Response(JSON.stringify({ error: errorMessage, code: "SERVER_ERROR" }), {
       status: 500,
       headers: { "Content-Type": "application/json", ...cors },
     });

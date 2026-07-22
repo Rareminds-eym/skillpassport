@@ -56,7 +56,7 @@ entrypoint = "EmailService"
 ENVIRONMENT = "production"
 REALTIME_PARTITIONS = "10"
 SUPABASE_URL = "https://dpooleduinyyzxgrcwko.supabase.co"
-LTE_APP_URL = "http://127.0.0.1:8789"
+LTE_APP_URL = "https://lte.rareminds.in/"
 
 # ============================================================================
 # SECRETS (DO NOT COMMIT VALUES)

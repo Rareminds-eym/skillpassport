@@ -72,8 +72,15 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext<Env>)
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to generate LTE authorization code';
 
-    if (message.toLowerCase().includes('entitlement') || message.toLowerCase().includes('lte')) {
-      return apiError(403, 'LTE_ACCESS_REQUIRED', message, request);
+    const isAccessRequired =
+      message.toLowerCase().includes("entitlement") ||
+      message.toLowerCase().includes("lte") ||
+      message.toLowerCase().includes("membership") ||
+      message.toLowerCase().includes("blocked") ||
+      message.toLowerCase().includes("verified");
+
+    if (isAccessRequired) {
+      return apiError(403, "LTE_ACCESS_REQUIRED", message, request);
     }
 
     return apiError(500, 'LTE_CODE_GENERATION_FAILED', message, request);
