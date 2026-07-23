@@ -27,7 +27,7 @@ async function convertApplicationId(supabase: SupabaseClient, applicationId: num
     const { data } = await supabase.from('applied_jobs').select('id_old').eq('id', applicationId).maybeSingle();
     return data?.id_old;
   }
-  return typeof applicationId === 'string' ? parseInt(applicationId) : applicationId;
+  return typeof applicationId === 'string' ? parseInt(applicationId, 10) : applicationId;
 }
 
 async function convertOpportunityId(supabase: SupabaseClient, opportunityId: number | string | undefined): Promise<number | undefined> {
@@ -36,7 +36,7 @@ async function convertOpportunityId(supabase: SupabaseClient, opportunityId: num
     const { data } = await supabase.from('opportunities').select('id_old').eq('id', opportunityId).maybeSingle();
     return data?.id_old;
   }
-  return typeof opportunityId === 'string' ? parseInt(opportunityId) : opportunityId;
+  return typeof opportunityId === 'string' ? parseInt(opportunityId, 10) : opportunityId;
 }
 
 async function fetchEducatorDetailsForConversations(supabase: SupabaseClient, conversations: Conversation[]): Promise<Conversation[]> {

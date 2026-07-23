@@ -113,11 +113,13 @@ export const useLearnerEducatorMessages = ({
       );
     },
     onMutate: async (variables) => {
+      if (!conversationId) throw new Error('conversationId is required for sending messages');
+
       // Cancel outgoing refetches
-      await queryClient.cancelQueries({ queryKey: queryKeys.learner.messages.conversation(conversationId ?? '') });
+      await queryClient.cancelQueries({ queryKey: queryKeys.learner.messages.conversation(conversationId) });
 
       // Snapshot previous value
-      const previousMessages = queryClient.getQueryData(queryKeys.learner.messages.conversation(conversationId ?? ''));
+      const previousMessages = queryClient.getQueryData(queryKeys.learner.messages.conversation(conversationId));
 
       // Optimistically add the message
       const optimisticMessage = {
@@ -135,7 +137,7 @@ export const useLearnerEducatorMessages = ({
         _optimistic: true
       };
 
-      queryClient.setQueryData(queryKeys.learner.messages.conversation(conversationId ?? ''), (old) => {
+      queryClient.setQueryData(queryKeys.learner.messages.conversation(conversationId), (old) => {
         return old ? [...old, optimisticMessage] : [optimisticMessage];
       });
 
@@ -144,13 +146,13 @@ export const useLearnerEducatorMessages = ({
     onError: (err, _variables, context) => {
       // Rollback on error
       if (context?.previousMessages) {
-        queryClient.setQueryData(queryKeys.learner.messages.conversation(conversationId ?? ''), context.previousMessages);
+        queryClient.setQueryData(queryKeys.learner.messages.conversation(conversationId), context.previousMessages);
       }
       logger.error('Failed to send message', err instanceof Error ? err : new Error(String(err)), { conversationId, learnerId });
     },
     onSuccess: (data, _variables, context) => {
       // Replace optimistic message with real one
-      queryClient.setQueryData(queryKeys.learner.messages.conversation(conversationId ?? ''), (old) => {
+      queryClient.setQueryData(queryKeys.learner.messages.conversation(conversationId), (old) => {
         if (!old) return [data];
         return old.map(msg =>
           msg.id === context?.optimisticMessage?.id ? data : msg

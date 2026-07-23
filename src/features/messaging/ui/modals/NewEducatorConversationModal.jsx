@@ -195,7 +195,7 @@ const NewEducatorConversationModal = ({ isOpen, onClose, learnerId, onConversati
     try {
       logger.info('Starting fetch learner educators', { learnerId });
 
-      // Get learner context (school_id, university_college_id)
+      // Get learner context (school_id, college_id)
       let { data: learnerData } = await apiPost('/messaging/actions', { action: 'fetch-learner-context', learnerId });
 
       // Fallback: try with user_id

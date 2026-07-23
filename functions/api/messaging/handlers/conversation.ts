@@ -354,13 +354,13 @@ async function handleUnarchiveConversation(supabase: SupabaseClient, params: Una
 }
 
 export {
+  handleArchiveConversation,
+  handleGetOrCreateCollegeEducatorAdminConversation,
   handleGetOrCreateConversation,
-  handleGetOrCreateLearnerEducatorConversation,
-  handleGetOrCreateLearnerCollegeLecturerConversation,
+  handleGetOrCreateEducatorAdminConversation,
   handleGetOrCreateLearnerAdminConversation,
   handleGetOrCreateLearnerCollegeAdminConversation,
-  handleGetOrCreateEducatorAdminConversation,
-  handleGetOrCreateCollegeEducatorAdminConversation,
-  handleArchiveConversation,
+  handleGetOrCreateLearnerCollegeLecturerConversation,
+  handleGetOrCreateLearnerEducatorConversation,
   handleUnarchiveConversation
 };

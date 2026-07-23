@@ -1068,6 +1068,7 @@ const Messages = () => {
 
   // Auto-scroll to bottom when new messages arrive (with debounce for performance)
   useEffect(() => {
+    // Intentional: undefined, null, and [] should all skip scrolling — no distinction needed here
     if (!messages?.length) return;
 
     const scrollToBottom = () => {
@@ -1194,7 +1195,7 @@ const Messages = () => {
         <div className="flex items-center gap-4 min-w-[380px] max-w-[420px]">
           <div className="flex items-center gap-3 flex-1 min-w-0">
             <div className="relative flex-shrink-0 w-11 h-11">
-              <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+              <svg aria-hidden="true" className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
                 <circle cx="18" cy="18" r="15.5" fill="none" className="stroke-gray-200" strokeWidth="2.5" />
                 <circle
                   ref={progressRef}
@@ -1502,7 +1503,7 @@ const Messages = () => {
                         </button>
                       )}
 
-                      {/* College Admin Tab - Only if learner has university_college_id */}
+                      {/* College Admin Tab - Only if learner has college_id */}
                       {hasCollegeId && (
                         <button
                           type="button"
@@ -1956,7 +1957,6 @@ const Messages = () => {
            let conversation;
           try {
             logger.info('Creating conversation with school admin', conversationData);
-            
               conversation = await MessageService.getOrCreatelearnerAdminConversation(
               learnerId,
               learnerData?.school_id,
@@ -1999,7 +1999,6 @@ const Messages = () => {
           let conversation;
           try {
             logger.info('Creating conversation with college admin', conversationData);
-            
               conversation = await MessageService.getOrCreatelearnerCollegeAdminConversation(
               learnerId,
               learnerCollegeId,
