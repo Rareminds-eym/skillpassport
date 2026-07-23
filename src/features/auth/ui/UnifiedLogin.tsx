@@ -69,6 +69,7 @@ const UnifiedLogin = () => {
             window.location.href = redirectUrl;
           } catch (err) {
             console.error('[SSO] Auto LTE SSO handoff error:', err);
+            setState((prev) => ({ ...prev, error: 'Failed to initiate LTE handoff. Please try again.' }));
           }
         }
       }

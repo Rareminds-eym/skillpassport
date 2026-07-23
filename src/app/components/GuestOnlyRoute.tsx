@@ -27,6 +27,8 @@ const GuestOnlyRoute: React.FC<GuestOnlyRouteProps> = ({ children }) => {
     // INTENTIONAL BYPASS: If the user is logging in with a target_app of 'lte',
     // allow the route to render the Login page so that the auto-handoff logic
     // (UnifiedLogin's checkLteSsoHandoff effect) can fire and handle the redirect.
+    // SECURITY JUSTIFICATION: This client-side bypass is safe because actual authorization 
+    // code generation is validated and enforced server-side by the /auth/generate-lte-code endpoint.
     if (targetApp === 'lte') {
       return <>{children}</>;
     }
