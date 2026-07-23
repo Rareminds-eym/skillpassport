@@ -99,6 +99,14 @@ type SsoFetcher = Fetcher & {
   listAddonCatalog(): Promise<any>;
   getAddonByFeatureKey(featureKey: string): Promise<any>;
   listBundles(): Promise<any>;
+  login(params: { email?: string; password?: string; ip?: string; ua?: string }): Promise<any>;
+  refreshSession(refreshToken: string, ip?: string, ua?: string): Promise<any>;
+  getMe(accessToken: string): Promise<any>;
+  logoutSession(refreshToken: string, ip?: string, ua?: string): Promise<any>;
+  verifyEmail(params: { token: string; ip?: string; ua?: string }): Promise<any>;
+  switchOrg(params: { accessToken: string; organizationId: string }): Promise<any>;
+  signup(params: { email: string; password: string; fullName: string; referralCode?: string; ip?: string; ua?: string }): Promise<any>;
+  listOrgs(accessToken: string): Promise<any>;
 };
 
 // ─── Binding Guard ─────────────────────────────────────────────
@@ -110,14 +118,14 @@ type SsoFetcher = Fetcher & {
  * @returns The SSO_SERVICE binding for RPC calls
  * @throws Error if SSO_SERVICE binding is not configured
  */
-function getSsoService(env: SsoClientEnv): SsoFetcher {
+export function getSsoService(env: SsoClientEnv): SsoFetcher {
   if (!env.SSO_SERVICE) {
     throw new Error(
       'SSO_SERVICE binding is not configured. ' +
       'Add [[services]] to wrangler.toml or use --service SSO_SERVICE=sso-api in local dev.'
     );
   }
-  return env.SSO_SERVICE as  SsoFetcher;
+  return env.SSO_SERVICE as SsoFetcher;
 }
 
 // ─── RPC Client Functions ──────────────────────────────────────

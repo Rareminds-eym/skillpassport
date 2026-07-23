@@ -1,6 +1,7 @@
 import { apiError } from '../../lib/response';
 import { createRefreshCookie } from '../../lib/cookies';
 import type { Env } from '../../lib/types';
+import { getSsoService } from '../../lib/sso-client';
 
 interface RefreshBody {
   refresh_token?: string;
@@ -49,7 +50,7 @@ export async function onRequestPost(context: {
   const ua = request.headers.get('User-Agent') || undefined;
 
   try {
-    const ssoService = env.SSO_SERVICE as any;
+    const ssoService = getSsoService(env);
 
     // Call RPC method to refresh
     const result = await ssoService.refreshSession(refreshToken, ip, ua);

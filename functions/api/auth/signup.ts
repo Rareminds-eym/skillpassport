@@ -1,5 +1,6 @@
 import type { Env } from '../../lib/types';
 import { apiLogger } from '../../lib/logger';
+import { getSsoService } from '../../lib/sso-client';
 
 interface SignupBody {
   email: string;
@@ -47,7 +48,7 @@ export async function onRequestPost(context: { request: Request; env: Env }): Pr
     }
 
     // Call SSO Worker signup via true RPC method
-    const ssoService = env.SSO_SERVICE as any;
+    const ssoService = getSsoService(env);
     const ssoResult = await ssoService.signup({
       email,
       password,

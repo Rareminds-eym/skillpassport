@@ -1,6 +1,7 @@
 import type { Env } from '../../lib/types';
 import { apiLogger } from '../../lib/logger';
 import { createRefreshCookie } from '../../lib/cookies';
+import { getSsoService } from '../../lib/sso-client';
 
 interface LoginBody {
   email: string;
@@ -47,7 +48,7 @@ export async function onRequestPost(context: { request: Request; env: Env }): Pr
     const ua = request.headers.get('User-Agent') || undefined;
 
     // Call RPC method directly on SSO Worker
-    const ssoResult = await (env.SSO_SERVICE as any).login({
+    const ssoResult = await getSsoService(env).login({
       email,
       password,
       ip,
