@@ -1,4 +1,4 @@
-import { createRefreshCookie } from "../../lib/cookies";
+import { createRefreshCookie, getRefreshCookie } from "../../lib/cookies";
 import { ssoGenerateAuthorizationCode } from "../../lib/sso-client";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../../lib/cors";
 import type { Env } from "../../lib/types";
@@ -41,15 +41,7 @@ export async function onRequestGet(context: { request: Request; env: Env }): Pro
   const cors = getCorsHeaders(origin);
 
   // 1. Extract refresh token from cookie
-  let refreshToken: string | undefined;
-  const cookieHeader = request.headers.get("Cookie");
-  if (cookieHeader) {
-    const cookies = cookieHeader.split(";").map((c) => c.trim());
-    const refreshCookie = cookies.find((c) => c.startsWith("refresh_token="));
-    if (refreshCookie) {
-      refreshToken = refreshCookie.substring("refresh_token=".length);
-    }
-  }
+  const refreshToken = getRefreshCookie(request);
 
   if (!refreshToken) {
     return new Response(JSON.stringify({ error: "Unauthorized", code: "MISSING_REFRESH_TOKEN" }), {
