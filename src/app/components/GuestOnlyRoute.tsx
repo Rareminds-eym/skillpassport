@@ -23,6 +23,10 @@ const GuestOnlyRoute: React.FC<GuestOnlyRouteProps> = ({ children }) => {
   if (isAuthenticated && !authLoading) {
     const params = new URLSearchParams(location.search);
     const targetApp = params.get('target_app') || params.get('redirect_app');
+    
+    // INTENTIONAL BYPASS: If the user is logging in with a target_app of 'lte',
+    // allow the route to render the Login page so that the auto-handoff logic
+    // (UnifiedLogin's checkLteSsoHandoff effect) can fire and handle the redirect.
     if (targetApp === 'lte') {
       return <>{children}</>;
     }
