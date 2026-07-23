@@ -25,17 +25,20 @@ export function createRefreshCookie(
   request: Request,
   env: { COOKIE_DOMAIN?: string }
 ): string {
+  const isLocal = isLocalHttpRequest(request);
+  const domain = getCookieDomain(request, env);
+  const name = isLocal ? 'refresh_token' : (domain ? '__Secure-refresh_token' : '__Host-refresh_token');
+
   const parts = [
-    `refresh_token=${refreshToken}`,
+    `${name}=${refreshToken}`,
     'Path=/',
     'HttpOnly',
     'SameSite=Lax',
     `Max-Age=${REFRESH_MAX_AGE_SECONDS}`,
   ];
 
-  if (!isLocalHttpRequest(request)) {
+  if (!isLocal) {
     parts.push('Secure');
-    const domain = getCookieDomain(request, env);
     if (domain) {
       parts.push(`Domain=${domain}`);
     }
@@ -45,9 +48,41 @@ export function createRefreshCookie(
 }
 
 export function clearRefreshCookie(request: Request, env: { COOKIE_DOMAIN?: string }): string {
+  const isLocal = isLocalHttpRequest(request);
   const domain = getCookieDomain(request, env);
   const domainSuffix = domain ? `; Domain=${domain}` : '';
-  return `refresh_token=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${domainSuffix}`;
+  const name = isLocal ? 'refresh_token' : (domain ? '__Secure-refresh_token' : '__Host-refresh_token');
+
+  return `${name}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${domainSuffix}`;
+}
+
+const REFRESH_COOKIE_CANDIDATES = [
+  '__Secure-refresh_token',
+  'refresh_token',
+  '__Host-refresh_token',
+] as const;
+
+export function getRefreshCookie(request: Request): string | null {
+  for (const candidate of REFRESH_COOKIE_CANDIDATES) {
+    const val = getCookie(request, candidate);
+    if (val) return val;
+  }
+  return null;
+}
+
+export function getCookie(request: Request, name: string): string | null {
+  const cookieHeader = request.headers.get('Cookie');
+  if (!cookieHeader) return null;
+
+  for (const part of cookieHeader.split(';')) {
+    const [rawKey, ...rawValueParts] = part.trim().split('=');
+    if (rawKey === name) {
+      const rawValue = rawValueParts.join('=');
+      return rawValue ? decodeURIComponent(rawValue) : '';
+    }
+  }
+
+  return null;
 }
 
 function isLocalHttpRequest(request: Request): boolean {
