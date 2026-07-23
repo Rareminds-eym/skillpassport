@@ -41,6 +41,116 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         }, context.request, { startTime });
       }
 
+      case 'get-recommended-courses': {
+        const { learnerId } = params;
+        if (!learnerId) return apiError(400, 'VALIDATION_ERROR', 'Missing learnerId', context.request, { startTime });
+
+        try {
+          // Get LTE API URL from environment
+          const lteApiUrl = (env as any).LTE_API_URL || 'http://127.0.0.1:8789';
+
+          // Fetch recommendations from skillpassport
+          const { data: recommendations, error: recError } = await supabase
+            .from('learner_course_recommendations')
+            .select('id, learner_id, course_id, role_id')
+            .eq('learner_id', learnerId)
+            .eq('status', 'active')
+            .order('relevance_score', { ascending: false });
+
+          if (recError) return apiDbError(recError, context.request, { startTime });
+
+          if (!recommendations || recommendations.length === 0) {
+            return apiSuccess([], context.request, { startTime });
+          }
+
+          // Group recommendations by role_id, filtering out invalid role_ids
+          const recsByRole: Record<string, any[]> = {};
+          recommendations.forEach((rec: any) => {
+            if (!rec.role_id || rec.role_id.trim() === '') return; // Skip empty/null role_ids
+            if (!recsByRole[rec.role_id]) recsByRole[rec.role_id] = [];
+            recsByRole[rec.role_id].push(rec);
+          });
+
+          // Fetch capabilities from LTE API for each role
+          const capMap: Record<string, any> = {};
+          const roleIds = Object.keys(recsByRole);
+
+          for (const roleId of roleIds) {
+            try {
+              const lteResponse = await fetch(`${lteApiUrl}/api/v1/capabilities`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ roleId })
+              });
+
+              if (lteResponse.ok) {
+                const { capabilities = [] } = await lteResponse.json();
+                capabilities.forEach((cap: any) => {
+                  capMap[cap.id] = {
+                    id: cap.id,
+                    name: cap.name,
+                    code: cap.code,
+                    description: cap.description
+                  };
+                });
+              } else {
+                console.warn(`[get-recommended-courses] LTE API returned ${lteResponse.status} for roleId=${roleId}`);
+              }
+            } catch (err: any) {
+              console.warn(`[get-recommended-courses] LTE API error for roleId=${roleId}:`, err?.message);
+            }
+          }
+
+          // Combine recommendations with capability details (LTE)
+          const result = recommendations.map((rec: any) => ({
+            ...rec,
+            capability: capMap[rec.course_id] || null
+          }));
+
+          // Collect course_ids not found in LTE (for fallback to old system)
+          const unfoundCourseIds = Array.from(new Set(
+            result
+              .filter((r: any) => !r.capability)
+              .map((r: any) => r.course_id)
+          ));
+
+          // Fallback: fetch missing courses from skillpassport courses table
+          if (unfoundCourseIds.length > 0) {
+            const { data: oldCourses, error: courseError } = await supabase
+              .from('courses')
+              .select('course_id, title, code, description')
+              .in('course_id', unfoundCourseIds);
+
+            if (!courseError && oldCourses) {
+              const oldCourseMap: Record<string, any> = {};
+              oldCourses.forEach((course: any) => {
+                oldCourseMap[course.course_id] = {
+                  id: course.course_id,
+                  name: course.title,
+                  code: course.code,
+                  description: course.description
+                };
+              });
+
+              // Update result with old course data
+              return apiSuccess(
+                result.map((rec: any) => ({
+                  ...rec,
+                  capability: rec.capability || oldCourseMap[rec.course_id] || null
+                })),
+                context.request,
+                { startTime }
+              );
+            }
+          }
+
+          return apiSuccess(result, context.request, { startTime });
+        } catch (error: any) {
+          console.error('[get-recommended-courses]', error?.message || error);
+          return apiError(500, 'INTERNAL_ERROR', error?.message || 'Failed to fetch recommendations', context.request, { startTime });
+        }
+      }
+
       case 'get-learning-courses': {
         const { learnerId } = params;
         if (!learnerId) return apiError(400, 'VALIDATION_ERROR', 'Missing learnerId', context.request, { startTime });
