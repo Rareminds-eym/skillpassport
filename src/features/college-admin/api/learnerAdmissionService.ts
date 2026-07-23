@@ -1,6 +1,26 @@
 import { apiPost } from '@/shared/api/apiClient';
 import type { LearnerAdmission, ApiResponse, BulkImportResult } from '@/shared/types/college';
 
+export interface BulkUploadStatus {
+  batch_id: string;
+  status: string;
+  total_rows: number;
+  processed_rows: number;
+  success_count: number;
+  failed_count: number;
+  pending_count: number;
+  progress_percentage: number;
+  created_at: string;
+  completed_at?: string;
+  errors_count: number;
+}
+
+export interface BulkUploadError {
+  row: number;
+  email: string;
+  error: string;
+}
+
 export const learnerAdmissionService = {
   async createApplication(data: Partial<LearnerAdmission>): Promise<ApiResponse<LearnerAdmission>> {
     try {
@@ -163,6 +183,61 @@ export const learnerAdmissionService = {
         error: {
           code: 'CGPA_ERROR',
           message: error?.message || error?.error?.message || 'Failed to calculate CGPA',
+        },
+      };
+    }
+  },
+
+  async queueBulkUpload(csvData: string, organizationId: string): Promise<ApiResponse<{ batch_id: string }>> {
+    try {
+      const result: any = await apiPost('/college-admin/admissions', {
+        action: 'bulk-upload-csv',
+        csv_data: csvData,
+        organization_id: organizationId,
+      });
+      return { success: true, data: result.data };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: {
+          code: 'QUEUE_ERROR',
+          message: error?.message || error?.error?.message || 'Failed to queue bulk upload',
+        },
+      };
+    }
+  },
+
+  async getBulkStatus(batchId: string): Promise<ApiResponse<BulkUploadStatus>> {
+    try {
+      const result: any = await apiPost('/college-admin/admissions', {
+        action: 'bulk-upload-status',
+        batch_id: batchId,
+      });
+      return { success: true, data: result.data };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: {
+          code: 'STATUS_ERROR',
+          message: error?.message || error?.error?.message || 'Failed to get batch status',
+        },
+      };
+    }
+  },
+
+  async getBulkErrors(batchId: string): Promise<ApiResponse<{ errors: BulkUploadError[]; total_errors: number }>> {
+    try {
+      const result: any = await apiPost('/college-admin/admissions', {
+        action: 'bulk-upload-errors',
+        batch_id: batchId,
+      });
+      return { success: true, data: result.data };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: {
+          code: 'ERRORS_ERROR',
+          message: error?.message || error?.error?.message || 'Failed to get batch errors',
         },
       };
     }

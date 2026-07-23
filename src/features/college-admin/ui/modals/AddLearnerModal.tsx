@@ -10,6 +10,7 @@ import { getFileSizeLimit } from '@/shared/config/fileSizeLimits'
 import { getLogger } from '@/shared/config/logging'
 import { useAuthStore } from '@/shared/model/authStore'
 import { ssoClient } from '@/shared/api/ssoClient';
+import { learnerAdmissionService } from '@/features/college-admin/api/learnerAdmissionService';
 
 
 interface DocumentUploadProgress {
@@ -70,6 +71,7 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
   const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null)
   const [documentUploadProgress, setDocumentUploadProgress] = useState<DocumentUploadProgress[]>([])
   const [isUploadingDocuments, setIsUploadingDocuments] = useState(false)
+  const [batchId, setBatchId] = useState<string | null>(null)
 
   const [formData, setFormData] = useState<LearnerFormData>({
     name: '',
@@ -788,14 +790,15 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
               }
             })
 
-          // Check which classes exist in database and store their IDs (only for schools)
+          // Check which classes exist in database and store their IDs
           const existingClasses = new Set<string>()
           const classIdMap = new Map<string, string>() // Map of "grade-section" to class_id
 
-          if (schoolId && classesToCheck.size > 0) {
+          if ((schoolId || collegeId) && classesToCheck.size > 0) {
+            // ponytail: Use college or school endpoint based on which ID we have
             const classResult = await apiPost<any>('/college-admin/classes', {
-              action: 'get-school-classes',
-              school_id: schoolId,
+              action: collegeId ? 'get-college-classes' : 'get-school-classes',
+              ...(collegeId ? { college_id: collegeId } : { school_id: schoolId }),
             })
             const classes = classResult?.data || []
 
@@ -889,287 +892,91 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
     setLoading(true)
     setError(null)
     setSuccess(null)
-    setUploadProgress(null)
+    setBatchId(null)
 
     try {
-      // Get session
-      const token = ssoClient.getAccessToken()
-      if (!token) {
-        throw new Error('Authentication expired. Please login again.')
+      // Resolve organization ID
+      const userStr = (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user"))
+      const userEmail = (useAuthStore.getState().user?.email || localStorage.getItem("userEmail"))
+
+      if (!userEmail) {
+        setError('You are not logged in. Please login and try again.')
+        setLoading(false)
+        return
       }
 
-      // Parse CSV using PapaParse
-      Papa.parse(csvFile, {
-        header: true,
-        skipEmptyLines: true,
-        transformHeader: (header) => header.trim().toLowerCase().replace(/[^a-z0-9]/g, ''),
-        complete: async (results) => {
-          try {
-            const learners: any[] = results.data as any[]
+      let organizationId = ''
+      try {
+        const userData = JSON.parse(userStr || '{}')
+        organizationId = userData.schoolId || userData.collegeId || ''
+      } catch {}
 
-            if (learners.length === 0) {
-              setError('CSV file contains no valid data')
-              setLoading(false)
-              return
-            }
-
-            // Get userEmail and schoolId FIRST (moved up)
-            const userEmail = (useAuthStore.getState().user?.email || localStorage.getItem("userEmail"))
-            const userStr = (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user"))
-
-            if (!userEmail) {
-              setError('You are not logged in. Please login and try again.')
-              setLoading(false)
-              return
-            }
-
-            let schoolId: string | null = null
-            let collegeId: string | null = null
-            let userRole: string | null = null
-            try {
-              const userData = JSON.parse(userStr || '{}')
-              schoolId = userData.schoolId || null
-              collegeId = userData.collegeId || null
-              userRole = userData.role || null
-            } catch (error: unknown) {
-              logger.error('Error parsing user data from localStorage', error instanceof Error ? error : new Error(String(error)))
-            }
-
-            // If collegeId not in localStorage but user is college_admin, fetch from organizations table
-            if (!collegeId && userRole === 'college_admin' && userEmail) {
-              const orgResult = await apiPost<any>('/college-admin/faculty', {
-                action: 'get-organization-by-email',
-                email: userEmail,
-                organization_type: 'college',
-              })
-
-              if (orgResult?.data?.id) {
-                collegeId = orgResult.data.id
-              }
-            }
-
-            // If schoolId not in localStorage but user is school_admin, fetch from organizations table
-            if (!schoolId && userRole === 'school_admin' && userEmail) {
-              const orgResult = await apiPost<any>('/college-admin/faculty', {
-                action: 'get-organization-by-email',
-                email: userEmail,
-                organization_type: 'school',
-              })
-
-              if (orgResult?.data?.id) {
-                schoolId = orgResult.data.id
-              }
-            }
-
-            // If schoolId not in localStorage, fetch from database (for educators)
-            if (!schoolId && !collegeId && userEmail) {
-              const educatorResult = await apiPost<any>('/college-admin/faculty', {
-                action: 'get-school-educators',
-                email: userEmail,
-              })
-              const educatorDataAry = educatorResult?.data || []
-
-              if (educatorDataAry[0]?.school_id) {
-                schoolId = educatorDataAry[0].school_id
-              }
-            }
-
-            if (!schoolId && !collegeId) {
-              setError('School/College ID not found. Please ensure you are logged in as a school or college admin.')
-              setLoading(false)
-              return
-            }
-
-            // Fetch class IDs for mapping
-            const classResult = await apiPost<any>('/college-admin/classes', {
-              action: 'get-school-classes',
-              school_id: schoolId,
-            })
-            const classesData = classResult?.data || []
-
-            const classIdMap = new Map<string, string>()
-            classesData.forEach((cls: any) => {
-              const key = `${cls.grade}-${cls.section}`
-              classIdMap.set(key, cls.id)
-            })
-
-            // Validate and prepare learners data
-            const validlearners: any[] = []
-            const errors: string[] = []
-
-            learners.forEach((learner, index) => {
-              const rowNum = index + 2 // +2 because index starts at 0 and there's a header row
-
-              // Validate required fields
-              if (!learner.name || !learner.name.trim()) {
-                errors.push(`Row ${rowNum}: Name is required`)
-                return
-              }
-              if (!learner.email || !learner.email.trim()) {
-                errors.push(`Row ${rowNum}: Email is required`)
-                return
-              }
-              if (!learner.contactnumber || !learner.contactnumber.trim()) {
-                errors.push(`Row ${rowNum}: Contact number is required`)
-                return
-              }
-
-              // Email validation
-              const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-              if (!emailRegex.test(learner.email)) {
-                errors.push(`Row ${rowNum}: Invalid email format`)
-                return
-              }
-
-              // Support both 'parent' and 'guardian' prefixes for parent/guardian fields
-              const guardianName = learner.guardianname || learner.parentname || null
-              const guardianPhone = learner.guardianphone || learner.parentphone || null
-              const guardianEmail = learner.guardianemail || learner.parentemail || null
-              const guardianRelation = learner.guardianrelation || learner.parentrelation || 'Parent'
-
-              // Get grade and section
-              const grade = learner.grade || learner.class || null
-              const section = learner.section || learner.division || null
-
-              // Look up the class ID
-              let schoolClassId: string | null = null
-              if (grade && section) {
-                const classKey = `${grade}-${section}`
-                schoolClassId = classIdMap.get(classKey) || null
-              }
-
-              validlearners.push({
-                row: rowNum,
-                data: {
-                  name: learner.name.trim(),
-                  email: learner.email.trim().toLowerCase(),
-                  contactNumber: learner.contactnumber.trim(),
-                  alternateNumber: learner.alternatenumber?.trim() || null,
-                  dateOfBirth: convertDateFormat(learner.dateofbirth),
-                  gender: learner.gender || null,
-                  enrollmentNumber: learner.enrollmentnumber || null,
-                  registrationNumber: learner.registrationnumber || null,
-                  rollNumber: learner.rollnumber || null,
-                  admissionNumber: learner.admissionnumber || null,
-                  category: learner.category || null,
-                  quota: learner.quota || null,
-                  grade: grade,
-                  section: section,
-                  academicYear: learner.academicyear || learner.year || null,
-                  schoolClassId: schoolClassId, // Use the looked-up class ID
-                  guardianName: guardianName,
-                  guardianPhone: guardianPhone,
-                  guardianEmail: guardianEmail,
-                  guardianRelation: guardianRelation,
-                  bloodGroup: learner.bloodgroup || null,
-                  district: learner.district || null,
-                  university: learner.university || null,
-                  collegeSchoolName: learner.collegeschoolname || null,
-                  profilePicture: learner.profilepicture || null,
-                  address: learner.address || null,
-                  city: learner.city || null,
-                  state: learner.state || null,
-                  country: learner.country || 'India',
-                  pincode: learner.pincode || null,
-                  approval_status: 'approved',
-                  learner_type: 'csv_import'
-                }
-              })
-            })
-
-            if (validlearners.length === 0) {
-              setError(`❌ No valid learners to import. Errors:\n${errors.slice(0, 10).join('\n')}`)
-              setLoading(false)
-              return
-            }
-
-            // Batch process learners (10 at a time)
-            const BATCH_SIZE = 10
-            let successCount = 0
-            let failureCount = 0
-            const processingErrors: string[] = [...errors]
-
-            setUploadProgress({ current: 0, total: validlearners.length })
-
-            for (let i = 0; i < validlearners.length; i += BATCH_SIZE) {
-              const batch = validlearners.slice(i, i + BATCH_SIZE)
-
-              const batchPromises = batch.map(async ({ row, data }) => {
-                try {
-                  const token = ssoClient.getAccessToken()
-
-                  if (!token) {
-                    throw new Error('No authentication token available')
-                  }
-
-                  const response = await userApiService.createLearner({
-                    userEmail: userEmail,
-                    schoolId: schoolId,
-                    collegeId: collegeId,
-                    learner: data
-                  }, token)
-
-                  // Map response to match expected format if needed, or adjust check below
-                  // userApiService returns { success: true, data: ... } or { success: false, error: ... }
-                  // The existing code expects 'response' object with .ok and .json()
-                  // We need to adapt the check below.
-
-                  // Since we can't easily change the downstream code in this block without replacing more lines,
-                  // let's mock the response object or adjust the check.
-                  // Actually, let's adjust the check in the next block.
-
-                  // Wait, I can replace the whole block including the check.
-
-                  const result = response; // userApiService returns the result object directly
-
-                  if (!result?.success) {
-                    const errorMsg = result?.error || 'Failed to create learner'
-                    processingErrors.push(`Row ${row}: ${errorMsg}`)
-                    return false
-                  }
-                  return true
-                } catch (err: any) {
-                  processingErrors.push(`Row ${row}: ${err.message}`)
-                  return false
-                }
-              })
-
-              const batchResults = await Promise.all(batchPromises)
-              successCount += batchResults.filter(Boolean).length
-              failureCount += batchResults.filter(r => !r).length
-
-              setUploadProgress({ current: Math.min(i + BATCH_SIZE, validlearners.length), total: validlearners.length })
-            }
-
-            // Display results
-            setUploadProgress(null)
-
-            if (successCount > 0 && failureCount === 0) {
-              setSuccess(`✅ Successfully imported ${successCount} learner${successCount > 1 ? 's' : ''}!`)
-              setError(null)
-              onSuccess?.()
-              setTimeout(() => {
-                onClose()
-              }, 2000)
-            } else if (successCount > 0 && failureCount > 0) {
-              setSuccess(`✅ Imported ${successCount} learner${successCount > 1 ? 's' : ''} successfully`)
-              setError(`⚠️ ${failureCount} failed:\n${processingErrors.slice(0, 5).join('\n')}${processingErrors.length > 5 ? `\n...and ${processingErrors.length - 5} more` : ''}`)
-              onSuccess?.()
-            } else {
-              setError(`❌ All imports failed. Errors:\n${processingErrors.slice(0, 10).join('\n')}${processingErrors.length > 10 ? `\n...and ${processingErrors.length - 10} more` : ''}`)
-              setSuccess(null)
-            }
-          } catch (err: any) {
-            setError(err.message || 'Failed to process CSV file')
-          } finally {
-            setLoading(false)
-          }
-        },
-        error: (error) => {
-          setError(`Failed to parse CSV: ${error.message}`)
-          setLoading(false)
+      if (!organizationId && userEmail) {
+        const orgResult = await apiPost<any>('/college-admin/faculty', {
+          action: 'get-organization-by-email',
+          email: userEmail,
+        })
+        if (orgResult?.data?.id) {
+          organizationId = orgResult.data.id
         }
-      })
+      }
+
+      if (!organizationId) {
+        setError('Organization ID not found. Please ensure you are logged in as a school or college admin.')
+        setLoading(false)
+        return
+      }
+
+      // Read CSV file as text
+      const csvText = await csvFile.text()
+
+      // Queue bulk upload
+      const queueResult = await learnerAdmissionService.queueBulkUpload(csvText, organizationId)
+      if (!queueResult.success) {
+        setError(queueResult.error?.message || 'Failed to queue bulk upload')
+        setLoading(false)
+        return
+      }
+
+      const bid = queueResult.data.batch_id
+      setBatchId(bid)
+      setUploadProgress({ current: 0, total: 100 })
+
+      // Poll for batch completion
+      const poll = async () => {
+        const statusResult = await learnerAdmissionService.getBulkStatus(bid)
+        if (!statusResult.success) return
+
+        const s = statusResult.data
+
+        if (s.status === 'completed' || s.status === 'failed') {
+          let errorList: string[] = []
+          if (s.failed_count > 0) {
+            const errResult = await learnerAdmissionService.getBulkErrors(bid)
+            if (errResult.success) {
+              errorList = errResult.data.errors.map((e: any) => `Row ${e.row}: ${e.error}`)
+            }
+          }
+          setUploadProgress(null)
+          setLoading(false)
+
+          if (s.success_count > 0 && s.failed_count === 0) {
+            setSuccess(`✅ Successfully imported ${s.success_count} learner${s.success_count > 1 ? 's' : ''}!`)
+            onSuccess?.()
+            setTimeout(() => onClose(), 2000)
+          } else if (s.success_count > 0 && s.failed_count > 0) {
+            setSuccess(`✅ Imported ${s.success_count} learner${s.success_count > 1 ? 's' : ''} successfully`)
+            setError(`⚠️ ${s.failed_count} failed:\n${errorList.slice(0, 5).join('\n')}${errorList.length > 5 ? `\n...and ${errorList.length - 5} more` : ''}`)
+            onSuccess?.()
+          } else {
+            setError(`❌ All imports failed. Errors:\n${errorList.slice(0, 10).join('\n')}${errorList.length > 10 ? `\n...and ${errorList.length - 10} more` : ''}`)
+          }
+        } else {
+          setTimeout(poll, 2000)
+        }
+      }
+
+      poll()
     } catch (err: any) {
       setError(err.message || 'Failed to upload CSV')
       setLoading(false)
@@ -1792,22 +1599,15 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                 </div>
               )}
 
-              {/* Upload Progress */}
-              {uploadProgress && (
-                <div className="mb-4 p-4 bg-primary-50 border border-primary-200 rounded-md">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-primary-900">
-                      Processing learners...
-                    </span>
-                    <span className="text-sm font-medium text-primary-900">
-                      {uploadProgress.current} / {uploadProgress.total}
-                    </span>
-                  </div>
-                  <div className="w-full bg-primary-200 rounded-full h-2.5">
-                    <div
-                      className="bg-primary-600 h-2.5 rounded-full transition-all duration-300"
-                      style={{ width: `${(uploadProgress.current / uploadProgress.total) * 100}%` }}
-                    ></div>
+              {/* Processing */}
+              {loading && uploadProgress && (
+                <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-md">
+                  <div className="flex items-center">
+                    <svg className="animate-spin h-5 w-5 text-blue-600 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span className="text-sm font-medium text-blue-900">Processing upload...</span>
                   </div>
                 </div>
               )}

@@ -187,8 +187,27 @@ async function handleUpdateOrganization(supabase: any, context: AuthenticatedCon
   const { id, name, address, phone, email } = body;
   if (!id) return apiError(400, 'VALIDATION_ERROR', 'id is required', context.request);
 
-  const { error } = await supabase.from('organizations').update({ name, address, phone, email, updated_at: new Date().toISOString() }).eq('id', id).eq('organization_type', 'school');
+  // Update Skillpassport DB (app-specific fields: address, phone, email, etc.)
+  const { error } = await supabase
+    .from('organizations')
+    .update({ name, address, phone, email, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .eq('organization_type', 'school');
+  
   if (error) throw error;
+
+  // If name changed, sync to SSO DB (source of truth for auth-related org data)
+  // SSO stores minimal org data (id, name, slug) for auth contexts like org switcher
+  if (name && context.env.SSO_SERVICE) {
+    try {
+      await context.env.SSO_SERVICE.updateOrganization({ id, name });
+      console.log(`[settings] Synced org name to SSO: ${id} -> "${name}"`);
+    } catch (syncError) {
+      // Don't fail request if SSO sync fails - Skillpassport update succeeded
+      console.error('[settings] Failed to sync org name to SSO:', syncError);
+    }
+  }
+
   return apiSuccess({ success: true }, context.request);
 }
 

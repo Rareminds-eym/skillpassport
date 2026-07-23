@@ -786,20 +786,59 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       case 'create-organization': {
         const { organization_type, collegeData, userId } = params;
         if (!collegeData) return apiError(400, 'VALIDATION_ERROR', 'Missing collegeData', context.request, { startTime });
-        const insertData: Record<string, any> = {
-          ...collegeData,
-          organization_type: organization_type || 'college',
-          admin_id: userId || user.id,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        };
-        const { data, error } = await supabase
-          .from('organizations')
-          .insert([insertData])
-          .select()
-          .single();
-        if (error) return apiDbError(error, context.request, { startTime });
-        return apiSuccess(data, context.request, { startTime });
+        
+        // ✅ Create organization in SSO DB first (source of truth)
+        // Then sync to Skillpassport via auth-db-sync-queue
+        try {
+          if (!env.SSO_SERVICE) {
+            return apiError(500, 'SSO_ERROR', 'SSO_SERVICE not configured', context.request, { startTime });
+          }
+          
+          // Call SSO Worker to create org
+          const ssoResult = await env.SSO_SERVICE.createOrganization({
+            name: collegeData.name,
+            slug: collegeData.slug || collegeData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+            created_by: userId || user.id,
+            metadata: {
+              organization_type: organization_type || 'college',
+              ...collegeData
+            }
+          });
+          
+          if (!ssoResult.success) {
+            return apiError(500, 'SSO_ERROR', ssoResult.error || 'Failed to create organization', context.request, { startTime });
+          }
+          
+          console.log(`[college-admin] Created organization ${ssoResult.org_id} in SSO, waiting for sync to Skillpassport`);
+          
+          // Wait briefly for sync queue to process (async operation)
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          // Fetch the synced organization from Skillpassport
+          const { data, error } = await supabase
+            .from('organizations')
+            .select('*')
+            .eq('id', ssoResult.org_id)
+            .single();
+          
+          if (error || !data) {
+            // Org created in SSO but not synced yet, return SSO data
+            return apiSuccess({
+              id: ssoResult.org_id,
+              name: collegeData.name,
+              organization_type: organization_type || 'college',
+              admin_id: userId || user.id,
+              created_at: new Date().toISOString(),
+              message: 'Organization created in SSO, syncing to Skillpassport'
+            }, context.request, { startTime });
+          }
+          
+          return apiSuccess(data, context.request, { startTime });
+        } catch (err) {
+          const errorMsg = err instanceof Error ? err.message : String(err);
+          console.error(`[college-admin] Error creating organization:`, errorMsg);
+          return apiError(500, 'CREATE_ORG_ERROR', errorMsg, context.request, { startTime });
+        }
       }
 
       case 'get-organizations': {

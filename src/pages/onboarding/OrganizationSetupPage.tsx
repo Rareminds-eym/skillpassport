@@ -20,25 +20,9 @@ export default function OrganizationSetupPage() {
         }
     }, [organizationType, navigate]);
 
-    const handleComplete = () => {
-        // Navigate back to the admin dashboard after setup
-        const dashboardPaths: Record<OrganizationType, string> = {
-            college: '/college-admin/dashboard',
-            school: '/school-admin/dashboard',
-            university: '/university-admin/dashboard',
-        };
-
-        navigate(dashboardPaths[organizationType] || '/', { replace: true });
-    };
-
     if (!organizationType) {
         return null;
     }
 
-    return (
-        <OrganizationSetup
-            organizationType={organizationType}
-            onComplete={handleComplete}
-        />
-    );
+    return <OrganizationSetup organizationType={organizationType} />;
 }

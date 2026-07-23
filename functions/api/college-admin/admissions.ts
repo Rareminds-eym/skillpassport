@@ -6,11 +6,12 @@
 import { withAuth, getContextUser } from '../../lib/auth';
 import { getServiceClient } from '../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import { apiSuccess, apiDbError, apiError, apiMethodNotAllowed } from '../../lib/response';
+import type { PagesEnv } from '../../lib/types';
+import { apiSuccess, apiDbError, apiError } from '../../lib/response';
 
 export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   const user = getContextUser(context);
-  const env = context.env as Record<string, string>;
+  const env = context.env as unknown as PagesEnv;
   const supabase = getServiceClient(env as any);
 
   const url = new URL(context.request.url);
@@ -35,7 +36,7 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const user = getContextUser(context);
-  const env = context.env as Record<string, string>;
+  const env = context.env as unknown as PagesEnv;
   const supabase = getServiceClient(env as any);
 
   let body: Record<string, any>;
@@ -58,10 +59,39 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
     switch (action) {
       case 'create-application': {
-        const appNumber = `APP${Date.now()}${Math.floor(Math.random() * 1000)}`;
-        const { data, error } = await supabase.from('learner_admissions').insert([{ ...params, application_number: appNumber, status: 'applied' }]).select().single();
-        if (error) return apiDbError(error, context.request, { startTime });
-        return apiSuccess(data, context.request, { startTime });
+        // Create learner via SSO (creates user account + sends invitation)
+        const { email, name, organization_id, contact_number, enrollment_number, program_id, metadata } = params;
+        
+        if (!email || !name || !organization_id) {
+          return apiError(400, 'VALIDATION_ERROR', 'Missing required fields: email, name, organization_id', context.request, { startTime });
+        }
+        
+        // Call SSO to create learner user
+        const ssoResult = await env.SSO_SERVICE.createLearnerUser({
+          email,
+          name,
+          organization_id,
+          contact_number,
+          enrollment_number,
+          program_id,
+          metadata
+        });
+        
+        if (!ssoResult.success) {
+          return apiError(500, 'SSO_ERROR', ssoResult.error || 'Failed to create learner user', context.request, { startTime });
+        }
+        
+        console.log(`[admissions] Created learner user ${ssoResult.user_id} via SSO`);
+        
+        // User will be synced to learners table via auth-db-sync-queue
+        // Invitation email will be sent via learner-email-queue
+        
+        return apiSuccess({
+          user_id: ssoResult.user_id,
+          email,
+          message: 'Learner created successfully. Invitation email will be sent shortly.',
+          temp_password: ssoResult.temp_password // Return temp password for admin reference
+        }, context.request, { startTime });
       }
 
       case 'verify-documents': {
@@ -170,6 +200,92 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const { data, error } = await query;
         if (error) return apiDbError(error, context.request, { startTime });
         return apiSuccess(data || [], context.request, { startTime });
+      }
+
+      case 'bulk-upload-csv': {
+        // Bulk CSV upload - queues processing job via SSO RPC
+        const { csv_data, organization_id } = params;
+        
+        if (!csv_data || !organization_id) {
+          return apiError(400, 'VALIDATION_ERROR', 'Missing required fields: csv_data, organization_id', context.request, { startTime });
+        }
+        
+        console.log(`[admissions] Starting bulk upload for org ${organization_id}`);
+        
+        // Call SSO Worker RPC to queue bulk upload
+        if (!env.SSO_SERVICE) {
+          return apiError(500, 'SSO_ERROR', 'SSO_SERVICE not configured', context.request, { startTime });
+        }
+        
+        const result = await env.SSO_SERVICE.queueBulkLearnerUpload({
+          csv_data,
+          organization_id,
+          admin_id: user.id
+        });
+        
+        if (!result.success) {
+          return apiError(500, 'QUEUE_ERROR', result.error || 'Failed to queue bulk upload', context.request, { startTime });
+        }
+        
+        console.log(`[admissions] Queued bulk upload batch ${result.batch_id}`);
+        
+        return apiSuccess({
+          batch_id: result.batch_id,
+          status: 'processing',
+          message: 'CSV upload queued for processing. Use batch_id to check progress.'
+        }, context.request, { startTime });
+      }
+
+      case 'bulk-upload-status': {
+        const { batch_id } = params;
+        if (!batch_id) {
+          return apiError(400, 'VALIDATION_ERROR', 'Missing batch_id', context.request, { startTime });
+        }
+        
+        const metadata = await env.SSO_SERVICE.getBulkUploadStatus(batch_id);
+        
+        if (!metadata || metadata.status === 'pending') {
+          return apiSuccess({
+            batch_id,
+            status: 'pending',
+            total_rows: 0, processed_rows: 0,
+            success_count: 0, failed_count: 0, pending_count: 0,
+            progress_percentage: 0, errors_count: 0
+          }, context.request, { startTime });
+        }
+        
+        return apiSuccess({
+          batch_id: metadata.batch_id,
+          status: metadata.status,
+          total_rows: metadata.total_rows,
+          processed_rows: metadata.processed_rows,
+          success_count: metadata.success_count,
+          failed_count: metadata.failed_count,
+          pending_count: metadata.total_rows - metadata.processed_rows,
+          progress_percentage: metadata.total_rows > 0
+            ? Math.round((metadata.processed_rows / metadata.total_rows) * 100) : 0,
+          created_at: metadata.created_at,
+          completed_at: metadata.completed_at,
+          errors_count: metadata.errors?.length || 0
+        }, context.request, { startTime });
+      }
+
+      case 'bulk-upload-errors': {
+        const { batch_id } = params;
+        if (!batch_id) {
+          return apiError(400, 'VALIDATION_ERROR', 'Missing batch_id', context.request, { startTime });
+        }
+        
+        const metadata = await env.SSO_SERVICE.getBulkUploadStatus(batch_id);
+        if (!metadata) {
+          return apiError(404, 'NOT_FOUND', `Batch ${batch_id} not found`, context.request, { startTime });
+        }
+        
+        return apiSuccess({
+          batch_id: metadata.batch_id,
+          errors: metadata.errors,
+          total_errors: metadata.errors.length
+        }, context.request, { startTime });
       }
 
       default:

@@ -8,6 +8,7 @@ interface SignupMemberBody {
   org_id?: string;
   redirect_url?: string;
   user_metadata?: Record<string, unknown>;
+  user_metadata?: Record<string, unknown>;
 }
 
 export async function onRequestPost(context: {
@@ -36,11 +37,11 @@ export async function onRequestPost(context: {
   const rawMetadata = body.user_metadata;
   const user_metadata = rawMetadata && typeof rawMetadata === 'object'
     ? {
-        firstName: typeof rawMetadata.firstName === 'string' ? rawMetadata.firstName : undefined,
-        lastName: typeof rawMetadata.lastName === 'string' ? rawMetadata.lastName : undefined,
-        phone: typeof rawMetadata.phone === 'string' ? rawMetadata.phone : undefined,
-        avatarUrl: typeof rawMetadata.avatarUrl === 'string' || rawMetadata.avatarUrl === null ? rawMetadata.avatarUrl : undefined,
-      }
+      firstName: typeof rawMetadata.firstName === 'string' ? rawMetadata.firstName : undefined,
+      lastName: typeof rawMetadata.lastName === 'string' ? rawMetadata.lastName : undefined,
+      phone: typeof rawMetadata.phone === 'string' ? rawMetadata.phone : undefined,
+      avatarUrl: typeof rawMetadata.avatarUrl === 'string' || rawMetadata.avatarUrl === null ? rawMetadata.avatarUrl : undefined,
+    }
     : undefined;
 
   if (!env.SSO_SERVICE) {
@@ -55,7 +56,7 @@ export async function onRequestPost(context: {
       role: body.role,
       org_id: body.org_id,
       redirect_url: body.redirect_url,
-      user_metadata,
+      user_metadata: body.user_metadata,
       ip,
       ua,
     });

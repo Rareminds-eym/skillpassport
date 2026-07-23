@@ -35,6 +35,16 @@ export async function handleCreateLearner(request: Request, env: any): Promise<R
       section?: string;
       guardianName?: string;
       guardianPhone?: string;
+      rollNumber?: string;
+      category?: string;
+      quota?: string;
+      address?: string;
+      city?: string;
+      state?: string;
+      country?: string;
+      pincode?: string;
+      district?: string;
+      bloodGroup?: string;
     };
     userEmail: string;
     schoolId?: string;
@@ -123,120 +133,68 @@ export async function handleCreateLearner(request: Request, env: any): Promise<R
     return apiError(400, 'VALIDATION_ERROR', 'School/College ID not found', request);
   }
 
-  // Check if email already exists
-  const { data: existingAuthUsers } = await supabaseAdmin.auth.admin.listUsers();
-  const emailExists = existingAuthUsers?.users?.some(
-    (u: any) => u.email === learner.email.toLowerCase()
-  );
-  if (emailExists) {
-    return apiError(400, 'VALIDATION_ERROR', `Learner with email ${learner.email} already exists`, request);
-  }
+  const organizationId = schoolId || collegeId;
 
-  const { data: existingLearner } = await supabaseAdmin
-    .from('learners')
-    .select('id')
-    .eq('email', learner.email.toLowerCase())
-    .maybeSingle();
-  if (existingLearner) {
-    return apiError(400, 'VALIDATION_ERROR', `Learner with email ${learner.email} already exists`, request);
-  }
-
-  const learnerPassword = generatePassword();
-  const learnerRole = institutionType === 'college' ? 'learner' : 'learner';
-
-  // Create auth user
-  const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
-    email: learner.email.toLowerCase(),
-    password: learnerPassword,
-    email_confirm: true,
-    user_metadata: {
-      name: learner.name,
-      role: learnerRole,
-      phone: learner.contactNumber,
-      password: learnerPassword,
-      added_by: userId,
-    },
-  });
-
-  if (authError || !authUser.user) {
-    return apiError(500, 'INTERNAL_ERROR', `Failed to create auth account: ${authError?.message}`, request);
-  }
-
+  // NEW APPROACH: Call SSO Worker's createLearnerUser RPC
+  // This creates user in SSO, syncs to Skillpassport, and queues invitation email
   try {
-    // Create public.users record
-    const { firstName, lastName } = splitName(learner.name);
-
-    await supabaseAdmin.from('users').insert({
-      id: authUser.user.id,
+    const ssoResult = await env.SSO_SERVICE.createLearnerUser({
       email: learner.email.toLowerCase(),
-      firstName,
-      lastName,
-      role: learnerRole,
-      organizationId: schoolId || collegeId,
-      isActive: true,
+      name: learner.name,
+      organization_id: organizationId,
+      contact_number: learner.contactNumber,
+      enrollment_number: learner.enrollmentNumber || undefined,
       metadata: {
-        source: `${institutionType}_admin_added`,
-        schoolId,
-        collegeId,
-        addedBy: userId,
-        password: learnerPassword,
-      },
-    });
-
-    // Create learners record
-    const age = calculateAge(learner.dateOfBirth || '');
-
-    const { data: learnerRecord, error: learnerError } = await supabaseAdmin
-      .from('learners')
-      .insert({
-        user_id: authUser.user.id,
-        email: learner.email.toLowerCase(),
-        name: learner.name,
-        contactNumber: learner.contactNumber,
-        contact_number: learner.contactNumber,
-        dateOfBirth: learner.dateOfBirth || null,
-        date_of_birth: learner.dateOfBirth || null,
-        age,
-        gender: learner.gender || null,
-        enrollmentNumber: learner.enrollmentNumber || null,
-        grade: learner.grade || null,
-        section: learner.section || null,
-        guardianName: learner.guardianName || null,
-        guardianPhone: learner.guardianPhone || null,
+        dateOfBirth: learner.dateOfBirth || undefined,
+        gender: learner.gender || undefined,
+        grade: learner.grade || undefined,
+        section: learner.section || undefined,
+        guardianName: learner.guardianName || undefined,
+        guardianPhone: learner.guardianPhone || undefined,
+        rollNumber: learner.rollNumber || undefined,
+        category: learner.category || undefined,
+        quota: learner.quota || undefined,
+        address: learner.address || undefined,
+        city: learner.city || undefined,
+        state: learner.state || undefined,
+        country: learner.country || undefined,
+        pincode: learner.pincode || undefined,
+        district: learner.district || undefined,
+        bloodGroup: learner.bloodGroup || undefined,
         school_id: schoolId,
         college_id: collegeId,
         learner_type: institutionType === 'college' ? 'direct' : 'learner',
         approval_status: 'approved',
-        metadata: {
-          source: `${institutionType}_admin_added`,
-          addedBy: userId,
-          password: learnerPassword,
-        },
-      })
-      .select()
-      .single();
+        source: `${institutionType}_admin_added`,
+        addedBy: userId,
+      },
+    });
 
-    if (learnerError) {
-      throw new Error(`Failed to create learner profile: ${learnerError.message}`);
+    if (!ssoResult.success) {
+      return apiError(500, 'SSO_ERROR', ssoResult.error || 'Failed to create learner in SSO', request);
     }
 
+    console.log(`[handleCreateLearner] Created learner ${ssoResult.user_id} via SSO, invitation email queued`);
+
+    // User will be synced to Skillpassport DB via auth-db-sync-queue
+    // Email will be sent via learner-email-queue
+    
     return apiSuccess({
-      message: `Learner ${learner.name} created successfully`,
+      message: `Learner ${learner.name} created successfully. Invitation email will be sent shortly.`,
       data: {
-        authUserId: authUser.user.id,
-        learnerId: learnerRecord.id,
-        email: learner.email,
+        authUserId: ssoResult.user_id,
+        learnerId: ssoResult.user_id, // Will be created in Skillpassport DB via sync queue
+        email: learner.email.toLowerCase(),
         name: learner.name,
-        password: learnerPassword,
+        password: ssoResult.temp_password,
         institutionType,
         schoolId,
         collegeId,
       },
     }, request);
   } catch (error) {
-    // Rollback auth user
-    await deleteAuthUser(supabaseAdmin, authUser.user.id);
-    return apiError(400, 'VALIDATION_ERROR', (error as Error).message, request);
+    console.error('[handleCreateLearner] Error calling SSO:', error);
+    return apiError(500, 'INTERNAL_ERROR', (error as Error).message, request);
   }
 }
 
