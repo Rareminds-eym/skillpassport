@@ -748,13 +748,7 @@ export async function analyzeCollege(
         console.error('[ANALYZE-COLLEGE] Failed to store gemini_results:', geminiUpdateError.message);
       }
 
-      // Step 19: Fetch and save capabilities for recommended roles
-      if (careerFit?.clusters && Array.isArray(careerFit.clusters) && userId && resultId) {
-        console.log('[CAPABILITIES] Starting capability fetch with:', { userId, resultId, clusterCount: careerFit.clusters.length });
-        await fetchAndSaveCapabilities(supabase, userId, resultId, careerFit.clusters, context.env as Record<string, string>);
-      } else {
-        console.warn('[CAPABILITIES] Skipping - missing required data:', { hasCluster: !!careerFit?.clusters, userId, resultId });
-      }
+      // Step 19: Capabilities now loaded lazily on frontend when user clicks Courses page
     } catch (clusterError) {
       // Clustering failed — delete incomplete result and return error for frontend to retry
       console.error('[ANALYZE-COLLEGE] Career cluster generation failed:', clusterError);
@@ -809,86 +803,3 @@ export async function analyzeCollege(
   }
 }
 
-/**
- * Fetch capabilities for recommended roles and save to learner_course_recommendations
- */
-async function fetchAndSaveCapabilities(
-  supabase: any,
-  userId: string,
-  assessmentResultId: string,
-  clusters: any[],
-  env: Record<string, string>
-) {
-  try {
-    // Validate required parameters
-    if (!userId || !assessmentResultId) {
-      console.warn('[CAPABILITIES] Missing required parameters:', { userId, assessmentResultId });
-      return;
-    }
-
-    const lteClient = createLTEClient(env);
-    const recommendations: any[] = [];
-
-    console.log('[CAPABILITIES] Starting with assessmentResultId:', assessmentResultId);
-
-    for (const cluster of clusters) {
-      if (!cluster.occupationIds || !Array.isArray(cluster.occupationIds)) continue;
-
-      for (const occupationId of cluster.occupationIds) {
-        try {
-          const response = await lteClient.request<any>(
-            '/api/v1/capabilities',
-            { roleId: occupationId }
-          );
-
-          if (response.success && response.capabilities && Array.isArray(response.capabilities)) {
-            // Transform capabilities into recommendations, tracking which role each is for
-            response.capabilities.forEach((cap: any, idx: number) => {
-              const rec = {
-                learner_id: userId,  // Use user_id for FK to learners table
-                course_id: cap.id, // Store capability ID in course_id column
-                role_id: occupationId, // Track which role this capability is for
-                assessment_result_id: assessmentResultId, // MUST be set here
-                relevance_score: 100 - (idx * 5), // Priority based on sequence
-                match_reasons: [cap.name, cap.description || ''].filter(Boolean),
-                skill_gaps_addressed: [cap.code || cap.name],
-                recommendation_type: 'assessment',
-                status: 'active',
-                recommended_at: new Date().toISOString(),
-              };
-
-              // Validate assessment_result_id is set before adding
-              if (!rec.assessment_result_id) {
-                console.warn('[CAPABILITIES] Skipping recommendation with null assessment_result_id:', { learner: rec.learner_id, role: rec.role_id });
-              } else {
-                recommendations.push(rec);
-              }
-            });
-            console.log(`[CAPABILITIES] Processed ${response.capabilities.length} capabilities for role ${occupationId}`);
-          }
-        } catch (err) {
-          console.warn(`[CAPABILITIES] Failed to fetch for role ${occupationId}:`, err instanceof Error ? err.message : err);
-        }
-      }
-    }
-
-    if (recommendations.length > 0) {
-      console.log('[CAPABILITIES] Recommendations before save:', JSON.stringify(recommendations.slice(0, 1)));
-      const { data, error } = await supabase
-        .from('learner_course_recommendations')
-        .upsert(recommendations, { onConflict: 'learner_id,course_id,role_id,assessment_result_id', ignoreDuplicates: false })
-        .select();
-
-      if (error) {
-        console.error('[CAPABILITIES] Failed to save to database:', { error: error.message, code: error.code, details: error.details, userId });
-      } else {
-        const savedWithId = data?.filter((r: any) => r.assessment_result_id).length || 0;
-        console.log(`[CAPABILITIES] Successfully saved ${recommendations.length} capability recommendations for user ${userId} (${savedWithId} with assessment_result_id)`);
-      }
-    } else {
-      console.log('[CAPABILITIES] No capabilities to save');
-    }
-  } catch (err) {
-    console.error('[CAPABILITIES] Fetch and save failed:', err instanceof Error ? err.message : err);
-  }
-}

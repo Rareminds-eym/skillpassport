@@ -46,13 +46,20 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         if (!learnerId) return apiError(400, 'VALIDATION_ERROR', 'Missing learnerId', context.request, { startTime });
 
         try {
-          // Get LTE API URL from environment
-          const lteApiUrl = (env as any).LTE_API_URL || 'http://127.0.0.1:8789';
-
-          // Fetch recommendations from skillpassport
+          // Fetch recommendations with DENORMALIZED capability columns (no LTE API calls)
           const { data: recommendations, error: recError } = await supabase
             .from('learner_course_recommendations')
-            .select('id, learner_id, course_id, role_id')
+            .select(`
+              id,
+              learner_id,
+              course_id,
+              role_id,
+              capability_id,
+              capability_name,
+              capability_code,
+              capability_description,
+              cached_at
+            `)
             .eq('learner_id', learnerId)
             .eq('status', 'active')
             .order('relevance_score', { ascending: false });
@@ -63,63 +70,34 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
             return apiSuccess([], context.request, { startTime });
           }
 
-          // Group recommendations by role_id, filtering out invalid role_ids
-          const recsByRole: Record<string, any[]> = {};
-          recommendations.forEach((rec: any) => {
-            if (!rec.role_id || rec.role_id.trim() === '') return; // Skip empty/null role_ids
-            if (!recsByRole[rec.role_id]) recsByRole[rec.role_id] = [];
-            recsByRole[rec.role_id].push(rec);
+          // Transform recommendations to include capability object
+          const result = recommendations.map((rec: any) => {
+            // Build capability from denormalized columns
+            const capability = rec.capability_id ? {
+              id: rec.capability_id,
+              name: rec.capability_name || '',
+              code: rec.capability_code || '',
+              description: rec.capability_description || ''
+            } : null;
+
+            return {
+              id: rec.id,
+              learner_id: rec.learner_id,
+              course_id: rec.course_id,
+              role_id: rec.role_id,
+              capability
+            };
           });
 
-          // Fetch capabilities from LTE API for each role
-          const capMap: Record<string, any> = {};
-          const roleIds = Object.keys(recsByRole);
+          // Fallback: fetch missing capability data from old courses table for unfound capabilities
+          const unfoundRecs = result.filter((r: any) => !r.capability);
 
-          for (const roleId of roleIds) {
-            try {
-              const lteResponse = await fetch(`${lteApiUrl}/api/v1/capabilities`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ roleId })
-              });
-
-              if (lteResponse.ok) {
-                const { capabilities = [] } = await lteResponse.json();
-                capabilities.forEach((cap: any) => {
-                  capMap[cap.id] = {
-                    id: cap.id,
-                    name: cap.name,
-                    code: cap.code,
-                    description: cap.description
-                  };
-                });
-              } else {
-                console.warn(`[get-recommended-courses] LTE API returned ${lteResponse.status} for roleId=${roleId}`);
-              }
-            } catch (err: any) {
-              console.warn(`[get-recommended-courses] LTE API error for roleId=${roleId}:`, err?.message);
-            }
-          }
-
-          // Combine recommendations with capability details (LTE)
-          const result = recommendations.map((rec: any) => ({
-            ...rec,
-            capability: capMap[rec.course_id] || null
-          }));
-
-          // Collect course_ids not found in LTE (for fallback to old system)
-          const unfoundCourseIds = Array.from(new Set(
-            result
-              .filter((r: any) => !r.capability)
-              .map((r: any) => r.course_id)
-          ));
-
-          // Fallback: fetch missing courses from skillpassport courses table
-          if (unfoundCourseIds.length > 0) {
+          if (unfoundRecs.length > 0) {
+            const courseIds = Array.from(new Set(unfoundRecs.map((r: any) => r.course_id)));
             const { data: oldCourses, error: courseError } = await supabase
               .from('courses')
               .select('course_id, title, code, description')
-              .in('course_id', unfoundCourseIds);
+              .in('course_id', courseIds);
 
             if (!courseError && oldCourses) {
               const oldCourseMap: Record<string, any> = {};
@@ -132,7 +110,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
                 };
               });
 
-              // Update result with old course data
+              // Update unfound records with old course data
               return apiSuccess(
                 result.map((rec: any) => ({
                   ...rec,

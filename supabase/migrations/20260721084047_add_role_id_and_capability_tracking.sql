@@ -2,10 +2,14 @@
 -- Purpose: Support both course and capability recommendations with role tracking
 -- Pattern: Expand-Migrate-Contract (Phase 1: Expand)
 
--- 1. Remove foreign key constraint on course_id
+-- 1. Make course_id nullable for new capability-based recommendations
+ALTER TABLE learner_course_recommendations
+ALTER COLUMN course_id DROP NOT NULL;
+
+-- 2. Remove foreign key constraint on course_id
 -- Allows storing capability IDs from LTE without FK violation
 ALTER TABLE learner_course_recommendations
-DROP CONSTRAINT learner_course_recommendations_course_id_fkey;
+DROP CONSTRAINT IF EXISTS learner_course_recommendations_course_id_fkey;
 
 -- 2. Update course_id column comment to explain dual-use pattern
 COMMENT ON COLUMN learner_course_recommendations.course_id IS

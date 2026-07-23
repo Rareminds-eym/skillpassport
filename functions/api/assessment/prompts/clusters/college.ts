@@ -362,30 +362,53 @@ salary RULES (HONEST MARKET EVALUATION — think before writing numbers):
 - Ranges must be plausible and tight (span of 3-5 LPA, e.g. 4-7, not 5-25). If genuinely
   uncertain about a niche role, use the band of its nearest well-known equivalent role.
 
-overallSummary RULES (STUDENT-CENTRIC — written FOR the learner, not ABOUT them):
-- 3-4 sentences, ~80-100 words, second person ("You are...") or direct address to the learner
-- **PURPOSE**: Validate their strengths, show clear career direction, identify ONE honest gap, inspire growth
-- **MUST INCLUDE** (in this order):
-  1. **Celebration** (opening): Name 2-3 actual strengths they have (combine interests + cognitive + personality)
-  2. **Career Direction** (middle): Show clear career direction, explain WHY they fit there
-  3. **Honest Gap** (reality check): ONE main area to develop, framed as learnable/growable
-  4. **Growth Mindset** (closing): Encourage action + confidence in their unique combination
+overallSummary RULES (STUDENT-FRIENDLY, EMOTIONALLY CONNECTED SUMMARY):
 
-- **BANNED**: "should", "consider", "might want to", "the learner", scores/percentages, vague praise, em-dashes (—), hyphens connecting clauses
-- **REQUIRED**: Specific strength names, specific ONE gap (not multiple), action-oriented encouragement, use periods or commas instead of dashes
+**PURPOSE:** Write a simple, personalized summary that helps the learner feel seen, hopeful, and confident about starting a career connected to their subject, field, and area of interest.
 
-**EXAMPLES (Student-Centric):**
-- "You're naturally a logical thinker who works well with people. That combination is valuable. Your best fit is in Student Services Leadership, where analytical thinking meets relationship-building. Financial roles interest you too, but need stronger quantitative foundation. That's learnable through dedicated practice. Your analytical mindset is your superpower; channel it strategically and you'll differentiate yourself."
-- "You excel at strategic analysis and have strong drive for impact. That's a rare combination. Management & Operations is your best path where systematic thinking and leadership converge. Your secondary interest in analytics is viable but requires building comfort with detailed data work. You're positioned well for roles that need both vision and execution ability."
+**STYLE:**
+- Write directly to learner using "You" and "Your"
+- Use simple language college students understand
+- Sound like a professional career counselor
+- Feel warm, encouraging, and emotionally connected to the learner's actual strengths and interests
+- Connect the summary clearly to their program/stream, preferred field, and career direction
+- Give strong hope and steady confidence, without exaggerating or making unrealistic promises
+- Use natural, complete sentences that flow smoothly; avoid stiff phrases like "with a strong interest... that drives your desire"
+- NO technical assessment terms
+- NO scoring or logic explanation
 
-**VALIDATION BEFORE SUBMITTING:**
-✓ Is it written TO the learner (you/your), not ABOUT them?
-✓ Does it celebrate 2-3 specific strengths they actually have?
-✓ Does it explain WHY they fit in their career direction?
-✓ Does it identify ONE specific gap?
-✓ Is that gap framed as learnable/actionable?
-✓ Does it end with growth mindset encouragement?
-✓ NO banned words or percentages?
+**FORMAT:** 3-4 sentences, 70-90 words
+
+**STRUCTURE:**
+
+1. YOUR STRENGTHS + INTEREST CONNECTION (Opening): 2-3 real strengths from profile, linked to their subject/field/area of interest
+   Example: "You show curiosity, analytical thinking, and creativity, and your interest in agricultural science can guide you toward solving real farming and food-production problems."
+
+2. YOUR CAREER DIRECTION (Middle): Type of work that matches them
+   Example: "Your strengths fit careers where you can improve crop production, support better farming practices, and bring useful ideas into the agriculture field."
+
+3. YOUR GROWTH AREA (One only): Most important area to improve, framed positively
+   Example: "Building practical project experience will help you apply skills with confidence."
+
+4. ENCOURAGING ENDING: Hope, confidence, and emotional reassurance for starting their career
+   Example: "With steady practice, your interest in agriculture and your problem-solving strengths can help you begin this career path with real confidence."
+
+**VALIDATION:**
+✓ Written TO learner, not ABOUT
+✓ Simple words
+✓ Every sentence is grammatically complete and reads naturally aloud
+✓ 2-3 actual strengths
+✓ Mentions or clearly reflects their subject, field, or area of interest
+✓ Feels personally encouraging, not generic
+✓ Career direction clear
+✓ ONE growth area only
+✓ Positive, hopeful, confidence-building tone
+✓ Honest and realistic, not overpromising
+✓ NO scores/percentages
+✓ NO RIASEC/Big Five/aptitude names
+✓ NO "should/consider/might"
+✓ NO "the learner"
+✓ NO underscores/dashes
 
 🚨 **PRE-SUBMISSION VALIDATION CHECKLIST (MANDATORY)**:
 

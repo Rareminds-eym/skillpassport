@@ -74,12 +74,12 @@ const TrainingRecommendations = ({ recommendations }) => {
   }, [authUser?.id]);
 
   const handleCourseClick = useCallback((item) => {
-    if (item.source === 'lte') {
-      // New system - navigate to my-learning
+    if (item.source === 'lte' && item.course_id) {
+      // LTE course - navigate to my learning page
       navigate('/learner/my-learning');
-    } else {
-      // Old system - navigate to specific course
-      navigate(`/learner/courses/${item.course_id}/learn`);
+    } else if (item.course_id) {
+      // SkillPassport course - navigate to specific course
+      navigate(`/learner/courses/${item.course_id}`);
     }
   }, [navigate]);
 

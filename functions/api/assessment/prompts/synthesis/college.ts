@@ -49,8 +49,7 @@ Return ONLY valid JSON in this exact shape:
     "internship": { "types": ["<type>"], "timeline": "<timeline>", "preparation": { "resume": "<focus>", "portfolio": "<focus>", "interview": "<focus>" } },
     "exposure": { "activities": ["<activity>"], "certifications": ["<cert>"] }
   },
-  "finalNote": { "advantage": "<advantage>", "growthFocus": "<focus>", "nextReview": "<timeline>" },
-  "overallSummary": "<2-3 sentences (~40-50 words), THIRD PERSON about the learner. Sentence 1 MUST state their study level AND program/stream by name (e.g. 'an undergraduate pursuing Hospitality & Hotel Management') and the 1-2 career directions they show strong potential for, tied to a specific strength. Sentence 2: the ONE most important skill/area to develop. Optional Sentence 3: a short readiness statement + the single most useful next step. Plain language — no scores, no RIASEC letters, no jargon.>"
+  "finalNote": { "advantage": "<advantage>", "growthFocus": "<focus>", "nextReview": "<timeline>" }
 }
 
 RIASEC ACCURACY RULES:

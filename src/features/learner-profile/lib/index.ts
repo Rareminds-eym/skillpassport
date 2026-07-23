@@ -38,9 +38,3 @@ export {
   type ExportOptions,
   type ExportData
 } from './profileExport';
-
-// LTE Capabilities Hook
-export {
-  useLTECapabilities,
-  type Capability
-} from './useLTECapabilities';

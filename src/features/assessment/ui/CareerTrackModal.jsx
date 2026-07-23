@@ -121,11 +121,11 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results, 
         console.warn('[CareerTrackModal] API error, using fallback data:', overviewError.message);
     }
 
-    // Load capabilities first, fallback to RAG courses
+    // Load capabilities ONLY when on Courses page (currentPage === 2) - lazy loading
     useEffect(() => {
         const loadContentForRole = async () => {
-            if (!selectedRole) {
-                setAiMatchedCourses([]);
+            // Only load when on Courses page
+            if (!selectedRole || currentPage !== 2) {
                 return;
             }
 
@@ -134,37 +134,36 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results, 
             setCourseMatchingLoading(true);
 
             try {
-                // Try to fetch saved capabilities first
-                const params = new URLSearchParams({
-                    learnerId: effectiveLearnerId,
-                    assessmentResultId: effectiveAssessmentResultId,
-                    status: 'active'
-                });
-
-                let allRecommendations;
+                // Try HTTP endpoint first (new assessments with capabilities)
                 try {
-                    const response = await apiGet(`/courses/recommendations/saved?${params}`);
-                    allRecommendations = response?.data || [];
-                } catch (apiError) {
-                    allRecommendations = [];
+                    const capResponse = await apiPost('/assessment/get-role-capabilities', {
+                        roleId: occupationId,
+                        learnerId: effectiveLearnerId,
+                        assessmentResultId: effectiveAssessmentResultId
+                    });
+
+                    const capabilities = capResponse?.data || [];
+
+                    if (capabilities && capabilities.length > 0) {
+                        console.log(`[CareerTrackModal] Loaded ${capabilities.length} capabilities from HTTP endpoint`);
+                        setAiMatchedCourses(capabilities.map((cap) => ({
+                            id: cap.id,
+                            course_id: cap.id,
+                            title: cap.name || 'Learning Path',
+                            description: cap.description || '',
+                            relevance: 100,
+                            category: 'Capability',
+                            matchedCapabilities: []
+                        })));
+                        return;
+                    }
+                } catch (httpError) {
+                    console.warn('[CareerTrackModal] HTTP endpoint failed, trying RAG fallback:', httpError);
                 }
 
-                const capabilities = (allRecommendations || []).filter(
-                    rec => rec.role_id === occupationId && rec.recommendation_type === 'assessment'
-                );
-
-                if (capabilities && capabilities.length > 0) {
-                    setAiMatchedCourses(capabilities.map((cap) => ({
-                        id: cap.course_id,
-                        course_id: cap.course_id,
-                        title: cap.match_reasons?.[0] || 'Learning Path',
-                        description: cap.match_reasons?.[1] || cap.skill_gaps_addressed?.[0] || '',
-                        relevance: cap.relevance_score,
-                        category: 'Capability',
-                        matchedCapabilities: []
-                    })));
-                } else if (results?.gradeLevel !== 'college') {
-                    // Fallback: Use RAG for non-college students only
+                // Fallback: Use RAG for old assessments (non-college)
+                if (results?.gradeLevel !== 'college') {
+                    console.log('[CareerTrackModal] Using RAG fallback for old assessment');
                     const coursesWithEmbeddings = await apiGet('/courses/embeddings');
                     const ragCourses = await matchCoursesForRoleRAG(
                         roleName,
@@ -185,6 +184,7 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results, 
                     setAiMatchedCourses([]);
                 }
             } catch (error) {
+                console.error('[CareerTrackModal] Error loading courses:', error);
                 setAiMatchedCourses([]);
             } finally {
                 setCourseMatchingLoading(false);
@@ -192,45 +192,12 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results, 
         };
 
         loadContentForRole();
-    }, [selectedRole, effectiveLearnerId, effectiveAssessmentResultId]);
+    }, [selectedRole, currentPage, effectiveLearnerId, effectiveAssessmentResultId]);
 
     const relevantCourses = aiMatchedCourses;
 
-    // Store matched courses to learner_course_recommendations when they're generated
-    useEffect(() => {
-        const storeMatchedCourses = async () => {
-            if (!aiMatchedCourses || aiMatchedCourses.length === 0 || !selectedRole || !attemptId || !effectiveLearnerId) {
-                return;
-            }
-
-            const roleName = getRoleName(selectedRole);
-            console.log(`[CareerTrackModal] Saving ${aiMatchedCourses.length} matched courses for: ${roleName}`);
-
-            try {
-                const recommendations = aiMatchedCourses.map(c => ({
-                    course_id: c.course_id || c.id,
-                    relevance_score: c.relevance_score || 50,
-                    match_reasons: [c.match_reason || `Matched for ${roleName} role`],
-                    skill_gaps_addressed: c.skill_gaps_addressed || []
-                }));
-
-                const response = await apiPost('/courses/recommendations/save', {
-                    learnerId: effectiveLearnerId,
-                    recommendations,
-                    assessmentResultId: effectiveAssessmentResultId,
-                    recommendationType: 'assessment'
-                });
-
-                if (!response?.success) {
-                    console.error('[CareerTrackModal] Failed to save matched courses:', response);
-                }
-            } catch (error) {
-                console.error('[CareerTrackModal] Error saving matched courses:', error);
-            }
-        };
-
-        storeMatchedCourses();
-    }, [aiMatchedCourses, selectedRole, attemptId, learnerId]);
+    // Note: Database saving is handled by /assessment/get-role-capabilities endpoint
+    // No need for additional save here - it would create duplicates
 
     const getSalary = (role) => {
         if (typeof role === 'object' && role?.salary) {
