@@ -1,5 +1,7 @@
 import { apiError } from '../../lib/response';
+import { createRefreshCookie } from '../../lib/cookies';
 import type { Env } from '../../lib/types';
+import { getSsoService } from '../../lib/sso-client';
 
 interface RefreshBody {
   refresh_token?: string;
@@ -48,7 +50,7 @@ export async function onRequestPost(context: {
   const ua = request.headers.get('User-Agent') || undefined;
 
   try {
-    const ssoService = env.SSO_SERVICE as any;
+    const ssoService = getSsoService(env);
 
     // Call RPC method to refresh
     const result = await ssoService.refreshSession(refreshToken, ip, ua);
@@ -70,10 +72,7 @@ export async function onRequestPost(context: {
 
     // Set new refresh_token as HttpOnly cookie
     if (result.refresh_token) {
-      headers.append(
-        'Set-Cookie',
-        `refresh_token=${result.refresh_token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800`
-      );
+      headers.append('Set-Cookie', createRefreshCookie(result.refresh_token, request, env));
     }
 
     // Return new tokens

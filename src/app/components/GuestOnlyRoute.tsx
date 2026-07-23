@@ -21,8 +21,18 @@ const GuestOnlyRoute: React.FC<GuestOnlyRouteProps> = ({ children }) => {
 
   // If the user is authenticated, redirect them away from the guest-only route (like Login/Signup)
   if (isAuthenticated && !authLoading) {
-    // If they have a returnUrl in the query params, honor it (but prevent redirect loops)
     const params = new URLSearchParams(location.search);
+    const targetApp = params.get('target_app') || params.get('redirect_app');
+    
+    // INTENTIONAL BYPASS: If the user is logging in with a target_app of 'lte',
+    // allow the route to render the Login page so that the auto-handoff logic
+    // (UnifiedLogin's checkLteSsoHandoff effect) can fire and handle the redirect.
+    // SECURITY JUSTIFICATION: This client-side bypass is safe because actual authorization 
+    // code generation is validated and enforced server-side by the /auth/generate-lte-code endpoint.
+    if (targetApp === 'lte') {
+      return <>{children}</>;
+    }
+
     const returnUrl = params.get('returnUrl') || params.get('redirect');
 
     if (returnUrl && !returnUrl.includes('/login') && !returnUrl.includes('/signup')) {

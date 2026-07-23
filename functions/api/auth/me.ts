@@ -1,5 +1,6 @@
 import { apiError } from '../../lib/response';
 import type { Env } from '../../lib/types';
+import { getSsoService } from '../../lib/sso-client';
 
 export async function onRequestGet(context: {
   request: Request;
@@ -15,7 +16,7 @@ export async function onRequestGet(context: {
   }
 
   try {
-    const ssoService = env.SSO_SERVICE as any;
+    const ssoService = getSsoService(env);
 
     // Call RPC method directly
     const result = await ssoService.getMe(accessToken);

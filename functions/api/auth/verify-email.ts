@@ -1,5 +1,6 @@
 import { createLogger } from '../../lib/logger';
 import { apiSuccess, apiError } from '../../lib/response';
+import { getSsoService } from '../../lib/sso-client';
 
 /**
  * POST /api/auth/verify-email
@@ -60,7 +61,7 @@ export async function onRequestPost(context: { request: Request; env: any }): Pr
 
     // Call sso-worker RPC method for email verification
     const startTime = Date.now();
-    const ssoService = env.SSO_SERVICE as any;
+    const ssoService = getSsoService(env);
     const ssoResult = await ssoService.verifyEmail({
       token,
       ip: request.headers.get('CF-Connecting-IP') || undefined,

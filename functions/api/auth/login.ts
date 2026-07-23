@@ -1,5 +1,7 @@
 import type { Env } from '../../lib/types';
 import { apiLogger } from '../../lib/logger';
+import { createRefreshCookie } from '../../lib/cookies';
+import { getSsoService } from '../../lib/sso-client';
 
 interface LoginBody {
   email: string;
@@ -46,7 +48,7 @@ export async function onRequestPost(context: { request: Request; env: Env }): Pr
     const ua = request.headers.get('User-Agent') || undefined;
 
     // Call RPC method directly on SSO Worker
-    const ssoResult = await (env.SSO_SERVICE as any).login({
+    const ssoResult = await getSsoService(env).login({
       email,
       password,
       ip,
@@ -89,11 +91,7 @@ export async function onRequestPost(context: { request: Request; env: Env }): Pr
 
     // Set refresh token as HttpOnly cookie for auth-core implicit refresh
     if (ssoResult.refresh_token) {
-      // Note: Secure flag omitted for localhost development (HTTP); production should use Secure
-      headers.append(
-        'Set-Cookie',
-        `refresh_token=${ssoResult.refresh_token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800`
-      );
+      headers.append('Set-Cookie', createRefreshCookie(ssoResult.refresh_token, request, env));
     }
 
     apiLogger.info('Login successful via RPC', { email, userId: ssoResult.user?.id });
