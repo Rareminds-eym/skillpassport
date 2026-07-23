@@ -206,11 +206,12 @@ async function handleGetOrCreateLearnerCollegeAdminConversation(supabase: Supaba
 
   // Fallback: learnerId might already be a user_id (sent from learner frontend)
   if (!learnerRow?.user_id) {
-    const { data: byUserId } = await supabase
+    const { data: byUserId, error: byUserIdErr} = await supabase
       .from('learners')
       .select('user_id')
       .eq('user_id', String(learnerId))
       .maybeSingle();
+    if (byUserIdErr) throw byUserIdErr;
     learnerRow = byUserId;
   }
 

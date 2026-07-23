@@ -62,7 +62,12 @@ async function fetchEducatorDetailsForConversations(supabase: SupabaseClient, co
         collegeEducatorConvs.forEach((conv: Conversation) => {
           const e = lecturers?.find((x) => x.id === conv.educator_id);
           if (e) {
-            const meta = typeof e.metadata === 'object' && e.metadata !== null && !Array.isArray(e.metadata) ? e.metadata : {};
+            const meta = typeof e.metadata === 'object' && 
+                         e.metadata !== null && 
+                         !Array.isArray(e.metadata) && 
+                         Object.getPrototypeOf(e.metadata) === Object.prototype
+            ? e.metadata 
+            : {};
             conv.educator = {
               ...e,
               first_name: resolveString(e.first_name, meta.first_name),

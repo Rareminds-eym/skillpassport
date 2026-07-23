@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { X, Search, GraduationCap, MessageCircle } from 'lucide-react';
+import { GraduationCap, MessageCircle, Search, X } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
 import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 
@@ -67,7 +67,7 @@ const MessageModal = ({ educator, isOpen, onClose, onSend, isLoading }) => {
               </p>
             </div>
             <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
-              <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg aria-hidden="true" className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
             </div>
@@ -76,10 +76,11 @@ const MessageModal = ({ educator, isOpen, onClose, onSend, isLoading }) => {
           {/* Subject Input for College Lecturers */}
           {educator.type === 'college_lecturer' && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="conversation-subject" className="block text-sm font-medium text-gray-700 mb-2">
                 What's this about?
               </label>
               <input
+                id="conversation-subject"
                 type="text"
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
@@ -93,10 +94,11 @@ const MessageModal = ({ educator, isOpen, onClose, onSend, isLoading }) => {
 
           {/* Message Input */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="conversation-message" className="block text-sm font-medium text-gray-700 mb-2">
               Type your message
             </label>
             <textarea
+              id="conversation-message"
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               placeholder="Type your message..."
@@ -191,7 +193,7 @@ const NewEducatorConversationModal = ({ isOpen, onClose, learnerId, onConversati
   const fetchlearnerEducators = async () => {
     setLoading(true);
     try {
-      console.log('🔍 Starting fetchlearnerEducators for learnerId:', learnerId);
+      logger.info('Starting fetch learner educators', { learnerId });
 
       // Get learner context (school_id, university_college_id)
       let { data: learnerData } = await apiPost('/messaging/actions', { action: 'fetch-learner-context', learnerId });
@@ -200,7 +202,7 @@ const NewEducatorConversationModal = ({ isOpen, onClose, learnerId, onConversati
       if (!learnerData) {
         const { data: learnerByUserId } = await apiPost('/messaging/actions', { action: 'fetch-learner-context-by-user-id', userId: learnerId });
         if (!learnerByUserId) {
-          console.log('⚠️ Learner not found by id or user_id');
+          logger.warn('Learner not found by id or user_id');
           setLoading(false);
           return;
         }
@@ -211,7 +213,7 @@ const NewEducatorConversationModal = ({ isOpen, onClose, learnerId, onConversati
 
       // Fetch ALL school educators if learner has school_id
       if (learnerData?.school_id) {
-        console.log('🏫 Fetching school educators for school_id:', learnerData.school_id);
+        logger.info('Fetching school educators for school_id:', learnerData.school_id);
         const { data: schoolEducators } = await apiPost('/messaging/actions', { action: 'fetch-recipients', conversationType: 'admin-educator', contextId: learnerData.school_id });
         if (schoolEducators) {
           const educatorList = schoolEducators.map(educator => ({
@@ -243,14 +245,14 @@ const NewEducatorConversationModal = ({ isOpen, onClose, learnerId, onConversati
           }));
           allEducators.push(...collegeEducators);
         } else {
-          console.log('ℹ️ No college lecturers found in this college');
+          logger.info('No college lecturers found in this college');
         }
       }
 
-      console.log('📊 Final educators list:', allEducators);
+      logger.info('Final educators list:', allEducators);
       setEducators(allEducators);
     } catch (error) {
-      console.error('❌ Error fetching educators:', error);
+      logger.error('Error fetching educators:', error);
     } finally {
       setLoading(false);
     }
@@ -263,7 +265,7 @@ const NewEducatorConversationModal = ({ isOpen, onClose, learnerId, onConversati
       setShowMessageModal(false);
       handleClose();
     } catch (error) {
-      console.error('Error creating conversation:', error);
+      logger.error('Error creating conversation:', error);
     } finally {
       setSendingMessage(false);
     }
@@ -323,9 +325,10 @@ const NewEducatorConversationModal = ({ isOpen, onClose, learnerId, onConversati
             <div className="p-6">
               {/* Search */}
               <div className="relative mb-6">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Search aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input
                   type="text"
+                  aria-label="Search educators"
                   placeholder="Search educators..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}

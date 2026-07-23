@@ -552,9 +552,9 @@ async function handleFetchLearnerCollege(supabase: SupabaseClient, params: any):
   const { learnerId } = params;
   if (!learnerId) return null;
   const lrnId = String(learnerId);
-  const { data: learner } = await supabase.from('learners').select('university_college_id, college_id').eq('id', lrnId).maybeSingle();
+  const { data: learner } = await supabase.from('learners').select('college_id').eq('id', lrnId).maybeSingle();
   if (!learner) return null;
-  const collegeId = learner.university_college_id || learner.college_id;
+  const collegeId = learner.college_id;
   if (!collegeId) return { college_id: null };
   const collId = String(collegeId);
   const { data: org } = await supabase.from('organizations').select('id, name, city, state, organization_type').eq('id', collId).maybeSingle();

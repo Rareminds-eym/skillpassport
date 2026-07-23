@@ -1,4 +1,3 @@
-import { useAuthStore } from '@/shared/model/authStore';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
 import {
@@ -16,28 +15,35 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useSearchParams } from 'react-router-dom';
-import { DeleteConversationModal } from '@/features/messaging';
-import { NewEducatorConversationModal } from '@/features/messaging';
-import { NewAdminConversationModal } from '@/features/messaging';
-import { NewCollegeAdminConversationModal } from '@/features/college-admin';
+import { 
+  useLearnerAdminConversations,
+  useLearnerAdminMessages,
+  useLearnerCollegeAdminConversations,
+  useLearnerCollegeAdminMessages,
+  useLearnerConversations,
+  useLearnerDataByEmail,
+  useLearnerEducatorConversations, 
+  useLearnerEducatorMessages,
+} from '@/entities/learner';
 
-import { useGlobalPresence } from '@/shared/model/globalPresenceStore';
 import { useNotificationBroadcast } from '@/features/broadcast';
-import { useRealtimePresence } from '@/shared/lib/hooks';
+import { NewCollegeAdminConversationModal } from '@/features/college-admin';
 import { useLearnerMessages } from '@/features/learner-profile';
-import { useLearnerDataByEmail } from '@/entities/learner';
-import { useLearnerConversations } from '@/entities/learner';
-import { getLogger } from '@/shared/config/logging';
+import { 
+  DeleteConversationModal,
+  NewAdminConversationModal,
+  NewEducatorConversationModal,
+  useTypingIndicator,
+} from '@/features/messaging';
 
-const logger = getLogger('Messages');
-import { useLearnerEducatorConversations, useLearnerEducatorMessages } from '@/entities/learner';
-import { useLearnerAdminConversations, useLearnerAdminMessages } from '@/entities/learner';
-import { useLearnerCollegeAdminConversations, useLearnerCollegeAdminMessages } from '@/entities/learner';
-import { useTypingIndicator } from '@/features/messaging';
 import { apiPost } from '@/shared/api/apiClient';
 import MessageService from '@/shared/api/messageService';
+import { getLogger } from '@/shared/config/logging';
+import { useRealtimePresence } from '@/shared/lib/hooks';
+import { useAuthStore, useUser } from '@/shared/model/authStore';
+import { useGlobalPresence } from '@/shared/model/globalPresenceStore';
 
-import { useUser } from '@/shared/model/authStore';
+const logger = getLogger('Messages');
 const Messages = () => {
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -62,10 +68,8 @@ const Messages = () => {
   const [showNewEducatorConversationModal, setShowNewEducatorConversationModal] = useState(false);
   const [showNewAdminConversationModal, setShowNewAdminConversationModal] = useState(false);
   const [showNewCollegeAdminConversationModal, setShowNewCollegeAdminConversationModal] = useState(false);
-  const [showNewEducatorDropdown, setShowNewEducatorDropdown] = useState(false);
   const [showTabDropdown, setShowTabDropdown] = useState(false);
   const [isTabSwitching, setIsTabSwitching] = useState(false);
-  const newEducatorDropdownRef = useRef(null);
   const messagesEndRef = useRef(null);
   const markedAsReadRef = useRef(new Set());
   const menuRef = useRef(null);
@@ -81,9 +85,11 @@ const Messages = () => {
   const learnerId = learnerIdForConversations;
   const learnerName = learnerData?.profile?.name || user?.name || 'Learner';
 
+  const learnerCollegeId = learnerData?.college_id || learnerData?.university_college_id;
+
   // Determine available tabs based on learner's school_id and college_id
   const hasSchoolId = !!learnerData?.school_id;
-  const hasCollegeId = !!(learnerData?.college_id || learnerData?.university_college_id);
+  const hasCollegeId = !!learnerCollegeId;
 
   // Available tabs logic:
   // - Recruiters: Always available
@@ -460,7 +466,7 @@ const Messages = () => {
   }, [globalOnlineUsers, adminUserIds]);
 
   // Global presence — joins shared channel on page load so sidebar online dots work
-  useRealtimePresence({
+  const { isConnected: isGlobalPresenceConnected } = useRealtimePresence({
     channelName: 'messaging:global',
     userPresence: {
       userId: learnerId || '',
@@ -471,6 +477,12 @@ const Messages = () => {
     },
     enabled: !!learnerId
   });
+
+  useEffect(() => {
+    if (learnerId && !isGlobalPresenceConnected) {
+      logger.debug('Global presence not connected — online status may be delayed');
+    }
+  }, [learnerId, isGlobalPresenceConnected]);
 
   // Presence tracking for current conversation (for chat header)
   const { onlineUsers } = useRealtimePresence({
@@ -911,7 +923,7 @@ const Messages = () => {
           try {
             await sendNotification(currentChat.recruiterId, {
               title: 'New Message from Learner',
-              message: messageInput.length > 50 ? messageInput.substring(0, 50) + '...' : messageInput,
+              message: messageInput.length > 50 ? `${messageInput.substring(0, 50)}...` : messageInput,
               type: 'message',
               link: `/recruiter/messages?conversation=${selectedConversationId}`
             });
@@ -953,7 +965,7 @@ const Messages = () => {
           try {
             await sendNotification(currentChat.educatorId, {
               title: 'New Message from Learner',
-              message: messageInput.length > 50 ? messageInput.substring(0, 50) + '...' : messageInput,
+              message: messageInput.length > 50 ? `${messageInput.substring(0, 50)}...` : messageInput,
               type: 'message',
               link: `/educator/messages?conversation=${selectedConversationId}`
             });
@@ -1056,7 +1068,7 @@ const Messages = () => {
 
   // Auto-scroll to bottom when new messages arrive (with debounce for performance)
   useEffect(() => {
-    if (!messages || !messages.length) return;
+    if (!messages?.length) return;
 
     const scrollToBottom = () => {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -1541,6 +1553,7 @@ const Messages = () => {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
               type="text"
+              aria-label="Search conversations"
               placeholder={`Search ${activeTab === 'recruiters' ? 'recruiter' : activeTab === 'educators' ? 'educator' : activeTab === 'admin' ? 'school admin' : 'college admin'} conversations...`}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -1620,8 +1633,9 @@ const Messages = () => {
                   animation: 'fadeInSlide 0.2s ease-out'
                 }}
               >
-                <div
-                  className="flex items-start gap-3 flex-1"
+                <button
+                  type="button"
+                  className="flex items-start gap-3 flex-1 text-left"
                   onClick={() => setSelectedConversationId(contact.id)}
                 >
                   <div className="relative flex-shrink-0">
@@ -1658,7 +1672,7 @@ const Messages = () => {
                       )}
                     </div>
                   </div>
-                </div>
+                </button>
 
                 {/* Quick Actions on Hover */}
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -1784,6 +1798,7 @@ const Messages = () => {
                 <div className="flex-1 relative">
                   <input
                     type="text"
+                    aria-label="Type a message"
                     value={messageInput}
                     onChange={(e) => handleInputChange(e.target.value)}
                     onFocus={() => setTyping(true)}
@@ -1860,7 +1875,7 @@ const Messages = () => {
               conversation = await MessageService.getOrCreatelearnerCollegeLecturerConversation(
                 learnerId,
                 educatorId,
-                learnerData?.college_id || learnerData?.university_college_id, // collegeId
+                learnerCollegeId,
                 null, // programSectionId - will be set by backend if available
                 subject
               );
@@ -1877,7 +1892,7 @@ const Messages = () => {
             }
 
             // Send the initial message if provided
-            if (initialMessage && initialMessage.trim()) {
+            if (initialMessage?.trim()) {
               if (educatorType === 'college_lecturer') {
                 await MessageService.sendMessage(
                   conversation.id,
@@ -1938,32 +1953,40 @@ const Messages = () => {
         learnerId={learnerId}
         schoolId={learnerData?.school_id}
         onConversationCreated={async (conversationData) => {
+           let conversation;
           try {
             logger.info('Creating conversation with school admin', conversationData);
             
-            const conversation = await MessageService.getOrCreatelearnerAdminConversation(
+              conversation = await MessageService.getOrCreatelearnerAdminConversation(
               learnerId,
               learnerData?.school_id,
               conversationData.subject || 'General Inquiry'
             );
-
-            // Send initial message if provided
-            if (conversationData.initialMessage && conversationData.initialMessage.trim()) {
-              await MessageService.sendlearnerAdminMessage(
-                conversation.id,
-                learnerId,
-                conversationData.initialMessage.trim()
-              );
-            }
-
-            await refetchConversations();
-            setSelectedConversationId(conversation.id);
-            toast.success('Conversation started with school admin!');
           } catch (error) {
             logger.error('Error creating admin conversation', error);
             toast.error('Failed to start conversation with school admin');
+            return;
           }
-        }}
+           await refetchConversations();
+           setSelectedConversationId(conversation.id);
+            // Send initial message if provided
+            if (conversationData.initialMessage?.trim()) {
+              try {
+                await MessageService.sendlearnerAdminMessage(
+                conversation.id,
+                learnerId,
+                conversationData.initialMessage.trim()
+                );
+                toast.success('Conversation started with school admin!');
+              } catch (msgError) {
+                logger.error('Conversation created but initial message failed', msgError);
+                toast.error('Conversation started, but your message failed to send. Please try sending it again.');
+              }
+              
+            } else {
+              toast.success('Conversation started with school admin!');
+            }
+          }}
       />
 
       {/* New College Admin Conversation Modal */}
@@ -1971,33 +1994,40 @@ const Messages = () => {
         isOpen={showNewCollegeAdminConversationModal}
         onClose={() => setShowNewCollegeAdminConversationModal(false)}
         learnerId={learnerId}
-        collegeId={learnerData?.college_id || learnerData?.university_college_id}
+        collegeId={learnerCollegeId}
         onConversationCreated={async (conversationData) => {
+          let conversation;
           try {
             logger.info('Creating conversation with college admin', conversationData);
             
-            const conversation = await MessageService.getOrCreatelearnerCollegeAdminConversation(
+              conversation = await MessageService.getOrCreatelearnerCollegeAdminConversation(
               learnerId,
-              learnerData?.college_id || learnerData?.university_college_id,
+              learnerCollegeId,
               conversationData.subject || 'General Inquiry'
             );
-
-            // Send initial message if provided
-            if (conversationData.initialMessage && conversationData.initialMessage.trim()) {
-              await MessageService.sendlearnerCollegeAdminMessage(
-                conversation.id,
-                learnerId,
-                conversationData.initialMessage.trim()
-              );
-            }
-
-            await refetchConversations();
-            setSelectedConversationId(conversation.id);
-            toast.success('Conversation started with college admin!');
           } catch (error) {
             logger.error('Error creating college admin conversation', error);
             toast.error('Failed to start conversation with college admin');
+            return;
           }
+            await refetchConversations();
+            setSelectedConversationId(conversation.id);
+            // Send initial message if provided
+            if (conversationData.initialMessage?.trim()) {
+              try {
+                await MessageService.sendlearnerCollegeAdminMessage(
+                  conversation.id,
+                  learnerId,
+                  conversationData.initialMessage.trim()
+                );
+                toast.success('Conversation started with college admin!');
+              } catch (msgError) {
+                logger.error('Conversation created but initial message failed', msgError);
+                toast.error('Conversation started, but your message failed to send. Please try sending it again.');
+              }
+            } else {
+              toast.success('Conversation started with college admin!');
+            }   
         }}
       />
     </div>
