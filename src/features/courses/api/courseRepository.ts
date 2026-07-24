@@ -5,7 +5,8 @@ const logger = getLogger('course-repository');
 
 export const fetchCoursesWithEmbeddings = async () => {
   try {
-    return await apiGet<any[]>('/courses/embeddings');
+    const response = await apiGet<any>('/courses/embeddings');
+    return response?.data ?? [];
   } catch (error) {
     logger.error('Error fetching courses with embeddings', error instanceof Error ? error : new Error(String(error)));
     return [];
@@ -14,7 +15,8 @@ export const fetchCoursesWithEmbeddings = async () => {
 
 export const fetchCoursesBySkillType = async (skillType) => {
   try {
-    return await apiGet<any[]>(`/courses/by-skill-type?skillType=${encodeURIComponent(skillType)}`);
+    const response = await apiGet<any>(`/courses/by-skill-type?skillType=${encodeURIComponent(skillType)}`);
+    return response?.data ?? [];
   } catch (error) {
     logger.error(`Error fetching ${skillType} courses`, error instanceof Error ? error : new Error(String(error)));
     return [];
@@ -23,7 +25,8 @@ export const fetchCoursesBySkillType = async (skillType) => {
 
 export const fetchBasicCourses = async (limit = 10) => {
   try {
-    return await apiGet<any[]>(`/courses/basic?limit=${limit}`);
+    const response = await apiGet<any>(`/courses/basic?limit=${limit}`);
+    return response?.data ?? [];
   } catch (error) {
     logger.error('Error fetching basic courses', error instanceof Error ? error : new Error(String(error)));
     return [];
@@ -32,7 +35,8 @@ export const fetchBasicCourses = async (limit = 10) => {
 
 export const fetchCoursesBySkillName = async (skillName) => {
   try {
-    return await apiGet<any[]>(`/courses/by-skill-name?skillName=${encodeURIComponent(skillName)}`);
+    const response = await apiGet<any>(`/courses/by-skill-name?skillName=${encodeURIComponent(skillName)}`);
+    return response?.data ?? [];
   } catch (error) {
     logger.error('Error in fetchCoursesBySkillName', error instanceof Error ? error : new Error(String(error)));
     return [];

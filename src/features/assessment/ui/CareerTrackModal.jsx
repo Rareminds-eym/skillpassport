@@ -162,13 +162,15 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results, 
                 }
 
                 // Fallback: Use RAG for old assessments (non-college)
-                if (results?.gradeLevel !== 'college') {
+                const gradeLevel = results?.gradeLevel || results?.attempt_data?.gradeLevel;
+                if (gradeLevel !== 'college') {
                     console.log('[CareerTrackModal] Using RAG fallback for old assessment');
-                    const coursesWithEmbeddings = await apiGet('/courses/embeddings');
+                    const response = await apiGet('/courses/embeddings');
+                    const coursesWithEmbeddings = response?.data || [];
                     const ragCourses = await matchCoursesForRoleRAG(
                         roleName,
                         selectedTrack.cluster?.title || '',
-                        coursesWithEmbeddings || [],
+                        coursesWithEmbeddings,
                         4
                     );
                     setAiMatchedCourses(ragCourses.map((c) => ({
