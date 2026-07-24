@@ -28,7 +28,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     // Step 1: Check if capabilities already cached in DB for this role
     const { data: cachedCaps, error: cacheError } = await supabase
       .from('learner_course_recommendations')
-      .select('course_id, role_id, match_reasons, skill_gaps_addressed, relevance_score')
+      .select('course_id, capability_id, capability_name, capability_code, capability_description, role_id, match_reasons, skill_gaps_addressed, relevance_score')
       .eq('learner_id', learnerId)
       .eq('role_id', roleId)
       .eq('assessment_result_id', assessmentResultId)
@@ -40,10 +40,10 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       console.log(`[get-role-capabilities] Found ${cachedCaps.length} cached capabilities`);
       return apiSuccess(
         cachedCaps.map((cap: any) => ({
-          id: cap.course_id,
-          name: cap.match_reasons?.[0] || 'Learning Path',
-          code: '',
-          description: cap.match_reasons?.[1] || cap.skill_gaps_addressed?.[0] || ''
+          id: cap.capability_id || cap.course_id,
+          name: cap.capability_name || cap.match_reasons?.[0] || 'Learning Path',
+          code: cap.capability_code || '',
+          description: cap.capability_description || cap.match_reasons?.[1] || cap.skill_gaps_addressed?.[0] || ''
         })),
         context.request,
         { startTime }

@@ -182,6 +182,27 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results, 
                         category: c.category,
                         matchedCapabilities: []
                     })));
+
+                    if (ragCourses && ragCourses.length > 0) {
+                        const savedRecs = ragCourses.map((c, idx) => ({
+                            course_id: c.course_id,
+                            role_id: occupationId || null,
+                            relevance_score: Math.round((c.similarityScore || 0.8) * 100) || (100 - (idx * 5)),
+                            match_reasons: [c.match_reason || `Matched to ${roleName} role`].filter(Boolean),
+                            skill_gaps_addressed: c.skills || []
+                        }));
+
+                        apiPost('/courses/recommendations/save', {
+                            learnerId: effectiveLearnerId,
+                            recommendations: savedRecs,
+                            assessmentResultId: effectiveAssessmentResultId,
+                            recommendationType: 'assessment'
+                        }).then(() => {
+                            console.log('[CareerTrackModal] Successfully cached RAG recommendations');
+                        }).catch(err => {
+                            console.warn('[CareerTrackModal] Failed to cache RAG recommendations:', err);
+                        });
+                    }
                 } else {
                     setAiMatchedCourses([]);
                 }
