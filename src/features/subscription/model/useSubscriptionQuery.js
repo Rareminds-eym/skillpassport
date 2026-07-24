@@ -41,6 +41,12 @@ const formatSubscriptionData = (data) => {
     phone: data.phone,
     billingCycle: data.billing_cycle,
     razorpaySubscriptionId: data.razorpay_subscription_id,
+    // Used by receipt download flows in MySubscription / PaymentSuccess
+    razorpayPaymentId: data.razorpay_payment_id,
+    // Used by receipt download flows in MySubscription / PaymentSuccess
+    razorpayOrderId: data.razorpay_order_id,
+    // Used by receipt download flows in MySubscription / PaymentSuccess
+    receiptUrl: data.receipt_url,
     cancelledAt: data.cancelled_at,
     cancellationReason: data.cancellation_reason,
     // role column uses user_role enum type with values like school_admin, learner, etc.
