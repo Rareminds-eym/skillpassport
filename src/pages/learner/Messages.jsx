@@ -549,6 +549,7 @@ const Messages = () => {
       if (context?.previousConversations) {
         queryClient.setQueryData(['learner-conversations', learnerId], context.previousConversations);
       }
+      logger.error('Failed to delete conversation', { conversationId: variables.conversationId, error: err instanceof Error ? err.message : String(err) });
       toast.error('Failed to delete conversation');
     },
     onSuccess: (_data, variables) => {
@@ -593,6 +594,7 @@ const Messages = () => {
       if (context?.previousConversations) {
         queryClient.setQueryData(['learner-conversations', learnerId], context.previousConversations);
       }
+      logger.error('Failed to restore conversation', { conversationId: variables.conversationId, error: err instanceof Error ? err.message : String(err) });
       toast.error('Failed to restore conversation');
     },
     onSuccess: () => {
