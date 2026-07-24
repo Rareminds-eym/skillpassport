@@ -37,7 +37,6 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       });
     }
 
-    // Create Supabase client with shorter timeout
     const supabase = createClient(
       env.SUPABASE_URL,
       env.SUPABASE_SERVICE_ROLE_KEY,
@@ -46,19 +45,9 @@ export const onRequest: PagesFunction<Env> = async (context) => {
           autoRefreshToken: false,
           persistSession: false,
         },
-        global: {
-          fetch: (url, options = {}) => {
-            return fetch(url, {
-              ...options,
-              // ponytail: 5s timeout for DB query to prevent endpoint timeout
-              signal: AbortSignal.timeout(5000),
-            });
-          },
-        },
       }
     );
 
-    // Check if user exists in Skillpassport DB - optimized query with timeout
     const { data, error } = await supabase
       .from('users')
       .select('id')
@@ -67,8 +56,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
 
     if (error) {
       console.error('[sync/check-user] Database error:', error.message);
-      // Return 200 with exists: false instead of 500 to avoid triggering retries
-      return new Response(JSON.stringify({ exists: false, error: 'Database timeout' }), {
+      return new Response(JSON.stringify({ exists: false, error: error.message }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
       });

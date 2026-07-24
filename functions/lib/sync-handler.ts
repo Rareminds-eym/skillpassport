@@ -16,11 +16,26 @@ export async function handleSyncRequest(
   if (!action) return apiError(400, 'VALIDATION_ERROR', 'action is required', context.request);
   const handler = handlers[action];
   if (!handler) return apiError(400, 'VALIDATION_ERROR', `Unknown action: ${action}`, context.request);
-  const service = new SyncService(context.env);
-  const result = await handler(service, data);
-  if (!result.success) {
-    const status = result.errorCode === 'NOT_FOUND' ? 404 : 400;
-    return apiError(status, result.errorCode ?? 'UNKNOWN', result.error, context.request);
+
+  let service: SyncService;
+  try {
+    service = new SyncService(context.env);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('[sync-handler] Failed to create SyncService:', message);
+    return apiError(500, 'INTERNAL_ERROR', 'Sync service initialization failed', context.request);
   }
-  return apiSuccess(result, context.request);
+
+  try {
+    const result = await handler(service, data);
+    if (!result.success) {
+      const status = result.errorCode === 'NOT_FOUND' ? 404 : 400;
+      return apiError(status, result.errorCode ?? 'UNKNOWN', result.error, context.request);
+    }
+    return apiSuccess(result, context.request);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('[sync-handler] Handler error:', message);
+    return apiError(500, 'INTERNAL_ERROR', 'Sync handler failed', context.request);
+  }
 }

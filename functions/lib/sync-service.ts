@@ -1,6 +1,7 @@
 import { createDb, type DbClient } from './db';
 import { mapRolesToOrgMemberRole, LEARNER_SSO_ROLES } from './role-mapper';
 import type { PagesEnv } from './types';
+import { z } from 'zod';
 import {
   UserCreatedSchema,
   UserDeletedSchema,
@@ -43,7 +44,9 @@ export class SyncService {
   }
 
   async syncUser(data: unknown): Promise<SyncResult> {
-    const parsed = UserCreatedSchema.parse(data);
+    let parsed: z.infer<typeof UserCreatedSchema>;
+    try { parsed = UserCreatedSchema.parse(data); }
+    catch (err) { return fail('VALIDATION_ERROR', err instanceof Error ? err.message : 'Invalid user data', false); }
     const userMetadata = parsed.user_metadata ?? {};
 
     const updatePayload: Record<string, unknown> = { id: parsed.id };
@@ -77,14 +80,18 @@ export class SyncService {
   }
 
   async deleteUser(data: unknown): Promise<SyncResult> {
-    const parsed = UserDeletedSchema.parse(data);
+    let parsed: z.infer<typeof UserDeletedSchema>;
+    try { parsed = UserDeletedSchema.parse(data); }
+    catch (err) { return fail('VALIDATION_ERROR', err instanceof Error ? err.message : 'Invalid delete user data', false); }
     const { error } = await this.db.from('users').delete().eq('id', parsed.user_id);
     if (error) return fail('DB_ERROR', error.message, true);
     return ok();
   }
 
   async verifyEmail(data: unknown): Promise<SyncResult> {
-    const parsed = UserEmailVerifiedSchema.parse(data);
+    let parsed: z.infer<typeof UserEmailVerifiedSchema>;
+    try { parsed = UserEmailVerifiedSchema.parse(data); }
+    catch (err) { return fail('VALIDATION_ERROR', err instanceof Error ? err.message : 'Invalid verify email data', false); }
     const { data: existing } = await this.db.from('users')
       .select('metadata')
       .eq('id', parsed.user_id)
@@ -99,7 +106,9 @@ export class SyncService {
   }
 
   async syncOrgCreated(data: unknown): Promise<SyncResult> {
-    const parsed = OrganizationCreatedSchema.parse(data);
+    let parsed: z.infer<typeof OrganizationCreatedSchema>;
+    try { parsed = OrganizationCreatedSchema.parse(data); }
+    catch (err) { return fail('VALIDATION_ERROR', err instanceof Error ? err.message : 'Invalid org created data', false); }
     const metadata = parsed.metadata ?? {};
 
     const orgPayload: Record<string, unknown> = {
@@ -107,7 +116,6 @@ export class SyncService {
       name: parsed.name,
     };
 
-    if (parsed.slug) orgPayload.slug = parsed.slug;
     if (metadata.organization_type !== undefined) orgPayload.organization_type = metadata.organization_type;
     if (metadata.email !== undefined) orgPayload.email = metadata.email;
     if (metadata.phone !== undefined) orgPayload.phone = metadata.phone;
@@ -123,8 +131,6 @@ export class SyncService {
     orgPayload.is_active = true;
     orgPayload.approval_status = 'approved';
     orgPayload.account_status = 'active';
-    orgPayload.recruitment_enabled = metadata.recruitment_enabled ?? false;
-    orgPayload.max_recruiters = metadata.max_recruiters ?? 10;
 
     if (parsed.created_by) {
       orgPayload.admin_id = parsed.created_by;
@@ -136,7 +142,9 @@ export class SyncService {
   }
 
   async syncOrgUpdated(data: unknown): Promise<SyncResult> {
-    const parsed = OrganizationUpdatedSchema.parse(data);
+    let parsed: z.infer<typeof OrganizationUpdatedSchema>;
+    try { parsed = OrganizationUpdatedSchema.parse(data); }
+    catch (err) { return fail('VALIDATION_ERROR', err instanceof Error ? err.message : 'Invalid org updated data', false); }
     const metadata = parsed.metadata ?? {};
 
     const updatePayload: Record<string, unknown> = {};
@@ -152,8 +160,6 @@ export class SyncService {
     if (metadata.pincode !== undefined) updatePayload.pincode = metadata.pincode;
     if (metadata.website !== undefined) updatePayload.website = metadata.website;
     if (metadata.established_year !== undefined) updatePayload.established_year = metadata.established_year;
-    if (metadata.recruitment_enabled !== undefined) updatePayload.recruitment_enabled = metadata.recruitment_enabled;
-    if (metadata.max_recruiters !== undefined) updatePayload.max_recruiters = metadata.max_recruiters;
 
     updatePayload.updated_at = new Date().toISOString();
 
@@ -165,7 +171,9 @@ export class SyncService {
   }
 
   async syncMembership(data: unknown): Promise<SyncResult> {
-    const parsed = MembershipPayloadSchema.parse(data);
+    let parsed: z.infer<typeof MembershipPayloadSchema>;
+    try { parsed = MembershipPayloadSchema.parse(data); }
+    catch (err) { return fail('VALIDATION_ERROR', err instanceof Error ? err.message : 'Invalid membership data', false); }
     const roles = parsed.roles ?? ['member'];
 
     try {
@@ -244,7 +252,9 @@ export class SyncService {
   }
 
   async removeMembership(data: unknown): Promise<SyncResult> {
-    const parsed = MembershipRemovedSchema.parse(data);
+    let parsed: z.infer<typeof MembershipRemovedSchema>;
+    try { parsed = MembershipRemovedSchema.parse(data); }
+    catch (err) { return fail('VALIDATION_ERROR', err instanceof Error ? err.message : 'Invalid remove membership data', false); }
 
     const { error: deleteError } = await this.db.from('organization_members')
       .delete()
@@ -264,7 +274,9 @@ export class SyncService {
   }
 
   async syncSubscriptionCreated(data: unknown): Promise<SyncResult> {
-    const parsed = SubscriptionCreatedSchema.parse(data);
+    let parsed: z.infer<typeof SubscriptionCreatedSchema>;
+    try { parsed = SubscriptionCreatedSchema.parse(data); }
+    catch (err) { return fail('VALIDATION_ERROR', err instanceof Error ? err.message : 'Invalid subscription created data', false); }
     const subPayload: Record<string, unknown> = {
       id: parsed.id,
       user_id: parsed.user_id,
@@ -299,7 +311,9 @@ export class SyncService {
   }
 
   async syncSubscriptionUpdated(data: unknown): Promise<SyncResult> {
-    const parsed = SubscriptionUpdatedSchema.parse(data);
+    let parsed: z.infer<typeof SubscriptionUpdatedSchema>;
+    try { parsed = SubscriptionUpdatedSchema.parse(data); }
+    catch (err) { return fail('VALIDATION_ERROR', err instanceof Error ? err.message : 'Invalid subscription updated data', false); }
     const subPayload: Record<string, unknown> = {};
 
     if (parsed.user_id !== undefined) subPayload.user_id = parsed.user_id;
@@ -342,7 +356,9 @@ export class SyncService {
   }
 
   async syncSubscriptionCancelledOrExpired(data: unknown, eventType: 'subscription.cancelled' | 'subscription.expired'): Promise<SyncResult> {
-    const parsed = SubscriptionCancelledSchema.parse(data);
+    let parsed: z.infer<typeof SubscriptionCancelledSchema>;
+    try { parsed = SubscriptionCancelledSchema.parse(data); }
+    catch (err) { return fail('VALIDATION_ERROR', err instanceof Error ? err.message : 'Invalid subscription cancelled data', false); }
     const status = eventType === 'subscription.cancelled' ? 'cancelled' : 'expired';
     const { error } = await this.db.from('subscription_cache')
       .update({ status, auth_updated_at: new Date().toISOString() })

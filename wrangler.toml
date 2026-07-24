@@ -10,15 +10,20 @@ compatibility_flags = ["nodejs_compat"]
 # ============================================================================
 # DURABLE OBJECT BINDINGS
 # ============================================================================
-# Commented out - deploy workers first
-# [[durable_objects.bindings]]
-# name = "REALTIME_HUB"
-# class_name = "RealtimeHub"
-# script_name = "realtime-worker"
+
+[[durable_objects.bindings]]
+name = "REALTIME_HUB"
+class_name = "RealtimeHub"
+script_name = "realtime-worker"
 
 # ============================================================================
 # SERVICE BINDINGS
 # ============================================================================
+
+[[services]]
+binding = "PAYMENT_WORKER"
+service = "razorpay-api"
+entrypoint = "PaymentService"
 
 [[services]]
 binding = "SSO_SERVICE"
@@ -26,45 +31,22 @@ service = "sso-api"
 entrypoint = "SsoWorker"
 
 [[services]]
+binding = "EMBEDDING_SERVICE"
+service = "embedding-worker"
+entrypoint = "EmbeddingWorker"
+
+[[queues.producers]]
+binding = "REALTIME_EVENTS_QUEUE"
+queue = "realtime-events-queue"
+
+[[queues.producers]]
+binding = "SSO_REVERSE_SYNC_QUEUE"
+queue = "sso-reverse-sync-queue"
+
+[[services]]
 binding = "EMAIL_SERVICE"
 service = "shared-email-api"
 entrypoint = "EmailService"
-
-[[services]]
-binding = "PAYMENT_WORKER"
-service = "razorpay-api"
-entrypoint = "PaymentService"
-
-# Commented out - deploy workers first
-# [[services]]
-# binding = "EMBEDDING_SERVICE"
-# service = "embedding-worker"
-# entrypoint = "EmbeddingWorker"
-
-# [[queues.producers]]
-# binding = "REALTIME_EVENTS_QUEUE"
-# queue = "realtime-events-queue"
-
-# [[queues.producers]]
-# binding = "SSO_REVERSE_SYNC_QUEUE"
-# queue = "sso-reverse-sync-queue"
-
-# [[services]]
-# binding = "EMAIL_SERVICE"
-# service = "shared-email-api"
-# entrypoint = "EmailService"
-
-[[queues.producers]]
-binding = "LEARNER_ADMISSION_QUEUE"
-queue = "learner-admission-queue"
-
-# ============================================================================
-# KV NAMESPACES
-# ============================================================================
-
-[[kv_namespaces]]
-binding = "RATE_LIMIT_KV"
-id = "263960fbe0d64387b553e724d3948012"  # Shared with email-worker for idempotency
 
 # ============================================================================
 # VARIABLES
@@ -73,7 +55,7 @@ id = "263960fbe0d64387b553e724d3948012"  # Shared with email-worker for idempote
 [vars]
 ENVIRONMENT = "production"
 REALTIME_PARTITIONS = "10"
-SSO_DOMAIN = "https://sso-api.naveen-157.workers.dev"
+SUPABASE_URL = "https://dpooleduinyyzxgrcwko.supabase.co"
 
 # ============================================================================
 # SECRETS (DO NOT COMMIT VALUES)
