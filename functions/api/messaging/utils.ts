@@ -1,6 +1,12 @@
 // Utility functions for messaging
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+const resolveString = (primary: unknown, fallback: unknown): string => {
+  if (typeof primary === 'string') return primary;
+  if (typeof fallback === 'string') return fallback;
+  return '';
+};
+
 interface Conversation {
   id: string;
   learner_id: string;
@@ -21,7 +27,7 @@ async function convertApplicationId(supabase: SupabaseClient, applicationId: num
     const { data } = await supabase.from('applied_jobs').select('id_old').eq('id', applicationId).maybeSingle();
     return data?.id_old;
   }
-  return typeof applicationId === 'string' ? parseInt(applicationId) : applicationId;
+  return typeof applicationId === 'string' ? parseInt(applicationId, 10) : applicationId;
 }
 
 async function convertOpportunityId(supabase: SupabaseClient, opportunityId: number | string | undefined): Promise<number | undefined> {
@@ -30,7 +36,7 @@ async function convertOpportunityId(supabase: SupabaseClient, opportunityId: num
     const { data } = await supabase.from('opportunities').select('id_old').eq('id', opportunityId).maybeSingle();
     return data?.id_old;
   }
-  return typeof opportunityId === 'string' ? parseInt(opportunityId) : opportunityId;
+  return typeof opportunityId === 'string' ? parseInt(opportunityId, 10) : opportunityId;
 }
 
 async function fetchEducatorDetailsForConversations(supabase: SupabaseClient, conversations: Conversation[]): Promise<Conversation[]> {
@@ -51,9 +57,24 @@ async function fetchEducatorDetailsForConversations(supabase: SupabaseClient, co
   if (collegeEducatorConvs.length > 0) {
     const ids = collegeEducatorConvs.map((c: Conversation) => c.educator_id).filter(Boolean);
     if (ids.length > 0) {
-      const { data: lecturers } = await supabase.from('college_lecturers').select('id, user_id, first_name, last_name, email, phone, department, specialization').in('id', ids);
+      const { data: lecturers } = await supabase.from('college_lecturers').select('id, user_id, first_name, last_name, email, phone, department, specialization, metadata').in('id', ids);
       if (lecturers) {
-        collegeEducatorConvs.forEach((conv: Conversation) => { const e = lecturers?.find((x) => x.id === conv.educator_id); if (e) conv.educator = e; });
+        collegeEducatorConvs.forEach((conv: Conversation) => {
+          const e = lecturers?.find((x) => x.id === conv.educator_id);
+          if (e) {
+            const meta = typeof e.metadata === 'object' && 
+                         e.metadata !== null && 
+                         !Array.isArray(e.metadata)
+            ? e.metadata 
+            : {};
+            conv.educator = {
+              ...e,
+              first_name: resolveString(e.first_name, meta.first_name),
+              last_name: resolveString(e.last_name, meta.last_name),
+              department: resolveString(e.department, meta.department),
+            };
+          }
+        });
       }
     }
   }

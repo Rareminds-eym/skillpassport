@@ -1,7 +1,8 @@
-import { withAuth } from '../../lib/auth';
-import { getServiceClient } from '../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import { apiSuccess, apiDbError, apiError } from '../../lib/response';
+import { withAuth } from '../../lib/auth';
+import { apiDbError, apiError, apiSuccess, } from '../../lib/response';
+import { getServiceClient } from '../../lib/supabase';
+
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const env = context.env as Record<string, string>;
@@ -518,8 +519,8 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         if (!collegeId) return apiError(400, 'VALIDATION_ERROR', 'collegeId required', context.request, { startTime });
         const { data, error } = await supabase
           .from('college_lecturers')
-          .select('id, user_id, userId')
-          .or(`collegeId.eq.${collegeId},college_id.eq.${collegeId}`)
+          .select('id, user_id')
+          .eq('collegeId', collegeId)
           .limit(1)
           .maybeSingle();
         if (error && error.code !== 'PGRST116') return apiDbError(error, context.request, { startTime });

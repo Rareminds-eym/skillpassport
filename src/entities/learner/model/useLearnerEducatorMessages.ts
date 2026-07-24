@@ -2,11 +2,12 @@
 // This hook needs MessageService/Message types passed as parameters
 // Update all call sites to pass these dependencies from @/features/messaging
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
 import MessageService from '@/shared/api/messageService';
-import { queryKeys } from '@/shared/lib/queryKeys';
 import { getLogger } from '@/shared/config/logging';
+import { queryKeys } from '@/shared/lib/queryKeys';
+
 
 const logger = getLogger('learner-educator-messages');
 /**
@@ -98,6 +99,7 @@ export const useLearnerEducatorMessages = ({
       classId,
       subject
     }) => {
+      if (!conversationId) throw new Error('conversationId is required for sending messages');
       return await MessageService.sendMessage(
         conversationId,
         senderId,
@@ -113,10 +115,10 @@ export const useLearnerEducatorMessages = ({
     },
     onMutate: async (variables) => {
       // Cancel outgoing refetches
-      await queryClient.cancelQueries({ queryKey: queryKeys.learner.messages.conversation(conversationId!) });
+      await queryClient.cancelQueries({ queryKey: queryKeys.learner.messages.conversation(conversationId) });
 
       // Snapshot previous value
-      const previousMessages = queryClient.getQueryData(queryKeys.learner.messages.conversation(conversationId!));
+      const previousMessages = queryClient.getQueryData(queryKeys.learner.messages.conversation(conversationId));
 
       // Optimistically add the message
       const optimisticMessage = {
@@ -134,22 +136,22 @@ export const useLearnerEducatorMessages = ({
         _optimistic: true
       };
 
-      queryClient.setQueryData(queryKeys.learner.messages.conversation(conversationId!), (old) => {
+      queryClient.setQueryData(queryKeys.learner.messages.conversation(conversationId), (old) => {
         return old ? [...old, optimisticMessage] : [optimisticMessage];
       });
 
       return { previousMessages, optimisticMessage };
     },
-    onError: (err, variables, context) => {
+    onError: (err, _variables, context) => {
       // Rollback on error
       if (context?.previousMessages) {
-        queryClient.setQueryData(queryKeys.learner.messages.conversation(conversationId!), context.previousMessages);
+        queryClient.setQueryData(queryKeys.learner.messages.conversation(conversationId), context.previousMessages);
       }
       logger.error('Failed to send message', err instanceof Error ? err : new Error(String(err)), { conversationId, learnerId });
     },
-    onSuccess: (data, variables, context) => {
+    onSuccess: (data, _variables, context) => {
       // Replace optimistic message with real one
-      queryClient.setQueryData(queryKeys.learner.messages.conversation(conversationId!), (old) => {
+      queryClient.setQueryData(queryKeys.learner.messages.conversation(conversationId), (old) => {
         if (!old) return [data];
         return old.map(msg =>
           msg.id === context?.optimisticMessage?.id ? data : msg
@@ -191,14 +193,19 @@ export const useLearnerEducatorConversations = (learnerId, enabled = true) => {
     queryKey: queryKeys.learner.conversations.byLearner(learnerId, 'learner_educator'),
     queryFn: async () => {
       if (!learnerId) return [];
-      // Use getUserConversations with learner userType and filter by conversation type
-      return await MessageService.getUserConversations(
-        learnerId,
-        'learner',
-        false, // includeArchived
-        true, // useCache
-        'learner_educator' // conversationType filter - This ensures we only get educator conversations
-      );
+      const [schoolResult, collegeResult] = await Promise.allSettled([
+        MessageService.getUserConversations(learnerId, 'learner', false, true, 'learner_educator'),
+        MessageService.getUserConversations(learnerId, 'learner', false, true, 'learner_college_educator'),
+      ]);
+      if (schoolResult.status === 'rejected') {
+        logger.error('Failed to fetch school educator conversations', schoolResult.reason instanceof Error ? schoolResult.reason : new Error(String(schoolResult.reason)), { learnerId });
+      }
+      if (collegeResult.status === 'rejected') {
+        logger.error('Failed to fetch college lecturer conversations', collegeResult.reason instanceof Error ? collegeResult.reason : new Error(String(collegeResult.reason)), { learnerId });
+      }
+      const schoolConvs = schoolResult.status === 'fulfilled' ? schoolResult.value : [];
+      const collegeConvs = collegeResult.status === 'fulfilled' ? collegeResult.value : [];
+      return [...(schoolConvs || []), ...(collegeConvs || [])];
     },
     enabled: !!learnerId && enabled,
     staleTime: 30000,
@@ -248,7 +255,7 @@ export const useCreateLearnerEducatorConversation = () => {
         subject
       );
     },
-    onSuccess: (data, variables) => {
+    onSuccess: (_data, variables) => {
       // Invalidate conversations list to include new conversation
       queryClient.invalidateQueries({
         queryKey: queryKeys.learner.conversations.byLearner(variables.learnerId, 'learner_educator'),
