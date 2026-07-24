@@ -193,7 +193,7 @@ const NewEducatorConversationModal = ({ isOpen, onClose, learnerId, onConversati
   const fetchlearnerEducators = async () => {
     setLoading(true);
     try {
-      logger.info('Starting fetch learner educators', { learnerId });
+      logger.debug('Starting fetch learner educators', { learnerId });
 
       // Get learner context (school_id, college_id)
       let { data: learnerData } = await apiPost('/messaging/actions', { action: 'fetch-learner-context', learnerId });
@@ -213,7 +213,7 @@ const NewEducatorConversationModal = ({ isOpen, onClose, learnerId, onConversati
 
       // Fetch ALL school educators if learner has school_id
       if (learnerData?.school_id) {
-        logger.info('Fetching school educators for school_id:', learnerData.school_id);
+        logger.debug('Fetching school educators for school_id:', learnerData.school_id);
         const { data: schoolEducators } = await apiPost('/messaging/actions', { action: 'fetch-recipients', conversationType: 'admin-educator', contextId: learnerData.school_id });
         if (schoolEducators) {
           const educatorList = schoolEducators.map(educator => ({
@@ -228,9 +228,9 @@ const NewEducatorConversationModal = ({ isOpen, onClose, learnerId, onConversati
         }
       }
 
-      // Fetch college lecturers if learner has college_id
+      // Fetch  ALL college lecturers if learner has college_id
       if (learnerData?.college_id) {
-        logger.info('Fetching college lecturers', { collegeId: learnerData.college_id });
+        logger.debug('Fetching college lecturers', { collegeId: learnerData.college_id });
         const { data: allCollegeLecturers } = await apiPost('/messaging/actions', { action: 'fetch-recipients', conversationType: 'college-lecturer', contextId: learnerData.college_id });
         if (allCollegeLecturers && allCollegeLecturers.length > 0) {
           const collegeEducators = allCollegeLecturers.map(lecturer => ({
@@ -245,11 +245,11 @@ const NewEducatorConversationModal = ({ isOpen, onClose, learnerId, onConversati
           }));
           allEducators.push(...collegeEducators);
         } else {
-          logger.info('No college lecturers found in this college');
+          logger.debug('No college lecturers found in this college');
         }
       }
 
-      logger.info('Final educators list:', allEducators);
+      logger.debug('Final educators list:', allEducators);
       setEducators(allEducators);
     } catch (error) {
       logger.error('Error fetching educators:', error);

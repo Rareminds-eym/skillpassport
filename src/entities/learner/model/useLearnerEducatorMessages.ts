@@ -99,6 +99,7 @@ export const useLearnerEducatorMessages = ({
       classId,
       subject
     }) => {
+      if (!conversationId) throw new Error('conversationId is required for sending messages');
       return await MessageService.sendMessage(
         conversationId,
         senderId,
@@ -113,8 +114,6 @@ export const useLearnerEducatorMessages = ({
       );
     },
     onMutate: async (variables) => {
-      if (!conversationId) throw new Error('conversationId is required for sending messages');
-
       // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: queryKeys.learner.messages.conversation(conversationId) });
 

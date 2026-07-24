@@ -362,5 +362,5 @@ export {
   handleGetOrCreateLearnerCollegeAdminConversation,
   handleGetOrCreateLearnerCollegeLecturerConversation,
   handleGetOrCreateLearnerEducatorConversation,
-  handleUnarchiveConversation
+  handleUnarchiveConversation,
 };

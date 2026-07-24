@@ -64,8 +64,7 @@ async function fetchEducatorDetailsForConversations(supabase: SupabaseClient, co
           if (e) {
             const meta = typeof e.metadata === 'object' && 
                          e.metadata !== null && 
-                         !Array.isArray(e.metadata) && 
-                         Object.getPrototypeOf(e.metadata) === Object.prototype
+                         !Array.isArray(e.metadata)
             ? e.metadata 
             : {};
             conv.educator = {

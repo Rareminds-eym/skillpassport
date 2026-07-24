@@ -1867,10 +1867,9 @@ const Messages = () => {
         onClose={() => setShowNewEducatorConversationModal(false)}
         learnerId={learnerId}
         onConversationCreated={async ({ educatorId, educatorType, classId, subject, initialMessage }) => {
+          let conversation;
           try {
             logger.info('Creating conversation with educator', { educatorId, educatorType, classId, subject });
-
-            let conversation;
             if (educatorType === 'college_lecturer') {
               // Create college lecturer conversation
               conversation = await MessageService.getOrCreatelearnerCollegeLecturerConversation(
@@ -1977,7 +1976,7 @@ const Messages = () => {
                 learnerId,
                 conversationData.initialMessage.trim()
                 );
-                toast.success('Conversation started with school admin!');
+                toast.success('Conversation started and message sent!');
               } catch (msgError) {
                 logger.error('Conversation created but initial message failed', msgError);
                 toast.error('Conversation started, but your message failed to send. Please try sending it again.');
@@ -2019,7 +2018,7 @@ const Messages = () => {
                   learnerId,
                   conversationData.initialMessage.trim()
                 );
-                toast.success('Conversation started with college admin!');
+                toast.success('Conversation started and message sent!');
               } catch (msgError) {
                 logger.error('Conversation created but initial message failed', msgError);
                 toast.error('Conversation started, but your message failed to send. Please try sending it again.');
