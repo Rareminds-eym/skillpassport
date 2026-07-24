@@ -412,6 +412,10 @@ function PaymentSuccess() {
     razorpay_order_id: stateData.razorpay_order_id || '',
     razorpay_signature: stateData.razorpay_signature || '',
   };
+  
+  // Extract primitives for stable useCallback dependencies
+  const razorpayPaymentId = paymentParams.razorpay_payment_id;
+  const userId = user?.id;
 
   // State
   const [activationStatus, setActivationStatus] = useState(ACTIVATION_STATES.PENDING);
@@ -656,7 +660,7 @@ function PaymentSuccess() {
       let fileIdentifier = receiptKey || receiptUrl;
       
       // Strategy 2: If not available, construct from payment ID and try to fetch
-      if (!fileIdentifier && paymentParams.razorpay_payment_id && user?.id) {
+      if (!fileIdentifier && razorpayPaymentId && userId) {
         if (
           !RECEIPT_CONFIG?.USER_ID_PREFIX_LENGTH ||
           !RECEIPT_CONFIG?.PAYMENT_ID_SANITIZE_REGEX
@@ -665,10 +669,10 @@ function PaymentSuccess() {
           return;
         }
 
-        const userPrefix = user.id
-          ? user.id.substring(0, Math.min(user.id.length, RECEIPT_CONFIG.USER_ID_PREFIX_LENGTH))
+        const userPrefix = userId
+          ? userId.substring(0, Math.min(userId.length, RECEIPT_CONFIG.USER_ID_PREFIX_LENGTH))
           : '';
-        const sanitizedPaymentId = paymentParams.razorpay_payment_id.replace(RECEIPT_CONFIG.PAYMENT_ID_SANITIZE_REGEX, '');
+        const sanitizedPaymentId = razorpayPaymentId.replace(RECEIPT_CONFIG.PAYMENT_ID_SANITIZE_REGEX, '');
         // Use a wildcard pattern - backend will find the file with any timestamp
         fileIdentifier = `payment_pdf/user_${userPrefix}/${sanitizedPaymentId}`;
         log.info('Constructed receipt identifier from payment ID:', fileIdentifier);
@@ -706,7 +710,7 @@ function PaymentSuccess() {
         toast.error('Failed to download receipt. A copy has been sent to your email.');
       }
     }
-  }, [receiptKey, receiptUrl, paymentParams.razorpay_payment_id, user?.id, receiptStatus]);
+  }, [receiptKey, receiptUrl, razorpayPaymentId, userId, receiptStatus]);
 
   // ============================================================================
   // RENDER

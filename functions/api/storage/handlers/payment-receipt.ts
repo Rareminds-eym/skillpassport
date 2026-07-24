@@ -9,7 +9,6 @@
 import type { PagesFunction } from '../../../lib/types';
 import { apiSuccess, apiError } from '../../../lib/response';;
 import { corsHeaders } from '../../../lib/cors';
-import { RECEIPT_CONFIG, DateUtils } from '../../../lib/constants';
 import { R2Client } from '../utils/r2-client';
 import {
   createAuthenticationError,
@@ -17,8 +16,23 @@ import {
   logErrorSafely,
 } from '../utils/error-handling';
 import { createLogger } from '../../../lib/logger';
+import { ssoGetUserTransactions, ssoGetUserSubscription } from '../../../lib/sso-client';
 
 const logger = createLogger('payment-receipt');
+
+// Receipt configuration constants
+const RECEIPT_CONFIG = {
+  PAYMENT_ID_SANITIZE_REGEX: /[^a-zA-Z0-9]/g,
+  USER_ID_PREFIX_LENGTH: 8,
+} as const;
+
+// Date utility
+const DateUtils = {
+  getDateString: () => {
+    const now = new Date();
+    return `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+  },
+};
 
 interface UploadReceiptRequestBody {
   pdfBase64: string;
@@ -205,7 +219,7 @@ export const handleGetPaymentReceipt: PagesFunction = async (context) => {
     const keyParts = fileKey.split('/');
     if (keyParts.length >= 2) {
       const folderName = keyParts[1];
-      const userIdPrefix = user.id.substring(0, 8);
+      const userIdPrefix = user.id.substring(0, RECEIPT_CONFIG.USER_ID_PREFIX_LENGTH);
       if (!folderName.includes(userIdPrefix)) {
         return createAuthorizationError(
           user.id,
@@ -308,7 +322,7 @@ export const handleGetPaymentReceiptPresigned: PagesFunction = async (context) =
       const keyParts = fileKey.split('/');
       if (keyParts.length >= 2) {
         const folderName = keyParts[1]; // e.g. "user_9a754938"
-        const userIdPrefix = user.id.substring(0, 8);
+        const userIdPrefix = user.id.substring(0, RECEIPT_CONFIG.USER_ID_PREFIX_LENGTH);
         if (!folderName.includes(userIdPrefix)) {
           return createAuthorizationError(
             user.id,
@@ -319,48 +333,64 @@ export const handleGetPaymentReceiptPresigned: PagesFunction = async (context) =
         }
       }
 
-      // List files with the partial key as prefix
-      let files: unknown[];
-      
-      try {
-        const listResult = await r2Client.list(fileKey);
-        
-        if (!Array.isArray(listResult)) {
-          logger.error('Invalid response from r2Client.list', new Error('Expected array'));
-          return apiError(500, 'INTERNAL_ERROR', 'Failed to process receipt file', request);
-        }
-        
-        files = listResult;
-      } catch (listErr) {
-        logger.error(
-          'Failed to list receipt files',
-          listErr instanceof Error ? listErr : new Error(String(listErr))
-        );
-        return apiError(500, 'INTERNAL_ERROR', 'Failed to process receipt file', request);
-      }
-      
-      logger.info(`Found ${files.length} matching files`);
+      // Database lookup: find exact receipt path matching the payment ID
+      const paymentId = keyParts.length >= 3 ? keyParts[keyParts.length - 1] : null;
 
-      if (files.length === 0) {
-        logger.error('No receipt found for pattern', new Error('File not found'), { fileKey });
+      if (!paymentId) {
+        logger.error('Could not extract payment ID from partial key', new Error('Invalid partial file key'), { fileKey });
+        return apiError(400, 'VALIDATION_ERROR', 'Invalid payment receipt file key', request);
+      }
+
+      try {
+        // Check transaction record first
+        const transactions = await ssoGetUserTransactions(env, user.id);
+        const matchedTx = transactions.find(
+          (tx) =>
+            tx.razorpay_payment_id === paymentId ||
+            tx.razorpay_order_id === paymentId ||
+            tx.subscription_id === paymentId ||
+            tx.id === paymentId
+        );
+
+        if (
+          matchedTx?.receipt_url &&
+          typeof matchedTx.receipt_url === 'string' &&
+          matchedTx.receipt_url.endsWith('.pdf')
+        ) {
+          fileKey = matchedTx.receipt_url;
+          logger.info('Found exact receipt path from database transaction', { fileKey });
+        } else {
+          // Check subscription record
+          const subData = await ssoGetUserSubscription(env, user.id);
+          const sub = subData?.subscription;
+          if (
+            sub &&
+            (sub.razorpay_payment_id === paymentId ||
+              sub.razorpay_order_id === paymentId ||
+              sub.razorpay_subscription_id === paymentId ||
+              sub.id === paymentId) &&
+            sub.receipt_url &&
+            typeof sub.receipt_url === 'string' &&
+            sub.receipt_url.endsWith('.pdf')
+          ) {
+            fileKey = sub.receipt_url;
+            logger.info('Found exact receipt path from database subscription', { fileKey });
+          } else {
+            logger.error('Receipt not found in database for payment ID', new Error('Receipt not found'), {
+              paymentId,
+              userId: user.id,
+            });
+            return apiError(404, 'NOT_FOUND', 'Receipt not found. It may still be generating.', request);
+          }
+        }
+      } catch (dbError) {
+        logger.error('Failed to fetch receipt path from database', {
+          error: dbError instanceof Error ? dbError.message : String(dbError),
+          paymentId,
+          userId: user.id,
+        });
         return apiError(404, 'NOT_FOUND', 'Receipt not found. It may still be generating.', request);
       }
-
-      const firstFile = files[0];
-      if (
-        !firstFile ||
-        typeof firstFile !== 'object' ||
-        !('key' in firstFile) ||
-        typeof firstFile.key !== 'string' ||
-        !firstFile.key
-      ) {
-        logger.error('Invalid receipt file entry', new Error('Missing file key'));
-        return apiError(500, 'INTERNAL_ERROR', 'Failed to process receipt file', request);
-      }
-
-      // Use the first (and should be only) matching file
-      fileKey = firstFile.key;
-      logger.info('Using file', { fileKey });
     }
 
     // Extract payment ID from file key for additional validation
@@ -378,7 +408,7 @@ export const handleGetPaymentReceiptPresigned: PagesFunction = async (context) =
     const keyParts = fileKey.split('/');
     if (keyParts.length >= 2) {
       const folderName = keyParts[1]; // e.g. "user_9a754938"
-      const userIdPrefix = user.id.substring(0, 8);
+      const userIdPrefix = user.id.substring(0, RECEIPT_CONFIG.USER_ID_PREFIX_LENGTH);
       if (!folderName.includes(userIdPrefix)) {
         return createAuthorizationError(
           user.id,

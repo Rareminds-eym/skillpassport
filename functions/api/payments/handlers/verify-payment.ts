@@ -14,7 +14,6 @@
 
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getContextUser } from '../../../lib/auth';
-import { RECEIPT_CONFIG, DateUtils } from '../../../lib/constants';
 import { sendEmailSafe } from '../../../lib/email-service';
 import { createLogger } from '../../../lib/logger';
 import { apiError, apiSuccess } from '../../../lib/response';
@@ -34,6 +33,14 @@ import type { EventConfirmationTemplateData } from '../../email/types';
 import { fetchImageBytes, generateReceiptPDF, type ReceiptData } from '../../storage/utils/pdf-generator';
 import { R2Client } from '../../storage/utils/r2-client';
 import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../lib/paymentBinding';
+
+const logger = createLogger('verify-payment');
+
+// Receipt configuration constants
+const RECEIPT_CONFIG = {
+  USER_ID_PREFIX_LENGTH: 8,
+  PAYMENT_ID_SANITIZE_REGEX: /[^a-zA-Z0-9_-]/g,
+};
 
 // RPC calls throw errors of unknown shape; some carry an HTTP-like numeric
 // `status` (e.g. 409 on a duplicate-key race). This narrows without `any`.
@@ -79,8 +86,6 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
   }
 
   const userEmail: string = user.email;
-  const userName = typeof user.name === 'string' ? user.name : undefined;
-  const userPhone = typeof user.phone === 'string' ? user.phone : undefined;
 
   try {
     let body: Record<string, unknown>;
@@ -127,11 +132,21 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
     // Step 2: Signature valid — prepare subscription data
     const plan = body.plan as Record<string, unknown> | undefined;
     if (!plan || typeof plan !== 'object') {
-      console.warn('[VerifyPayment] Signature verified but no plan data provided');
+      logger.warn('Signature verified but no plan data provided', { 
+        razorpayPaymentId, 
+        razorpayOrderId 
+      });
       return apiSuccess(verifyResult, context.request);
     }
     if (!plan.id || !plan.name || !plan.price || !plan.duration) {
-      console.warn('[VerifyPayment] Signature verified but no plan data provided');
+      logger.warn('Signature verified but incomplete plan data', { 
+        razorpayPaymentId, 
+        razorpayOrderId,
+        hasPlanId: !!plan.id,
+        hasPlanName: !!plan.name,
+        hasPlanPrice: !!plan.price,
+        hasPlanDuration: !!plan.duration
+      });
       return apiSuccess(verifyResult, context.request);
     }
 
@@ -159,7 +174,10 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
     // Authoritative price from DB — never trust client-supplied price
     const rawPricingMatrix = validPlan.pricing_matrix;
     if (!isPricingMatrix(rawPricingMatrix)) {
-      console.error('[VerifyPayment] No pricing matrix found for plan:', plan.id);
+      logger.error('No pricing matrix found for plan', new Error('Invalid pricing matrix structure'), { 
+        planId: plan.id,
+        planCode: validPlan.plan_code
+      });
       return apiError(400, 'VALIDATION_ERROR', 'Plan pricing data is invalid', context.request);
     }
     const pricingMatrix = rawPricingMatrix;
@@ -178,7 +196,12 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
         if (entityPricing?.yearly === clientPrice && entityPricing.yearly > 0) {
           planPrice = entityPricing.yearly;
           detectedBillingCycle = 'yearly';
-          console.log('[VerifyPayment] Price matched to yearly cycle:', { clientPrice, planPrice, entityKey });
+          logger.info('Price matched to yearly billing cycle', { 
+            clientPrice, 
+            planPrice, 
+            entityKey,
+            planId: plan.id
+          });
           break;
         }
 
@@ -186,22 +209,24 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
         if (entityPricing?.monthly === clientPrice && entityPricing.monthly > 0) {
           planPrice = entityPricing.monthly;
           detectedBillingCycle = 'monthly';
-          console.log('[VerifyPayment] Price matched to monthly cycle:', { clientPrice, planPrice, entityKey });
+          logger.info('Price matched to monthly billing cycle', { 
+            clientPrice, 
+            planPrice, 
+            entityKey,
+            planId: plan.id
+          });
           break;
         }
       }
     }
 
     if (typeof planPrice !== 'number') {
-      logger.error('Plan price mismatch or no pricing found for cycle', new Error(`No valid ${cycleKey} pricing found for plan ${plan.id}`));
-      return apiError(400, 'VALIDATION_ERROR', `Selected plan has no valid ${cycleKey} pricing matching the request`, context.request);
-      console.error('[VerifyPayment] Plan price mismatch or no pricing found:', {
-        planId: plan.id,
+      logger.error('Plan price mismatch or no pricing found', new Error('Unable to match client price with plan pricing matrix'), {
+        planId: plan?.id,
         planCode: validPlan.plan_code,
         clientPrice,
-        duration: plan.duration,
+        duration: plan?.duration,
         pricingMatrix,
-        errorMessage: `Client sent price ${clientPrice} but no matching pricing found in matrix`
       });
       return apiError(400, 'VALIDATION_ERROR', `Selected plan has no pricing matching the payment (₹${clientPrice}). Please try again.`, context.request);
     }
@@ -219,15 +244,6 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
     const endDate = new Date(now);
     const durationMonths = detectedBillingCycle === 'yearly' ? 12 : 1;
     endDate.setMonth(endDate.getMonth() + durationMonths);
-
-    // Step 2.7: Pre-calculate receipt key for async generation
-    // DO NOT store in database yet - only after successful upload
-    let receiptKey: string | null = null;
-    
-    const shortUserId = user.id.substring(0, RECEIPT_CONFIG.USER_ID_PREFIX_LENGTH);
-    const sanitizedPmtId = razorpayPaymentId.replace(RECEIPT_CONFIG.PAYMENT_ID_SANITIZE_REGEX, '');
-    const timestamp = Date.now();
-    receiptKey = `payment_pdf/user_${shortUserId}/${sanitizedPmtId}_${timestamp}.pdf`;
 
     // Check for existing active subscription via shadow table
     const { data: existingCache } = await supabase
@@ -304,7 +320,12 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
         const upgradeErrorStatus = hasNumericStatus(upgradeError) ? upgradeError.status : undefined;
 
         if (upgradeErrorMessage.includes('duplicate key') || upgradeErrorMessage.includes('23505') || upgradeErrorStatus === 409) {
-          console.log('[VerifyPayment] Subscription already updated by webhook (duplicate caught). Syncing shadow cache before return.');
+          logger.info('Subscription already updated by webhook (duplicate caught)', { 
+            subscriptionId: existingCache.id,
+            userId: user.id,
+            razorpayPaymentId,
+            razorpayOrderId
+          });
 
           try {
             // user.email (AuthUser) is always a non-empty string, so this
@@ -327,7 +348,13 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
           }, context.request);
         }
 
-        console.error('[VerifyPayment] Upgrade failed:', upgradeErrorMessage);
+        logger.error('Subscription upgrade failed', upgradeError instanceof Error ? upgradeError : new Error(upgradeErrorMessage), {
+          userId: user.id,
+          subscriptionId: existingCache.id,
+          targetPlanId: plan.id,
+          razorpayPaymentId,
+          razorpayOrderId
+        });
 
         // Record failed upgrade as an event in auth DB
         try {
@@ -367,9 +394,13 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
       const planCode = validPlan.plan_code;
       const isRecruiterPlan = planCode?.includes('recruiter') || planCode?.includes('recruitment');
 
-      console.log('[VerifyPayment] Creating new subscription for user:', user.id, {
-        plan_code: planCode,
-        is_recruiter: isRecruiterPlan,
+      logger.info('Creating new subscription', {
+        userId: user.id,
+        planId: plan.id,
+        planCode,
+        isRecruiterPlan,
+        razorpayPaymentId,
+        razorpayOrderId
       });
 
       // learners.name is the source of truth for the subscription's full_name
@@ -404,7 +435,12 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
 
         // Handle race condition: Webhook or other synchronous flow already created the subscription
         if (createErrorMessage.includes('duplicate key') || createErrorMessage.includes('23505') || createErrorStatus === 409) {
-          console.log('[VerifyPayment] Subscription already created (duplicate caught). Order fulfilled asynchronously. Syncing shadow cache before return.');
+          logger.info('Subscription already created by webhook (duplicate caught)', {
+            userId: user.id,
+            planId: plan.id,
+            razorpayPaymentId,
+            razorpayOrderId
+          });
 
           try {
             // user.email (AuthUser) is always a non-empty string, so this
@@ -427,7 +463,12 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
           }, context.request);
         }
 
-        console.error('[VerifyPayment] Subscription creation failed:', createErrorMessage);
+        logger.error('Subscription creation failed', createError instanceof Error ? createError : new Error(createErrorMessage), {
+          userId: user.id,
+          planId: plan.id,
+          razorpayPaymentId,
+          razorpayOrderId
+        });
 
         return apiSuccess({
           payment_verified: true,
@@ -458,14 +499,23 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
         payment_method: payment.method,
         // DO NOT set receipt_url here - will be set after successful upload
       });
+      transactionId = typeof txResult?.id === 'string' ? txResult.id : undefined;
     } catch (txError: unknown) {
       const txErrorMessage = txError instanceof Error ? txError.message : String(txError);
       const isTxErrorStatus409 = hasNumericStatus(txError) && txError.status === 409;
 
       if (txErrorMessage.includes('duplicate key') || txErrorMessage.includes('23505') || isTxErrorStatus409) {
-        console.log('[VerifyPayment] Transaction already recorded (duplicate caught). Skipping further duplicate handling.');
+        logger.info('Transaction already recorded (duplicate caught)', {
+          userId: user.id,
+          razorpayPaymentId,
+          razorpayOrderId
+        });
       } else {
-        console.error('[VerifyPayment] Transaction recording failed (non-critical):', txErrorMessage);
+        logger.error('Transaction recording failed (non-critical)', txError instanceof Error ? txError : new Error(txErrorMessage), {
+          userId: user.id,
+          razorpayPaymentId,
+          razorpayOrderId
+        });
       }
     }
 
@@ -482,7 +532,11 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
         await syncSubscriptionCache(supabase, syncData.subscription, syncData.plan);
       }
     } catch (syncError) {
-      console.error('[VerifyPayment] Shadow sync failed (non-critical):', syncError);
+      logger.error('Shadow sync failed (non-critical)', syncError instanceof Error ? syncError : new Error(String(syncError)), {
+        userId: user.id,
+        razorpayPaymentId,
+        razorpayOrderId
+      });
     }
 
     // users.phone is the source of truth for phone numbers (subscriptions.phone
@@ -493,82 +547,78 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
       .eq('id', user.id)
       .maybeSingle();
     if (userRecordForContactError) {
-      console.error('[VerifyPayment] Failed to fetch user phone for contact (non-critical):', userRecordForContactError);
+      logger.error('Failed to fetch user phone for contact (non-critical)', userRecordForContactError instanceof Error ? userRecordForContactError : new Error(String(userRecordForContactError)), {
+        userId: user.id
+      });
     }
     const contactPhone = userRecordForContact?.phone ?? undefined;
 
-    // Step 4: Generate receipt PDF and upload to R2 (unchanged)
+    // Reuse the learners.name lookup done above on the new-subscription path;
+    // the upgrade path never fetched it, so fetch it here instead.
+    if (learnerName === undefined) {
+      const { data: learner } = await supabase
+        .from('learners')
+        .select('name')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      learnerName = learner?.name;
+    }
+
+    // Step 4: Generate and upload receipt PDF asynchronously, then update databases
+    // This function handles: PDF generation, R2 upload, auth DB update, and app DB sync
+    const shortUserId = user.id.substring(0, RECEIPT_CONFIG.USER_ID_PREFIX_LENGTH);
+    const sanitizedPmtId = razorpayPaymentId.replace(RECEIPT_CONFIG.PAYMENT_ID_SANITIZE_REGEX, '');
+    const timestamp = Date.now();
+    const receiptKeyForGeneration = `payment_pdf/user_${shortUserId}/${sanitizedPmtId}_${timestamp}.pdf`;
+
+    // Fire-and-forget: Generate receipt in background without blocking payment response
+    // The generateAndUploadReceipt function will:
+    // 1. Generate PDF with proper branding
+    // 2. Upload to R2 storage
+    // 3. Update sso_auth.subscriptions.receipt_url
+    // 4. Update sso_auth.transactions.receipt_url
+    // 5. Sync to skillpassport.subscription_cache.receipt_url
+    const receiptPromise = generateAndUploadReceipt({
+      env,
+      supabase,
+      subscriptionId: subscription.id as string,
+      transactionId,
+      userId: user.id,
+      receiptKey: receiptKeyForGeneration,
+      paymentId: razorpayPaymentId,
+      orderId: razorpayOrderId,
+      amount: planPrice,
+      paymentMethod: payment.method,
+      subscription: {
+        plan_type: subscription.plan_type as string,
+        billing_cycle: subscription.billing_cycle as string,
+        subscription_start_date: subscription.subscription_start_date as string,
+        subscription_end_date: subscription.subscription_end_date as string,
+      },
+      user: {
+        name: learnerName || undefined,
+        email: userEmail,
+        phone: contactPhone,
+      },
+    }).catch(err => {
+      logger.error('Background receipt generation failed (non-critical)', err instanceof Error ? err : new Error(String(err)));
+    });
+
+    // Ensure receipt generation completes even after response is sent
+    if (context.waitUntil) {
+      context.waitUntil(receiptPromise);
+    }
+
+    // For the email, we'll use a temporary presigned URL (receipt will be in email anyway)
     let receiptUrl: string | null = null;
-    let receiptKey: string | null = null;
     try {
       const pagesEnv = env as unknown as PagesEnv;
-
-      // Reuse the learners.name lookup done above on the new-subscription path;
-      // the upgrade path never fetched it, so fetch it here instead.
-      if (learnerName === undefined) {
-        const { data: learner } = await supabase
-          .from('learners')
-          .select('name')
-          .eq('user_id', user.id)
-          .maybeSingle();
-        learnerName = learner?.name;
-      }
-
-      const logoUrl = `${APP_URL}/RareMinds ISO Logo-01.png`;
-      const logoBytes: Uint8Array | undefined = await fetchImageBytes(logoUrl);
-      const watermarkBytes = logoBytes;
-
-      const receiptData: ReceiptData = {
-        transaction: {
-          payment_id: body.razorpay_payment_id as string,
-          order_id: body.razorpay_order_id as string,
-          amount: planPrice,
-          currency: 'INR',
-          payment_method: payment.method || 'Card',
-          payment_timestamp: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
-          status: 'Success',
-        },
-        subscription: {
-          plan_name: subscription.plan_type as string,
-          plan_type: subscription.plan_type as string,
-          billing_cycle: subscription.billing_cycle as string,
-          subscription_start_date: subscription.subscription_start_date as string,
-          subscription_end_date: subscription.subscription_end_date as string,
-        },
-        user: {
-          name: learnerName || (subscription.full_name as string) || '',
-          email: (subscription.email as string) || user.email || '',
-          phone: contactPhone,
-        },
-        company: {
-          name: 'Rareminds',
-          address: '231, 2nd stage, 13th Cross Road\nHoysala Nagar, Indiranagar\nBengaluru, Karnataka 560001',
-          phone: '+91 9902326951',
-          email: 'marketing@rareminds.in',
-          taxId: 'GSTIN: 29ABCDE1234F1Z5',
-        },
-        generatedAt: new Date().toLocaleString('en-IN'),
-        logoBytes,
-        watermarkBytes,
-      };
-
-      const pdfBytes = await generateReceiptPDF(receiptData);
-
-      const shortUserId = user.id.substring(0, 8);
-      const sanitizedPmtId = (body.razorpay_payment_id as string).replace(/[^a-zA-Z0-9_-]/g, '');
-      const timestamp = Date.now();
-      receiptKey = `payment_pdf/user_${shortUserId}/${sanitizedPmtId}_${timestamp}.pdf`;
-      const filename = `Receipt-${sanitizedPmtId.slice(-8)}-${new Date().toISOString().split('T')[0]}.pdf`;
-
       const r2 = new R2Client(pagesEnv);
-      receiptUrl = await r2.upload(receiptKey, pdfBytes.buffer as ArrayBuffer, 'application/pdf', {
-        'Content-Disposition': `attachment; filename="${filename}"`,
-      });
-
-      receiptUrl = await r2.generatePresignedGetUrl(receiptKey, 604800);
-      console.log('[VerifyPayment] Receipt uploaded:', receiptUrl);
-    } catch (receiptErr) {
-      console.error('[VerifyPayment] Receipt generation failed (non-critical):', receiptErr);
+      receiptUrl = await r2.generatePresignedGetUrl(receiptKeyForGeneration, 604800);
+      logger.info('Generated temporary presigned URL for email', { receiptKey: receiptKeyForGeneration });
+    } catch (presignErr) {
+      const errorMsg = presignErr instanceof Error ? presignErr.message : String(presignErr);
+      logger.warn('Failed to generate presigned URL for email (non-critical)', { error: errorMsg });
     }
 
     // Step 5: Send payment confirmation email (unchanged)
@@ -583,7 +633,12 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
         receiptUrl: receiptUrl || undefined,
       });
     } catch (emailErr) {
-      console.error('[VerifyPayment] Email failed (non-critical):', emailErr);
+      logger.error('Email failed (non-critical)', emailErr instanceof Error ? emailErr : new Error(String(emailErr)), {
+        userId: user.id,
+        userEmail,
+        razorpayPaymentId,
+        razorpayOrderId
+      });
     }
 
     return apiSuccess({
@@ -627,15 +682,25 @@ async function sendPaymentSuccessEmail(
 
 /**
  * Check if error indicates unsupported RPC method
- * Isolates fragile string matching in single type-safe helper
+ * Checks for explicit "not implemented" message thrown by sso-client
+ * when RPC method is not available on the service binding.
  */
 function isUnsupportedRpcMethod(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null) {
+    return false;
+  }
+  
+  if (!('message' in error) || typeof error.message !== 'string') {
+    return false;
+  }
+  
+  const message = error.message;
+  
+  // Match the exact error thrown by ssoUpdateTransaction in sso-client.ts
+  // when the RPC method is not implemented on the service binding
   return (
-    typeof error === 'object' &&
-    error !== null &&
-    'message' in error &&
-    typeof error.message === 'string' &&
-    error.message.includes('not implemented')
+    message.includes('not implemented') ||
+    message.includes('Method not found')
   );
 }
 
@@ -765,7 +830,8 @@ async function generateAndUploadReceipt(params: {
     }
     
     const sanitizedPaymentId = paymentId.replace(RECEIPT_CONFIG.PAYMENT_ID_SANITIZE_REGEX, '');
-    const filename = `Receipt-${sanitizedPaymentId.slice(-8)}-${DateUtils.getDateString()}.pdf`;
+    const dateString = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+    const filename = `Receipt-${sanitizedPaymentId.slice(-8)}-${dateString}.pdf`;
 
     // Upload to R2
     logger.info('Uploading receipt to R2', { receiptKey, filename });

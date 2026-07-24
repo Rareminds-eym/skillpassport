@@ -23,7 +23,6 @@
 import { apiError, apiSuccess } from '../../../lib/response';
 import type { PagesEnv } from '../../../lib/types';
 import type { Fetcher } from '@cloudflare/workers-types';
-import { RECEIPT_CONFIG, DateUtils } from '../../../lib/constants';
 import { APP_URL } from '../../email/types';
 import {
   fulfillLearnerSubscription,
@@ -43,6 +42,20 @@ import { sendEmailSafe } from '../../../lib/email-service';
 import { createLogger } from '../../../lib/logger';
 
 const logger = createLogger('payment-webhook');
+
+// Receipt configuration constants
+const RECEIPT_CONFIG = {
+  PAYMENT_ID_SANITIZE_REGEX: /[^a-zA-Z0-9]/g,
+  USER_ID_PREFIX_LENGTH: 8,
+} as const;
+
+// Date utility
+const DateUtils = {
+  getDateString: () => {
+    const now = new Date();
+    return `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+  },
+};
 
 export const onRequestPost: PagesFunction<PagesEnv> = async (context) => {
   const { request, env } = context;
@@ -293,6 +306,12 @@ interface PaymentEntityForReceipt {
   method?: string;
 }
 
+interface ReceiptProcessingResult {
+  receiptGenerated: boolean;
+  ssoStored: boolean;
+  emailSent: boolean;
+}
+
 async function generateAndSendReceipt(
   env: PagesEnv,
   subscription: SubscriptionForReceipt,
@@ -301,111 +320,146 @@ async function generateAndSendReceipt(
   razorpay_order_id: string,
   razorpay_payment_id: string,
   amount: number
-) {
+): Promise<ReceiptProcessingResult> {
+  const result: ReceiptProcessingResult = {
+    receiptGenerated: false,
+    ssoStored: false,
+    emailSent: false,
+  };
+
   try {
     const supabase = getServiceClient(env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string });
     let receiptUrl: string | null = null;
     let receiptKey: string | null = null;
 
-    const { data: learner } = await supabase.from('learners').select('name').eq('user_id', userId).maybeSingle();
-
-    let logoBytes: Uint8Array | undefined;
-    logoBytes = await fetchImageBytes(`${APP_URL}/RareMinds ISO Logo-01.png`);
-
-    const receiptData: ReceiptData = {
-      transaction: {
-        payment_id: razorpay_payment_id,
-        order_id: razorpay_order_id,
-        amount: amount / 100,
-        currency: paymentEntity.currency || 'INR',
-        payment_method: paymentEntity.method || 'Card',
-        payment_timestamp: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
-        status: 'Success',
-      },
-      subscription: {
-        plan_name: subscription.plan_type,
-        plan_type: subscription.plan_type,
-        billing_cycle: subscription.billing_cycle,
-        subscription_start_date: subscription.subscription_start_date,
-        subscription_end_date: subscription.subscription_end_date,
-      },
-      user: {
-        name: learner?.name || subscription.full_name || '',
-        email: subscription.email,
-        phone: subscription.phone,
-      },
-      company: {
-        name: 'Rareminds',
-        address: '231, 2nd stage, 13th Cross Road\nHoysala Nagar, Indiranagar\nBengaluru, Karnataka 560001',
-        phone: '+91 9902326951',
-        email: 'marketing@rareminds.in',
-        taxId: 'GSTIN: 29ABCDE1234F1Z5',
-      },
-      generatedAt: new Date().toLocaleString('en-IN'),
-      logoBytes,
-      watermarkBytes: logoBytes,
-    };
-
-    const pdfBytes = await generateReceiptPDF(receiptData);
-    const shortUserId = userId.substring(0, RECEIPT_CONFIG.USER_ID_PREFIX_LENGTH);
-    const sanitizedPmtId = razorpay_payment_id.replace(RECEIPT_CONFIG.PAYMENT_ID_SANITIZE_REGEX, '');
-    const timestamp = Date.now();
-    receiptKey = `payment_pdf/user_${shortUserId}/${sanitizedPmtId}_${timestamp}.pdf`;
-    const filename = `Receipt-${sanitizedPmtId.slice(-8)}-${DateUtils.getDateString()}.pdf`;
-
-    const r2 = new R2Client(env);
-    await r2.upload(receiptKey, pdfBytes.buffer as ArrayBuffer, 'application/pdf', {
-      'Content-Disposition': `attachment; filename="${filename}"`,
-    });
-    receiptUrl = await r2.generatePresignedGetUrl(receiptKey, 604800);
-
-    // Store receipt key in subscription record
+    // Stage 1: Receipt Generation
     try {
-      // Check if SSO_SERVICE binding is available (expected optional dependency)
-      if (!env.SSO_SERVICE) {
-        logger.warn(
-          'SSO_SERVICE binding not configured; skipping non-critical receipt key storage in SSO database'
-        );
-        // Explicitly continue — SSO integration is optional and must not block receipt generation.
-        return;
-      }
-      
-      interface SSOClientModule {
-        ssoUpdateSubscriptionField: (
-          env: { SSO_SERVICE: Fetcher },
-          subscriptionId: string,
-          fields: Record<string, string>
-        ) => Promise<void>;
-      }
-      
-      // Import SSO client module (should always succeed since module is bundled)
-      let ssoClient: SSOClientModule;
+      const { data: learner } = await supabase.from('learners').select('name').eq('user_id', userId).maybeSingle();
+
+      let logoBytes: Uint8Array | undefined;
+      logoBytes = await fetchImageBytes(`${APP_URL}/RareMinds ISO Logo-01.png`);
+
+      const receiptData: ReceiptData = {
+        transaction: {
+          payment_id: razorpay_payment_id,
+          order_id: razorpay_order_id,
+          amount: amount / 100,
+          currency: paymentEntity.currency || 'INR',
+          payment_method: paymentEntity.method || 'Card',
+          payment_timestamp: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+          status: 'Success',
+        },
+        subscription: {
+          plan_name: subscription.plan_type,
+          plan_type: subscription.plan_type,
+          billing_cycle: subscription.billing_cycle,
+          subscription_start_date: subscription.subscription_start_date,
+          subscription_end_date: subscription.subscription_end_date,
+        },
+        user: {
+          name: learner?.name || subscription.full_name || '',
+          email: subscription.email,
+          phone: subscription.phone,
+        },
+        company: {
+          name: 'Rareminds',
+          address: '231, 2nd stage, 13th Cross Road\nHoysala Nagar, Indiranagar\nBengaluru, Karnataka 560001',
+          phone: '+91 9902326951',
+          email: 'marketing@rareminds.in',
+          taxId: 'GSTIN: 29ABCDE1234F1Z5',
+        },
+        generatedAt: new Date().toLocaleString('en-IN'),
+        logoBytes,
+        watermarkBytes: logoBytes,
+      };
+
+      const pdfBytes = await generateReceiptPDF(receiptData);
+      const shortUserId = userId.substring(0, RECEIPT_CONFIG.USER_ID_PREFIX_LENGTH);
+      const sanitizedPmtId = razorpay_payment_id.replace(RECEIPT_CONFIG.PAYMENT_ID_SANITIZE_REGEX, '');
+      const timestamp = Date.now();
+      receiptKey = `payment_pdf/user_${shortUserId}/${sanitizedPmtId}_${timestamp}.pdf`;
+      const filename = `Receipt-${sanitizedPmtId.slice(-8)}-${DateUtils.getDateString()}.pdf`;
+
+      const r2 = new R2Client(env);
+      await r2.upload(receiptKey, pdfBytes.buffer as ArrayBuffer, 'application/pdf', {
+        'Content-Disposition': `attachment; filename="${filename}"`,
+      });
+      receiptUrl = await r2.generatePresignedGetUrl(receiptKey, 604800);
+
+      result.receiptGenerated = true;
+      logger.info('Receipt generated successfully', {
+        userId,
+        orderId: razorpay_order_id,
+        paymentId: razorpay_payment_id,
+        receiptKey,
+      });
+    } catch (error: unknown) {
+      logger.error('Receipt generation failed', {
+        userId,
+        orderId: razorpay_order_id,
+        paymentId: razorpay_payment_id,
+        error: error instanceof Error ? error : new Error(String(error)),
+      });
+      // Receipt generation failure is a required prerequisite — cannot proceed with dependent operations
+      logger.info('Background receipt processing completed', {
+        userId,
+        orderId: razorpay_order_id,
+        paymentId: razorpay_payment_id,
+        ...result,
+      });
+      return result;
+    }
+
+    // Stage 2: SSO Receipt-Key Storage (independent, optional)
+    if (!env.SSO_SERVICE) {
+      logger.warn('SSO_SERVICE binding not configured; skipping receipt key storage', {
+        userId,
+        orderId: razorpay_order_id,
+        paymentId: razorpay_payment_id,
+      });
+    } else {
       try {
-        ssoClient = (await import('../../../lib/sso-client.js')) as unknown as SSOClientModule;
-      } catch (importErr: unknown) {
-        // Module import failure is an UNEXPECTED deployment or build problem.
-        // The module is always bundled; only the SSO_SERVICE binding is optional (checked above).
-        const error = importErr instanceof Error ? importErr : new Error(String(importErr));
-        logger.error(
-          'Failed to load sso-client module (unexpected deployment/build problem); skipping non-critical SSO subscription update',
-          error
-        );
-        // Explicitly continue — SSO subscription update is non-critical and must not block payment processing.
-        return;
-      }
-      
-      if (typeof ssoClient.ssoUpdateSubscriptionField === 'function') {
-        // Validate subscription data before making SSO call
-        if (
-          !subscription ||
-          typeof subscription.id !== 'string' ||
-          subscription.id.trim().length === 0
-        ) {
-          logger.warn('Missing or invalid subscription ID for SSO update; skipping non-critical SSO update');
-          return;
+        interface SSOClientModule {
+          ssoUpdateSubscriptionField: (
+            env: { SSO_SERVICE: Fetcher },
+            subscriptionId: string,
+            fields: Record<string, string>
+          ) => Promise<void>;
         }
-        
+
+        let ssoClient: SSOClientModule;
         try {
+          ssoClient = (await import('../../../lib/sso-client.js')) as unknown as SSOClientModule;
+        } catch (importErr: unknown) {
+          const error = importErr instanceof Error ? importErr : new Error(String(importErr));
+          logger.error('Failed to load sso-client module', {
+            userId,
+            orderId: razorpay_order_id,
+            paymentId: razorpay_payment_id,
+            error,
+          });
+          throw error;
+        }
+
+        if (typeof ssoClient.ssoUpdateSubscriptionField !== 'function') {
+          logger.warn('SSO client module loaded but ssoUpdateSubscriptionField method not available', {
+            userId,
+            orderId: razorpay_order_id,
+            paymentId: razorpay_payment_id,
+          });
+        } else if (!subscription || typeof subscription.id !== 'string' || subscription.id.trim().length === 0) {
+          logger.warn('Missing or invalid subscription ID for SSO update', {
+            userId,
+            orderId: razorpay_order_id,
+            paymentId: razorpay_payment_id,
+          });
+        } else if (!receiptKey) {
+          logger.warn('Receipt key not available for SSO storage', {
+            userId,
+            orderId: razorpay_order_id,
+            paymentId: razorpay_payment_id,
+          });
+        } else {
           await ssoClient.ssoUpdateSubscriptionField(
             env as unknown as { SSO_SERVICE: Fetcher },
             subscription.id,
@@ -413,41 +467,80 @@ async function generateAndSendReceipt(
               receipt_url: receiptKey,
             }
           );
-          logger.info('Receipt key saved to subscription', { receiptKey });
-        } catch (ssoErr) {
-          logger.error(
-            'SSO subscription field update failed; skipping non-critical update',
-            ssoErr instanceof Error ? ssoErr : new Error(String(ssoErr))
-          );
-          // Explicitly continue — payment/webhook flow should not fail because SSO metadata update failed.
+          result.ssoStored = true;
+          logger.info('Receipt key saved to subscription', {
+            userId,
+            orderId: razorpay_order_id,
+            paymentId: razorpay_payment_id,
+            receiptKey,
+          });
         }
-      } else {
-        logger.warn('SSO client module loaded but ssoUpdateSubscriptionField method not available');
+      } catch (error: unknown) {
+        logger.error('Failed to store receipt key in SSO', {
+          userId,
+          orderId: razorpay_order_id,
+          paymentId: razorpay_payment_id,
+          error: error instanceof Error ? error : new Error(String(error)),
+        });
       }
-    } catch (updateErr) {
-      logger.error(
-        'Failed to save receipt key (non-critical)',
-        updateErr instanceof Error ? updateErr : new Error(String(updateErr))
-      );
-      // Explicitly continue — receipt generation succeeded even if storage failed.
     }
 
-    const emailData: EventConfirmationTemplateData = {
-      name: subscription.full_name || subscription.email,
-      email: subscription.email,
-      phone: subscription.phone || '',
-      amount: amount / 100,
-      orderId: razorpay_order_id,
-      campaign: subscription.plan_type,
-      receiptUrl: receiptUrl || undefined,
-    };
+    // Stage 3: Email Delivery (independent)
+    try {
+      const emailData: EventConfirmationTemplateData = {
+        name: subscription.full_name || subscription.email,
+        email: subscription.email,
+        phone: subscription.phone || '',
+        amount: amount / 100,
+        orderId: razorpay_order_id,
+        campaign: subscription.plan_type,
+        receiptUrl: receiptUrl || undefined,
+      };
 
-    await sendEmailSafe(env, {
-      to: emailData.email,
-      subject: getUserConfirmationSubject(emailData.name),
-      html: generateUserConfirmationHtml(emailData),
+      await sendEmailSafe(env, {
+        to: emailData.email,
+        subject: getUserConfirmationSubject(emailData.name),
+        html: generateUserConfirmationHtml(emailData),
+      });
+
+      result.emailSent = true;
+      logger.info('Receipt email sent successfully', {
+        userId,
+        orderId: razorpay_order_id,
+        paymentId: razorpay_payment_id,
+        email: emailData.email,
+      });
+    } catch (error: unknown) {
+      logger.error('Failed to send receipt email', {
+        userId,
+        orderId: razorpay_order_id,
+        paymentId: razorpay_payment_id,
+        error: error instanceof Error ? error : new Error(String(error)),
+      });
+    }
+
+    // Terminal outcome log
+    logger.info('Background receipt processing completed', {
+      userId,
+      orderId: razorpay_order_id,
+      paymentId: razorpay_payment_id,
+      ...result,
     });
-  } catch (err) {
-    logger.error('Failed to generate/send receipt', err instanceof Error ? err : new Error(String(err)));
+
+    return result;
+  } catch (error: unknown) {
+    logger.error('Unexpected background receipt processing failure', {
+      userId,
+      orderId: razorpay_order_id,
+      paymentId: razorpay_payment_id,
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
+    logger.info('Background receipt processing completed', {
+      userId,
+      orderId: razorpay_order_id,
+      paymentId: razorpay_payment_id,
+      ...result,
+    });
+    return result;
   }
 }

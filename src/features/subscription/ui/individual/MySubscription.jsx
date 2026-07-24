@@ -23,7 +23,7 @@ import {
   TrendingUp,
   X as XIcon
 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 
 import toast from 'react-hot-toast';
@@ -162,6 +162,9 @@ function MySubscription() {
   const [loadingBillingHistory, setLoadingBillingHistory] = useState(false);
   const [billingHistoryFetched, setBillingHistoryFetched] = useState(false);
   const [isTogglingAutoRenew, setIsTogglingAutoRenew] = useState(false);
+
+  // Ref to prevent duplicate download requests (synchronous guard)
+  const downloadInProgressRef = useRef(false);
 
   // Use database plans directly
   const plans = useMemo(() => {
@@ -315,6 +318,11 @@ function MySubscription() {
   };
 
   const handleDownloadInvoice = async (invoiceData = null) => {
+    // Prevent duplicate requests - synchronous guard
+    if (downloadInProgressRef.current) {
+      return;
+    }
+
     // Early validation guards
     if (!subscriptionData && !invoiceData) {
       toast.error('Subscription details are not available. Please try again.');
@@ -340,6 +348,7 @@ function MySubscription() {
       return;
     }
 
+    downloadInProgressRef.current = true;
     setIsDownloadingInvoice(true);
     
     let successfulDownload = false;
@@ -371,50 +380,46 @@ function MySubscription() {
             errorMessage = 'Failed to download receipt. A copy has been sent to your email.';
           }
         }
+      } else {
+        // PRIORITY 2: Construct receipt path from payment ID
+        const paymentId = resolvePaymentId(invoiceData, subscriptionData);
         
-        // Exit early after handling receipt URL path
-        return;
-      }
-      
-      // PRIORITY 2: Construct receipt path from payment ID
-      const paymentId = resolvePaymentId(invoiceData, subscriptionData);
-      
-      if (!paymentId) {
-        logger.error('No payment information found', new Error('Missing payment ID'));
-        toast.error('Receipt not available. Payment information not found.');
-        return;
-      }
-      
-      // Construct the receipt key pattern - matches what the backend generates
-      // Pattern: payment_pdf/user_{shortUserId}/{sanitizedPaymentId}_{timestamp}.pdf
-      const RECEIPT_FILE_PREFIX = 'payment_pdf/user_';
-      const userPrefix = user?.id
-        ? user.id.substring(0, Math.min(user.id.length, RECEIPT_CONFIG.USER_ID_PREFIX_LENGTH))
-        : '';
-      const sanitizedPaymentId = paymentId.replace(RECEIPT_CONFIG.PAYMENT_ID_SANITIZE_REGEX, '');
-      
-      // The exact key format may vary by timestamp, so we use the payment ID as identifier
-      // The backend will handle key extraction from payment ID
-      const fileIdentifier = `${RECEIPT_FILE_PREFIX}${userPrefix}/${sanitizedPaymentId}`;
-      
-      // Get presigned URL for the receipt
-      const presignedUrl = await getPaymentReceiptPresignedUrl(fileIdentifier, 3600);
-      
-      if (!isValidPresignedUrl(presignedUrl)) {
-        logger.error('Invalid presigned URL received', new Error('Invalid URL'));
-        errorOccurred = true;
-        errorMessage = 'Failed to generate download link. Receipt may not exist yet.';
-        return;
-      }
-      
-      // Use shared download helper with fallback mechanism
-      try {
-        await downloadFileFromUrl(presignedUrl, generateReceiptFilename());
-        successfulDownload = true;
-      } catch (downloadError) {
-        logger.error('Download helper failed', downloadError);
-        errorOccurred = true;
-        errorMessage = 'Failed to download receipt. A copy has been sent to your email.';
+        if (!paymentId) {
+          logger.error('No payment information found', new Error('Missing payment ID'));
+          errorOccurred = true;
+          errorMessage = 'Receipt not available. Payment information not found.';
+        } else {
+          // Construct the receipt key pattern - matches what the backend generates
+          // Pattern: payment_pdf/user_{shortUserId}/{sanitizedPaymentId}_{timestamp}.pdf
+          const RECEIPT_FILE_PREFIX = 'payment_pdf/user_';
+          const userPrefix = user?.id
+            ? user.id.substring(0, Math.min(user.id.length, RECEIPT_CONFIG.USER_ID_PREFIX_LENGTH))
+            : '';
+          const sanitizedPaymentId = paymentId.replace(RECEIPT_CONFIG.PAYMENT_ID_SANITIZE_REGEX, '');
+          
+          // The exact key format may vary by timestamp, so we use the payment ID as identifier
+          // The backend will handle key extraction from payment ID
+          const fileIdentifier = `${RECEIPT_FILE_PREFIX}${userPrefix}/${sanitizedPaymentId}`;
+          
+          // Get presigned URL for the receipt
+          const presignedUrl = await getPaymentReceiptPresignedUrl(fileIdentifier, 3600);
+          
+          if (!isValidPresignedUrl(presignedUrl)) {
+            logger.error('Invalid presigned URL received', new Error('Invalid URL'));
+            errorOccurred = true;
+            errorMessage = 'Failed to generate download link. Receipt may not exist yet.';
+          } else {
+            // Use shared download helper with fallback mechanism
+            try {
+              await downloadFileFromUrl(presignedUrl, generateReceiptFilename());
+              successfulDownload = true;
+            } catch (downloadError) {
+              logger.error('Download helper failed', downloadError);
+              errorOccurred = true;
+              errorMessage = 'Failed to download receipt. A copy has been sent to your email.';
+            }
+          }
+        }
       }
     } catch (error) {
       logger.error('Receipt download failed', error);
@@ -426,6 +431,7 @@ function MySubscription() {
         errorMessage = 'Failed to download receipt. A copy has been sent to your email.';
       }
     } finally {
+      downloadInProgressRef.current = false;
       setIsDownloadingInvoice(false);
       
       // Show appropriate toast message after cleanup
@@ -1110,8 +1116,10 @@ function MySubscription() {
                                   {invoice.status === 'success' || invoice.status === 'paid' ? 'Paid' : 'Pending'}
                                 </span>
                                 <button
+                                  type="button"
                                   onClick={() => handleDownloadInvoice(invoice)}
-                                  className="p-2 hover:bg-slate-100 rounded-2xl transition-colors"
+                                  disabled={isDownloadingInvoice}
+                                  className="p-2 hover:bg-slate-100 rounded-2xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                   title="Download Invoice"
                                 >
                                   <Download className="w-4 h-4 text-slate-600" />
@@ -1250,6 +1258,7 @@ function MySubscription() {
                       </div>
                       <div className="pt-3 border-t border-slate-200">
                         <button
+                          type="button"
                           onClick={() => {
                             handleDownloadInvoice();
                           }}
