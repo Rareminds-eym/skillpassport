@@ -9,6 +9,7 @@ import {
   OrganizationCreatedSchema,
   OrganizationUpdatedSchema,
   MembershipPayloadSchema,
+  type MembershipPayloadData,
   MembershipRemovedSchema,
   SubscriptionCreatedSchema,
   SubscriptionUpdatedSchema,
@@ -97,7 +98,9 @@ export class SyncService {
       .eq('id', parsed.user_id)
       .single();
 
-    const existingMetadata = (existing?.metadata as Record<string, unknown>) ?? {};
+    const existingMetadata = (typeof existing?.metadata === 'object' && existing?.metadata !== null
+      ? existing.metadata
+      : {}) as Record<string, unknown>;
     const { error } = await this.db.from('users')
       .update({ metadata: { ...existingMetadata, is_email_verified: true } })
       .eq('id', parsed.user_id);
@@ -212,7 +215,7 @@ export class SyncService {
     }
   }
 
-  private async handleLearnerOrgAssignment(parsed: any): Promise<SyncResult> {
+  private async handleLearnerOrgAssignment(parsed: MembershipPayloadData): Promise<SyncResult> {
     const { data: users } = await this.db.from('users')
       .select('email, firstName, lastName')
       .eq('id', parsed.user_id);

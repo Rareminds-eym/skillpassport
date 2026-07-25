@@ -4,15 +4,15 @@ import type { PagesEnv } from './types';
 
 export async function handleSyncRequest(
   context: { request: Request; env: PagesEnv },
-  handlers: Record<string, (service: SyncService, data: any) => Promise<SyncResult>>
+  handlers: Record<string, (service: SyncService, data: unknown) => Promise<SyncResult>>
 ): Promise<Response> {
-  let body: any;
+  let body: unknown;
   try {
     body = await context.request.json();
   } catch {
     return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON body', context.request);
   }
-  const { action, data } = body;
+  const { action, data } = body as { action?: string; data?: unknown };
   if (!action) return apiError(400, 'VALIDATION_ERROR', 'action is required', context.request);
   const handler = handlers[action];
   if (!handler) return apiError(400, 'VALIDATION_ERROR', `Unknown action: ${action}`, context.request);

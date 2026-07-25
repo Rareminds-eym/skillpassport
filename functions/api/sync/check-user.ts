@@ -69,8 +69,8 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
-  } catch (err: any) {
-    const errorMsg = err?.message || 'Unknown error';
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : 'Unknown error';
     console.error('[sync/check-user] Error:', errorMsg);
     
     // Return 200 with exists: false to prevent retry loops
