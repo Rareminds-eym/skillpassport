@@ -71,8 +71,6 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
   const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null)
   const [documentUploadProgress, setDocumentUploadProgress] = useState<DocumentUploadProgress[]>([])
   const [isUploadingDocuments, setIsUploadingDocuments] = useState(false)
-  const [batchId, setBatchId] = useState<string | null>(null)
-
   const [formData, setFormData] = useState<LearnerFormData>({
     name: '',
     email: '',
@@ -892,7 +890,6 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
     setLoading(true)
     setError(null)
     setSuccess(null)
-    setBatchId(null)
 
     try {
       // Resolve organization ID
@@ -939,8 +936,6 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
       }
 
       const bid = queueResult.data.batch_id
-      setBatchId(bid)
-      setUploadProgress({ current: 0, total: 100 })
 
       // Poll for batch completion
       const poll = async () => {

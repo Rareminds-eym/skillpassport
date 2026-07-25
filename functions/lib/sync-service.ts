@@ -98,9 +98,9 @@ export class SyncService {
       .eq('id', parsed.user_id)
       .single();
 
-    const existingMetadata = (typeof existing?.metadata === 'object' && existing?.metadata !== null
-      ? existing.metadata
-      : {}) as Record<string, unknown>;
+    const existingMetadata = (typeof existing?.metadata === 'object' && existing?.metadata !== null && !Array.isArray(existing.metadata)
+      ? existing.metadata as Record<string, unknown>
+      : {});
     const { error } = await this.db.from('users')
       .update({ metadata: { ...existingMetadata, is_email_verified: true } })
       .eq('id', parsed.user_id);
@@ -203,7 +203,9 @@ export class SyncService {
       return ok();
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      if (message.includes('23503') || message.includes('foreign key constraint')) {
+      const errorCode = err instanceof Error && 'code' in err ? (err as { code: string }).code : '';
+      const isFkViolation = errorCode === '23503' || message.includes('23503') || message.includes('foreign key constraint');
+      if (isFkViolation) {
         if (message.includes('user_id')) {
           return fail('NOT_FOUND', `User ${parsed.user_id} not found`, true);
         }

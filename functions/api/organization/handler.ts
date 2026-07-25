@@ -709,8 +709,8 @@ async function getOrganizationByAdminIdHandler(context: AuthenticatedContext) {
       
       if (metadataError) {
         console.error(`[organization] Error querying metadata:`, metadataError);
-        // Don't fail here - just return null
-        return apiSuccess(null, context.request);
+        // Don't fail here — fall through to return null below,
+        // consistent with the not-found behaviour of the direct lookup path
       }
       
       if (metadataOrg) {
