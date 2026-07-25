@@ -41,6 +41,94 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         }, context.request, { startTime });
       }
 
+      case 'get-recommended-courses': {
+        const { learnerId } = params;
+        if (!learnerId) return apiError(400, 'VALIDATION_ERROR', 'Missing learnerId', context.request, { startTime });
+
+        try {
+          // Fetch recommendations with DENORMALIZED capability columns (no LTE API calls)
+          const { data: recommendations, error: recError } = await supabase
+            .from('learner_course_recommendations')
+            .select(`
+              id,
+              learner_id,
+              course_id,
+              role_id,
+              capability_id,
+              capability_name,
+              capability_code,
+              capability_description,
+              cached_at
+            `)
+            .eq('learner_id', learnerId)
+            .eq('status', 'active')
+            .order('relevance_score', { ascending: false });
+
+          if (recError) return apiDbError(recError, context.request, { startTime });
+
+          if (!recommendations || recommendations.length === 0) {
+            return apiSuccess([], context.request, { startTime });
+          }
+
+          // Transform recommendations to include capability object
+          const result = recommendations.map((rec: any) => {
+            // Build capability from denormalized columns
+            const capability = rec.capability_id ? {
+              id: rec.capability_id,
+              name: rec.capability_name || '',
+              code: rec.capability_code || '',
+              description: rec.capability_description || ''
+            } : null;
+
+            return {
+              id: rec.id,
+              learner_id: rec.learner_id,
+              course_id: rec.course_id,
+              role_id: rec.role_id,
+              capability
+            };
+          });
+
+          // Fallback: fetch missing capability data from old courses table for unfound capabilities
+          const unfoundRecs = result.filter((r: any) => !r.capability);
+
+          if (unfoundRecs.length > 0) {
+            const courseIds = Array.from(new Set(unfoundRecs.map((r: any) => r.course_id)));
+            const { data: oldCourses, error: courseError } = await supabase
+              .from('courses')
+              .select('course_id, title, code, description')
+              .in('course_id', courseIds);
+
+            if (!courseError && oldCourses) {
+              const oldCourseMap: Record<string, any> = {};
+              oldCourses.forEach((course: any) => {
+                oldCourseMap[course.course_id] = {
+                  id: course.course_id,
+                  name: course.title,
+                  code: course.code,
+                  description: course.description
+                };
+              });
+
+              // Update unfound records with old course data
+              return apiSuccess(
+                result.map((rec: any) => ({
+                  ...rec,
+                  capability: rec.capability || oldCourseMap[rec.course_id] || null
+                })),
+                context.request,
+                { startTime }
+              );
+            }
+          }
+
+          return apiSuccess(result, context.request, { startTime });
+        } catch (error: any) {
+          console.error('[get-recommended-courses]', error?.message || error);
+          return apiError(500, 'INTERNAL_ERROR', error?.message || 'Failed to fetch recommendations', context.request, { startTime });
+        }
+      }
+
       case 'get-learning-courses': {
         const { learnerId } = params;
         if (!learnerId) return apiError(400, 'VALIDATION_ERROR', 'Missing learnerId', context.request, { startTime });

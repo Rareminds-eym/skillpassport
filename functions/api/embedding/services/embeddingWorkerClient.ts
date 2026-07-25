@@ -1,29 +1,31 @@
 /**
  * Embedding Client
- * Single source of truth for calling the embedding worker
+ * Single source of truth for calling the embedding worker.
  *
- * This is the ONLY place that should make HTTP calls to the embedding worker.
- * All other code should use this client.
+ * This is the ONLY place that should call the embedding worker. All other code
+ * should use this client.
+ *
+ * Transport: Cloudflare Service Binding RPC (env.EMBEDDING_SERVICE), not HTTP.
+ * The binding routes worker-to-worker inside Cloudflare's network — zero added
+ * latency, no Bearer token. See lib/embeddingBinding.ts.
  */
 
-import { EmbeddingResponse, EmbeddingError } from '../types';
+import { EmbeddingError } from '../types';
 import { EMBEDDING_CONFIG, EMBEDDING_TASK_TYPES } from '../config/constants';
-import { createLogger } from '../../../lib/logger';
-
-const logger = createLogger('embedding-client');
+import { getEmbeddingWorker, type EmbeddingWorkerEnv } from '../lib/embeddingBinding';
 
 /**
- * Call the embedding worker to generate embedding from text
- * 
- * @param text - Text to generate embedding for
- * @param env - Environment variables (must contain EMBEDDING_API_URL)
- * @param taskType - Type of embedding task (default: RETRIEVAL_DOCUMENT)
- * @returns Embedding vector
- * @throws EmbeddingError on failure
+ * Call the embedding worker to generate an embedding from text.
+ *
+ * @param text - Text to generate an embedding for.
+ * @param env - Pages Functions environment (must contain the EMBEDDING_SERVICE binding).
+ * @param taskType - Type of embedding task (default: RETRIEVAL_DOCUMENT).
+ * @returns Embedding vector.
+ * @throws EmbeddingError on validation failure, RPC failure, or invalid response.
  */
 export async function callEmbeddingWorker(
   text: string,
-  env: any,
+  env: Record<string, unknown>,
   taskType: string = EMBEDDING_TASK_TYPES.RETRIEVAL_DOCUMENT
 ): Promise<number[]> {
   // Validate input
@@ -33,29 +35,6 @@ export async function callEmbeddingWorker(
       'INVALID_TEXT'
     );
   }
-
-  // Get API configuration - only use backend environment variables
-  const embeddingApiUrl = env.EMBEDDING_API_URL;
-  const embeddingApiKey = env.EMBEDDING_API_KEY;
-
-  if (!embeddingApiUrl) {
-    logger.error('Missing EMBEDDING_API_URL environment variable - embeddings cannot be generated');
-    throw new EmbeddingError(
-      'EMBEDDING_SERVICE binding is required',
-      'API_ERROR',
-      { missingVar: 'EMBEDDING_SERVICE' }
-    );
-  }
-
-  if (!embeddingApiKey) {
-    logger.warn('Missing EMBEDDING_API_KEY - embedding requests may fail if authentication is required');
-  }
-
-  logger.debug('Calling embedding worker', {
-    textLength: text.length,
-    taskType,
-    apiUrl: embeddingApiUrl,
-  });
 
   // Truncate text if needed
   const truncatedText = text.length > EMBEDDING_CONFIG.MAX_TEXT_LENGTH
@@ -69,62 +48,15 @@ export async function callEmbeddingWorker(
     });
   }
 
-  // Prepare headers
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-  };
-  
-  if (embeddingApiKey) {
-    headers['Authorization'] = `Bearer ${embeddingApiKey}`;
-  }
-  
   try {
-    // Call embedding worker
-    const response = await fetch(`${embeddingApiUrl}/embeddings/text`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({
-        input: truncatedText,
-        task_type: taskType,
-      }),
-    });
+    // Resolve the typed RPC binding (throws if not configured).
+    const worker = getEmbeddingWorker(env as EmbeddingWorkerEnv);
 
-    if (!response.ok) {
-      let errorText: string;
-      try {
-        errorText = await response.text();
-      } catch (textError) {
-        const textErrorMsg = textError instanceof Error ? textError.message : 'Unknown read error';
-        errorText = `[Response body unreadable: ${textErrorMsg}]`;
-        logger.error('Failed to read embedding worker error response', textError instanceof Error ? textError : new Error(String(textError)), {
-          status: response.status,
-        });
-      }
-
-      logger.error('Embedding worker returned error', new Error(`HTTP ${response.status}`), {
-        status: response.status,
-        body: errorText.substring(0, 200),
-        apiUrl: embeddingApiUrl,
-      });
-
-      throw new EmbeddingError(
-        `Embedding worker returned ${response.status}: ${errorText}`,
-        'API_ERROR',
-        { status: response.status, body: errorText }
-      );
-    }
-
-    const data = await response.json() as EmbeddingResponse;
+    // Call embedding worker via service binding RPC.
+    const data = await worker.embedText(truncatedText, taskType);
 
     // Validate response
-    if (!data.success || !data.embedding || !Array.isArray(data.embedding) || data.embedding.length === 0) {
-      logger.error('Invalid embedding response from worker', new Error('Invalid response structure'), {
-        success: data.success,
-        hasEmbedding: !!data.embedding,
-        isArray: Array.isArray(data.embedding),
-        length: data.embedding?.length,
-      });
-
+    if (!data || !Array.isArray(data.embedding) || data.embedding.length === 0) {
       throw new EmbeddingError(
         'Invalid embedding response from worker',
         'INVALID_RESPONSE',
@@ -132,13 +64,7 @@ export async function callEmbeddingWorker(
       );
     }
 
-    logger.info('Embedding generated successfully', {
-      dimensions: data.dimensions,
-      model: data.model || 'embedding-worker',
-      taskType,
-    });
-    
-    return embedding;
+    return data.embedding;
 
   } catch (error) {
     // Re-throw EmbeddingError as-is
@@ -147,17 +73,16 @@ export async function callEmbeddingWorker(
       throw error;
     }
 
-    // Wrap other errors
+    // RPC methods throw Errors prefixed with a stable "CODE: message" format.
+    // Map the validation prefix back to our INVALID_TEXT code; everything else
+    // is surfaced as a generic API error.
     const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.error('Unexpected error calling embedding worker', error instanceof Error ? error : new Error(errorMessage), {
-      apiUrl: embeddingApiUrl,
-    });
+    const code = errorMessage.startsWith('INVALID_INPUT:') ? 'INVALID_TEXT' : 'API_ERROR';
 
     throw new EmbeddingError(
       `Failed to call embedding worker: ${errorMessage}`,
-      'API_ERROR',
+      code,
       { originalError: error }
     );
   }
-
 }

@@ -98,8 +98,8 @@ export const StreamSelectionScreen = ({
   learnerProgram = null,
 }) => {
   // Use different streams based on grade level
-  // For higher_secondary (11th/12th), after10, and after12, use the school stream config (PCMB, Commerce with Maths, etc.)
-  // For college, use the college degree config (BSc, BA, BBA, etc.)
+  // For after10, higher_secondary (11th/12th), and after12: use AFTER10_STREAMS_BY_CATEGORY (PCMB, PCMS, PCM, PCB, etc.)
+  // For college: use STREAMS_BY_CATEGORY (B.Sc, B.Tech, MBBS, BBA, etc.)
   const streamsConfig = (gradeLevel === 'after10' || gradeLevel === 'higher_secondary' || gradeLevel === 'after12') 
     ? AFTER10_STREAMS_BY_CATEGORY 
     : STREAMS_BY_CATEGORY;

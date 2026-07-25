@@ -37,20 +37,8 @@ export const AssessmentDebugPanel: React.FC<AssessmentDebugPanelProps> = ({
   // Show ONLY if URL has ?debug=true
   const urlParams = new URLSearchParams(window.location.search);
   const forceDebug = urlParams.get('debug') === 'true';
-  
-  console.log('🔍 AssessmentDebugPanel:', {
-    forceDebug,
-    hasData: !!assessmentData,
-    hasContext: !!learnerContext,
-    gradeLevel,
-    assessmentDataKeys: assessmentData ? Object.keys(assessmentData) : [],
-    riasecCount: assessmentData?.riasecAnswers ? Object.keys(assessmentData.riasecAnswers).length : 0,
-    attemptDataKeys: attemptData ? Object.keys(attemptData) : [],
-    resultDataKeys: resultData ? Object.keys(resultData) : []
-  });
 
   if (!forceDebug) {
-    console.log('Debug panel hidden - add ?debug=true to URL to show');
     return null;
   }
 

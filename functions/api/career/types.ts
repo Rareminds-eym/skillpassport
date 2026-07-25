@@ -1,5 +1,7 @@
 // Career API Types
 
+import type { EmbeddingWorkerBinding } from '../embedding/lib/embeddingBinding';
+
 export interface ChatRequest {
   conversationId?: string;
   message: string;

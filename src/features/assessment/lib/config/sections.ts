@@ -171,8 +171,8 @@ export const HIGH_SCHOOL_SECTIONS: Omit<SectionConfig, 'icon'>[] = [
 
 /**
  * Section definitions for After 10th
- * Stream-agnostic assessment (no knowledge section)
- * AI recommends best stream based on interests, personality, values, and aptitudes
+ * Full comprehensive assessment with 7 sections including stream-specific knowledge
+ * After 10th learners select their stream (Science/Commerce/Arts) and get stream-specific questions
  */
 export const AFTER_10TH_SECTIONS: Omit<SectionConfig, 'icon'>[] = [
   {
@@ -226,6 +226,17 @@ export const AFTER_10TH_SECTIONS: Omit<SectionConfig, 'icon'>[] = [
     isAptitude: true,
     individualTimeLimit: 60, // 1 minute per question
     instruction: "Choose the correct answer. You have 1 minute per question."
+  },
+  {
+    id: 'knowledge',
+    title: 'Stream Knowledge',
+    description: "Test your understanding of core concepts in your chosen stream.",
+    color: "blue",
+    isTimed: true,
+    timeLimit: 30 * 60, // 30 minutes
+    isKnowledge: true,
+    individualTimeLimit: 60, // 1 minute per question
+    instruction: "Choose the best answer for each question. You have 1 minute per question."
   }
 ];
 
@@ -331,9 +342,8 @@ export const getSectionsForGrade = (gradeLevel: GradeLevel): Omit<SectionConfig,
  * Check if a grade level uses AI-powered questions
  */
 export const usesAIQuestions = (gradeLevel: GradeLevel): boolean => {
-  // Only higher_secondary, after12, and college use AI knowledge questions
-  // after10 uses AI aptitude questions but NOT knowledge questions (stream-agnostic)
-  return ['higher_secondary', 'after12', 'college'].includes(gradeLevel);
+  // after10, higher_secondary, after12, and college use AI knowledge questions
+  return ['after10', 'higher_secondary', 'after12', 'college'].includes(gradeLevel);
 };
 
 /**

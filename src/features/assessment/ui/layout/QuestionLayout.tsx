@@ -199,11 +199,13 @@ export const QuestionLayout: React.FC<QuestionLayoutProps> = ({
               <span>Question {currentQuestionIndex + 1} / {totalQuestions}</span>
             </div>
             
-            {/* Timer - With blink animation on time value only */}
-             <div className="flex items-center gap-2 text-sm text-indigo-600 font-medium" data-tour="timer-display">
-              <Clock className="w-4 h-4" />
-              <span>Time: <span className="animate-[pulse_2s_ease-in-out_infinite] text-indigo-800">{formatTime(elapsedTime)}</span></span>
-            </div>
+            {/* Timer - Hidden for adaptive sections (per-question timer shown at top instead) */}
+            {!showPerQuestionTimer && (
+              <div className="flex items-center gap-2 text-sm text-indigo-600 font-medium" data-tour="timer-display">
+                <Clock className="w-4 h-4" />
+                <span>Time: <span className="animate-[pulse_2s_ease-in-out_infinite] text-indigo-800">{formatTime(elapsedTime)}</span></span>
+              </div>
+            )}
           </div>
           </div>
         </div>

@@ -5,6 +5,60 @@
  */
 
 // ============================================================================
+// GRADE LEVELS & STUDENT PROFILE
+// ============================================================================
+
+export type GradeLevel = 'middle' | 'high' | 'higher' | 'after10' | 'after12' | 'college';
+
+/**
+ * Unified student profile used across scoring, synthesis, and clustering services
+ */
+export interface StudentProfile {
+  riasec_scores: Record<string, number>;
+  riasec_code: string;
+  strength_scores: Array<{ dimension: string; average: number; ratings: number[] }>;
+  aptitude_overall?: number;
+  accuracy_by_subtag?: Record<string, number>;
+  learning_preferences?: Record<string, unknown>;
+  // College / higher-grade signals (optional; absent for middle school)
+  big_five_scores?: Record<string, number>;   // dimension -> 1..5 average
+  work_values?: Record<string, number>;        // value -> 1..5 average
+  knowledge_score?: number;                     // 0..100 scored domain knowledge
+  knowledge_strengths?: string[];               // topic areas student excels in
+  knowledge_weaknesses?: string[];              // topic areas student struggles with
+  knowledge_details?: Record<string, any>;      // full knowledge assessment details (byTopic, strongTopics, weakTopics, recommendation)
+  employability_scores?: Record<string, number>; // skill -> 0..100 (Communication, Leadership, SJT, etc.)
+  stream_aptitude_score?: number;               // 0..100 stream-specific aptitude (BBA, MCA, B.Tech, etc.)
+  stream_aptitude_details?: Record<string, any>; // full stream aptitude details (byDifficulty, correctCount, totalQuestions)
+  stream?: string;
+  degreeLevel?: string;                          // undergraduate | postgraduate | diploma (UG/PG)
+}
+
+/**
+ * Match score result for basic grade levels
+ */
+export interface MatchScores {
+  interestFit: number;
+  capabilityFit: number;
+  personalityFit: number;
+  final: number;
+}
+
+/**
+ * College / higher-secondary 6-component match result.
+ * final = IF×0.25 + CF×0.20 + SAF×0.15 + PF×0.18 + KF×0.12 + VF×0.10
+ */
+export interface CollegeMatchScores {
+  interestFit: number;        // IF: RIASEC hexagon-distance alignment, full code (0-100)
+  cognitiveFit: number;       // CF: adaptive aptitude + strengths (0-100)
+  streamAptitudeFit: number;  // SAF: stream-specific MCQ aptitude score (0-100)
+  personalityFit: number;     // PF: Big Five alignment (0-100)
+  knowledgeFit: number;       // KF: scored domain knowledge (0-100)
+  valuesFit: number;          // VF: work-values alignment (0-100)
+  final: number;
+}
+
+// ============================================================================
 // REQUEST TYPES
 // ============================================================================
 
@@ -190,6 +244,8 @@ export interface AssessmentQuestion {
   id: string;
   text: string;
   type: 'mcq' | 'rating' | 'multiselect' | 'text' | 'sjt' | 'likert';
+  partType?: 'sjt';
+  scenario?: string;
   order: number;
   options?: unknown;
   maxSelections?: number;
@@ -287,4 +343,178 @@ export interface AnalyzeResult {
 export interface ValidationResult {
   isValid: boolean;
   message?: string;
+}
+
+// ============================================================================
+// CAREER TRACK GENERATION (RAG)
+// ============================================================================
+
+/**
+ * Career evidence for a cluster (RIASEC, aptitude, personality factors)
+ */
+export interface CareerEvidence {
+  interest: string;
+  aptitude: string;
+  personality: string;
+}
+
+/**
+ * Career roles at different levels
+ */
+export interface CareerRoles {
+  entry: string[];
+  mid: string[];
+}
+
+/**
+ * Single career cluster in exploration track
+ */
+export interface CareerCluster {
+  title: string;
+  matchScore: number;
+  fit: 'High' | 'Medium' | 'Explore';
+  derivation: string;
+  description: string;
+  examples: string[];
+  whatYoullDo: string;
+  whyItFits: string;
+  evidence: CareerEvidence;
+  roles: CareerRoles;
+  domains: string[];
+  futureOutlook: string;
+}
+
+/**
+ * Exploration activity option
+ */
+export interface ExplorationOption {
+  name: string;
+  whyThisRole: string;
+}
+
+/**
+ * Exploration activities grouped by fit level
+ */
+export interface SpecificOptions {
+  highFit: ExplorationOption[];
+  mediumFit: ExplorationOption[];
+  exploreLater: ExplorationOption[];
+}
+
+/**
+ * Career fit data with clusters and exploration options
+ */
+export interface CareerFitData {
+  clusters: CareerCluster[];
+  specificOptions: SpecificOptions;
+}
+
+/**
+ * Career fit response for track generation
+ */
+export interface CareerFitResponse {
+  success: boolean;
+  grade_level: string;
+  careerFit: CareerFitData;
+  generation_timestamp: string;
+}
+
+/**
+ * Student assessment data for track generation context
+ */
+export interface StudentAssessmentData {
+  attempt_id: string;
+  learner_id: string;
+  grade_level: string;
+  riasec_scores: Record<string, number>;
+  riasec_code: string;
+  strength_scores: Array<{ dimension: string; average: number; ratings: number[] }>;
+  aptitude_scores?: Record<string, unknown>;
+  aptitude_overall?: number;
+  learning_preferences?: Record<string, unknown>;
+  accuracy_by_subtag?: Record<string, number>;
+  big_five_scores?: Record<string, number>;
+  work_values?: Record<string, number>;
+  knowledge_score?: number;
+}
+
+/**
+ * Occupation match from semantic search
+ */
+export interface OccupationMatch {
+  id: string;
+  title: string;
+  primary_riasec: string;
+  description: string;
+  similarity?: number;
+}
+
+/**
+ * Common configuration for track generation
+ */
+export interface CommonConfig {
+  occupationCount: number;
+  models: string[];
+  temperature: number;
+}
+
+/**
+ * Grade-level specific configuration
+ */
+export interface GradeLevelConfig extends CommonConfig {
+  systemPrompt: string;
+}
+
+// ============================================================================
+// Cluster-generation prompt types (per grade level)
+// ============================================================================
+
+/** Minimal occupation shape the cluster prompts need (from the deterministic candidate list). */
+export interface PromptOccupation {
+  occupation_id: string;
+  name: string;
+  riasecCodes: string[];
+  description?: string;  // Role description for LLM to understand importance & differences
+  // Degree-gate signal (source: role_family_roles, L&D degree mapping).
+  degreeGate?: 'Mandatory' | 'Preferred';
+  // True when the learner's degree/stream appears in the occupation's direct_degree_mapping.
+  streamAligned?: boolean;
+  // Occupation's domain (from hybrid_search_roles.domain_name). Role names alone are
+  // ambiguous across 38 industries ("Technician", "Product Engineer"); the domain lets the
+  // LLM apply the work-type/domain coherence rules in the cluster prompt.
+  domainName?: string;
+}
+
+/**
+ * Extra narrative context for the cluster prompt. Not used for scoring — only to help the
+ * model write accurate, evidence-citing narratives.
+ */
+export interface ClusterNarrativeContext {
+  adaptive?: {
+    overallAccuracy?: number | string | null;
+    aptitudeLevel?: number | string | null;
+    confidenceTag?: string | null;
+    accuracyBySubtag?: Record<string, any> | null;
+  } | null;
+  reflections?: Array<{ question: string; answer: string }>;
+  /** AI profile-synthesis narrative (college). Appended to the structured embedding query
+   *  and provided to the cluster prompt for richer, consistent narratives. */
+  profileNarrative?: string;
+  /** Aptitude insights from difficulty-based performance (strengths/weaknesses). */
+  aptitudeInsights?: {
+    strengths: string[];
+    weaknesses: string[];
+    pattern: string;
+  } | null;
+  /** Knowledge insights from stream-specific assessment (topic strengths/weaknesses). */
+  knowledgeInsights?: {
+    strengths: string[];
+    weaknesses: string[];
+  } | null;
+}
+
+/** A per-grade prompt builder returns the system + user messages for the cluster LLM call. */
+export interface ClusterPrompt {
+  system: string;
+  user: string;
 }

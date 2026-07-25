@@ -9,7 +9,7 @@
  */
 
 // Re-export from new locations
-export { callEmbeddingWorker, getEmbeddingConfig } from '../../embedding/services/embeddingWorkerClient';
+export { callEmbeddingWorker } from '../../embedding/services/embeddingWorkerClient';
 export {
   buildlearnerTextFromDatabase,
   buildCourseTextFromDatabase,

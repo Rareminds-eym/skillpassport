@@ -29,7 +29,6 @@ import {
 import {
     PrintView,
     LoadingState,
-    ErrorState,
     ReportHeader,
     SummaryCard,
     ProfileSection,
@@ -38,6 +37,9 @@ import {
     RoadmapSection,
     StageScoresSection
 } from './sections';
+
+// Import screens
+import { ErrorScreen } from './screens';
 
 // Import Career Track Modal
 import CareerTrackModal from './CareerTrackModal';
@@ -63,6 +65,9 @@ import { normalizeCourseRecommendations } from '../index';
 
 // Import Debug Panel for development
 import AssessmentDebugPanel from './AssessmentDebugPanel';
+
+// Import Middle School Growth Map for Grade 6-8
+import { MiddleSchoolGrowthMap } from './growth-map';
 
 // Import Tour Components - Now handled globally
 // Tours are managed by GlobalTourManager in App.tsx
@@ -589,10 +594,13 @@ const AssessmentResult = () => {
         learnerAcademicData,
         validationWarnings,
         handleRetry,
+        handleClusterRetry,
         validateResults,
         navigate,
         attemptData,
-        resultData
+        resultData,
+        isClusterRetry,
+        isClusterGenerationFailed
     } = useAssessmentResults();
 
     // Try to get attemptId from multiple sources
@@ -615,34 +623,22 @@ const AssessmentResult = () => {
             }
         }
 
-        console.log('shouldShowProgramRecommendations check:', {
-            gradeLevel,
-            actualGrade,
-            actualGradeNum,
-            monthsInGrade
-        });
-
         // If we have actual grade from database, use it for the decision
         if (actualGradeNum !== null) {
             // Grade 6-8 (middle school) - DON'T show
             if (actualGradeNum >= 6 && actualGradeNum <= 8) {
-                console.log('Not showing recommendations: Middle school (Grade 6-8)');
                 return false;
             }
             // Grade 9-10 (high school) - DON'T show
             if (actualGradeNum >= 9 && actualGradeNum <= 10) {
-                console.log('Not showing recommendations: High school (Grade 9-10)');
                 return false;
             }
             // Grade 11 (After 10th) - only show if 6+ months in grade
             if (actualGradeNum === 11) {
-                const show = monthsInGrade !== null && monthsInGrade >= 6;
-                console.log(`Grade 11 with ${monthsInGrade} months: ${show ? 'showing' : 'not showing'} recommendations`);
-                return show;
+                return monthsInGrade !== null && monthsInGrade >= 6;
             }
             // Grade 12 and above - always show
             if (actualGradeNum >= 12) {
-                console.log('Showing recommendations: Grade 12+');
                 return true;
             }
         }
@@ -676,26 +672,13 @@ const AssessmentResult = () => {
     // Only calculate for grade levels that should show recommendations
     // IMPORTANT: Use learner's ACTUAL grade from database, not the assessment's grade_level
     const enhancedCourseRecommendations = useMemo(() => {
-        // DIAGNOSTIC: Check if we have results and RIASEC data
-        console.log('🔍 Course Recommendations - Initial Check:', {
-            'hasResults': !!results,
-            'loading': loading,
-            'retrying': retrying,
-            'hasRiasec': !!results?.riasec,
-            'hasScores': !!results?.riasec?.scores,
-            'scoresKeys': results?.riasec?.scores ? Object.keys(results.riasec.scores) : [],
-            'scoresValues': results?.riasec?.scores ? Object.values(results.riasec.scores) : []
-        });
-
         // Don't calculate if still loading or retrying
         if (loading || retrying) {
-            console.log('⏳ Skipping course recommendations - still loading/retrying');
             return [];
         }
 
         // Don't calculate if no results yet
         if (!results) {
-            console.log('⏳ Skipping course recommendations - no results yet');
             return [];
         }
 
@@ -749,88 +732,40 @@ const AssessmentResult = () => {
             }
         };
 
-        // DEBUG: Log RIASEC data structure
-        console.log('🔍 RIASEC Debug:', {
-            hasResults: !!results,
-            hasRiasec: !!results?.riasec,
-            riasecKeys: results?.riasec ? Object.keys(results.riasec) : [],
-            scores: results?.riasec?.scores,
-            fullRiasec: results?.riasec
-        });
-
         // STREAM FILTERING: Get learner's stream from assessment results or profile
         // Priority: 1) Stream from current assessment, 2) Stream recommendation from after10, 3) Profile stream, 4) No filter
         let learnerStream = null;
 
-        console.log('🔍 Stream Detection - Checking sources:', {
-            'results exists': !!results,
-            'results keys': results ? Object.keys(results) : [],
-            'has streamRecommendation': !!results?.streamRecommendation?.recommendedStream,
-            'streamRecommendation value': results?.streamRecommendation?.recommendedStream,
-            'learnerInfo exists': !!learnerInfo,
-            'learnerInfo.stream': learnerInfo?.stream,
-            'stream check': learnerInfo?.stream && learnerInfo.stream !== '—' && learnerInfo.stream.toUpperCase() !== 'N/A',
-            'academicData.stream': learnerAcademicData?.stream,
-            'gradeLevel': gradeLevel
-        });
-        
         // PRIORITY 1: Check if results contain stream information (for after12/higher_secondary/college)
         // The stream is stored in the assessment results when learner selects it during assessment
         if (results?.stream || results?.streamId || results?.stream_id) {
             learnerStream = results.stream || results.streamId || results.stream_id;
-            console.log('📚 Using stream from assessment results:', learnerStream);
         }
         // PRIORITY 2: Check if learner has completed after10 assessment and has stream recommendation
         // IMPORTANT: Validate that the stream recommendation is not a placeholder value
-        else if (results?.streamRecommendation?.recommendedStream && 
+        else if (results?.streamRecommendation?.recommendedStream &&
                  results.streamRecommendation.recommendedStream !== 'N/A' &&
                  results.streamRecommendation.recommendedStream !== '—' &&
                  results.streamRecommendation.recommendedStream !== '') {
             learnerStream = results.streamRecommendation.recommendedStream;
-            console.log('📚 Using stream from after10 assessment:', learnerStream);
-        } 
+        }
         // PRIORITY 3: Check if learner has stream in their profile (for after12/college learners)
         else if (learnerInfo?.stream && learnerInfo.stream !== '—' && learnerInfo.stream.toUpperCase() !== 'N/A') {
             learnerStream = learnerInfo.stream;
-            console.log('📚 Using stream from learner profile:', learnerStream);
         }
         // PRIORITY 4: Check academic data for stream indicators
         else if (learnerAcademicData?.stream) {
             learnerStream = learnerAcademicData.stream;
-            console.log('📚 Using stream from academic data:', learnerStream);
-        }
-        else {
-            console.log('⚠️ No valid stream found in any source!');
-            console.log('📋 Full results object:', results);
         }
 
-        // Debug: Log all stream sources
-        console.log('🔍 Stream Detection Debug:', {
-            'results.streamRecommendation': results?.streamRecommendation?.recommendedStream,
-            'learnerInfo.stream': learnerInfo?.stream,
-            'academicData.stream': learnerAcademicData?.stream,
-            'finalStream': learnerStream
-        });
-
-        console.log('🎯 About to call calculateCourseMatchScores with stream:', learnerStream);
-
-        // DIAGNOSTIC: Final check before calling calculateCourseMatchScores
         const riasecScores = results?.riasec?.scores || {};
-        console.log('📊 Final RIASEC Check Before Calculation:', {
-            'riasecScores': riasecScores,
-            'hasKeys': Object.keys(riasecScores).length > 0,
-            'hasNonZeroValues': Object.values(riasecScores).some(s => s > 0),
-            'allValues': Object.values(riasecScores)
-        });
 
         // Don't call if no valid RIASEC data
         if (!riasecScores || Object.keys(riasecScores).length === 0) {
-            console.log('⚠️ Aborting calculateCourseMatchScores - no RIASEC scores');
             return [];
         }
 
         if (!Object.values(riasecScores).some(s => s > 0)) {
-            console.log('⚠️ Aborting calculateCourseMatchScores - all RIASEC scores are zero');
             return [];
         }
 
@@ -845,19 +780,6 @@ const AssessmentResult = () => {
     // Calculate stream recommendations for after 10th learners
     const enhancedStreamRecommendation = useMemo(() => {
         if (gradeLevel !== 'after10') return null;
-
-        console.log('🔍 enhancedStreamRecommendation - Input data:', {
-            hasResults: !!results,
-            hasStreamRecommendation: !!results?.streamRecommendation,
-            hasRecommendedStream: !!results?.recommendedStream,
-            streamRecommendationKeys: results?.streamRecommendation ? Object.keys(results.streamRecommendation) : null,
-            recommendedStreamKeys: results?.recommendedStream ? Object.keys(results.recommendedStream) : null,
-            streamRecommendationValue: results?.streamRecommendation,
-            recommendedStreamValue: results?.recommendedStream,
-            stream: results?.streamRecommendation?.stream || results?.recommendedStream?.stream,
-            displayName: results?.streamRecommendation?.displayName || results?.recommendedStream?.displayName,
-            recommendedStream: results?.streamRecommendation?.recommendedStream
-        });
 
         // If AI recommendation is available, use it directly (it now includes all necessary fields)
         // Check both streamRecommendation and recommendedStream (normalizer might use either name)
@@ -888,17 +810,10 @@ const AssessmentResult = () => {
                 evidence: aiRecommendation.evidence,
                 preparationAdvice: aiRecommendation.preparationAdvice
             };
-            
-            console.log('✅ enhancedStreamRecommendation - Output:', {
-                stream: enhanced.stream,
-                recommendedStream: enhanced.recommendedStream,
-                displayName: enhanced.displayName
-            });
-            
+
             return enhanced;
         }
 
-        console.log('⚠️ No AI streamRecommendation found, using fallback engine');
         // Fallback: Use the stream matching engine if AI recommendation is not available
         const streamRec = calculateStreamRecommendations(results, learnerAcademicData);
         return streamRec;
@@ -1005,39 +920,99 @@ const AssessmentResult = () => {
 
     // Loading state
     if (loading) {
-        console.log('📄 [AssessmentResult] LOADER 3 DISPLAYED - loading=true');
-        console.log('📄 [AssessmentResult] retrying:', retrying);
-        console.log('📄 [AssessmentResult] retryAttemptCount:', retryAttemptCount);
         return <LoadingState isAutoRetry={retrying} retryAttemptCount={retryAttemptCount} />;
     }
 
     // Error state
     if (error) {
         return (
-            <ErrorState
-                error={error}
-                onRetry={handleRetry}
-                retrying={retrying}
-                retryAttemptCount={retryAttemptCount}
-                onRetake={() => navigate('/learner/assessment/test')}
+            <ErrorScreen
+                errorType="server"
+                title="Something Went Wrong"
+                message={typeof error === 'string' ? error : error?.error || error?.message || 'We encountered an issue analyzing your assessment. Please try again.'}
+                onRetry={isClusterGenerationFailed ? handleClusterRetry : handleRetry}
+                onBackToDashboard={() => navigate('/learner/assessment/test')}
+                showContactSupport={false}
             />
         );
     }
 
     if (!results) return null;
 
+    // Check if this is a middle school student (Grade 6-8)
+    const actualGrade = learnerInfo?.grade;
+    let actualGradeNum = null;
+    if (actualGrade) {
+        const match = actualGrade.toString().match(/\d+/);
+        if (match) {
+            actualGradeNum = parseInt(match[0], 10);
+        }
+    }
+
+    // For Grade 6-8, show the Beyond Marks Growth Map UI with existing header
+    if (actualGradeNum >= 6 && actualGradeNum <= 8 && results?.gemini_results) {
+        return (
+            <>
+                {/* Existing Header - Full Width */}
+                <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-blue-100 py-3 px-3 sm:px-8 lg:px-12 xl:px-16 print:hidden print-hidden">
+                    <div className="relative w-full flex items-center justify-between gap-2">
+                        <Button
+                            variant="ghost"
+                            onClick={() => navigate('/learner/dashboard')}
+                            className="text-slate-600 hover:text-slate-900 h-8 text-sm px-2 sm:px-3 shrink-0"
+                        >
+                            <ArrowLeft className="w-4 h-4" />
+                            <span className="hidden sm:inline ml-2">Back to Dashboard</span>
+                        </Button>
+
+                        {/* Center logo — hidden on small screens where it would overlap the buttons */}
+                        <div className="absolute left-1/2 -translate-x-1/2 hidden md:block pointer-events-none">
+                            <img
+                                src="/RareMinds.webp"
+                                alt="RareMinds Logo"
+                                className="h-8 w-auto object-contain"
+                            />
+                        </div>
+
+                        <div className="flex gap-1.5 sm:gap-2 shrink-0">
+                            <Button
+                                variant="outline"
+                                onClick={handleRetry}
+                                disabled={retrying}
+                                className="border-slate-300 text-slate-600 hover:bg-slate-100 hover:text-slate-900 hover:border-slate-400 h-8 text-sm px-2.5 sm:px-3"
+                            >
+                                <RefreshCw className={`w-3.5 h-3.5 ${retrying ? 'animate-spin' : ''}`} />
+                                <span className="hidden sm:inline ml-1.5">
+                                    {retrying ? 'Regenerating...' : 'Regenerate'}
+                                </span>
+                            </Button>
+                            <Button
+                                onClick={handlePrint}
+                                className="bg-slate-800 text-white hover:bg-slate-700 shadow-sm h-8 text-sm font-medium px-2.5 sm:px-3"
+                            >
+                                <Download className="w-3.5 h-3.5" />
+                                <span className="hidden sm:inline ml-1.5">Download PDF</span>
+                            </Button>
+                        </div>
+                    </div>
+                </header>
+
+                {/* Growth Map Content */}
+                <MiddleSchoolGrowthMap
+                    learnerInfo={{
+                        name: learnerInfo?.name || 'Student',
+                        grade: learnerInfo?.grade || '6',
+                        school: learnerInfo?.school || 'School',
+                    }}
+                    reports={results.gemini_results}
+                />
+            </>
+        );
+    }
+
     const { riasec, aptitude, knowledge, careerFit, skillGap, roadmap, employability, streamRecommendation } = results;
     const missingFields = validateResults();
     const hasIncompleteData = missingFields.length > 0;
-
-    // Debug log for stream recommendation
-    console.log('AssessmentResult Debug:', {
-        gradeLevel,
-        hasStreamRecommendation: !!streamRecommendation,
-        streamRecommendation: streamRecommendation,
-        isAfter10: streamRecommendation?.isAfter10,
-        recommendedStream: streamRecommendation?.recommendedStream
-    });
 
     return (
         <>
@@ -1045,14 +1020,6 @@ const AssessmentResult = () => {
             <style dangerouslySetInnerHTML={{ __html: PRINT_STYLES }} />
 
             {/* Print View - Simple document format for PDF */}
-            {/* Debug: Log what PrintView receives */}
-            {results && console.log('📄 AssessmentResult passing to PrintView:', {
-                hasRiasec: !!results.riasec,
-                riasecScores: results.riasec?.scores,
-                riasecOriginal: results.riasec?._originalScores,
-                geminiOriginal: results.gemini_results?.riasec?._originalScores,
-                gradeLevel
-            })}
             <PrintView
                 results={results}
                 learnerInfo={learnerInfo}
@@ -1632,15 +1599,17 @@ const AssessmentResult = () => {
                                         </p>
                                     </motion.div>
 
-                                    {/* Career Cards */}
+                                    {/* Career Cards - Only show clusters with valid roles */}
                                     <div data-tour="career-tracks">
                                     {careerFit && careerFit.clusters && careerFit.clusters.length > 0 ? (
-                                        careerFit.clusters.map((cluster, index) => (
+                                        careerFit.clusters
+                                            .filter(c => c && c.title && c.roles && (c.roles.entry?.length > 0 || c.roles.mid?.length > 0))
+                                            .map((cluster, index) => (
                                             <CareerCard
                                                 key={index}
                                                 cluster={cluster}
                                                 index={index}
-                                                fitType={index === 0 ? 'TRACK 1' : index === 1 ? 'TRACK 2' : 'TRACK 3'}
+                                                fitType={`TRACK ${String.fromCharCode(65 + index)}`}
                                                 color={index === 0 ? 'green' : index === 1 ? 'yellow' : 'purple'}
                                                 reverse={index === 1}
                                                 specificRoles={careerFit?.specificOptions?.[
@@ -1739,46 +1708,6 @@ const AssessmentResult = () => {
                                                 // Check both nested (gemini_results.careerFit) and flattened (careerFit) structures
                                                 const degreePrograms = results?.gemini_results?.careerFit?.degreePrograms || results?.careerFit?.degreePrograms;
                                                 const hasAIPrograms = degreePrograms && degreePrograms.length >= 3;
-                                                
-                                                // DEBUG: Log first program to check for new fields
-                                                if (degreePrograms && degreePrograms.length > 0) {
-                                                    console.log('🎓 DEGREE PROGRAM DEBUG - First Program:', degreePrograms[0]);
-                                                    console.log('📊 Field Check:', {
-                                                        programName: degreePrograms[0].programName,
-                                                        duration: degreePrograms[0].duration || '❌ MISSING',
-                                                        roleDescription: degreePrograms[0].roleDescription ? '✅ Present' : '❌ MISSING',
-                                                        topUniversities: degreePrograms[0].topUniversities ? `✅ ${degreePrograms[0].topUniversities.length} universities` : '❌ MISSING'
-                                                    });
-                                                }
-                                                
-                                                console.log('🔍 After12 Layout Check:', {
-                                                    hasGeminiResults: !!results?.gemini_results,
-                                                    hasCareerFit: !!(results?.gemini_results?.careerFit || results?.careerFit),
-                                                    hasDegreePrograms: !!degreePrograms,
-                                                    programCount: degreePrograms?.length || 0,
-                                                    willShowNewLayout: hasAIPrograms,
-                                                    willShowFallback: !hasAIPrograms && enhancedCourseRecommendations?.length > 0,
-                                                    dataSource: results?.gemini_results?.careerFit ? 'nested' : results?.careerFit ? 'flattened' : 'none',
-                                                    careerFitKeys: results?.careerFit ? Object.keys(results.careerFit) : 'no careerFit',
-                                                    firstProgramSample: degreePrograms?.[0] ? {
-                                                        programName: degreePrograms[0].programName,
-                                                        hasDuration: !!degreePrograms[0].duration,
-                                                        hasRoleDescription: !!degreePrograms[0].roleDescription,
-                                                        hasTopUniversities: !!degreePrograms[0].topUniversities,
-                                                        duration: degreePrograms[0].duration,
-                                                        universitiesCount: degreePrograms[0].topUniversities?.length || 0
-                                                    } : 'no programs'
-                                                });
-                                                
-                                                // DETAILED DEBUG - Show what's actually in careerFit
-                                                if (results?.careerFit && !degreePrograms) {
-                                                    console.log('⚠️ careerFit exists but NO degreePrograms!');
-                                                    console.log('   careerFit.clusters:', results.careerFit.clusters?.length || 0, 'items');
-                                                    console.log('   careerFit.specificOptions:', results.careerFit.specificOptions);
-                                                    console.log('   careerFit.degreePrograms:', results.careerFit.degreePrograms);
-                                                    console.log('   👉 You need to run: fix-career-fit-degree-programs.sql');
-                                                }
-                                                
                                                 return hasAIPrograms;
                                             })() ? (
                                                 // NEW LAYOUT: Single Card with 3 AI Programs (After10 Style)
@@ -2240,7 +2169,7 @@ const AssessmentResult = () => {
                                             key={index}
                                             cluster={cluster}
                                             index={index}
-                                            fitType={index === 0 ? 'TRACK 1' : index === 1 ? 'TRACK 2' : 'TRACK 3'}
+                                            fitType={`TRACK ${String.fromCharCode(65 + index)}`}
                                             color={index === 0 ? 'green' : index === 1 ? 'yellow' : 'purple'}
                                             reverse={index === 1}
                                             specificRoles={careerFit?.specificOptions?.[
@@ -2292,7 +2221,7 @@ const AssessmentResult = () => {
                                         key={index}
                                         cluster={cluster}
                                         index={index}
-                                        fitType={index === 0 ? 'TRACK 1' : index === 1 ? 'TRACK 2' : 'TRACK 3'}
+                                        fitType={`TRACK ${String.fromCharCode(65 + index)}`}
                                         color={index === 0 ? 'green' : index === 1 ? 'yellow' : 'purple'}
                                         reverse={index === 1}
                                         specificRoles={careerFit?.specificOptions?.[
@@ -2336,7 +2265,7 @@ const AssessmentResult = () => {
                         </DialogHeader>
 
                         {activeSection === 'profile' && <ProfileSection results={results} />}
-                        {activeSection === 'career' && <CareerSection results={results} />}
+                        {activeSection === 'career' && <CareerSection careerFit={results?.careerFit} />}
                         {activeSection === 'skills' && <SkillsSection results={results} />}
                         {activeSection === 'roadmap' && <RoadmapSection results={results} />}
                     </DialogContent>

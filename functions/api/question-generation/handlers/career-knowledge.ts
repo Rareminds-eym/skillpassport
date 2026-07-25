@@ -111,7 +111,19 @@ export async function generateKnowledgeQuestions(
         if (usesDynamicTopics && !topics) {
             // For college learners and 11th/12th learners without predefined topics, let AI determine topics dynamically
             const learnerLevel = gradeLevel === 'higher_secondary' ? '11th-12th grade' : 'college/university';
+
+            // COLLEGE ONLY: require a share of questions on current, in-demand topics
+            // (e.g. AI/ML for computing programs). Modern curricula teach these, but the
+            // AI defaulted to dated textbook topics without an explicit instruction.
+            // higher_secondary keeps the original prompt unchanged.
+            const currentYear = new Date().getFullYear();
+            const marketDemandBlock = gradeLevel !== 'higher_secondary'
+                ? `
+🔥 MARKET RELEVANCE (MANDATORY): Around 40% of the questions MUST cover CURRENT (${currentYear}) industry-relevant and emerging topics that are taught in modern ${streamName} curricula and demanded in today's job market. Examples: for computing/IT programs include AI/ML fundamentals, data science, cloud computing, cybersecurity; for business programs include digital marketing, analytics, fintech; for other streams include the equivalent modern developments of that field. The remaining ~60% should test core fundamentals of ${streamName}.
+`
+                : '';
             prompt = `🎯 CRITICAL REQUIREMENT: You MUST generate EXACTLY ${totalQuestions} questions. Count them before responding.
+${marketDemandBlock}
 
 Generate EXACTLY ${totalQuestions} multiple-choice knowledge questions for a ${learnerLevel} learner studying ${streamName}.
 
@@ -517,16 +529,18 @@ Generate ONLY valid JSON with no markdown.`;
     
     console.log('🎓 ============================================');
 
-    // Use sequential numeric IDs for consistency with answer storage
-    // Format: 1, 2, 3, ... (not UUIDs) so answers can be matched
-    const processedQuestions = uniqueQuestions.map((q: any, index: number) => ({
-        ...q,
-        id: index + 1, // Sequential numeric ID
-        uuid: generateUUID(), // Keep UUID for database uniqueness
-        stream_id: streamId,
-        stream_name: streamName,
-        created_at: new Date().toISOString()
-    }));
+    // Use UUIDs for all question IDs (required for database consistency)
+    const processedQuestions = uniqueQuestions.map((q: any) => {
+        const questionUuid = generateUUID();
+        return {
+            ...q,
+            id: questionUuid, // Use UUID as the ID
+            uuid: questionUuid, // Keep UUID field for consistency
+            stream_id: streamId,
+            stream_name: streamName,
+            created_at: new Date().toISOString()
+        };
+    });
 
     if (learnerId) {
         // Use upsert to handle potential race conditions or re-generation.
@@ -535,7 +549,7 @@ Generate ONLY valid JSON with no markdown.`;
         const { error } = await supabase
             .from('career_assessment_ai_questions')
             .upsert({
-                learner_id: learnerId,
+                learner_id: null,
                 question_type: 'knowledge',
                 questions: processedQuestions,
                 stream_id: streamId,

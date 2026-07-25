@@ -12,6 +12,8 @@ import type {
  * Shared TypeScript types for Cloudflare Pages Functions
  */
 
+import type { EmbeddingWorkerBinding } from '../../functions/api/embedding/lib/embeddingBinding';
+
 /**
  * Standard environment variables available to all Pages Functions
  */

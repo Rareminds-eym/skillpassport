@@ -30,8 +30,6 @@ export { default as InfoCard } from './InfoCard';
 // @ts-expect-error - JSX components without type declarations
 export { default as PrintView } from './PrintView';
 // @ts-expect-error - JSX components without type declarations
-export { default as ErrorState } from './ErrorState';
-// @ts-expect-error - JSX components without type declarations
 export { default as LoadingState } from './LoadingState';
 // @ts-expect-error - JSX components without type declarations
 export { default as ReportHeader } from './ReportHeader';

@@ -177,7 +177,7 @@ export const ErrorScreen: React.FC<ErrorScreenProps> = ({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.3 }}
-      className={`min-h-[600px] flex flex-col items-center justify-center text-center p-8 bg-gradient-to-br ${config.bgGradient}`}
+      className={`min-h-screen flex flex-col items-center justify-center text-center p-8 bg-gradient-to-br ${config.bgGradient}`}
     >
       {/* Icon with Glassmorphism */}
       <motion.div

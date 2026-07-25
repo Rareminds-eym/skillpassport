@@ -26,8 +26,8 @@ export async function loadSectionsWithQuestions(
 ): Promise<AssessmentSection[]> {
   logger.info('Loading sections', { gradeLevel, streamId, hasEnv: !!env });
   
-  const gradeSpecificGrades = ['middle', 'highschool', 'higher_secondary'];
-  const useGeneralSections = ['after10', 'after12', 'college'].includes(gradeLevel);
+  const gradeSpecificGrades = ['middle', 'highschool'];
+  const useGeneralSections = ['after10', 'after12', 'higher_secondary', 'college'].includes(gradeLevel);
 
   let allSections: any[] = [];
 
@@ -35,50 +35,19 @@ export async function loadSectionsWithQuestions(
   // === FETCH SECTIONS IN PARALLEL ===
   const fetchSectionsPromise = (async () => {
     if (gradeSpecificGrades.includes(gradeLevel)) {
-      // For grade-specific levels (middle, highschool, higher_secondary):
-      // Fetch their specific sections from database
       const { data: gradeSections, error: gradeError } = await supabase
         .from('personal_assessment_sections')
         .select('*')
         .eq('is_active', true)
         .eq('grade_level', gradeLevel)
-        .not('name', 'like', 'adaptive_aptitude%');
+        .not('name', 'like', 'adaptive_aptitude%')
+        .order('order_number', { ascending: true });
 
       if (gradeError) throw gradeError;
       logger.info('Fetched grade-specific sections', { count: gradeSections?.length || 0, gradeLevel });
-      
-      // CRITICAL FIX: For higher_secondary, also fetch standard sections (riasec, bigfive, values, employability)
-      // if they don't exist in grade-specific sections
-      if (gradeLevel === 'higher_secondary') {
-        const existingSectionNames = (gradeSections || []).map((s: any) => s.name);
-        const standardSectionNames = ['riasec', 'bigfive', 'values', 'employability'];
-        const missingSections = standardSectionNames.filter(name => !existingSectionNames.includes(name));
-        
-        if (missingSections.length > 0) {
-          logger.info('Fetching missing standard sections for higher_secondary', { missingSections });
-          
-          const { data: standardSections, error: standardError } = await supabase
-            .from('personal_assessment_sections')
-            .select('*')
-            .eq('is_active', true)
-            .eq('grade_level', 'general')
-            .in('name', missingSections);
-          
-          if (standardError) {
-            logger.error('Error fetching standard sections', { error: standardError });
-          } else if (standardSections && standardSections.length > 0) {
-            logger.info('Adding standard sections to higher_secondary', { 
-              count: standardSections.length,
-              sections: standardSections.map((s: any) => s.name)
-            });
-            return [...(gradeSections || []), ...standardSections];
-          }
-        }
-      }
-      
       return gradeSections || [];
     } else {
-      // For after10, after12, college: fetch standard sections (riasec, bigfive, values, employability)
+      // For after10, after12, higher_secondary, college: fetch standard sections (riasec, bigfive, values, employability)
       let standardQuery = supabase
         .from('personal_assessment_sections')
         .select('*')
@@ -91,7 +60,7 @@ export async function loadSectionsWithQuestions(
 
       const { data: standardSections, error: standardError } = await standardQuery;
       if (standardError) throw standardError;
-      logger.info('Fetched standard sections for college/after10/after12', { 
+      logger.info('Fetched standard sections for college/after10/after12/higher_secondary', { 
         count: standardSections?.length || 0, 
         sections: standardSections?.map((s: any) => s.name),
         gradeLevel 
@@ -238,15 +207,6 @@ async function loadAdaptiveSections(supabase: any, gradeLevel: string): Promise<
         .eq('grade_level', 'highschool')
         .eq('name', 'adaptive_aptitude_high')
         .maybeSingle();
-    } else if (gradeLevel === 'after10') {
-      // CRITICAL FIX: Add support for after10 adaptive aptitude
-      query = supabase
-        .from('personal_assessment_sections')
-        .select('*')
-        .eq('is_active', true)
-        .eq('grade_level', 'after10')
-        .eq('name', 'adaptive_aptitude_after10')
-        .maybeSingle();
     } else if (gradeLevel === 'higher_secondary') {
       query = supabase
         .from('personal_assessment_sections')
@@ -255,8 +215,15 @@ async function loadAdaptiveSections(supabase: any, gradeLevel: string): Promise<
         .eq('grade_level', 'higher_secondary')
         .eq('name', 'adaptive_aptitude_higher_secondary')
         .maybeSingle();
+    } else if (gradeLevel === 'after10') {
+      query = supabase
+        .from('personal_assessment_sections')
+        .select('*')
+        .eq('is_active', true)
+        .eq('grade_level', 'after10')
+        .eq('name', 'adaptive_aptitude_after10')
+        .maybeSingle();
     } else if (gradeLevel === 'after12') {
-      // Add support for after12 adaptive aptitude if it exists
       query = supabase
         .from('personal_assessment_sections')
         .select('*')
@@ -277,14 +244,14 @@ async function loadAdaptiveSections(supabase: any, gradeLevel: string): Promise<
           sections.push({
             id: section.id,
             name: 'adaptive_aptitude',
-            title: section.title || 'Adaptive Aptitude Test',
+            title: 'Adaptive Aptitude Test',
             description: section.description,
             icon: section.icon,
             color: section.color,
             instruction: section.instruction,
             questions: [] // Questions loaded dynamically by adaptive API
           });
-          logger.info('Loaded adaptive section', { gradeLevel, sectionName: section.name, sectionId: section.id });
+          logger.info('Loaded adaptive section', { gradeLevel, sectionName: section.name });
         }
       } else {
         logger.warn('No adaptive section found', { gradeLevel });
@@ -307,33 +274,31 @@ async function loadAISections(supabase: any, streamId?: string | null, gradeLeve
   // AI questions are used for after10, after12, higher_secondary, and college
   const usesAIQuestions = gradeLevel === 'after10' || gradeLevel === 'after12' || gradeLevel === 'higher_secondary' || gradeLevel === 'college';
   
-  logger.info('[loadAISections] Starting AI section load', { 
-    streamId, 
-    gradeLevel, 
+  logger.info('[loadAISections] Starting AI section load', {
+    streamId,
+    gradeLevel,
     usesAIQuestions,
     hasStreamId: !!streamId,
     hasEnv: !!env
   });
-  
-  // CRITICAL FIX: For higher_secondary, we MUST have streamId to load AI sections
+
+  // CRITICAL FIX: For grades that use AI questions, we MUST have streamId
   // If streamId is missing, log error but don't fail silently
   if (!streamId && usesAIQuestions) {
-    logger.error('[loadAISections] CRITICAL: Missing streamId for grade level that requires AI questions', { 
+    logger.error('[loadAISections] CRITICAL: Missing streamId for grade level that requires AI questions', {
       gradeLevel,
       usesAIQuestions,
       message: 'AI sections (aptitude & knowledge) will NOT be loaded without streamId'
     });
     return sections;
   }
-  
+
   if (!usesAIQuestions) {
-    logger.info('[loadAISections] Grade level does not use AI questions', { gradeLevel });
     return sections;
   }
 
   try {
     // === ALWAYS ADD APTITUDE SECTION (questions generated on-demand) ===
-    logger.info('[loadAISections] Adding Stream Based Aptitude section placeholder', { streamId, gradeLevel });
     
     sections.push({
       id: `aptitude-${streamId}`,
@@ -435,39 +400,38 @@ function getDefaultResponseScale(): ResponseScale[] {
 function mapQuestions(questions: any[]): AssessmentQuestion[] {
   return questions.map((q: any) => {
     let maxSelections: number | undefined;
-    let categoryMapping = q.category_mapping;
-    let metadata = q.metadata;
-
     if (q.metadata) {
       try {
-        metadata = typeof q.metadata === 'string' ? JSON.parse(q.metadata) : q.metadata;
+        const metadata = typeof q.metadata === 'string' ? JSON.parse(q.metadata) : q.metadata;
         maxSelections = metadata.max_selections || metadata.maxSelections;
       } catch (e) {
         // Continue without maxSelections
       }
     }
 
+    // SJT (situational judgment) questions are rendered with a best/worst picker, not a
+    // Likert scale. The client routes on `partType === 'sjt'`, so surface it here along with
+    // the scenario text stored in category_mapping.
+    let categoryMapping = q.category_mapping;
     if (typeof categoryMapping === 'string') {
       try {
         categoryMapping = JSON.parse(categoryMapping);
       } catch (e) {
-        categoryMapping = null;
+        categoryMapping = undefined;
       }
     }
-
-    const mappingType = categoryMapping?.type;
-    const riasecType = ['R', 'I', 'A', 'S', 'E', 'C'].includes(mappingType) ? mappingType : undefined;
+    const isSjt = q.question_type === 'sjt';
 
     return {
       id: q.id,
       text: q.question_text,
       type: q.question_type,
+      ...(isSjt ? { partType: 'sjt', scenario: categoryMapping?.scenario } : {}),
       order: q.order_number,
       options: q.options ? (typeof q.options === 'string' ? JSON.parse(q.options) : q.options) : [],
       maxSelections,
-      categoryMapping,
-      riasecType,
-      metadata
+      categoryMapping: q.category_mapping,
+      metadata: q.metadata
     };
   });
 }

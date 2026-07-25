@@ -21,15 +21,12 @@
 export * as assessmentApiService from './assessmentApiService';
 
 // Assessment Generation Service (AI-powered question generation)
-// @ts-ignore - JS file without type declarations
 export { generateAssessment, validateAssessment, saveGeneratedAssessment, loadGeneratedAssessment, cacheAssessment, getCachedAssessment } from './assessmentGenerationService';
 
 // Career Assessment AI Service
-// @ts-ignore - JS file without type declarations
 export { loadCareerAssessmentQuestions, STREAM_KNOWLEDGE_PROMPTS, normalizeStreamId } from './careerAssessmentAIService';
 
 // Gemini Assessment Service (AI analysis)
-// @ts-ignore - JS file without type declarations
 export { analyzeAssessmentWithGemini } from './geminiAssessmentService';
 
 // =============================================================================
@@ -37,7 +34,6 @@ export { analyzeAssessmentWithGemini } from './geminiAssessmentService';
 // =============================================================================
 
 // External Assessment Service (course-specific skill tests)
-// @ts-ignore - JS file without type declarations
 export { checkAssessmentStatus, createAssessmentAttempt, updateAssessmentProgress, completeAssessment, saveAssessmentAttempt, getAssessmentHistory, getAssessmentByCourse } from './externalAssessmentService';
 
 // =============================================================================

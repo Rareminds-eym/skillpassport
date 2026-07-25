@@ -463,10 +463,34 @@ async function handler(context: AuthenticatedContext): Promise<Response> {
       }
     }
 
-    let q = supabase.from('learner_course_recommendations').select('*, course:courses(course_id, title, code, description, duration, category, status)').eq('learner_id', learnerId).order('relevance_score', { ascending: false });
+    // Note: Don't join with courses table because course_id may contain:
+    // - Actual course IDs (for RAG recommendations)
+    // - LTE capability IDs (for assessment-based capability recommendations)
+    // Both can coexist in the same table, so we just fetch raw recommendations
+    console.log('[Recommendations/Saved] Query params:', { learnerId, status, assessmentResultId });
+    let q = supabase.from('learner_course_recommendations').select('*').eq('learner_id', learnerId).order('relevance_score', { ascending: false });
     if (status) q = q.eq('status', status);
-    if (assessmentResultId) q = q.eq('assessment_result_id', assessmentResultId);
-    const { data } = await q;
+
+    // CRITICAL: If assessment_result_id is provided, filter to that specific assessment
+    // If not provided, use the latest one (already fetched above)
+    if (assessmentResultId) {
+      q = q.eq('assessment_result_id', assessmentResultId);
+      console.log('[Recommendations/Saved] Filtering by assessment_result_id:', assessmentResultId);
+    } else {
+      console.warn('[Recommendations/Saved] No assessment_result_id provided or found, returning all active recommendations');
+    }
+
+    const { data, error } = await q;
+    console.log('[Recommendations/Saved] Query result:', { count: data?.length, hasData: !!data, error: error?.message });
+    if (error) {
+      console.error('[Recommendations/Saved] DB Error:', error);
+      return apiDbError(error, request);
+    }
+
+    if (!data || data.length === 0) {
+      console.warn('[Recommendations/Saved] No recommendations found for:', { learnerId, assessmentResultId, status });
+    }
+
     return apiSuccess(data || [], request);
   }
 
@@ -474,13 +498,14 @@ async function handler(context: AuthenticatedContext): Promise<Response> {
   if (path === '/recommendations/save' && method === 'POST') {
     const { learnerId, recommendations, assessmentResultId, recommendationType } = await parseBody(request);
     if (!learnerId || !recommendations?.length) return apiError(400, 'VALIDATION_ERROR', 'learnerId and recommendations required', request);
+    if (!assessmentResultId) return apiError(400, 'VALIDATION_ERROR', 'assessmentResultId is required', request);
     console.log('[Save] Request:', { learnerId, assessmentResultId, courseIds: recommendations.map((r: any) => r.course_id), recommendationType });
     const records = recommendations.map((rec: any) => ({
-      learner_id: learnerId, course_id: rec.course_id, assessment_result_id: assessmentResultId || null,
+      learner_id: learnerId, course_id: rec.course_id, role_id: rec.role_id || null, assessment_result_id: assessmentResultId,
       relevance_score: rec.relevance_score, match_reasons: rec.match_reasons || [], skill_gaps_addressed: rec.skill_gaps_addressed || [],
       recommendation_type: recommendationType || 'assessment', status: 'active', recommended_at: new Date().toISOString(),
     }));
-    const { data, error } = await supabase.from('learner_course_recommendations').upsert(records, { onConflict: 'learner_id,course_id,assessment_result_id', ignoreDuplicates: false }).select();
+    const { data, error } = await supabase.from('learner_course_recommendations').upsert(records, { onConflict: 'learner_id,course_id,role_id,assessment_result_id', ignoreDuplicates: false }).select();
     if (error) {
       console.error('[Save] DB Error details:', { code: error.code, message: error.message, details: error.details, hint: error.hint });
       return apiDbError(error, request);

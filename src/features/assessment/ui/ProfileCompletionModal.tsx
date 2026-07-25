@@ -367,21 +367,20 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
       const dataToSave: Record<string, string> = {};
       
       // Map custom entries to correct database columns
-      // Based on learnerSettingsService.js field mapping
-      // NOTE: Only institution-related fields are mapped in this modal
-      
-      // Custom school name -> college_school_name (via 'college' field)
-      if (customSchoolName) {
-        dataToSave.college = customSchoolName;
+      // Based on learnerSettingsService.js field mapping:
+
+      // Custom school name -> school_name (for school learners only)
+      if (customSchoolName && isSchoolLearner) {
+        dataToSave.school_name = customSchoolName;
       }
-      
+
       // Custom university name -> university column (via 'university' field)
       if (customUniversityName) {
         dataToSave.university = customUniversityName;
       }
-      
-      // Custom college name -> college_school_name (via 'college' field)
-      if (customCollegeName) {
+
+      // Custom college name -> college_school_name (via 'college' field, for college learners only)
+      if (customCollegeName && isCollegeLearner) {
         dataToSave.college = customCollegeName;
       }
       

@@ -9,6 +9,9 @@ const getMatchColor = (score) => {
     return { bg: 'bg-red-500', text: 'text-red-600', light: 'bg-red-100', border: 'border-red-200', ring: '#ef4444' };
 };
 
+// Helper function to convert index to letter (0 -> A, 1 -> B, 2 -> C)
+const getTrackLetter = (index) => String.fromCharCode(65 + index);
+
 const CareerSection = ({ careerFit }) => {
     // Defensive defaults for nested arrays
     const clusters = careerFit?.clusters || [];
@@ -28,7 +31,7 @@ const CareerSection = ({ careerFit }) => {
                             <div className="flex flex-wrap justify-between items-start gap-4 mb-5">
                                 <div className="flex items-center gap-3">
                                     <div className={`w-14 h-14 rounded-lg ${style.bg} flex items-center justify-center text-white font-bold text-2xl`}>
-                                        {idx + 1}
+                                        {getTrackLetter(idx)}
                                     </div>
                                     <div>
                                         <h3 className="text-2xl font-bold text-gray-900">{cluster.title}</h3>

@@ -88,8 +88,10 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = ({
     );
   }
 
-  // SJT Questions (Situational Judgment Test)
-  if (question.partType === 'sjt') {
+  // SJT Questions (Situational Judgment Test). DB-driven questions carry type 'sjt';
+  // the legacy hardcoded set used partType 'sjt'. Accept either so SJT always renders the
+  // best/worst picker instead of falling through to a Likert scale.
+  if (question.partType === 'sjt' || question.type === 'sjt') {
     return (
       <SJTQuestion
         questionId={questionId}

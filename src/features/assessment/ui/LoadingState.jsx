@@ -6,10 +6,6 @@ import { Sparkles } from 'lucide-react';
  * LOADER 3: Shows in AssessmentResult.jsx when loading=true
  */
 const LoadingState = ({ isAutoRetry = false, retryAttemptCount = 0 }) => {
-    console.log('🔄 [LoadingState] Component rendered - LOADER 3 DISPLAYED');
-    console.log('🔄 [LoadingState] isAutoRetry:', isAutoRetry);
-    console.log('🔄 [LoadingState] retryAttemptCount:', retryAttemptCount);
-    
     return (
         <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center">
             <div className="text-center">

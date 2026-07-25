@@ -384,14 +384,6 @@ const NotebookLabel = ({ learnerInfo, description }) => {
  * @returns {JSX.Element} Cover page component
  */
 const CoverPage = ({ learnerInfo, generatedAt }) => {
-  // Debug: Log what learnerInfo is received
-  console.log('CoverPage - learnerInfo received:', learnerInfo);
-  console.log('CoverPage - learnerInfo keys:', learnerInfo ? Object.keys(learnerInfo) : 'null');
-  console.log('CoverPage - grade value:', learnerInfo?.grade);
-  console.log('CoverPage - school value:', learnerInfo?.school);
-  console.log('CoverPage - college value:', learnerInfo?.college);
-  console.log('CoverPage - generatedAt:', generatedAt);
-  
   // Format generation date
   const formatDate = (dateString) => {
     if (!dateString) return new Date().toLocaleDateString('en-IN', {
@@ -418,9 +410,6 @@ const CoverPage = ({ learnerInfo, generatedAt }) => {
     // Try multiple possible field names for school
     school: learnerInfo?.school || learnerInfo?.college || learnerInfo?.schoolName || learnerInfo?.institution || '—'
   };
-  
-  // Debug: Log safelearnerInfo
-  console.log('CoverPage - safelearnerInfo created:', safelearnerInfo);
 
   return (
     <div 

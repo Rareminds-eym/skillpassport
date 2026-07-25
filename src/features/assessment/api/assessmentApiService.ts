@@ -435,3 +435,32 @@ export async function completeAttempt(
     throw error;
   }
 }
+
+/**
+ * Retry cluster generation for a failed analysis
+ * Calls analyze endpoint again which will regenerate clusters
+ */
+export async function retryClusterGeneration(attemptId: string, gradeLevel: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const response = await ssoClient.fetch(`${API_BASE}/analyze`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ attemptId, gradeLevel }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: 'Unknown error' }));
+      return {
+        success: false,
+        error: error.message || 'Failed to retry cluster generation'
+      };
+    }
+
+    return { success: true };
+  } catch (err: any) {
+    return {
+      success: false,
+      error: err.message || 'Network error'
+    };
+  }
+}
