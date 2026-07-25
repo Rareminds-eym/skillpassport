@@ -27,6 +27,7 @@ interface SsoSubscriptionData {
   phone?: string;
   razorpay_order_id?: string;
   razorpay_payment_id?: string;
+  receipt_url?: string;
   organization_id?: string;
   organization_type?: string;
   seat_count?: number;
@@ -54,6 +55,7 @@ interface SsoTransactionData {
   organization_type?: string;
   seat_count?: number;
   is_bulk_purchase?: boolean;
+  /** R2 key to the payment receipt PDF (not a presigned URL) */
   receipt_url?: string;
   notes?: Record<string, unknown>;
   metadata?: Record<string, unknown>;
@@ -83,6 +85,7 @@ type SsoFetcher = Fetcher & {
   updateSubscriptionStatus(subscriptionId: string, data: unknown): Promise<Record<string, unknown>>;
   updateSubscriptionField(subscriptionId: string, data: unknown): Promise<Record<string, unknown>>;
   recordTransaction(data: unknown): Promise<Record<string, unknown>>;
+  updateTransaction(transactionId: string, data: unknown): Promise<Record<string, unknown>>;
   getUserSubscription(userId: string): Promise<{ subscription: Record<string, unknown> | null; plan: Record<string, unknown> | null }>;
   syncSubscription(userId: string): Promise<{ subscription: Record<string, unknown> | null; plan: Record<string, unknown> | null }>;
   getUserTransactions(userId: string, subscriptionId?: string): Promise<Record<string, unknown>[]>;
@@ -185,6 +188,23 @@ export async function ssoRecordTransaction(
   data: SsoTransactionData,
 ): Promise<Record<string, unknown>> {
   return getSsoService(env).recordTransaction(data);
+}
+
+/**
+ * Update transaction metadata (e.g., receipt_url after async generation)
+ */
+export async function ssoUpdateTransaction(
+  env: SsoClientEnv,
+  transactionId: string,
+  data: { receipt_url?: string; status?: string; metadata?: Record<string, unknown> },
+): Promise<Record<string, unknown>> {
+  const ssoService = getSsoService(env);
+  
+  if (typeof ssoService.updateTransaction !== 'function') {
+    throw new Error('SSO_SERVICE.updateTransaction RPC method not implemented');
+  }
+  
+  return ssoService.updateTransaction(transactionId, data);
 }
 
 export async function ssoGetUserSubscription(

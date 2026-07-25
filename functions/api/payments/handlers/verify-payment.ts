@@ -15,12 +15,14 @@
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getContextUser } from '../../../lib/auth';
 import { sendEmailSafe } from '../../../lib/email-service';
+import { createLogger } from '../../../lib/logger';
 import { apiError, apiSuccess } from '../../../lib/response';
 import {
   ssoCreateSubscription,
   ssoRecordTransaction,
   ssoSyncSubscription,
   ssoUpdateSubscriptionField,
+  ssoUpdateTransaction,
 } from '../../../lib/sso-client';
 import { getServiceClient } from '../../../lib/supabase';
 import { syncSubscriptionCache, syncUserShadow } from '../../../lib/sync-shadow';
@@ -31,6 +33,14 @@ import type { EventConfirmationTemplateData } from '../../email/types';
 import { fetchImageBytes, generateReceiptPDF, type ReceiptData } from '../../storage/utils/pdf-generator';
 import { R2Client } from '../../storage/utils/r2-client';
 import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../lib/paymentBinding';
+
+const logger = createLogger('verify-payment');
+
+// Receipt configuration constants
+const RECEIPT_CONFIG = {
+  USER_ID_PREFIX_LENGTH: 8,
+  PAYMENT_ID_SANITIZE_REGEX: /[^a-zA-Z0-9_-]/g,
+};
 
 // RPC calls throw errors of unknown shape; some carry an HTTP-like numeric
 // `status` (e.g. 409 on a duplicate-key race). This narrows without `any`.
@@ -70,6 +80,13 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
   const user = getContextUser(context);
   const env = context.env as unknown as PaymentWorkerEnv & { SSO_SERVICE: Fetcher };
 
+  // Ensure user.email exists before proceeding
+  if (!user.email) {
+    return apiError(400, 'VALIDATION_ERROR', 'User email is required', context.request);
+  }
+
+  const userEmail: string = user.email;
+
   try {
     let body: Record<string, unknown>;
     try {
@@ -82,28 +99,54 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
       return apiError(400, 'VALIDATION_ERROR', 'razorpay_order_id, razorpay_payment_id, and razorpay_signature are required', context.request);
     }
 
+    // Type narrow and validate Razorpay IDs
+    if (
+      typeof body.razorpay_order_id !== 'string' ||
+      typeof body.razorpay_payment_id !== 'string' ||
+      typeof body.razorpay_signature !== 'string' ||
+      !body.razorpay_order_id.trim() ||
+      !body.razorpay_payment_id.trim() ||
+      !body.razorpay_signature.trim()
+    ) {
+      return apiError(400, 'VALIDATION_ERROR', 'Invalid Razorpay payment parameters', context.request);
+    }
+
+    const razorpayOrderId = body.razorpay_order_id;
+    const razorpayPaymentId = body.razorpay_payment_id;
+    const razorpaySignature = body.razorpay_signature;
+
     // Step 1: Verify Razorpay HMAC signature via payment-worker RPC (unchanged)
     const worker = getPaymentWorker(env);
     const verifyResult = await worker.verifyPaymentSignature(
-      body.razorpay_order_id as string,
-      body.razorpay_payment_id as string,
-      body.razorpay_signature as string
+      razorpayOrderId,
+      razorpayPaymentId,
+      razorpaySignature
     );
 
     // Step 1.5: Verify payment was actually captured (Amount Spoofing Prevention)
-    const payment = await worker.getPayment(body.razorpay_payment_id as string);
-    if (payment.status !== 'captured' || payment.order_id !== body.razorpay_order_id) {
+    const payment = await worker.getPayment(razorpayPaymentId);
+    if (payment.status !== 'captured' || payment.order_id !== razorpayOrderId) {
       return apiError(400, 'VALIDATION_ERROR', 'Payment not captured or order ID mismatch', context.request);
     }
 
     // Step 2: Signature valid — prepare subscription data
     const plan = body.plan as Record<string, unknown> | undefined;
     if (!plan || typeof plan !== 'object') {
-      console.warn('[VerifyPayment] Signature verified but no plan data provided');
+      logger.warn('Signature verified but no plan data provided', { 
+        razorpayPaymentId, 
+        razorpayOrderId 
+      });
       return apiSuccess(verifyResult, context.request);
     }
     if (!plan.id || !plan.name || !plan.price || !plan.duration) {
-      console.warn('[VerifyPayment] Signature verified but no plan data provided');
+      logger.warn('Signature verified but incomplete plan data', { 
+        razorpayPaymentId, 
+        razorpayOrderId,
+        hasPlanId: !!plan.id,
+        hasPlanName: !!plan.name,
+        hasPlanPrice: !!plan.price,
+        hasPlanDuration: !!plan.duration
+      });
       return apiSuccess(verifyResult, context.request);
     }
 
@@ -118,25 +161,23 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
       .maybeSingle();
 
     if (planError || !validPlan) {
-      console.error('[VerifyPayment] Invalid or inactive plan:', plan.id, planError);
+      logger.error('Invalid or inactive plan', planError instanceof Error ? planError : new Error('Plan not found'));
       return apiError(400, 'VALIDATION_ERROR', 'Selected plan is not valid or inactive', context.request);
     }
 
     // Step 2.5: Validate currency (SECURITY: prevent multi-currency fraud)
     if (payment.currency !== 'INR') {
-      console.error('[VerifyPayment] Currency mismatch:', {
-        expected: 'INR',
-        actual: payment.currency,
-        paymentId: payment.id,
-        orderId: razorpay_order_id
-      });
+      logger.error('Currency mismatch - Invalid payment currency', new Error(`Expected INR but got ${payment.currency}`));
       return apiError(400, 'VALIDATION_ERROR', 'Invalid payment currency. Only INR is supported.', context.request);
     }
 
     // Authoritative price from DB — never trust client-supplied price
     const rawPricingMatrix = validPlan.pricing_matrix;
     if (!isPricingMatrix(rawPricingMatrix)) {
-      console.error('[VerifyPayment] No pricing matrix found for plan:', plan.id);
+      logger.error('No pricing matrix found for plan', new Error('Invalid pricing matrix structure'), { 
+        planId: plan.id,
+        planCode: validPlan.plan_code
+      });
       return apiError(400, 'VALIDATION_ERROR', 'Plan pricing data is invalid', context.request);
     }
     const pricingMatrix = rawPricingMatrix;
@@ -155,7 +196,12 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
         if (entityPricing?.yearly === clientPrice && entityPricing.yearly > 0) {
           planPrice = entityPricing.yearly;
           detectedBillingCycle = 'yearly';
-          console.log('[VerifyPayment] Price matched to yearly cycle:', { clientPrice, planPrice, entityKey });
+          logger.info('Price matched to yearly billing cycle', { 
+            clientPrice, 
+            planPrice, 
+            entityKey,
+            planId: plan.id
+          });
           break;
         }
 
@@ -163,20 +209,24 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
         if (entityPricing?.monthly === clientPrice && entityPricing.monthly > 0) {
           planPrice = entityPricing.monthly;
           detectedBillingCycle = 'monthly';
-          console.log('[VerifyPayment] Price matched to monthly cycle:', { clientPrice, planPrice, entityKey });
+          logger.info('Price matched to monthly billing cycle', { 
+            clientPrice, 
+            planPrice, 
+            entityKey,
+            planId: plan.id
+          });
           break;
         }
       }
     }
 
     if (typeof planPrice !== 'number') {
-      console.error('[VerifyPayment] Plan price mismatch or no pricing found:', {
-        planId: plan.id,
+      logger.error('Plan price mismatch or no pricing found', new Error('Unable to match client price with plan pricing matrix'), {
+        planId: plan?.id,
         planCode: validPlan.plan_code,
         clientPrice,
-        duration: plan.duration,
+        duration: plan?.duration,
         pricingMatrix,
-        errorMessage: `Client sent price ${clientPrice} but no matching pricing found in matrix`
       });
       return apiError(400, 'VALIDATION_ERROR', `Selected plan has no pricing matching the payment (₹${clientPrice}). Please try again.`, context.request);
     }
@@ -184,7 +234,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
     // Step 2.6: Cross-verify authoritative Razorpay captured amount
     const expectedPaise = Math.round(planPrice * 100);
     if (payment.amount !== expectedPaise) {
-      console.error('[VerifyPayment] Amount mismatch:', { captured: payment.amount, expected: expectedPaise, planId: plan.id });
+      logger.error('Amount mismatch - Payment amount verification failed', new Error(`Captured ${payment.amount} paise but expected ${expectedPaise} paise`));
       return apiError(400, 'VALIDATION_ERROR', `Amount mismatch: captured ${payment.amount} paise, expected ${expectedPaise}`, context.request);
     }
 
@@ -213,7 +263,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
     if (existingCache) {
       // Upgrade flow — update existing subscription in auth DB
       isUpgrade = true;
-      console.log('[VerifyPayment] Upgrading existing subscription:', existingCache.id);
+      logger.info('Upgrading existing subscription', { subscriptionId: existingCache.id });
 
       // Validate upgrade direction via current plan amount
       const currentPrice = existingCache.plan_amount;
@@ -226,12 +276,12 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
 
       if (currentPlan) {
         if (typeof currentPrice !== 'number' || typeof planPrice !== 'number') {
-          console.warn('[VerifyPayment] Cannot compare plan pricing:', { currentPrice, planPrice });
+          logger.warn('Cannot compare plan pricing', { currentPrice, planPrice });
           return apiError(400, 'VALIDATION_ERROR', 'Cannot determine plan pricing. Please contact support.', context.request);
         }
 
         if (planPrice <= currentPrice) {
-          console.warn('[VerifyPayment] Downgrade blocked:', {
+          logger.warn('Downgrade blocked', {
             currentPlan: currentPlan.plan_code,
             currentPrice,
             newPrice: planPrice,
@@ -247,12 +297,13 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
           plan_type: plan.name,
           plan_amount: planPrice,
           billing_cycle: plan.duration,
-          razorpay_order_id: body.razorpay_order_id,
-          razorpay_payment_id: body.razorpay_payment_id,
+          razorpay_order_id: razorpayOrderId,
+          razorpay_payment_id: razorpayPaymentId,
           subscription_start_date: now.toISOString(),
           subscription_end_date: endDate.toISOString(),
           auto_renew: true,
           status: 'active',
+          // DO NOT set receipt_url here - will be set after successful upload
         });
 
         // learners.name is the source of truth for the receipt's display name;
@@ -269,7 +320,12 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
         const upgradeErrorStatus = hasNumericStatus(upgradeError) ? upgradeError.status : undefined;
 
         if (upgradeErrorMessage.includes('duplicate key') || upgradeErrorMessage.includes('23505') || upgradeErrorStatus === 409) {
-          console.log('[VerifyPayment] Subscription already updated by webhook (duplicate caught). Syncing shadow cache before return.');
+          logger.info('Subscription already updated by webhook (duplicate caught)', { 
+            subscriptionId: existingCache.id,
+            userId: user.id,
+            razorpayPaymentId,
+            razorpayOrderId
+          });
 
           try {
             // user.email (AuthUser) is always a non-empty string, so this
@@ -281,7 +337,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
               await syncSubscriptionCache(supabase, syncData.subscription, syncData.plan);
             }
           } catch (syncError) {
-            console.error('[VerifyPayment] Shadow sync failed during upgrade duplicate handling:', syncError);
+            logger.error('Shadow sync failed during upgrade duplicate handling', syncError instanceof Error ? syncError : new Error(String(syncError)));
           }
 
           return apiSuccess({
@@ -292,15 +348,21 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
           }, context.request);
         }
 
-        console.error('[VerifyPayment] Upgrade failed:', upgradeErrorMessage);
+        logger.error('Subscription upgrade failed', upgradeError instanceof Error ? upgradeError : new Error(upgradeErrorMessage), {
+          userId: user.id,
+          subscriptionId: existingCache.id,
+          targetPlanId: plan.id,
+          razorpayPaymentId,
+          razorpayOrderId
+        });
 
         // Record failed upgrade as an event in auth DB
         try {
           await ssoRecordTransaction(env, {
             user_id: user.id,
-            razorpay_order_id: body.razorpay_order_id as string,
-            razorpay_payment_id: body.razorpay_payment_id as string,
-            razorpay_signature: body.razorpay_signature as string,
+            razorpay_order_id: razorpayOrderId,
+            razorpay_payment_id: razorpayPaymentId,
+            razorpay_signature: razorpaySignature,
             amount: planPrice,
             status: 'failed',
             transaction_type: 'upgrade',
@@ -314,7 +376,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
             },
           });
         } catch (logError) {
-          console.error('[VerifyPayment] Failed to log upgrade failure:', logError);
+          logger.error('Failed to log upgrade failure', logError instanceof Error ? logError : new Error(String(logError)));
         }
 
         return apiSuccess({
@@ -332,9 +394,13 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
       const planCode = validPlan.plan_code;
       const isRecruiterPlan = planCode?.includes('recruiter') || planCode?.includes('recruitment');
 
-      console.log('[VerifyPayment] Creating new subscription for user:', user.id, {
-        plan_code: planCode,
-        is_recruiter: isRecruiterPlan,
+      logger.info('Creating new subscription', {
+        userId: user.id,
+        planId: plan.id,
+        planCode,
+        isRecruiterPlan,
+        razorpayPaymentId,
+        razorpayOrderId
       });
 
       // learners.name is the source of truth for the subscription's full_name
@@ -369,7 +435,12 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
 
         // Handle race condition: Webhook or other synchronous flow already created the subscription
         if (createErrorMessage.includes('duplicate key') || createErrorMessage.includes('23505') || createErrorStatus === 409) {
-          console.log('[VerifyPayment] Subscription already created (duplicate caught). Order fulfilled asynchronously. Syncing shadow cache before return.');
+          logger.info('Subscription already created by webhook (duplicate caught)', {
+            userId: user.id,
+            planId: plan.id,
+            razorpayPaymentId,
+            razorpayOrderId
+          });
 
           try {
             // user.email (AuthUser) is always a non-empty string, so this
@@ -381,7 +452,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
               await syncSubscriptionCache(supabase, syncData.subscription, syncData.plan);
             }
           } catch (syncError) {
-            console.error('[VerifyPayment] Shadow sync failed during duplicate handling:', syncError);
+            logger.error('Shadow sync failed during duplicate handling', syncError instanceof Error ? syncError : new Error(String(syncError)));
           }
 
           return apiSuccess({
@@ -392,7 +463,12 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
           }, context.request);
         }
 
-        console.error('[VerifyPayment] Subscription creation failed:', createErrorMessage);
+        logger.error('Subscription creation failed', createError instanceof Error ? createError : new Error(createErrorMessage), {
+          userId: user.id,
+          planId: plan.id,
+          razorpayPaymentId,
+          razorpayOrderId
+        });
 
         return apiSuccess({
           payment_verified: true,
@@ -408,27 +484,38 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
     }
 
     // Step 3: Record payment transaction in auth DB
+    let transactionId: string | undefined;
     try {
-      await ssoRecordTransaction(env, {
+      const txResult = await ssoRecordTransaction(env, {
         subscription_id: subscription.id as string,
         user_id: user.id,
-        razorpay_payment_id: body.razorpay_payment_id as string,
-        razorpay_order_id: body.razorpay_order_id as string,
-        razorpay_signature: body.razorpay_signature as string,
+        razorpay_payment_id: razorpayPaymentId,
+        razorpay_order_id: razorpayOrderId,
+        razorpay_signature: razorpaySignature,
         amount: planPrice,
         currency: 'INR',
         status: 'completed',
         transaction_type: isUpgrade ? 'upgrade' : 'subscription',
         payment_method: payment.method,
+        // DO NOT set receipt_url here - will be set after successful upload
       });
+      transactionId = typeof txResult?.id === 'string' ? txResult.id : undefined;
     } catch (txError: unknown) {
       const txErrorMessage = txError instanceof Error ? txError.message : String(txError);
       const isTxErrorStatus409 = hasNumericStatus(txError) && txError.status === 409;
 
       if (txErrorMessage.includes('duplicate key') || txErrorMessage.includes('23505') || isTxErrorStatus409) {
-        console.log('[VerifyPayment] Transaction already recorded (duplicate caught). Skipping further duplicate handling.');
+        logger.info('Transaction already recorded (duplicate caught)', {
+          userId: user.id,
+          razorpayPaymentId,
+          razorpayOrderId
+        });
       } else {
-        console.error('[VerifyPayment] Transaction recording failed (non-critical):', txErrorMessage);
+        logger.error('Transaction recording failed (non-critical)', txError instanceof Error ? txError : new Error(txErrorMessage), {
+          userId: user.id,
+          razorpayPaymentId,
+          razorpayOrderId
+        });
       }
     }
 
@@ -445,7 +532,11 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
         await syncSubscriptionCache(supabase, syncData.subscription, syncData.plan);
       }
     } catch (syncError) {
-      console.error('[VerifyPayment] Shadow sync failed (non-critical):', syncError);
+      logger.error('Shadow sync failed (non-critical)', syncError instanceof Error ? syncError : new Error(String(syncError)), {
+        userId: user.id,
+        razorpayPaymentId,
+        razorpayOrderId
+      });
     }
 
     // users.phone is the source of truth for phone numbers (subscriptions.phone
@@ -456,82 +547,78 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
       .eq('id', user.id)
       .maybeSingle();
     if (userRecordForContactError) {
-      console.error('[VerifyPayment] Failed to fetch user phone for contact (non-critical):', userRecordForContactError);
+      logger.error('Failed to fetch user phone for contact (non-critical)', userRecordForContactError instanceof Error ? userRecordForContactError : new Error(String(userRecordForContactError)), {
+        userId: user.id
+      });
     }
     const contactPhone = userRecordForContact?.phone ?? undefined;
 
-    // Step 4: Generate receipt PDF and upload to R2 (unchanged)
+    // Reuse the learners.name lookup done above on the new-subscription path;
+    // the upgrade path never fetched it, so fetch it here instead.
+    if (learnerName === undefined) {
+      const { data: learner } = await supabase
+        .from('learners')
+        .select('name')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      learnerName = learner?.name;
+    }
+
+    // Step 4: Generate and upload receipt PDF asynchronously, then update databases
+    // This function handles: PDF generation, R2 upload, auth DB update, and app DB sync
+    const shortUserId = user.id.substring(0, RECEIPT_CONFIG.USER_ID_PREFIX_LENGTH);
+    const sanitizedPmtId = razorpayPaymentId.replace(RECEIPT_CONFIG.PAYMENT_ID_SANITIZE_REGEX, '');
+    const timestamp = Date.now();
+    const receiptKeyForGeneration = `payment_pdf/user_${shortUserId}/${sanitizedPmtId}_${timestamp}.pdf`;
+
+    // Fire-and-forget: Generate receipt in background without blocking payment response
+    // The generateAndUploadReceipt function will:
+    // 1. Generate PDF with proper branding
+    // 2. Upload to R2 storage
+    // 3. Update sso_auth.subscriptions.receipt_url
+    // 4. Update sso_auth.transactions.receipt_url
+    // 5. Sync to skillpassport.subscription_cache.receipt_url
+    const receiptPromise = generateAndUploadReceipt({
+      env,
+      supabase,
+      subscriptionId: subscription.id as string,
+      transactionId,
+      userId: user.id,
+      receiptKey: receiptKeyForGeneration,
+      paymentId: razorpayPaymentId,
+      orderId: razorpayOrderId,
+      amount: planPrice,
+      paymentMethod: payment.method,
+      subscription: {
+        plan_type: subscription.plan_type as string,
+        billing_cycle: subscription.billing_cycle as string,
+        subscription_start_date: subscription.subscription_start_date as string,
+        subscription_end_date: subscription.subscription_end_date as string,
+      },
+      user: {
+        name: learnerName || undefined,
+        email: userEmail,
+        phone: contactPhone,
+      },
+    }).catch(err => {
+      logger.error('Background receipt generation failed (non-critical)', err instanceof Error ? err : new Error(String(err)));
+    });
+
+    // Ensure receipt generation completes even after response is sent
+    if (context.waitUntil) {
+      context.waitUntil(receiptPromise);
+    }
+
+    // For the email, we'll use a temporary presigned URL (receipt will be in email anyway)
     let receiptUrl: string | null = null;
-    let receiptKey: string | null = null;
     try {
       const pagesEnv = env as unknown as PagesEnv;
-
-      // Reuse the learners.name lookup done above on the new-subscription path;
-      // the upgrade path never fetched it, so fetch it here instead.
-      if (learnerName === undefined) {
-        const { data: learner } = await supabase
-          .from('learners')
-          .select('name')
-          .eq('user_id', user.id)
-          .maybeSingle();
-        learnerName = learner?.name;
-      }
-
-      const logoUrl = `${APP_URL}/RareMinds ISO Logo-01.png`;
-      const logoBytes: Uint8Array | undefined = await fetchImageBytes(logoUrl);
-      const watermarkBytes = logoBytes;
-
-      const receiptData: ReceiptData = {
-        transaction: {
-          payment_id: body.razorpay_payment_id as string,
-          order_id: body.razorpay_order_id as string,
-          amount: planPrice,
-          currency: 'INR',
-          payment_method: payment.method || 'Card',
-          payment_timestamp: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
-          status: 'Success',
-        },
-        subscription: {
-          plan_name: subscription.plan_type as string,
-          plan_type: subscription.plan_type as string,
-          billing_cycle: subscription.billing_cycle as string,
-          subscription_start_date: subscription.subscription_start_date as string,
-          subscription_end_date: subscription.subscription_end_date as string,
-        },
-        user: {
-          name: learnerName || (subscription.full_name as string) || '',
-          email: (subscription.email as string) || user.email || '',
-          phone: contactPhone,
-        },
-        company: {
-          name: 'Rareminds',
-          address: '231, 2nd stage, 13th Cross Road\nHoysala Nagar, Indiranagar\nBengaluru, Karnataka 560001',
-          phone: '+91 9902326951',
-          email: 'marketing@rareminds.in',
-          taxId: 'GSTIN: 29ABCDE1234F1Z5',
-        },
-        generatedAt: new Date().toLocaleString('en-IN'),
-        logoBytes,
-        watermarkBytes,
-      };
-
-      const pdfBytes = await generateReceiptPDF(receiptData);
-
-      const shortUserId = user.id.substring(0, 8);
-      const sanitizedPmtId = (body.razorpay_payment_id as string).replace(/[^a-zA-Z0-9_-]/g, '');
-      const timestamp = Date.now();
-      receiptKey = `payment_pdf/user_${shortUserId}/${sanitizedPmtId}_${timestamp}.pdf`;
-      const filename = `Receipt-${sanitizedPmtId.slice(-8)}-${new Date().toISOString().split('T')[0]}.pdf`;
-
       const r2 = new R2Client(pagesEnv);
-      receiptUrl = await r2.upload(receiptKey, pdfBytes.buffer as ArrayBuffer, 'application/pdf', {
-        'Content-Disposition': `attachment; filename="${filename}"`,
-      });
-
-      receiptUrl = await r2.generatePresignedGetUrl(receiptKey, 604800);
-      console.log('[VerifyPayment] Receipt uploaded:', receiptUrl);
-    } catch (receiptErr) {
-      console.error('[VerifyPayment] Receipt generation failed (non-critical):', receiptErr);
+      receiptUrl = await r2.generatePresignedGetUrl(receiptKeyForGeneration, 604800);
+      logger.info('Generated temporary presigned URL for email', { receiptKey: receiptKeyForGeneration });
+    } catch (presignErr) {
+      const errorMsg = presignErr instanceof Error ? presignErr.message : String(presignErr);
+      logger.warn('Failed to generate presigned URL for email (non-critical)', { error: errorMsg });
     }
 
     // Step 5: Send payment confirmation email (unchanged)
@@ -546,14 +633,18 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
         receiptUrl: receiptUrl || undefined,
       });
     } catch (emailErr) {
-      console.error('[VerifyPayment] Email failed (non-critical):', emailErr);
+      logger.error('Email failed (non-critical)', emailErr instanceof Error ? emailErr : new Error(String(emailErr)), {
+        userId: user.id,
+        userEmail,
+        razorpayPaymentId,
+        razorpayOrderId
+      });
     }
 
     return apiSuccess({
       ...verifyResult,
       subscription_created: true,
-      receipt_url: receiptUrl,
-      receipt_key: receiptKey,
+      receipt_status: 'generating', // Indicate receipt is being generated in background
       is_upgrade: isUpgrade,
       subscription: {
         id: subscription.id,
@@ -564,7 +655,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
       },
     }, context.request);
   } catch (error) {
-    console.error('[VerifyPayment] Error:', error);
+    logger.error('Payment verification failed', error instanceof Error ? error : new Error(String(error)));
     return rpcErrorResponse(error, context.request);
   }
 }
@@ -583,8 +674,229 @@ async function sendPaymentSuccessEmail(
   });
 
   if (success) {
-    console.log('[VerifyPayment] Payment confirmation email sent');
+    logger.info('Payment confirmation email sent', { email: data.email });
   } else {
-    console.error('[VerifyPayment] Email send failed (non-critical)');
+    logger.error('Email send failed (non-critical)', new Error('Failed to send payment confirmation email'));
+  }
+}
+
+/**
+ * Check if error indicates unsupported RPC method
+ * Checks for explicit "not implemented" message thrown by sso-client
+ * when RPC method is not available on the service binding.
+ */
+function isUnsupportedRpcMethod(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null) {
+    return false;
+  }
+  
+  if (!('message' in error) || typeof error.message !== 'string') {
+    return false;
+  }
+  
+  const message = error.message;
+  
+  // Match the exact error thrown by ssoUpdateTransaction in sso-client.ts
+  // when the RPC method is not implemented on the service binding
+  return (
+    message.includes('not implemented') ||
+    message.includes('Method not found')
+  );
+}
+
+/**
+ * Generate and upload payment receipt PDF, then update subscription with receipt URL
+ */
+async function generateAndUploadReceipt(params: {
+  env: PaymentWorkerEnv & { SSO_SERVICE: Fetcher };
+  supabase: ReturnType<typeof getServiceClient>;
+  subscriptionId: string;
+  transactionId?: string;
+  userId: string;
+  receiptKey: string;
+  paymentId: string;
+  orderId: string;
+  amount: number;
+  paymentMethod: string;
+  subscription: {
+    plan_type: string;
+    billing_cycle: string;
+    subscription_start_date: string;
+    subscription_end_date: string;
+  };
+  user: {
+    name?: string;
+    email: string;
+    phone?: string;
+  };
+}): Promise<void> {
+  const {
+    env,
+    supabase,
+    subscriptionId,
+    transactionId,
+    userId,
+    receiptKey,
+    paymentId,
+    orderId,
+    amount,
+    paymentMethod,
+    subscription,
+    user: userInfo,
+  } = params;
+
+  try {
+    logger.info('Starting receipt generation', { receiptKey, userId, subscriptionId });
+    const pagesEnv = env as unknown as PagesEnv;
+
+    // Fetch learner name from database
+    logger.info('Fetching learner data', { userId });
+    const { data: learner, error: learnerError } = await supabase
+      .from('learners')
+      .select('name')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (learnerError) {
+      logger.warn(`Failed to fetch learner data: ${learnerError.message} (code: ${learnerError.code})`);
+    }
+
+    // Safely normalize learner name before use
+    const learnerName =
+      typeof learner?.name === 'string' && learner.name.trim()
+        ? learner.name.trim()
+        : undefined;
+
+    // Fetch company logo
+    let logoBytes: Uint8Array | undefined;
+    const logoUrl = `${APP_URL}/RareMinds ISO Logo-01.png`;
+    try {
+      logger.info('Fetching company logo', { logoUrl });
+      logoBytes = await fetchImageBytes(logoUrl);
+      logger.info('Logo fetched successfully');
+    } catch (logoErr) {
+      logger.warn(`Logo fetch failed, continuing without logo: ${logoErr instanceof Error ? logoErr.message : String(logoErr)}`);
+    }
+
+    // Prepare receipt data
+    const receiptData: ReceiptData = {
+      transaction: {
+        payment_id: paymentId,
+        order_id: orderId,
+        amount,
+        currency: 'INR',
+        payment_method: paymentMethod,
+        payment_timestamp: new Date().toLocaleDateString('en-IN', {
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric',
+        }),
+        status: 'Success',
+      },
+      subscription: {
+        plan_name: subscription.plan_type,
+        plan_type: subscription.plan_type,
+        billing_cycle: subscription.billing_cycle,
+        subscription_start_date: subscription.subscription_start_date,
+        subscription_end_date: subscription.subscription_end_date,
+      },
+      user: {
+        name: learnerName || userInfo.name || userInfo.email,
+        email: userInfo.email,
+        phone: userInfo.phone,
+      },
+      company: {
+        name: 'Rareminds',
+        address:
+          '231, 2nd stage, 13th Cross Road\nHoysala Nagar, Indiranagar\nBengaluru, Karnataka 560001',
+        phone: '+91 9902326951',
+        email: 'marketing@rareminds.in',
+        taxId: 'GSTIN: 29ABCDE1234F1Z5',
+      },
+      generatedAt: new Date().toLocaleString('en-IN'),
+      logoBytes,
+      watermarkBytes: logoBytes,
+    };
+
+    // Generate PDF
+    logger.info('Generating PDF receipt', { paymentId, amount });
+    let pdfBytes;
+    try {
+      pdfBytes = await generateReceiptPDF(receiptData);
+      logger.info('PDF generated successfully', { size: pdfBytes.buffer.byteLength });
+    } catch (pdfError) {
+      logger.error('PDF generation failed', pdfError instanceof Error ? pdfError : new Error(String(pdfError)));
+      throw pdfError;
+    }
+    
+    const sanitizedPaymentId = paymentId.replace(RECEIPT_CONFIG.PAYMENT_ID_SANITIZE_REGEX, '');
+    const dateString = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+    const filename = `Receipt-${sanitizedPaymentId.slice(-8)}-${dateString}.pdf`;
+
+    // Upload to R2
+    logger.info('Uploading receipt to R2', { receiptKey, filename });
+    const r2 = new R2Client(pagesEnv);
+    await r2.upload(receiptKey, pdfBytes.buffer as ArrayBuffer, 'application/pdf', {
+      'Content-Disposition': `attachment; filename="${filename}"`,
+    });
+
+    logger.info('Receipt uploaded successfully to R2', { receiptKey, size: pdfBytes.buffer.byteLength });
+
+    // Update subscription and transaction in auth DB with receipt URL
+    try {
+      logger.info('Updating subscription with receipt URL in auth DB', { subscriptionId, receiptKey });
+      await ssoUpdateSubscriptionField(env, subscriptionId, {
+        receipt_url: receiptKey,
+      });
+      logger.info('Receipt URL saved to auth DB subscription successfully', { receiptKey, subscriptionId });
+
+      // Update transaction with receipt URL
+      if (transactionId) {
+        try {
+          logger.info('Updating transaction with receipt URL in auth DB');
+          await ssoUpdateTransaction(env, transactionId, {
+            receipt_url: receiptKey,
+          });
+          logger.info('Receipt URL saved to auth DB transaction successfully');
+        } catch (txUpdateErr) {
+          const error = txUpdateErr instanceof Error ? txUpdateErr : new Error(String(txUpdateErr));
+          
+          // Graceful degradation: If SSO RPC method is not implemented yet, log warning and continue
+          if (isUnsupportedRpcMethod(error)) {
+            logger.warn('Transaction update skipped: SSO RPC method not yet available');
+          } else {
+            logger.error('Failed to update transaction with receipt_url (non-critical)', error);
+          }
+          
+          // Continue - receipt generation should not fail because transaction metadata update failed
+        }
+      } else {
+        logger.warn('No transaction ID available, skipping transaction receipt URL update');
+      }
+
+      // Sync to app DB subscription_cache
+      try {
+        logger.info('Syncing receipt URL to app DB', { userId });
+        const syncData = await ssoSyncSubscription(env, userId);
+        if (syncData.subscription) {
+          await syncSubscriptionCache(supabase, syncData.subscription, syncData.plan);
+          logger.info('Receipt URL synced to app DB subscription_cache successfully', { receiptKey, userId });
+        } else {
+          logger.warn('No subscription data returned from sync', { userId });
+        }
+      } catch (syncErr) {
+        logger.error(
+          'Failed to sync receipt_url to subscription_cache (non-critical)',
+          syncErr instanceof Error ? syncErr : new Error(String(syncErr))
+        );
+      }
+    } catch (updateErr) {
+      logger.error(
+        'Failed to save receipt URL to subscription (non-critical)',
+        updateErr instanceof Error ? updateErr : new Error(String(updateErr))
+      );
+    }
+  } catch (error) {
+    logger.error('Receipt generation failed', error instanceof Error ? error : new Error(String(error)));
   }
 }

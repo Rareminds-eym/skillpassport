@@ -35,6 +35,7 @@ export async function syncSubscriptionCache(
       organization_type: subscription.organization_type || null,
       seat_count: subscription.seat_count || 1,
       product_id: subscription.product_id || (plan as Record<string, unknown>)?.product_id || null,
+      receipt_url: subscription.receipt_url || null,
       synced_at: new Date().toISOString(),
       auth_updated_at: subscription.updated_at,
     }, { onConflict: 'id' });
