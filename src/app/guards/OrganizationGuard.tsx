@@ -29,7 +29,7 @@ const OrganizationGuard: React.FC<OrganizationGuardProps> = ({
   const location = useLocation();
   const { loading, hasOrganization, error } = useOrganizationCheck(organizationType, user);
 
-  // Show loading state while checking organization status
+  // Show loading state while checking
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -41,7 +41,27 @@ const OrganizationGuard: React.FC<OrganizationGuardProps> = ({
     );
   }
 
-  // If no organization exists, redirect to setup page
+  // Show error state if organization check failed
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center max-w-md mx-4">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+            <h2 className="text-xl font-semibold text-red-900 mb-2">Unable to Load Dashboard</h2>
+            <p className="text-red-700 mb-4">{error}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Redirect to setup if no organization exists
   if (!hasOrganization) {
     return (
       <Navigate
@@ -52,7 +72,7 @@ const OrganizationGuard: React.FC<OrganizationGuardProps> = ({
     );
   }
 
-  // Organization exists - render the dashboard
+  // Success - render the dashboard
   return <>{children}</>;
 };
 

@@ -5,11 +5,13 @@
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getContextUser, withAuth } from '../../lib/auth';
 import { apiDbError, apiError, apiMethodNotAllowed, apiSuccess } from '../../lib/response';
+import { resolveUserOrganization } from '../../lib/resolve-organization';
 import { getServiceClient } from '../../lib/supabase';
+import type { PagesEnv } from '../../lib/types';
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const user = getContextUser(context);
-  const env = context.env as Record<string, string>;
+  const env = context.env as unknown as PagesEnv;
   const supabase = getServiceClient(env as any);
 
   let body: Record<string, any>;
@@ -611,7 +613,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       case 'get-lecturer-college': {
         const { user_id, email } = params;
         if (!user_id && !email) return apiError(400, 'VALIDATION_ERROR', 'Missing user_id or email', context.request, { startTime });
-        let query = supabase.from('college_lecturers').select('collegeId, collegeId');
+        let query = supabase.from('college_lecturers').select('collegeId');
         if (user_id) query = query.eq('user_id', user_id);
         if (!user_id && email) query = query.eq('email', email);
         const { data, error } = await query.limit(1).maybeSingle();
@@ -786,20 +788,42 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       case 'create-organization': {
         const { organization_type, collegeData, userId } = params;
         if (!collegeData) return apiError(400, 'VALIDATION_ERROR', 'Missing collegeData', context.request, { startTime });
-        const insertData: Record<string, any> = {
-          ...collegeData,
-          organization_type: organization_type || 'college',
-          admin_id: userId || user.id,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        };
-        const { data, error } = await supabase
-          .from('organizations')
-          .insert([insertData])
-          .select()
-          .single();
-        if (error) return apiDbError(error, context.request, { startTime });
-        return apiSuccess(data, context.request, { startTime });
+        
+        // Create organization in SSO DB (source of truth).
+        // The sync queue will replicate to Skillpassport asynchronously.
+        try {
+          if (!env.SSO_SERVICE) {
+            return apiError(500, 'SSO_ERROR', 'SSO_SERVICE not configured', context.request, { startTime });
+          }
+          
+          const ssoResult = await env.SSO_SERVICE.createOrganization({
+            name: collegeData.name,
+            slug: collegeData.slug || collegeData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+            created_by: userId || user.id,
+            metadata: {
+              organization_type: organization_type || 'college',
+              ...collegeData
+            }
+          });
+          
+          if (!ssoResult.success) {
+            return apiError(500, 'SSO_ERROR', ssoResult.error || 'Failed to create organization', context.request, { startTime });
+          }
+          
+          console.log(`[college-admin] Created organization ${ssoResult.org_id} in SSO`);
+          
+          return apiSuccess({
+            id: ssoResult.org_id,
+            name: collegeData.name,
+            organization_type: organization_type || 'college',
+            admin_id: userId || user.id,
+            created_at: new Date().toISOString(),
+          }, context.request, { startTime });
+        } catch (err) {
+          const errorMsg = err instanceof Error ? err.message : String(err);
+          console.error(`[college-admin] Error creating organization:`, errorMsg);
+          return apiError(500, 'CREATE_ORG_ERROR', errorMsg, context.request, { startTime });
+        }
       }
 
       case 'get-organizations': {
@@ -913,45 +937,29 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const { user_id, email } = params;
         if (!user_id && !email) return apiError(400, 'VALIDATION_ERROR', 'Missing user_id or email', context.request, { startTime });
 
-        // organizations has admin_id and email columns (no admin_email column).
-        if (user_id || email) {
-          let q = supabase
-            .from('organizations')
-            .select('id, name, code, email')
-            .eq('organization_type', 'college');
+        try {
+          const resolved = await resolveUserOrganization(supabase, {
+            userId: user_id,
+            email: email,
+            orgType: 'college'
+          });
 
-          if (user_id && email) {
-            q = q.or(`admin_id.eq.${user_id},email.eq.${email}`);
-          } else if (user_id) {
-            q = q.eq('admin_id', user_id);
-          } else {
-            q = q.eq('email', email);
-          }
-
-          const { data: org, error } = await q.maybeSingle();
-          if (error) return apiDbError(error, context.request, { startTime });
-          if (org?.id) return apiSuccess({ college_id: org.id, college: org, source: 'organization' }, context.request, { startTime });
-        }
-
-        if (user_id) {
-          // college_lecturers uses snake_case user_id (no userId column).
-          const { data: lecturer, error: lecturerError } = await supabase
-            .from('college_lecturers')
-            .select('collegeId')
-            .eq('user_id', user_id)
-            .limit(1)
-            .maybeSingle();
-
-          if (lecturerError) return apiDbError(lecturerError, context.request, { startTime });
-          if (lecturer?.collegeId) {
-            const { data: org } = await supabase
+          if (resolved?.organizationId) {
+            const { data: org, error } = await supabase
               .from('organizations')
               .select('id, name, code, email')
-              .eq('id', lecturer.collegeId)
+              .eq('id', resolved.organizationId)
               .maybeSingle();
 
-            return apiSuccess({ college_id: lecturer.collegeId, college: org || null, source: 'lecturer' }, context.request, { startTime });
+            if (error) return apiDbError(error, context.request, { startTime });
+            return apiSuccess({ 
+              college_id: resolved.organizationId, 
+              college: org || null, 
+              source: resolved.source === 'admin' ? 'organization' : resolved.source === 'educator' ? 'lecturer' : resolved.source
+            }, context.request, { startTime });
           }
+        } catch (error: any) {
+          return apiDbError(error, context.request, { startTime });
         }
 
         return apiSuccess({ college_id: null, college: null, source: null }, context.request, { startTime });

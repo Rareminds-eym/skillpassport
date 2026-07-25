@@ -31,10 +31,9 @@ type OrganizationType = 'school' | 'college' | 'university';
 
 interface OrganizationSetupProps {
   organizationType: OrganizationType;
-  onComplete: () => void;
 }
 
-const OrganizationSetup: React.FC<OrganizationSetupProps> = ({ organizationType, onComplete }) => {
+const OrganizationSetup: React.FC<OrganizationSetupProps> = ({ organizationType }) => {
   const user = useUser();
   const [step, setStep] = useState<'form' | 'creating' | 'success' | 'error'>('form');
   const [error, setError] = useState<string | null>(null);
@@ -153,32 +152,97 @@ const OrganizationSetup: React.FC<OrganizationSetupProps> = ({ organizationType,
     setError(null);
 
     try {
-      // Check if organization with same name and type already exists
-      const { data: existingOrg } = await apiGet('/organization?action=checkOrganizationNameExists&name=' + encodeURIComponent(formData.name.trim()) + '&orgType=' + organizationType);
+      // Check if organization with same name already exists
+      const { data: existingOrg } = await apiGet(
+        '/organization?action=checkOrganizationNameExists&name=' + 
+        encodeURIComponent(formData.name.trim()) + 
+        '&orgType=' + organizationType
+      );
 
       if (existingOrg) {
-        setValidationErrors({ name: `A ${getOrganizationLabel().toLowerCase()} with this name already exists` });
+        setValidationErrors({ 
+          name: `A ${getOrganizationLabel().toLowerCase()} with this name already exists` 
+        });
         setStep('form');
         return;
       }
 
-      // Create the organization in the unified organizations table
-      const { data: newOrg } = await apiPost('/organization', {
+      // Create the organization
+      const response = await apiPost('/organization', {
         action: 'createOrganization',
         ...formData,
         organization_type: organizationType,
         admin_id: user.id,
       });
 
+      // Check for API-level errors
+      if (!response || response.error) {
+        throw new Error(response?.error || 'Failed to create organization');
+      }
+
       setStep('success');
 
-      // Wait a moment to show success, then call onComplete
-      setTimeout(() => {
-        onComplete();
-      }, 2000);
+      // Poll until org is accessible, then redirect
+      const pollForOrg = async () => {
+        const maxAttempts = 20; // 10 seconds max (500ms * 20)
+        let attempt = 0;
+        
+        const checkOrg = async (): Promise<boolean> => {
+          try {
+            const params = new URLSearchParams({ 
+              action: 'getOrganizationByAdminId', 
+              adminId: user.id, 
+              orgType: organizationType 
+            });
+            const result = await apiGet(`/organization?${params.toString()}`);
+            return result?.data !== null && result?.data !== undefined;
+          } catch (err) {
+            console.warn(`[poll] Attempt ${attempt + 1} failed:`, err);
+            return false;
+          }
+        };
+        
+        while (attempt < maxAttempts) {
+          const found = await checkOrg();
+          if (found) {
+            // Success! Redirect now
+            const dashboardPaths: Record<OrganizationType, string> = {
+              college: '/college-admin/dashboard',
+              school: '/school-admin/dashboard',
+              university: '/university-admin/dashboard',
+            };
+            window.location.href = dashboardPaths[organizationType] || '/';
+            return;
+          }
+          attempt++;
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+        
+        // Polling timed out - redirect anyway and let guard handle it
+        console.warn('[poll] Timeout reached, redirecting to dashboard');
+        const dashboardPaths: Record<OrganizationType, string> = {
+          college: '/college-admin/dashboard',
+          school: '/school-admin/dashboard',
+          university: '/university-admin/dashboard',
+        };
+        window.location.href = dashboardPaths[organizationType] || '/';
+      };
+      
+      pollForOrg().catch(err => {
+        console.error('[poll] Polling failed:', err);
+        // Still redirect on error - guard will handle missing org
+        const dashboardPaths: Record<OrganizationType, string> = {
+          college: '/college-admin/dashboard',
+          school: '/school-admin/dashboard',
+          university: '/university-admin/dashboard',
+        };
+        window.location.href = dashboardPaths[organizationType] || '/';
+      });
 
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An unexpected error occurred');
+      console.error('[org-setup] Error:', err);
+      const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred';
+      setError(errorMessage);
       setStep('error');
     }
   };

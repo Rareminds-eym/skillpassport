@@ -60,6 +60,13 @@ dist-ssr
 # Kiro settings (personal configuration only)
 .kiro/settings/
 
+# Agent / IDE config files
+.claude/
+.claude/settings.json
+.gemini/
+.mcp.json
+AGENTS.md
+
 # Local config
 mcpopencode.json
 opencode.json
@@ -88,3 +95,5 @@ cloudflare-workers/payments-worker
 
 # Graphify knowledge graph output
 graphify-out/
+# Added by code-review-graph
+.code-review-graph/

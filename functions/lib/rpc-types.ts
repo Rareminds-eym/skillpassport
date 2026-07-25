@@ -157,6 +157,14 @@ export interface SsoWorkerRpc {
   updateMembershipStatus(data: { membership_id: string; status: string }): Promise<{ success: boolean }>;
   assignMembershipRole(data: { membership_id: string; role_id: string }): Promise<{ success: boolean }>;
 
+  // Organization
+  createOrganization(data: {
+    name: string;
+    slug: string;
+    created_by: string;
+    metadata?: Record<string, unknown>;
+  }): Promise<{ success: boolean; org_id?: string; error?: string }>;
+
   // Learner / Bulk Upload
   createLearnerUser(data: {
     email: string;
