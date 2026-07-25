@@ -143,6 +143,35 @@ export interface SsoWorkerRpc {
   createMembership(data: { user_id: string; org_id: string; status: string }): Promise<{ id: string; status: string }>;
   updateMembershipStatus(data: { membership_id: string; status: string }): Promise<{ success: boolean }>;
   assignMembershipRole(data: { membership_id: string; role_id: string }): Promise<{ success: boolean }>;
+
+  // Learner / Bulk Upload
+  createLearnerUser(data: {
+    email: string;
+    name: string;
+    organization_id: string;
+    contact_number?: string;
+    enrollment_number?: string;
+    program_id?: string;
+    metadata?: Record<string, unknown>;
+  }): Promise<{ success: boolean; user_id?: string; error?: string; temp_password?: string }>;
+
+  queueBulkLearnerUpload(data: {
+    csv_data: string;
+    organization_id: string;
+    admin_id: string;
+  }): Promise<{ success: boolean; batch_id?: string; error?: string }>;
+
+  getBulkUploadStatus(batchId: string): Promise<{
+    batch_id: string;
+    status: string;
+    total_rows: number;
+    processed_rows: number;
+    success_count: number;
+    failed_count: number;
+    errors: Array<{ row: number; email: string; error: string }>;
+    created_at: string;
+    completed_at?: string;
+  } | null>;
 }
 
 // ─── Payment Worker RPC Interface ─────────────────────────────────────
