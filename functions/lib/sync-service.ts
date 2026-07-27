@@ -46,8 +46,11 @@ export class SyncService {
 
   async syncUser(data: unknown): Promise<SyncResult> {
     let parsed: z.infer<typeof UserCreatedSchema>;
-    try { parsed = UserCreatedSchema.parse(data); }
-    catch (err) { return fail('VALIDATION_ERROR', err instanceof Error ? err.message : 'Invalid user data', false); }
+    try {
+      parsed = UserCreatedSchema.parse(data);
+    } catch (err) {
+      return fail('VALIDATION_ERROR', err instanceof Error ? err.message : 'Invalid user data', false);
+    }
     const userMetadata = parsed.user_metadata ?? {};
 
     const updatePayload: Record<string, unknown> = { id: parsed.id };

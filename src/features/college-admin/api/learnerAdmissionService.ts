@@ -1,6 +1,19 @@
 import { apiPost } from '@/shared/api/apiClient';
 import type { LearnerAdmission, ApiResponse } from '@/shared/types/college';
 
+function extractErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error) return error.message;
+  if (error && typeof error === 'object') {
+    if ('message' in error && typeof (error as any).message === 'string') {
+      return (error as any).message;
+    }
+    if ('error' in error && typeof (error as any).error === 'object' && (error as any).error !== null && 'message' in (error as any).error) {
+      return ((error as any).error as any).message;
+    }
+  }
+  return fallback;
+}
+
 async function handleApiCall<T>(
   fn: () => Promise<T>,
   errorCode: string,
@@ -10,13 +23,7 @@ async function handleApiCall<T>(
     const result = await fn();
     return { success: true, data: result };
   } catch (error: unknown) {
-    const message = error instanceof Error
-      ? error.message
-      : error != null && typeof error === 'object' && 'error' in error && error.error != null && typeof error.error === 'object' && 'message' in error.error
-        ? (error.error as { message: string }).message
-        : error != null && typeof error === 'object' && 'message' in error
-          ? (error as { message: string }).message
-          : fallbackMessage;
+    const message = extractErrorMessage(error, fallbackMessage);
     return {
       success: false,
       error: {

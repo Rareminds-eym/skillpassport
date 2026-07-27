@@ -224,7 +224,7 @@ const OrganizationSetup: React.FC<OrganizationSetupProps> = ({ organizationType 
         window.location.href = DASHBOARD_PATHS[organizationType] || '/';
       };
       
-      pollForOrg().catch(err => {
+      await pollForOrg().catch(err => {
         console.error('[poll] Polling failed:', err);
         // Still redirect on error - guard will handle missing org
         window.location.href = DASHBOARD_PATHS[organizationType] || '/';

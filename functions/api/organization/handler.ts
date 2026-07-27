@@ -458,7 +458,7 @@ async function createOrganizationHandler(context: AuthenticatedContext, body: an
     // Validate SSO service availability
     if (!env.SSO_SERVICE) {
       console.error('[organization] SSO_SERVICE not configured in environment');
-      throw new Error('SSO_SERVICE not configured');
+      return apiError(500, 'SERVICE_UNAVAILABLE', 'SSO service not configured', context.request);
     }
     
     const user = getContextUser(context);
@@ -522,7 +522,7 @@ async function createOrganizationHandler(context: AuthenticatedContext, body: an
     try {
       const ssoResult = await env.SSO_SERVICE.createOrganization({
         name: orgFields.name,
-        slug: orgFields.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, ''),
+        slug: orgFields.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || `org-${Date.now()}`,
         created_by: orgFields.admin_id || userId,
         metadata: {
           ...orgFields,
@@ -709,8 +709,7 @@ async function getOrganizationByAdminIdHandler(context: AuthenticatedContext) {
       
       if (metadataError) {
         console.error(`[organization] Error querying metadata:`, metadataError);
-        // Don't fail here — fall through to return null below,
-        // consistent with the not-found behaviour of the direct lookup path
+        return apiError(500, 'DATABASE_ERROR', 'Failed to query organization metadata', context.request);
       }
       
       if (metadataOrg) {

@@ -806,6 +806,10 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
             }
           });
           
+          if (!ssoResult || typeof ssoResult !== 'object' || !('success' in ssoResult)) {
+            return apiError(500, 'SSO_ERROR', 'Invalid SSO response', context.request, { startTime });
+          }
+          
           if (!ssoResult.success) {
             return apiError(500, 'SSO_ERROR', ssoResult.error || 'Failed to create organization', context.request, { startTime });
           }

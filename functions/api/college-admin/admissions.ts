@@ -70,15 +70,20 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         }
         
         // Call SSO to create learner user
-        const ssoResult = await env.SSO_SERVICE.createLearnerUser({
-          email,
-          name,
-          organization_id,
-          contact_number,
-          enrollment_number,
-          program_id,
-          metadata
-        });
+        let ssoResult;
+        try {
+          ssoResult = await env.SSO_SERVICE.createLearnerUser({
+            email,
+            name,
+            organization_id,
+            contact_number,
+            enrollment_number,
+            program_id,
+            metadata
+          });
+        } catch (err) {
+          return apiError(500, 'SSO_ERROR', `SSO service unavailable: ${err instanceof Error ? err.message : 'Unknown error'}`, context.request, { startTime });
+        }
         
         if (!ssoResult.success) {
           return apiError(500, 'SSO_ERROR', ssoResult.error || 'Failed to create learner user', context.request, { startTime });
@@ -220,11 +225,16 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           return apiError(500, 'SSO_ERROR', 'SSO_SERVICE not configured', context.request, { startTime });
         }
         
-        const result = await env.SSO_SERVICE.queueBulkLearnerUpload({
-          csv_data,
-          organization_id,
-          admin_id: user.id
-        });
+        let result;
+        try {
+          result = await env.SSO_SERVICE.queueBulkLearnerUpload({
+            csv_data,
+            organization_id,
+            admin_id: user.id
+          });
+        } catch (err) {
+          return apiError(500, 'QUEUE_ERROR', `Failed to queue bulk upload: ${err instanceof Error ? err.message : 'Unknown error'}`, context.request, { startTime });
+        }
         
         if (!result.success) {
           return apiError(500, 'QUEUE_ERROR', result.error || 'Failed to queue bulk upload', context.request, { startTime });
@@ -249,7 +259,12 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           return apiError(500, 'SSO_ERROR', 'SSO_SERVICE not configured', context.request, { startTime });
         }
         
-        const metadata = await env.SSO_SERVICE.getBulkUploadStatus(batch_id);
+        let metadata;
+        try {
+          metadata = await env.SSO_SERVICE.getBulkUploadStatus(batch_id);
+        } catch (err) {
+          return apiError(500, 'SSO_ERROR', `Failed to check upload status: ${err instanceof Error ? err.message : 'Unknown error'}`, context.request, { startTime });
+        }
         
         if (!metadata || metadata.status === 'pending') {
           return apiSuccess({
@@ -287,7 +302,12 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           return apiError(500, 'SSO_ERROR', 'SSO_SERVICE not configured', context.request, { startTime });
         }
         
-        const metadata = await env.SSO_SERVICE.getBulkUploadStatus(batch_id);
+        let metadata;
+        try {
+          metadata = await env.SSO_SERVICE.getBulkUploadStatus(batch_id);
+        } catch (err) {
+          return apiError(500, 'SSO_ERROR', `Failed to check upload errors: ${err instanceof Error ? err.message : 'Unknown error'}`, context.request, { startTime });
+        }
         if (!metadata) {
           return apiError(404, 'NOT_FOUND', `Batch ${batch_id} not found`, context.request, { startTime });
         }
