@@ -154,8 +154,8 @@ export interface SsoWorkerRpc {
   // Membership
   getUserMemberships(userId: string): Promise<{ memberships: { id: string; org_id: string; role: string; status: string }[] }>;
   createMembership(data: { user_id: string; org_id: string; status: string }): Promise<{ id: string; status: string }>;
-  updateMembershipStatus(data: { membership_id: string; status: string }): Promise<{ success: boolean }>;
-  assignMembershipRole(data: { membership_id: string; role_id: string }): Promise<{ success: boolean }>;
+  updateMembershipStatus(data: { membership_id: string; status: string }): Promise<{ success: boolean; error?: string }>;
+  assignMembershipRole(data: { membership_id: string; role_id: string }): Promise<{ success: boolean; error?: string }>;
 
   // Organization
   createOrganization(data: {

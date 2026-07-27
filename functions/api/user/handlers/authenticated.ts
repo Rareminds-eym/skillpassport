@@ -286,9 +286,15 @@ export async function handleCreateTeacher(request: Request, env: PagesEnv, user:
   // This makes the teacher a real, active SSO member of the school's org with
   // the school_educator role, so they can log in via SSO. Access is granted
   // through the organization's subscription/seats — no personal subscription.
+  if (!env.SSO_SERVICE) {
+    return apiError(500, 'SSO_ERROR', 'SSO_SERVICE not configured', request);
+  }
+
   let ssoUserId: string;
   try {
-    const ssoMember = await ssoCreateMember(env as unknown as { SSO_SERVICE: Fetcher }, {
+    const ssoMember = await ssoCreateMember(
+      { SSO_SERVICE: env.SSO_SERVICE as unknown as Fetcher },
+      {
       email: teacher.email.toLowerCase(),
       password: teacherPassword,
       role: 'school_educator',

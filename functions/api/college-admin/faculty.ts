@@ -788,6 +788,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       case 'create-organization': {
         const { organization_type, collegeData, userId } = params;
         if (!collegeData) return apiError(400, 'VALIDATION_ERROR', 'Missing collegeData', context.request, { startTime });
+        if (!collegeData.name?.trim()) return apiError(400, 'VALIDATION_ERROR', 'collegeData.name is required', context.request, { startTime });
         
         // Create organization in SSO DB (source of truth).
         // The sync queue will replicate to Skillpassport asynchronously.
@@ -797,7 +798,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           }
           
           const ssoResult = await env.SSO_SERVICE.createOrganization({
-            name: collegeData.name,
+            name: collegeData.name.trim(),
             slug: collegeData.slug || collegeData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
             created_by: userId || user.id,
             metadata: {
@@ -966,8 +967,8 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
               source: resolved.source === 'admin' ? 'organization' : resolved.source === 'educator' ? 'lecturer' : resolved.source
             }, context.request, { startTime });
           }
-        } catch (error: any) {
-          return apiDbError(error, context.request, { startTime });
+        } catch (error: unknown) {
+          return apiDbError(error instanceof Error ? error : new Error(String(error)), context.request, { startTime });
         }
 
         return apiSuccess({ college_id: null, college: null, source: null }, context.request, { startTime });

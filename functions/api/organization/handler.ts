@@ -523,7 +523,7 @@ async function createOrganizationHandler(context: AuthenticatedContext, body: an
     try {
       const ssoResult = await env.SSO_SERVICE.createOrganization({
         name: orgFields.name,
-        slug: orgFields.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || `org-${Date.now()}`,
+        slug: orgFields.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || `org-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         created_by: orgFields.admin_id || userId,
         metadata: {
           ...orgFields,

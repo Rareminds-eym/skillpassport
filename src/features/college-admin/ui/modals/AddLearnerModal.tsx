@@ -795,7 +795,7 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
           const classIdMap = new Map<string, string>() // Map of "grade-section" to class_id
 
           if ((schoolId || collegeId) && classesToCheck.size > 0) {
-            // ponytail: Use college or school endpoint based on which ID we have
+            // Use college or school endpoint based on which ID we have
             const classResult = await apiPost<any>('/college-admin/classes', {
               action: collegeId ? 'get-college-classes' : 'get-school-classes',
               ...(collegeId ? { college_id: collegeId } : { school_id: schoolId }),
@@ -918,12 +918,14 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
           email: userEmail,
           organization_type: userRole === 'school_admin' ? 'school' : 'college',
         })
+        if (!isMounted.current) return
         if (orgResult?.data?.id) {
           organizationId = orgResult.data.id
         }
       }
 
       if (!organizationId) {
+        if (!isMounted.current) return
         setError('Organization ID not found. Please ensure you are logged in as a school or college admin.')
         setLoading(false)
         return
@@ -934,6 +936,7 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
 
       // Queue bulk upload
       const queueResult = await learnerAdmissionService.queueBulkUpload(csvText, organizationId)
+      if (!isMounted.current) return
       if (!queueResult.success) {
         setError(queueResult.error?.message || 'Failed to queue bulk upload')
         setLoading(false)
@@ -942,6 +945,7 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
 
       const batchId = queueResult.data.batch_id
       if (!batchId) {
+        if (!isMounted.current) return
         setError('Failed to get batch ID from queue response')
         setLoading(false)
         return
@@ -997,6 +1001,7 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
 
       void poll()
     } catch (err: any) {
+      if (!isMounted.current) return
       setError(err.message || 'Failed to upload CSV')
       setLoading(false)
     }
@@ -1879,7 +1884,11 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
   )
 }
 
-function UploadProgressBar({ progress }: { progress: { current: number; total: number } }) {
+interface UploadProgressBarProps {
+  progress: { current: number; total: number }
+}
+
+function UploadProgressBar({ progress }: UploadProgressBarProps) {
   const pct = progress.total > 0
     ? Math.min(Math.round((progress.current / progress.total) * 100), 100)
     : 0
@@ -1897,7 +1906,14 @@ function UploadProgressBar({ progress }: { progress: { current: number; total: n
         </div>
         <span className="text-sm text-blue-700 font-medium">{pct}%</span>
       </div>
-      <div className="w-full bg-blue-200 rounded-full h-2">
+      <div
+        className="w-full bg-blue-200 rounded-full h-2"
+        role="progressbar"
+        aria-valuenow={progress.current}
+        aria-valuemin={0}
+        aria-valuemax={progress.total}
+        aria-label={`Upload progress: ${pct}%`}
+      >
         <div
           className="bg-blue-600 h-2 rounded-full transition-all duration-500"
           style={{ width: `${pct}%` }}
