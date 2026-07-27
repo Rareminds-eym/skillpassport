@@ -57,10 +57,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext<Env>)
   }
 
   const lteAppUrl = getLteAppUrl(env);
-  let redirectUri = `${lteAppUrl}${LTE_CALLBACK_PATH}`;
-  if (nextPath) {
-    redirectUri = `${redirectUri}?next=${encodeURIComponent(nextPath)}`;
-  }
+  const redirectUri = `${lteAppUrl}${LTE_CALLBACK_PATH}`;
   const ip = request.headers.get('CF-Connecting-IP') ?? undefined;
   const ua = request.headers.get('User-Agent') ?? undefined;
 
@@ -77,8 +74,15 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext<Env>)
       return apiError(502, 'SSO_CODE_GENERATION_FAILED', 'SSO did not return authorization code data', request);
     }
 
+    let finalRedirectUrl = result.redirectUrl ?? buildRedirectUrl(lteAppUrl, result.code, result.state);
+    if (nextPath) {
+      const url = new URL(finalRedirectUrl);
+      url.searchParams.set("next", nextPath);
+      finalRedirectUrl = url.toString();
+    }
+
     const data: GenerateLteCodeResponse = {
-      redirectUrl: result.redirectUrl ?? buildRedirectUrl(lteAppUrl, result.code, result.state, nextPath),
+      redirectUrl: finalRedirectUrl,
       codeExpiresAt: normalizeExpiry(result.expiresAt, result.codeExpiresAt),
     };
 
