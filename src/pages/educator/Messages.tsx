@@ -717,7 +717,7 @@ const CollegeLecturerMessages = () => {
     } catch (error) {
       logger.error('Error sending message:', error);
     }
-  }, [messageInput, currentChat, sendMessage, sendNotification, selectedConversationId, setTyping, activeTab]);
+  }, [messageInput, currentChat, sendMessage, sendNotification, selectedConversationId, setTyping, activeTab, userAuthId]);
 
   // Handle typing in input
   const handleInputChange = useCallback((value: string) => {

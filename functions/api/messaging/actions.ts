@@ -470,7 +470,8 @@ async function handleArchiveConversationForUser(supabase: SupabaseClient, params
   switch (userType) {
     case 'learner': archiveColumn = 'archived_by_learner'; break;
     case 'recruiter': archiveColumn = 'archived_by_recruiter'; break;
-    case 'educator': case 'college_educator': archiveColumn = 'archived_by_educator'; break;
+    case 'educator': archiveColumn = 'archived_by_educator'; break;
+    case 'college_educator': archiveColumn = 'archived_by_college_educator'; break;
     case 'school_admin': archiveColumn = 'archived_by_admin'; break;
     case 'college_admin': archiveColumn = 'archived_by_college_admin'; break;
     default: throw new Error(`Invalid user type: ${userType}`);
@@ -486,7 +487,8 @@ async function handleUnarchiveConversationForUser(supabase: SupabaseClient, para
   switch (userType) {
     case 'learner': archiveColumn = 'archived_by_learner'; break;
     case 'recruiter': archiveColumn = 'archived_by_recruiter'; break;
-    case 'educator': case 'college_educator': archiveColumn = 'archived_by_educator'; break;
+    case 'educator': archiveColumn = 'archived_by_educator'; break;
+    case 'college_educator': archiveColumn = 'archived_by_college_educator'; break;
     case 'school_admin': archiveColumn = 'archived_by_admin'; break;
     case 'college_admin': archiveColumn = 'archived_by_college_admin'; break;
     default: throw new Error(`Invalid user type: ${userType}`);
