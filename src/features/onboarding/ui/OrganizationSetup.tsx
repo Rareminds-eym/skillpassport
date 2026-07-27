@@ -29,6 +29,12 @@ interface OrganizationFormData {
 
 type OrganizationType = 'school' | 'college' | 'university';
 
+const DASHBOARD_PATHS: Record<OrganizationType, string> = {
+  school: '/school-admin/dashboard',
+  college: '/college-admin/dashboard',
+  university: '/university-admin/dashboard',
+};
+
 interface OrganizationSetupProps {
   organizationType: OrganizationType;
 }

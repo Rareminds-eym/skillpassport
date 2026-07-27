@@ -932,34 +932,58 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
       if (!queueResult.success) {
         setError(queueResult.error?.message || 'Failed to queue bulk upload')
         setLoading(false)
-        if (s.status === 'processing' && s.total_rows > 0) {
-          setUploadProgress({ current: s.processed_rows, total: s.total_rows })
-        }
+        return
+      }
 
-        if (s.status === 'completed' || s.status === 'failed') {
-          let errorList: string[] = []
-          if (s.failed_count > 0) {
-            const errResult = await learnerAdmissionService.getBulkErrors(bid)
-            if (errResult.success) {
-              errorList = errResult.data.errors.map((e: any) => `Row ${e.row}: ${e.error}`)
+      const batchId = queueResult.data.batch_id
+      if (!batchId) {
+        setError('Failed to get batch ID from queue response')
+        setLoading(false)
+        return
+      }
+
+      const poll = async () => {
+        try {
+          const statusResult = await learnerAdmissionService.getBulkStatus(batchId)
+          if (!statusResult.success) {
+            setError(statusResult.error?.message || 'Failed to check upload status')
+            setLoading(false)
+            return
+          }
+
+          const s = statusResult.data
+          if (s.status === 'processing' && s.total_rows > 0) {
+            setUploadProgress({ current: s.processed_rows, total: s.total_rows })
+          }
+
+          if (s.status === 'completed' || s.status === 'failed') {
+            let errorList: string[] = []
+            if (s.failed_count > 0) {
+              const errResult = await learnerAdmissionService.getBulkErrors(batchId)
+              if (errResult.success) {
+                errorList = errResult.data.errors.map((e: any) => `Row ${e.row}: ${e.error}`)
+              }
             }
-          }
-          setUploadProgress(null)
-          setLoading(false)
+            setUploadProgress(null)
+            setLoading(false)
 
-          if (s.success_count > 0 && s.failed_count === 0) {
-            setSuccess(`✅ Successfully imported ${s.success_count} learner${s.success_count > 1 ? 's' : ''}!`)
-            onSuccess?.()
-            setTimeout(() => onClose(), 2000)
-          } else if (s.success_count > 0 && s.failed_count > 0) {
-            setSuccess(`✅ Imported ${s.success_count} learner${s.success_count > 1 ? 's' : ''} successfully`)
-            setError(`⚠️ ${s.failed_count} failed:\n${errorList.slice(0, 5).join('\n')}${errorList.length > 5 ? `\n...and ${errorList.length - 5} more` : ''}`)
-            onSuccess?.()
+            if (s.success_count > 0 && s.failed_count === 0) {
+              setSuccess(`Successfully imported ${s.success_count} learner${s.success_count > 1 ? 's' : ''}!`)
+              onSuccess?.()
+              setTimeout(() => onClose(), 2000)
+            } else if (s.success_count > 0 && s.failed_count > 0) {
+              setSuccess(`Imported ${s.success_count} learner${s.success_count > 1 ? 's' : ''} successfully`)
+              setError(`${s.failed_count} failed:\n${errorList.slice(0, 5).join('\n')}${errorList.length > 5 ? `\n...and ${errorList.length - 5} more` : ''}`)
+              onSuccess?.()
+            } else {
+              setError(`All imports failed. Errors:\n${errorList.slice(0, 10).join('\n')}${errorList.length > 10 ? `\n...and ${errorList.length - 10} more` : ''}`)
+            }
           } else {
-            setError(`❌ All imports failed. Errors:\n${errorList.slice(0, 10).join('\n')}${errorList.length > 10 ? `\n...and ${errorList.length - 10} more` : ''}`)
+            setTimeout(poll, 2000)
           }
-        } else {
-          setTimeout(poll, 2000)
+        } catch {
+          setError('Failed to check upload status')
+          setLoading(false)
         }
       }
 
