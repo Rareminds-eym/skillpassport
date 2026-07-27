@@ -26,10 +26,13 @@ function getLteAppUrl(env: Env): string {
   return configuredUrl.replace(/\/+$/, '');
 }
 
-function buildRedirectUrl(lteAppUrl: string, code: string, state: string): string {
+function buildRedirectUrl(lteAppUrl: string, code: string, state: string, next?: string): string {
   const url = new URL(`${lteAppUrl}${LTE_CALLBACK_PATH}`);
   url.searchParams.set('code', code);
   url.searchParams.set('state', state);
+  if (next) {
+    url.searchParams.set('next', next);
+  }
   return url.toString();
 }
 
@@ -45,8 +48,19 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext<Env>)
     return apiError(401, 'UNAUTHORIZED', 'Access token required', request);
   }
 
+  let nextPath: string | undefined = undefined;
+  try {
+    const body = await request.clone().json() as { next?: string };
+    nextPath = body?.next;
+  } catch {
+    // Body parsing is optional
+  }
+
   const lteAppUrl = getLteAppUrl(env);
-  const redirectUri = `${lteAppUrl}${LTE_CALLBACK_PATH}`;
+  let redirectUri = `${lteAppUrl}${LTE_CALLBACK_PATH}`;
+  if (nextPath) {
+    redirectUri = `${redirectUri}?next=${encodeURIComponent(nextPath)}`;
+  }
   const ip = request.headers.get('CF-Connecting-IP') ?? undefined;
   const ua = request.headers.get('User-Agent') ?? undefined;
 
@@ -64,7 +78,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext<Env>)
     }
 
     const data: GenerateLteCodeResponse = {
-      redirectUrl: result.redirectUrl ?? buildRedirectUrl(lteAppUrl, result.code, result.state),
+      redirectUrl: result.redirectUrl ?? buildRedirectUrl(lteAppUrl, result.code, result.state, nextPath),
       codeExpiresAt: normalizeExpiry(result.expiresAt, result.codeExpiresAt),
     };
 

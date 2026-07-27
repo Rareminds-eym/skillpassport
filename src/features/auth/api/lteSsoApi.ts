@@ -1,9 +1,9 @@
 import { apiPost } from '@/shared/api/apiClient';
 import type { ApiEnvelope, GenerateLteCodeResponse } from '../model/lteSsoTypes';
 
-export async function generateLteCode(): Promise<GenerateLteCodeResponse> {
+export async function generateLteCode(next?: string): Promise<GenerateLteCodeResponse> {
   try {
-    const response = await apiPost<ApiEnvelope<GenerateLteCodeResponse>>('/auth/generate-lte-code');
+    const response = await apiPost<ApiEnvelope<GenerateLteCodeResponse>>('/auth/generate-lte-code', { next });
 
     if (!response.success || !response.data) {
       throw new Error(response.error?.message ?? 'Unable to start LTE session');

@@ -9,6 +9,7 @@ import { apiPost, apiGet } from '@/shared/api/apiClient';
 import { useAuthStore } from '@/shared/model/authStore';
 // import { useStrengthsGrowthPlan } from '@/features/assessment/lib/useStrengthsGrowthPlan';
 import jsPDF from 'jspdf';
+import { generateLteCode } from '@/features/auth/api/lteSsoApi';
 
 /**
  * Career Track Modal Component
@@ -149,6 +150,7 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results, 
                         setAiMatchedCourses(capabilities.map((cap) => ({
                             id: cap.id,
                             course_id: cap.id,
+                            code: cap.code,
                             title: cap.name || 'Learning Path',
                             description: cap.description || '',
                             relevance: 100,
@@ -257,6 +259,18 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results, 
         // Fallback to courses page if no relevant course found
         onClose();
         navigate('/learner/courses');
+    };
+
+    // Handle redirecting to LTE course detail page
+    const handleLearnMore = async (capabilityCode) => {
+        try {
+            if (!capabilityCode) return;
+            const targetPath = `/my-courses/${capabilityCode}`;
+            const { redirectUrl } = await generateLteCode(targetPath);
+            window.location.href = redirectUrl;
+        } catch (error) {
+            console.error('[CareerTrackModal] Failed to redirect to LTE course details:', error);
+        }
     };
 
     // Generate PDF roadmap
@@ -1224,6 +1238,7 @@ END:VCALENDAR`;
                                             {relevantCourses.map((capability, idx) => (
                                                 <div
                                                     key={idx}
+                                                    onClick={() => handleLearnMore(capability.code || capability.id || capability.course_id)}
                                                     className="p-4 rounded-xl bg-white border border-gray-200 shadow-sm hover:shadow-md hover:border-blue-300 transition-all cursor-pointer"
                                                 >
                                                     <div className="flex items-start justify-between">

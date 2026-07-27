@@ -1,10 +1,11 @@
 import { withAuth } from '../../lib/auth';
 import { getServiceClient } from '../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import type { Env } from '../../lib/types';
 import { apiSuccess, apiError } from '../../lib/response';
 
-export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
-  const env = context.env as Record<string, string>;
+export const onRequestPost = withAuth(async (context: AuthenticatedContext<Env>) => {
+  const env = context.env;
   const supabase = getServiceClient(env as any);
   const startTime = Date.now();
 
@@ -53,7 +54,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     console.log(`[get-role-capabilities] Cache miss - fetching from LTE`);
 
     // Step 2: Not cached - fetch from LTE
-    const lteUrl = env.LTE_API_URL;
+    const lteUrl = env.LTE_APP_URL;
     const response = await fetch(`${lteUrl}/api/v1/capabilities`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

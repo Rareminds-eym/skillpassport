@@ -46,7 +46,9 @@ export class LTEClient {
   }
 }
 
-export function createLTEClient(env: Record<string, any>): LTEClient {
-  const baseUrl = env.LTE_API_URL;
+import type { Env } from './types';
+
+export function createLTEClient(env: Env): LTEClient {
+  const baseUrl = env.LTE_APP_URL;
   return new LTEClient({ baseUrl });
 }
