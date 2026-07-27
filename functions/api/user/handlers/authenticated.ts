@@ -179,16 +179,15 @@ export async function handleCreateLearner(request: Request, env: PagesEnv): Prom
       return apiError(500, 'SSO_ERROR', ssoResult.error || 'Failed to create learner in SSO', request);
     }
 
-    console.log(`[handleCreateLearner] Created learner ${ssoResult.user_id} via SSO, invitation email queued`);
+    console.log(`[handleCreateLearner] Created learner ${ssoResult.user_id ?? 'unknown'} via SSO, invitation email queued`);
 
-    // User will be synced to Skillpassport DB via auth-db-sync-queue
     // Email will be sent via learner-email-queue
-    
+
     return apiSuccess({
       message: `Learner ${learner.name} created successfully. Invitation email will be sent shortly.`,
       data: {
         authUserId: ssoResult.user_id,
-        learnerId: ssoResult.user_id, // Will be created in Skillpassport DB via sync queue
+        learnerId: ssoResult.user_id, // SSO user ID; learner record will be created via sync queue
         email: learner.email.toLowerCase(),
         name: learner.name,
         password: ssoResult.temp_password,

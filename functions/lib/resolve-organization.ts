@@ -66,21 +66,12 @@ export async function resolveUserOrganization(
         .eq('user_id', userId)
         .maybeSingle();
 
-      if (!educator?.school_id && email) {
-        const { data: educatorByEmail } = await supabase
-          .from('school_educators')
-          .select('school_id')
-          .eq('email', email)
-          .maybeSingle();
-        if (educatorByEmail?.school_id) {
-          return { organizationId: educatorByEmail.school_id, source: 'educator' };
-        }
-      }
-
       if (educator?.school_id) {
         return { organizationId: educator.school_id, source: 'educator' };
       }
-    } else if (email) {
+    }
+
+    if (email) {
       const { data: educatorByEmail } = await supabase
         .from('school_educators')
         .select('school_id')

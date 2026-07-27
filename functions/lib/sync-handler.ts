@@ -12,6 +12,9 @@ export async function handleSyncRequest(
   } catch {
     return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON body', context.request);
   }
+  if (typeof body !== 'object' || body === null) {
+    return apiError(400, 'VALIDATION_ERROR', 'Body must be a JSON object', context.request);
+  }
   const { action, data } = body as { action?: string; data?: unknown };
   if (!action) return apiError(400, 'VALIDATION_ERROR', 'action is required', context.request);
   const handler = handlers[action];

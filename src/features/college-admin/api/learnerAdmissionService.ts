@@ -59,11 +59,11 @@ export interface BulkUploadError {
 }
 
 async function extractData<T>(path: string, body: unknown): Promise<T> {
-  const { data } = await apiPost<{ data: T }>(path, body);
-  if (data === null || data === undefined) {
+  const response = await apiPost<{ data: T }>(path, body);
+  if (!response || response.data === null || response.data === undefined) {
     throw new Error('API returned empty data');
   }
-  return data;
+  return response.data;
 }
 
 export const learnerAdmissionService = {
