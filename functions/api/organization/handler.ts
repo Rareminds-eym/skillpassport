@@ -1,4 +1,5 @@
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import type { PagesEnv } from '../../lib/types';
 import { getContextUser } from '../../lib/auth';
 import { apiError, apiSuccess } from '../../lib/response';
 import { getServiceClient } from '../../lib/supabase';
@@ -449,7 +450,7 @@ async function expireOldInvitations(context: AuthenticatedContext) {
 // ============================================================================
 
 async function createOrganizationHandler(context: AuthenticatedContext, body: any) {
-  const env = context.env as Record<string, any>;
+  const env = context.env as PagesEnv;
   
   // Extract organization data
   const { action: _action, ...orgFields } = body;
@@ -460,7 +461,7 @@ async function createOrganizationHandler(context: AuthenticatedContext, body: an
       console.error('[organization] SSO_SERVICE not configured in environment');
       return apiError(500, 'SERVICE_UNAVAILABLE', 'SSO service not configured', context.request);
     }
-    
+
     const user = getContextUser(context);
     const userId = getUserId(context);
     

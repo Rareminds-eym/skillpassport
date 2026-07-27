@@ -165,6 +165,11 @@ export interface SsoWorkerRpc {
     metadata?: Record<string, unknown>;
   }): Promise<{ success: boolean; org_id?: string; error?: string }>;
 
+  updateOrganizationDetails(data: {
+    id: string;
+    metadata: Record<string, unknown>;
+  }): Promise<{ success: boolean; error?: string }>;
+
   // Learner / Bulk Upload
   createLearnerUser(data: {
     email: string;
