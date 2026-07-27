@@ -953,8 +953,21 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
         return
       }
 
+      const MAX_POLL_ATTEMPTS = 60
+      let pollAttempts = 0
+
       const poll = async () => {
         if (!isMounted.current) return
+
+        if (pollAttempts >= MAX_POLL_ATTEMPTS) {
+          if (isMounted.current) {
+            setError('Upload processing timeout. Please check status manually.')
+            setLoading(false)
+          }
+          return
+        }
+        pollAttempts++
+
         try {
           const statusResult = await learnerAdmissionService.getBulkStatus(batchId)
           if (!statusResult.success) {

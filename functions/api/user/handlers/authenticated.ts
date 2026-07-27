@@ -179,7 +179,11 @@ export async function handleCreateLearner(request: Request, env: PagesEnv): Prom
       return apiError(500, 'SSO_ERROR', ssoResult.error || 'Failed to create learner in SSO', request);
     }
 
-    console.log(`[handleCreateLearner] Created learner ${ssoResult.user_id ?? 'unknown'} via SSO, invitation email queued`);
+    if (!ssoResult.user_id) {
+      return apiError(500, 'SSO_ERROR', 'SSO did not return a user ID', request);
+    }
+
+    console.log(`[handleCreateLearner] Created learner ${ssoResult.user_id} via SSO, invitation email queued`);
 
     // Email will be sent via learner-email-queue
 
@@ -198,7 +202,8 @@ export async function handleCreateLearner(request: Request, env: PagesEnv): Prom
     }, request);
   } catch (error) {
     console.error('[handleCreateLearner] Error calling SSO:', error);
-    return apiError(500, 'INTERNAL_ERROR', (error as Error).message, request);
+    const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+    return apiError(500, 'INTERNAL_ERROR', errorMsg, request);
   }
 }
 

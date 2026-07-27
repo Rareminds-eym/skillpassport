@@ -97,8 +97,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         return apiSuccess({
           user_id: ssoResult.user_id,
           email,
-          message: 'Learner created successfully. Invitation email will be sent shortly.',
-          temp_password: ssoResult.temp_password // Return temp password for admin reference
+          message: 'Learner created successfully. Invitation email will be sent shortly.'
         }, context.request, { startTime });
       }
 
@@ -266,13 +265,21 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           return apiError(500, 'SSO_ERROR', `Failed to check upload status: ${err instanceof Error ? err.message : 'Unknown error'}`, context.request, { startTime });
         }
         
-        if (!metadata || metadata.status === 'pending') {
+        if (!metadata) {
+          return apiError(404, 'NOT_FOUND', `Batch ${batch_id} not found`, context.request, { startTime });
+        }
+
+        if (metadata.status === 'pending') {
           return apiSuccess({
             batch_id,
             status: 'pending',
-            total_rows: 0, processed_rows: 0,
-            success_count: 0, failed_count: 0, pending_count: 0,
-            progress_percentage: 0, errors_count: 0
+            total_rows: metadata.total_rows || 0,
+            processed_rows: metadata.processed_rows || 0,
+            success_count: metadata.success_count || 0,
+            failed_count: metadata.failed_count || 0,
+            pending_count: (metadata.total_rows || 0) - (metadata.processed_rows || 0),
+            progress_percentage: 0,
+            errors_count: 0
           }, context.request, { startTime });
         }
         
