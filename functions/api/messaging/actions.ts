@@ -183,7 +183,7 @@ async function handleGetUserConversations(supabase: SupabaseClient, params: any)
   } else if (userType === 'college_educator') {
     query = supabase
       .from('conversations')
-      .select(`id, learner_id, educator_id, subject, status, conversation_type, last_message_at, last_message_preview, last_message_sender, educator_unread_count, created_at, updated_at, deleted_by_educator, learner:learners(id, user_id, email, name, contact_number, university, branch_field, program_id, program_section_id)`)
+      .select(`id, learner_id, educator_id, subject, status, conversation_type, last_message_at, last_message_preview, last_message_sender, educator_unread_count, created_at, updated_at, deleted_by_college_educator, learner:learners(id, user_id, email, name, contact_number, university, branch_field, program_id, program_section_id)`)
       .eq(column, usrId).eq('conversation_type', 'learner_college_educator');
   } else if (userType === 'learner') {
     query = supabase

@@ -18,13 +18,14 @@ import {
   useQueryClient, 
 } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
-import React, { 
+import { 
   useCallback, 
   useEffect,
   useMemo,
   useRef,
   useState,  
 } from 'react';
+import type { FormEvent } from 'react';
 import toast from 'react-hot-toast';
 import { useNotificationBroadcast } from '@/features/broadcast';
 import { useCollegeEducatorAdminConversationsForEducator } from '@/features/educator';
@@ -254,7 +255,7 @@ const CollegeLecturerMessages = () => {
       loadingConversations
     });
 
-    if (conversations && conversations.length > 0) {
+    if (conversations?.length) {
       logger.info('📋 [College-Messages-Page] Sample conversation:', conversations[0]);
       logger.info('📋 [College-Messages-Page] All conversation IDs:',
         conversations.map(c => ({ id: c.id, learner_name: c.learner?.name }))
@@ -287,10 +288,10 @@ const CollegeLecturerMessages = () => {
     logger.info('📨 Messages loaded:', {
       count: messages?.length || 0,
       isLoading: loadingMessages,
-      hasMessages: !!messages && messages.length > 0
+      hasMessages: !!messages?.length
     });
 
-    if (messages && messages.length > 0) {
+    if (messages?.length) {
       logger.info('📨 [College-Messages-Page] First message:', messages[0]);
       logger.info('📨 [College-Messages-Page] Last message:', messages[messages.length - 1]);
     } else if (selectedConversationId && !loadingMessages) {
@@ -309,7 +310,7 @@ const CollegeLecturerMessages = () => {
   }, [isUserOnlineGlobal]);
 
   // Presence tracking for current conversation
-  const { } = useRealtimePresence({
+  useRealtimePresence({
     channelName: selectedConversationId ? `conversation:${selectedConversationId}` : 'none',
     userPresence: {
       userId: collegeLecturerRecordId || '',
@@ -664,15 +665,15 @@ const CollegeLecturerMessages = () => {
     [filteredContacts, selectedConversationId]
   );
 
-  const handleSendMessage = useCallback(async (e: React.FormEvent) => {
+  const handleSendMessage = useCallback(async (e: FormEvent) => {
     e.preventDefault();
-    if (!messageInput.trim() || !currentChat || !userAuthId) return;
+    if (!messageInput.trim() || !currentChat || !userAuthId || !selectedConversationId) return;
 
     try {
       if (activeTab === 'learners') {
         // Send message to college learner
         await sendMessage({
-          conversationId: selectedConversationId!,
+          conversationId: selectedConversationId,
           receiverId: currentChat.learnerId,
           receiverType: 'learner',
           messageText: messageInput,
@@ -682,7 +683,7 @@ const CollegeLecturerMessages = () => {
         try {
           await sendNotification(currentChat.learnerId, {
             title: 'New Message from College Lecturer',
-            message: messageInput.length > 50 ? messageInput.substring(0, 50) + '...' : messageInput,
+            message: messageInput.length > 50 ? `${messageInput.substring(0, 50)}...` : messageInput,
             type: 'message',
             link: `/learner/messages?tab=college_lecturers&conversation=${selectedConversationId}`
           });
@@ -692,7 +693,7 @@ const CollegeLecturerMessages = () => {
       } else {
         // Send message to college admin
         await sendMessage({
-          conversationId: selectedConversationId!,
+          conversationId: selectedConversationId,
           receiverId: currentChat.adminId,
           receiverType: 'college_admin',
           messageText: messageInput,
@@ -702,7 +703,7 @@ const CollegeLecturerMessages = () => {
         try {
           await sendNotification(currentChat.adminId, {
             title: 'New Message from College Educator',
-            message: messageInput.length > 50 ? messageInput.substring(0, 50) + '...' : messageInput,
+            message: messageInput.length > 50 ? `${messageInput.substring(0, 50)}...` : messageInput,
             type: 'message',
             link: `/college-admin/communication?tab=educators&conversation=${selectedConversationId}`
           });
@@ -764,7 +765,7 @@ const CollegeLecturerMessages = () => {
     logger.info('🏁 [College-Messages-Page] === DISPLAY MESSAGES DEBUG END ===');
 
     return processed;
-  }, [messages]);
+  }, [messages, collegeLecturerRecordId]);
 
   const renderStatusIcon = useCallback((status: string) => (
     <div className="flex">
@@ -1302,7 +1303,7 @@ const CollegeLecturerMessages = () => {
               logger.info('✅ College lecturer conversation created:', conversation);
 
               // Send the initial message if provided
-              if (initialMessage && initialMessage.trim()) {
+              if (initialMessage?.trim()) {
                 await MessageService.sendMessage(
                   conversation.id,
                   lecturerId,
@@ -1350,7 +1351,7 @@ const CollegeLecturerMessages = () => {
               logger.info('✅ College educator-admin conversation created:', conversation);
 
               // Send the initial message if provided
-              if (initialMessage && initialMessage.trim()) {
+              if (initialMessage?.trim()) {
                 await MessageService.sendMessage(
                   conversation.id,
                   educatorId,
