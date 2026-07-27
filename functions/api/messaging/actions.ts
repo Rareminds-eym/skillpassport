@@ -199,7 +199,7 @@ async function handleGetUserConversations(supabase: SupabaseClient, params: any)
 
   try {
     if (userType === 'college_educator') {
-      query = query.eq('deleted_by_educator', false);
+      query = query.eq('deleted_by_college_educator', false);
     } else {
       query = query.eq(deletedColumn, false);
     }
@@ -328,7 +328,8 @@ async function handleDeleteConversationForUser(supabase: SupabaseClient, params:
   switch (userType) {
     case 'learner': deletedColumn = 'deleted_by_learner'; deletedAtColumn = 'learner_deleted_at'; break;
     case 'recruiter': deletedColumn = 'deleted_by_recruiter'; deletedAtColumn = 'recruiter_deleted_at'; break;
-    case 'educator': case 'college_educator': deletedColumn = 'deleted_by_educator'; deletedAtColumn = 'educator_deleted_at'; break;
+    case 'educator': deletedColumn = 'deleted_by_educator'; deletedAtColumn = 'educator_deleted_at'; break;
+    case 'college_educator': deletedColumn = 'deleted_by_college_educator'; deletedAtColumn = 'college_educator_deleted_at'; break;
     case 'school_admin': deletedColumn = 'deleted_by_admin'; deletedAtColumn = 'admin_deleted_at'; break;
     case 'college_admin': deletedColumn = 'deleted_by_college_admin'; deletedAtColumn = 'college_admin_deleted_at'; break;
     default: throw new Error(`Invalid user type: ${userType}`);
@@ -344,7 +345,8 @@ async function handleRestoreConversation(supabase: SupabaseClient, params: any):
   switch (userType) {
     case 'learner': deletedColumn = 'deleted_by_learner'; deletedAtColumn = 'learner_deleted_at'; break;
     case 'recruiter': deletedColumn = 'deleted_by_recruiter'; deletedAtColumn = 'recruiter_deleted_at'; break;
-    case 'educator': case 'college_educator': deletedColumn = 'deleted_by_educator'; deletedAtColumn = 'educator_deleted_at'; break;
+    case 'educator': deletedColumn = 'deleted_by_educator'; deletedAtColumn = 'educator_deleted_at'; break;
+    case 'college_educator': deletedColumn = 'deleted_by_college_educator'; deletedAtColumn = 'college_educator_deleted_at'; break;
     case 'school_admin': deletedColumn = 'deleted_by_admin'; deletedAtColumn = 'admin_deleted_at'; break;
     case 'college_admin': deletedColumn = 'deleted_by_college_admin'; deletedAtColumn = 'college_admin_deleted_at'; break;
     default: throw new Error(`Invalid user type: ${userType}`);
@@ -618,7 +620,7 @@ async function handleFetchProgramsByDepartments(supabase: SupabaseClient, params
 
 async function handleFetchLearnersByPrograms(supabase: SupabaseClient, params: any): Promise<any[]> {
   const { programIds, collegeId, limit = 200 } = params;
-  let query = supabase.from('learners').select('id, user_id, name, email, university, branch_field, program_id, program_section_id');
+  let query = supabase.from('learners').select('id, user_id, name, email, university, branch_field, program_id, program_section_id, programs(name, code)');
   if (programIds?.length) query = query.in('program_id', programIds.map((id: any) => String(id)));
   if (collegeId) query = query.eq('college_id', String(collegeId));
   const { data } = await query.limit(Math.min(limit, 500)).order('name');
