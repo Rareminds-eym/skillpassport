@@ -665,7 +665,7 @@ const CollegeLecturerMessages = () => {
     [filteredContacts, selectedConversationId]
   );
 
-  const handleSendMessage = useCallback(async (e: FormEvent) => {
+  const handleSendMessage = useCallback(async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!messageInput.trim() || !currentChat || !userAuthId || !selectedConversationId) return;
 
@@ -740,12 +740,13 @@ const CollegeLecturerMessages = () => {
         id: msg.id,
         sender_type: msg.sender_type,
         receiver_type: msg.receiver_type,
-        text: msg.message_text?.substring(0, 50) + '...',
+        text: `${msg.message_text?.substring(0, 50)}...`,
         created_at: msg.created_at
       });
 
-      const isMe = EDUCATOR_SENDER_TYPES.includes(msg.sender_type);
-      if (!isMe && msg.sender_id === collegeLecturerRecordId) {
+      const isSenderTypeMatch = EDUCATOR_SENDER_TYPES.includes(msg.sender_type);
+      const isMe = isSenderTypeMatch || msg.sender_id === collegeLecturerRecordId;
+      if (!isSenderTypeMatch && msg.sender_id === collegeLecturerRecordId) {
         logger.warn('⚠️ [College-Messages-Page] Unexpected sender_type for educator message:', {
           sender_type: msg.sender_type,
           message_id: msg.id
