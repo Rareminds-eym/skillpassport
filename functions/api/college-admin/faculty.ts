@@ -12,7 +12,7 @@ import type { PagesEnv } from '../../lib/types';
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const user = getContextUser(context);
   const env = context.env as unknown as PagesEnv;
-  const supabase = getServiceClient(env as any);
+  const supabase = getServiceClient(env);
 
   let body: Record<string, any>;
   try {
@@ -812,6 +812,10 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           
           if (!ssoResult.success) {
             return apiError(500, 'SSO_ERROR', ssoResult.error || 'Failed to create organization', context.request, { startTime });
+          }
+          
+          if (!ssoResult.org_id) {
+            return apiError(500, 'SSO_INVALID_RESPONSE', 'SSO did not return organization ID', context.request, { startTime });
           }
           
           console.log(`[college-admin] Created organization ${ssoResult.org_id} in SSO`);

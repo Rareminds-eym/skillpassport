@@ -10,9 +10,9 @@ import { apiError, apiSuccess } from '../../../lib/response';
 import { resolveUserOrganization } from '../../../lib/resolve-organization';
 import { ssoCreateMember } from '../../../lib/sso-client';
 import { createSupabaseAdminClient } from '../../../lib/supabase';
+import type { PagesEnv } from '../../../lib/types';
+import type { Fetcher } from "@cloudflare/workers-types";
 import {
-  calculateAge,
-  deleteAuthUser,
   generatePassword,
   splitName,
   validateEmail,
@@ -21,7 +21,7 @@ import {
 /**
  * Handle admin creating a learner
  */
-export async function handleCreateLearner(request: Request, env: any): Promise<Response> {
+export async function handleCreateLearner(request: Request, env: PagesEnv): Promise<Response> {
   const supabaseAdmin = createSupabaseAdminClient(env);
 
   const body = await request.json() as {
@@ -139,10 +139,14 @@ export async function handleCreateLearner(request: Request, env: any): Promise<R
   // NEW APPROACH: Call SSO Worker's createLearnerUser RPC
   // This creates user in SSO, syncs to Skillpassport, and queues invitation email
   try {
+    if (!env.SSO_SERVICE) {
+      return apiError(500, 'SSO_ERROR', 'SSO_SERVICE not configured', request);
+    }
+
     const ssoResult = await env.SSO_SERVICE.createLearnerUser({
       email: learner.email.toLowerCase(),
       name: learner.name,
-      organization_id: organizationId,
+      organization_id: organizationId!,
       contact_number: learner.contactNumber,
       enrollment_number: learner.enrollmentNumber || undefined,
       metadata: {
@@ -202,7 +206,7 @@ export async function handleCreateLearner(request: Request, env: any): Promise<R
 /**
  * Handle admin creating a teacher
  */
-export async function handleCreateTeacher(request: Request, env: any, user: { id: string; email: string; org_id?: string }): Promise<Response> {
+export async function handleCreateTeacher(request: Request, env: PagesEnv, user: { id: string; email: string; org_id?: string }): Promise<Response> {
   const supabaseAdmin = createSupabaseAdminClient(env);
 
   const body = await request.json() as {
@@ -284,7 +288,7 @@ export async function handleCreateTeacher(request: Request, env: any, user: { id
   // through the organization's subscription/seats — no personal subscription.
   let ssoUserId: string;
   try {
-    const ssoMember = await ssoCreateMember(env, {
+    const ssoMember = await ssoCreateMember(env as unknown as { SSO_SERVICE: Fetcher }, {
       email: teacher.email.toLowerCase(),
       password: teacherPassword,
       role: 'school_educator',
@@ -387,7 +391,7 @@ export async function handleCreateTeacher(request: Request, env: any, user: { id
 /**
  * Handle updating learner documents
  */
-export async function handleUpdateLearnerDocuments(request: Request, env: any): Promise<Response> {
+export async function handleUpdateLearnerDocuments(request: Request, env: PagesEnv): Promise<Response> {
   const supabaseAdmin = createSupabaseAdminClient(env);
 
   const body = await request.json() as {
@@ -462,7 +466,7 @@ export async function handleUpdateLearnerDocuments(request: Request, env: any): 
  * Handle college admin creating a staff member
  * Supports roles: College Admin, HoD, Faculty, Lecturer, Exam Cell, Finance Admin, Placement Officer
  */
-export async function handleCreateCollegeStaff(request: Request, env: any, user: { id: string; email: string; org_id?: string }): Promise<Response> {
+export async function handleCreateCollegeStaff(request: Request, env: PagesEnv, user: { id: string; email: string; org_id?: string }): Promise<Response> {
   const supabaseAdmin = createSupabaseAdminClient(env);
 
   const body = await request.json() as {
@@ -552,7 +556,7 @@ export async function handleCreateCollegeStaff(request: Request, env: any, user:
   // granted through the organization's subscription/seats — no personal sub.
   let ssoUserId: string;
   try {
-    const ssoMember = await ssoCreateMember(env, {
+    const ssoMember = await ssoCreateMember(env as unknown as { SSO_SERVICE: Fetcher }, {
       email: staff.email.toLowerCase(),
       password: staffPassword,
       role: ssoRole,

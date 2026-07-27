@@ -1,7 +1,7 @@
 
 import { ArrowDownTrayIcon, CheckCircleIcon, DocumentArrowUpIcon, ExclamationTriangleIcon, UserPlusIcon, XMarkIcon } from '@heroicons/react/24/outline'
 import Papa from 'papaparse'
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { apiPost } from '@/shared/api/apiClient'
 import storageService from '@/shared/api/storageService'
 import userApiService from '@/entities/user/api/userApiService'
@@ -10,7 +10,7 @@ import { getFileSizeLimit } from '@/shared/config/fileSizeLimits'
 import { getLogger } from '@/shared/config/logging'
 import { useAuthStore } from '@/shared/model/authStore'
 import { ssoClient } from '@/shared/api/ssoClient';
-import { learnerAdmissionService } from '@/features/college-admin/api/learnerAdmissionService';
+import { learnerAdmissionService, type BulkUploadError } from '@/features/college-admin/api/learnerAdmissionService';
 
 
 interface DocumentUploadProgress {
@@ -69,6 +69,8 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
   const [validatedlearners, setValidatedlearners] = useState<ValidatedLearner[]>([])
   const [showEnhancedPreview, setShowEnhancedPreview] = useState(false)
   const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null)
+  const isMounted = useRef(true)
+  useEffect(() => { return () => { isMounted.current = false } }, [])
   const [documentUploadProgress, setDocumentUploadProgress] = useState<DocumentUploadProgress[]>([])
   const [isUploadingDocuments, setIsUploadingDocuments] = useState(false)
   const [formData, setFormData] = useState<LearnerFormData>({
@@ -903,15 +905,18 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
       }
 
       let organizationId = ''
+      let userRole = ''
       try {
         const userData = JSON.parse(userStr || '{}')
         organizationId = userData.schoolId || userData.collegeId || ''
+        userRole = userData.role || ''
       } catch {}
 
       if (!organizationId && userEmail) {
         const orgResult = await apiPost<any>('/college-admin/faculty', {
           action: 'get-organization-by-email',
           email: userEmail,
+          organization_type: userRole === 'school_admin' ? 'school' : 'college',
         })
         if (orgResult?.data?.id) {
           organizationId = orgResult.data.id
@@ -943,6 +948,7 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
       }
 
       const poll = async () => {
+        if (!isMounted.current) return
         try {
           const statusResult = await learnerAdmissionService.getBulkStatus(batchId)
           if (!statusResult.success) {
@@ -961,7 +967,7 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
             if (s.failed_count > 0) {
               const errResult = await learnerAdmissionService.getBulkErrors(batchId)
               if (errResult.success) {
-                errorList = errResult.data.errors.map((e: any) => `Row ${e.row}: ${e.error}`)
+                errorList = errResult.data.errors.map((e: BulkUploadError) => `Row ${e.row}: ${e.error}`)
               }
             }
             setUploadProgress(null)
@@ -978,12 +984,14 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
             } else {
               setError(`All imports failed. Errors:\n${errorList.slice(0, 10).join('\n')}${errorList.length > 10 ? `\n...and ${errorList.length - 10} more` : ''}`)
             }
-          } else {
+          } else if (isMounted.current) {
             setTimeout(poll, 2000)
           }
         } catch {
-          setError('Failed to check upload status')
-          setLoading(false)
+          if (isMounted.current) {
+            setError('Failed to check upload status')
+            setLoading(false)
+          }
         }
       }
 
@@ -1611,33 +1619,7 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
               )}
 
               {/* Processing */}
-              {loading && uploadProgress && (() => {
-                const pct = uploadProgress.total > 0
-                  ? Math.min(Math.round((uploadProgress.current / uploadProgress.total) * 100), 100)
-                  : 0
-                return (
-                  <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-md">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center">
-                        <svg className="animate-spin h-5 w-5 text-blue-600 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" role="status" aria-label="Loading">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        <span className="text-sm font-medium text-blue-900">
-                          Importing {uploadProgress.current}/{uploadProgress.total} learners...
-                        </span>
-                      </div>
-                      <span className="text-sm text-blue-700 font-medium">{pct}%</span>
-                    </div>
-                    <div className="w-full bg-blue-200 rounded-full h-2">
-                      <div
-                        className="bg-blue-600 h-2 rounded-full transition-all duration-500"
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
-                  </div>
-                )
-              })()}
+              {loading && uploadProgress && <UploadProgressBar progress={uploadProgress} />}
 
               {/* Enhanced Preview with Valid/Invalid Separation */}
               {showEnhancedPreview && validatedlearners.length > 0 && (
@@ -1892,6 +1874,34 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
             </button>
           </div>
         </div>
+      </div>
+    </div>
+  )
+}
+
+function UploadProgressBar({ progress }: { progress: { current: number; total: number } }) {
+  const pct = progress.total > 0
+    ? Math.min(Math.round((progress.current / progress.total) * 100), 100)
+    : 0
+  return (
+    <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-md">
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center">
+          <svg className="animate-spin h-5 w-5 text-blue-600 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" role="status" aria-label="Loading">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <span className="text-sm font-medium text-blue-900">
+            Importing {progress.current}/{progress.total} learners...
+          </span>
+        </div>
+        <span className="text-sm text-blue-700 font-medium">{pct}%</span>
+      </div>
+      <div className="w-full bg-blue-200 rounded-full h-2">
+        <div
+          className="bg-blue-600 h-2 rounded-full transition-all duration-500"
+          style={{ width: `${pct}%` }}
+        />
       </div>
     </div>
   )

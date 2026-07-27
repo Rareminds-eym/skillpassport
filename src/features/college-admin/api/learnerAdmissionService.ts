@@ -4,11 +4,15 @@ import type { LearnerAdmission, ApiResponse } from '@/shared/types/college';
 function extractErrorMessage(error: unknown, fallback: string): string {
   if (error instanceof Error) return error.message;
   if (error && typeof error === 'object') {
-    if ('message' in error && typeof (error as any).message === 'string') {
-      return (error as any).message;
+    const record = error as Record<string, unknown>;
+    if ('message' in record && typeof record.message === 'string') {
+      return record.message;
     }
-    if ('error' in error && typeof (error as any).error === 'object' && (error as any).error !== null && 'message' in (error as any).error) {
-      return ((error as any).error as any).message;
+    if ('error' in record && record.error && typeof record.error === 'object') {
+      const innerRecord = record.error as Record<string, unknown>;
+      if ('message' in innerRecord && typeof innerRecord.message === 'string') {
+        return innerRecord.message;
+      }
     }
   }
   return fallback;
