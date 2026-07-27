@@ -932,18 +932,6 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
       if (!queueResult.success) {
         setError(queueResult.error?.message || 'Failed to queue bulk upload')
         setLoading(false)
-        return
-      }
-
-      const bid = queueResult.data.batch_id
-
-      // Poll for batch completion
-      const poll = async () => {
-        const statusResult = await learnerAdmissionService.getBulkStatus(bid)
-        if (!statusResult.success) return
-
-        const s = statusResult.data
-
         if (s.status === 'processing' && s.total_rows > 0) {
           setUploadProgress({ current: s.processed_rows, total: s.total_rows })
         }

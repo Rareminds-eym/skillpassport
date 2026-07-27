@@ -66,7 +66,7 @@ export async function resolveUserOrganization(
         .eq('user_id', userId)
         .maybeSingle();
 
-      if ((!educator || !educator?.school_id) && email) {
+      if (!educator?.school_id && email) {
         const { data: educatorByEmail } = await supabase
           .from('school_educators')
           .select('school_id')

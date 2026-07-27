@@ -35,10 +35,6 @@ const SSO_TO_ORG_MEMBER_ROLE: Record<string, 'owner' | 'admin' | 'member'> = {
 export const LEARNER_SSO_ROLES = new Set([
   'learner',
   'student',
-  'educator',
-  'teacher',
-  'college_educator',
-  'school_educator',
 ]);
 
 /**

@@ -9,12 +9,19 @@ async function handleApiCall<T>(
   try {
     const result = await fn();
     return { success: true, data: result };
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error
+      ? error.message
+      : error != null && typeof error === 'object' && 'error' in error && error.error != null && typeof error.error === 'object' && 'message' in error.error
+        ? (error.error as { message: string }).message
+        : error != null && typeof error === 'object' && 'message' in error
+          ? (error as { message: string }).message
+          : fallbackMessage;
     return {
       success: false,
       error: {
         code: errorCode,
-        message: error?.message || error?.error?.message || fallbackMessage,
+        message,
       },
     };
   }
@@ -41,11 +48,11 @@ export interface BulkUploadError {
 }
 
 async function extractData<T>(path: string, body: unknown): Promise<T> {
-  const result: any = await apiPost(path, body);
-  if (result.data === null || result.data === undefined) {
+  const { data } = await apiPost<{ data: T }>(path, body);
+  if (data === null || data === undefined) {
     throw new Error('API returned empty data');
   }
-  return result.data as T;
+  return data;
 }
 
 export const learnerAdmissionService = {
@@ -76,9 +83,9 @@ export const learnerAdmissionService = {
   async generateRollNumber(programId: string, year: number): Promise<ApiResponse<string>> {
     return handleApiCall(
       async () => {
-        const result: any = await apiPost('/college-admin/admissions', { action: 'generate-roll-number', program_id: programId, year });
-        if (!result.data?.roll_number) throw new Error('roll_number not returned');
-        return result.data.roll_number;
+        const { data } = await apiPost<{ data: { roll_number: string } }>('/college-admin/admissions', { action: 'generate-roll-number', program_id: programId, year });
+        if (!data?.roll_number) throw new Error('roll_number not returned');
+        return data.roll_number;
       },
       'GENERATE_ERROR',
       'Failed to generate roll number',
@@ -124,9 +131,9 @@ export const learnerAdmissionService = {
   async updateCGPA(learnerId: string): Promise<ApiResponse<number>> {
     return handleApiCall(
       async () => {
-        const result: any = await apiPost('/college-admin/admissions', { action: 'update-cgpa', learner_id: learnerId });
-        if (result.data?.cgpa === undefined) throw new Error('cgpa not returned');
-        return result.data.cgpa;
+        const { data } = await apiPost<{ data: { cgpa: number } }>('/college-admin/admissions', { action: 'update-cgpa', learner_id: learnerId });
+        if (data?.cgpa === undefined) throw new Error('cgpa not returned');
+        return data.cgpa;
       },
       'CGPA_ERROR',
       'Failed to calculate CGPA',

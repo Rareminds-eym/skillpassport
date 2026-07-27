@@ -206,12 +206,7 @@ const OrganizationSetup: React.FC<OrganizationSetupProps> = ({ organizationType 
           const found = await checkOrg();
           if (found) {
             // Success! Redirect now
-            const dashboardPaths: Record<OrganizationType, string> = {
-              college: '/college-admin/dashboard',
-              school: '/school-admin/dashboard',
-              university: '/university-admin/dashboard',
-            };
-            window.location.href = dashboardPaths[organizationType] || '/';
+            window.location.href = DASHBOARD_PATHS[organizationType] || '/';
             return;
           }
           attempt++;
@@ -220,23 +215,13 @@ const OrganizationSetup: React.FC<OrganizationSetupProps> = ({ organizationType 
         
         // Polling timed out - redirect anyway and let guard handle it
         console.warn('[poll] Timeout reached, redirecting to dashboard');
-        const dashboardPaths: Record<OrganizationType, string> = {
-          college: '/college-admin/dashboard',
-          school: '/school-admin/dashboard',
-          university: '/university-admin/dashboard',
-        };
-        window.location.href = dashboardPaths[organizationType] || '/';
+        window.location.href = DASHBOARD_PATHS[organizationType] || '/';
       };
       
       pollForOrg().catch(err => {
         console.error('[poll] Polling failed:', err);
         // Still redirect on error - guard will handle missing org
-        const dashboardPaths: Record<OrganizationType, string> = {
-          college: '/college-admin/dashboard',
-          school: '/school-admin/dashboard',
-          university: '/university-admin/dashboard',
-        };
-        window.location.href = dashboardPaths[organizationType] || '/';
+        window.location.href = DASHBOARD_PATHS[organizationType] || '/';
       });
 
     } catch (err) {
