@@ -132,16 +132,23 @@ const computeAccessState = (sub) => {
 
 /**
  * Fetch subscription data
+ * Returns null if no subscription exists (user should be redirected to subscription page)
  */
 const fetchSubscription = async (userId) => {
   if (!userId) return null;
 
   const result = await getActiveSubscription();
 
-  if (result.success && result.data) {
+  if (!result.success) {
+    throw new Error(result.error || 'Failed to fetch subscription');
+  }
+
+  if (result.data) {
     return formatSubscriptionData(result.data);
   }
 
+  // No subscription found - return null instead of throwing
+  // Frontend will handle showing subscription purchase page
   return null;
 };
 
@@ -155,17 +162,27 @@ export const useSubscriptionQuery = () => {
 
   // Check if the query can run
   const isQueryEnabled = !!user;
+  const queryKey = user?.id ? queryKeys.subscription.data.byOrganization(user.id) : queryKeys.subscription.data.all;
 
   const query = useQuery({
-    queryKey: user?.id ? queryKeys.subscription.data.byOrganization(user.id) : queryKeys.subscription.data.all,
+    queryKey,
     queryFn: () => fetchSubscription(user?.id),
-    enabled: isQueryEnabled, // Only fetch when user is authenticated
+    enabled: isQueryEnabled,
     staleTime: STALE_TIME,
-    gcTime: CACHE_TIME, // Changed from cacheTime (deprecated in v5)
+    gcTime: CACHE_TIME,
     refetchOnWindowFocus: false,
-    refetchOnMount: 'always', // Always fetch on mount to ensure fresh data
-    retry: 3, // Retry up to 3 times on failure
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff: 1s, 2s, 4s
+    refetchOnMount: false, // ponytail: Only fetch once per session, not on every component mount
+    retry: (failureCount, error) => {
+      // ponytail: Only retry if no data exists (initial sync after login)
+      // If we have data, don't retry - it's cached and fresh
+      const cachedData = queryClient.getQueryData(queryKey);
+      if (cachedData) return false;
+      return failureCount < 3; // Max 3 retries for initial load
+    },
+    retryDelay: (attemptIndex) => {
+      // ponytail: Exponential backoff for queue sync - 1s, 2s, 4s
+      return Math.min(1000 * Math.pow(2, attemptIndex), 4000);
+    },
   });
 
   // Log when data changes (replaces onSuccess) - dev only
@@ -240,8 +257,9 @@ export const useSubscriptionQuery = () => {
     // loading is true if:
     // 1. The query is loading (initial fetch)
     // 2. The query is pending (not yet enabled - waiting for user)
-    // This prevents premature redirects when user is not yet available
-    loading: query.isLoading || query.isPending || !isQueryEnabled,
+    // 3. Query is fetching/retrying (covers queue sync delay after login)
+    // This prevents premature redirects when subscription is still syncing
+    loading: query.isLoading || query.isPending || !isQueryEnabled || query.isFetching,
     error: query.error,
     isRefetching: query.isRefetching,
     hasActiveSubscription,
