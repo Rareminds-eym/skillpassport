@@ -79,6 +79,9 @@ export {
   getCoursesForMultipleSkillGaps
 } from './lib';
 
+// Learner interest capture for AI-recommended courses
+export { recordCourseInterest } from './api';
+
 // Additional recommendation utilities (available but not primary)
 export {
   fallbackKeywordMatching,
