@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Zap, Target, Briefcase, BookOpen, TrendingUp, CheckCircle, Download, Bell, ChevronRight, Calendar, Loader2 } from 'lucide-react';
 import { useRoleOverview } from '@/entities/user';
 import { generateRoleOverview, getFallbackRoleOverview } from '@/features/counselling';
-import { matchCoursesForRole as matchCoursesForRoleRAG } from '@/features/courses';
+import { matchCoursesForRole as matchCoursesForRoleRAG, recordCourseInterest } from '@/features/courses';
 import { apiPost, apiGet } from '@/shared/api/apiClient';
 import { useAuthStore } from '@/shared/model/authStore';
+import { NotificationModal } from '@/shared/ui';
 import jsPDF from 'jspdf';
 
 /**
@@ -15,7 +16,6 @@ import jsPDF from 'jspdf';
  * Steps: Role Selection → Overview → Roadmap → Courses → Strengths → Get Started
  */
 const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results, attemptId, learnerId, assessmentResultId: assessmentResultIdProp }) => {
-    const navigate = useNavigate();
     const authUser = useAuthStore.getState().user;
     const effectiveLearnerId = authUser?.id || learnerId || '';
     const effectiveAssessmentResultId = assessmentResultIdProp || attemptId || '';
@@ -23,6 +23,7 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results, 
     const [selectedRole, setSelectedRole] = useState(null);
     const [currentPage, setCurrentPage] = useState(0); // 0 = role selection, 1-5 = wizard pages
     const [showReminderModal, setShowReminderModal] = useState(false);
+    const [showEnrollmentModal, setShowEnrollmentModal] = useState(false);
     
     // RAG Course Matching State
     const [aiMatchedCourses, setAiMatchedCourses] = useState([]);
@@ -40,12 +41,15 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results, 
         { id: 5, title: 'Get Started', subtitle: 'Take Action', icon: ChevronRight }
     ];
 
-    // Handle course click - navigate to course player
+    // Course access is administrator-assisted, so clicking a recommended course
+    // shows the enrollment modal instead of opening the course player. The click
+    // is the interest signal the business reports on, so it is recorded here -
+    // in the background, after the modal opens, so capture never delays the UI.
     const handleCourseClick = (course) => {
+        setShowEnrollmentModal(true);
         const courseId = course.course_id || course.id;
         if (courseId) {
-            onClose(); // Close the modal first
-            navigate(`/learner/courses/${courseId}/learn`);
+            recordCourseInterest(effectiveLearnerId, courseId, effectiveAssessmentResultId || null);
         }
     };
 
@@ -362,20 +366,12 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results, 
         return roadmap.projects.slice(0, 3);
     };
 
-    // Handle enrolling in first relevant course
+    // Get Started primary action. Shows the same enrollment modal as the course
+    // cards, for both the "Start: {course}" and "Browse Courses" label variants.
+    // Interest is deliberately NOT recorded here - the reported metric covers
+    // only the AI Recommended Courses section.
     const handleEnrollFirstCourse = () => {
-        if (relevantCourses.length > 0) {
-            const firstCourse = relevantCourses[0];
-            const courseId = firstCourse.course_id || firstCourse.id;
-            if (courseId) {
-                onClose();
-                navigate(`/learner/courses/${courseId}/learn`);
-                return;
-            }
-        }
-        // Fallback to courses page if no relevant course found
-        onClose();
-        navigate('/learner/courses');
+        setShowEnrollmentModal(true);
     };
 
     // Generate PDF roadmap
@@ -1780,6 +1776,25 @@ END:VCALENDAR`;
                     )}
                 </div>
             </motion.div>
+
+            {/* Enrollment modal. Portalled to document.body so it escapes this
+                overlay's stacking context and renders in front of it. React
+                events still bubble through the component tree from a portal, so
+                clicks are stopped here to keep them from reaching the overlay's
+                onClose above, which would dismiss the whole Career Track modal. */}
+            {showEnrollmentModal && createPortal(
+                <div className="relative z-[200]" onClick={(e) => e.stopPropagation()}>
+                    <NotificationModal
+                        isOpen={showEnrollmentModal}
+                        onClose={() => setShowEnrollmentModal(false)}
+                        title="Course Enrollment"
+                        message="Thank you for your interest in this course. An administrator will contact you shortly to assist you with the enrollment process."
+                        type="success"
+                        buttonText="OK"
+                    />
+                </div>,
+                document.body
+            )}
         </motion.div>
     );
 };

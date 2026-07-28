@@ -44,6 +44,24 @@ export const updateRecommendationStatus = async (recommendationId, status, dismi
   }
 };
 
+/**
+ * Records that the learner clicked "Start Learning" on an AI-recommended course.
+ *
+ * Best effort by design: the enrollment modal is shown regardless of the
+ * outcome, so failures are logged and swallowed rather than propagated. The
+ * backend only sets interested_at when it is currently null, so repeat clicks
+ * are idempotent and the first click is preserved.
+ */
+export const recordCourseInterest = async (learnerId, courseId, assessmentResultId = null) => {
+  if (!learnerId || !courseId) return null;
+  try {
+    return await apiPut('/courses/recommendations/interest', { learnerId, courseId, assessmentResultId });
+  } catch (error) {
+    logger.error('Error recording course interest', error instanceof Error ? error : new Error(String(error)));
+    return null;
+  }
+};
+
 export const getAndSaveRecommendations = async (learnerId, assessmentResults, assessmentResultId = null) => {
   if (!learnerId || !assessmentResults) return [];
   try {

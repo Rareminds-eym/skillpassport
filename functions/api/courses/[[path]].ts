@@ -501,6 +501,25 @@ async function handler(context: AuthenticatedContext): Promise<Response> {
     return apiSuccess(data, request);
   }
 
+  // PUT /api/courses/recommendations/interest
+  // Records that the learner clicked "Start Learning" on a recommended course.
+  // Only sets interested_at when it is currently null, so the first click is
+  // preserved and repeat clicks are idempotent. An unmatched update is a normal
+  // outcome (no recommendation stored for the course) and returns success.
+  if (path === '/recommendations/interest' && method === 'PUT') {
+    const { learnerId, courseId, assessmentResultId } = await parseBody(request);
+    if (!learnerId || !courseId) return apiError(400, 'VALIDATION_ERROR', 'learnerId and courseId required', request);
+    let q = supabase.from('learner_course_recommendations')
+      .update({ interested_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+      .eq('learner_id', learnerId).eq('course_id', courseId).is('interested_at', null);
+    // Scope to the assessment attempt so a retake does not flag a stale record
+    q = assessmentResultId ? q.eq('assessment_result_id', assessmentResultId) : q.is('assessment_result_id', null);
+    const { data, error } = await q.select();
+    if (error) return apiDbError(error, request);
+    if (!data?.length) console.log('[Interest] No matching recommendation to update:', { learnerId, courseId, assessmentResultId });
+    return apiSuccess(data || [], request);
+  }
+
   // ─── STREAM RECOMMENDATION ────────────────────────────────────────
 
   // GET /api/courses/stream-recommendation?learnerId=
