@@ -36,11 +36,11 @@ export async function onRequestPost(context: {
   const rawMetadata = body.user_metadata;
   const user_metadata = rawMetadata && typeof rawMetadata === 'object'
     ? {
-        firstName: typeof rawMetadata.firstName === 'string' ? rawMetadata.firstName : undefined,
-        lastName: typeof rawMetadata.lastName === 'string' ? rawMetadata.lastName : undefined,
-        phone: typeof rawMetadata.phone === 'string' ? rawMetadata.phone : undefined,
-        avatarUrl: typeof rawMetadata.avatarUrl === 'string' || rawMetadata.avatarUrl === null ? rawMetadata.avatarUrl : undefined,
-      }
+      firstName: typeof rawMetadata.firstName === 'string' ? rawMetadata.firstName : undefined,
+      lastName: typeof rawMetadata.lastName === 'string' ? rawMetadata.lastName : undefined,
+      phone: typeof rawMetadata.phone === 'string' ? rawMetadata.phone : undefined,
+      avatarUrl: typeof rawMetadata.avatarUrl === 'string' || rawMetadata.avatarUrl === null ? rawMetadata.avatarUrl : undefined,
+    }
     : undefined;
 
   if (!env.SSO_SERVICE) {

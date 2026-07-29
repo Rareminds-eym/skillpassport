@@ -59,7 +59,7 @@ export async function handleFetchEducatorConversations(params: any, context: Aut
     .eq('college_id', collegeId);
 
   if (userType === 'college_educator') {
-    query = query.eq('educator_id', userId).eq('deleted_by_educator', false);
+    query = query.eq('educator_id', userId).eq('deleted_by_college_educator', false);
   } else {
     query = query.eq('deleted_by_college_admin', false);
   }
