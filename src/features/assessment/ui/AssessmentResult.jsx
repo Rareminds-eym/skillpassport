@@ -882,7 +882,10 @@ const AssessmentResult = () => {
             cluster,
             index,
             fitType,
-            specificRoles
+            specificRoles,
+            fit: cluster.fit,
+            matchScore: cluster.matchScore ?? 0,
+            whyItFits: cluster.whyItFits || '',
         });
         setSelectedRole(null);
         setCurrentStep(0);

@@ -1,10 +1,9 @@
-import { withAuth } from '../../lib/auth';
-import { getServiceClient } from '../../lib/supabase';
+import { getServiceClient } from '../../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import type { Env } from '../../lib/types';
-import { apiSuccess, apiError } from '../../lib/response';
+import type { Env } from '../../../lib/types';
+import { apiSuccess, apiError } from '../../../lib/response';
 
-export const onRequestPost = withAuth(async (context: AuthenticatedContext<Env>) => {
+export async function getRoleCapabilitiesHandler(context: AuthenticatedContext<Env>) {
   const env = context.env;
   const supabase = getServiceClient(env as any);
   const startTime = Date.now();
@@ -124,4 +123,4 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext<Env>)
     console.error('[get-role-capabilities] Error:', error?.message || error);
     return apiError(500, 'INTERNAL_ERROR', error?.message || 'Failed to fetch capabilities', context.request, { startTime });
   }
-});
+}

@@ -265,7 +265,16 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results, 
     const handleLearnMore = async (capabilityCode) => {
         try {
             if (!capabilityCode) return;
-            const targetPath = `/my-courses/${capabilityCode}`;
+
+            const searchParams = new URLSearchParams({
+                fit: selectedTrack.fit,
+                track: selectedTrack.cluster?.title || '',
+                matchScore: String(selectedTrack.matchScore),
+                whyItFits: selectedTrack.whyItFits || '',
+                attemptId: attemptId,
+                roleId: selectedRole?.occupationId
+            });
+            const targetPath = `/my-courses/${capabilityCode}?${searchParams.toString()}`;
             const { redirectUrl } = await generateLteCode(targetPath);
             window.location.href = redirectUrl;
         } catch (error) {
@@ -1257,7 +1266,7 @@ END:VCALENDAR`;
                                                     {capability.description && <p className="text-gray-500 text-xs mt-2 line-clamp-2">{capability.description}</p>}
 
                                                     <div className="mt-3 flex items-center justify-end text-xs text-blue-600 font-medium">
-                                                        <span>Learn More</span>
+                                                        <span>Start Learning</span>
                                                         <ChevronRight className="w-3 h-3 ml-1" />
                                                     </div>
                                                 </div>
@@ -1266,7 +1275,7 @@ END:VCALENDAR`;
                                     ) : (
                                         <div className="p-6 rounded-xl bg-gray-50 border border-gray-200 text-center">
                                             <p className="text-gray-600 text-sm">
-                                                No capabilities defined for this role yet.
+                                                No courses defined for this role yet.
                                             </p>
                                         </div>
                                     )}

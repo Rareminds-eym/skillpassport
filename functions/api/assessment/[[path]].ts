@@ -27,6 +27,7 @@ import { checkInProgressHandler } from './handlers/check-in-progress';
 import { analyzeHandler } from './handlers/analyze';
 import { resultHandler } from './handlers/result';
 import { generateStrengthsGrowthPlanHandler } from './handlers/generate-strengths-growth-plan';
+import { getRoleCapabilitiesHandler } from './handlers/get-role-capabilities';
 import {
   handleGetSavedQuestions,
   handleSaveQuestions,
@@ -58,6 +59,8 @@ export const onRequestPost = withAuth(async (context: any) => {
       return analyzeHandler(context);
     } else if (path === '/generate-strengths-growth-plan') {
       return generateStrengthsGrowthPlanHandler(context);
+    } else if (path === '/get-role-capabilities') {
+      return getRoleCapabilitiesHandler(context);
     } else if (path === '/questions/save') {
       return handleSaveQuestions(context.request, context);
     } else if (path === '/questions/clear') {

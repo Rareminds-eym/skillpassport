@@ -299,7 +299,7 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
                     console.log(`[AssessmentReportDrawer] 📋 Processing track ${index + 1}: ${cluster.title}`);
                     
                     // Extract top roles with improved logic
-                    let topRoles: Array<{name: string; salaryRange: string; fit: string}> = [];
+                    let topRoles: Array<{name: string; salaryRange: string; fit: string; occupationId?: string}> = [];
                     
                     // Method 1: Try to get roles from specificOptions with proper mapping
                     if (careerFitData.specificOptions) {
@@ -331,7 +331,8 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
                                     topRoles.push({
                                         name: roleName,
                                         salaryRange: salaryRange,
-                                        fit: targetFitLevel === 'highFit' ? 'High' : targetFitLevel === 'mediumFit' ? 'Medium' : 'Explore'
+                                        fit: targetFitLevel === 'highFit' ? 'High' : targetFitLevel === 'mediumFit' ? 'Medium' : 'Explore',
+                                        occupationId: career.occupationId || career.id
                                     });
                                 }
                             });
@@ -362,7 +363,8 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
                                             topRoles.push({
                                                 name: roleName,
                                                 salaryRange: salaryRange,
-                                                fit: fitLevel === 'highFit' ? 'High' : fitLevel === 'mediumFit' ? 'Medium' : 'Explore'
+                                                fit: fitLevel === 'highFit' ? 'High' : fitLevel === 'mediumFit' ? 'Medium' : 'Explore',
+                                                occupationId: career.occupationId || career.id
                                             });
                                         }
                                     });
@@ -431,22 +433,30 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
                         id: index + 1,
                         title: cluster.title || cluster.name || `Career Track ${index + 1}`,
                         description: cluster.description || `Explore opportunities in ${cluster.title || cluster.name}`,
+                        // Use the actual matchScore from cluster data (46/53/49 from DB)
                         matchPercentage: typeof cluster.matchScore === 'number' ? cluster.matchScore : Math.max(85 - index * 10, 50),
                         topRoles: topRoles,
                         icon: IconComponent,
                         color: colors.color,
                         bgGradient: colors.bgGradient,
-                        // Add data needed for CareerTrackModal
+                        // Add data needed for CareerTrackModal / LTE initialize API
                         cluster: cluster,
                         index: index,
-                        fitType: 'HIGH FIT',
+                        // Use cluster.fit directly ('High'/'Medium'/'Explore') — exactly what backend Zod expects
+                        fit: cluster.fit || (['High', 'Medium', 'Explore'][index] ?? 'High'),
+                        fitType: cluster.fit || 'HIGH FIT', // display label updated to reflect real fit
+                        // Pass real matchScore number for the initialize API
+                        matchScore: typeof cluster.matchScore === 'number' ? cluster.matchScore : 0,
+                        // Pass whyItFits from the cluster data
+                        whyItFits: cluster.whyItFits || '',
                         specificRoles: topRoles.map(role => ({
                             name: role.name,
                             salary: typeof role.salaryRange === 'string' 
                                 ? { min: 3, max: 15 } // Default when string format
                                 : (role.salaryRange as any)?.min && (role.salaryRange as any)?.max
                                     ? { min: (role.salaryRange as any).min, max: (role.salaryRange as any).max }
-                                    : { min: 3, max: 15 } // Default salary range
+                                    : { min: 3, max: 15 }, // Default salary range
+                            occupationId: role.occupationId
                         }))
                     };
                 });
