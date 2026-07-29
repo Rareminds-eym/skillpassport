@@ -14,7 +14,7 @@
  * - university_colleges (college information)
  */
 
-import { apiPost } from "@/shared/api/apiClient";
+import { apiGet } from "@/shared/api/apiClient";
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('PortfolioService');
@@ -26,24 +26,21 @@ const logger = getLogger('PortfolioService');
  */
 export const getlearnerPortfolioByEmail = async (email) => {
   try {
-    const response: any = await apiPost('/college-admin/digital-portfolio', {
-      action: 'get-portfolio-by-email',
-      email,
-    });
+    const response: any = await apiGet(`/college-admin/portfolio?email=${encodeURIComponent(email)}`);
 
     if (!response?.success || !response?.data) {
       return { success: false, error: response?.error?.message || 'Failed to fetch portfolio data' };
     }
 
-    const { learner, skills, trainings, projects, certificates, education, experience } = response.data;
+    const { learner, skills, trainings, projects, certificates, education, experience, pendingSkills, pendingEducation, pendingProjects } = response.data;
 
     const portfolioData = transformToPortfolioFormat(
       learner,
-      skills || [],
+      [...(skills || []), ...(pendingSkills || [])],
       trainings || [],
-      projects || [],
+      [...(projects || []), ...(pendingProjects || [])],
       certificates || [],
-      education || [],
+      [...(education || []), ...(pendingEducation || [])],
       experience || []
     );
 
@@ -65,7 +62,8 @@ function transformToPortfolioFormat(
   projects,
   certificates,
   education,
-  experience
+  experience,
+  pendingAchievements = []
 ) {
   // Separate technical and soft skills
   const technicalSkills = skills
@@ -186,7 +184,7 @@ function transformToPortfolioFormat(
     languages: learner.languages || [],
     hobbies: learner.hobbies || [],
     interests: learner.interests || [],
-    achievements: [],
+    achievements: pendingAchievements || [],
     
     // Additional profile info
     phone: learner.contactNumber || learner.contact_number,

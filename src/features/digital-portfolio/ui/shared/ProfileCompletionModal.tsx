@@ -1,14 +1,15 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { 
-  X, CheckCircle, AlertCircle, Plus, Trash2, Save, 
+  X, CheckCircle, AlertCircle, Plus, Trash2, Save, Loader2,
   ChevronLeft, ChevronRight, Award, Briefcase, 
   Heart, Lightbulb, Languages as LanguagesIcon, User, GraduationCap
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useTheme } from '@/shared/model/themeStore';
-import { usePortfolio } from '@/features/digital-portfolio';
-import { apiPost } from '@/shared/api/apiClient';
+import { usePortfolio, usePortfolioStore } from '@/features/digital-portfolio';
+import { useAuthStore } from '@/shared/model/authStore';
+import { apiPost, apiPatch, apiGet } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('ProfileCompletionModal');
@@ -47,6 +48,8 @@ interface ApiResponse {
 interface LearnerUpdates {
   university?: string;
   branch_field?: string;
+  college_school_name?: string;
+  grade?: string;
   contact_number?: string;
   city?: string;
   state?: string;
@@ -153,7 +156,10 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
   onClose,
 }) => {
   const { theme } = useTheme();
-  const { learner, setLearner } = usePortfolio();
+  const { learner, setLearner, loadlearnerByEmail, isLoading: learnerLoading } = usePortfolio();
+
+  const isCollege = learner?.learner_type === 'college_student';
+  const isSchool = learner?.learner_type === 'school_student';
   
   // State management
   const [currentStep, setCurrentStep] = useState(0);
@@ -164,6 +170,8 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
       email: '',
       university: '',
       fieldOfStudy: '',
+      schoolName: '',
+      grade: '',
       contact: '',
       location: '',
     },
@@ -190,15 +198,34 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
   const totalSteps = editableSections.length;
   const progress = totalSteps > 0 ? ((currentStep + 1) / totalSteps) * 100 : 0;
 
+  useEffect(() => {
+    if (!isOpen) return;
+    if (learner) return;
+    if (learnerLoading) return;
+
+    const email = useAuthStore.getState().user?.email;
+    if (!email) return;
+
+    loadlearnerByEmail(email);
+  }, [isOpen, learner, learnerLoading, loadlearnerByEmail]);
+
   // Initialize form data from learner profile
   useEffect(() => {
     if (learner?.profile) {
+      logger.debug('[form-init] Running form init effect', {
+        learnerId: learner.id,
+        learnerEmail: learner.email,
+        profileEducationCount: (learner.profile.education || []).length,
+        profileSkillsCount: (learner.profile.skills || []).length,
+      });
       setFormData({
         personalDetails: {
           name: learner.name || '',
           email: learner.email || '',
-          university: learner.university || learner.college_school_name || '',
-          fieldOfStudy: learner.branch_field || '',
+          university: isCollege ? (learner.university || learner.college_school_name || '') : '',
+          fieldOfStudy: isCollege ? (learner.branch_field || '') : '',
+          schoolName: isSchool ? (learner.college_school_name || learner.university || '') : '',
+          grade: isSchool ? (learner.grade || '') : '',
           contact: learner.contact_number || '',
           location: learner.city && learner.state ? `${learner.city}, ${learner.state}` : learner.district_name || '',
         },
@@ -267,8 +294,33 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
   const handleSaveAndContinue = async () => {
     setSaving(true);
     try {
-      if (!learner?.id) {
-        throw new Error('No learner ID available');
+      let learnerId = learner?.id;
+      let learnerEmail = learner?.email;
+      logger.debug('[handleSaveAndContinue] start', { 
+        step: currentStep, 
+        sectionName: editableSections[currentStep],
+        learnerId: learner?.id, 
+        learnerEmail: learner?.email,
+        learnerPresent: !!learner,
+        learnerProfileEducationCount: learner?.profile?.education?.length,
+        learnerProfileSkillsCount: learner?.profile?.skills?.length,
+        formEducationCount: formData.education.length,
+        formSkillsCount: formData.skills.length,
+      });
+      if (!learnerId) {
+        const email = useAuthStore.getState().user?.email;
+        logger.debug('[handleSaveAndContinue] learnerId missing, loading by email', { email });
+        if (email) {
+          learnerEmail = email;
+          await loadlearnerByEmail(email);
+          const fresh = usePortfolioStore.getState().learner;
+          learnerId = fresh?.id;
+          logger.debug('[handleSaveAndContinue] after loadlearnerByEmail', { freshId: fresh?.id, freshEmail: fresh?.email });
+        }
+      }
+
+      if (!learnerId) {
+        throw new Error('No learner ID available. Please try again when your profile is fully loaded.');
       }
 
       let hasUpdates = false;
@@ -294,16 +346,15 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
         
         if (validProjects.length > 0) {
           const projectRecords = validProjects.map(p => ({
-            learner_id: learner.id,
+            learner_id: learnerId,
             title: p.title.trim(),
             description: p.description.trim(),
             tech_stack: p.technologies || [],
             approval_status: 'pending',
-            approval_authority: learner.school_id ? 'school_admin' : 'college_admin'
+            approval_authority: 'college_admin'
           }));
 
-          const projectsResponse = await apiPost<ApiResponse>('/college-admin/digital-portfolio', {
-            action: 'insert-projects',
+          const projectsResponse = await apiPost<ApiResponse>('/college-admin/portfolio/projects', {
             records: projectRecords,
           });
           
@@ -319,16 +370,42 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
 
       // Personal Details
       if (currentSectionName === 'Personal Details') {
-        if (formData.personalDetails.university) {
-          learnerUpdates.university = formData.personalDetails.university;
-        }
-        if (formData.personalDetails.fieldOfStudy) {
-          learnerUpdates.branch_field = formData.personalDetails.fieldOfStudy;
+        logger.debug('[handleSaveAndContinue] Personal Details form values', {
+          university: formData.personalDetails.university,
+          fieldOfStudy: formData.personalDetails.fieldOfStudy,
+          schoolName: formData.personalDetails.schoolName,
+          grade: formData.personalDetails.grade,
+          contact: formData.personalDetails.contact,
+          location: formData.personalDetails.location,
+        });
+        if (isCollege) {
+          if (formData.personalDetails.university) {
+            learnerUpdates.university = formData.personalDetails.university;
+          }
+          if (formData.personalDetails.fieldOfStudy) {
+            learnerUpdates.branch_field = formData.personalDetails.fieldOfStudy;
+          }
+        } else if (isSchool) {
+          if (formData.personalDetails.schoolName) {
+            learnerUpdates.college_school_name = formData.personalDetails.schoolName;
+          }
+          if (formData.personalDetails.grade) {
+            learnerUpdates.grade = formData.personalDetails.grade;
+          }
+        } else {
+          if (formData.personalDetails.university || formData.personalDetails.schoolName) {
+            learnerUpdates.university = formData.personalDetails.university || formData.personalDetails.schoolName;
+          }
+          if (formData.personalDetails.fieldOfStudy) {
+            learnerUpdates.branch_field = formData.personalDetails.fieldOfStudy;
+          }
+          if (formData.personalDetails.grade) {
+            learnerUpdates.grade = formData.personalDetails.grade;
+          }
         }
         if (formData.personalDetails.contact) {
           learnerUpdates.contact_number = formData.personalDetails.contact;
         }
-        // Parse location if it has city, state format
         if (formData.personalDetails.location) {
           const locationParts = formData.personalDetails.location.split(',').map(s => s.trim());
           if (locationParts.length >= 2) {
@@ -338,6 +415,7 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
             learnerUpdates.district_name = formData.personalDetails.location;
           }
         }
+        logger.debug('[handleSaveAndContinue] Personal Details learnerUpdates', { ...learnerUpdates });
       }
 
       // Education - Not editable yet (needs separate API endpoint)
@@ -353,6 +431,12 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
         const incompleteEducation = formData.education.filter(e => 
           !e.degree || e.degree.trim() === '' || !e.institution || e.institution.trim() === ''
         );
+        
+        logger.debug('[handleSaveAndContinue] Education section', {
+          totalEducation: formData.education.length,
+          validCount: validEducation.length,
+          incompleteCount: incompleteEducation.length,
+        });
         
         if (incompleteEducation.length > 0) {
           toast.error('Please fill in degree and institution for all education entries, or remove the empty ones.');
@@ -376,7 +460,7 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
             }
             
             return {
-              learner_id: learner.id,
+              learner_id: learnerId,
               level: level,
               degree: e.degree,
               department: e.field || '',
@@ -389,9 +473,17 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
             };
           });
 
-          const educationResponse = await apiPost<ApiResponse>('/college-admin/digital-portfolio', {
-            action: 'insert-education',
+          logger.debug('[handleSaveAndContinue] calling insert-education', { 
+            recordCount: educationRecords.length,
+            firstRecord: educationRecords[0],
+          });
+          const educationResponse = await apiPost<ApiResponse>('/college-admin/portfolio/education', {
             records: educationRecords,
+          });
+          
+          logger.debug('[handleSaveAndContinue] insert-education response', { 
+            success: educationResponse?.success,
+            data: educationResponse?.data,
           });
           
           if (!educationResponse?.success) {
@@ -411,6 +503,12 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
           !s.name || s.name.trim() === ''
         );
         
+        logger.debug('[handleSaveAndContinue] Skills section', {
+          totalSkills: formData.skills.length,
+          validCount: validSkills.length,
+          incompleteCount: incompleteSkills.length,
+        });
+        
         if (incompleteSkills.length > 0) {
           toast.error('Please fill in skill name for all skill entries, or remove the empty ones.');
           setSaving(false);
@@ -419,7 +517,7 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
         
         if (validSkills.length > 0) {
           const skillRecords = validSkills.map(s => ({
-            learner_id: learner.id,
+            learner_id: learnerId,
             name: s.name,
             type: s.category === 'Technical' ? 'technical' : 'soft',
             level: mapLevelToNumber(s.level),
@@ -429,9 +527,17 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
             enabled: true
           }));
 
-          const skillsResponse = await apiPost<ApiResponse>('/college-admin/digital-portfolio', {
-            action: 'insert-skills',
+          logger.debug('[handleSaveAndContinue] calling insert-skills', { 
+            recordCount: skillRecords.length,
+            firstRecord: skillRecords[0],
+          });
+          const skillsResponse = await apiPost<ApiResponse>('/college-admin/portfolio/skills', {
             records: skillRecords,
+          });
+          
+          logger.debug('[handleSaveAndContinue] insert-skills response', { 
+            success: skillsResponse?.success,
+            data: skillsResponse?.data,
           });
           
           if (!skillsResponse?.success) {
@@ -460,7 +566,7 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
         
         if (validAchievements.length > 0) {
           const achievementRecords = validAchievements.map(a => ({
-            learner_id: learner.id,
+            learner_id: learnerId,
             title: a.title.trim(),
             description: a.description.trim(),
             date: a.date || new Date().toISOString().split('T')[0],
@@ -469,8 +575,7 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
             enabled: true
           }));
 
-          const achievementsResponse = await apiPost<ApiResponse>('/college-admin/digital-portfolio', {
-            action: 'insert-achievements',
+          const achievementsResponse = await apiPost<ApiResponse>('/college-admin/portfolio/achievements', {
             records: achievementRecords,
           });
           
@@ -503,10 +608,18 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
       }
 
       if (Object.keys(learnerUpdates).length > 0) {
-        const updateResponse = await apiPost<ApiResponse>('/college-admin/digital-portfolio', {
-          action: 'update-learner',
-          id: learner.id,
+        logger.debug('[handleSaveAndContinue] calling update-learner', { 
+          learnerId,
+          updates: learnerUpdates,
+        });
+        const updateResponse = await apiPatch<ApiResponse>('/college-admin/portfolio', {
+          id: learnerId,
           ...learnerUpdates,
+        });
+        
+        logger.debug('[handleSaveAndContinue] update-learner response', { 
+          success: updateResponse?.success,
+          data: updateResponse?.data,
         });
         
         if (!updateResponse?.success) {
@@ -518,10 +631,10 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
       // Mark section as completed in localStorage (even if pending approval)
       if (hasUpdates) {
         try {
-          const completedSections = JSON.parse(localStorage.getItem(`profile-sections-completed-${learner.id}`) || '[]');
+          const completedSections = JSON.parse(localStorage.getItem(`profile-sections-completed-${learnerId}`) || '[]');
           if (!completedSections.includes(currentSectionName)) {
             completedSections.push(currentSectionName);
-            localStorage.setItem(`profile-sections-completed-${learner.id}`, JSON.stringify(completedSections));
+            localStorage.setItem(`profile-sections-completed-${learnerId}`, JSON.stringify(completedSections));
           }
         } catch (error) {
           const errorObj = error instanceof Error ? error : new Error(String(error));
@@ -532,14 +645,21 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
       // Refresh portfolio data after save to update Digital Passport immediately
       if (hasUpdates) {
         try {
-          // Validate learner email exists before API call
-          if (!learner?.email) {
+          const refreshEmail = learner?.email || learnerEmail;
+          logger.debug('[handleSaveAndContinue] refreshing portfolio', { refreshEmail });
+          if (!refreshEmail) {
             throw new Error('Learner email is required for portfolio refresh');
           }
 
-          const refreshResponse = await apiPost<PortfolioRefreshResponse>('/college-admin/digital-portfolio', {
-            action: 'get-portfolio-by-email',
-            email: learner.email,
+          const refreshResponse = await apiGet<PortfolioRefreshResponse>(`/college-admin/portfolio?email=${encodeURIComponent(refreshEmail!)}`);
+          
+          logger.debug('[handleSaveAndContinue] refresh response', {
+            success: refreshResponse?.success,
+            hasLearner: !!refreshResponse?.data?.learner,
+            educationCount: refreshResponse?.data?.education?.length,
+            skillsCount: refreshResponse?.data?.skills?.length,
+            pendingEducationCount: refreshResponse?.data?.pendingEducation?.length,
+            pendingSkillsCount: refreshResponse?.data?.pendingSkills?.length,
           });
 
           if (!refreshResponse || typeof refreshResponse !== 'object') {
@@ -576,6 +696,7 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
               }
             };
             setLearner(portfolioData);
+            logger.debug('[handleSaveAndContinue] portfolio refresh applied to store');
           }
         } catch (refreshError) {
           logger.error('Failed to refresh portfolio data', refreshError instanceof Error ? refreshError : new Error(String(refreshError)));
@@ -583,6 +704,12 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
           // Don't block the user flow if refresh fails
         }
       }
+
+      logger.debug('[handleSaveAndContinue] save complete, navigating', { 
+        currentStep, 
+        totalSteps,
+        nextAction: currentStep < totalSteps - 1 ? 'goToNextStep' : 'onComplete',
+      });
 
       // Move to next step or complete
       if (currentStep < totalSteps - 1) {
@@ -781,27 +908,92 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">University/College</label>
-                <input
-                  type="text"
-                  placeholder="Enter your university or college name"
-                  value={formData.personalDetails.university}
-                  onChange={(e) => updatePersonalDetail('university', e.target.value)}
-                  className="w-full px-3 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
+              {/* College fields */}
+              {isCollege && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">University/College</label>
+                    <input
+                      type="text"
+                      placeholder="Enter your university or college name"
+                      value={formData.personalDetails.university}
+                      onChange={(e) => updatePersonalDetail('university', e.target.value)}
+                      className="w-full px-3 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Field of Study</label>
+                    <input
+                      type="text"
+                      placeholder="E.g., Computer Science, Business Administration"
+                      value={formData.personalDetails.fieldOfStudy}
+                      onChange={(e) => updatePersonalDetail('fieldOfStudy', e.target.value)}
+                      className="w-full px-3 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </>
+              )}
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Field of Study</label>
-                <input
-                  type="text"
-                  placeholder="E.g., Computer Science, Business Administration"
-                  value={formData.personalDetails.fieldOfStudy}
-                  onChange={(e) => updatePersonalDetail('fieldOfStudy', e.target.value)}
-                  className="w-full px-3 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
+              {/* School fields */}
+              {isSchool && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">School Name</label>
+                    <input
+                      type="text"
+                      placeholder="Enter your school name"
+                      value={formData.personalDetails.schoolName}
+                      onChange={(e) => updatePersonalDetail('schoolName', e.target.value)}
+                      className="w-full px-3 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Grade</label>
+                    <select
+                      value={formData.personalDetails.grade}
+                      onChange={(e) => updatePersonalDetail('grade', e.target.value)}
+                      className="w-full px-3 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Select Grade</option>
+                      {Array.from({ length: 7 }, (_, i) => i + 6).map(g => (
+                        <option key={g} value={`Grade ${g}`}>Grade {g}</option>
+                      ))}
+                    </select>
+                  </div>
+                </>
+              )}
+
+              {/* Undetermined - show both */}
+              {!isCollege && !isSchool && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">School/College Name</label>
+                    <input
+                      type="text"
+                      placeholder="Enter your school, college or university name"
+                      value={formData.personalDetails.schoolName || formData.personalDetails.university}
+                      onChange={(e) => {
+                        updatePersonalDetail('schoolName', e.target.value);
+                        updatePersonalDetail('university', e.target.value);
+                      }}
+                      className="w-full px-3 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Grade / Field of Study</label>
+                    <input
+                      type="text"
+                      placeholder="E.g., Grade 10, Computer Science"
+                      value={formData.personalDetails.fieldOfStudy || formData.personalDetails.grade}
+                      onChange={(e) => {
+                        updatePersonalDetail('fieldOfStudy', e.target.value);
+                        updatePersonalDetail('grade', e.target.value);
+                      }}
+                      className="w-full px-3 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </>
+              )}
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Contact Number</label>
@@ -1184,7 +1376,38 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
     }
   };
 
-  if (editableSections.length === 0 || !isOpen) return null;
+  if (!isOpen) return null;
+
+  if (learnerLoading && !learner) {
+    return (
+      <AnimatePresence>
+        <motion.div
+          className={`fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 ${theme === 'dark' ? 'dark' : ''}`}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="modal-title"
+        >
+          <motion.div
+            className="bg-white dark:bg-gray-800 rounded-xl w-full max-w-md shadow-2xl overflow-hidden p-8"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.2 }}
+          >
+            <div className="flex flex-col items-center justify-center py-8">
+              <Loader2 className="w-10 h-10 text-blue-600 animate-spin mb-4" />
+              <p className="text-gray-600 dark:text-gray-400 text-sm">Loading your profile...</p>
+            </div>
+          </motion.div>
+        </motion.div>
+      </AnimatePresence>
+    );
+  }
+
+  if (editableSections.length === 0 || !learner) return null;
 
   return (
     <AnimatePresence>

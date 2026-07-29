@@ -100,13 +100,14 @@ const shouldShowOption = (optionId, {
   isCollegeLearner,
   profileData,
 }) => {
-  // Always show all options if explicitly requested (currently disabled)
   if (shouldShowAllOptions) return true;
-  
-  // Don't filter if not required
   if (!shouldFilterByGrade) return true;
 
-  // Extract numeric grade from various formats (e.g., "Grade 10", "10th", "10")
+  // When no grade level is detected, show options appropriate for learner type
+  if (!detectedGradeLevel) {
+    return isCollegeLearner ? optionId === 'college' : optionId !== 'college';
+  }
+
   const numericGrade = extractNumericGrade(learnerGrade);
   const isGrade10 = numericGrade === 10;
   const isGrade12 = numericGrade === 12;
@@ -117,38 +118,24 @@ const shouldShowOption = (optionId, {
       return detectedGradeLevel === 'middle';
 
     case 'highschool':
-      // Show for grades 9-10, but not for grade 10 learners with 6+ months
       if (detectedGradeLevel !== 'highschool') return false;
       if (isGrade10 && hasBeenInGrade6Months) return false;
       if (isGrade12 && hasBeenInGrade6Months) return false;
       return true;
 
     case 'higher_secondary':
-      // Show for grades 11-12, but not for grade 12 learners with 6+ months
       if (detectedGradeLevel !== 'higher_secondary') return false;
       if (isGrade12 && hasBeenInGrade6Months) return false;
       return true;
 
     case 'after10':
-      // Show for grade 10 learners with 6+ months
       return detectedGradeLevel === 'highschool' && isGrade10 && (monthsInGrade === null || hasBeenInGrade6Months);
 
     case 'after12':
-      // Show for grade 12 learners with 6+ months
       return detectedGradeLevel === 'higher_secondary' && isGrade12 && (monthsInGrade === null || hasBeenInGrade6Months);
 
     case 'college':
-      // Show for college learners only if they have university information
-      // Either university_college_id OR custom university name must be present
-      if (!isCollegeLearner) return false;
-      
-      // Check if university information is present
-      const hasUniversityInfo = Boolean(
-        (profileData?.university_college_id) || 
-        (profileData?.university)
-      );
-      
-      return hasUniversityInfo;
+      return isCollegeLearner;
 
     default:
       return false;
@@ -268,12 +255,11 @@ export const GradeSelectionScreen = ({
   const user = useUser();
   const [showProfileModal, setShowProfileModal] = useState(false);
 
-  // Check if learner has incomplete profile
-  // For school learners: need grade information
-  // For college learners: need university information (either ID or custom name)
-  const hasIncompleteProfile = shouldFilterByGrade && (
-    (!detectedGradeLevel && !isCollegeLearner) || // Undetermined type
-    (isCollegeLearner && !profileData?.university_college_id && !profileData?.university) // College learner without university
+  const hasUniversity = Boolean(profileData?.university);
+
+  const hasIncompleteProfile = shouldFilterByGrade && !hasUniversity && (
+    (!detectedGradeLevel && !isCollegeLearner) ||
+    (isCollegeLearner && !profileData?.university_college_id)
   );
 
   // Show loading while fetching learner grade
