@@ -185,12 +185,15 @@ export const initiateRazorpayPayment = async ({
       handler: async function (response) {
         try {
           // Verify payment signature via Worker (auth handled automatically)
-          const verificationResult = await verifyPayment({
+          const verificationResponse = await verifyPayment({
             razorpay_order_id: response.razorpay_order_id,
             razorpay_payment_id: response.razorpay_payment_id,
             razorpay_signature: response.razorpay_signature,
             plan,
           });
+
+          // apiSuccess wraps the payload at { success, data: { ... } }, so unwrap
+          const verificationResult = verificationResponse.success ? verificationResponse.data : verificationResponse;
 
           onSuccess({
             razorpay_payment_id: response.razorpay_payment_id,

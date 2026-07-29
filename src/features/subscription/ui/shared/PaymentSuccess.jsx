@@ -644,18 +644,9 @@ function PaymentSuccess() {
     }
   }, [verificationError, user, navigate]);
 
-  // Extract receipt status to avoid stale closure in useCallback
-  const receiptStatus = transactionDetails?.receipt_status;
-
   // Handle receipt download using presigned URL
   const handleDownloadReceipt = useCallback(async () => {
     try {
-      // Check if receipt is still being generated
-      if (receiptStatus === 'generating') {
-        toast('Receipt is being prepared. Please try again in a moment or check your email.', { icon: '⏳', duration: 5000 });
-        return;
-      }
-      
       // Strategy 1: Try using the receipt key/URL from payment response
       let fileIdentifier = receiptKey || receiptUrl;
       
@@ -710,7 +701,7 @@ function PaymentSuccess() {
         toast.error('Failed to download receipt. A copy has been sent to your email.');
       }
     }
-  }, [receiptKey, receiptUrl, razorpayPaymentId, userId, receiptStatus]);
+  }, [receiptKey, receiptUrl, razorpayPaymentId, userId]);
 
   // ============================================================================
   // RENDER
