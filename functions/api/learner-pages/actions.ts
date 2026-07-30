@@ -524,7 +524,9 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         if (organizationError && organizationError.code !== 'PGRST116') return apiDbError(organizationError, context.request, { startTime });
 
         return apiSuccess(
-          organization?.admin_id ? { id: null, user_id: organization.admin_id } : null,
+          organization?.admin_id 
+          ? { id: null, user_id: organization.admin_id } // id is null intentionally — callers only use user_id
+          : null,
           context.request,
           { startTime }
         );
