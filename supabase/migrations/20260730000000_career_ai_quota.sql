@@ -61,8 +61,10 @@ BEGIN
   ELSE
     INSERT INTO career_ai_conversations (learner_id, title, messages)
     VALUES (p_learner_id, p_title, p_messages)
-    ON CONFLICT (id) DO NOTHING
     RETURNING id INTO conv_id;
+    IF conv_id IS NULL THEN
+      RETURN jsonb_build_object('success', false, 'error', 'FAILED_TO_CREATE_CONVERSATION');
+    END IF;
     RETURN jsonb_build_object('success', true, 'conversation_id', conv_id);
   END IF;
 END;

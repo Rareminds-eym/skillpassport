@@ -28,8 +28,8 @@ import {
 } from 'lucide-react';
 import { streamCareerChat } from '@/features/career-assistant';
 
-import { useCareerConversations, ConversationMessage } from '@/features/career-assistant/hooks/useCareerConversations';
-import { useAIFeedback, AIFeedback } from '@/features/career-assistant/hooks/useAIFeedback';
+import { useCareerConversations, Conversation, ConversationMessage } from '@/features/career-assistant/hooks/useCareerConversations';
+import { useAIFeedback, AIFeedback, FeedbackData } from '@/features/career-assistant/hooks/useAIFeedback';
 import { ConversationSidebar } from './ConversationSidebar';
 import { EnhancedMessage, SimpleMessage } from './EnhancedMessage';
 import CareerAIToolsGrid from '@/shared/ui/CareerAIToolsGrid';
@@ -333,8 +333,8 @@ const CareerAssistantContainer: React.FC = () => {
           phase: result.phase
         } : m
       ));
-    } catch (error: any) {
-      if (error?.name === 'AbortError' || error?.message?.includes('aborted')) {
+    } catch (error: unknown) {
+      if (error instanceof Error && (error.name === 'AbortError' || error.message.includes('aborted'))) {
         if (tempMessageId) {
           setMessages(prev => prev.filter(m => m.id !== tempMessageId));
         }
@@ -351,7 +351,8 @@ const CareerAssistantContainer: React.FC = () => {
         setMessages(prev => prev.filter(m => m.id !== tempMessageId));
       }
 
-      toast.error(`Failed to save message: ${error?.message || 'Unknown error'}. Please try again.`);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      toast.error(`Failed to send message: ${errorMessage}. Please try again.`);
     } finally {
       setLoading(false);
       setIsTyping(false);
@@ -380,72 +381,38 @@ const CareerAssistantContainer: React.FC = () => {
   /**
    * Handle quick action button clicks
    */
-  const handleQuickAction = useCallback((prompt: string, label: string) => {
-    setInput(prompt);
-    setShowWelcome(false);
-    if (!selectedChips.includes(label)) {
-      setSelectedChips(prev => [...prev, label]);
-    }
-    inputRef.current?.focus();
-  }, [selectedChips]);
-
-  /**
-   * Remove a selected chip
-   */
-  const removeChip = useCallback((label: string) => {
-    setSelectedChips(prev => prev.filter(chip => chip !== label));
-  }, []);
-
-  /**
-   * Handle query from interactive elements
-   * FIX: Added handleSend to dependency array
-   */
-  const handleSendQuery = useCallback((query: string) => {
-    setInput(query);
-    setTimeout(() => handleSend(), 100);
-  }, [handleSend]);
-
-  /**
-   * Create new conversation
-   * Uses optimized hook that prevents race conditions
-   */
   const handleNewConversation = useCallback(() => {
     createNewConversation();
     newConversation();
     setSelectedChips([]);
-  }, [createNewConversation, newConversation]);
+    setLimitReached(false);
+  }, [createNewConversation, newConversation, setLimitReached]);
 
-  /**
-   * Handle feedback submission for AI responses
-   * Finds the corresponding user message for context
-   */
   const handleFeedback = useCallback(async (
-    messageId: string, 
-    thumbsUp: boolean,
-    rating?: number,
-    feedbackText?: string
+    messageId: string,
+    type: 'positive' | 'negative',
   ) => {
     if (!currentConversationId) return;
 
+    const thumbsUp = type === 'positive';
     const messageIndex = messages.findIndex(m => m.id === messageId);
     if (messageIndex === -1) return;
 
     const aiMessage = messages[messageIndex];
     const userMessage = messages.slice(0, messageIndex).reverse().find(m => m.role === 'user');
-
     if (!userMessage) return;
 
     const feedback: AIFeedback = {
       conversationId: currentConversationId,
-      messageId: messageId,
+      messageId,
       userMessage: userMessage.content,
       aiResponse: aiMessage.content,
       detectedIntent: aiMessage.intent,
       intentConfidence: aiMessage.intentConfidence,
-      conversationPhase: aiMessage.phase
+      conversationPhase: aiMessage.phase,
     };
 
-    await submitFeedback(feedback, thumbsUp, rating, feedbackText);
+    await submitFeedback(feedback, thumbsUp);
   }, [currentConversationId, messages, submitFeedback]);
 
   /**
@@ -483,7 +450,7 @@ const CareerAssistantContainer: React.FC = () => {
       scrollToBottom={scrollToBottom}
       getFeedback={getFeedback}
       isFeedbackLoading={isFeedbackLoading}
-      submitFeedback={submitFeedback}
+      submitFeedback={handleFeedback}
       onSendQuery={(query: string) => {
         setInput(query);
         setAutoSendQuery(true);
@@ -491,7 +458,7 @@ const CareerAssistantContainer: React.FC = () => {
       conversations={conversations}
       currentConversationId={currentConversationId}
       selectConversation={selectConversation}
-      newConversation={newConversation}
+      newConversation={handleNewConversation}
       deleteConversation={deleteConversation}
       conversationsLoading={conversationsLoading}
       hasMore={hasMore}
@@ -520,11 +487,11 @@ interface CareerAssistantUIProps {
   userScrolledUp: boolean;
   setUserScrolledUp: React.Dispatch<React.SetStateAction<boolean>>;
   scrollToBottom: (smooth?: boolean) => void;
-  getFeedback: (messageId: string) => any;
+  getFeedback: (messageId: string) => FeedbackData | null;
   isFeedbackLoading: (messageId: string) => boolean;
   submitFeedback: (messageId: string, type: 'positive' | 'negative') => void;
   onSendQuery: (query: string) => void;
-  conversations: any[];
+  conversations: Conversation[];
   currentConversationId: string | null;
   selectConversation: (id: string) => void;
   newConversation: () => void;

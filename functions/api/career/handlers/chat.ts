@@ -89,7 +89,7 @@ export async function handleCareerChat(request: Request, env: Record<string, str
   try {
     // ==================== FETCH CONVERSATION HISTORY ====================
     let existingMessages: StoredMessage[] = [];
-    let existingConversation: any = null;
+    let existingConversation: { messages: unknown; updated_at: string } | null = null;
 
     if (conversationId) {
       // SECURITY: Use SELECT FOR UPDATE to prevent race conditions
@@ -296,7 +296,7 @@ export async function handleCareerChat(request: Request, env: Record<string, str
                   assistantMessage += content;
                   controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
                 }
-              } catch (e) {
+              } catch {
                 /* Skip invalid JSON */
               }
             }
