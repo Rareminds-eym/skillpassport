@@ -108,6 +108,16 @@ export async function handleCareerChat(request: Request, env: Record<string, str
       existingMessages = Array.isArray(conv.messages) ? conv.messages : [];
     }
 
+    // ==================== QUOTA PRE-CHECK ====================
+    // CRITICAL: p_learner_id from middleware (userId), never from client payload
+    const { data: userMsgCount, error: countError } = await supabase
+      .rpc('count_career_ai_user_messages', { p_learner_id: learnerId });
+
+    if (!countError && userMsgCount >= 2) {
+      console.log(`[QUOTA] User ${learnerId} has reached message limit (${userMsgCount} user messages)`);
+      return apiError(403, 'QUOTA_EXCEEDED', 'You have used your 2 free messages.', request);
+    }
+
     // ==================== DETERMINE PHASE AND INTENT ====================
     const messageCount = existingMessages.length;
     const conversationPhase = getConversationPhase(messageCount);
@@ -301,6 +311,7 @@ export async function handleCareerChat(request: Request, env: Record<string, str
           console.log(`[Chat] Stream complete. Message length: ${assistantMessage.length}`);
 
           // ==================== SAVE CONVERSATION ====================
+          // CRITICAL: learnerId from middleware, never from client payload
           const assistantMessageObj: StoredMessage = {
             id: turnId,
             role: 'assistant',
@@ -308,49 +319,40 @@ export async function handleCareerChat(request: Request, env: Record<string, str
             timestamp: new Date().toISOString()
           };
 
-          const updatedMessages = [...existingMessages, userMessage, assistantMessageObj];
+          const newMessages = [userMessage, assistantMessageObj];
 
-          try {
-            if (existingConversation) {
-              // SECURITY: Optimistic locking to prevent race conditions
-              const { error: updateError } = await supabase
-                .from('career_ai_conversations')
-                .update({
-                  messages: updatedMessages,
-                  updated_at: new Date().toISOString()
-                })
-                .eq('id', conversationId)
-                .eq('updated_at', existingConversation.updated_at); // Optimistic lock
+          const { data: saveResult, error: saveError } = await supabase
+            .rpc('save_career_ai_message', {
+              p_learner_id: learnerId,
+              p_conversation_id: conversationId || null,
+              p_title: existingConversation ? '' : generateConversationTitle(processedMessage).slice(0, 255),
+              p_messages: newMessages
+            });
 
-              if (updateError) {
-                console.error('[DB ERROR] Failed to update conversation:', updateError);
-                // If update failed due to concurrent modification, log but don't fail the stream
-                if (updateError.message?.includes('0 rows')) {
-                  console.warn('[RACE CONDITION] Conversation was modified by another request');
-                }
-              }
-            } else {
-              finalConversationId = crypto.randomUUID();
-              const title = generateConversationTitle(processedMessage);
-
-              // Security: Use regular supabase client (not Admin) to enforce RLS policies
-              const { error: insertError } = await supabase
-                .from('career_ai_conversations')
-                .insert({
-                  id: finalConversationId,
-                  learner_id: learnerId,
-                  title: title.slice(0, 255),
-                  messages: updatedMessages
-                });
-
-              if (insertError) {
-                console.error('[DB ERROR] Failed to create conversation:', insertError);
-                throw insertError;
-              }
-            }
-          } catch (dbError) {
-            console.error('[DB ERROR]', dbError);
+          if (saveError) {
+            console.error('[DB ERROR] RPC call failed:', saveError);
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+              done: true,
+              error: 'DB_ERROR'
+            })}\n\n`));
+            controller.close();
+            return;
           }
+
+          if (!saveResult.success) {
+            console.warn('[QUOTA] Save rejected:', saveResult.error);
+            const errorPayload = saveResult.error === 'QUOTA_EXCEEDED'
+              ? { type: 'QUOTA_EXCEEDED', used: 2, limit: 2, remaining: 0 }
+              : 'DB_ERROR';
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+              done: true,
+              error: errorPayload
+            })}\n\n`));
+            controller.close();
+            return;
+          }
+
+          finalConversationId = saveResult.conversation_id;
 
           // ==================== SEND COMPLETION EVENT ====================
           const executionTime = Date.now() - startTime;
