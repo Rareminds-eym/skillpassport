@@ -104,24 +104,29 @@ const Communication = () => {
 
       // First try with the auth user ID
       let currentData: any = null;
-
+      try {
       const userIdResult = await apiPost<any>('/educator/actions', {
         action: 'get-school-educator-by-user-id',
         userId,
         select: 'id, school_id, first_name, last_name, email, user_id'
       });
       currentData = userIdResult?.data;
-
+      } catch(err) {
+          logger.warn('Failed to fetch educator by user ID, trying email fallback', err);
+      }
       // If not found with auth user ID, try with email
       if (!currentData) {
         logger.info('🔄 Auth user ID not found, trying with email:', user.email);
+        try {
         const emailResult = await apiPost<any>('/educator/actions', {
           action: 'get-school-educator-by-email',
           email: user.email,
           select: 'id, school_id, first_name, last_name, email, user_id'
         });
         currentData = emailResult?.data;
-
+      } catch (err) {
+        logger.warn('Failed to fetch educator by email', err);
+      }
         if (currentData) {
           logger.info('⚠️ Found educator by email but user_id mismatch:');
           logger.info('  - Auth user ID:', userId);
@@ -279,7 +284,7 @@ const Communication = () => {
       // Fallback: if no school_educators row found, get admin_id from organizations table
       if (schoolAdmins.length === 0) {
         try {
-        const orgResult = await apiPost<any>('/messaging/actions', {
+        const orgResult = await apiPost<{ success: boolean; data: { admin_id: string | null } | null; error: string | null }>('/messaging/actions', {
           action: 'fetch-organization',
           id: schoolIds[0]
         });
@@ -370,7 +375,7 @@ const Communication = () => {
       // Fallback: if no school_educators row found, get admin_id from organizations table
       if (schoolAdmins.length === 0) {
         try {
-        const orgResult = await apiPost<any>('/messaging/actions', {
+        const orgResult = await apiPost<{ success: boolean; data: { admin_id: string | null } | null; error: string | null }>('/messaging/actions', {
           action: 'fetch-organization',
           id: schoolIds[0]
         });
@@ -498,7 +503,7 @@ const Communication = () => {
 
   // Close dropdown when clicking outside
   const handleClickOutside = useCallback((event: MouseEvent) => {
-    if (tabDropdownRef.current?.contains(event.target as Node) === false) {
+    if (tabDropdownRef.current && !tabDropdownRef.current.contains(event.target as Node)) {
       setShowTabDropdown(false);
     }
   }, []);
@@ -1045,14 +1050,14 @@ const Communication = () => {
             link: `/learner/messages?tab=educators&conversation=${selectedConversationId}`
           });
         } catch (error) {
-          logger.error('Failed to send notification to learner:', error);
+          logger.error('Failed to send notification to learner:', error instanceof Error ? error : new Error(String(error)));
         }
       } else {
         // Send message to school admin using adminUserId already resolved during conversation fetch
         let adminUserId = currentChat.adminUserId;
         if (!adminUserId) {
           try {
-            const orgResult = await apiPost<any>('/messaging/actions', {
+            const orgResult = await apiPost<{ success: boolean; data: { admin_id: string | null } | null; error: string | null }>('/messaging/actions', {
               action: 'fetch-organization',
               id: currentChat.schoolId
             });

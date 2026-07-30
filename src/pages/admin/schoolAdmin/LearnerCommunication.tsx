@@ -103,7 +103,10 @@ const LearnerCommunication = () => {
         const response = await apiPost<{ success: boolean; data: { schoolId: string } }>('/school-admin/actions', {
           action: 'fetchCommunicationSchoolData'
         });
-
+        if (!response?.success || !response?.data?.schoolId) {
+           logger.warn('No school ID found', { success: response?.success });
+           return null;
+        }
         const schoolId = response?.data?.schoolId;
 
         if (schoolId) {
@@ -126,7 +129,7 @@ const LearnerCommunication = () => {
   logger.info('Final school ID for queries', { schoolId });
 
   // Fetch active conversations with learners
-  const { data: activelearnerConversations = [], isLoading: loadingActivelearners, refetch: refetchActivelearners } = useQuery({
+  const { data: activelearnerConversations = [], isLoading: loadingActivelearners, isError: errorActivelearners, refetch: refetchActivelearners } = useQuery({
     queryKey: queryKeys.learner.conversations.byLearner(schoolId, 'active'),
     queryFn: async () => {
       if (!schoolId) return [];
@@ -150,7 +153,7 @@ const LearnerCommunication = () => {
   });
 
   // Fetch archived learner conversations
-  const { data: archivedlearnerConversations = [], isLoading: loadingArchivedlearners, refetch: refetchArchivedlearners } = useQuery({
+  const { data: archivedlearnerConversations = [], isLoading: loadingArchivedlearners, isError: errorArchivedlearners, refetch: refetchArchivedlearners } = useQuery({
     queryKey: queryKeys.learner.conversations.byLearner(schoolId, 'archived'),
     queryFn: async () => {
       if (!schoolId) return [];
@@ -174,7 +177,7 @@ const LearnerCommunication = () => {
   });
 
   // Fetch active educator conversations
-  const { data: activeEducatorConversations = [], isLoading: loadingActiveEducators, refetch: refetchActiveEducators } = useQuery({
+  const { data: activeEducatorConversations = [], isLoading: loadingActiveEducators, isError: errorActiveEducators, refetch: refetchActiveEducators } = useQuery({
     queryKey: queryKeys.educator.conversations.byEducator(schoolId, 'active'),
     queryFn: async () => {
       logger.info('Fetching active educator conversations', { schoolId });
@@ -206,7 +209,7 @@ const LearnerCommunication = () => {
   });
 
   // Fetch archived educator conversations
-  const { data: archivedEducatorConversations = [], isLoading: loadingArchivedEducators, refetch: refetchArchivedEducators } = useQuery({
+  const { data: archivedEducatorConversations = [], isLoading: loadingArchivedEducators, isError: errorArchivedEducators, refetch: refetchArchivedEducators } = useQuery({
     queryKey: queryKeys.educator.conversations.byEducator(schoolId, 'archived'),
     queryFn: async () => {
       logger.info('Fetching archived educator conversations', { schoolId });
@@ -245,6 +248,10 @@ const LearnerCommunication = () => {
   const loadingConversations = activeTab === 'learners'
     ? (showArchived ? loadingArchivedlearners : loadingActivelearners)
     : (showArchived ? loadingArchivedEducators : loadingActiveEducators);
+
+  const hasConversationError = activeTab === 'learners'
+    ? (showArchived ? errorArchivedlearners : errorActivelearners)
+    : (showArchived ? errorArchivedEducators : errorActiveEducators);
 
   const refetchConversations = activeTab === 'learners'
     ? (showArchived ? refetchArchivedlearners : refetchActivelearners)
@@ -342,7 +349,7 @@ const LearnerCommunication = () => {
 
   // Close dropdown when clicking outside
   const handleClickOutside = useCallback((event: MouseEvent) => {
-    if (tabDropdownRef.current?.contains(event.target as Node) === false) {
+    if (tabDropdownRef.current && !tabDropdownRef.current.contains(event.target as Node)) {
       setShowTabDropdown(false);
     }
   }, []);
@@ -912,8 +919,7 @@ const LearnerCommunication = () => {
     [filteredContacts, selectedConversationId]
   );
 
-  const handleSendMessage = useCallback(async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const sendMessageContent = useCallback(async () => {
     if (!messageInput.trim() || !currentChat || !schoolAdminId || !selectedConversationId) return;
 
     try {
@@ -995,6 +1001,11 @@ const LearnerCommunication = () => {
       logger.error('Error sending message', error as Error);
     }
   }, [messageInput, currentChat, schoolAdminId, sendMessage, sendNotification, selectedConversationId, setTyping, activeTab]);
+
+  const handleSendMessage = useCallback((e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    sendMessageContent();
+  }, [sendMessageContent]);
 
   // Handle typing in input
   const handleInputChange = useCallback((value: string) => {
@@ -1270,6 +1281,17 @@ const LearnerCommunication = () => {
               {loadingConversations || isTabSwitching ? (
                 <div className="flex items-center justify-center h-full">
                   <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : hasConversationError ? (
+                <div className="flex flex-col items-center justify-center h-full p-6 text-center">
+                  <p className="text-red-500 text-sm font-medium">Failed to load conversations</p>
+                  <button
+                    type="button"
+                    onClick={() => refetchConversations()}
+                    className="mt-2 text-blue-600 text-xs underline"
+                  >
+                    Try again
+                  </button>
                 </div>
               ) : filteredContacts.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full p-6 text-center">
@@ -1553,7 +1575,7 @@ const LearnerCommunication = () => {
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' && !e.shiftKey) {
                             e.preventDefault();
-                            handleSendMessage(e);
+                            sendMessageContent();
                           }
                         }}
                         placeholder={`Type your message to ${activeTab === 'learners' ? 'learner' : 'educator'}...`}
