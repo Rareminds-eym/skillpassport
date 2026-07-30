@@ -38,7 +38,6 @@ interface GenerateEmbeddingParams {
  */
 export async function sendCareerChatMessage(
   { conversationId, message, selectedChips = [] }: CareerChatParams,
-  token: string,
   onToken?: (content: string) => void,
   onDone?: (data: unknown) => void,
   onError?: (error: Error) => void,
@@ -96,10 +95,10 @@ export async function sendCareerChatMessage(
             // Handle different event types based on data structure
             if (data.content) {
               onToken?.(data.content);
+            } else if (data.error) {
+              onError?.(new Error(typeof data.error === 'string' ? data.error : data.error.type || data.error.message || 'Unknown error'));
             } else if (data.done || data.conversationId || data.messageId || data.intent) {
               onDone?.(data);
-            } else if (data.error) {
-              onError?.(new Error(typeof data.error === 'string' ? data.error : data.error.message || 'Unknown error'));
             }
           } catch (parseError) {
             logger.warn('Failed to parse career chat SSE data', {
