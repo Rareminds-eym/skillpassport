@@ -299,7 +299,7 @@ const LearnerCommunication = () => {
   }, [schoolAdminId, schoolAdminName, schoolId, isUserOnlineGlobal, globalOnlineUsers]);
 
   // Presence tracking for current conversation
-  const { } = useRealtimePresence({
+  useRealtimePresence({
     channelName: selectedConversationId ? `conversation:${selectedConversationId}` : 'none',
     userPresence: {
       userId: schoolAdminId || '',
@@ -342,7 +342,7 @@ const LearnerCommunication = () => {
 
   // Close dropdown when clicking outside
   const handleClickOutside = useCallback((event: MouseEvent) => {
-    if (!tabDropdownRef.current?.contains(event.target as Node)) {
+    if (tabDropdownRef.current?.contains(event.target as Node) === false) {
       setShowTabDropdown(false);
     }
   }, []);
@@ -377,7 +377,7 @@ const LearnerCommunication = () => {
           fetchPromise = refetchActiveEducators();
         }
 
-        let timer;
+        let timer: ReturnType<typeof setTimeout> | undefined;
         fetchPromise.finally(() => {
           timer = setTimeout(() => setIsTabSwitching(false), 300);
         });
@@ -557,6 +557,10 @@ const LearnerCommunication = () => {
       }
       await MessageService.restoreConversation(conversationId, schoolAdminId, 'school_admin');
       return { conversationId };
+    },
+    onError: (error) => {
+      logger.error('Failed to restore conversation', error as Error);
+      toast.error('Failed to restore conversation');
     },
     onSuccess: () => {
       toast.success('Conversation restored');
@@ -929,12 +933,12 @@ const LearnerCommunication = () => {
         try {
           await sendNotification(currentChat.learnerId, {
             title: 'New Message from School Admin',
-            message: messageInput.length > 50 ?`${messageInput.substring(0, 50)}...` : messageInput,
+            message: messageInput.length > 50 ? `${messageInput.substring(0, 50)}...` : messageInput,
             type: 'message',
             link: `/learner/messages?tab=admin&conversation=${selectedConversationId}`
           });
         } catch (notifError) {
-          // Silent fail
+          logger.warn('Failed to send notification to learner', notifError);
         }
       } else {
         // Send message to educator
@@ -971,12 +975,12 @@ const LearnerCommunication = () => {
           try {
             await sendNotification(educatorResponse.data.user_id, {
               title: 'New Message from School Admin',
-              message: messageInput.length > 50 ?`${messageInput.substring(0, 50)}...` : messageInput,
+              message: messageInput.length > 50 ? `${messageInput.substring(0, 50)}...` : messageInput,
               type: 'message',
               link: `/educator/communication?tab=admin&conversation=${selectedConversationId}`
             });
           } catch (notifError) {
-            // Silent fail
+            logger.warn('Failed to send notification to educator', notifError);
           }
         } catch (error) {
           logger.error('Error getting educator user ID', error);
