@@ -14,7 +14,8 @@ import { useLocation } from 'react-router-dom';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('career-assistant-ui');
-import { 
+import toast from 'react-hot-toast';
+import {
   Send,
   Mic,
   Paperclip,
@@ -22,7 +23,8 @@ import {
   ArrowDown,
   Square,
   PanelLeftClose,
-  PanelLeft
+  PanelLeft,
+  AlertCircle
 } from 'lucide-react';
 import { streamCareerChat } from '@/features/career-assistant';
 
@@ -31,6 +33,7 @@ import { useAIFeedback, AIFeedback } from '@/features/career-assistant/hooks/use
 import { ConversationSidebar } from './ConversationSidebar';
 import { EnhancedMessage, SimpleMessage } from './EnhancedMessage';
 import CareerAIToolsGrid from '@/shared/ui/CareerAIToolsGrid';
+import { Card } from '@/shared/ui';
 
 // Import optimized hooks
 import { useOptimizedMessages, Message } from '@/features/career-assistant/hooks/useOptimizedMessages';
@@ -110,6 +113,7 @@ const CareerAssistantContainer: React.FC = () => {
   const [selectedChips, setSelectedChips] = useState<string[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [autoSendQuery, setAutoSendQuery] = useState(false);
+  const [limitReached, setLimitReached] = useState(false);
   
   // Sidebar state - collapsed on mobile by default
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
@@ -126,6 +130,7 @@ const CareerAssistantContainer: React.FC = () => {
   const userInteractedRef = useRef(false);
   const abortControllerRef = useRef<AbortController | null>(null);
   const lastSendTimeRef = useRef<number>(0); // Rate limiting
+  const userMsgIdRef = useRef<string | null>(null);
 
   // Conversation switching with race condition prevention
   const {
@@ -240,6 +245,7 @@ const CareerAssistantContainer: React.FC = () => {
     };
 
     setMessages(prev => [...prev, userMessage]);
+    userMsgIdRef.current = userMessage.id;
     const userInput = trimmedInput;
     setInput('');
     setLoading(true);
@@ -294,9 +300,17 @@ const CareerAssistantContainer: React.FC = () => {
       );
       
       if (!result.success && result.error) {
-        // Remove the empty loading message before showing error
         setMessages(prev => prev.filter(m => m.id !== id));
-        tempMessageId = null; // Clear since we removed it
+        tempMessageId = null;
+        const isQuota = typeof result.error === 'string'
+          ? result.error === 'QUOTA_EXCEEDED' || result.error.startsWith('QUOTA_EXCEEDED:')
+          : result.error?.type === 'QUOTA_EXCEEDED';
+        if (isQuota) {
+          setMessages(prev => prev.filter(m => m.id !== userMsgIdRef.current));
+          userMsgIdRef.current = null;
+          setLimitReached(true);
+          return;
+        }
         throw new Error(result.error);
       }
 
@@ -320,9 +334,7 @@ const CareerAssistantContainer: React.FC = () => {
         } : m
       ));
     } catch (error: any) {
-      // Check if error is from abort (user stopped generation)
       if (error?.name === 'AbortError' || error?.message?.includes('aborted')) {
-        // Remove any temporary loading message
         if (tempMessageId) {
           setMessages(prev => prev.filter(m => m.id !== tempMessageId));
         }
@@ -334,20 +346,12 @@ const CareerAssistantContainer: React.FC = () => {
         conversationId: currentConversationId,
         inputLength: userInput?.length
       });
-      
-      // Remove temporary loading message if it still exists
+
       if (tempMessageId) {
         setMessages(prev => prev.filter(m => m.id !== tempMessageId));
       }
-      
-      const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: `I'm sorry, I encountered an error: ${error?.message || 'Unknown error'}. Please try again!`,
-        timestamp: new Date().toISOString()
-      };
-      
-      setMessages(prev => [...prev, errorMessage]);
+
+      toast.error(`Failed to save message: ${error?.message || 'Unknown error'}. Please try again.`);
     } finally {
       setLoading(false);
       setIsTyping(false);
@@ -459,6 +463,7 @@ const CareerAssistantContainer: React.FC = () => {
   return (
     <CareerAssistantUI
       showWelcome={showWelcome}
+      limitReached={limitReached}
       selectedChips={selectedChips}
       setSelectedChips={setSelectedChips}
       sidebarCollapsed={sidebarCollapsed}
@@ -497,6 +502,7 @@ const CareerAssistantContainer: React.FC = () => {
 
 interface CareerAssistantUIProps {
   showWelcome: boolean;
+  limitReached: boolean;
   selectedChips: string[];
   setSelectedChips: React.Dispatch<React.SetStateAction<string[]>>;
   sidebarCollapsed: boolean;
@@ -534,6 +540,7 @@ interface CareerAssistantUIProps {
  */
 const CareerAssistantUI: React.FC<CareerAssistantUIProps> = ({
   showWelcome,
+  limitReached,
   selectedChips,
   setSelectedChips,
   sidebarCollapsed,
@@ -699,6 +706,29 @@ const CareerAssistantUI: React.FC<CareerAssistantUIProps> = ({
               <div ref={messagesEndRef} />
             </div>
           )}
+
+          {limitReached && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, ease: 'easeOut' }}
+              className="mx-auto max-w-4xl mt-4"
+            >
+              <Card variant="orange" className="p-4">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-amber-500 mt-0.5 shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-amber-900">
+                      You've used your 2 free messages
+                    </p>
+                    <p className="text-sm text-amber-700 mt-0.5">
+                      Start a new conversation or contact support for more.
+                    </p>
+                  </div>
+                </div>
+              </Card>
+            </motion.div>
+          )}
         </div>
 
 
@@ -794,8 +824,8 @@ const CareerAssistantUI: React.FC<CareerAssistantUIProps> = ({
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && onSendMessage()}
-                placeholder={showWelcome ? "Ask me anything about your career..." : "Type your message..."}
-                disabled={loading || isTyping}
+                placeholder={limitReached ? "Message limit reached" : (showWelcome ? "Ask me anything about your career..." : "Type your message...")}
+                disabled={loading || isTyping || limitReached}
                 className="w-full px-5 py-4 pr-32 text-gray-900 placeholder-gray-500 bg-gray-50 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed transition-all"
               />
               
@@ -808,7 +838,7 @@ const CareerAssistantUI: React.FC<CareerAssistantUIProps> = ({
                 </button>
                 <button
                   onClick={onSendMessage}
-                  disabled={loading || isTyping || !input.trim()}
+                  disabled={loading || isTyping || !input.trim() || limitReached}
                   className="p-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 disabled:bg-gray-300 disabled:cursor-not-allowed transition-all"
                   title="Send message"
                 >
