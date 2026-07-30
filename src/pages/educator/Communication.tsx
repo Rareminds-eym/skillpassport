@@ -278,6 +278,7 @@ const Communication = () => {
 
       // Fallback: if no school_educators row found, get admin_id from organizations table
       if (schoolAdmins.length === 0) {
+        try {
         const orgResult = await apiPost<any>('/messaging/actions', {
           action: 'fetch-organization',
           id: schoolIds[0]
@@ -285,6 +286,9 @@ const Communication = () => {
         const orgAdminId = orgResult?.data?.admin_id;
         if (orgAdminId) {
           schoolAdmins = [{ school_id: schoolIds[0], user_id: orgAdminId }];
+        }
+        } catch (err) {
+          logger.warn('Could not fetch organization admin for online status — conversations will load without admin presence', { schoolId: schoolIds[0], err });
         }
       }
 
@@ -365,6 +369,7 @@ const Communication = () => {
 
       // Fallback: if no school_educators row found, get admin_id from organizations table
       if (schoolAdmins.length === 0) {
+        try {
         const orgResult = await apiPost<any>('/messaging/actions', {
           action: 'fetch-organization',
           id: schoolIds[0]
@@ -372,6 +377,9 @@ const Communication = () => {
         const orgAdminId = orgResult?.data?.admin_id;
         if (orgAdminId) {
           schoolAdmins = [{ school_id: schoolIds[0], user_id: orgAdminId }];
+        }
+        } catch (err) {
+          logger.warn('Could not fetch organization admin for online status — conversations will load without admin presence', { schoolId: schoolIds[0], err });
         }
       }
 
@@ -460,7 +468,7 @@ const Communication = () => {
     currentUserName: educatorName
   });
   // Presence tracking for current conversation
-  const { } = useRealtimePresence({
+  useRealtimePresence({
     channelName: selectedConversationId ? `conversation:${selectedConversationId}` : 'none',
     userPresence: {
       userId: userAuthId || '',
@@ -490,7 +498,7 @@ const Communication = () => {
 
   // Close dropdown when clicking outside
   const handleClickOutside = useCallback((event: MouseEvent) => {
-    if (!tabDropdownRef.current?.contains(event.target as Node)) {
+    if (tabDropdownRef.current?.contains(event.target as Node) === false) {
       setShowTabDropdown(false);
     }
   }, []);
@@ -525,7 +533,7 @@ const Communication = () => {
           fetchPromise = refetchActiveAdmin();
         }
 
-        let timer;
+        let timer: ReturnType<typeof setTimeout> | undefined;
         fetchPromise.finally(() => {
           timer = setTimeout(() => setIsTabSwitching(false), 300);
         });
@@ -833,6 +841,10 @@ const Communication = () => {
       await restoreConversation(conversationId);
       return { conversationId };
     },
+    onError: (error) => {
+      logger.error('Failed to restore conversation', error as Error);
+      toast.error('Failed to restore conversation');
+    },
     onSuccess: () => {
       toast.success('Conversation restored');
       refetchConversations();
@@ -1037,9 +1049,21 @@ const Communication = () => {
         }
       } else {
         // Send message to school admin using adminUserId already resolved during conversation fetch
-        const adminUserId = currentChat.adminUserId;
+        let adminUserId = currentChat.adminUserId;
+        if (!adminUserId) {
+          try {
+            const orgResult = await apiPost<any>('/messaging/actions', {
+              action: 'fetch-organization',
+              id: currentChat.schoolId
+            });
+            adminUserId = orgResult?.data?.admin_id;
+          } catch (err) {
+            logger.error('Failed to resolve school admin at send time', err);
+          }
+        }
 
         if (!adminUserId) {
+          logger.error('Admin user ID not available for conversation:', { conversationId: currentChat?.id });
           toast.error('Could not find school admin');
           return;
         }
