@@ -511,7 +511,23 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           .limit(1)
           .maybeSingle();
         if (error && error.code !== 'PGRST116') return apiDbError(error, context.request, { startTime });
-        return apiSuccess(data || null, context.request, { startTime });
+        if (data?.user_id) {
+          return apiSuccess(data, context.request, { startTime });
+        }
+
+        const { data: organization, error: organizationError } = await supabase
+          .from('organizations')
+          .select('admin_id')
+          .eq('id', schoolId)
+          .eq('organization_type', 'school')
+          .maybeSingle();
+        if (organizationError && organizationError.code !== 'PGRST116') return apiDbError(organizationError, context.request, { startTime });
+
+        return apiSuccess(
+          organization?.admin_id ? { id: null, user_id: organization.admin_id } : null,
+          context.request,
+          { startTime }
+        );
       }
 
       case 'fetch-college-admin': {
