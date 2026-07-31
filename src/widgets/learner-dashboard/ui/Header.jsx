@@ -21,6 +21,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import { useNotifications } from '@/features/notifications';
+import { navigateToLTE } from '@/features/auth/lib';
 import { useLearnerDataByEmail } from '@/entities/learner';
 import { isLearner } from '@/entities/learner/lib/learnerType';
 import DigitalPortfolioSideDrawer from "./DigitalPortfolioSideDrawer";
@@ -29,13 +30,14 @@ import NavButton from "./NavButton";
 import { PROFILE_MENU_ITEMS } from "../config/profileMenuItems";
 
 import { useUser, useAuthActions } from '@/shared/model/authStore';
-import { useSubscriptionContext } from '@/features/subscription/model/subscriptionStore';
+import { useSubscriptionQuery } from '@/features/subscription/model/useSubscriptionQuery';
 import { checkFeatureAccess } from '@/features/subscription/lib/featureGating';
 import { PLAN_IDS } from '@/shared/config/subscriptionPlans';
 const ICON_MAP = {
   BookmarkIcon,
   Cog6ToothIcon,
-  ArrowRightOnRectangleIcon
+  ArrowRightOnRectangleIcon,
+  RocketLaunchIcon
 };
 
 const Header = ({ activeTab }) => {
@@ -44,10 +46,12 @@ const Header = ({ activeTab }) => {
   const [sideDrawerOpen, setSideDrawerOpen] = useState(false);
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
   const [showFreemiumBanner, setShowFreemiumBanner] = useState(true);
+  const [isHeaderVisible, setIsHeaderVisible] = useState(true);
+  const [lastScrollY, setLastScrollY] = useState(0);
   const navigate = useNavigate();
   const location = useLocation();
   const user = useUser();
-  const { logout } = useAuthActions();
+  const { logout, showErrorNotification } = useAuthActions();
   const notificationRef = useRef(null);
   const profileRef = useRef(null);
 
@@ -62,9 +66,8 @@ const Header = ({ activeTab }) => {
   const isPartOfSchoolOrCollege = !learnerDataLoading && (learnerData?.school_id || learnerData?.university_college_id) && !isLearner(learnerData);
 
   // Get subscription data for feature gating
-  const subscriptionContext = useSubscriptionContext();
-  const subscription = subscriptionContext?.subscription;
-  const userPlan = subscription?.plan || PLAN_IDS.FREEMIUM;
+  const { subscriptionData } = useSubscriptionQuery();
+  const userPlan = subscriptionData?.plan || PLAN_IDS.FREEMIUM;
   const isFreemium = userPlan === PLAN_IDS.FREEMIUM;
 
   // Map navigation items to feature keys
@@ -140,14 +143,63 @@ const Header = ({ activeTab }) => {
     setMobileMenuOpen(false);
   }, [navigate]);
 
-  const handleLogout = useCallback(() => {
-    logout();
-    navigate("/login");
+  const handleLogout = useCallback(async () => {
+    try {
+      await logout();
+    } finally {
+      // Always redirect to login, even if server-side revocation fails
+      navigate("/login");
+    }
   }, [logout, navigate]);
+
+  const handleGoToLTE = useCallback(async () => {
+    try {
+      await navigateToLTE();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to start LTE session';
+      showErrorNotification({
+        title: 'LTE access failed',
+        message,
+        type: 'error'
+      });
+    }
+  }, [showErrorNotification]);
 
   useEffect(() => {
     setMobileMenuOpen(false);
   }, [location.pathname]);
+
+  // Scroll behavior: Hide on scroll down, show on scroll up or at top
+  useEffect(() => {
+    const controlNavbar = () => {
+      const currentScrollY = window.scrollY;
+
+      // Always show navbar at the top (within 10px threshold)
+      if (currentScrollY < 10) {
+        setIsHeaderVisible(true);
+      } 
+      // Show navbar when scrolling up
+      else if (currentScrollY < lastScrollY) {
+        setIsHeaderVisible(true);
+      } 
+      // Hide navbar when scrolling down (and not at top)
+      else if (currentScrollY > lastScrollY && currentScrollY > 10) {
+        setIsHeaderVisible(false);
+        // Close any open modals when hiding
+        setActiveModal(null);
+      }
+
+      setLastScrollY(currentScrollY);
+    };
+
+    // Add scroll event listener
+    window.addEventListener('scroll', controlNavbar);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener('scroll', controlNavbar);
+    };
+  }, [lastScrollY]);
 
   // Don't render header on assessment result page
   if (isAssessmentResultRoute) {
@@ -180,7 +232,13 @@ const Header = ({ activeTab }) => {
         </div>
       )}
 
-      <header className={`bg-white border-b border-gray-200 shadow-sm sticky z-50 ${isFreemium && showFreemiumBanner ? 'top-[30px]' : 'top-0'}`}>
+      <header 
+        className={`bg-white border-b border-gray-200 shadow-sm sticky z-50 transition-transform duration-300 ease-in-out ${
+          isFreemium && showFreemiumBanner ? 'top-[30px]' : 'top-0'
+        } ${
+          isHeaderVisible ? 'translate-y-0' : '-translate-y-full'
+        }`}
+      >
         <div className="w-full">
           <div className="flex items-center justify-between h-14 sm:h-16 px-3 sm:px-4 md:px-6 lg:px-8">
 
@@ -262,6 +320,8 @@ const Header = ({ activeTab }) => {
                               onClick={() => {
                                 if (item.id === 'logout') {
                                   handleLogout();
+                                } else if (item.id === 'go-to-lte') {
+                                  handleGoToLTE();
                                 } else {
                                   navigate(item.path);
                                   setActiveModal(null);

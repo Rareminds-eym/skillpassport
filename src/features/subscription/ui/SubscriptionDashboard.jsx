@@ -34,6 +34,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { entitlementService } from '@/features/subscription';
 
 import { useSubscription } from '@/features/subscription/model/subscriptionStore';
+import { useSubscriptionQuery } from '@/features/subscription/model/useSubscriptionQuery';
 /**
  * Get the base path for subscription routes based on current location
  */
@@ -55,7 +56,6 @@ export function SubscriptionDashboard({ className = '', subscriptionData: propSu
   const location = useLocation();
   const basePath = getSubscriptionBasePath(location.pathname);
   const {
-    subscription,
     userEntitlements,
     activeEntitlements,
     totalAddOnCost,
@@ -64,9 +64,10 @@ export function SubscriptionDashboard({ className = '', subscriptionData: propSu
     cancelAddOn,
     isCancelling
   } = useSubscription();
+  const { subscriptionData: rqSubscriptionData } = useSubscriptionQuery();
 
-  // Use prop subscriptionData if provided (from Zustand store), otherwise fall back to context
-  const subscriptionData = propSubscriptionData || subscription;
+  // Use prop subscriptionData if provided, otherwise fall back to React Query
+  const subscriptionData = propSubscriptionData || rqSubscriptionData;
 
   const [cancellingId, setCancellingId] = useState(null);
   const [togglingId, setTogglingId] = useState(null);

@@ -12,10 +12,10 @@
 
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getContextUser } from '../../../lib/auth';
-import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../lib/paymentBinding';
-import { getServiceClient } from '../../../lib/supabase';
 import { createLogger } from '../../../lib/logger';
-import { apiSuccess, apiError } from '../../../lib/response';
+import { apiError, apiSuccess } from '../../../lib/response';
+import { getServiceClient } from '../../../lib/supabase';
+import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../lib/paymentBinding';
 
 const logger = createLogger('payments:create-bundle-order');
 
@@ -55,8 +55,8 @@ export async function handleCreateBundleOrder(context: AuthenticatedContext): Pr
 
     // DB stores prices in rupees (3558.40 = ₹3,558.40); Razorpay expects paise
     const amount = Math.round((body.billing_period === 'annual'
-      ? parseFloat(bundle.annual_price)
-      : parseFloat(bundle.monthly_price)) * 100);
+      ? safeParseFloat(bundle.annual_price, 0)
+      : safeParseFloat(bundle.monthly_price, 0)) * 100);
 
     if (typeof amount !== 'number' || amount <= 0) {
       logger.error('Invalid bundle price', { bundle_id: body.bundle_id, amount });
@@ -71,6 +71,7 @@ export async function handleCreateBundleOrder(context: AuthenticatedContext): Pr
         bundle_id: body.bundle_id as string,
         bundle_name: bundle.name,
         user_id: user.id,
+        billing_period: body.billing_period as string,
         type: 'bundle',
       },
     });

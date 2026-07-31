@@ -33,7 +33,7 @@ export interface OrganizationProfile {
 
 export interface CompanyVerification {
     organization_id: string;
-    registration_number?: string;
+    cin_business_reg_no?: string;
     gst_number?: string;
     tax_identification_number?: string;
     incorporation_date?: string;

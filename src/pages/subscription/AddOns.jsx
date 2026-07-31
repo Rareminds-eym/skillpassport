@@ -24,7 +24,6 @@ function getSubscriptionBasePath(pathname) {
   if (pathname.startsWith('/college-admin')) return '/college-admin';
   if (pathname.startsWith('/school-admin')) return '/school-admin';
   if (pathname.startsWith('/university-admin')) return '/university-admin';
-  if (pathname.startsWith('/admin')) return '/admin';
   return ''; // fallback to root
 }
 
@@ -38,7 +37,6 @@ function getUserTypeFromUrl(pathname) {
   if (pathname.startsWith('/college-admin')) return 'college_admin';
   if (pathname.startsWith('/school-admin')) return 'school_admin';
   if (pathname.startsWith('/university-admin')) return 'university_admin';
-  if (pathname.startsWith('/admin')) return 'admin';
   return 'learner'; // fallback
 }
 
@@ -52,7 +50,6 @@ function getSettingsPathFromUrl(pathname) {
   if (pathname.startsWith('/college-admin')) return '/college-admin/settings';
   if (pathname.startsWith('/school-admin')) return '/school-admin/settings';
   if (pathname.startsWith('/university-admin')) return '/university-admin/settings';
-  if (pathname.startsWith('/admin')) return '/admin/settings';
   return '/learner/settings'; // fallback
 }
 

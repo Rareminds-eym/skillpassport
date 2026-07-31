@@ -20,7 +20,7 @@ const logger = getLogger('token-refresh-service');
 const ACCESS_TOKEN_LIFETIME_MS = 15 * 60 * 1000; // 15 minutes
 const REFRESH_THRESHOLD = 0.8; // Refresh at 80% of lifetime (12 minutes)
 const REFRESH_INTERVAL_MS = ACCESS_TOKEN_LIFETIME_MS * REFRESH_THRESHOLD;
-const MAX_CONSECUTIVE_FAILURES = 5; // Stop after 5 consecutive transient failures
+const MAX_CONSECUTIVE_FAILURES = 10; // Stop after 10 consecutive transient failures
 
 class TokenRefreshService {
   private refreshTimer: ReturnType<typeof setTimeout> | null = null;
@@ -89,13 +89,17 @@ class TokenRefreshService {
       clearTimeout(this.refreshTimer);
     }
 
+    // Add ±15 seconds of random jitter to mitigate cross-tab refresh racing
+    const jitter = Math.random() * 30000 - 15000;
+    const nextInterval = REFRESH_INTERVAL_MS + jitter;
+
     // Schedule the next refresh
     this.refreshTimer = setTimeout(async () => {
       await this.performRefresh();
-    }, REFRESH_INTERVAL_MS);
+    }, nextInterval);
 
     logger.debug('Next token refresh scheduled', {
-      nextRefreshIn: `${REFRESH_INTERVAL_MS / 1000}s`,
+      nextRefreshIn: `${nextInterval / 1000}s (including jitter)`,
     });
   }
 
@@ -138,11 +142,7 @@ class TokenRefreshService {
         if (this.consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
           logger.error('Max consecutive refresh failures reached, stopping service', errorObj);
           this.stop();
-          // Session is likely expired or network is completely down.
-          // Trigger logout so the application surfaces the session expiration.
-          ssoClient.logout().catch((err: Error) => {
-             logger.error('Failed to trigger session expiration after max refresh failures', err);
-          });
+          // The auth-client will natively trigger LOGOUT if it decides the session is truly dead.
           return false;
         }
 

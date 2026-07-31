@@ -18,7 +18,8 @@ import {
 } from '@heroicons/react/24/outline';
 import { CheckIcon } from '@heroicons/react/24/solid';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
-import { MessageService, Conversation } from '@/features/messaging';
+import MessageService from '@/shared/api/messageService';
+import type { Conversation } from '@/features/messaging';
 import { useAdminMessages } from '@/features/messaging';
 import { formatDistanceToNow } from 'date-fns';
 import { useRealtimePresence } from '@/shared/lib/hooks';
@@ -27,7 +28,7 @@ import { useNotificationBroadcast } from '@/features/broadcast';
 import { DeleteConversationModal } from '@/features/messaging';
 import { NewLearnerConversationModal } from '@/features/messaging';
 import { NewSchoolAdminEducatorConversationModal } from '@/features/messaging';
-
+import { apiPost } from '@/shared/api/apiClient';
 
 import { queryKeys } from '@/shared/lib/queryKeys';
 import { useUser } from '@/shared/model/authStore';
@@ -77,7 +78,7 @@ const LearnerCommunication = () => {
     targetlearnerEmail?: string;
   } | null;
 
-  // Get school ID for the current admin - use maybeSingle() to avoid 406 error
+  // Get school ID for the current admin via API
   const { data: schoolData } = useQuery({
     queryKey: ['school-admin-school', schoolAdminId],
     queryFn: async () => {
@@ -88,45 +89,22 @@ const LearnerCommunication = () => {
         return null;
       }
 
-      // First try school_educators table
-      logger.info('Querying school_educators table');
-      const { data, error } = await supabase
-        .from('school_educators')
-        .select('school_id')
-        .eq('user_id', schoolAdminId)
-        .eq('role', 'school_admin')
-        .maybeSingle();
+      try {
+        const response = await apiPost<{ schoolId: string }>('/school-admin/actions', {
+          action: 'fetchCommunicationSchoolData'
+        });
 
-      logger.info('School educators query result', { hasData: !!data, error });
-
-      if (data?.school_id) {
-        logger.info('Found school ID in school_educators', { schoolId: data.school_id });
-        return { school_id: data.school_id };
-      }
-
-      // Fallback: Check organizations table for school admins
-      logger.info('Trying fallback: organizations table');
-      const { data: { user } } = { data: { user: useAuthStore.getState().user } };
-      logger.info('Current user', { userId: user?.id, email: user?.email });
-
-      if (user) {
-        const { data: org, error: orgError } = await supabase
-          .from('organizations')
-          .select('id, name')
-          .eq('organization_type', 'school')
-          .or(`admin_id.eq.${user.id},email.eq.${user.email}`)
-          .maybeSingle();
-
-        logger.info('Organizations query result', { hasOrg: !!org, orgError });
-
-        if (org?.id) {
-          logger.info('Found school ID in organizations', { schoolId: org.id });
-          return { school_id: org.id };
+        if (response?.schoolId) {
+          logger.info('Found school ID', { schoolId: response.schoolId });
+          return { school_id: response.schoolId };
         }
-      }
 
-      logger.warn('No school ID found in any table');
-      return null;
+        logger.warn('No school ID found');
+        return null;
+      } catch (error) {
+        logger.error('Error fetching school ID', error);
+        throw error;
+      }
     },
     enabled: !!schoolAdminId,
   });
@@ -135,24 +113,21 @@ const LearnerCommunication = () => {
 
   logger.info('Final school ID for queries', { schoolId });
 
-  // Fetch active conversations with learners using the same pattern as educator
+  // Fetch active conversations with learners
   const { data: activelearnerConversations = [], isLoading: loadingActivelearners, refetch: refetchActivelearners } = useQuery({
     queryKey: queryKeys.learner.conversations.byLearner(schoolId, 'active'),
     queryFn: async () => {
       if (!schoolId) return [];
-      const { data, error } = await supabase
-        .from('conversations')
-        .select(`
-          *,
-          learner:learners(id, name, email, school_id, university, branch_field)
-        `)
-        .eq('school_id', schoolId)
-        .eq('conversation_type', 'learner_admin')
-        .eq('deleted_by_admin', false)
-        .order('last_message_at', { ascending: false, nullsFirst: false });
-
-      if (error) throw error;
-      return data || [];
+      try {
+        const response = await apiPost<any>('/school-admin/actions', {
+          action: 'fetchActiveLearnerConversations',
+          schoolId
+        });
+        return response || [];
+      } catch (error) {
+        logger.error('Error fetching active learner conversations', error);
+        throw error;
+      }
     },
     enabled: !!schoolId,
     staleTime: 60000,
@@ -167,19 +142,16 @@ const LearnerCommunication = () => {
     queryKey: queryKeys.learner.conversations.byLearner(schoolId, 'archived'),
     queryFn: async () => {
       if (!schoolId) return [];
-      const { data, error } = await supabase
-        .from('conversations')
-        .select(`
-          *,
-          learner:learners(id, name, email, school_id, university, branch_field)
-        `)
-        .eq('school_id', schoolId)
-        .eq('conversation_type', 'learner_admin')
-        .eq('status', 'archived')
-        .order('last_message_at', { ascending: false, nullsFirst: false });
-
-      if (error) throw error;
-      return data || [];
+      try {
+        const response = await apiPost<any>('/school-admin/actions', {
+          action: 'fetchArchivedLearnerConversations',
+          schoolId
+        });
+        return response || [];
+      } catch (error) {
+        logger.error('Error fetching archived learner conversations', error);
+        throw error;
+      }
     },
     enabled: !!schoolId,
     staleTime: 60000,
@@ -200,69 +172,18 @@ const LearnerCommunication = () => {
         return [];
       }
 
-      logger.info('Executing query for active educator conversations');
+      try {
+        const response = await apiPost<any>('/school-admin/actions', {
+          action: 'fetchActiveEducatorConversations',
+          schoolId
+        });
 
-      // 1. Get conversations
-      const { data: conversations, error } = await supabase
-        .from('conversations')
-        .select('*')
-        .eq('school_id', schoolId)
-        .eq('conversation_type', 'educator_admin')
-        .eq('deleted_by_admin', false)
-        .order('last_message_at', { ascending: false, nullsFirst: false });
-
-      logger.info('Conversations query result', { count: conversations?.length, error });
-
-      if (error) {
-        logger.error('Conversations query error', error);
+        logger.info('Final conversations with educators', { count: response?.length || 0 });
+        return response || [];
+      } catch (error) {
+        logger.error('Error fetching active educator conversations', error);
         throw error;
       }
-
-      if (!conversations || conversations.length === 0) {
-        logger.info('No conversations found, returning empty array');
-        return [];
-      }
-
-      // 2. Get educator IDs and fetch their details
-      const educatorIds = conversations.map(c => c.educator_id).filter(Boolean);
-      logger.info('Educator IDs to fetch', { educatorIds });
-
-      if (educatorIds.length === 0) {
-        logger.info('No educator IDs found, returning conversations without educator data');
-        return conversations;
-      }
-
-      const { data: educators, error: educatorError } = await supabase
-        .from('school_educators')
-        .select('id, first_name, last_name, email, phone_number, photo_url, user_id')
-        .in('id', educatorIds);
-
-      logger.info('Educators query result', {
-        count: educators?.length,
-        educatorError,
-        educatorDetails: educators?.map(edu => ({
-          id: edu.id,
-          name: `${edu.first_name} ${edu.last_name}`,
-          email: edu.email,
-          user_id: edu.user_id,
-          has_user_id: !!edu.user_id
-        }))
-      });
-
-      if (educatorError) {
-        logger.error('Educators query error', educatorError);
-        // Return conversations without educator data rather than failing completely
-        return conversations;
-      }
-
-      // 3. Merge the data
-      const conversationsWithEducators = conversations.map(conv => ({
-        ...conv,
-        school_educators: educators?.find(edu => edu.id === conv.educator_id) || null
-      }));
-
-      logger.info('Final conversations with educators', { count: conversationsWithEducators.length });
-      return conversationsWithEducators;
     },
     enabled: !!schoolId,
     staleTime: 60000,
@@ -283,59 +204,18 @@ const LearnerCommunication = () => {
         return [];
       }
 
-      logger.info('Executing query for archived educator conversations');
+      try {
+        const response = await apiPost<any>('/school-admin/actions', {
+          action: 'fetchArchivedEducatorConversations',
+          schoolId
+        });
 
-      // 1. Get conversations
-      const { data: conversations, error } = await supabase
-        .from('conversations')
-        .select('*')
-        .eq('school_id', schoolId)
-        .eq('conversation_type', 'educator_admin')
-        .eq('status', 'archived')
-        .order('last_message_at', { ascending: false, nullsFirst: false });
-
-      logger.info('Archived conversations query result', { count: conversations?.length, error });
-
-      if (error) {
-        logger.error('Archived conversations query error', error);
+        logger.info('Final archived conversations with educators', { count: response?.length || 0 });
+        return response || [];
+      } catch (error) {
+        logger.error('Error fetching archived educator conversations', error);
         throw error;
       }
-
-      if (!conversations || conversations.length === 0) {
-        logger.info('No archived conversations found, returning empty array');
-        return [];
-      }
-
-      // 2. Get educator IDs and fetch their details
-      const educatorIds = conversations.map(c => c.educator_id).filter(Boolean);
-      logger.info('Archived educator IDs to fetch', { educatorIds });
-
-      if (educatorIds.length === 0) {
-        logger.info('No archived educator IDs found, returning conversations without educator data');
-        return conversations;
-      }
-
-      const { data: educators, error: educatorError } = await supabase
-        .from('school_educators')
-        .select('id, first_name, last_name, email, phone_number, photo_url, user_id')
-        .in('id', educatorIds);
-
-      logger.info('Archived educators query result', { count: educators?.length, educatorError });
-
-      if (educatorError) {
-        logger.error('Archived educators query error', educatorError);
-        // Return conversations without educator data rather than failing completely
-        return conversations;
-      }
-
-      // 3. Merge the data
-      const conversationsWithEducators = conversations.map(conv => ({
-        ...conv,
-        school_educators: educators?.find(edu => edu.id === conv.educator_id) || null
-      }));
-
-      logger.info('Final archived conversations with educators', { count: conversationsWithEducators.length });
-      return conversationsWithEducators;
     },
     enabled: !!schoolId,
     staleTime: 60000,
@@ -1037,47 +917,50 @@ const LearnerCommunication = () => {
         }
       } else {
         // Send message to educator
-        // Find educator user ID - use maybeSingle() to be defensive
-        const { data: educator, error: educatorError } = await supabase
-          .from('school_educators')
-          .select('user_id')
-          .eq('id', currentChat.educatorId)
-          .maybeSingle();
-
-        if (educatorError || !educator) {
-          toast.error('Could not find educator');
-          return;
-        }
-
-        logger.info('Educator message debug', {
-          hasEducator: !!educator,
-          educatorError,
-          senderId: schoolAdminId,
-          receiverId: educator.user_id,
-          hasMessageText: !!messageInput?.trim(),
-          hasSubject: !!currentChat.subject
-        });
-
-        await sendMessage({
-          conversationId: selectedConversationId!,
-          receiverId: educator.user_id,
-          receiverType: 'educator',
-          messageText: messageInput,
-          metadata: {
-            subject: currentChat.subject
-          }
-        });
-
-        // Send notification to educator
+        // Find educator user ID via API
         try {
-          await sendNotification(educator.user_id, {
-            title: 'New Message from School Admin',
-            message: messageInput.length > 50 ? messageInput.substring(0, 50) + '...' : messageInput,
-            type: 'message',
-            link: `/educator/communication?tab=admin&conversation=${selectedConversationId}`
+          const educatorResponse = await apiPost<{ user_id: string | null }>('/school-admin/actions', {
+            action: 'getEducatorUserId',
+            educatorId: currentChat.educatorId
           });
-        } catch (notifError) {
-          // Silent fail
+
+          if (!educatorResponse?.user_id) {
+            toast.error('Could not find educator');
+            return;
+          }
+
+          logger.info('Educator message debug', {
+            senderId: schoolAdminId,
+            receiverId: educatorResponse.user_id,
+            hasMessageText: !!messageInput?.trim(),
+            hasSubject: !!currentChat.subject
+          });
+
+          await sendMessage({
+            conversationId: selectedConversationId!,
+            receiverId: educatorResponse.user_id,
+            receiverType: 'educator',
+            messageText: messageInput,
+            metadata: {
+              subject: currentChat.subject
+            }
+          });
+
+          // Send notification to educator
+          try {
+            await sendNotification(educatorResponse.user_id, {
+              title: 'New Message from School Admin',
+              message: messageInput.length > 50 ? messageInput.substring(0, 50) + '...' : messageInput,
+              type: 'message',
+              link: `/educator/communication?tab=admin&conversation=${selectedConversationId}`
+            });
+          } catch (notifError) {
+            // Silent fail
+          }
+        } catch (error) {
+          logger.error('Error getting educator user ID', error);
+          toast.error('Failed to send message');
+          return;
         }
       }
 

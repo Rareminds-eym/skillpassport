@@ -1,5 +1,12 @@
 /// <reference types="@cloudflare/workers-types" />
 import type { R2Bucket } from '@cloudflare/workers-types';
+import type {
+  EmailWorkerRpc,
+  EmbeddingWorkerRpc,
+  PaymentWorkerRpc,
+  RealtimeEventsQueue,
+  SsoWorkerRpc
+} from './rpc-types';
 
 /**
  * Shared TypeScript types for Cloudflare Pages Functions
@@ -10,74 +17,41 @@ import type { R2Bucket } from '@cloudflare/workers-types';
  */
 export interface PagesEnv {
   // SSO / Auth configuration
-  SSO_DOMAIN?: string;
-  VITE_SSO_URL?: string;
   /** Cloudflare Service Binding to the SSO worker (sso-api) */
-  SSO_SERVICE?: Fetcher;
+  SSO_SERVICE?: SsoWorkerRpc;
+  /** LTE app base URL used for cross-app SSO callback redirects. */
+  LTE_APP_URL?: string;
 
   // Supabase configuration
   SUPABASE_URL?: string;
   SUPABASE_ANON_KEY?: string;
-  VITE_SUPABASE_URL?: string;
-  VITE_SUPABASE_ANON_KEY?: string;
   SUPABASE_SERVICE_ROLE_KEY?: string;
 
   // Payment Worker configuration
-  VITE_PAYMENTS_API_URL?: string;
-  RAZORPAY_SERVICE_SECRET?: string;
-  RAZORPAY_KEY_ID?: string;
+  INTERNAL_WEBHOOK_SECRET?: string;
+  /** Cloudflare Service Binding to the Payment worker */
+  PAYMENT_WORKER?: PaymentWorkerRpc;
+
+  // Realtime Worker configuration
+  /** Cloudflare Durable Object binding to RealtimeHub (hosted in realtime-worker) */
+  REALTIME_HUB?: DurableObjectNamespace;
+  /** Cloudflare Queue producer for realtime events */
+  REALTIME_EVENTS_QUEUE?: RealtimeEventsQueue;
 
   // Embedding Worker configuration
-  EMBEDDING_API_URL?: string;
-  EMBEDDING_API_KEY?: string;
+  /** Cloudflare Service Binding to the Embedding worker */
+  EMBEDDING_SERVICE?: EmbeddingWorkerRpc;
 
   // Email Worker configuration
-  EMAIL_WORKER_URL?: string;
-  EMAIL_API_KEY?: string;
   /** Cloudflare Service Binding to the Email worker */
-  EMAIL_SERVICE?: {
-    sendEmail(payload: {
-      to: string | string[];
-      subject: string;
-      html: string;
-      text?: string;
-      from?: string;
-      fromName?: string;
-      replyTo?: string;
-      cc?: string[];
-      bcc?: string[];
-      metadata?: Record<string, unknown>;
-    }): Promise<{
-      success: boolean;
-      messageId?: string;
-      customMessageId?: string;
-      recipient?: string | string[];
-      timestamp?: string;
-      error?: string;
-      errorCode?: string;
-      errorType?: string;
-      shouldRetry?: boolean;
-    }>;
-  };
+  EMAIL_SERVICE?: EmailWorkerRpc;
   ADMIN_EMAIL?: string;
-  FROM_EMAIL?: string;
-  FROM_NAME?: string;
-  SMTP_HOST?: string;
-  SMTP_PORT?: string;
-  SMTP_USER?: string;
-  SMTP_PASS?: string;
 
-  // App configuration
-  APP_URL?: string;
-
-  // Storage / Media configuration
-  SIGNING_SECRET?: string;
 
   // AI API keys
-  CLAUDE_API_KEY?: string;
-  VITE_CLAUDE_API_KEY?: string;
+
   OPENROUTER_API_KEY?: string;
-  GEMINI_API_KEY?: string;
+
 
   // R2 Storage configuration
   CLOUDFLARE_ACCOUNT_ID?: string;

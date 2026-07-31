@@ -291,6 +291,118 @@ export class MessageService {
   }
 
   /**
+   * Send a learner-admin message
+   * Convenience method for learner-admin messaging
+   */
+  static async sendlearnerAdminMessage(
+    conversationId: string,
+    learnerId: string,
+    messageText: string,
+    subject?: string,
+    attachments?: any[]
+  ): Promise<Message> {
+    try {
+      const resp = await apiPost<ApiResp<Message>>('/messaging/actions', {
+        action: 'send-learner-admin-message',
+        conversationId, learnerId, messageText, subject, attachments
+      });
+
+      // Clear caches
+      this.clearMessageCache(conversationId);
+      this.clearConversationCache(learnerId);
+      
+      return resp.data;
+    } catch (error) {
+      logger.error('Error in sendlearnerAdminMessage', error instanceof Error ? error : new Error(String(error)), { conversationId, learnerId });
+      throw error;
+    }
+  }
+
+  /**
+   * Send a learner-college admin message
+   * Convenience method for learner-college admin messaging
+   */
+  static async sendlearnerCollegeAdminMessage(
+    conversationId: string,
+    learnerId: string,
+    messageText: string,
+    subject?: string,
+    attachments?: any[]
+  ): Promise<Message> {
+    try {
+      const resp = await apiPost<ApiResp<Message>>('/messaging/actions', {
+        action: 'send-learner-college-admin-message',
+        conversationId, learnerId, messageText, subject, attachments
+      });
+
+      // Clear caches
+      this.clearMessageCache(conversationId);
+      this.clearConversationCache(learnerId);
+
+      return resp.data;
+    } catch (error) {
+      logger.error('Error in sendlearnerCollegeAdminMessage', error instanceof Error ? error : new Error(String(error)), { conversationId, learnerId });
+      throw error;
+    }
+  }
+
+  /**
+   * Send an educator-admin message
+   * Convenience method for educator-admin messaging
+   */
+  static async sendEducatorAdminMessage(
+    conversationId: string,
+    educatorId: string,
+    messageText: string,
+    subject?: string,
+    attachments?: any[]
+  ): Promise<Message> {
+    try {
+      const resp = await apiPost<ApiResp<Message>>('/messaging/actions', {
+        action: 'send-educator-admin-message',
+        conversationId, educatorId, messageText, subject, attachments
+      });
+
+      // Clear caches
+      this.clearMessageCache(conversationId);
+      this.clearConversationCache(educatorId);
+
+      return resp.data;
+    } catch (error) {
+      logger.error('Error in sendEducatorAdminMessage', error instanceof Error ? error : new Error(String(error)), { conversationId, educatorId });
+      throw error;
+    }
+  }
+
+  /**
+   * Send a college educator-admin message
+   * Convenience method for college educator-admin messaging
+   */
+  static async sendCollegeEducatorAdminMessage(
+    conversationId: string,
+    educatorId: string,
+    messageText: string,
+    subject?: string,
+    attachments?: any[]
+  ): Promise<Message> {
+    try {
+      const resp = await apiPost<ApiResp<Message>>('/messaging/actions', {
+        action: 'send-college-educator-admin-message',
+        conversationId, educatorId, messageText, subject, attachments
+      });
+
+      // Clear caches
+      this.clearMessageCache(conversationId);
+      this.clearConversationCache(educatorId);
+
+      return resp.data;
+    } catch (error) {
+      logger.error('Error in sendCollegeEducatorAdminMessage', error instanceof Error ? error : new Error(String(error)), { conversationId, educatorId });
+      throw error;
+    }
+  }
+
+  /**
    * Get messages for a conversation
    * Optimized with caching and pagination support
    */

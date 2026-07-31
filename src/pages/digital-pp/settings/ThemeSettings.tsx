@@ -7,10 +7,11 @@ import type { AnimationType } from '@/shared/types/learner';
 import { showProfileUpdateToast } from '@/features/learner-profile';
 
 import { usePortfolio } from '@/features/digital-portfolio/model/portfolioStore';
-import { useTheme } from '@/shared/model/themeStore';
+import { useScopedTheme } from '@/features/digital-portfolio/model/scopedThemeStore';
+
 const ThemeSettings: React.FC = () => {
   const navigate = useNavigate();
-  const { theme } = useTheme();
+  const { theme } = useScopedTheme();
   const { settings, updateSettings } = usePortfolio();
   
   const colorThemes = [

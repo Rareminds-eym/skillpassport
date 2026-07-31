@@ -22,7 +22,7 @@ import { useNavigate } from 'react-router-dom';
 
 import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
-import { useUser } from '@/shared/model/authStore';
+import { useUser, useIsAuthenticated } from '@/shared/model/authStore';
 
 const logger = getLogger('organization-subscription');
 interface OrganizationDetails {

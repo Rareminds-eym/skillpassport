@@ -15,13 +15,25 @@ import {
 } from '@heroicons/react/24/outline'
 import { useEffect, useState } from 'react'
 import { apiPost } from '@/shared/api/apiClient'
-import { FeatureGate } from '@/features/subscription'
 import { KPICard } from '@/features/analytics'
 import type { KPIDashboardProps, KPIData } from '..'
 
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('kpi-dashboard');
+
+interface KPIResponse {
+  data?: {
+    totalLearners: number;
+    attendancePercentage: number;
+    examsScheduled: number;
+    pendingAssessments: number;
+    dailyTotal: number;
+    weeklyTotal: number;
+    monthlyTotal: number;
+    libraryOverdue: number;
+  };
+}
 
 const KPIDashboardComponent: React.FC<KPIDashboardProps> = ({ 
   schoolId,
@@ -36,10 +48,16 @@ const KPIDashboardComponent: React.FC<KPIDashboardProps> = ({
       setError(null)
       setLoading(true)
 
-      const data: any = await apiPost('/kpi-dashboard/actions', {
+      const resp = await apiPost<KPIResponse>('/kpi-dashboard/actions', {
         action: 'get-kpi-data',
         schoolId,
       })
+
+      const data = resp?.data
+      if (!data) {
+        setLoading(false)
+        return
+      }
 
       setKpiData({
         totallearners: data.totalLearners || 0,
@@ -56,8 +74,9 @@ const KPIDashboardComponent: React.FC<KPIDashboardProps> = ({
       })
 
       setLoading(false)
-    } catch (err: any) {
-      logger.error('Unexpected error fetching KPI data', err);
+    } catch (err: unknown) {
+      const error = err instanceof Error ? err : new Error(String(err));
+      logger.error('Unexpected error fetching KPI data', error);
       setError('An unexpected error occurred. Please check the logs for details.')
       setLoading(false)
     }
@@ -170,16 +189,6 @@ const KPIDashboardComponent: React.FC<KPIDashboardProps> = ({
   )
 }
 
-/**
- * Wrapped KPIDashboard with FeatureGate for kpi_dashboard add-on
- */
 export const KPIDashboard: React.FC<KPIDashboardProps> = (props) => (
-  <FeatureGate 
-    featureKey="kpi_dashboard" 
-    showUpgradePrompt={true}
-    fallback={null}
-    onUpgradeClick={() => {}}
-  >
-    <KPIDashboardComponent {...props} />
-  </FeatureGate>
+  <KPIDashboardComponent {...props} />
 )

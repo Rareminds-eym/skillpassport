@@ -27,6 +27,7 @@ import * as clubsService from "@/features/college-admin";
 import * as competitionsService from "@/features/college-admin";
 import * as XLSX from 'xlsx';
 import { getLogger } from '@/shared/config/logging';
+import { apiPost } from '@/shared/api/apiClient';
 
 const logger = getLogger('SkillCurricular');
 
@@ -673,55 +674,22 @@ export default function ClubsActivitiesPage() {
                 logger.info('Fetching learners for educator type', { educatorType });
                 
                 let learners: Learner[] = [];
-                
-                if (educatorType === 'school' && educatorSchool) {
-                    // For school educators, filter by assigned classes
-                    if (assignedClassIds && assignedClassIds.length > 0) {
-                        logger.info('Fetching learners for assigned classes', { assignedClassIds });
-                        const { data, error } = await supabase
-                            .from('learners')
-                            .select('id, user_id, email, name, grade, section, roll_number, school_id, school_class_id')
-                            .eq('school_id', educatorSchool.id)
-                            .in('school_class_id', assignedClassIds)
-                            .eq('is_deleted', false)
-                            .order('name');
 
-                        if (error) {
-                            logger.error('Error fetching learners', error);
-                        } else {
-                            learners = (data || []) as any[];
-                        }
-                    } else {
-                        // Fallback for admins or educators without class assignments
-                        logger.info('Fetching all school learners (admin/no assignments)');
-                        const { data, error } = await supabase
-                            .from('learners')
-                            .select('id, user_id, email, name, grade, section, roll_number, school_id, school_class_id')
-                            .eq('school_id', educatorSchool.id)
-                            .eq('is_deleted', false)
-                            .order('name');
+                try {
+                    logger.info('Fetching learners for educator type', { educatorType });
 
-                        if (error) {
-                            logger.error('Error fetching learners', error);
-                        } else {
-                            learners = (data || []) as any[];
-                        }
-                    }
-                } else if (educatorType === 'college' && educatorCollege) {
-                    // For college educators, filter by college
-                    logger.info('Fetching college learners', { collegeId: educatorCollege.id });
-                    const { data, error } = await supabase
-                        .from('learners')
-                        .select('id, user_id, email, name, grade, section, roll_number, college_id')
-                        .eq('college_id', educatorCollege.id)
-                        .eq('is_deleted', false)
-                        .order('name');
+                    const response = await apiPost<any[]>('/educator/actions', {
+                        action: 'get-educator-learners',
+                        educatorType,
+                        schoolId: educatorSchool?.id,
+                        collegeId: educatorCollege?.id,
+                        assignedClassIds: educatorType === 'school' ? assignedClassIds : undefined
+                    });
 
-                    if (error) {
-                        logger.error('Error fetching college learners', error);
-                    } else {
-                        learners = (data || []) as any[];
-                    }
+                    learners = response || [];
+                    logger.info('Fetched learners', { count: learners.length });
+                } catch (err) {
+                    logger.error('Error fetching learners from API', err);
                 }
 
                 if (learners.length === 0) {
@@ -947,18 +915,17 @@ export default function ClubsActivitiesPage() {
         try {
             // Double-check enrollment status by fetching fresh data from server
             logger.info('Checking enrollment status', { email: learner.email, clubId: club.club_id });
-            const { data: existingMembership } = await supabase
-                .from('club_memberships')
-                .select('*')
-                .eq('club_id', club.club_id)
-                .eq('learner_email', learner.email)
-                .eq('status', 'active')
-                .single();
+
+            const existingMembership = await apiPost<any>('/educator/actions', {
+                action: 'check-club-membership',
+                clubId: club.club_id,
+                learnerEmail: learner.email
+            });
 
             if (existingMembership) {
                 logger.info('Learner already enrolled (found in database)', { existingMembership });
                 setNotice({ type: "warning", text: `${learner.name} is already enrolled in this club.` });
-                
+
                 // Refresh club data to sync local state
                 const refreshedClubs = await clubsService.fetchClubs();
                 setClubs(refreshedClubs);
@@ -1078,27 +1045,30 @@ const handlelearnerLeave = async (learnerId: string, club: Club) => {
     const buildClubParticipationRows = async () => {
         try {
             logger.info('Building club participation report...');
-            
-            // Try to fetch from Supabase views first
-            const { data: reportData, error } = await supabase
-                .from('club_participation_report')
-                .select('*');
-            
-            if (!error && reportData && reportData.length > 0) {
-                logger.info('Using database report data', { count: reportData.length });
-                return reportData.map(row => ({
-                    "Club Name": row.club_name || 'N/A',
-                    "Category": row.category || 'N/A',
-                    "Learner Count": row.learner_count || 0,
-                    "Capacity": row.capacity || 0,
-                    "Utilization %": row.capacity ? Math.round((row.learner_count / row.capacity) * 100) + '%' : '0%',
-                    "Average Attendance": row.avg_attendance ? row.avg_attendance + '%' : 'N/A',
-                    "Total Sessions": row.total_sessions || 0,
-                    "Active Status": row.is_active ? 'Active' : 'Inactive',
-                    "Created Date": row.created_at ? new Date(row.created_at).toLocaleDateString() : 'N/A'
-                }));
+
+            try {
+                const reportData = await apiPost<any[]>('/educator/actions', {
+                    action: 'get-club-participation-report'
+                });
+
+                if (reportData && reportData.length > 0) {
+                    logger.info('Using database report data', { count: reportData.length });
+                    return reportData.map(row => ({
+                        "Club Name": row.club_name || 'N/A',
+                        "Category": row.category || 'N/A',
+                        "Learner Count": row.learner_count || 0,
+                        "Capacity": row.capacity || 0,
+                        "Utilization %": row.capacity ? Math.round((row.learner_count / row.capacity) * 100) + '%' : '0%',
+                        "Average Attendance": row.avg_attendance ? row.avg_attendance + '%' : 'N/A',
+                        "Total Sessions": row.total_sessions || 0,
+                        "Active Status": row.is_active ? 'Active' : 'Inactive',
+                        "Created Date": row.created_at ? new Date(row.created_at).toLocaleDateString() : 'N/A'
+                    }));
+                }
+            } catch (apiErr) {
+                logger.info('Database report API call failed, using local data', apiErr);
             }
-            
+
             logger.info('Database report not available, using local data');
             
             // Fallback to local clubs data with enhanced information
@@ -1142,28 +1112,31 @@ const handlelearnerLeave = async (learnerId: string, club: Club) => {
     const buildCompetitionPerformanceRows = async () => {
         try {
             logger.info('Building competition performance report...');
-            
-            // Try to fetch from Supabase views first
-            const { data: reportData, error } = await supabase
-                .from('competition_performance_report')
-                .select('*');
-            
-            if (!error && reportData && reportData.length > 0) {
-                logger.info('Using database competition report', { count: reportData.length });
-                return reportData.map(row => ({
-                    "Competition Name": row.competition_name || 'N/A',
-                    "Level": row.level || 'N/A',
-                    "Category": row.category || 'N/A',
-                    "Date": row.competition_date ? new Date(row.competition_date).toLocaleDateString() : 'N/A',
-                    "Status": row.status || 'N/A',
-                    "Total Participants": row.total_participants || 0,
-                    "Registered Learners": row.registered_learners || 0,
-                    "Results Summary": row.learner_results || 'N/A',
-                    "Awards Won": row.awards_won || 'N/A',
-                    "Average Score": row.avg_score || 'N/A'
-                }));
+
+            try {
+                const reportData = await apiPost<any[]>('/educator/actions', {
+                    action: 'get-competition-performance-report'
+                });
+
+                if (reportData && reportData.length > 0) {
+                    logger.info('Using database competition report', { count: reportData.length });
+                    return reportData.map(row => ({
+                        "Competition Name": row.competition_name || 'N/A',
+                        "Level": row.level || 'N/A',
+                        "Category": row.category || 'N/A',
+                        "Date": row.competition_date ? new Date(row.competition_date).toLocaleDateString() : 'N/A',
+                        "Status": row.status || 'N/A',
+                        "Total Participants": row.total_participants || 0,
+                        "Registered Learners": row.registered_learners || 0,
+                        "Results Summary": row.learner_results || 'N/A',
+                        "Awards Won": row.awards_won || 'N/A',
+                        "Average Score": row.avg_score || 'N/A'
+                    }));
+                }
+            } catch (apiErr) {
+                logger.info('Database competition report API call failed, using local data', apiErr);
             }
-            
+
             logger.info('Database competition report not available, using local data');
             
             // Fallback to local competitions data

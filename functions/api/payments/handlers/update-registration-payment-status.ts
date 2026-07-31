@@ -9,6 +9,7 @@
  */
 
 import type { PagesFunction } from '@cloudflare/workers-types';
+import { getPaymentWorker, type PaymentWorkerEnv } from '../lib/paymentBinding';
 import { apiError, apiSuccess } from '../../../lib/response';
 import { getServiceClient } from '../../../lib/supabase';
 
@@ -17,7 +18,7 @@ export const onRequestPost: PagesFunction = async (context) => {
 };
 
 export async function handleUpdateRegistrationPaymentStatus(context: any): Promise<Response> {
-  const env = context.env as {
+  const env = context.env as unknown as PaymentWorkerEnv & {
     SUPABASE_URL: string;
     SUPABASE_SERVICE_ROLE_KEY: string;
   };
@@ -39,6 +40,22 @@ export async function handleUpdateRegistrationPaymentStatus(context: any): Promi
 
     if (!registrationId || !status) {
       return apiError(400, 'VALIDATION_ERROR', 'registrationId and status are required', context.request);
+    }
+
+    // Verify Razorpay signature if payment is marked as completed
+    if (status === 'completed') {
+      const razorpaySignature = body.razorpay_signature as string;
+      if (!razorpaySignature || !orderId || !paymentId) {
+        return apiError(400, 'VALIDATION_ERROR', 'razorpay_signature, orderId, and paymentId are required for completed status', context.request);
+      }
+
+      const worker = getPaymentWorker(env);
+      try {
+        await worker.verifyPaymentSignature(orderId, paymentId, razorpaySignature);
+      } catch (verifyError) {
+        console.error('[UpdateRegistrationPaymentStatus] Signature verification failed:', verifyError);
+        return apiError(400, 'VALIDATION_ERROR', 'Invalid payment signature', context.request);
+      }
     }
 
     // Create Supabase client

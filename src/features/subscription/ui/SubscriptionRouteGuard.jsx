@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useUser, useIsAuthenticated, useAuthLoading, useUserRole } from '@/shared/model/authStore';
-import { useSubscriptionAccess } from '@/features/subscription/model/subscriptionStore';
+import { useSubscriptionQuery } from '@/features/subscription/model/useSubscriptionQuery';
 import { isActiveOrPaused, isManageable } from '../lib/subscriptionHelpers';
 
 /**
@@ -12,9 +12,7 @@ function getManagePath(userRole) {
   if (!userRole) return null; // Return null to prevent wrong redirects
 
   const manageRoutes = {
-    admin: '/admin/subscription/manage',
-    company_admin: '/admin/subscription/manage',
-    owner: '/admin/subscription/manage',
+    company_admin: '/recruitment/subscription/manage',
     school_admin: '/school-admin/subscription/manage',
     college_admin: '/college-admin/subscription/manage',
     university_admin: '/university-admin/subscription/manage',
@@ -38,7 +36,6 @@ function getUserTypeFromPath(pathname) {
   if (pathname.startsWith('/college-admin')) return 'college_admin';
   if (pathname.startsWith('/school-admin')) return 'school_admin';
   if (pathname.startsWith('/university-admin')) return 'university_admin';
-  if (pathname.startsWith('/admin')) return 'admin';
   return 'learner'; // fallback
 }
 
@@ -52,7 +49,7 @@ const SubscriptionRouteGuard = ({ children, mode, showSkeleton = false }) => {
   const { role } = useUserRole();
   const user = useUser();
   const authLoading = useAuthLoading();
-  const { subscriptionData, loading: subscriptionLoading } = useSubscriptionAccess();
+  const { subscriptionData, loading: subscriptionLoading } = useSubscriptionQuery();
   const [redirecting, setRedirecting] = useState(false);
   const managePath = useMemo(() => getManagePath(role), [role]);
 

@@ -34,18 +34,18 @@ export async function handleGetActiveSubscription(context: AuthenticatedContext)
         status,
         expires_at,
         assigned_at,
-        subscription_id
+        organization_subscription_id
       `)
       .eq('user_id', userId)
       .eq('status', 'active')
       .maybeSingle();
 
-    if (!licenseError && licenseAssignment && licenseAssignment.subscription_id) {
+    if (!licenseError && licenseAssignment && licenseAssignment.organization_subscription_id) {
       // Look up the org subscription from subscription_cache
       const { data: orgCache } = await supabase
         .from('subscription_cache')
         .select('*')
-        .eq('id', licenseAssignment.subscription_id)
+        .eq('id', licenseAssignment.organization_subscription_id)
         .maybeSingle();
 
       if (orgCache && orgCache.status === 'active') {
@@ -89,7 +89,7 @@ export async function handleGetActiveSubscription(context: AuthenticatedContext)
     // =========================================================================
     const { data: revokedLicense } = await supabase
       .from('license_assignments')
-      .select('id, status, revoked_at, subscription_id')
+      .select('id, status, revoked_at, organization_subscription_id')
       .eq('user_id', userId)
       .eq('status', 'revoked')
       .order('revoked_at', { ascending: false })
@@ -117,11 +117,11 @@ export async function handleGetActiveSubscription(context: AuthenticatedContext)
         // Look up the revoked org subscription from cache for plan details
         let planName = 'Organization License';
         let planCode: string | undefined;
-        if (revokedLicense.subscription_id) {
+        if (revokedLicense.organization_subscription_id) {
           const { data: revokedCache } = await supabase
             .from('subscription_cache')
             .select('plan_name, plan_code')
-            .eq('id', revokedLicense.subscription_id)
+            .eq('id', revokedLicense.organization_subscription_id)
             .maybeSingle();
           if (revokedCache) {
             planName = revokedCache.plan_name || planName;

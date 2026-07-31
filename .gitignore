@@ -44,6 +44,7 @@ dist-ssr
 # Build files
 /build
 /dist
+/dist-functions
 
 # Cloudflare Wrangler
 .wrangler
@@ -58,6 +59,13 @@ dist-ssr
 
 # Kiro settings (personal configuration only)
 .kiro/settings/
+
+# Agent / IDE config files
+.claude/
+.claude/settings.json
+.gemini/
+.mcp.json
+AGENTS.md
 
 # Local config
 mcpopencode.json
@@ -84,3 +92,8 @@ cloudflare-workers/streak-api
 cloudflare-workers/payments-worker
 
 .agents/
+
+# Graphify knowledge graph output
+graphify-out/
+# Added by code-review-graph
+.code-review-graph/

@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useState, useRef } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import {
+  Check,
   CheckCircle,
   Award,
   Mail,
@@ -8,42 +9,41 @@ import {
   User,
   Download,
   Copy,
-  MessageSquare,
-  MoreHorizontal,
   Star,
   Briefcase,
   GraduationCap,
   TrendingUp,
   Share2,
-  ArrowLeftIcon,
   ExternalLink,
   FolderGit2,
+  Lock,
 } from "lucide-react";
 import { useLearnerDataById } from '@/entities/learner';
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 
 import toast from 'react-hot-toast';
 import {
   generateResumePDF,
-  preparelearnerDataForResume,
 } from "@/widgets/learner-dashboard/ui/Generateresumepdf";
 import { generateBadges, getBadgeProgress } from "@/features/digital-portfolio";
 import { capitalizeName } from "@/shared/lib/helpers";
+import { calculateEmployabilityScore } from "@/shared/lib/employabilityCalculator";
 
-import { useUser } from '@/shared/model/authStore';
+import { useAuthLoading, useUser } from '@/shared/model/authStore';
 function safeParse(jsonLike) {
   if (!jsonLike) return {};
   if (typeof jsonLike === "object") return jsonLike;
   try {
     return JSON.parse(jsonLike);
-  } catch (e) {
+  } catch (err) {
     try {
       return JSON.parse(
         String(jsonLike)
           .replace(/(\r\n|\n|\r)/g, " ")
           .replace(/'/g, '"')
       );
-    } catch (e2) {
+    } catch (fallbackErr) {
+      console.warn('Failed to parse profile data, using empty object:', fallbackErr);
       return {};
     }
   }
@@ -166,14 +166,15 @@ function Donut({ value }) {
 
 export default function LearnerPublicViewer() {
   const user = useUser();
+  const authLoading = useAuthLoading();
   // const navigate = useNavigate();
   const { learnerId } = useParams();
   const { learnerData, loading, error } = useLearnerDataById(learnerId);
   const qrCodeValue = window.location.href;
   const [copied, setCopied] = useState(false);
   const raw = learnerData;
-  const parsedProfile = safeParse(raw?.profile);
-  const profile = { ...(raw || {}), ...(parsedProfile || {}) };
+  const parsedProfile = useMemo(() => safeParse(raw?.profile), [raw?.profile]);
+  const profile = useMemo(() => ({ ...(raw || {}), ...(parsedProfile || {}) }), [raw, parsedProfile]);
   const [showShareModal, setShowShareModal] = useState(false);
   const [downloading, setDownloading] = useState(false);
 
@@ -242,7 +243,7 @@ export default function LearnerPublicViewer() {
   ).filter((x) => x && x.enabled !== false);
 
   // Generate badges based on learner data
-  const learnerDataForBadges = {
+  const learnerDataForBadges = useMemo(() => ({
     profile,
     technicalSkills,
     softSkills,
@@ -251,7 +252,7 @@ export default function LearnerPublicViewer() {
     experience,
     projects,
     certificates
-  };
+  }), [profile, technicalSkills, softSkills, education, training, experience, projects, certificates]);
 
   const earnedBadges = useMemo(() => generateBadges(learnerDataForBadges), [learnerDataForBadges]);
   const badgeProgress = useMemo(() => getBadgeProgress(learnerDataForBadges), [learnerDataForBadges]);
@@ -279,12 +280,30 @@ export default function LearnerPublicViewer() {
     profile.college_school_name ||
     raw?.college_school_name ||
     "";
-  const registration_number =
-    raw?.registrationNumber || profile.registrationNumber || "N/A";
-  const employability = Math.max(
-    0,
-    Math.min(100, Number(profile?.employabilityScore || 0))
-  );
+  const idNumber =
+    raw?.learner_id ||
+    profile.learner_id ||
+    (raw?.registration_number ? `SP-${raw.registration_number}` : null) ||
+    (profile.registration_number ? `SP-${profile.registration_number}` : null) ||
+    profile.passportId ||
+    "N/A";
+
+  // Calculate employability score based on learner data
+  const employabilityData = useMemo(() => {
+    const learnerDataForCalculation = {
+      profile,
+      education,
+      training,
+      experience,
+      technicalSkills,
+      softSkills,
+      projects,
+      certificates
+    };
+    return calculateEmployabilityScore(learnerDataForCalculation);
+  }, [profile, education, training, experience, technicalSkills, softSkills, projects, certificates]);
+
+  const employability = employabilityData?.employabilityScore || 0;
 
   const tabs = [
     "Overview",
@@ -326,13 +345,14 @@ export default function LearnerPublicViewer() {
         setShowShareModal(true);
       }
     } catch (err) {
+      console.warn('Share API not available, falling back to modal:', err);
       setShowShareModal(true);
     }
   };
 
   // Strict authentication-based access control
   // Only authenticated users can view learner profiles
-  if (!user) {
+  if (!authLoading && !user) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-6">
         <div className="bg-white p-10 max-w-md text-center border border-gray-200 rounded-lg shadow-lg">
@@ -354,391 +374,6 @@ export default function LearnerPublicViewer() {
     );
   }
 
-  //  const dummylearnerData = {
-  //   idx: 0,
-  //   id: "009466e7-2e55-4700-9480-e086dcae62d4",
-  //   universityId: "fdba4612-5249-4257-87e1-dc4858151ee8",
-  //   email: "john.doe@example.com",
-  //   createdAt: "2025-01-15 08:18:39.762908+00",
-  //   updatedAt: "2025-01-18 08:18:09.259467+00",
-
-  //   // Profile as JSON string (like in your DB)
-  //   profile: JSON.stringify({
-  //     name: "John Michael Doe",
-  //     age: 24,
-  //     email: "john.doe@example.com",
-  //     contact_number: "+91 9876543210",
-  //     alternate_number: "+91 8765432109",
-  //     contact_number_dial_code: "91",
-  //     district_name: "Bangalore Urban",
-  //     city: "Bangalore",
-  //     country: "India",
-  //     date_of_birth: "2000-05-15",
-
-  //     // Education info
-  //     university: "University of Bangalore",
-  //     college_school_name: "ABC Engineering College",
-  //     branch_field: "Computer Science Engineering",
-  //     registration_number: "CS2021001234",
-  //     course: "Bachelor of Technology",
-
-  //     // Professional info
-  //     title: "Full Stack Developer",
-  //     summary: "Passionate software engineer with 2+ years of experience in building scalable web applications using modern technologies. Strong problem-solving skills and expertise in React, Node.js, and cloud platforms.",
-
-  //     // Skills - Technical
-  //     technicalSkills: [
-  //       {
-  //         id: 1,
-  //         name: "React.js",
-  //         level: 5,
-  //         category: "Frontend Development",
-  //         verified: true,
-  //         enabled: true,
-  //         processing: false
-  //       },
-  //       {
-  //         id: 2,
-  //         name: "Node.js",
-  //         level: 4,
-  //         category: "Backend Development",
-  //         verified: true,
-  //         enabled: true,
-  //         processing: false
-  //       },
-  //       {
-  //         id: 3,
-  //         name: "Python",
-  //         level: 4,
-  //         category: "Programming Languages",
-  //         verified: true,
-  //         enabled: true,
-  //         processing: false
-  //       },
-  //       {
-  //         id: 4,
-  //         name: "MongoDB",
-  //         level: 4,
-  //         category: "Databases",
-  //         verified: true,
-  //         enabled: true,
-  //         processing: false
-  //       },
-  //       {
-  //         id: 5,
-  //         name: "Docker",
-  //         level: 3,
-  //         category: "DevOps",
-  //         verified: false,
-  //         enabled: true,
-  //         processing: false
-  //       },
-  //       {
-  //         id: 6,
-  //         name: "AWS",
-  //         level: 3,
-  //         category: "Cloud Platforms",
-  //         verified: false,
-  //         enabled: true,
-  //         processing: true
-  //       },
-  //       {
-  //         id: 7,
-  //         name: "TypeScript",
-  //         level: 4,
-  //         category: "Programming Languages",
-  //         verified: true,
-  //         enabled: true,
-  //         processing: false
-  //       },
-  //       {
-  //         id: 8,
-  //         name: "Git",
-  //         level: 5,
-  //         category: "Version Control",
-  //         verified: true,
-  //         enabled: true,
-  //         processing: false
-  //       }
-  //     ],
-
-  //     // Skills - Soft
-  //     softSkills: [
-  //       {
-  //         id: 1,
-  //         name: "Communication",
-  //         level: 5,
-  //         type: "communication",
-  //         description: "Effective communication skills",
-  //         verified: true,
-  //         enabled: true,
-  //         processing: false
-  //       },
-  //       {
-  //         id: 2,
-  //         name: "Team Leadership",
-  //         level: 4,
-  //         type: "leadership",
-  //         description: "Strong team leadership abilities",
-  //         verified: true,
-  //         enabled: true,
-  //         processing: false
-  //       },
-  //       {
-  //         id: 3,
-  //         name: "Problem Solving",
-  //         level: 5,
-  //         type: "analytical",
-  //         description: "Excellent problem-solving skills",
-  //         verified: true,
-  //         enabled: true,
-  //         processing: false
-  //       },
-  //       {
-  //         id: 4,
-  //         name: "Time Management",
-  //         level: 4,
-  //         type: "organizational",
-  //         description: "Effective time management",
-  //         verified: false,
-  //         enabled: true,
-  //         processing: false
-  //       },
-  //       {
-  //         id: 5,
-  //         name: "Adaptability",
-  //         level: 5,
-  //         type: "behavioral",
-  //         description: "Quick to adapt to new situations",
-  //         verified: true,
-  //         enabled: true,
-  //         processing: false
-  //       }
-  //     ],
-
-  //     // Education
-  //     education: [
-  //       {
-  //         id: 1,
-  //         level: "Bachelor's",
-  //         degree: "Bachelor of Technology in Computer Science",
-  //         university: "University of Bangalore",
-  //         institution: "ABC Engineering College",
-  //         department: "Computer Science & Engineering",
-  //         cgpa: "8.9/10.0",
-  //         yearOfPassing: "2023",
-  //         status: "completed",
-  //         enabled: true,
-  //         processing: false
-  //       },
-  //       {
-  //         id: 2,
-  //         level: "Higher Secondary",
-  //         degree: "12th Grade - Science",
-  //         university: "State Board",
-  //         institution: "XYZ High School",
-  //         cgpa: "92%",
-  //         yearOfPassing: "2019",
-  //         status: "completed",
-  //         enabled: true,
-  //         processing: false
-  //       },
-  //       {
-  //         id: 3,
-  //         level: "Secondary",
-  //         degree: "10th Grade",
-  //         university: "State Board",
-  //         institution: "XYZ High School",
-  //         cgpa: "95%",
-  //         yearOfPassing: "2017",
-  //         status: "completed",
-  //         enabled: false, // This one won't show in PDF
-  //         processing: false
-  //       }
-  //     ],
-
-  //     // Work Experience
-  //     experience: [
-  //       {
-  //         id: 1,
-  //         role: "Full Stack Developer",
-  //         organization: "Tech Solutions Pvt Ltd",
-  //         company: "Tech Solutions Pvt Ltd",
-  //         duration: "2023 - Present",
-  //         description: "Led development of multiple client-facing web applications using React and Node.js. Implemented RESTful APIs and microservices architecture. Collaborated with cross-functional teams to deliver high-quality software solutions. Mentored junior developers and conducted code reviews.",
-  //         enabled: true,
-  //         verified: true,
-  //         processing: false
-  //       },
-  //       {
-  //         id: 2,
-  //         role: "Software Development Intern",
-  //         organization: "Innovation Labs",
-  //         company: "Innovation Labs",
-  //         duration: "2022 - 2023",
-  //         description: "Developed and maintained web applications using React and Express.js. Participated in agile development processes and daily stand-ups. Contributed to code optimization and performance improvements. Worked on database design and implementation.",
-  //         enabled: true,
-  //         verified: true,
-  //         processing: false
-  //       },
-  //       {
-  //         id: 3,
-  //         role: "Frontend Developer Intern",
-  //         organization: "StartUp XYZ",
-  //         company: "StartUp XYZ",
-  //         duration: "2021 - 2022",
-  //         description: "Built responsive user interfaces using React and modern CSS frameworks. Integrated third-party APIs and services. Participated in UI/UX design discussions and implementation.",
-  //         enabled: true,
-  //         verified: false,
-  //         processing: false
-  //       }
-  //     ],
-
-  //     // Training - Mix of completed and ongoing
-  //     training: [
-  //       {
-  //         id: 1,
-  //         course: "Advanced React & Redux",
-  //         name: "Advanced React & Redux",
-  //         trainer: "John Smith",
-  //         instructor: "John Smith",
-  //         provider: "Udemy",
-  //         status: "completed", // This will show in PDF
-  //         progress: 100,
-  //         enabled: true,
-  //         verified: true,
-  //         processing: false
-  //       },
-  //       {
-  //         id: 2,
-  //         course: "AWS Certified Solutions Architect",
-  //         name: "AWS Certified Solutions Architect",
-  //         trainer: "Amazon Web Services",
-  //         instructor: "AWS Training Team",
-  //         provider: "AWS",
-  //         status: "completed", // This will show in PDF
-  //         progress: 100,
-  //         enabled: true,
-  //         verified: true,
-  //         processing: false
-  //       },
-  //       {
-  //         id: 3,
-  //         course: "Docker & Kubernetes Masterclass",
-  //         name: "Docker & Kubernetes Masterclass",
-  //         trainer: "DevOps Academy",
-  //         instructor: "Mike Johnson",
-  //         provider: "DevOps Academy",
-  //         status: "ongoing", // This will NOT show in PDF
-  //         progress: 65,
-  //         enabled: true,
-  //         verified: false,
-  //         processing: true
-  //       },
-  //       {
-  //         id: 4,
-  //         course: "Machine Learning Fundamentals",
-  //         name: "Machine Learning Fundamentals",
-  //         trainer: "Andrew Ng",
-  //         instructor: "Andrew Ng",
-  //         provider: "Coursera",
-  //         status: "completed", // This will show in PDF
-  //         progress: 100,
-  //         enabled: true,
-  //         verified: true,
-  //         processing: false
-  //       },
-  //       {
-  //         id: 5,
-  //         course: "Python for Data Science",
-  //         name: "Python for Data Science",
-  //         trainer: "Data Science Institute",
-  //         status: "ongoing", // This will NOT show in PDF
-  //         progress: 40,
-  //         enabled: true,
-  //         verified: false,
-  //         processing: true
-  //       }
-  //     ],
-
-  //     // Certificates - Separate section
-  //     certificates: [
-  //       {
-  //         id: 1,
-  //         name: "AWS Certified Developer - Associate",
-  //         title: "AWS Certified Developer - Associate",
-  //         issuer: "Amazon Web Services",
-  //         provider: "AWS",
-  //         organization: "Amazon Web Services",
-  //         date: "December 2024",
-  //         year: "2024",
-  //         enabled: true,
-  //         verified: true
-  //       },
-  //       {
-  //         id: 2,
-  //         name: "MongoDB Certified Developer",
-  //         title: "MongoDB Certified Developer",
-  //         issuer: "MongoDB Inc.",
-  //         provider: "MongoDB University",
-  //         organization: "MongoDB Inc.",
-  //         date: "September 2024",
-  //         year: "2024",
-  //         enabled: true,
-  //         verified: true
-  //       },
-  //       {
-  //         id: 3,
-  //         name: "React Professional Certification",
-  //         title: "React Professional Certification",
-  //         issuer: "Meta",
-  //         provider: "Meta",
-  //         organization: "Meta (Facebook)",
-  //         date: "June 2024",
-  //         year: "2024",
-  //         enabled: true,
-  //         verified: true
-  //       },
-  //       {
-  //         id: 4,
-  //         name: "Google Cloud Fundamentals",
-  //         title: "Google Cloud Fundamentals",
-  //         issuer: "Google Cloud",
-  //         provider: "Google",
-  //         date: "March 2024",
-  //         year: "2024",
-  //         enabled: false, // This won't show
-  //         verified: false
-  //       }
-  //     ],
-
-  //     // Languages
-  //     languages: [
-  //       "English (Fluent)",
-  //       "Hindi (Fluent)",
-  //       "Kannada (Native)",
-  //       "Tamil (Intermediate)"
-  //     ],
-
-  //     // Interests
-  //     interest: [
-  //       { id: 1, name: "Open Source Contribution", hobbie: "Open Source Contribution" },
-  //       { id: 2, name: "Technology Blogging", hobbie: "Technology Blogging" },
-  //       { id: 3, name: "Competitive Programming", hobbie: "Competitive Programming" },
-  //       { id: 4, name: "Photography", hobbie: "Photography" },
-  //       { id: 5, name: "Travel", hobbie: "Travel" },
-  //       { id: 6, name: "Reading Tech Books", hobbie: "Reading Tech Books" }
-  //     ],
-
-  //     // Links (optional)
-  //     linkedin: "linkedin.com/in/johndoe",
-  //     github: "github.com/johndoe",
-  //     portfolio: "johndoe.dev",
-
-  //     // Optional image (you can add a real URL or leave empty)
-  //     image: "https://plus.unsplash.com/premium_photo-1664474619075-644dd191935f?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=2069" // Leave empty or add profile photo URL
-  //   })
-  // };
   const handleDownloadResume = async () => {
     try {
       // 🔹 Use real data fetched by hook
@@ -998,6 +633,57 @@ export default function LearnerPublicViewer() {
     );
   }
 
+  // Check privacy settings - look in multiple places where it might be stored
+  const privacySettings = raw?.privacySettings ||
+                         profile?.privacySettings ||
+                         parsedProfile?.privacySettings ||
+                         {};
+  const profileVisibility = privacySettings?.profileVisibility || 'public';
+
+  // Check if the viewer is the profile owner (user_id is at raw level or nested in profile)
+  const rawUserId = raw?.user_id || profile?.user_id;
+  const isProfileOwner = (user?.email && raw?.email && user.email === raw.email) ||
+                         (user?.id && rawUserId && user.id === rawUserId);
+
+  // Get contact visibility settings
+  const showEmail = privacySettings?.showEmail !== false;
+  const showPhone = privacySettings?.showPhone !== false;
+  const showLocation = privacySettings?.showLocation !== false;
+
+  // Check if profile is private (but allow owner to view)
+  if (profileVisibility === 'private' && !isProfileOwner) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-gradient-to-br from-gray-50 to-indigo-50">
+        <div className="bg-white p-10 max-w-md text-center border border-gray-200 rounded-lg shadow-lg">
+          <Lock className="w-20 h-20 text-gray-300 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            Profile is Private
+          </h2>
+          <p className="text-gray-600">
+            This learner's profile is set to private and cannot be viewed.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Check if profile is "recruiters only" and viewer is not a recruiter and not the owner
+  if (profileVisibility === 'recruiters' && !isRecruiter && !isProfileOwner) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-gradient-to-br from-gray-50 to-indigo-50">
+        <div className="bg-white p-10 max-w-md text-center border border-gray-200 rounded-lg shadow-lg">
+          <Briefcase className="w-20 h-20 text-gray-300 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            Profile is Private
+          </h2>
+          <p className="text-gray-600">
+            This profile is only visible to recruiters.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       <main className="min-h-screen bg-gradient-to-br from-gray-50 via-indigo-50/30 to-purple-50/30 py-8 px-4 sm:py-12">
@@ -1032,14 +718,7 @@ export default function LearnerPublicViewer() {
 
                   {/* Action Buttons */}
                   <div className="mt-4 flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:gap-3 w-full">
-                    {/* Message button — full width on mobile */}
-                    <button className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium transition-all duration-200 hover:scale-105">
-                      <MessageSquare className="w-4 h-4" />
-                      Message
-                    </button>
-
-                    {/* Wrapper for next two buttons on mobile */}
-                    <div className="mt-2 flex w-full sm:w-auto gap-3 justify-between sm:mt-0">
+                    <div className="flex w-full sm:w-auto gap-3 justify-between">
                       <button
                         onClick={handleDownloadResume}
                         disabled={downloading}
@@ -1102,10 +781,10 @@ export default function LearnerPublicViewer() {
 
                 <div>
                   <div className="text-xs text-gray-500 font-medium mb-1">
-                    Registration
+                    ID Number
                   </div>
                   <div className="text-sm font-semibold text-gray-900">
-                    {registration_number}
+                    {idNumber}
                   </div>
                 </div>
               </div>
@@ -1130,94 +809,86 @@ export default function LearnerPublicViewer() {
                 {/* Contact List */}
                 <dl className="divide-y divide-gray-100 space-y-1">
                   {/* Email */}
-                  <div className="flex items-start gap-3 py-4 group">
-                    <div className="w-9 h-9 flex items-center justify-center rounded-lg bg-gray-50 border border-gray-100 flex-shrink-0">
-                      <Mail className="w-4.5 h-4.5 text-gray-500" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <dt className="text-xs font-medium text-gray-500 mb-1">
-                        Email
-                      </dt>
-                      <div className="flex items-center justify-between gap-2">
-                        <dd className="text-sm font-semibold text-gray-900 truncate">
-                          {emailAddr || "—"}
-                        </dd>
-                        {emailAddr && (
-                          <button
-                            onClick={() => {
-                              navigator.clipboard.writeText(emailAddr);
-                              toast.success(`${emailAddr} has been copied to clipboard.`);
-                            }}
-                            id="copy-email"
-                            title="Copy email"
-                            className="text-gray-400 hover:text-indigo-600 transition-colors duration-200"
-                          >
-                            <Copy className="w-4 h-4" />
-                          </button>
-                        )}
+                  {showEmail && (
+                    <div className="flex items-start gap-3 py-4 group">
+                      <div className="w-9 h-9 flex items-center justify-center rounded-lg bg-gray-50 border border-gray-100 flex-shrink-0">
+                        <Mail className="w-4.5 h-4.5 text-gray-500" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <dt className="text-xs font-medium text-gray-500 mb-1">
+                          Email
+                        </dt>
+                        <div className="flex items-center justify-between gap-2">
+                          <dd className="text-sm font-semibold text-gray-900 truncate">
+                            {emailAddr || "—"}
+                          </dd>
+                          {emailAddr && (
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(emailAddr);
+                                toast.success(`${emailAddr} has been copied to clipboard.`);
+                              }}
+                              id="copy-email"
+                              title="Copy email"
+                              className="text-gray-400 hover:text-indigo-600 transition-colors duration-200"
+                            >
+                              <Copy className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  )}
 
                   {/* Phone */}
-                  <div className="flex items-start gap-3 py-4 group">
-                    <div className="w-9 h-9 flex items-center justify-center rounded-lg bg-gray-50 border border-gray-100 flex-shrink-0">
-                      <Phone className="w-4.5 h-4.5 text-gray-500" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <dt className="text-xs font-medium text-gray-500 mb-1">
-                        Phone
-                      </dt>
-                      <div className="flex items-center justify-between gap-2">
-                        <dd className="text-sm font-semibold text-gray-900">
-                          {phone || "—"}
-                        </dd>
-                        {phone && (
-                          <button
-                            onClick={() => {
-                              navigator.clipboard.writeText(phone);
-                              toast.success(`${phone} has been copied to clipboard.`);
-                            }}
-                            id="copy-phone"
-                            title="Copy phone number"
-                            className="text-gray-400 hover:text-indigo-600 transition-colors duration-200"
-                          >
-                            <Copy className="w-4 h-4" />
-                          </button>
-                        )}
+                  {showPhone && (
+                    <div className="flex items-start gap-3 py-4 group">
+                      <div className="w-9 h-9 flex items-center justify-center rounded-lg bg-gray-50 border border-gray-100 flex-shrink-0">
+                        <Phone className="w-4.5 h-4.5 text-gray-500" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <dt className="text-xs font-medium text-gray-500 mb-1">
+                          Phone
+                        </dt>
+                        <div className="flex items-center justify-between gap-2">
+                          <dd className="text-sm font-semibold text-gray-900">
+                            {phone || "—"}
+                          </dd>
+                          {phone && (
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(phone);
+                                toast.success(`${phone} has been copied to clipboard.`);
+                              }}
+                              id="copy-phone"
+                              title="Copy phone number"
+                              className="text-gray-400 hover:text-indigo-600 transition-colors duration-200"
+                            >
+                              <Copy className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  )}
 
                   {/* Location */}
-                  <div className="flex items-start gap-3 py-4">
-                    <div className="w-9 h-9 flex items-center justify-center rounded-lg bg-gray-50 border border-gray-100 flex-shrink-0">
-                      <MapPin className="w-4.5 h-4.5 text-gray-500" />
+                  {showLocation && (
+                    <div className="flex items-start gap-3 py-4">
+                      <div className="w-9 h-9 flex items-center justify-center rounded-lg bg-gray-50 border border-gray-100 flex-shrink-0">
+                        <MapPin className="w-4.5 h-4.5 text-gray-500" />
+                      </div>
+                      <div className="min-w-0">
+                        <dt className="text-xs font-medium text-gray-500 mb-1">
+                          Location
+                        </dt>
+                        <dd className="text-sm font-semibold text-gray-900">
+                          {location || "—"}
+                        </dd>
+                      </div>
                     </div>
-                    <div className="min-w-0">
-                      <dt className="text-xs font-medium text-gray-500 mb-1">
-                        Location
-                      </dt>
-                      <dd className="text-sm font-semibold text-gray-900">
-                        {location || "—"}
-                      </dd>
-                    </div>
-                  </div>
+                  )}
 
-                  {/* Registration */}
-                  <div className="flex items-start gap-3 py-4">
-                    <div className="w-9 h-9 flex items-center justify-center rounded-lg bg-gray-50 border border-gray-100 flex-shrink-0">
-                      <Star className="w-4.5 h-4.5 text-gray-500" />
-                    </div>
-                    <div className="min-w-0">
-                      <dt className="text-xs font-medium text-gray-500 mb-1">
-                        Registration Number
-                      </dt>
-                      <dd className="text-sm font-semibold text-gray-900">
-                        {registration_number || "—"}
-                      </dd>
-                    </div>
-                  </div>
                 </dl>
               </div>
             </aside>

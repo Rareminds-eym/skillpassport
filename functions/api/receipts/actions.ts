@@ -44,5 +44,32 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     return apiSuccess(data, context.request);
   }
 
+  if (action === 'get-receipt') {
+    const { orderId } = body;
+    if (!orderId) return apiError(400, 'VALIDATION_ERROR', 'Missing orderId', context.request);
+
+    // Try to fetch by razorpay_order_id first
+    const { data: orderData, error: orderError } = await supabase
+      .from('pre_registrations')
+      .select('*')
+      .eq('razorpay_order_id', orderId)
+      .maybeSingle();
+
+    if (!orderError && orderData) {
+      return apiSuccess(orderData, context.request);
+    }
+
+    // If not found, try by id (UUID)
+    const { data: idData, error: idError } = await supabase
+      .from('pre_registrations')
+      .select('*')
+      .eq('id', orderId)
+      .maybeSingle();
+
+    if (idError && idError.code !== 'PGRST116') return apiDbError(idError, context.request);
+    if (!idData) return apiError(404, 'NOT_FOUND', 'Receipt not found', context.request);
+    return apiSuccess(idData, context.request);
+  }
+
   return apiError(400, 'BAD_REQUEST', `Unknown action: ${action}`, context.request);
 });

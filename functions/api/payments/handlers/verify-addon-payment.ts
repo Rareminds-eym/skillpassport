@@ -51,12 +51,23 @@ export async function handleVerifyAddonPayment(context: AuthenticatedContext): P
       body.razorpay_signature as string
     );
 
+    // Step 1.5: Verify payment was actually captured (Amount Spoofing Prevention)
+    const payment = await worker.getPayment(body.razorpay_payment_id as string);
+    if (payment.status !== 'captured' || payment.order_id !== body.razorpay_order_id) {
+      return apiError(400, 'VALIDATION_ERROR', 'Payment not captured or order ID mismatch', context.request);
+    }
+
+    // Parameter Tampering Prevention: Ensure the item they are requesting matches the item they created the order for
+    if (payment.notes?.feature_key && payment.notes.feature_key !== body.feature_key) {
+      return apiError(400, 'VALIDATION_ERROR', 'Feature key mismatch with original order', context.request);
+    }
+
     if (!body.billing_period || typeof body.billing_period !== 'string') {
       return apiError(400, 'VALIDATION_ERROR', 'billing_period is required', context.request);
     }
 
-    // body.amount is in paise (from Razorpay API); DB columns expect rupees
-    const priceAtPurchase = typeof body.amount === 'number' ? body.amount / 100 : 0;
+    // payment.amount is in paise (from authoritative Razorpay API); DB columns expect rupees
+    const priceAtPurchase = payment.amount / 100;
     const billingPeriod = body.billing_period as string;
 
     // Step 2: Record purchase in Auth DB via SSO Worker RPC
@@ -71,7 +82,12 @@ export async function handleVerifyAddonPayment(context: AuthenticatedContext): P
         razorpay_signature: body.razorpay_signature as string,
       });
     } catch (rpcError: any) {
-      console.error('[VerifyAddonPayment] SSO Worker failed to record purchase:', rpcError.message);
+      if (rpcError.message?.includes('duplicate key') || rpcError.message?.includes('23505') || rpcError.status === 409) {
+        console.log('[VerifyAddonPayment] Addon purchase already recorded by webhook (duplicate caught). Continuing to ensure local entitlement exists.');
+      } else {
+        console.error('[VerifyAddonPayment] SSO Worker failed to record purchase:', rpcError.message);
+        return apiError(500, 'SSO_ERROR', 'Failed to record addon purchase in auth DB', context.request);
+      }
     }
 
     // Step 3: Grant App DB entitlement locally for immediate access
@@ -80,19 +96,20 @@ export async function handleVerifyAddonPayment(context: AuthenticatedContext): P
     if (billingPeriod === 'annual') endDate.setFullYear(endDate.getFullYear() + 1);
     else endDate.setMonth(endDate.getMonth() + 1);
 
-    const { data: entitlement, error: entError } = await supabase.from('user_entitlements').insert({
+    const { data: entitlement, error: entError } = await supabase.from('user_entitlements').upsert({
       user_id: user.id,
       feature_key: body.feature_key as string,
       status: 'active',
       billing_period: billingPeriod,
       price_at_purchase: priceAtPurchase,
-      razorpay_subscription_id: body.razorpay_order_id as string,
+      razorpay_subscription_id: `${body.razorpay_order_id}_${body.feature_key}`,
       start_date: new Date().toISOString(),
       end_date: endDate.toISOString()
-    }).select().single();
+    }, { onConflict: 'razorpay_subscription_id' }).select().single();
 
     if (entError) {
       console.error('[VerifyAddonPayment] Failed to create user entitlement:', entError);
+      return apiError(500, 'DATABASE_ERROR', 'Failed to create user entitlement', context.request);
     }
 
     // Record transaction in auth DB (non-blocking)
@@ -101,10 +118,12 @@ export async function handleVerifyAddonPayment(context: AuthenticatedContext): P
         user_id: user.id,
         razorpay_payment_id: body.razorpay_payment_id as string,
         razorpay_order_id: body.razorpay_order_id as string,
+        razorpay_signature: body.razorpay_signature as string,
         amount: priceAtPurchase,
         currency: (body.currency as string) || 'INR',
         status: 'completed',
         transaction_type: 'addon',
+        payment_method: payment.method,
         metadata: { feature_key: body.feature_key },
       });
     } catch (txError) {

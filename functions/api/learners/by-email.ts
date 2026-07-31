@@ -17,11 +17,12 @@ import { getServiceClient } from '../../lib/supabase';
 export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   const startTime = Date.now();
   const env = context.env as Record<string, string>;
-  const supabase = getServiceClient(env as any);
+  const supabase = getServiceClient(env);
   const user = getContextUser(context);
 
   const url = new URL(context.request.url);
   const email = url.searchParams.get('email');
+  const publicProfileLearnerId = url.searchParams.get('learnerId');
 
   if (!email) {
     return apiError(400, 'INVALID_INPUT', 'Email is required', context.request, { startTime });
@@ -32,8 +33,27 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   // uses ADMIN_ROLES, replacing the inline literal (bug §7.1).
   const isAdmin = user.roles?.some((r: string) => ADMIN_ROLES.includes(r));
   if (!isAdmin && user.email !== email) {
-    console.log(`[LearnersByEmail] BLOCKED: JWT email="${user.email}" tried to access "${email}"`);
-    return apiError(403, 'FORBIDDEN', 'You can only access your own data', context.request, { startTime });
+    if (!publicProfileLearnerId) {
+      console.log(`[LearnersByEmail] BLOCKED: JWT email="${user.email}" tried to access "${email}"`);
+      return apiError(403, 'FORBIDDEN', 'You can only access your own data', context.request, { startTime });
+    }
+
+    const { data: publicProfileLearner, error: publicProfileError } = await supabase
+      .from('learners')
+      .select('id')
+      .eq('id', publicProfileLearnerId)
+      .eq('email', email)
+      .maybeSingle();
+
+    if (publicProfileError) {
+      console.error('[LearnersByEmail] Public profile verification error:', JSON.stringify(publicProfileError));
+      return apiError(500, 'INTERNAL_ERROR', 'Unable to verify profile access', context.request, { startTime });
+    }
+
+    if (!publicProfileLearner) {
+      console.log(`[LearnersByEmail] BLOCKED: learnerId="${publicProfileLearnerId}" does not match requested email="${email}"`);
+      return apiError(403, 'FORBIDDEN', 'You can only access your own data', context.request, { startTime });
+    }
   }
 
   try {
@@ -68,7 +88,24 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
 
     if (fullData) {
       console.log(`[LearnersByEmail] Full query success for "${email}", learner id="${fullData.id}"`);
-      return apiSuccess(fullData, context.request, { startTime });
+
+      // Fetch privacy settings
+      let privacySettings = { profileVisibility: 'public' };
+      if (fullData.user_id) {
+        const { data: userSettings } = await supabase
+          .from('user_settings')
+          .select('privacy_settings')
+          .eq('user_id', fullData.user_id)
+          .maybeSingle();
+        if (userSettings?.privacy_settings) {
+          privacySettings = userSettings.privacy_settings;
+        }
+      }
+
+      return apiSuccess({
+        ...fullData,
+        privacySettings
+      }, context.request, { startTime });
     }
 
     // Strategy 2: Try simple query without joins
@@ -96,8 +133,22 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
         supabase.from('education').select('*').eq('learner_id', learnerId),
       ]);
 
+      // Fetch privacy settings
+      let privacySettings = { profileVisibility: 'public' };
+      if (simpleData.user_id) {
+        const { data: userSettings } = await supabase
+          .from('user_settings')
+          .select('privacy_settings')
+          .eq('user_id', simpleData.user_id)
+          .maybeSingle();
+        if (userSettings?.privacy_settings) {
+          privacySettings = userSettings.privacy_settings;
+        }
+      }
+
       const mergedData = {
         ...simpleData,
+        privacySettings,
         skill_passports: skillPassports.data || [],
         projects: projects.data || [],
         certificates: certificates.data || [],
@@ -126,7 +177,7 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
     if (byUserData) {
       console.log(`[LearnersByEmail] Found learner by user_id! id="${byUserData.id}", learner_email="${byUserData.email}"`);
       const learnerId = byUserData.id;
-      const [skillPassports, projects, certificates, experience, skills, trainings, educationData] = await Promise.all([
+      const [skillPassports, projects, certificates, experience, skills, trainings, educationData, userSettings] = await Promise.all([
         supabase.from('skill_passports').select('*').eq('learner_id', learnerId),
         supabase.from('projects').select('*').eq('learner_id', learnerId),
         supabase.from('certificates').select('*').eq('learner_id', learnerId),
@@ -134,10 +185,17 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
         supabase.from('skills').select('*').eq('learner_id', learnerId),
         supabase.from('trainings').select('*').eq('learner_id', learnerId),
         supabase.from('education').select('*').eq('learner_id', learnerId),
+        supabase.from('user_settings').select('privacy_settings').eq('user_id', byUserData.user_id).maybeSingle(),
       ]);
+
+      let privacySettings = { profileVisibility: 'public' };
+      if (userSettings.data?.privacy_settings) {
+        privacySettings = userSettings.data.privacy_settings;
+      }
 
       const mergedData = {
         ...byUserData,
+        privacySettings,
         skill_passports: skillPassports.data || [],
         projects: projects.data || [],
         certificates: certificates.data || [],

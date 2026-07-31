@@ -1,14 +1,37 @@
-import { Save, Upload, User } from 'lucide-react';
+import { Save, Upload, User, FileEdit } from 'lucide-react';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePortfolio } from '@/features/digital-portfolio/model/portfolioStore';
+import { ProfileCompletionModal, ProfileCompletionErrorBoundary } from '@/features/digital-portfolio';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('profile-settings');
 
 
 const ProfileSettings: React.FC = () => {
   const navigate = useNavigate();
-  const { settings, updateSettings } = usePortfolio();
+  const { settings, updateSettings, learner } = usePortfolio();
   const [profileImage, setProfileImage] = useState(settings.profileImage || '');
   const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
+  const [showProfileCompletionModal, setShowProfileCompletionModal] = useState(false);
+
+  // Get incomplete sections for the modal
+  const getIncompleteSections = () => {
+    const incomplete: string[] = [];
+    if (!learner?.profile) return incomplete;
+
+    if (!learner.profile.education || learner.profile.education.length === 0) incomplete.push('Education');
+    if (!learner.profile.skills || learner.profile.skills.length === 0) incomplete.push('Skills');
+    if (!learner.profile.projects || learner.profile.projects.length === 0) incomplete.push('Projects');
+    if (!learner.profile.achievements || learner.profile.achievements.length === 0) incomplete.push('Achievements');
+    if (!learner.profile.hobbies || learner.profile.hobbies.length === 0) incomplete.push('Hobbies');
+    if (!learner.profile.interests || learner.profile.interests.length === 0) incomplete.push('Interests');
+    if (!learner.profile.languages || learner.profile.languages.length === 0) incomplete.push('Languages');
+    
+    return incomplete;
+  };
+
+  const incompleteSections = getIncompleteSections();
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -27,6 +50,22 @@ const ProfileSettings: React.FC = () => {
       profileImage: profileImage
     });
     
+    setShowSaveConfirmation(true);
+    setTimeout(() => {
+      setShowSaveConfirmation(false);
+    }, 2000);
+  };
+
+  const handleOpenProfileCompletion = () => {
+    setShowProfileCompletionModal(true);
+  };
+
+  const handleCloseProfileCompletion = () => {
+    setShowProfileCompletionModal(false);
+  };
+
+  const handleCompleteProfile = () => {
+    setShowProfileCompletionModal(false);
     setShowSaveConfirmation(true);
     setTimeout(() => {
       setShowSaveConfirmation(false);
@@ -57,6 +96,37 @@ const ProfileSettings: React.FC = () => {
           </div>
 
           <div className="space-y-8">
+            {/* Complete Profile Button */}
+            <div className="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 rounded-xl p-6 border border-indigo-200 dark:border-indigo-800">
+              <div className="flex items-start justify-between">
+                <div className="flex items-start space-x-4">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center flex-shrink-0">
+                    <FileEdit className="w-6 h-6 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
+                      Complete Your Profile
+                    </h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                      Fill in your education, skills, projects, and achievements to make your digital passport stand out.
+                      {incompleteSections.length > 0 && (
+                        <span className="block mt-1 text-indigo-600 dark:text-indigo-400 font-medium">
+                          {incompleteSections.length} section{incompleteSections.length !== 1 ? 's' : ''} incomplete
+                        </span>
+                      )}
+                    </p>
+                    <button
+                      onClick={handleOpenProfileCompletion}
+                      className="inline-flex items-center px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-500 dark:to-purple-500 text-white rounded-lg hover:shadow-lg transition-all font-medium text-sm"
+                    >
+                      <FileEdit className="w-4 h-4 mr-2" />
+                      {incompleteSections.length > 0 ? 'Complete Profile' : 'Update Profile'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Profile Image */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
@@ -87,111 +157,6 @@ const ProfileSettings: React.FC = () => {
                 </div>
               </div>
             </div>
-
-            {/* Personal Information Form */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                  Full Name
-                </label>
-                <input
-                  type="text"
-                  defaultValue="John Doe"
-                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  placeholder="Enter your full name"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                  Email Address
-                </label>
-                <input
-                  type="email"
-                  defaultValue="john.doe@example.com"
-                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  placeholder="your.email@example.com"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                  Phone Number
-                </label>
-                <input
-                  type="tel"
-                  defaultValue="+1 234 567 8900"
-                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  placeholder="+1 234 567 8900"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                  Location
-                </label>
-                <input
-                  type="text"
-                  defaultValue="San Francisco, CA"
-                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  placeholder="City, Country"
-                />
-              </div>
-            </div>
-
-            {/* Bio */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                Professional Bio
-              </label>
-              <textarea
-                rows={5}
-                defaultValue="Passionate full-stack developer with expertise in React, Node.js, and cloud technologies. Love creating innovative solutions and learning new technologies."
-                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none"
-                placeholder="Tell us about yourself..."
-              />
-            </div>
-
-            {/* Social Links */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
-                Social Media Links
-              </label>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">LinkedIn</label>
-                  <input
-                    type="url"
-                    placeholder="https://linkedin.com/in/username"
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">GitHub</label>
-                  <input
-                    type="url"
-                    placeholder="https://github.com/username"
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Twitter</label>
-                  <input
-                    type="url"
-                    placeholder="https://twitter.com/username"
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Portfolio Website</label>
-                  <input
-                    type="url"
-                    placeholder="https://yourwebsite.com"
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  />
-                </div>
-              </div>
-            </div>
           </div>
 
           {/* Save Button */}
@@ -205,6 +170,24 @@ const ProfileSettings: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Profile Completion Modal */}
+      <ProfileCompletionErrorBoundary
+        onError={(error, errorInfo) => {
+          if (import.meta.env.DEV) {
+            logger.error('ProfileCompletionModal error', error as Error, { errorInfo });
+          }
+        }}
+      >
+        <ProfileCompletionModal
+          isOpen={showProfileCompletionModal}
+          incompleteSections={incompleteSections}
+          onComplete={handleCompleteProfile}
+          onSkip={handleCloseProfileCompletion}
+          onNeverShow={handleCloseProfileCompletion}
+          onClose={handleCloseProfileCompletion}
+        />
+      </ProfileCompletionErrorBoundary>
     </div>
   );
 };

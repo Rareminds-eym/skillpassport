@@ -14,14 +14,18 @@ import {
 
 import SEOHead from '@/shared/ui/SEOHead';
 import { useAssessmentPromotional } from '@/features/promotional/model/promotionalStore';
+import { useIsAuthenticated } from '@/shared/model/authStore';
 import { useEffect, useRef } from 'react';
 import { trackEvent, AnalyticsEvents } from '@/shared/lib/analytics';
 const Home = () => {
   const {
-    showModal: showAssessmentModal,
+    showModal: storeShowAssessmentModal,
     dismissModal: dismissAssessmentModal,
     getTimeRemaining: getAssessmentTimeRemaining
   } = useAssessmentPromotional();
+  
+  const isAuthenticated = useIsAuthenticated();
+  const showAssessmentModal = storeShowAssessmentModal && !isAuthenticated;
 
   // Track scroll depth - fires once when user scrolls past 50%
   const hasTrackedScroll = useRef(false);

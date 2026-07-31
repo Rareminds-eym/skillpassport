@@ -14,6 +14,21 @@ export async function handleOrganizationQueries(context: AuthenticatedContext): 
   try {
     const supabase = getServiceClient(env);
 
+    // Guard: Require authorization for any org-scoped action
+    if (orgId && (action === 'getOrganizationSubscription' || action === 'getOrganizationMembers')) {
+      const { data: membership } = await supabase
+        .from('license_assignments')
+        .select('id, role')
+        .eq('user_id', user.id)
+        .eq('organization_id', orgId)
+        .limit(1)
+        .maybeSingle();
+
+      if (!membership || (membership.role !== 'admin' && membership.role !== 'owner')) {
+        return apiError(403, 'FORBIDDEN', 'Not authorized for this organization', context.request);
+      }
+    }
+
     if (action === 'getOrganizationSubscription' && orgId) {
       const { data, error } = await supabase
         .from('subscription_cache')
@@ -42,6 +57,7 @@ export async function handleOrganizationQueries(context: AuthenticatedContext): 
       const { data, error } = await supabase
         .from('license_assignments')
         .select(`*, users_shadow (id, email)`)
+        .eq('organization_id', orgId)
         .order('assigned_at', { ascending: false });
 
       if (error) throw error;

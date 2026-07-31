@@ -1,10 +1,11 @@
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getContextUser, withAuth } from '../../lib/auth';
 import { apiError, apiSuccess } from '../../lib/response';
+import { resolveUserOrganization } from '../../lib/resolve-organization';
 import { getServiceClient } from '../../lib/supabase';
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
-  const supabase = getServiceClient(context.env as any);
+  const supabase = getServiceClient(context.env);
   let body: any;
   try {
     body = await context.request.json();
@@ -50,17 +51,15 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 async function handleFetchCurrentSchool(supabase: any, context: AuthenticatedContext, body: any) {
   const user = getContextUser(context);
 
-  // Resolves the current user's `school_id` (data-scope) only. `role` is NOT selected/read here
-  // (task 22.3 — no `school_educators.role` authority use); authorization is enforced separately
-  // from the verified JWT. `handleFetchSchoolEducators` below still selects `role` purely for the
-  // school-admin roster DISPLAY (never an authz decision).
-  const { data: educator } = await supabase.from('school_educators').select('school_id').eq('user_id', user.id).maybeSingle();
-  let schoolId = educator?.school_id;
+  // Resolves the current user's school using the shared org resolution helper.
+  // Authorization is enforced separately from the verified JWT.
+  const resolved = await resolveUserOrganization(supabase, {
+    userId: user.id,
+    email: user.email,
+    orgType: 'school',
+  });
 
-  if (!schoolId) {
-    const { data: org } = await supabase.from('organizations').select('id').eq('admin_id', user.id).eq('organization_type', 'school').maybeSingle();
-    if (org?.id) schoolId = org.id;
-  }
+  const schoolId = resolved?.organizationId || null;
 
   if (!schoolId) return apiSuccess({ schoolId: null, systemConfig: null }, context.request);
 
@@ -187,8 +186,27 @@ async function handleUpdateOrganization(supabase: any, context: AuthenticatedCon
   const { id, name, address, phone, email } = body;
   if (!id) return apiError(400, 'VALIDATION_ERROR', 'id is required', context.request);
 
-  const { error } = await supabase.from('organizations').update({ name, address, phone, email, updated_at: new Date().toISOString() }).eq('id', id).eq('organization_type', 'school');
+  // Update Skillpassport DB (app-specific fields: address, phone, email, etc.)
+  const { error } = await supabase
+    .from('organizations')
+    .update({ name, address, phone, email, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .eq('organization_type', 'school');
+  
   if (error) throw error;
+
+  // If name changed, sync to SSO DB (source of truth for auth-related org data)
+  // SSO stores minimal org data (id, name, slug) for auth contexts like org switcher
+  if (name && context.env.SSO_SERVICE) {
+    try {
+      await context.env.SSO_SERVICE.updateOrganization({ id, name });
+      console.log(`[settings] Synced org name to SSO: ${id} -> "${name}"`);
+    } catch (syncError) {
+      // Don't fail request if SSO sync fails - Skillpassport update succeeded
+      console.error('[settings] Failed to sync org name to SSO:', syncError);
+    }
+  }
+
   return apiSuccess({ success: true }, context.request);
 }
 

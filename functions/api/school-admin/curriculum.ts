@@ -4,7 +4,7 @@ import { apiError, apiSuccess } from '../../lib/response';
 import { getServiceClient } from '../../lib/supabase';
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
-  const supabase = getServiceClient(context.env as any);
+  const supabase = getServiceClient(context.env);
   let body: any;
   try {
     body = await context.request.json();

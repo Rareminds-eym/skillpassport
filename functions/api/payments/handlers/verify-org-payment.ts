@@ -23,6 +23,12 @@ import {
 import { syncSubscriptionCache, syncUserShadow } from '../../../lib/sync-shadow';
 import { apiSuccess, apiError } from '../../../lib/response';
 
+// RPC calls throw errors of unknown shape; some carry an HTTP-like numeric
+// `status` (e.g. 409 on a duplicate-key race). This narrows without `any`.
+function hasNumericStatus(error: unknown): error is Record<string, unknown> & { status: number } {
+  return typeof error === 'object' && error !== null && typeof (error as Record<string, unknown>).status === 'number';
+}
+
 export async function handleVerifyOrgPayment(context: AuthenticatedContext): Promise<Response> {
   const user = getContextUser(context);
   const env = context.env as unknown as PaymentWorkerEnv & { SSO_SERVICE: Fetcher };
@@ -47,6 +53,21 @@ export async function handleVerifyOrgPayment(context: AuthenticatedContext): Pro
       return apiError(400, 'VALIDATION_ERROR', 'plan_name is required', context.request);
     }
 
+    const supabase = getServiceClient(env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string });
+
+    // Guard: Verify user is an admin or owner of the organization
+    const { data: membership } = await supabase
+      .from('license_assignments')
+      .select('id, role')
+      .eq('user_id', user.id)
+      .eq('organization_id', body.org_id as string)
+      .limit(1)
+      .maybeSingle();
+
+    if (!membership || (membership.role !== 'admin' && membership.role !== 'owner')) {
+      return apiError(403, 'FORBIDDEN', 'Not authorized for this organization', context.request);
+    }
+
     // Step 1: Verify Razorpay HMAC signature via payment-worker RPC (unchanged)
     const worker = getPaymentWorker(env);
     const verifyResult = await worker.verifyPaymentSignature(
@@ -55,21 +76,43 @@ export async function handleVerifyOrgPayment(context: AuthenticatedContext): Pro
       body.razorpay_signature as string
     );
 
-    // Step 2: Signature valid — create org subscription in auth DB
-    const supabase = getServiceClient(env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string });
+    // Step 1.5: Verify payment was actually captured (Amount Spoofing Prevention)
+    const payment = await worker.getPayment(body.razorpay_payment_id as string);
+    if (payment.status !== 'captured' || payment.order_id !== body.razorpay_order_id) {
+      return apiError(400, 'VALIDATION_ERROR', 'Payment not captured or order ID mismatch', context.request);
+    }
 
+    // Parameter Tampering Prevention
+    if (payment.notes?.org_id && payment.notes.org_id !== body.org_id) {
+      return apiError(400, 'VALIDATION_ERROR', 'Org ID mismatch with original order', context.request);
+    }
+    if (payment.notes?.seat_count && payment.notes.seat_count !== String(body.seat_count || 1)) {
+      return apiError(400, 'VALIDATION_ERROR', 'Seat count mismatch with original order', context.request);
+    }
+
+    // Step 2: Signature valid — create org subscription in auth DB
+    
     if (!body.billing_cycle || typeof body.billing_cycle !== 'string') {
       return apiError(400, 'VALIDATION_ERROR', 'billing_cycle is required', context.request);
     }
 
     const seatCount = typeof body.seat_count === 'number' ? body.seat_count : 1;
-    const planAmount = typeof body.amount === 'number' ? body.amount : 0;
+    const planAmount = payment.amount;
     const billingCycle = body.billing_cycle as string;
 
     const now = new Date();
     const endDate = new Date(now);
     const durationMonths = parseDurationMonths(billingCycle);
     endDate.setMonth(endDate.getMonth() + durationMonths);
+
+    // learners.name is the source of truth for the subscription's full_name
+    // (subscriptions.full_name is used for Sales Dashboard name search, so it
+    // must hold the real name, not the email).
+    const { data: learnerForOrgSubscription } = await supabase
+      .from('learners')
+      .select('name')
+      .eq('user_id', user.id)
+      .maybeSingle();
 
     let subscription: Record<string, unknown>;
     try {
@@ -81,9 +124,8 @@ export async function handleVerifyOrgPayment(context: AuthenticatedContext): Pro
         plan_amount: planAmount / 100,
         billing_cycle: billingCycle,
         features: [],
-        full_name: (user as any).name || user.email || '',
+        full_name: learnerForOrgSubscription?.name || user.email || '',
         email: user.email || '',
-        phone: (user as any).phone || undefined,
         razorpay_order_id: body.razorpay_order_id as string,
         razorpay_payment_id: body.razorpay_payment_id as string,
         organization_id: body.org_id as string,
@@ -93,15 +135,33 @@ export async function handleVerifyOrgPayment(context: AuthenticatedContext): Pro
         is_bulk_purchase: true,
         purchased_by: user.id,
       });
-    } catch (createError: any) {
-      console.error('[VerifyOrgPayment] Subscription creation failed:', createError.message);
+    } catch (createError: unknown) {
+      const createErrorMessage = createError instanceof Error ? createError.message : String(createError);
+      const createErrorStatus = hasNumericStatus(createError) ? createError.status : undefined;
+
+      if (createErrorMessage.includes('duplicate key') || createErrorMessage.includes('23505') || createErrorStatus === 409) {
+        console.log('[VerifyOrgPayment] Org subscription already created by webhook (duplicate caught). Syncing shadow cache before return.');
+
+        try {
+          await syncUserShadow(supabase, user.id, user.email);
+          const syncData = await ssoSyncSubscription(env, user.id);
+          if (syncData.subscription) {
+            await syncSubscriptionCache(supabase, syncData.subscription, syncData.plan);
+          }
+        } catch (syncError) {
+          console.error('[VerifyOrgPayment] Shadow sync failed during duplicate handling:', syncError);
+        }
+
+        return apiSuccess({ ...verifyResult, subscription_created: true, already_fulfilled: true }, context.request);
+      }
+      console.error('[VerifyOrgPayment] Subscription creation failed:', createErrorMessage);
       return apiSuccess({
         ...verifyResult,
         subscription_created: false,
         error: {
           code: 'SUBSCRIPTION_CREATE_FAILED',
           message: 'Payment verified but org subscription creation failed. Please contact support.',
-          details: createError.message,
+          details: createErrorMessage,
         },
       }, context.request, 207);
     }
@@ -113,8 +173,10 @@ export async function handleVerifyOrgPayment(context: AuthenticatedContext): Pro
         user_id: user.id,
         razorpay_payment_id: body.razorpay_payment_id as string,
         razorpay_order_id: body.razorpay_order_id as string,
+        razorpay_signature: body.razorpay_signature as string,
         amount: planAmount / 100,
         currency: (body.currency as string) || 'INR',
+        payment_method: payment.method,
         status: 'completed',
         transaction_type: 'subscription',
         organization_id: body.org_id as string,
@@ -128,7 +190,7 @@ export async function handleVerifyOrgPayment(context: AuthenticatedContext): Pro
     // Step 4: Sync shadow table in app DB
     try {
       // Ensure user exists in users_shadow (FK constraint for subscription_cache)
-      await syncUserShadow(supabase, user.id, (user as any).email);
+      await syncUserShadow(supabase, user.id, user.email);
 
       const syncData = await ssoSyncSubscription(env, user.id);
       if (syncData.subscription) {

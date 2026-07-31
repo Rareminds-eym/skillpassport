@@ -1,5 +1,6 @@
 import { useEffect, useCallback } from 'react';
-import { MessageService, Message } from '@/features/messaging';
+import MessageService from '@/shared/api/messageService';
+import type { Message } from '@/features/messaging';
 import { useMessageStore } from '@/shared/model/useMessageStore';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/shared/lib/queryKeys';

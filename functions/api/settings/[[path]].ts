@@ -8,8 +8,8 @@ function getSubPath(url: URL): string {
 }
 
 export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
-  const env = context.env as Record<string, string>;
-  const supabase = getServiceClient(env as any);
+  const env = context.env;
+  const supabase = getServiceClient(env);
   const url = new URL(context.request.url);
   const subPath = getSubPath(url);
 
@@ -126,8 +126,8 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
 });
 
 export const onRequestPost = withAuth(requireAdmin(async (context: ContextWithUser) => {
-  const env = context.env as Record<string, string>;
-  const supabase = getServiceClient(env as any);
+  const env = context.env;
+  const supabase = getServiceClient(env);
   const url = new URL(context.request.url);
   const subPath = getSubPath(url);
 

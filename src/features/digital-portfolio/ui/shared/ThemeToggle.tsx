@@ -1,6 +1,6 @@
 import React from 'react';
 import { Sun, Moon } from 'lucide-react';
-import { useTheme } from '@/shared/model/themeStore';
+import { useScopedTheme } from '../../model/scopedThemeStore';
 
 
 interface ThemeToggleProps {
@@ -9,7 +9,7 @@ interface ThemeToggleProps {
 }
 
 const ThemeToggle: React.FC<ThemeToggleProps> = ({ className = '', showLabel = false }) => {
-  const { theme, toggleTheme } = useTheme();
+  const { theme, toggleTheme } = useScopedTheme();
 
   return (
     <button

@@ -1,4 +1,3 @@
-import { useAuthStore } from '@/shared/model/authStore';
 import { ssoClient } from '@/shared/api/ssoClient';
 /**
  * Shared HTTP Client utilities
@@ -13,15 +12,6 @@ import { ssoClient } from '@/shared/api/ssoClient';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('http-client');
-
-// HTTP client configuration
-export const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-export const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-// Validate required environment variables
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  throw new Error('Missing required Supabase environment variables');
-}
 
 // Common request timeout
 export const DEFAULT_TIMEOUT = 30000; // 30 seconds
@@ -38,15 +28,18 @@ export const defaultHeaders = {
  * Create authenticated headers with token
  */
 export async function createAuthHeaders(customHeaders: Record<string, string> = {}): Promise<Record<string, string>> {
-  const user = useAuthStore.getState().user;
-  
-  const headers = {
+  // Validate environment variables on first API call
+  validateEnvironment();
+
+  const headers: Record<string, string> = {
     ...defaultHeaders,
     ...customHeaders,
   };
 
-  if (ssoClient.getAccessToken()) {
-      }
+  const token = ssoClient.getAccessToken();
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
 
   return headers;
 }
@@ -58,6 +51,9 @@ export async function makeRequest<T>(
   url: string,
   options: RequestInit = {}
 ): Promise<T> {
+  // Validate environment variables on first API call
+  validateEnvironment();
+
   const response = await ssoClient.fetch(url, {
     ...options,
     headers: {
@@ -81,7 +77,7 @@ export async function makeAuthenticatedRequest<T>(
   options: RequestInit = {}
 ): Promise<T> {
   const authHeaders = await createAuthHeaders(options.headers as Record<string, string>);
-  
+
   return makeRequest<T>(url, {
     ...options,
     headers: authHeaders,

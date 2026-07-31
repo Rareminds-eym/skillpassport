@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
-import {MessageService} from '@/features/messaging';
+import MessageService from '@/shared/api/messageService';
 import { queryKeys } from '@/shared/lib/queryKeys';
 
 /**

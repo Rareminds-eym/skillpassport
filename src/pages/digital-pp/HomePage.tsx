@@ -1,10 +1,11 @@
 import { motion } from 'framer-motion';
 import { ArrowLeft, ArrowRight, BookOpen, CheckCircle, Sparkles, User } from 'lucide-react';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { BackgroundRippleEffect } from '@/features/digital-portfolio';
 import { usePortfolio } from '@/features/digital-portfolio/model/portfolioStore';
 import { useUserRole } from '@/shared/model/authStore';
+import DigitalPortfolioSideDrawer from '@/widgets/learner-dashboard/ui/DigitalPortfolioSideDrawer';
 
 
 const HomePage: React.FC = () => {
@@ -12,6 +13,7 @@ const HomePage: React.FC = () => {
   const navigate = useNavigate();
   const { setLearner } = usePortfolio();
   const { role } = useUserRole();
+  const [sideDrawerOpen, setSideDrawerOpen] = useState(false);
 
   useEffect(() => {
     // Set the candidate data from navigation state into PortfolioContext
@@ -28,13 +30,23 @@ const HomePage: React.FC = () => {
   // For admins and educators, use the direct portfolio routes that don't require learner role
   const portfolioPath = isViewingAsNonLearner ? '/portfolio' : '/learner/digital-portfolio/portfolio';
   const passportPath = isViewingAsNonLearner ? '/passport' : '/learner/digital-portfolio/passport';
+  
   const handleGoBack = () => {
     // Go back to the previous page
     navigate(-1);
   };
 
+  const scrollToModeSelection = () => {
+    const modeSection = document.getElementById('mode-selection-section');
+    if (modeSection) {
+      modeSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-slate-900 dark:to-indigo-950 transition-colors duration-300">
+      
+      {/* Learner Dashboard Header will show from LearnerLayout */}
       
       {/* Back Button - Fixed at top - Only show for admins and educators */}
       {isViewingAsNonLearner && (
@@ -117,8 +129,8 @@ const HomePage: React.FC = () => {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
-              <Link
-                to={portfolioPath}
+              <button
+                onClick={scrollToModeSelection}
                 className="inline-flex items-center px-10 py-5 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-full font-semibold text-lg shadow-2xl hover:shadow-purple-500/50 transition-all group relative overflow-hidden"
               >
                 <span className="relative z-10 flex items-center">
@@ -126,14 +138,14 @@ const HomePage: React.FC = () => {
                   <ArrowRight className="w-6 h-6 ml-2 group-hover:translate-x-1 transition-transform" />
                 </span>
                 <span className="absolute top-0 left-[-40px] h-full w-0 bg-gradient-to-r from-purple-700 to-pink-700 transform skew-x-[45deg] transition-all duration-700 group-hover:w-[160%] -z-0"></span>
-              </Link>
+              </button>
             </motion.div>
           </motion.div>
         </div>
       </section>
 
       {/* Mode Selection Section */}
-      <section className="relative py-20 px-6 bg-white dark:bg-gray-900 transition-colors duration-300 overflow-hidden">
+      <section id="mode-selection-section" className="relative py-20 px-6 bg-white dark:bg-gray-900 transition-colors duration-300 overflow-hidden">
         {/* Transparent gradient overlay at the top to distinguish from hero section */}
         <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-black/30 via-black/10 to-transparent dark:from-black/50 dark:via-black/20 dark:to-transparent pointer-events-none z-[1]"></div>
         
@@ -413,6 +425,13 @@ const HomePage: React.FC = () => {
           </div>
         </div>
       </section>
+
+      {/* Digital Portfolio Side Drawer - Floating Button on Right */}
+      <DigitalPortfolioSideDrawer
+        isOpen={sideDrawerOpen}
+        onClose={() => setSideDrawerOpen(false)}
+        onOpen={() => setSideDrawerOpen(true)}
+      />
 
     </div>
   );

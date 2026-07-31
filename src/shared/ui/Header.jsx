@@ -1,12 +1,15 @@
+import { getRouteForRole } from '@/features/auth/lib/roleBasedRouter';
+import { useAuthStore } from '@/shared/model/authStore';
+import { SocialMediaLinks } from '@/shared/ui/SocialMediaLinks';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { Menu, X } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { SocialMediaLinks } from '@/shared/ui/SocialMediaLinks';
-import { useAuthStore } from '@/shared/model/authStore';
 
 gsap.registerPlugin(ScrollTrigger);
+
+const getDashboardUrl = (role) => getRouteForRole(role ?? '');
 
 const HIDDEN_PATHS = [
   '/digital-pp',
@@ -202,19 +205,29 @@ const Header = ({ hasBanner = false }) => {
             <div className="hidden md:flex items-center space-x-4 flex-shrink-0">
               <SocialMediaLinks className={isMobileMenuOpen ? 'text-gray-200' : 'text-[#3C3C3B]'} />
 
-              {/* Signup Button */}
-              <Link
-                to="/signup"
-                className="signup-button px-5 py-2 text-sm font-extrabold text-red-600 border-2 border-red-300 rounded-full transition-all duration-200"
-              >
-                Sign Up
-              </Link>
+              {authUser ? (
+                <Link
+                  to={getDashboardUrl(authUser.role)}
+                  className="px-5 py-2.5 text-sm font-extrabold text-white border-2 border-blue-600 bg-gradient-to-r from-blue-600 to-blue-500 shadow-lg shadow-blue-200 rounded-full hover:bg-blue-700 hover:from-blue-700 hover:to-blue-600 transition-all duration-200 hover:shadow-md"
+                >
+                  Dashboard
+                </Link>
+              ) : (
+                <>
+                  {/* Signup Button */}
+                  <Link
+                    to="/signup"
+                    className="signup-button px-5 py-2 text-sm font-extrabold text-red-600 border-2 border-red-300 rounded-full transition-all duration-200"
+                  >
+                    Sign Up
+                  </Link>
 
-              {/* Login Button */}
-              <Link to="/login" className="px-5 py-2.5 text-sm font-extrabold text-white border-2 border-red-300 bg-gradient-to-r from-red-500 to-red-400 shadow-lg shadow-red-200 rounded-full hover:bg-red-600 hover:from-red-600 hover:to-red-500 transition-all duration-200 hover:shadow-md">
-                Login
-              </Link>
-
+                  {/* Login Button */}
+                  <Link to="/login" className="px-5 py-2.5 text-sm font-extrabold text-white border-2 border-red-300 bg-gradient-to-r from-red-500 to-red-400 shadow-lg shadow-red-200 rounded-full hover:bg-red-600 hover:from-red-600 hover:to-red-500 transition-all duration-200 hover:shadow-md">
+                    Login
+                  </Link>
+                </>
+              )}
             </div>
           )}
 
@@ -252,28 +265,42 @@ const Header = ({ hasBanner = false }) => {
               <div ref={(el) => (mobileMenuItemsRef.current[0] = el)} className="px-2 pt-4 space-y-3">
                 {/* Mobile Login/Signup Options */}
                 <div className="space-y-4">
-                  <div>
-                    <div className="text-xs font-bold text-gray-400 uppercase px-2 tracking-wider">Sign Up</div>
-                    <div className="mt-2">
+                  {authUser ? (
+                    <div>
                       <Link
-                        to="/signup"
+                        to={getDashboardUrl(authUser.role)}
                         onClick={closeMobileMenuWithAnimation}
-                        className="signup-button block w-full px-4 py-3 text-sm font-semibold text-center text-red-600 border-2 border-red-300 rounded-lg transition-all duration-200"
+                        className="block w-full px-4 py-3 text-sm font-semibold text-center text-white bg-gradient-to-r from-blue-600 to-blue-500 rounded-lg hover:from-blue-700 hover:to-blue-600 transition-all duration-200 shadow-lg"
                       >
-                        Create an Account
+                        Go to Dashboard
                       </Link>
                     </div>
-                  </div>
+                  ) : (
+                    <>
+                      <div>
+                        <div className="text-xs font-bold text-gray-400 uppercase px-2 tracking-wider">Sign Up</div>
+                        <div className="mt-2">
+                          <Link
+                            to="/signup"
+                            onClick={closeMobileMenuWithAnimation}
+                            className="signup-button block w-full px-4 py-3 text-sm font-semibold text-center text-red-600 border-2 border-red-300 rounded-lg transition-all duration-200"
+                          >
+                            Create an Account
+                          </Link>
+                        </div>
+                      </div>
 
-                  <div>
-                    <Link
-                      to="/login"
-                      onClick={closeMobileMenuWithAnimation}
-                      className="block w-full px-4 py-3 text-sm font-semibold text-center text-white bg-gradient-to-r from-red-500 to-red-400 rounded-lg hover:from-red-600 hover:to-red-500 transition-all duration-200 shadow-lg"
-                    >
-                      Login
-                    </Link>
-                  </div>
+                      <div>
+                        <Link
+                          to="/login"
+                          onClick={closeMobileMenuWithAnimation}
+                          className="block w-full px-4 py-3 text-sm font-semibold text-center text-white bg-gradient-to-r from-red-500 to-red-400 rounded-lg hover:from-red-600 hover:to-red-500 transition-all duration-200 shadow-lg"
+                        >
+                          Login
+                        </Link>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             )}

@@ -96,7 +96,7 @@ export const getUserOrgContexts = async (): Promise<UserOrgContexts> => {
             action: 'get-user-org-context',
             p_user_id: user.id,
         });
-        
+
         const data = response.data;
 
         console.log('[orgContextService] API response', {
@@ -139,6 +139,34 @@ export const getUserOrgContexts = async (): Promise<UserOrgContexts> => {
 
         return { contexts };
     } catch (error: any) {
+        // Handle specific error cases gracefully
+        console.error('[orgContextService] Error fetching org contexts', {
+            errorMessage: error.message,
+            errorCode: error.code,
+            errorStatus: error.status,
+            errorData: error.data
+        });
+
+        // Handle email verification error gracefully - return empty contexts
+        // This allows the dashboard to load for unverified users who will be prompted to verify
+        if (error.code === 'EMAIL_NOT_VERIFIED' || error.message?.includes('Email verification required')) {
+            console.warn('[orgContextService] Email not verified, returning empty contexts');
+            logger.warn('Email verification required to load organization contexts', {
+                errorCode: error.code,
+                errorMessage: error.message
+            });
+            return { contexts: [] };
+        }
+
+        // Handle "organization not found" as empty contexts (not an error condition)
+        // This happens for users who haven't been invited to any org yet
+        if (error.code === 'ORGANIZATION_NOT_FOUND' || error.message?.includes('not associated with any organization')) {
+            console.warn('[orgContextService] User not part of any organization');
+            logger.info('User is not part of any recruitment organization');
+            return { contexts: [] };
+        }
+
+        // For other errors, log and re-throw
         logger.error('Failed to fetch organization contexts', {
             error: error.message,
             errorName: error.name,

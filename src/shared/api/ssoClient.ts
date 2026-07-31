@@ -1,10 +1,6 @@
 import { AuthClient } from '@rareminds-eym/auth-client';
 
-const SSO_BASE_URL = import.meta.env.VITE_SSO_URL;
-
-if (!SSO_BASE_URL) {
-  console.warn('[ssoClient] VITE_SSO_URL is not set. SSO auth will not work.');
-}
+const SSO_BASE_URL = '/api';
 
 /**
  * SSO AuthClient singleton.
@@ -12,9 +8,16 @@ if (!SSO_BASE_URL) {
  * Handles login, signup, token refresh, cross-tab sync, and authenticated fetch.
  * The refresh token is stored as an HttpOnly cookie by the SSO worker.
  * The access token is held in memory only (never localStorage).
+ *
+ * Uses Pages Functions API proxy to SSO Worker:
+ * - baseURL: '/api' → AuthClient appends 'auth/' → becomes '/api/auth/'
+ * - AuthClient calls: POST /api/auth/login, POST /api/auth/signup, etc.
+ * - Pages Functions [[path]].ts catch-all routes these to SSO Worker via service binding
+ * - Specific endpoints (password reset, change password, delete account) → /api/auth/admin-reset-password, etc.
+ * - No direct VITE_SSO_URL needed - frontend never exposes SSO URL
  */
 export const ssoClient = new AuthClient({
-  baseURL: SSO_BASE_URL || '',
+  baseURL: SSO_BASE_URL,
   onSessionExpired: () => {
     // Dispatch event to auth store instead of hard page reload to avoid infinite redirect loops
     if (typeof window !== 'undefined') {

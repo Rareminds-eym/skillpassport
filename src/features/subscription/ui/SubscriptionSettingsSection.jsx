@@ -20,9 +20,8 @@ import {
   Users
 } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useSubscriptionQuery } from '@/features/subscription/model/useSubscriptionQuery';
 import { useSubscription } from '@/features/subscription/model/subscriptionStore';
-
-
 
 /**
  * Get the base path for subscription routes based on current location
@@ -43,7 +42,8 @@ function getSubscriptionBasePath(pathname) {
 export function SubscriptionSettingsSection({ className = '' }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { subscriptionData, loading, activeEntitlements = [], totalAddOnCost = { monthly: 0, annual: 0 } } = useSubscription();
+  const { subscriptionData, loading } = useSubscriptionQuery();
+  const { activeEntitlements = [], totalAddOnCost = { monthly: 0, annual: 0 } } = useSubscription() || {};
 
   // Get the base path for subscription routes
   const basePath = getSubscriptionBasePath(location.pathname);

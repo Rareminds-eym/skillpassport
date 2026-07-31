@@ -38,7 +38,7 @@ const OrganizationProtectedRoute: React.FC<OrganizationProtectedRouteProps> = ({
     const authLoading = useAuthLoading();
     const { role } = useUserRole();
     const location = useLocation();
-    const { orgContext, isLoading: orgLoading, error: orgError } = useOrgContext();
+    const { orgContext, isLoading: orgLoading, error: orgError, isWaitingForSync } = useOrgContext();
     const [hasCheckedOrg, setHasCheckedOrg] = useState(false);
 
     // Debug logging
@@ -50,7 +50,8 @@ const OrganizationProtectedRoute: React.FC<OrganizationProtectedRouteProps> = ({
         orgContext,
         orgLoading,
         orgError: orgError?.message,
-        hasCheckedOrg
+        hasCheckedOrg,
+        isWaitingForSync
     });
 
     // Mark that we've attempted to load org context
@@ -64,9 +65,18 @@ const OrganizationProtectedRoute: React.FC<OrganizationProtectedRouteProps> = ({
     if (authLoading || (orgLoading && !hasCheckedOrg)) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-white">
-                <div className="text-center">
+                <div className="text-center max-w-md">
                     <Loader />
-                    <p className="text-gray-500 text-sm mt-4">Loading...</p>
+                    {isWaitingForSync ? (
+                        <>
+                            <p className="text-gray-700 text-base font-medium mt-4">Setting up your organization...</p>
+                            <p className="text-gray-500 text-sm mt-2">
+                                This usually takes just a few seconds. Thank you for your patience!
+                            </p>
+                        </>
+                    ) : (
+                        <p className="text-gray-500 text-sm mt-4">Loading...</p>
+                    )}
                 </div>
             </div>
         );
@@ -125,34 +135,16 @@ const OrganizationProtectedRoute: React.FC<OrganizationProtectedRouteProps> = ({
     });
 
     if (!orgContext && hasCheckedOrg && !isSubscriptionPage) {
-        console.log('[OrganizationProtectedRoute] No organization found, showing create org message');
-        // User is not part of any organization
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50">
-                <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8 text-center">
-                    <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                        </svg>
-                    </div>
-                    <h2 className="text-2xl font-bold text-gray-900 mb-2">No Organization Found</h2>
-                    <p className="text-gray-600 mb-6">
-                        You need to be part of an organization to access recruitment features.
-                    </p>
-                    <div className="space-y-3">
-                        <button
-                            onClick={() => window.location.href = '/signup/company'}
-                            className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-                        >
-                            Create Organization
-                        </button>
-                        <p className="text-sm text-gray-500">
-                            Or ask your organization admin to invite you
-                        </p>
-                    </div>
-                </div>
-            </div>
-        );
+        console.log('[OrganizationProtectedRoute] No organization found, redirecting to onboarding');
+        // User is not part of any organization - redirect to onboarding to create it
+        // This handles the case where the user signed up with NULL org_name and hasn't completed onboarding yet
+
+        // Prevent redirect loop: if already on onboarding, don't redirect again
+        if (location.pathname.startsWith('/recruitment/onboarding')) {
+            return <>{children}</>;
+        }
+
+        return <Navigate to="/recruitment/onboarding/step-1" replace />;
     }
 
     // Organization status check
@@ -217,7 +209,7 @@ const OrganizationProtectedRoute: React.FC<OrganizationProtectedRouteProps> = ({
                     </p>
                     <div className="space-y-3">
                         <button
-                            onClick={() => window.location.href = '/recruitment/subscription/plans'}
+                            onClick={() => window.location.href = '/subscription/plans?type=recruiter'}
                             className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
                         >
                             View Subscription Plans

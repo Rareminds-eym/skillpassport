@@ -8,7 +8,7 @@ import type { Env } from '../../../lib/types';
 import type { BulkCountdownEmailRequest, BulkEmailResult, PreRegistration } from '../types';
 import { EMAIL_STATUS } from '../types';
 import { apiSuccess, apiError } from '../../../lib/response';
-import { sendEmail } from '../services/mailer';
+import { sendEmail } from '../../../lib/email-service';
 import { generateCountdownEmailHtml, getCountdownSubject } from '../services/templates';
 import { 
   getAllPreRegistrations,
@@ -167,8 +167,6 @@ async function processBulkEmails(
         to: preReg.email,
         subject,
         html,
-        from: env.FROM_EMAIL || 'noreply@rareminds.in',
-        fromName: env.FROM_NAME || 'Skill Passport',
       });
 
       // Update status to sent

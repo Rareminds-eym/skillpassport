@@ -13,7 +13,6 @@ export { default as AnalyticsView } from './ui/AnalyticsView';
 export { default as CourseAdvancedFilters } from './ui/CourseAdvancedFilters';
 export { default as Dashboard } from './ui/Dashboard';
 export { default as DashboardWithSupabase } from './ui/DashboardWithSupabase';
-
 export { default as DigitalBadges } from './ui/DigitalBadges';
 export { default as DigitalPortfolioSideDrawer } from './ui/DigitalPortfolioSideDrawer';
 export { default as DocumentManager } from './ui/DocumentManager';
@@ -45,10 +44,14 @@ export { default as SelectCourseModal } from './ui/SelectCourseModal';
 export { default as SkillsDashboard } from './ui/SkillsDashboard';
 export { default as SkillTrackerExpanded } from './ui/SkillTrackerExpanded';
 export { default as LearnerCard3D } from './ui/LearnerCard3D';
-export { default as LearnerPublicViewer } from './ui/LearnerPublicViewer';
 export { default as SuggestedNextSteps } from './ui/SuggestedNextSteps';
 export { default as TopSkillsInDemand } from './ui/TopSkillsInDemand';
 export { default as TrainingRecommendations } from './ui/TrainingRecommendations';
+
+// Re-export from features for FSD compliance (pages can import from widgets)
+// This is a valid aggregation pattern - widgets acts as API layer
+// Use public API barrel export instead of internal path
+export { LearnerPublicViewer } from '@/features/learner-profile';
 
 // Settings Components
 export { default as FormField } from './ui/settings/FormField';

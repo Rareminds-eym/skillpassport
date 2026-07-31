@@ -621,6 +621,47 @@ async function handleAction(context: AuthenticatedContext, supabase: any, params
           }]);
       } catch (_) {}
 
+      // Create notification for learner
+      if (currentData.learner_id) {
+        const { data: learnerData } = await supabase
+          .from('learners')
+          .select('user_id')
+          .eq('id', currentData.learner_id)
+          .maybeSingle();
+        
+        if (learnerData?.user_id) {
+          const notificationType = newStage === 'rejected' ? 'candidate_rejected' : 'pipeline_stage_changed';
+          const notificationTitle = 
+            newStage === 'hired' ? "Congratulations! You've been hired!" :
+            newStage === 'offer' ? 'Offer Extended!' :
+            newStage === 'interview_2' ? 'Advanced to Final Interview' :
+            newStage === 'interview_1' ? 'Interview Scheduled' :
+            newStage === 'screened' ? 'Application Screened' :
+            newStage === 'rejected' ? 'Application Status Update' : 'Application Update';
+          const notificationMessage = 
+            newStage === 'hired' ? 'Great news! You have been selected for the position.' :
+            newStage === 'offer' ? 'You have received an offer. Review the details in your dashboard.' :
+            newStage === 'interview_2' ? 'Congratulations! You have been selected for the final interview round.' :
+            newStage === 'interview_1' ? 'You have been selected for an interview.' :
+            newStage === 'screened' ? 'Your application is under review.' :
+            newStage === 'rejected' ? 'Thank you for your interest. We have decided to move forward with other candidates.' :
+            'Your application has been updated.';
+          
+          try {
+            await supabase
+              .from('notifications')
+              .insert([{
+                recipient_id: learnerData.user_id,
+                type: notificationType,
+                title: notificationTitle,
+                message: notificationMessage,
+                read: false,
+                created_at: new Date().toISOString(),
+              }]);
+          } catch (_) {}
+        }
+      }
+
       return apiSuccess({ candidate: data }, context.request);
     }
 
@@ -675,6 +716,30 @@ async function handleAction(context: AuthenticatedContext, supabase: any, params
             learner_id: currentData?.learner_id,
           }]);
       } catch (_) {}
+
+      // Create notification for learner about rejection
+      if (currentData?.learner_id) {
+        const { data: learnerData } = await supabase
+          .from('learners')
+          .select('user_id')
+          .eq('id', currentData.learner_id)
+          .maybeSingle();
+        
+        if (learnerData?.user_id) {
+          try {
+            await supabase
+              .from('notifications')
+              .insert([{
+                recipient_id: learnerData.user_id,
+                type: 'candidate_rejected',
+                title: 'Application Status Update',
+                message: 'Thank you for your interest. We have decided to move forward with other candidates.',
+                read: false,
+                created_at: new Date().toISOString(),
+              }]);
+          } catch (_) {}
+        }
+      }
 
       return apiSuccess({ candidate: data }, context.request);
     }

@@ -9,6 +9,7 @@ import type { EventConfirmationRequest, EventOTPRequest } from '../types';
 import { apiSuccess, apiError } from '../../../lib/response';
 import { apiLogger } from '../../../lib/logger';
 import { sendEmail } from '../../../lib/email-service';
+import { APP_URL } from '../types';
 import {
   generateUserConfirmationHtml,
   generateAdminNotificationHtml,
@@ -35,16 +36,15 @@ export async function handleEventConfirmation(
 
   // Validate required env vars first (fail-fast)
   if (!env.ADMIN_EMAIL) {
+    apiLogger.error('Missing ADMIN_EMAIL environment variable - cannot send admin notifications');
     return apiError(500, 'INTERNAL_ERROR', 'ADMIN_EMAIL environment variable is not configured');
   }
-  if (!env.APP_URL) {
-    return apiError(500, 'INTERNAL_ERROR', 'APP_URL environment variable is not configured');
-  }
+
+  apiLogger.debug('Event confirmation request started', { userEmail: email, courseId: orderId });
 
   try {
-
     // Base URL for PDF download link
-    const baseUrl = env.APP_URL;
+    const baseUrl = APP_URL;
     
     // Generate email templates
     const userHtml = generateUserConfirmationHtml({

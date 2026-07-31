@@ -7,6 +7,7 @@ import { ArrowLeft, ArrowRight, Check, CheckCircle, Copy, Eye, EyeOff, Key, Mail
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Header } from '@/shared/ui';
+import { apiPost } from '@/shared/api/apiClient';
 
 export default function EventSalesSuccess() {
   const navigate = useNavigate();
@@ -26,16 +27,20 @@ export default function EventSalesSuccess() {
         return;
       }
 
-      const { data, error } = await supabase
-        .from('event_registrations')
-        .select('*')
-        .eq('id', registrationId)
-        .single();
+      try {
+        const data = await apiPost('/events/actions', {
+          action: 'get-event-registration',
+          registrationId
+        });
 
-      if (!error && data) {
-        setRegistration(data);
+        if (data) {
+          setRegistration(data);
+        }
+      } catch (error) {
+        console.error('Error fetching registration:', error);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     fetchRegistration();

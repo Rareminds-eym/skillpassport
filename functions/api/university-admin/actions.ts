@@ -1,13 +1,12 @@
-import { withAuth, getContextUser } from '../../lib/auth';
-import { getServiceClient } from '../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import type { SupabaseClient } from '@supabase/supabase-js';
-import { apiSuccess, apiDbError, apiError } from '../../lib/response';
+import { getContextUser, withAuth } from '../../lib/auth';
+import { apiDbError, apiError, apiSuccess } from '../../lib/response';
+import { getServiceClient } from '../../lib/supabase';
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const user = getContextUser(context);
-  const env = context.env as Record<string, string>;
-  const supabase = getServiceClient(env as any);
+  const env = context.env;
+  const supabase = getServiceClient(env);
 
   let body: Record<string, any>;
   try { body = await context.request.json(); } catch { return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON body', context.request); }

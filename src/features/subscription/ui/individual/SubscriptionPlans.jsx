@@ -1,16 +1,17 @@
-import { AlertCircle, Building2, Calendar, Check, ChevronDown, ChevronUp, Clock, RefreshCw, Shield, Sparkles, TrendingUp, X } from 'lucide-react';
+import { AddOnMarketplace, OrganizationPurchasePanel } from '@/features/subscription';
+import { useSubscriptionPlansData, useSubscriptionQuery } from '@/features/subscription/model';
+import { AlertCircle, Building2, Calendar, Check, ChevronDown, ChevronUp, Clock, RefreshCw, Shield, Sparkles, TrendingUp } from 'lucide-react';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { AddOnMarketplace, OrganizationPurchasePanel } from '@/features/subscription';
-import { useSubscriptionPlansData, useSubscriptionQuery } from '@/features/subscription/model';
 
-import { getEntityContent, getEntityTypeParam, getRoleTypeParam, parselearnerType } from '@/shared/lib/getEntityContent';
+import { getRouteForRole } from '@/features/auth/lib/roleBasedRouter';
 import { calculateDaysRemaining, isActiveOrPaused } from '@/features/subscription/lib';
-import { PLAN_IDS } from '@/shared/config/subscriptionPlans';
 import { ssoClient } from '@/shared/api/ssoClient';
+import { PLAN_IDS } from '@/shared/config/subscriptionPlans';
+import { getEntityContent, getEntityTypeParam, getRoleTypeParam, parselearnerType } from '@/shared/lib/getEntityContent';
 
-import { useUser, useIsAuthenticated, useAuthLoading, useUserRole } from '@/shared/model/authStore';
+import { useAuthLoading, useIsAuthenticated, useUser, useUserRole } from '@/shared/model/authStore';
 /**
  * Get the subscription manage path based on user role
  */
@@ -18,9 +19,7 @@ function getManagePath(userRole) {
   if (!userRole) return null; // Return null instead of default to prevent wrong redirects
 
   const manageRoutes = {
-    admin: '/admin/subscription/manage',
-    company_admin: '/admin/subscription/manage',
-    owner: '/admin/subscription/manage',
+    company_admin: '/recruitment/subscription/manage',
     school_admin: '/school-admin/subscription/manage',
     college_admin: '/college-admin/subscription/manage',
     university_admin: '/university-admin/subscription/manage',
@@ -36,23 +35,8 @@ function getManagePath(userRole) {
 /**
  * Get the dashboard path based on user role
  */
-function getDashboardPath(userRole) {
-  if (!userRole) return '/learner/dashboard';
-
-  const dashboardRoutes = {
-    learner: '/learner/dashboard',
-    educator: '/educator/dashboard',
-    school_educator: '/educator/dashboard',
-    college_educator: '/educator/dashboard',
-    school_admin: '/school-admin/dashboard',
-    college_admin: '/college-admin/dashboard',
-    university_admin: '/university-admin/dashboard',
-    recruiter: '/recruitment/overview',
-    admin: '/admin/dashboard',
-    company_admin: '/admin/dashboard',
-    owner: '/admin/dashboard',
-  };
-  return dashboardRoutes[userRole] || '/learner/dashboard';
+function getDashboardUrl(userRole) {
+  return getRouteForRole(userRole ?? '');
 }
 
 /**
@@ -79,8 +63,6 @@ function getManagePathFromType(type) {
     'university-admin': '/university-admin/subscription/manage',
     // Recruiter
     'recruiter': '/recruitment/subscription/manage',
-    // Generic admin
-    'admin': '/admin/subscription/manage',
   };
 
   return typeToPath[type] || null; // Return null instead of default to prevent wrong redirects
@@ -232,7 +214,7 @@ const FeatureComparisonTable = memo(({ plans }) => {
       <span className="text-amber-500 font-bold text-lg">~</span>
     );
     // Safety check for objects to prevent React error #31
-    const safeValue = typeof value === 'object' && value !== null 
+    const safeValue = typeof value === 'object' && value !== null
       ? (value.name || value.feature_key || String(value))
       : value;
     return <span className="text-sm text-slate-900 font-semibold">{safeValue}</span>;
@@ -366,7 +348,7 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
   const isUpgrade = subscriptionData && !isCurrentPlan && parseInt(plan.price) > parseInt(currentPlanInList?.price ?? 0);
   const isDowngrade = subscriptionData && !isCurrentPlan && parseInt(plan.price) < parseInt(currentPlanInList?.price ?? 0);
   const isContactSales = plan.contactSales;
-  
+
   // Check if user is on Freemium plan
   const isFreemiumUser = subscriptionData && subscriptionData.plan === PLAN_IDS.FREEMIUM;
 
@@ -747,17 +729,17 @@ function SubscriptionPlans() {
   // Add Freemium plan to plans array (fetch from DB or add fallback)
   const plans = useMemo(() => {
     if (!dbPlans || dbPlans.length === 0) return [];
-    
+
     // Check if Freemium plan exists in DB
     const hasFreemium = dbPlans.some(p => p.plan_code === PLAN_IDS.FREEMIUM);
-    
+
     if (hasFreemium) {
       // Freemium exists in DB, ensure it's first
       const freemiumPlan = dbPlans.find(p => p.plan_code === PLAN_IDS.FREEMIUM);
       const otherPlans = dbPlans.filter(p => p.plan_code !== PLAN_IDS.FREEMIUM);
       return [freemiumPlan, ...otherPlans];
     }
-    
+
     // Fallback: Add Freemium plan manually if not in DB
     const freemiumPlan = {
       id: 'freemium-temp',
@@ -778,7 +760,7 @@ function SubscriptionPlans() {
       contactSales: false,
       isFree: true
     };
-    
+
     return [freemiumPlan, ...dbPlans];
   }, [dbPlans]);
 
@@ -944,8 +926,8 @@ function SubscriptionPlans() {
       const response = await ssoClient.fetch('/api/payments/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          userId: user.id, 
+        body: JSON.stringify({
+          userId: user.id,
           email: user.email,
           amount: 0,
           planId: plan.id,
@@ -956,19 +938,19 @@ function SubscriptionPlans() {
       if (response.ok) {
         // Invalidate and refresh subscription data
         await refreshSubscription();
-        
+
         // Redirect to dashboard
-        const dashboardPath = getDashboardPath(userRole) || '/learner/dashboard';
+        const dashboardPath = getDashboardUrl(userRole) || '/learner/dashboard';
         navigate(dashboardPath, {
-          state: { 
-            message: 'Welcome! Upgrade anytime to unlock all features.' 
+          state: {
+            message: 'Welcome! Upgrade anytime to unlock all features.'
           }
         });
         toast.success('Welcome to SkillPassport! Upgrade anytime to unlock all features.');
       } else {
         const errorData = await response.json();
         console.error('Freemium subscription creation failed:', errorData);
-        
+
         // Display user-friendly error message based on error type
         if (response.status === 404) {
           toast.error('Freemium plan is currently unavailable. Please try again later.');

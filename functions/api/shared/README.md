@@ -179,12 +179,11 @@ import { sanitizeInput, isValidUUID } from '../lib/validation';
 All shared utilities expect these environment variables:
 
 **Required for AI:**
-- `OPENROUTER_API_KEY` or `OPENROUTER_API_KEY`
-- `CLAUDE_API_KEY` or `VITE_CLAUDE_API_KEY` (optional, for fallback)
+- `OPENROUTER_API_KEY`
 
 **Required for Auth:**
-- `SUPABASE_URL` or `VITE_SUPABASE_URL`
-- `SUPABASE_ANON_KEY` or `VITE_SUPABASE_ANON_KEY`
+- `SUPABASE_URL`
+- `SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
 
 ## Testing

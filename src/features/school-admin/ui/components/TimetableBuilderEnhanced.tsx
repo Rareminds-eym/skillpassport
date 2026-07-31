@@ -143,25 +143,7 @@ const TimetableBuilderEnhanced: React.FC = () => {
     if (data) setTeachers(data);
   };
 
-  // const loadClasses = async () => {
-  //   const schoolId = await getSchoolId();
-  //   if (!schoolId) {
-  //     logger.error('No school_id found for classes');
-  //     return;
-  //   }
 
-  //   // Load classes
-  //   const { data } = await supabase
-  //     .from("school_classes")
-  //     .select("id, name, grade, section")
-  //     .eq("school_id", schoolId)
-  //     .eq("account_status", "active")
-  //     .order("grade")
-  //     .order("section");
-    
-  //   logger.info('Loaded classes', { count: data?.length || 0 });
-  //   if (data) setClasses(data);
-  // };
 const loadClasses = async () => {
     const schoolId = await getSchoolId();
     if (!schoolId) {

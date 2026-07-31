@@ -1,7 +1,18 @@
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import { withAuth } from '../../lib/auth';
+import { withAuth, getContextUser } from '../../lib/auth';
 import { apiDbError, apiError, apiSuccess } from '../../lib/response';
 import { getServiceClient } from '../../lib/supabase';
+
+interface AssessmentLearnerRow {
+  id: string;
+  user_id: string | null;
+  name: string | null;
+  email: string | null;
+  enrollmentNumber: string | null;
+  grade: string | null;
+  program_id: string | null;
+  programs: { name: string } | { name: string }[] | null;
+}
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const env = context.env as Record<string, string>;
@@ -98,8 +109,28 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       }
 
       case 'get-dashboard-stats': {
-        const { college_id } = params;
-        if (!college_id) return apiError(400, 'VALIDATION_ERROR', 'Missing college_id', context.request, { startTime });
+        const { college_id: requestedCollegeId } = params;
+        if (!requestedCollegeId) return apiError(400, 'VALIDATION_ERROR', 'Missing college_id', context.request, { startTime });
+
+        // Resolve authoritative org: look up organizations where admin_id = logged-in user.
+        // This bypasses the JWT org_id mismatch when a user has multiple memberships.
+        const user = getContextUser(context);
+        if (!user?.id) return apiError(401, 'UNAUTHORIZED', 'User not found', context.request, { startTime });
+
+        // Verify the logged-in user is actually the admin of the requested college
+        const { data: orgByAdmin, error: authError } = await supabase
+          .from('organizations')
+          .select('id')
+          .eq('admin_id', user.id)
+          .eq('organization_type', 'college')
+          .maybeSingle();
+        if (authError) return apiDbError(authError, context.request, { startTime });
+
+        if (!orgByAdmin?.id || orgByAdmin.id !== requestedCollegeId) {
+          return apiError(403, 'FORBIDDEN', 'Access denied to this college', context.request, { startTime });
+        }
+
+        const college_id = requestedCollegeId;
 
         const now = new Date();
         const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
@@ -140,7 +171,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           totalPlacedPrev = new Set((placedPrevRes.data || []).map((p: any) => p.learner_id)).size;
         }
 
-        const calcChange = (curr: number, prev: number) => prev > 0 ? Math.round((curr - prev) / prev * 100) : 0;
+        const calcChange = (curr: number, prev: number): number | null => prev > 0 ? Math.round((curr - prev) / prev * 100) : null;
         const placementRate = learnersCount > 0 ? Math.round((totalPlaced / learnersCount) * 1000) / 10 : 0;
         const placementRatePrev = learnersPrev > 0 ? Math.round((totalPlacedPrev / learnersPrev) * 1000) / 10 : 0;
 
@@ -152,7 +183,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           learnersChange: calcChange(learnersCount, learnersPrev),
           facultyChange: calcChange(facultyCount, facultyPrev),
           departmentsChange: calcChange(deptCount, deptPrev),
-          placementRateChange: placementRatePrev > 0 ? Math.round((placementRate - placementRatePrev) * 10) / 10 : 0,
+          placementRateChange: placementRatePrev > 0 ? Math.round((placementRate - placementRatePrev) * 10) / 10 : null,
         }, context.request, { startTime });
       }
 
@@ -230,6 +261,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const { data: learnersData, error: learnersError } = await supabase
           .from('learners')
           .select(`
+            id,
             user_id, 
             name, 
             email, 
@@ -245,11 +277,8 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         if (learnersError) return apiDbError(learnersError, context.request, { startTime });
         if (!learnersData || learnersData.length === 0) return apiSuccess([], context.request, { startTime });
 
-        const validLearners = learnersData.filter((s: any) => s.user_id != null);
-        if (validLearners.length === 0) return apiSuccess([], context.request, { startTime });
-
-        const learnerIds = validLearners.map((s: any) => s.user_id);
-        const learnerMap = new Map(validLearners.map((s: any) => [s.user_id, s]));
+        const learnerIds = (learnersData as AssessmentLearnerRow[]).map((s) => s.id);
+        const learnerMap = new Map((learnersData as AssessmentLearnerRow[]).map((s) => [s.id, s]));
 
         const { data, error: fetchError } = await supabase
           .from('personal_assessment_results')
@@ -282,7 +311,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         if (fetchError) return apiDbError(fetchError, context.request, { startTime });
 
         const enrichedResults = (data || []).map((r: any) => {
-          const learner: any = learnerMap.get(r.learner_id);
+          const learner: any = learnerMap.get(r.learner_id); // learner_id references learners.id
           return {
             ...r,
             learner_name: learner?.name || null,

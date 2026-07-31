@@ -77,3 +77,7 @@ export type { ProfileCompletionErrorBoundary } from './ui/shared/ProfileCompleti
 
 // Store exports
 export * from './model/portfolioStore';
+
+// Scoped Theme exports - ONLY for Digital Portfolio feature
+export { useScopedTheme, useIsScopedDark, useScopedThemeStore } from './model/scopedThemeStore';
+export { DigitalPortfolioThemeProvider } from './providers/DigitalPortfolioThemeProvider';

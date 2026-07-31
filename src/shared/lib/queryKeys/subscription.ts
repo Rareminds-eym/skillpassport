@@ -24,4 +24,8 @@ export const subscriptionKeys = {
         active: (): QueryKey =>
             ['subscription', 'promotions', 'active'] as const,
     },
+
+    // Organization billing dashboard
+    billing: (organizationId: string, organizationType: string): QueryKey =>
+        ['subscription', 'billing', organizationId, organizationType] as const,
 } as const;

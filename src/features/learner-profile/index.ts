@@ -105,7 +105,7 @@ export { showProfileUpdateToast } from './lib/profileToast';
 export { PROFILE_UPDATE_MESSAGES } from './lib/profileToast';
 export type { default as AchievementsExpanded } from './ui/AchievementsExpanded';
 export type { default as SkillTrackerExpanded } from './ui/SkillTrackerExpanded';
-export type { default as LearnerPublicViewer } from './ui/LearnerPublicViewer';
+export { default as LearnerPublicViewer } from './ui/LearnerPublicViewer';
 export { ProfileValidationService } from './api/profileValidationService';
 
 export { checkProfileCompleteness } from './lib/profileCompletenessChecker';

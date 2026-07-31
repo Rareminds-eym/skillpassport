@@ -4,7 +4,7 @@ import OrganizationProtectedRoute from "@/features/recruitment/ui/OrganizationPr
 import AdminProtectedRoute from "@/features/recruitment/ui/AdminProtectedRoute";
 import RecruiterLayout from "../layouts/RecruiterLayout";
 
-const RECRUITER_ROLES = ["recruiter", "company_admin"];
+const RECRUITER_ROLES = ["recruiter", "company_admin", "owner"];
 
 const RecruiterProfile = lazy(() => import("@/pages/recruiter/Profile"));
 const RecruiterSettings = lazy(() => import("@/pages/recruiter/Settings"));
@@ -29,13 +29,30 @@ const SubscriptionManage = lazy(() =>
 const AddOns = lazy(() =>
   import("@/pages/subscription/AddOns")
 );
-const RecruitmentSubscriptionPlans = lazy(() =>
-  import("@/pages/recruitment/RecruitmentSubscriptionPlans")
-);
+// RecruitmentSubscriptionPlans removed - now using unified subscription system
 const ManageSubscription = lazy(() =>
   import("@/pages/recruitment/ManageSubscription")
 );
 const AdminDashboard = lazy(() => import("@/pages/recruiter/AdminDashboard"));
+// OnboardingWizard should NOT be lazy-loaded since it wraps lazy-loaded steps
+import { OnboardingWizard } from "@/pages/recruitment/onboarding/OnboardingWizard";
+const OnboardingStep1 = lazy(() => import("@/pages/recruitment/onboarding/step-1"));
+const OnboardingStep2 = lazy(() => import("@/pages/recruitment/onboarding/step-2"));
+const OnboardingStep3 = lazy(() => import("@/pages/recruitment/onboarding/step-3"));
+
+// Onboarding route - separate from main recruitment routes (no org protection needed during setup)
+export const recruiterOnboardingRoute = (
+  <Route
+    key="recruiter-onboarding"
+    path="/recruitment/onboarding/*"
+  >
+    <Route path="step-1" element={<OnboardingWizard currentStep={1}><OnboardingStep1 /></OnboardingWizard>} />
+    <Route path="step-2" element={<OnboardingWizard currentStep={2}><OnboardingStep2 /></OnboardingWizard>} />
+    <Route path="step-3" element={<OnboardingWizard currentStep={3}><OnboardingStep3 /></OnboardingWizard>} />
+    <Route path="step-4" element={<Navigate to="/recruitment/onboarding/step-3" replace />} />
+    <Route path="*" element={<Navigate to="/recruitment/onboarding/step-1" replace />} />
+  </Route>
+);
 
 export const recruiterRoutes = (
   <Route
@@ -85,9 +102,16 @@ export const recruiterRoutes = (
 
 // Standalone route for subscription plans (no sidebar)
 export const recruiterSubscriptionPlanRoute = (
+  // DEPRECATED: Now using general subscription plans with type=recruiter
+  // <Route
+  //   key="recruiter-subscription-plan"
+  //   path="/recruitment/subscription/plans"
+  //   element={<RecruitmentSubscriptionPlans />}
+  // />
+  // Redirect old route to new unified route
   <Route
-    key="recruiter-subscription-plan"
+    key="recruiter-subscription-plan-redirect"
     path="/recruitment/subscription/plans"
-    element={<RecruitmentSubscriptionPlans />}
+    element={<Navigate to="/subscription/plans?type=recruiter" replace />}
   />
 );

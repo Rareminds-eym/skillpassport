@@ -35,6 +35,12 @@ const EducatorDigitalPortfolio = lazy(() =>
 );
 const EducatorAI = lazy(() => import("@/pages/educator/EducatorAI"));
 const CourseAnalytics = lazy(() => import("@/pages/educator/CourseAnalytics"));
+// Course Analytics Dashboard (Assigned Course -> Assigned Section hierarchy).
+// Distinct from `CourseAnalytics` above, which is an existing, unrelated
+// backend-connected per-course enrollment detail page.
+const CourseAnalyticsDashboard = lazy(() =>
+  import("@/pages/educator/CourseAnalyticsDashboard")
+);
 const MarkAttendance = lazy(() => import("@/pages/educator/MarkAttendance"));
 const CoursePlayer = lazy(() => import("@/pages/learner/CoursePlayer"));
 const LessonPlansList = lazy(() => import("@/pages/teacher/LessonPlansList"));
@@ -69,6 +75,7 @@ export const educatorRoutes = (
     <Route path="courses" element={<EducatorCourses />} />
     <Route path="browse-courses" element={<EducatorBrowseCourses />} />
     <Route path="courses/:courseId/analytics" element={<CourseAnalytics />} />
+    <Route path="course-analytics" element={<CourseAnalyticsDashboard />} />
     <Route path="assessment-results" element={<EducatorAssessmentResults />} />
     <Route path="assignments" element={<EducatorAssessments />} />
     <Route path="college-assignments" element={<CollegeAssignments />} />

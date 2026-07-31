@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent } from '@/shared/ui/Card';
 import { Button } from '@/shared/ui/ButtonNew';
 import { Badge } from '@/shared/ui/Badge';
@@ -24,7 +24,10 @@ import {
   Grid3X3,
   List,
   Mail,
-  Award
+  Award,
+  Zap,
+  FileText,
+  Menu
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { apiPost } from '@/shared/api/apiClient';
@@ -33,7 +36,9 @@ import { CollegeAdminNotificationService } from '@/features/college-admin';
 import { 
   TrainingDetailsModal, 
   ExperienceDetailsModal, 
-  ProjectDetailsModal 
+  ProjectDetailsModal,
+  CertificateDetailsModal,
+  SkillDetailsModal
 } from '@/features/school-admin';
 import { getLogger } from '@/shared/config/logging';
 
@@ -44,13 +49,19 @@ const CollegeVerifications = () => {
   const [pendingTrainings, setPendingTrainings] = useState([]);
   const [pendingExperiences, setPendingExperiences] = useState([]);
   const [pendingProjects, setPendingProjects] = useState([]);
+  const [pendingCertificates, setPendingCertificates] = useState([]);
+  const [pendingSkills, setPendingSkills] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedTraining, setSelectedTraining] = useState(null);
   const [selectedExperience, setSelectedExperience] = useState(null);
   const [selectedProject, setSelectedProject] = useState(null);
+  const [selectedCertificate, setSelectedCertificate] = useState(null);
+  const [selectedSkill, setSelectedSkill] = useState(null);
   const [showTrainingModal, setShowTrainingModal] = useState(false);
   const [showExperienceModal, setShowExperienceModal] = useState(false);
   const [showProjectModal, setShowProjectModal] = useState(false);
+  const [showCertificateModal, setShowCertificateModal] = useState(false);
+  const [showSkillModal, setShowSkillModal] = useState(false);
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -141,6 +152,48 @@ const CollegeVerifications = () => {
     }
   };
 
+  // Fetch pending certificates for college admin
+  const fetchPendingCertificates = async () => {
+    try {
+      logger.info('Fetching pending certificates using CollegeAdminNotificationService...');
+      const response = await apiPost('/college-admin/verifications', { action: 'resolve-college-id' });
+      const collegeId = response.data?.collegeId;
+      if (!collegeId) {
+        logger.warn('No college ID found - showing empty list');
+        setPendingCertificates([]);
+        return;
+      }
+      logger.info('Using college_id:', collegeId);
+      const certificates = await CollegeAdminNotificationService.getPendingCertificates(collegeId);
+      logger.info('Certificates fetched via notification service:', certificates.length);
+      setPendingCertificates(certificates || []);
+    } catch (error) {
+      logger.error('Error in fetchPendingCertificates:', error);
+      toast.error("Failed to fetch pending certificates");
+    }
+  };
+
+  // Fetch pending skills for college admin
+  const fetchPendingSkills = async () => {
+    try {
+      logger.info('Fetching pending skills using CollegeAdminNotificationService...');
+      const response = await apiPost('/college-admin/verifications', { action: 'resolve-college-id' });
+      const collegeId = response.data?.collegeId;
+      if (!collegeId) {
+        logger.warn('No college ID found - showing empty list');
+        setPendingSkills([]);
+        return;
+      }
+      logger.info('Using college_id:', collegeId);
+      const skills = await CollegeAdminNotificationService.getPendingSkills(collegeId);
+      logger.info('Skills fetched via notification service:', skills.length);
+      setPendingSkills(skills || []);
+    } catch (error) {
+      logger.error('Error in fetchPendingSkills:', error);
+      toast.error("Failed to fetch pending skills");
+    }
+  };
+
   // Initial data fetch
   useEffect(() => {
     const fetchData = async () => {
@@ -148,7 +201,9 @@ const CollegeVerifications = () => {
       await Promise.all([
         fetchPendingTrainings(),
         fetchPendingExperiences(),
-        fetchPendingProjects()
+        fetchPendingProjects(),
+        fetchPendingCertificates(),
+        fetchPendingSkills()
       ]);
       setLoading(false);
     };
@@ -194,13 +249,37 @@ const CollegeVerifications = () => {
     }
   };
 
+  // Handle certificate actions
+  const handleCertificateAction = async (action, certificate) => {
+    if (action === 'view') {
+      setSelectedCertificate(certificate);
+      setShowCertificateModal(true);
+    } else if (action === 'approved' || action === 'rejected') {
+      await fetchPendingCertificates();
+      toast.success(`Certificate ${action} successfully!`);
+    }
+  };
+
+  // Handle skill actions
+  const handleSkillAction = async (action, skill) => {
+    if (action === 'view') {
+      setSelectedSkill(skill);
+      setShowSkillModal(true);
+    } else if (action === 'approved' || action === 'rejected') {
+      await fetchPendingSkills();
+      toast.success(`Skill ${action} successfully!`);
+    }
+  };
+
   // Refresh all data
   const refreshData = async () => {
     setLoading(true);
     await Promise.all([
       fetchPendingTrainings(),
       fetchPendingExperiences(),
-      fetchPendingProjects()
+      fetchPendingProjects(),
+      fetchPendingCertificates(),
+      fetchPendingSkills()
     ]);
     setLoading(false);
     toast.success("Data has been refreshed successfully");
@@ -265,14 +344,38 @@ const CollegeVerifications = () => {
     });
   };
 
+  const getFilteredCertificates = () => {
+    return pendingCertificates.filter(certificate => {
+      const matchesSearch = (certificate.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                           (certificate.learner_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                           (certificate.issuer || certificate.organization || '').toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesStatus = statusFilter === 'all' || certificate.approval_status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  };
+
+  const getFilteredSkills = () => {
+    return pendingSkills.filter(skill => {
+      const matchesSearch = (skill.skill_name || skill.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                           (skill.learner_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                           (skill.category || '').toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesStatus = statusFilter === 'all' || skill.approval_status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  };
+
   // Get current page data for each tab (with filtering)
   const filteredTrainings = getFilteredTrainings();
   const filteredExperiences = getFilteredExperiences();
   const filteredProjects = getFilteredProjects();
+  const filteredCertificates = getFilteredCertificates();
+  const filteredSkills = getFilteredSkills();
   
   const currentTrainings = getCurrentPageData(filteredTrainings);
   const currentExperiences = getCurrentPageData(filteredExperiences);
   const currentProjects = getCurrentPageData(filteredProjects);
+  const currentCertificates = getCurrentPageData(filteredCertificates);
+  const currentSkills = getCurrentPageData(filteredSkills);
 
   // Get total pages for current tab (with filtering)
   const getCurrentTabTotalPages = () => {
@@ -283,6 +386,10 @@ const CollegeVerifications = () => {
         return getTotalPages(filteredExperiences);
       case 'projects':
         return getTotalPages(filteredProjects);
+      case 'certificates':
+       return getTotalPages(filteredCertificates);
+      case 'skills':
+       return getTotalPages(filteredSkills);
       default:
         return 1;
     }
@@ -422,7 +529,7 @@ const CollegeVerifications = () => {
           </div>
         )}
         
-        <div className="flex justify-between items-center gap-2">
+        <div className="flex flex-wrap justify-between items-center gap-2">
           <div className="flex gap-2 flex-wrap">
             <Badge className="bg-yellow-100 text-yellow-800 text-xs">
               <Clock className="w-3 h-3 mr-1" />
@@ -495,7 +602,7 @@ const CollegeVerifications = () => {
           </div> */}
         </div>
         
-        <div className="flex justify-between items-center gap-2">
+        <div className="flex flex-wrap justify-between items-center gap-2">
           <div className="flex gap-2 flex-wrap">
             <Badge className="bg-yellow-100 text-yellow-800 text-xs">
               <Clock className="w-3 h-3 mr-1" />
@@ -589,7 +696,7 @@ const CollegeVerifications = () => {
           </p>
         )}
         
-        <div className="flex justify-between items-center gap-2">
+        <div className="flex flex-wrap justify-between items-center gap-2">
           <div className="flex gap-2 flex-wrap">
             <Badge className="bg-yellow-100 text-yellow-800 text-xs">
               <Clock className="w-3 h-3 mr-1" />
@@ -611,6 +718,191 @@ const CollegeVerifications = () => {
       </CardContent>
     </Card>
   );
+
+  // Certificate Card Component
+  const CertificateCard = ({ certificate }) => (
+    <Card className="hover:shadow-md transition-shadow">
+      <CardContent className="p-6">
+        <div className="flex justify-between items-start mb-2">
+          <div className="flex items-center gap-2">
+            <User className="w-4 h-4 text-gray-600" />
+            <h3 className="font-bold text-lg text-gray-900">
+              {certificate.learner_name || 'Unknown Learner'}
+            </h3>
+          </div>
+          <div className="text-xs text-gray-500 ml-4">
+            Submitted: {new Date(certificate.created_at).toLocaleDateString()}
+          </div>
+        </div>
+        <div className="space-y-2 mb-3">
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <Mail className="w-4 h-4" />
+            <span>{certificate.learner_email || 'No email'}</span>
+          </div>
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <Award className="w-4 h-4" />
+            <span>{certificate.title}</span>
+          </div>
+          {certificate.issuer && (
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <Building2 className="w-4 h-4" />
+              <span>{certificate.issuer}</span>
+            </div>
+          )}
+          {certificate.issued_on && (
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <Calendar className="w-4 h-4" />
+              <span>Issued: {new Date(certificate.issued_on).toLocaleDateString()}</span>
+            </div>
+          )}
+        </div>
+        <div className="flex flex-wrap justify-between items-center gap-2">
+          <div className="flex gap-2 flex-wrap">
+            <Badge className="bg-yellow-100 text-yellow-800 text-xs">
+              <Clock className="w-3 h-3 mr-1" />
+              Pending
+            </Badge>
+            <Badge className="bg-blue-100 text-blue-700 text-xs">
+              College Admin
+            </Badge>
+          </div>
+          <Button
+            onClick={() => handleCertificateAction('view', certificate)}
+            className="bg-blue-600 hover:bg-blue-700 text-white flex-shrink-0"
+            size="sm"
+          >
+            <Eye className="w-4 h-4 mr-2" />
+            View Details
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  // Skill Card Component
+  const SkillCard = ({ skill }) => (
+    <Card className="hover:shadow-md transition-shadow">
+      <CardContent className="p-6">
+        <div className="flex justify-between items-start mb-2">
+          <div className="flex items-center gap-2">
+            <User className="w-4 h-4 text-gray-600" />
+            <h3 className="font-bold text-lg text-gray-900">
+              {skill.learner_name || 'Unknown Learner'}
+            </h3>
+          </div>
+          <div className="text-xs text-gray-500 ml-4">
+            Submitted: {new Date(skill.created_at).toLocaleDateString()}
+          </div>
+        </div>
+        <div className="space-y-2 mb-3">
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <Mail className="w-4 h-4" />
+            <span>{skill.learner_email || 'No email'}</span>
+          </div>
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <Zap className="w-4 h-4" />
+            <span className="font-semibold">{skill.skill_name || skill.name}</span>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {skill.level && (
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <Award className="w-4 h-4" />
+                <span>Level: {skill.level} / 5</span>
+              </div>
+            )}
+            {skill.type && (
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <FileText className="w-4 h-4" />
+                <span>Type: {skill.type}</span>
+              </div>
+            )}
+          </div>
+          {skill.category && (
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <Building2 className="w-4 h-4" />
+              <span>Category: {skill.category}</span>
+            </div>
+          )}
+        </div>
+        <div className="flex flex-wrap justify-between items-center gap-2">
+          <div className="flex gap-2 flex-wrap">
+            <Badge className="bg-yellow-100 text-yellow-800 text-xs">
+              <Clock className="w-3 h-3 mr-1" />
+              Pending
+            </Badge>
+            <Badge className="bg-blue-100 text-blue-700 text-xs">
+              College Admin
+            </Badge>
+          </div>
+          <Button
+            onClick={() => handleSkillAction('view', skill)}
+            className="bg-blue-600 hover:bg-blue-700 text-white flex-shrink-0"
+            size="sm"
+          >
+            <Eye className="w-4 h-4 mr-2" />
+            View Details
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  // Mobile Tab Menu Component
+  const tabOptions = useMemo(() =>  [
+    { value: 'trainings', label: 'Training', icon: BookOpen, count: pendingTrainings.length },
+    { value: 'experiences', label: 'Experience', icon: Briefcase, count: pendingExperiences.length },
+    { value: 'projects', label: 'Project', icon: Building2, count: pendingProjects.length },
+    { value: 'certificates', label: 'Certificate', icon: Award, count: pendingCertificates.length },
+    { value: 'skills', label: 'Skills', icon: Zap, count: pendingSkills.length },
+  ], [
+  pendingTrainings.length,
+  pendingExperiences.length,
+  pendingCertificates.length,
+  pendingSkills.length,
+  pendingProjects.length,
+]);
+
+  const MobileTabMenu = ({ activeTab, onTabChange, counts, tabOptions }) => {
+    const [open, setOpen] = useState(false);
+    const active = tabOptions.find(t => t.value === activeTab);
+    const ActiveIcon = active?.icon || BookOpen;
+
+    return (
+      <div className="lg:hidden relative mb-2">
+        <button
+          onClick={() => setOpen(o => !o)}
+          aria-label="Toggle verification category menu"
+          aria-expanded={open}
+          aria-haspopup="true"
+          className="flex items-center justify-between w-full bg-gray-100 rounded-lg px-4 py-3 font-medium text-gray-700"
+        >
+          <div className="flex items-center gap-2">
+            <ActiveIcon className="w-4 h-4 text-blue-600" />
+            <span>{active?.label} ({counts[activeTab] ?? 0})</span>
+          </div>
+          <div className="flex flex-col gap-1">
+            <Menu className="w-5 h-5 text-gray-600" />
+          </div>
+        </button>
+        {open && (
+          <div className="absolute z-50 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1">
+            {tabOptions.map(({ value, label, icon: Icon, count }) => (
+              <button
+                key={value}
+                onClick={() => { onTabChange(value); setOpen(false); }}
+                className={`flex items-center gap-3 w-full px-4 py-3 text-sm hover:bg-gray-50 first:rounded-t-lg last:rounded-b-lg ${
+                  activeTab === value ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-gray-700'
+                }`}
+              >
+                <Icon className="w-4 h-4" />
+                {label} ({count})
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   if (loading) {
     return (
@@ -640,7 +932,7 @@ const CollegeVerifications = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-6 mb-8">
           <Card className="bg-blue-50">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -664,6 +956,42 @@ const CollegeVerifications = () => {
               </div>
             </CardContent>
           </Card>
+
+          <Card className="bg-indigo-50">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Pending Projects</p>
+                  <p className="text-2xl font-bold text-indigo-600">{pendingProjects.length}</p>
+                </div>
+                <Building2 className="w-8 h-8 text-indigo-600" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-purple-50">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Pending Certificates</p>
+                  <p className="text-2xl font-bold text-purple-600">{pendingCertificates.length}</p>
+                </div>
+                <Award className="w-8 h-8 text-purple-600" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-yellow-50">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Pending Skills</p>
+                  <p className="text-2xl font-bold text-yellow-600">{pendingSkills.length}</p>
+                </div>
+                <Zap className="w-8 h-8 text-yellow-600" />
+              </div>
+            </CardContent>
+          </Card>
           
           <Card className="bg-orange-50">
             <CardContent className="p-6">
@@ -671,22 +999,10 @@ const CollegeVerifications = () => {
                 <div>
                   <p className="text-sm font-medium text-gray-600">Total Pending</p>
                   <p className="text-2xl font-bold text-orange-600">
-                    {pendingTrainings.length + pendingExperiences.length}
+                    {pendingTrainings.length + pendingExperiences.length + pendingProjects.length + pendingCertificates.length + pendingSkills.length}
                   </p>
                 </div>
                 <AlertCircle className="w-8 h-8 text-orange-600" />
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card className="bg-purple-50">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Your Role</p>
-                  <p className="text-lg font-semibold text-purple-600">College Admin</p>
-                </div>
-                <GraduationCap className="w-8 h-8 text-purple-600" />
               </div>
             </CardContent>
           </Card>
@@ -694,29 +1010,58 @@ const CollegeVerifications = () => {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 bg-gray-100 p-1 rounded-lg">
+          {/* Desktop tabs */}
+          <TabsList className="hidden lg:grid w-full grid-cols-5 bg-gray-100 p-1 rounded-lg">
             <TabsTrigger 
               value="trainings" 
-              className="flex items-center gap-2 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:bg-gray-200 transition-all duration-200 rounded-md"
+              className="flex items-center gap-2 data-[state=active]:bg-blue-600 data-[state=active]:text-black data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:bg-gray-200 transition-all duration-200 rounded-md"
             >
               <BookOpen className="w-4 h-4" />
-              Training Approvals ({pendingTrainings.length})
+              Training ({pendingTrainings.length})
             </TabsTrigger>
             <TabsTrigger 
               value="experiences" 
-              className="flex items-center gap-2 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:bg-gray-200 transition-all duration-200 rounded-md"
+              className="flex items-center gap-2 data-[state=active]:bg-blue-600 data-[state=active]:text-black data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:bg-gray-200 transition-all duration-200 rounded-md"
             >
               <Briefcase className="w-4 h-4" />
-              Experience Approvals ({pendingExperiences.length})
+              Experience ({pendingExperiences.length})
             </TabsTrigger>
             <TabsTrigger 
               value="projects" 
-              className="flex items-center gap-2 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:bg-gray-200 transition-all duration-200 rounded-md"
+              className="flex items-center gap-2 data-[state=active]:bg-blue-600 data-[state=active]:text-black data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:bg-gray-200 transition-all duration-200 rounded-md"
             >
               <Building2 className="w-4 h-4" />
-              Project Approvals ({pendingProjects.length})
+              Project ({pendingProjects.length})
+            </TabsTrigger>
+            <TabsTrigger 
+              value="certificates" 
+              className="flex items-center gap-2 data-[state=active]:bg-blue-600 data-[state=active]:text-black data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:bg-gray-200 transition-all duration-200 rounded-md"
+            >
+              <Award className="w-4 h-4" />
+              Certificate ({pendingCertificates.length})
+            </TabsTrigger>
+            <TabsTrigger 
+              value="skills" 
+              className="flex items-center gap-2 data-[state=active]:bg-blue-600 data-[state=active]:text-black data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:bg-gray-200 transition-all duration-200 rounded-md"
+            >
+              <Zap className="w-4 h-4" />
+              Skills ({pendingSkills.length})
             </TabsTrigger>
           </TabsList>
+
+          {/* Mobile tab dropdown */}
+          <MobileTabMenu
+            activeTab={activeTab}
+            onTabChange={handleTabChange}
+            tabOptions={tabOptions}
+            counts={{
+              trainings: pendingTrainings.length,
+              experiences: pendingExperiences.length,
+              projects: pendingProjects.length,
+              certificates: pendingCertificates.length,
+              skills: pendingSkills.length,
+            }}
+          />
 
           {/* Training Approvals Tab */}
           <TabsContent value="trainings" className="space-y-6">
@@ -986,6 +1331,144 @@ const CollegeVerifications = () => {
               </>
             )}
           </TabsContent>
+
+          {/* Certificate Approvals Tab */}
+          <TabsContent value="certificates" className="space-y-6">
+            <Card className="p-4">
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex-1">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                    <input
+                      type="text"
+                      placeholder="Search certificates, learners, or issuers..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center border border-gray-300 rounded-lg p-1">
+                    <Button variant={viewMode === 'grid' ? 'default' : 'ghost'} size="sm" onClick={() => setViewMode('grid')} className="p-2">
+                      <Grid3X3 className="h-4 w-4" />
+                    </Button>
+                    <Button variant={viewMode === 'list' ? 'default' : 'ghost'} size="sm" onClick={() => setViewMode('list')} className="p-2">
+                      <List className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="all">All Status</option>
+                    <option value="pending">Pending</option>
+                    <option value="approved">Approved</option>
+                    <option value="rejected">Rejected</option>
+                  </select>
+                </div>
+              </div>
+            </Card>
+
+            {filteredCertificates.length === 0 ? (
+              <Card>
+                <CardContent className="p-12 text-center">
+                  <Award className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-600 mb-2">
+                    {searchQuery || statusFilter !== 'all' ? 'No certificates found' : 'No Pending Certificate Approvals'}
+                  </h3>
+                  <p className="text-gray-500">
+                    {searchQuery || statusFilter !== 'all'
+                      ? 'Try adjusting your search or filter criteria'
+                      : 'All certificate submissions have been reviewed. New submissions will appear here.'}
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <>
+                <div className={viewMode === 'grid' ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" : "space-y-4"}>
+                  {currentCertificates.map((certificate) => (
+                    <CertificateCard key={certificate.id} certificate={certificate} />
+                  ))}
+                </div>
+                <PaginationControls
+                  totalPages={getTotalPages(filteredCertificates)}
+                  currentPage={currentPage}
+                  onPageChange={handlePageChange}
+                />
+              </>
+            )}
+          </TabsContent>
+
+          {/* Skills Approvals Tab */}
+          <TabsContent value="skills" className="space-y-6">
+            <Card className="p-4">
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex-1">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                    <input
+                      type="text"
+                      placeholder="Search skills, learners, or categories..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center border border-gray-300 rounded-lg p-1">
+                    <Button variant={viewMode === 'grid' ? 'default' : 'ghost'} size="sm" onClick={() => setViewMode('grid')} className="p-2">
+                      <Grid3X3 className="h-4 w-4" />
+                    </Button>
+                    <Button variant={viewMode === 'list' ? 'default' : 'ghost'} size="sm" onClick={() => setViewMode('list')} className="p-2">
+                      <List className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="all">All Status</option>
+                    <option value="pending">Pending</option>
+                    <option value="approved">Approved</option>
+                    <option value="rejected">Rejected</option>
+                  </select>
+                </div>
+              </div>
+            </Card>
+
+            {filteredSkills.length === 0 ? (
+              <Card>
+                <CardContent className="p-12 text-center">
+                  <Zap className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-600 mb-2">
+                    {searchQuery || statusFilter !== 'all' ? 'No skills found' : 'No Pending Skill Approvals'}
+                  </h3>
+                  <p className="text-gray-500">
+                    {searchQuery || statusFilter !== 'all'
+                      ? 'Try adjusting your search or filter criteria'
+                      : 'All skill submissions have been reviewed. New submissions will appear here.'}
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <>
+                <div className={viewMode === 'grid' ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" : "space-y-4"}>
+                  {currentSkills.map((skill) => (
+                    <SkillCard key={skill.id} skill={skill} />
+                  ))}
+                </div>
+                <PaginationControls
+                  totalPages={getTotalPages(filteredSkills)}
+                  currentPage={currentPage}
+                  onPageChange={handlePageChange}
+                />
+              </>
+            )}
+          </TabsContent>
         </Tabs>
 
         {/* Training Details Modal */}
@@ -1021,6 +1504,30 @@ const CollegeVerifications = () => {
             setSelectedProject(null);
           }}
           onAction={handleProjectAction}
+          currentUserId={user?.id}
+        />
+
+        {/* Certificate Details Modal */}
+        <CertificateDetailsModal
+          certificate={selectedCertificate}
+          isOpen={showCertificateModal}
+          onClose={() => {
+            setShowCertificateModal(false);
+            setSelectedCertificate(null);
+          }}
+          onAction={handleCertificateAction}
+          currentUserId={user?.id}
+        />
+
+        {/* Skill Details Modal */}
+        <SkillDetailsModal
+          skill={selectedSkill}
+          isOpen={showSkillModal}
+          onClose={() => {
+            setShowSkillModal(false);
+            setSelectedSkill(null);
+          }}
+          onAction={handleSkillAction}
           currentUserId={user?.id}
         />
       </div>

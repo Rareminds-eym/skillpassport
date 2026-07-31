@@ -22,8 +22,9 @@ import {
 } from '@heroicons/react/24/outline';
 import { CheckIcon } from '@heroicons/react/24/solid';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
-import { MessageService, Conversation, NewLearnerConversationModalEducator } from '@/features/messaging';
-import { useEducatorMessages, useConversationActions } from '@/features/messaging';
+import MessageService from '@/shared/api/messageService';
+import type { Conversation } from '@/features/messaging';
+import { NewLearnerConversationModalEducator, useEducatorMessages, useConversationActions } from '@/features/messaging';
 import { formatDistanceToNow } from 'date-fns';
 
 import { useRealtimePresence } from '@/shared/lib/hooks';
@@ -127,8 +128,17 @@ const Communication = () => {
         logger.error(errMsg);
         throw new Error(errMsg);
       }
-      logger.info('✅ Educator details found:', currentData);
-      return currentData;
+
+      // Ensure IDs are strings
+      const cleanData = {
+        ...currentData,
+        id: String(currentData.id),
+        school_id: String(currentData.school_id),
+        user_id: String(currentData.user_id)
+      };
+
+      logger.info('✅ Educator details found:', cleanData);
+      return cleanData;
     },
     enabled: !!user?.email,
   });
@@ -160,8 +170,8 @@ const Communication = () => {
     }
   }, [user, userId, userAuthId, educatorData]);
 
-  const schoolId = educatorData?.school_id;
-  const educatorRecordId = educatorData?.id;
+  const schoolId = educatorData?.school_id ? String(educatorData.school_id) : undefined;
+  const educatorRecordId = educatorData?.id ? String(educatorData.id) : undefined;
 
   // Use the correct IDs for different contexts
   const educatorId = educatorRecordId; // For conversation operations (needs school_educators.id)
@@ -532,8 +542,15 @@ const Communication = () => {
 
       logger.info('✅ New conversation created:', conversation);
 
-      // Refresh conversations to include the new one
-      await (activeTab === 'learners' ? refetchActivelearners() : refetchActiveAdmin());
+      // Invalidate and refresh conversations to include the new one
+      if (activeTab === 'learners') {
+        await queryClient.invalidateQueries({
+          queryKey: queryKeys.educator.conversations.byEducator(educatorRecordId || '', 'active')
+        });
+        // Add a small delay to ensure database trigger has updated last_message_at
+        await new Promise(resolve => setTimeout(resolve, 500));
+        await refetchActivelearners();
+      }
 
       // Select the new conversation
       setSelectedConversationId(conversation.id);
@@ -578,34 +595,20 @@ const Communication = () => {
 
       // Send the initial message
       if (initialMessage.trim()) {
-        // First, find the school admin user ID
-        const adminResult = await apiPost<any>('/educator/actions', {
-          action: 'list-school-educators',
-          select: 'user_id',
-          filters: {
-            school_id: schoolId,
-            role: 'school_admin'
-          }
-        });
-
-        const schoolAdmins = adminResult?.data || [];
-        const schoolAdmin = schoolAdmins.length > 0 ? schoolAdmins[0] : null;
-
-        if (!schoolAdmin) {
-          logger.warn('Could not find school admin for initial message');
-        } else {
-          await MessageService.sendMessage(
-            conversation.id,
-            userAuthId,
-            'educator',
-            schoolAdmin.user_id,
-            'educator', // School admin is also an educator
-            initialMessage
-          );
-        }
+        await MessageService.sendEducatorAdminMessage(
+          conversation.id,
+          educatorRecordId,
+          initialMessage.trim(),
+          subject
+        );
       }
 
-      // Refresh conversations to include the new one
+      // Invalidate and refetch conversations to include the new one
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.educator.admin.conversations(educatorRecordId || '', 'active')
+      });
+      // Add a small delay to ensure database trigger has updated last_message_at
+      await new Promise(resolve => setTimeout(resolve, 500));
       await refetchActiveAdmin();
 
       // Switch to admin tab and select the new conversation
@@ -1666,7 +1669,7 @@ const Communication = () => {
         isOpen={showNewConversationModal}
         onClose={() => setShowNewConversationModal(false)}
         onCreateConversation={handleNewConversation}
-        educatorId={userAuthId} // Pass the user_id for learner fetching
+        educatorId={educatorRecordId} // Pass the educator record ID (school_educators.id)
         schoolId={schoolId} // Pass school_id directly to avoid complex lookups
       />
 

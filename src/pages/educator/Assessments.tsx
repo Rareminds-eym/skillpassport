@@ -25,6 +25,7 @@ import { useAuth } from '@/features/auth';
 import { useEducatorSchool } from '@/features/educator/model/useEducatorSchool';
 import { getApiUrl } from '@/shared/api/apiUtils';
 import { getLogger } from '@/shared/config/logging';
+import { apiPost } from '@/shared/api/apiClient';
 
 
 const logger = getLogger('EducatorAssessments');
@@ -295,14 +296,15 @@ const Assessments = () => {
 
                     if (user && !authError) {
                         // Fetch the school_educators record to get the educator_id
-                        const { data: educatorData, error: educatorError } = await supabase
-                            .from('school_educators')
-                            .select('id')
-                            .eq('user_id', user.id)
-                            .maybeSingle();
-
-                        if (educatorData && !educatorError) {
-                            educatorId = educatorData.id;
+                        try {
+                            const response = await apiPost<{ id: string }>('/educator/actions', {
+                                action: 'get-educator-by-user-id'
+                            });
+                            if (response?.id) {
+                                educatorId = response.id;
+                            }
+                        } catch (err) {
+                            logger.error('Error fetching educator by user ID', err);
                         }
                     }
                 }
@@ -326,29 +328,27 @@ const Assessments = () => {
 
                 setCurrentEducatorId(educatorId);
 
-                // Fetch educator's school_id first
-                const { data: educatorData, error: educatorFetchError } = await supabase
-                    .from('school_educators')
-                    .select('school_id')
-                    .eq('id', educatorId)
-                    .maybeSingle();
+                // Fetch educator's school_id and classes
+                try {
+                    const response = await apiPost<{
+                        school_id: string;
+                        classes: Array<{ id: string; name: string; grade: string; section: string }>
+                    }>('/educator/actions', {
+                        action: 'get-educator-school-and-classes',
+                        educatorId
+                    });
 
-                if (!educatorFetchError && educatorData?.school_id) {
-                    // Fetch all classes from the educator's school
-                    const { data: classesData, error: classesError } = await supabase
-                        .from('school_classes')
-                        .select('id, name, grade, section')
-                        .eq('school_id', educatorData.school_id)
-                        .eq('account_status', 'active')
-                        .order('grade', { ascending: true })
-                        .order('section', { ascending: true });
-
-                    if (!classesError && classesData) {
-                        setAssignedClasses(classesData.map(cls => ({
-                            id: cls.id,
-                            name: cls.name || `Grade ${cls.grade}${cls.section ? ' - ' + cls.section : ''}`
-                        })));
+                    if (response?.school_id) {
+                        const classesData = response.classes || [];
+                        if (classesData.length > 0) {
+                            setAssignedClasses(classesData.map(cls => ({
+                                id: cls.id,
+                                name: cls.name || `Grade ${cls.grade}${cls.section ? ' - ' + cls.section : ''}`
+                            })));
+                        }
                     }
+                } catch (err) {
+                    logger.error('Error fetching educator school and classes', err);
                 }
 
                 // Fetch assignments for this educator
@@ -405,23 +405,21 @@ const Assessments = () => {
     useEffect(() => {
         const fetchCurriculumSubjects = async () => {
             if (!educatorSchool?.id) return;
-            
+
             try {
-                const { data, error } = await supabase
-                    .from('curriculum_subjects')
-                    .select('id, name, subject_code')
-                    .eq('school_id', educatorSchool.id)
-                    .eq('is_active', true)
-                    .order('display_order', { ascending: true });
-                
-                if (!error && data) {
+                const data = await apiPost<Array<{ id: string; name: string; subject_code: string }>>('/educator/actions', {
+                    action: 'get-curriculum-subjects',
+                    schoolId: educatorSchool.id
+                });
+
+                if (data && Array.isArray(data)) {
                     setCurriculumSubjects(data);
                 }
             } catch (err) {
                 logger.error('Error fetching curriculum subjects', err);
             }
         };
-        
+
         fetchCurriculumSubjects();
     }, [educatorSchool?.id]);
 
@@ -584,13 +582,14 @@ const Assessments = () => {
                     school_class_id: newTask.assignedTo[0]
                 };
 
-                const { error } = await supabase
-                    .from('assignments')
-                    .update(updateData)
-                    .eq('assignment_id', selectedTask.id);
-
-                if (error) {
-                    throw error;
+                try {
+                    await apiPost('/educator/actions', {
+                        action: 'update-assignment',
+                        assignmentId: selectedTask.id,
+                        data: updateData
+                    });
+                } catch (err) {
+                    throw err;
                 }
 
                 // Upload any staged files if they exist (using the new staged approach)
@@ -1087,16 +1086,12 @@ const Assessments = () => {
                             onEdit={async (task) => {
                                 // Fetch full assignment details from database first
                                 try {
-                                    const { data: assignment, error } = await supabase
-                                        .from('assignments')
-                                        .select(`
-                                            *,
-                                            assignment_attachments (*)
-                                        `)
-                                        .eq('assignment_id', task.id)
-                                        .single();
+                                    const assignment = await apiPost('/educator/actions', {
+                                        action: 'get-assignment-with-attachments',
+                                        assignmentId: task.id
+                                    });
 
-                                    if (!error && assignment) {
+                                    if (assignment) {
                                         // Get instruction files (educator files - no LEARNER: prefix)
                                         const instructionFiles = assignment.assignment_attachments?.filter(
                                             (att: any) => !att.file_name.startsWith('LEARNER:')

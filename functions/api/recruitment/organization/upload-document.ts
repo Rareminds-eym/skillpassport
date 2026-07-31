@@ -1,12 +1,14 @@
 /**
  * Document Upload API
- * Handles file uploads for verification documents and company assets
+ * Handles file uploads for verification documents and company assets to R2 storage
  */
 
 import { withAuth } from '../../../lib/auth';
 import { getServiceClient } from '../../../lib/supabase';
 import { verifyOrgAccess, PERMISSIONS } from '../../../lib/permissions';
+import { R2Client } from '../../storage/utils/r2-client';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import type { PagesEnv } from '../../../lib/types';
 
 // Allowed file types and sizes
 const ALLOWED_DOCUMENT_TYPES = [
@@ -20,11 +22,11 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 /**
  * POST /api/recruitment/organization/upload-document
- * Upload a document to Supabase Storage
+ * Upload a document to R2 storage
  */
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     const user = context.data.user;
-    const env = context.env as Record<string, string>;
+    const env = context.env as PagesEnv;
     const supabase = getServiceClient(env as any);
 
     try {
@@ -32,8 +34,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
         const file = formData.get('file') as File;
         const orgId = formData.get('org_id') as string;
-        const documentType = formData.get('document_type') as string; // e.g., 'registration_certificate', 'gst_certificate', 'logo'
-        const bucket = formData.get('bucket') as string || 'company-documents';
+        const documentType = formData.get('document_type') as string;
 
         if (!file || !orgId || !documentType) {
             return Response.json({
@@ -41,72 +42,68 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
             }, { status: 400 });
         }
 
-        // Verify user has admin access
         const access = await verifyOrgAccess(supabase, user.sub, orgId, PERMISSIONS.MANAGE_ORG_SETTINGS);
         if (!access.allowed) {
             return access.error!;
         }
 
-        // Validate file type
         if (!ALLOWED_DOCUMENT_TYPES.includes(file.type)) {
             return Response.json({
                 error: `Invalid file type. Allowed types: ${ALLOWED_DOCUMENT_TYPES.join(', ')}`
             }, { status: 400 });
         }
 
-        // Validate file size
         if (file.size > MAX_FILE_SIZE) {
             return Response.json({
                 error: `File size exceeds maximum limit of ${MAX_FILE_SIZE / (1024 * 1024)}MB`
             }, { status: 400 });
         }
 
-        // Generate unique file name
         const timestamp = Date.now();
-        const fileExtension = file.name.split('.').pop();
-        const fileName = `${orgId}/${documentType}_${timestamp}.${fileExtension}`;
+        const fileExtension = file.name.split('.').pop() || 'pdf';
+        const filePath = `document/company/${orgId}/${documentType}_${timestamp}.${fileExtension}`;
 
-        console.log('[upload-document API] Uploading file:', {
+        console.log('[upload-document API] Uploading document to R2:', {
             orgId,
             documentType,
-            fileName,
+            filePath,
             fileSize: file.size,
             fileType: file.type,
         });
 
-        // Convert File to ArrayBuffer
         const fileBuffer = await file.arrayBuffer();
 
-        // Upload to Supabase Storage
-        const { data: uploadData, error: uploadError } = await supabase.storage
-            .from(bucket)
-            .upload(fileName, fileBuffer, {
-                contentType: file.type,
-                upsert: true, // Overwrite if exists
+        try {
+            const r2Client = new R2Client(env);
+            await r2Client.upload(
+                filePath,
+                fileBuffer,
+                file.type,
+                {
+                    'Content-Disposition': `inline; filename="${file.name}"`,
+                    'Cache-Control': 'public, max-age=31536000',
+                }
+            );
+
+            const documentUrl = r2Client.getPublicUrl(filePath);
+
+            console.log('[upload-document API] Document uploaded successfully to R2:', filePath);
+
+            return Response.json({
+                success: true,
+                message: 'Document uploaded successfully',
+                file_path: filePath,
+                file_url: documentUrl,
+                document_type: documentType,
             });
 
-        if (uploadError) {
-            console.error('[upload-document API] Upload failed:', uploadError);
+        } catch (r2Error: any) {
+            console.error('[upload-document API] R2 upload failed:', r2Error);
             return Response.json({
-                error: 'Failed to upload document',
-                details: uploadError.message
+                error: 'Failed to upload document to R2',
+                details: r2Error.message || 'Upload error'
             }, { status: 500 });
         }
-
-        // Get public URL
-        const { data: urlData } = supabase.storage
-            .from(bucket)
-            .getPublicUrl(fileName);
-
-        console.log('[upload-document API] Upload successful:', fileName);
-
-        return Response.json({
-            success: true,
-            message: 'Document uploaded successfully',
-            file_path: fileName,
-            file_url: urlData.publicUrl,
-            document_type: documentType,
-        });
 
     } catch (error: any) {
         console.error('[upload-document API] Unexpected error:', error);
@@ -119,17 +116,16 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
 /**
  * DELETE /api/recruitment/organization/upload-document
- * Delete a document from Supabase Storage
+ * Delete a document from R2 storage
  */
 export const onRequestDelete = withAuth(async (context: AuthenticatedContext) => {
     const user = context.data.user;
-    const env = context.env as Record<string, string>;
+    const env = context.env as PagesEnv;
     const supabase = getServiceClient(env as any);
 
     const url = new URL(context.request.url);
     const orgId = url.searchParams.get('org_id');
     const filePath = url.searchParams.get('file_path');
-    const bucket = url.searchParams.get('bucket') || 'company-documents';
 
     if (!orgId || !filePath) {
         return Response.json({
@@ -137,45 +133,41 @@ export const onRequestDelete = withAuth(async (context: AuthenticatedContext) =>
         }, { status: 400 });
     }
 
-    // Verify user has admin access
     const access = await verifyOrgAccess(supabase, user.sub, orgId, PERMISSIONS.MANAGE_ORG_SETTINGS);
     if (!access.allowed) {
         return access.error!;
     }
 
     try {
-        // Verify file belongs to organization
-        if (!filePath.startsWith(orgId + '/')) {
+        if (!filePath.startsWith(`document/company/${orgId}/`)) {
             return Response.json({
                 error: 'Access denied: File does not belong to this organization'
             }, { status: 403 });
         }
 
-        console.log('[upload-document API] Deleting file:', {
+        console.log('[upload-document API] Deleting document from R2:', {
             orgId,
             filePath,
-            bucket,
         });
 
-        // Delete from Supabase Storage
-        const { error: deleteError } = await supabase.storage
-            .from(bucket)
-            .remove([filePath]);
+        try {
+            const r2Client = new R2Client(env);
+            await r2Client.delete(filePath);
 
-        if (deleteError) {
-            console.error('[upload-document API] Delete failed:', deleteError);
+            console.log('[upload-document API] Document deleted successfully from R2:', filePath);
+
             return Response.json({
-                error: 'Failed to delete document',
-                details: deleteError.message
+                success: true,
+                message: 'Document deleted successfully',
+            });
+
+        } catch (r2Error: any) {
+            console.error('[upload-document API] R2 delete failed:', r2Error);
+            return Response.json({
+                error: 'Failed to delete document from R2',
+                details: r2Error.message
             }, { status: 500 });
         }
-
-        console.log('[upload-document API] Delete successful:', filePath);
-
-        return Response.json({
-            success: true,
-            message: 'Document deleted successfully',
-        });
 
     } catch (error: any) {
         console.error('[upload-document API] Unexpected error:', error);

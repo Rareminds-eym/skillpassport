@@ -36,6 +36,13 @@ export async function onRequest(context: { request: Request; env: Record<string,
 
   // GET handlers are read-only data access — require full auth (email verified)
   if (method === 'GET') {
+    // Public: invitation token validation — the token itself is the authorization
+    // (random unguessable string). Returned data is non-sensitive (email, org name, role).
+    // Only the accept endpoint (POST) requires authentication.
+    const action = url.searchParams.get('action');
+    if (action === 'getInvitationByToken') {
+      return handleOrganizationGet(context);
+    }
     return handleGetRequest(context as AuthenticatedContext);
   }
 

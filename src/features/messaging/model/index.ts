@@ -10,6 +10,7 @@ export type { UseConversationActionsOptions, UseConversationActionsReturn } from
 export { useConversation } from './useConversation';
 export { useMessageNotifications } from './useMessageNotifications';
 export { default as useTypingIndicator } from './useTypingIndicator';
+export { useConversationMutations } from './useConversationMutations';
 
 // Store - Re-export from shared
 export { useMessageStore } from '@/shared/model/useMessageStore';

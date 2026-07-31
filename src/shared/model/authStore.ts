@@ -10,6 +10,7 @@
  */
 import { ssoClient } from '@/shared/api/ssoClient';
 import { getLogger } from '@/shared/config/logging';
+import { clearUserContext } from '@/shared/config/monitoring';
 import { startTokenRefresh, stopTokenRefresh, tokenRefreshService } from '@/shared/services/tokenRefreshService';
 import { ROLE_CATEGORIES, type RoleCategory } from '@/shared/types/generated/roles';
 import type { LoginResponse, MeResponse } from '@rareminds-eym/auth-client';
@@ -261,6 +262,12 @@ export const useAuthStore = create<AuthState>()(
           await ssoClient.logout();
         } catch (err) {
           logger.error('SSO logout failed', err as Error);
+          // Server revoke failed (rate limit, network error). The
+          // refresh-token cookie is still alive. Flag for retry on next
+          // page load via the pending-logout safety net below.
+          if (typeof window !== 'undefined') {
+            sessionStorage.setItem('pending-logout', 'true');
+          }
         }
 
         set((state) => {
@@ -273,6 +280,8 @@ export const useAuthStore = create<AuthState>()(
           state.isAdmin = false;
           state.isRecruiter = false;
         });
+
+        clearUserContext();
       },
 
       updateUser: (userData) => {
@@ -342,13 +351,9 @@ export const useAuthStore = create<AuthState>()(
         try {
           const { authenticated } = await ssoClient.initSession();
           if (authenticated) {
-            // Guard against concurrent getMe() calls during initialization
-            const currentState = get();
-            if (currentState.isAuthenticated && currentState.user) {
-              set((state) => { state.loading = false; });
-              startTokenRefresh();
-              return;
-            }
+            // Even if the store was rehydrated from localStorage, we MUST
+            // fetch fresh data from the newly refreshed session to ensure
+            // role changes and membership statuses are accurately reflected.
 
             const me = await ssoClient.getMe();
             const user = mapMeToUser(me);
@@ -480,16 +485,37 @@ if (typeof window !== 'undefined') {
     store.setUser(null);
   });
 
-  ssoClient.onAuthStateChange(async (event) => {
+  const pendingAuthEvents: Array<'LOGIN' | 'LOGOUT' | 'REFRESH'> = [];
+
+  const handleAuthEvent = async (event: 'LOGIN' | 'LOGOUT' | 'REFRESH') => {
     const store = useAuthStore.getState();
 
-    // Skip handling if auth is still initializing to prevent race conditions
-    if (store.loading) return;
+    // Queue events if auth is still initializing to prevent race conditions
+    if (store.loading) {
+      pendingAuthEvents.push(event);
+      return;
+    }
 
     if (event === 'LOGOUT') {
+      // Per industry standard (Clerk, Supabase, Auth0): receiving tabs only
+      // clear local state. The server revoke was already handled by the
+      // originating tab's authStore.logout() call. Calling ssoClient.logout()
+      // here would create a broadcast ping-pong storm across tabs.
       stopTokenRefresh();
       store.setUser(null);
     } else if (event === 'LOGIN' || event === 'REFRESH') {
+      // Defensive: skip if store already has up-to-date email verification.
+      // Prevents the event handler from overwriting the store with stale data
+      // when refreshSession() has already fetched fresh data concurrently.
+      const currentState = useAuthStore.getState();
+      if (
+        event === 'REFRESH' &&
+        currentState.isAuthenticated &&
+        currentState.user?.isEmailVerified
+      ) {
+        return;
+      }
+
       try {
         const me = await ssoClient.getMe();
         const user = mapMeToUser(me);
@@ -506,6 +532,35 @@ if (typeof window !== 'undefined') {
       } catch {
         // Session expired during rehydration — ignore
       }
+    }
+  };
+
+  // Safety net: retry server-side logout if the previous attempt failed
+  // (rate limit, network error). Runs before initSession() to prevent
+  // re-authentication via the still-valid refresh-token cookie.
+  if (sessionStorage.getItem('pending-logout')) {
+    sessionStorage.removeItem('pending-logout');
+    ssoClient.logout().catch(() => {});
+  }
+
+  ssoClient.onAuthStateChange(handleAuthEvent);
+
+  // Subscribe to store changes to process pending events when loading finishes
+  useAuthStore.subscribe((state, prevState) => {
+    if (prevState.loading && !state.loading && pendingAuthEvents.length > 0) {
+      const eventsToProcess = [...pendingAuthEvents];
+      pendingAuthEvents.length = 0;
+      
+      // Process events sequentially and catch errors so one failure doesn't block others
+      (async () => {
+        for (const event of eventsToProcess) {
+          try {
+            await handleAuthEvent(event);
+          } catch (err) {
+            console.error(`[authStore] Failed to handle queued event ${event}:`, err);
+          }
+        }
+      })();
     }
   });
 }

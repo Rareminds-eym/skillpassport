@@ -1,12 +1,13 @@
-import { AlertCircle, Eye, EyeOff, Loader2, Lock, Mail, UserCircle } from 'lucide-react';
-import { ChangeEvent, FormEvent, useRef, useState } from 'react';
+import { AlertCircle, CheckCircle, Eye, EyeOff, Loader2, Lock, Mail, UserCircle } from 'lucide-react';
+import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 
 import type { UserRole } from '@/features/auth/api';
 import { redirectToRoleDashboard } from '@/features/auth/lib';
 import { PASSWORD_MIN } from '@/shared/constants';
+import { generateLteCode } from '@/features/auth/api/lteSsoApi';
 import { trackLogin } from '@/shared/lib/analytics';
-import { useAuthActions } from '@/shared/model/authStore';
+import { useAuthActions, useAuthStore } from '@/shared/model/authStore';
 import { AuthFetchError } from '@rareminds-eym/auth-client';
 
 interface LoginState {
@@ -47,9 +48,43 @@ const UnifiedLogin = () => {
   const { login } = useAuthActions();
 
   const returnUrl =
-    searchParams.get('returnUrl') || sessionStorage.getItem('invitation_return_url');
+    searchParams.get('returnUrl') || searchParams.get('redirect') || sessionStorage.getItem('invitation_return_url');
   const invitationEmail = searchParams.get('email') || sessionStorage.getItem('invitation_email');
   const invitationToken = sessionStorage.getItem('invitation_token');
+  const justVerified = searchParams.get('verified') === '1';
+  const hasCleanedVerifiedRef = useRef(false);
+
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const authLoading = useAuthStore((s) => s.loading);
+
+  useEffect(() => {
+    async function checkLteSsoHandoff() {
+      const targetApp = searchParams.get('target_app') || searchParams.get('redirect_app');
+      if (targetApp === 'lte') {
+        if (authLoading) return;
+
+        if (isAuthenticated) {
+          try {
+            const { redirectUrl } = await generateLteCode();
+            window.location.href = redirectUrl;
+          } catch (err) {
+            console.error('[SSO] Auto LTE SSO handoff error:', err);
+            setState((prev) => ({ ...prev, error: 'Failed to initiate LTE handoff. Please try again.' }));
+          }
+        }
+      }
+    }
+    void checkLteSsoHandoff();
+  }, [isAuthenticated, authLoading, searchParams]);
+
+  useEffect(() => {
+    if (justVerified && !hasCleanedVerifiedRef.current) {
+      hasCleanedVerifiedRef.current = true;
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete('verified');
+      navigate({ search: params.toString() }, { replace: true });
+    }
+  }, [justVerified, navigate]);
 
   const [state, setState] = useState<LoginState>({
     email: invitationEmail || '',
@@ -188,7 +223,6 @@ const UnifiedLogin = () => {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 token: freshInvitationToken,
-                userId: userId,
               }),
             });
 
@@ -302,6 +336,15 @@ const UnifiedLogin = () => {
       // Track login_success — login complete, role verified, store updated
       trackLogin.success(useAuthStore.getState().user?.id || '', actualRole);
 
+      // Check for post-login redirect (set after invitation acceptance during verification)
+      const postLoginRedirect = sessionStorage.getItem('post_login_redirect');
+      if (postLoginRedirect) {
+        console.log('[UnifiedLogin] Post-login redirect found:', postLoginRedirect);
+        sessionStorage.removeItem('post_login_redirect');
+        navigate(postLoginRedirect, { replace: true });
+        return;
+      }
+
       // Redirect to the intended destination
       if (returnUrl) {
         sessionStorage.removeItem('invitation_return_url');
@@ -365,6 +408,15 @@ const UnifiedLogin = () => {
             </div>
 
             <div className="rounded-2xl bg-transparent lg:bg-white/95 lg:shadow-xl lg:ring-1 lg:ring-black/5 p-5 sm:p-6 lg:p-8">
+              {justVerified && (
+                <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-green-800">
+                    Your email has been verified successfully. Please sign in to continue.
+                  </p>
+                </div>
+              )}
+
               {state.error && (
                 <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
                   <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />

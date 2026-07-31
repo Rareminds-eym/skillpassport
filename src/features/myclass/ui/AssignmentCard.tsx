@@ -185,16 +185,13 @@ const AssignmentCard: React.FC<AssignmentCardProps> = ({
 
   // Helper function to generate accessible file URL
   const getAccessibleFileUrl = (fileUrl: string) => {
-    const storageApiUrl = import.meta.env.VITE_STORAGE_API_URL;
-    if (!storageApiUrl) {
-      return fileUrl; // Fallback to direct URL
-    }
-    
+    const storageApiUrl = getApiUrl('storage');
+
     // Check if URL is already a proxy URL
     if (fileUrl.includes('/document-access')) {
       return fileUrl; // Already a proxy URL
     }
-    
+
     // Extract file key and use key parameter for better reliability
     const fileKey = extractFileKey(fileUrl);
     if (fileKey) {

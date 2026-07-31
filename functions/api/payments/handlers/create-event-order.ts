@@ -43,6 +43,7 @@ export async function handleCreateEventOrder(context: AuthenticatedContext): Pro
     const order = await worker.createOrder({
       amount: body.amount as number,
       currency: (body.currency as string) || undefined,
+      receipt: `ev_${body.registrationId}`.substring(0, 40),
       notes: {
         registration_id: body.registrationId as string,
         plan_name: (body.planName as string) || '',

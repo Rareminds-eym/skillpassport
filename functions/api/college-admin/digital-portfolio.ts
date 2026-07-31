@@ -61,6 +61,48 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         return apiSuccess(data, context.request, { startTime });
       }
 
+      // ── Education ──
+      case 'insert-education': {
+        const { records } = params;
+        if (!records || !Array.isArray(records) || records.length === 0) {
+          return apiError(400, 'VALIDATION_ERROR', 'Missing or empty records array', context.request, { startTime });
+        }
+        const { data, error } = await supabase
+          .from('education')
+          .insert(records)
+          .select();
+        if (error) return apiDbError(error, context.request, { startTime });
+        return apiSuccess(data, context.request, { startTime });
+      }
+
+      // ── Skills ──
+      case 'insert-skills': {
+        const { records } = params;
+        if (!records || !Array.isArray(records) || records.length === 0) {
+          return apiError(400, 'VALIDATION_ERROR', 'Missing or empty records array', context.request, { startTime });
+        }
+        const { data, error } = await supabase
+          .from('skills')
+          .insert(records)
+          .select();
+        if (error) return apiDbError(error, context.request, { startTime });
+        return apiSuccess(data, context.request, { startTime });
+      }
+
+      // ── Achievements ──
+      case 'insert-achievements': {
+        const { records } = params;
+        if (!records || !Array.isArray(records) || records.length === 0) {
+          return apiError(400, 'VALIDATION_ERROR', 'Missing or empty records array', context.request, { startTime });
+        }
+        const { data, error } = await supabase
+          .from('achievements')
+          .insert(records)
+          .select();
+        if (error) return apiDbError(error, context.request, { startTime });
+        return apiSuccess(data, context.request, { startTime });
+      }
+
       // ── Learners ──
       case 'update-learner': {
         const { id, ...updates } = params;
@@ -160,14 +202,16 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           projectsResult,
           certificatesResult,
           educationResult,
-          experienceResult
+          experienceResult,
+          achievementsResult
         ] = await Promise.all([
           supabase.from('skills').select('*').eq('learner_id', userId).in('approval_status', ['verified', 'approved']).eq('enabled', true).order('created_at', { ascending: false }),
           supabase.from('trainings').select('*').eq('learner_id', userId).eq('enabled', true).in('approval_status', ['verified', 'approved']).order('start_date', { ascending: false }),
           supabase.from('projects').select('*').eq('learner_id', userId).eq('enabled', true).in('approval_status', ['verified', 'approved']).order('start_date', { ascending: false }),
           supabase.from('certificates').select('*').eq('learner_id', userId).eq('enabled', true).in('approval_status', ['verified', 'approved']).order('issued_on', { ascending: false }),
           supabase.from('education').select('*').eq('learner_id', userId).eq('enabled', true).in('approval_status', ['verified', 'approved']).order('year_of_passing', { ascending: false }),
-          supabase.from('experience').select('*').eq('learner_id', userId).eq('enabled', true).in('approval_status', ['verified', 'approved']).order('start_date', { ascending: false })
+          supabase.from('experience').select('*').eq('learner_id', userId).eq('enabled', true).in('approval_status', ['verified', 'approved']).order('start_date', { ascending: false }),
+          supabase.from('achievements').select('*').eq('learner_id', userId).eq('enabled', true).in('approval_status', ['verified', 'approved']).order('created_at', { ascending: false })
         ]);
 
         return apiSuccess({
@@ -178,6 +222,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           certificates: certificatesResult.data || [],
           education: educationResult.data || [],
           experience: experienceResult.data || [],
+          achievements: achievementsResult.data || [],
         }, context.request, { startTime });
       }
 

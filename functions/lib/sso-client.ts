@@ -5,7 +5,7 @@
  * No SERVICE_AUTH_SECRET needed — the binding itself is the trust boundary.
  */
 
-import type { Fetcher } from '@cloudflare/workers-types';
+import type { Fetcher } from "@cloudflare/workers-types";
 
 // ─── RPC Interface Types ───────────────────────────────────────
 // These define the SsoWorker RPC methods available via the SSO_SERVICE binding.
@@ -27,12 +27,15 @@ interface SsoSubscriptionData {
   phone?: string;
   razorpay_order_id?: string;
   razorpay_payment_id?: string;
+  receipt_url?: string;
   organization_id?: string;
   organization_type?: string;
   seat_count?: number;
   is_organization_subscription?: boolean;
   is_bulk_purchase?: boolean;
   purchased_by?: string;
+  is_recruiter_subscription?: boolean;
+  is_b2b?: boolean;
 }
 
 interface SsoTransactionData {
@@ -46,13 +49,32 @@ interface SsoTransactionData {
   status: string;
   transaction_type?: string;
   payment_method?: string;
+  failure_reason?: string;
+  product_id?: string;
   organization_id?: string;
   organization_type?: string;
   seat_count?: number;
   is_bulk_purchase?: boolean;
+  /** R2 key to the payment receipt PDF (not a presigned URL) */
   receipt_url?: string;
   notes?: Record<string, unknown>;
   metadata?: Record<string, unknown>;
+}
+
+export interface GenerateAuthorizationCodeParams {
+  accessToken: string;
+  targetApp: 'lte';
+  redirectUri: string;
+  ip?: string;
+  ua?: string;
+}
+
+export interface GenerateAuthorizationCodeResult {
+  code: string;
+  state: string;
+  redirectUrl?: string;
+  expiresAt?: string;
+  codeExpiresAt?: string;
 }
 
 type SsoFetcher = Fetcher & {
@@ -63,13 +85,31 @@ type SsoFetcher = Fetcher & {
   updateSubscriptionStatus(subscriptionId: string, data: unknown): Promise<Record<string, unknown>>;
   updateSubscriptionField(subscriptionId: string, data: unknown): Promise<Record<string, unknown>>;
   recordTransaction(data: unknown): Promise<Record<string, unknown>>;
+  updateTransaction(transactionId: string, data: unknown): Promise<Record<string, unknown>>;
   getUserSubscription(userId: string): Promise<{ subscription: Record<string, unknown> | null; plan: Record<string, unknown> | null }>;
   syncSubscription(userId: string): Promise<{ subscription: Record<string, unknown> | null; plan: Record<string, unknown> | null }>;
   getUserTransactions(userId: string, subscriptionId?: string): Promise<Record<string, unknown>[]>;
   syncPlans(): Promise<{ plans: Record<string, unknown>[] }>;
   listRoles(): Promise<{ roles: { id: string; name: string; description: string | null }[] }>;
+  getUserByEmail(email: string): Promise<{ id: string; email: string; is_email_verified: boolean } | null>;
+  getUserMemberships(userId: string): Promise<{ memberships: { id: string; org_id: string; role: string; status: string }[] }>;
+  createMembership(data: { user_id: string; org_id: string; status: string }): Promise<{ id: string; status: string }>;
+  updateMembershipStatus(data: { membership_id: string; status: string }): Promise<{ success: boolean }>;
+  assignMembershipRole(data: { membership_id: string; role_id: string }): Promise<{ success: boolean }>;
+  generateAuthorizationCode(params: GenerateAuthorizationCodeParams): Promise<GenerateAuthorizationCodeResult>;
   recordAddonPurchase(data: unknown): Promise<Record<string, unknown>>;
   recordBundlePurchase(data: unknown): Promise<Record<string, unknown>>;
+  listAddonCatalog(): Promise<any>;
+  getAddonByFeatureKey(featureKey: string): Promise<any>;
+  listBundles(): Promise<any>;
+  login(params: { email?: string; password?: string; ip?: string; ua?: string }): Promise<any>;
+  refreshSession(refreshToken: string, ip?: string, ua?: string): Promise<any>;
+  getMe(accessToken: string): Promise<any>;
+  logoutSession(refreshToken: string, ip?: string, ua?: string): Promise<any>;
+  verifyEmail(params: { token: string; ip?: string; ua?: string }): Promise<any>;
+  switchOrg(params: { accessToken: string; organizationId: string }): Promise<any>;
+  signup(params: { email: string; password: string; fullName: string; referralCode?: string; ip?: string; ua?: string }): Promise<any>;
+  listOrgs(accessToken: string): Promise<any>;
 };
 
 // ─── Binding Guard ─────────────────────────────────────────────
@@ -81,7 +121,7 @@ type SsoFetcher = Fetcher & {
  * @returns The SSO_SERVICE binding for RPC calls
  * @throws Error if SSO_SERVICE binding is not configured
  */
-function getSsoService(env: SsoClientEnv): SsoFetcher {
+export function getSsoService(env: SsoClientEnv): SsoFetcher {
   if (!env.SSO_SERVICE) {
     throw new Error(
       'SSO_SERVICE binding is not configured. ' +
@@ -105,6 +145,13 @@ export async function ssoCreateFreemiumSubscription(
   data: { user_id: string; email: string; full_name?: string },
 ): Promise<Record<string, unknown>> {
   return getSsoService(env).createFreemiumSubscription(data);
+}
+
+export async function ssoGenerateAuthorizationCode(
+  env: SsoClientEnv,
+  params: GenerateAuthorizationCodeParams,
+): Promise<GenerateAuthorizationCodeResult> {
+  return getSsoService(env).generateAuthorizationCode(params);
 }
 
 /**
@@ -141,6 +188,23 @@ export async function ssoRecordTransaction(
   data: SsoTransactionData,
 ): Promise<Record<string, unknown>> {
   return getSsoService(env).recordTransaction(data);
+}
+
+/**
+ * Update transaction metadata (e.g., receipt_url after async generation)
+ */
+export async function ssoUpdateTransaction(
+  env: SsoClientEnv,
+  transactionId: string,
+  data: { receipt_url?: string; status?: string; metadata?: Record<string, unknown> },
+): Promise<Record<string, unknown>> {
+  const ssoService = getSsoService(env);
+  
+  if (typeof ssoService.updateTransaction !== 'function') {
+    throw new Error('SSO_SERVICE.updateTransaction RPC method not implemented');
+  }
+  
+  return ssoService.updateTransaction(transactionId, data);
 }
 
 export async function ssoGetUserSubscription(
@@ -185,6 +249,27 @@ export async function ssoListRoles(
   return getSsoService(env).listRoles();
 }
 
+/**
+ * Look up a user by their email via the SSO-Worker RPC.
+ * Returns the user record or null if no user is found with that email.
+ */
+export async function ssoGetUserByEmail(
+  env: SsoClientEnv,
+  email: string,
+): Promise<{ id: string; email: string; is_email_verified: boolean } | null> {
+  return getSsoService(env).getUserByEmail(email);
+}
+
+/**
+ * Get all organization memberships for a user via the SSO-Worker RPC.
+ */
+export async function ssoGetUserMemberships(
+  env: SsoClientEnv,
+  userId: string,
+): Promise<{ memberships: { id: string; org_id: string; role: string; status: string }[] }> {
+  return getSsoService(env).getUserMemberships(userId);
+}
+
 export async function ssoRecordAddonPurchase(
   env: SsoClientEnv,
   data: Record<string, unknown>,
@@ -199,33 +284,27 @@ export async function ssoRecordBundlePurchase(
   return getSsoService(env).recordBundlePurchase(data);
 }
 
-export async function ssoFetch(
-  env: SsoClientEnv,
-  path: string,
-  init?: RequestInit,
-): Promise<Response> {
-  const url = new URL(path, "http://sso-worker").toString();
-  return getSsoService(env).fetch(new Request(url, init));
+export async function ssoListAddonCatalog(env: SsoClientEnv): Promise<any> {
+  return getSsoService(env).listAddonCatalog();
+}
+
+export async function ssoGetAddonByFeatureKey(env: SsoClientEnv, featureKey: string): Promise<any> {
+  return getSsoService(env).getAddonByFeatureKey(featureKey);
+}
+
+export async function ssoListBundles(env: SsoClientEnv): Promise<any> {
+  return getSsoService(env).listBundles();
 }
 
 /**
  * Create a new membership in the SSO-Worker database
- * Used when accepting invitations (cannot write to foreign tables directly)
+ * Used when accepting invitations
  */
 export async function ssoCreateMembership(
   env: SsoClientEnv,
   data: { user_id: string; org_id: string; status: string },
 ): Promise<{ id: string; status: string }> {
-  const res = await ssoFetch(env, "/api/memberships/create", {
-    method: "POST",
-    body: JSON.stringify(data),
-  });
-
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`SSO create membership failed [${res.status}]: ${text}`);
-  }
-  return res.json() as Promise<{ id: string; status: string }>;
+  return getSsoService(env).createMembership(data);
 }
 
 /**
@@ -235,16 +314,7 @@ export async function ssoAssignMembershipRole(
   env: SsoClientEnv,
   data: { membership_id: string; role_id: string },
 ): Promise<{ success: boolean }> {
-  const res = await ssoFetch(env, "/api/memberships/assign-role", {
-    method: "POST",
-    body: JSON.stringify(data),
-  });
-
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`SSO assign role failed [${res.status}]: ${text}`);
-  }
-  return res.json() as Promise<{ success: boolean }>;
+  return getSsoService(env).assignMembershipRole(data);
 }
 
 /**
@@ -254,14 +324,5 @@ export async function ssoUpdateMembershipStatus(
   env: SsoClientEnv,
   data: { membership_id: string; status: string },
 ): Promise<{ success: boolean }> {
-  const res = await ssoFetch(env, "/api/memberships/update-status", {
-    method: "PUT",
-    body: JSON.stringify(data),
-  });
-
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`SSO update membership status failed [${res.status}]: ${text}`);
-  }
-  return res.json() as Promise<{ success: boolean }>;
+  return getSsoService(env).updateMembershipStatus(data);
 }

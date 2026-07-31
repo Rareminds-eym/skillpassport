@@ -25,8 +25,8 @@ async function generateQuestionsFromBank(
     console.log(`📋 Parameters:`, { gradeLevel, phase, difficulty, count, excludeCount: excludeIds.size });
 
     // Create Supabase client
-    const supabaseUrl = env.SUPABASE_URL || env.VITE_SUPABASE_URL;
-    const supabaseKey = env.SUPABASE_ANON_KEY || env.VITE_SUPABASE_ANON_KEY;
+    const supabaseUrl = env.SUPABASE_URL;
+    const supabaseKey = env.SUPABASE_ANON_KEY;
     
     console.log(`🔑 [Question-Bank] Env check:`, { 
         hasSupabaseUrl: !!supabaseUrl, 

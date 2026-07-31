@@ -30,7 +30,7 @@ export async function onRequestPost(context: { request: Request; env: ReconcileE
 
   // Validate cron secret
   const cronSecret = request.headers.get('X-Cron-Secret');
-  if (env.CRON_SECRET && cronSecret !== env.CRON_SECRET) {
+  if (!env.CRON_SECRET || cronSecret !== env.CRON_SECRET) {
     return apiError(401, 'UNAUTHORIZED', 'Unauthorized', request);
   }
 

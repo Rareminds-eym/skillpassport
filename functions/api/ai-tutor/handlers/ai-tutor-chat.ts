@@ -251,7 +251,7 @@ export const handleAiTutorChat = async (context: TypedContext) => {
               headers: {
                 'Authorization': `Bearer ${openRouterKey}`,
                 'Content-Type': 'application/json',
-                'HTTP-Referer': env.SUPABASE_URL ?? env.VITE_SUPABASE_URL ?? '',
+                'HTTP-Referer': env.SUPABASE_URL ?? '',
                 'X-Title': 'AI Course Tutor - Lesson Plan Outline'
               },
               body: JSON.stringify({
@@ -300,7 +300,7 @@ export const handleAiTutorChat = async (context: TypedContext) => {
               headers: {
                 'Authorization': `Bearer ${openRouterKey}`,
                 'Content-Type': 'application/json',
-                'HTTP-Referer': env.SUPABASE_URL ?? env.VITE_SUPABASE_URL ?? '',
+                'HTTP-Referer': env.SUPABASE_URL ?? '',
                 'X-Title': 'AI Course Tutor - Lesson Plan'
               },
               body: JSON.stringify({
@@ -366,7 +366,7 @@ export const handleAiTutorChat = async (context: TypedContext) => {
               headers: {
                 'Authorization': `Bearer ${openRouterKey}`,
                 'Content-Type': 'application/json',
-                'HTTP-Referer': env.SUPABASE_URL ?? env.VITE_SUPABASE_URL ?? '',
+                'HTTP-Referer': env.SUPABASE_URL ?? '',
                 'X-Title': 'AI Course Tutor'
               },
               body: JSON.stringify({
@@ -463,7 +463,7 @@ export const handleAiTutorChat = async (context: TypedContext) => {
                 headers: {
                   'Authorization': `Bearer ${openRouterKey}`,
                   'Content-Type': 'application/json',
-                  'HTTP-Referer': env.SUPABASE_URL ?? env.VITE_SUPABASE_URL ?? '',
+                  'HTTP-Referer': env.SUPABASE_URL ?? '',
                   'X-Title': 'AI Course Tutor - Title Generation'
                 },
                 body: JSON.stringify({

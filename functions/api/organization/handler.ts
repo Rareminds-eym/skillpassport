@@ -1,4 +1,5 @@
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import type { PagesEnv } from '../../lib/types';
 import { getContextUser } from '../../lib/auth';
 import { apiError, apiSuccess } from '../../lib/response';
 import { getServiceClient } from '../../lib/supabase';
@@ -16,6 +17,42 @@ type OrganizationType = 'school' | 'college' | 'university';
 type MemberType = 'educator' | 'learner';
 
 // ============================================================================
+// Access Control Helper
+// ============================================================================
+
+/**
+ * Verifies that the user is a member of the specified organization
+ * @returns Member data with role if user is a member, null otherwise
+ */
+async function verifyOrgMembership(
+  supabase: any,
+  userId: string,
+  orgId: string
+): Promise<{ role: string; status: string } | null> {
+  const { data, error } = await supabase
+    .from('organization_members')
+    .select('role, status')
+    .eq('user_id', userId)
+    .eq('organization_id', orgId)
+    .eq('status', 'active')
+    .maybeSingle();
+
+  if (error) {
+    console.error('[verifyOrgMembership] Database error:', error);
+    return null;
+  }
+
+  return data;
+}
+
+/**
+ * Verifies user has admin privileges (owner or admin role)
+ */
+function isAdmin(role: string): boolean {
+  return role === 'owner' || role === 'admin';
+}
+
+// ============================================================================
 // License Pools
 // ============================================================================
 
@@ -23,6 +60,17 @@ async function createPool(context: AuthenticatedContext, body: any) {
   const supabase = getSupabase(context);
   const userId = getUserId(context);
   const { organizationSubscriptionId, organizationId, organizationType, poolName, memberType, allocatedSeats, autoAssignNewMembers, assignmentCriteria } = body;
+
+  // 🔒 SECURITY: Verify user is a member of the organization
+  const membership = await verifyOrgMembership(supabase, userId, organizationId);
+  if (!membership) {
+    return apiError(403, 'FORBIDDEN', 'Not a member of this organization', context.request);
+  }
+
+  // 🔒 SECURITY: Only admins can create license pools
+  if (!isAdmin(membership.role)) {
+    return apiError(403, 'FORBIDDEN', 'Insufficient permissions. Admin role required.', context.request);
+  }
 
   const { data: subscription } = await supabase
     .from('subscription_cache')
@@ -60,10 +108,17 @@ async function createPool(context: AuthenticatedContext, body: any) {
 
 async function getLicensePools(context: AuthenticatedContext) {
   const supabase = getSupabase(context);
+  const userId = getUserId(context);
   const url = new URL(context.request.url);
   const orgId = url.searchParams.get('orgId');
   const orgType = url.searchParams.get('orgType');
   if (!orgId) return apiError(400, 'VALIDATION_ERROR', 'orgId is required', context.request);
+
+  // 🔒 SECURITY: Verify user is a member of the organization
+  const membership = await verifyOrgMembership(supabase, userId, orgId);
+  if (!membership) {
+    return apiError(403, 'FORBIDDEN', 'Not a member of this organization', context.request);
+  }
 
   let query = supabase.from('license_pools').select('*').eq('organization_id', orgId);
   if (orgType) query = query.eq('organization_type', orgType);
@@ -171,6 +226,17 @@ async function inviteMember(context: AuthenticatedContext, body: any) {
   const user = getUserId(context);
   const { organizationId, organizationType, email, memberType, autoAssignSubscription, licensePoolId, invitationMessage, metadata } = body;
 
+  // 🔒 SECURITY: Verify user is a member of the organization
+  const membership = await verifyOrgMembership(supabase, user, organizationId);
+  if (!membership) {
+    return apiError(403, 'FORBIDDEN', 'Not a member of this organization', context.request);
+  }
+
+  // 🔒 SECURITY: Only admins can invite members
+  if (!isAdmin(membership.role)) {
+    return apiError(403, 'FORBIDDEN', 'Insufficient permissions. Admin role required to send invitations.', context.request);
+  }
+
   const { data: existing } = await supabase.from('organization_invitations').select('*').eq('organization_id', organizationId).eq('invitee_email', email.toLowerCase()).eq('status', 'pending').maybeSingle();
   if (existing) return apiError(409, 'DUPLICATE', 'An invitation is already pending for this email', context.request);
 
@@ -277,10 +343,17 @@ async function linkUserToOrganization(supabase: any, userId: string, organizatio
 
 async function getPendingInvitations(context: AuthenticatedContext) {
   const supabase = getSupabase(context);
+  const userId = getUserId(context);
   const url = new URL(context.request.url);
   const orgId = url.searchParams.get('orgId');
   const orgType = url.searchParams.get('orgType');
   if (!orgId) return apiError(400, 'VALIDATION_ERROR', 'orgId is required', context.request);
+
+  // 🔒 SECURITY: Verify user is a member of the organization
+  const membership = await verifyOrgMembership(supabase, userId, orgId);
+  if (!membership) {
+    return apiError(403, 'FORBIDDEN', 'Not a member of this organization', context.request);
+  }
 
   let query = supabase.from('organization_invitations').select('*').eq('organization_id', orgId).eq('status', 'pending').order('created_at', { ascending: false });
   if (orgType) query = query.eq('organization_type', orgType);
@@ -291,12 +364,19 @@ async function getPendingInvitations(context: AuthenticatedContext) {
 
 async function getAllInvitations(context: AuthenticatedContext) {
   const supabase = getSupabase(context);
+  const userId = getUserId(context);
   const url = new URL(context.request.url);
   const orgId = url.searchParams.get('orgId');
   const status = url.searchParams.get('status');
   const memberType = url.searchParams.get('memberType');
   const limit = url.searchParams.get('limit') ? parseInt(url.searchParams.get('limit')!) : undefined;
   if (!orgId) return apiError(400, 'VALIDATION_ERROR', 'orgId is required', context.request);
+
+  // 🔒 SECURITY: Verify user is a member of the organization
+  const membership = await verifyOrgMembership(supabase, userId, orgId);
+  if (!membership) {
+    return apiError(403, 'FORBIDDEN', 'Not a member of this organization', context.request);
+  }
 
   let query = supabase.from('organization_invitations').select('*').eq('organization_id', orgId).order('created_at', { ascending: false });
   if (status) query = query.eq('status', status);
@@ -370,19 +450,139 @@ async function expireOldInvitations(context: AuthenticatedContext) {
 // ============================================================================
 
 async function createOrganizationHandler(context: AuthenticatedContext, body: any) {
-  const supabase = getSupabase(context);
-  // `action` is the request-routing discriminator, not a column. Drop it (and
-  // any client-only fields) before insert so PostgREST doesn't reject the row
-  // with "Could not find the 'action' column of 'organizations'".
+  const env = context.env as PagesEnv;
+  
+  // Extract organization data
   const { action: _action, ...orgFields } = body;
-  const { data, error } = await supabase.from('organizations').insert(orgFields).select().single();
-  if (error) throw error;
-  return apiSuccess(data, context.request);
+  
+  try {
+    // Validate SSO service availability
+    if (!env.SSO_SERVICE) {
+      console.error('[organization] SSO_SERVICE not configured in environment');
+      return apiError(500, 'SERVICE_UNAVAILABLE', 'SSO service not configured', context.request);
+    }
+
+    const user = getContextUser(context);
+    const userId = getUserId(context);
+    
+    // Validate required fields
+    if (!orgFields.name || !orgFields.name.trim()) {
+      return apiError(400, 'VALIDATION_ERROR', 'Organization name is required', context.request);
+    }
+    
+    if (!orgFields.organization_type) {
+      return apiError(400, 'VALIDATION_ERROR', 'Organization type is required', context.request);
+    }
+    
+    if (!['school', 'college', 'university'].includes(orgFields.organization_type)) {
+      return apiError(400, 'VALIDATION_ERROR', 'Invalid organization type. Must be school, college, or university', context.request);
+    }
+    
+    if (!userId) {
+      return apiError(401, 'UNAUTHORIZED', 'User authentication required', context.request);
+    }
+    
+    // Check if user already has an org (from signup)
+    const existingOrgId = user?.org_id;
+    
+    if (existingOrgId) {
+      console.log(`[organization] Updating existing org ${existingOrgId}`);
+      
+      try {
+        const updateResult = await env.SSO_SERVICE.updateOrganizationDetails({
+          id: existingOrgId,
+          metadata: {
+            ...orgFields,
+            organization_type: orgFields.organization_type
+          }
+        });
+        
+        if (!updateResult.success) {
+          const errorMsg = updateResult.error || 'Failed to update organization in SSO';
+          console.error(`[organization] SSO update failed: ${errorMsg}`);
+          return apiError(500, 'SSO_UPDATE_FAILED', errorMsg, context.request);
+        }
+        
+        return apiSuccess({
+          id: existingOrgId,
+          name: orgFields.name,
+          admin_id: orgFields.admin_id || userId,
+          organization_type: orgFields.organization_type,
+          ...orgFields
+        }, context.request);
+      } catch (ssoError) {
+        const errorMsg = ssoError instanceof Error ? ssoError.message : 'Unknown SSO error';
+        console.error(`[organization] SSO update exception:`, ssoError);
+        return apiError(500, 'SSO_ERROR', `Failed to update organization: ${errorMsg}`, context.request);
+      }
+    }
+    
+    // Create new organization
+    console.log(`[organization] Creating new organization for user ${userId}`);
+    
+    try {
+      const ssoResult = await env.SSO_SERVICE.createOrganization({
+        name: orgFields.name,
+        slug: orgFields.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || `org-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        created_by: orgFields.admin_id || userId,
+        metadata: {
+          ...orgFields,
+          organization_type: orgFields.organization_type
+        }
+      });
+      
+      if (!ssoResult.success) {
+        const errorMsg = ssoResult.error || 'Failed to create organization in SSO';
+        console.error(`[organization] SSO creation failed: ${errorMsg}`);
+        return apiError(500, 'SSO_CREATE_FAILED', errorMsg, context.request);
+      }
+      
+      if (!ssoResult.org_id) {
+        console.error('[organization] SSO did not return org_id');
+        return apiError(500, 'SSO_INVALID_RESPONSE', 'SSO did not return organization ID', context.request);
+      }
+      
+      console.log(`[organization] Successfully created org ${ssoResult.org_id} in SSO`);
+      
+      return apiSuccess({
+        id: ssoResult.org_id,
+        name: orgFields.name,
+        admin_id: orgFields.admin_id || userId,
+        organization_type: orgFields.organization_type,
+        ...orgFields
+      }, context.request);
+    } catch (ssoError) {
+      const errorMsg = ssoError instanceof Error ? ssoError.message : 'Unknown SSO error';
+      console.error(`[organization] SSO creation exception:`, ssoError);
+      return apiError(500, 'SSO_ERROR', `Failed to create organization: ${errorMsg}`, context.request);
+    }
+  } catch (err) {
+    const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+    console.error(`[organization] Unexpected error in createOrganizationHandler:`, err);
+    return apiError(500, 'INTERNAL_ERROR', `Organization creation failed: ${errorMsg}`, context.request);
+  }
 }
 
 async function updateOrganizationHandler(context: AuthenticatedContext, body: any) {
   const supabase = getSupabase(context);
-  const { id, ...updates } = body;
+  // Exclude 'action' and 'id' from updates - these are routing/identifier fields, not data columns
+  const { id, action, ...updates } = body;
+
+  if (updates.metadata && typeof updates.metadata === 'object' && !Array.isArray(updates.metadata)) {
+    const { data: existingOrg, error: existingError } = await supabase
+      .from('organizations')
+      .select('metadata')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (existingError) throw existingError;
+
+    updates.metadata = {
+      ...((existingOrg?.metadata as Record<string, unknown>) || {}),
+      ...updates.metadata,
+    };
+  }
+
   const { data, error } = await supabase.from('organizations').update({ ...updates, updated_at: new Date().toISOString() }).eq('id', id).select().single();
   if (error) throw error;
   return apiSuccess(data, context.request);
@@ -400,6 +600,15 @@ async function createLocalOrganizationHandler(context: AuthenticatedContext, bod
   const supabase = getSupabase(context);
   const userId = getUserId(context);
   const { p_organization_id, p_organization_name, p_recruitment_enabled, p_max_recruiters } = body;
+
+  console.log('[createLocalOrganizationHandler] Calling create_local_organization with:', {
+    p_organization_id,
+    p_organization_name,
+    p_recruitment_enabled: p_recruitment_enabled ?? true,
+    p_max_recruiters: p_max_recruiters ?? 10,
+    p_created_by_user_id: userId,
+  });
+
   const { data, error } = await supabase.rpc('create_local_organization', {
     p_organization_id,
     p_organization_name,
@@ -407,7 +616,13 @@ async function createLocalOrganizationHandler(context: AuthenticatedContext, bod
     p_max_recruiters: p_max_recruiters ?? 10,
     p_created_by_user_id: userId,
   });
-  if (error) throw error;
+
+  if (error) {
+    console.error('[createLocalOrganizationHandler] Database error:', error);
+    throw error;
+  }
+
+  console.log('[createLocalOrganizationHandler] Success:', data);
   return apiSuccess(data, context.request);
 }
 
@@ -457,13 +672,75 @@ async function getOrganizationByAdminIdHandler(context: AuthenticatedContext) {
   const url = new URL(context.request.url);
   const adminId = url.searchParams.get('adminId');
   const orgType = url.searchParams.get('orgType');
-  if (!adminId) return apiError(400, 'VALIDATION_ERROR', 'adminId is required', context.request);
+  
+  if (!adminId) {
+    return apiError(400, 'VALIDATION_ERROR', 'adminId is required', context.request);
+  }
 
-  let query = supabase.from('organizations').select('*').eq('admin_id', adminId);
-  if (orgType) query = query.eq('organization_type', orgType);
-  const { data, error } = await query.maybeSingle();
-  if (error) throw error;
-  return apiSuccess(data, context.request);
+  try {
+    // Try direct admin_id lookup first (fastest path)
+    let query = supabase.from('organizations').select('*').eq('admin_id', adminId);
+    if (orgType) query = query.eq('organization_type', orgType);
+    
+    const { data, error } = await query.maybeSingle();
+    
+    if (error) {
+      console.error(`[organization] Database error querying by admin_id:`, error);
+      return apiError(500, 'DATABASE_ERROR', 'Failed to query organization', context.request);
+    }
+    
+    // Found via direct lookup - success
+    if (data) {
+      return apiSuccess(data, context.request);
+    }
+    
+    // Try metadata lookup: auth-sync-consumer populates metadata->admin_id but may not
+    // have updated the admin_id column yet. Auto-fix it when found.
+    console.log(`[organization] admin_id column null, querying metadata for ${adminId}`);
+    
+    try {
+      let metadataQuery = supabase
+        .from('organizations')
+        .select('*')
+        .contains('metadata', { admin_id: adminId });
+      
+      if (orgType) metadataQuery = metadataQuery.eq('organization_type', orgType);
+      
+      const { data: metadataOrg, error: metadataError } = await metadataQuery.maybeSingle();
+      
+      if (metadataError) {
+        console.error(`[organization] Error querying metadata:`, metadataError);
+        return apiError(500, 'DATABASE_ERROR', 'Failed to query organization metadata', context.request);
+      }
+      
+      if (metadataOrg) {
+        console.log(`[organization] Found org ${metadataOrg.id} via metadata, fixing admin_id column`);
+        
+        // Auto-fix: Update admin_id column for future queries
+        const { error: updateError } = await supabase
+          .from('organizations')
+          .update({ admin_id: adminId })
+          .eq('id', metadataOrg.id);
+        
+        if (updateError) {
+          console.error(`[organization] Failed to update admin_id column:`, updateError);
+          // Don't fail the request - we still found the org
+        }
+        
+        return apiSuccess(metadataOrg, context.request);
+      }
+    } catch (metadataErr) {
+      console.error(`[organization] Metadata lookup exception:`, metadataErr);
+      // Continue to return null instead of failing
+    }
+    
+    // Not found in either location
+    return apiSuccess(null, context.request);
+  } catch (err) {
+    const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+    console.error(`[organization] Unexpected error in getOrganizationByAdminIdHandler:`, err);
+    return apiError(500, 'INTERNAL_ERROR', `Failed to retrieve organization: ${errorMsg}`, context.request);
+  }
 }
 
 async function getOrganizationsHandler(context: AuthenticatedContext) {
@@ -620,7 +897,7 @@ async function getSubscriptions(context: AuthenticatedContext) {
   if (!orgId) return apiError(400, 'VALIDATION_ERROR', 'orgId is required', context.request);
   let query = supabase.from('subscription_cache').select('*').eq('organization_id', orgId);
   if (orgType) query = query.eq('organization_type', orgType);
-  if (isOrgSub) query = query.eq('is_org_subscription', true);
+  if (isOrgSub) query = query.eq('is_organization_subscription', true);
   query = query.order('created_at', { ascending: false });
   const { data, error } = await query;
   if (error) throw error;

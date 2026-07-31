@@ -23,7 +23,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 
 import { useSubscriptionQuery } from '@/features/subscription/model/useSubscriptionQuery';
 
-import { useSubscriptionContext } from '@/features/subscription/model/subscriptionStore';
+import { useSubscription } from '@/features/subscription/model/subscriptionStore';
 /**
  * Get the base path for subscription routes based on current location
  */
@@ -44,7 +44,7 @@ export function SubscriptionSettingsSection({ className = '' }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { subscriptionData, loading } = useSubscriptionQuery();
-  const { activeEntitlements = [], totalAddOnCost = { monthly: 0, annual: 0 } } = useSubscriptionContext() || {};
+  const { activeEntitlements = [], totalAddOnCost = { monthly: 0, annual: 0 } } = useSubscription() || {};
 
   // Get the base path for subscription routes
   const basePath = getSubscriptionBasePath(location.pathname);

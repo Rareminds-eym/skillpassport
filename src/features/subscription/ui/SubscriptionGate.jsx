@@ -14,7 +14,7 @@
  */
 
 import { Link, useLocation } from 'react-router-dom';
-import { useSubscriptionAccess } from '@/features/subscription/model/subscriptionStore';
+import { useSubscriptionQuery } from '@/features/subscription/model/useSubscriptionQuery';
 
 
 // Plan hierarchy for access-control comparisons (lowest → highest).
@@ -93,7 +93,7 @@ const SubscriptionGate = ({
   const location = useLocation();
   const basePath = getSubscriptionBasePath(location.pathname);
   const userType = getUserTypeFromPath(location.pathname);
-  const { hasAccess, subscription, isLoading } = useSubscriptionAccess();
+  const { hasAccess, subscriptionData: subscription, loading: isLoading } = useSubscriptionQuery();
 
   // Show nothing while loading
   if (isLoading) {
@@ -107,7 +107,7 @@ const SubscriptionGate = ({
 
   // Check plan level if specified
   if (requiredPlan && subscription) {
-    const userPlanLevel = getPlanLevel(subscription.plan_type);
+    const userPlanLevel = getPlanLevel(subscription.plan);
     const requiredPlanLevel = getPlanLevel(requiredPlan);
 
     if (userPlanLevel < requiredPlanLevel) {

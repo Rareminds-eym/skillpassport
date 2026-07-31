@@ -111,30 +111,31 @@ export async function handleCreateOrder(context: AuthenticatedContext): Promise<
         .eq('is_active', true)
         .maybeSingle();
 
-      if (dbPlan) {
-        const pricingMatrix = dbPlan.pricing_matrix as Record<string, any>;
-        const clientAmount = body.amount as number;
-        let isValidPrice = false;
+      if (!dbPlan) {
+        logger.warn('Plan not found in plans_cache', { planId: body.planId });
+        return apiError(404, 'NOT_FOUND', 'Plan not found or inactive', context.request);
+      }
 
-        if (pricingMatrix) {
-          for (const key in pricingMatrix) {
-            const price = pricingMatrix[key]?.yearly;
-            if (typeof price === 'number') {
-              const expectedPaise = Math.round(price * 100);
-              if (clientAmount === expectedPaise) {
-                isValidPrice = true;
-                break;
-              }
+      const pricingMatrix = dbPlan.pricing_matrix as Record<string, any>;
+      const clientAmount = body.amount as number;
+      let isValidPrice = false;
+
+      if (pricingMatrix) {
+        for (const key in pricingMatrix) {
+          const price = pricingMatrix[key]?.yearly;
+          if (typeof price === 'number') {
+            const expectedPaise = Math.round(price * 100);
+            if (clientAmount === expectedPaise) {
+              isValidPrice = true;
+              break;
             }
           }
         }
+      }
 
-        if (!isValidPrice) {
-          logger.warn('Price mismatch or no valid pricing found', { clientAmount, planId: body.planId, pricingMatrix });
-          return apiError(400, 'VALIDATION_ERROR', 'Plan price does not match. Please refresh and try again.', context.request);
-        }
-      } else {
-        logger.warn('Plan not found in plans_cache', { planId: body.planId });
+      if (!isValidPrice) {
+        logger.warn('Price mismatch or no valid pricing found', { clientAmount, planId: body.planId, pricingMatrix });
+        return apiError(400, 'VALIDATION_ERROR', 'Plan price does not match. Please refresh and try again.', context.request);
       }
     }
 
@@ -149,6 +150,9 @@ export async function handleCreateOrder(context: AuthenticatedContext): Promise<
         user_id: user.id,
         user_email: user.email || '',
         org_id: user.org_id || '',
+        plan_id: (body.planId as string) || '',
+        plan_name: (body.planName as string) || '',
+        type: 'subscription',
       },
     });
 

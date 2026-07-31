@@ -20,9 +20,7 @@
  */
 
 interface RealtimeEnv {
-  REALTIME_EVENTS_QUEUE: {
-    send(message: unknown): Promise<void>;
-  };
+  REALTIME_EVENTS_QUEUE?: Queue<unknown>;
 }
 
 /**
@@ -40,8 +38,17 @@ export async function notifyRealtime(
   payload: Record<string, unknown>
 ): Promise<void> {
   try {
+    if (!env.REALTIME_EVENTS_QUEUE) {
+      console.warn(JSON.stringify({
+        message: 'REALTIME_EVENTS_QUEUE not configured, skipping realtime notification',
+        table,
+        event,
+      }));
+      return;
+    }
     await env.REALTIME_EVENTS_QUEUE.send({
       // No sourcePartitionId → external event → fans out to ALL 10 partitions
+      target: 'broadcast',
       event: {
         table,
         type: event,
@@ -54,6 +61,54 @@ export async function notifyRealtime(
       message: 'Failed to send realtime notification',
       table,
       event,
+      error: String(err),
+    }));
+  }
+}
+
+/**
+ * Sends a broadcast message to a specific channel.
+ *
+ * Uses the internal __INTERNAL_WS_BROADCAST event type to trigger
+ * the broadcastChannel method in the RealtimeHub Durable Object.
+ *
+ * @param env - Worker environment with REALTIME_EVENTS_QUEUE binding
+ * @param channel - The broadcast channel name (e.g., 'maintenance-config-updates')
+ * @param eventType - The event type (e.g., 'update')
+ * @param payload - The event payload
+ * @param from - The sender identifier
+ */
+export async function notifyBroadcast(
+  env: RealtimeEnv,
+  channel: string,
+  eventType: string,
+  payload: Record<string, unknown>,
+  from: string
+): Promise<void> {
+  try {
+    if (!env.REALTIME_EVENTS_QUEUE) {
+      console.warn(JSON.stringify({
+        message: 'REALTIME_EVENTS_QUEUE not configured, skipping broadcast notification',
+        channel,
+        eventType,
+      }));
+      return;
+    }
+    await env.REALTIME_EVENTS_QUEUE.send({
+      target: 'broadcast',
+      event: {
+        type: '__INTERNAL_WS_BROADCAST',
+        channel,
+        eventType,
+        payload,
+        from,
+      },
+    });
+  } catch (err) {
+    console.error(JSON.stringify({
+      message: 'Failed to send broadcast notification',
+      channel,
+      eventType,
       error: String(err),
     }));
   }

@@ -8,8 +8,8 @@
 
 
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import { ssoFetch } from '../../../lib/sso-client';
-import { apiSuccess, apiError } from '../../../lib/response';
+import { apiError, apiSuccess } from '../../../lib/response';
+import { ssoGetAddonByFeatureKey } from '../../../lib/sso-client';
 export async function handleGetAddonByFeatureKey(context: AuthenticatedContext): Promise<Response> {
   const env = context.env as { SSO_SERVICE: Fetcher };
   const url = new URL(context.request.url);
@@ -20,19 +20,16 @@ export async function handleGetAddonByFeatureKey(context: AuthenticatedContext):
   }
 
   try {
-    const ssoUrl = new URL(`http://sso-worker/api/addon-catalog/${encodeURIComponent(featureKey)}`);
-    const ssoResponse = await ssoFetch(env as any, ssoUrl.toString(), { method: 'GET' });
-
-    if (!ssoResponse.ok) {
-      if (ssoResponse.status === 404) {
+    let addon: any;
+    try {
+      addon = await ssoGetAddonByFeatureKey(env as any, featureKey);
+    } catch (err: any) {
+      if (err.message?.includes('Not found')) {
         return apiSuccess(null, context.request, 200);
       }
-      const errText = await ssoResponse.text();
-      console.error('[GetAddonByFeatureKey] SSO Worker error:', ssoResponse.status, errText);
-      return apiError(200, 'ERROR', `SSO Worker error: ${ssoResponse.status}`, context.request);
+      console.error('[GetAddonByFeatureKey] SSO Worker error:', err);
+      return apiError(200, 'ERROR', `SSO Worker error: ${err.message}`, context.request);
     }
-
-    const addon = await ssoResponse.json() as any;
 
     // Transform to expected format
     const transformedData = {
@@ -43,10 +40,10 @@ export async function handleGetAddonByFeatureKey(context: AuthenticatedContext):
       addon_description: addon.description,
       description: addon.description,
       category: addon.category,
-      addon_price_monthly: parseFloat(addon.price_monthly) ?? 0,
-      price_monthly: parseFloat(addon.price_monthly) ?? 0,
-      addon_price_annual: parseFloat(addon.price_annual) ?? 0,
-      price_annual: parseFloat(addon.price_annual) ?? 0,
+      addon_price_monthly: safeParseFloat(addon.price_monthly, 0),
+      price_monthly: safeParseFloat(addon.price_monthly, 0),
+      addon_price_annual: safeParseFloat(addon.price_annual, 0),
+      price_annual: safeParseFloat(addon.price_annual, 0),
       icon_url: addon.icon,
     };
 

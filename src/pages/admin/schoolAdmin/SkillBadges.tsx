@@ -5,6 +5,7 @@ import React, { useEffect, useState } from 'react';
 import { KPICard } from '@/features/analytics';
 import { getLogger } from '@/shared/config/logging';
 import { useAuthStore } from '@/shared/model/authStore';
+import { apiPost } from '@/shared/api/apiClient';
 
 
 
@@ -55,84 +56,50 @@ const CompetitionResults = () => {
 
   const loadCurrentUser = async () => {
     try {
-      let schoolId = null;
-      let userId = null;
-      let userEmail = null;
-      let educatorId = null;
-      let userRole = null;
-      
       // First, check if user is logged in via AuthContext (for school admins)
       const storedUser = (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user"));
       if (storedUser) {
         try {
           const userData = JSON.parse(storedUser);
           logger.info('Found user in localStorage', { email: userData.email, role: userData.role });
-          
+
           if (userData.role === 'school_admin' && userData.schoolId) {
-            schoolId = userData.schoolId;
-            userId = userData.id;
-            userEmail = userData.email;
-            userRole = 'school_admin';
-            logger.info('School admin detected, using schoolId from localStorage', { schoolId });
+            setCurrentUser({
+              id: userData.id,
+              school_id: userData.schoolId,
+              email: userData.email,
+              educator_id: null,
+              role: 'school_admin'
+            });
+            return;
           }
         } catch (e) {
           logger.error('Error parsing stored user', e as Error);
         }
       }
-      
-      // If not found in localStorage, try Supabase Auth (for educators/teachers)
-      if (!schoolId) {
-        const { data: { user } } = { data: { user: useAuthStore.getState().user } };
-        
-        if (user) {
-          logger.info('Checking Supabase auth user', { email: user.email });
-          userEmail = user.email;
-          
-          // Check school_educators table - use maybeSingle() to avoid 406 error
-          const { data: educator } = await supabase
-            .from('school_educators')
-            .select('id, school_id, email')
-            .eq('user_id', user.id)
-            .maybeSingle();
-          
-          if (educator?.school_id) {
-            schoolId = educator.school_id;
-            userId = educator.id;
-            educatorId = educator.id;
-            userRole = 'educator';
-            logger.info('Found school_id in school_educators', { schoolId, educatorId });
-          } else {
-            // Check organizations table by email
-            const { data: org } = await supabase
-              .from('organizations')
-              .select('id, email')
-              .eq('organization_type', 'school')
-              .or(`admin_id.eq.${user.id},email.eq.${user.email}`)
-              .maybeSingle();
-            
-            if (org?.id) {
-              schoolId = org.id;
-              userId = org.id;
-              userRole = 'school_admin';
-              logger.info('Found school_id in organizations table', { schoolId });
-            }
-          }
+
+      // If not found in localStorage, use API to get user data
+      try {
+        const response = await apiPost<any>('/school-admin/actions', {
+          action: 'fetchSkillBadgesUserData'
+        });
+
+        if (response?.school_id) {
+          setCurrentUser({
+            id: response.id,
+            school_id: response.school_id,
+            email: response.email,
+            educator_id: response.educator_id,
+            role: response.role
+          });
+          return;
         }
+      } catch (error) {
+        logger.error('Error getting user data from API', error);
       }
 
-      if (!schoolId) {
-        setNotice({ type: 'error', text: 'Please log in to continue' });
-        setLoading(false);
-        return;
-      }
-
-      setCurrentUser({ 
-        id: userId, 
-        school_id: schoolId, 
-        email: userEmail,
-        educator_id: educatorId,
-        role: userRole
-      });
+      setNotice({ type: 'error', text: 'Please log in to continue' });
+      setLoading(false);
     } catch (error) {
       logger.error('Error loading user', error as Error);
       setNotice({ type: 'error', text: 'Failed to load user information' });
@@ -143,42 +110,13 @@ const CompetitionResults = () => {
   const loadCompetitions = async () => {
     try {
       setLoading(true);
-      
-      // Fetch competitions with registration count
-      const { data: compsData, error: compsError } = await supabase
-        .from('competitions')
-        .select(`
-          comp_id,
-          name,
-          description,
-          level,
-          category,
-          competition_date,
-          status,
-          school_id
-        `)
-        .eq('school_id', currentUser.school_id)
-        .order('competition_date', { ascending: false });
 
-      if (compsError) throw compsError;
+      const response = await apiPost<any>('/school-admin/actions', {
+        action: 'fetchSkillBadges',
+        schoolId: currentUser.school_id
+      });
 
-      // For each competition, get registration count
-      const competitionsWithCount = await Promise.all(
-        compsData.map(async (comp) => {
-          const { count, error: countError } = await supabase
-            .from('competition_registrations')
-            .select('*', { count: 'exact', head: true })
-            .eq('comp_id', comp.comp_id)
-            .eq('status', 'registered');
-
-          return {
-            ...comp,
-            registrations_count: countError ? 0 : count
-          };
-        })
-      );
-
-      setCompetitions(competitionsWithCount);
+      setCompetitions(response?.competitions || []);
     } catch (error) {
       logger.error('Error loading competitions', error as Error, { schoolId: currentUser?.school_id });
       setNotice({ type: 'error', text: 'Failed to load competitions' });
@@ -190,38 +128,13 @@ const CompetitionResults = () => {
   const loadCertificates = async () => {
     try {
       setLoading(true);
-      
-      // Fetch certificates with related data
-      const { data: certsData, error: certsError } = await supabase
-        .from('club_certificates')
-        .select(`
-          certificate_id,
-          learner_email,
-          title,
-          description,
-          certificate_type,
-          issued_date,
-          credential_id,
-          related_comp_id,
-          is_verified,
-          learners (
-            name,
-            grade,
-            section
-          ),
-          competitions (
-            name,
-            level,
-            category
-          )
-        `)
-        .eq('school_id', currentUser.school_id)
-        .eq('certificate_type', 'competition')
-        .order('issued_date', { ascending: false });
 
-      if (certsError) throw certsError;
+      const response = await apiPost<any>('/school-admin/actions', {
+        action: 'fetchSkillBadges',
+        schoolId: currentUser.school_id
+      });
 
-      setCertificates(certsData || []);
+      setCertificates(response?.certificates || []);
     } catch (error) {
       logger.error('Error loading certificates', error as Error, { schoolId: currentUser?.school_id });
       setNotice({ type: 'error', text: 'Failed to load certificates' });
@@ -233,61 +146,27 @@ const CompetitionResults = () => {
   const openResultsModal = async (competition) => {
     try {
       setResultsModal({ open: true, competition });
-      
-      // Load registered learners
-      const { data: registrations, error: regError } = await supabase
-        .from('competition_registrations')
-        .select(`
-          registration_id,
-          learner_email,
-          team_name,
-          learners (
-            name,
-            email,
-            grade,
-            section
-          )
-        `)
-        .eq('comp_id', competition.comp_id)
-        .eq('status', 'registered');
 
-      if (regError) throw regError;
+      // Load registered learners and results from API
+      const registrations = await apiPost<any[]>('/school-admin/actions', {
+        action: 'getCompetitionRegistrations',
+        schoolId: currentUser.school_id,
+        competitionId: competition.comp_id
+      });
 
       // Load existing results if any
-      const { data: existingResults, error: resultsError } = await supabase
-        .from('competition_results')
-        .select('*')
-        .eq('comp_id', competition.comp_id);
+      const existingResults = await apiPost<any[]>('/school-admin/actions', {
+        action: 'getCompetitionResults',
+        schoolId: currentUser.school_id,
+        competitionId: competition.comp_id
+      });
 
-      if (resultsError) throw resultsError;
+      // Load certificates for this competition - using fetchSkillBadges data if available
+      const competitionCerts = (competitions?.find(c => c.comp_id === competition.comp_id)?.certificates || []).filter(
+        (c: any) => c.related_comp_id === competition.comp_id
+      );
 
-      // Load certificates for this competition
-      const { data: competitionCerts, error: certsError } = await supabase
-        .from('club_certificates')
-        .select(`
-          certificate_id,
-          learner_email,
-          title,
-          description,
-          certificate_type,
-          issued_date,
-          credential_id,
-          metadata,
-          learners (
-            name,
-            grade,
-            section
-          )
-        `)
-        .eq('related_comp_id', competition.comp_id)
-        .eq('school_id', currentUser.school_id);
-
-      if (certsError) {
-        logger.error('Error loading competition certificates', certsError, { compId: competition.comp_id });
-        setCompetitionCertificates([]);
-      } else {
-        setCompetitionCertificates(competitionCerts || []);
-      }
+      setCompetitionCertificates(competitionCerts || []);
 
       // Merge registrations with existing results
       const resultsData = registrations.map(reg => {
@@ -387,62 +266,32 @@ const CompetitionResults = () => {
         }
       });
 
-      // Insert new records
-      if (newRecords.length > 0) {
-        const { error: insertError } = await supabase
-          .from('competition_results')
-          .insert(newRecords);
-        
-        if (insertError) throw insertError;
-      }
-
-      // Update existing records
-      if (updateRecords.length > 0) {
-        const { error: updateError } = await supabase
-          .from('competition_results')
-          .upsert(updateRecords, {
-            onConflict: 'result_id',
-            ignoreDuplicates: false
-          });
-        
-        if (updateError) throw updateError;
+      // Save all results via API
+      const allResults = [...newRecords, ...updateRecords];
+      if (allResults.length > 0) {
+        await apiPost('/school-admin/actions', {
+          action: 'saveCompetitionResults',
+          schoolId: currentUser.school_id,
+          competitionId: resultsModal.competition.comp_id,
+          results: allResults
+        });
       }
 
       // Update competition status to completed if not already
       if (resultsModal.competition.status !== 'completed') {
-        const { error: updateError } = await supabase
-          .from('competitions')
-          .update({ status: 'completed' })
-          .eq('comp_id', resultsModal.competition.comp_id);
-
-        if (updateError) throw updateError;
+        await apiPost('/school-admin/actions', {
+          action: 'updateCompetitionStatus',
+          competitionId: resultsModal.competition.comp_id,
+          schoolId: currentUser.school_id,
+          status: 'completed'
+        });
       }
 
       // Auto-generate certificates for all participants
       await generateCertificatesForCompetition(resultsModal.competition.comp_id, withRanks);
 
-      // Reload certificates for the modal
-      const { data: updatedCerts } = await supabase
-        .from('club_certificates')
-        .select(`
-          certificate_id,
-          learner_email,
-          title,
-          description,
-          certificate_type,
-          issued_date,
-          credential_id,
-          metadata,
-          learners (
-            name,
-            grade,
-            section
-          )
-        `)
-        .eq('related_comp_id', resultsModal.competition.comp_id)
-        .eq('school_id', currentUser.school_id);
-      
-      setCompetitionCertificates(updatedCerts || []);
+      // Reload competitions to get updated certificate data
+      await loadCompetitions();
 
       setNotice({
         type: "success",
@@ -500,14 +349,13 @@ const CompetitionResults = () => {
         return certificatePayload;
       });
 
-      // Insert certificates
-      const { error: certError } = await supabase
-        .from('club_certificates')
-        .insert(certificatesToCreate);
-
-      if (certError) {
-        logger.error('Error creating certificates', certError, { compId, count: certificatesToCreate.length });
-        throw certError;
+      // Save certificates via API
+      if (certificatesToCreate.length > 0) {
+        await apiPost('/school-admin/actions', {
+          action: 'saveCertificates',
+          schoolId: currentUser.school_id,
+          certs: certificatesToCreate
+        });
       }
 
       logger.info('Generated certificates', { count: certificatesToCreate.length, compId });

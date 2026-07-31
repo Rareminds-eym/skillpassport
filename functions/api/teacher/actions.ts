@@ -10,8 +10,8 @@ export const onRequest = async (context: any) => {
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const user = getContextUser(context);
-  const env = context.env as Record<string, string>;
-  const supabase = getServiceClient(env as any);
+  const env = context.env;
+  const supabase = getServiceClient(env);
 
   let body: Record<string, any>;
   try {

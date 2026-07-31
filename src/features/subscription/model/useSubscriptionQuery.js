@@ -41,6 +41,12 @@ const formatSubscriptionData = (data) => {
     phone: data.phone,
     billingCycle: data.billing_cycle,
     razorpaySubscriptionId: data.razorpay_subscription_id,
+    // Used by receipt download flows in MySubscription / PaymentSuccess
+    razorpayPaymentId: data.razorpay_payment_id,
+    // Used by receipt download flows in MySubscription / PaymentSuccess
+    razorpayOrderId: data.razorpay_order_id,
+    // Used by receipt download flows in MySubscription / PaymentSuccess
+    receiptUrl: data.receipt_url,
     cancelledAt: data.cancelled_at,
     cancellationReason: data.cancellation_reason,
     // role column uses user_role enum type with values like school_admin, learner, etc.
@@ -54,17 +60,95 @@ const formatSubscriptionData = (data) => {
 };
 
 /**
+ * Compute access state from subscription data
+ * Determines whether the user has platform access, why, and any warnings.
+ */
+const computeAccessState = (sub) => {
+  if (!sub) {
+    return {
+      hasAccess: false,
+      accessReason: 'no_subscription',
+      showWarning: false,
+      warningType: null,
+      warningMessage: null,
+      daysUntilExpiry: null,
+    };
+  }
+
+  const status = sub.status;
+  let accessReason = 'no_subscription';
+  let hasAccess = false;
+  let showWarning = false;
+  let warningType = null;
+  let warningMessage = null;
+  let daysUntilExpiry = null;
+
+  if (status === 'active') {
+    accessReason = 'active';
+    hasAccess = true;
+  } else if (status === 'paused') {
+    accessReason = 'paused';
+    hasAccess = true;
+    showWarning = true;
+    warningType = 'paused';
+    warningMessage = 'Your subscription is paused. Some features may be limited.';
+  } else if (status === 'grace_period') {
+    accessReason = 'grace_period';
+    hasAccess = true;
+    showWarning = true;
+    warningType = 'grace_period';
+    const endDate = sub.endDate;
+    const daysLeft = endDate
+      ? Math.ceil((new Date(endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+      : null;
+    warningMessage = daysLeft != null && daysLeft > 0
+      ? `Your subscription is in a grace period. Renew within ${daysLeft} day${daysLeft !== 1 ? 's' : ''} to avoid losing access.`
+      : 'Your subscription is in a grace period. Please renew to continue access.';
+  } else if (status === 'cancelled') {
+    accessReason = 'cancelled';
+    const endDate = sub.endDate;
+    if (endDate && new Date(endDate) >= new Date()) {
+      hasAccess = true;
+    }
+  }
+
+  // Check expiry warning (for active/paused)
+  if (hasAccess) {
+    const endDate = sub.endDate;
+    if (endDate) {
+      const msUntilExpiry = new Date(endDate).getTime() - Date.now();
+      daysUntilExpiry = Math.ceil(msUntilExpiry / (1000 * 60 * 60 * 24));
+
+      if (daysUntilExpiry <= 7 && daysUntilExpiry > 0 && status === 'active') {
+        showWarning = true;
+        warningType = 'expiring_soon';
+        warningMessage = `Your subscription expires in ${daysUntilExpiry} day${daysUntilExpiry !== 1 ? 's' : ''}. Renew now to avoid interruption.`;
+      }
+    }
+  }
+
+  return { hasAccess, accessReason, showWarning, warningType, warningMessage, daysUntilExpiry };
+};
+
+/**
  * Fetch subscription data
+ * Returns null if no subscription exists (user should be redirected to subscription page)
  */
 const fetchSubscription = async (userId) => {
   if (!userId) return null;
 
   const result = await getActiveSubscription();
 
-  if (result.success && result.data) {
+  if (!result.success) {
+    throw new Error(result.error || 'Failed to fetch subscription');
+  }
+
+  if (result.data) {
     return formatSubscriptionData(result.data);
   }
 
+  // No subscription found - return null instead of throwing
+  // Frontend will handle showing subscription purchase page
   return null;
 };
 
@@ -78,17 +162,27 @@ export const useSubscriptionQuery = () => {
 
   // Check if the query can run
   const isQueryEnabled = !!user;
+  const queryKey = user?.id ? queryKeys.subscription.data.byOrganization(user.id) : queryKeys.subscription.data.all;
 
   const query = useQuery({
-    queryKey: user?.id ? queryKeys.subscription.data.byOrganization(user.id) : queryKeys.subscription.data.all,
+    queryKey,
     queryFn: () => fetchSubscription(user?.id),
-    enabled: isQueryEnabled, // Only fetch when user is authenticated
+    enabled: isQueryEnabled,
     staleTime: STALE_TIME,
-    gcTime: CACHE_TIME, // Changed from cacheTime (deprecated in v5)
+    gcTime: CACHE_TIME,
     refetchOnWindowFocus: false,
-    refetchOnMount: 'always', // Always fetch on mount to ensure fresh data
-    retry: 3, // Retry up to 3 times on failure
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff: 1s, 2s, 4s
+    refetchOnMount: false, // ponytail: Only fetch once per session, not on every component mount
+    retry: (failureCount, error) => {
+      // ponytail: Only retry if no data exists (initial sync after login)
+      // If we have data, don't retry - it's cached and fresh
+      const cachedData = queryClient.getQueryData(queryKey);
+      if (cachedData) return false;
+      return failureCount < 3; // Max 3 retries for initial load
+    },
+    retryDelay: (attemptIndex) => {
+      // ponytail: Exponential backoff for queue sync - 1s, 2s, 4s
+      return Math.min(1000 * Math.pow(2, attemptIndex), 4000);
+    },
   });
 
   // Log when data changes (replaces onSuccess) - dev only
@@ -130,6 +224,12 @@ export const useSubscriptionQuery = () => {
     });
   };
 
+  // Access state (from computeAccessState)
+  const accessState = useMemo(
+    () => computeAccessState(query.data),
+    [query.data]
+  );
+
   // Memoize expensive checks
   const hasActiveSubscription = useMemo(
     () => query.data?.status === 'active',
@@ -157,13 +257,21 @@ export const useSubscriptionQuery = () => {
     // loading is true if:
     // 1. The query is loading (initial fetch)
     // 2. The query is pending (not yet enabled - waiting for user)
-    // This prevents premature redirects when user is not yet available
-    loading: query.isLoading || query.isPending || !isQueryEnabled,
+    // 3. Query is fetching/retrying (covers queue sync delay after login)
+    // This prevents premature redirects when subscription is still syncing
+    loading: query.isLoading || query.isPending || !isQueryEnabled || query.isFetching,
     error: query.error,
     isRefetching: query.isRefetching,
     hasActiveSubscription,
     hasActiveOrPausedSubscription,
     hasValidSubscriptionAccess,
+    // Access state (matches computeAccessState from subscriptionStore)
+    hasAccess: accessState.hasAccess,
+    accessReason: accessState.accessReason,
+    showWarning: accessState.showWarning,
+    warningType: accessState.warningType,
+    warningMessage: accessState.warningMessage,
+    daysUntilExpiry: accessState.daysUntilExpiry,
     prefetchSubscription,
     refreshSubscription,
     clearSubscriptionCache,

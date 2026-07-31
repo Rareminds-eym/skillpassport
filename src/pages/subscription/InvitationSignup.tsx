@@ -147,12 +147,13 @@ export default function InvitationSignup() {
 
         try {
             // Step 1: Try to login with provided credentials
-            const loginResult = await ssoClient.login({
+            // Login side effect (auth cookies) is what matters — the user id
+            // is obtained from getMe() below, and the accept endpoint now
+            // looks up the user by email via SSO RPC.
+            await ssoClient.login({
                 email: state.email,
                 password: state.password,
             });
-
-            const ssoUserId = loginResult.user.id;
 
             // Step 2: Update auth store
             const me = await ssoClient.getMe();
@@ -178,7 +179,6 @@ export default function InvitationSignup() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     token: invitationToken,
-                    userId: ssoUserId,
                 }),
             });
 

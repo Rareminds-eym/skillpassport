@@ -1,12 +1,15 @@
 /**
  * Offer Letter Templates API
- * Manages customizable offer letter templates
+ * Manages customizable offer letter templates using organization_email_templates table
+ * Template type: 'offer'
  */
 
 import { withAuth } from '../../../lib/auth';
 import { getServiceClient } from '../../../lib/supabase';
 import { verifyOrgAccess, PERMISSIONS } from '../../../lib/permissions';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+
+const TEMPLATE_TYPE = 'offer';
 
 /**
  * GET /api/recruitment/organization/offer-templates
@@ -37,10 +40,11 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
         // If specific template ID provided, fetch single template
         if (templateId) {
             const { data: template, error: templateError } = await supabase
-                .from('offer_letter_templates')
+                .from('organization_email_templates')
                 .select('*')
                 .eq('id', templateId)
                 .eq('organization_id', orgId)
+                .eq('template_type', TEMPLATE_TYPE)
                 .single();
 
             if (templateError) {
@@ -56,12 +60,12 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
             });
         }
 
-        // Fetch all templates for organization
+        // Fetch all offer templates for organization
         const { data: templates, error: templatesError } = await supabase
-            .from('offer_letter_templates')
+            .from('organization_email_templates')
             .select('*')
             .eq('organization_id', orgId)
-            .order('is_default', { ascending: false })
+            .eq('template_type', TEMPLATE_TYPE)
             .order('created_at', { ascending: false });
 
         if (templatesError) {
@@ -109,7 +113,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         }, { status: 400 });
     }
 
-    const { org_id, template_name, template_content, is_default } = body;
+    const { org_id, name, subject, body: templateBody } = body;
 
     if (!org_id) {
         return Response.json({
@@ -117,9 +121,9 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         }, { status: 400 });
     }
 
-    if (!template_name || !template_content) {
+    if (!name || !subject || !templateBody) {
         return Response.json({
-            error: 'Template name and content are required'
+            error: 'Template name, subject, and body are required'
         }, { status: 400 });
     }
 
@@ -130,24 +134,15 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     }
 
     try {
-        // If marking as default, unmark other defaults first
-        if (is_default) {
-            await supabase
-                .from('offer_letter_templates')
-                .update({ is_default: false })
-                .eq('organization_id', org_id)
-                .eq('is_default', true);
-        }
-
         // Create new template
         const { data: newTemplate, error: createError } = await supabase
-            .from('offer_letter_templates')
+            .from('organization_email_templates')
             .insert({
                 organization_id: org_id,
-                template_name,
-                template_content,
-                is_default: is_default || false,
-                created_by: user.sub,
+                template_type: TEMPLATE_TYPE,
+                name,
+                subject,
+                body: templateBody,
             })
             .select()
             .single();
@@ -195,7 +190,7 @@ export const onRequestPut = withAuth(async (context: AuthenticatedContext) => {
         }, { status: 400 });
     }
 
-    const { org_id, template_id, template_name, template_content, is_default } = body;
+    const { org_id, template_id, name, subject, body: templateBody } = body;
 
     if (!org_id || !template_id) {
         return Response.json({
@@ -212,10 +207,11 @@ export const onRequestPut = withAuth(async (context: AuthenticatedContext) => {
     try {
         // Verify template belongs to organization
         const { data: existingTemplate, error: fetchError } = await supabase
-            .from('offer_letter_templates')
+            .from('organization_email_templates')
             .select('id')
             .eq('id', template_id)
             .eq('organization_id', org_id)
+            .eq('template_type', TEMPLATE_TYPE)
             .single();
 
         if (fetchError || !existingTemplate) {
@@ -224,31 +220,22 @@ export const onRequestPut = withAuth(async (context: AuthenticatedContext) => {
             }, { status: 404 });
         }
 
-        // If marking as default, unmark other defaults first
-        if (is_default) {
-            await supabase
-                .from('offer_letter_templates')
-                .update({ is_default: false })
-                .eq('organization_id', org_id)
-                .eq('is_default', true)
-                .neq('id', template_id);
-        }
-
         // Build update object
         const updateData: any = {
             updated_at: new Date().toISOString(),
         };
 
-        if (template_name !== undefined) updateData.template_name = template_name;
-        if (template_content !== undefined) updateData.template_content = template_content;
-        if (is_default !== undefined) updateData.is_default = is_default;
+        if (name !== undefined) updateData.name = name;
+        if (subject !== undefined) updateData.subject = subject;
+        if (templateBody !== undefined) updateData.body = templateBody;
 
         // Update template
         const { data: updatedTemplate, error: updateError } = await supabase
-            .from('offer_letter_templates')
+            .from('organization_email_templates')
             .update(updateData)
             .eq('id', template_id)
             .eq('organization_id', org_id)
+            .eq('template_type', TEMPLATE_TYPE)
             .select()
             .single();
 
@@ -303,12 +290,13 @@ export const onRequestDelete = withAuth(async (context: AuthenticatedContext) =>
     }
 
     try {
-        // Check if template is default
+        // Verify template belongs to organization
         const { data: template, error: fetchError } = await supabase
-            .from('offer_letter_templates')
-            .select('is_default')
+            .from('organization_email_templates')
+            .select('id')
             .eq('id', templateId)
             .eq('organization_id', orgId)
+            .eq('template_type', TEMPLATE_TYPE)
             .single();
 
         if (fetchError || !template) {
@@ -317,18 +305,13 @@ export const onRequestDelete = withAuth(async (context: AuthenticatedContext) =>
             }, { status: 404 });
         }
 
-        if (template.is_default) {
-            return Response.json({
-                error: 'Cannot delete default template. Please set another template as default first.'
-            }, { status: 400 });
-        }
-
         // Delete template
         const { error: deleteError } = await supabase
-            .from('offer_letter_templates')
+            .from('organization_email_templates')
             .delete()
             .eq('id', templateId)
-            .eq('organization_id', orgId);
+            .eq('organization_id', orgId)
+            .eq('template_type', TEMPLATE_TYPE);
 
         if (deleteError) {
             console.error('[offer-templates API] Delete failed:', deleteError);

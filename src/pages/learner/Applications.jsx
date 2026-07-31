@@ -23,7 +23,7 @@ import {
   FileText
 } from 'lucide-react';
 import { learnerPipelineService as LearnerPipelineService } from '@/features/learner-profile/api';
-import { MessageService } from '@/features/messaging';
+import MessageService from '@/shared/api/messageService';
 import { useMessageNotifications } from '@/features/messaging/model/useMessageNotifications';
 import { apiPost } from '@/shared/api/apiClient';
 import { queryKeys } from '@/shared/lib/queryKeys';

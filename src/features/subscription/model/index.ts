@@ -1,20 +1,16 @@
-// Export all subscription hooks
-// NOTE: useSubscription is the Zustand version from subscriptionStore.ts.
-// The legacy useSubscription.js is kept for reference but not re-exported.
+// React Query hooks (preferred for subscription server state)
+export { useSubscriptionQuery, prefetchSubscriptionData, useSubscriptionCache } from './useSubscriptionQuery';
 export { default as useOrganizationSubscription } from './useOrganizationSubscription';
 export { default as usePaymentVerification, usePaymentVerificationFromURL } from '../lib/usePaymentVerification';
 export { default as useSubscriptionPlansData } from './useSubscriptionPlansData';
-export { useSubscriptionQuery, prefetchSubscriptionData, useSubscriptionCache } from './useSubscriptionQuery';
 export { useFeatureGate, clearFeatureAccessCache } from './useFeatureGate';
 export { useAddOnCatalog } from './useAddOnCatalog';
 export { useOptimisticSubscription } from './useOptimisticSubscription';
 
-// Zustand store hooks (from subscriptionStore.ts)
+// Zustand store hooks (entitlements + purchase actions only)
+// NOTE: useSubscription is a combined hook that wraps useSubscriptionQuery + entitlements
 export {
   useSubscription,
-  useSubscriptionContext,
-  useSubscriptionAccess,
-  useSubscriptionWarnings,
   useUserEntitlements,
   useSubscriptionPurchase,
   WARNING_TYPES,

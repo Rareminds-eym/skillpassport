@@ -2,14 +2,24 @@ import { withAuth } from '../../../lib/auth';
 import { getServiceClient } from '../../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { apiSuccess, apiDbError, apiError } from '../../../lib/response';
+import type { PagesEnv } from '../../../lib/types';
+
+interface SchoolLearner { user_id: string | null; }
+
+interface KPIRequestBody {
+  action: string;
+  schoolId?: string;
+  grade?: string;
+  section?: string;
+}
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
-  const env = context.env as Record<string, string>;
-  const supabase = getServiceClient(env as any);
+  const env = context.env as PagesEnv;
+  const supabase = getServiceClient(env);
   const startTime = Date.now();
 
-  let body: Record<string, any>;
-  try { body = await context.request.json() as any; } catch { return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON', context.request); }
+  let body: KPIRequestBody;
+  try { body = await context.request.json() as KPIRequestBody; } catch { return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON', context.request); }
 
   const { action, schoolId } = body;
   if (!action) return apiError(400, 'VALIDATION_ERROR', 'Missing action', context.request);
@@ -21,6 +31,20 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString();
         const monthAgo = new Date(Date.now() - 30 * 86400000).toISOString();
 
+        // Step 1: get learner IDs for this school so fee_payments can be filtered by school
+        let schoolLearnerIds: string[] = [];
+        if (schoolId) {
+          const { data: schoolLearners } = await supabase
+            .from('learners')
+            .select('user_id')
+            .eq('school_id', schoolId)
+            .eq('is_deleted', false)
+            .not('user_id', 'is', null);
+          const safeRows = Array.isArray(schoolLearners) ? schoolLearners : [];
+          schoolLearnerIds = safeRows.map((l: SchoolLearner) => l.user_id).filter((id): id is string => id !== null && id !== undefined);
+        }
+
+        // Step 2: run all KPI queries in parallel
         const [learnersRes, attendanceRes, examsRes, assessmentsRes, dailyFeesRes, weeklyFeesRes, monthlyFeesRes, libraryRes] = await Promise.all([
           schoolId
             ? supabase.from('learners').select('*', { count: 'exact', head: true }).eq('school_id', schoolId)
@@ -40,9 +64,16 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
             if (schoolId) q = q.eq('school_id', schoolId);
             return q;
           })(),
-          supabase.from('fee_payments').select('amount').eq('status', 'success').gte('payment_date', today).lt('payment_date', `${today}T23:59:59`),
-          supabase.from('fee_payments').select('amount').eq('status', 'success').gte('payment_date', weekAgo),
-          supabase.from('fee_payments').select('amount').eq('status', 'success').gte('payment_date', monthAgo),
+          // fee_payments has no school_id — filter via learner_id instead
+          schoolLearnerIds.length > 0
+            ? supabase.from('fee_payments').select('amount').eq('status', 'completed').in('learner_id', schoolLearnerIds).eq('payment_date', today)
+            : { data: [], error: null },
+          schoolLearnerIds.length > 0
+            ? supabase.from('fee_payments').select('amount').eq('status', 'completed').in('learner_id', schoolLearnerIds).gte('payment_date', weekAgo)
+            : { data: [], error: null },
+          schoolLearnerIds.length > 0
+            ? supabase.from('fee_payments').select('amount').eq('status', 'completed').in('learner_id', schoolLearnerIds).gte('payment_date', monthAgo)
+            : { data: [], error: null },
           (() => {
             let q = supabase.from('library_book_issues_school').select('*', { count: 'exact', head: true }).lt('due_date', today).is('return_date', null);
             if (schoolId) q = q.eq('school_id', schoolId);
@@ -51,26 +82,26 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         ]);
 
         let totalLearners = 0;
-        if (!learnersRes.error) totalLearners = (learnersRes as any).count || 0;
+        if (!learnersRes.error && 'count' in learnersRes) totalLearners = learnersRes.count || 0;
 
         let attendancePercentage = 0;
         if (!attendanceRes.error && attendanceRes.data) {
-          const present = attendanceRes.data.filter((a: any) => a.status === 'present').length;
+          const present = attendanceRes.data.filter((a: { status: string }) => a.status === 'present').length;
           attendancePercentage = Math.round((present / (attendanceRes.data.length || 1)) * 100);
         }
 
         let examsScheduled = 0;
-        if (!examsRes.error) examsScheduled = (examsRes as any).count || 0;
+        if (!examsRes.error && 'count' in examsRes) examsScheduled = examsRes.count || 0;
 
         let pendingAssessments = 0;
-        if (!assessmentsRes.error) pendingAssessments = (assessmentsRes as any).count || 0;
+        if (!assessmentsRes.error && 'count' in assessmentsRes) pendingAssessments = assessmentsRes.count || 0;
 
-        const dailyTotal = !dailyFeesRes.error && dailyFeesRes.data ? dailyFeesRes.data.reduce((s: number, f: any) => s + (f.amount || 0), 0) : 0;
-        const weeklyTotal = !weeklyFeesRes.error && weeklyFeesRes.data ? weeklyFeesRes.data.reduce((s: number, f: any) => s + (f.amount || 0), 0) : 0;
-        const monthlyTotal = !monthlyFeesRes.error && monthlyFeesRes.data ? monthlyFeesRes.data.reduce((s: number, f: any) => s + (f.amount || 0), 0) : 0;
+        const dailyTotal = !dailyFeesRes.error && dailyFeesRes.data ? dailyFeesRes.data.reduce((s: number, f: { amount?: number }) => s + (f.amount || 0), 0) : 0;
+        const weeklyTotal = !weeklyFeesRes.error && weeklyFeesRes.data ? weeklyFeesRes.data.reduce((s: number, f: { amount?: number }) => s + (f.amount || 0), 0) : 0;
+        const monthlyTotal = !monthlyFeesRes.error && monthlyFeesRes.data ? monthlyFeesRes.data.reduce((s: number, f: { amount?: number }) => s + (f.amount || 0), 0) : 0;
 
         let libraryOverdue = 0;
-        if (!libraryRes.error) libraryOverdue = (libraryRes as any).count || 0;
+        if (!libraryRes.error && 'count' in libraryRes) libraryOverdue = libraryRes.count || 0;
 
         return apiSuccess({
           totalLearners,
@@ -90,6 +121,20 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString();
         const monthAgo = new Date(Date.now() - 30 * 86400000).toISOString();
 
+        // Step 1: get learner IDs for this school so fee_payments can be filtered by school
+        let schoolLearnerIds: string[] = [];
+        if (schoolId) {
+          const { data: schoolLearners } = await supabase
+            .from('learners')
+            .select('user_id')
+            .eq('school_id', schoolId)
+            .eq('is_deleted', false)
+            .not('user_id', 'is', null);
+          const safeRows = Array.isArray(schoolLearners) ? schoolLearners : [];
+          schoolLearnerIds = safeRows.map((l: SchoolLearner) => l.user_id).filter((id): id is string => id !== null && id !== undefined);
+        }
+
+        // Step 2: run all KPI queries in parallel
         const [learnersRes, attendanceRes, examsRes, assessmentsRes, dailyFeesRes, weeklyFeesRes, monthlyFeesRes, libraryRes] = await Promise.all([
           (() => {
             let q = supabase.from('learners').select('*', { count: 'exact', head: true }).eq('status', 'active');
@@ -113,9 +158,16 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
             if (schoolId) q = q.eq('school_id', schoolId);
             return q;
           })(),
-          supabase.from('fee_payments').select('amount').eq('status', 'success').gte('payment_date', today),
-          supabase.from('fee_payments').select('amount').eq('status', 'success').gte('payment_date', weekAgo),
-          supabase.from('fee_payments').select('amount').eq('status', 'success').gte('payment_date', monthAgo),
+          // fee_payments has no school_id — filter via learner_id instead
+          schoolLearnerIds.length > 0
+            ? supabase.from('fee_payments').select('amount').eq('status', 'completed').in('learner_id', schoolLearnerIds).eq('payment_date', today)
+            : { data: [], error: null },
+          schoolLearnerIds.length > 0
+            ? supabase.from('fee_payments').select('amount').eq('status', 'completed').in('learner_id', schoolLearnerIds).gte('payment_date', weekAgo)
+            : { data: [], error: null },
+          schoolLearnerIds.length > 0
+            ? supabase.from('fee_payments').select('amount').eq('status', 'completed').in('learner_id', schoolLearnerIds).gte('payment_date', monthAgo)
+            : { data: [], error: null },
           (() => {
             let q = supabase.from('library_book_issues_school').select('*', { count: 'exact', head: true }).lt('due_date', today).is('return_date', null);
             if (schoolId) q = q.eq('school_id', schoolId);
@@ -124,26 +176,26 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         ]);
 
         let totalLearners = 0;
-        if (!learnersRes.error) totalLearners = (learnersRes as any).count || 0;
+        if (!learnersRes.error && 'count' in learnersRes) totalLearners = learnersRes.count || 0;
 
         let attendancePercentage = 0;
         if (!attendanceRes.error && attendanceRes.data) {
-          const present = attendanceRes.data.filter((a: any) => a.status === 'present').length;
+          const present = attendanceRes.data.filter((a: { status: string }) => a.status === 'present').length;
           attendancePercentage = Math.round((present / (attendanceRes.data.length || 1)) * 100);
         }
 
         let examsScheduled = 0;
-        if (!examsRes.error) examsScheduled = (examsRes as any).count || 0;
+        if (!examsRes.error && 'count' in examsRes) examsScheduled = examsRes.count || 0;
 
         let pendingAssessments = 0;
-        if (!assessmentsRes.error) pendingAssessments = (assessmentsRes as any).count || 0;
+        if (!assessmentsRes.error && 'count' in assessmentsRes) pendingAssessments = assessmentsRes.count || 0;
 
-        const dailyTotal = !dailyFeesRes.error && dailyFeesRes.data ? dailyFeesRes.data.reduce((s: number, f: any) => s + (f.amount || 0), 0) : 0;
-        const weeklyTotal = !weeklyFeesRes.error && weeklyFeesRes.data ? weeklyFeesRes.data.reduce((s: number, f: any) => s + (f.amount || 0), 0) : 0;
-        const monthlyTotal = !monthlyFeesRes.error && monthlyFeesRes.data ? monthlyFeesRes.data.reduce((s: number, f: any) => s + (f.amount || 0), 0) : 0;
+        const dailyTotal = !dailyFeesRes.error && dailyFeesRes.data ? dailyFeesRes.data.reduce((s: number, f: { amount?: number }) => s + (f.amount || 0), 0) : 0;
+        const weeklyTotal = !weeklyFeesRes.error && weeklyFeesRes.data ? weeklyFeesRes.data.reduce((s: number, f: { amount?: number }) => s + (f.amount || 0), 0) : 0;
+        const monthlyTotal = !monthlyFeesRes.error && monthlyFeesRes.data ? monthlyFeesRes.data.reduce((s: number, f: { amount?: number }) => s + (f.amount || 0), 0) : 0;
 
         let libraryOverdue = 0;
-        if (!libraryRes.error) libraryOverdue = (libraryRes as any).count || 0;
+        if (!libraryRes.error && 'count' in libraryRes) libraryOverdue = libraryRes.count || 0;
 
         return apiSuccess({
           totallearners: totalLearners,
@@ -159,8 +211,9 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       default:
         return apiError(400, 'VALIDATION_ERROR', `Unknown action: ${action}`, context.request, { startTime });
     }
-  } catch (error: any) {
-    console.error(`[kpi-dashboard/actions] action=${action}:`, error?.message || error);
-    return apiDbError(error, context.request, { startTime });
+  } catch (error: unknown) {
+    const err = error instanceof Error ? error : new Error(String(error));
+    console.error(`[kpi-dashboard/actions] action=${action}:`, err.message);
+    return apiDbError(err, context.request, { startTime });
   }
 });

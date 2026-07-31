@@ -138,9 +138,14 @@ const Header: React.FC<HeaderProps> = ({
     navigate('/educator/settings')
   }
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     setShowProfileMenu(false)
-    navigate('/')
+    try {
+      await useAuthStore.getState().logout()
+    } finally {
+      // Always redirect to login, even if server-side revocation fails
+      navigate('/login')
+    }
   }
 
   const handleProfileClick = () => {
