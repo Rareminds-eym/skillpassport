@@ -113,8 +113,28 @@ async function handleGetOrCreateLearnerEducatorConversation(supabase: SupabaseCl
     }
     return existing;
   }
-  const { data: learnerRecord } = await supabase.from('learners').select('user_id').eq('id', learnerId).maybeSingle();
-  const learnerUserId = learnerRecord?.user_id || learnerId;
+  let { data: learnerRow, error: learnerErr } = await supabase
+  .from('learners')
+  .select('user_id')
+  .eq('id', String(learnerId))
+  .maybeSingle();
+if (learnerErr) throw learnerErr;
+
+// Fallback: learnerId might already be a user_id (sent from learner frontend)
+if (!learnerRow?.user_id) {
+  const { data: byUserId, error: byUserIdErr } = await supabase
+    .from('learners')
+    .select('user_id')
+    .eq('user_id', String(learnerId))
+    .maybeSingle();
+  if (byUserIdErr) throw byUserIdErr;
+  learnerRow = byUserId;
+}
+
+if (!learnerRow?.user_id) {
+  throw new Error(`Learner not found or missing user_id for learnerId=${learnerId}`);
+}
+const learnerUserId = String(learnerRow.user_id);
   const conversationId = `conv_se_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   const { data, error } = await supabase.from('conversations').insert({ id: conversationId, learner_id: learnerUserId, educator_id: educatorId, class_id: classId, subject: subject || 'General Discussion', conversation_type: 'learner_educator', status: 'active' }).select().single();
   if (error) throw error;
