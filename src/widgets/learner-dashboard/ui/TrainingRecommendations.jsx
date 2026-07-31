@@ -1,14 +1,26 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Badge } from '@/shared/ui/Badge';
-import { ChevronRight, Clock } from 'lucide-react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Badge } from '@/shared/ui/Badge';
+import { ChevronRight, Clock, Loader2 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { useAuthStore } from '@/shared/model/authStore';
 import { apiGet } from '@/shared/api/apiClient';
+import { recordCourseInterest } from '@/features/courses';
+import { CourseEnrollmentModal } from '@/shared/ui';
 
 const TrainingRecommendations = ({ recommendations }) => {
   const navigate = useNavigate();
   const authUser = useAuthStore((state) => state.user);
   const [savedCourses, setSavedCourses] = useState([]);
+  // Interest capture: only the clicked card shows a pending state.
+  const [pendingCourseId, setPendingCourseId] = useState(null);
+  const [showInterestModal, setShowInterestModal] = useState(false);
+  // Guards state updates from an awaited request that resolves after unmount.
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => { isMountedRef.current = false; };
+  }, []);
 
   useEffect(() => {
     const fetchSavedCourses = async () => {
@@ -24,6 +36,7 @@ const TrainingRecommendations = ({ recommendations }) => {
               duration: r.course?.duration || '',
               relevance_score: r.relevance_score || 0,
               skill_type: r.course?.category || '',
+              course_type: r.course?.course_type,
             }))
           );
         }
@@ -45,9 +58,33 @@ const TrainingRecommendations = ({ recommendations }) => {
       .sort((a, b) => (b.relevance_score || 0) - (a.relevance_score || 0));
   }, [savedCourses, recommendations]);
 
-  const handleCourseClick = useCallback((courseId) => {
-    navigate(`/learner/courses/${courseId}/learn`);
-  }, [navigate]);
+  /**
+   * Records the learner's interest instead of opening the course. The request
+   * is awaited so the confirmation appears only after it has been persisted.
+   */
+  const handleCourseClick = useCallback(async (course) => {
+    const courseId = course?.course_id;
+    if (!courseId || pendingCourseId) return;
+
+    // Webinars/live events bypass interest capture entirely and open directly,
+    // exactly as all courses did before this feature was introduced.
+    if (course.course_type === 'webinar') {
+      navigate(`/learner/courses/${courseId}/learn`);
+      return;
+    }
+
+    setPendingCourseId(courseId);
+    try {
+      await recordCourseInterest(courseId);
+      if (!isMountedRef.current) return;
+      setShowInterestModal(true);
+    } catch {
+      if (!isMountedRef.current) return;
+      toast.error('Unable to record your interest. Please try again.');
+    } finally {
+      if (isMountedRef.current) setPendingCourseId(null);
+    }
+  }, [pendingCourseId, navigate]);
 
   if (topCourses.length === 0) return null;
 
@@ -78,11 +115,16 @@ const TrainingRecommendations = ({ recommendations }) => {
         <div className="space-y-2.5 max-h-[320px] overflow-y-auto pr-1 blue-scrollbar">
           {topCourses.map((course, idx) => {
             const isTopPick = idx === 0;
+            const isRecording = pendingCourseId === course.course_id;
             return (
               <div
                 key={course.course_id || idx}
-                onClick={() => handleCourseClick(course.course_id)}
-                className="bg-white rounded-lg border border-gray-200 shadow-sm cursor-pointer hover:shadow-md hover:border-blue-300 transition-all"
+                onClick={() => handleCourseClick(course)}
+                aria-disabled={isRecording}
+                className={`bg-white rounded-lg border border-gray-200 shadow-sm transition-all ${isRecording
+                  ? 'opacity-60 pointer-events-none'
+                  : 'cursor-pointer hover:shadow-md hover:border-blue-300'
+                  }`}
               >
                 <div className="flex items-center justify-between gap-2 px-3.5 py-3">
                   <div className="flex-1 min-w-0">
@@ -113,13 +155,23 @@ const TrainingRecommendations = ({ recommendations }) => {
                       )}
                     </div>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-blue-500 shrink-0" />
+                  {isRecording ? (
+                    <Loader2 className="w-4 h-4 text-blue-500 shrink-0 animate-spin" />
+                  ) : (
+                    <ChevronRight className="w-4 h-4 text-blue-500 shrink-0" />
+                  )}
                 </div>
               </div>
             );
           })}
         </div>
       </div>
+
+      {/* Interest Capture Confirmation */}
+      <CourseEnrollmentModal
+        isOpen={showInterestModal}
+        onClose={() => setShowInterestModal(false)}
+      />
     </div>
   );
 };

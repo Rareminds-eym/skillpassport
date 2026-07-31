@@ -1,10 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Zap, Target, Briefcase, BookOpen, TrendingUp, CheckCircle, Download, Bell, ChevronRight, Calendar, Loader2 } from 'lucide-react';
 import { useRoleOverview } from '@/entities/user';
 import { generateRoleOverview, getFallbackRoleOverview } from '@/features/counselling';
-import { matchCoursesForRole as matchCoursesForRoleRAG } from '@/features/courses';
+import { matchCoursesForRole as matchCoursesForRoleRAG, recordCourseInterest } from '@/features/courses';
+import { CourseEnrollmentModal } from '@/shared/ui';
 import { apiPost, apiGet } from '@/shared/api/apiClient';
 import { useAuthStore } from '@/shared/model/authStore';
 import jsPDF from 'jspdf';
@@ -23,6 +25,15 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results, 
     const [selectedRole, setSelectedRole] = useState(null);
     const [currentPage, setCurrentPage] = useState(0); // 0 = role selection, 1-5 = wizard pages
     const [showReminderModal, setShowReminderModal] = useState(false);
+    // Interest capture: only the clicked control shows a pending state.
+    const [pendingCourseId, setPendingCourseId] = useState(null);
+    const [showInterestModal, setShowInterestModal] = useState(false);
+    // Guards state updates from an awaited request that resolves after unmount.
+    const isMountedRef = useRef(true);
+    useEffect(() => {
+        isMountedRef.current = true;
+        return () => { isMountedRef.current = false; };
+    }, []);
     
     // RAG Course Matching State
     const [aiMatchedCourses, setAiMatchedCourses] = useState([]);
@@ -41,12 +52,43 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results, 
     ];
 
     // Handle course click - navigate to course player
-    const handleCourseClick = (course) => {
-        const courseId = course.course_id || course.id;
-        if (courseId) {
-            onClose(); // Close the modal first
+    /**
+     * Records the learner's interest instead of opening the course.
+     *
+     * The request is awaited so the confirmation is shown only after the record
+     * has been persisted. onClose() is deliberately NOT called - the wizard must
+     * stay open behind the confirmation so dismissing it returns the learner to
+     * the surface they were on.
+     */
+    const captureInterest = async (course) => {
+        const courseId = course?.course_id || course?.id;
+        if (!courseId || pendingCourseId) return;
+
+        // Webinars/live events bypass interest capture entirely and open
+        // directly, exactly as all courses did before this feature was
+        // introduced. onClose() is deliberately NOT called here either -
+        // navigation happens, then the wizard unmounts with the route change.
+        if (course.course_type === 'webinar') {
+            onClose();
             navigate(`/learner/courses/${courseId}/learn`);
+            return;
         }
+
+        setPendingCourseId(courseId);
+        try {
+            await recordCourseInterest(courseId);
+            if (!isMountedRef.current) return;
+            setShowInterestModal(true);
+        } catch {
+            if (!isMountedRef.current) return;
+            toast.error('Unable to record your interest. Please try again.');
+        } finally {
+            if (isMountedRef.current) setPendingCourseId(null);
+        }
+    };
+
+    const handleCourseClick = (course) => {
+        captureInterest(course);
     };
 
     const handleRoleSelect = (role) => {
@@ -170,6 +212,7 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results, 
                         title: c.title,
                         description: c.description,
                         category: c.category,
+                        course_type: c.course_type,
                         skills: c.skills || c.skill_tags || [],
                         embedding: c.embedding,
                     }));
@@ -363,17 +406,23 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results, 
     };
 
     // Handle enrolling in first relevant course
+    // The "Get Started" CTA targets the first relevant course, so it shows the
+    // pending state only while that course's request is in flight.
+    const firstRelevantCourseId = relevantCourses[0]?.course_id || relevantCourses[0]?.id;
+    const isRecordingFirstCourse = Boolean(firstRelevantCourseId) && pendingCourseId === firstRelevantCourseId;
+
     const handleEnrollFirstCourse = () => {
         if (relevantCourses.length > 0) {
             const firstCourse = relevantCourses[0];
             const courseId = firstCourse.course_id || firstCourse.id;
             if (courseId) {
-                onClose();
-                navigate(`/learner/courses/${courseId}/learn`);
+                captureInterest(firstCourse);
                 return;
             }
         }
-        // Fallback to courses page if no relevant course found
+        // Fallback to the courses page when no relevant course is available.
+        // This navigates rather than capturing interest, because there is no
+        // course to record interest in.
         onClose();
         navigate('/learner/courses');
     };
@@ -1340,10 +1389,14 @@ END:VCALENDAR`;
                                     ) : relevantCourses.length > 0 ? (
                                         <div className="grid md:grid-cols-2 gap-4">
                                             {relevantCourses.map((course, idx) => (
-                                                <div 
-                                                    key={idx} 
+                                                <div
+                                                    key={idx}
                                                     onClick={() => handleCourseClick(course)}
-                                                    className="p-4 rounded-xl bg-white border border-gray-200 shadow-sm hover:shadow-md hover:border-blue-300 transition-all cursor-pointer"
+                                                    aria-disabled={pendingCourseId === (course.course_id || course.id)}
+                                                    className={`p-4 rounded-xl bg-white border border-gray-200 shadow-sm transition-all ${pendingCourseId === (course.course_id || course.id)
+                                                        ? 'opacity-60 pointer-events-none'
+                                                        : 'hover:shadow-md hover:border-blue-300 cursor-pointer'
+                                                        }`}
                                                 >
                                                     <div className="flex items-start justify-between">
                                                         <div className="flex-1">
@@ -1624,9 +1677,14 @@ END:VCALENDAR`;
                                             className="w-full py-3 rounded-xl text-white font-semibold flex items-center justify-center gap-2"
                                             style={{ backgroundColor: accentColor }}
                                             onClick={handleEnrollFirstCourse}
+                                            disabled={isRecordingFirstCourse}
                                         >
-                                            <BookOpen className="w-5 h-5" />
-                                            {relevantCourses.length > 0 
+                                            {isRecordingFirstCourse ? (
+                                                <Loader2 className="w-5 h-5 animate-spin" />
+                                            ) : (
+                                                <BookOpen className="w-5 h-5" />
+                                            )}
+                                            {relevantCourses.length > 0
                                                 ? `Start: ${relevantCourses[0]?.title || relevantCourses[0]?.name || 'First Course'}`
                                                 : 'Browse Courses'
                                             }
@@ -1780,6 +1838,13 @@ END:VCALENDAR`;
                     )}
                 </div>
             </motion.div>
+
+            {/* Interest Capture Confirmation - rendered above the wizard, which
+                stays open behind it so dismissing returns the learner here. */}
+            <CourseEnrollmentModal
+                isOpen={showInterestModal}
+                onClose={() => setShowInterestModal(false)}
+            />
         </motion.div>
     );
 };
