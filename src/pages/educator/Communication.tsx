@@ -1,42 +1,49 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { useLocation, useSearchParams } from 'react-router-dom';
-import toast from 'react-hot-toast';
 import {
+  AcademicCapIcon,
+  ArchiveBoxIcon,
+  ArrowUturnLeftIcon,
+  ChatBubbleLeftRightIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
   MagnifyingGlassIcon,
   PaperAirplaneIcon,
-  EllipsisVerticalIcon,
-  PhoneIcon,
-  VideoCameraIcon,
-  PaperClipIcon,
-  FaceSmileIcon,
-  ArchiveBoxIcon,
-  ChevronRightIcon,
-  ArrowUturnLeftIcon,
-  TrashIcon,
-  AcademicCapIcon,
-  ChatBubbleLeftRightIcon,
-  XMarkIcon,
   ShieldCheckIcon,
-  ChevronDownIcon,
-  UserGroupIcon
+  TrashIcon,
+  UserGroupIcon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { CheckIcon } from '@heroicons/react/24/solid';
-import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
-import MessageService from '@/shared/api/messageService';
-import type { Conversation } from '@/features/messaging';
-import { NewLearnerConversationModalEducator, useEducatorMessages, useConversationActions } from '@/features/messaging';
+import { 
+  useMutation, 
+  useQuery, 
+  useQueryClient, 
+} from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
-
-import { useRealtimePresence } from '@/shared/lib/hooks';
-import { useTypingIndicator } from '@/features/messaging';
+import {  
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,   
+} from 'react';
+import type { FormEvent } from 'react';
+import toast from 'react-hot-toast';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import { useNotificationBroadcast } from '@/features/broadcast';
-import { DeleteConversationModal, } from '@/features/messaging';
+import type { Conversation } from '@/features/messaging';
+import {
+  DeleteConversationModal,
+  NewEducatorAdminConversationModal,
+  NewLearnerConversationModalEducator,
+  useConversationActions,
+  useEducatorMessages,
+  useTypingIndicator,
+} from '@/features/messaging';
 import { apiPost } from '@/shared/api/apiClient';
-import { NewLearnerConversationModal } from '@/features/messaging';
-import { NewEducatorAdminConversationModal } from '@/features/messaging';
+import MessageService from '@/shared/api/messageService';
 import { getLogger } from '@/shared/config/logging';
+import { useRealtimePresence } from '@/shared/lib/hooks';
 import { queryKeys } from '@/shared/lib/queryKeys';
-
 import { useUser } from '@/shared/model/authStore';
 import { useGlobalPresence } from '@/shared/model/globalPresenceStore';
 const logger = getLogger('educator-communication');
@@ -97,25 +104,29 @@ const Communication = () => {
 
       // First try with the auth user ID
       let currentData: any = null;
-      let currentError: any = null;
-
+      try {
       const userIdResult = await apiPost<any>('/educator/actions', {
         action: 'get-school-educator-by-user-id',
         userId,
         select: 'id, school_id, first_name, last_name, email, user_id'
       });
       currentData = userIdResult?.data;
-
+      } catch(err) {
+          logger.warn('Failed to fetch educator by user ID, trying email fallback', err);
+      }
       // If not found with auth user ID, try with email
       if (!currentData) {
         logger.info('🔄 Auth user ID not found, trying with email:', user.email);
+        try {
         const emailResult = await apiPost<any>('/educator/actions', {
           action: 'get-school-educator-by-email',
           email: user.email,
           select: 'id, school_id, first_name, last_name, email, user_id'
         });
         currentData = emailResult?.data;
-
+      } catch (err) {
+        logger.warn('Failed to fetch educator by email', err);
+      }
         if (currentData) {
           logger.info('⚠️ Found educator by email but user_id mismatch:');
           logger.info('  - Auth user ID:', userId);
@@ -262,18 +273,34 @@ const Communication = () => {
         action: 'list-school-educators',
         select: 'school_id, user_id',
         filters: {
-          school_id: { in: schoolIds },
+          school_id: schoolIds[0],
           role: 'school_admin'
         }
       });
 
-      const schoolAdmins = adminsResult?.data || [];
+      let schoolAdmins = adminsResult?.data || [];
       logger.info('📥 School admins query result:', { adminsLength: schoolAdmins?.length });
+
+      // Fallback: if no school_educators row found, get admin_id from organizations table
+      if (schoolAdmins.length === 0) {
+        try {
+        const orgResult = await apiPost<{ success: boolean; data: { admin_id: string | null } | null; error: string | null }>('/messaging/actions', {
+          action: 'fetch-organization',
+          id: schoolIds[0]
+        });
+        const orgAdminId = orgResult?.data?.admin_id;
+        if (orgAdminId) {
+          schoolAdmins = [{ school_id: schoolIds[0], user_id: orgAdminId }];
+        }
+        } catch (err) {
+          logger.warn('Could not fetch organization admin for online status — conversations will load without admin presence', { schoolId: schoolIds[0], err });
+        }
+      }
 
       // 3. Merge the data
       const conversationsWithAdminIds = conversations.map(conv => ({
         ...conv,
-        school_admin_user_id: schoolAdmins?.find(admin => admin.school_id === conv.school_id)?.user_id || null
+        school_admin_user_id: schoolAdmins?.find((admin: any) => admin.school_id === conv.school_id)?.user_id || null
       }));
 
       logger.info('✅ Final admin conversations with admin user IDs:', conversationsWithAdminIds);
@@ -337,18 +364,34 @@ const Communication = () => {
         action: 'list-school-educators',
         select: 'school_id, user_id',
         filters: {
-          school_id: { in: schoolIds },
+          school_id: schoolIds[0],
           role: 'school_admin'
         }
       });
 
-      const schoolAdmins = adminsResult?.data || [];
+      let schoolAdmins = adminsResult?.data || [];
       logger.info('📥 Archived school admins query result:', { adminsLength: schoolAdmins?.length });
+
+      // Fallback: if no school_educators row found, get admin_id from organizations table
+      if (schoolAdmins.length === 0) {
+        try {
+        const orgResult = await apiPost<{ success: boolean; data: { admin_id: string | null } | null; error: string | null }>('/messaging/actions', {
+          action: 'fetch-organization',
+          id: schoolIds[0]
+        });
+        const orgAdminId = orgResult?.data?.admin_id;
+        if (orgAdminId) {
+          schoolAdmins = [{ school_id: schoolIds[0], user_id: orgAdminId }];
+        }
+        } catch (err) {
+          logger.warn('Could not fetch organization admin for online status — conversations will load without admin presence', { schoolId: schoolIds[0], err });
+        }
+      }
 
       // 3. Merge the data
       const conversationsWithAdminIds = conversations.map(conv => ({
         ...conv,
-        school_admin_user_id: schoolAdmins?.find(admin => admin.school_id === conv.school_id)?.user_id || null
+        school_admin_user_id: schoolAdmins?.find((admin: any) => admin.school_id === conv.school_id)?.user_id || null
       }));
 
       logger.info('✅ Final archived admin conversations with admin user IDs:', conversationsWithAdminIds);
@@ -430,7 +473,7 @@ const Communication = () => {
     currentUserName: educatorName
   });
   // Presence tracking for current conversation
-  const { } = useRealtimePresence({
+  useRealtimePresence({
     channelName: selectedConversationId ? `conversation:${selectedConversationId}` : 'none',
     userPresence: {
       userId: userAuthId || '',
@@ -494,12 +537,16 @@ const Communication = () => {
         } else if (newTab === 'admin' && refetchActiveAdmin) {
           fetchPromise = refetchActiveAdmin();
         }
-
-        let timer;
+        let cancelled = false;
+        let timer: ReturnType<typeof setTimeout> | undefined;
         fetchPromise.finally(() => {
+          if (cancelled) return;
           timer = setTimeout(() => setIsTabSwitching(false), 300);
         });
-        return () => clearTimeout(timer);
+        return () => {
+          cancelled = true;
+          clearTimeout(timer);
+        }
       } else {
         setIsTabSwitching(false);
       }
@@ -803,6 +850,10 @@ const Communication = () => {
       await restoreConversation(conversationId);
       return { conversationId };
     },
+    onError: (error) => {
+      logger.error('Failed to restore conversation', error instanceof Error ? error : new Error(String(error)));
+      toast.error('Failed to restore conversation');
+    },
     onSuccess: () => {
       toast.success('Conversation restored');
       refetchConversations();
@@ -955,6 +1006,7 @@ const Communication = () => {
             : 'No messages',
           unread: conv.educator_unread_count || 0,
           schoolId: conv.school_id,
+          adminUserId: conv.school_admin_user_id,
           subject: conv.subject,
           type: 'admin'
         };
@@ -976,15 +1028,15 @@ const Communication = () => {
     [filteredContacts, selectedConversationId]
   );
 
-  const handleSendMessage = useCallback(async (e: React.FormEvent) => {
+  const handleSendMessage = useCallback(async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!messageInput.trim() || !currentChat || !userAuthId) return;
+    if (!messageInput.trim() || !currentChat || !userAuthId || !selectedConversationId) return;
 
     try {
       if (activeTab === 'learners') {
         // Send message to learner
         await sendMessage({
-          conversationId: selectedConversationId!,
+          conversationId: selectedConversationId,
           receiverId: currentChat.learnerId,
           receiverType: 'learner',
           messageText: messageInput,
@@ -997,50 +1049,51 @@ const Communication = () => {
         try {
           await sendNotification(currentChat.learnerId, {
             title: 'New Message from Educator',
-            message: messageInput.length > 50 ? messageInput.substring(0, 50) + '...' : messageInput,
+            message: messageInput.length > 50 ? `${messageInput.substring(0, 50)}...` : messageInput,
             type: 'message',
             link: `/learner/messages?tab=educators&conversation=${selectedConversationId}`
           });
-        } catch {
-          // Silent fail
+        } catch (error) {
+          logger.warn('Failed to send notification to learner', { error: error instanceof Error ? error.message : String(error) });
         }
       } else {
-        // Send message to school admin
-        // Find school admin user ID for the school
-        const adminResult = await apiPost<any>('/educator/actions', {
-          action: 'list-school-educators',
-          select: 'user_id',
-          filters: {
-            school_id: currentChat.schoolId,
-            role: 'school_admin'
+        // Send message to school admin using adminUserId already resolved during conversation fetch
+        let adminUserId = currentChat.adminUserId;
+        if (!adminUserId) {
+          try {
+            const orgResult = await apiPost<{ success: boolean; data: { admin_id: string | null } | null; error: string | null }>('/messaging/actions', {
+              action: 'fetch-organization',
+              id: currentChat.schoolId
+            });
+            adminUserId = orgResult?.data?.admin_id;
+          } catch (err) {
+            logger.error('Failed to resolve school admin at send time', err);
           }
-        });
+        }
 
-        const schoolAdmins = adminResult?.data || [];
-        const schoolAdmin = schoolAdmins.length > 0 ? schoolAdmins[0] : null;
-
-        if (!schoolAdmin) {
+        if (!adminUserId) {
+          logger.error('Admin user ID not available for conversation:', { conversationId: currentChat?.id });
           toast.error('Could not find school admin');
           return;
         }
 
         await sendMessage({
-          conversationId: selectedConversationId!,
-          receiverId: schoolAdmin.user_id,
-          receiverType: 'educator', // School admin is also an educator
+          conversationId: selectedConversationId,
+          receiverId: adminUserId,
+          receiverType: 'school_admin',
           messageText: messageInput,
         });
 
         // Send notification to school admin
         try {
-          await sendNotification(schoolAdmin.user_id, {
+          await sendNotification(adminUserId, {
             title: 'New Message from Educator',
-            message: messageInput.length > 50 ? messageInput.substring(0, 50) + '...' : messageInput,
+            message: messageInput.length > 50 ? `${messageInput.substring(0, 50)}...` : messageInput,
             type: 'message',
             link: `/admin/school/educator-communication?conversation=${selectedConversationId}`
           });
-        } catch {
-          // Silent fail
+        } catch (error) {
+          logger.warn('Failed to send notification to admin', { error: error instanceof Error ? error.message : String(error) });
         }
       }
 
@@ -1098,6 +1151,7 @@ const Communication = () => {
                   {/* New Button - Show for Learners tab */}
                   {activeTab === 'learners' && !showArchived && (
                     <button
+                      type="button"
                       onClick={() => setShowNewConversationModal(true)}
                       className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
                       title="Start new conversation with learner"
@@ -1110,6 +1164,7 @@ const Communication = () => {
                   {/* New Button - Show for Admin tab */}
                   {activeTab === 'admin' && !showArchived && (
                     <button
+                      type="button"
                       onClick={() => setShowNewAdminConversationModal(true)}
                       className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
                       title="Start new conversation with school admin"
@@ -1122,6 +1177,7 @@ const Communication = () => {
                   {/* Tab Dropdown */}
                   <div className="relative" ref={tabDropdownRef}>
                     <button
+                      type="button"
                       onClick={() => setShowTabDropdown(!showTabDropdown)}
                       className="flex items-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
                     >
@@ -1158,6 +1214,7 @@ const Communication = () => {
                         <div className="py-1">
                           {/* Learners Tab */}
                           <button
+                            type="button"
                             onClick={async () => {
                               logger.info('🔄 Switching to learners tab');
                               setIsTabSwitching(true);
@@ -1195,6 +1252,7 @@ const Communication = () => {
 
                           {/* School Admin Tab */}
                           <button
+                            type="button"
                             onClick={async () => {
                               logger.info('🔄 Switching to admin tab');
                               setIsTabSwitching(true);
@@ -1253,6 +1311,7 @@ const Communication = () => {
                 />
                 {searchQuery && (
                   <button
+                    type="button"
                     onClick={() => setSearchQuery('')}
                     className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-200 rounded-full transition-colors"
                     title="Clear search"
@@ -1270,6 +1329,7 @@ const Communication = () => {
                 !(activeTab === 'learners' ? loadingArchivedlearners : loadingArchivedAdmin) &&
                 (activeTab === 'learners' ? archivedlearnerConversations : archivedAdminConversations).length > 0 && (
                   <button
+                    type="button"
                     onClick={() => {
                       setShowArchived(true);
                       setIsTransitioning(true);
@@ -1299,7 +1359,7 @@ const Communication = () => {
                 </div>
               )}
 
-              {loadingConversations ? (
+              {loadingConversations || isTabSwitching ? (
                 <div className="flex items-center justify-center h-full">
                   <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
                 </div>
@@ -1334,6 +1394,7 @@ const Communication = () => {
                   </p>
                   {searchQuery && (
                     <button
+                      type="button"
                       onClick={() => setSearchQuery('')}
                       className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition-colors"
                     >
@@ -1343,6 +1404,7 @@ const Communication = () => {
                   {!showArchived && !searchQuery && activeTab === 'learners' && (
                     <div className="space-y-3">
                       <button
+                        type="button"
                         onClick={() => setShowNewConversationModal(true)}
                         className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
                       >
@@ -1350,6 +1412,7 @@ const Communication = () => {
                         Start New Conversation
                       </button>
                       <button
+                        type="button"
                         onClick={() => {
                           toast('Learners will initiate conversations with you from their Messages page', {
                             icon: 'ℹ️',
@@ -1365,6 +1428,7 @@ const Communication = () => {
                   {!showArchived && !searchQuery && activeTab === 'admin' && (
                     <div className="space-y-3">
                       <button
+                        type="button"
                         onClick={() => setShowNewAdminConversationModal(true)}
                         className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
                       >
@@ -1384,6 +1448,7 @@ const Communication = () => {
                       }`}
                   >
                     <button
+                      type="button"
                       onClick={() => setSelectedConversationId(contact.id)}
                       className="flex-1 px-4 py-3 flex items-center gap-3 transition-all text-left"
                     >
@@ -1424,6 +1489,7 @@ const Communication = () => {
                     <div className="flex items-center gap-1 pr-2 opacity-0 group-hover:opacity-100 transition-opacity">
                       {/* Archive/Unarchive Button */}
                       <button
+                        type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleToggleArchive(contact.id, !showArchived);
@@ -1440,6 +1506,7 @@ const Communication = () => {
 
                       {/* Delete Button */}
                       <button
+                        type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           openDeleteModal(contact.id, contact.name);
@@ -1488,17 +1555,6 @@ const Communication = () => {
                       </p>
                     </div>
                   </div>
-                  {/* <div className="flex items-center gap-2">
-                    <button className="p-2 hover:bg-gray-100 rounded-full transition-colors" title="Voice Call">
-                      <PhoneIcon className="w-5 h-5 text-gray-700" />
-                    </button>
-                    <button className="p-2 hover:bg-gray-100 rounded-full transition-colors" title="Video Call">
-                      <VideoCameraIcon className="w-5 h-5 text-gray-700" />
-                    </button>
-                    <button className="p-2 hover:bg-gray-100 rounded-full transition-colors" title="More">
-                      <EllipsisVerticalIcon className="w-5 h-5 text-gray-700" />
-                    </button>
-                  </div> */}
                 </div>
 
                 {/* Messages Area */}
@@ -1568,13 +1624,6 @@ const Communication = () => {
                 {/* Message Input */}
                 <div className="px-6 py-4 border-t border-gray-200 bg-white flex-shrink-0">
                   <form onSubmit={handleSendMessage} className="flex items-end gap-3">
-                    {/* <button
-                      type="button"
-                      className="p-2 hover:bg-gray-100 rounded-full transition-colors flex-shrink-0"
-                      title="Attach file"
-                    >
-                      <PaperClipIcon className="w-5 h-5 text-gray-500" />
-                    </button> */}
                     <div className="flex-1 relative">
                       <textarea
                         value={messageInput}
@@ -1592,13 +1641,6 @@ const Communication = () => {
                         rows={1}
                         style={{ minHeight: '44px', maxHeight: '100px' }}
                       />
-                      {/* <button
-                        type="button"
-                        className="absolute right-3 bottom-2.5 p-1.5 hover:bg-gray-100 rounded-full transition-colors"
-                        title="Emoji"
-                      >
-                        <FaceSmileIcon className="w-5 h-5 text-gray-400" />
-                      </button> */}
                     </div>
                     <button
                       type="submit"
@@ -1633,28 +1675,6 @@ const Communication = () => {
           </div>
         </div>
       </div>
-
-      {/* Other Communication Features (Future) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Announcements */}
-        {/* <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Class Announcements</h2>
-          <p className="text-sm text-gray-600 mb-4">Send announcements to entire classes</p>
-          <button className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
-            Coming Soon
-          </button>
-        </div> */}
-
-        {/* Feedback System */}
-        {/* <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Direct Feedback</h2>
-          <p className="text-sm text-gray-600 mb-4">Provide feedback on learner activities</p>
-          <button className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors">
-            Coming Soon
-          </button>
-        </div> */}
-      </div>
-
       {/* Delete Confirmation Modal */}
       <DeleteConversationModal
         isOpen={deleteModal.isOpen}
