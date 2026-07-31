@@ -100,7 +100,7 @@ const LearnerCommunication = () => {
       }
 
       try {
-        const response = await apiPost<{ success: boolean; data: { schoolId: string } }>('/school-admin/actions', {
+        const response = await apiPost<{ success: boolean; data: { schoolId: string | null }; error: string | null }>('/school-admin/actions', {
           action: 'fetchCommunicationSchoolData'
         });
         if (!response?.success || !response?.data?.schoolId) {
@@ -129,12 +129,12 @@ const LearnerCommunication = () => {
   logger.info('Final school ID for queries', { schoolId });
 
   // Fetch active conversations with learners
-  const { data: activelearnerConversations = [], isLoading: loadingActivelearners, isError: errorActivelearners, refetch: refetchActivelearners } = useQuery({
+  const { data: activelearnerConversations = [], isLoading: loadingActivelearners, isError: errorActivelearners, error: activeLearnersErrorObj, refetch: refetchActivelearners } = useQuery({
     queryKey: queryKeys.learner.conversations.byLearner(schoolId, 'active'),
     queryFn: async () => {
       if (!schoolId) return [];
       try {
-        const response = await apiPost<any>('/school-admin/actions', {
+        const response = await apiPost<{ success: boolean; data: Conversation[] }>('/school-admin/actions', {
           action: 'fetchActiveLearnerConversations',
           schoolId
         });
@@ -153,12 +153,12 @@ const LearnerCommunication = () => {
   });
 
   // Fetch archived learner conversations
-  const { data: archivedlearnerConversations = [], isLoading: loadingArchivedlearners, isError: errorArchivedlearners, refetch: refetchArchivedlearners } = useQuery({
+  const { data: archivedlearnerConversations = [], isLoading: loadingArchivedlearners, isError: errorArchivedlearners, error: archivedLearnersErrorObj, refetch: refetchArchivedlearners } = useQuery({
     queryKey: queryKeys.learner.conversations.byLearner(schoolId, 'archived'),
     queryFn: async () => {
       if (!schoolId) return [];
       try {
-        const response = await apiPost<any>('/school-admin/actions', {
+        const response = await apiPost<{ success: boolean; data: Conversation[] }>('/school-admin/actions', {
           action: 'fetchArchivedLearnerConversations',
           schoolId
         });
@@ -177,7 +177,7 @@ const LearnerCommunication = () => {
   });
 
   // Fetch active educator conversations
-  const { data: activeEducatorConversations = [], isLoading: loadingActiveEducators, isError: errorActiveEducators, refetch: refetchActiveEducators } = useQuery({
+  const { data: activeEducatorConversations = [], isLoading: loadingActiveEducators, isError: errorActiveEducators, error: activeEducatorsErrorObj, refetch: refetchActiveEducators } = useQuery({
     queryKey: queryKeys.educator.conversations.byEducator(schoolId, 'active'),
     queryFn: async () => {
       logger.info('Fetching active educator conversations', { schoolId });
@@ -188,7 +188,7 @@ const LearnerCommunication = () => {
       }
 
       try {
-        const response = await apiPost<any>('/school-admin/actions', {
+        const response = await apiPost<{ success: boolean; data: Conversation[] }>('/school-admin/actions', {
           action: 'fetchActiveEducatorConversations',
           schoolId
         });
@@ -209,7 +209,7 @@ const LearnerCommunication = () => {
   });
 
   // Fetch archived educator conversations
-  const { data: archivedEducatorConversations = [], isLoading: loadingArchivedEducators, isError: errorArchivedEducators, refetch: refetchArchivedEducators } = useQuery({
+  const { data: archivedEducatorConversations = [], isLoading: loadingArchivedEducators, isError: errorArchivedEducators, error: archivedEducatorsErrorObj, refetch: refetchArchivedEducators } = useQuery({
     queryKey: queryKeys.educator.conversations.byEducator(schoolId, 'archived'),
     queryFn: async () => {
       logger.info('Fetching archived educator conversations', { schoolId });
@@ -220,7 +220,7 @@ const LearnerCommunication = () => {
       }
 
       try {
-        const response = await apiPost<any>('/school-admin/actions', {
+        const response = await apiPost<{ success: boolean; data: Conversation[] }>('/school-admin/actions', {
           action: 'fetchArchivedEducatorConversations',
           schoolId
         });
@@ -252,6 +252,10 @@ const LearnerCommunication = () => {
   const hasConversationError = activeTab === 'learners'
     ? (showArchived ? errorArchivedlearners : errorActivelearners)
     : (showArchived ? errorArchivedEducators : errorActiveEducators);
+
+  const conversationError = activeTab === 'learners'
+  ? (showArchived ? archivedLearnersErrorObj : activeLearnersErrorObj)
+  : (showArchived ? archivedEducatorsErrorObj : activeEducatorsErrorObj);
 
   const refetchConversations = activeTab === 'learners'
     ? (showArchived ? refetchArchivedlearners : refetchActivelearners)
@@ -962,7 +966,7 @@ const LearnerCommunication = () => {
             educatorId: currentChat.educatorId
           });
 
-          if (!educatorResponse?.data?.user_id) {
+          if (!educatorResponse?.success || !educatorResponse?.data?.user_id) {
             toast.error('Could not find educator');
             return;
           }
@@ -1294,6 +1298,11 @@ const LearnerCommunication = () => {
                   <p className="text-red-500 text-sm font-medium">
                      Failed to load {activeTab === 'learners' ? 'learner' : 'educator'} conversations
                   </p>
+                  {conversationError && (
+                  <p className="text-gray-400 text-xs mt-1 max-w-xs">
+                      {conversationError instanceof Error ? conversationError.message : 'An unexpected error occurred'}
+                  </p>
+                  )}
                   <button
                     type="button"
                     onClick={() => refetchConversations()}
