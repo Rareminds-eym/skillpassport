@@ -517,6 +517,11 @@ async function handler(context: AuthenticatedContext): Promise<Response> {
     const { data: learner } = await supabase.from('learners').select('user_id').eq('user_id', user.id).maybeSingle();
     if (!learner) return apiError(404, 'NOT_FOUND', 'Learner not found', request);
 
+    // Confirm the course exists so an invalid courseId returns NOT_FOUND
+    // rather than a foreign key violation.
+    const { data: course } = await supabase.from('courses').select('course_id').eq('course_id', courseId).maybeSingle();
+    if (!course) return apiError(404, 'NOT_FOUND', 'Course not found', request);
+
     // ignoreDuplicates so the first expression of interest is preserved - the
     // unique constraint on (user_id, course_id) makes repeat writes idempotent.
     // A conflicting insert returns no rows, which is the duplicate outcome and
@@ -525,6 +530,8 @@ async function handler(context: AuthenticatedContext): Promise<Response> {
       .from('learner_course_interests')
       .upsert({ user_id: user.id, course_id: courseId }, { onConflict: 'user_id,course_id', ignoreDuplicates: true })
       .select();
+    // Duplicates never reach this branch (they resolve to empty data above);
+    // this covers all other failure modes, e.g. FK violations or connection errors.
     if (error) return apiDbError(error, request);
     return apiSuccess(data || [], request);
   }

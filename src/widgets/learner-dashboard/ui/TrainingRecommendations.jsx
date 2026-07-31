@@ -75,10 +75,14 @@ const TrainingRecommendations = ({ recommendations }) => {
 
     setPendingCourseId(courseId);
     try {
+      if (typeof recordCourseInterest !== 'function') {
+        throw new Error('recordCourseInterest not available');
+      }
       await recordCourseInterest(courseId);
       if (!isMountedRef.current) return;
       setShowInterestModal(true);
-    } catch {
+    } catch (error) {
+      console.error('[TrainingRecommendations] Failed to record interest:', error);
       if (!isMountedRef.current) return;
       toast.error('Unable to record your interest. Please try again.');
     } finally {

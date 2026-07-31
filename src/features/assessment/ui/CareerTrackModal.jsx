@@ -12,6 +12,12 @@ import { useAuthStore } from '@/shared/model/authStore';
 import jsPDF from 'jspdf';
 
 /**
+ * Course objects in this file come from multiple sources that disagree on the
+ * ID field name (course_id vs id) - this centralizes the fallback.
+ */
+const getCourseId = (course) => course?.course_id || course?.id;
+
+/**
  * Career Track Modal Component
  * Multi-step wizard with VERTICAL sidebar navigation
  * Steps: Role Selection → Overview → Roadmap → Courses → Strengths → Get Started
@@ -61,7 +67,7 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results, 
      * the surface they were on.
      */
     const captureInterest = async (course) => {
-        const courseId = course?.course_id || course?.id;
+        const courseId = getCourseId(course);
         if (!courseId || pendingCourseId) return;
 
         // Webinars/live events bypass interest capture entirely and open
@@ -76,10 +82,14 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results, 
 
         setPendingCourseId(courseId);
         try {
+            if (typeof recordCourseInterest !== 'function') {
+                throw new Error('recordCourseInterest not available');
+            }
             await recordCourseInterest(courseId);
             if (!isMountedRef.current) return;
             setShowInterestModal(true);
-        } catch {
+        } catch (error) {
+            console.error('[CareerTrackModal] Failed to record interest:', error);
             if (!isMountedRef.current) return;
             toast.error('Unable to record your interest. Please try again.');
         } finally {
@@ -288,10 +298,10 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results, 
         }
 
         // Get IDs of already matched courses to avoid duplicates
-        const matchedIds = new Set(ragMatchedCourses.map(c => c.course_id || c.id));
+        const matchedIds = new Set(ragMatchedCourses.map(getCourseId));
         
         // Get remaining courses not yet matched
-        const remainingCourses = platformCourses.filter(c => !matchedIds.has(c.course_id || c.id));
+        const remainingCourses = platformCourses.filter(c => !matchedIds.has(getCourseId(c)));
         
         // Score remaining courses for relevance
         const roleNameLower = (roleName || '').toLowerCase();
@@ -360,7 +370,7 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results, 
 
             try {
                 const recommendations = aiMatchedCourses.map(c => ({
-                    course_id: c.course_id || c.id,
+                    course_id: getCourseId(c),
                     relevance_score: c.relevance_score || 50,
                     match_reasons: [c.match_reason || `Matched for ${roleName} role`],
                     skill_gaps_addressed: c.skill_gaps_addressed || []
@@ -408,13 +418,13 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results, 
     // Handle enrolling in first relevant course
     // The "Get Started" CTA targets the first relevant course, so it shows the
     // pending state only while that course's request is in flight.
-    const firstRelevantCourseId = relevantCourses[0]?.course_id || relevantCourses[0]?.id;
+    const firstRelevantCourseId = getCourseId(relevantCourses?.[0]);
     const isRecordingFirstCourse = Boolean(firstRelevantCourseId) && pendingCourseId === firstRelevantCourseId;
 
     const handleEnrollFirstCourse = () => {
         if (relevantCourses.length > 0) {
             const firstCourse = relevantCourses[0];
-            const courseId = firstCourse.course_id || firstCourse.id;
+            const courseId = getCourseId(firstCourse);
             if (courseId) {
                 captureInterest(firstCourse);
                 return;
@@ -725,6 +735,7 @@ END:VCALENDAR`;
             >
                 {/* Close Button */}
                 <button
+                    type="button"
                     onClick={onClose}
                     className="absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors"
                 >
@@ -767,6 +778,7 @@ END:VCALENDAR`;
                                 return (
                                     <div key={page.id} className="relative">
                                         <button
+                                            type="button"
                                             onClick={() => goToPage(page.id)}
                                             disabled={false}
                                             className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all duration-200 text-left ${
@@ -813,6 +825,7 @@ END:VCALENDAR`;
 
                         {/* Back to roles button */}
                         <button
+                            type="button"
                             onClick={() => { setCurrentPage(0); setSelectedRole(null); }}
                             className="mt-4 w-full py-2 text-sm text-white/60 hover:text-white transition-colors"
                         >
@@ -1388,12 +1401,15 @@ END:VCALENDAR`;
                                         </div>
                                     ) : relevantCourses.length > 0 ? (
                                         <div className="grid md:grid-cols-2 gap-4">
-                                            {relevantCourses.map((course, idx) => (
+                                            {relevantCourses.map((course, idx) => {
+                                                const cardCourseId = getCourseId(course);
+                                                const isCardPending = pendingCourseId === cardCourseId;
+                                                return (
                                                 <div
                                                     key={idx}
                                                     onClick={() => handleCourseClick(course)}
-                                                    aria-disabled={pendingCourseId === (course.course_id || course.id)}
-                                                    className={`p-4 rounded-xl bg-white border border-gray-200 shadow-sm transition-all ${pendingCourseId === (course.course_id || course.id)
+                                                    aria-disabled={isCardPending}
+                                                    className={`p-4 rounded-xl bg-white border border-gray-200 shadow-sm transition-all ${isCardPending
                                                         ? 'opacity-60 pointer-events-none'
                                                         : 'hover:shadow-md hover:border-blue-300 cursor-pointer'
                                                         }`}
@@ -1427,7 +1443,8 @@ END:VCALENDAR`;
                                                         <ChevronRight className="w-3 h-3 ml-1" />
                                                     </div>
                                                 </div>
-                                            ))}
+                                                );
+                                            })}
                                         </div>
                                     ) : !results?.platformCourses || results.platformCourses.length === 0 ? (
                                         <div className="p-6 rounded-xl bg-gray-50 border border-gray-200 text-center">
@@ -1672,8 +1689,8 @@ END:VCALENDAR`;
 
                                     <div className="space-y-3">
                                         <motion.button
-                                            whileHover={{ scale: 1.02 }}
-                                            whileTap={{ scale: 0.98 }}
+                                            whileHover={isRecordingFirstCourse ? undefined : { scale: 1.02 }}
+                                            whileTap={isRecordingFirstCourse ? undefined : { scale: 0.98 }}
                                             className="w-full py-3 rounded-xl text-white font-semibold flex items-center justify-center gap-2"
                                             style={{ backgroundColor: accentColor }}
                                             onClick={handleEnrollFirstCourse}
@@ -1735,7 +1752,8 @@ END:VCALENDAR`;
                                 >
                                     <div className="flex items-center justify-between mb-4">
                                         <h3 className="text-lg font-bold text-gray-800">Set Assessment Reminder</h3>
-                                        <button 
+                                        <button
+                                            type="button"
                                             onClick={() => setShowReminderModal(false)}
                                             className="p-1 rounded-full hover:bg-gray-100"
                                         >
@@ -1758,6 +1776,7 @@ END:VCALENDAR`;
                                     
                                     <div className="space-y-2">
                                         <button
+                                            type="button"
                                             onClick={handleGoogleCalendar}
                                             className="w-full py-3 px-4 rounded-xl bg-white border border-gray-200 hover:bg-gray-50 transition-colors flex items-center gap-3"
                                         >
@@ -1770,6 +1789,7 @@ END:VCALENDAR`;
                                         </button>
                                         
                                         <button
+                                            type="button"
                                             onClick={handleOutlookCalendar}
                                             className="w-full py-3 px-4 rounded-xl bg-white border border-gray-200 hover:bg-gray-50 transition-colors flex items-center gap-3"
                                         >
@@ -1782,6 +1802,7 @@ END:VCALENDAR`;
                                         </button>
                                         
                                         <button
+                                            type="button"
                                             onClick={handleDownloadICS}
                                             className="w-full py-3 px-4 rounded-xl bg-white border border-gray-200 hover:bg-gray-50 transition-colors flex items-center gap-3"
                                         >
