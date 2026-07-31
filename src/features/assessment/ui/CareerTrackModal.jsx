@@ -73,10 +73,15 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results, 
      */
     const captureInterest = async (course) => {
         const courseId = getCourseId(course);
-        if (!courseId || pendingCourseId) return;
+        if (!courseId) return;
 
         if (isCapturingRef.current) return;
         isCapturingRef.current = true;
+
+        if (pendingCourseId) {
+            isCapturingRef.current = false;
+            return;
+        }
 
         try {
             // Webinars/live events bypass interest capture entirely and open
