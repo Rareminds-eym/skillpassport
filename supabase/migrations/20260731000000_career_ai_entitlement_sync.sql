@@ -23,6 +23,9 @@
 --    from failing). Keep ACTIVE rows over cancelled ones, then the newest id,
 --    so a rollback + re-apply can never delete the active row of a
 --    resubscribed user and keep a stale cancelled one.
+--    NOTE: id is gen_random_uuid() (not time-ordered), so the id tie-break
+--    picks an arbitrary survivor; the ACTIVE-over-cancelled rule is what
+--    guarantees correctness, not id ordering.
 DELETE FROM user_entitlements ue
 USING user_entitlements ue2
 WHERE ue.feature_key = 'career_ai'
