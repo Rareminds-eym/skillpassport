@@ -49,7 +49,7 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results, 
     // RAG Course Matching State
     const [aiMatchedCourses, setAiMatchedCourses] = useState([]);
     const [courseMatchingLoading, setCourseMatchingLoading] = useState(false);
-    const [courseMatchingError, setCourseMatchingError] = useState(null);
+    const [, setCourseMatchingError] = useState(null);
 
     const accentColor = selectedTrack.index === 0 ? '#2563eb' : 
                        selectedTrack.index === 1 ? '#3b82f6' : '#60a5fa';
@@ -557,7 +557,7 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results, 
             doc.text('6-Month Learning Roadmap', 20, yPos);
             yPos += 10;
             
-            learningRoadmap.forEach((phase, idx) => {
+            learningRoadmap.forEach((phase) => {
                 // Check if we need a new page
                 if (yPos > 250) {
                     doc.addPage();
@@ -1063,7 +1063,7 @@ END:VCALENDAR`;
                                                                 Object.entries(results.aptitude.scores)
                                                                     .sort((a, b) => (b[1]?.percentage || 0) - (a[1]?.percentage || 0))
                                                                     .slice(0, 3)
-                                                                    .map(([key, value], idx) => (
+                                                                    .map(([key], idx) => (
                                                                         <span 
                                                                             key={idx}
                                                                             className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700"
@@ -1427,6 +1427,7 @@ END:VCALENDAR`;
                                                     key={cardCourseId || idx}
                                                     onClick={() => handleCourseClick(course)}
                                                     disabled={isCardPending}
+                                                    aria-busy={isCardPending}
                                                     className={`w-full text-left p-4 rounded-xl bg-white border border-gray-200 shadow-sm transition-all ${isCardPending
                                                         ? 'opacity-60 pointer-events-none'
                                                         : 'hover:shadow-md hover:border-blue-300 cursor-pointer'
@@ -1457,8 +1458,14 @@ END:VCALENDAR`;
                                                         </div>
                                                     )}
                                                     <div className="mt-3 flex items-center justify-end text-xs text-blue-600 font-medium">
-                                                        <span>Start Learning</span>
-                                                        <ChevronRight className="w-3 h-3 ml-1" />
+                                                        {isCardPending ? (
+                                                            <Loader2 className="w-3 h-3 animate-spin" />
+                                                        ) : (
+                                                            <>
+                                                                <span>Start Learning</span>
+                                                                <ChevronRight className="w-3 h-3 ml-1" />
+                                                            </>
+                                                        )}
                                                     </div>
                                                 </button>
                                                 );

@@ -1,5 +1,5 @@
 import { withAuth, getContextUser, getServiceClient } from '../../lib/auth';
-import { apiSuccess, apiError, apiDbError, apiMethodNotAllowed, apiNotFound } from '../../lib/response';
+import { apiSuccess, apiError, apiDbError, apiNotFound } from '../../lib/response';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 
 function parseBody(request: Request): Promise<any> {

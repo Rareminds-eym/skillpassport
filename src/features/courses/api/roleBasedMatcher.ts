@@ -49,10 +49,6 @@ export const matchCoursesForRole = async (roleName, clusterTitle = '', courses =
     let roleEmbedding;
     try {
       roleEmbedding = await generateEmbedding(roleContext);
-      
-      // Debug: Check if embedding is valid
-      const sum = roleEmbedding.reduce((a, b) => a + Math.abs(b), 0);
-      const avg = sum / roleEmbedding.length;
     } catch (error) {
       logger.error('Failed to generate role embedding', error instanceof Error ? error : new Error(String(error)));
       // Fallback to keyword matching
@@ -69,13 +65,6 @@ export const matchCoursesForRole = async (roleName, clusterTitle = '', courses =
         const hasEmbedding = course.embedding && Array.isArray(course.embedding);
         return hasEmbedding;
       });
-
-    // Debug: Check first course embedding
-    if (coursesWithEmbeddings.length > 0) {
-      const firstCourse = coursesWithEmbeddings[0];
-      const sum = firstCourse.embedding.reduce((a, b) => a + Math.abs(b), 0);
-      const avg = sum / firstCourse.embedding.length;
-    }
 
     if (coursesWithEmbeddings.length === 0) {
       return fallbackKeywordMatching(roleName, clusterTitle, coursesToMatch, limit);

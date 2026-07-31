@@ -78,12 +78,14 @@ const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentP
             </p>
             <div className="flex gap-3">
               <button
+                type="button"
                 onClick={() => setShowUpgradePrompt(false)}
                 className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
               >
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={() => {
                   setShowUpgradePrompt(false);
                   onClose();
@@ -122,6 +124,7 @@ const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentP
 
             {/* Close Button */}
             <button
+              type="button"
               onClick={onClose}
               className="absolute top-4 right-4 p-2 bg-white/20 backdrop-blur-sm rounded-full hover:bg-white/30 transition-colors"
             >
@@ -313,12 +316,14 @@ const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentP
               </div>
               <div className="flex gap-3">
                 <button
+                  type="button"
                   onClick={onClose}
                   className="px-6 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
                 >
                   Close
                 </button>
                 <button
+                  type="button"
                   onClick={handleStartCourse}
                   disabled={buttonContent.disabled || isRecordingInterest}
                   className={`px-6 py-2.5 rounded-lg font-medium transition-colors flex items-center gap-2 ${buttonContent.disabled
