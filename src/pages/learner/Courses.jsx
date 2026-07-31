@@ -625,7 +625,7 @@ const Courses = () => {
         // when the learner dismisses the confirmation.
         setShowInterestModal(true);
       } catch (error) {
-        console.error('[Courses] Failed to record interest:', error);
+        logger.error('Failed to record interest', error instanceof Error ? error : new Error(String(error)));
         if (!isMountedRef.current) return;
         toast.error('Unable to record your interest. Please try again.');
       } finally {

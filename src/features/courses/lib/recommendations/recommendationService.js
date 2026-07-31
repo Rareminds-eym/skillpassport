@@ -22,6 +22,11 @@ import {
 } from '../../api/config';
 
 /**
+ * Get a course's type, defaulting to 'course' when the source data omits it.
+ */
+const getCourseType = (course) => course.course_type ?? "course";
+
+/**
  * Fallback to keyword-based matching when embedding generation fails.
  * Uses course_skills table and text matching.
  * 
@@ -110,7 +115,7 @@ export const fallbackKeywordMatching = async (assessmentResults) => {
         description: course.description,
         duration: course.duration,
         category: course.category,
-        course_type: course.course_type ?? "course",
+        course_type: getCourseType(course),
         skills: course.skills || [],
         target_outcomes: course.target_outcomes || [],
         relevance_score: Math.min(100, Math.round((totalMatches / totalKeywords) * 100)),
@@ -195,7 +200,7 @@ export const getRecommendedCourses = async (assessmentResults) => {
           description: course.description,
           duration: course.duration,
           category: course.category,
-          course_type: course.course_type ?? "course",
+          course_type: getCourseType(course),
           skills: course.skills,
           target_outcomes: course.target_outcomes || [],
           relevance_score: relevanceScore,
@@ -304,7 +309,7 @@ export const getRecommendedCoursesByType = async (assessmentResults, maxPerType 
           description: course.description,
           duration: course.duration,
           category: course.category,
-          course_type: course.course_type ?? "course",
+          course_type: getCourseType(course),
           skills: course.skills,
           skill_type: 'technical',
           target_outcomes: course.target_outcomes || [],
@@ -330,7 +335,7 @@ export const getRecommendedCoursesByType = async (assessmentResults, maxPerType 
           description: course.description,
           duration: course.duration,
           category: course.category,
-          course_type: course.course_type ?? "course",
+          course_type: getCourseType(course),
           skills: course.skills,
           skill_type: 'soft',
           target_outcomes: course.target_outcomes || [],

@@ -16,6 +16,11 @@ import { getLogger } from '@/shared/config/logging';
 const logger = getLogger('role-based-matcher');
 
 /**
+ * Get a course's type, defaulting to 'course' when the source data omits it.
+ */
+const getCourseType = (course: any) => course.course_type ?? "course";
+
+/**
  * Match courses to a specific job role using RAG.
  * 
  * @param {string} roleName - Job role name (e.g., "Junior Accountant")
@@ -82,7 +87,7 @@ export const matchCoursesForRole = async (roleName, clusterTitle = '', courses =
         description: course.description,
         duration: course.duration,
         category: course.category,
-        course_type: course.course_type ?? "course",
+        course_type: getCourseType(course),
         skills: course.skills || [],
         target_outcomes: course.target_outcomes || [],
         thumbnail: course.thumbnail,
@@ -282,7 +287,7 @@ function fallbackKeywordMatching(roleName, clusterTitle, courses, limit) {
       description: course.description,
       duration: course.duration,
       category: course.category,
-      course_type: course.course_type ?? "course",
+      course_type: getCourseType(course),
       skills: course.skills || [],
       target_outcomes: course.target_outcomes || [],
       thumbnail: course.thumbnail,
@@ -316,7 +321,7 @@ function fallbackKeywordMatching(roleName, clusterTitle, courses, limit) {
       description: course.description,
       duration: course.duration,
       category: course.category,
-      course_type: course.course_type ?? "course",
+      course_type: getCourseType(course),
       skills: course.skills || [],
       target_outcomes: course.target_outcomes || [],
       thumbnail: course.thumbnail,
