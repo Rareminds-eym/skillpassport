@@ -136,11 +136,13 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, learnerData, user }
   );
 
   const decodeXmlEntities = (value) => {
-    // Use textContent to set the raw text, then read innerHTML to decode entities
-    // This is safe because we're setting text, not HTML
+    if (typeof value !== 'string' || value.length === 0) {
+      return value;
+    }
+    
     const textarea = document.createElement('textarea');
-    textarea.textContent = value;
-    return textarea.innerHTML;
+    textarea.innerHTML = value;
+    return textarea.value;
   };
 
   const extractTextFromDOCX = async (arrayBuffer) => {
