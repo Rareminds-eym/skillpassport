@@ -1,15 +1,13 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { Award, BookOpen, CheckCircle, Clock, Lock, Play, RotateCcw, Users, X } from 'lucide-react';
+import { Award, BookOpen, CheckCircle, Clock, Loader2, Lock, Play, RotateCcw, Users, X } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useUser } from '@/shared/model/authStore';
 import { useSubscriptionQuery } from '@/features/subscription/model/useSubscriptionQuery';
 import { PLAN_IDS, PLAN_HIERARCHY_LEVELS } from '@/shared/config/subscriptionPlans';
 
-const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentProgress }) => {
+const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentProgress, isRecordingInterest = false }) => {
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
   const navigate = useNavigate();
-  const user = useUser();
   const { subscriptionData } = useSubscriptionQuery();
   const userPlan = subscriptionData?.plan || PLAN_IDS.FREEMIUM;
 
@@ -78,12 +76,14 @@ const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentP
             </p>
             <div className="flex gap-3">
               <button
+                type="button"
                 onClick={() => setShowUpgradePrompt(false)}
                 className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
               >
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={() => {
                   setShowUpgradePrompt(false);
                   onClose();
@@ -122,6 +122,7 @@ const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentP
 
             {/* Close Button */}
             <button
+              type="button"
               onClick={onClose}
               className="absolute top-4 right-4 p-2 bg-white/20 backdrop-blur-sm rounded-full hover:bg-white/30 transition-colors"
             >
@@ -313,14 +314,16 @@ const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentP
               </div>
               <div className="flex gap-3">
                 <button
+                  type="button"
                   onClick={onClose}
                   className="px-6 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
                 >
                   Close
                 </button>
                 <button
+                  type="button"
                   onClick={handleStartCourse}
-                  disabled={buttonContent.disabled}
+                  disabled={buttonContent.disabled || isRecordingInterest}
                   className={`px-6 py-2.5 rounded-lg font-medium transition-colors flex items-center gap-2 ${buttonContent.disabled
                     ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                     : isCompleted
@@ -330,7 +333,11 @@ const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentP
                         : 'bg-indigo-600 text-white hover:bg-indigo-700'
                     }`}
                 >
-                  <ButtonIcon className="w-5 h-5" />
+                  {isRecordingInterest ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <ButtonIcon className="w-5 h-5" />
+                  )}
                   {buttonContent.text}
                   {!hasAccess && !isInProgress && !isCompleted && (
                     <Lock className="w-4 h-4 ml-1" />
