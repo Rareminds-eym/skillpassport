@@ -13,7 +13,9 @@ const normalizeListItem = (item) => String(item ?? '')
 
 const collectListItems = (value, output) => {
   if (Array.isArray(value)) {
-    value.forEach((item) => collectListItems(item, output));
+    value.forEach((item) => {
+      collectListItems(item, output);
+    });
     return;
   }
 
@@ -37,7 +39,9 @@ const collectListItems = (value, output) => {
 
   const looksLikeList = trimmed.includes(',') || trimmed.includes(';') || trimmed.includes('\n');
   if (looksLikeList) {
-    trimmed.split(/[,;\n]/).forEach((item) => collectListItems(item, output));
+    trimmed.split(/[,;\n]/).forEach((item) => {
+      collectListItems(item, output);
+    });
     return;
   }
 
@@ -220,10 +224,11 @@ const AdditionalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile
 
         {/* Gap in Studies */}
         <div className="space-y-2">
-          <label className="text-sm font-semibold text-gray-700">
+          <label htmlFor="gapInStudies" className="text-sm font-semibold text-gray-700">
             Gap in Studies <span className="text-red-500">*</span>
           </label>
           <select
+            id="gapInStudies"
             value={profileData.gapInStudies}
             onChange={(e) => {
               const hasGap = e.target.value === 'true';
@@ -244,10 +249,11 @@ const AdditionalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile
         {/* Gap Years - Only show if gap in studies is true */}
         {profileData.gapInStudies && (
           <div className="space-y-2">
-            <label className="text-sm font-semibold text-gray-700">
+            <label htmlFor="gapYears" className="text-sm font-semibold text-gray-700">
               Number of Gap Years
             </label>
             <input
+              id="gapYears"
               type="number"
               min="0"
               max="10"
@@ -264,10 +270,11 @@ const AdditionalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile
         {/* Gap Reason - Only show if gap in studies is true */}
         {profileData.gapInStudies && (
           <div className="space-y-2 md:col-span-2">
-            <label className="text-sm font-semibold text-gray-700">
+            <label htmlFor="gapReason" className="text-sm font-semibold text-gray-700">
               Reason for Gap
             </label>
             <textarea
+              id="gapReason"
               value={profileData.gapReason}
               onChange={(e) =>
                 handleProfileChange("gapReason", e.target.value)
@@ -281,10 +288,11 @@ const AdditionalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile
 
         {/* Work Experience */}
         <div className="space-y-2 md:col-span-2">
-          <label className="text-sm font-semibold text-gray-700">
+          <label htmlFor="workExperience" className="text-sm font-semibold text-gray-700">
             Work Experience
           </label>
           <textarea
+            id="workExperience"
             value={profileData.workExperience}
             onChange={(e) =>
               handleProfileChange("workExperience", e.target.value)
@@ -298,10 +306,11 @@ const AdditionalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile
         {/* Current Backlogs - Hide for learners */}
         {!isLearnerUser && (
           <div className="space-y-2">
-            <label className="text-sm font-semibold text-gray-700">
+            <label htmlFor="currentBacklogs" className="text-sm font-semibold text-gray-700">
               Current Backlogs <span className="text-red-500">*</span>
             </label>
             <input
+              id="currentBacklogs"
               type="number"
               min="0"
               max="50"
@@ -318,10 +327,11 @@ const AdditionalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile
         {/* Backlogs History - Hide for learners */}
         {!isLearnerUser && (
           <div className="space-y-2">
-            <label className="text-sm font-semibold text-gray-700">
+            <label htmlFor="backlogsHistory" className="text-sm font-semibold text-gray-700">
               Backlogs History
             </label>
             <textarea
+              id="backlogsHistory"
               value={profileData.backlogsHistory}
               onChange={(e) =>
                 handleProfileChange("backlogsHistory", e.target.value)
@@ -335,11 +345,12 @@ const AdditionalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile
 
         {/* Interests */}
         <div className="space-y-2 md:col-span-2">
-          <label className="text-sm font-semibold text-gray-700">
+          <label htmlFor="newInterest" className="text-sm font-semibold text-gray-700">
             Interests
           </label>
           <div className="flex gap-2 mb-2">
             <input
+              id="newInterest"
               type="text"
               value={newInterest}
               onChange={(e) => setNewInterest(e.target.value)}
@@ -376,11 +387,12 @@ const AdditionalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile
 
         {/* Languages */}
         <div className="space-y-2 md:col-span-2">
-          <label className="text-sm font-semibold text-gray-700">
+          <label htmlFor="newLanguage" className="text-sm font-semibold text-gray-700">
             Languages
           </label>
           <div className="flex gap-2 mb-2">
             <input
+              id="newLanguage"
               type="text"
               value={newLanguage}
               onChange={(e) => setNewLanguage(e.target.value)}
@@ -417,11 +429,12 @@ const AdditionalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile
 
         {/* Hobbies */}
         <div className="space-y-2 md:col-span-2">
-          <label className="text-sm font-semibold text-gray-700">
+          <label htmlFor="newHobby" className="text-sm font-semibold text-gray-700">
             Hobbies
           </label>
           <div className="flex gap-2 mb-2">
             <input
+              id="newHobby"
               type="text"
               value={newHobby}
               onChange={(e) => setNewHobby(e.target.value)}
