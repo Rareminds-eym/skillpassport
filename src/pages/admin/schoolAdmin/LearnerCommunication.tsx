@@ -383,12 +383,16 @@ const LearnerCommunication = () => {
         } else if (newTab === 'educators' && refetchActiveEducators) {
           fetchPromise = refetchActiveEducators();
         }
-
+        let cancelled = false;
         let timer: ReturnType<typeof setTimeout> | undefined;
         fetchPromise.finally(() => {
+          if (cancelled) return;
           timer = setTimeout(() => setIsTabSwitching(false), 300);
         });
-        return () => clearTimeout(timer);
+        return () => {
+          cancelled = true;
+          clearTimeout(timer);
+        }
       } else {
         setIsTabSwitching(false);
       }
@@ -514,6 +518,7 @@ const LearnerCommunication = () => {
   const deleteMutation = useMutation({
     mutationFn: async ({ conversationId }: { conversationId: string }) => {
       if (!schoolAdminId) {
+        logger.error('Missing school admin id in delete mutation', { conversationId });
         throw new Error('Missing school admin id');
       }
       await MessageService.deleteConversationForUser(conversationId, schoolAdminId, 'school_admin');
@@ -560,13 +565,14 @@ const LearnerCommunication = () => {
   const undoMutation = useMutation({
     mutationFn: async ({ conversationId }: { conversationId: string }) => {
       if (!schoolAdminId) {
+        logger.error('Missing school admin id in undo mutation', { conversationId });
         throw new Error('Missing school admin id');
       }
       await MessageService.restoreConversation(conversationId, schoolAdminId, 'school_admin');
       return { conversationId };
     },
     onError: (error) => {
-      logger.error('Failed to restore conversation', error as Error);
+      logger.error('Failed to restore conversation', error instanceof Error ? error : new Error(String(error)));
       toast.error('Failed to restore conversation');
     },
     onSuccess: () => {
@@ -732,6 +738,7 @@ const LearnerCommunication = () => {
       type="button"
       className="font-semibold text-blue-600 hover:text-blue-800 underline cursor-pointer"
       onClick={() => {
+        if (undoMutation.isPending) return;
         undoMutation.mutate({ conversationId });
         toast.dismiss(t.id);
       }}
@@ -944,7 +951,7 @@ const LearnerCommunication = () => {
             link: `/learner/messages?tab=admin&conversation=${selectedConversationId}`
           });
         } catch (notifError) {
-          logger.warn('Failed to send notification to learner', notifError);
+          logger.warn('Failed to send notification to learner', { error: notifError instanceof Error ? notifError.message : String(notifError) });
         }
       } else {
         // Send message to educator
@@ -986,7 +993,7 @@ const LearnerCommunication = () => {
               link: `/educator/communication?tab=admin&conversation=${selectedConversationId}`
             });
           } catch (notifError) {
-            logger.warn('Failed to send notification to educator', notifError);
+            logger.warn('Failed to send notification to educator', { error: notifError instanceof Error ? notifError.message : String(notifError) });
           }
         } catch (error) {
           logger.error('Error getting educator user ID', error);
@@ -1284,7 +1291,9 @@ const LearnerCommunication = () => {
                 </div>
               ) : hasConversationError ? (
                 <div className="flex flex-col items-center justify-center h-full p-6 text-center">
-                  <p className="text-red-500 text-sm font-medium">Failed to load conversations</p>
+                  <p className="text-red-500 text-sm font-medium">
+                     Failed to load {activeTab === 'learners' ? 'learner' : 'educator'} conversations
+                  </p>
                   <button
                     type="button"
                     onClick={() => refetchConversations()}

@@ -537,12 +537,16 @@ const Communication = () => {
         } else if (newTab === 'admin' && refetchActiveAdmin) {
           fetchPromise = refetchActiveAdmin();
         }
-
+        let cancelled = false;
         let timer: ReturnType<typeof setTimeout> | undefined;
         fetchPromise.finally(() => {
+          if (cancelled) return;
           timer = setTimeout(() => setIsTabSwitching(false), 300);
         });
-        return () => clearTimeout(timer);
+        return () => {
+          cancelled = true;
+          clearTimeout(timer);
+        }
       } else {
         setIsTabSwitching(false);
       }
@@ -847,7 +851,7 @@ const Communication = () => {
       return { conversationId };
     },
     onError: (error) => {
-      logger.error('Failed to restore conversation', error as Error);
+      logger.error('Failed to restore conversation', error instanceof Error ? error : new Error(String(error)));
       toast.error('Failed to restore conversation');
     },
     onSuccess: () => {
@@ -1050,7 +1054,7 @@ const Communication = () => {
             link: `/learner/messages?tab=educators&conversation=${selectedConversationId}`
           });
         } catch (error) {
-          logger.error('Failed to send notification to learner:', error instanceof Error ? error : new Error(String(error)));
+          logger.warn('Failed to send notification to learner', { error: error instanceof Error ? error.message : String(error) });
         }
       } else {
         // Send message to school admin using adminUserId already resolved during conversation fetch
@@ -1089,7 +1093,7 @@ const Communication = () => {
             link: `/admin/school/educator-communication?conversation=${selectedConversationId}`
           });
         } catch (error) {
-          logger.error('Failed to send notification to admin:', error);
+          logger.warn('Failed to send notification to admin', { error: error instanceof Error ? error.message : String(error) });
         }
       }
 
