@@ -40,6 +40,11 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results, 
         isMountedRef.current = true;
         return () => { isMountedRef.current = false; };
     }, []);
+    // Synchronous duplicate-click guard for captureInterest. Unlike
+    // pendingCourseId (state, so its update is not visible until the next
+    // render), this ref is readable/writable immediately, closing the window
+    // where a second click could re-enter before the card visually disables.
+    const isCapturingRef = useRef(false);
     
     // RAG Course Matching State
     const [aiMatchedCourses, setAiMatchedCourses] = useState([]);
@@ -70,30 +75,37 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results, 
         const courseId = getCourseId(course);
         if (!courseId || pendingCourseId) return;
 
-        // Webinars/live events bypass interest capture entirely and open
-        // directly, exactly as all courses did before this feature was
-        // introduced. onClose() is deliberately NOT called here either -
-        // navigation happens, then the wizard unmounts with the route change.
-        if (course.course_type === 'webinar') {
-            onClose();
-            navigate(`/learner/courses/${courseId}/learn`);
-            return;
-        }
+        if (isCapturingRef.current) return;
+        isCapturingRef.current = true;
 
-        setPendingCourseId(courseId);
         try {
-            if (typeof recordCourseInterest !== 'function') {
-                throw new Error('recordCourseInterest not available');
+            // Webinars/live events bypass interest capture entirely and open
+            // directly, exactly as all courses did before this feature was
+            // introduced. onClose() is deliberately NOT called here either -
+            // navigation happens, then the wizard unmounts with the route change.
+            if (course.course_type === 'webinar') {
+                onClose();
+                navigate(`/learner/courses/${courseId}/learn`);
+                return;
             }
-            await recordCourseInterest(courseId);
-            if (!isMountedRef.current) return;
-            setShowInterestModal(true);
-        } catch (error) {
-            console.error('[CareerTrackModal] Failed to record interest:', error);
-            if (!isMountedRef.current) return;
-            toast.error('Unable to record your interest. Please try again.');
+
+            setPendingCourseId(courseId);
+            try {
+                if (typeof recordCourseInterest !== 'function') {
+                    throw new Error('recordCourseInterest not available');
+                }
+                await recordCourseInterest(courseId);
+                if (!isMountedRef.current) return;
+                setShowInterestModal(true);
+            } catch (error) {
+                console.error('[CareerTrackModal] Failed to record interest:', error);
+                if (!isMountedRef.current) return;
+                toast.error('Unable to record your interest. Please try again.');
+            } finally {
+                if (isMountedRef.current) setPendingCourseId(null);
+            }
         } finally {
-            if (isMountedRef.current) setPendingCourseId(null);
+            isCapturingRef.current = false;
         }
     };
 
@@ -1405,11 +1417,12 @@ END:VCALENDAR`;
                                                 const cardCourseId = getCourseId(course);
                                                 const isCardPending = pendingCourseId === cardCourseId;
                                                 return (
-                                                <div
-                                                    key={idx}
+                                                <button
+                                                    type="button"
+                                                    key={cardCourseId || idx}
                                                     onClick={() => handleCourseClick(course)}
-                                                    aria-disabled={isCardPending}
-                                                    className={`p-4 rounded-xl bg-white border border-gray-200 shadow-sm transition-all ${isCardPending
+                                                    disabled={isCardPending}
+                                                    className={`w-full text-left p-4 rounded-xl bg-white border border-gray-200 shadow-sm transition-all ${isCardPending
                                                         ? 'opacity-60 pointer-events-none'
                                                         : 'hover:shadow-md hover:border-blue-300 cursor-pointer'
                                                         }`}
@@ -1442,7 +1455,7 @@ END:VCALENDAR`;
                                                         <span>Start Learning</span>
                                                         <ChevronRight className="w-3 h-3 ml-1" />
                                                     </div>
-                                                </div>
+                                                </button>
                                                 );
                                             })}
                                         </div>

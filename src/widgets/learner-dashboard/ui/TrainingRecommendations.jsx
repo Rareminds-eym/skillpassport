@@ -21,6 +21,11 @@ const TrainingRecommendations = ({ recommendations }) => {
     isMountedRef.current = true;
     return () => { isMountedRef.current = false; };
   }, []);
+  // Synchronous duplicate-click guard for handleCourseClick. Unlike
+  // pendingCourseId (state, so its update is not visible until the next
+  // render), this ref is readable/writable immediately, closing the window
+  // where a second click could re-enter before the card visually disables.
+  const isCapturingRef = useRef(false);
 
   useEffect(() => {
     const fetchSavedCourses = async () => {
@@ -66,27 +71,34 @@ const TrainingRecommendations = ({ recommendations }) => {
     const courseId = course?.course_id;
     if (!courseId || pendingCourseId) return;
 
-    // Webinars/live events bypass interest capture entirely and open directly,
-    // exactly as all courses did before this feature was introduced.
-    if (course.course_type === 'webinar') {
-      navigate(`/learner/courses/${courseId}/learn`);
-      return;
-    }
+    if (isCapturingRef.current) return;
+    isCapturingRef.current = true;
 
-    setPendingCourseId(courseId);
     try {
-      if (typeof recordCourseInterest !== 'function') {
-        throw new Error('recordCourseInterest not available');
+      // Webinars/live events bypass interest capture entirely and open directly,
+      // exactly as all courses did before this feature was introduced.
+      if (course.course_type === 'webinar') {
+        navigate(`/learner/courses/${courseId}/learn`);
+        return;
       }
-      await recordCourseInterest(courseId);
-      if (!isMountedRef.current) return;
-      setShowInterestModal(true);
-    } catch (error) {
-      console.error('[TrainingRecommendations] Failed to record interest:', error);
-      if (!isMountedRef.current) return;
-      toast.error('Unable to record your interest. Please try again.');
+
+      setPendingCourseId(courseId);
+      try {
+        if (typeof recordCourseInterest !== 'function') {
+          throw new Error('recordCourseInterest not available');
+        }
+        await recordCourseInterest(courseId);
+        if (!isMountedRef.current) return;
+        setShowInterestModal(true);
+      } catch (error) {
+        console.error('[TrainingRecommendations] Failed to record interest:', error);
+        if (!isMountedRef.current) return;
+        toast.error('Unable to record your interest. Please try again.');
+      } finally {
+        if (isMountedRef.current) setPendingCourseId(null);
+      }
     } finally {
-      if (isMountedRef.current) setPendingCourseId(null);
+      isCapturingRef.current = false;
     }
   }, [pendingCourseId, navigate]);
 
@@ -121,11 +133,12 @@ const TrainingRecommendations = ({ recommendations }) => {
             const isTopPick = idx === 0;
             const isRecording = pendingCourseId === course.course_id;
             return (
-              <div
+              <button
+                type="button"
                 key={course.course_id || idx}
                 onClick={() => handleCourseClick(course)}
-                aria-disabled={isRecording}
-                className={`bg-white rounded-lg border border-gray-200 shadow-sm transition-all ${isRecording
+                disabled={isRecording}
+                className={`w-full text-left bg-white rounded-lg border border-gray-200 shadow-sm transition-all ${isRecording
                   ? 'opacity-60 pointer-events-none'
                   : 'cursor-pointer hover:shadow-md hover:border-blue-300'
                   }`}
@@ -165,7 +178,7 @@ const TrainingRecommendations = ({ recommendations }) => {
                     <ChevronRight className="w-4 h-4 text-blue-500 shrink-0" />
                   )}
                 </div>
-              </div>
+              </button>
             );
           })}
         </div>

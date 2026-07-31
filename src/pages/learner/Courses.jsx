@@ -78,6 +78,11 @@ const Courses = () => {
     isMountedRef.current = true;
     return () => { isMountedRef.current = false; };
   }, []);
+  // Synchronous duplicate-click guard for handleStartCourse. Unlike
+  // pendingCourseId (state, so its update is not visible until the next
+  // render), this ref is readable/writable immediately, closing the window
+  // where a second click could re-enter before the button visually disables.
+  const isCapturingRef = useRef(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0); // Total courses count for pagination
   const coursesPerPage = 6;
@@ -596,30 +601,37 @@ const Courses = () => {
     const courseId = course?.course_id;
     if (!courseId) return;
 
-    // Webinars/live events bypass interest capture entirely and open directly,
-    // exactly as all courses did before this feature was introduced.
-    if (course.course_type === 'webinar') {
-      setShowDetailModal(false);
-      navigate(`/learner/courses/${courseId}/learn`);
-      return;
-    }
+    if (isCapturingRef.current) return;
+    isCapturingRef.current = true;
 
-    setPendingCourseId(courseId);
     try {
-      if (typeof recordCourseInterest !== 'function') {
-        throw new Error('recordCourseInterest not available');
+      // Webinars/live events bypass interest capture entirely and open directly,
+      // exactly as all courses did before this feature was introduced.
+      if (course.course_type === 'webinar') {
+        setShowDetailModal(false);
+        navigate(`/learner/courses/${courseId}/learn`);
+        return;
       }
-      await recordCourseInterest(courseId);
-      if (!isMountedRef.current) return;
-      // The detail modal stays open behind the confirmation - closing it here
-      // would unmount the control still showing its pending state. It is closed
-      // when the learner dismisses the confirmation.
-      setShowInterestModal(true);
-    } catch {
-      if (!isMountedRef.current) return;
-      toast.error('Unable to record your interest. Please try again.');
+
+      setPendingCourseId(courseId);
+      try {
+        if (typeof recordCourseInterest !== 'function') {
+          throw new Error('recordCourseInterest not available');
+        }
+        await recordCourseInterest(courseId);
+        if (!isMountedRef.current) return;
+        // The detail modal stays open behind the confirmation - closing it here
+        // would unmount the control still showing its pending state. It is closed
+        // when the learner dismisses the confirmation.
+        setShowInterestModal(true);
+      } catch {
+        if (!isMountedRef.current) return;
+        toast.error('Unable to record your interest. Please try again.');
+      } finally {
+        if (isMountedRef.current) setPendingCourseId(null);
+      }
     } finally {
-      if (isMountedRef.current) setPendingCourseId(null);
+      isCapturingRef.current = false;
     }
   };
 
