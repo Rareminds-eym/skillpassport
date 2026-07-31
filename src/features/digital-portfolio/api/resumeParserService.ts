@@ -1,9 +1,9 @@
-import { apiPost } from '@/shared/api/apiClient';
 /**
  * Resume Parser Service
  * Handles parsing resumes using Claude AI
  */
 
+import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('resume-parser');
@@ -48,18 +48,18 @@ type ResumeParsedData = {
   [key: string]: unknown;
 };
 
-export const parseResumeWithAI = async (resumeText) => {
+export const parseResumeWithAI = async (resumeText: string) => {
   try {
     // Call backend API directly
     try {
       const result = await parseWithClaude(resumeText);
 
       const hasData = result && (
-        result.education?.length > 0 ||
-        result.experience?.length > 0 ||
-        result.technicalSkills?.length > 0 ||
-        result.softSkills?.length > 0 ||
-        result.projects?.length > 0
+        (result.education?.length ?? 0) > 0 ||
+        (result.experience?.length ?? 0) > 0 ||
+        (result.technicalSkills?.length ?? 0) > 0 ||
+        (result.softSkills?.length ?? 0) > 0 ||
+        (result.projects?.length ?? 0) > 0
       );
 
       if (!hasData) {
@@ -69,11 +69,11 @@ export const parseResumeWithAI = async (resumeText) => {
 
       return result;
     } catch (aiError) {
-      logger.error('AI parsing failed', aiError);
+      logger.error('AI parsing failed', aiError instanceof Error ? aiError : new Error(String(aiError)));
       return parseFallback(resumeText);
     }
   } catch (error) {
-    logger.error('Error parsing resume', error);
+    logger.error('Error parsing resume', error instanceof Error ? error : new Error(String(error)));
     throw error;
   }
 };
@@ -84,7 +84,7 @@ export const parseResumeWithAI = async (resumeText) => {
 /**
  * Parse resume using Career API (Cloudflare Worker)
  */
-const parseWithClaude = async (resumeText) => {
+const parseWithClaude = async (resumeText: string) => {
   try {
     const result = await apiPost<ResumeParserApiResponse>('/career/parse-resume', { resumeText });
 
@@ -94,9 +94,9 @@ const parseWithClaude = async (resumeText) => {
 
     logger.info('Resume parsing successful via backend');
 
-    const parsedData = 'data' in result.data && result.data.data
+    const parsedData = ('data' in result.data && result.data.data
       ? result.data.data
-      : result.data;
+      : result.data) as ResumeParsedData;
 
     if (parsedData.name && parsedData.name.length > 100) {
       parsedData.name = extractNameFromText(parsedData.name);
@@ -104,7 +104,7 @@ const parseWithClaude = async (resumeText) => {
 
     return addMetadata(parsedData);
   } catch (error) {
-    logger.error('Backend parsing failed', error);
+    logger.error('Backend parsing failed', error instanceof Error ? error : new Error(String(error)));
     throw error;
   }
 };
@@ -112,7 +112,7 @@ const parseWithClaude = async (resumeText) => {
 /**
  * Extract name from text (fallback for bad AI responses)
  */
-const extractNameFromText = (text) => {
+const extractNameFromText = (text: string) => {
   const lines = text.split('\n');
   for (const line of lines.slice(0, 5)) {
     const trimmed = line.trim();
@@ -129,11 +129,11 @@ const extractNameFromText = (text) => {
 /**
  * Add metadata to parsed data
  */
-const addMetadata = (data) => {
+const addMetadata = (data: ResumeParsedData): ResumeParsedData => {
   const timestamp = Date.now();
 
-  const addIds = (arr, prefix) => {
-    return (arr || []).map((item, idx) => ({
+  const addIds = (arr: Array<Record<string, unknown>> | undefined, prefix: string) => {
+    return (arr || []).map((item: Record<string, unknown>, idx: number) => ({
       ...item,
       id: item.id || `${prefix}_${timestamp}_${idx + 1}`
     }));
@@ -155,7 +155,7 @@ const addMetadata = (data) => {
 /**
  * Fallback parser using regex patterns
  */
-const parseFallback = (resumeText) => {
+const parseFallback = (resumeText: string) => {
   const result = {
     name: '',
     email: '',
@@ -182,7 +182,7 @@ const parseFallback = (resumeText) => {
   result.contact_number = phoneMatch?.[0]?.replace(/\s+/g, ' ').trim() || '';
 
   // Extract name from first few lines
-  const lines = resumeText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+  const lines = resumeText.split('\n').map((l: string) => l.trim()).filter((l: string) => l.length > 0);
   for (const line of lines.slice(0, 5)) {
     if (line.length > 2 && line.length < 50 && !line.includes('@') && !/\d{10}/.test(line)) {
       const words = line.split(/\s+/);
@@ -196,9 +196,11 @@ const parseFallback = (resumeText) => {
   return addMetadata(result);
 };
 
-const collectStringItems = (value, output) => {
+const collectStringItems = (value: unknown, output: unknown[]): void => {
   if (Array.isArray(value)) {
-    value.forEach(item => collectStringItems(item, output));
+    value.forEach(item => {
+      collectStringItems(item, output);
+    });
     return;
   }
 
@@ -221,20 +223,22 @@ const collectStringItems = (value, output) => {
   }
 
   if (trimmed.includes(',') || trimmed.includes(';') || trimmed.includes('\n')) {
-    trimmed.split(/[,;\n]/).forEach(item => collectStringItems(item, output));
+    trimmed.split(/[,;\n]/).forEach(item => {
+      collectStringItems(item, output);
+    });
     return;
   }
 
   output.push(trimmed);
 };
 
-const normalizeStringArray = (value) => {
-  const seen = new Set();
-  const items = [];
-  const rawItems = [];
+const normalizeStringArray = (value: unknown): string[] => {
+  const seen = new Set<string>();
+  const items: string[] = [];
+  const rawItems: unknown[] = [];
 
   collectStringItems(value, rawItems);
-  rawItems.forEach(item => {
+  rawItems.forEach((item: unknown) => {
     const normalized = String(item ?? '')
       .trim()
       .replace(/\\"/g, '"')
@@ -251,11 +255,9 @@ const normalizeStringArray = (value) => {
 
 /**
  * Merge parsed resume data with existing profile data
- * @param {Object} existingData - Current profile data
- * @param {Object} parsedData - Newly parsed resume data
- * @returns {Object} Merged data with parsed data taking precedence for empty fields
  */
-export const mergeResumeData = (existingData, parsedData) => {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const mergeResumeData = (existingData: any, parsedData: any) => {
   if (!parsedData) return existingData;
   if (!existingData) return parsedData;
 
@@ -321,8 +323,10 @@ export const mergeResumeData = (existingData, parsedData) => {
 
     if (parsed.length > 0) {
       // Simple deduplication by checking if item already exists
-      const newItems = parsed.filter(newItem => {
-        return !existing.some(existingItem => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const newItems = parsed.filter((newItem: any) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return !existing.some((existingItem: any) => {
           // Check by title/name/degree depending on field type
           if (field === 'education') {
             return existingItem.degree === newItem.degree && existingItem.university === newItem.university;
