@@ -2,14 +2,12 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Award, BookOpen, CheckCircle, Clock, Loader2, Lock, Play, RotateCcw, Users, X } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useUser } from '@/shared/model/authStore';
 import { useSubscriptionQuery } from '@/features/subscription/model/useSubscriptionQuery';
 import { PLAN_IDS, PLAN_HIERARCHY_LEVELS } from '@/shared/config/subscriptionPlans';
 
 const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentProgress, isRecordingInterest = false }) => {
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
   const navigate = useNavigate();
-  const user = useUser();
   const { subscriptionData } = useSubscriptionQuery();
   const userPlan = subscriptionData?.plan || PLAN_IDS.FREEMIUM;
 

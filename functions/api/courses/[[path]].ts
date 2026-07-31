@@ -1,5 +1,6 @@
 import { withAuth, getContextUser, getServiceClient } from '../../lib/auth';
 import { apiSuccess, apiError, apiDbError, apiNotFound } from '../../lib/response';
+import { isValidUUID } from '../../lib/validation';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 
 function parseBody(request: Request): Promise<any> {
@@ -510,6 +511,10 @@ async function handler(context: AuthenticatedContext): Promise<Response> {
   if (path === '/interests' && method === 'POST') {
     const { courseId } = await parseBody(request);
     if (!courseId) return apiError(400, 'VALIDATION_ERROR', 'courseId required', request);
+    // Fail fast on malformed input before querying - Postgres remains the
+    // final line of defense for referential validity (the course-existence
+    // check below).
+    if (!isValidUUID(courseId)) return apiError(400, 'INVALID_INPUT', 'courseId must be a valid UUID', request);
 
     // user.id is the SSO subject claim, which matches learners.user_id - the
     // foreign key target. Confirm the learner profile exists so a missing one
