@@ -1,26 +1,65 @@
-import { useAuthStore } from '@/shared/model/authStore';
-import { ssoClient } from '@/shared/api/ssoClient';
 /**
  * Resume Parser Service
  * Handles parsing resumes using Claude AI
  */
 
+import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('resume-parser');
 
-export const parseResumeWithAI = async (resumeText) => {
+type ResumeParserApiResponse = {
+  success: boolean;
+  data?: ResumeParsedData | { data?: ResumeParsedData };
+};
+
+type ResumeParsedData = {
+  name?: string;
+  email?: string;
+  contact_number?: string;
+  alternate_number?: string;
+  date_of_birth?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  pincode?: string;
+  college_school_name?: string;
+  university?: string;
+  branch_field?: string;
+  registration_number?: string;
+  bio?: string;
+  linkedin_link?: string;
+  github_link?: string;
+  portfolio_link?: string;
+  twitter_link?: string;
+  facebook_link?: string;
+  instagram_link?: string;
+  interests?: string[] | string;
+  languages?: string[] | string;
+  hobbies?: string[] | string;
+  education?: Array<Record<string, unknown>>;
+  experience?: Array<Record<string, unknown>>;
+  projects?: Array<Record<string, unknown>>;
+  technicalSkills?: Array<Record<string, unknown>>;
+  softSkills?: Array<Record<string, unknown>>;
+  certificates?: Array<Record<string, unknown>>;
+  training?: Array<Record<string, unknown>>;
+  [key: string]: unknown;
+};
+
+export const parseResumeWithAI = async (resumeText: string) => {
   try {
     // Call backend API directly
     try {
       const result = await parseWithClaude(resumeText);
 
       const hasData = result && (
-        result.education?.length > 0 ||
-        result.experience?.length > 0 ||
-        result.technicalSkills?.length > 0 ||
-        result.softSkills?.length > 0 ||
-        result.projects?.length > 0
+        (result.education?.length ?? 0) > 0 ||
+        (result.experience?.length ?? 0) > 0 ||
+        (result.technicalSkills?.length ?? 0) > 0 ||
+        (result.softSkills?.length ?? 0) > 0 ||
+        (result.projects?.length ?? 0) > 0
       );
 
       if (!hasData) {
@@ -30,11 +69,11 @@ export const parseResumeWithAI = async (resumeText) => {
 
       return result;
     } catch (aiError) {
-      logger.error('AI parsing failed', aiError);
+      logger.error('AI parsing failed', aiError instanceof Error ? aiError : new Error(String(aiError)));
       return parseFallback(resumeText);
     }
   } catch (error) {
-    logger.error('Error parsing resume', error);
+    logger.error('Error parsing resume', error instanceof Error ? error : new Error(String(error)));
     throw error;
   }
 };
@@ -45,32 +84,9 @@ export const parseResumeWithAI = async (resumeText) => {
 /**
  * Parse resume using Career API (Cloudflare Worker)
  */
-const parseWithClaude = async (resumeText) => {
+const parseWithClaude = async (resumeText: string) => {
   try {
-    const { getApiUrl } = await import('@/shared/api/apiUtils');
-    const API_URL = getApiUrl('career');
-
-    const user = useAuthStore.getState().user;
-    const token = ssoClient.getAccessToken();
-
-    if (!token) {
-      throw new Error('Authentication required for resume parsing');
-    }
-
-    const response = await ssoClient.fetch(`${API_URL}/parse-resume`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        },
-      body: JSON.stringify({ resumeText })
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `Server error: ${response.status}`);
-    }
-
-    const result = await response.json();
+    const result = await apiPost<ResumeParserApiResponse>('/career/parse-resume', { resumeText });
 
     if (!result.success || !result.data) {
       throw new Error('Invalid response from server');
@@ -78,7 +94,9 @@ const parseWithClaude = async (resumeText) => {
 
     logger.info('Resume parsing successful via backend');
 
-    let parsedData = result.data;
+    const parsedData = ('data' in result.data && result.data.data
+      ? result.data.data
+      : result.data) as ResumeParsedData;
 
     if (parsedData.name && parsedData.name.length > 100) {
       parsedData.name = extractNameFromText(parsedData.name);
@@ -86,7 +104,7 @@ const parseWithClaude = async (resumeText) => {
 
     return addMetadata(parsedData);
   } catch (error) {
-    logger.error('Backend parsing failed', error);
+    logger.error('Backend parsing failed', error instanceof Error ? error : new Error(String(error)));
     throw error;
   }
 };
@@ -94,7 +112,7 @@ const parseWithClaude = async (resumeText) => {
 /**
  * Extract name from text (fallback for bad AI responses)
  */
-const extractNameFromText = (text) => {
+const extractNameFromText = (text: string) => {
   const lines = text.split('\n');
   for (const line of lines.slice(0, 5)) {
     const trimmed = line.trim();
@@ -111,11 +129,11 @@ const extractNameFromText = (text) => {
 /**
  * Add metadata to parsed data
  */
-const addMetadata = (data) => {
+const addMetadata = (data: ResumeParsedData): ResumeParsedData => {
   const timestamp = Date.now();
 
-  const addIds = (arr, prefix) => {
-    return (arr || []).map((item, idx) => ({
+  const addIds = (arr: Array<Record<string, unknown>> | undefined, prefix: string) => {
+    return (arr || []).map((item: Record<string, unknown>, idx: number) => ({
       ...item,
       id: item.id || `${prefix}_${timestamp}_${idx + 1}`
     }));
@@ -137,7 +155,7 @@ const addMetadata = (data) => {
 /**
  * Fallback parser using regex patterns
  */
-const parseFallback = (resumeText) => {
+const parseFallback = (resumeText: string) => {
   const result = {
     name: '',
     email: '',
@@ -164,7 +182,7 @@ const parseFallback = (resumeText) => {
   result.contact_number = phoneMatch?.[0]?.replace(/\s+/g, ' ').trim() || '';
 
   // Extract name from first few lines
-  const lines = resumeText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+  const lines = resumeText.split('\n').map((l: string) => l.trim()).filter((l: string) => l.length > 0);
   for (const line of lines.slice(0, 5)) {
     if (line.length > 2 && line.length < 50 && !line.includes('@') && !/\d{10}/.test(line)) {
       const words = line.split(/\s+/);
@@ -178,23 +196,122 @@ const parseFallback = (resumeText) => {
   return addMetadata(result);
 };
 
+const collectStringItems = (value: unknown, output: unknown[]): void => {
+  if (Array.isArray(value)) {
+    value.forEach(item => {
+      collectStringItems(item, output);
+    });
+    return;
+  }
+
+  if (typeof value !== 'string') {
+    if (value !== null && value !== undefined) output.push(value);
+    return;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) return;
+
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (parsed !== value) {
+      collectStringItems(parsed, output);
+      return;
+    }
+  } catch {
+    // Non-JSON text is handled below.
+  }
+
+  if (trimmed.includes(',') || trimmed.includes(';') || trimmed.includes('\n')) {
+    trimmed.split(/[,;\n]/).forEach(item => {
+      collectStringItems(item, output);
+    });
+    return;
+  }
+
+  output.push(trimmed);
+};
+
+const normalizeStringArray = (value: unknown): string[] => {
+  const seen = new Set<string>();
+  const items: string[] = [];
+  const rawItems: unknown[] = [];
+
+  collectStringItems(value, rawItems);
+  rawItems.forEach((item: unknown) => {
+    const normalized = String(item ?? '')
+      .trim()
+      .replace(/\\"/g, '"')
+      .replace(/^[\s"'[\]]+|[\s"'[\]]+$/g, '')
+      .replace(/\s+/g, ' ');
+    const key = normalized.toLowerCase();
+    if (!normalized || normalized === '[]' || normalized === '{}' || seen.has(key)) return;
+    seen.add(key);
+    items.push(normalized);
+  });
+
+  return items;
+};
+
 /**
  * Merge parsed resume data with existing profile data
- * @param {Object} existingData - Current profile data
- * @param {Object} parsedData - Newly parsed resume data
- * @returns {Object} Merged data with parsed data taking precedence for empty fields
  */
-export const mergeResumeData = (existingData, parsedData) => {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const mergeResumeData = (existingData: any, parsedData: any) => {
   if (!parsedData) return existingData;
   if (!existingData) return parsedData;
 
   const merged = { ...existingData };
 
   // Merge simple string fields (only if existing is empty)
-  const stringFields = ['name', 'email', 'contact_number', 'college_school_name', 'university', 'branch_field'];
+  const stringFields = [
+    'name',
+    'email',
+    'phone',
+    'contact_number',
+    'alternatePhone',
+    'alternate_number',
+    'dateOfBirth',
+    'date_of_birth',
+    'college_school_name',
+    'university',
+    'branch_field',
+    'registrationNumber',
+    'registration_number',
+    'address',
+    'location',
+    'city',
+    'state',
+    'country',
+    'pincode',
+    'bio',
+    'linkedIn',
+    'linkedin_link',
+    'github',
+    'github_link',
+    'portfolio',
+    'portfolio_link',
+    'twitter',
+    'twitter_link',
+    'facebook',
+    'facebook_link',
+    'instagram',
+    'instagram_link'
+  ];
   stringFields.forEach(field => {
     if (parsedData[field] && (!existingData[field] || existingData[field].trim() === '')) {
       merged[field] = parsedData[field];
+    }
+  });
+
+  ['interests', 'languages', 'hobbies'].forEach(field => {
+    const existing = normalizeStringArray(existingData[field]);
+    const parsed = normalizeStringArray(parsedData[field]);
+    const existingKeys = new Set(existing.map(item => item.toLowerCase()));
+    const newItems = parsed.filter(item => !existingKeys.has(item.toLowerCase()));
+
+    if (existing.length || newItems.length) {
+      merged[field] = [...existing, ...newItems];
     }
   });
 
@@ -206,8 +323,10 @@ export const mergeResumeData = (existingData, parsedData) => {
 
     if (parsed.length > 0) {
       // Simple deduplication by checking if item already exists
-      const newItems = parsed.filter(newItem => {
-        return !existing.some(existingItem => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const newItems = parsed.filter((newItem: any) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return !existing.some((existingItem: any) => {
           // Check by title/name/degree depending on field type
           if (field === 'education') {
             return existingItem.degree === newItem.degree && existingItem.university === newItem.university;

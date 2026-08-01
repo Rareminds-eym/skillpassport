@@ -1,9 +1,84 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { FileText, Save, AlertCircle, Plus, X } from "lucide-react";
 import { Button } from '@/shared/ui/ButtonNew';
 import { useFormValidation } from '@/shared/lib/hooks';
 import FormField from "../FormField";
 import { isLearner } from '@/entities/learner/lib/learnerType';
+
+const normalizeListItem = (item) => String(item ?? '')
+  .trim()
+  .replace(/\\"/g, '"')
+  .replace(/^[\s"'[\]]+|[\s"'[\]]+$/g, '')
+  .replace(/\s+/g, ' ');
+
+const collectListItems = (value, output) => {
+  if (Array.isArray(value)) {
+    value.forEach((item) => {
+      collectListItems(item, output);
+    });
+    return;
+  }
+
+  if (typeof value !== 'string') {
+    if (value !== null && value !== undefined) output.push(value);
+    return;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) return;
+
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (parsed !== value) {
+      collectListItems(parsed, output);
+      return;
+    }
+  } catch {
+    // Treat non-JSON text as a normal list item below.
+  }
+
+  const looksLikeList = trimmed.includes(',') || trimmed.includes(';') || trimmed.includes('\n');
+  if (looksLikeList) {
+    trimmed.split(/[,;\n]/).forEach((item) => {
+      collectListItems(item, output);
+    });
+    return;
+  }
+
+  output.push(trimmed);
+};
+
+const cleanList = (items) => {
+  const seen = new Set();
+  const cleaned = [];
+  const flattened = [];
+
+  collectListItems(items, flattened);
+
+  flattened.forEach((item) => {
+    const normalized = normalizeListItem(item);
+    const key = normalized.toLowerCase();
+    if (!normalized || normalized === '[]' || normalized === '{}') return;
+    if (seen.has(key)) return;
+    seen.add(key);
+    cleaned.push(normalized);
+  });
+
+  return cleaned;
+};
+
+const parseJsonField = (field) => {
+  try {
+    const parsed = Array.isArray(field)
+      ? field
+      : (typeof field === 'string' && field
+        ? JSON.parse(field)
+        : []);
+    return cleanList(parsed);
+  } catch {
+    return [];
+  }
+};
 
 const AdditionalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile, isSaving }) => {
   const {
@@ -16,17 +91,10 @@ const AdditionalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile
   // Check if user is a learner
   const isLearnerUser = isLearner(profileData);
 
-  // Helper function to parse JSON fields
-  const parseJsonField = (field) => {
-    try {
-      return Array.isArray(field) 
-        ? field 
-        : (typeof field === 'string' && field 
-          ? JSON.parse(field) 
-          : []);
-    } catch {
-      return [];
-    }
+  const updateListField = (field, setter, values) => {
+    const cleaned = cleanList(values);
+    setter(cleaned);
+    handleProfileChange(field, JSON.stringify(cleaned));
   };
 
   // Parse JSON fields or initialize as empty arrays
@@ -38,12 +106,35 @@ const AdditionalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile
   const [newLanguage, setNewLanguage] = useState("");
   const [newHobby, setNewHobby] = useState("");
 
+  // Memoize the sync function to avoid unnecessary re-renders
+  const syncProfileData = useCallback(() => {
+    const cleanedInterests = parseJsonField(profileData.interests);
+    const cleanedLanguages = parseJsonField(profileData.languages);
+    const cleanedHobbies = parseJsonField(profileData.hobbies);
+
+    setInterests(cleanedInterests);
+    setLanguages(cleanedLanguages);
+    setHobbies(cleanedHobbies);
+
+    [
+      ['interests', profileData.interests, cleanedInterests],
+      ['languages', profileData.languages, cleanedLanguages],
+      ['hobbies', profileData.hobbies, cleanedHobbies]
+    ].forEach(([field, currentValue, cleanedValue]) => {
+      const currentJson = typeof currentValue === 'string'
+        ? currentValue
+        : JSON.stringify(currentValue || []);
+      const cleanedJson = JSON.stringify(cleanedValue);
+      if (currentJson !== cleanedJson) {
+        handleProfileChange(field, cleanedJson);
+      }
+    });
+  }, [profileData.interests, profileData.languages, profileData.hobbies, handleProfileChange]);
+
   // Sync state with profileData when it changes (e.g., after refresh)
   useEffect(() => {
-    setInterests(parseJsonField(profileData.interests));
-    setLanguages(parseJsonField(profileData.languages));
-    setHobbies(parseJsonField(profileData.hobbies));
-  }, [profileData.interests, profileData.languages, profileData.hobbies]);
+    syncProfileData();
+  }, [syncProfileData]);
 
   const handleFieldChange = (field, value) => {
     handleProfileChange(field, value);
@@ -58,49 +149,40 @@ const AdditionalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile
   // Handlers for interests
   const addInterest = () => {
     if (newInterest.trim()) {
-      const updated = [...interests, newInterest.trim()];
-      setInterests(updated);
-      handleProfileChange("interests", JSON.stringify(updated));
+      updateListField("interests", setInterests, [...interests, newInterest]);
       setNewInterest("");
     }
   };
 
   const removeInterest = (index) => {
     const updated = interests.filter((_, i) => i !== index);
-    setInterests(updated);
-    handleProfileChange("interests", JSON.stringify(updated));
+    updateListField("interests", setInterests, updated);
   };
 
   // Handlers for languages
   const addLanguage = () => {
     if (newLanguage.trim()) {
-      const updated = [...languages, newLanguage.trim()];
-      setLanguages(updated);
-      handleProfileChange("languages", JSON.stringify(updated));
+      updateListField("languages", setLanguages, [...languages, newLanguage]);
       setNewLanguage("");
     }
   };
 
   const removeLanguage = (index) => {
     const updated = languages.filter((_, i) => i !== index);
-    setLanguages(updated);
-    handleProfileChange("languages", JSON.stringify(updated));
+    updateListField("languages", setLanguages, updated);
   };
 
   // Handlers for hobbies
   const addHobby = () => {
     if (newHobby.trim()) {
-      const updated = [...hobbies, newHobby.trim()];
-      setHobbies(updated);
-      handleProfileChange("hobbies", JSON.stringify(updated));
+      updateListField("hobbies", setHobbies, [...hobbies, newHobby]);
       setNewHobby("");
     }
   };
 
   const removeHobby = (index) => {
     const updated = hobbies.filter((_, i) => i !== index);
-    setHobbies(updated);
-    handleProfileChange("hobbies", JSON.stringify(updated));
+    updateListField("hobbies", setHobbies, updated);
   };
 
   const handleSaveWithValidation = async () => {
@@ -142,10 +224,11 @@ const AdditionalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile
 
         {/* Gap in Studies */}
         <div className="space-y-2">
-          <label className="text-sm font-semibold text-gray-700">
+          <label htmlFor="gapInStudies" className="text-sm font-semibold text-gray-700">
             Gap in Studies <span className="text-red-500">*</span>
           </label>
           <select
+            id="gapInStudies"
             value={profileData.gapInStudies}
             onChange={(e) => {
               const hasGap = e.target.value === 'true';
@@ -166,10 +249,11 @@ const AdditionalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile
         {/* Gap Years - Only show if gap in studies is true */}
         {profileData.gapInStudies && (
           <div className="space-y-2">
-            <label className="text-sm font-semibold text-gray-700">
+            <label htmlFor="gapYears" className="text-sm font-semibold text-gray-700">
               Number of Gap Years
             </label>
             <input
+              id="gapYears"
               type="number"
               min="0"
               max="10"
@@ -186,10 +270,11 @@ const AdditionalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile
         {/* Gap Reason - Only show if gap in studies is true */}
         {profileData.gapInStudies && (
           <div className="space-y-2 md:col-span-2">
-            <label className="text-sm font-semibold text-gray-700">
+            <label htmlFor="gapReason" className="text-sm font-semibold text-gray-700">
               Reason for Gap
             </label>
             <textarea
+              id="gapReason"
               value={profileData.gapReason}
               onChange={(e) =>
                 handleProfileChange("gapReason", e.target.value)
@@ -203,10 +288,11 @@ const AdditionalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile
 
         {/* Work Experience */}
         <div className="space-y-2 md:col-span-2">
-          <label className="text-sm font-semibold text-gray-700">
+          <label htmlFor="workExperience" className="text-sm font-semibold text-gray-700">
             Work Experience
           </label>
           <textarea
+            id="workExperience"
             value={profileData.workExperience}
             onChange={(e) =>
               handleProfileChange("workExperience", e.target.value)
@@ -220,10 +306,11 @@ const AdditionalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile
         {/* Current Backlogs - Hide for learners */}
         {!isLearnerUser && (
           <div className="space-y-2">
-            <label className="text-sm font-semibold text-gray-700">
+            <label htmlFor="currentBacklogs" className="text-sm font-semibold text-gray-700">
               Current Backlogs <span className="text-red-500">*</span>
             </label>
             <input
+              id="currentBacklogs"
               type="number"
               min="0"
               max="50"
@@ -240,10 +327,11 @@ const AdditionalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile
         {/* Backlogs History - Hide for learners */}
         {!isLearnerUser && (
           <div className="space-y-2">
-            <label className="text-sm font-semibold text-gray-700">
+            <label htmlFor="backlogsHistory" className="text-sm font-semibold text-gray-700">
               Backlogs History
             </label>
             <textarea
+              id="backlogsHistory"
               value={profileData.backlogsHistory}
               onChange={(e) =>
                 handleProfileChange("backlogsHistory", e.target.value)
@@ -257,11 +345,12 @@ const AdditionalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile
 
         {/* Interests */}
         <div className="space-y-2 md:col-span-2">
-          <label className="text-sm font-semibold text-gray-700">
+          <label htmlFor="newInterest" className="text-sm font-semibold text-gray-700">
             Interests
           </label>
           <div className="flex gap-2 mb-2">
             <input
+              id="newInterest"
               type="text"
               value={newInterest}
               onChange={(e) => setNewInterest(e.target.value)}
@@ -298,11 +387,12 @@ const AdditionalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile
 
         {/* Languages */}
         <div className="space-y-2 md:col-span-2">
-          <label className="text-sm font-semibold text-gray-700">
+          <label htmlFor="newLanguage" className="text-sm font-semibold text-gray-700">
             Languages
           </label>
           <div className="flex gap-2 mb-2">
             <input
+              id="newLanguage"
               type="text"
               value={newLanguage}
               onChange={(e) => setNewLanguage(e.target.value)}
@@ -339,11 +429,12 @@ const AdditionalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile
 
         {/* Hobbies */}
         <div className="space-y-2 md:col-span-2">
-          <label className="text-sm font-semibold text-gray-700">
+          <label htmlFor="newHobby" className="text-sm font-semibold text-gray-700">
             Hobbies
           </label>
           <div className="flex gap-2 mb-2">
             <input
+              id="newHobby"
               type="text"
               value={newHobby}
               onChange={(e) => setNewHobby(e.target.value)}
