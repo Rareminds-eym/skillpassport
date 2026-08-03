@@ -167,12 +167,39 @@ export class SyncService {
     if (metadata.website !== undefined) updatePayload.website = metadata.website;
     if (metadata.established_year !== undefined) updatePayload.established_year = metadata.established_year;
 
+    // Keep the admin_id column in sync — SSO metadata carries admin_id/created_by
+    // (e.g. the organization-setup update path), but it was previously dropped here,
+    // leaving getOrganizationByAdminId unable to find signup-created orgs.
+    if (metadata.admin_id !== undefined) {
+      updatePayload.admin_id = metadata.admin_id;
+    } else if (metadata.created_by !== undefined) {
+      updatePayload.admin_id = metadata.created_by;
+    }
+
+    // Mirror the full metadata so JSONB lookups (metadata->admin_id) work too.
+    updatePayload.metadata = metadata;
+
     updatePayload.updated_at = new Date().toISOString();
 
-    const { error } = await this.db.from('organizations')
+    // Update the local row if it exists...
+    const { data: updatedRows, error } = await this.db.from('organizations')
       .update(updatePayload)
-      .eq('id', parsed.id);
+      .eq('id', parsed.id)
+      .select('id');
     if (error) return fail('DB_ERROR', error.message, true);
+
+    // ...otherwise create it. A plain UPDATE on a missing row is a silent
+    // no-op (no error), which previously left org lookups (admin_id /
+    // metadata) permanently broken — e.g. after a local DB reset or a lost
+    // organization.created event.
+    if (!updatedRows || updatedRows.length === 0) {
+      if (updatePayload.name === undefined) {
+        return fail('VALIDATION_ERROR', 'Cannot create missing org: name unavailable in event', false);
+      }
+      const { error: insertError } = await this.db.from('organizations')
+        .upsert({ id: parsed.id, ...updatePayload }, { onConflict: 'id' });
+      if (insertError) return fail('DB_ERROR', insertError.message, true);
+    }
     return ok();
   }
 

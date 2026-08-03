@@ -734,6 +734,37 @@ async function getOrganizationByAdminIdHandler(context: AuthenticatedContext) {
       // Continue to return null instead of failing
     }
     
+    // Final fallback: the authenticated user's JWT carries org_id (source of
+    // truth set at signup/switch-org). Covers orgs whose local row predates the
+    // queue-sync or whose admin_id/metadata were never populated. Auto-fix the
+    // admin_id column so subsequent lookups hit the fast path.
+    try {
+      const authUser = getContextUser(context);
+      if (authUser.org_id) {
+        let orgQuery = supabase.from('organizations').select('*').eq('id', authUser.org_id);
+        if (orgType) orgQuery = orgQuery.eq('organization_type', orgType);
+
+        const { data: orgById, error: orgByIdError } = await orgQuery.maybeSingle();
+
+        if (!orgByIdError && orgById) {
+          console.log(`[organization] Found org ${orgById.id} via JWT org_id, fixing admin_id column`);
+
+          const { error: updateError } = await supabase
+            .from('organizations')
+            .update({ admin_id: adminId })
+            .eq('id', orgById.id);
+
+          if (updateError) {
+            console.error(`[organization] Failed to update admin_id column:`, updateError);
+          }
+
+          return apiSuccess(orgById, context.request);
+        }
+      }
+    } catch (orgByIdErr) {
+      console.error(`[organization] JWT org_id lookup exception:`, orgByIdErr);
+    }
+    
     // Not found in either location
     return apiSuccess(null, context.request);
   } catch (err) {
