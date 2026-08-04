@@ -520,14 +520,6 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
           </span>
         </div>
       )}
-      {(effectiveDisabled || hardPromoDisabled) && (
-        <div className="absolute -top-4 right-6 z-10">
-          <span className="bg-slate-200 text-slate-600 px-4 py-2 rounded-full text-xs font-bold shadow-lg">
-            Not available
-          </span>
-        </div>
-      )}
-
       <div className="p-8 flex flex-col h-full">
         {/* Header */}
         <div className="mb-6 pt-2">
