@@ -48,6 +48,7 @@ export function useSubscriptionPlansData(options = {}) {
     businessType = 'b2b',
     entityType = 'all',
     roleType = 'all',
+    referralCode = '',
   } = options;
 
   // null  = not yet loaded (show full-page spinner)
@@ -59,8 +60,8 @@ export function useSubscriptionPlansData(options = {}) {
 
   // Stable fetch params so the effect only re-runs when they actually change
   const fetchParams = useMemo(
-    () => ({ businessType, entityType, roleType }),
-    [businessType, entityType, roleType]
+    () => ({ businessType, entityType, roleType, referralCode }),
+    [businessType, entityType, roleType, referralCode]
   );
 
   // Guard against setting state on unmounted component
@@ -85,6 +86,10 @@ export function useSubscriptionPlansData(options = {}) {
         roleType: fetchParams.roleType,
         // Fetch ALL features — no artificial limit
       });
+
+      if (fetchParams.referralCode) {
+        params.set('referralCode', fetchParams.referralCode);
+      }
 
       const url = `${getBaseUrl()}/subscription-plans?${params}`;
 
@@ -132,7 +137,6 @@ export function useSubscriptionPlansData(options = {}) {
   const hasFetchedInitial = useRef(false);
 
   useEffect(() => {
-    if (hasFetchedInitial.current) return;
     hasFetchedInitial.current = true;
     fetchPlans();
   }, [fetchPlans]);

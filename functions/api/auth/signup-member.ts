@@ -40,6 +40,8 @@ export async function onRequestPost(context: {
       lastName: typeof rawMetadata.lastName === 'string' ? rawMetadata.lastName : undefined,
       phone: typeof rawMetadata.phone === 'string' ? rawMetadata.phone : undefined,
       avatarUrl: typeof rawMetadata.avatarUrl === 'string' || rawMetadata.avatarUrl === null ? rawMetadata.avatarUrl : undefined,
+      referralCode: typeof rawMetadata.referralCode === 'string' ? rawMetadata.referralCode : undefined,
+      referral_code: typeof rawMetadata.referral_code === 'string' ? rawMetadata.referral_code : undefined,
     }
     : undefined;
 
