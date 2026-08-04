@@ -19,7 +19,6 @@ export interface WorksheetConfig {
   includeAnswerKey: boolean;
   includeRubric: boolean;
   includeExtension: boolean;
-  topic?: string;
 }
 
 export const DEFAULT_WORKSHEET_CONFIG: WorksheetConfig = {

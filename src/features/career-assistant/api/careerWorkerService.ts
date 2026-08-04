@@ -57,7 +57,6 @@ export async function streamCareerChat(
       }
       careerApiService.sendCareerChatMessage(
         { conversationId: conversationId || undefined, message, selectedChips },
-        token,
         (content) => onChunk(content),
         (data) => {
           const response = data as any;

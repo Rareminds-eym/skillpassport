@@ -33,15 +33,15 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
     }
 
     try {
-        // Fetch contact data
-        const { data: contactsData, error: contactsError } = await supabase
-            .from('company_contacts')
-            .select('*')
+        // Fetch contact data from organization_recruitment_settings
+        const { data: settingsData, error: settingsError } = await supabase
+            .from('organization_recruitment_settings')
+            .select('official_company_email, company_phone_number, hr_contact_phone_number, hr_support_email')
             .eq('organization_id', orgId)
             .single();
 
-        // If no contacts record exists, return empty structure
-        if (contactsError && contactsError.code === 'PGRST116') {
+        // If no record exists, return empty structure
+        if (settingsError && settingsError.code === 'PGRST116') {
             return Response.json({
                 contacts: {
                     organization_id: orgId,
@@ -54,17 +54,26 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
             });
         }
 
-        if (contactsError) {
-            console.error('[contacts API] Error fetching contacts:', contactsError);
+        if (settingsError) {
+            console.error('[contacts API] Error fetching contacts:', settingsError);
             return Response.json({
                 error: 'Failed to fetch contact information',
-                details: contactsError.message
+                details: settingsError.message
             }, { status: 500 });
         }
 
+        // Map database fields to API response fields
+        const contactsData = {
+            organization_id: orgId,
+            official_email: settingsData?.official_company_email || '',
+            company_phone: settingsData?.company_phone_number || '',
+            hr_contact_phone: settingsData?.hr_contact_phone_number || '',
+            support_email: settingsData?.hr_support_email || '',
+        };
+
         return Response.json({
             contacts: contactsData,
-            exists: true,
+            exists: !!settingsData,
         });
 
     } catch (error: any) {
@@ -124,21 +133,21 @@ export const onRequestPut = withAuth(async (context: AuthenticatedContext) => {
             }, { status: 400 });
         }
 
-        // Allowed fields for update
-        const allowedFields = [
-            'official_email',
-            'company_phone',
-            'hr_contact_phone',
-            'support_email',
-        ];
+        // Map request fields to database fields
+        const fieldMapping: Record<string, string> = {
+            'official_email': 'official_company_email',
+            'company_phone': 'company_phone_number',
+            'hr_contact_phone': 'hr_contact_phone_number',
+            'support_email': 'hr_support_email',
+        };
 
         const updateData: any = {
             organization_id: org_id,
         };
 
-        for (const field of allowedFields) {
-            if (field in contactsData) {
-                updateData[field] = contactsData[field];
+        for (const [requestField, dbField] of Object.entries(fieldMapping)) {
+            if (requestField in contactsData) {
+                updateData[dbField] = contactsData[requestField];
             }
         }
 
@@ -149,13 +158,13 @@ export const onRequestPut = withAuth(async (context: AuthenticatedContext) => {
             fields: Object.keys(updateData),
         });
 
-        // Upsert contact data
-        const { data: updatedContacts, error: upsertError } = await supabase
-            .from('company_contacts')
+        // Upsert contact data in organization_recruitment_settings
+        const { data: updatedSettings, error: upsertError } = await supabase
+            .from('organization_recruitment_settings')
             .upsert(updateData, {
                 onConflict: 'organization_id',
             })
-            .select()
+            .select('official_company_email, company_phone_number, hr_contact_phone_number, hr_support_email')
             .single();
 
         if (upsertError) {
@@ -166,10 +175,19 @@ export const onRequestPut = withAuth(async (context: AuthenticatedContext) => {
             }, { status: 500 });
         }
 
+        // Map response back to API format
+        const responseContacts = {
+            organization_id: org_id,
+            official_email: updatedSettings?.official_company_email || '',
+            company_phone: updatedSettings?.company_phone_number || '',
+            hr_contact_phone: updatedSettings?.hr_contact_phone_number || '',
+            support_email: updatedSettings?.hr_support_email || '',
+        };
+
         return Response.json({
             success: true,
             message: 'Contact information updated successfully',
-            contacts: updatedContacts,
+            contacts: responseContacts,
         });
 
     } catch (error: any) {

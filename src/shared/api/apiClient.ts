@@ -45,12 +45,15 @@ export async function apiGet<T>(path: string): Promise<T> {
 
 /**
  * Authenticated POST request via Pages Functions.
+ * Handles both JSON and FormData payloads.
  */
 export async function apiPost<T>(path: string, data?: unknown): Promise<T> {
+  const isFormData = data instanceof FormData;
+
   const res = await ssoClient.fetch(`${API_BASE}${path}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: data ? JSON.stringify(data) : undefined,
+    headers: isFormData ? {} : { 'Content-Type': 'application/json' },
+    body: isFormData ? data : (data ? JSON.stringify(data) : undefined),
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));

@@ -1,14 +1,23 @@
 import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { apiPost } from '@/shared/api/apiClient';
 import { Learner } from '@/features/learner-profile/model';
 import toast from 'react-hot-toast';
 import { isCollegeLearner as checkIsCollegeLearner, isSchoolLearner as checkIsSchoolLearner } from '@/entities/learner/lib/learnerType';
 import { getLogger } from '@/shared/config/logging';
 import { useAuthStore } from '@/shared/model/authStore';
+import { queryKeys } from '@/shared/lib/queryKeys';
 
 const logger = getLogger('learner-actions');
 
-export const useLearnerActions = (learner: Learner | null) => {
+/**
+ * Hook providing learner management actions such as approval, promotion, and graduation.
+ *
+ * @param learner - The learner record to act upon. Pass null when no learner is selected.
+ * @param onRefresh - Optional callback invoked after a successful action to trigger a data refresh in the parent component.
+ */
+export const useLearnerActions = (learner: Learner | null, onRefresh?: () => void) => {
+  const queryClient = useQueryClient();
   const [actionLoading, setActionLoading] = useState(false);
 
   // Helper function to calculate academic year from admission year and current semester
@@ -140,7 +149,8 @@ export const useLearnerActions = (learner: Learner | null) => {
       });
 
       toast.success(`Learner ${action === 'approve' ? 'approved' : 'rejected'} successfully!`);
-      window.location.reload();
+      queryClient.invalidateQueries({ queryKey: queryKeys.learner.all });
+      onRefresh?.();
     } catch (error: any) {
       logger.error('Error updating learner status', error as Error);
       toast.error(`Failed to ${action} learner: ${error?.message || 'Please try again.'}`);
@@ -188,7 +198,8 @@ export const useLearnerActions = (learner: Learner | null) => {
       });
 
       toast.success(`Learner promoted successfully from Semester ${currentSem} to ${nextSem}!`);
-      setTimeout(() => window.location.reload(), 1500);
+      queryClient.invalidateQueries({ queryKey: queryKeys.learner.all });
+      onRefresh?.();
     } catch (error: any) {
       logger.error('Error promoting learner', error as Error);
       toast.error(`Failed to promote learner: ${error?.message || 'Please try again.'}`);
@@ -210,7 +221,8 @@ export const useLearnerActions = (learner: Learner | null) => {
         totalSemesters: getTotalSemesters(),
       });
       toast.success('Learner marked as graduated successfully!');
-      window.location.reload();
+      queryClient.invalidateQueries({ queryKey: queryKeys.learner.all });
+      onRefresh?.();
     } catch (error: any) {
       logger.error('Error marking learner as graduated', error as Error);
       toast.error(`Failed to mark learner as graduated: ${error?.message || 'Please try again.'}`);

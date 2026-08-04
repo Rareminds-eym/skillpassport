@@ -2,6 +2,12 @@
 // Icons are referenced by name to keep config layer pure (no UI imports)
 export const PROFILE_MENU_ITEMS = [
     {
+        id: "go-to-lte",
+        label: "Go to LTE",
+        iconName: "RocketLaunchIcon",
+        className: "text-gray-700 hover:bg-gray-50"
+    },
+    {
         id: "saved-jobs",
         label: "Saved Jobs",
         iconName: "BookmarkIcon",

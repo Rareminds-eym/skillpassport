@@ -19,6 +19,23 @@ export const saveRecommendations = async (
   }
 };
 
+/**
+ * Records that the learner expressed interest in a course.
+ *
+ * The learner is derived server-side from the authenticated session, so only
+ * courseId is sent. Failure is propagated to the caller, which decides what to
+ * display - the success modal is shown only after this resolves.
+ */
+export const recordCourseInterest = async (courseId: string) => {
+  if (!courseId) throw new Error('Course ID is required');
+  try {
+    return await apiPost('/courses/interests', { courseId });
+  } catch (error) {
+    logger.error('Error recording course interest', error instanceof Error ? error : new Error(String(error)));
+    throw error;
+  }
+};
+
 export const getSavedRecommendations = async (learnerId, options = {}) => {
   if (!learnerId) return [];
   try {

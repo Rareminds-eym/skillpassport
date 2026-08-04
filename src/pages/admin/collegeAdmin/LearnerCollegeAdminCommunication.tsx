@@ -3,38 +3,38 @@ import {
   ArchiveBoxIcon,
   ArrowUturnLeftIcon,
   ChatBubbleLeftRightIcon,
-  ChevronRightIcon,
   ChevronDownIcon,
+  ChevronRightIcon,
   MagnifyingGlassIcon,
   PaperAirplaneIcon,
   TrashIcon,
   UserIcon,
-  XMarkIcon
+  XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { CheckIcon } from '@heroicons/react/24/solid';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useLocation } from 'react-router-dom';
-import { DeleteConversationModal } from '@/features/messaging';
-import { NewLearnerConversationModalCollegeAdmin } from '@/features/messaging';
-import { NewCollegeAdminEducatorConversationModal } from '@/features/college-admin';
-
-
-import { useAdminMessages, useConversationActions } from '@/features/messaging';
-import { useCollegeEducatorAdminConversationsForAdmin } from '@/features/educator';
 import { useNotificationBroadcast } from '@/features/broadcast';
-import { useRealtimePresence } from '@/shared/lib/hooks';
-import { useTypingIndicator } from '@/shared/lib/hooks';
+import { NewCollegeAdminEducatorConversationModal } from '@/features/college-admin';
+import { useCollegeEducatorAdminConversationsForAdmin } from '@/features/educator';
+import { 
+  type Conversation, 
+  DeleteConversationModal, 
+  NewLearnerConversationModalCollegeAdmin, 
+  useAdminMessages, 
+  useConversationActions,
+} from '@/features/messaging';
+import { apiPost } from '@/shared/api/apiClient';
 import MessageService from '@/shared/api/messageService';
-import type { Conversation } from '@/features/messaging';
 import { getLogger } from '@/shared/config/logging';
-
+import { useRealtimePresence, useTypingIndicator } from '@/shared/lib/hooks';
 import { queryKeys } from '@/shared/lib/queryKeys';
 import { useUser } from '@/shared/model/authStore';
 import { useGlobalPresence } from '@/shared/model/globalPresenceStore';
-import { apiPost } from '@/shared/api/apiClient';
+
 const LearnerCollegeAdminCommunication = () => {
   const logger = getLogger('college-admin-communication');
   const location = useLocation();
@@ -115,9 +115,6 @@ const LearnerCollegeAdminCommunication = () => {
         ...conv,
         college: collegeData?.colleges || null
       }));
-
-      if (error) throw error;
-      return data || [];
     },
     enabled: !!collegeId,
     staleTime: 60000,
@@ -217,7 +214,7 @@ const LearnerCollegeAdminCommunication = () => {
   }, [isUserOnlineGlobal]);
 
   // Presence tracking for current conversation
-  const { } = useRealtimePresence({
+  useRealtimePresence({
     channelName: selectedConversationId ? `conversation:${selectedConversationId}` : 'none',
     userPresence: {
       userId: collegeAdminId || '',
@@ -261,7 +258,7 @@ const LearnerCollegeAdminCommunication = () => {
 
   // Subscribe to conversation updates
   useEffect(() => {
-    if (!collegeId) return;
+    if (!collegeId || !collegeAdminId) return;
 
     const subscription = MessageService.subscribeToUserConversations(
       collegeId,
@@ -466,19 +463,20 @@ const LearnerCollegeAdminCommunication = () => {
         : unarchiveConversation(conversationId)
       );
 
-      await Promise.all([refetchActive(), refetchArchived()]);
+      await Promise.all([refetchActive(), refetchArchived(), refetchArchivedEducators()]);
     } catch (error) {
       logger.error(`Error ${isArchiving ? 'archiving' : 'unarchiving'} conversation:`, error as Error);
       refetchActive();
       refetchArchived();
+      refetchArchivedEducators();
     } finally {
       setTimeout(() => setIsTransitioning(false), 300);
     }
-  }, [selectedConversationId, refetchActive, refetchArchived, archiveConversation, unarchiveConversation]);
+  }, [selectedConversationId, refetchActive, refetchArchived, refetchArchivedEducators, archiveConversation, unarchiveConversation]);
 
   // Handle new conversation creation
   const handleNewConversation = useCallback(async (learnerId: string, subject: string, initialMessage?: string) => {
-    if (!collegeId) return;
+    if (!collegeId || !collegeAdminId) return;
 
     try {
       logger.info('Creating new conversation with learner:', learnerId, 'subject:', subject);
@@ -506,10 +504,10 @@ const LearnerCollegeAdminCommunication = () => {
       logger.info('New conversation created:', conversation);
 
       // Send initial message if provided
-      if (initialMessage && initialMessage.trim()) {
+      if (initialMessage?.trim()) {
         await MessageService.sendMessage(
           conversation.id,
-          collegeAdminId!,
+          collegeAdminId,
           'college_admin',
           learnerId,
           'learner',
@@ -552,18 +550,23 @@ const LearnerCollegeAdminCommunication = () => {
 
     deleteMutation.mutate({ conversationId });
 
-    // Show undo toast
-    toast.success(`Conversation with ${contactName} deleted`, {
-      duration: 5000,
-    });
-
-    // Add undo button functionality (simplified)
-    setTimeout(() => {
-      toast('Click here to undo', {
-        duration: 3000,
-      });
-    }, 500);
-  }, [deleteModal.conversationId, deleteModal.contactName, collegeAdminId, selectedConversationId, deleteMutation]);
+    // Show undo toast with undo button
+    toast((t) => (
+      <span className="flex items-center gap-3">
+        <span>{`Conversation with ${contactName} deleted`}</span>
+        <button
+          type="button"
+          className="font-semibold text-blue-600 hover:text-blue-800 underline cursor-pointer"
+          onClick={() => {
+            undoMutation.mutate({ conversationId });
+            toast.dismiss(t.id);
+          }}
+        >
+          Undo
+        </button>
+      </span>
+    ), { duration: 5000 });
+  }, [deleteModal.conversationId, deleteModal.contactName, collegeAdminId, selectedConversationId, deleteMutation, undoMutation]);
 
   // Open delete confirmation modal
   const openDeleteModal = useCallback((conversationId: string, contactName: string) => {
@@ -698,11 +701,11 @@ const LearnerCollegeAdminCommunication = () => {
     [filteredContacts, selectedConversationId]
   );
 
-  const handleSendMessage = useCallback(async (e: React.FormEvent) => {
+  const handleSendMessage = useCallback(async (e: FormEvent) => {
     e.preventDefault();
 
     // Basic validation
-    if (!messageInput.trim() || !currentChat || !collegeAdminId) {
+    if (!messageInput.trim() || !currentChat || !collegeAdminId || !selectedConversationId) {
       return;
     }
 
@@ -724,7 +727,7 @@ const LearnerCollegeAdminCommunication = () => {
       if (activeTab === 'learners') {
         // Send message to learner
         await sendMessage({
-          conversationId: selectedConversationId!,
+          conversationId: selectedConversationId,
           receiverId: currentChat.learnerId,
           receiverType: 'learner',
           messageText: messageToSend,
@@ -734,7 +737,7 @@ const LearnerCollegeAdminCommunication = () => {
         try {
           await sendNotification(currentChat.learnerId, {
             title: 'New Message from College Admin',
-            message: messageToSend.length > 50 ? messageToSend.substring(0, 50) + '...' : messageToSend,
+            message: messageToSend.length > 50 ? `${messageToSend.substring(0, 50)}...` : messageToSend,
             type: 'message',
             link: `/learner/messages?tab=college_admin&conversation=${selectedConversationId}`
           });
@@ -744,7 +747,7 @@ const LearnerCollegeAdminCommunication = () => {
       } else {
         // Send message to college educator
         await sendMessage({
-          conversationId: selectedConversationId!,
+          conversationId: selectedConversationId,
           receiverId: currentChat.educatorId,
           receiverType: 'college_educator',
           messageText: messageToSend,
@@ -754,7 +757,7 @@ const LearnerCollegeAdminCommunication = () => {
         try {
           await sendNotification(currentChat.educatorId, {
             title: 'New Message from College Admin',
-            message: messageToSend.length > 50 ? messageToSend.substring(0, 50) + '...' : messageToSend,
+            message: messageToSend.length > 50 ? `${messageToSend.substring(0, 50)}...` : messageToSend,
             type: 'message',
             link: `/educator/messages?tab=college_admin&conversation=${selectedConversationId}`
           });
@@ -772,10 +775,7 @@ const LearnerCollegeAdminCommunication = () => {
         setMessageInput(messageToSend);
       }
     } finally {
-      // Reset ref after a delay
-      setTimeout(() => {
-        isSendingRef.current = false;
-      }, 500);
+      isSendingRef.current = false;
     }
   }, [messageInput, currentChat, collegeAdminId, sendMessage, sendNotification, selectedConversationId, setTyping, activeTab, isSending]);
 
@@ -826,6 +826,7 @@ const LearnerCollegeAdminCommunication = () => {
                   {/* New Button */}
                   {!showArchived && (
                     <button
+                      type="button"
                       onClick={() => setShowNewConversationModal(true)}
                       className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
                       title={`Start new conversation with ${activeTab === 'learners' ? 'learner' : 'college educator'}`}
@@ -842,6 +843,7 @@ const LearnerCollegeAdminCommunication = () => {
                   {/* Tab Dropdown */}
                   <div className="relative" ref={tabDropdownRef}>
                     <button
+                      type="button"
                       onClick={() => setShowTabDropdown(!showTabDropdown)}
                       className="flex items-center gap-2 px-3 py-2 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
                     >
@@ -865,6 +867,7 @@ const LearnerCollegeAdminCommunication = () => {
                     {showTabDropdown && (
                       <div className="absolute top-full left-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
                         <button
+                          type="button"
                           onClick={() => {
                             setActiveTab('learners');
                             setShowTabDropdown(false);
@@ -886,6 +889,7 @@ const LearnerCollegeAdminCommunication = () => {
                           )}
                         </button>
                         <button
+                          type="button"
                           onClick={() => {
                             setActiveTab('college_educators');
                             setShowTabDropdown(false);
@@ -929,6 +933,7 @@ const LearnerCollegeAdminCommunication = () => {
                 />
                 {searchQuery && (
                   <button
+                    type="button"
                     onClick={() => setSearchQuery('')}
                     className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-200 rounded-full transition-colors"
                     title="Clear search"
@@ -946,6 +951,7 @@ const LearnerCollegeAdminCommunication = () => {
                 !loadingConversations &&
                 (activeTab === 'learners' ? archivedConversations : archivedEducatorConversations).length > 0 && (
                   <button
+                    type="button"
                     onClick={() => {
                       setShowArchived(true);
                       setIsTransitioning(true);
@@ -1002,6 +1008,7 @@ const LearnerCollegeAdminCommunication = () => {
                   </p>
                   {searchQuery && (
                     <button
+                      type="button"
                       onClick={() => setSearchQuery('')}
                       className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition-colors"
                     >
@@ -1011,6 +1018,7 @@ const LearnerCollegeAdminCommunication = () => {
                   {!showArchived && !searchQuery && (
                     <div className="space-y-3">
                       <button
+                        type="button"
                         onClick={() => setShowNewConversationModal(true)}
                         className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
                       >
@@ -1018,6 +1026,7 @@ const LearnerCollegeAdminCommunication = () => {
                         Start New Conversation
                       </button>
                       <button
+                        type="button"
                         onClick={() => {
                           toast('Learners will initiate conversations with you from their Messages page', {
                             icon: 'ℹ️',
@@ -1041,6 +1050,7 @@ const LearnerCollegeAdminCommunication = () => {
                       }`}
                   >
                     <button
+                      type="button"
                       onClick={() => setSelectedConversationId(contact.id)}
                       className="flex-1 px-4 py-3 flex items-center gap-3 transition-all text-left"
                     >
@@ -1081,6 +1091,7 @@ const LearnerCollegeAdminCommunication = () => {
                     <div className="flex items-center gap-1 pr-2 opacity-0 group-hover:opacity-100 transition-opacity">
                       {/* Archive/Unarchive Button */}
                       <button
+                        type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleToggleArchive(contact.id, !showArchived);
@@ -1097,6 +1108,7 @@ const LearnerCollegeAdminCommunication = () => {
 
                       {/* Delete Button */}
                       <button
+                        type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           openDeleteModal(contact.id, contact.name);
@@ -1145,17 +1157,6 @@ const LearnerCollegeAdminCommunication = () => {
                       </p>
                     </div>
                   </div>
-                  {/* <div className="flex items-center gap-2">
-                    <button className="p-2 hover:bg-gray-100 rounded-full transition-colors" title="Voice Call">
-                      <PhoneIcon className="w-5 h-5 text-gray-700" />
-                    </button>
-                    <button className="p-2 hover:bg-gray-100 rounded-full transition-colors" title="Video Call">
-                      <VideoCameraIcon className="w-5 h-5 text-gray-700" />
-                    </button>
-                    <button className="p-2 hover:bg-gray-100 rounded-full transition-colors" title="More">
-                      <EllipsisVerticalIcon className="w-5 h-5 text-gray-700" />
-                    </button>
-                  </div> */}
                 </div>
 
                 {/* Messages Area */}
@@ -1225,13 +1226,6 @@ const LearnerCollegeAdminCommunication = () => {
                 {/* Message Input */}
                 <div className="px-6 py-4 border-t border-gray-200 bg-white">
                   <form onSubmit={handleSendMessage} className="flex items-end gap-3">
-                    {/* <button
-                      type="button"
-                      className="p-2 hover:bg-gray-100 rounded-full transition-colors flex-shrink-0"
-                      title="Attach file"
-                    >
-                      <PaperClipIcon className="w-5 h-5 text-gray-500" />
-                    </button> */}
                     <div className="flex-1 relative">
                       <textarea
                         value={messageInput}
@@ -1250,13 +1244,6 @@ const LearnerCollegeAdminCommunication = () => {
                         rows={1}
                         style={{ minHeight: '44px', maxHeight: '100px' }}
                       />
-                      {/* <button
-                        type="button"
-                        className="absolute right-3 bottom-2.5 p-1.5 hover:bg-gray-100 rounded-full transition-colors"
-                        title="Emoji"
-                      >
-                        <FaceSmileIcon className="w-5 h-5 text-gray-400" />
-                      </button> */}
                     </div>
                     <button
                       type="submit"
@@ -1329,7 +1316,7 @@ const LearnerCollegeAdminCommunication = () => {
               );
 
               // Send the initial message if provided
-              if (initialMessage && initialMessage.trim()) {
+              if (initialMessage?.trim()) {
                 await MessageService.sendMessage(
                   conversation.id,
                   adminId,
@@ -1361,11 +1348,3 @@ const LearnerCollegeAdminCommunication = () => {
 };
 
 export default LearnerCollegeAdminCommunication;
-
-
-
-
-
-
-
-

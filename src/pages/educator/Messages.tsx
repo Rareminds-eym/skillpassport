@@ -1,50 +1,58 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { useLocation, useSearchParams } from 'react-router-dom';
-import toast from 'react-hot-toast';
 import {
+  AcademicCapIcon,
+  ArchiveBoxIcon,
+  ArrowUturnLeftIcon,
+  ChatBubbleLeftRightIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
   MagnifyingGlassIcon,
   PaperAirplaneIcon,
-  EllipsisVerticalIcon,
-  PhoneIcon,
-  VideoCameraIcon,
-  PaperClipIcon,
-  FaceSmileIcon,
-  ArchiveBoxIcon,
-  ChevronRightIcon,
-  ArrowUturnLeftIcon,
   TrashIcon,
-  AcademicCapIcon,
-  ChatBubbleLeftRightIcon,
+  UserIcon,
   XMarkIcon,
-  ChevronDownIcon,
-  UserGroupIcon,
-  UserIcon
 } from '@heroicons/react/24/outline';
 import { CheckIcon } from '@heroicons/react/24/solid';
-import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
-import MessageService from '@/shared/api/messageService';
-import type { Conversation } from '@/features/messaging';
-import { useEducatorMessages, useConversationActions } from '@/features/messaging';
-import { useCollegeEducatorAdminConversationsForEducator } from '@/features/educator';
+import { 
+  useMutation, 
+  useQuery, 
+  useQueryClient, 
+} from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
-
-import { useRealtimePresence } from '@/shared/lib/hooks';
-import { useTypingIndicator } from '@/features/messaging';
+import { 
+  useCallback, 
+  useEffect,
+  useMemo,
+  useRef,
+  useState,  
+} from 'react';
+import type { FormEvent } from 'react';
+import toast from 'react-hot-toast';
 import { useNotificationBroadcast } from '@/features/broadcast';
-import { DeleteConversationModal, ConversationModal } from '@/features/messaging';
-import { apiPost } from '@/shared/api/apiClient';
+import { useCollegeEducatorAdminConversationsForEducator } from '@/features/educator';
+import type { Conversation } from '@/features/messaging';
+import { 
+  DeleteConversationModal,
+  useConversationActions,
+  useEducatorMessages, 
+  useTypingIndicator, 
+} from '@/features/messaging';
 import NewCollegeEducatorAdminConversationModal from '@/features/messaging/ui/modals/NewCollegeEducatorAdminConversationModal';
 import NewCollegeLecturerConversationModal from '@/features/messaging/ui/modals/NewCollegeLecturerConversationModal';
+import { apiPost } from '@/shared/api/apiClient';
+import MessageService from '@/shared/api/messageService';
 import { getLogger } from '@/shared/config/logging';
-import { queryKeys } from '@/shared/lib/queryKeys';
-
+import { useRealtimePresence } from '@/shared/lib/hooks';
 import { useUser } from '@/shared/model/authStore';
 import { useGlobalPresence } from '@/shared/model/globalPresenceStore';
+
 const logger = getLogger('college-lecturer-messages');
 
+// Sender types that belong to the current educator user
+// Both values exist in DB - 'educator' is stored by useMessages (via userRole),
+// 'college_educator' may exist from older records
+const EDUCATOR_SENDER_TYPES = ['educator', 'college_educator'] as const;
+
 const CollegeLecturerMessages = () => {
-  const location = useLocation();
-  const [searchParams, setSearchParams] = useSearchParams();
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [messageInput, setMessageInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -75,13 +83,6 @@ const CollegeLecturerMessages = () => {
 
   // Define userAuthId early for use in useEffect  
   const userAuthId = userId; // For auth/user operations (needs auth user ID)
-
-  // Handle navigation from learner management page
-  const targetLearner = location.state as {
-    targetLearnerId?: string;
-    targetlearnerName?: string;
-    targetlearnerEmail?: string;
-  } | null;
 
   // Get college lecturer details
   const { data: collegeLecturerData } = useQuery({
@@ -254,7 +255,7 @@ const CollegeLecturerMessages = () => {
       loadingConversations
     });
 
-    if (conversations && conversations.length > 0) {
+    if (conversations?.length) {
       logger.info('📋 [College-Messages-Page] Sample conversation:', conversations[0]);
       logger.info('📋 [College-Messages-Page] All conversation IDs:',
         conversations.map(c => ({ id: c.id, learner_name: c.learner?.name }))
@@ -287,10 +288,10 @@ const CollegeLecturerMessages = () => {
     logger.info('📨 Messages loaded:', {
       count: messages?.length || 0,
       isLoading: loadingMessages,
-      hasMessages: !!messages && messages.length > 0
+      hasMessages: !!messages?.length
     });
 
-    if (messages && messages.length > 0) {
+    if (messages?.length) {
       logger.info('📨 [College-Messages-Page] First message:', messages[0]);
       logger.info('📨 [College-Messages-Page] Last message:', messages[messages.length - 1]);
     } else if (selectedConversationId && !loadingMessages) {
@@ -309,7 +310,7 @@ const CollegeLecturerMessages = () => {
   }, [isUserOnlineGlobal]);
 
   // Presence tracking for current conversation
-  const { } = useRealtimePresence({
+  useRealtimePresence({
     channelName: selectedConversationId ? `conversation:${selectedConversationId}` : 'none',
     userPresence: {
       userId: collegeLecturerRecordId || '',
@@ -664,15 +665,15 @@ const CollegeLecturerMessages = () => {
     [filteredContacts, selectedConversationId]
   );
 
-  const handleSendMessage = useCallback(async (e: React.FormEvent) => {
+  const handleSendMessage = useCallback(async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!messageInput.trim() || !currentChat || !userAuthId) return;
+    if (!messageInput.trim() || !currentChat || !userAuthId || !selectedConversationId) return;
 
     try {
       if (activeTab === 'learners') {
         // Send message to college learner
         await sendMessage({
-          conversationId: selectedConversationId!,
+          conversationId: selectedConversationId,
           receiverId: currentChat.learnerId,
           receiverType: 'learner',
           messageText: messageInput,
@@ -682,7 +683,7 @@ const CollegeLecturerMessages = () => {
         try {
           await sendNotification(currentChat.learnerId, {
             title: 'New Message from College Lecturer',
-            message: messageInput.length > 50 ? messageInput.substring(0, 50) + '...' : messageInput,
+            message: messageInput.length > 50 ? `${messageInput.substring(0, 50)}...` : messageInput,
             type: 'message',
             link: `/learner/messages?tab=college_lecturers&conversation=${selectedConversationId}`
           });
@@ -692,7 +693,7 @@ const CollegeLecturerMessages = () => {
       } else {
         // Send message to college admin
         await sendMessage({
-          conversationId: selectedConversationId!,
+          conversationId: selectedConversationId,
           receiverId: currentChat.adminId,
           receiverType: 'college_admin',
           messageText: messageInput,
@@ -702,7 +703,7 @@ const CollegeLecturerMessages = () => {
         try {
           await sendNotification(currentChat.adminId, {
             title: 'New Message from College Educator',
-            message: messageInput.length > 50 ? messageInput.substring(0, 50) + '...' : messageInput,
+            message: messageInput.length > 50 ? `${messageInput.substring(0, 50)}...` : messageInput,
             type: 'message',
             link: `/college-admin/communication?tab=educators&conversation=${selectedConversationId}`
           });
@@ -716,7 +717,7 @@ const CollegeLecturerMessages = () => {
     } catch (error) {
       logger.error('Error sending message:', error);
     }
-  }, [messageInput, currentChat, sendMessage, sendNotification, selectedConversationId, setTyping, activeTab]);
+  }, [messageInput, currentChat, sendMessage, sendNotification, selectedConversationId, setTyping, activeTab, userAuthId]);
 
   // Handle typing in input
   const handleInputChange = useCallback((value: string) => {
@@ -739,14 +740,23 @@ const CollegeLecturerMessages = () => {
         id: msg.id,
         sender_type: msg.sender_type,
         receiver_type: msg.receiver_type,
-        text: msg.message_text?.substring(0, 50) + '...',
+        text: `${msg.message_text?.substring(0, 50)}...`,
         created_at: msg.created_at
       });
+
+      const isSenderTypeMatch = EDUCATOR_SENDER_TYPES.includes(msg.sender_type);
+      const isMe = isSenderTypeMatch || msg.sender_id === collegeLecturerRecordId;
+      if (!isSenderTypeMatch && msg.sender_id === collegeLecturerRecordId) {
+        logger.warn('⚠️ [College-Messages-Page] Unexpected sender_type for educator message:', {
+          sender_type: msg.sender_type,
+          message_id: msg.id
+        });
+      }
 
       return {
         id: msg.id,
         text: msg.message_text,
-        sender: msg.sender_type === 'college_educator' ? 'me' : 'them',
+        sender: isMe ? 'me' : 'them',
         time: formatDistanceToNow(new Date(msg.created_at), { addSuffix: true }),
         status: msg.is_read ? 'read' : 'delivered'
       };
@@ -756,7 +766,7 @@ const CollegeLecturerMessages = () => {
     logger.info('🏁 [College-Messages-Page] === DISPLAY MESSAGES DEBUG END ===');
 
     return processed;
-  }, [messages]);
+  }, [messages, collegeLecturerRecordId]);
 
   const renderStatusIcon = useCallback((status: string) => (
     <div className="flex">
@@ -783,6 +793,7 @@ const CollegeLecturerMessages = () => {
                   {/* New Button */}
                   {!showArchived && (
                     <button
+                      type="button"
                       onClick={() => setShowNewConversationModal(true)}
                       className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
                       title={`Start new conversation with ${activeTab === 'learners' ? 'college learner' : 'college admin'}`}
@@ -799,6 +810,7 @@ const CollegeLecturerMessages = () => {
                   {/* Tab Dropdown */}
                   <div className="relative" ref={tabDropdownRef}>
                     <button
+                      type="button"
                       onClick={() => setShowTabDropdown(!showTabDropdown)}
                       className="flex items-center gap-2 px-3 py-2 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors min-w-0"
                     >
@@ -822,6 +834,7 @@ const CollegeLecturerMessages = () => {
                     {showTabDropdown && (
                       <div className="absolute top-full right-0 mt-1 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-50 overflow-hidden">
                         <button
+                          type="button"
                           onClick={() => {
                             setActiveTab('learners');
                             setShowTabDropdown(false);
@@ -843,6 +856,7 @@ const CollegeLecturerMessages = () => {
                           )}
                         </button>
                         <button
+                          type="button"
                           onClick={() => {
                             setActiveTab('college_admin');
                             setShowTabDropdown(false);
@@ -886,6 +900,7 @@ const CollegeLecturerMessages = () => {
                 />
                 {searchQuery && (
                   <button
+                    type="button"
                     onClick={() => setSearchQuery('')}
                     className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-200 rounded-full transition-colors"
                     title="Clear search"
@@ -903,6 +918,7 @@ const CollegeLecturerMessages = () => {
                 !loadingConversations &&
                 (activeTab === 'learners' ? archivedCollegelearnerConversations : archivedCollegeAdminConversations).length > 0 && (
                   <button
+                    type="button"
                     onClick={() => {
                       setShowArchived(true);
                       setIsTransitioning(true);
@@ -967,6 +983,7 @@ const CollegeLecturerMessages = () => {
                   </p>
                   {searchQuery && (
                     <button
+                      type="button"
                       onClick={() => setSearchQuery('')}
                       className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition-colors"
                     >
@@ -976,6 +993,7 @@ const CollegeLecturerMessages = () => {
                   {!showArchived && !searchQuery && (
                     <div className="space-y-3">
                       <button
+                        type="button"
                         onClick={() => setShowNewConversationModal(true)}
                         className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
                       >
@@ -983,6 +1001,7 @@ const CollegeLecturerMessages = () => {
                         {activeTab === 'learners' ? 'Message College Learner' : 'Message College Admin'}
                       </button>
                       <button
+                        type="button"
                         onClick={() => {
                           toast(activeTab === 'learners'
                             ? 'College learners will initiate conversations with you from their Messages page'
@@ -1008,6 +1027,7 @@ const CollegeLecturerMessages = () => {
                       }`}
                   >
                     <button
+                      type="button"
                       onClick={() => {
                         logger.info('🔍 [College-Messages-Page] === CONVERSATION SELECTION ===');
                         logger.info('📋 Selecting conversation:', {
@@ -1058,6 +1078,7 @@ const CollegeLecturerMessages = () => {
                     <div className="flex items-center gap-1 pr-2 opacity-0 group-hover:opacity-100 transition-opacity">
                       {/* Archive/Unarchive Button */}
                       <button
+                        type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleToggleArchive(contact.id, !showArchived);
@@ -1074,6 +1095,7 @@ const CollegeLecturerMessages = () => {
 
                       {/* Delete Button */}
                       <button
+                        type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           openDeleteModal(contact.id, contact.name);
@@ -1122,17 +1144,6 @@ const CollegeLecturerMessages = () => {
                       </p>
                     </div>
                   </div>
-                  {/* <div className="flex items-center gap-2">
-                    <button className="p-2 hover:bg-gray-100 rounded-full transition-colors" title="Voice Call">
-                      <PhoneIcon className="w-5 h-5 text-gray-700" />
-                    </button>
-                    <button className="p-2 hover:bg-gray-100 rounded-full transition-colors" title="Video Call">
-                      <VideoCameraIcon className="w-5 h-5 text-gray-700" />
-                    </button>
-                    <button className="p-2 hover:bg-gray-100 rounded-full transition-colors" title="More">
-                      <EllipsisVerticalIcon className="w-5 h-5 text-gray-700" />
-                    </button>
-                  </div> */}
                 </div>
 
                 {/* Messages Area */}
@@ -1211,13 +1222,6 @@ const CollegeLecturerMessages = () => {
                 {/* Message Input */}
                 <div className="px-6 py-4 border-t border-gray-200 bg-white flex-shrink-0">
                   <form onSubmit={handleSendMessage} className="flex items-end gap-3">
-                    {/* <button
-                      type="button"
-                      className="p-2 hover:bg-gray-100 rounded-full transition-colors flex-shrink-0"
-                      title="Attach file"
-                    >
-                      <PaperClipIcon className="w-5 h-5 text-gray-500" />
-                    </button> */}
                     <div className="flex-1 relative">
                       <textarea
                         value={messageInput}
@@ -1235,13 +1239,6 @@ const CollegeLecturerMessages = () => {
                         rows={1}
                         style={{ minHeight: '44px', maxHeight: '100px' }}
                       />
-                      {/* <button
-                        type="button"
-                        className="absolute right-3 bottom-2.5 p-1.5 hover:bg-gray-100 rounded-full transition-colors"
-                        title="Emoji"
-                      >
-                        <FaceSmileIcon className="w-5 h-5 text-gray-400" />
-                      </button> */}
                     </div>
                     <button
                       type="submit"
@@ -1307,7 +1304,7 @@ const CollegeLecturerMessages = () => {
               logger.info('✅ College lecturer conversation created:', conversation);
 
               // Send the initial message if provided
-              if (initialMessage && initialMessage.trim()) {
+              if (initialMessage?.trim()) {
                 await MessageService.sendMessage(
                   conversation.id,
                   lecturerId,
@@ -1355,7 +1352,7 @@ const CollegeLecturerMessages = () => {
               logger.info('✅ College educator-admin conversation created:', conversation);
 
               // Send the initial message if provided
-              if (initialMessage && initialMessage.trim()) {
+              if (initialMessage?.trim()) {
                 await MessageService.sendMessage(
                   conversation.id,
                   educatorId,

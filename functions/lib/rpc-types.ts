@@ -22,11 +22,44 @@ export interface SsoWorkerRpc {
   getMe(accessToken: string): Promise<Record<string, unknown>>;
   getJWKS(): Promise<{ keys: any[] }>;
   login(params: { email?: string; password?: string; ip?: string; ua?: string }): Promise<any>;
+  signup(params: {
+    email: string;
+    password: string;
+    org_name: string;
+    role: string;
+    redirect_url?: string;
+    user_metadata?: Record<string, unknown>;
+    ip?: string;
+    ua?: string;
+  }): Promise<any>;
+  signupMember(params: {
+    email: string;
+    password: string;
+    role: string;
+    org_id?: string;
+    redirect_url?: string;
+    user_metadata?: Record<string, unknown>;
+    ip?: string;
+    ua?: string;
+  }): Promise<any>;
   refreshSession(refreshToken: string, ip?: string, ua?: string): Promise<{ access_token: string; refresh_token: string }>;
   validateSession(refreshToken: string): Promise<{ valid: boolean; roles: string[] }>;
   forgotPassword(params: { email?: string; redirect_url?: string }, ip?: string, ua?: string): Promise<{ message?: string }>;
   resetPassword(params: { token?: string; password?: string }, ip?: string, ua?: string): Promise<{ reset?: boolean }>;
   logoutSession(refreshToken: string, ip?: string, ua?: string): Promise<{ success: boolean }>;
+  generateAuthorizationCode(params: {
+    accessToken: string;
+    targetApp: 'lte';
+    redirectUri: string;
+    ip?: string;
+    ua?: string;
+  }): Promise<{
+    code: string;
+    state: string;
+    redirectUrl?: string;
+    expiresAt?: string;
+    codeExpiresAt?: string;
+  }>;
 
   // User lookup
   getUserByEmail(email: string): Promise<{ id: string; email: string; is_email_verified: boolean } | null>;
@@ -42,7 +75,6 @@ export interface SsoWorkerRpc {
     features: unknown[];
     full_name: string;
     email: string;
-    phone?: string;
     razorpay_order_id?: string;
     razorpay_payment_id?: string;
     organization_id?: string;
@@ -122,8 +154,50 @@ export interface SsoWorkerRpc {
   // Membership
   getUserMemberships(userId: string): Promise<{ memberships: { id: string; org_id: string; role: string; status: string }[] }>;
   createMembership(data: { user_id: string; org_id: string; status: string }): Promise<{ id: string; status: string }>;
-  updateMembershipStatus(data: { membership_id: string; status: string }): Promise<{ success: boolean }>;
-  assignMembershipRole(data: { membership_id: string; role_id: string }): Promise<{ success: boolean }>;
+  updateMembershipStatus(data: { membership_id: string; status: string }): Promise<{ success: boolean; error?: string }>;
+  assignMembershipRole(data: { membership_id: string; role_id: string }): Promise<{ success: boolean; error?: string }>;
+
+  // Organization
+  createOrganization(data: {
+    name: string;
+    slug: string;
+    created_by: string;
+    metadata?: Record<string, unknown>;
+  }): Promise<{ success: boolean; org_id?: string; error?: string }>;
+
+  updateOrganizationDetails(data: {
+    id: string;
+    metadata: Record<string, unknown>;
+  }): Promise<{ success: boolean; error?: string }>;
+
+  // Learner / Bulk Upload
+  createLearnerUser(data: {
+    email: string;
+    name: string;
+    organization_id: string;
+    contact_number?: string;
+    enrollment_number?: string;
+    program_id?: string;
+    metadata?: Record<string, unknown>;
+  }): Promise<{ success: boolean; user_id?: string; error?: string; temp_password?: string }>;
+
+  queueBulkLearnerUpload(data: {
+    csv_data: string;
+    organization_id: string;
+    admin_id: string;
+  }): Promise<{ success: boolean; batch_id?: string; error?: string }>;
+
+  getBulkUploadStatus(batchId: string): Promise<{
+    batch_id: string;
+    status: string;
+    total_rows: number;
+    processed_rows: number;
+    success_count: number;
+    failed_count: number;
+    errors: Array<{ row: number; email: string; error: string }>;
+    created_at: string;
+    completed_at?: string;
+  } | null>;
 }
 
 // ─── Payment Worker RPC Interface ─────────────────────────────────────

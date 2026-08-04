@@ -76,6 +76,9 @@ export {
     useDeleteDocument,
 } from './model/useOrganizationProfile';
 
+// Logo upload hook
+export { useUploadLogo } from './api/useUploadLogo';
+
 // API exports
 export {
     getOrgContext,

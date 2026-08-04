@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle } from '@/shared/ui';
 import {
@@ -125,8 +125,8 @@ const BrowseCourses = () => {
   }, [searchTerm, filterStatus, sortBy]);
 
   // Filter and search courses
-  const filteredCourses = React.useMemo(() => {
-    let filtered = courses.filter(course => {
+  const filteredCourses = useMemo(() => {
+    const filtered = courses.filter(course => {
       const matchesSearch = course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            course.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            course.code.toLowerCase().includes(searchTerm.toLowerCase());
@@ -254,7 +254,7 @@ const BrowseCourses = () => {
                   transition={{ delay: 0.3 }}
                   className="mt-6"
                 >
-                  <p className="text-xl font-semibold text-gray-800 mb-2">Loading Courses...</p>
+                  <p className="text-xl font-semibold text-gray-800 mb-2">Loading Resource Studio...</p>
                   <p className="text-sm text-gray-500 flex items-center justify-center gap-2">
                     Powered by <span className="font-semibold text-indigo-600">RareMinds</span>
                   </p>
@@ -273,10 +273,10 @@ const BrowseCourses = () => {
                   </div>
                   <div className="flex-1">
                     <h1 className="font-bold text-2xl text-indigo-600">
-                      Browse Courses
+                      Educator Resource Studio
                     </h1>
                     <p className="text-sm text-gray-600 mt-1">
-                      Explore our course library and access courses for professional development
+                      Explore our resource library and access learning resources for professional development
                     </p>
                   </div>
                 </div>
@@ -292,7 +292,7 @@ const BrowseCourses = () => {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none" />
               <input
                 type="text"
-                placeholder="Search courses by title, code, or description..."
+                placeholder="Search resources by title, code, or description..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full h-12 pl-10 pr-4 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm"
@@ -329,12 +329,14 @@ const BrowseCourses = () => {
               {/* View Mode Toggle */}
               <div className="flex border border-gray-300 rounded-lg overflow-hidden h-12 bg-white shadow-sm">
                 <button
+                  type="button"
                   onClick={() => setViewMode('grid')}
                   className={`px-4 flex items-center justify-center ${viewMode === 'grid' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
                 >
                   <Grid3x3 className="w-5 h-5" />
                 </button>
                 <button
+                  type="button"
                   onClick={() => setViewMode('list')}
                   className={`px-4 flex items-center justify-center ${viewMode === 'list' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
                 >
@@ -345,6 +347,7 @@ const BrowseCourses = () => {
               {/* Clear Filters Button */}
               {(filterStatus !== 'all' || searchTerm !== '' || sortBy !== 'created_at') && (
                 <button
+                  type="button"
                   onClick={() => {
                     setFilterStatus('all');
                     setSearchTerm('');
@@ -364,9 +367,9 @@ const BrowseCourses = () => {
           <Card className="text-center py-12 shadow-sm border border-gray-200">
             <CardContent>
               <BookOpen className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">No courses found</h3>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">No resources found</h3>
               <p className="text-gray-600">
-                {searchTerm ? 'Try adjusting your search terms' : 'No courses available at the moment'}
+                {searchTerm ? 'Try adjusting your search terms' : 'No resources available at the moment'}
               </p>
             </CardContent>
           </Card>
@@ -565,7 +568,7 @@ const BrowseCourses = () => {
             {/* Page Numbers */}
             <div className="flex gap-2">
               {getPageNumbers().map((pageNum, index) => (
-                <React.Fragment key={index}>
+                <Fragment key={index}>
                   {pageNum === '...' ? (
                     <span className="px-3 py-2 text-gray-500">...</span>
                   ) : (
@@ -580,7 +583,7 @@ const BrowseCourses = () => {
                       {pageNum}
                     </Button>
                   )}
-                </React.Fragment>
+                </Fragment>
               ))}
             </div>
 

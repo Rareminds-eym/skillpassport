@@ -7,3 +7,6 @@ export * from './cors';
 export * from './response';
 export * from './supabase';
 export * from './types';
+export * from './db';
+export * from './role-mapper';
+export * from './sync-service';

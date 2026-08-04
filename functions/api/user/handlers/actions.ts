@@ -22,11 +22,89 @@ export const onRequestPostUnverified = withAuthAllowUnverified(async (context: A
 
       case 'createUserProfile': {
         const { id, email, firstName, lastName, phone, role } = params;
+        console.log('[createUserProfile] Called with:', { id, email, firstName, lastName, role });
+
         if (!id || !email) return apiError(400, 'VALIDATION_ERROR', 'Missing id or email', context.request, { startTime });
+
         const { data, error } = await supabase.from('users').upsert({
           id, email, firstName, lastName, phone: phone || null, role: role || 'recruiter',
         }).select().single();
-        if (error) return apiDbError(error, context.request, { startTime });
+
+        if (error) {
+          console.error('[createUserProfile] Failed to create user:', error);
+          return apiDbError(error, context.request, { startTime });
+        }
+
+        console.log('[createUserProfile] User created:', { id, email, role });
+
+        // 🔧 FIX: Create OR UPDATE recruiter record if role is recruiter
+        if (role === 'recruiter') {
+          console.log('[createUserProfile] Creating/updating recruiter record for:', { id, email, firstName, lastName });
+          const fullName = `${firstName || ''} ${lastName || ''}`.trim() || email;
+
+          // Check if recruiter record exists by email
+          const { data: existingRecruiter } = await supabase
+            .from('recruiters')
+            .select('id, user_id')
+            .eq('email', email)
+            .maybeSingle();
+
+          if (existingRecruiter) {
+            // Update existing recruiter record with new user_id
+            console.log('[createUserProfile] Updating existing recruiter record:', {
+              recruiterId: existingRecruiter.id,
+              oldUserId: existingRecruiter.user_id,
+              newUserId: id
+            });
+
+            const { error: updateError } = await supabase
+              .from('recruiters')
+              .update({
+                user_id: id, // Update to SSO user_id
+                name: fullName,
+                phone: phone || null,
+                updatedat: new Date().toISOString(),
+              })
+              .eq('id', existingRecruiter.id);
+
+            if (updateError) {
+              console.error('[createUserProfile] ❌ Failed to update recruiter record:', updateError);
+            } else {
+              console.log('[createUserProfile] ✓ Recruiter record updated successfully');
+            }
+          } else {
+            // Create new recruiter record
+            const { data: recruiterData, error: recruiterError } = await supabase.from('recruiters').insert({
+              user_id: id,
+              name: fullName,
+              email: email,
+              phone: phone || null,
+              verificationstatus: 'approved',
+              isactive: true,
+              createdat: new Date().toISOString(),
+              updatedat: new Date().toISOString(),
+            }).select().single();
+
+            if (recruiterError) {
+              console.error('[createUserProfile] ❌ Failed to create recruiter record:', {
+                error: recruiterError,
+                code: recruiterError.code,
+                message: recruiterError.message,
+                details: recruiterError.details
+              });
+            } else {
+              console.log('[createUserProfile] ✓ Recruiter record created successfully:', {
+                recruiterId: recruiterData?.id,
+                userId: id,
+                email: email,
+                name: fullName
+              });
+            }
+          }
+        } else {
+          console.log('[createUserProfile] Not creating recruiter record - role is:', role);
+        }
+
         return apiSuccess(data, context.request, { startTime });
       }
 

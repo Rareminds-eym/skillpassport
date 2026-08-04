@@ -23,16 +23,22 @@ import {
   TrendingUp,
   X as XIcon
 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 
-
+import toast from 'react-hot-toast';
 import { useUsageStatistics } from '@/features/analytics/model/useUsageStatistics';
+import { RECEIPT_CONFIG } from '@/shared/config/constants';
+import { downloadFileFromUrl, generateReceiptFilename } from '@/shared/utils/downloadHelpers';
 import { deactivateSubscription, pauseSubscription, resumeSubscription } from '@/features/subscription';
 import { getUserSubscriptions } from '@/features/subscription/api';
 import { calculateDaysRemaining, calculateProgressPercentage, formatDate as formatDateUtil, getSubscriptionStatusChecks } from '@/features/subscription/lib';
+import { getPaymentReceiptPresignedUrl } from '@/shared/api';
+import { getLogger } from '@/shared/config/logging';
 
-import { useAuthLoading, useUser, useUserRole } from '@/shared/model/authStore';
+import { useUser, useUserRole, useAuthLoading } from '@/shared/model/authStore';
+
+const logger = getLogger('my-subscription');
 /**
  * Get the settings path based on current URL path (more reliable than role)
  */
@@ -74,6 +80,42 @@ function getUserTypeFromUrl(pathname) {
 }
 
 // Removed FALLBACK_PLANS as per requirement to use DB data only
+
+/**
+ * Validate presigned URL format
+ * Ensures URL is HTTPS with valid hostname
+ */
+function isValidPresignedUrl(url) {
+  if (!url || typeof url !== 'string') return false;
+  if (!url.startsWith('https://')) return false;
+  
+  try {
+    const parsedUrl = new URL(url);
+    return parsedUrl.protocol === 'https:' && Boolean(parsedUrl.hostname);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Resolve payment ID from available sources
+ * Priority: invoice payment ID > subscription payment ID > order ID > subscription ID
+ */
+function resolvePaymentId(invoiceData, subscriptionData) {
+  // Safely normalize invoice payment ID if provided
+  const invoicePaymentId =
+    typeof invoiceData?.razorpay_payment_id === 'string'
+      ? invoiceData.razorpay_payment_id.trim()
+      : '';
+  
+  // Priority order: invoice payment ID > subscription payment ID > order ID > subscription ID
+  if (invoicePaymentId) return invoicePaymentId;
+  if (subscriptionData?.razorpayPaymentId) return subscriptionData.razorpayPaymentId;
+  if (subscriptionData?.razorpayOrderId) return subscriptionData.razorpayOrderId;
+  if (subscriptionData?.razorpaySubscriptionId) return subscriptionData.razorpaySubscriptionId;
+  
+  return null;
+}
 
 function MySubscription() {
   const navigate = useNavigate();
@@ -120,6 +162,9 @@ function MySubscription() {
   const [loadingBillingHistory, setLoadingBillingHistory] = useState(false);
   const [billingHistoryFetched, setBillingHistoryFetched] = useState(false);
   const [isTogglingAutoRenew, setIsTogglingAutoRenew] = useState(false);
+
+  // Ref to prevent duplicate download requests (synchronous guard)
+  const downloadInProgressRef = useRef(false);
 
   // Use database plans directly
   const plans = useMemo(() => {
@@ -201,7 +246,7 @@ function MySubscription() {
         alert(`Failed to cancel subscription: ${result.error}`);
       }
     } catch (error) {
-      console.error('Error cancelling subscription:', error);
+      logger.error('Error cancelling subscription', error);
       alert('An unexpected error occurred. Please try again.');
     } finally {
       setIsCancelling(false);
@@ -229,7 +274,7 @@ function MySubscription() {
         alert(`Failed to pause subscription: ${result.error}`);
       }
     } catch (error) {
-      console.error('Error pausing subscription:', error);
+      logger.error('Error pausing subscription', error);
       alert('An unexpected error occurred. Please try again.');
     } finally {
       setIsPausing(false);
@@ -255,7 +300,7 @@ function MySubscription() {
         alert(`Failed to resume subscription: ${result.error}`);
       }
     } catch (error) {
-      console.error('Error resuming subscription:', error);
+      logger.error('Error resuming subscription', error);
       alert('An unexpected error occurred. Please try again.');
     } finally {
       setIsPausing(false);
@@ -272,14 +317,129 @@ function MySubscription() {
     }
   };
 
-  const handleDownloadInvoice = async () => {
+  const handleDownloadInvoice = async (invoiceData = null) => {
+    // Prevent duplicate requests - synchronous guard
+    if (downloadInProgressRef.current) {
+      return;
+    }
+
+    // Early validation guards
+    if (!subscriptionData && !invoiceData) {
+      toast.error('Subscription details are not available. Please try again.');
+      return;
+    }
+
+    if (
+      invoiceData &&
+      (typeof invoiceData !== 'object' || Array.isArray(invoiceData))
+    ) {
+      toast.error('Invalid invoice details. Please try again.');
+      return;
+    }
+
+    if (
+      !RECEIPT_CONFIG ||
+      typeof RECEIPT_CONFIG.USER_ID_PREFIX_LENGTH !== 'number' ||
+      RECEIPT_CONFIG.USER_ID_PREFIX_LENGTH <= 0 ||
+      !(RECEIPT_CONFIG.PAYMENT_ID_SANITIZE_REGEX instanceof RegExp)
+    ) {
+      logger.error('Invalid RECEIPT_CONFIG for receipt download');
+      toast.error('System configuration error. Please contact support.');
+      return;
+    }
+
+    downloadInProgressRef.current = true;
     setIsDownloadingInvoice(true);
+    
+    let successfulDownload = false;
+    let errorOccurred = false;
+    let errorMessage = '';
+    
     try {
-      // Simulate download - replace with actual API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      // Actual implementation would call API to generate/download invoice
+      // PRIORITY 1: Check if subscription has receipt_url stored in database (R2 key)
+      const receiptUrl =
+        typeof subscriptionData?.receiptUrl === 'string'
+          ? subscriptionData.receiptUrl.trim()
+          : '';
+      
+      if (receiptUrl) {
+        // receipt_url is the R2 key, not a presigned URL - need to get presigned URL
+        const presignedUrl = await getPaymentReceiptPresignedUrl(receiptUrl, 3600);
+        
+        if (!isValidPresignedUrl(presignedUrl)) {
+          errorOccurred = true;
+          errorMessage = 'Failed to generate download link. Please try again.';
+        } else {
+          // Use shared download helper with fallback mechanism
+          try {
+            await downloadFileFromUrl(presignedUrl, generateReceiptFilename());
+            successfulDownload = true;
+          } catch (downloadError) {
+            logger.error('Download helper failed', downloadError);
+            errorOccurred = true;
+            errorMessage = 'Failed to download receipt. A copy has been sent to your email.';
+          }
+        }
+      } else {
+        // PRIORITY 2: Construct receipt path from payment ID
+        const paymentId = resolvePaymentId(invoiceData, subscriptionData);
+        
+        if (!paymentId) {
+          logger.error('No payment information found', new Error('Missing payment ID'));
+          errorOccurred = true;
+          errorMessage = 'Receipt not available. Payment information not found.';
+        } else {
+          // Construct the receipt key pattern - matches what the backend generates
+          // Pattern: payment_pdf/user_{shortUserId}/{sanitizedPaymentId}_{timestamp}.pdf
+          const RECEIPT_FILE_PREFIX = 'payment_pdf/user_';
+          const userPrefix = user?.id
+            ? user.id.substring(0, Math.min(user.id.length, RECEIPT_CONFIG.USER_ID_PREFIX_LENGTH))
+            : '';
+          const sanitizedPaymentId = paymentId.replace(RECEIPT_CONFIG.PAYMENT_ID_SANITIZE_REGEX, '');
+          
+          // The exact key format may vary by timestamp, so we use the payment ID as identifier
+          // The backend will handle key extraction from payment ID
+          const fileIdentifier = `${RECEIPT_FILE_PREFIX}${userPrefix}/${sanitizedPaymentId}`;
+          
+          // Get presigned URL for the receipt
+          const presignedUrl = await getPaymentReceiptPresignedUrl(fileIdentifier, 3600);
+          
+          if (!isValidPresignedUrl(presignedUrl)) {
+            logger.error('Invalid presigned URL received', new Error('Invalid URL'));
+            errorOccurred = true;
+            errorMessage = 'Failed to generate download link. Receipt may not exist yet.';
+          } else {
+            // Use shared download helper with fallback mechanism
+            try {
+              await downloadFileFromUrl(presignedUrl, generateReceiptFilename());
+              successfulDownload = true;
+            } catch (downloadError) {
+              logger.error('Download helper failed', downloadError);
+              errorOccurred = true;
+              errorMessage = 'Failed to download receipt. A copy has been sent to your email.';
+            }
+          }
+        }
+      }
+    } catch (error) {
+      logger.error('Receipt download failed', error);
+      errorOccurred = true;
+      const msg = error?.message || 'Failed to download receipt';
+      if (msg.includes('not found')) {
+        errorMessage = 'Receipt is still being generated. Please try again in a moment or check your email.';
+      } else {
+        errorMessage = 'Failed to download receipt. A copy has been sent to your email.';
+      }
     } finally {
+      downloadInProgressRef.current = false;
       setIsDownloadingInvoice(false);
+      
+      // Show appropriate toast message after cleanup
+      if (successfulDownload) {
+        toast.success('Receipt downloading!');
+      } else if (errorOccurred && errorMessage) {
+        toast.error(errorMessage);
+      }
     }
   };
 
@@ -300,7 +460,7 @@ function MySubscription() {
     } catch (error) {
       // Rollback on error
       setAutoRenewEnabled(previousValue);
-      console.error('Failed to toggle auto-renewal:', error);
+      logger.error('Failed to toggle auto-renewal', error);
     } finally {
       setIsTogglingAutoRenew(false);
     }
@@ -352,7 +512,7 @@ function MySubscription() {
         setBillingHistoryFetched(true);
       }
     } catch (error) {
-      console.error('❌ Error fetching billing history:', error);
+      logger.error('Error fetching billing history', error);
     } finally {
       setLoadingBillingHistory(false);
     }
@@ -956,8 +1116,10 @@ function MySubscription() {
                                   {invoice.status === 'success' || invoice.status === 'paid' ? 'Paid' : 'Pending'}
                                 </span>
                                 <button
-                                  onClick={handleDownloadInvoice}
-                                  className="p-2 hover:bg-slate-100 rounded-2xl transition-colors"
+                                  type="button"
+                                  onClick={() => handleDownloadInvoice(invoice)}
+                                  disabled={isDownloadingInvoice}
+                                  className="p-2 hover:bg-slate-100 rounded-2xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                   title="Download Invoice"
                                 >
                                   <Download className="w-4 h-4 text-slate-600" />
@@ -1096,7 +1258,10 @@ function MySubscription() {
                       </div>
                       <div className="pt-3 border-t border-slate-200">
                         <button
-                          onClick={handleDownloadInvoice}
+                          type="button"
+                          onClick={() => {
+                            handleDownloadInvoice();
+                          }}
                           disabled={isDownloadingInvoice}
                           className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-slate-100 text-slate-900 rounded-2xl text-sm font-semibold hover:bg-slate-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed border border-slate-200"
                         >
@@ -1193,10 +1358,11 @@ function MySubscription() {
             {/* Additional Feedback */}
             {cancelReason && (
               <div className="mb-6">
-                <label className="block text-sm font-semibold text-slate-900 mb-3 uppercase tracking-wider">
+                <label htmlFor="cancel-feedback" className="block text-sm font-semibold text-slate-900 mb-3 uppercase tracking-wider">
                   Tell us more (optional)
                 </label>
                 <textarea
+                  id="cancel-feedback"
                   value={additionalFeedback}
                   onChange={(e) => setAdditionalFeedback(e.target.value)}
                   placeholder="Your feedback helps us improve..."
@@ -1218,6 +1384,7 @@ function MySubscription() {
                     : 'Not using it right now? Pause your subscription for 1-3 months instead of canceling.'}
                 </p>
                 <button
+                  type="button"
                   onClick={() => {
                     if (cancelReason === 'Too expensive') {
                       alert('Discount offer applied! Redirecting to payment...');
@@ -1235,6 +1402,7 @@ function MySubscription() {
 
             <div className="flex gap-3">
               <button
+                type="button"
                 onClick={() => {
                   setShowCancelModal(false);
                   setCancelReason('');
@@ -1247,6 +1415,7 @@ function MySubscription() {
                 Keep Subscription
               </button>
               <button
+                type="button"
                 onClick={confirmCancelSubscription}
                 disabled={isCancelling || !cancelReason}
                 className="flex-1 px-4 py-3 bg-gradient-to-r from-slate-800 to-slate-900 text-white rounded-2xl text-sm font-semibold hover:from-slate-900 hover:to-black transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:scale-105"
@@ -1304,6 +1473,7 @@ function MySubscription() {
 
             <div className="flex gap-3">
               <button
+                type="button"
                 onClick={() => setShowPauseModal(false)}
                 disabled={isPausing}
                 className="flex-1 px-4 py-3 border-2 border-slate-300 text-slate-900 rounded-2xl text-sm font-semibold hover:bg-slate-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1311,6 +1481,7 @@ function MySubscription() {
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={handlePauseSubscription}
                 disabled={isPausing}
                 className="flex-1 px-4 py-3 bg-gradient-to-r from-amber-600 to-amber-700 text-white rounded-2xl text-sm font-semibold hover:from-amber-700 hover:to-amber-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:scale-105"

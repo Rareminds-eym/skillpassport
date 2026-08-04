@@ -113,9 +113,30 @@ async function handleGetOrCreateLearnerEducatorConversation(supabase: SupabaseCl
     }
     return existing;
   }
+  let { data: learnerRow, error: learnerErr } = await supabase
+  .from('learners')
+  .select('user_id')
+  .eq('id', String(learnerId))
+  .maybeSingle();
+if (learnerErr) throw learnerErr;
 
+// Fallback: learnerId might already be a user_id (sent from learner frontend)
+if (!learnerRow?.user_id) {
+  const { data: byUserId, error: byUserIdErr } = await supabase
+    .from('learners')
+    .select('user_id')
+    .eq('user_id', String(learnerId))
+    .maybeSingle();
+  if (byUserIdErr) throw byUserIdErr;
+  learnerRow = byUserId;
+}
+
+if (!learnerRow?.user_id) {
+  throw new Error(`Learner not found or missing user_id for learnerId=${learnerId}`);
+}
+const learnerUserId = String(learnerRow.user_id);
   const conversationId = `conv_se_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  const { data, error } = await supabase.from('conversations').insert({ id: conversationId, learner_id: learnerId, educator_id: educatorId, class_id: classId, subject: subject || 'General Discussion', conversation_type: 'learner_educator', status: 'active' }).select().single();
+  const { data, error } = await supabase.from('conversations').insert({ id: conversationId, learner_id: learnerUserId, educator_id: educatorId, class_id: classId, subject: subject || 'General Discussion', conversation_type: 'learner_educator', status: 'active' }).select().single();
   if (error) throw error;
   return data;
 }
@@ -145,8 +166,29 @@ async function handleGetOrCreateLearnerCollegeLecturerConversation(supabase: Sup
 async function handleGetOrCreateLearnerAdminConversation(supabase: SupabaseClient, params: LearnerAdminParams): Promise<Conversation> {
   const { learnerId, schoolId, subject } = params;
 
-  // Ensure IDs are strings
-  const lrnId = String(learnerId);
+  // Resolve learner's user_id — conversations.learner_id FK references learners.user_id, not learners.id
+  let { data: learnerRow, error: learnerErr } = await supabase
+    .from('learners')
+    .select('user_id')
+    .eq('id', String(learnerId))
+    .maybeSingle();
+  if (learnerErr) throw learnerErr;
+
+  // Fallback: learnerId might already be a user_id (sent from learner frontend)
+  if (!learnerRow?.user_id) {
+    const { data: byUserId, error: byUserIdErr } = await supabase
+      .from('learners')
+      .select('user_id')
+      .eq('user_id', String(learnerId))
+      .maybeSingle();
+    if (byUserIdErr) throw byUserIdErr;
+    learnerRow = byUserId;
+  }
+
+  if (!learnerRow?.user_id) {
+  throw new Error(`Learner not found or missing user_id for learnerId=${learnerId}`);
+}
+const lrnId = String(learnerRow.user_id);
   const schId = String(schoolId);
 
   const { data: existing, error: fetchError } = await supabase
@@ -187,8 +229,30 @@ async function handleGetOrCreateLearnerAdminConversation(supabase: SupabaseClien
 async function handleGetOrCreateLearnerCollegeAdminConversation(supabase: SupabaseClient, params: LearnerCollegeAdminParams): Promise<Conversation> {
   const { learnerId, collegeId, subject } = params;
 
-  // Ensure IDs are strings
-  const lrnId = String(learnerId);
+  // Resolve learner's user_id — conversations.learner_id FK references learners.user_id, not learners.id
+  let { data: learnerRow, error: learnerErr } = await supabase
+    .from('learners')
+    .select('user_id')
+    .eq('id', String(learnerId))
+    .maybeSingle();
+  if (learnerErr) throw learnerErr;
+
+  // Fallback: learnerId might already be a user_id (sent from learner frontend)
+  if (!learnerRow?.user_id) {
+    const { data: byUserId, error: byUserIdErr} = await supabase
+      .from('learners')
+      .select('user_id')
+      .eq('user_id', String(learnerId))
+      .maybeSingle();
+    if (byUserIdErr) throw byUserIdErr;
+    learnerRow = byUserId;
+  }
+
+  if (!learnerRow?.user_id) {
+  throw new Error(`Learner not found or missing user_id for learnerId=${learnerId}`);
+}
+const lrnId = String(learnerRow.user_id);
+
   const collId = String(collegeId);
 
   const { data: existing, error: fetchError } = await supabase
@@ -323,13 +387,13 @@ async function handleUnarchiveConversation(supabase: SupabaseClient, params: Una
 }
 
 export {
+  handleArchiveConversation,
+  handleGetOrCreateCollegeEducatorAdminConversation,
   handleGetOrCreateConversation,
-  handleGetOrCreateLearnerEducatorConversation,
-  handleGetOrCreateLearnerCollegeLecturerConversation,
+  handleGetOrCreateEducatorAdminConversation,
   handleGetOrCreateLearnerAdminConversation,
   handleGetOrCreateLearnerCollegeAdminConversation,
-  handleGetOrCreateEducatorAdminConversation,
-  handleGetOrCreateCollegeEducatorAdminConversation,
-  handleArchiveConversation,
-  handleUnarchiveConversation
+  handleGetOrCreateLearnerCollegeLecturerConversation,
+  handleGetOrCreateLearnerEducatorConversation,
+  handleUnarchiveConversation,
 };

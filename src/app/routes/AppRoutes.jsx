@@ -7,7 +7,7 @@ import ScrollToTop from "@/shared/ui/ScrollToTop";
 import { publicRoutes } from "./publicRoutes";
 import { learnerRoutes } from "./learnerRoutes";
 import { educatorRoutes } from "./educatorRoutes";
-import { recruiterRoutes, recruiterSubscriptionPlanRoute } from "./recruiterRoutes";
+import { recruiterRoutes, recruiterSubscriptionPlanRoute, recruiterOnboardingRoute } from "./recruiterRoutes";
 import { collegeAdminRoutes, schoolAdminRoutes, universityAdminRoutes } from "./adminRoutes";
 
 const AppRoutes = () => {
@@ -20,6 +20,7 @@ const AppRoutes = () => {
         {schoolAdminRoutes}
         {universityAdminRoutes}
         {recruiterSubscriptionPlanRoute}
+        {recruiterOnboardingRoute}
         {recruiterRoutes}
         {learnerRoutes}
         {educatorRoutes}

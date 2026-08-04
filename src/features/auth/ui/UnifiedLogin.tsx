@@ -5,8 +5,9 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import type { UserRole } from '@/features/auth/api';
 import { redirectToRoleDashboard } from '@/features/auth/lib';
 import { PASSWORD_MIN } from '@/shared/constants';
+import { generateLteCode } from '@/features/auth/api/lteSsoApi';
 import { trackLogin } from '@/shared/lib/analytics';
-import { useAuthActions } from '@/shared/model/authStore';
+import { useAuthActions, useAuthStore } from '@/shared/model/authStore';
 import { AuthFetchError } from '@rareminds-eym/auth-client';
 
 interface LoginState {
@@ -52,6 +53,29 @@ const UnifiedLogin = () => {
   const invitationToken = sessionStorage.getItem('invitation_token');
   const justVerified = searchParams.get('verified') === '1';
   const hasCleanedVerifiedRef = useRef(false);
+
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const authLoading = useAuthStore((s) => s.loading);
+
+  useEffect(() => {
+    async function checkLteSsoHandoff() {
+      const targetApp = searchParams.get('target_app') || searchParams.get('redirect_app');
+      if (targetApp === 'lte') {
+        if (authLoading) return;
+
+        if (isAuthenticated) {
+          try {
+            const { redirectUrl } = await generateLteCode();
+            window.location.href = redirectUrl;
+          } catch (err) {
+            console.error('[SSO] Auto LTE SSO handoff error:', err);
+            setState((prev) => ({ ...prev, error: 'Failed to initiate LTE handoff. Please try again.' }));
+          }
+        }
+      }
+    }
+    void checkLteSsoHandoff();
+  }, [isAuthenticated, authLoading, searchParams]);
 
   useEffect(() => {
     if (justVerified && !hasCleanedVerifiedRef.current) {
@@ -311,6 +335,15 @@ const UnifiedLogin = () => {
 
       // Track login_success — login complete, role verified, store updated
       trackLogin.success(useAuthStore.getState().user?.id || '', actualRole);
+
+      // Check for post-login redirect (set after invitation acceptance during verification)
+      const postLoginRedirect = sessionStorage.getItem('post_login_redirect');
+      if (postLoginRedirect) {
+        console.log('[UnifiedLogin] Post-login redirect found:', postLoginRedirect);
+        sessionStorage.removeItem('post_login_redirect');
+        navigate(postLoginRedirect, { replace: true });
+        return;
+      }
 
       // Redirect to the intended destination
       if (returnUrl) {

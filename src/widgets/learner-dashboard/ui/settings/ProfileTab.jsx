@@ -363,6 +363,7 @@ const ProfileTab = ({
                 return (
                   <button
                     key={tab.id}
+                    type="button"
                     onClick={() => setProfileActiveTab(tab.id)}
                     className={`flex items-center gap-2 px-3 sm:px-4 py-3 font-medium text-xs sm:text-sm whitespace-nowrap border-b-2 transition-colors min-w-fit ${
                       isActive

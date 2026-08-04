@@ -20,8 +20,8 @@ export const ROLE_DASHBOARD_MAP: Record<string, string> = {
   recruiter: '/recruitment/overview',
   hr: '/recruitment/overview',
   company_admin: '/recruitment/overview',
+  owner: '/recruitment/overview', // Recruitment admin (owner of recruitment org)
   admin: '/',
-  owner: '/',
 };
 
 /**

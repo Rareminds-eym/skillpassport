@@ -1,0 +1,9 @@
+# ============================================================================
+# GitHub CODEOWNERS (skillpassport project)
+# ============================================================================
+
+# Protect the AI Code Reviewer configuration for skillpassport
+/.codereview.yml @gokulrajrz @gokulrajr-r
+
+# Protect the CODEOWNERS file itself
+/.github/CODEOWNERS @gokulrajrz @gokulrajr-r

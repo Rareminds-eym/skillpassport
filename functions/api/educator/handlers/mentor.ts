@@ -33,6 +33,7 @@ export async function handleGetMentorNotes(context: AuthenticatedContext, startT
 
 export async function handleListMentorNotes(params: any, context: AuthenticatedContext, startTime: number) {
   const supabase = getSub(context);
+  const { select, filters } = params;
   if (!filters?.learner_id?.in) return apiError(400, 'VALIDATION_ERROR', 'Missing learner_id filter', context.request, { startTime });
   let notesQuery = supabase.from('mentor_notes').select(select || '*').in('learner_id', filters.learner_id.in);
   if (filters.note_date?.order) notesQuery = notesQuery.order('note_date', { ascending: filters.note_date.order === 'asc' });

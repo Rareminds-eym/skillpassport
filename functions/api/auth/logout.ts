@@ -1,6 +1,7 @@
 import { apiLogger } from '../../lib/logger';
 import { getCorsHeaders } from '../../lib/cors';
 import type { Env } from '../../lib/types';
+import { getSsoService } from '../../lib/sso-client';
 
 /**
  * POST /api/auth/logout
@@ -73,7 +74,7 @@ export async function onRequestPost(context: {
 
   if (refreshToken) {
     try {
-      const ssoService = env.SSO_SERVICE as any;
+      const ssoService = getSsoService(env);
 
       // logoutSession signature: (refreshToken: string, ip?: string, ua?: string)
       // Positional arguments — NOT an object (Cloudflare Workers RPC contract)

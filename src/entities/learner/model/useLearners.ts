@@ -1,12 +1,6 @@
-/**
- * DEPENDENCY INJECTION PATTERN APPLIED
- * 
- * This file should receive getProgramSectionlearners as a parameter/prop.
- * Import from @/features/courses/api/programService in the parent component and pass it down.
- */
-
 import { useEffect, useMemo, useState } from 'react'
 import { apiPost } from '@/shared/api/apiClient'
+import { getProgramSectionlearners } from '@/shared/api/collegeAcademicApi'
 // Skill from skills table
 interface Skill {
   id: string
@@ -209,6 +203,8 @@ interface LearnerRow {
   quota?: string
   metadata?: Record<string, unknown>
   notification_settings?: Record<string, unknown>
+  semester?: number
+  admission_academic_year?: string
   // Related data from joins
   skills?: Skill[]
   projects?: Project[]
@@ -289,6 +285,8 @@ export interface UICandidate {
   school_class_grade?: string // School class grade
   school_class_section?: string // School class section
   approval_status?: string // Add this field
+  semester?: number // Current semester for promotion logic
+  admission_academic_year?: string // For academic year calculation
   hobbies?: string[]
   languages?: string[]
   interests?: string[]
@@ -403,6 +401,8 @@ function mapToUICandidate(row: LearnerRow): UICandidate {
     school_class_grade: schoolClassData?.grade, // Add school class grade
     school_class_section: schoolClassData?.section, // Add school class section
     approval_status: row.approval_status, // Add this field
+    semester: row.semester,
+    admission_academic_year: row.admission_academic_year,
     hobbies: row.hobbies,
     languages: row.languages,
     interests: row.interests,

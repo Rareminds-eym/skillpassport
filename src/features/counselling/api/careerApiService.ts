@@ -38,7 +38,6 @@ interface GenerateEmbeddingParams {
  */
 export async function sendCareerChatMessage(
   { conversationId, message, selectedChips = [] }: CareerChatParams,
-  token: string,
   onToken?: (content: string) => void,
   onDone?: (data: unknown) => void,
   onError?: (error: Error) => void,
@@ -55,11 +54,13 @@ export async function sendCareerChatMessage(
     if (!response.ok) {
       const body = await response.json().catch(() => ({})) as any;
       const errorDetail = body?.error;
+      const errorCode = typeof errorDetail === 'object' ? errorDetail?.code : null;
       const errorMsg = typeof errorDetail === 'string' ? errorDetail : errorDetail?.message || body?.message || 'Chat request failed';
-      logger.error('Career chat API request failed', new Error(errorMsg), {
+      const finalError = errorCode ? `${errorCode}: ${errorMsg}` : errorMsg;
+      logger.error('Career chat API request failed', new Error(finalError), {
         status: response.status
       });
-      onError?.(new Error(errorMsg));
+      onError?.(new Error(finalError));
       return;
     }
 
@@ -94,10 +95,10 @@ export async function sendCareerChatMessage(
             // Handle different event types based on data structure
             if (data.content) {
               onToken?.(data.content);
-            } else if (data.conversationId || data.messageId || data.intent) {
-              onDone?.(data);
             } else if (data.error) {
-              onError?.(new Error(data.error));
+              onError?.(new Error(typeof data.error === 'string' ? data.error : data.error.type || data.error.message || 'Unknown error'));
+            } else if (data.done || data.conversationId || data.messageId || data.intent) {
+              onDone?.(data);
             }
           } catch (parseError) {
             logger.warn('Failed to parse career chat SSE data', {

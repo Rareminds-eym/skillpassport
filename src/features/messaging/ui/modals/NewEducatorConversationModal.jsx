@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { X, Search, GraduationCap, MessageCircle } from 'lucide-react';
+import { GraduationCap, MessageCircle, Search, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { apiPost } from '@/shared/api/apiClient';
+import { getLogger } from '@/shared/config/logging';
 
-// Small Message Modal Component
+const logger = getLogger('new-educator-conversation-modal');
 const MessageModal = ({ educator, isOpen, onClose, onSend, isLoading }) => {
   const [message, setMessage] = useState('');
   const [subject, setSubject] = useState('');
@@ -42,6 +43,7 @@ const MessageModal = ({ educator, isOpen, onClose, onSend, isLoading }) => {
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
             className="p-1 hover:bg-gray-100 rounded-full transition-colors"
           >
@@ -65,7 +67,7 @@ const MessageModal = ({ educator, isOpen, onClose, onSend, isLoading }) => {
               </p>
             </div>
             <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
-              <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg aria-hidden="true" className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
             </div>
@@ -74,10 +76,11 @@ const MessageModal = ({ educator, isOpen, onClose, onSend, isLoading }) => {
           {/* Subject Input for College Lecturers */}
           {educator.type === 'college_lecturer' && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="conversation-subject" className="block text-sm font-medium text-gray-700 mb-2">
                 What's this about?
               </label>
               <input
+                id="conversation-subject"
                 type="text"
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
@@ -91,10 +94,11 @@ const MessageModal = ({ educator, isOpen, onClose, onSend, isLoading }) => {
 
           {/* Message Input */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="conversation-message" className="block text-sm font-medium text-gray-700 mb-2">
               Type your message
             </label>
             <textarea
+              id="conversation-message"
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               placeholder="Type your message..."
@@ -120,6 +124,7 @@ const MessageModal = ({ educator, isOpen, onClose, onSend, isLoading }) => {
                   "Can you explain this topic?"
                 ]).map((suggestion, idx) => (
                   <button
+                    type="button"
                     key={idx}
                     onClick={() => setMessage(suggestion)}
                     className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full transition-colors"
@@ -135,12 +140,14 @@ const MessageModal = ({ educator, isOpen, onClose, onSend, isLoading }) => {
         {/* Footer */}
         <div className="flex items-center justify-between p-4 border-t border-gray-200 bg-gray-50 rounded-b-2xl">
           <button
+            type="button"
             onClick={onClose}
             className="px-4 py-2 text-gray-600 hover:bg-gray-200 rounded-lg transition-colors font-medium text-sm"
           >
             Cancel
           </button>
           <button
+            type="button"
             onClick={handleSend}
             disabled={
               !message.trim() || 
@@ -186,16 +193,16 @@ const NewEducatorConversationModal = ({ isOpen, onClose, learnerId, onConversati
   const fetchlearnerEducators = async () => {
     setLoading(true);
     try {
-      console.log('🔍 Starting fetchlearnerEducators for learnerId:', learnerId);
+      logger.debug('Starting fetch learner educators', { learnerId });
 
-      // Get learner context (school_id, university_college_id)
+      // Get learner context (school_id, college_id)
       let { data: learnerData } = await apiPost('/messaging/actions', { action: 'fetch-learner-context', learnerId });
 
       // Fallback: try with user_id
       if (!learnerData) {
         const { data: learnerByUserId } = await apiPost('/messaging/actions', { action: 'fetch-learner-context-by-user-id', userId: learnerId });
         if (!learnerByUserId) {
-          console.log('⚠️ Learner not found by id or user_id');
+          logger.warn('Learner not found by id or user_id');
           setLoading(false);
           return;
         }
@@ -206,7 +213,7 @@ const NewEducatorConversationModal = ({ isOpen, onClose, learnerId, onConversati
 
       // Fetch ALL school educators if learner has school_id
       if (learnerData?.school_id) {
-        console.log('🏫 Fetching school educators for school_id:', learnerData.school_id);
+        logger.debug('Fetching school educators for school_id:', learnerData.school_id);
         const { data: schoolEducators } = await apiPost('/messaging/actions', { action: 'fetch-recipients', conversationType: 'admin-educator', contextId: learnerData.school_id });
         if (schoolEducators) {
           const educatorList = schoolEducators.map(educator => ({
@@ -221,10 +228,10 @@ const NewEducatorConversationModal = ({ isOpen, onClose, learnerId, onConversati
         }
       }
 
-      // Fetch college lecturers if learner has university_college_id
-      if (learnerData?.university_college_id) {
-        console.log('🎓 Fetching college lecturers for college_id:', learnerData.university_college_id);
-        const { data: allCollegeLecturers } = await apiPost('/messaging/actions', { action: 'fetch-recipients', conversationType: 'college-lecturer', contextId: learnerData.university_college_id });
+      // Fetch  ALL college lecturers if learner has college_id
+      if (learnerData?.college_id) {
+        logger.debug('Fetching college lecturers', { collegeId: learnerData.college_id });
+        const { data: allCollegeLecturers } = await apiPost('/messaging/actions', { action: 'fetch-recipients', conversationType: 'college-lecturer', contextId: learnerData.college_id });
         if (allCollegeLecturers && allCollegeLecturers.length > 0) {
           const collegeEducators = allCollegeLecturers.map(lecturer => ({
             id: lecturer.id,
@@ -238,14 +245,14 @@ const NewEducatorConversationModal = ({ isOpen, onClose, learnerId, onConversati
           }));
           allEducators.push(...collegeEducators);
         } else {
-          console.log('ℹ️ No college lecturers found in this college');
+          logger.debug('No college lecturers found in this college');
         }
       }
 
-      console.log('📊 Final educators list:', allEducators);
+      logger.debug('Final educators list:', allEducators);
       setEducators(allEducators);
     } catch (error) {
-      console.error('❌ Error fetching educators:', error);
+      logger.error('Error fetching educators:', error);
     } finally {
       setLoading(false);
     }
@@ -258,7 +265,7 @@ const NewEducatorConversationModal = ({ isOpen, onClose, learnerId, onConversati
       setShowMessageModal(false);
       handleClose();
     } catch (error) {
-      console.error('Error creating conversation:', error);
+      logger.error('Error creating conversation:', error);
     } finally {
       setSendingMessage(false);
     }
@@ -305,6 +312,7 @@ const NewEducatorConversationModal = ({ isOpen, onClose, learnerId, onConversati
               </div>
             </div>
             <button
+              type="button"
               onClick={handleClose}
               className="p-2 hover:bg-gray-100 rounded-full transition-colors"
             >
@@ -317,9 +325,10 @@ const NewEducatorConversationModal = ({ isOpen, onClose, learnerId, onConversati
             <div className="p-6">
               {/* Search */}
               <div className="relative mb-6">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Search aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input
                   type="text"
+                  aria-label="Search educators"
                   placeholder="Search educators..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -340,6 +349,7 @@ const NewEducatorConversationModal = ({ isOpen, onClose, learnerId, onConversati
                 <div className="space-y-3">
                   {filteredEducators.map((educator) => (
                     <button
+                      type="button"
                       key={educator.id}
                       onClick={() => handleEducatorSelect(educator)}
                       className="w-full text-left p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-all group"
@@ -380,6 +390,7 @@ const NewEducatorConversationModal = ({ isOpen, onClose, learnerId, onConversati
           {/* Footer */}
           <div className="p-6 border-t border-gray-200 bg-gray-50">
             <button
+              type="button"
               onClick={handleClose}
               className="w-full px-4 py-2 text-gray-600 hover:bg-gray-200 rounded-lg transition-colors font-medium"
             >

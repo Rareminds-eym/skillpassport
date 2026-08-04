@@ -1,21 +1,30 @@
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { getContextUser, withAuth } from '../../lib/auth';
+import { withAuth } from '../../lib/auth';
+import { createLogger } from '../../lib/logger';
 import { notifyRealtime } from '../../lib/realtime';
 import { apiDbError, apiError, apiMethodNotAllowed, apiSuccess } from '../../lib/response';
 import { getServiceClient } from '../../lib/supabase';
-import { convertApplicationId, convertOpportunityId, fetchEducatorDetailsForConversations } from './utils';
 import {
+  handleArchiveConversation,
+  handleGetOrCreateCollegeEducatorAdminConversation,
   handleGetOrCreateConversation,
-  handleGetOrCreateLearnerEducatorConversation,
-  handleGetOrCreateLearnerCollegeLecturerConversation,
+  handleGetOrCreateEducatorAdminConversation,
   handleGetOrCreateLearnerAdminConversation,
   handleGetOrCreateLearnerCollegeAdminConversation,
-  handleGetOrCreateEducatorAdminConversation,
-  handleGetOrCreateCollegeEducatorAdminConversation,
-  handleArchiveConversation,
-  handleUnarchiveConversation
+  handleGetOrCreateLearnerCollegeLecturerConversation,
+  handleGetOrCreateLearnerEducatorConversation,
+  handleUnarchiveConversation,
 } from './handlers/conversation';
+import { convertApplicationId, convertOpportunityId, fetchEducatorDetailsForConversations } from './utils';
+
+const logger = createLogger('messaging-actions');
+
+const resolveString = (primary: unknown, fallback: unknown): string => {
+  if (typeof primary === 'string') return primary;
+  if (typeof fallback === 'string') return fallback;
+  return '';
+}; 
 
 interface Message {
   id: string;
@@ -69,8 +78,45 @@ async function handleSendMessage(supabase: SupabaseClient, params: SendMessagePa
 
   // Ensure all IDs are strings
   const convId = String(conversationId);
-  const sendId = String(senderId);
-  const recvId = String(receiverId);
+
+  // Resolve learner user_id if sender/receiver is a learner (notifications FK requires user_id not learners.id)
+  // Batch both lookups into a single query to avoid N+1
+  let sendId = String(senderId);
+  let recvId = String(receiverId);
+
+  const learnerIdsToResolve: string[] = [];
+  if (senderType === 'learner') learnerIdsToResolve.push(sendId);
+  if (receiverType === 'learner' && recvId !== sendId) learnerIdsToResolve.push(recvId);
+
+  if (learnerIdsToResolve.length > 0) {
+    // First try lookup by learners.id (used by AdminMessageModal)
+    const { data: learnersById, error: learnersByIdError } = await supabase.from('learners').select('id, user_id').in('id', learnerIdsToResolve);
+    if (learnersByIdError) throw learnersByIdError;
+
+    // For any IDs not resolved, try lookup by learners.user_id (used by communication page where conv.learner_id = user_id)
+    const resolvedByIdMap = new Map((learnersById || []).map((l: { id: string; user_id: string }) => [l.id, l.user_id]));
+    const stillUnresolved = learnerIdsToResolve.filter(id => !resolvedByIdMap.has(id));
+
+    let resolvedByUserIdMap = new Map<string, string>();
+    if (stillUnresolved.length > 0) {
+      const { data: learnersByUserId } = await supabase.from('learners').select('id, user_id').in('user_id', stillUnresolved);
+      resolvedByUserIdMap = new Map((learnersByUserId || []).map((l: { id: string; user_id: string }) => [l.user_id, l.user_id]));
+    }
+
+    const learnerMap = new Map([...resolvedByIdMap, ...resolvedByUserIdMap]);
+
+    if (senderType === 'learner') {
+      const resolved = learnerMap.get(sendId);
+      if (!resolved) throw new Error(`Could not resolve user_id for learner sender (learnerId=${sendId})`);
+      sendId = String(resolved);
+    }
+
+    if (receiverType === 'learner') {
+      const resolved = learnerMap.get(recvId);
+      if (!resolved) throw new Error(`Could not resolve user_id for learner receiver (learnerId=${recvId})`);
+      recvId = String(resolved);
+    }
+  }
 
   const applicationIdOld = await convertApplicationId(supabase, applicationId);
   const opportunityIdOld = await convertOpportunityId(supabase, opportunityId);
@@ -80,10 +126,15 @@ async function handleSendMessage(supabase: SupabaseClient, params: SendMessagePa
   if (opportunityIdOld) messageData.opportunity_id = opportunityIdOld;
   if (classId) messageData.class_id = classId;
   if (subject) messageData.subject = subject;
-  if (attachments && attachments.length > 0) messageData.attachments = attachments;
+  if (attachments?.length) messageData.attachments = attachments;
 
   const { data, error } = await supabase.from('messages').insert(messageData).select('id, conversation_id, sender_id, sender_type, receiver_id, receiver_type, message_text, is_read, read_at, created_at, updated_at').single();
-  if (error) throw error;
+  // Ignore FK errors from the notifications trigger — the message itself was saved
+  if (error && !(error.code === '23503' && error.message?.includes('notifications'))) throw error;
+  if (!data) {
+  logger.warn('Message insert succeeded but returned no data', { error });
+  throw new Error('Message insert returned no data');
+}
   return data;
 }
 
@@ -123,7 +174,7 @@ async function handleGetUserConversations(supabase: SupabaseClient, params: any)
   const column = userType === 'learner' ? 'learner_id' : userType === 'recruiter' ? 'recruiter_id' : 'educator_id';
   const deletedColumn = userType === 'learner' ? 'deleted_by_learner' : userType === 'recruiter' ? 'deleted_by_recruiter' : 'deleted_by_educator';
 
-  let query;
+  let query: any;
   if (userType === 'educator') {
     query = supabase
       .from('conversations')
@@ -132,7 +183,7 @@ async function handleGetUserConversations(supabase: SupabaseClient, params: any)
   } else if (userType === 'college_educator') {
     query = supabase
       .from('conversations')
-      .select(`id, learner_id, educator_id, subject, status, conversation_type, last_message_at, last_message_preview, last_message_sender, educator_unread_count, created_at, updated_at, deleted_by_educator, learner:learners(id, user_id, email, name, contact_number, university, branch_field, program_id, program_section_id)`)
+      .select(`id, learner_id, educator_id, subject, status, conversation_type, last_message_at, last_message_preview, last_message_sender, educator_unread_count, created_at, updated_at, deleted_by_college_educator, learner:learners(id, user_id, email, name, contact_number, university, branch_field, program_id, program_section_id)`)
       .eq(column, usrId).eq('conversation_type', 'learner_college_educator');
   } else if (userType === 'learner') {
     query = supabase
@@ -148,11 +199,14 @@ async function handleGetUserConversations(supabase: SupabaseClient, params: any)
 
   try {
     if (userType === 'college_educator') {
-      query = query.eq('deleted_by_educator', false);
+      query = query.eq('deleted_by_college_educator', false);
     } else {
       query = query.eq(deletedColumn, false);
     }
-  } catch (e) { }
+  } catch (err) {
+    // deleted_by column may not exist on older schema versions — silently skip the filter
+    logger.warn('[handleGetUserConversations] deleted_by filter skipped', { error: err instanceof Error ? err.message : String(err) });
+  }
 
   if (conversationType) query = query.eq('conversation_type', conversationType);
   if (!includeArchived) query = query.neq('status', 'archived');
@@ -203,7 +257,6 @@ async function handleMarkConversationAsRead(supabase: SupabaseClient, params: an
     const conversation = conversationResult.value.data;
     const isLearner = conversation.learner_id === usrId;
     const isRecruiter = conversation.recruiter_id === usrId;
-    const isEducator = conversation.educator_id === usrId;
 
     if (conversation.conversation_type === 'learner_admin') {
       // FINALIZED (task 22.3 / deferred display reconciliation to task 13): this is a
@@ -269,13 +322,14 @@ async function handleMarkConversationAsRead(supabase: SupabaseClient, params: an
 }
 
 async function handleDeleteConversationForUser(supabase: SupabaseClient, params: any): Promise<void> {
-  const { conversationId, userId, userType } = params;
+  const { conversationId, userType } = params;
   const convId = String(conversationId);
   let deletedColumn: string, deletedAtColumn: string;
   switch (userType) {
     case 'learner': deletedColumn = 'deleted_by_learner'; deletedAtColumn = 'learner_deleted_at'; break;
     case 'recruiter': deletedColumn = 'deleted_by_recruiter'; deletedAtColumn = 'recruiter_deleted_at'; break;
-    case 'educator': case 'college_educator': deletedColumn = 'deleted_by_educator'; deletedAtColumn = 'educator_deleted_at'; break;
+    case 'educator': deletedColumn = 'deleted_by_educator'; deletedAtColumn = 'educator_deleted_at'; break;
+    case 'college_educator': deletedColumn = 'deleted_by_college_educator'; deletedAtColumn = 'college_educator_deleted_at'; break;
     case 'school_admin': deletedColumn = 'deleted_by_admin'; deletedAtColumn = 'admin_deleted_at'; break;
     case 'college_admin': deletedColumn = 'deleted_by_college_admin'; deletedAtColumn = 'college_admin_deleted_at'; break;
     default: throw new Error(`Invalid user type: ${userType}`);
@@ -285,13 +339,14 @@ async function handleDeleteConversationForUser(supabase: SupabaseClient, params:
 }
 
 async function handleRestoreConversation(supabase: SupabaseClient, params: any): Promise<void> {
-  const { conversationId, userId, userType } = params;
+  const { conversationId, userType } = params;
   const convId = String(conversationId);
   let deletedColumn: string, deletedAtColumn: string;
   switch (userType) {
     case 'learner': deletedColumn = 'deleted_by_learner'; deletedAtColumn = 'learner_deleted_at'; break;
     case 'recruiter': deletedColumn = 'deleted_by_recruiter'; deletedAtColumn = 'recruiter_deleted_at'; break;
-    case 'educator': case 'college_educator': deletedColumn = 'deleted_by_educator'; deletedAtColumn = 'educator_deleted_at'; break;
+    case 'educator': deletedColumn = 'deleted_by_educator'; deletedAtColumn = 'educator_deleted_at'; break;
+    case 'college_educator': deletedColumn = 'deleted_by_college_educator'; deletedAtColumn = 'college_educator_deleted_at'; break;
     case 'school_admin': deletedColumn = 'deleted_by_admin'; deletedAtColumn = 'admin_deleted_at'; break;
     case 'college_admin': deletedColumn = 'deleted_by_college_admin'; deletedAtColumn = 'college_admin_deleted_at'; break;
     default: throw new Error(`Invalid user type: ${userType}`);
@@ -332,7 +387,7 @@ async function handleSendLearnerAdminMessage(supabase: SupabaseClient, params: a
   const schoolId = String(conversation.school_id);
   const { data: org, error: orgError } = await supabase.from('organizations').select('admin_id').eq('id', schoolId).maybeSingle();
   if (orgError) throw orgError;
-  if (!org || !org.admin_id) throw new Error('School admin not found');
+  if (!org?.admin_id) throw new Error('School admin not found');
 
   return handleSendMessage(supabase, {
     conversationId, senderId: learnerId, senderType: 'learner', receiverId: org.admin_id, receiverType: 'school_admin', messageText, applicationId: undefined, opportunityId: undefined, classId: undefined, subject: subject || conversation.subject, attachments
@@ -351,7 +406,7 @@ async function handleSendLearnerCollegeAdminMessage(supabase: SupabaseClient, pa
   const collegeId = String(conversation.college_id);
   const { data: org, error: orgError } = await supabase.from('organizations').select('admin_id').eq('id', collegeId).maybeSingle();
   if (orgError) throw orgError;
-  if (!org || !org.admin_id) throw new Error('College admin not found');
+  if (!org?.admin_id) throw new Error('College admin not found');
 
   return handleSendMessage(supabase, {
     conversationId, senderId: learnerId, senderType: 'learner', receiverId: org.admin_id, receiverType: 'college_admin', messageText, applicationId: undefined, opportunityId: undefined, classId: undefined, subject: subject || conversation.subject, attachments
@@ -370,7 +425,7 @@ async function handleSendEducatorAdminMessage(supabase: SupabaseClient, params: 
   const schoolId = String(conversation.school_id);
   const { data: org, error: orgError } = await supabase.from('organizations').select('admin_id').eq('id', schoolId).maybeSingle();
   if (orgError) throw orgError;
-  if (!org || !org.admin_id) throw new Error('School admin not found');
+  if (!org?.admin_id) throw new Error('School admin not found');
 
   return handleSendMessage(supabase, {
     conversationId, senderId: educatorId, senderType: 'educator', receiverId: org.admin_id, receiverType: 'school_admin', messageText, applicationId: undefined, opportunityId: undefined, classId: undefined, subject: subject || conversation.subject, attachments
@@ -389,7 +444,7 @@ async function handleSendCollegeEducatorAdminMessage(supabase: SupabaseClient, p
   const collegeId = String(conversation.college_id);
   const { data: org, error: orgError } = await supabase.from('organizations').select('admin_id').eq('id', collegeId).maybeSingle();
   if (orgError) throw orgError;
-  if (!org || !org.admin_id) throw new Error('College admin not found');
+  if (!org?.admin_id) throw new Error('College admin not found');
 
   return handleSendMessage(supabase, {
     conversationId, senderId: educatorId, senderType: 'college_educator', receiverId: org.admin_id, receiverType: 'college_admin', messageText, applicationId: undefined, opportunityId: undefined, classId: undefined, subject: subject || conversation.subject, attachments
@@ -409,13 +464,14 @@ async function handleFetchEducatorDetails(supabase: SupabaseClient, params: any)
 }
 
 async function handleArchiveConversationForUser(supabase: SupabaseClient, params: any): Promise<void> {
-  const { conversationId, userId, userType } = params;
+  const { conversationId, userType } = params;
   const convId = String(conversationId);
   let archiveColumn: string;
   switch (userType) {
     case 'learner': archiveColumn = 'archived_by_learner'; break;
     case 'recruiter': archiveColumn = 'archived_by_recruiter'; break;
-    case 'educator': case 'college_educator': archiveColumn = 'archived_by_educator'; break;
+    case 'educator': archiveColumn = 'archived_by_educator'; break;
+    case 'college_educator': archiveColumn = 'archived_by_college_educator'; break;
     case 'school_admin': archiveColumn = 'archived_by_admin'; break;
     case 'college_admin': archiveColumn = 'archived_by_college_admin'; break;
     default: throw new Error(`Invalid user type: ${userType}`);
@@ -425,13 +481,14 @@ async function handleArchiveConversationForUser(supabase: SupabaseClient, params
 }
 
 async function handleUnarchiveConversationForUser(supabase: SupabaseClient, params: any): Promise<void> {
-  const { conversationId, userId, userType } = params;
+  const { conversationId, userType } = params;
   const convId = String(conversationId);
   let archiveColumn: string;
   switch (userType) {
     case 'learner': archiveColumn = 'archived_by_learner'; break;
     case 'recruiter': archiveColumn = 'archived_by_recruiter'; break;
-    case 'educator': case 'college_educator': archiveColumn = 'archived_by_educator'; break;
+    case 'educator': archiveColumn = 'archived_by_educator'; break;
+    case 'college_educator': archiveColumn = 'archived_by_college_educator'; break;
     case 'school_admin': archiveColumn = 'archived_by_admin'; break;
     case 'college_admin': archiveColumn = 'archived_by_college_admin'; break;
     default: throw new Error(`Invalid user type: ${userType}`);
@@ -499,9 +556,9 @@ async function handleFetchLearnerCollege(supabase: SupabaseClient, params: any):
   const { learnerId } = params;
   if (!learnerId) return null;
   const lrnId = String(learnerId);
-  const { data: learner } = await supabase.from('learners').select('university_college_id, college_id').eq('id', lrnId).maybeSingle();
+  const { data: learner } = await supabase.from('learners').select('college_id').eq('id', lrnId).maybeSingle();
   if (!learner) return null;
-  const collegeId = learner.university_college_id || learner.college_id;
+  const collegeId = learner.college_id;
   if (!collegeId) return { college_id: null };
   const collId = String(collegeId);
   const { data: org } = await supabase.from('organizations').select('id, name, city, state, organization_type').eq('id', collId).maybeSingle();
@@ -535,12 +592,12 @@ async function handleFetchLearnerContext(supabase: SupabaseClient, params: any):
   const { learnerId, userId } = params;
   if (learnerId) {
     const lrnId = String(learnerId);
-    const { data } = await supabase.from('learners').select('id, user_id, school_id, university_college_id, program_section_id, program_id').eq('id', lrnId).maybeSingle();
+    const { data } = await supabase.from('learners').select('id, user_id, school_id, college_id, program_section_id, program_id').eq('id', lrnId).maybeSingle();
     return data;
   }
   if (userId) {
     const usrId = String(userId);
-    const { data } = await supabase.from('learners').select('id, user_id, school_id, university_college_id, program_section_id, program_id').eq('user_id', usrId).maybeSingle();
+    const { data } = await supabase.from('learners').select('id, user_id, school_id, college_id, program_section_id, program_id').eq('user_id', usrId).maybeSingle();
     return data;
   }
   return null;
@@ -565,9 +622,9 @@ async function handleFetchProgramsByDepartments(supabase: SupabaseClient, params
 
 async function handleFetchLearnersByPrograms(supabase: SupabaseClient, params: any): Promise<any[]> {
   const { programIds, collegeId, limit = 200 } = params;
-  let query = supabase.from('learners').select('id, name, email, university, branch_field, program_id, program_section_id');
+  let query = supabase.from('learners').select('id, user_id, name, email, university, branch_field, program_id, program_section_id, programs(name, code)');
   if (programIds?.length) query = query.in('program_id', programIds.map((id: any) => String(id)));
-  if (collegeId) query = query.eq('university_college_id', String(collegeId));
+  if (collegeId) query = query.eq('college_id', String(collegeId));
   const { data } = await query.limit(Math.min(limit, 500)).order('name');
   return data || [];
 }
@@ -592,30 +649,67 @@ async function handleFetchRecipients(supabase: SupabaseClient, params: any): Pro
       }));
     }
   } else if (conversationType === 'admin-learner' || conversationType === 'college-admin-learner') {
+    type LearnerRow = {
+      id: string;
+      name: string | null;
+      email: string | null;
+      university: string | null;
+      branch_field: string | null;
+      grade: string | null;
+      section: string | null;
+    };
     const ctxId = String(contextId);
-    const { data: learnerData, error } = await supabase
-      .from('learners')
-      .select('id, name, email, university, branch_field, grade, section')
-      .eq(conversationType === 'admin-learner' ? 'school_id' : 'university_college_id', ctxId)
-      .order('name');
-    if (!error && learnerData) {
-      data = learnerData.map((s: any) => ({
-        id: s.id, name: s.name || 'Unnamed Learner', email: s.email,
-        university: s.university, branch_field: s.branch_field, grade: s.grade, section: s.section,
-      }));
+    if (conversationType === 'admin-learner') {
+      const { data: learnerData, error } = await supabase
+        .from('learners')
+        .select('id, name, email, university, branch_field, grade, section')
+        .eq('school_id', ctxId)
+        .order('name');
+      if (!error && learnerData) {
+        data = learnerData.map((s: LearnerRow) => ({
+          id: s.id, name: s.name || 'Unnamed Learner', email: s.email,
+          university: s.university, branch_field: s.branch_field, grade: s.grade, section: s.section,
+        }));
+      }
+    } else {
+      // college-admin-learner: check both college_id and university_college_id
+      // UUID validation ensures ctxId is safe to use in .or() filter (PostgREST parameterizes internally)
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(ctxId)) {
+        throw new Error(`Invalid contextId format: ${ctxId}`);
+      }
+      const { data: learnerData, error } = await supabase
+        .from('learners')
+        .select('id, name, email, university, branch_field, grade, section')
+        .or(`college_id.eq.${ctxId},university_college_id.eq.${ctxId}`)
+        .order('name');
+      if (!error && learnerData) {
+        data = learnerData.map((s: LearnerRow) => ({
+          id: s.id, name: s.name || 'Unnamed Learner', email: s.email,
+          university: s.university, branch_field: s.branch_field, grade: s.grade, section: s.section,
+        }));
+      }
     }
   } else if (conversationType === 'college-lecturer') {
     const ctxId = String(contextId);
     const { data: lecturerData, error } = await supabase
       .from('college_lecturers')
-      .select('id, first_name, last_name, email, department, specialization, user_id')
+      .select('id, first_name, last_name, email, department, specialization, user_id, metadata')
       .eq('collegeId', ctxId)
       .order('first_name');
     if (!error && lecturerData) {
-      data = lecturerData.map((l: any) => ({
-        id: l.id, userId: l.user_id, name: `${l.first_name} ${l.last_name}`, email: l.email,
-        type: 'college_lecturer', department: l.department, specialization: l.specialization,
-      }));
+      data = lecturerData.map((l: any) => {
+        const meta = typeof l.metadata === 'object' && l.metadata !== null ? l.metadata : {};
+        const firstName = resolveString(l.first_name, meta.first_name);
+        const lastName = resolveString(l.last_name, meta.last_name);
+        const resolvedEmail = resolveString(l.email, meta.email);
+        return {
+          id: l.id, userId: l.user_id,
+          name: `${firstName} ${lastName}`.trim() || resolvedEmail,
+          first_name: firstName, last_name: lastName,
+          email: resolvedEmail,
+          type: 'college_lecturer', department: l.department, specialization: l.specialization,
+        };
+      });
     }
   }
 
@@ -623,7 +717,6 @@ async function handleFetchRecipients(supabase: SupabaseClient, params: any): Pro
 }
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
-  const user = getContextUser(context);
   const env = context.env as Record<string, string>;
   const supabase = getServiceClient(env as any);
   const startTime = Date.now();

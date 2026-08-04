@@ -107,7 +107,13 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         if (!learnerId) return apiError(400, 'VALIDATION_ERROR', 'Missing learnerId', context.request, { startTime });
         let query = supabase.from('trainings').select('*').eq('learner_id', learnerId);
         if (filters?.status) query = query.eq('status', filters.status);
-        if (filters?.approval_status) query = query.eq('approval_status', filters.approval_status);
+        if (filters?.approval_status) {
+          if (Array.isArray(filters.approval_status)) {
+            query = query.in('approval_status', filters.approval_status);
+          } else {
+            query = query.eq('approval_status', filters.approval_status);
+          }
+        }
         if (filters?.search) query = query.or(`title.ilike.%${filters.search}%,organization.ilike.%${filters.search}%`);
         if (filters?.sortField) query = query.order(filters.sortField, { ascending: filters.sortAsc !== false });
         else query = query.order('created_at', { ascending: false });
@@ -265,7 +271,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       }
 
       case 'fetch-attendance-records': {
-        const { learnerId, startDate, endDate, schoolId } = params;
+        const { learnerId, startDate, endDate } = params;
         if (!learnerId) return apiError(400, 'VALIDATION_ERROR', 'Missing learnerId', context.request, { startTime });
         let query = supabase.from('attendance_records').select('*').eq('learner_id', learnerId);
         if (startDate) query = query.gte('date', startDate);
@@ -590,7 +596,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       }
 
       case 'delete-profile-section': {
-        const { learnerId, learnerIdField, userId } = params;
+        const { learnerId, userId } = params;
         // For entity service delete operations
         const updatePayload: Record<string, any> = { updated_at: new Date().toISOString() };
         if (params.data) updatePayload.data = params.data;
@@ -929,7 +935,8 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           youtube_link, other_social_links, approval_status, trainer_name, bio, address, city,
           state, country, pincode, resumeUrl, profilePicture, contactNumber, dateOfBirth,
           created_at, createdAt, updated_at, updatedAt, imported_at, school_id, college_id,
-          school_class_id, grade, section, roll_number, admission_number, currentCgpa,
+          school_class_id, grade, section, roll_number, admission_number, currentCgpa, semester,
+          admission_academic_year,
           guardianName, guardianPhone, guardianEmail, guardianRelation, enrollmentDate,
           expectedGraduationDate, hobbies, languages, interests, category, quota, metadata,
           notification_settings,
@@ -1104,31 +1111,34 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           supabase.from('club_memberships').select('*, clubs!inner(id, name, category, description)').eq('learner_id', clubLearnerId),
           supabase.from('competition_registrations').select('*, competitions!inner(id, name, type, date, status)').eq('learner_id', clubLearnerId),
           supabase.from('competition_results').select('*, competitions!inner(id, name, type, date)').eq('learner_id', clubLearnerId),
-          supabase.from('college_event_registrations').select('event_id, registered_at, attended, college_events!inner(id, title, description, event_type, start_date, end_date, venue, status, organizer, max_participants, created_at)').eq('learner_id', clubLearnerId),
+          supabase.from('college_event_registrations').select('event_id, registered_at, attended, college_events!inner(id, title, description, event_type, start_date, end_date, venue, status, capacity, created_at)').eq('learner_id', clubLearnerId),
           learnerEmail ? supabase.from('learners').select('id').eq('email', learnerEmail).maybeSingle() : Promise.resolve({ data: null }),
         ]);
+        let mergedCompetitions = compRegRes.status === 'fulfilled' ? compRegRes.value.data || [] : [];
+        let mergedEvents = eventsRes.status === 'fulfilled' ? eventsRes.value.data || [] : [];
         if (learnerEmail && learnerLookupRes.status === 'fulfilled' && learnerLookupRes.value.data) {
           const lookupLearnerId = learnerLookupRes.value.data.id;
           if (lookupLearnerId !== clubLearnerId) {
-            const [extraClubsRes, extraCompRegRes, extraEventsRes] = await Promise.allSettled([
+            const [extraCompRegRes, extraEventRegRes] = await Promise.allSettled([
               supabase.from('competition_registrations').select('*, competitions!inner(id, name, type, date, status)').eq('learner_id', lookupLearnerId),
-              supabase.from('college_event_registrations').select('event_id, registered_at, attended, college_events!inner(id, title, description, event_type, start_date, end_date, venue, status, organizer, max_participants, created_at)').eq('learner_id', lookupLearnerId),
+              supabase.from('college_event_registrations').select('event_id, registered_at, attended, college_events!inner(id, title, description, event_type, start_date, end_date, venue, status, capacity, created_at)').eq('learner_id', lookupLearnerId),
             ]);
             const extraCompReg = extraCompRegRes.status === 'fulfilled' ? extraCompRegRes.value.data || [] : [];
-            const compRegData = compRegRes.status === 'fulfilled' ? compRegRes.value.data || [] : [];
-            const mergedCompReg = [...compRegData, ...extraCompReg];
+            const extraEvents = extraEventRegRes.status === 'fulfilled' ? extraEventRegRes.value.data || [] : [];
+            mergedCompetitions = [...mergedCompetitions, ...extraCompReg];
+            mergedEvents = [...mergedEvents, ...extraEvents];
           }
         }
         return apiSuccess({
           clubs: clubsRes.status === 'fulfilled' ? clubsRes.value.data || [] : [],
-          competitions: compRegRes.status === 'fulfilled' ? compRegRes.value.data || [] : [],
+          competitions: mergedCompetitions,
           competitionResults: compResultRes.status === 'fulfilled' ? compResultRes.value.data || [] : [],
-          events: eventsRes.status === 'fulfilled' ? eventsRes.value.data || [] : [],
+          events: mergedEvents,
         }, context.request, { startTime });
       }
 
       case 'fetch-enrolled-learner-list': {
-        const { collegeId, departmentId, programId, semester, search, page, pageSize } = params;
+        const { collegeId, departmentId, programId, semester, search } = params;
         let query = supabase.from('learners').select('id, name, roll_number, email, contact_number, college_id, program_id, semester, section, enrollmentDate, created_at, updated_at, programs!learners_program_id_fkey(id, name, code, department_id, departments!programs_department_id_fkey(id, name, code))').eq('is_deleted', false).not('program_id', 'is', null).order('name', { ascending: true });
         if (collegeId) query = query.eq('college_id', collegeId);
         if (programId) query = query.eq('program_id', programId);

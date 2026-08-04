@@ -46,7 +46,7 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }:
   const navigate = useNavigate();
   const location = useLocation();
   const { role } = useUserRole();
-  const user = useUser();
+  useUser();
 
   // Initialize all groups as open by default
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
@@ -224,6 +224,13 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }:
               name: "Reports",
               path: "/school-admin/skills/reports",
               icon: ChartPieIcon,
+            },
+            // Course Analytics Dashboard for School Admin (Grade -> Section
+            // hierarchy).
+            {
+              name: "Course Analytics",
+              path: "/school-admin/course-analytics",
+              icon: ChartBarIcon,
             },
           ],
         },
@@ -412,6 +419,13 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }:
               name: "District & College Reports",
               path: "/university-admin/analytics/reports",
               icon: ChartPieIcon,
+            },
+            // Course Analytics Dashboard for University Admin (University ->
+            // College -> Department -> Academic Year -> Section hierarchy).
+            {
+              name: "Course Analytics",
+              path: "/university-admin/analytics/course-analytics",
+              icon: ChartBarIcon,
             },
             {
               name: "Scheme Compliance (TNSDC)",
@@ -722,6 +736,13 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }:
             path: "/college-admin/reports",
             icon: ChartPieIcon,
           },
+          // Course Analytics Dashboard for College Admin, alongside the
+          // existing Reports & Analytics.
+          {
+            name: "Course Analytics",
+            path: "/college-admin/course-analytics",
+            icon: ChartBarIcon,
+          },
         ],
       },
     ];
@@ -754,6 +775,7 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }:
       <nav className="flex-1 overflow-y-auto px-3 py-5 space-y-3">
         {/* Dashboard - Always visible at top */}
         <button
+          type="button"
           onClick={() => handleNavigation("Dashboard", dashboardPath)}
           className={classNames(
             location.pathname === dashboardPath
@@ -776,6 +798,7 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }:
         {/* AI Counselling - university_admin only */}
         {role === "university_admin" && (
           <button
+            type="button"
             onClick={() => handleNavigation("AI Counselling", "/university-admin/ai-counselling")}
             className={classNames(
               location.pathname === "/university-admin/ai-counselling"
@@ -800,6 +823,7 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }:
         {navGroups.map((group) => (
           <div key={group.key} className="pt-3 border-t border-gray-100">
             <button
+              type="button"
               onClick={() => toggleGroup(group.key)}
               className="w-full flex items-center justify-between text-sm font-semibold text-gray-700 hover:text-indigo-600 px-2 py-2 rounded-md transition-colors"
             >
@@ -826,7 +850,7 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }:
                   
                   // Check if this is an exact match or if it's a parent path with no other longer matching paths
                   const isExactMatch = currentPath === itemPath;
-                  const isParentMatch = currentPath.startsWith(itemPath + '/');
+                  const isParentMatch = currentPath.startsWith(`${itemPath}/`);
                   
                   // Find if there's a more specific path that matches better
                   const hasMoreSpecificMatch = group.items.some(otherItem => 
@@ -839,6 +863,7 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }:
                   
                   return (
                     <button
+                      type="button"
                       key={item.name}
                       onClick={() => !(item as any).disabled && handleNavigation(item.name, item.path)}
                       disabled={(item as any).disabled}
@@ -877,6 +902,7 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }:
         {role === "university_admin" && (
           <div className="pt-3 border-t border-gray-100">
             <button
+              type="button"
               onClick={() => handleNavigation("Audit & Reports", "/university-admin/audit")}
               className={classNames(
                 location.pathname.startsWith("/university-admin/audit")
@@ -901,6 +927,7 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }:
         {/* Settings - Always visible at bottom */}
         <div className="pt-3 border-t border-gray-100">
           <button
+            type="button"
             onClick={() => handleNavigation("Settings", settingsPath)}
             className={classNames(
               location.pathname === settingsPath

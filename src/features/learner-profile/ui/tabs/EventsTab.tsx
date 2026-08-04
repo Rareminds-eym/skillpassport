@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CalendarIcon, MapPinIcon, ClockIcon, UserGroupIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
+import { CalendarIcon, MapPinIcon, UserGroupIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import { apiPost } from '@/shared/api/apiClient';
 
 interface Event {
@@ -11,9 +11,7 @@ interface Event {
   end_date?: string;
   venue?: string; // college_events uses 'venue' not 'location'
   status?: string;
-  organizer?: string;
-  max_participants?: number;
-  registered_count?: number;
+  capacity?: number;
   is_registered?: boolean;
   attended?: boolean; // college_event_registrations has 'attended' field
   registered_at?: string;
@@ -137,6 +135,7 @@ const EventsTab: React.FC<EventsTabProps> = ({ learner, loading: externalLoading
           {(['all', 'upcoming', 'past'] as const).map(f => (
             <button
               key={f}
+              type="button"
               onClick={() => setFilter(f)}
               className={`px-3 py-1.5 text-sm rounded-full transition-colors ${
                 filter === f
@@ -213,10 +212,10 @@ const EventsTab: React.FC<EventsTabProps> = ({ learner, loading: externalLoading
                       </div>
                     )}
                     
-                    {event.max_participants && (
+                    {event.capacity && (
                       <div className="flex items-center">
                         <UserGroupIcon className="h-4 w-4 mr-1" />
-                        {event.registered_count || 0}/{event.max_participants} participants
+                        {event.capacity} capacity
                       </div>
                     )}
                   </div>

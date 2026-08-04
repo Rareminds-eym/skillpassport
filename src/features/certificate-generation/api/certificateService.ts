@@ -331,7 +331,7 @@ export const generateCourseCertificate = async (
   issuedOnDate: string | null = null
 ): Promise<CertificateResult> => {
   try {
-    if (!learnerId || !courseId) {
+    if (!learnerId?.trim() || !courseId?.trim()) {
       logger.error('Missing certificate generation identifiers', new Error('Missing learnerId or courseId'), {
         hasLearnerId: Boolean(learnerId),
         hasCourseId: Boolean(courseId),

@@ -1,0 +1,1419 @@
+# .codereview.yml — Skill Passport Code Review Configuration
+# Based on deep workspace standards and project-specific analysis
+# Last updated: 2026-07-11
+
+# ============================================================================
+# TECH STACK
+# ============================================================================
+# Actual stack derived from package.json and src/ analysis
+
+stack:
+  language: typescript          # v5.5.3, strict mode enabled
+  framework: react              # v18.3.1 — this is NOT Next.js
+  bundler: vite                 # v5.4.2, NOT webpack
+  architecture: fsd             # Feature-Sliced Design (enforced via ESLint)
+  routing: react-router-dom     # v7.9.4 — SPA client-side routing
+  backend: cloudflare-pages     # Cloudflare Pages Functions only (no Workers)
+
+  ecosystem:
+    - zustand                   # v5.0.8 — primary state manager
+    - tanstack-query            # v5.90.3 — server state / caching
+    - supabase                  # v2.57.4 — database, realtime (NO direct auth)
+    - tailwind                  # v3.4.1 — utility-first styling
+    - radix-ui                  # unstyled accessible primitives
+    - framer-motion             # v12 — animations
+    - react-router-dom          # v7 — client routing
+    - recharts                  # data visualization
+    - openai                    # v6 — AI features
+    - razorpay                  # payments via Cloudflare Pages Function
+    - vitest                    # v1.6.1 — test runner
+
+# ============================================================================
+# CUSTOM RULES
+# ============================================================================
+# Project-specific rules that the AI and human reviewers must enforce
+
+rules:
+
+  # --- Authentication Standards ---
+  - category: authentication
+    title: "No direct Supabase Auth usage"
+    description: |
+      NEVER use `supabase.auth.*` in the SkillPassport frontend (`skillpassport/src/`).
+      All authentication is handled by the SSO Worker via `@rareminds-eym/auth-client`
+      on the frontend and `@rareminds-eym/auth-core` on the backend.
+      Allowed frontend auth: `useAuthStore.getState().login(email, password)`, `ssoClient.signup()`, etc.
+    severity: critical
+
+  - category: authentication
+    title: "Use approved auth middleware on backend"
+    description: |
+      All authenticated Pages Functions (`skillpassport/functions/api/`) must be protected.
+      Use the `withAuth` wrapper middleware from `functions/lib/auth.ts` or `@rareminds-eym/auth-core`.
+      Never verify JWTs or parse sessions manually in endpoints.
+    severity: critical
+
+  # --- Frontend-Backend Separation ---
+  - category: architecture
+    title: "Strict Frontend-Backend Layer Separation"
+    description: |
+      Frontend and backend code are separate deployable units and must communicate ONLY via HTTP APIs.
+      - Frontend code in `skillpassport/src/` MUST NOT import any code from `skillpassport/functions/` or `skillpassport/worker/`.
+      - Backend code in `skillpassport/functions/` or `skillpassport/worker/` MUST NOT import any code from `skillpassport/src/`.
+      Shared types must be duplicated or extracted to `@rareminds-eym/types`. Never import type definitions across the boundary.
+    severity: critical
+
+  - category: architecture
+    title: "Always use apiClient / ssoClient for HTTP requests"
+    description: |
+      The frontend must communicate with the backend exclusively via `apiClient` (`apiGet`, `apiPost`, `apiPut`, etc.)
+      from `@/shared/api/apiClient` or `ssoClient.fetch()`. Plain `fetch()` calls to backend endpoints are disallowed
+      as they bypass auth token injection, retry policies, and error handling.
+    severity: high
+
+
+  # --- Database & Migrations ---
+  - category: database
+    title: "Database Migrations: Expand-Migrate-Contract Pattern"
+    description: |
+      Never perform breaking database changes in a single step. Every migration must be backward compatible
+      with currently running application code using the 3-phase strategy:
+      - Phase 1 (Expand): Add new columns (nullable or with defaults) / tables. Old code runs unchanged.
+      - Phase 2 (Migrate): Backfill data using application code or background scripts; write to both columns.
+      - Phase 3 (Contract): Remove old columns/tables and dual-writes. Requires explicit DBA/user approval.
+    severity: critical
+
+  - category: database
+    title: "Database Migrations: DDL vs DML separation"
+    description: |
+      Supabase migration files (`supabase/migrations/*.sql`) must contain ONLY DDL schema changes (CREATE, ALTER, DROP).
+      They MUST NOT contain data manipulation (INSERT, UPDATE, DELETE).
+      All data manipulation and seed data must go into seed files (`supabase/seeds/*.sql` or custom scripts).
+    severity: critical
+
+  - category: database
+    title: "RLS Policies belong in migrations"
+    description: |
+      Row Level Security (RLS) policies are schema changes and must be included in database migration files
+      (`supabase/migrations/*.sql`), not applied ad-hoc. All new tables must have RLS enabled.
+    severity: critical
+
+  # --- API Versioning & Contracts ---
+  - category: api
+    title: "API URL path versioning"
+    description: |
+      API versioning must use URL path versioning (e.g. `/api/v1/users`, `/api/v2/users`).
+      Header versioning, query parameter versioning, and content negotiation are not allowed.
+      Do not increment versions for additive, backward-compatible API changes.
+    severity: high
+
+  - category: api
+    title: "Enforce API timeouts"
+    description: |
+      Strictly configure timeouts for all operations:
+      - Frontend-to-Backend/API Calls: 30s max
+      - Database Queries: 10s max
+      - External Services/APIs: 15s max
+      - User-Facing interactive requests: 5s max
+    severity: medium
+
+  # --- FSD Layer Violations ---
+  # FSD enforces a strict unidirectional dependency graph:
+  # app → pages → features → entities → shared
+  # Each layer may only import from layers below it, never above or sideways.
+
+  - category: architecture
+    title: "FSD: No cross-feature imports"
+    description: |
+      Features must never import from sibling features — only downward.
+      Allowed: features → entities, features → shared.
+      Violation: src/features/auth importing from src/features/learner.
+      If two features need to share logic, extract it to src/entities/ or src/shared/.
+    severity: critical
+
+  - category: architecture
+    title: "FSD: Entities must not import from features or app"
+    description: |
+      Entities are domain-pure models. They must never depend on features, pages, or app.
+      Entities may only import from other entities (carefully) and from shared.
+      Violation: src/entities/user importing from src/features/auth.
+    severity: critical
+
+  - category: architecture
+    title: "FSD: Shared must not import from any other layer"
+    description: |
+      Shared is the lowest layer — zero upward dependencies, zero business logic.
+      It must contain only generic utilities, UI primitives, API clients, and configs
+      that have no knowledge of any domain concept (user, learner, course, etc.).
+      Violation: src/shared/lib importing from src/entities/* or src/features/*.
+    severity: critical
+
+  - category: architecture
+    title: "FSD: App layer is the only place to compose features"
+    description: |
+      src/app/ sits at the top of the layer hierarchy. It is the only layer allowed
+      to import from multiple features simultaneously (e.g., to wire up routing,
+      providers, and layouts). Features must never import from src/app/.
+      Violation: src/features/learner importing from src/app/routes/*.
+    severity: critical
+
+  - category: architecture
+    title: "FSD: Always import through a slice's public API (index.ts)"
+    description: |
+      Every slice (feature, entity) exposes its public interface via index.ts only.
+      Never import from internal segment paths directly across slice boundaries.
+      Allowed:   import { loginStudent } from '@/features/auth'
+      Violation: import { loginStudent } from '@/features/auth/api/authService'
+      This is the most commonly violated FSD rule — catch it in every review.
+    severity: critical
+
+  - category: architecture
+    title: "FSD: No cross-slice segment imports"
+    description: |
+      Within a slice, segments (api/, model/, ui/, lib/) are private implementation
+      details. One slice must never reach into another slice's segment directly.
+      Violation: import { useUser } from '@/entities/user/model/userStore'
+      Correct:   import { useUser } from '@/entities/user'
+    severity: high
+
+  - category: architecture
+    title: "FSD: No business domain logic in shared/"
+    description: |
+      src/shared/ must be domain-agnostic. It must not contain concepts like
+      learner, educator, course, subscription, or role-specific logic.
+      If a utility references a domain concept, it belongs in the relevant entity
+      or feature, not in shared.
+      Violation: src/shared/lib/utils/learnerHelpers.ts
+    severity: high
+
+  - category: architecture
+    title: "FSD: Use @/ path alias consistently"
+    description: |
+      All cross-layer imports must use the @/ alias (maps to ./src/).
+      Deep relative paths like ../../../shared/ui are forbidden for cross-layer imports
+      as they obscure the architectural boundary being crossed.
+    severity: medium
+
+  # --- State Management ---
+  - category: state
+    title: "No direct Zustand store mutation outside actions"
+    description: |
+      All state mutations in authStore and subscriptionStore must go through
+      the actions object. Never call set() or mutate state outside defined actions.
+    severity: high
+
+  - category: state
+    title: "No localStorage/sessionStorage for auth tokens"
+    description: |
+      The authStore uses secure storage (not plain localStorage). Auth tokens,
+      session data, and user details must never be stored in plain localStorage
+      or sessionStorage directly.
+    severity: critical
+
+  - category: state
+    title: "Do not duplicate server state in Zustand"
+    description: |
+      React Query manages all server/async state. Zustand is for UI state
+      and auth state only. Do not cache API responses in Zustand stores —
+      use useQuery/useMutation with queryKeys instead.
+    severity: high
+
+  # --- React Query / Data Fetching ---
+  - category: data-fetching
+    title: "Use query key factory from shared/lib/queryKeys"
+    description: |
+      All React Query keys must come from /src/shared/lib/queryKeys/index.ts.
+      Never use ad-hoc string arrays as query keys — ensures consistent
+      invalidation and cache management.
+    severity: high
+
+  - category: data-fetching
+    title: "No raw fetch() calls inside components"
+    description: |
+      Data fetching belongs in service files (/api/*.ts) or custom hooks.
+      Components must not contain fetch(), axios, or supabase queries directly.
+    severity: high
+
+
+  - category: data-fetching
+    title: "Handle all three React Query states"
+    description: |
+      Components using useQuery must handle isLoading, isError, and success
+      states. No silent failures — always render error UI or throw to error boundary.
+    severity: medium
+
+  # --- Cloudflare Pages Functions Specifics ---
+  - category: cloudflare
+    title: "Stream large requests and response bodies"
+    description: |
+      Cloudflare Workers / Pages Functions have a 128MB memory limit.
+      Do not buffer large bodies in memory (e.g. using `await response.text()` or `await response.json()`).
+      Stream data directly using the `response.body` stream to prevent memory exhaustion and crashes.
+    severity: high
+
+  - category: cloudflare
+    title: "Use waitUntil for non-blocking background work"
+    description: |
+      Use `ctx.waitUntil()` to run background tasks (like logging, cache updates, analytics)
+      after sending the HTTP response. Ensure `ctx.waitUntil()` is called on the context object
+      (destructuring `ctx` directly can cause 'Illegal invocation' exceptions).
+    severity: high
+
+  - category: cloudflare
+    title: "Use Service Bindings / RPC instead of REST APIs"
+    description: |
+      When communicating between Cloudflare services or Workers, use Service Bindings / RPC
+      definitions rather than HTTP REST APIs. Always await RPC calls and handle thrown exceptions.
+    severity: high
+
+  - category: cloudflare
+    title: "Use Hyperdrive for external DB connections"
+    description: |
+      Always connect to external databases (e.g., PostgreSQL) via a Hyperdrive binding
+      (`env.HYPERDRIVE.connectionString`) to reuse database connection pools and avoid TCP/TLS overhead.
+    severity: high
+
+  # --- OWASP / General Security ---
+  - category: security
+    title: "No dangerouslySetInnerHTML without sanitization"
+    description: |
+      dangerouslySetInnerHTML must never be used with unsanitized user input.
+      If unavoidable, sanitize with DOMPurify before passing to __html.
+      Unsanitized usage is a direct XSS vector.
+    severity: critical
+
+  - category: security
+    title: "No open redirects via user-controlled input"
+    description: |
+      Never pass user-supplied values directly to navigate(), window.location,
+      or any redirect logic. Validate redirect targets against an allowlist
+      of internal routes before navigating.
+    severity: high
+
+  - category: security
+    title: "No PII or sensitive data in URL query params"
+    description: |
+      learner IDs, user tokens, email addresses, and scores must never appear
+      in URL query strings. They get logged by servers, proxies, and browsers.
+      Use route params or POST body for sensitive identifiers.
+    severity: high
+
+  - category: security
+    title: "No learner PII in logs or error messages"
+    description: |
+      console.log, logger calls, and thrown error messages must never include
+      raw learner names, emails, scores, or health data. This project handles
+      learner PII — log correlation IDs and anonymized context only.
+    severity: critical
+
+  - category: security
+    title: "No raw user input passed to AI APIs"
+    description: |
+      User messages sent to OpenAI or Google Generative AI must be validated
+      and stripped of prompt injection patterns before being included in the
+      API payload. Never concatenate raw user text directly into system prompts.
+    severity: high
+
+  - category: security
+    title: "No PII sent to third-party services unmasked"
+    description: |
+      learner names, emails, and scores must not be sent to OpenAI, Google AI,
+      or any analytics service in plain form. Use anonymized IDs or masked values
+      when calling external APIs that do not have a data processing agreement.
+    severity: critical
+
+  - category: security
+    title: "No hardcoded API keys or secrets"
+    description: |
+      All secrets (Supabase keys, OpenAI key, Razorpay keys, SMTP credentials)
+      must live in .env.* files and be accessed via import.meta.env.VITE_*.
+      Check for any sk_live_*, rk_live_*, Bearer <token> patterns.
+    severity: critical
+
+  - category: security
+    title: "VITE_ prefix for all client-side env vars"
+    description: |
+      Only VITE_-prefixed variables are exposed to the browser bundle.
+      Non-prefixed vars are only available in Cloudflare Pages Functions.
+      Never access sensitive keys via VITE_ prefix in client code.
+    severity: critical
+
+  - category: security
+    title: "Role checks must use authStore flags"
+    description: |
+      Use isStudent, isEducator, isAdmin, isRecruiter from useAuthStore().
+      Never decode JWT manually or read role from a plain variable without
+      going through the store's computed flags.
+    severity: high
+
+  - category: security
+    title: "Razorpay webhook verification in Pages Function"
+    description: |
+      The payments Cloudflare Pages Function must verify webhook signatures from
+      Razorpay. Never trust raw webhook payloads without HMAC verification.
+    severity: critical
+
+  # --- TypeScript ---
+  - category: type-safety
+    title: "No 'any' type"
+    description: |
+      TypeScript strict mode is enabled. Use unknown and narrow with guards,
+      or define proper interfaces. The 'any' type defeats the purpose of TS.
+    severity: high
+
+  - category: type-safety
+    title: "No @ts-ignore or @ts-expect-error without explanation"
+    description: |
+      If suppressing a TS error is unavoidable, add a comment explaining WHY
+      on the line above. Bare suppressions are not acceptable.
+    severity: medium
+
+  - category: type-safety
+    title: "API response types must be explicitly typed"
+    description: |
+      Supabase queries and fetch() responses must have explicit return types.
+      No implicit any from untyped .json() or .data returns.
+    severity: high
+
+  - category: type-safety
+    title: "Props interfaces must be defined for all components"
+    description: |
+      Every component must have a named Props interface or type.
+      Avoid inline prop types for non-trivial components.
+    severity: medium
+
+  # --- Performance ---
+  - category: performance
+    title: "Use React.lazy for route-level components"
+    description: |
+      AppRoutes.jsx should lazy-load feature-level pages. Direct imports of
+      large dashboard, analytics, or PDF components at route level bloat the
+      initial bundle. Use React.lazy() + Suspense.
+    severity: high
+
+  - category: performance
+    title: "Avoid recreating objects/functions in render"
+    description: |
+      Memoize callbacks with useCallback and expensive computations with useMemo
+      when passed as props to child components or used as React Query dependencies.
+    severity: medium
+
+  - category: performance
+    title: "Paginate large Supabase queries"
+    description: |
+      Never use .select('*') without a .limit() or .range() for collections
+      that can grow unbounded (messages, conversations, assessments, etc.).
+    severity: high
+
+  - category: performance
+    title: "Vite chunk splitting — do not import heavy libs in shared/ui"
+    description: |
+      Libraries like pdfjs-dist, xlsx, framer-motion, and chart libs are already
+      in manual chunks. Do not re-import them from shared/ui/ components that are
+      always loaded — keep them in feature-specific code paths.
+    severity: medium
+
+  # --- React Patterns ---
+  - category: react
+    title: "No class components"
+    description: "Use functional components with hooks exclusively."
+    severity: high
+
+  - category: react
+    title: "Custom hooks for reusable logic"
+    description: |
+      Logic shared between two or more components must be extracted into a
+      custom hook under /features/{feature}/hooks/ or /shared/lib/hooks/.
+      No copy-paste of useEffect + useState blocks.
+    severity: medium
+
+  - category: react
+    title: "Error boundaries around async feature trees"
+    description: |
+      Each major feature route should be wrapped in an ErrorBoundary.
+      Supabase errors, fetch failures, and AI API errors must not crash
+      the entire app. Check main.tsx and AppRoutes.jsx for boundaries.
+    severity: high
+
+  - category: react
+    title: "No prop drilling more than 2 levels"
+    description: |
+      If a prop is passed through 3+ levels, lift state to Zustand or
+      React Query. This codebase has Zustand available — use it.
+    severity: medium
+
+  - category: realtime
+    title: "Realtime subscriptions must be cleaned up"
+    description: |
+      Every Supabase Realtime subscription opened in a hook must be
+      unsubscribed in the useEffect cleanup function. Missing cleanups
+      cause duplicate events and memory leaks.
+    severity: high
+
+  - category: realtime
+    title: "All realtime connections must be proxied through realtime-worker"
+    description: |
+      Direct connections to Supabase Realtime from the frontend are prohibited
+      due to security and connection limit concerns. All realtime WebSockets must
+      connect to the realtime-worker proxy endpoint.
+    severity: critical
+
+  # --- Code Quality ---
+  - category: clean-code
+    title: "Functions should be under 50 lines"
+    description: "Large functions indicate missing abstractions. Split into helpers."
+    severity: low
+
+  - category: clean-code
+    title: "No console.log in production code"
+    description: |
+      Use the project logger (/src/shared/config/logging) for debug output.
+      console.log ships to production and leaks internal data.
+    severity: high
+
+  - category: clean-code
+    title: "Service files must not contain UI logic"
+    description: |
+      Files under /api/*.ts must return data or throw errors — never call
+      navigate(), toast(), or update DOM state. That belongs in the calling hook
+      or component.
+    severity: medium
+
+  - category: clean-code
+    title: "Naming conventions"
+    description: |
+      - Components: PascalCase (LoginStudent.tsx)
+      - Hooks: use* prefix (useCareerConversations.ts)
+      - Services: *Service suffix (authService.ts)
+      - Stores: *Store suffix (authStore.ts)
+      - Query key factories: queryKeys.domain.method
+      - Boolean vars: is*/has*/should* prefix
+    severity: low
+
+  # --- Testing ---
+  - category: testing
+    title: "Auth flow changes require unit tests"
+    description: |
+      Any change to /src/features/auth/api/ or /src/shared/model/authStore.ts
+      requires a corresponding test. See existing tests in __tests__/ as reference.
+    severity: high
+
+  - category: testing
+    title: "Cloudflare Pages Function changes require integration tests"
+    description: |
+      The payments and email Pages Functions handle production-critical paths.
+      Changes must include at minimum a smoke test for the main handler.
+    severity: high
+
+  - category: testing
+    title: "Property-based tests for data transformation utilities"
+    description: |
+      Utilities in /src/shared/lib/utils/ that transform or compute data
+      should use fast-check property-based tests (see /src/__tests__/property/).
+    severity: medium
+
+  # --- Documentation ---
+  - category: documentation
+    title: "Exported service functions must have JSDoc"
+    description: |
+      All exported functions from /api/*.ts files must document: params,
+      return type, and any thrown errors. Undocumented service APIs make
+      integration errors hard to debug.
+    severity: medium
+
+  - category: documentation
+    title: "New environment variables must be added to .env.schema"
+    description: |
+      The project validates env vars via scripts/validate-env.js against
+      .env.schema. Any new VITE_* or non-prefixed variable must be documented
+      in .env.schema or the build/deploy will fail validation.
+    severity: high
+
+  # --- Token & Cookie Security ---
+  # Note: Token hashing and cookie management is handled by sso-worker.
+  # These rules apply if skillpassport ever introduces its own token handling.
+  - category: security
+    title: "Tokens must be hashed before DB storage"
+    description: |
+      If any token is stored in the database (refresh, reset, verification, invite),
+      it must be SHA-256 hashed first. Never store plaintext tokens. Never return
+      tokens in API response bodies. In this project, auth token lifecycle is
+      managed by sso-worker via the SSO_SERVICE binding — skillpassport does NOT
+      directly create or store auth tokens. Flag any PR that introduces direct
+      token storage in skillpassport as requiring architectural review.
+    severity: critical
+
+  - category: security
+    title: "Auth cookies are managed by sso-worker — do not set directly"
+    description: |
+      Auth cookies (access token, refresh token) are set by sso-worker, not by
+      skillpassport Pages Functions. Skillpassport only READS cookies (e.g. in
+      _middleware.ts for the edge auth guard). Never set auth cookies in
+      skillpassport handlers. If a PR sets Set-Cookie headers with auth tokens,
+      it is almost certainly wrong — auth should flow through auth-client.
+    severity: critical
+
+  - category: security
+    title: "CORS: strict origin allowlist — no '*' in production"
+    description: |
+      CORS is handled globally by _middleware.ts using getCorsHeaders() from
+      functions/lib/cors.ts, which validates against ALLOWED_ORIGINS. Individual
+      handlers must NOT add their own CORS headers. Never use
+      Access-Control-Allow-Origin: * in production. When adding a new deployment
+      domain, update ALLOWED_ORIGINS in functions/lib/cors.ts.
+    severity: critical
+
+  - category: security
+    title: "CSRF: POST requests must pass Origin check"
+    description: |
+      All mutating requests (POST, PUT, PATCH, DELETE) from browsers must pass
+      an Origin header check. Reject requests where the Origin does not match
+      the allowed origins list.
+    severity: high
+
+  - category: security
+    title: "Redirect URLs must be validated — no open redirects"
+    description: |
+      All redirect URLs must be validated before use. In _middleware.ts, returnUrl
+      parameters are validated: must be relative paths, no protocol-relative URLs
+      (//), no external domains (://), and must not redirect back to guest routes
+      (loop prevention). Any new redirect handling must follow this same pattern.
+      Never redirect to a user-supplied absolute URL without validation.
+    severity: critical
+
+  - category: security
+    title: "User input must be sanitized via sanitizeInput()"
+    description: |
+      All user-controlled text must be sanitized using sanitizeInput() from
+      functions/lib/validation.ts before storage or rendering. This strips HTML
+      tags, control characters, normalizes Unicode (NFKC), and enforces max length.
+      Never interpolate raw user data into HTML responses. For email templates,
+      the email-worker handles its own escaping — skillpassport only sends
+      structured data to email-worker via service binding RPC.
+    severity: high
+
+  - category: security
+    title: "Input validation via Zod schemas before DB operations"
+    description: |
+      All route handlers must validate inputs using Zod schemas and the
+      validateBody() helper from functions/lib/validation.ts BEFORE any DB work.
+      Use the shared schemas: UuidSchema, EmailSchema, CreateOrderSchema, etc.
+      Use isValidEmail() for email format checks, isValidUUID() for UUID checks,
+      and sanitizeInput() for free-text fields. Use validateRequestSize() to
+      enforce body size limits. Never pass unvalidated user input into Supabase
+      query filters.
+    severity: high
+
+  # --- Zod Schema Validation (skillpassport-specific) ---
+  - category: architecture
+    title: "Use Zod schemas for all API input validation"
+    description: |
+      All Pages Function handlers must use Zod schemas (defined in
+      functions/lib/validation.ts) for request body validation. Use the
+      validateBody(schema, body, request) helper which returns either
+      { success: true, data } or { success: false, response } (with proper
+      apiValidationError). Never validate manually with if/else chains.
+      New endpoints must define their schema alongside existing ones.
+    severity: high
+
+  # --- Service Binding RPC Pattern ---
+  - category: architecture
+    title: "Cross-service calls must use Service Binding RPC via sso-client.ts"
+    description: |
+      All communication with sso-worker must go through the typed RPC functions
+      in functions/lib/sso-client.ts (e.g. ssoCreateSubscription, ssoGetUserSubscription).
+      These use the SSO_SERVICE binding (WorkerEntrypoint RPC). Never make HTTP
+      calls to sso-worker directly. When adding new SSO operations, add a typed
+      RPC function to sso-client.ts with proper types (avoid 'any').
+    severity: high
+
+  # --- Supabase Service Role Data Access ---
+  - category: architecture
+    title: "Pages Functions: Manual tenant/user filtering REQUIRED"
+    description: |
+      Because Pages Functions use the Supabase `service_role` key (which bypasses RLS),
+      every database query MUST manually include `.eq('user_id', user.id)` or
+      equivalent tenant/org filters. Never assume RLS will protect data. Never fetch
+      all rows and filter them in memory.
+    severity: critical
+
+  # --- Shadow Tables ---
+  - category: architecture
+    title: "Shadow tables are NOT authorization sources"
+    description: |
+      Shadow tables (e.g., users_shadow, roles, subscription_cache, plans_cache)
+      are read-only mirrors of the sso-worker source of truth (managed by
+      functions/lib/sync-shadow.ts). They exist for referential integrity and
+      local queries. They are NOT authorization sources. Authorization decisions
+      must always use the verified JWT (user.roles) provided by withAuth. Never
+      query the roles or users_shadow tables to decide if a user can perform an action.
+    severity: critical
+
+  # --- CORS Middleware (already handled globally) ---
+  - category: architecture
+    title: "CORS is handled by _middleware.ts — do not add per-handler CORS"
+    description: |
+      The global _middleware.ts already adds CORS headers to ALL responses and
+      handles OPTIONS preflight. Individual API handlers must NOT add their own
+      CORS headers or handle OPTIONS requests. Doing so causes duplicate headers.
+      Use functions/lib/response.ts helpers (apiSuccess, apiError) which include
+      X-Request-ID but rely on middleware for CORS.
+    severity: medium
+
+  # --- Edge Auth Guard & ROLE_DASHBOARD_MAP Sync ---
+  - category: architecture
+    title: "EDGE_ROLE_DASHBOARD_MAP must stay in sync with frontend roleBasedRouter"
+    description: |
+      _middleware.ts has an EDGE_ROLE_DASHBOARD_MAP that mirrors the frontend's
+      ROLE_DASHBOARD_MAP in src/features/auth/lib/roleBasedRouter.ts. Any change
+      to role-based routing on either side must be synchronized. The edge guard
+      redirects authenticated users away from guest routes (login, signup) to
+      their role-appropriate dashboard.
+    severity: high
+
+  # --- Response Envelope Standard ---
+  - category: architecture
+    title: "Use apiSuccess/apiError response helpers — not raw Response.json"
+    description: |
+      All Pages Function responses must use the helpers from functions/lib/response.ts:
+      - apiSuccess(data, request, { status, startTime }) for success
+      - apiError(status, code, message, request) for errors
+      - apiDbError(dbError, request) for Supabase errors
+      - apiValidationError(issues, request) for validation failures
+      - apiMethodNotAllowed(request) for wrong HTTP methods
+      These enforce the standard envelope:
+      { success, data, error: { code, message }, meta: { requestId, timestamp, durationMs } }
+      Never use raw Response.json() for API endpoints.
+    severity: high
+
+  # --- Observability & Request Tracing ---
+  - category: observability
+    title: "X-Request-ID header on every response"
+    description: |
+      Every HTTP response from Pages Functions must include an X-Request-ID header.
+      This ID must be included in all log entries for that request to enable
+      distributed tracing and support ticket correlation.
+    severity: high
+
+  - category: observability
+    title: "Structured JSON logging with required fields"
+    description: |
+      All logs must be structured JSON with: timestamp, level, message, requestId,
+      userId, service, environment. Use log levels: DEBUG (dev only), INFO, WARN,
+      ERROR, FATAL. Never log: passwords, tokens, API keys, credit cards, SSNs, PII.
+    severity: high
+
+  - category: observability
+    title: "Audit log entries for all auth actions"
+    description: |
+      All authentication actions (login, logout, signup, password reset, token refresh,
+      role change, permission change) must produce audit log entries with user ID,
+      action type, timestamp, IP, and outcome (success/failure).
+    severity: high
+
+  # --- Resilience Patterns ---
+  - category: resilience
+    title: "Circuit breaker for external service calls"
+    description: |
+      External service calls (AI APIs, payment gateways, third-party services) must
+      implement a circuit breaker pattern. After N consecutive failures, the circuit
+      opens and requests fail fast with a fallback response. This prevents cascading failures.
+    severity: medium
+
+  - category: resilience
+    title: "Retry with exponential backoff for transient failures"
+    description: |
+      Transient failures on external calls must use retry with exponential backoff
+      and jitter. Max 3 retries, only for idempotent operations. Never retry
+      client errors (4xx). Layer: Bulkhead → Circuit Breaker → Retry → Timeout.
+    severity: medium
+
+  # --- Cloudflare KV & Email ---
+  - category: cloudflare
+    title: "KV operations must include expirationTtl (if KV is used)"
+    description: |
+      If any KV.put() calls are added to skillpassport Pages Functions, they
+      must include an expirationTtl parameter to prevent key leakage. Currently
+      skillpassport does not use KV directly (KV is used by sso-worker for rate
+      limiting). If a PR introduces KV usage, ensure TTL is always set.
+    severity: high
+
+  - category: cloudflare
+    title: "Email sending must use sendEmailSafe() for non-critical emails"
+    description: |
+      Skillpassport sends emails via the email-worker service binding using
+      functions/lib/email-service.ts. Use sendEmailSafe() for non-critical emails
+      (logs errors but never throws). Use sendEmail() only when you need the
+      result. Email failures must not break the main business flow. The
+      email-worker handles its own rate limiting internally. Never call
+      email-worker directly via HTTP — always use the EMAIL_SERVICE binding.
+    severity: high
+
+  - category: cloudflare
+    title: "Request body size must be validated via validateRequestSize()"
+    description: |
+      Use validateRequestSize(request, maxSizeBytes) from functions/lib/validation.ts
+      to enforce body size limits. Default is 1 MB. Endpoints handling user uploads
+      may use higher limits, but auth-related endpoints should use tighter bounds.
+      Validate early before parsing the body.
+    severity: medium
+
+  # --- Storage File Size Validation ---
+  - category: cloudflare
+    title: "Storage endpoints must validate file size via validateFileSizeConfig()"
+    description: |
+      File upload endpoints use configurable size limits from
+      functions/api/storage/config/fileSizeLimits. The config is validated at
+      worker initialization (_middleware.ts calls validateFileSizeConfig()). Any
+      change to file size limits must maintain the validation logic. Invalid
+      config prevents worker startup.
+    severity: medium
+
+  # --- Performance Benchmarks ---
+  - category: performance
+    title: "API response time benchmarks"
+    description: |
+      All API endpoints must meet: p50 < 100ms, p95 < 500ms, p99 < 1000ms.
+      Database queries: Simple < 10ms, Complex < 100ms. All DB queries must use
+      AbortController timeout (DB_TIMEOUT_MS = 10s).
+    severity: high
+
+  - category: performance
+    title: "Core Web Vitals benchmarks"
+    description: |
+      Frontend must meet: FCP < 1.8s, LCP < 2.5s, TTI < 3.8s, CLS < 0.1.
+      Test with Lighthouse CI or equivalent before production deploys.
+    severity: medium
+
+  - category: performance
+    title: "Rate limiting on sensitive endpoints"
+    description: |
+      Sensitive endpoints (login, signup, password reset) are rate-limited by
+      sso-worker. If skillpassport adds its own sensitive endpoints (e.g. OTP
+      verification, file uploads), implement rate limiting. Supabase RLS provides
+      data-level access control but not request-rate control.
+    severity: high
+
+  # --- Error Response Format ---
+  - category: error-handling
+    title: "Structured error response envelope"
+    description: |
+      All API responses must use the standard envelope from functions/lib/response.ts:
+      { success: bool, data: T|null, error: { code, message }|null, meta: { requestId, timestamp, durationMs } }
+      Use apiSuccess(), apiError(), apiDbError(), apiValidationError() helpers.
+      DB errors are mapped via SAFE_ERROR_MAP to prevent leaking internal Postgres
+      error codes. Internal errors return generic messages — no stack traces.
+      Full error context goes to structured logs, not to the client.
+    severity: high
+
+  # --- FSD Export Policy (from skillpassport steering) ---
+  - category: architecture
+    title: "FSD: Named exports preferred, no duplicate defaults"
+    description: |
+      Named exports are preferred in FSD. Do not use export default except for
+      Worker entry points. Never have duplicate default exports in index files
+      (e.g. both 'export { default }' and 'export { default as X }').
+      Use: export { ComponentName } from './ComponentName' or
+      export { default as ComponentName } from './ComponentName'.
+    severity: medium
+
+  # --- Code Style: Backend Naming ---
+  - category: clean-code
+    title: "Backend file naming: kebab-case.ts"
+    description: |
+      Backend files (functions/, worker/) must use kebab-case naming
+      (e.g. password-reset.ts, rate-limit.ts). DB columns use snake_case.
+      DB tables use snake_case plural (e.g. audit_logs, email_verifications).
+      Use 'interface' for object shapes, 'type' for unions/intersections.
+    severity: low
+
+# ============================================================================
+# SEVERITY OVERRIDES
+# ============================================================================
+
+severity:
+  "console.log usage": high
+  "Hardcoded secret or API key": critical
+  "Missing error handling in async function": critical
+  "FSD layer violation": critical
+  "Missing ARIA labels": high
+  "Missing alt text on img": high
+  "localStorage used for auth data": critical
+  "Unverified Razorpay webhook": critical
+  "dangerouslySetInnerHTML without sanitization": critical
+  "PII in logs or error messages": critical
+  "PII sent to third-party service unmasked": critical
+  "Open redirect via user input": high
+  "Sensitive data in URL query params": high
+  "Raw user input passed to AI API": high
+  "Untracked TODO comment": low
+  "Missing JSDoc on internal utility": low
+  "No direct Supabase Auth usage": critical
+  "Strict Frontend-Backend Layer Separation": critical
+  "Database Migrations: Expand-Migrate-Contract Pattern": critical
+  "Database Migrations: DDL vs DML separation": critical
+  "Plaintext token in database": critical
+  "Token returned in API response": critical
+  "Missing HttpOnly on auth cookie": critical
+  "SameSite=Lax on auth cookie": critical
+  "CORS wildcard in production": critical
+  "Open redirect (no URL validation)": critical
+  "Raw HTML interpolation without escaping": critical
+  "Missing X-Request-ID header": high
+  "Missing KV expirationTtl": high
+  "await sendEmail in hot path": high
+  "Missing rate limiting on sensitive endpoint": high
+  "Missing circuit breaker on external call": medium
+
+# ============================================================================
+# IGNORE PATTERNS
+# ============================================================================
+
+ignore:
+  # Build outputs
+  - "dist/**"
+  - ".output/**"
+  - ".cloudflare/**"
+
+  # Dependencies
+  - "node_modules/**"
+
+  # Generated / vendor
+  - "**/*.generated.ts"
+  - "**/generated/**"
+
+  # Supabase migrations (raw SQL, not app code)
+  - "supabase/migrations/**"
+
+  # Test fixtures
+  - "**/__fixtures__/**"
+  - "**/__mocks__/**"
+  - "**/*.mock.ts"
+
+  # Config files (reviewed separately)
+  - "vite.config.ts"
+  - "vitest.config.js"
+  - "tailwind.config.js"
+  - "eslint.config.js"
+  - "*.config.js"
+  - ".prettierrc.*"
+
+  # Documentation
+  - "docs/**"
+  - "*.md"
+  - "scripts/archive/**"
+
+  # Cloudflare wrangler config
+  - "**/wrangler.toml"
+
+# ============================================================================
+# FOCUS AREAS
+# ============================================================================
+# Paths that demand highest review scrutiny
+
+focus:
+  - path: "src/shared/model/authStore.ts"
+    reason: "Global auth state — session management, role resolution, secure storage"
+    severity: critical
+
+  - path: "src/features/auth/api/**"
+    reason: "Authentication logic — signup, login, session refresh, error handling"
+    severity: critical
+
+  - path: "functions/api/payment/**"
+    reason: "Razorpay webhook handling and payment verification"
+    severity: critical
+
+  - path: "functions/api/user/**"
+    reason: "User signup and profile mutation endpoints"
+    severity: critical
+
+  - path: "functions/_middleware.ts"
+    reason: "Global CORS and request validation for all Functions"
+    severity: critical
+
+  - path: "src/app/routes/AppRoutes.jsx"
+    reason: "Role-based routing — any gap exposes protected pages"
+    severity: high
+
+  - path: "src/features/assessment/**"
+    reason: "Contains anti-cheating logic (useAntiCheating) — integrity critical"
+    severity: high
+
+  - path: "src/features/analytics/**"
+    reason: "Aggregates sensitive learner and organization data"
+    severity: high
+
+  - path: "src/entities/subscription/**"
+    reason: "Entitlement checks gate feature access — errors expose premium features"
+    severity: high
+
+  - path: "functions/lib/auth.ts"
+    reason: "Auth initialization, withAuth wrapper, requireAdmin, requireFeatureAccess guards"
+    severity: critical
+
+  - path: "functions/lib/sso-client.ts"
+    reason: "Service Binding RPC client for SSO — subscription, membership, role operations"
+    severity: critical
+
+  - path: "functions/lib/cors.ts"
+    reason: "CORS origin allowlist — misconfiguration exposes API to unauthorized origins"
+    severity: critical
+
+  - path: "functions/lib/response.ts"
+    reason: "Response envelope helpers — ensures no internal DB details leak"
+    severity: high
+
+  - path: "functions/lib/validation.ts"
+    reason: "Zod schemas and input sanitization — first line of defense against injection"
+    severity: high
+
+  - path: "functions/api/email/**"
+    reason: "Email sending via service binding — must use sendEmailSafe for non-critical"
+    severity: high
+
+  - path: "functions/api/storage/**"
+    reason: "File upload handling — file size limits and storage access control"
+    severity: high
+
+  - path: "functions/lib/entitlements.ts"
+    reason: "Server-side feature gating — fails-closed design, must not silently grant"
+    severity: critical
+
+  - path: "functions/api/career/**"
+    reason: "Sends learner data to AI/vector services — data privacy boundary"
+    severity: high
+
+# ============================================================================
+# REVIEW PREFERENCES
+# ============================================================================
+
+preferences:
+  verbosity: normal
+  include_suggestions: true
+  include_examples: true
+  max_findings_per_file: 12
+  min_severity: low
+
+# ============================================================================
+# TEAM STANDARDS
+# ============================================================================
+
+standards:
+  naming:
+    - "PascalCase for React components and TypeScript interfaces/types"
+    - "camelCase for variables, functions, and object properties"
+    - "UPPER_SNAKE_CASE for true constants (not config objects)"
+    - "use* prefix for all custom hooks"
+    - "*Service suffix for API service files"
+    - "*Store suffix for Zustand store files"
+    - "is*/has*/should* prefix for boolean variables and props"
+    - "Query key factories follow queryKeys.domain.method() pattern"
+
+  organization:
+    - "Imports order: external libs → @/ internal → relative → types"
+    - "FSD layer order in each module: api → model → ui → lib → index"
+    - "One component per file (exception: small co-located helpers)"
+    - "Feature index.ts must re-export only the public API of the feature"
+    - "Supabase table queries belong in entity /api/ files, not in components"
+    - "Named exports only — no export default except Worker entry points"
+    - "Backend files use kebab-case.ts (e.g. password-reset.ts, rate-limit.ts)"
+    - "DB columns use snake_case, DB tables use snake_case plural (audit_logs)"
+    - "Use 'interface' for object shapes, 'type' for unions/intersections"
+
+  error_handling:
+    - "All async functions must have try-catch or return error objects"
+    - "Log errors with correlation context: userId, requestId, action name"
+    - "Never swallow errors silently — always surface to error boundary or toast"
+    - "Supabase query errors must check 'error' property, not just 'data'"
+    - "Use apiSuccess/apiError/apiDbError/apiValidationError helpers from functions/lib/response.ts"
+    - "Envelope: { success, data, error: { code, message }, meta: { requestId, timestamp, durationMs } }"
+    - "Auth errors go through authErrorHandler.ts, not raw console.error"
+    - "Internal errors return generic 500 messages — no stack traces or DB details to clients"
+    - "DB errors mapped via SAFE_ERROR_MAP — never expose raw Postgres error codes to clients"
+    - "Non-blocking operations (audit, email) use ctx.waitUntil() or sendEmailSafe()"
+
+  testing:
+    - "Vitest is the test runner — do not add Jest test files in src/"
+    - "Test files live in __tests__/ directory adjacent to the tested module"
+    - "Test names follow: 'should <outcome> when <condition>'"
+    - "Auth tests must cover: success, wrong password, expired session, network error"
+    - "Mock Supabase in unit tests; hit real Supabase in integration tests"
+
+  accessibility:
+    - "All interactive elements must have accessible labels (aria-label or visible text)"
+    - "Images must have meaningful alt text (not empty unless decorative)"
+    - "Forms must associate labels with inputs via htmlFor/id"
+    - "Keyboard navigation must work for all dialogs and dropdowns (Radix handles this)"
+    - "Color contrast must meet WCAG 2.1 AA minimum"
+
+  realtime:
+    - "All realtime connections MUST be proxied through realtime-worker — no direct Supabase connections"
+    - "Every useEffect that opens a Supabase channel must return cleanup that unsubscribes"
+    - "Presence hooks must handle the case where user goes offline mid-session"
+    - "Never open more than one channel per feature per component mount"
+
+  security:
+    - "Auth tokens/cookies managed by sso-worker — skillpassport must not set auth cookies"
+    - "If adding token storage, SHA-256 hash before DB — never store plaintext"
+    - "CORS handled globally by _middleware.ts via ALLOWED_ORIGINS — no per-handler CORS"
+    - "CSRF: POST/PUT/PATCH/DELETE must pass Origin check (via CORS middleware)"
+    - "Redirect validation: relative paths only, no protocol-relative, no loop to guest routes"
+    - "User input sanitized via sanitizeInput() — strips HTML tags, control chars, enforces max length"
+    - "Request body size validated via validateRequestSize(request, maxBytes)"
+    - "Input validated via Zod schemas + validateBody() — never manual if/else chains"
+    - "Email via sendEmailSafe() for non-critical, sendEmail() when result needed"
+    - "Service Binding RPC for all cross-service calls (sso-client.ts, email-service.ts)"
+
+  observability:
+    - "X-Request-ID header on every response"
+    - "Structured JSON logging: timestamp, level, message, requestId, userId, service, environment"
+    - "Audit log entries for all auth actions (login, logout, signup, password reset, role change)"
+    - "Never log: passwords, tokens, API keys, credit cards, SSNs, PII"
+
+  performance:
+    - "API targets: p50 < 100ms, p95 < 500ms, p99 < 1000ms"
+    - "DB queries: Simple < 10ms, Complex < 100ms, AbortController timeout 10s"
+    - "Frontend: FCP < 1.8s, LCP < 2.5s, TTI < 3.8s, CLS < 0.1"
+    - "Rate limiting on all sensitive endpoints (per-IP + per-account lockout)"
+    - "Pagination: default 50 items, max 1000 for all list endpoints"
+
+# ============================================================================
+# INTEGRATION SETTINGS
+# ============================================================================
+
+integration:
+  auto_approve:
+    - "**/*.md"
+    - "docs/**"
+    - "supabase/migrations/**"      # Reviewed separately by DBA
+
+  block_on_critical: true
+
+  block_threshold:
+    critical: 1
+    high: 3
+
+  inline_comments:
+    - critical
+    - high
+
+# ============================================================================
+# EXAMPLES
+# ============================================================================
+# Good and bad patterns specific to THIS codebase
+
+examples:
+  good:
+    - description: "Correct Supabase query with user filter and error check"
+      code: |
+        const { data, error } = await supabase
+          .from('assessments')
+          .select('id, title, score, completed_at')
+          .eq('learner_id', user.id)
+          .order('completed_at', { ascending: false })
+          .range(0, 19);
+
+        if (error) throw new Error(`Failed to fetch assessments: ${error.message}`);
+        return data;
+
+    - description: "Correct React Query usage with query key factory"
+      code: |
+        const { data, isLoading, isError } = useQuery({
+          queryKey: queryKeys.learner.assessments.list(userId),
+          queryFn: () => fetchStudentAssessments(userId),
+          staleTime: 2 * 60 * 1000,
+          enabled: !!userId,
+        });
+
+        if (isLoading) return <Spinner />;
+        if (isError) return <ErrorMessage message="Failed to load assessments" />;
+        return <AssessmentList data={data} />;
+
+    - description: "Correct Supabase Realtime cleanup"
+      code: |
+        useEffect(() => {
+          const channel = supabase
+            .channel('notifications')
+            .on('postgres_changes', { event: 'INSERT', table: 'notifications' }, handler)
+            .subscribe();
+
+          return () => {
+            supabase.removeChannel(channel);
+          };
+        }, [user.id]);
+
+    - description: "Correct Cloudflare Pages Function webhook verification"
+      code: |
+        const signature = request.headers.get('x-razorpay-signature');
+        const isValid = verifyWebhookSignature(body, signature, WEBHOOK_SECRET);
+        if (!isValid) {
+          return new Response(JSON.stringify({ error: 'Invalid signature' }), { status: 401 });
+        }
+
+    - description: "Correct Auth Store consumption using @rareminds-eym/auth-client"
+      code: |
+        import { useAuthStore } from '@rareminds-eym/auth-client';
+
+        export function ProfileButton() {
+          const user = useAuthStore(state => state.user);
+          const logout = useAuthStore(state => state.logout);
+          // ...
+        }
+
+    - description: "Correct database migration with schema changes only (DDL)"
+      code: |
+        -- Migration: Add description to assessments
+        -- Phase: 1 of 3 (Expand)
+        -- Breaking: No
+        ALTER TABLE assessments ADD COLUMN description TEXT;
+
+    - description: "Correct Zod validation with validateBody helper"
+      code: |
+        import { validateBody, CreateOrderSchema } from '../../lib/validation';
+        import { apiSuccess, apiError } from '../../lib/response';
+
+        const body = await request.json();
+        const result = validateBody(CreateOrderSchema, body, request);
+        if (!result.success) return result.response;  // 400 with field-level errors
+
+        const { plan_id, billing_cycle } = result.data;
+        // ... proceed with validated data
+
+    - description: "Correct non-blocking email via service binding"
+      code: |
+        import { sendEmailSafe } from '../../lib/email-service';
+
+        // Non-critical email — logs but never throws
+        ctx.waitUntil(sendEmailSafe(env, {
+          to: user.email,
+          subject: 'Welcome to SkillPassport',
+          html: welcomeHtml,
+        }));
+
+        return apiSuccess({ userId: user.id }, request);
+
+    - description: "Correct structured error response using apiError"
+      code: |
+        import { apiError, apiDbError } from '../../lib/response';
+
+        // Business logic error
+        return apiError(400, 'VALIDATION_ERROR', 'Invalid email format', request);
+
+        // Supabase DB error (auto-maps Postgres codes to safe messages)
+        if (error) return apiDbError(error, request, { startTime });
+
+    - description: "Correct SSO Service Binding RPC call"
+      code: |
+        import { ssoGetUserSubscription } from '../../lib/sso-client';
+
+        const { subscription, plan } = await ssoGetUserSubscription(env, userId);
+        if (!subscription) return apiError(404, 'NOT_FOUND', 'No active subscription', request);
+
+  bad:
+    - description: "Raw fetch inside a component (violates data-fetching rule)"
+      code: |
+        // WRONG: fetch inside component, no error handling, no caching
+        useEffect(() => {
+          fetch('/api/learner/data')
+            .then(r => r.json())
+            .then(setData);
+        }, []);
+
+    - description: "Cross-feature FSD violation"
+      code: |
+        // WRONG: features importing from sibling features
+        import { useStudentProfile } from '@/features/learner/hooks/useStudentProfile';
+        // inside src/features/auth/ — this breaks FSD boundaries
+
+    - description: "Insecure auth token in localStorage"
+      code: |
+        // WRONG: never store session tokens in plain localStorage
+        localStorage.setItem('session_token', session.access_token);
+        localStorage.setItem('user_role', user.role);
+
+    - description: "Missing error check on Supabase query"
+      code: |
+        // WRONG: ignoring the error property
+        const { data } = await supabase.from('learners').select('*');
+        setStudents(data); // data is null when there's an RLS error
+
+    - description: "Ad-hoc query key (breaks cache invalidation)"
+      code: |
+        // WRONG: string array instead of queryKeys factory
+        useQuery({
+          queryKey: ['learner', 'messages', conversationId],
+          queryFn: ...
+        });
+
+    - description: "Direct Supabase Auth usage in frontend (violates security standard)"
+      code: |
+        // WRONG: Direct Supabase auth functions must not be used on frontend
+        await supabase.auth.signInWithPassword({ email, password });
+
+    - description: "DML inside a Supabase migration file (violates DDL only standard)"
+      code: |
+        -- WRONG: INSERT/UPDATE/DELETE should not be in migrations
+        INSERT INTO lookup_roles (name) VALUES ('educator');
+
+    - description: "Importing backend Pages Functions code inside frontend src/ (violates layer separation)"
+      code: |
+        // WRONG: importing backend code in frontend
+        import { verifyToken } from '../../functions/lib/auth';
+
+    - description: "Plaintext token stored in database (violates token security)"
+      code: |
+        // WRONG: storing raw token without hashing
+        await db.insert('sessions', { token: rawRefreshToken });
+
+    - description: "await sendEmail in hot path (blocks response)"
+      code: |
+        // WRONG: awaiting email blocks the HTTP response
+        await sendEmail(env, { to: email, subject: 'Welcome' });
+        return apiSuccess({ ok: true }, request);
+
+    - description: "CORS wildcard in production"
+      code: |
+        // WRONG: allows any origin
+        headers.set('Access-Control-Allow-Origin', '*');
+
+    - description: "Per-handler CORS headers (duplicates middleware)"
+      code: |
+        // WRONG: _middleware.ts already handles CORS for all responses
+        const headers = getCorsHeaders(origin);
+        return new Response(JSON.stringify(data), { headers });
+
+    - description: "Raw Response.json instead of apiSuccess/apiError"
+      code: |
+        // WRONG: bypasses standard envelope and X-Request-ID
+        return Response.json({ data: result });
+        // Should use: return apiSuccess(result, request);
+
+    - description: "Manual if/else validation instead of Zod"
+      code: |
+        // WRONG: manual validation misses edge cases
+        if (!body.plan_id || typeof body.plan_id !== 'string') {
+          return Response.json({ error: 'plan_id required' }, { status: 400 });
+        }
+
+    - description: "Direct HTTP call to sso-worker instead of binding RPC"
+      code: |
+        // WRONG: bypasses service binding trust boundary
+        const res = await fetch('https://sso-api.example.com/api/subscription', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+    - description: "Unsanitized user input stored directly"
+      code: |
+        // WRONG: user input not sanitized before storage
+        await supabase.from('profiles').update({ bio: body.bio });
+        // Should use: sanitizeInput(body.bio)
+
+# ============================================================================
+# NOTES FOR AI REVIEWER
+# ============================================================================
+
+notes: |
+  This is a React 18 SPA — NOT Next.js. There is no App Router, no server
+  components, and no SSR. Do not flag missing 'use client' directives.
+
+  Routing is React Router DOM v7. Protected routes are in AppRoutes.jsx
+  and enforce role-based access through authStore.
+
+  Backend is Cloudflare Pages Functions only (/functions/api/*).
+  There are no separate Cloudflare Workers. All serverless logic lives under /functions/.
+  However, the wider ecosystem includes sso-worker, email-worker, auth-client,
+  and auth-core packages — see CODE_REVIEW_GUIDELINES.md for cross-package rules.
+
+  Key integrations:
+  - sso-worker → email-worker via Cloudflare Service Binding (EMAIL_SERVICE)
+  - sso-worker → Supabase via PostgREST (service-role key)
+  - auth-client → sso-worker via HTTP (cookie-based auth)
+  - auth-core → sso-worker JWKS endpoint for JWT verification
+
+  Strict Frontend-Backend Layer Separation: Frontend code in /src/ MUST NOT import
+  backend code in /functions/ or /worker/ (and vice versa). All cross-boundary interaction
+  must go through API endpoints via apiClient or ssoClient.
+
+  Supabase is the primary data store. All tables have Row Level Security (RLS).
+  Queries without user filters may silently return empty (not an error) if RLS
+  blocks access — this is a common source of hard-to-debug bugs.
+
+  Do NOT use direct Supabase authentication (supabase.auth.*) on the frontend.
+  Use @rareminds-eym/auth-client for all client-side authentication and
+  @rareminds-eym/auth-core (withAuth middleware) on the backend.
+
+  Auth architecture: Token lifecycle (hashing, cookies, JWT signing) is managed
+  entirely by sso-worker. Skillpassport uses @rareminds-eym/auth-core (withAuth
+  middleware) for JWT verification via Service Binding RPC to SSO_SERVICE.
+  The auth-core is initialized once per isolate (lazy singleton pattern in
+  functions/lib/auth.ts). Skillpassport does NOT directly create, store, or
+  manage auth tokens or cookies.
+
+  Auth initialization: auth-core's initAuth() is called once per isolate via
+  ensureAuthInitialized(). Calling it per-request would clear the JWKS cache
+  and force re-fetches. Do not call initAuth() outside of functions/lib/auth.ts.
+
+  Email verification gate: withAuth() enforces email verification by default.
+  Use withAuthAllowUnverified() only for endpoints that must work before email
+  verification (e.g. creating a profile right after signup).
+
+  Email sending: Uses email-worker via EMAIL_SERVICE binding. Use sendEmailSafe()
+  for non-critical emails (logs but never throws). sendEmail() throws on binding
+  misconfiguration. Email-worker handles its own rate limiting and HTML escaping.
+
+  Response envelope: ALL Pages Function responses must use the apiSuccess/apiError
+  helpers from functions/lib/response.ts. Never use raw Response.json() for API
+  endpoints. The helpers enforce: { success, data, error, meta: { requestId,
+  timestamp, durationMs } } with X-Request-ID header and CORS.
+
+  Input validation: Use Zod schemas + validateBody() from functions/lib/validation.ts.
+  Use sanitizeInput() for free-text fields. Use validateRequestSize() for body
+  size limits. Use isValidEmail() and isValidUUID() for format checks.
+
+  Shadow tables: Tables like users_shadow, roles, and subscription_cache are
+  read-only mirrors of the sso-worker source of truth, managed via sync-shadow.ts.
+  They exist for referential integrity only. NEVER use them as an authorization
+  source. Always rely on the verified JWT provided by withAuth for access decisions.
+
+  Realtime: Direct connections to Supabase Realtime from the frontend are prohibited.
+  All realtime WebSocket connections must be proxied through the realtime-worker
+  to manage connection limits and enforce security policies.
+
+  AI features use both OpenAI and Google Generative AI. These API keys are
+  VITE_-prefixed, meaning they are exposed in the browser bundle. Flag any
+  new sensitive key that follows this pattern.
+
+  Payment processing uses Razorpay via a Cloudflare Pages Function.
+  The function must verify webhook HMAC signatures on every incoming event.
+
+  Anti-cheating logic in /src/features/assessment/ is security-sensitive.
+  Any change to useAntiCheating.ts or related hooks should receive full review.
+
+  FSD export policy: Named exports preferred. No export default except Worker entry points.
+  Use 'npm run build:dev' to catch import/export errors — NOT 'npm run dev'.
+
+  _middleware.ts: Handles CORS globally for all responses. Also implements an
+  edge-level auth guard that redirects authenticated users away from guest routes
+  (login, signup) to their role-appropriate dashboard using EDGE_ROLE_DASHBOARD_MAP.
+  This map MUST stay in sync with the frontend's roleBasedRouter.ts.
+  WebSocket upgrade responses (101) are passed through without modification.
+
+  Environment files: .env.local (dev), .env.development, .env.staging, .env.production
+  Run `npm run env:validate` before flagging "missing env var" issues.
+
+  Logger: Use createLogger(category) or pre-configured apiLogger/emailLogger/authLogger
+  from functions/lib/logger.ts. These wrap console.* methods (which IS the production
+  logging mechanism on CF Workers). This is NOT debugging code — do not flag it.
+
+  LTE schema: All new tables must use lte. schema prefix. All enum types must use
+  lte_ prefix. Include created_at and updated_at columns with defaults.
+  Add indexes for foreign keys and common filter columns.
+
+# ============================================================================
+# VERSION
+# ============================================================================
+
+version: "3.6.0"
+last_updated: "2026-07-11"
+reviewed_by: "deep-workspace-rules-integration-v8-service-role"

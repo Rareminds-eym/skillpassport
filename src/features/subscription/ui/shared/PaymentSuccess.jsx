@@ -13,6 +13,8 @@
  */
 
 import { getPaymentReceiptPresignedUrl } from '@/shared/api';
+import { RECEIPT_CONFIG } from '@/shared/config/constants';
+import { downloadFileFromUrl, generateReceiptFilename } from '@/shared/utils/downloadHelpers';
 import {
   ArrowRight,
   Calendar,
@@ -410,6 +412,10 @@ function PaymentSuccess() {
     razorpay_order_id: stateData.razorpay_order_id || '',
     razorpay_signature: stateData.razorpay_signature || '',
   };
+  
+  // Extract primitives for stable useCallback dependencies
+  const razorpayPaymentId = paymentParams.razorpay_payment_id;
+  const userId = user?.id;
 
   // State
   const [activationStatus, setActivationStatus] = useState(ACTIVATION_STATES.PENDING);
@@ -638,25 +644,73 @@ function PaymentSuccess() {
     }
   }, [verificationError, user, navigate]);
 
+  // Extract receipt status to avoid stale closure in useCallback
+  const receiptStatus = transactionDetails?.receipt_status;
+
   // Handle receipt download using presigned URL
   const handleDownloadReceipt = useCallback(async () => {
     try {
-      // Prefer the R2 key directly — avoids URL parsing ambiguity in the backend.
-      // Fall back to the public URL if the key wasn't returned by the server.
-      const fileIdentifier = receiptKey || receiptUrl;
-      if (fileIdentifier) {
-        const presignedUrl = await getPaymentReceiptPresignedUrl(fileIdentifier, 3600);
-        window.open(presignedUrl, '_blank');
-        toast.success('Receipt downloading!');
+      // Check if receipt is still being generated
+      if (receiptStatus === 'generating') {
+        toast('Receipt is being prepared. Please try again in a moment or check your email.', { icon: '⏳', duration: 5000 });
         return;
       }
+      
+      // Strategy 1: Try using the receipt key/URL from payment response
+      let fileIdentifier = receiptKey || receiptUrl;
+      
+      // Strategy 2: If not available, construct from payment ID and try to fetch
+      if (!fileIdentifier && razorpayPaymentId && userId) {
+        if (
+          !RECEIPT_CONFIG?.USER_ID_PREFIX_LENGTH ||
+          !RECEIPT_CONFIG?.PAYMENT_ID_SANITIZE_REGEX
+        ) {
+          toast.error('System configuration error. Please contact support.');
+          return;
+        }
+
+        const userPrefix = userId
+          ? userId.substring(0, Math.min(userId.length, RECEIPT_CONFIG.USER_ID_PREFIX_LENGTH))
+          : '';
+        const sanitizedPaymentId = razorpayPaymentId.replace(RECEIPT_CONFIG.PAYMENT_ID_SANITIZE_REGEX, '');
+        // Use a wildcard pattern - backend will find the file with any timestamp
+        fileIdentifier = `payment_pdf/user_${userPrefix}/${sanitizedPaymentId}`;
+        log.info('Constructed receipt identifier from payment ID:', fileIdentifier);
+      }
+      
+      if (fileIdentifier) {
+        log.info('Requesting presigned URL for:', fileIdentifier);
+        const presignedUrl = await getPaymentReceiptPresignedUrl(fileIdentifier, 3600);
+        
+        // Use shared download helper with fallback mechanism
+        try {
+          await downloadFileFromUrl(presignedUrl, generateReceiptFilename());
+          toast.success('Receipt downloading!');
+          return;
+        } catch (downloadError) {
+          log.error('Download helper failed:', downloadError);
+          throw downloadError;
+        }
+      }
+      
       // Receipt not yet available (server may still be processing)
-      toast('Receipt is being prepared. Please try again in a moment.', { icon: '⏳', duration: 4000 });
+      toast('Receipt is being prepared. Please try again in a moment or check your email.', { icon: '⏳', duration: 5000 });
     } catch (error) {
       log.error('Receipt download failed:', error);
-      toast.error('Failed to download receipt. Please try again.');
+      // More helpful error message
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStatus =
+        typeof error === 'object' && error !== null && 'status' in error
+          ? error['status']
+          : undefined;
+
+      if (errorStatus === 404 || errorMessage.includes('404') || errorMessage.includes('not found')) {
+        toast.error('Receipt is still being generated. Please try again in a moment or check your email.');
+      } else {
+        toast.error('Failed to download receipt. A copy has been sent to your email.');
+      }
     }
-  }, [receiptKey, receiptUrl]);
+  }, [receiptKey, receiptUrl, razorpayPaymentId, userId, receiptStatus]);
 
   // ============================================================================
   // RENDER
