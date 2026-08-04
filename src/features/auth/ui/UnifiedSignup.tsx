@@ -78,6 +78,8 @@ const SIGNUP_ROLE_OPTIONS = [
   'university_admin',
 ] as const satisfies readonly SignupRoleOption[];
 
+const normalizePromoCode = (code?: string | null) => (code || '').trim().toUpperCase();
+
 type OfferedSignupRole = (typeof SIGNUP_ROLE_OPTIONS)[number];
 
 interface SignupState {
@@ -317,11 +319,19 @@ const UnifiedSignup = () => {
 
   // NEW: Get invite token from URL if present
   const inviteTokenFromUrl = searchParams.get('invite_token');
+  const referralCodeFromUrl = normalizePromoCode(
+    searchParams.get('referralCode') ||
+    searchParams.get('referral_code') ||
+    searchParams.get('promo') ||
+    searchParams.get('promoCode') ||
+    searchParams.get('code')
+  );
+  const isReferralCodeLocked = Boolean(referralCodeFromUrl);
 
   const [state, setState] = useState<SignupState>({
     firstName: '', lastName: '', dateOfBirth: '', email: invitationEmail || '', phone: '', countryCode: '+91',
     password: '', confirmPassword: '', selectedRole: null, recruiterType: null, organizationName: '',
-    country: 'IN', state: '', city: '', preferredLanguage: 'en', referralCode: '',
+    country: 'IN', state: '', city: '', preferredLanguage: 'en', referralCode: referralCodeFromUrl,
     agreeToTerms: false, otp: '', otpSent: false, otpVerified: false, verificationId: '',
     showPassword: false, showConfirmPassword: false,
     loading: false, sendingOtp: false, verifyingOtp: false, error: '', roleDropdownOpen: false,
@@ -338,6 +348,8 @@ const UnifiedSignup = () => {
   stateRef.current = state;
   // Guard: signup_start fires only once per signup attempt
   const hasStartedFormRef = useRef(false);
+
+  const normalizedReferralCode = normalizePromoCode(state.referralCode);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -709,6 +721,7 @@ const UnifiedSignup = () => {
             lastName: state.lastName.trim(),
             phone: state.phone.trim() || null,
             avatarUrl: null,
+            referralCode: normalizedReferralCode || undefined,
             recruiterType: 'admin',
           },
         });
@@ -739,6 +752,7 @@ const UnifiedSignup = () => {
             lastName: state.lastName.trim(),
             phone: state.phone.trim() || null,
             avatarUrl: null,
+            referralCode: normalizedReferralCode || undefined,
             recruiterType: state.recruiterType || null,
           },
         });
@@ -762,6 +776,7 @@ const UnifiedSignup = () => {
             lastName: state.lastName.trim(),
             phone: state.phone.trim() || null,
             avatarUrl: null,
+            referralCode: normalizedReferralCode || undefined,
             // Store recruiter type for routing logic
             recruiterType: state.recruiterType || null,
           },
@@ -785,6 +800,7 @@ const UnifiedSignup = () => {
           roles: me.roles,
           products: me.products,
           membershipStatus: me.membership_status,
+          user_metadata: (me as any).user_metadata ?? (me as any).metadata,
           isEmailVerified: me.is_email_verified,
           isDemoMode: false,
         },
@@ -811,7 +827,7 @@ const UnifiedSignup = () => {
           state: state.state || undefined,
           city: state.city || undefined,
           preferredLanguage: state.preferredLanguage || undefined,
-          referralCode: state.referralCode || undefined,
+          referralCode: normalizedReferralCode || undefined,
           // Store recruiter type for post-verification routing
           // recruiter_admin -> 'admin', recruiter (via invite) -> 'invited'
           recruiterType: state.selectedRole === 'recruiter_admin' ? 'admin' : (state.recruiterType || undefined),
@@ -956,16 +972,21 @@ const UnifiedSignup = () => {
           state: {
             plan: planFromState,
             learnerType: learnerTypeFromState || entityType,
-            isUpgrade: false
+            isUpgrade: false,
+            referralCode: normalizedReferralCode || undefined
           }
         });
       } else {
         // Redirect to subscription plans page to choose a plan
-        navigate(`/subscription/plans/${entityType}/purchase`, {
+        const subscriptionPlansPath = normalizedReferralCode
+          ? `/subscription/plans/${entityType}/purchase?referralCode=${encodeURIComponent(normalizedReferralCode)}`
+          : `/subscription/plans/${entityType}/purchase`;
+        navigate(subscriptionPlansPath, {
           state: {
             message: 'Account created successfully! Please choose a plan to continue.',
             email: state.email,
-            userId: ssoUserId
+            userId: ssoUserId,
+            referralCode: normalizedReferralCode || undefined
           }
         });
       }
@@ -1521,7 +1542,20 @@ const UnifiedSignup = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Referral Code <span className="text-gray-400 font-normal">(Optional)</span></label>
-                  <input type="text" name="referralCode" value={state.referralCode} onChange={handleInputChange} placeholder="Code" className="block w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all outline-none" />
+                  <input
+                    type="text"
+                    name="referralCode"
+                    value={state.referralCode}
+                    onChange={handleInputChange}
+                    placeholder="Code"
+                    readOnly={isReferralCodeLocked}
+                    aria-readonly={isReferralCodeLocked}
+                    title={isReferralCodeLocked ? 'Referral code applied from signup link' : undefined}
+                    className={`block w-full px-4 py-3 border border-gray-200 rounded-xl transition-all outline-none ${isReferralCodeLocked
+                      ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
+                      : 'bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                      }`}
+                  />
                 </div>
 
                 <div className="pt-2">

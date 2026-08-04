@@ -108,7 +108,7 @@ type SsoFetcher = Fetcher & {
   logoutSession(refreshToken: string, ip?: string, ua?: string): Promise<any>;
   verifyEmail(params: { token: string; ip?: string; ua?: string }): Promise<any>;
   switchOrg(params: { accessToken: string; organizationId: string }): Promise<any>;
-  signup(params: { email: string; password: string; fullName: string; referralCode?: string; ip?: string; ua?: string }): Promise<any>;
+  signup(params: { email: string; password: string; fullName?: string; org_name?: string | null; role?: string; redirect_url?: string; referralCode?: string; user_metadata?: Record<string, unknown>; ip?: string; ua?: string }): Promise<any>;
   listOrgs(accessToken: string): Promise<any>;
 };
 
