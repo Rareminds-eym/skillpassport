@@ -273,12 +273,10 @@ export default function AddLearningCourseModal({ isOpen, onClose, learnerId, onS
         learnerId,
         training: {
           title: formData.title,
-          course: formData.title,
           organization: formData.organization || selectedPlatform?.name,
           description: formData.description,
           endDate: formData.completion_date || null,
           status: 'completed',
-          progress: 100,
           hours_spent: 0,
           source: 'external_course',
         },

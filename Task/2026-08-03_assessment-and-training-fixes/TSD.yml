@@ -1,0 +1,360 @@
+task_information:
+  task_id: ASSESS-PERSIST-2026-08
+  title: Learner Assessment and Certificate Management Improvements
+  task_type: "Bug Fix (Sections A, B) + Architectural Refactor (Section C)"
+  priority: High
+  estimated_effort: "Bug fixes: Small (< 1 day each). Refactor: Medium (1-2 days)"
+
+sections:
+
+  - id: A
+    title: External Certificate Import Failure
+
+    problem_statement:
+      business_requirement: >
+        Learners must be able to import an external certificate (Coursera,
+        Udemy, LinkedIn Learning, etc.) into their learning profile.
+      current_behaviour: >
+        POST /api/learners/trainings returned 500 Internal Server Error with
+        a PostgREST PGRST204 error: "Could not find the 'course' column of
+        'trainings' in the schema cache."
+      expected_behaviour: >
+        The certificate import completes successfully and a row is created
+        in trainings.
+
+    scope:
+      in_scope:
+        - "POST /api/learners/trainings insert payload construction"
+      out_of_scope:
+        - "Schema migration (no schema change was needed or made)"
+        - "Training approval workflow (see Section C)"
+
+    current_analysis:
+      files_modules_reviewed:
+        - functions/api/learners/trainings.ts
+        - src/widgets/learner-dashboard/ui/AddLearningCourseModal.jsx
+        - supabase/migrations/20260526000000_schema.sql
+      existing_flow: >
+        The backend insert payload included course and progress, which do
+        not exist in the trainings table schema. This caused the insert
+        request to fail.
+
+    proposed_solution:
+      solution_overview: >
+        Remove course and progress from the insert payload. Use title as
+        the sole text label. Only set course_id when the caller supplies a
+        real course UUID — never derive it from text.
+      why_this_approach: >
+        title already serves the "course name" purpose; course_id is a
+        proper FK, not a free-text mirror. No new column is needed.
+      alternatives_considered: >
+        Adding a course column via migration — rejected, since it would
+        duplicate title with no distinct purpose.
+
+    technical_design:
+      database_changes: None.
+      api_contract: >
+        POST /api/learners/trainings — request body unchanged; insert
+        payload no longer references non-existent columns.
+
+    impact_analysis:
+      affected_components:
+        - "functions/api/learners/trainings.ts (onRequestPost)"
+        - "src/widgets/learner-dashboard/ui/AddLearningCourseModal.jsx (removed matching dead fields from the request body: course, progress)"
+
+    business_logic:
+      execution_flow: >
+        Learner submits certificate form -> AddLearningCourseModal posts
+        {learnerId, training, certificate, skills} -> backend builds
+        trainingRecord from only valid trainings columns -> insert succeeds
+        -> linked certificates/skills rows created.
+
+    edge_cases: >
+      Audited all fields inserted into certificates and skills in the same
+      handler against live schema — no further mismatches found.
+
+    security: "N/A — no change to auth/authorization in this fix."
+
+    testing_plan:
+      manual: >
+        Verified the insert payload against the live trainings schema and
+        confirmed successful certificate import using valid schema fields.
+      regression: "N/A — isolated to one insert path."
+
+    risks: >
+      None. Pure removal of invalid fields; no behavior change for valid
+      fields.
+
+    open_questions: None.
+
+    developer_self_review:
+      - checked: true
+        item: Payload matches live schema
+      - checked: true
+        item: No new migration required
+      - checked: true
+        item: Certificate/skills inserts audited for the same class of error
+
+  - id: B
+    title: Assessment Loading Failure
+
+    problem_statement:
+      business_requirement: >
+        Learners must be able to start an AI-generated, course-specific
+        assessment.
+      current_behaviour: >
+        Clicking "Start Assessment" always failed with an alert: "Failed to
+        load assessment. Please try again." — on every attempt, regardless
+        of course.
+      expected_behaviour: >
+        A successfully generated assessment loads and the learner proceeds
+        to the question flow.
+
+    scope:
+      in_scope:
+        - "Response handling in generateAssessment() (frontend)"
+      out_of_scope:
+        - "AI question-generation quality, token-limit tuning (handled separately as a bug fix, not part of this TSD)"
+
+    current_analysis:
+      files_modules_reviewed:
+        - src/features/assessment/api/assessmentGenerationService.js
+        - "functions/api/question-generation/[[path]].ts"
+        - functions/lib/response.ts
+      existing_flow: >
+        The frontend consumed the API response envelope directly instead
+        of extracting the assessment object from data, causing validation
+        to fail.
+
+    proposed_solution:
+      solution_overview: >
+        Unwrap envelope.data before validating or using the response.
+      why_this_approach: >
+        Matches the same unwrapping convention already used elsewhere in
+        the same file (saveGeneratedAssessment, loadGeneratedAssessment),
+        and matches the backend's actual, unchanged response contract.
+      alternatives_considered: >
+        Changing the backend to return an unwrapped body — rejected, since
+        it would break the shared apiSuccess() envelope convention used by
+        every other endpoint in the codebase.
+
+    technical_design:
+      database_changes: N/A
+      api_contract: >
+        No change to the backend contract. Frontend now correctly consumes
+        the existing {success, data, error, meta} shape.
+
+    impact_analysis:
+      affected_components:
+        - "src/features/assessment/api/assessmentGenerationService.js — generateAssessment() (success-path unwrapping) and its error-path handling (errorData.error is an object {code, message} under apiError(), not a string; fixed to read .message)"
+
+    business_logic:
+      execution_flow: >
+        Click "Start Assessment" -> generateAssessment() -> POST
+        /api/question-generation/generate -> backend returns
+        {success, data: {course, level, questions, total_questions}} ->
+        frontend reads envelope.data -> validateAssessment(assessment)
+        passes -> learner proceeds to questions.
+
+    edge_cases: N/A
+
+    security: "N/A"
+
+    testing_plan:
+      manual: >
+        Confirmed via user report that assessment generation and loading
+        now succeeds end-to-end after this fix.
+
+    risks: "None — isolated response-parsing correction."
+
+    open_questions: None.
+
+    developer_self_review:
+      - checked: true
+        item: Matches existing envelope-unwrapping convention in the same file
+      - checked: true
+        item: "Error path also corrected (object vs. string message)"
+      - checked: true
+        item: Verified against live user test
+
+  - id: C
+    title: Assessment Persistence Architecture Refactor
+
+    problem_statement:
+      business_requirement: >
+        Assessment attempts (start, progress, completion, history) must be
+        persisted reliably, and a passed assessment must be reflected in
+        the learner's training record.
+      current_behaviour: >
+        Assessment persistence relied on frontend database access,
+        resulting in unreliable persistence of assessment attempts and
+        preventing the assessment lifecycle from completing successfully.
+      expected_behaviour: >
+        Assessment attempts persist correctly; a passed assessment
+        automatically updates the linked trainings record's approval
+        status; failures are surfaced to the user instead of silently
+        ignored.
+
+    scope:
+      in_scope:
+        - "Persistence layer for external_assessment_attempts"
+        - "New endpoint to sync assessment outcome to trainings"
+        - "Error-visibility in DynamicAssessment.jsx"
+      out_of_scope:
+        - "The pre-existing, separate career/aptitude assessment system (learner-pages/actions.ts -> mark-assessment-completed, used by AssessmentResults.tsx) — a different feature that happens to share the same table; not modified"
+
+    current_analysis:
+      files_modules_reviewed:
+        - src/features/assessment/api/externalAssessmentService.js
+        - src/pages/learner/DynamicAssessment.jsx
+        - functions/api/learners/trainings.ts
+        - "functions/api/learner-pages/actions.ts (evaluated as a possible existing home for this logic; not reused — see proposed_solution)"
+      existing_flow: >
+        The assessment feature bypassed the project's backend-first
+        architecture by attempting database operations from the frontend
+        instead of backend Pages Functions.
+
+    proposed_solution:
+      solution_overview: >
+        Move all external_assessment_attempts reads/writes into a new
+        backend Pages Function. Add a new endpoint to sync a passed
+        assessment's outcome into the linked trainings row. Make
+        attempt-creation and completion failures hard stops in the UI
+        instead of silent no-ops.
+      why_this_approach: >
+        Aligns with the codebase's existing backend-first convention (all
+        other Supabase access in the app already goes through Pages
+        Functions using the service-role client). Enables server-side
+        authorization checks that a frontend client cannot enforce safely.
+      alternatives_considered:
+        - "Extend learner-pages/actions.ts — rejected due to authorization concerns."
+        - "Frontend Supabase client — rejected to preserve the backend-first architecture."
+
+    technical_design:
+      architecture_diagram: |
+        Before:
+          DynamicAssessment.jsx -> externalAssessmentService.js -> direct Supabase client access
+
+        After:
+          DynamicAssessment.jsx -> externalAssessmentService.js -> apiPost/apiPut
+              -> POST /api/external-assessment/actions  (check-status, create-attempt, update-progress, complete, history, get-by-course)
+              -> PUT  /api/learners/trainings            (assessment-outcome -> training approval sync)
+                  -> getServiceClient() (service-role) -> Supabase
+      sequence_diagram: |
+        Learner clicks Start Assessment
+          -> createAssessmentAttempt() -> POST /external-assessment/actions {action:'create-attempt', ...}
+              -> ownership check -> INSERT external_assessment_attempts -> returns attemptId
+          -> learner answers, auto-saves via updateAssessmentProgress() -> action:'update-progress'
+          -> learner submits
+              -> completeAssessment(attemptId) -> action:'complete' -> UPDATE status='completed', score
+              -> IF attemptId missing OR complete fails -> hard stop, show error (no false success screen)
+              -> updateTrainingAfterAssessment(learnerId, trainingId, score, passed)
+                  -> PUT /learners/trainings {learnerId, trainingId, score, passed}
+                      -> ownership check -> IF passed AND not already approved ->
+                          UPDATE trainings SET approval_status='approved', status='completed',
+                                               approved_by, approved_at, approval_notes
+          -> My Learning re-fetches trainings on next mount, reflects updated status
+      database_changes: >
+        None (no migration). Only application-level read/write logic
+        changed.
+      api_contract:
+        - endpoint: /api/external-assessment/actions
+          method: POST
+          purpose: >
+            Action-dispatch: check-status, create-attempt, update-progress,
+            complete, history, get-by-course — all scoped to
+            external_assessment_attempts
+        - endpoint: /api/learners/trainings
+          method: PUT (new)
+          purpose: >
+            {learnerId, trainingId, score, passed} -> auto-approves the
+            training on a passing score; idempotent (no-op if already
+            approved or not passed)
+
+    impact_analysis:
+      affected_components:
+        - "functions/api/external-assessment/actions.ts (new)"
+        - "functions/api/learners/trainings.ts (added onRequestPut)"
+        - "src/features/assessment/api/externalAssessmentService.js (rewritten: direct Supabase calls -> apiPost/apiPut)"
+        - "src/pages/learner/DynamicAssessment.jsx (added updateTrainingAfterAssessment call after completion; replaced silent-failure gates with hard stops and user-visible errors)"
+      not_affected:
+        - "functions/api/learner-pages/actions.ts and src/pages/learner/AssessmentResults.tsx (separate career-assessment feature, out of scope)"
+      known_limitation: >
+        ModernLearningCard.jsx displays assessment status from
+        external_assessment_attempts. Training approval status is managed
+        separately through the trainings table and is not reflected by
+        this component.
+
+    business_logic:
+      execution_flow: >
+        See sequence_diagram above. Passing threshold is score >= 60,
+        applied consistently in both the results-screen display logic and
+        the training-update gate in DynamicAssessment.jsx.
+      source_of_truth: >
+        external_assessment_attempts is the source of truth for
+        assessment-related UI (completion status, score).
+        trainings.approval_status is the source of truth for approval and
+        verification workflows. The two are intentionally separate
+        concerns.
+
+    edge_cases:
+      - >
+        Already-approved training: the update is idempotent — approval
+        fields are not re-applied if the training is already approved.
+      - >
+        Failed assessment: the training record is not modified.
+      - >
+        Assessment attempt creation failure: treated as a hard stop, with
+        the learner shown an error instead of proceeding without a
+        persisted attempt.
+
+    security:
+      authentication: "Both endpoints wrapped in withAuth."
+      authorization: >
+        Each action/handler verifies the requesting user owns learnerId
+        (via learners.user_id = user.id) or holds an admin role
+        (ADMIN_ROLES), mirroring the existing pattern in trainings.ts.
+      data_protection: >
+        Writes use the service-role client server-side only; no
+        credentials or direct DB access are exposed to the frontend.
+
+    testing_plan:
+      manual: >
+        Verified the assessment lifecycle end-to-end in a live browser
+        session: attempt creation, completion, and the training-approval
+        update, including idempotent behavior on repeated calls.
+      regression: "N/A"
+
+    risks:
+      - >
+        Training approval updates are backend-complete, while related UI
+        enhancements remain outside the scope of this implementation.
+      - >
+        functions/api/learner-pages/actions.ts retains a separate action
+        on the same table for a different feature, with no ownership
+        checks; not a regression risk from this change, but a pre-existing
+        inconsistency worth separate attention.
+
+    developer_self_review:
+      - checked: true
+        item: No direct frontend Supabase access remains in externalAssessmentService.js
+      - checked: true
+        item: All new endpoints have ownership/authorization checks
+      - checked: true
+        item: Idempotency verified for the training-approval PUT handler
+      - checked: true
+        item: Silent failure paths converted to user-visible errors
+      - checked: false
+        item: "ModernLearningCard.jsx UI enhancement to surface training-approval status — out of scope, tracked as a risk above"
+
+versioning:
+  - version: v1.0
+    scope: "Sections A + B (bug fixes)"
+    status: "Modified — existing endpoints corrected, no new surface"
+  - version: v1.1
+    scope: "Section C (persistence refactor)"
+    status: >
+      New — functions/api/external-assessment/actions.ts (New),
+      PUT /api/learners/trainings (New), externalAssessmentService.js
+      (Modified — internal implementation only, external function
+      signatures unchanged)

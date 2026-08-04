@@ -29,10 +29,12 @@ import {
   createAssessmentAttempt,
   updateAssessmentProgress,
   completeAssessment,
-  checkAssessmentStatus
+  checkAssessmentStatus,
+  updateTrainingAfterAssessment
 } from '@/features/assessment/api/externalAssessmentService';
 import { useLearnerProfile } from '@/features/learner-profile';
-import { useAuth } from '@/features/auth';
+import { useLearnerDataByEmail } from '@/entities/learner';
+import { useUser } from '@/shared/model/authStore';
 
 /**
  * Dynamic Assessment Component
@@ -260,25 +262,33 @@ const DynamicAssessment = () => {
         };
         
         setAssessment(generatedAssessment);
-        
-        // Create database attempt if user is logged in
-        if (learnerData?.id) {
-          const result = await createAssessmentAttempt({
-            learnerId: learnerData.id,
-            courseName: courseName,
-            courseId: courseId,
-            assessmentLevel: courseLevel,
-            questions: preGeneratedQuestions
-          });
-          
-          if (result.success) {
-            setAttemptId(result.data.id);
-            console.log('✅ Database attempt created:', result.data.id);
-          } else {
-            console.warn('⚠️ Could not create database attempt:', result.error);
-          }
+
+        // Create database attempt — required before the learner can proceed.
+        // Without a persisted attempt, answers/score/completion can never be saved.
+        if (!learnerData?.id) {
+          setError('Unable to identify your learner profile. Please refresh and try again.');
+          setLoading(false);
+          return;
         }
-        
+
+        const result = await createAssessmentAttempt({
+          learnerId: learnerData.id,
+          courseName: courseName,
+          courseId: courseId,
+          assessmentLevel: courseLevel,
+          questions: preGeneratedQuestions
+        });
+
+        if (!result.success) {
+          console.error('❌ Could not create database attempt:', result.error);
+          setError(result.error || 'Failed to start assessment. Please try again.');
+          setLoading(false);
+          return;
+        }
+
+        setAttemptId(result.data.id);
+        console.log('✅ Database attempt created:', result.data.id);
+
         setLoading(false);
         return;
       }
@@ -290,23 +300,32 @@ const DynamicAssessment = () => {
         console.log('✅ Using cached assessment for:', courseName);
         console.log('📅 Cached on:', new Date(cached.cachedAt).toLocaleString());
         setAssessment(cached);
-        
-        // Create database attempt if user is logged in
-        if (learnerData?.id) {
-          const result = await createAssessmentAttempt({
-            learnerId: learnerData.id,
-            courseName: courseName,
-            courseId: courseId,
-            assessmentLevel: courseLevel,
-            questions: cached.questions
-          });
-          
-          if (result.success) {
-            setAttemptId(result.data.id);
-            console.log('✅ Database attempt created:', result.data.id);
-          }
+
+        // Create database attempt — required before the learner can proceed.
+        if (!learnerData?.id) {
+          setError('Unable to identify your learner profile. Please refresh and try again.');
+          setLoading(false);
+          return;
         }
-        
+
+        const result = await createAssessmentAttempt({
+          learnerId: learnerData.id,
+          courseName: courseName,
+          courseId: courseId,
+          assessmentLevel: courseLevel,
+          questions: cached.questions
+        });
+
+        if (!result.success) {
+          console.error('❌ Could not create database attempt:', result.error);
+          setError(result.error || 'Failed to start assessment. Please try again.');
+          setLoading(false);
+          return;
+        }
+
+        setAttemptId(result.data.id);
+        console.log('✅ Database attempt created:', result.data.id);
+
         setLoading(false);
         return;
       }
@@ -318,23 +337,32 @@ const DynamicAssessment = () => {
       console.log('✅ Assessment generated successfully');
       setAssessment(generated);
       cacheAssessment(courseName, generated);
-      
-      // Create database attempt if user is logged in
-      if (learnerData?.id) {
-        const result = await createAssessmentAttempt({
-          learnerId: learnerData.id,
-          courseName: courseName,
-          courseId: courseId,
-          assessmentLevel: courseLevel,
-          questions: generated.questions
-        });
-        
-        if (result.success) {
-          setAttemptId(result.data.id);
-          console.log('✅ Database attempt created:', result.data.id);
-        }
+
+      // Create database attempt — required before the learner can proceed.
+      if (!learnerData?.id) {
+        setError('Unable to identify your learner profile. Please refresh and try again.');
+        setLoading(false);
+        return;
       }
-      
+
+      const result = await createAssessmentAttempt({
+        learnerId: learnerData.id,
+        courseName: courseName,
+        courseId: courseId,
+        assessmentLevel: courseLevel,
+        questions: generated.questions
+      });
+
+      if (!result.success) {
+        console.error('❌ Could not create database attempt:', result.error);
+        setError(result.error || 'Failed to start assessment. Please try again.');
+        setLoading(false);
+        return;
+      }
+
+      setAttemptId(result.data.id);
+      console.log('✅ Database attempt created:', result.data.id);
+
       setLoading(false);
     } catch (err) {
       console.error('❌ Error loading assessment:', err);
@@ -406,15 +434,34 @@ const DynamicAssessment = () => {
     const percentage = Math.round((correctCount / assessment.questions.length) * 100);
     setScore(percentage);
 
-    // Complete assessment in database
-    if (attemptId) {
-      const timeTaken = 900 - timeRemaining; // Calculate time taken
-      const result = await completeAssessment(attemptId, timeTaken);
-      
-      if (result.success) {
-        console.log('✅ Assessment completed in database');
+    // Complete assessment in database — required; without a persisted attempt
+    // there is nothing to mark complete, so the learner cannot be shown results.
+    if (!attemptId) {
+      setError('Your assessment attempt was not saved, so it cannot be submitted. Please restart the assessment.');
+      return;
+    }
+
+    const timeTaken = 900 - timeRemaining; // Calculate time taken
+    const completionResult = await completeAssessment(attemptId, timeTaken);
+
+    if (!completionResult.success) {
+      console.error('❌ Failed to complete assessment:', completionResult.error);
+      setError(completionResult.error || 'Failed to submit your assessment. Please try again.');
+      return;
+    }
+
+    console.log('✅ Assessment completed in database');
+
+    // Update the linked training record (auto-approve on pass)
+    const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (learnerData?.id && courseId && UUID_PATTERN.test(courseId)) {
+      const passed = percentage >= 60;
+      const trainingUpdate = await updateTrainingAfterAssessment(learnerData.id, courseId, percentage, passed);
+
+      if (trainingUpdate.success) {
+        console.log('✅ Training status updated after assessment', trainingUpdate);
       } else {
-        console.error('❌ Failed to complete assessment:', result.error);
+        console.error('❌ Failed to update training status:', trainingUpdate.error);
       }
     }
 

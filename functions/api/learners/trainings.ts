@@ -149,17 +149,15 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       }
     }
 
-    const trainingRecord = {
+    const trainingRecord: Record<string, unknown> = {
       learner_id: learnerId,
-      title: training?.title || training?.course || 'Untitled Course',
-      course: training?.course || training?.title || '',
+      title: training?.title || 'Untitled Course',
       organization: training?.organization || training?.provider || '',
       description: training?.description || '',
       duration: training?.duration || '',
       start_date: training?.startDate || training?.start_date || null,
       end_date: training?.endDate || training?.end_date || null,
       status: training?.status || 'in_progress',
-      progress: training?.progress ?? 0,
       total_modules: training?.total_modules ?? 0,
       completed_modules: training?.completed_modules ?? 0,
       hours_spent: training?.hours_spent ?? 0,
@@ -167,6 +165,10 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       approval_status: training?.source === 'external_course' ? 'approved' : 'pending',
       enabled: true,
     };
+
+    if (training?.course_id) {
+      trainingRecord.course_id = training.course_id;
+    }
 
     const { data: newTraining, error: trainError } = await supabase
       .from('trainings')
@@ -221,6 +223,90 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     }, context.request, { startTime });
   } catch (err) {
     console.error('[Trainings POST] Error:', err);
+    return apiError(500, 'INTERNAL_ERROR', err instanceof Error ? err.message : 'Unknown error', context.request, { startTime });
+  }
+});
+
+/**
+ * PUT /api/learners/trainings
+ * Applies the outcome of a completed assessment to the linked training record.
+ * On a passing score, auto-approves the training (mirrors the manual
+ * admin approve-training flow in college-admin/school-admin.ts).
+ */
+export const onRequestPut = withAuth(async (context: AuthenticatedContext) => {
+  const startTime = Date.now();
+  const env = context.env as Record<string, string>;
+  const supabase = getServiceClient(env as any);
+  const user = getContextUser(context);
+
+  let body: any;
+  try {
+    body = await context.request.json();
+  } catch {
+    return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON body', context.request, { startTime });
+  }
+
+  const { learnerId, trainingId, score, passed } = body;
+  if (!learnerId || !trainingId) {
+    return apiError(400, 'VALIDATION_ERROR', 'learnerId and trainingId are required', context.request, { startTime });
+  }
+  if (typeof score !== 'number' || typeof passed !== 'boolean') {
+    return apiError(400, 'VALIDATION_ERROR', 'score (number) and passed (boolean) are required', context.request, { startTime });
+  }
+
+  const isAdmin = user.roles?.some((r: string) => ADMIN_ROLES.includes(r));
+  if (!isAdmin) {
+    const { data: ownLearner } = await supabase
+      .from('learners')
+      .select('id')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    if (ownLearner?.id !== learnerId) {
+      return apiError(403, 'FORBIDDEN', 'You can only update your own training', context.request, { startTime });
+    }
+  }
+
+  try {
+    const { data: existing, error: fetchError } = await supabase
+      .from('trainings')
+      .select('id, learner_id, approval_status')
+      .eq('id', trainingId)
+      .eq('learner_id', learnerId)
+      .maybeSingle();
+
+    if (fetchError) throw fetchError;
+    if (!existing) {
+      return apiError(404, 'NOT_FOUND', 'Training not found for this learner', context.request, { startTime });
+    }
+
+    if (!passed) {
+      return apiSuccess({ updated: false, reason: 'assessment_not_passed' }, context.request, { startTime });
+    }
+
+    if (existing.approval_status === 'approved') {
+      return apiSuccess({ updated: false, reason: 'already_approved' }, context.request, { startTime });
+    }
+
+    const { data: updated, error: updateError } = await supabase
+      .from('trainings')
+      .update({
+        approval_status: 'approved',
+        approved_by: user.id,
+        approved_at: new Date().toISOString(),
+        approval_notes: `Auto-approved: assessment passed with score ${score}%`,
+        status: 'completed',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', trainingId)
+      .eq('learner_id', learnerId)
+      .select()
+      .single();
+
+    if (updateError) throw updateError;
+
+    return apiSuccess({ updated: true, training: updated }, context.request, { startTime });
+  } catch (err) {
+    logger.error('Unexpected error updating training after assessment', { error: err });
     return apiError(500, 'INTERNAL_ERROR', err instanceof Error ? err.message : 'Unknown error', context.request, { startTime });
   }
 });
