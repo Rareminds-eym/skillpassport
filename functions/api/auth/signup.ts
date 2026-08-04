@@ -55,6 +55,7 @@ export async function onRequestPost(context: { request: Request; env: Env }): Pr
       org_name: org_name || null,
       role,
       redirect_url,
+      user_metadata,
       ip: request.headers.get('CF-Connecting-IP') || undefined,
       ua: request.headers.get('User-Agent') || undefined,
     });

@@ -67,6 +67,24 @@ export async function handleUnifiedSignup(request: Request, env: PagesEnv, authe
       .maybeSingle();
 
     if (existingUser) {
+      if (body.referralCode) {
+        const { data: existingMetadataRow } = await supabaseAdmin
+          .from('users')
+          .select('metadata')
+          .eq('id', userId)
+          .maybeSingle();
+        await supabaseAdmin
+          .from('users')
+          .update({
+            metadata: {
+              ...((existingMetadataRow?.metadata || {}) as Record<string, unknown>),
+              referralCode: body.referralCode,
+            },
+            updatedAt: new Date().toISOString(),
+          })
+          .eq('id', userId);
+      }
+
       // Profile exists, but we must verify the role-specific record exists
       // because previous failed signups might have left the users record orphaned.
       let roleExists = false;

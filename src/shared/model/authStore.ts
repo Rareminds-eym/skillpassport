@@ -156,10 +156,16 @@ export function pickPrimaryRole(roles: string[]): string | null {
 }
 
 function mapMeToUser(me: MeResponse): User {
+  const meWithMetadata = me as MeResponse & {
+    metadata?: Record<string, unknown>;
+    user_metadata?: Record<string, unknown>;
+  };
+
   return {
     id: me.sub,
     email: me.email,
     role: pickPrimaryRole(me.roles) ?? undefined,
+    user_metadata: meWithMetadata.user_metadata ?? meWithMetadata.metadata,
     orgId: me.org_id,
     roles: me.roles,
     products: me.products,
