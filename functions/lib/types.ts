@@ -12,7 +12,7 @@ import type {
  * Shared TypeScript types for Cloudflare Pages Functions
  */
 
-import type { EmbeddingWorkerBinding } from '../../functions/api/embedding/lib/embeddingBinding';
+
 
 /**
  * Standard environment variables available to all Pages Functions
@@ -23,6 +23,8 @@ export interface PagesEnv {
   SSO_SERVICE?: SsoWorkerRpc;
   /** LTE app base URL used for cross-app SSO callback redirects. */
   LTE_APP_URL?: string;
+  /** Shared HMAC secret for the LTE ↔ SkillPassport internal gateway (server-only). */
+  LTE_INTERNAL_SECRET?: string;
 
   // Supabase configuration
   SUPABASE_URL?: string;

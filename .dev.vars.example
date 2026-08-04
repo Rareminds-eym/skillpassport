@@ -6,6 +6,13 @@
 # Must match the SSO worker that issued the user's session token
 
 
+# ==================== LTE INTERNAL GATEWAY ====================
+# Shared HMAC secret for the LTE ↔ SkillPassport internal gateway
+# (POST /api/internal/lte/v1). MUST match LTE's SKILLPASSPORT_INTERNAL_SECRET.
+# Server-only — never expose via VITE_* or to the frontend. Min 32 chars.
+LTE_INTERNAL_SECRET=your_lte_internal_secret_here_min_32_chars
+
+
 # ==================== SUPABASE CONFIGURATION ====================
 # SUPABASE_URL is preferred by Pages Functions;
 SUPABASE_URL=https://dpooleduinyyzxgrcwko.supabase.co
