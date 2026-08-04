@@ -326,6 +326,7 @@ const UnifiedSignup = () => {
     searchParams.get('promoCode') ||
     searchParams.get('code')
   );
+  const isReferralCodeLocked = Boolean(referralCodeFromUrl);
 
   const [state, setState] = useState<SignupState>({
     firstName: '', lastName: '', dateOfBirth: '', email: invitationEmail || '', phone: '', countryCode: '+91',
@@ -1541,7 +1542,20 @@ const UnifiedSignup = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Referral Code <span className="text-gray-400 font-normal">(Optional)</span></label>
-                  <input type="text" name="referralCode" value={state.referralCode} onChange={handleInputChange} placeholder="Code" className="block w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all outline-none" />
+                  <input
+                    type="text"
+                    name="referralCode"
+                    value={state.referralCode}
+                    onChange={handleInputChange}
+                    placeholder="Code"
+                    readOnly={isReferralCodeLocked}
+                    aria-readonly={isReferralCodeLocked}
+                    title={isReferralCodeLocked ? 'Referral code applied from signup link' : undefined}
+                    className={`block w-full px-4 py-3 border border-gray-200 rounded-xl transition-all outline-none ${isReferralCodeLocked
+                      ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
+                      : 'bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                      }`}
+                  />
                 </div>
 
                 <div className="pt-2">
