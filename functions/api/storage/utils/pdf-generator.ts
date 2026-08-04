@@ -25,6 +25,216 @@
  */
 
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+import { inflateSync, inflateRawSync, deflateRawSync } from 'node:zlib';
+
+// ─── PNG downscaling ─────────────────────────────────────────────────────────
+// Embedding a full-res logo (e.g. 4050px wide) into a PDF decodes the entire
+// image into memory in workerd, which can exceed the isolate memory limit and
+// kill the worker mid-request (observed as "worker restarted mid-request" 503s).
+// Downscale to a print-resolution maximum before embedding.
+
+const MAX_LOGO_DIMENSION = 600;
+
+interface PngHeader {
+  width: number;
+  height: number;
+  colorType: number;
+  bitDepth: number;
+}
+
+function readPngHeader(bytes: Uint8Array): PngHeader {
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const width = view.getUint32(16);
+  const height = view.getUint32(20);
+  const bitDepth = view.getUint8(24);
+  const colorType = view.getUint8(25);
+  return { width, height, colorType, bitDepth };
+}
+
+/**
+ * Decode a PNG (8-bit, color types 0/2/3/4/6) to RGBA using node:zlib.
+ * Throws on unsupported formats — callers treat this as "use text logo".
+ */
+function decodePngToRgba(bytes: Uint8Array): { width: number; height: number; data: Uint8Array } {
+  const { width, height, colorType, bitDepth } = readPngHeader(bytes);
+  if (bitDepth !== 8) throw new Error(`Unsupported bit depth ${bitDepth}`);
+
+  // Walk chunks after the 8-byte signature to find IDAT
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  let offset = 8;
+  const idatChunks: Uint8Array[] = [];
+  while (offset < bytes.byteLength) {
+    const length = view.getUint32(offset);
+    const type = String.fromCharCode(bytes[offset + 4], bytes[offset + 5], bytes[offset + 6], bytes[offset + 7]);
+    const data = bytes.subarray(offset + 8, offset + 8 + length);
+    if (type === 'IDAT') idatChunks.push(data);
+    if (type === 'IEND') break;
+    offset += 12 + length;
+  }
+  if (idatChunks.length === 0) throw new Error('No IDAT chunk found');
+
+  const channels = colorType === 6 ? 4 : colorType === 4 ? 2 : colorType === 3 ? 1 : colorType === 2 ? 3 : 1;
+  const stride = width * channels;
+
+  const joined = new Uint8Array(idatChunks.reduce((n, c) => n + c.length, 0));
+  let j = 0;
+  for (const c of idatChunks) { joined.set(c, j); j += c.length; }
+
+  const expected = height * (stride + 1);
+  // PNG spec: IDAT is a zlib (wrapped) stream. Try wrapped first, then raw as
+  // a fallback for non-conformant encoders. The length check proves correctness.
+  let raw: Uint8Array;
+  try {
+    raw = inflateSync(joined);
+    if (raw.length !== expected) throw new Error('length mismatch');
+  } catch {
+    raw = inflateRawSync(joined);
+  }
+  if (raw.length !== expected) throw new Error(`Inflate mismatch: got ${raw.length}, expected ${expected}`);
+
+  const rgba = new Uint8Array(width * height * 4);
+
+  const bpp = channels;
+  const prev = new Uint8Array(stride);
+
+  let pos = 0;
+  for (let y = 0; y < height; y++) {
+    const filter = raw[pos++];
+    const line = raw.subarray(pos, pos + stride);
+    pos += stride;
+
+    for (let x = 0; x < stride; x++) {
+      const a = x >= bpp ? line[x - bpp] : 0;
+      const b = prev[x];
+      const c = x >= bpp ? prev[x - bpp] : 0;
+      let v = line[x];
+      switch (filter) {
+        case 1: v = (v + a) & 0xff; break;
+        case 2: v = (v + b) & 0xff; break;
+        case 3: v = (v + ((a + b) >> 1)) & 0xff; break;
+        case 4:
+          {
+            const p = a + b - c;
+            const pa = Math.abs(p - a), pb = Math.abs(p - b), pc = Math.abs(p - c);
+            v = (v + (pa <= pb && pa <= pc ? a : pb <= pc ? b : c)) & 0xff;
+          }
+          break;
+        default: break; // filter 0
+      }
+      line[x] = v;
+    }
+
+    for (let x = 0; x < width; x++) {
+      const src = x * channels;
+      let r = 0, g = 0, b = 0, alpha = 255;
+      switch (colorType) {
+        case 6: r = line[src]; g = line[src + 1]; b = line[src + 2]; alpha = line[src + 3]; break;
+        case 4: r = line[src]; g = line[src]; b = line[src]; alpha = line[src + 1]; break;
+        case 2: r = line[src]; g = line[src + 1]; b = line[src + 2]; break;
+        case 0: r = line[src]; g = line[src]; b = line[src]; break;
+        case 3: {
+          // palette index — fall back to grayscale of index
+          r = line[src]; g = line[src]; b = line[src];
+          break;
+        }
+        default: throw new Error(`Unsupported color type ${colorType}`);
+      }
+      const dst = (y * width + x) * 4;
+      rgba[dst] = r; rgba[dst + 1] = g; rgba[dst + 2] = b; rgba[dst + 3] = alpha;
+    }
+
+    prev.set(line);
+  }
+
+  return { width, height, data: rgba };
+}
+
+function encodePngFromRgba(width: number, height: number, rgba: Uint8Array): Uint8Array {
+  // Build filtered scanlines (filter 0 = None)
+  const stride = width * 4;
+  const raw = new Uint8Array((stride + 1) * height);
+  for (let y = 0; y < height; y++) {
+    raw[y * (stride + 1)] = 0;
+    raw.set(rgba.subarray(y * stride, (y + 1) * stride), y * (stride + 1) + 1);
+  }
+  const compressed = deflateRawSync(raw, { level: 6 });
+
+  const crcTable = (() => {
+    const table = new Int32Array(256);
+    for (let n = 0; n < 256; n++) {
+      let c = n;
+      for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+      table[n] = c;
+    }
+    return table;
+  })();
+  const crc32 = (data: Uint8Array): number => {
+    let c = 0xffffffff;
+    for (let i = 0; i < data.length; i++) c = crcTable[(c ^ data[i]) & 0xff] ^ (c >>> 8);
+    return (c ^ 0xffffffff) >>> 0;
+  };
+
+  const chunk = (type: string, data: Uint8Array): Uint8Array => {
+    const typeBytes = new TextEncoder().encode(type);
+    const len = new Uint8Array(4);
+    new DataView(len.buffer).setUint32(0, data.length);
+    const crcBuf = new Uint8Array(4);
+    new DataView(crcBuf.buffer).setUint32(0, crc32(new Uint8Array([...typeBytes, ...data])));
+    const out = new Uint8Array(12 + data.length);
+    out.set(len, 0); out.set(typeBytes, 4); out.set(data, 8); out.set(crcBuf, 8 + data.length);
+    return out;
+  };
+
+  const ihdrData = new Uint8Array(13);
+  const ihdrView = new DataView(ihdrData.buffer);
+  ihdrView.setUint32(0, width);
+  ihdrView.setUint32(4, height);
+  ihdrData[8] = 8;  // bit depth
+  ihdrData[9] = 6;  // color type RGBA
+  ihdrData[10] = 0; // compression
+  ihdrData[11] = 0; // filter
+  ihdrData[12] = 0; // interlace
+
+  const sig = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
+  const out = new Uint8Array(
+    sig.length + 12 + ihdrData.length + 12 + compressed.length + 12,
+  );
+  let o = 0;
+  out.set(sig, o); o += sig.length;
+  out.set(chunk('IHDR', ihdrData), o); o += 12 + ihdrData.length;
+  out.set(chunk('IDAT', compressed), o); o += 12 + compressed.length;
+  out.set(chunk('IEND', new Uint8Array(0)), o);
+  return out;
+}
+
+/**
+ * Downscale an image to a bounded size for safe PDF embedding.
+ * Returns undefined if the image is too large to decode safely.
+ */
+function downscaleForPdf(bytes: Uint8Array): Uint8Array | undefined {
+  try {
+    const { width, height, data } = decodePngToRgba(bytes);
+    const scale = Math.min(1, MAX_LOGO_DIMENSION / Math.max(width, height));
+    if (scale >= 1) return bytes;
+
+    const newW = Math.max(1, Math.round(width * scale));
+    const newH = Math.max(1, Math.round(height * scale));
+    const out = new Uint8Array(newW * newH * 4);
+    for (let y = 0; y < newH; y++) {
+      const sy = Math.min(height - 1, Math.floor(y / scale));
+      for (let x = 0; x < newW; x++) {
+        const sx = Math.min(width - 1, Math.floor(x / scale));
+        const si = (sy * width + sx) * 4;
+        const di = (y * newW + x) * 4;
+        out[di] = data[si]; out[di + 1] = data[si + 1]; out[di + 2] = data[si + 2]; out[di + 3] = data[si + 3];
+      }
+    }
+    return encodePngFromRgba(newW, newH, out);
+  } catch (err) {
+    console.warn('[GenerateReceiptPDF] Image downscale failed (falling back to text logo, skipping oversized embed):', err);
+    return undefined;
+  }
+}
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -132,15 +342,18 @@ export async function generateReceiptPDF(data: ReceiptData): Promise<Uint8Array>
   // ── Watermark (drawn first so it sits behind all content) ──────────────
   if (watermarkBytes) {
     try {
-      const wmImg = await doc.embedPng(watermarkBytes);
-      const wmSize = mm(80);
-      const wmX = (width  - wmSize) / 2;
-      const wmY = (height - wmSize) / 2;
-      page.drawImage(wmImg, {
-        x: wmX, y: wmY,
-        width: wmSize, height: wmSize,
-        opacity: 0.08,
-      });
+      const wmScaled = downscaleForPdf(watermarkBytes);
+      if (wmScaled) {
+        const wmImg = await doc.embedPng(wmScaled);
+        const wmSize = mm(80);
+        const wmX = (width  - wmSize) / 2;
+        const wmY = (height - wmSize) / 2;
+        page.drawImage(wmImg, {
+          x: wmX, y: wmY,
+          width: wmSize, height: wmSize,
+          opacity: 0.08,
+        });
+      }
     } catch (err) {
       console.warn('[GenerateReceiptPDF] Watermark embed failed (non-critical):', err);
     }
@@ -222,13 +435,14 @@ export async function generateReceiptPDF(data: ReceiptData): Promise<Uint8Array>
 
   if (logoBytes) {
     try {
-      // pdf-lib supports PNG and JPEG only — WebP will throw and fall through to text
-      let logoImg;
-      try {
-        logoImg = await doc.embedPng(logoBytes);
-      } catch {
+      // Downscale to a safe size first — if it fails (WebP, JPEG, corrupt, or
+      // oversized), skip the image entirely rather than embed the full-res
+      // original (that's what OOMs workerd). Render the text logo instead.
+      const scaledLogo = downscaleForPdf(logoBytes);
+      let logoImg = null;
+      if (scaledLogo) {
         try {
-          logoImg = await doc.embedJpg(logoBytes);
+          logoImg = await doc.embedPng(scaledLogo);
         } catch {
           logoImg = null;
         }
