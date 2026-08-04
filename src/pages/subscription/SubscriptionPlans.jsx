@@ -14,6 +14,65 @@ import { getEntityContent, getEntityTypeParam, getRoleTypeParam, parselearnerTyp
 import { getRouteForRole } from '@/features/auth/lib/roleBasedRouter';
 import { useSubscriptionQuery } from '@/features/subscription/model/useSubscriptionQuery';
 import { useAuthLoading, useIsAuthenticated, useUser, useUserRole } from '@/shared/model/authStore';
+
+const COLLEGE_LEARNER_PROMO_CODE = 'RAREMINDS2026';
+
+const normalizePromoCode = (code) => (code || '').trim().toUpperCase();
+
+const getPlanCode = (plan) => String(
+  plan?.plan_code ||
+  plan?.planCode ||
+  plan?.code ||
+  plan?.display_name ||
+  plan?.name ||
+  ''
+)
+  .trim()
+  .toLowerCase()
+  .replace(/[^a-z0-9]+/g, '_')
+  .replace(/^_+|_+$/g, '');
+
+const getPlanName = (plan) => String(plan?.name || plan?.display_name || '').trim().toLowerCase();
+
+const getUserReferralCode = (user) => normalizePromoCode(
+  user?.metadata?.referralCode ||
+  user?.metadata?.referral_code ||
+  user?.user_metadata?.referralCode ||
+  user?.user_metadata?.referral_code ||
+  user?.raw_user_meta_data?.referralCode ||
+  user?.raw_user_meta_data?.referral_code
+);
+
+const applyEndpointPlanFallback = (plans, forcePromo = false) => {
+  const hasPromoMask = forcePromo || plans.some((plan) => plan.hidePrice);
+  if (!hasPromoMask) return plans;
+
+  return plans
+    .map((plan) => {
+      const planCode = getPlanCode(plan);
+      const planName = getPlanName(plan);
+      const isRestricted =
+        ['discover', 'career_builder', 'career_accelerator'].includes(planCode) ||
+        ['discover', 'career builder', 'career accelerator'].includes(planName);
+
+      return isRestricted
+        ? {
+          ...plan,
+          recommended: false,
+          hidePrice: true,
+          isDisabled: true,
+          availabilityLabel: plan.availabilityLabel || 'Not available',
+          actionLabel: plan.actionLabel || 'Get Started',
+        }
+        : {
+          ...plan,
+          hidePrice: false,
+          isDisabled: false,
+          availabilityLabel: undefined,
+          actionLabel: undefined,
+        };
+    });
+};
 /**
  * Get the subscription manage path based on user role
  */
@@ -269,10 +328,14 @@ const FeatureComparisonTable = memo(({ plans }) => {
           {plans.map((plan) => (
             <div key={plan.id} className="relative p-8 text-center border-l border-white/10">
               <div className="font-semibold text-xl mb-2" style={{ fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>{plan.name}</div>
-              {plan.price && !plan.contactSales && (
+              {plan.hidePrice ? (
+                <div className="hidden">
+                  ₹{parseInt(plan.price).toLocaleString()}/{plan.duration}
+                </div>
+              ) : plan.price && !plan.contactSales && (
                 <div className="text-sm text-white/70 font-medium">₹{parseInt(plan.price).toLocaleString()}/{plan.duration}</div>
               )}
-              {plan.contactSales && (
+              {!plan.hidePrice && plan.contactSales && (
                 <div className="text-sm text-white/70 font-medium">Custom</div>
               )}
             </div>
@@ -347,12 +410,16 @@ FeatureComparisonTable.displayName = 'FeatureComparisonTable';
 
 
 // Plan Card Component - Editorial luxury design
-const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionData, daysRemaining, allPlans, index, isOrganizationMode, onOrganizationPurchase }) => {
+const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionData, daysRemaining, allPlans, index, isOrganizationMode, onOrganizationPurchase, isDisabled = false, hidePrice = false }) => {
   const [showAllFeatures, setShowAllFeatures] = useState(false);
   const currentPlanInList = allPlans.find(p => p.plan_code === subscriptionData?.plan || p.id === subscriptionData?.plan);
   const isUpgrade = subscriptionData && !isCurrentPlan && parseInt(plan.price) > parseInt(currentPlanInList?.price ?? 0);
   const isDowngrade = subscriptionData && !isCurrentPlan && parseInt(plan.price) < parseInt(currentPlanInList?.price ?? 0);
   const isContactSales = plan.contactSales;
+  const planCode = getPlanCode(plan);
+  const effectiveDisabled = Boolean(isDisabled) || (hidePrice && ['discover', 'career_builder', 'career_accelerator'].includes(planCode));
+  const planName = getPlanName(plan);
+  const hardPromoDisabled = hidePrice && ['discover', 'career builder', 'career accelerator'].includes(planName);
 
   // Group features by category for better display
   const featuresByCategory = useMemo(() => {
@@ -381,6 +448,9 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
 
   // Handle organization purchase click
   const handleClick = useCallback(() => {
+    if (effectiveDisabled || hardPromoDisabled) {
+      return;
+    }
     if (isDowngrade) {
       toast('To downgrade your plan, please contact our support team.', { duration: 5000, icon: '📧' });
       return;
@@ -390,7 +460,7 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
     } else {
       onSelect(plan);
     }
-  }, [isDowngrade, isOrganizationMode, onOrganizationPurchase, onSelect, plan]);
+  }, [effectiveDisabled, hardPromoDisabled, isDowngrade, isOrganizationMode, onOrganizationPurchase, onSelect, plan]);
 
   // Render feature item
   const renderFeature = (feature, idx) => {
@@ -421,6 +491,8 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
     <div
       className={`relative bg-white rounded-3xl border-2 transition-all duration-300 h-full flex flex-col shadow-lg hover:shadow-2xl hover:-translate-y-2 ${isCurrentPlan
         ? 'border-emerald-500 shadow-emerald-500/20'
+        : effectiveDisabled || hardPromoDisabled
+          ? 'border-slate-200 opacity-70 hover:translate-y-0 hover:shadow-lg'
         : plan.recommended
           ? 'border-slate-900 shadow-slate-900/10 scale-105'
           : 'border-slate-200 hover:border-slate-300'
@@ -434,7 +506,7 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
           </span>
         </div>
       )}
-      {!isCurrentPlan && plan.recommended && (
+      {!isCurrentPlan && !effectiveDisabled && !hardPromoDisabled && plan.recommended && (
         <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
           <span className="bg-gradient-to-r from-purple-600 to-purple-700 text-white px-5 py-2 rounded-full text-sm font-bold shadow-xl">
             Most Popular
@@ -445,6 +517,13 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
         <div className="absolute -top-4 right-6 z-10">
           <span className="bg-gradient-to-r from-purple-600 to-purple-700 text-white px-4 py-2 rounded-full text-xs font-bold flex items-center gap-1.5 shadow-xl">
             <Building2 className="h-3.5 w-3.5" /> Bulk
+          </span>
+        </div>
+      )}
+      {(effectiveDisabled || hardPromoDisabled) && (
+        <div className="absolute -top-4 right-6 z-10">
+          <span className="bg-slate-200 text-slate-600 px-4 py-2 rounded-full text-xs font-bold shadow-lg">
+            Not available
           </span>
         </div>
       )}
@@ -467,7 +546,16 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
           ) : null}
 
           <div className="mt-6">
-            {isContactSales ? (
+            {hidePrice ? (
+              <div className="space-y-2">
+                <div className="hidden">
+                  <span className="text-5xl font-bold text-slate-900" style={{ fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
+                    ₹{parseInt(plan.price).toLocaleString()}
+                  </span>
+                  <span className="text-base text-slate-500 mb-1">/{plan.duration}</span>
+                </div>
+              </div>
+            ) : isContactSales ? (
               <span className="text-3xl font-semibold text-slate-900" style={{ fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
                 Contact Sales
               </span>
@@ -596,9 +684,11 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
           ) : (
             <button
               onClick={handleClick}
-              disabled={isDowngrade}
+              disabled={isDowngrade || effectiveDisabled || hardPromoDisabled}
               className={`w-full py-4 px-4 rounded-2xl font-semibold transition-all shadow-lg hover:shadow-xl hover:scale-105 flex items-center justify-center gap-2 ${isOrganizationMode
                 ? 'bg-gradient-to-r from-purple-600 to-purple-700 text-white hover:from-purple-700 hover:to-purple-800'
+                : effectiveDisabled || hardPromoDisabled
+                  ? 'bg-slate-100 text-slate-400 border-2 border-slate-200 cursor-not-allowed hover:scale-100 hover:shadow-none'
                 : isUpgrade || plan.recommended
                   ? 'bg-black text-white hover:bg-gray-900'
                   : isDowngrade
@@ -606,7 +696,9 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
                     : 'bg-slate-100 text-slate-900 hover:bg-slate-200 border-2 border-slate-300'
                 }`}
             >
-              {isOrganizationMode ? (
+              {effectiveDisabled || hardPromoDisabled ? (
+                'Get Started'
+              ) : isOrganizationMode ? (
                 <>
                   <Building2 className="h-5 w-5" />
                   Buy for Organization
@@ -711,6 +803,20 @@ function SubscriptionPlans() {
     return (pageRole === 'admin' || pageRole === 'recruiter') ? 'b2b' : 'b2c';
   }, [pageRole]);
 
+  const referralCode = useMemo(
+    () => normalizePromoCode(
+      searchParams.get('referralCode') ||
+      searchParams.get('referral_code') ||
+      searchParams.get('promo') ||
+      searchParams.get('promoCode') ||
+      searchParams.get('code') ||
+      location.state?.referralCode ||
+      getUserReferralCode(user)
+    ),
+    [searchParams, location.state, user]
+  );
+  const isCollegeLearnerPromo = referralCode === COLLEGE_LEARNER_PROMO_CODE;
+
   // Fetch plans EXCLUSIVELY from the Cloudflare Worker API.
   // plans = null while loading, [] or [...] after.
   const {
@@ -722,10 +828,34 @@ function SubscriptionPlans() {
     businessType,
     entityType: entityTypeParam,
     roleType: roleTypeParam,
+    referralCode,
   });
 
   // Plans exclusively from DB — zero hardcoded fallback
-  const plans = dbPlans ?? [];
+  const plans = useMemo(
+    () => applyEndpointPlanFallback(dbPlans ?? [], isCollegeLearnerPromo),
+    [dbPlans, isCollegeLearnerPromo]
+  );
+  const hasMaskedPlanPrices = useMemo(
+    () => plans.some((plan) => Boolean(plan.hidePrice)),
+    [plans]
+  );
+  const visiblePlans = useMemo(
+    () => plans,
+    [plans]
+  );
+  const isPlanDisabled = useCallback(
+    (plan) => {
+      const planCode = getPlanCode(plan);
+      const planName = getPlanName(plan);
+      return Boolean(plan.isDisabled) ||
+        (hasMaskedPlanPrices && (
+          ['discover', 'career_builder', 'career_accelerator'].includes(planCode) ||
+          ['discover', 'career builder', 'career accelerator'].includes(planName)
+        ));
+    },
+    [hasMaskedPlanPrices]
+  );
 
   // UI-only content (titles, subtitles, CTA text). No pricing here.
   const { title, subtitle, heroMessage, ctaText } = useMemo(
@@ -763,8 +893,8 @@ function SubscriptionPlans() {
   }, [subscriptionData]);
 
   const currentPlanData = useMemo(
-    () => subscriptionData ? plans.find(p => p.plan_code === subscriptionData.plan || p.id === subscriptionData.plan) : null,
-    [subscriptionData, plans]
+    () => subscriptionData ? visiblePlans.find(p => p.plan_code === subscriptionData.plan || p.id === subscriptionData.plan) : null,
+    [subscriptionData, visiblePlans]
   );
 
   // Check if user is in upgrade mode (should not redirect to manage page)
@@ -841,6 +971,10 @@ function SubscriptionPlans() {
     // All user types (recruiters, learners, educators, admins) use the same unified flow.
     // Backend validates the plan against plans_cache, creates the order through
     // PAYMENT_WORKER, and writes subscriptions through SSO_SERVICE.
+    if (isPlanDisabled(plan)) {
+      toast.error('This plan is not available for this referral code.');
+      return;
+    }
 
     // If user is currently on their ACTIVE plan (not cancelled), go to manage page
     // Cancelled subscriptions should allow re-purchase of the same plan
@@ -858,7 +992,9 @@ function SubscriptionPlans() {
 
     // If user has active/paused subscription and not already in upgrade mode, show upgrade mode
     if (hasActiveOrPausedSubscription && !isUpgradeMode) {
-      navigate(`/subscription/plans?type=${learnerType}&mode=upgrade`);
+      const upgradeParams = new URLSearchParams({ type: learnerType, mode: 'upgrade' });
+      if (referralCode) upgradeParams.set('referralCode', referralCode);
+      navigate(`/subscription/plans?${upgradeParams.toString()}`);
       return;
     }
 
@@ -869,7 +1005,8 @@ function SubscriptionPlans() {
         state: {
           plan,
           learnerType,
-          returnTo: '/subscription/payment'
+          returnTo: '/subscription/payment',
+          referralCode: referralCode || undefined
         }
       });
       return;
@@ -935,11 +1072,12 @@ function SubscriptionPlans() {
       state: {
         plan,
         learnerType,
-        isUpgrade: !!subscriptionData
+        isUpgrade: !!subscriptionData,
+        referralCode: referralCode || undefined
       }
     });
 
-  }, [isAuthenticated, authLoading, user, navigate, learnerType, subscriptionData, hasActiveOrPausedSubscription, isUpgradeMode, managePath, type, userRole, refreshSubscription]);
+  }, [isAuthenticated, authLoading, user, navigate, learnerType, subscriptionData, hasActiveOrPausedSubscription, isUpgradeMode, managePath, type, userRole, refreshSubscription, referralCode, isPlanDisabled]);
 
   const formatDate = useCallback((dateString) => {
     return new Date(dateString).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
@@ -1350,13 +1488,13 @@ function SubscriptionPlans() {
             )}
 
             {/* Plans Grid - responsive columns based on plan count */}
-            <div className={`grid md:grid-cols-2 gap-6 ${plans.length === 3 ? 'lg:grid-cols-3' : plans.length >= 4 ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}`}>
-              {plans.map((plan, index) => (
+            <div className={`grid md:grid-cols-2 gap-6 ${visiblePlans.length === 3 ? 'lg:grid-cols-3' : visiblePlans.length >= 4 ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}`}>
+              {visiblePlans.map((plan, index) => (
                 <PlanCard
                   key={plan.id}
                   plan={plan}
                   index={index}
-                  allPlans={plans}
+                  allPlans={visiblePlans}
                   isCurrentPlan={isAuthenticated && hasCurrentSubscription && (subscriptionData?.plan === plan.plan_code || subscriptionData?.plan === plan.id)}
                   onSelect={handlePlanSelection}
                   onManage={() => navigate(managePath || getManagePathFromType(type) || getManagePath(userRole) || `/subscription/plans?type=${learnerType}`)}
@@ -1364,6 +1502,8 @@ function SubscriptionPlans() {
                   daysRemaining={isAuthenticated && hasCurrentSubscription ? daysRemaining : null}
                   isOrganizationMode={isOrganizationMode}
                   onOrganizationPurchase={handleOrganizationPurchase}
+                  isDisabled={isPlanDisabled(plan)}
+                  hidePrice={Boolean(plan.hidePrice)}
                 />
               ))}
             </div>
@@ -1381,7 +1521,7 @@ function SubscriptionPlans() {
             </div>
 
             {/* Feature Comparison */}
-            <FeatureComparisonTable plans={plans} />
+            <FeatureComparisonTable plans={visiblePlans} />
           </>
         ) : (
           /* Add-Ons Marketplace - compact mode without duplicate header */

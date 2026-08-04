@@ -17,6 +17,51 @@ import { syncSubscriptionCache, syncUserShadow } from '../../../lib/sync-shadow'
 import { apiSuccess, apiError } from '../../../lib/response';
 
 const logger = createLogger('payments:create-order');
+const COLLEGE_LEARNER_PROMO_CODE = 'RAREMINDS2026';
+const COLLEGE_LEARNER_DISABLED_PLAN_CODES = ['discover', 'career_builder', 'career_accelerator'];
+
+const normalizePromoCode = (code: unknown): string =>
+  String(code || '').trim().toUpperCase();
+
+async function isCollegeLearnerRestrictedPlan(
+  supabase: ReturnType<typeof getServiceClient>,
+  userId: string,
+  userEmail: string | undefined,
+  planId: unknown,
+): Promise<boolean> {
+  if (!planId) return false;
+
+  let userQuery = supabase
+    .from('users')
+    .select('role, metadata');
+
+  if (userEmail) {
+    userQuery = userQuery.eq('email', userEmail);
+  } else {
+    userQuery = userQuery.eq('id', userId);
+  }
+
+  const [{ data: userRow }, { data: planRow }] = await Promise.all([
+    userQuery.maybeSingle(),
+    supabase
+      .from('plans_cache')
+      .select('plan_code, business_type')
+      .eq('id', planId)
+      .eq('is_active', true)
+      .maybeSingle(),
+  ]);
+
+  const metadata = (userRow?.metadata || {}) as Record<string, unknown>;
+  const referralCode = normalizePromoCode(metadata.referralCode || metadata.referral_code);
+  const planCode = String(planRow?.plan_code || '').toLowerCase();
+
+  return (
+    userRow?.role === 'learner' &&
+    planRow?.business_type === 'b2c' &&
+    referralCode === COLLEGE_LEARNER_PROMO_CODE &&
+    COLLEGE_LEARNER_DISABLED_PLAN_CODES.includes(planCode)
+  );
+}
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   return handleCreateOrder(context);
@@ -104,6 +149,10 @@ export async function handleCreateOrder(context: AuthenticatedContext): Promise<
     // Validate amount against DB plan price (industrial-grade: never trust client)
     if (body.planId) {
       const supabase = getServiceClient(env);
+      if (await isCollegeLearnerRestrictedPlan(supabase, user.id, user.email, body.planId)) {
+        return apiError(403, 'PLAN_NOT_AVAILABLE', 'This plan is not available for this referral code.', context.request);
+      }
+
       const { data: dbPlan } = await supabase
         .from('plans_cache')
         .select('pricing_matrix')

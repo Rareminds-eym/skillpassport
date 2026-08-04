@@ -11,6 +11,25 @@
 
 import { getServiceClient } from '../../../lib/supabase';
 import { apiSuccess, apiError } from '../../../lib/response';
+import { initAuth, verifyJWT, extractToken } from '@rareminds-eym/auth-core';
+
+const COLLEGE_LEARNER_PROMO_CODE = 'RAREMINDS2026';
+const COLLEGE_LEARNER_ALLOWED_PLAN_CODE = 'skill_starter';
+const COLLEGE_LEARNER_DISABLED_PLAN_CODES = ['discover', 'career_builder', 'career_accelerator'];
+
+const normalizePromoCode = (code: unknown): string =>
+  String(code || '').trim().toUpperCase();
+
+const getPlanCode = (plan: Record<string, unknown>): string => {
+  const explicitCode = plan.plan_code || plan.planCode || plan.code;
+  const fallbackCode = plan.display_name || plan.name;
+
+  return String(explicitCode || fallbackCode || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+};
 
 /**
  * Transform a raw subscription_plans row into the shape the frontend PlanCard expects.
@@ -77,6 +96,73 @@ function transformPlan(raw: Record<string, unknown>, entityType: string): Record
   };
 }
 
+async function getOptionalUserIdentity(
+  request: Request,
+  env: Record<string, unknown>,
+): Promise<{ id: string | null; email: string | null }> {
+  const token = extractToken(request);
+  if (!token || !env.SSO_SERVICE || typeof env.SSO_SERVICE !== 'object') {
+    return { id: null, email: null };
+  }
+
+  try {
+    initAuth({ ssoRpc: env.SSO_SERVICE as any });
+  } catch {
+    // auth-core may already be initialized in this Worker isolate.
+  }
+
+  try {
+    const user = await verifyJWT(token);
+    return {
+      id: (user.sub || user.id || null) as string | null,
+      email: (user.email || null) as string | null,
+    };
+  } catch {
+    return { id: null, email: null };
+  }
+}
+
+async function getStoredReferralCode(
+  supabase: ReturnType<typeof getServiceClient>,
+  identity: { id: string | null; email: string | null },
+): Promise<string> {
+  if (!identity.id && !identity.email) return '';
+
+  let query = supabase
+    .from('users')
+    .select('metadata');
+
+  if (identity.email) {
+    query = query.eq('email', identity.email);
+  } else {
+    query = query.eq('id', identity.id);
+  }
+
+  const { data } = await query.maybeSingle();
+
+  const metadata = (data?.metadata || {}) as Record<string, unknown>;
+  return normalizePromoCode(metadata.referralCode || metadata.referral_code);
+}
+
+function applyCollegeLearnerPromoRules(plans: Record<string, unknown>[]): Record<string, unknown>[] {
+  return plans
+    .map((plan) => {
+      const planCode = getPlanCode(plan);
+      const isDisabled =
+        planCode !== COLLEGE_LEARNER_ALLOWED_PLAN_CODE &&
+        COLLEGE_LEARNER_DISABLED_PLAN_CODES.includes(planCode);
+
+      return {
+        ...plan,
+        recommended: isDisabled ? false : plan.recommended,
+        hidePrice: isDisabled,
+        isDisabled,
+        availabilityLabel: isDisabled ? 'Not available' : undefined,
+        actionLabel: isDisabled ? 'Get Started' : undefined,
+      };
+    });
+}
+
 export async function handleSubscriptionPlans(context: { request: Request; env: Record<string, unknown> }): Promise<Response> {
   const env = context.env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string };
 
@@ -84,6 +170,14 @@ export async function handleSubscriptionPlans(context: { request: Request; env: 
     const url = new URL(context.request.url);
     const businessType = url.searchParams.get('businessType') || 'b2c';
     const entityType = url.searchParams.get('entityType') || 'all';
+    const roleType = url.searchParams.get('roleType') || 'all';
+    const referralCodeFromQuery = normalizePromoCode(
+      url.searchParams.get('referralCode') ||
+      url.searchParams.get('referral_code') ||
+      url.searchParams.get('promo') ||
+      url.searchParams.get('promoCode') ||
+      url.searchParams.get('code')
+    );
 
     const supabase = getServiceClient(env);
 
@@ -112,7 +206,7 @@ export async function handleSubscriptionPlans(context: { request: Request; env: 
     }
 
     // Transform raw DB rows into the shape the frontend expects
-    const plans = (data || []).map((row: Record<string, unknown>) => transformPlan(row, entityType));
+    let plans = (data || []).map((row: Record<string, unknown>) => transformPlan(row, entityType));
 
     // Enrich with detailed features from subscription_plan_features (legacy table).
     // This is a graceful fallback — plans_cache.base_features is the primary source.
@@ -157,6 +251,18 @@ export async function handleSubscriptionPlans(context: { request: Request; env: 
         // Non-critical: subscription_plan_features may not exist after Phase 10 cleanup
         console.warn('[SubscriptionPlans] subscription_plan_features query failed (non-critical):', featureErr);
       }
+    }
+
+    const userIdentity = await getOptionalUserIdentity(context.request, context.env);
+    const storedReferralCode = await getStoredReferralCode(supabase, userIdentity);
+    const referralCode = storedReferralCode || referralCodeFromQuery;
+
+    if (
+      businessType === 'b2c' &&
+      roleType === 'learner' &&
+      referralCode === COLLEGE_LEARNER_PROMO_CODE
+    ) {
+      plans = applyCollegeLearnerPromoRules(plans);
     }
 
     return apiSuccess({ plans }, context.request, 200);
