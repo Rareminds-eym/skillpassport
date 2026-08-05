@@ -2,9 +2,18 @@
 # Copy this file to .dev.vars and fill in your actual values
 # DO NOT commit .dev.vars to git!
 
+# ==================== AUTH / COOKIE CONFIGURATION ====================
+# COOKIE_DOMAIN must NOT be set for local dev (leave commented out).
+# When absent, cookies.ts emits a plain `refresh_token` cookie on HTTP localhost.
+# In production (set via Cloudflare Dashboard or wrangler.toml [vars]),
+# set it to `.rareminds.in` to enable `__Secure-refresh_token` across subdomains.
+# COOKIE_DOMAIN=
+
+# Runtime environment tag
+ENVIRONMENT=development
+
 # ==================== SSO / AUTH CONFIGURATION ====================
 # Must match the SSO worker that issued the user's session token
-
 
 # ==================== SUPABASE CONFIGURATION ====================
 # SUPABASE_URL is preferred by Pages Functions;
