@@ -1,5 +1,6 @@
 import { apiError } from '../../lib/response';
 import type { Env } from '../../lib/types';
+import { createRefreshCookie } from '../../lib/cookies';
 
 interface SignupMemberBody {
   email: string;
@@ -100,7 +101,7 @@ export async function onRequestPost(context: {
     if (result.refresh_token) {
       headers.append(
         'Set-Cookie',
-        `refresh_token=${result.refresh_token}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=604800`
+        createRefreshCookie(result.refresh_token, request, env)
       );
     }
 

@@ -1,5 +1,5 @@
 import { apiError } from '../../lib/response';
-import { createRefreshCookie } from '../../lib/cookies';
+import { createRefreshCookie, getRefreshCookie } from '../../lib/cookies';
 import type { Env } from '../../lib/types';
 import { getSsoService } from '../../lib/sso-client';
 
@@ -30,16 +30,13 @@ export async function onRequestPost(context: {
   // Get refresh token from body or X-Refresh-Token header
   let refreshToken = body.refresh_token || request.headers.get('X-Refresh-Token');
 
-  // If not in body/header, try to read from cookie
+  // If not in body/header, try to read from cookie.
+  // getRefreshCookie() resolves all three possible names:
+  //   __Secure-refresh_token (production, COOKIE_DOMAIN set)
+  //   __Host-refresh_token   (production, no domain)
+  //   refresh_token          (local HTTP dev)
   if (!refreshToken) {
-    const cookieHeader = request.headers.get('Cookie');
-    if (cookieHeader) {
-      const cookies = cookieHeader.split(';').map(c => c.trim());
-      const refreshCookie = cookies.find(c => c.startsWith('refresh_token='));
-      if (refreshCookie) {
-        refreshToken = refreshCookie.substring('refresh_token='.length);
-      }
-    }
+    refreshToken = getRefreshCookie(request);
   }
 
   if (!refreshToken) {

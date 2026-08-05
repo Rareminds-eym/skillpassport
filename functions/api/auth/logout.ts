@@ -2,6 +2,7 @@ import { apiLogger } from '../../lib/logger';
 import { getCorsHeaders } from '../../lib/cors';
 import type { Env } from '../../lib/types';
 import { getSsoService } from '../../lib/sso-client';
+import { getRefreshCookie, clearRefreshCookie } from '../../lib/cookies';
 
 /**
  * POST /api/auth/logout
@@ -36,17 +37,11 @@ export async function onRequestPost(context: {
   const startTime = Date.now();
 
   // ── 1. Extract refresh token (cookie → body → header) ────────
-  let refreshToken: string | null = null;
-
-  // Primary: HttpOnly cookie (set by login/refresh endpoints)
-  const cookieHeader = request.headers.get('Cookie');
-  if (cookieHeader) {
-    const cookies = cookieHeader.split(';').map((c) => c.trim());
-    const refreshCookie = cookies.find((c) => c.startsWith('refresh_token='));
-    if (refreshCookie) {
-      refreshToken = refreshCookie.substring('refresh_token='.length);
-    }
-  }
+  // getRefreshCookie() resolves all three possible cookie names:
+  //   __Secure-refresh_token (production, COOKIE_DOMAIN set)
+  //   __Host-refresh_token   (production, no domain)
+  //   refresh_token          (local HTTP dev)
+  let refreshToken: string | null = getRefreshCookie(request);
 
   // Fallback: request body (for non-browser / programmatic clients)
   if (!refreshToken) {
@@ -107,19 +102,14 @@ export async function onRequestPost(context: {
     ...getCorsHeaders(origin),
   });
 
-  // Clear refresh_token cookie.
-  // Attributes MUST match those used in login.ts / refresh.ts to ensure
-  // the browser deletes the correct cookie (RFC 6265bis §5.4).
-  //
-  // login.ts sets:   `refresh_token=<val>; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800`
-  // We clear with:   `refresh_token=;      Path=/; HttpOnly; SameSite=Lax; Max-Age=0`
-  //
-  // Note: `Secure` is intentionally omitted to match login.ts (required for
-  // localhost HTTP development). Production should set `Secure` on both set
-  // and clear via environment-based cookie config (tracked separately).
+  // Clear refresh token cookie.
+  // clearRefreshCookie() mirrors the exact name/domain/path/secure attributes
+  // used by createRefreshCookie() so the browser deletes the right cookie
+  // regardless of whether it is `refresh_token`, `__Secure-refresh_token`,
+  // or `__Host-refresh_token` (RFC 6265bis §5.4).
   headers.append(
     'Set-Cookie',
-    'refresh_token=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0',
+    clearRefreshCookie(request, env),
   );
 
   const durationMs = Date.now() - startTime;
