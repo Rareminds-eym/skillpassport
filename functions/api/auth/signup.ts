@@ -1,6 +1,7 @@
 import type { Env } from '../../lib/types';
 import { apiLogger } from '../../lib/logger';
 import { getSsoService } from '../../lib/sso-client';
+import { createRefreshCookie } from '../../lib/cookies';
 
 interface SignupBody {
   email: string;
@@ -84,10 +85,7 @@ export async function onRequestPost(context: { request: Request; env: Env }): Pr
     });
 
     if (ssoResult.refresh_token) {
-      headers.append(
-        'Set-Cookie',
-        `refresh_token=${ssoResult.refresh_token}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=604800`
-      );
+      headers.append('Set-Cookie', createRefreshCookie(ssoResult.refresh_token, request, env));
     }
 
     apiLogger.info('Signup successful via RPC', { email, userId: ssoResult.user?.id, orgId: ssoResult.org?.id });

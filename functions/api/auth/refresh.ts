@@ -1,5 +1,5 @@
 import { apiError } from '../../lib/response';
-import { createRefreshCookie } from '../../lib/cookies';
+import { createRefreshCookie, getRefreshCookie } from '../../lib/cookies';
 import type { Env } from '../../lib/types';
 import { getSsoService } from '../../lib/sso-client';
 
@@ -32,14 +32,7 @@ export async function onRequestPost(context: {
 
   // If not in body/header, try to read from cookie
   if (!refreshToken) {
-    const cookieHeader = request.headers.get('Cookie');
-    if (cookieHeader) {
-      const cookies = cookieHeader.split(';').map(c => c.trim());
-      const refreshCookie = cookies.find(c => c.startsWith('refresh_token='));
-      if (refreshCookie) {
-        refreshToken = refreshCookie.substring('refresh_token='.length);
-      }
-    }
+    refreshToken = getRefreshCookie(request) ?? undefined;
   }
 
   if (!refreshToken) {

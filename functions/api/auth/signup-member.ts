@@ -1,5 +1,6 @@
 import { apiError } from '../../lib/response';
 import type { Env } from '../../lib/types';
+import { createRefreshCookie } from '../../lib/cookies';
 
 interface SignupMemberBody {
   email: string;
@@ -96,10 +97,7 @@ export async function onRequestPost(context: {
 
     // Set refresh_token as HttpOnly cookie for session persistence
     if (result.refresh_token) {
-      headers.append(
-        'Set-Cookie',
-        `refresh_token=${result.refresh_token}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=604800`
-      );
+      headers.append('Set-Cookie', createRefreshCookie(result.refresh_token, request, env));
     }
 
     // Return response without the success field (auth-client expects { access_token, user, org, email_sent })

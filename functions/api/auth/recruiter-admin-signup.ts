@@ -8,6 +8,7 @@
 
 import { AUTH_CONSTANTS, VALIDATION_CONSTANTS, HTTP_CONSTANTS, TIMEOUT_CONSTANTS } from '../../lib/constants';
 import { createLogger, sanitizeLogContext } from '../../lib/logger';
+import { createRefreshCookie } from '../../lib/cookies';
 
 // Password validation constants (OWASP recommendations)
 const PASSWORD_MIN_LENGTH = AUTH_CONSTANTS.PASSWORD_MIN_LENGTH;
@@ -371,11 +372,7 @@ export async function onRequest(context: RequestContext) {
 
         // Set refresh token as HTTP-Only cookie
         if (ssoResult.refresh_token) {
-            const cookieConfig = HTTP_CONSTANTS.REFRESH_TOKEN_COOKIE;
-            responseHeaders.append(
-                'Set-Cookie',
-                `refresh_token=${ssoResult.refresh_token}; Path=${cookieConfig.PATH}; ${cookieConfig.HTTP_ONLY ? 'HttpOnly; ' : ''}${cookieConfig.SECURE ? 'Secure; ' : ''}SameSite=${cookieConfig.SAME_SITE}; Max-Age=${AUTH_CONSTANTS.REFRESH_TOKEN_COOKIE_MAX_AGE}`
-            );
+            responseHeaders.append('Set-Cookie', createRefreshCookie(ssoResult.refresh_token, request, env as any));
         }
 
         // Return success (org name is null, will be set in onboarding)

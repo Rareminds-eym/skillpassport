@@ -1,6 +1,7 @@
 import { apiError } from '../../lib/response';
 import type { Env } from '../../lib/types';
 import { getSsoService } from '../../lib/sso-client';
+import { createRefreshCookie } from '../../lib/cookies';
 
 interface SwitchOrgBody {
   org_id: string;
@@ -57,10 +58,7 @@ export async function onRequestPost(context: {
 
     // Set new refresh_token as HttpOnly cookie (org switch always rotates token)
     if (result.refresh_token) {
-      headers.append(
-        'Set-Cookie',
-        `refresh_token=${result.refresh_token}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=604800`
-      );
+      headers.append('Set-Cookie', createRefreshCookie(result.refresh_token, request, env));
     }
 
     // Remove refresh_token from response body (it's in the cookie)

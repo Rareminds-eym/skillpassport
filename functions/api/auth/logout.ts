@@ -2,6 +2,7 @@ import { apiLogger } from '../../lib/logger';
 import { getCorsHeaders } from '../../lib/cors';
 import type { Env } from '../../lib/types';
 import { getSsoService } from '../../lib/sso-client';
+import { clearRefreshCookie, getRefreshCookie } from '../../lib/cookies';
 
 /**
  * POST /api/auth/logout
@@ -19,8 +20,7 @@ import { getSsoService } from '../../lib/sso-client';
  *
  * Cookie-clearing attributes MUST match those used when the cookie was SET
  * (login.ts / refresh.ts) so the browser can locate and delete the correct
- * cookie. login.ts sets: `Path=/; HttpOnly; SameSite=Lax; Max-Age=604800`
- * — notably NO `Secure` flag (omitted for localhost HTTP development).
+ * cookie.
  *
  * No access-token gate: auth-client's `logout()` calls this endpoint without
  * an Authorization header (the access token may already have expired). The
@@ -39,14 +39,7 @@ export async function onRequestPost(context: {
   let refreshToken: string | null = null;
 
   // Primary: HttpOnly cookie (set by login/refresh endpoints)
-  const cookieHeader = request.headers.get('Cookie');
-  if (cookieHeader) {
-    const cookies = cookieHeader.split(';').map((c) => c.trim());
-    const refreshCookie = cookies.find((c) => c.startsWith('refresh_token='));
-    if (refreshCookie) {
-      refreshToken = refreshCookie.substring('refresh_token='.length);
-    }
-  }
+  refreshToken = getRefreshCookie(request);
 
   // Fallback: request body (for non-browser / programmatic clients)
   if (!refreshToken) {
@@ -107,20 +100,8 @@ export async function onRequestPost(context: {
     ...getCorsHeaders(origin),
   });
 
-  // Clear refresh_token cookie.
-  // Attributes MUST match those used in login.ts / refresh.ts to ensure
-  // the browser deletes the correct cookie (RFC 6265bis §5.4).
-  //
-  // login.ts sets:   `refresh_token=<val>; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800`
-  // We clear with:   `refresh_token=;      Path=/; HttpOnly; SameSite=Lax; Max-Age=0`
-  //
-  // Note: `Secure` is intentionally omitted to match login.ts (required for
-  // localhost HTTP development). Production should set `Secure` on both set
-  // and clear via environment-based cookie config (tracked separately).
-  headers.append(
-    'Set-Cookie',
-    'refresh_token=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0',
-  );
+  // Clear refresh_token cookie using environment-aware helper
+  headers.append('Set-Cookie', clearRefreshCookie(request, env));
 
   const durationMs = Date.now() - startTime;
 
