@@ -4,7 +4,11 @@ import {
     Award,
     BookOpen,
     CheckCircle,
+    ChevronLeft,
+    ChevronRight,
     Clock,
+    Download,
+    Eye,
     Grid3x3,
     List,
     Lock,
@@ -14,7 +18,7 @@ import {
 } from 'lucide-react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { SearchBar, CertificateNameModal, CourseEnrollmentModal } from '@/shared/ui';
+import { SearchBar, CertificateNameModal } from '@/shared/ui';
 import { CourseDetailModal } from '@/features/courses';
 import WeeklyLearningTracker from '@/entities/learner/ui/WeeklyLearningTracker';
 import { CourseAdvancedFilters } from '@/widgets/learner-dashboard';
@@ -30,7 +34,8 @@ import {
 } from '@/shared/ui';
 
 import { apiPost, apiGet } from '@/shared/api/apiClient';
-import { enrollmentService as courseEnrollmentService, recordCourseInterest } from '@/features/courses';
+import { downloadCertificate } from '@/shared/lib/certificateUtils';
+import { enrollmentService as courseEnrollmentService } from '@/features/courses';
 import { useSubscriptionQuery } from '@/features/subscription/model/useSubscriptionQuery';
 import { PLAN_IDS, PLAN_HIERARCHY_LEVELS } from '@/shared/config/subscriptionPlans';
 import { getLogger } from '@/shared/config/logging';
@@ -68,21 +73,6 @@ const Courses = () => {
   });
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
-  // Interest capture: pendingCourseId is the course whose request is in flight,
-  // so only the clicked control shows a pending state.
-  const [pendingCourseId, setPendingCourseId] = useState(null);
-  const [showInterestModal, setShowInterestModal] = useState(false);
-  // Guards state updates from an awaited request that resolves after unmount.
-  const isMountedRef = useRef(true);
-  useEffect(() => {
-    isMountedRef.current = true;
-    return () => { isMountedRef.current = false; };
-  }, []);
-  // Synchronous duplicate-click guard for handleStartCourse. Unlike
-  // pendingCourseId (state, so its update is not visible until the next
-  // render), this ref is readable/writable immediately, closing the window
-  // where a second click could re-enter before the button visually disables.
-  const isCapturingRef = useRef(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0); // Total courses count for pagination
   const coursesPerPage = 6;
@@ -283,10 +273,14 @@ const Courses = () => {
     try {
       setLoading(true);
 
+      // Calculate pagination range
+      const from = (currentPage - 1) * coursesPerPage;
+      const to = from + coursesPerPage - 1;
+
       let classification = null;
       if (learnerGrade) {
         if (/^(Grade\s*)?(\d+)$/i.test(learnerGrade)) {
-          const gradeNum = parseInt(learnerGrade.match(/\d+/)[0], 10);
+          const gradeNum = parseInt(learnerGrade.match(/\d+/)[0]);
           if (gradeNum >= 6 && gradeNum <= 8) classification = 'middle_school';
           else if (gradeNum >= 9 && gradeNum <= 10) classification = 'high_school';
           else if (gradeNum >= 11 && gradeNum <= 12) classification = 'higher_secondary';
@@ -335,7 +329,7 @@ const Courses = () => {
   // Check if course has resumable progress
   const hasResumableProgress = (courseId) => {
     const progress = enrollmentProgress[courseId];
-    return progress?.progress > 0 && progress?.progress < 100;
+    return progress && progress.progress > 0 && progress.progress < 100;
   };
 
   // Check if course is completed
@@ -488,6 +482,15 @@ const Courses = () => {
     }
   }, [user?.email, certificateModal, certificateUrls]); // Fixed: Added certificateUrls to dependency array
 
+  // Check if a course is new (posted within last 24 hours)
+  const isNewCourse = (createdAt) => {
+    if (!createdAt) return false;
+    const courseDate = new Date(createdAt);
+    const now = new Date();
+    const hoursDifference = (now - courseDate) / (1000 * 60 * 60);
+    return hoursDifference <= 24;
+  };
+
   // Reset to page 1 when search or filter changes (but not when page changes)
   useEffect(() => {
     setCurrentPage(1);
@@ -583,6 +586,18 @@ const Courses = () => {
     return pages;
   };
 
+  // Get status badge color
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'Active':
+        return 'bg-emerald-100 text-emerald-700 border-emerald-200';
+      case 'Upcoming':
+        return 'bg-blue-100 text-blue-700 border-blue-200';
+      default:
+        return 'bg-gray-100 text-gray-700 border-gray-200';
+    }
+  };
+
   // Handle course card click - show detail modal
   const handleCourseClick = (course) => {
     setSelectedCourse(course);
@@ -590,50 +605,9 @@ const Courses = () => {
   };
 
   // Handle start course - navigate to course player
-  /**
-   * Records the learner's interest instead of opening the course.
-   *
-   * The request is awaited so the confirmation is shown only after the record
-   * has been persisted. On failure no confirmation is shown and the learner can
-   * retry by selecting the course again.
-   */
-  const handleStartCourse = async (course) => {
-    const courseId = course?.course_id;
-    if (!courseId) return;
-
-    if (isCapturingRef.current) return;
-    isCapturingRef.current = true;
-
-    try {
-      // Webinars/live events bypass interest capture entirely and open directly,
-      // exactly as all courses did before this feature was introduced.
-      if (course.course_type === 'webinar') {
-        setShowDetailModal(false);
-        navigate(`/learner/courses/${courseId}/learn`);
-        return;
-      }
-
-      setPendingCourseId(courseId);
-      try {
-        if (typeof recordCourseInterest !== 'function') {
-          throw new Error('recordCourseInterest not available');
-        }
-        await recordCourseInterest(courseId);
-        if (!isMountedRef.current) return;
-        // The detail modal stays open behind the confirmation - closing it here
-        // would unmount the control still showing its pending state. It is closed
-        // when the learner dismisses the confirmation.
-        setShowInterestModal(true);
-      } catch (error) {
-        logger.error('Failed to record interest', error instanceof Error ? error : new Error(String(error)));
-        if (!isMountedRef.current) return;
-        toast.error('Unable to record your interest. Please try again.');
-      } finally {
-        if (isMountedRef.current) setPendingCourseId(null);
-      }
-    } finally {
-      isCapturingRef.current = false;
-    }
+  const handleStartCourse = (course) => {
+    setShowDetailModal(false);
+    navigate(`/learner/courses/${course.course_id}/learn`);
   };
 
   return (
@@ -645,17 +619,6 @@ const Courses = () => {
         onClose={() => setShowDetailModal(false)}
         onStartCourse={handleStartCourse}
         enrollmentProgress={enrollmentProgress}
-        isRecordingInterest={pendingCourseId === selectedCourse?.course_id}
-      />
-
-      {/* Interest Capture Confirmation - dismissing it also closes the detail
-          modal, returning the learner to the course list. */}
-      <CourseEnrollmentModal
-        isOpen={showInterestModal}
-        onClose={() => {
-          setShowInterestModal(false);
-          setShowDetailModal(false);
-        }}
       />
       
       {/* Certificate Generation Modal */}
@@ -718,7 +681,6 @@ const Courses = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                   {/* Courses Tab */}
                   <button
-                    type="button"
                     onClick={() => setActiveTab('courses')}
                     className={`relative text-left p-4 rounded-lg transition-all ${
                       activeTab === 'courses'
@@ -749,7 +711,6 @@ const Courses = () => {
 
                   {/* Weekly Learning Progress Tab */}
                   <button
-                    type="button"
                     onClick={() => setActiveTab('progress')}
                     className={`relative text-left p-4 rounded-lg transition-all ${
                       activeTab === 'progress'
@@ -812,7 +773,6 @@ const Courses = () => {
                 {/* Branch Filter Toggle - Only show if learner has a branch */}
                 {learnerBranch && (
                   <button
-                    type="button"
                     onClick={() => {
                       isFetchingRef.current = false; // Reset fetch lock
                       setFilterByBranch(!filterByBranch);
@@ -863,14 +823,12 @@ const Courses = () => {
                 {/* View Mode Toggle */}
                 <div className="flex border border-gray-300 rounded-lg overflow-hidden h-12 bg-white shadow-sm">
                   <button
-                    type="button"
                     onClick={() => setViewMode('grid')}
                     className={`px-4 flex items-center justify-center ${viewMode === 'grid' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
                   >
                     <Grid3x3 className="w-5 h-5" />
                   </button>
                   <button
-                    type="button"
                     onClick={() => setViewMode('list')}
                     className={`px-4 flex items-center justify-center ${viewMode === 'list' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
                   >
@@ -881,7 +839,6 @@ const Courses = () => {
                 {/* Clear Filters Button */}
                 {(filterStatus !== 'all' || searchTerm !== '' || sortBy !== 'created_at' || hasActiveAdvancedFilters() || (learnerBranch && !filterByBranch)) && (
                   <button
-                    type="button"
                     onClick={() => {
                       setFilterStatus('all');
                       setSearchTerm('');

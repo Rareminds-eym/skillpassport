@@ -6,7 +6,6 @@ export { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, Command
 export { CareerPathConnector, CareerPathEffect } from './CareerPathEffect';
 export { CertificateNameModal } from './CertificateNameModal';
 export { default as ConfirmationModal } from './ConfirmationModal';
-export { default as CourseEnrollmentModal } from './CourseEnrollmentModal';
 export { FeatureCard } from './FeatureCard';
 export { Label } from './Label';
 export { default as Modal } from './Modal';

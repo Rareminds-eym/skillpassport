@@ -1,6 +1,5 @@
 import { withAuth, getContextUser, getServiceClient } from '../../lib/auth';
-import { apiSuccess, apiError, apiDbError, apiNotFound } from '../../lib/response';
-import { isValidUUID } from '../../lib/validation';
+import { apiSuccess, apiError, apiDbError, apiMethodNotAllowed, apiNotFound } from '../../lib/response';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 
 function parseBody(request: Request): Promise<any> {
@@ -464,7 +463,7 @@ async function handler(context: AuthenticatedContext): Promise<Response> {
       }
     }
 
-    let q = supabase.from('learner_course_recommendations').select('*, course:courses(course_id, title, code, description, duration, category, status, course_type)').eq('learner_id', learnerId).order('relevance_score', { ascending: false });
+    let q = supabase.from('learner_course_recommendations').select('*, course:courses(course_id, title, code, description, duration, category, status)').eq('learner_id', learnerId).order('relevance_score', { ascending: false });
     if (status) q = q.eq('status', status);
     if (assessmentResultId) q = q.eq('assessment_result_id', assessmentResultId);
     const { data } = await q;
@@ -500,47 +499,6 @@ async function handler(context: AuthenticatedContext): Promise<Response> {
     const { data, error } = await supabase.from('learner_course_recommendations').update(updateData).eq('id', id).select().single();
     if (error) return apiDbError(error, request);
     return apiSuccess(data, request);
-  }
-
-  // ─── INTEREST CAPTURE ─────────────────────────────────────────────
-
-  // POST /api/courses/interests
-  // Records that the learner expressed interest in a course. The learner is
-  // derived from the authenticated session, never from the request body, so the
-  // caller cannot record interest on behalf of someone else.
-  if (path === '/interests' && method === 'POST') {
-    const { courseId } = await parseBody(request);
-    if (!courseId) return apiError(400, 'VALIDATION_ERROR', 'courseId required', request);
-    // Fail fast on malformed input before querying - Postgres remains the
-    // final line of defense for referential validity (the course-existence
-    // check below).
-    if (!isValidUUID(courseId)) return apiError(400, 'INVALID_INPUT', 'courseId must be a valid UUID', request);
-
-    // user.id is the SSO subject claim, which matches learners.user_id - the
-    // foreign key target. Confirm the learner profile exists so a missing one
-    // returns NOT_FOUND rather than a foreign key violation.
-    const { data: learner, error: learnerError } = await supabase.from('learners').select('user_id').eq('user_id', user.id).maybeSingle();
-    if (learnerError) return apiDbError(learnerError, request);
-    if (!learner) return apiError(404, 'NOT_FOUND', 'Learner not found', request);
-
-    // Confirm the course exists so an invalid courseId returns NOT_FOUND
-    // rather than a foreign key violation.
-    const { data: course, error: courseError } = await supabase.from('courses').select('course_id').eq('course_id', courseId).maybeSingle();
-    if (courseError) return apiDbError(courseError, request);
-    if (!course) return apiError(404, 'NOT_FOUND', 'Course not found', request);
-
-    // ignoreDuplicates so the first expression of interest is preserved - the
-    // unique constraint on (user_id, course_id) makes repeat writes idempotent.
-    // A conflicting insert returns no rows, which is the duplicate outcome and
-    // is returned as success per the project's empty-array convention.
-    const { data, error } = await supabase
-      .from('learner_course_interests')
-      .upsert({ user_id: user.id, course_id: courseId }, { onConflict: 'user_id,course_id', ignoreDuplicates: true })
-      .select();
-    // Duplicates never reach this branch (they resolve to empty data above);
-    // this covers all other failure modes, e.g. FK violations or connection errors.
-    if (error) return apiDbError(error, request);
-    return apiSuccess(data || [], request);
   }
 
   // ─── STREAM RECOMMENDATION ────────────────────────────────────────
@@ -585,7 +543,7 @@ async function handler(context: AuthenticatedContext): Promise<Response> {
 
   // GET /api/courses/embeddings
   if (path === '/embeddings' && method === 'GET') {
-    const { data: courses, error } = await supabase.from('courses').select('course_id, title, code, description, duration, category, target_outcomes, status, course_type, embedding').eq('status', 'Active').not('embedding', 'is', null).is('deleted_at', null);
+    const { data: courses, error } = await supabase.from('courses').select('course_id, title, code, description, duration, category, target_outcomes, status, embedding').eq('status', 'Active').not('embedding', 'is', null).is('deleted_at', null);
     if (error) return apiDbError(error, request);
     if (!courses?.length) return apiSuccess([], request);
     const courseIds = courses.map((c: any) => c.course_id);
@@ -599,7 +557,7 @@ async function handler(context: AuthenticatedContext): Promise<Response> {
   if (path === '/by-skill-type' && method === 'GET') {
     const skillType = url.searchParams.get('skillType');
     if (!skillType) return apiError(400, 'VALIDATION_ERROR', 'skillType required', request);
-    const { data: courses, error } = await supabase.from('courses').select('course_id, title, code, description, duration, category, target_outcomes, status, skill_type, course_type, embedding').eq('status', 'Active').eq('skill_type', skillType).not('embedding', 'is', null).is('deleted_at', null);
+    const { data: courses, error } = await supabase.from('courses').select('course_id, title, code, description, duration, category, target_outcomes, status, skill_type, embedding').eq('status', 'Active').eq('skill_type', skillType).not('embedding', 'is', null).is('deleted_at', null);
     if (error) return apiDbError(error, request);
     if (!courses?.length) return apiSuccess([], request);
     const courseIds = courses.map((c: any) => c.course_id);
@@ -612,7 +570,7 @@ async function handler(context: AuthenticatedContext): Promise<Response> {
   // GET /api/courses/basic
   if (path === '/basic' && method === 'GET') {
     const limit = parseInt(url.searchParams.get('limit') || '10', 10);
-    const { data: courses, error } = await supabase.from('courses').select('course_id, title, code, description, duration, category, target_outcomes, status, course_type').eq('status', 'Active').is('deleted_at', null).limit(limit);
+    const { data: courses, error } = await supabase.from('courses').select('course_id, title, code, description, duration, category, target_outcomes, status').eq('status', 'Active').is('deleted_at', null).limit(limit);
     if (error) return apiDbError(error, request);
     if (!courses?.length) return apiSuccess([], request);
     const courseIds = courses.map((c: any) => c.course_id);
@@ -630,7 +588,7 @@ async function handler(context: AuthenticatedContext): Promise<Response> {
     const { data: skillMatches } = await supabase.from('course_skills').select('course_id, skill_name, proficiency_level').ilike('skill_name', `%${skillLower}%`);
     if (!skillMatches?.length) return apiSuccess([], request);
     const courseIds = [...new Set(skillMatches.map((s: any) => s.course_id))];
-    const { data: courses } = await supabase.from('courses').select('course_id, title, code, description, duration, category, target_outcomes, status, course_type').in('course_id', courseIds).eq('status', 'Active').is('deleted_at', null);
+    const { data: courses } = await supabase.from('courses').select('course_id, title, code, description, duration, category, target_outcomes, status').in('course_id', courseIds).eq('status', 'Active').is('deleted_at', null);
     if (!courses?.length) return apiSuccess([], request);
     const { data: allSkills } = await supabase.from('course_skills').select('course_id, skill_name').in('course_id', courseIds);
     const skillsByCourse: Record<string, string[]> = {};

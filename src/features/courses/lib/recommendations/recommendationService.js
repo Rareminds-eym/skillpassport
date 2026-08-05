@@ -8,6 +8,7 @@ import { apiGet } from '@/shared/api/apiClient';
 import { cosineSimilarity } from '@/shared/lib/vectorUtils';
 import { buildProfileText } from './profileBuilder';
 import { generateEmbedding } from '../../api/embeddingService';
+import { generateProfileAndSkillEmbeddings } from '../../api/embeddingBatch';
 import { fetchCoursesWithEmbeddings, fetchCoursesBySkillType, fetchBasicCourses } from './courseRepository';
 import { getDomainKeywordsWithCache } from '../../api/fieldDomainService';
 import {
@@ -20,11 +21,6 @@ import {
   MIN_SIMILARITY_THRESHOLD,
   DEFAULT_FALLBACK_SCORE
 } from '../../api/config';
-
-/**
- * Get a course's type, defaulting to 'course' when the source data omits it.
- */
-const getCourseType = (course) => course.course_type ?? "course";
 
 /**
  * Fallback to keyword-based matching when embedding generation fails.
@@ -51,7 +47,7 @@ export const fallbackKeywordMatching = async (assessmentResults) => {
           const aiKeywords = domainKeywords.split(',').map(k => k.trim().toLowerCase());
           fieldKeywords.push(...aiKeywords);
         }
-      } catch {
+      } catch (error) {
         console.warn('Failed to get AI keywords for fallback, using pattern matching');
       }
     }
@@ -115,7 +111,6 @@ export const fallbackKeywordMatching = async (assessmentResults) => {
         description: course.description,
         duration: course.duration,
         category: course.category,
-        course_type: getCourseType(course),
         skills: course.skills || [],
         target_outcomes: course.target_outcomes || [],
         relevance_score: Math.min(100, Math.round((totalMatches / totalKeywords) * 100)),
@@ -200,7 +195,6 @@ export const getRecommendedCourses = async (assessmentResults) => {
           description: course.description,
           duration: course.duration,
           category: course.category,
-          course_type: getCourseType(course),
           skills: course.skills,
           target_outcomes: course.target_outcomes || [],
           relevance_score: relevanceScore,
@@ -309,7 +303,6 @@ export const getRecommendedCoursesByType = async (assessmentResults, maxPerType 
           description: course.description,
           duration: course.duration,
           category: course.category,
-          course_type: getCourseType(course),
           skills: course.skills,
           skill_type: 'technical',
           target_outcomes: course.target_outcomes || [],
@@ -335,7 +328,6 @@ export const getRecommendedCoursesByType = async (assessmentResults, maxPerType 
           description: course.description,
           duration: course.duration,
           category: course.category,
-          course_type: getCourseType(course),
           skills: course.skills,
           skill_type: 'soft',
           target_outcomes: course.target_outcomes || [],

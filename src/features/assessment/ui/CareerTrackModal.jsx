@@ -1,21 +1,13 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Zap, Target, Briefcase, BookOpen, TrendingUp, CheckCircle, Download, Bell, ChevronRight, Calendar, Loader2 } from 'lucide-react';
 import { useRoleOverview } from '@/entities/user';
 import { generateRoleOverview, getFallbackRoleOverview } from '@/features/counselling';
-import { matchCoursesForRole as matchCoursesForRoleRAG, recordCourseInterest } from '@/features/courses';
-import { CourseEnrollmentModal } from '@/shared/ui';
+import { matchCoursesForRole as matchCoursesForRoleRAG } from '@/features/courses';
 import { apiPost, apiGet } from '@/shared/api/apiClient';
 import { useAuthStore } from '@/shared/model/authStore';
 import jsPDF from 'jspdf';
-
-/**
- * Course objects in this file come from multiple sources that disagree on the
- * ID field name (course_id vs id) - this centralizes the fallback.
- */
-const getCourseId = (course) => course?.course_id || course?.id;
 
 /**
  * Career Track Modal Component
@@ -31,25 +23,11 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results, 
     const [selectedRole, setSelectedRole] = useState(null);
     const [currentPage, setCurrentPage] = useState(0); // 0 = role selection, 1-5 = wizard pages
     const [showReminderModal, setShowReminderModal] = useState(false);
-    // Interest capture: only the clicked control shows a pending state.
-    const [pendingCourseId, setPendingCourseId] = useState(null);
-    const [showInterestModal, setShowInterestModal] = useState(false);
-    // Guards state updates from an awaited request that resolves after unmount.
-    const isMountedRef = useRef(true);
-    useEffect(() => {
-        isMountedRef.current = true;
-        return () => { isMountedRef.current = false; };
-    }, []);
-    // Synchronous duplicate-click guard for captureInterest. Unlike
-    // pendingCourseId (state, so its update is not visible until the next
-    // render), this ref is readable/writable immediately, closing the window
-    // where a second click could re-enter before the card visually disables.
-    const isCapturingRef = useRef(false);
     
     // RAG Course Matching State
     const [aiMatchedCourses, setAiMatchedCourses] = useState([]);
     const [courseMatchingLoading, setCourseMatchingLoading] = useState(false);
-    const [, setCourseMatchingError] = useState(null);
+    const [courseMatchingError, setCourseMatchingError] = useState(null);
 
     const accentColor = selectedTrack.index === 0 ? '#2563eb' : 
                        selectedTrack.index === 1 ? '#3b82f6' : '#60a5fa';
@@ -63,59 +41,12 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results, 
     ];
 
     // Handle course click - navigate to course player
-    /**
-     * Records the learner's interest instead of opening the course.
-     *
-     * The request is awaited so the confirmation is shown only after the record
-     * has been persisted. onClose() is deliberately NOT called - the wizard must
-     * stay open behind the confirmation so dismissing it returns the learner to
-     * the surface they were on.
-     */
-    const captureInterest = async (course) => {
-        const courseId = getCourseId(course);
-        if (!courseId) return;
-
-        if (isCapturingRef.current) return;
-        isCapturingRef.current = true;
-
-        if (pendingCourseId) {
-            isCapturingRef.current = false;
-            return;
-        }
-
-        try {
-            // Webinars/live events bypass interest capture entirely and open
-            // directly, exactly as all courses did before this feature was
-            // introduced. onClose() is deliberately NOT called here either -
-            // navigation happens, then the wizard unmounts with the route change.
-            if (course.course_type === 'webinar') {
-                onClose();
-                navigate(`/learner/courses/${courseId}/learn`);
-                return;
-            }
-
-            setPendingCourseId(courseId);
-            try {
-                if (typeof recordCourseInterest !== 'function') {
-                    throw new Error('recordCourseInterest not available');
-                }
-                await recordCourseInterest(courseId);
-                if (!isMountedRef.current) return;
-                setShowInterestModal(true);
-            } catch (error) {
-                console.error('[CareerTrackModal] Failed to record interest:', error);
-                if (!isMountedRef.current) return;
-                toast.error('Unable to record your interest. Please try again.');
-            } finally {
-                if (isMountedRef.current) setPendingCourseId(null);
-            }
-        } finally {
-            isCapturingRef.current = false;
-        }
-    };
-
     const handleCourseClick = (course) => {
-        captureInterest(course);
+        const courseId = course.course_id || course.id;
+        if (courseId) {
+            onClose(); // Close the modal first
+            navigate(`/learner/courses/${courseId}/learn`);
+        }
     };
 
     const handleRoleSelect = (role) => {
@@ -239,7 +170,6 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results, 
                         title: c.title,
                         description: c.description,
                         category: c.category,
-                        course_type: c.course_type,
                         skills: c.skills || c.skill_tags || [],
                         embedding: c.embedding,
                     }));
@@ -315,10 +245,10 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results, 
         }
 
         // Get IDs of already matched courses to avoid duplicates
-        const matchedIds = new Set(ragMatchedCourses.map(getCourseId));
+        const matchedIds = new Set(ragMatchedCourses.map(c => c.course_id || c.id));
         
         // Get remaining courses not yet matched
-        const remainingCourses = platformCourses.filter(c => !matchedIds.has(getCourseId(c)));
+        const remainingCourses = platformCourses.filter(c => !matchedIds.has(c.course_id || c.id));
         
         // Score remaining courses for relevance
         const roleNameLower = (roleName || '').toLowerCase();
@@ -387,7 +317,7 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results, 
 
             try {
                 const recommendations = aiMatchedCourses.map(c => ({
-                    course_id: getCourseId(c),
+                    course_id: c.course_id || c.id,
                     relevance_score: c.relevance_score || 50,
                     match_reasons: [c.match_reason || `Matched for ${roleName} role`],
                     skill_gaps_addressed: c.skill_gaps_addressed || []
@@ -433,23 +363,17 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results, 
     };
 
     // Handle enrolling in first relevant course
-    // The "Get Started" CTA targets the first relevant course, so it shows the
-    // pending state only while that course's request is in flight.
-    const firstRelevantCourseId = getCourseId(relevantCourses?.[0]);
-    const isRecordingFirstCourse = Boolean(firstRelevantCourseId) && pendingCourseId === firstRelevantCourseId;
-
     const handleEnrollFirstCourse = () => {
         if (relevantCourses.length > 0) {
             const firstCourse = relevantCourses[0];
-            const courseId = getCourseId(firstCourse);
+            const courseId = firstCourse.course_id || firstCourse.id;
             if (courseId) {
-                captureInterest(firstCourse);
+                onClose();
+                navigate(`/learner/courses/${courseId}/learn`);
                 return;
             }
         }
-        // Fallback to the courses page when no relevant course is available.
-        // This navigates rather than capturing interest, because there is no
-        // course to record interest in.
+        // Fallback to courses page if no relevant course found
         onClose();
         navigate('/learner/courses');
     };
@@ -557,7 +481,7 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results, 
             doc.text('6-Month Learning Roadmap', 20, yPos);
             yPos += 10;
             
-            learningRoadmap.forEach((phase) => {
+            learningRoadmap.forEach((phase, idx) => {
                 // Check if we need a new page
                 if (yPos > 250) {
                     doc.addPage();
@@ -752,7 +676,6 @@ END:VCALENDAR`;
             >
                 {/* Close Button */}
                 <button
-                    type="button"
                     onClick={onClose}
                     className="absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors"
                 >
@@ -795,7 +718,6 @@ END:VCALENDAR`;
                                 return (
                                     <div key={page.id} className="relative">
                                         <button
-                                            type="button"
                                             onClick={() => goToPage(page.id)}
                                             disabled={false}
                                             className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all duration-200 text-left ${
@@ -842,7 +764,6 @@ END:VCALENDAR`;
 
                         {/* Back to roles button */}
                         <button
-                            type="button"
                             onClick={() => { setCurrentPage(0); setSelectedRole(null); }}
                             className="mt-4 w-full py-2 text-sm text-white/60 hover:text-white transition-colors"
                         >
@@ -1063,7 +984,7 @@ END:VCALENDAR`;
                                                                 Object.entries(results.aptitude.scores)
                                                                     .sort((a, b) => (b[1]?.percentage || 0) - (a[1]?.percentage || 0))
                                                                     .slice(0, 3)
-                                                                    .map(([key], idx) => (
+                                                                    .map(([key, value], idx) => (
                                                                         <span 
                                                                             key={idx}
                                                                             className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700"
@@ -1418,20 +1339,11 @@ END:VCALENDAR`;
                                         </div>
                                     ) : relevantCourses.length > 0 ? (
                                         <div className="grid md:grid-cols-2 gap-4">
-                                            {relevantCourses.map((course, idx) => {
-                                                const cardCourseId = getCourseId(course);
-                                                const isCardPending = pendingCourseId === cardCourseId;
-                                                return (
-                                                <button
-                                                    type="button"
-                                                    key={cardCourseId || idx}
+                                            {relevantCourses.map((course, idx) => (
+                                                <div 
+                                                    key={idx} 
                                                     onClick={() => handleCourseClick(course)}
-                                                    disabled={isCardPending}
-                                                    aria-busy={isCardPending}
-                                                    className={`w-full text-left p-4 rounded-xl bg-white border border-gray-200 shadow-sm transition-all ${isCardPending
-                                                        ? 'opacity-60 pointer-events-none'
-                                                        : 'hover:shadow-md hover:border-blue-300 cursor-pointer'
-                                                        }`}
+                                                    className="p-4 rounded-xl bg-white border border-gray-200 shadow-sm hover:shadow-md hover:border-blue-300 transition-all cursor-pointer"
                                                 >
                                                     <div className="flex items-start justify-between">
                                                         <div className="flex-1">
@@ -1458,18 +1370,11 @@ END:VCALENDAR`;
                                                         </div>
                                                     )}
                                                     <div className="mt-3 flex items-center justify-end text-xs text-blue-600 font-medium">
-                                                        {isCardPending ? (
-                                                            <Loader2 className="w-3 h-3 animate-spin" />
-                                                        ) : (
-                                                            <>
-                                                                <span>Start Learning</span>
-                                                                <ChevronRight className="w-3 h-3 ml-1" />
-                                                            </>
-                                                        )}
+                                                        <span>Start Learning</span>
+                                                        <ChevronRight className="w-3 h-3 ml-1" />
                                                     </div>
-                                                </button>
-                                                );
-                                            })}
+                                                </div>
+                                            ))}
                                         </div>
                                     ) : !results?.platformCourses || results.platformCourses.length === 0 ? (
                                         <div className="p-6 rounded-xl bg-gray-50 border border-gray-200 text-center">
@@ -1714,19 +1619,14 @@ END:VCALENDAR`;
 
                                     <div className="space-y-3">
                                         <motion.button
-                                            whileHover={isRecordingFirstCourse ? undefined : { scale: 1.02 }}
-                                            whileTap={isRecordingFirstCourse ? undefined : { scale: 0.98 }}
+                                            whileHover={{ scale: 1.02 }}
+                                            whileTap={{ scale: 0.98 }}
                                             className="w-full py-3 rounded-xl text-white font-semibold flex items-center justify-center gap-2"
                                             style={{ backgroundColor: accentColor }}
                                             onClick={handleEnrollFirstCourse}
-                                            disabled={isRecordingFirstCourse}
                                         >
-                                            {isRecordingFirstCourse ? (
-                                                <Loader2 className="w-5 h-5 animate-spin" />
-                                            ) : (
-                                                <BookOpen className="w-5 h-5" />
-                                            )}
-                                            {relevantCourses.length > 0
+                                            <BookOpen className="w-5 h-5" />
+                                            {relevantCourses.length > 0 
                                                 ? `Start: ${relevantCourses[0]?.title || relevantCourses[0]?.name || 'First Course'}`
                                                 : 'Browse Courses'
                                             }
@@ -1777,8 +1677,7 @@ END:VCALENDAR`;
                                 >
                                     <div className="flex items-center justify-between mb-4">
                                         <h3 className="text-lg font-bold text-gray-800">Set Assessment Reminder</h3>
-                                        <button
-                                            type="button"
+                                        <button 
                                             onClick={() => setShowReminderModal(false)}
                                             className="p-1 rounded-full hover:bg-gray-100"
                                         >
@@ -1801,7 +1700,6 @@ END:VCALENDAR`;
                                     
                                     <div className="space-y-2">
                                         <button
-                                            type="button"
                                             onClick={handleGoogleCalendar}
                                             className="w-full py-3 px-4 rounded-xl bg-white border border-gray-200 hover:bg-gray-50 transition-colors flex items-center gap-3"
                                         >
@@ -1814,7 +1712,6 @@ END:VCALENDAR`;
                                         </button>
                                         
                                         <button
-                                            type="button"
                                             onClick={handleOutlookCalendar}
                                             className="w-full py-3 px-4 rounded-xl bg-white border border-gray-200 hover:bg-gray-50 transition-colors flex items-center gap-3"
                                         >
@@ -1827,7 +1724,6 @@ END:VCALENDAR`;
                                         </button>
                                         
                                         <button
-                                            type="button"
                                             onClick={handleDownloadICS}
                                             className="w-full py-3 px-4 rounded-xl bg-white border border-gray-200 hover:bg-gray-50 transition-colors flex items-center gap-3"
                                         >
@@ -1884,13 +1780,6 @@ END:VCALENDAR`;
                     )}
                 </div>
             </motion.div>
-
-            {/* Interest Capture Confirmation - rendered above the wizard, which
-                stays open behind it so dismissing returns the learner here. */}
-            <CourseEnrollmentModal
-                isOpen={showInterestModal}
-                onClose={() => setShowInterestModal(false)}
-            />
         </motion.div>
     );
 };

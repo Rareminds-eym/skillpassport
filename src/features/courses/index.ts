@@ -67,9 +67,6 @@ export { useCoursePerformance } from './model';
 
 export { enrollmentService } from './api';
 
-// Learner course interest capture
-export { recordCourseInterest } from './api';
-
 // ═══════════════════════════════════════════════════════════════════════════
 // UTILITIES & RECOMMENDATIONS
 // ═══════════════════════════════════════════════════════════════════════════
