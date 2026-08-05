@@ -10,16 +10,20 @@
  * Add your production and development domains here
  */
 const ALLOWED_ORIGINS = [
+  // Local development
   'http://localhost:5173',
   'http://localhost:3000',
   'http://localhost:8788',
   'http://127.0.0.1:8788',
   'http://localhost:8789',
   'http://127.0.0.1:8789',
+  // Production — SkillPassport
   'https://sso-auth.skillpassport.pages.dev',
   'https://skillpassport.pages.dev',
   'https://skillpassport.rareminds.in',
   'https://app.skillpassport.rareminds.in',
+  // Production — LTE (needed for silent-sso and cross-origin auth calls)
+  'https://lte.rareminds.in',
 ];
 
 /**
