@@ -1,4 +1,5 @@
 import { apiError } from '../../lib/response';
+import { apiLogger } from '../../lib/logger';
 import { createRefreshCookie, getRefreshCookie } from '../../lib/cookies';
 import type { Env } from '../../lib/types';
 import { getSsoService } from '../../lib/sso-client';
@@ -80,9 +81,9 @@ export async function onRequestPost(context: {
       status: 200,
       headers,
     });
-  } catch (err: any) {
-    const errMsg = err?.message ?? 'Token refresh failed';
-    console.error('[Refresh] RPC error:', err);
+  } catch (err: unknown) {
+    const errMsg = err instanceof Error ? err.message : 'Token refresh failed';
+    apiLogger.error('[Refresh] RPC error:', err);
 
     if (errMsg.includes('expired') || errMsg.includes('invalid')) {
       return apiError(401, 'INVALID_REFRESH_TOKEN', errMsg, request);
