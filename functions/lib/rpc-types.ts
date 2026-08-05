@@ -187,6 +187,12 @@ export interface SsoWorkerRpc {
     admin_id: string;
   }): Promise<{ success: boolean; batch_id?: string; error?: string }>;
 
+  queueBulkFacultyUpload(data: {
+    csv_data: string;
+    organization_id: string;
+    admin_id: string;
+  }): Promise<{ success: boolean; batch_id?: string; error?: string }>;
+
   getBulkUploadStatus(batchId: string): Promise<{
     batch_id: string;
     status: string;
