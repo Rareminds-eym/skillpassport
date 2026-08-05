@@ -1,5 +1,7 @@
 import { apiError } from '../../lib/response';
+import { apiLogger } from '../../lib/logger';
 import type { Env } from '../../lib/types';
+import { createRefreshCookie } from '../../lib/cookies';
 
 interface SignupMemberBody {
   email: string;
@@ -65,7 +67,7 @@ export async function onRequestPost(context: {
     // Check if RPC returned an error
     if (result.success === false || result.error) {
       const statusCode = result.status ?? 500;
-      console.error('[SignupMember] RPC returned error:', result.error);
+      apiLogger.error('[SignupMember] RPC returned error:', result.error);
 
       if (statusCode === 409) {
         return apiError(409, 'EMAIL_EXISTS', result.error || 'An account with this email already exists', request);
@@ -78,9 +80,9 @@ export async function onRequestPost(context: {
 
     // Validate that access_token exists and is a non-empty string
     if (!result.access_token || typeof result.access_token !== 'string') {
-      console.error('[SignupMember] RPC returned invalid access_token:', {
-        access_token: result.access_token,
-        type: typeof result.access_token
+      apiLogger.error('[SignupMember] RPC returned invalid access_token', undefined, {
+        hasAccessToken: Boolean(result.access_token),
+        type: typeof result.access_token,
       });
       return apiError(500, 'INVALID_TOKEN', 'Server failed to generate authentication token', request);
     }
@@ -100,7 +102,7 @@ export async function onRequestPost(context: {
     if (result.refresh_token) {
       headers.append(
         'Set-Cookie',
-        `refresh_token=${result.refresh_token}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=604800`
+        createRefreshCookie(result.refresh_token, request, env)
       );
     }
 
@@ -112,7 +114,7 @@ export async function onRequestPost(context: {
     });
   } catch (err: unknown) {
     const errMsg = err instanceof Error ? err.message : 'Signup failed';
-    console.error('[SignupMember] RPC error:', err);
+    apiLogger.error('[SignupMember] RPC error:', err);
 
     if (errMsg.includes('duplicate') || errMsg.includes('already exists')) {
       return apiError(409, 'EMAIL_EXISTS', 'An account with this email already exists', request);
