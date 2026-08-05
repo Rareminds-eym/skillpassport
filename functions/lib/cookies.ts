@@ -1,5 +1,4 @@
 import { apiLogger } from './logger';
-import type { Env } from './types';
 
 const REFRESH_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
 
@@ -14,7 +13,9 @@ export function getCookieDomain(request: Request, env: { COOKIE_DOMAIN?: string 
       return `.${parts.slice(-2).join('.')}`;
     }
   } catch (err) {
-    apiLogger.warn('[Cookies] Failed to parse request URL for domain extraction:', err);
+    apiLogger.warn('[Cookies] Failed to parse request URL for domain extraction', {
+      error: err instanceof Error ? err.message : String(err),
+    });
   }
 
   return null;
