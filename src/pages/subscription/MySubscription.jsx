@@ -1,6 +1,3 @@
-import { SubscriptionDashboard } from '@/features/subscription';
-import { useSubscriptionPlansData } from '@/features/subscription/model';
-import { useSubscriptionQuery } from '@/features/subscription/model/useSubscriptionQuery';
 import {
   AlertCircle,
   ArrowLeft,
@@ -22,21 +19,31 @@ import {
   Shield,
   Sparkles,
   TrendingUp,
-  X as XIcon
+  X as XIcon,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
-
-import { useUsageStatistics } from '@/features/analytics/model/useUsageStatistics';
-import { RECEIPT_CONFIG } from '@/shared/config/constants';
-import { downloadFileFromUrl, generateReceiptFilename } from '@/shared/utils/downloadHelpers';
-import { getPaymentReceiptPresignedUrl } from '@/shared/api';
-import { getLogger } from '@/shared/config/logging';
-import { useUser, useUserRole, useAuthLoading } from '@/shared/model/authStore';
-import { calculateDaysRemaining, calculateProgressPercentage, deactivateSubscription, formatDate, getSubscriptionStatusChecks, pauseSubscription, resumeSubscription } from '@/features/subscription';
-import { getUserSubscriptions } from '@/features/subscription/api';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useLearnerDataByEmail } from '@/entities/learner';
+import { useUsageStatistics } from '@/features/analytics/model/useUsageStatistics';
+import { 
+  calculateDaysRemaining, 
+  calculateProgressPercentage, 
+  deactivateSubscription, 
+  formatDate, 
+  getSubscriptionStatusChecks, 
+  pauseSubscription, 
+  resumeSubscription, 
+  SubscriptionDashboard, 
+} from '@/features/subscription';
+import { getUserPayments } from '@/features/subscription/api';
+import { useSubscriptionPlansData } from '@/features/subscription/model';
+import { useSubscriptionQuery } from '@/features/subscription/model/useSubscriptionQuery';
+import { getPaymentReceiptPresignedUrl } from '@/shared/api';
+import { RECEIPT_CONFIG } from '@/shared/config/constants';
+import { getLogger } from '@/shared/config/logging';
+import { useAuthLoading, useUser, useUserRole } from '@/shared/model/authStore';
+import { downloadFileFromUrl, generateReceiptFilename } from '@/shared/utils/downloadHelpers';
 import { openZohoChat } from '@/shared/utils/zohoChat';
 
 const logger = getLogger('my-subscription');
@@ -327,8 +334,10 @@ function MySubscription() {
     
     try {
       // PRIORITY 1: Check if subscription has receipt_url stored in database (R2 key)
+      // Only use this when no specific invoiceData is passed (i.e. main "Download Invoice" button)
+      // If invoiceData is passed (billing history row), skip this and use that transaction's payment ID
       const receiptUrl =
-        typeof subscriptionData?.receiptUrl === 'string'
+        !invoiceData && typeof subscriptionData?.receiptUrl === 'string'
           ? subscriptionData.receiptUrl.trim()
           : '';
       
@@ -535,31 +544,44 @@ function MySubscription() {
 
     setLoadingBillingHistory(true);
     try {
-      const result = await getUserSubscriptions(false); // false = optimized query
+      const result = await getUserPayments();
 
       if (result.success && result.data) {
-        // Transform database subscriptions to billing history format
-        // More lenient filter - show all subscriptions that have been processed
         const history = result.data
-          .filter(sub => {
-            // Show if it has any of these statuses
-            const validStatuses = ['active', 'expired', 'cancelled'];
-            const hasValidStatus = validStatuses.includes(sub.status?.toLowerCase());
-            const hasPayment = sub.razorpay_subscription_id;
-            return hasValidStatus || hasPayment;
-          })
-          .map(sub => ({
-            id: sub.id,
-            date: sub.created_at || sub.subscription_start_date,
-            amount: sub.plan_amount || '',
-            status: sub.status === 'active' ? 'paid' : 'completed',
-            description: sub.billing_cycle
-              ? `${sub.plan_type ?? ''} — ${sub.billing_cycle}`
-              : `${sub.plan_type ?? ''}`,
-            planType: sub.plan_type,
-            billingCycle: sub.billing_cycle,
-            subscriptionStatus: sub.status
-          }));
+          .map(tx => {
+            const meta = tx.metadata || {};
+            const plan = meta.plan || {};
+            const planName = plan.name ?? '';
+            const billingCycle = plan.billing_cycle ?? '';
+            const description = planName
+              ? (billingCycle ? `${planName} — ${billingCycle}` : planName)
+              : (() => {
+                  const typeMap = {
+                    upgrade: 'Plan Upgrade',
+                    subscription: 'Subscription',
+                    addon: 'Add-on Purchase',
+                    bulk_purchase: 'Bulk Purchase',
+                    refund: 'Refund',
+                  };
+                  return typeMap[tx.transaction_type?.toLowerCase()] || tx.transaction_type || 'Purchase';
+                })();
+            const statusMap = {
+              completed: 'paid',
+              failed: 'failed',
+              refunded: 'refunded',
+              pending: 'pending',
+            };
+            return {
+              id: tx.id,
+              date: tx.created_at,
+              amount: tx.amount,
+              status: statusMap[tx.status?.toLowerCase()] || tx.status || 'pending',
+              description,
+              planName,
+              billingCycle,
+              razorpay_payment_id: tx.razorpay_payment_id,
+            };
+          });
 
         setBillingHistory(history);
         setBillingHistoryFetched(true);
@@ -1158,13 +1180,24 @@ function MySubscription() {
                               </div>
                               <div className="flex items-center gap-3">
                                 <span className="text-sm font-semibold text-slate-900">₹{invoice.amount}</span>
-                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm ${invoice.status === 'success' || invoice.status === 'paid'
-                                  ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white'
-                                  : 'bg-slate-200 text-slate-700'
+                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm ${
+                                  invoice.status === 'paid'
+                                    ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white'
+                                    : invoice.status === 'failed'
+                                      ? 'bg-gradient-to-r from-red-500 to-red-600 text-white'
+                                      : invoice.status === 'refunded'
+                                        ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-white'
+                                        : 'bg-slate-200 text-slate-700'
                                   }`}>
-                                  <Circle className={`w-1.5 h-1.5 ${invoice.status === 'success' || invoice.status === 'paid' ? 'fill-white' : 'fill-slate-600'
-                                    }`} />
-                                  {invoice.status === 'success' || invoice.status === 'paid' ? 'Paid' : 'Pending'}
+                                  <Circle className={`w-1.5 h-1.5 ${
+                                    invoice.status === 'paid' || invoice.status === 'failed' || invoice.status === 'refunded'
+                                      ? 'fill-white'
+                                      : 'fill-slate-600'
+                                  }`} />
+                                  {invoice.status === 'paid' ? 'Paid'
+                                    : invoice.status === 'failed' ? 'Failed'
+                                    : invoice.status === 'refunded' ? 'Refunded'
+                                    : 'Pending'}
                                 </span>
                                 <button
                                   onClick={() => handleDownloadInvoice(invoice)}
