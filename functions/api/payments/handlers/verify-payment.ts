@@ -498,6 +498,14 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
         transaction_type: isUpgrade ? 'upgrade' : 'subscription',
         payment_method: payment.method,
         // DO NOT set receipt_url here - will be set after successful upload
+        metadata: {
+          plan: {
+            id: plan.id,
+            code: validPlan.plan_code,
+            name: plan.name,
+            billing_cycle: detectedBillingCycle,
+          },
+        },
       });
       transactionId = typeof txResult?.id === 'string' ? txResult.id : undefined;
     } catch (txError: unknown) {

@@ -18,9 +18,9 @@
  * - paymentsApiService.resumeSubscription()    - Resume subscription
  */
 
-import { checkAuthentication } from '@/features/auth';
 import { getLogger } from '@/shared/config/logging';
 import { apiGet } from '@/shared/api/apiClient';
+import { useAuthStore } from '@/shared/model/authStore';
 
 const logger = getLogger('subscription-service');
 
@@ -64,9 +64,9 @@ export const getActiveSubscription = async () => {
  */
 export const getUserSubscriptions = async (includeAll = false) => {
   try {
-    const authResult = await checkAuthentication();
+    const { isAuthenticated } = useAuthStore.getState();
 
-    if (!authResult.isAuthenticated) {
+    if (!isAuthenticated) {
       return {
         success: false,
         data: null,
@@ -104,9 +104,9 @@ export const getSubscriptionPayments = async (subscriptionId: string) => {
       return { success: false, data: null, error: 'Subscription ID is required' };
     }
 
-    const authResult = await checkAuthentication();
+    const { isAuthenticated } = useAuthStore.getState();
 
-    if (!authResult.isAuthenticated) {
+    if (!isAuthenticated) {
       return {
         success: false,
         data: null,
@@ -139,9 +139,9 @@ export const getSubscriptionPayments = async (subscriptionId: string) => {
  */
 export const getUserPayments = async () => {
   try {
-    const authResult = await checkAuthentication();
+    const { isAuthenticated } = useAuthStore.getState();
 
-    if (!authResult.isAuthenticated) {
+    if (!isAuthenticated) {
       return {
         success: false,
         data: null,
