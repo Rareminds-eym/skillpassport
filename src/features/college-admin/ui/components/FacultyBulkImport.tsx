@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Papa from 'papaparse';
 import { apiPost } from '@/shared/api/apiClient';
 import { ssoClient } from '@/shared/api/ssoClient';
@@ -39,7 +39,7 @@ function normalizeHeader(header: string): string {
 }
 
 function validateRow(row: Record<string, unknown>, rowNumber: number): ParsedRow {
-  const email = String(row.email || row.email || '').trim();
+  const email = String(row.email || '').trim();
   const firstName = String(row.firstName || row.first_name || row.firstname || '').trim();
   const lastName = String(row.lastName || row.last_name || row.lastname || '').trim();
   const name = String(row.name || '').trim();
@@ -89,6 +89,11 @@ const FacultyBulkImport: React.FC<FacultyBulkImportProps> = ({ collegeId }) => {
   const [finalStatus, setFinalStatus] = useState<BulkUploadStatus | null>(null);
   const [errorRows, setErrorRows] = useState<BulkUploadError[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const pollAliveRef = useRef(true);
+
+  useEffect(() => () => {
+    pollAliveRef.current = false;
+  }, []);
 
   const { validRows, invalidRows } = useMemo(() => {
     if (!rows) return { validRows: 0, invalidRows: 0 };
@@ -210,7 +215,7 @@ const FacultyBulkImport: React.FC<FacultyBulkImportProps> = ({ collegeId }) => {
       }
 
       if (!organizationId && userEmail) {
-        const orgResult = await apiPost<any>('/college-admin/faculty', {
+        const orgResult = await apiPost<{ data?: { id?: string } }>('/college-admin/faculty', {
           action: 'get-organization-by-email',
           email: userEmail,
           organization_type: 'college',
@@ -257,6 +262,7 @@ const FacultyBulkImport: React.FC<FacultyBulkImportProps> = ({ collegeId }) => {
       let consecutiveFailures = 0;
 
       const poll = async () => {
+        if (!pollAliveRef.current) return;
         if (pollAttempts >= MAX_POLL_ATTEMPTS) {
           setError('Upload is still processing in the background. Please wait a few minutes and check again.');
           setUploading(false);
