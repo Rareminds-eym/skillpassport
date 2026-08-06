@@ -272,6 +272,148 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         return apiSuccess(data, context.request, { startTime });
       }
 
+      // ── Bulk Faculty Import ──
+      case 'bulk-upload-faculty-csv': {
+        // Bulk faculty CSV upload — queues processing job via SSO RPC
+        const { csv_data, organization_id, college_id } = params;
+
+        if (!csv_data || !organization_id) {
+          return apiError(400, 'VALIDATION_ERROR', 'Missing required fields: csv_data, organization_id', context.request, { startTime });
+        }
+
+        // Validate the admin actually has access to the requested college
+        const resolvedCollege = await resolveUserOrganization(supabase, {
+          knownOrgId: college_id || organization_id,
+          userId: user.id,
+          email: user.email,
+          orgType: 'college',
+        });
+        if (!resolvedCollege?.organizationId) {
+          return apiError(403, 'FORBIDDEN', 'College not found for admin', context.request, { startTime });
+        }
+
+        console.log(`[faculty] Starting bulk faculty upload for org ${organization_id}`);
+
+        if (!env.SSO_SERVICE) {
+          return apiError(500, 'SSO_ERROR', 'SSO_SERVICE not configured', context.request, { startTime });
+        }
+
+        let result;
+        try {
+          result = await env.SSO_SERVICE.queueBulkFacultyUpload({
+            csv_data,
+            organization_id,
+            admin_id: user.id,
+          });
+        } catch (err) {
+          return apiError(500, 'QUEUE_ERROR', `Failed to queue bulk faculty upload: ${err instanceof Error ? err.message : 'Unknown error'}`, context.request, { startTime });
+        }
+
+        if (!result.success) {
+          return apiError(500, 'QUEUE_ERROR', result.error || 'Failed to queue bulk faculty upload', context.request, { startTime });
+        }
+
+        console.log(`[faculty] Queued bulk faculty upload batch ${result.batch_id}`);
+
+        return apiSuccess({
+          batch_id: result.batch_id,
+          status: 'processing',
+          message: 'CSV upload queued for processing. Use batch_id to check progress.'
+        }, context.request, { startTime });
+      }
+
+      case 'bulk-upload-faculty-status': {
+        const { batch_id } = params;
+        if (!batch_id) {
+          return apiError(400, 'VALIDATION_ERROR', 'Missing batch_id', context.request, { startTime });
+        }
+
+        if (!env.SSO_SERVICE) {
+          return apiError(500, 'SSO_ERROR', 'SSO_SERVICE not configured', context.request, { startTime });
+        }
+
+        let metadata;
+        try {
+          metadata = await env.SSO_SERVICE.getBulkUploadStatus(batch_id);
+        } catch (err) {
+          return apiError(500, 'SSO_ERROR', `Failed to check upload status: ${err instanceof Error ? err.message : 'Unknown error'}`, context.request, { startTime });
+        }
+
+        if (!metadata) {
+          return apiError(404, 'NOT_FOUND', `Batch ${batch_id} not found`, context.request, { startTime });
+        }
+
+        if (metadata.status === 'pending') {
+          return apiSuccess({
+            batch_id,
+            status: 'pending',
+            total_rows: metadata.total_rows || 0,
+            processed_rows: metadata.processed_rows || 0,
+            success_count: metadata.success_count || 0,
+            failed_count: metadata.failed_count || 0,
+            pending_count: (metadata.total_rows || 0) - (metadata.processed_rows || 0),
+            progress_percentage: 0,
+            errors_count: 0
+          }, context.request, { startTime });
+        }
+
+        return apiSuccess({
+          batch_id: metadata.batch_id,
+          status: metadata.status,
+          total_rows: metadata.total_rows,
+          processed_rows: metadata.processed_rows,
+          success_count: metadata.success_count,
+          failed_count: metadata.failed_count,
+          pending_count: metadata.total_rows - metadata.processed_rows,
+          progress_percentage: metadata.total_rows > 0
+            ? Math.round((metadata.processed_rows / metadata.total_rows) * 100) : 0,
+          created_at: metadata.created_at,
+          completed_at: metadata.completed_at,
+          errors_count: metadata.errors?.length || 0
+        }, context.request, { startTime });
+      }
+
+      case 'bulk-upload-faculty-errors': {
+        const { batch_id } = params;
+        if (!batch_id) {
+          return apiError(400, 'VALIDATION_ERROR', 'Missing batch_id', context.request, { startTime });
+        }
+
+        if (!env.SSO_SERVICE) {
+          return apiError(500, 'SSO_ERROR', 'SSO_SERVICE not configured', context.request, { startTime });
+        }
+
+        let metadata;
+        try {
+          metadata = await env.SSO_SERVICE.getBulkUploadStatus(batch_id);
+        } catch (err) {
+          return apiError(500, 'SSO_ERROR', `Failed to check upload errors: ${err instanceof Error ? err.message : 'Unknown error'}`, context.request, { startTime });
+        }
+        if (!metadata) {
+          return apiError(404, 'NOT_FOUND', `Batch ${batch_id} not found`, context.request, { startTime });
+        }
+
+        return apiSuccess({
+          batch_id: metadata.batch_id,
+          errors: metadata.errors,
+          total_errors: metadata.errors.length
+        }, context.request, { startTime });
+      }
+
+      case 'download-faculty-template': {
+        const csvHeaders = [
+          'email,firstName,lastName,phone,employeeId,department,specialization,qualification,experienceYears,role',
+          '',
+        ].join('\n');
+        return new Response(csvHeaders, {
+          status: 200,
+          headers: {
+            'Content-Type': 'text/csv; charset=utf-8',
+            'Content-Disposition': `attachment; filename="faculty-import-template.csv"`,
+          },
+        });
+      }
+
       case 'update-lecturer': {
         const { id, ...updates } = params;
         if (!id) return apiError(400, 'VALIDATION_ERROR', 'Missing id', context.request, { startTime });

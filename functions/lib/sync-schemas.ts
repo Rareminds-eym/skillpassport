@@ -93,3 +93,20 @@ export const SubscriptionCancelledSchema = z.object({
   id: z.string(),
 });
 export type SubscriptionCancelledData = z.infer<typeof SubscriptionCancelledSchema>;
+
+export const FacultyCreatedSchema = z.object({
+  user_id: z.string(),
+  email: z.string(),
+  college_id: z.string(),
+  first_name: z.string().optional(),
+  last_name: z.string().optional(),
+  phone: z.string().nullable().optional(),
+  employee_id: z.string().nullable().optional(),
+  department: z.string().nullable().optional(),
+  specialization: z.string().nullable().optional(),
+  qualification: z.string().nullable().optional(),
+  experience_years: z.number().nullable().optional(),
+  role: z.string().nullable().optional(),
+  temp_password: z.string().optional(),
+});
+export type FacultyCreatedData = z.infer<typeof FacultyCreatedSchema>;
