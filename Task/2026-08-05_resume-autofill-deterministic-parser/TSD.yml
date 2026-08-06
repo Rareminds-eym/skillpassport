@@ -1,0 +1,344 @@
+task_information:
+  task_id: RESUME-PARSER-2026-08
+  title: "Resume Auto-Fill Refactor – Deterministic Parser, PDF Extraction Improvements & Save Flow"
+  task_type: "Architectural Refactor + Bug Fixes"
+  priority: High
+  estimated_effort: "Large (parser module + PDF extraction layer + save/refresh flow)"
+
+problem_statement:
+  business_requirement: >
+    Learners upload a resume (PDF/DOCX/TXT) on the Settings page and have
+    their profile — personal details, education, experience, projects,
+    skills, certifications — auto-populated from it.
+  current_behaviour: >
+    Extraction used an AI/LLM call (OpenRouter, openai/gpt-3.5-turbo with
+    fallbacks) in functions/api/career/handlers/parse-resume.ts, with
+    per-request cost and non-deterministic output.
+  expected_behaviour: >
+    Same UI flow (upload -> parse -> review/edit -> save), extraction done
+    via deterministic rules (regex, section detection, line-position
+    heuristics) with no AI/LLM call. Output schema, API contract, and
+    /resume/save endpoint are unchanged.
+
+scope:
+  in_scope:
+    - "functions/api/career/handlers/parse-resume.ts — AI call replaced with deterministic parser"
+    - "New module: functions/api/career/handlers/resume-parser/ (parser.ts, sectionParser.ts, regex.ts, types.ts)"
+    - "src/widgets/learner-dashboard/ui/ResumeParser.jsx — PDF line-reconstruction fix (extractTextFromPDF, reconstructLinesFromTextItems)"
+    - "src/widgets/learner-dashboard/ui/settings/MainSettings.jsx — handleResumeDataExtracted double-write fix"
+    - "src/widgets/learner-dashboard/ui/ProfileEditSection.jsx — handleResumeDataExtracted double-write fix (second call site)"
+    - "src/features/digital-portfolio/api/resumeParserService.ts — mergeResumeData field-mapping additions (college, school_name, branch)"
+  out_of_scope:
+    - "functions/api/resume/save.ts insert/upsert/delete semantics — investigated, not modified (see known_remaining_issues)"
+    - "Two-column PDF layouts — extraction fix targets single-column resumes"
+    - "OCR for scanned/image-based PDFs — unchanged, unsupported"
+    - "Other AI-backed career endpoints (chat, analyze-assessment, field-keywords) — unaffected"
+    - "functions/api/learners/profile.ts — separate endpoint, not modified, flagged for separate review"
+
+current_analysis:
+  files_modules_reviewed:
+    - src/widgets/learner-dashboard/ui/settings/ProfileTab.jsx
+    - src/widgets/learner-dashboard/ui/settings/MainSettings.jsx
+    - src/widgets/learner-dashboard/ui/ProfileEditSection.jsx
+    - src/widgets/learner-dashboard/ui/ResumeParser.jsx
+    - src/features/digital-portfolio/api/resumeParserService.ts
+    - src/features/digital-portfolio/api/resumeDataService.ts
+    - functions/api/career/[[path]].ts
+    - functions/api/career/handlers/parse-resume.ts
+    - functions/api/shared/ai-config.ts
+    - functions/api/resume/save.ts
+    - functions/api/learners/data/[[path]].ts
+    - functions/api/learners/profile.ts
+    - src/entities/learner/api/learnerSettingsService.js
+    - src/entities/learner/api/learnerService.ts
+    - supabase/migrations/20260526000000_schema.sql
+    - supabase/migrations/20260615055357_add_column_school_name.sql
+    - src/features/learner-profile/ui/modals/fieldConfigs.js
+    - src/features/learner-profile/ui/modals/UnifiedProfileEditModal.jsx
+    - "Live DB inspection (supabase_db_skillpassport) — learners, education, experience, projects, skills, certificates"
+  existing_flow: >
+    ResumeParser.jsx: extractTextFromFile() [PDF word-joined, no line breaks
+    / DOCX paragraph-preserving / TXT passthrough] -> parseResumeWithAI()
+    -> POST /api/career/parse-resume -> OpenRouter call -> AI JSON ->
+    Review/Edit UI -> saveResumeToTables() -> POST /api/resume/save ->
+    INSERT education/experience/skills/certificates/projects/trainings +
+    UPDATE learners -> onDataExtracted() -> handleResumeDataExtracted() ->
+    mergeResumeData() + a second updateProfile() write to learners.
+
+    Two structural issues were identified in this flow during investigation:
+    PDF extraction discarded line/paragraph structure, and a double-write
+    existed between /resume/save and the post-save updateProfile() call.
+    Both were addressed as part of this implementation; final end-to-end
+    verification is still pending where noted under known_remaining_issues.
+
+    Note: parseResumeWithAI() remains the function name in
+    resumeParserService.ts by deliberate scope decision (frontend
+    service-layer renaming was treated as documentation-only cleanup, not a
+    code change) — it no longer triggers any AI call; it forwards to the
+    same /api/career/parse-resume endpoint now served by
+    parseResumeDeterministic().
+
+proposed_solution:
+  solution_overview: >
+    1) New deterministic parser module returning the same ParsedResumeData
+    shape the AI path produced. 2) Swap the AI call in parse-resume.ts for
+    the new parser — no request/response contract change. 3) Fix PDF text
+    extraction to reconstruct line structure via PDF.js's hasEOL flag and
+    Y-position, since the parser's section detection is line-oriented and
+    the AI path never required that structure. 4) Remove the redundant
+    post-save updateProfile() write in both frontend call sites.
+  why_this_approach: >
+    Deterministic design (regex + section detection + line-position rules,
+    no NLP/ML) meets the requirement to remove AI dependency while staying
+    small (4 files) and readable. PDF extraction was fixed rather than the
+    parser redesigned for flat text: the parser's line-based design is
+    already correct for DOCX; only the PDF extractor failed to produce
+    line-structured output, and extractTextFromPDF has no other callers, so
+    the fix has no blast radius elsewhere. The redundant updateProfile()
+    write was removed rather than patched, since /resume/save is already
+    the authoritative writer for the same fields in the same user action.
+  alternatives_considered: >
+    Flat-text parser redesign — rejected, lower accuracy ceiling and would
+    degrade the working DOCX path. AI kept as fallback — rejected per
+    product direction (full AI removal). Diff-aware merge instead of
+    removing the second write — rejected; still leaves two writers to the
+    same row.
+  design_principle: >
+    /resume/save is the single source of truth for persistence during
+    resume imports. Resume import callbacks in the frontend synchronize UI
+    state only and must not perform a second write to learner profile data.
+
+technical_design:
+  architecture_diagram: |
+    Resume Upload (ResumeParser.jsx)
+      |
+      +- extractTextFromFile()
+      |    +- PDF  -> extractTextFromPDF() -> reconstructLinesFromTextItems()
+      |    |         [hasEOL + Y-position line/paragraph reconstruction]
+      |    +- DOCX -> extractTextFromDOCX()  [unchanged]
+      |    +- TXT  -> passthrough  [unchanged]
+      |
+      +- Resume Parsing Service (resumeParserService.ts) [backend call is now AI-free]
+      |    -> POST /api/career/parse-resume
+      |         -> handleParseResume() -> parseResumeDeterministic()
+      |              functions/api/career/handlers/resume-parser/
+      |              +- types.ts         — ParsedResumeData schema
+      |              +- regex.ts         — name, email, phone, social links
+      |              +- sectionParser.ts — detectSections() + parse*Block()
+      |              +- parser.ts        — orchestration
+      |
+      +- Review/Edit UI -> "Save to Database"
+      |    -> saveResumeToTables() -> POST /api/resume/save  [unchanged]
+      |         -> INSERT education/experience/skills/certificates/projects/trainings
+      |         -> UPDATE learners (flat fields)
+      |
+      +- onDataExtracted() -> handleResumeDataExtracted()  [MainSettings.jsx / ProfileEditSection.jsx]
+           -> mergeResumeData() -> setProfileData() / refresh()  [no second write]
+           -> updateEducation() / handleSave('education'|...) for array sections [unchanged]
+  sequence_diagram: |
+    Learner uploads PDF -> extractTextFromPDF() reconstructs lines
+    -> "Parse Resume" -> POST resumeText -> parseResumeDeterministic()
+    -> ParsedResumeData returned -> review/edit -> "Save to Database"
+    -> saveResumeToTables() -> POST /api/resume/save -> INSERT rows +
+    UPDATE learners -> onDataExtracted() -> handleResumeDataExtracted()
+    -> mergeResumeData() -> setProfileData() (local only) -> UI reflects
+    the /resume/save write directly.
+  database_changes: >
+    None. No migrations. All writes target existing columns on existing
+    tables (learners, education, experience, projects, skills,
+    certificates, trainings).
+  er_diagram: "Not applicable — no schema changes."
+  api_contract:
+    - endpoint: /api/career/parse-resume
+      method: POST
+      status: "Unchanged ({ resumeText } -> { success, data: ParsedResumeData }); only internal implementation changed."
+    - endpoint: /api/resume/save
+      method: POST
+      status: "Unchanged, not modified in this task."
+    - endpoint: /api/learners/data/:learnerId/:entityType
+      method: GET
+      status: "Unchanged, not modified in this task."
+
+impact_analysis:
+  affected_components:
+    - "functions/api/career/handlers/parse-resume.ts — AI call replaced with deterministic parser"
+    - "functions/api/career/[[path]].ts — removed OPENROUTER_API_KEY gate in front of /parse-resume"
+    - "functions/api/career/handlers/resume-parser/*.ts — new module, 4 files"
+    - "src/widgets/learner-dashboard/ui/ResumeParser.jsx — extractTextFromPDF rewritten"
+    - "src/widgets/learner-dashboard/ui/settings/MainSettings.jsx — handleResumeDataExtracted no longer calls updateProfile() — Implemented, pending final verification"
+    - "src/widgets/learner-dashboard/ui/ProfileEditSection.jsx — handleResumeDataExtracted no longer calls handleSave('personalInfo', ...) — Implemented, pending final verification"
+    - "src/features/digital-portfolio/api/resumeParserService.ts — mergeResumeData field-mapping extended (college, school_name, branch)"
+  not_affected:
+    - "functions/api/resume/save.ts"
+    - "functions/api/learners/data/[[path]].ts"
+    - "Manual (non-resume) edit flows for Education/Experience/Projects/Skills/Certificates"
+    - "Other AI-backed career endpoints (chat, analyze-assessment, field-keywords)"
+
+business_logic:
+  execution_flow: >
+    Upload -> client-side text extraction (PDF line-reconstructed via
+    hasEOL/Y-position) -> POST /api/career/parse-resume ->
+    parseResumeDeterministic(): regex.ts extracts name/email/phone/social
+    links; detectSections() locates Education/Experience/Skills/Projects/
+    Certifications/Bio/Languages by heading synonym; each section is parsed
+    into its schema array shape via blank-line entry splitting and
+    line-position/keyword heuristics (degree-vs-institution order,
+    role-vs-organization order, pipe-delimited Org|Role|Duration); parser.ts
+    assembles the final JSON and currently derives the top-level learner
+    education fields (university/college_school_name/branch_field) using
+    the existing primary-education selection logic
+    (pickPrimaryEducationEntry). The business rule for selecting the
+    primary education is still pending final validation — see
+    open_questions -> review/edit UI -> Save to Database ->
+    saveResumeToTables() -> /resume/save inserts rows and updates learner
+    flat fields -> onDataExtracted() merges into local UI state only.
+
+edge_cases: >
+  Unknown/unsupported section headings: content merges into the preceding
+  known section rather than being lost or corrupting another section.
+  OCR/PDF text artifacts (e.g. words fused with no space, such as
+  "Bachelorof Engineering"): handled via keyword regexes anchored only at
+  the start of the keyword. Unsupported resume layouts: multi-column PDFs
+  are not supported (extraction assumes single-column reading order);
+  multi-project resumes may still merge into a single entry for some PDF
+  layouts — see known_remaining_issues. Missing optional fields (e.g. no
+  Certifications or Languages section present): the corresponding output
+  field is returned empty rather than causing a failure. Concurrency,
+  retries, permissions, and payload validation are unchanged from the
+  pre-existing handlers.
+
+security:
+  authentication: "Unchanged — both endpoints remain wrapped in withAuth."
+  authorization: "Unchanged — /resume/save verifies learner ownership or admin role before writes."
+  validation: "Unchanged request-body validation in handleParseResume."
+  data_protection: >
+    No new PII handling. Removing the OpenRouter call reduces data exposure,
+    since resume text is no longer sent to an external LLM provider. No new
+    secrets introduced.
+
+testing_plan:
+  unit: >
+    No automated unit suite added. Verified via ad hoc scratch scripts
+    (tsx-executed, removed after use) against hand-constructed resumes
+    covering both entry-layout orderings, and against the user's real
+    resume content captured from live browser output.
+  integration: >
+    handleParseResume() invoked directly against the compiled handler,
+    confirming validation and response-envelope behavior (200, 400
+    invalid-JSON, 400 too-short-text, 405 wrong-method) matches the prior
+    AI-path contract. Parser output was validated using representative
+    resume samples and compared against the previous AI implementation's
+    output shape where applicable.
+  manual: >
+    End-to-end browser testing (upload -> parse -> review -> save ->
+    inspect Settings page), repeated per fix. Direct DB inspection via
+    docker exec psql queries to verify actual row counts/values rather than
+    relying on UI display.
+  regression: >
+    No automated suite. Manual re-testing after each fix confirmed
+    previously-working sections were not broken.
+
+risks:
+  breaking_changes: "None to the public API contract or database schema."
+
+rollback_plan:
+  - "Revert the parser implementation in handleParseResume() to the previous AI-based parser, recoverable from Git history, if critical production issues occur."
+  - "No database rollback required — no schema changes are part of this refactor."
+  - "No frontend rollback required — the /api/career/parse-resume API contract is unchanged, so rollback is backend-only."
+  - "Re-run parser validation and regression tests after rollback to confirm the reverted implementation functions correctly."
+
+known_remaining_issues:
+  - title: "Learner profile update flow — final verification pending"
+    detail: >
+      The double-write between /resume/save and the post-save
+      updateProfile() call was removed in both MainSettings.jsx and
+      ProfileEditSection.jsx. Verified by code inspection and by tracing
+      the prior bug against real database timestamps. End-to-end
+      re-verification (fresh learner account, resume import, confirm
+      pre-filled fields persist without reversion) has not yet been
+      performed.
+  - title: "Multi-project resumes may still merge into a single project"
+    detail: >
+      splitEntries() requires a blank line to detect entry boundaries.
+      PDF line-reconstruction restores line breaks but does not reliably
+      produce a detectable gap between consecutive project entries for all
+      PDF layouts (confirmed against real Y-position data on the tested
+      resume). Requires further refinement — a title-pattern-based boundary
+      fallback was proposed but not implemented.
+  - title: "Resume re-import is insert-only"
+    classification: "Production Limitation"
+    detail: >
+      /resume/save inserts into education, experience, projects,
+      certificates, and trainings with no de-duplication, update, or
+      delete-then-replace logic (skills has partial de-duplication by
+      name+type only). Repeated imports accumulate duplicate rows;
+      confirmed in testing. This is a high-impact production limitation:
+      learners are expected to upload updated resumes over time, making
+      this a common usage scenario rather than a rare edge case. Agreed
+      long-term direction: move to a synchronization-based approach —
+      fetch the learner's existing records, compare each parsed record
+      against them using deterministic matching rules per entity, leave
+      unchanged records untouched, update changed records, and insert new
+      records. Handling for existing records no longer present in the
+      latest resume is not yet decided (options include soft-hide, delete,
+      or leave untouched) and requires a separate business-rule decision.
+      This is a future enhancement and is not part of the current
+      implementation.
+
+open_questions:
+  - "Resume re-import: confirm the business rule for existing records no longer present in a re-imported resume — soft-hide, delete, or leave untouched (blocks known_remaining_issues item 3)."
+  - "Multi-project boundary detection: build the title-pattern fallback now, or accept current behavior short-term? (blocks known_remaining_issues item 2)"
+  - "When degree-type and branch/field text are fused with no separator, keep copying the full degree string into branch_field, or invest in best-effort splitting?"
+  - "Is functions/api/learners/profile.ts dead code, or does it serve a purpose outside the surfaces reviewed here? Not resolved."
+
+developer_self_review:
+  - checked: true
+    item: "Deterministic parser produces the same ParsedResumeData schema as the former AI implementation, validated against representative resume samples"
+  - checked: true
+    item: "No AI/LLM call remains in the /api/career/parse-resume code path"
+  - checked: true
+    item: "PDF text extraction reconstructs line/paragraph structure via PDF.js layout metadata, not resume-specific logic"
+  - checked: true
+    item: "Section-heading dictionary covers synonyms found in real-resume testing"
+  - checked: true
+    item: "Education and Experience parsers handle both common entry-layout orderings"
+  - checked: true
+    item: "Colon-delimited skill category labels stripped before extraction"
+  - checked: true
+    item: "Consecutive single-line certificates split into individual entries"
+  - checked: true
+    item: "Double-write on learner profile fields removed in both frontend call sites — implemented, pending final verification"
+  - checked: false
+    item: "Multi-project merge issue — not fixed"
+  - checked: false
+    item: "Insert-only/duplicate-record behavior on re-import — not fixed, pending product decision"
+  - checked: false
+    item: "No automated unit/integration test suite added"
+
+versioning:
+  - version: v1.0
+    scope: "Deterministic parser module, AI removal from parse-resume.ts, basic-field extraction"
+    status: "New"
+  - version: v1.1
+    scope: "Section detection and array-entry parsing"
+    status: "New"
+  - version: v1.2
+    scope: "PDF line/paragraph reconstruction fix"
+    status: "New — Modified extractTextFromPDF; DOCX/TXT extraction unchanged"
+  - version: v1.3
+    scope: "Parser refinements: layout-robust field assignment, skill-label stripping, single-line certificate splitting, heading-dictionary expansion"
+    status: "Modified"
+  - version: v1.4
+    scope: "Double-write fix for learner profile fields"
+    status: "Modified — pending final verification"
+  - version: v2.0
+    scope: "Proposed: multi-project merge fix, re-import strategy decision, full regression pass"
+    status: "Not Started"
+
+unchanged_in_this_task:
+  - "Database schema (no migrations)"
+  - "/api/resume/save endpoint contract and internal logic"
+  - "/api/learners/data/:id/:entityType endpoint"
+  - "DOCX/TXT text extraction"
+  - "Manual (non-resume) edit modals for all six data types"
+  - "Other AI-backed career features (chat, assessment analysis, field-keyword generation)"

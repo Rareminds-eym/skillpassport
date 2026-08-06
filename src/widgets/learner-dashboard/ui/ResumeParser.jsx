@@ -236,6 +236,103 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, learnerData, user }
     });
   };
 
+  /**
+   * Group a page's flat TextItem array into visual lines, and detect
+   * paragraph/section gaps between lines using vertical spacing, so
+   * multi-entry resume sections (Projects, Education, Experience,
+   * Certificates, ...) come out separated by a blank line — the boundary
+   * splitEntries() in the deterministic parser relies on.
+   *
+   * pdfjs-dist's getTextContent() returns text fragments with no inherent
+   * line structure by default — each item carries `hasEOL` (true if it's the
+   * last fragment on its visual line, per PDF.js's own text-layout analysis)
+   * which is used as the primary line-break signal. A Y-position
+   * (transform[5]) drop is used as a fallback only for the rare case an item
+   * has no explicit hasEOL but is still on a new line.
+   *
+   * Paragraph-gap detection: once a line is complete, its Y-position is
+   * compared to the previous line's Y-position. The gap between consecutive
+   * lines is normally consistent (roughly one line-height) within a
+   * document — a gap noticeably larger than that baseline indicates a blank
+   * line or extra spacing in the original PDF layout (e.g. between a section
+   * heading and its content, or between two entries in a list), so a blank
+   * line ("\n\n") is emitted instead of a single line break. The baseline
+   * itself is computed from the actual line gaps seen on the page (not a
+   * hardcoded pixel value), so this adapts to each PDF's own font size/
+   * line-height rather than assuming any particular resume's layout.
+   */
+  const reconstructLinesFromTextItems = (items) => {
+    // First pass: group items into lines (existing hasEOL/Y-delta logic),
+    // recording each completed line's starting Y-position alongside it.
+    const lineEntries = [];
+    let currentLineParts = [];
+    let currentLineY = null;
+    let previousY = null;
+
+    const flushLine = () => {
+      // Join same-line fragments with a space (matches the original
+      // .join(' ') behavior for word-spacing) — most PDFs don't embed a
+      // literal space between adjacent text runs on the same line.
+      const line = currentLineParts.join(' ').replace(/\s+/g, ' ').trim();
+      if (line) lineEntries.push({ text: line, y: currentLineY });
+      currentLineParts = [];
+      currentLineY = null;
+    };
+
+    items.forEach((item) => {
+      const y = item.transform?.[5];
+
+      if (previousY !== null && y !== undefined && currentLineParts.length > 0) {
+        const lineHeight = item.height || 12;
+        if (Math.abs(y - previousY) > lineHeight * 0.5) {
+          flushLine();
+        }
+      }
+
+      if (item.str) currentLineParts.push(item.str);
+      if (currentLineY === null && y !== undefined) currentLineY = y;
+      if (y !== undefined) previousY = y;
+
+      if (item.hasEOL) flushLine();
+    });
+
+    flushLine();
+
+    if (lineEntries.length === 0) return '';
+
+    // Second pass: compute the typical (median) gap between consecutive
+    // lines' Y-positions, then insert a blank line wherever a gap is
+    // significantly larger than that baseline.
+    const gaps = [];
+    for (let i = 1; i < lineEntries.length; i++) {
+      const prevY = lineEntries[i - 1].y;
+      const currY = lineEntries[i].y;
+      if (prevY !== null && currY !== null) {
+        gaps.push(Math.abs(prevY - currY));
+      }
+    }
+
+    const sortedGaps = [...gaps].sort((a, b) => a - b);
+    const medianGap = sortedGaps.length > 0 ? sortedGaps[Math.floor(sortedGaps.length / 2)] : 0;
+    // A gap more than ~1.6x the typical line-to-line gap reads as a blank
+    // line / paragraph break in the original layout rather than ordinary
+    // line spacing.
+    const PARAGRAPH_GAP_MULTIPLIER = 1.6;
+    const paragraphGapThreshold = medianGap * PARAGRAPH_GAP_MULTIPLIER;
+
+    let result = lineEntries[0].text;
+    for (let i = 1; i < lineEntries.length; i++) {
+      const prevY = lineEntries[i - 1].y;
+      const currY = lineEntries[i].y;
+      const gap = prevY !== null && currY !== null ? Math.abs(prevY - currY) : 0;
+
+      const isParagraphBreak = medianGap > 0 && gap > paragraphGapThreshold;
+      result += (isParagraphBreak ? '\n\n' : '\n') + lineEntries[i].text;
+    }
+
+    return result;
+  };
+
   const extractTextFromPDF = async (arrayBuffer) => {
     try {
 
@@ -261,11 +358,7 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, learnerData, user }
           const page = await pdf.getPage(pageNum);
           const textContent = await page.getTextContent();
 
-          // Combine all text items with proper spacing
-          const pageText = textContent.items
-            .map(item => item.str)
-            .filter(str => str.trim().length > 0) // Remove empty strings
-            .join(' ');
+          const pageText = reconstructLinesFromTextItems(textContent.items);
 
           fullText += pageText + '\n\n';
         } catch {
@@ -312,12 +405,19 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, learnerData, user }
       // Extract text from file
       const resumeText = await extractTextFromFile(file);
 
+      // TEMP DIAGNOSTIC — remove after root-cause is confirmed.
+      console.log('=== RESUME_PARSER_DEBUG: extracted text length ===', resumeText?.length);
+      console.log('=== RESUME_PARSER_DEBUG: extracted text (full) ===\n' + resumeText);
+
       if (!resumeText || resumeText.trim().length === 0) {
         throw new Error('Could not extract text from file');
       }
 
       // Parse resume using AI
       const parsedData = sanitizeExtractedData(await parseResumeWithAI(resumeText));
+
+      // TEMP DIAGNOSTIC — remove after root-cause is confirmed.
+      console.log('=== RESUME_PARSER_DEBUG: parsedData from API ===', JSON.stringify(parsedData, null, 2));
 
       if (!parsedData) {
         throw new Error('Failed to parse resume data');
