@@ -412,7 +412,7 @@ function PaymentSuccess() {
     razorpay_order_id: stateData.razorpay_order_id || '',
     razorpay_signature: stateData.razorpay_signature || '',
   };
-  
+
   // Extract primitives for stable useCallback dependencies
   const razorpayPaymentId = paymentParams.razorpay_payment_id;
   const userId = user?.id;
@@ -462,6 +462,17 @@ function PaymentSuccess() {
   const getDashboardUrl = useCallback(() => {
     const userRole = getUserRole(user, role);
     log.info('Getting dashboard URL for role:', userRole);
+
+    // CRITICAL FIX: For ALL recruiter admins after subscription payment,
+    // redirect to onboarding to set/update company details
+    const isRecruiterAdmin = userRole === 'company_admin' || userRole === 'owner' ||
+      (userRole === 'recruiter' && (user?.roles?.includes('owner') || user?.roles?.includes('company_admin')));
+
+    if (isRecruiterAdmin) {
+      log.info('Recruiter admin detected after payment → redirecting to onboarding');
+      return '/recruitment/onboarding/step-1';
+    }
+
     return getRouteForRole(userRole ?? '');
   }, [user, role]);
 
@@ -655,10 +666,10 @@ function PaymentSuccess() {
         toast('Receipt is being prepared. Please try again in a moment or check your email.', { icon: '⏳', duration: 5000 });
         return;
       }
-      
+
       // Strategy 1: Try using the receipt key/URL from payment response
       let fileIdentifier = receiptKey || receiptUrl;
-      
+
       // Strategy 2: If not available, construct from payment ID and try to fetch
       if (!fileIdentifier && razorpayPaymentId && userId) {
         if (
@@ -677,11 +688,11 @@ function PaymentSuccess() {
         fileIdentifier = `payment_pdf/user_${userPrefix}/${sanitizedPaymentId}`;
         log.info('Constructed receipt identifier from payment ID:', fileIdentifier);
       }
-      
+
       if (fileIdentifier) {
         log.info('Requesting presigned URL for:', fileIdentifier);
         const presignedUrl = await getPaymentReceiptPresignedUrl(fileIdentifier, 3600);
-        
+
         // Use shared download helper with fallback mechanism
         try {
           await downloadFileFromUrl(presignedUrl, generateReceiptFilename());
@@ -692,7 +703,7 @@ function PaymentSuccess() {
           throw downloadError;
         }
       }
-      
+
       // Receipt not yet available (server may still be processing)
       toast('Receipt is being prepared. Please try again in a moment or check your email.', { icon: '⏳', duration: 5000 });
     } catch (error) {
