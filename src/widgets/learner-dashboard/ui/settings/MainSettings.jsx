@@ -52,7 +52,6 @@ const MainSettings = () => {
   const user = useUser();
   const location = useLocation();
   const userEmail = user?.email;
-  const recentUpdatesRef = useRef(null);
 
   const {
     learnerData,
@@ -68,7 +67,6 @@ const MainSettings = () => {
     learnerData: learnerDataWithEducation,
     loading: educationLoading,
     updateEducation,
-    updateTechnicalSkills,
     updateSoftSkills,
     updateSkills,
     updateExperience,
@@ -82,40 +80,30 @@ const MainSettings = () => {
   // Fetch certificates from dedicated table
   const {
     certificates: tableCertificates,
-    loading: certificatesLoading,
-    error: certificatesError,
     refresh: refreshCertificates
   } = useLearnerCertificates(learnerId, !!learnerId);
 
   // Fetch projects from dedicated table
   const {
     projects: tableProjects,
-    loading: projectsLoading,
-    error: projectsError,
     refresh: refreshProjects
   } = useLearnerProjects(learnerId, !!learnerId);
 
   // Fetch experience from dedicated table
   const {
     experience: tableExperience,
-    loading: experienceLoading,
-    error: experienceError,
     refresh: refreshExperience
   } = useLearnerExperience(learnerId, !!learnerId);
 
   // Fetch education from dedicated table
   const {
     education: tableEducation,
-    loading: educationTableLoading,
-    error: educationTableError,
     refresh: refreshEducation
   } = useLearnerEducation(learnerId, !!learnerId);
 
   // Fetch technical skills from dedicated table
   const {
     skills: tableTechnicalSkills,
-    loading: technicalSkillsLoading,
-    error: technicalSkillsError,
     refresh: refreshTechnicalSkills
   } = useLearnerTechnicalSkills(learnerId, !!learnerId);
 
@@ -123,7 +111,6 @@ const MainSettings = () => {
   const {
     skills: tableSoftSkills,
     loading: softSkillsLoading,
-    error: softSkillsError,
     refresh: refreshSoftSkills
   } = useLearnerSoftSkills(learnerId, !!learnerId);
 
@@ -1123,7 +1110,7 @@ const MainSettings = () => {
         // Check for patterns like "1st year", "2nd year", "3rd year", "4th year"
         const yearMatch = lowerSemester.match(/(\d+)(?:st|nd|rd|th)?\s*year/);
         if (yearMatch) {
-          yearNumber = parseInt(yearMatch[1]);
+          yearNumber = parseInt(yearMatch[1], 10);
           
           // Validate year based on program type
           if (dataToSave.grade && dataToSave.grade.includes('UG') && yearNumber > 5) {
@@ -1135,7 +1122,7 @@ const MainSettings = () => {
           // Check for semester numbers and convert to year
           const semMatch = lowerSemester.match(/(?:semester|sem)?\s*(\d+)/);
           if (semMatch) {
-            semesterNumber = parseInt(semMatch[1]);
+            semesterNumber = parseInt(semMatch[1], 10);
             
             // Validate semester based on program type
             if (dataToSave.grade && dataToSave.grade.includes('UG') && semesterNumber > 10) {
