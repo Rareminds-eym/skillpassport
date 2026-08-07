@@ -1,14 +1,14 @@
 import {
-    BookmarkIcon,
-    CalendarIcon,
-    CheckIcon,
-    ChevronDownIcon,
-    EyeIcon,
-    FunnelIcon,
-    Squares2X2Icon,
-    StarIcon,
-    TableCellsIcon,
-    XMarkIcon
+  BookmarkIcon,
+  CalendarIcon,
+  CheckIcon,
+  ChevronDownIcon,
+  EyeIcon,
+  FunnelIcon,
+  Squares2X2Icon,
+  StarIcon,
+  TableCellsIcon,
+  XMarkIcon
 } from '@heroicons/react/24/outline';
 import { BookmarkIcon as BookmarkSolidIcon } from '@heroicons/react/24/solid';
 import { useEffect, useMemo, useState } from 'react';
@@ -18,7 +18,7 @@ import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('TalentPool');
 import { SearchBar } from '@/shared/ui';
-import { FeatureGate } from '@/features/subscription';
+// import { FeatureGate } from '@/features/subscription'; // Commented out - talent pool always accessible
 
 import { useLearners } from '@/entities/learner';
 import { createInterview } from '@/features/opportunities';
@@ -28,7 +28,7 @@ import { addCandidateToShortlist, getShortlists } from '@/features/opportunities
 import { useSearch } from '@/shared/model/searchStore';
 const FilterSection = ({ title, children, defaultOpen = false }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
-  
+
   return (
     <div className="border-b border-gray-200 py-4">
       <button
@@ -269,7 +269,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, candidate, onSuccess }) => {
 
       onSuccess?.();
       onClose();
-      
+
       // Reset form
       setFormData({
         job_title: '',
@@ -329,7 +329,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, candidate, onSuccess }) => {
               <input
                 type="text"
                 value={formData.job_title}
-                onChange={(e) => setFormData({...formData, job_title: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, job_title: e.target.value })}
                 className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                 placeholder="e.g., Software Engineer, Data Analyst"
               />
@@ -344,7 +344,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, candidate, onSuccess }) => {
                 <input
                   type="text"
                   value={formData.interviewer}
-                  onChange={(e) => setFormData({...formData, interviewer: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, interviewer: e.target.value })}
                   className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                   placeholder="John Smith"
                 />
@@ -356,7 +356,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, candidate, onSuccess }) => {
                 <input
                   type="email"
                   value={formData.interviewer_email}
-                  onChange={(e) => setFormData({...formData, interviewer_email: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, interviewer_email: e.target.value })}
                   className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                   placeholder="john@company.com"
                 />
@@ -372,7 +372,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, candidate, onSuccess }) => {
                 <input
                   type="date"
                   value={formData.date}
-                  onChange={(e) => setFormData({...formData, date: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                   min={minDate}
                   className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
@@ -384,7 +384,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, candidate, onSuccess }) => {
                 <input
                   type="time"
                   value={formData.time}
-                  onChange={(e) => setFormData({...formData, time: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, time: e.target.value })}
                   className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
               </div>
@@ -398,7 +398,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, candidate, onSuccess }) => {
                 </label>
                 <select
                   value={formData.duration}
-                  onChange={(e) => setFormData({...formData, duration: parseInt(e.target.value)})}
+                  onChange={(e) => setFormData({ ...formData, duration: parseInt(e.target.value) })}
                   className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
                   <option value={30}>30 minutes</option>
@@ -414,7 +414,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, candidate, onSuccess }) => {
                 </label>
                 <select
                   value={formData.type}
-                  onChange={(e) => setFormData({...formData, type: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, type: e.target.value })}
                   className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
                   <option value="Technical">Technical</option>
@@ -434,7 +434,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, candidate, onSuccess }) => {
                 </label>
                 <select
                   value={formData.meeting_type}
-                  onChange={(e) => setFormData({...formData, meeting_type: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, meeting_type: e.target.value })}
                   className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
                   <option value="meet">Google Meet</option>
@@ -451,7 +451,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, candidate, onSuccess }) => {
                 <input
                   type="url"
                   value={formData.meeting_link}
-                  onChange={(e) => setFormData({...formData, meeting_link: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, meeting_link: e.target.value })}
                   className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                   placeholder="https://meet.google.com/abc-defg-hij"
                 />
@@ -465,7 +465,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, candidate, onSuccess }) => {
               </label>
               <textarea
                 value={formData.meeting_notes}
-                onChange={(e) => setFormData({...formData, meeting_notes: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, meeting_notes: e.target.value })}
                 rows={3}
                 className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                 placeholder="Any additional notes or instructions for the interview..."
@@ -520,8 +520,8 @@ const SaveSearchModal = ({ isOpen, onClose, searchQuery, filters, onSuccess }) =
       if (searchQuery) nameParts.push(searchQuery);
       if (filters.skills.length > 0) nameParts.push(filters.skills.slice(0, 2).join(', '));
       if (filters.locations.length > 0) nameParts.push(filters.locations[0]);
-      
-      const autoName = nameParts.length > 0 
+
+      const autoName = nameParts.length > 0
         ? nameParts.join(' - ').slice(0, 50)
         : 'My Search';
       setSearchName(autoName);
@@ -536,14 +536,14 @@ const SaveSearchModal = ({ isOpen, onClose, searchQuery, filters, onSuccess }) =
     }
 
     // Check if there's anything to save
-    const hasFilters = filters.skills.length > 0 || 
-                       filters.courses.length > 0 || 
-                       filters.badges.length > 0 ||
-                       filters.locations.length > 0 || 
-                       filters.years.length > 0 ||
-                       filters.minScore !== 0 || 
-                       filters.maxScore !== 100;
-    
+    const hasFilters = filters.skills.length > 0 ||
+      filters.courses.length > 0 ||
+      filters.badges.length > 0 ||
+      filters.locations.length > 0 ||
+      filters.years.length > 0 ||
+      filters.minScore !== 0 ||
+      filters.maxScore !== 100;
+
     if (!searchQuery && !hasFilters) {
       setError('Please add search terms or filters before saving');
       return;
@@ -555,7 +555,7 @@ const SaveSearchModal = ({ isOpen, onClose, searchQuery, filters, onSuccess }) =
     try {
       // Build search criteria object
       const searchCriteria: any = {};
-      
+
       if (searchQuery) searchCriteria.query = searchQuery;
       if (filters.skills.length > 0) searchCriteria.skills = filters.skills;
       if (filters.courses.length > 0) searchCriteria.courses = filters.courses;
@@ -781,14 +781,14 @@ const CandidateCard = ({ candidate, onViewProfile, onShortlist, onScheduleInterv
             <EyeIcon className="h-3 w-3 mr-1" />
             Preview
           </button>
-          <button 
+          <button
             onClick={() => onShortlist(candidate)}
             className="inline-flex items-center px-2 py-1 border border-primary-300 rounded text-xs font-medium text-primary-700 bg-primary-50 hover:bg-primary-100"
           >
             <BookmarkIcon className="h-3 w-3 mr-1" />
             Shortlist
           </button>
-          <button 
+          <button
             onClick={() => onScheduleInterview(candidate)}
             className="inline-flex items-center px-2 py-1 border border-green-300 rounded text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100"
           >
@@ -1611,12 +1611,12 @@ type RecruiterOutletContext = {
 //     // Apply comprehensive search query filter
 //     if (searchQuery && searchQuery.trim() !== '') {
 //       const query = searchQuery.toLowerCase().trim();
-      
-      
+
+
 //       result = result.filter(learner => {
 //         // Access the profile data - handles both nested and direct structures
 //         const profile = (learner as any).profile || learner;
-        
+
 //         // Helper function to safely check string fields
 //         const matchesField = (field: any): boolean => {
 //           if (!field) return false;
@@ -1647,7 +1647,7 @@ type RecruiterOutletContext = {
 //         if (matchesField(learner.location) || matchesField(profile.location)) return true;
 //         if (matchesField(profile.university)) return true;
 //         if (matchesField(profile.registration_number)) return true;
-        
+
 //         // Skills array - handle both formats (string array and object array)
 //         const skillsToCheck = learner.skills || profile.skills;
 //         if (skillsToCheck && Array.isArray(skillsToCheck)) {
@@ -1663,38 +1663,38 @@ type RecruiterOutletContext = {
 //             return true;
 //           }
 //         }
-        
+
 //         // Projects - search in title, tech, techStack, technologies, description
 //         if (searchInArray(profile.projects, ['title', 'tech', 'techStack', 'technologies', 'description', 'skills', 'status'])) {
 //           return true;
 //         }
-        
+
 //         // Education - check all relevant fields
 //         if (searchInArray(profile.education, ['yearOfPassing', 'university', 'degree', 'department', 'college_school_name', 'level', 'cgpa', 'status'])) {
 //           return true;
 //         }
-        
+
 //         // Experience - comprehensive check including verified status
 //         if (profile.experience && Array.isArray(profile.experience)) {
 //           const expMatch = profile.experience.some((exp: any) => {
 //             if (!exp) return false;
-            
+
 //             // Check text fields
 //             if (matchesField(exp.duration)) return true;
 //             if (matchesField(exp.role)) return true;
 //             if (matchesField(exp.organization)) return true;
-            
+
 //             // Handle verified status search
 //             if (exp.verified === true && (query.includes('verified') || query === 'true')) return true;
 //             if (exp.verified === false && (query.includes('unverified') || query.includes('not verified') || query === 'false')) return true;
-            
+
 //             return false;
 //           });
 //           if (expMatch) {
 //             return true;
 //           }
 //         }
-        
+
 //         // Soft Skills - name, description, type
 //         if (profile.softSkills && Array.isArray(profile.softSkills)) {
 //           const softSkillMatch = profile.softSkills.some((skill: any) => {
@@ -1709,12 +1709,12 @@ type RecruiterOutletContext = {
 //             return true;
 //           }
 //         }
-        
+
 //         // Certificates - comprehensive search
 //         if (profile.certificates && Array.isArray(profile.certificates)) {
 //           const certMatch = profile.certificates.some((cert: any) => {
 //             if (!cert) return false;
-            
+
 //             // Check all certificate fields
 //             if (matchesField(cert.level)) return true;
 //             if (matchesField(cert.title)) return true;
@@ -1723,15 +1723,15 @@ type RecruiterOutletContext = {
 //             if (matchesField(cert.description)) return true;
 //             if (matchesField(cert.credentialId)) return true;
 //             if (matchesField(cert.status)) return true;
-            
+
 //             return false;
 //           });
-          
+
 //           if (certMatch) {
 //             return true;
 //           }
 //         }
-        
+
 //         // Technical Skills - name, level, category
 //         if (profile.technicalSkills && Array.isArray(profile.technicalSkills)) {
 //           const techMatch = profile.technicalSkills.some((skill: any) => {
@@ -1743,12 +1743,12 @@ type RecruiterOutletContext = {
 //             if (skill.verified === true && query.includes('verified')) return true;
 //             return false;
 //           });
-          
+
 //           if (techMatch) {
 //             return true;
 //           }
 //         }
-        
+
 //         // Training - if exists
 //         if (profile.training && Array.isArray(profile.training)) {
 //           const trainingMatch = profile.training.some((training: any) => {
@@ -1763,10 +1763,10 @@ type RecruiterOutletContext = {
 //             return true;
 //           }
 //         }
-        
+
 //         return false;
 //       });
-      
+
 //       if (result.length > 0) {
 //       }
 //     }
@@ -2447,15 +2447,15 @@ type RecruiterOutletContext = {
 //     // Apply comprehensive search query filter with lexicographical sorting
 //     if (searchQuery && searchQuery.trim() !== '') {
 //       const query = searchQuery.toLowerCase().trim();
-      
-      
+
+
 //       // Store match results with the matched field for sorting
 //       const resultsWithScores = learners.map(learner => {
 //         // Access the profile data - handles both nested and direct structures
 //         const profile = (learner as any).profile || learner;
 //         let matchedField = '';
 //         let isMatch = false;
-        
+
 //         // Helper function to safely check string fields and track matches
 //         const matchesField = (field: any, fieldName: string = ''): boolean => {
 //           if (!field) return false;
@@ -2497,7 +2497,7 @@ type RecruiterOutletContext = {
 //         if (matchesField(learner.location, 'location') || matchesField(profile.location, 'location')) return { learner, matchedField };
 //         if (matchesField(profile.university, 'university')) return { learner, matchedField };
 //         if (matchesField(profile.registration_number, 'registration')) return { learner, matchedField };
-        
+
 //         // Skills array - handle both formats (string array and object array)
 //         const skillsToCheck = learner.skills || profile.skills;
 //         if (skillsToCheck && Array.isArray(skillsToCheck)) {
@@ -2521,28 +2521,28 @@ type RecruiterOutletContext = {
 //             return { learner, matchedField };
 //           }
 //         }
-        
+
 //         // Projects - search in title, tech, techStack, technologies, description
 //         if (searchInArray(profile.projects, ['title', 'id', 'link', 'tech', 'techStack', 'technologies', 'organization', 'description', 'skills', 'status','enabled','processing','duration','github'], 'projects')) {
 //           return { learner, matchedField };
 //         }
-        
+
 //         // Education - check all relevant fields
 //         if (searchInArray(profile.education, ['yearOfPassing', 'university', 'degree', 'department', 'college_school_name', 'level', 'cgpa', 'status'], 'education')) {
 //           return { learner, matchedField };
 //         }
-        
+
 //         // Experience - comprehensive check including verified status
 //         if (profile.experience && Array.isArray(profile.experience)) {
 //           const expMatch = profile.experience.some((exp: any) => {
 //             if (!exp) return false;
-            
+
 //             // Check text fields
 //             if (matchesField(exp.duration, 'experience')) return true;
 //             if (matchesField(exp.role, 'experience')) return true;
 //             if (matchesField(exp.duration, 'experience')) return true;
 //             if (matchesField(exp.organization, 'experience')) return true;
-            
+
 //             // Handle verified status search
 //             if (exp.verified === true && (query.includes('verified') || query === 'true')) {
 //               if (!isMatch) matchedField = 'verified experience';
@@ -2570,7 +2570,7 @@ type RecruiterOutletContext = {
 //             return { learner, matchedField };
 //           }
 //         }
-        
+
 //         // Soft Skills - name, description, type
 //         if (profile.softSkills && Array.isArray(profile.softSkills)) {
 //           const softSkillMatch = profile.softSkills.some((skill: any) => {
@@ -2586,12 +2586,12 @@ type RecruiterOutletContext = {
 //             return { learner, matchedField };
 //           }
 //         }
-        
+
 //         // Certificates - comprehensive search
 //         if (profile.certificates && Array.isArray(profile.certificates)) {
 //           const certMatch = profile.certificates.some((cert: any) => {
 //             if (!cert) return false;
-            
+
 //             // Check all certificate fields
 //             if (matchesField(cert.id, 'certificate')) return true;
 //             if (matchesField(cert.link, 'certificate')) return true;
@@ -2614,7 +2614,7 @@ type RecruiterOutletContext = {
 //               isMatch = true;
 //               return true;
 //             }
-            
+
 //             // Handle processing status search
 //             if (cert.processing === true && (query.includes('processing') || query.includes('pending'))) {
 //               if (!isMatch) matchedField = 'processing certificate';
@@ -2626,15 +2626,15 @@ type RecruiterOutletContext = {
 //               isMatch = true;
 //               return true;
 //             }
-            
+
 //             return false;
 //           });
-          
+
 //           if (certMatch) {
 //             return { learner, matchedField };
 //           }
 //         }
-        
+
 //         // Technical Skills - name, level, category
 //         if (profile.technicalSkills && Array.isArray(profile.technicalSkills)) {
 //           const techMatch = profile.technicalSkills.some((skill: any) => {
@@ -2650,12 +2650,12 @@ type RecruiterOutletContext = {
 //             }
 //             return false;
 //           });
-          
+
 //           if (techMatch) {
 //             return { learner, matchedField };
 //           }
 //         }
-        
+
 //         // Training - if exists
 //         if (profile.training && Array.isArray(profile.training)) {
 //           const trainingMatch = profile.training.some((training: any) => {
@@ -2670,17 +2670,17 @@ type RecruiterOutletContext = {
 //             return { learner, matchedField };
 //           }
 //         }
-        
+
 //         return null;
 //       }).filter(item => item !== null);
-      
+
 //       // Sort results lexicographically by matched field
 //       resultsWithScores.sort((a, b) => {
 //         return a.matchedField.localeCompare(b.matchedField);
 //       });
-      
+
 //       result = resultsWithScores.map(item => item.learner);
-      
+
 //       if (result.length > 0) {
 //       }
 //     }
@@ -3355,13 +3355,13 @@ const TalentPoolContent = () => {
     // Apply comprehensive search query filter with lexicographical sorting
     if (searchQuery && searchQuery.trim() !== '') {
       const query = searchQuery.toLowerCase().trim();
-      
-      
+
+
       // Store match results with the matched field for sorting
       const resultsWithScores = learners.map(learner => {
         let matchedField = '';
         let isMatch = false;
-        
+
         // Helper function to safely check string fields and track matches
         const matchesField = (field: any, fieldName: string = ''): boolean => {
           if (!field) return false;
@@ -3410,7 +3410,7 @@ const TalentPoolContent = () => {
         if (matchesField(learner.college, 'college')) return { learner, matchedField };
         if (matchesField(learner.registration_number?.toString(), 'registration')) return { learner, matchedField };
         if (matchesField(learner.bio, 'bio')) return { learner, matchedField };
-        
+
         // Social media and portfolio links
         if (matchesField(learner.github_link, 'github')) return { learner, matchedField: matchedField || 'github' };
         if (matchesField(learner.linkedin_link, 'linkedin')) return { learner, matchedField: matchedField || 'linkedin' };
@@ -3418,7 +3418,7 @@ const TalentPoolContent = () => {
         if (matchesField(learner.facebook_link, 'facebook')) return { learner, matchedField: matchedField || 'facebook' };
         if (matchesField(learner.instagram_link, 'instagram')) return { learner, matchedField: matchedField || 'instagram' };
         if (matchesField(learner.portfolio_link, 'portfolio')) return { learner, matchedField: matchedField || 'portfolio' };
-        
+
         // Other social links array
         if (learner.other_social_links && Array.isArray(learner.other_social_links)) {
           const socialMatch = learner.other_social_links.some((link: any) => {
@@ -3431,10 +3431,10 @@ const TalentPoolContent = () => {
           });
           if (socialMatch) return { learner, matchedField };
         }
-        
+
         if (matchesField(learner.dept, 'dept')) return { learner, matchedField };
         if (matchesField(learner.location, 'location')) return { learner, matchedField };
-        
+
         // Skills array - from skills table
         if (learner.skills && Array.isArray(learner.skills)) {
           const skillMatch = learner.skills.some((skill: any) => {
@@ -3457,12 +3457,12 @@ const TalentPoolContent = () => {
             return { learner, matchedField };
           }
         }
-        
+
         // Projects - from projects table
         if (learner.projects && Array.isArray(learner.projects)) {
           const projectMatch = learner.projects.some((project: any) => {
             if (!project) return false;
-            
+
             if (matchesField(project.id, 'project')) return true;
             if (matchesField(project.title, 'project')) return true;
             if (matchesField(project.tech_stack, 'project')) return true;
@@ -3474,7 +3474,7 @@ const TalentPoolContent = () => {
             if (matchesField(project.start_date, 'project')) return true;
             if (matchesField(project.end_date, 'project')) return true;
             if (matchesField(project.organization, 'project')) return true;
-            
+
             // Handle enabled status
             if (project.enabled === true && query.includes('enabled')) {
               if (!isMatch) matchedField = 'enabled project';
@@ -3486,19 +3486,19 @@ const TalentPoolContent = () => {
               isMatch = true;
               return true;
             }
-            
+
             return false;
           });
           if (projectMatch) {
             return { learner, matchedField };
           }
         }
-        
+
         // Experience - from experience table
         if (learner.experience && Array.isArray(learner.experience)) {
           const expMatch = learner.experience.some((exp: any) => {
             if (!exp) return false;
-            
+
             // Check all text fields
             if (matchesField(exp.id, 'experience')) return true;
             if (matchesField(exp.role, 'experience')) return true;
@@ -3506,7 +3506,7 @@ const TalentPoolContent = () => {
             if (matchesField(exp.organization, 'experience')) return true;
             if (matchesField(exp.start_date, 'experience')) return true;
             if (matchesField(exp.end_date, 'experience')) return true;
-            
+
             // Handle verified status search
             if (exp.verified === true && (query.includes('verified') || query === 'true')) {
               if (!isMatch) matchedField = 'verified experience';
@@ -3518,19 +3518,19 @@ const TalentPoolContent = () => {
               isMatch = true;
               return true;
             }
-            
+
             return false;
           });
           if (expMatch) {
             return { learner, matchedField };
           }
         }
-        
+
         // Certificates - from certificates table
         if (learner.certificates && Array.isArray(learner.certificates)) {
           const certMatch = learner.certificates.some((cert: any) => {
             if (!cert) return false;
-            
+
             // Check all certificate fields
             if (matchesField(cert.id, 'certificate')) return true;
             if (matchesField(cert.link, 'certificate')) return true;
@@ -3541,7 +3541,7 @@ const TalentPoolContent = () => {
             if (matchesField(cert.issued_on, 'certificate')) return true;
             if (matchesField(cert.description, 'certificate')) return true;
             if (matchesField(cert.credential_id, 'certificate')) return true;
-            
+
             // Handle enabled status search
             if (cert.enabled === true && query.includes('enabled')) {
               if (!isMatch) matchedField = 'enabled certificate';
@@ -3553,15 +3553,15 @@ const TalentPoolContent = () => {
               isMatch = true;
               return true;
             }
-            
+
             return false;
           });
-          
+
           if (certMatch) {
             return { learner, matchedField };
           }
         }
-        
+
         // Trainings - from trainings table
         if (learner.trainings && Array.isArray(learner.trainings)) {
           const trainingMatch = learner.trainings.some((training: any) => {
@@ -3579,17 +3579,17 @@ const TalentPoolContent = () => {
             return { learner, matchedField };
           }
         }
-        
+
         return null;
       }).filter(item => item !== null);
-      
+
       // Sort results lexicographically by matched field
       resultsWithScores.sort((a, b) => {
         return a.matchedField.localeCompare(b.matchedField);
       });
-      
+
       result = resultsWithScores.map(item => item.learner);
-      
+
       if (result.length > 0) {
       }
     }
@@ -3653,7 +3653,7 @@ const TalentPoolContent = () => {
           sortedResult.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
           break;
         case 'last_updated':
-          sortedResult.sort((a, b) => 
+          sortedResult.sort((a, b) =>
             new Date(b.last_updated || 0).getTime() - new Date(a.last_updated || 0).getTime()
           );
           break;
@@ -3779,21 +3779,19 @@ const TalentPoolContent = () => {
           <div className="flex rounded-md shadow-sm">
             <button
               onClick={() => setViewMode('grid')}
-              className={`px-3 py-2 text-sm font-medium rounded-l-md border ${
-                viewMode === 'grid'
-                  ? 'bg-primary-50 border-primary-300 text-primary-700'
-                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-              }`}
+              className={`px-3 py-2 text-sm font-medium rounded-l-md border ${viewMode === 'grid'
+                ? 'bg-primary-50 border-primary-300 text-primary-700'
+                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}
             >
               <Squares2X2Icon className="h-4 w-4" />
             </button>
             <button
               onClick={() => setViewMode('table')}
-              className={`px-3 py-2 text-sm font-medium rounded-r-md border-t border-r border-b ${
-                viewMode === 'table'
-                  ? 'bg-primary-50 border-primary-300 text-primary-700'
-                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-              }`}
+              className={`px-3 py-2 text-sm font-medium rounded-r-md border-t border-r border-b ${viewMode === 'table'
+                ? 'bg-primary-50 border-primary-300 text-primary-700'
+                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}
             >
               <TableCellsIcon className="h-4 w-4" />
             </button>
@@ -3842,21 +3840,19 @@ const TalentPoolContent = () => {
           <div className="flex rounded-md shadow-sm">
             <button
               onClick={() => setViewMode('grid')}
-              className={`px-3 py-2 text-sm font-medium rounded-l-md border ${
-                viewMode === 'grid'
-                  ? 'bg-primary-50 border-primary-300 text-primary-700'
-                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-              }`}
+              className={`px-3 py-2 text-sm font-medium rounded-l-md border ${viewMode === 'grid'
+                ? 'bg-primary-50 border-primary-300 text-primary-700'
+                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}
             >
               <Squares2X2Icon className="h-4 w-4" />
             </button>
             <button
               onClick={() => setViewMode('table')}
-              className={`px-3 py-2 text-sm font-medium rounded-r-md border-t border-r border-b ${
-                viewMode === 'table'
-                  ? 'bg-primary-50 border-primary-300 text-primary-700'
-                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-              }`}
+              className={`px-3 py-2 text-sm font-medium rounded-r-md border-t border-r border-b ${viewMode === 'table'
+                ? 'bg-primary-50 border-primary-300 text-primary-700'
+                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}
             >
               <TableCellsIcon className="h-4 w-4" />
             </button>
@@ -3871,7 +3867,7 @@ const TalentPoolContent = () => {
             <div className="p-4">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="font-medium text-gray-900">Filters</h2>
-                <button 
+                <button
                   onClick={handleClearFilters}
                   className="text-sm text-primary-600 hover:text-primary-700"
                 >
@@ -3884,7 +3880,7 @@ const TalentPoolContent = () => {
                   <CheckboxGroup
                     options={skillOptions}
                     selectedValues={filters.skills}
-                    onChange={(values) => setFilters({...filters, skills: values})}
+                    onChange={(values) => setFilters({ ...filters, skills: values })}
                   />
                 </FilterSection>
 
@@ -3892,7 +3888,7 @@ const TalentPoolContent = () => {
                   <CheckboxGroup
                     options={courseOptions}
                     selectedValues={filters.courses}
-                    onChange={(values) => setFilters({...filters, courses: values})}
+                    onChange={(values) => setFilters({ ...filters, courses: values })}
                   />
                 </FilterSection>
 
@@ -3900,7 +3896,7 @@ const TalentPoolContent = () => {
                   <CheckboxGroup
                     options={badgeOptions}
                     selectedValues={filters.badges}
-                    onChange={(values) => setFilters({...filters, badges: values})}
+                    onChange={(values) => setFilters({ ...filters, badges: values })}
                   />
                   <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
                     <label className="flex items-center">
@@ -3919,7 +3915,7 @@ const TalentPoolContent = () => {
                   <CheckboxGroup
                     options={locationOptions}
                     selectedValues={filters.locations}
-                    onChange={(values) => setFilters({...filters, locations: values})}
+                    onChange={(values) => setFilters({ ...filters, locations: values })}
                   />
                 </FilterSection>
 
@@ -3927,7 +3923,7 @@ const TalentPoolContent = () => {
                   <CheckboxGroup
                     options={yearOptions}
                     selectedValues={filters.years}
-                    onChange={(values) => setFilters({...filters, years: values})}
+                    onChange={(values) => setFilters({ ...filters, years: values })}
                   />
                 </FilterSection>
 
@@ -3942,7 +3938,7 @@ const TalentPoolContent = () => {
                         min="0"
                         max="100"
                         value={filters.minScore}
-                        onChange={(e) => setFilters({...filters, minScore: parseInt(e.target.value)})}
+                        onChange={(e) => setFilters({ ...filters, minScore: parseInt(e.target.value) })}
                         className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
                       />
                     </div>
@@ -3989,7 +3985,7 @@ const TalentPoolContent = () => {
                     marginPagesDisplayed={1}
                   />
                 )}
-                <select 
+                <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
                   className="text-sm border border-gray-300 rounded-md px-3 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -4022,8 +4018,8 @@ const TalentPoolContent = () => {
                   {!loading && filteredAndSortedlearners.length === 0 && !error && (
                     <div className="col-span-full text-center py-8">
                       <p className="text-sm text-gray-500">
-                        {searchQuery || filters.skills.length > 0 || filters.locations.length > 0 
-                          ? 'No candidates match your current filters' 
+                        {searchQuery || filters.skills.length > 0 || filters.locations.length > 0
+                          ? 'No candidates match your current filters'
                           : 'No learners found.'}
                       </p>
                       <p className="text-xs text-gray-400 mt-2">
@@ -4142,13 +4138,13 @@ const TalentPoolContent = () => {
                               >
                                 View
                               </button>
-                              <button 
+                              <button
                                 onClick={() => handleShortlistClick(candidate)}
                                 className="text-primary-600 hover:text-primary-900"
                               >
                                 Shortlist
                               </button>
-                              <button 
+                              <button
                                 onClick={() => handleScheduleInterviewClick(candidate)}
                                 className="text-green-600 hover:text-green-900"
                               >
@@ -4230,12 +4226,15 @@ const TalentPoolContent = () => {
 };
 
 /**
- * Wrapped TalentPool with FeatureGate for talent_pool_access add-on
+ * TalentPool - Access to verified talent pool
+ * 
+ * NOTE: FeatureGate commented out - talent pool is always accessible for now
+ * Uncomment the FeatureGate wrapper below to re-enable subscription-based access control
  */
 const TalentPool = () => (
-  <FeatureGate featureKey="talent_pool_access" showUpgradePrompt={true}>
-    <TalentPoolContent />
-  </FeatureGate>
+  // <FeatureGate featureKey="talent_pool_access" showUpgradePrompt={true}>
+  <TalentPoolContent />
+  // </FeatureGate>
 );
 
 export default TalentPool;
