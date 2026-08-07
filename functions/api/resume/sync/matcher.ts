@@ -29,7 +29,7 @@ function fieldsEqual(a: unknown, b: unknown): boolean {
 }
 
 /** True when every field in `comparedFields` is equal (post-normalization) between two records. */
-function isUnchanged(existing: Record<string, any>, parsed: Record<string, any>, comparedFields: string[]): boolean {
+function isUnchanged(existing: Record<string, unknown>, parsed: Record<string, unknown>, comparedFields: readonly string[]): boolean {
   return comparedFields.every((field) => fieldsEqual(existing[field], parsed[field]));
 }
 
@@ -39,27 +39,47 @@ interface MatchResult<T> {
 }
 
 /**
+ * The one property matchByKey itself actually depends on existing records
+ * having (existingRecord.id). Deliberately NOT extended with an index
+ * signature: every real caller passes a concrete, named interface
+ * (EducationDbRecord, ExperienceDbRecord, ...) — TypeScript never treats a
+ * named interface as structurally assignable to an index-signature type
+ * like Record<string, unknown> even when every property would satisfy
+ * `unknown`, so requiring E to also extend Record<string, unknown> would
+ * reject every real call site. isUnchanged's dynamic `existing[field]`
+ * access (field is a runtime string from comparedFields) is genuinely
+ * outside what a named interface's type can express — that dynamic-access
+ * boundary is handled with a narrow, explicit cast at its one call site
+ * below instead, rather than by weakening this constraint.
+ */
+interface HasId {
+  id?: string;
+}
+
+/**
  * Generic matcher: builds a key per record (existing + parsed), matches
  * parsed records against existing ones by key, and classifies each parsed
  * record as unchanged / changed / new. Parsed records are deduped by key
  * before matching, so two parsed rows sharing a key never both target an
  * insert (mirrors the existing skills dedup pattern in resume/save.ts).
  */
-function matchByKey<E extends Record<string, any>, P extends Record<string, any>>(
+function matchByKey<E extends HasId, P extends Record<string, unknown>>(
   existing: E[],
   parsed: P[],
-  keyOf: (record: Record<string, any>) => string,
-  comparedFields: string[],
-  buildUpsertRecord: (parsedRecord: P, existingId: string | undefined) => Record<string, any>,
-): MatchResult<Record<string, any>> {
+  keyOf: (record: Record<string, unknown>) => string,
+  comparedFields: readonly string[],
+  buildUpsertRecord: (parsedRecord: P, existingId: string | undefined) => Record<string, unknown>,
+): MatchResult<Record<string, unknown>> {
   const existingByKey = new Map<string, E>();
   existing.forEach((record) => {
-    const key = keyOf(record);
+    // Same dynamic-access boundary cast as isUnchanged() below — keyOf also
+    // reads named fields off `record` dynamically (e.g. r.degree, r.title).
+    const key = keyOf(record as Record<string, unknown>);
     if (key) existingByKey.set(key, record);
   });
 
   const seenParsedKeys = new Set<string>();
-  const toUpsert: Record<string, any>[] = [];
+  const toUpsert: Record<string, unknown>[] = [];
   let unchangedCount = 0;
 
   parsed.forEach((parsedRecord) => {
@@ -74,7 +94,12 @@ function matchByKey<E extends Record<string, any>, P extends Record<string, any>
       return;
     }
 
-    if (isUnchanged(existingRecord, parsedRecord, comparedFields)) {
+    // Cast at this one boundary: isUnchanged does dynamic `existing[field]`
+    // access (field is a runtime string from comparedFields), which no
+    // named interface's type can express — E/P are generically bounded, so
+    // TypeScript can't prove this is safe, but every real E/P is a plain
+    // data object without extra invariants that dynamic access would violate.
+    if (isUnchanged(existingRecord as Record<string, unknown>, parsedRecord as Record<string, unknown>, comparedFields)) {
       unchangedCount++;
       return;
     }
