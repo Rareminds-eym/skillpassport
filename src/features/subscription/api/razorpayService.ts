@@ -53,6 +53,7 @@ export const createRazorpayOrder = async (orderData) => {
       userEmail: orderData.userEmail,
       userName: orderData.userName,
       isUpgrade: orderData.isUpgrade,
+      referralCode: orderData.referralCode,
     });
 
     return result;
@@ -106,6 +107,7 @@ export interface InitiatePaymentParams {
   plan: Record<string, unknown> & { id: string; name: string; price: string | number; duration?: string };
   userDetails: { name: string; email: string; phone?: string; learnerType?: string };
   isUpgrade?: boolean;
+  referralCode?: string;
   onSuccess: (result: PaymentSuccessResult) => void;
   onFailure: (result: PaymentFailureResult) => void;
   onCancel?: () => void;
@@ -115,6 +117,7 @@ export const initiateRazorpayPayment = async ({
   plan,
   userDetails,
   isUpgrade,
+  referralCode,
   onSuccess,
   onFailure,
   onCancel,
@@ -142,6 +145,7 @@ export const initiateRazorpayPayment = async ({
       userEmail: userDetails.email,
       userName: userDetails.name,
       isUpgrade,
+      referralCode,
     });
 
     // apiSuccess wraps the payload at { success, data: { ... } }, so read from orderData.data.*
@@ -185,18 +189,19 @@ export const initiateRazorpayPayment = async ({
       handler: async function (response) {
         try {
           // Verify payment signature via Worker (auth handled automatically)
+          const verificationPlan = referralCode ? { ...plan, referralCode } : plan;
           const verificationResult = await verifyPayment({
             razorpay_order_id: response.razorpay_order_id,
             razorpay_payment_id: response.razorpay_payment_id,
             razorpay_signature: response.razorpay_signature,
-            plan,
+            plan: verificationPlan,
           });
 
           onSuccess({
             razorpay_payment_id: response.razorpay_payment_id,
             razorpay_order_id: response.razorpay_order_id,
             razorpay_signature: response.razorpay_signature,
-            plan,
+            plan: verificationPlan,
             verificationResult,
           });
         } catch (verifyError) {
