@@ -218,7 +218,7 @@ function PaymentCompletion() {
   const { role } = useUserRole();
   const managePath = useMemo(() => getManagePath(role), [role]);
 
-  const { plan, learnerType, isUpgrade, isRenewal, isFreemium } = useMemo(() => location.state || {}, [location.state]);
+  const { plan, learnerType, isUpgrade, isRenewal, isFreemium, referralCode } = useMemo(() => location.state || {}, [location.state]);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -408,6 +408,7 @@ function PaymentCompletion() {
           plan,
           userDetails: { ...userDetails, learnerType },
           isUpgrade,
+          referralCode,
           onSuccess: (result) => {
             setLoading(false);
             // Navigate to success page via React Router — no page reload
@@ -465,7 +466,7 @@ function PaymentCompletion() {
         setLoading(false);
       }
     },
-    [loading, userDetails, plan, learnerType, navigate, validateField, isUpgrade, isFreemium, user, managePath]
+    [loading, userDetails, plan, learnerType, navigate, validateField, isUpgrade, isFreemium, user, managePath, referralCode]
   );
 
   const handleBack = useCallback(() => navigate(plansUrl), [navigate, plansUrl]);

@@ -18,6 +18,9 @@ import { apiSuccess, apiError } from '../../../lib/response';
 
 const logger = createLogger('payments:create-order');
 const COLLEGE_LEARNER_PROMO_CODE = 'RAREMINDS2026';
+const COLLEGE_LEARNER_PROMO_STARTER_AMOUNT_ADDON = 501;
+const COLLEGE_LEARNER_PROMO_STARTER_PLAN_CODES = ['skill_starter'];
+const COLLEGE_LEARNER_PROMO_STARTER_PLAN_NAMES = ['skill starter'];
 const COLLEGE_LEARNER_DISABLED_PLAN_CODES = ['discover', 'career_builder', 'career_accelerator'];
 
 const normalizePromoCode = (code: unknown): string =>
@@ -60,6 +63,40 @@ async function isCollegeLearnerRestrictedPlan(
     planRow?.business_type === 'b2c' &&
     referralCode === COLLEGE_LEARNER_PROMO_CODE &&
     COLLEGE_LEARNER_DISABLED_PLAN_CODES.includes(planCode)
+  );
+}
+
+async function isCollegeLearnerPromoStarterPlan(
+  supabase: ReturnType<typeof getServiceClient>,
+  userId: string,
+  userEmail: string | undefined,
+  plan: { plan_code?: string | null; name?: string | null; business_type?: string | null },
+  requestReferralCode?: unknown,
+): Promise<boolean> {
+  let userQuery = supabase
+    .from('users')
+    .select('role, metadata');
+
+  if (userEmail) {
+    userQuery = userQuery.eq('email', userEmail);
+  } else {
+    userQuery = userQuery.eq('id', userId);
+  }
+
+  const { data: userRow } = await userQuery.maybeSingle();
+  const metadata = (userRow?.metadata || {}) as Record<string, unknown>;
+  const referralCode = normalizePromoCode(requestReferralCode || metadata.referralCode || metadata.referral_code);
+  const planCode = String(plan.plan_code || '').toLowerCase();
+  const planName = String(plan.name || '').trim().toLowerCase();
+
+  return (
+    userRow?.role === 'learner' &&
+    plan.business_type === 'b2c' &&
+    referralCode === COLLEGE_LEARNER_PROMO_CODE &&
+    (
+      COLLEGE_LEARNER_PROMO_STARTER_PLAN_CODES.includes(planCode) ||
+      COLLEGE_LEARNER_PROMO_STARTER_PLAN_NAMES.includes(planName)
+    )
   );
 }
 
@@ -155,7 +192,7 @@ export async function handleCreateOrder(context: AuthenticatedContext): Promise<
 
       const { data: dbPlan } = await supabase
         .from('plans_cache')
-        .select('pricing_matrix')
+        .select('plan_code, name, business_type, pricing_matrix')
         .eq('id', body.planId)
         .eq('is_active', true)
         .maybeSingle();
@@ -168,13 +205,15 @@ export async function handleCreateOrder(context: AuthenticatedContext): Promise<
       const pricingMatrix = dbPlan.pricing_matrix as Record<string, any>;
       const clientAmount = body.amount as number;
       let isValidPrice = false;
+      const allowPromoStarterAmount = await isCollegeLearnerPromoStarterPlan(supabase, user.id, user.email, dbPlan, body.referralCode);
 
       if (pricingMatrix) {
         for (const key in pricingMatrix) {
           const price = pricingMatrix[key]?.yearly;
           if (typeof price === 'number') {
             const expectedPaise = Math.round(price * 100);
-            if (clientAmount === expectedPaise) {
+            const promoExpectedPaise = Math.round((price + COLLEGE_LEARNER_PROMO_STARTER_AMOUNT_ADDON) * 100);
+            if (clientAmount === expectedPaise || (allowPromoStarterAmount && clientAmount === promoExpectedPaise)) {
               isValidPrice = true;
               break;
             }
@@ -201,6 +240,7 @@ export async function handleCreateOrder(context: AuthenticatedContext): Promise<
         org_id: user.org_id || '',
         plan_id: (body.planId as string) || '',
         plan_name: (body.planName as string) || '',
+        referral_code: (body.referralCode as string) || '',
         type: 'subscription',
       },
     });
