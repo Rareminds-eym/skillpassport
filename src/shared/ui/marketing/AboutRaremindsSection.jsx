@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { ShieldCheck, Users, Target } from 'lucide-react';
 import { Sparkles } from '@/shared/ui';
+import RareMindsLogo from '@/shared/assets/RareMindsLogo';
 import { useLocation } from 'react-router-dom';
 export default function AboutRaremindsSection() {
   const location = useLocation();
@@ -16,8 +17,7 @@ export default function AboutRaremindsSection() {
           className="text-center"
         >
           <div className="mb-8">
-            <img 
-              src="/RareMinds.webp" 
+            <RareMindsLogo 
               alt="Rareminds Logo" 
               className="h-12 md:h-16 mx-auto mb-6"
             />

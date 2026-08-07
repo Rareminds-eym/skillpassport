@@ -1,4 +1,5 @@
 import { getLogger } from '@/shared/config/logging';
+import { BRAND_ICON_URL } from '@/shared/config/brand';
 
 const logger = getLogger('logo-loader');
 
@@ -25,14 +26,14 @@ export const WATERMARK_CONFIG = {
 
 /**
  * Load and convert logo image to multiple formats for PDF and DOCX export
- * Fetches /RMLogo.webp, converts WebP → PNG, returns both dataUrl and ArrayBuffer
+ * Fetches the bulb logo, converts WebP → PNG, returns both dataUrl and ArrayBuffer
  * 
  * @returns LogoData with both formats, or null on any failure
  */
 export async function loadLogo(): Promise<LogoData | null> {
   try {
     // Step 1: Fetch the logo
-    const response = await fetch('/RMLogo.webp');
+    const response = await fetch(BRAND_ICON_URL);
     if (!response.ok) {
       logger.warn('Logo image not found', { status: response.status });
       return null;

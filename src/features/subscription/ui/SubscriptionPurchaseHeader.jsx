@@ -5,6 +5,7 @@ import { useEffect, useRef } from 'react';
 import gsap from 'gsap';
 
 import { useAuthActions } from '@/shared/model/authStore';
+import RareMindsLogo from '@/shared/assets/RareMindsLogo';
 
 /**
  * Simplified header for subscription purchase flow
@@ -108,8 +109,7 @@ const SubscriptionPurchaseHeader = ({ userEmail, hasBanner = false }) => {
           {/* Logo Section */}
           <div className="flex items-center flex-shrink-0">
             <Link to="/" className="flex items-center group">
-              <img
-                src="/RareMinds.webp"
+              <RareMindsLogo
                 alt="RareMinds Logo"
                 className="h-14 w-auto transition-all duration-300 group-hover:scale-110 origin-left"
               />

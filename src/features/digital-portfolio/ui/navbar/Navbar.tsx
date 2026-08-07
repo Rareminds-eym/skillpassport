@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X, User, BookOpen, ArrowRight, Palette, Layout, Download, Share2, Video } from 'lucide-react';
 import ThemeToggle from '../shared/ThemeToggle';
+import RareMindsLogo from '@/shared/assets/RareMindsLogo';
 
 const Navbar: React.FC = () => {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -40,15 +41,19 @@ const Navbar: React.FC = () => {
           <Link to="/" className={`flex items-center group transition-all duration-300 ${
             isScrolled ? 'space-x-1.5' : 'space-x-2'
           }`}>
-            <motion.img
-              src="/RareMinds.webp" 
-              alt="Rareminds Logo"
+            <motion.div
               whileHover={{ scale: 1.06 }}
               transition={{ duration: 0.6 }}
-              className={`object-contain transition-all duration-300 ${
-                isScrolled ? 'w-16 h-12' : 'w-36 h-22'
-              }`}
-            />
+              className="flex"
+            >
+              <RareMindsLogo
+                alt="Rareminds Logo"
+                className={`object-contain transition-all duration-300 ${
+                  isScrolled ? 'w-16 h-12' : 'w-36 h-22'
+                }`}
+                priority
+              />
+            </motion.div>
             {/* <span className={`font-bold text-gray-900 dark:text-white transition-all duration-300 ${
               isScrolled ? 'text-sm' : 'text-xl'
             }`}>

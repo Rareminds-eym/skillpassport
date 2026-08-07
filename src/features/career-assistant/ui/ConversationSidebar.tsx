@@ -10,6 +10,7 @@ import {
   Clock
 } from 'lucide-react';
 import { VirtualMessage } from '@/features/career-assistant/hooks/useVirtualMessage';
+import RareMindsLogo from '@/shared/assets/RareMindsLogo';
 
 import { formatConversationDate, getConversationGroup } from '@/features/career-assistant';
 import { LoadingSpinner } from './LoadingSpinner';
@@ -106,7 +107,7 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
       <div className="p-4 border-b border-gray-200">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <img src="/RMLogo.webp" alt="RareMinds Logo" className="w-5 h-5" />
+            <RareMindsLogo variant="icon" alt="RareMinds Logo" className="w-5 h-5" />
             <span className="font-semibold text-gray-900">Career AI</span>
           </div>
           <button

@@ -6,6 +6,7 @@
  */
 
 import { formatStreamId } from '@/shared/lib/utils/formatters';
+import { BRAND_LOGO_URL } from '@/shared/config/brand';
 
 /**
  * @typedef {Object} LearnerInfo
@@ -22,7 +23,7 @@ import { formatStreamId } from '@/shared/lib/utils/formatters';
 
 // Branding constants
 const BRANDING = {
-  logo: '/RareMinds ISO Logo-01.png',
+  logo: BRAND_LOGO_URL,
   taglinePrefix: 'Shape Your Future — ',
   taglineHighlight: 'AI Career Assessment Report',
   subTagline: 'Discover Strengths. Explore Careers. Build Your Future.',

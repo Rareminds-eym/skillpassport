@@ -337,7 +337,7 @@ async function generateAndSendReceipt(
       const { data: learner } = await supabase.from('learners').select('name').eq('user_id', userId).maybeSingle();
 
       let logoBytes: Uint8Array | undefined;
-      logoBytes = await fetchImageBytes(`${APP_URL}/RareMinds ISO Logo-01.png`);
+      logoBytes = await fetchImageBytes(`${APP_URL}/RareMinds-ISO-Logo.webp`);
 
       const receiptData: ReceiptData = {
         transaction: {

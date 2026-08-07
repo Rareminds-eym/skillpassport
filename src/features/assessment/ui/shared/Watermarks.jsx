@@ -10,6 +10,8 @@
  * 
  * @returns {JSX.Element} - Watermark elements
  */
+import RareMindsLogo from '@/shared/assets/RareMindsLogo';
+
 const Watermarks = () => (
   <>
     {/* Rareminds Bulb Logo Watermark - Center - PRINT ONLY */}
@@ -25,8 +27,8 @@ const Watermarks = () => (
         opacity: 0.08,
       }}
     >
-      <img
-        src="/RMLogo.webp"
+      <RareMindsLogo
+        variant="icon"
         alt="Rareminds Watermark"
         style={{
           width: '400px',
@@ -49,8 +51,8 @@ const Watermarks = () => (
         opacity: 0.05,
       }}
     >
-      <img
-        src="/RMLogo.webp"
+      <RareMindsLogo
+        variant="icon"
         alt="Rareminds Watermark"
         style={{
           width: '200px',
@@ -73,8 +75,8 @@ const Watermarks = () => (
         opacity: 0.05,
       }}
     >
-      <img
-        src="/RMLogo.webp"
+      <RareMindsLogo
+        variant="icon"
         alt="Rareminds Watermark"
         style={{
           width: '200px',
@@ -265,8 +267,7 @@ export const RepeatingHeader = () => (
               paddingRight: '10px'
             }}
           >
-            <img
-              src="/RareMinds ISO Logo-01.png"
+            <RareMindsLogo
               alt="Rareminds"
               style={{
                 height: '40px',

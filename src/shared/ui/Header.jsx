@@ -1,6 +1,7 @@
 import { getRouteForRole } from '@/features/auth/lib/roleBasedRouter';
 import { useAuthStore } from '@/shared/model/authStore';
 import { SocialMediaLinks } from '@/shared/ui/SocialMediaLinks';
+import RareMindsLogo from '@/shared/assets/RareMindsLogo';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { Menu, X } from 'lucide-react';
@@ -179,12 +180,13 @@ const Header = ({ hasBanner = false }) => {
           {/* Logo Section */}
           <div className="flex items-center flex-shrink-0">
             <Link to="/" className="flex items-center group">
-              <img
-                ref={logoRef}
-                src="/RareMinds.webp"
-                alt="RareMinds Logo"
-                className="h-14 w-auto transition-all duration-300 group-hover:scale-110 origin-left"
-              />
+              <span ref={logoRef} className="flex origin-left">
+                <RareMindsLogo
+                  alt="RareMinds Logo"
+                  className="h-14 w-auto transition-all duration-300 group-hover:scale-110 origin-left"
+                  priority
+                />
+              </span>
             </Link>
           </div>
 

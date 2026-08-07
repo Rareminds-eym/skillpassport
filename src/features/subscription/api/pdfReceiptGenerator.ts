@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { getLogger } from '@/shared/config';
+import { BRAND_LOGO_URL, BRAND_ICON_URL } from '@/shared/config/brand';
 
 const logger = getLogger('pdfReceiptGenerator');
 
@@ -55,14 +56,14 @@ export async function generateReceipt(receiptData) {
   
   try {
     // Load company logo (top left)
-    companyLogo = await imageToBase64('/RareMinds.webp');
+    companyLogo = await imageToBase64(BRAND_LOGO_URL);
   } catch (error: any) {
     logger.warn('Error loading company logo', error);
   }
   
   try {
     // Load watermark logo
-    watermarkLogo = await imageToBase64('/RMLogo.webp');
+    watermarkLogo = await imageToBase64(BRAND_ICON_URL);
   } catch (error: any) {
     logger.warn('Error loading watermark logo', error);
   }

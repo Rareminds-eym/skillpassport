@@ -7,6 +7,7 @@ import {
   XMarkIcon
 } from '@heroicons/react/24/outline'
 import { HeaderProps } from '@/shared/types/recruiter'
+import RareMindsLogo from '@/shared/assets/RareMindsLogo'
 
 import { useNotifications } from '@/features/notifications'
 import NotificationPanel from './NotificationPanel'
@@ -78,8 +79,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuToggle, showMobileMenu }) => {
 
             {/* Logo */}
             <div className="flex-shrink-0 ml-2 md:ml-0">
-              <img
-                src="/RareMinds ISO Logo-01.png"
+              <RareMindsLogo
                 alt="RareMinds Logo"
                 className="h-12 w-auto"
               />

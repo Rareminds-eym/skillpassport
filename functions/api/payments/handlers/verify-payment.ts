@@ -769,7 +769,7 @@ async function generateAndUploadReceipt(params: {
 
     // Fetch company logo
     let logoBytes: Uint8Array | undefined;
-    const logoUrl = `${APP_URL}/RareMinds ISO Logo-01.png`;
+    const logoUrl = `${APP_URL}/RareMinds-ISO-Logo.webp`;
     try {
       logger.info('Fetching company logo', { logoUrl });
       logoBytes = await fetchImageBytes(logoUrl);

@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/features/auth';
 import { loginLearner } from '@/features/auth/api';
 import { PASSWORD_MIN } from '@/shared/constants';
+import RareMindsLogo from '@/shared/assets/RareMindsLogo';
 
 const SignInSchool = () => {
   const [formData, setFormData] = useState({
@@ -114,8 +115,8 @@ const SignInSchool = () => {
         {/* Logo */}
         <div className="flex justify-center mb-6">
           <div className="relative group">
-            <img 
-              src="/RMLogo.webp" 
+            <RareMindsLogo 
+              variant="icon"
               alt="Logo" 
               className="w-20 h-20 transition-all duration-500 group-hover:scale-110"
             />

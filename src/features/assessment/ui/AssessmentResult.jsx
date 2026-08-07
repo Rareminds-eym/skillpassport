@@ -41,6 +41,7 @@ import {
 
 // Import Career Track Modal
 import CareerTrackModal from './CareerTrackModal';
+import RareMindsLogo from '@/shared/assets/RareMindsLogo';
 
 // Import UI effects
 import { TextGenerateEffect } from '@/shared/ui/TextGenerateEffect';
@@ -1083,8 +1084,7 @@ const AssessmentResult = () => {
 
                         {/* Center Logo */}
                         <div className="absolute left-1/2 transform -translate-x-1/2">
-                            <img
-                                src="/RareMinds.webp"
+                            <RareMindsLogo
                                 alt="RareMinds Logo"
                                 className="h-8 w-auto object-contain"
                             />

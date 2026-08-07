@@ -2,6 +2,7 @@ import { City, State } from 'country-state-city';
 import { useEffect, useRef, useState } from 'react';
 import { capitalizeFirstLetter } from '@/features/subscription/lib';
 import { PASSWORD_MIN } from '@/shared/constants';
+import RareMindsLogo from '@/shared/assets/RareMindsLogo';
 import { sendOtp, verifyOtp as verifyOtpApi } from '@/features/auth/api';
 
 // Languages list
@@ -779,9 +780,9 @@ const SchoolAdmin = () => {
       {/* Bulb Logo */}
       <div className="flex justify-center mb-4">
         <div className="relative group">
-          <img 
-            src="/RMLogo.webp" 
-            alt="Bulb Logo" 
+          <RareMindsLogo
+            variant="icon"
+            alt="Bulb Logo"
             className="w-20 h-20 transition-all duration-1000 group-hover:scale-110 group-hover:brightness-125 filter drop-shadow-lg group-hover:drop-shadow-[0_0_30px_rgba(255,255,0,0.7)]"
           />
           <div className="absolute inset-0 bg-blue-400 rounded-full opacity-0 group-hover:opacity-40 blur-2xl transition-all duration-1000 group-hover:animate-pulse"></div>

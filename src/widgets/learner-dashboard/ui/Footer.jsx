@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Linkedin, Twitter, Youtube, Instagram } from 'lucide-react';
+import RareMindsLogo from '@/shared/assets/RareMindsLogo';
 
 const Footer = () => {
   return (
@@ -26,8 +27,7 @@ const Footer = () => {
           <div className="lg:col-span-1">
             <Link to="/" className="inline-block mb-6 group">
               <div className="relative">
-                <img
-                  src="/RareMinds.webp"
+                <RareMindsLogo
                   alt="RareMinds Logo"
                   className="h-16 w-auto transition-all duration-300 group-hover:scale-105 brightness-0 invert"
                 />

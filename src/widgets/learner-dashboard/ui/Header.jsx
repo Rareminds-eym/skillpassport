@@ -33,6 +33,7 @@ import { useUser, useAuthActions } from '@/shared/model/authStore';
 import { useSubscriptionQuery } from '@/features/subscription/model/useSubscriptionQuery';
 import { checkFeatureAccess } from '@/features/subscription/lib/featureGating';
 import { PLAN_IDS } from '@/shared/config/subscriptionPlans';
+import RareMindsLogo from '@/shared/assets/RareMindsLogo';
 const ICON_MAP = {
   BookmarkIcon,
   Cog6ToothIcon,
@@ -244,10 +245,10 @@ const Header = ({ activeTab }) => {
 
             {/* Left: Logo */}
             <div className="flex items-center flex-shrink-0">
-              <img
-                src="/RareMinds.webp"
+              <RareMindsLogo
                 alt="RareMinds Logo"
                 className="h-7 sm:h-8 md:h-9 lg:h-10 w-auto object-contain"
+                priority
               />
             </div>
 
