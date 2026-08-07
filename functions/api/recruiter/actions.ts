@@ -292,8 +292,12 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         itemsPerPage = 8,
       } = body;
 
-      // 🔒 SECURITY: Use organization_id from middleware context
-      const organizationId = (context.data as any).organizationId;
+      // 🔒 SECURITY: Get organization_id from authenticated user
+      const organizationId = user?.org_id;
+
+      if (!organizationId) {
+        return apiError(400, 'VALIDATION_ERROR', 'Organization ID is required', context.request);
+      }
 
       let query = supabase
         .from('opportunities')
