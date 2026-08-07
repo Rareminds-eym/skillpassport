@@ -13,6 +13,19 @@ import { getFileSizeLimit } from '@/shared/config/fileSizeLimits';
 // Configure PDF.js worker - using local worker file from node_modules
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
+// PDF text items don't always report a height; this is the fallback used to
+// estimate line height for line-break detection in reconstructLinesFromTextItems().
+const DEFAULT_LINE_HEIGHT = 12;
+// A Y-position gap larger than this fraction of the estimated line height is
+// treated as a new line in reconstructLinesFromTextItems().
+const LINE_HEIGHT_THRESHOLD_MULTIPLIER = 0.5;
+
+// Known social-media domains, kept identical to KNOWN_SOCIAL_DOMAINS in
+// functions/api/career/handlers/resume-parser/regex.ts so a link
+// annotation pointing at LinkedIn/GitHub/etc. is never mistaken for a
+// portfolio link — those have their own dedicated extractors.
+const KNOWN_SOCIAL_DOMAINS = /linkedin\.com|github\.com|twitter\.com|x\.com|facebook\.com|instagram\.com/i;
+
 const ResumeParser = ({ onDataExtracted, onClose, userEmail, learnerData, user }) => {
   const [file, setFile] = useState(null);
   const [parsing, setParsing] = useState(false);
@@ -283,8 +296,8 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, learnerData, user }
       const y = item.transform?.[5];
 
       if (previousY !== null && y !== undefined && currentLineParts.length > 0) {
-        const lineHeight = item.height || 12;
-        if (Math.abs(y - previousY) > lineHeight * 0.5) {
+        const lineHeight = item.height || DEFAULT_LINE_HEIGHT;
+        if (Math.abs(y - previousY) > lineHeight * LINE_HEIGHT_THRESHOLD_MULTIPLIER) {
           flushLine();
         }
       }
@@ -332,12 +345,6 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, learnerData, user }
 
     return result;
   };
-
-  // Known social-media domains, kept identical to KNOWN_SOCIAL_DOMAINS in
-  // functions/api/career/handlers/resume-parser/regex.ts so a link
-  // annotation pointing at LinkedIn/GitHub/etc. is never mistaken for a
-  // portfolio link — those have their own dedicated extractors.
-  const KNOWN_SOCIAL_DOMAINS = /linkedin\.com|github\.com|twitter\.com|x\.com|facebook\.com|instagram\.com/i;
 
   /**
    * Some resumes render a portfolio link as a bare label — e.g. the visible
