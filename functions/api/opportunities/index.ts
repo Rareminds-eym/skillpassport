@@ -512,11 +512,46 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
     case 'get-all-applicants': {
       const { status, opportunity_id, limit } = body;
-      let query = supabase.from('applied_jobs').select('*');
+
+      // CRITICAL FIX: Filter by organization for data isolation
+      // Get user's organization ID
+      const user = getContextUser(context);
+      const orgId = user?.org_id;
+
+      if (!orgId) {
+        return apiError(400, 'VALIDATION_ERROR', 'Organization ID is required', context.request);
+      }
+
+      // Verify user has access to this organization
+      const access = await verifyOrgAccess(supabase, user.sub, orgId, undefined);
+      if (!access.allowed) {
+        return access.error!;
+      }
+
+      // First, get opportunities belonging to this organization
+      const { data: orgOpportunities, error: oppError } = await supabase
+        .from('opportunities')
+        .select('id')
+        .eq('organization_id', orgId);
+
+      if (oppError) return apiDbError(oppError, context.request);
+      if (!orgOpportunities || orgOpportunities.length === 0) {
+        return apiSuccess({ applicants: [] }, context.request);
+      }
+
+      const orgOpportunityIds = orgOpportunities.map(o => o.id);
+
+      // Now filter applied_jobs by these opportunity IDs
+      let query = supabase
+        .from('applied_jobs')
+        .select('*')
+        .in('opportunity_id', orgOpportunityIds); // Filter by org's opportunities
+
       if (status) query = query.eq('application_status', status);
       if (opportunity_id) query = query.eq('opportunity_id', opportunity_id);
       if (limit) query = query.limit(limit);
       query = query.order('applied_at', { ascending: false });
+
       const { data: appliedJobs, error } = await query;
       if (error) return apiDbError(error, context.request);
       if (!appliedJobs || appliedJobs.length === 0) return apiSuccess({ applicants: [] }, context.request);
@@ -540,7 +575,39 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     }
 
     case 'get-applicant-stats': {
-      const { data, error } = await supabase.from('applied_jobs').select('application_status');
+      // CRITICAL FIX: Filter by organization for data isolation
+      const user = getContextUser(context);
+      const orgId = user?.org_id;
+
+      if (!orgId) {
+        return apiError(400, 'VALIDATION_ERROR', 'Organization ID is required', context.request);
+      }
+
+      // Verify user has access to this organization
+      const access = await verifyOrgAccess(supabase, user.sub, orgId, undefined);
+      if (!access.allowed) {
+        return access.error!;
+      }
+
+      // Get opportunities belonging to this organization
+      const { data: orgOpportunities, error: oppError } = await supabase
+        .from('opportunities')
+        .select('id')
+        .eq('organization_id', orgId);
+
+      if (oppError) return apiDbError(oppError, context.request);
+      if (!orgOpportunities || orgOpportunities.length === 0) {
+        return apiSuccess({ stats: { total: 0, applied: 0, viewed: 0, under_review: 0, interview_scheduled: 0, interviewed: 0, offer_received: 0, accepted: 0, rejected: 0, withdrawn: 0 } }, context.request);
+      }
+
+      const orgOpportunityIds = orgOpportunities.map(o => o.id);
+
+      // Filter applied_jobs by organization's opportunities
+      const { data, error } = await supabase
+        .from('applied_jobs')
+        .select('application_status')
+        .in('opportunity_id', orgOpportunityIds);
+
       if (error) return apiDbError(error, context.request);
       const stats = (data || []).reduce((acc, app) => { acc.total++; if (acc.hasOwnProperty(app.application_status)) acc[app.application_status]++; return acc; }, { total: 0, applied: 0, viewed: 0, under_review: 0, interview_scheduled: 0, interviewed: 0, offer_received: 0, accepted: 0, rejected: 0, withdrawn: 0 });
       return apiSuccess({ stats }, context.request);
