@@ -38,7 +38,6 @@ import { useLearnerMessageNotifications } from '@/entities/learner';
 import { useLearnerUnreadCount } from "@/entities/learner";
 import { useLearnerRealtimeActivities } from '@/entities/learner/model/useLearnerRealtimeActivities';
 import ResumeParser from "../ResumeParser";
-import { mergeResumeData } from '@/features/digital-portfolio';
 import { safeSave } from '@/shared/lib/settingsErrorHandler';
 
 // Import tab components
@@ -48,30 +47,6 @@ import NotificationsTab from "./NotificationsTab";
 import PrivacyTab from "./PrivacyTab";
 
 import { useUser } from '@/shared/model/authStore';
-
-const firstFilled = (...values) => {
-  for (const value of values) {
-    if (value === null || value === undefined) continue;
-    const normalized = String(value).trim();
-    if (normalized) return normalized;
-  }
-  return '';
-};
-
-const normalizeResumeDataForSettings = (parsedData = {}) => ({
-  ...parsedData,
-  phone: firstFilled(parsedData.phone, parsedData.contact_number),
-  alternatePhone: firstFilled(parsedData.alternatePhone, parsedData.alternate_number),
-  dateOfBirth: firstFilled(parsedData.dateOfBirth, parsedData.date_of_birth),
-  location: firstFilled(parsedData.location, parsedData.city),
-  registrationNumber: firstFilled(parsedData.registrationNumber, parsedData.registration_number),
-  linkedIn: firstFilled(parsedData.linkedIn, parsedData.linkedin_link, parsedData.linkedin),
-  github: firstFilled(parsedData.github, parsedData.github_link),
-  portfolio: firstFilled(parsedData.portfolio, parsedData.portfolio_link, parsedData.website),
-  twitter: firstFilled(parsedData.twitter, parsedData.twitter_link),
-  facebook: firstFilled(parsedData.facebook, parsedData.facebook_link),
-  instagram: firstFilled(parsedData.instagram, parsedData.instagram_link),
-});
 
 const MainSettings = () => {
   const user = useUser();
@@ -85,6 +60,7 @@ const MainSettings = () => {
     error: learnerError,
     updateProfile,
     updatePassword,
+    refreshData: refreshLearnerSettings,
   } = useLearnerSettings(userEmail);
 
   // Get education data from the same source as Dashboard
@@ -1487,26 +1463,38 @@ const MainSettings = () => {
   };
 
   // Handle resume data extraction and auto-fill
-  const handleResumeDataExtracted = async (parsedData) => {
+  const handleResumeDataExtracted = async () => {
+    // /resume/save (called just before this, from ResumeParser.jsx's
+    // handleSaveToDatabase) is the ONLY backend write path for Resume
+    // Auto-Fill: it already synchronized every entity (Education, Experience,
+    // Projects, Certificates, Technical Skills, Soft Skills) via matcher.ts's
+    // deterministic skip/update/insert logic, and wrote every flat learner
+    // field. This handler must not write again — including the
+    // updateEducation(...) call that used to run here, which went through
+    // updateEducationByEmail (learnerService.ts): that function assigns a
+    // fresh random UUID to any record whose id isn't already a 36-character
+    // UUID, true for every resume-parsed entry (the parser only assigns
+    // small integer ids, never real DB UUIDs), so every existing education
+    // record was computed as "not present" and deleted, then reinserted
+    // under new ids — discarding approval_status/enabled state /resume/save
+    // had just correctly preserved via sync.
+    //
+    // The only remaining responsibility here is to reflect what /resume/save
+    // already persisted: refetch from the database so every section (not
+    // just Education) shows the latest synchronized state without a manual
+    // browser refresh.
     try {
-      const currentProfile = profileData;
-      const normalizedParsedData = normalizeResumeDataForSettings(parsedData);
-      const mergedData = mergeResumeData(currentProfile, normalizedParsedData);
-
-      setProfileData(mergedData);
-
-      await updateProfile(mergedData);
-
-      if (normalizedParsedData.education && normalizedParsedData.education.length > 0) {
-        // Education data will be automatically updated by the hook
-        if (updateEducation) {
-          await updateEducation(normalizedParsedData.education);
-        }
-      }
+      await Promise.all([
+        refreshLearnerSettings?.(),
+        refreshEducation?.(),
+        refreshExperience?.(),
+        refreshProjects?.(),
+        refreshCertificates?.(),
+        refreshTechnicalSkills?.(),
+        refreshSoftSkills?.(),
+      ]);
 
       toast.success("Profile auto-filled from resume successfully!");
-
-      setShowResumeParser(false);
 
       try {
         if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
@@ -1516,7 +1504,9 @@ const MainSettings = () => {
         console.warn('Could not refresh recent updates:', refreshError);
       }
     } catch {
-      toast.error("Failed to auto-fill profile from resume. Please try again.");
+      toast.error("Failed to refresh profile after resume import. Please reload the page.");
+    } finally {
+      setShowResumeParser(false);
     }
   };
 
