@@ -13,6 +13,44 @@ export const onRequest = async (context: any) => {
   return apiMethodNotAllowed();
 };
 
+/**
+ * Helper function to get opportunity IDs for a user's organization
+ * Handles org verification and returns opportunity IDs or error
+ */
+async function getOrgOpportunityIds(
+  supabase: any,
+  user: any,
+  context: AuthenticatedContext
+): Promise<{ ids?: string[]; error?: Response }> {
+  const orgId = user?.org_id;
+
+  if (!orgId) {
+    return { error: apiError(400, 'VALIDATION_ERROR', 'Organization ID is required', context.request) };
+  }
+
+  // Verify user has access to this organization
+  const access = await verifyOrgAccess(supabase, user.sub, orgId, undefined);
+  if (!access.allowed) {
+    return { error: access.error! };
+  }
+
+  // Get opportunities belonging to this organization
+  const { data: orgOpportunities, error: oppError } = await supabase
+    .from('opportunities')
+    .select('id')
+    .eq('organization_id', orgId);
+
+  if (oppError) {
+    return { error: apiDbError(oppError, context.request) };
+  }
+
+  if (!orgOpportunities || orgOpportunities.length === 0) {
+    return { ids: [] };
+  }
+
+  return { ids: orgOpportunities.map((o: any) => o.id) };
+}
+
 async function findOpportunityById(supabase: any, id: number | string, select = '*') {
   const rawId = String(id || '').trim();
   if (!rawId) {
@@ -514,32 +552,13 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       const { status, opportunity_id, limit } = body;
 
       // CRITICAL FIX: Filter by organization for data isolation
-      // Get user's organization ID
       const user = getContextUser(context);
-      const orgId = user?.org_id;
+      const { ids: orgOpportunityIds, error: orgError } = await getOrgOpportunityIds(supabase, user, context);
 
-      if (!orgId) {
-        return apiError(400, 'VALIDATION_ERROR', 'Organization ID is required', context.request);
-      }
-
-      // Verify user has access to this organization
-      const access = await verifyOrgAccess(supabase, user.sub, orgId, undefined);
-      if (!access.allowed) {
-        return access.error!;
-      }
-
-      // First, get opportunities belonging to this organization
-      const { data: orgOpportunities, error: oppError } = await supabase
-        .from('opportunities')
-        .select('id')
-        .eq('organization_id', orgId);
-
-      if (oppError) return apiDbError(oppError, context.request);
-      if (!orgOpportunities || orgOpportunities.length === 0) {
+      if (orgError) return orgError;
+      if (!orgOpportunityIds || orgOpportunityIds.length === 0) {
         return apiSuccess({ applicants: [] }, context.request);
       }
-
-      const orgOpportunityIds = orgOpportunities.map(o => o.id);
 
       // Now filter applied_jobs by these opportunity IDs
       let query = supabase
@@ -577,30 +596,12 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     case 'get-applicant-stats': {
       // CRITICAL FIX: Filter by organization for data isolation
       const user = getContextUser(context);
-      const orgId = user?.org_id;
+      const { ids: orgOpportunityIds, error: orgError } = await getOrgOpportunityIds(supabase, user, context);
 
-      if (!orgId) {
-        return apiError(400, 'VALIDATION_ERROR', 'Organization ID is required', context.request);
-      }
-
-      // Verify user has access to this organization
-      const access = await verifyOrgAccess(supabase, user.sub, orgId, undefined);
-      if (!access.allowed) {
-        return access.error!;
-      }
-
-      // Get opportunities belonging to this organization
-      const { data: orgOpportunities, error: oppError } = await supabase
-        .from('opportunities')
-        .select('id')
-        .eq('organization_id', orgId);
-
-      if (oppError) return apiDbError(oppError, context.request);
-      if (!orgOpportunities || orgOpportunities.length === 0) {
+      if (orgError) return orgError;
+      if (!orgOpportunityIds || orgOpportunityIds.length === 0) {
         return apiSuccess({ stats: { total: 0, applied: 0, viewed: 0, under_review: 0, interview_scheduled: 0, interviewed: 0, offer_received: 0, accepted: 0, rejected: 0, withdrawn: 0 } }, context.request);
       }
-
-      const orgOpportunityIds = orgOpportunities.map(o => o.id);
 
       // Filter applied_jobs by organization's opportunities
       const { data, error } = await supabase
