@@ -14,6 +14,7 @@ import {
   SubscriptionCreatedSchema,
   SubscriptionUpdatedSchema,
   SubscriptionCancelledSchema,
+  FacultyCreatedSchema,
 } from './sync-schemas';
 
 export type SyncResult =
@@ -255,6 +256,88 @@ export class SyncService {
         .eq('user_id', parsed.user_id);
       if (updateError) return fail('DB_ERROR', updateError.message, true);
     }
+
+    return ok();
+  }
+
+  /**
+   * Sync a faculty member created via bulk import.
+   * Idempotent: re-creates the users profile if missing (insert-if-absent) and
+   * skips the college_lecturers insert when a row already exists for this
+   * user_id + collegeId. Returns 404-equivalent NOT_FOUND when the target
+   * college org row is missing (FK dependency on organizations), so the
+   * auth-sync-consumer can retry once the org exists.
+   */
+  async syncFaculty(data: unknown): Promise<SyncResult> {
+    let parsed: z.infer<typeof FacultyCreatedSchema>;
+    try { parsed = FacultyCreatedSchema.parse(data); }
+    catch (err) { return fail('VALIDATION_ERROR', err instanceof Error ? err.message : 'Invalid faculty data', false); }
+
+    const name = [parsed.first_name, parsed.last_name].filter(Boolean).join(' ');
+
+    // users profile (FK target for college_lecturers.user_id) — insert if absent
+    const { data: existingUser } = await this.db.from('users')
+      .select('id')
+      .eq('id', parsed.user_id)
+      .maybeSingle();
+    if (!existingUser) {
+      const { error: userError } = await this.db.from('users').insert({
+        id: parsed.user_id,
+        email: parsed.email.toLowerCase(),
+        firstName: parsed.first_name ?? '',
+        lastName: parsed.last_name ?? '',
+        role: 'college_educator',
+        organizationId: parsed.college_id,
+        isActive: true,
+        metadata: {
+          source: 'bulk_faculty_import',
+          collegeId: parsed.college_id,
+          staffRole: parsed.role ?? 'faculty',
+          fullName: name,
+          entityType: 'college_staff',
+        },
+      });
+      if (userError) {
+        const message = userError.message ?? String(userError);
+        if (message.includes('23503') || message.includes('foreign key')) {
+          if (message.includes('organization')) {
+            return fail('NOT_FOUND', `College organization ${parsed.college_id} not found`, true);
+          }
+        }
+        return fail('DB_ERROR', message, true);
+      }
+    }
+
+    // college_lecturers — skip when already present (idempotency)
+    const { data: existingLecturer } = await this.db.from('college_lecturers')
+      .select('id')
+      .eq('user_id', parsed.user_id)
+      .eq('collegeId', parsed.college_id)
+      .maybeSingle();
+    if (existingLecturer) {
+      return ok();
+    }
+
+    const { error: lecturerError } = await this.db.from('college_lecturers').insert({
+      user_id: parsed.user_id,
+      collegeId: parsed.college_id,
+      employeeId: parsed.employee_id ?? null,
+      department: parsed.department ?? null,
+      specialization: parsed.specialization ?? null,
+      qualification: parsed.qualification ?? null,
+      experienceYears: parsed.experience_years ?? null,
+      accountStatus: 'active',
+      metadata: {
+        first_name: parsed.first_name ?? '',
+        last_name: parsed.last_name ?? '',
+        email: parsed.email.toLowerCase(),
+        phone: parsed.phone ?? null,
+        role: parsed.role ?? 'faculty',
+        temporary_password: parsed.temp_password ?? null,
+        created_by: 'bulk_import',
+      },
+    });
+    if (lecturerError) return fail('DB_ERROR', lecturerError.message, true);
 
     return ok();
   }
