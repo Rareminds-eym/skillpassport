@@ -13,6 +13,44 @@ export const onRequest = async (context: any) => {
   return apiMethodNotAllowed();
 };
 
+/**
+ * Helper function to get opportunity IDs for a user's organization
+ * Handles org verification and returns opportunity IDs or error
+ */
+async function getOrgOpportunityIds(
+  supabase: any,
+  user: any,
+  context: AuthenticatedContext
+): Promise<{ ids?: string[]; error?: Response }> {
+  const orgId = user?.org_id;
+
+  if (!orgId) {
+    return { error: apiError(400, 'VALIDATION_ERROR', 'Organization ID is required', context.request) };
+  }
+
+  // Verify user has access to this organization
+  const access = await verifyOrgAccess(supabase, user.sub, orgId, undefined);
+  if (!access.allowed) {
+    return { error: access.error! };
+  }
+
+  // Get opportunities belonging to this organization
+  const { data: orgOpportunities, error: oppError } = await supabase
+    .from('opportunities')
+    .select('id')
+    .eq('organization_id', orgId);
+
+  if (oppError) {
+    return { error: apiDbError(oppError, context.request) };
+  }
+
+  if (!orgOpportunities || orgOpportunities.length === 0) {
+    return { ids: [] };
+  }
+
+  return { ids: orgOpportunities.map((o: any) => o.id) };
+}
+
 async function findOpportunityById(supabase: any, id: number | string, select = '*') {
   const rawId = String(id || '').trim();
   if (!rawId) {
@@ -512,11 +550,27 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
     case 'get-all-applicants': {
       const { status, opportunity_id, limit } = body;
-      let query = supabase.from('applied_jobs').select('*');
+
+      // CRITICAL FIX: Filter by organization for data isolation
+      const user = getContextUser(context);
+      const { ids: orgOpportunityIds, error: orgError } = await getOrgOpportunityIds(supabase, user, context);
+
+      if (orgError) return orgError;
+      if (!orgOpportunityIds || orgOpportunityIds.length === 0) {
+        return apiSuccess({ applicants: [] }, context.request);
+      }
+
+      // Now filter applied_jobs by these opportunity IDs
+      let query = supabase
+        .from('applied_jobs')
+        .select('*')
+        .in('opportunity_id', orgOpportunityIds); // Filter by org's opportunities
+
       if (status) query = query.eq('application_status', status);
       if (opportunity_id) query = query.eq('opportunity_id', opportunity_id);
       if (limit) query = query.limit(limit);
       query = query.order('applied_at', { ascending: false });
+
       const { data: appliedJobs, error } = await query;
       if (error) return apiDbError(error, context.request);
       if (!appliedJobs || appliedJobs.length === 0) return apiSuccess({ applicants: [] }, context.request);
@@ -540,7 +594,21 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     }
 
     case 'get-applicant-stats': {
-      const { data, error } = await supabase.from('applied_jobs').select('application_status');
+      // CRITICAL FIX: Filter by organization for data isolation
+      const user = getContextUser(context);
+      const { ids: orgOpportunityIds, error: orgError } = await getOrgOpportunityIds(supabase, user, context);
+
+      if (orgError) return orgError;
+      if (!orgOpportunityIds || orgOpportunityIds.length === 0) {
+        return apiSuccess({ stats: { total: 0, applied: 0, viewed: 0, under_review: 0, interview_scheduled: 0, interviewed: 0, offer_received: 0, accepted: 0, rejected: 0, withdrawn: 0 } }, context.request);
+      }
+
+      // Filter applied_jobs by organization's opportunities
+      const { data, error } = await supabase
+        .from('applied_jobs')
+        .select('application_status')
+        .in('opportunity_id', orgOpportunityIds);
+
       if (error) return apiDbError(error, context.request);
       const stats = (data || []).reduce((acc, app) => { acc.total++; if (acc.hasOwnProperty(app.application_status)) acc[app.application_status]++; return acc; }, { total: 0, applied: 0, viewed: 0, under_review: 0, interview_scheduled: 0, interviewed: 0, offer_received: 0, accepted: 0, rejected: 0, withdrawn: 0 });
       return apiSuccess({ stats }, context.request);
