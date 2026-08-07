@@ -3,23 +3,52 @@ import { cn } from "@/shared/lib/utils";
 
 export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   variant?: "default" | "orange" | "blue";
+  padding?: "none" | "sm" | "md" | "lg";
+  shadow?: "none" | "sm" | "md" | "lg";
 }
 
 const Card = React.forwardRef<HTMLDivElement, CardProps>(
-  ({ className, variant = "default", ...props }, ref) => {
+  ({ className, variant = "default", padding, shadow = "sm", ...props }, ref) => {
     // Theme variants - keeping clean design with subtle variations
     const variantClasses =
       variant === "orange"
         ? "border-amber-200 bg-amber-50/30"
         : variant === "blue"
-        ? "border-blue-200/60 bg-blue-50/60"
-        : "border-slate-200 bg-white"; // Default clean white
+          ? "border-blue-200/60 bg-blue-50/60"
+          : "border-slate-200 bg-white"; // Default clean white
+
+    // Padding classes
+    const paddingClasses =
+      padding === "none"
+        ? ""
+        : padding === "sm"
+          ? "p-3"
+          : padding === "lg"
+            ? "p-8"
+            : padding === "md"
+              ? "p-6"
+              : "";
+
+    // Shadow classes
+    const shadowClasses =
+      shadow === "none"
+        ? ""
+        : shadow === "sm"
+          ? "shadow-sm"
+          : shadow === "md"
+            ? "shadow-md"
+            : shadow === "lg"
+              ? "shadow-lg"
+              : "shadow-sm";
+
     return (
       <div
         ref={ref}
         className={cn(
-          "rounded-xl border text-card-foreground shadow-sm",
+          "rounded-xl border text-card-foreground",
           variantClasses,
+          paddingClasses,
+          shadowClasses,
           className
         )}
         {...props}

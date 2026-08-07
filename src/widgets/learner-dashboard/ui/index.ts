@@ -3,3 +3,4 @@ export { OpportunitiesCard } from './OpportunitiesCard';
 export { ProfileSection } from './ProfileSection';
 export { LearningSection } from './LearningSection';
 export { ActivitySection } from './ActivitySection';
+export { default as AchievementStats } from './AchievementStats';

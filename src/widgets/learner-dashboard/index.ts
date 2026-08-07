@@ -6,6 +6,7 @@ export { LearnerDashboardWidget } from './ui';
 // UI Components
 export { default as AchievementsExpanded } from './ui/AchievementsExpanded';
 export { default as AchievementsTimeline } from './ui/AchievementsTimeline';
+export { default as AchievementStats } from './ui/AchievementStats';
 export { ActivitySection } from './ui/ActivitySection';
 export { default as AddLearningCourseModal } from './ui/AddLearningCourseModal';
 export { default as AdvancedFilters } from './ui/AdvancedFilters';
@@ -44,6 +45,7 @@ export { default as SelectCourseModal } from './ui/SelectCourseModal';
 export { default as SkillsDashboard } from './ui/SkillsDashboard';
 export { default as SkillTrackerExpanded } from './ui/SkillTrackerExpanded';
 export { default as LearnerCard3D } from './ui/LearnerCard3D';
+export { default as StudentProfileCard } from './ui/StudentProfileCard';
 export { default as SuggestedNextSteps } from './ui/SuggestedNextSteps';
 export { default as TopSkillsInDemand } from './ui/TopSkillsInDemand';
 export { default as TrainingRecommendations } from './ui/TrainingRecommendations';

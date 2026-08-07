@@ -15,3 +15,4 @@ export {
   getBaseUrl,
   isHttps
 } from './environment';
+export { generateProfileQRCode, generateProfileQRCodeSync } from './qrCode';

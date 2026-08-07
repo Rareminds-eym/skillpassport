@@ -403,13 +403,13 @@ export interface AptitudeAssessmentResult extends BaseAssessmentResult {
   category?: string;
 } //save
 
-export type AssessmentResult = 
-  | IAAssessmentResult 
-  | EndSemesterAssessmentResult 
-  | PracticalAssessmentResult 
-  | VivaAssessmentResult 
-  | ArrearsAssessmentResult 
-  | CareerReadinessAssessmentResult 
+export type AssessmentResult =
+  | IAAssessmentResult
+  | EndSemesterAssessmentResult
+  | PracticalAssessmentResult
+  | VivaAssessmentResult
+  | ArrearsAssessmentResult
+  | CareerReadinessAssessmentResult
   | AptitudeAssessmentResult;
 
 export interface SkillPassport {
@@ -505,7 +505,7 @@ export interface ProjectUpdateData {
 }
 
 export interface CertificateUpdateData {
- 
+
   title?: string;
   issuer?: string;
   credentialId?: string;
@@ -540,4 +540,208 @@ export interface LearnerApiResponse {
   success?: boolean;
   error?: string | null;
   [key: string]: unknown;
+}
+
+// ============================================================================
+// Dashboard Redesign Types - College Student Dashboard
+// ============================================================================
+
+/**
+ * Extended learner profile for the college student dashboard
+ * Includes comprehensive student information, scores, activity tracking, and verification status
+ */
+export interface LearnerProfile {
+  id: string;
+  userId: string;
+  email: string;
+  name: string;
+  avatar?: string;
+
+  // College Information
+  collegeId: string;
+  collegeName: string;
+  linkRangeId?: string;
+  program: string; // e.g., "B.Tech Engineering"
+  semester: number;
+  grade: string; // e.g., "UG", "PG", "Diploma", "11", "12"
+
+  // Scores and Metrics
+  enrollabilityScore: number; // 0-100
+  skillScore: number; // 0-100
+
+  // Activity Tracking
+  streak: number;
+  streakBest: number;
+  lastActivity: Date;
+
+  // Counts
+  badges: number;
+  verifiedSkills: number;
+  certificates: number;
+
+  // Verification Status
+  passportVerified: 'active' | 'pending' | 'expired' | 'none';
+  lastVerified?: Date;
+
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * Enrollability score breakdown with status classification
+ * Score calculated from multiple weighted factors
+ */
+export interface EnrollabilityScore {
+  score: number; // 0-100
+  status: 'excellent' | 'good' | 'average' | 'needs-improvement';
+  factors: {
+    skillCompleteness: number; // 0-100, weighted 35%
+    learningProgress: number; // 0-100, weighted 30%
+    certificationRate: number; // 0-100, weighted 20%
+    activityLevel: number; // 0-100, weighted 15%
+  };
+}
+
+/**
+ * Course progress tracking with status, modules, and time tracking
+ */
+export interface CourseProgress {
+  learnerId: string;
+  courseId: string;
+
+  // Progress Tracking
+  status: 'not-started' | 'in-progress' | 'completed';
+  progressPercentage: number; // 0-100
+  completedModules: number;
+  totalModules: number;
+
+  // Time Tracking
+  timeSpent: number; // minutes
+  startedAt?: Date;
+  completedAt?: Date;
+  lastAccessedAt: Date;
+
+  // Certificate
+  certificateEarned: boolean;
+  certificateId?: string;
+
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * Aggregated learning metrics for dashboard display
+ * Calculated from CourseProgress array
+ */
+export interface AggregatedLearningMetrics {
+  coursesEnrolled: number;
+  coursesCompleted: number;
+  coursesInProgress: number;
+  coursesNotStarted: number;
+  certificatesEarned: number;
+  totalLearningHours: number; // Calculated from timeSpent
+  completionRate: number; // coursesCompleted / coursesEnrolled * 100
+}
+
+/**
+ * Extended skill data with health status, trends, and proficiency metrics
+ * Used for dashboard skill displays and analysis
+ * 
+ * Task 1.1: Define SkillData interface with proficiency, health status, trends
+ * Requirements: 10.1-10.7, 5.6-5.7
+ */
+export interface SkillDataExtended {
+  learnerId: string;
+  skillId: string;
+  skillName: string;
+  category: 'technical' | 'soft' | 'domain';
+
+  // Proficiency Metrics
+  proficiency: number; // 0-100
+  verified: boolean;
+  lastAssessed: Date;
+  assessmentSource: 'self' | 'test' | 'project' | 'ai-evaluated';
+
+  // Health Status (based on proficiency)
+  healthStatus: 'healthy' | 'upskill' | 'critical';
+  // healthy: >75%, upskill: 50-75%, critical: <50%
+
+  // Trend Analysis
+  trend: 'up' | 'down' | 'stable';
+  previousProficiency?: number;
+
+  // Recommendations
+  recommendations: string[];
+
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Type alias for dashboard redesign spec compatibility
+// Task 1.1 requirement: Define SkillData interface
+export type SkillDataDashboard = SkillDataExtended;
+
+/**
+ * Skill metric for dashboard skills snapshot widget
+ * Simplified version of SkillDataExtended for display purposes
+ */
+export interface SkillMetric {
+  id: string;
+  name: string;
+  category: 'problem-solving' | 'communication' | 'technical' | 'teamwork' | 'critical-thinking';
+  proficiency: number; // 0-100
+  lastAssessed?: Date;
+  assessmentSource: 'self' | 'test' | 'project' | 'ai-evaluated';
+  trend: 'up' | 'down' | 'stable';
+  recommendations?: string[];
+}
+
+/**
+ * Learning path with progress, modules, and skills covered
+ */
+export interface LearningPath {
+  id: string;
+  name: string;
+  description: string;
+
+  // Progress
+  learnerId: string;
+  progress: number; // 0-100
+  currentModuleId?: string;
+  completedModules: number;
+  totalModules: number;
+
+  // Metadata
+  skills: string[]; // List of skill names covered in this path
+  estimatedHours: number;
+  difficulty: 'beginner' | 'intermediate' | 'advanced';
+
+  // Dates
+  startedAt: Date;
+  estimatedCompletion: Date;
+  completedAt?: Date;
+
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * Skill health breakdown for passport card display
+ */
+export interface SkillHealthBreakdown {
+  healthy: {
+    percentage: number;
+    count: number;
+    skills: string[];
+  };
+  upskill: {
+    percentage: number;
+    count: number;
+    skills: string[];
+  };
+  critical: {
+    percentage: number;
+    count: number;
+    skills: string[];
+  };
 }
