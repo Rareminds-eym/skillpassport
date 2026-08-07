@@ -382,11 +382,12 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, learnerData, user }
     const width = portfolioTextItem.width || 0;
     if (x === undefined || y === undefined) return null;
 
+    const BOUNDING_BOX_TOLERANCE = 2;
     const match = linkAnnotations.find((a) => {
       const [rx1, ry1, rx2, ry2] = a.rect || [];
       if (rx1 === undefined) return false;
-      const withinX = x >= rx1 - 2 && x + width <= rx2 + 2;
-      const withinY = y >= ry1 - 2 && y <= ry2 + 2;
+      const withinX = x >= rx1 - BOUNDING_BOX_TOLERANCE && x + width <= rx2 + BOUNDING_BOX_TOLERANCE;
+      const withinY = y >= ry1 - BOUNDING_BOX_TOLERANCE && y <= ry2 + BOUNDING_BOX_TOLERANCE;
       return withinX && withinY;
     });
 
