@@ -1435,10 +1435,10 @@ function MySubscription() {
             </div>
 
             {/* Cancellation Feedback */}
-            <div className="mb-6">
-              <p className="block text-sm font-semibold text-slate-900 mb-3 uppercase tracking-wider">
+            <fieldset className="mb-6">
+              <legend className="block text-sm font-semibold text-slate-900 mb-3 uppercase tracking-wider">
                 Why are you canceling? *
-              </p>
+              </legend>
               <div className="space-y-2">
                 {[
                   'Too expensive',
@@ -1460,7 +1460,7 @@ function MySubscription() {
                   </label>
                 ))}
               </div>
-            </div>
+            </fieldset>
 
             {/* Additional Feedback */}
             {cancelReason && (
@@ -1557,10 +1557,10 @@ function MySubscription() {
               </div>
             </div>
 
-            <div className="mb-6">
-              <p className="block text-sm font-semibold text-slate-900 mb-3 uppercase tracking-wider">
+            <fieldset className="mb-6">
+              <legend className="block text-sm font-semibold text-slate-900 mb-3 uppercase tracking-wider">
                 How long would you like to pause?
-              </p>
+              </legend>
               <div className="space-y-2">
                 {[1, 2, 3].map((months) => (
                   <label key={months} className="flex items-center gap-3 p-4 border-2 border-slate-200 rounded-2xl hover:bg-slate-50 cursor-pointer transition-all hover:border-slate-300">
@@ -1576,7 +1576,7 @@ function MySubscription() {
                   </label>
                 ))}
               </div>
-            </div>
+            </fieldset>
 
             <div className="flex gap-3">
               <button
