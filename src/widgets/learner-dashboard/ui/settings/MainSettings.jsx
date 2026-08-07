@@ -11,7 +11,6 @@ import {
   Shield,
   User
 } from "lucide-react";
-import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/ButtonNew';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/Card';
 
@@ -110,7 +109,6 @@ const MainSettings = () => {
   // Fetch soft skills from dedicated table
   const {
     skills: tableSoftSkills,
-    loading: softSkillsLoading,
     refresh: refreshSoftSkills
   } = useLearnerSoftSkills(learnerId, !!learnerId);
 
@@ -134,18 +132,13 @@ const MainSettings = () => {
   });
 
   // Get unread message count with realtime updates
-  const { unreadCount } = useLearnerUnreadCount(learnerId, !!learnerId);
+  useLearnerUnreadCount(learnerId, !!learnerId);
 
   // Fetch recent updates data from recruitment tables (learner-specific)
   const {
-    activities: recentUpdates,
-    isLoading: recentUpdatesLoading,
-    isError: recentUpdatesError,
     refetch: refreshRecentUpdates,
-    isConnected: realtimeConnected,
   } = useLearnerRealtimeActivities(userEmail, 10);
 
-  const [showAllRecentUpdates, setShowAllRecentUpdates] = useState(false);
   const [activeTab, setActiveTab] = useState("profile");
   const [isSaving, setIsSaving] = useState(false);
   const savingRef = useRef(false);
@@ -220,8 +213,6 @@ const MainSettings = () => {
     programs,
     programSections,
     schoolClasses,
-    loading: institutionsLoading,
-    refreshInstitutions,
   } = useInstitutions();
 
   // Profile settings state
@@ -381,7 +372,6 @@ const MainSettings = () => {
       // For role-based detection, also consider the role itself
       const hasSchoolData = learnerData.schoolId || learnerData.schoolClassId || learnerData.school_name;
       const hasUniversityData = learnerData.universityId || learnerData.universityCollegeId || learnerData.programId || learnerData.university || learnerData.college;
-      const isSchoolPath = hasSchoolData || (isSchoolLearner && !hasUniversityData);
       const isUniversityPath = hasUniversityData || (isCollegeLearner && !hasSchoolData);
       
       // Custom school name (for school learners, stored in schoolName field)
@@ -869,45 +859,6 @@ const MainSettings = () => {
     }
   };
 
-  // General profile save handler - validates and saves all profile data
-  const handleSaveProfile = async () => {
-    // Validate Aadhar number before saving (only if it has a value and is not empty)
-    if (profileData.aadharNumber && profileData.aadharNumber.trim() !== '') {
-      if (profileData.aadharNumber.length !== 12) {
-        toast.error("Aadhar number must be exactly 12 digits");
-        return;
-      }
-      
-      if (profileData.aadharNumber.startsWith('0') || profileData.aadharNumber.startsWith('1')) {
-        toast.error("Aadhar number cannot start with 0 or 1");
-        return;
-      }
-    }
-
-    setIsSaving(true);
-    try {
-      await updateProfile(profileData);
-      toast.success("Profile updated successfully");
-      
-      window.dispatchEvent(new CustomEvent('learner_settings_updated', {
-        detail: { type: 'profile_updated', data: profileData }
-      }));
-      
-      try {
-        if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
-          await refreshRecentUpdates();
-        }
-      } catch (refreshError) {
-        console.warn('Could not refresh recent updates:', refreshError);
-      }
-    } catch (error) {
-      console.error('❌ Error updating profile:', error);
-      toast.error(error.message || "Failed to update profile");
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
   // Tab-specific save handlers - only save relevant fields for each tab
   
   // Personal Info Tab - save basic personal information
@@ -1006,13 +957,8 @@ const MainSettings = () => {
     try {
       const dataToSave = { ...profileData };
       
-      // Determine learner type from role
-      const userRole = learnerData?.userRole;
-      const isSchoolLearner = userRole === 'learner';
-      const isCollegeLearner = userRole === 'learner';
-      
       // Determine which path the learner is on
-      const isUniversityPath = dataToSave.universityId || showCustomUniversity || customUniversityName || 
+      const isUniversityPath = dataToSave.universityId || showCustomUniversity || customUniversityName ||
                                dataToSave.universityCollegeId || showCustomCollege || customCollegeName ||
                                dataToSave.programId || showCustomProgram || customProgramName;
       const isSchoolPath = dataToSave.schoolId || showCustomSchool || customSchoolName ||
@@ -1113,9 +1059,9 @@ const MainSettings = () => {
           yearNumber = parseInt(yearMatch[1], 10);
           
           // Validate year based on program type
-          if (dataToSave.grade && dataToSave.grade.includes('UG') && yearNumber > 5) {
+          if (dataToSave.grade?.includes('UG') && yearNumber > 5) {
             validationError = 'UG programs typically have max 5 years (10 semesters)';
-          } else if (dataToSave.grade && dataToSave.grade.includes('PG') && yearNumber > 2) {
+          } else if (dataToSave.grade?.includes('PG') && yearNumber > 2) {
             validationError = 'PG programs typically have max 2 years (4 semesters)';
           }
         } else {
@@ -1125,11 +1071,11 @@ const MainSettings = () => {
             semesterNumber = parseInt(semMatch[1], 10);
             
             // Validate semester based on program type
-            if (dataToSave.grade && dataToSave.grade.includes('UG') && semesterNumber > 10) {
+            if (dataToSave.grade?.includes('UG') && semesterNumber > 10) {
               validationError = 'UG programs typically have max 10 semesters';
-            } else if (dataToSave.grade && dataToSave.grade.includes('PG') && semesterNumber > 4) {
+            } else if (dataToSave.grade?.includes('PG') && semesterNumber > 4) {
               validationError = 'PG programs typically have max 4 semesters';
-            } else if (dataToSave.grade && dataToSave.grade.includes('Diploma') && semesterNumber > 6) {
+            } else if (dataToSave.grade?.includes('Diploma') && semesterNumber > 6) {
               validationError = 'Diploma programs typically have max 6 semesters';
             }
             
