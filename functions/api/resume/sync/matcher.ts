@@ -202,7 +202,11 @@ export function matchCertificates(
   existing: CertificateDbRecord[],
   parsedAsDbShape: Omit<CertificateDbRecord, 'id'>[],
 ): MatchResult<Record<string, any>> {
-  const keyOf = (r: Record<string, any>) => normalizeField(r.title);
+  const keyOf = (r: Record<string, any>) => {
+    const title = normalizeField(r.title);
+    const issuer = normalizeField(r.issuer);
+    return title ? `${title}::${issuer}` : '';
+  };
   const comparedFields = ['issuer', 'issued_on', 'expiry_date', 'description', 'status'];
 
   return matchByKey(existing, parsedAsDbShape, keyOf, comparedFields, (parsedRecord, existingId) => ({

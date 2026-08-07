@@ -357,7 +357,8 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, learnerData, user }
     let annotations;
     try {
       annotations = await page.getAnnotations();
-    } catch {
+    } catch (err) {
+      console.warn('Could not read PDF annotations for portfolio link extraction:', err);
       return null;
     }
     if (!annotations || annotations.length === 0) return null;
@@ -425,8 +426,8 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, learnerData, user }
           if (!portfolioLinkFromAnnotation) {
             portfolioLinkFromAnnotation = await extractPortfolioLinkFromAnnotations(page, textContent.items);
           }
-        } catch {
-          // Continue with other pages
+        } catch (err) {
+          console.warn(`Could not process page ${pageNum}, continuing with other pages:`, err);
         }
       }
 
@@ -593,6 +594,7 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, learnerData, user }
             </div>
             {onClose && (
               <button
+                type="button"
                 onClick={onClose}
                 className="text-gray-400 hover:text-gray-600 transition-colors"
               >
@@ -902,6 +904,7 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, learnerData, user }
                               />
                             </div>
                             <button
+                              type="button"
                               onClick={() => handleArrayItemDelete('education', idx)}
                               className="text-red-600 hover:text-red-800 text-xs mt-1"
                             >
@@ -964,6 +967,7 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, learnerData, user }
                               </div>
                             </div>
                             <button
+                              type="button"
                               onClick={() => handleArrayItemDelete('experience', idx)}
                               className="text-red-600 hover:text-red-800 text-xs mt-1"
                             >
@@ -1053,6 +1057,7 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, learnerData, user }
                               placeholder="Project Link (optional)"
                             />
                             <button
+                              type="button"
                               onClick={() => handleArrayItemDelete('projects', idx)}
                               className="text-red-600 hover:text-red-800 text-xs mt-1"
                             >
@@ -1118,6 +1123,7 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, learnerData, user }
                               <option value="5">Expert</option>
                             </select>
                             <button
+                              type="button"
                               onClick={() => handleArrayItemDelete('technicalSkills', idx)}
                               className="text-red-600 hover:text-red-800 text-xs px-1"
                             >
@@ -1172,6 +1178,7 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, learnerData, user }
                               <option value="5">Expert</option>
                             </select>
                             <button
+                              type="button"
                               onClick={() => handleArrayItemDelete('softSkills', idx)}
                               className="text-red-600 hover:text-red-800 text-xs px-1"
                             >
@@ -1238,6 +1245,7 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, learnerData, user }
                               placeholder="Certificate Link (optional)"
                             />
                             <button
+                              type="button"
                               onClick={() => handleArrayItemDelete('certificates', idx)}
                               className="text-red-600 hover:text-red-800 text-xs mt-1"
                             >

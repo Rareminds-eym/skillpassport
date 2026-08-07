@@ -370,7 +370,9 @@ const ProfileEditSection = ({ profileEmail }) => {
                     </div>
                   </div>
                   <button
+                    type="button"
                     onClick={() => setActiveModal(null)}
+                    aria-label="Close"
                     className="w-10 h-10 rounded-full bg-white/90 hover:bg-white flex items-center justify-center text-slate-400 hover:text-slate-600 transition-all duration-200 shadow-sm hover:shadow-md"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
