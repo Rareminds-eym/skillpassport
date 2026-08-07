@@ -30,9 +30,6 @@ const AddOns = lazy(() =>
   import("@/pages/subscription/AddOns")
 );
 // RecruitmentSubscriptionPlans removed - now using unified subscription system
-const ManageSubscription = lazy(() =>
-  import("@/pages/recruitment/ManageSubscription")
-);
 const AdminDashboard = lazy(() => import("@/pages/recruiter/AdminDashboard"));
 // OnboardingWizard should NOT be lazy-loaded since it wraps lazy-loaded steps
 import { OnboardingWizard } from "@/pages/recruitment/onboarding/OnboardingWizard";
@@ -91,7 +88,7 @@ export const recruiterRoutes = (
       path="subscription/manage"
       element={
         <AdminProtectedRoute>
-          <ManageSubscription />
+          <SubscriptionManage />
         </AdminProtectedRoute>
       }
     />
