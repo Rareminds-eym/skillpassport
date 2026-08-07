@@ -25,12 +25,12 @@ export default function OnboardingStep3() {
             localStorage.removeItem('onboarding_draft');
             resetOnboarding();
 
-            toast.success('Company details saved! Now choose your subscription plan.', {
+            toast.success('Company setup complete! Welcome to your recruitment dashboard.', {
                 duration: 3000,
             });
 
             setTimeout(() => {
-                navigate('/subscription/plans?type=recruiter', { replace: true });
+                navigate('/recruitment/overview', { replace: true });
             }, 1500);
         } catch (error: any) {
             console.error('[OnboardingStep3] Error completing onboarding:', error);
