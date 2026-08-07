@@ -35,6 +35,10 @@ import { R2Client } from '../../storage/utils/r2-client';
 import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../lib/paymentBinding';
 
 const logger = createLogger('verify-payment');
+const COLLEGE_LEARNER_PROMO_CODE = 'RAREMINDS2026';
+const COLLEGE_LEARNER_PROMO_STARTER_AMOUNT_ADDON = 501;
+const COLLEGE_LEARNER_PROMO_STARTER_PLAN_CODES = ['skill_starter'];
+const COLLEGE_LEARNER_PROMO_STARTER_PLAN_NAMES = ['skill starter'];
 
 // Receipt configuration constants
 const RECEIPT_CONFIG = {
@@ -74,6 +78,42 @@ function isPricingMatrix(value: unknown): value is PricingMatrix {
     }
   }
   return true;
+}
+
+const normalizePromoCode = (code: unknown): string =>
+  String(code || '').trim().toUpperCase();
+
+async function isCollegeLearnerPromoStarterPlan(
+  supabase: ReturnType<typeof getServiceClient>,
+  userId: string,
+  userEmail: string,
+  plan: { plan_code?: string | null; name?: string | null },
+  requestReferralCode?: unknown,
+): Promise<boolean> {
+  let userQuery = supabase
+    .from('users')
+    .select('role, metadata');
+
+  if (userEmail) {
+    userQuery = userQuery.eq('email', userEmail);
+  } else {
+    userQuery = userQuery.eq('id', userId);
+  }
+
+  const { data: userRow } = await userQuery.maybeSingle();
+  const metadata = (userRow?.metadata || {}) as Record<string, unknown>;
+  const referralCode = normalizePromoCode(requestReferralCode || metadata.referralCode || metadata.referral_code);
+  const planCode = String(plan.plan_code || '').toLowerCase();
+  const planName = String(plan.name || '').trim().toLowerCase();
+
+  return (
+    userRow?.role === 'learner' &&
+    referralCode === COLLEGE_LEARNER_PROMO_CODE &&
+    (
+      COLLEGE_LEARNER_PROMO_STARTER_PLAN_CODES.includes(planCode) ||
+      COLLEGE_LEARNER_PROMO_STARTER_PLAN_NAMES.includes(planName)
+    )
+  );
 }
 
 export async function handleVerifyPayment(context: AuthenticatedContext): Promise<Response> {
@@ -184,6 +224,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
     const clientPrice = plan.price as number;
     let planPrice: number | undefined;
     let detectedBillingCycle: 'yearly' | 'monthly' | undefined;
+    const allowPromoStarterAmount = await isCollegeLearnerPromoStarterPlan(supabase, user.id, userEmail, validPlan, plan.referralCode);
 
     // CRITICAL: Search for ANY matching price in the pricing matrix
     // Plans may have duration label that doesn't match actual billing cycle
@@ -193,8 +234,15 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
         const entityPricing = pricingMatrix[entityKey];
 
         // Try yearly first
-        if (entityPricing?.yearly === clientPrice && entityPricing.yearly > 0) {
-          planPrice = entityPricing.yearly;
+        const promoYearlyPrice = entityPricing?.yearly
+          ? entityPricing.yearly + COLLEGE_LEARNER_PROMO_STARTER_AMOUNT_ADDON
+          : undefined;
+        if (
+          entityPricing?.yearly &&
+          entityPricing.yearly > 0 &&
+          (entityPricing.yearly === clientPrice || (allowPromoStarterAmount && promoYearlyPrice === clientPrice))
+        ) {
+          planPrice = allowPromoStarterAmount && promoYearlyPrice === clientPrice ? promoYearlyPrice : entityPricing.yearly;
           detectedBillingCycle = 'yearly';
           logger.info('Price matched to yearly billing cycle', { 
             clientPrice, 
@@ -206,8 +254,15 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
         }
 
         // Then try monthly
-        if (entityPricing?.monthly === clientPrice && entityPricing.monthly > 0) {
-          planPrice = entityPricing.monthly;
+        const promoMonthlyPrice = entityPricing?.monthly
+          ? entityPricing.monthly + COLLEGE_LEARNER_PROMO_STARTER_AMOUNT_ADDON
+          : undefined;
+        if (
+          entityPricing?.monthly &&
+          entityPricing.monthly > 0 &&
+          (entityPricing.monthly === clientPrice || (allowPromoStarterAmount && promoMonthlyPrice === clientPrice))
+        ) {
+          planPrice = allowPromoStarterAmount && promoMonthlyPrice === clientPrice ? promoMonthlyPrice : entityPricing.monthly;
           detectedBillingCycle = 'monthly';
           logger.info('Price matched to monthly billing cycle', { 
             clientPrice, 
