@@ -16,6 +16,11 @@
 
 function normalizeField(value: unknown): string {
   if (value === null || value === undefined) return '';
+
+  if (typeof value !== 'string' && typeof value !== 'number') {
+    return '';
+  }
+
   return String(value).trim().replace(/\s+/g, ' ').toLowerCase();
 }
 
