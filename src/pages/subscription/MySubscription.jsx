@@ -48,6 +48,11 @@ import { openZohoChat } from '@/shared/utils/zohoChat';
 
 const logger = getLogger('my-subscription');
 
+/**
+ * Returns Tailwind class names and display label for a billing history status badge.
+ * @param {string} status - Transaction status ('paid', 'failed', 'refunded', or any other value)
+ * @returns {{ badgeClass: string, iconClass: string, label: string }}
+ */
 function getStatusBadgeConfig(status) {
   const configs = {
     paid:     { badgeClass: 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white', iconClass: 'fill-white', label: 'Paid' },
@@ -582,7 +587,10 @@ function MySubscription() {
                   if (!mappedType && tx.transaction_type) {
                     logger.warn('Unmapped transaction type displayed as raw value', { type: tx.transaction_type });
                   }
-                    return mappedType || tx.transaction_type || 'Purchase';
+                    const rawType = typeof tx.transaction_type === 'string'
+                      ? tx.transaction_type.slice(0, 50)
+                      : null;
+                    return mappedType || rawType || 'Purchase';
                 })();
             const statusMap = {
               completed: 'paid',

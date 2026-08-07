@@ -17,9 +17,8 @@
  * - paymentsApiService.pauseSubscription()     - Pause subscription
  * - paymentsApiService.resumeSubscription()    - Resume subscription
  */
-
-import { getLogger } from '@/shared/config/logging';
 import { apiGet } from '@/shared/api/apiClient';
+import { getLogger } from '@/shared/config/logging';
 import { useAuthStore } from '@/shared/model/authStore';
 
 const logger = getLogger('subscription-service');
