@@ -9,6 +9,12 @@
 import { Country, State } from 'country-state-city';
 
 const EMAIL_PATTERN = /[\w.-]+@[\w.-]+\.\w+/;
+// Intentionally loose: {10,} counts characters (digits + spaces/dashes), not
+// digits, so this alone can match candidates with fewer than 10 real digits.
+// Left as-is to stay behaviorally identical to the ported parseFallback()
+// pattern (see file docblock) — extractPhoneNumbers()'s downstream
+// `.filter(m => m.replace(/\D/g, '').length >= 10)` is what actually
+// enforces the 10-digit minimum before a match is ever returned.
 const PHONE_PATTERN = /(?:\+91\s?)?[\d\s-]{10,}/g;
 
 const LINKEDIN_PATTERN = /(https?:\/\/)?(www\.)?linkedin\.com\/[A-Za-z0-9_/.-]+/i;

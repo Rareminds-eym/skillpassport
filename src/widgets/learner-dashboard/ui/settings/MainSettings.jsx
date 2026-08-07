@@ -1503,7 +1503,8 @@ const MainSettings = () => {
       } catch (refreshError) {
         console.warn('Could not refresh recent updates:', refreshError);
       }
-    } catch {
+    } catch (error) {
+      console.error('Failed to refresh profile after resume import:', error);
       toast.error("Failed to refresh profile after resume import. Please reload the page.");
     } finally {
       setShowResumeParser(false);
