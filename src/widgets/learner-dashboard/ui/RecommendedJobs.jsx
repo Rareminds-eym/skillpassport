@@ -1,4 +1,5 @@
 import { WavyBackground } from '@/shared/ui/WavyBackground';
+import RareMindsLogo from '@/shared/assets/RareMindsLogo';
 import { motion } from 'framer-motion';
 import {
     AlertCircle,
@@ -152,7 +153,7 @@ const RecommendedJobsContent = ({
             >
               <div className="relative">
                 <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-lg">
-                  <img src="/RMLogo.webp" alt="RareMinds Logo" className="w-16 h-16" />
+                  <RareMindsLogo variant="icon" alt="RareMinds Logo" className="w-16 h-16" />
                 </div>
                 <motion.div
                   animate={{ rotate: 360 }}
@@ -296,7 +297,7 @@ const RecommendedJobsContent = ({
         <div className="flex items-center justify-between mb-6 relative z-10">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-gradient-to-br from-slate-200 to-gray-200 rounded-lg">
-              <img src="/RMLogo.webp" alt="RareMinds Logo" className="w-5 h-5" />
+              <RareMindsLogo variant="icon" alt="RareMinds Logo" className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">

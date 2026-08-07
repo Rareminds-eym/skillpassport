@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Badge } from "./badge";
 import { Card, CardContent, CardHeader, CardTitle } from "./card";
+import RareMindsLogo from "@/shared/assets/RareMindsLogo";
 
 interface TimelineItem {
   id: number;
@@ -202,8 +203,8 @@ export default function RadialOrbitalTimeline({
           } ${
             theme === "light" ? "bg-white border-[2px] border-black/20" : "bg-black border-[2px] border-white/20"
           }`}>
-            <img
-              src="/assets/HomePage/RMLogo.webp"
+            <RareMindsLogo
+              variant="icon"
               alt="RM Logo"
               className={isMobile ? "w-12 h-12" : "w-20 h-20"}
               style={{ objectFit: "contain" }}

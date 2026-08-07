@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { State, City } from 'country-state-city';
 import { PASSWORD_MIN } from '@/shared/constants';
+import RareMindsLogo from '@/shared/assets/RareMindsLogo';
 
 const UniversityAdmin = () => {
   const [currentStep, setCurrentStep] = useState(1);
@@ -675,9 +676,9 @@ const UniversityAdmin = () => {
       {/* Bulb Logo */}
       <div className="flex justify-center mb-4">
         <div className="relative group">
-          <img 
-            src="/RMLogo.webp" 
-            alt="Bulb Logo" 
+          <RareMindsLogo
+            variant="icon"
+            alt="Bulb Logo"
             className="w-20 h-20 transition-all duration-1000 group-hover:scale-110 group-hover:brightness-125 filter drop-shadow-lg group-hover:drop-shadow-[0_0_30px_rgba(255,255,0,0.7)]"
           />
           <div className="absolute inset-0 bg-blue-400 rounded-full opacity-0 group-hover:opacity-40 blur-2xl transition-all duration-1000 group-hover:animate-pulse"></div>

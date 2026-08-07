@@ -5,6 +5,7 @@ import { ssoClient } from '@/shared/api/ssoClient';
 import { useAuthStore } from '@/shared/model/authStore';
 import { AuthFetchError } from '@rareminds-eym/auth-client';
 import { PASSWORD_MIN } from '@/shared/constants';
+import RareMindsLogo from '@/shared/assets/RareMindsLogo';
 
 type InviteState = 'validating' | 'form' | 'loading' | 'success' | 'error';
 
@@ -294,8 +295,7 @@ const AcceptInvite = () => {
         {/* Logo and header - only show for recruitment invites */}
         {state !== 'validating' && isRecruitmentInvite && validationData && (
           <div className="text-center mb-6">
-            <img
-              src="/RareMinds ISO Logo-01.png"
+            <RareMindsLogo
               alt="SkillPassport"
               className="h-16 mx-auto mb-4"
             />

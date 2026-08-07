@@ -10,6 +10,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { CheckCircle2, Zap } from 'lucide-react';
+import RareMindsLogo from '@/shared/assets/RareMindsLogo';
 
 interface Section {
   id: string;
@@ -56,7 +57,7 @@ export const ProgressHeader: React.FC<ProgressHeaderProps> = ({
             {/* Left: Logo */}
             <div className="flex items-center flex-shrink-0">
               <div className="h-8 sm:h-10 px-2 sm:px-3 rounded-lg bg-blue-50 flex items-center justify-center">
-                <img src="/RareMinds ISO Logo-01.png" alt="RareMinds Logo" className="h-6 sm:h-8 w-auto object-contain" />
+                <RareMindsLogo alt="RareMinds Logo" className="h-6 sm:h-8 w-auto object-contain" />
               </div>
             </div>
 

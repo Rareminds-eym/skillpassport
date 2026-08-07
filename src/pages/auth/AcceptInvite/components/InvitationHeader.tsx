@@ -1,4 +1,5 @@
 import { Users } from 'lucide-react';
+import RareMindsLogo from '@/shared/assets/RareMindsLogo';
 
 interface InvitationHeaderProps {
     isRecruitmentInvite: boolean;
@@ -12,8 +13,7 @@ export function InvitationHeader({ isRecruitmentInvite }: InvitationHeaderProps)
     if (isRecruitmentInvite) {
         return (
             <div className="text-center mb-6">
-                <img
-                    src="/RareMinds ISO Logo-01.png"
+                <RareMindsLogo
                     alt="SkillPassport"
                     className="h-16 mx-auto mb-4"
                 />

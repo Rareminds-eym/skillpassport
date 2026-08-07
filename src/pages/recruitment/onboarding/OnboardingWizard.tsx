@@ -4,6 +4,7 @@
  */
 
 import { OnboardingProvider } from './OnboardingContext';
+import RareMindsLogo from '@/shared/assets/RareMindsLogo';
 
 interface OnboardingWizardProps {
     children: React.ReactNode;
@@ -20,8 +21,7 @@ export const OnboardingWizard = ({ children, currentStep }: OnboardingWizardProp
                         <div className="flex justify-between items-center h-16">
                             {/* Logo */}
                             <div className="flex-shrink-0">
-                                <img
-                                    src="/RareMinds ISO Logo-01.png"
+                                <RareMindsLogo
                                     alt="RareMinds Logo"
                                     className="h-12 w-auto"
                                 />

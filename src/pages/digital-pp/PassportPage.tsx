@@ -8,6 +8,7 @@ import { useAuth } from '@/features/auth';
 import { ProfileCompletionModal, ProfileCompletionErrorBoundary } from '@/features/digital-portfolio';
 import { useProfileCompletionPrompt } from '@/features/learner-profile';
 import { getLogger } from '@/shared/config/logging';
+import RareMindsLogo from '@/shared/assets/RareMindsLogo';
 
 import { usePortfolio } from '@/features/digital-portfolio/model/portfolioStore';
 import { useUserRole } from '@/shared/model/authStore';
@@ -147,8 +148,8 @@ const PassportPage: React.FC = () => {
             {/* Company Logo */}
             <div className="mb-8">
               <div className="w-24 h-24 bg-white/20 backdrop-blur-xl rounded-full flex items-center justify-center mx-auto border-4 border-white/40 shadow-2xl p-2">
-                <img
-                  src="/RMLogo.webp"
+                <RareMindsLogo
+                  variant="icon"
                   alt="Rareminds Logo"
                   className="w-full h-full object-contain"
                 />
