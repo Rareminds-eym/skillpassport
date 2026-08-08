@@ -13,6 +13,19 @@ import { getFileSizeLimit } from '@/shared/config/fileSizeLimits';
 // Configure PDF.js worker - using local worker file from node_modules
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
+// PDF text items don't always report a height; this is the fallback used to
+// estimate line height for line-break detection in reconstructLinesFromTextItems().
+const DEFAULT_LINE_HEIGHT = 12;
+// A Y-position gap larger than this fraction of the estimated line height is
+// treated as a new line in reconstructLinesFromTextItems().
+const LINE_HEIGHT_THRESHOLD_MULTIPLIER = 0.5;
+
+// Known social-media domains, kept identical to KNOWN_SOCIAL_DOMAINS in
+// functions/api/career/handlers/resume-parser/regex.ts so a link
+// annotation pointing at LinkedIn/GitHub/etc. is never mistaken for a
+// portfolio link — those have their own dedicated extractors.
+const KNOWN_SOCIAL_DOMAINS = /linkedin\.com|github\.com|twitter\.com|x\.com|facebook\.com|instagram\.com/i;
+
 const ResumeParser = ({ onDataExtracted, onClose, userEmail, learnerData, user }) => {
   const [file, setFile] = useState(null);
   const [parsing, setParsing] = useState(false);
@@ -236,6 +249,158 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, learnerData, user }
     });
   };
 
+  /**
+   * Group a page's flat TextItem array into visual lines, and detect
+   * paragraph/section gaps between lines using vertical spacing, so
+   * multi-entry resume sections (Projects, Education, Experience,
+   * Certificates, ...) come out separated by a blank line — the boundary
+   * splitEntries() in the deterministic parser relies on.
+   *
+   * pdfjs-dist's getTextContent() returns text fragments with no inherent
+   * line structure by default — each item carries `hasEOL` (true if it's the
+   * last fragment on its visual line, per PDF.js's own text-layout analysis)
+   * which is used as the primary line-break signal. A Y-position
+   * (transform[5]) drop is used as a fallback only for the rare case an item
+   * has no explicit hasEOL but is still on a new line.
+   *
+   * Paragraph-gap detection: once a line is complete, its Y-position is
+   * compared to the previous line's Y-position. The gap between consecutive
+   * lines is normally consistent (roughly one line-height) within a
+   * document — a gap noticeably larger than that baseline indicates a blank
+   * line or extra spacing in the original PDF layout (e.g. between a section
+   * heading and its content, or between two entries in a list), so a blank
+   * line ("\n\n") is emitted instead of a single line break. The baseline
+   * itself is computed from the actual line gaps seen on the page (not a
+   * hardcoded pixel value), so this adapts to each PDF's own font size/
+   * line-height rather than assuming any particular resume's layout.
+   */
+  const reconstructLinesFromTextItems = (items) => {
+    // First pass: group items into lines (existing hasEOL/Y-delta logic),
+    // recording each completed line's starting Y-position alongside it.
+    const lineEntries = [];
+    let currentLineParts = [];
+    let currentLineY = null;
+    let previousY = null;
+
+    const flushLine = () => {
+      // Join same-line fragments with a space (matches the original
+      // .join(' ') behavior for word-spacing) — most PDFs don't embed a
+      // literal space between adjacent text runs on the same line.
+      const line = currentLineParts.join(' ').replace(/\s+/g, ' ').trim();
+      if (line) lineEntries.push({ text: line, y: currentLineY });
+      currentLineParts = [];
+      currentLineY = null;
+    };
+
+    items.forEach((item) => {
+      const y = item.transform?.[5];
+
+      if (previousY !== null && y !== undefined && currentLineParts.length > 0) {
+        const lineHeight = item.height || DEFAULT_LINE_HEIGHT;
+        if (Math.abs(y - previousY) > lineHeight * LINE_HEIGHT_THRESHOLD_MULTIPLIER) {
+          flushLine();
+        }
+      }
+
+      if (item.str) currentLineParts.push(item.str);
+      if (currentLineY === null && y !== undefined) currentLineY = y;
+      if (y !== undefined) previousY = y;
+
+      if (item.hasEOL) flushLine();
+    });
+
+    flushLine();
+
+    if (lineEntries.length === 0) return '';
+
+    // Second pass: compute the typical (median) gap between consecutive
+    // lines' Y-positions, then insert a blank line wherever a gap is
+    // significantly larger than that baseline.
+    const gaps = [];
+    for (let i = 1; i < lineEntries.length; i++) {
+      const prevY = lineEntries[i - 1].y;
+      const currY = lineEntries[i].y;
+      if (prevY !== null && currY !== null) {
+        gaps.push(Math.abs(prevY - currY));
+      }
+    }
+
+    const sortedGaps = [...gaps].sort((a, b) => a - b);
+    const medianGap = sortedGaps.length > 0 ? sortedGaps[Math.floor(sortedGaps.length / 2)] : 0;
+    // A gap more than ~1.6x the typical line-to-line gap reads as a blank
+    // line / paragraph break in the original layout rather than ordinary
+    // line spacing.
+    const PARAGRAPH_GAP_MULTIPLIER = 1.6;
+    const paragraphGapThreshold = medianGap * PARAGRAPH_GAP_MULTIPLIER;
+
+    let result = lineEntries[0].text;
+    for (let i = 1; i < lineEntries.length; i++) {
+      const prevY = lineEntries[i - 1].y;
+      const currY = lineEntries[i].y;
+      const gap = prevY !== null && currY !== null ? Math.abs(prevY - currY) : 0;
+
+      const isParagraphBreak = medianGap > 0 && gap > paragraphGapThreshold;
+      result += (isParagraphBreak ? '\n\n' : '\n') + lineEntries[i].text;
+    }
+
+    return result;
+  };
+
+  /**
+   * Some resumes render a portfolio link as a bare label — e.g. the visible
+   * text is just "Portfolio" — with the actual URL living only in the PDF's
+   * hyperlink annotation, not in the extracted text stream at all. In that
+   * case there is no text for a regex to find; the URL only exists in
+   * page.getAnnotations(). This finds the one Link annotation, if any,
+   * whose clickable rectangle spatially contains a text item reading
+   * "portfolio" (case-insensitive) — a deterministic geometric match
+   * (verified against a real resume: the "Portfolio" text item's bounding
+   * box falls cleanly inside its annotation's rect, no fuzzy overlap
+   * needed), not a guess. Non-mailto, non-social-domain annotations are the
+   * only candidates considered, so a LinkedIn/GitHub link never gets
+   * misread as the portfolio link even if a resume forgets to label it.
+   */
+  const extractPortfolioLinkFromAnnotations = async (page, textItems) => {
+    let annotations;
+    try {
+      annotations = await page.getAnnotations();
+    } catch (err) {
+      console.warn('Could not read PDF annotations for portfolio link extraction:', err);
+      return null;
+    }
+    if (!annotations || annotations.length === 0) return null;
+
+    const linkAnnotations = annotations.filter(
+      (a) =>
+        a.subtype === 'Link' &&
+        typeof a.url === 'string' &&
+        !a.url.startsWith('mailto:') &&
+        !KNOWN_SOCIAL_DOMAINS.test(a.url)
+    );
+    if (linkAnnotations.length === 0) return null;
+
+    const portfolioTextItem = textItems.find(
+      (item) => typeof item.str === 'string' && item.str.trim().toLowerCase() === 'portfolio'
+    );
+    if (!portfolioTextItem) return null;
+
+    const x = portfolioTextItem.transform?.[4];
+    const y = portfolioTextItem.transform?.[5];
+    const width = portfolioTextItem.width || 0;
+    if (x === undefined || y === undefined) return null;
+
+    const BOUNDING_BOX_TOLERANCE = 2;
+    const match = linkAnnotations.find((a) => {
+      const [rx1, ry1, rx2, ry2] = a.rect || [];
+      if (rx1 === undefined) return false;
+      const withinX = x >= rx1 - BOUNDING_BOX_TOLERANCE && x + width <= rx2 + BOUNDING_BOX_TOLERANCE;
+      const withinY = y >= ry1 - BOUNDING_BOX_TOLERANCE && y <= ry2 + BOUNDING_BOX_TOLERANCE;
+      return withinX && withinY;
+    });
+
+    return match ? match.url : null;
+  };
+
   const extractTextFromPDF = async (arrayBuffer) => {
     try {
 
@@ -254,6 +419,7 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, learnerData, user }
 
 
       let fullText = '';
+      let portfolioLinkFromAnnotation = null;
 
       // Extract text from each page
       for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
@@ -261,16 +427,26 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, learnerData, user }
           const page = await pdf.getPage(pageNum);
           const textContent = await page.getTextContent();
 
-          // Combine all text items with proper spacing
-          const pageText = textContent.items
-            .map(item => item.str)
-            .filter(str => str.trim().length > 0) // Remove empty strings
-            .join(' ');
+          const pageText = reconstructLinesFromTextItems(textContent.items);
 
           fullText += pageText + '\n\n';
-        } catch {
-          // Continue with other pages
+
+          if (!portfolioLinkFromAnnotation) {
+            portfolioLinkFromAnnotation = await extractPortfolioLinkFromAnnotations(page, textContent.items);
+          }
+        } catch (err) {
+          console.warn(`Could not process page ${pageNum}, continuing with other pages:`, err);
         }
+      }
+
+      // Inject the annotation-derived URL as an explicit "Portfolio: <url>"
+      // line so the existing backend text parser (extractPortfolio() in
+      // resume-parser/regex.ts) can pick it up deterministically via its
+      // own PROJECT_METADATA_LINE_PATTERN-style label match, without any
+      // new data channel between frontend and backend — the parser still
+      // only ever receives a flat text string.
+      if (portfolioLinkFromAnnotation) {
+        fullText += `Portfolio: ${portfolioLinkFromAnnotation}\n`;
       }
 
       const cleanedText = fullText.trim();
@@ -426,6 +602,7 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, learnerData, user }
             </div>
             {onClose && (
               <button
+                type="button"
                 onClick={onClose}
                 className="text-gray-400 hover:text-gray-600 transition-colors"
               >
@@ -735,6 +912,7 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, learnerData, user }
                               />
                             </div>
                             <button
+                              type="button"
                               onClick={() => handleArrayItemDelete('education', idx)}
                               className="text-red-600 hover:text-red-800 text-xs mt-1"
                             >
@@ -797,6 +975,7 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, learnerData, user }
                               </div>
                             </div>
                             <button
+                              type="button"
                               onClick={() => handleArrayItemDelete('experience', idx)}
                               className="text-red-600 hover:text-red-800 text-xs mt-1"
                             >
@@ -886,6 +1065,7 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, learnerData, user }
                               placeholder="Project Link (optional)"
                             />
                             <button
+                              type="button"
                               onClick={() => handleArrayItemDelete('projects', idx)}
                               className="text-red-600 hover:text-red-800 text-xs mt-1"
                             >
@@ -951,6 +1131,7 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, learnerData, user }
                               <option value="5">Expert</option>
                             </select>
                             <button
+                              type="button"
                               onClick={() => handleArrayItemDelete('technicalSkills', idx)}
                               className="text-red-600 hover:text-red-800 text-xs px-1"
                             >
@@ -1005,6 +1186,7 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, learnerData, user }
                               <option value="5">Expert</option>
                             </select>
                             <button
+                              type="button"
                               onClick={() => handleArrayItemDelete('softSkills', idx)}
                               className="text-red-600 hover:text-red-800 text-xs px-1"
                             >
@@ -1071,6 +1253,7 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, learnerData, user }
                               placeholder="Certificate Link (optional)"
                             />
                             <button
+                              type="button"
                               onClick={() => handleArrayItemDelete('certificates', idx)}
                               className="text-red-600 hover:text-red-800 text-xs mt-1"
                             >

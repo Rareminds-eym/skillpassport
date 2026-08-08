@@ -37,8 +37,8 @@ export const onRequestPostUnverified = withAuthAllowUnverified(async (context: A
 
         console.log('[createUserProfile] User created:', { id, email, role });
 
-        // 🔧 FIX: Create OR UPDATE recruiter record if role is recruiter
-        if (role === 'recruiter') {
+        // 🔧 FIX: Create OR UPDATE recruiter record if role is recruiter or company_admin
+        if (role === 'recruiter' || role === 'company_admin') {
           console.log('[createUserProfile] Creating/updating recruiter record for:', { id, email, firstName, lastName });
           const fullName = `${firstName || ''} ${lastName || ''}`.trim() || email;
 

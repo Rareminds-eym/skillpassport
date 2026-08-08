@@ -153,8 +153,8 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
     // ── Requisitions (opportunities) ──
     if (action === 'list-recruiters') {
-      // 🔒 SECURITY: Use organization_id from middleware context
-      const organizationId = (context.data as any).organizationId;
+      // 🔒 SECURITY: Get organization_id from authenticated user
+      const organizationId = user?.org_id;
 
       console.log('[recruiter/actions] list-recruiters called:', {
         userId: user.id,
@@ -164,11 +164,11 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       });
 
       if (!organizationId) {
-        console.error('[recruiter/actions] list-recruiters: organizationId not found in context', {
+        console.error('[recruiter/actions] list-recruiters: organizationId not found', {
           userId: user.id,
-          contextData: context.data
+          userOrgId: user?.org_id
         });
-        return apiError(500, 'INTERNAL_ERROR', 'Organization context not found. Please contact support.', context.request);
+        return apiError(400, 'VALIDATION_ERROR', 'Organization ID is required', context.request);
       }
 
       // Step 1: Get all active recruiters
@@ -292,8 +292,12 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         itemsPerPage = 8,
       } = body;
 
-      // 🔒 SECURITY: Use organization_id from middleware context
-      const organizationId = (context.data as any).organizationId;
+      // 🔒 SECURITY: Get organization_id from authenticated user
+      const organizationId = user?.org_id;
+
+      if (!organizationId) {
+        return apiError(400, 'VALIDATION_ERROR', 'Organization ID is required', context.request);
+      }
 
       let query = supabase
         .from('opportunities')
@@ -456,15 +460,15 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     if (action === 'import-requisitions') {
       const { rows } = body;
 
-      // 🔒 SECURITY: Use organization_id from middleware context
-      const organizationId = (context.data as any).organizationId;
+      // 🔒 SECURITY: Get organization_id from authenticated user
+      const organizationId = user?.org_id;
 
       if (!organizationId) {
-        console.error('[recruiter/actions] import-requisitions: organizationId not found in context', {
+        console.error('[recruiter/actions] import-requisitions: organizationId not found', {
           userId: user.id,
-          contextData: context.data
+          userOrgId: user?.org_id
         });
-        return apiError(500, 'INTERNAL_ERROR', 'Organization context not found. Please contact support.', context.request);
+        return apiError(400, 'VALIDATION_ERROR', 'Organization ID is required', context.request);
       }
 
       const recruiterEmails = [...new Set((rows || []).map((r: any) => r.recruiter_email).filter(Boolean))];
@@ -560,15 +564,15 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       const { requisitionData } = body;
       if (!requisitionData) return apiError(400, 'VALIDATION_ERROR', 'Missing requisitionData', context.request);
 
-      // 🔒 SECURITY: Use organization_id from middleware context
-      const organizationId = (context.data as any).organizationId;
+      // 🔒 SECURITY: Get organization_id from authenticated user
+      const organizationId = user?.org_id;
 
       if (!organizationId) {
-        console.error('[recruiter/actions] create-requisition: organizationId not found in context', {
+        console.error('[recruiter/actions] create-requisition: organizationId not found', {
           userId: user.id,
-          contextData: context.data
+          userOrgId: user?.org_id
         });
-        return apiError(500, 'INTERNAL_ERROR', 'Organization context not found. Please contact support.', context.request);
+        return apiError(400, 'VALIDATION_ERROR', 'Organization ID is required', context.request);
       }
 
       const { data, error } = await supabase

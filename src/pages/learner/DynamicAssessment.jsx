@@ -16,14 +16,15 @@ import { RadioGroup, RadioGroupItem } from '@/shared/ui';
 import { Label } from '@/shared/ui';
 import {
   AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
   AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogAction,
+  AlertDialogCancel,
 } from '@/shared/ui';
+import RareMindsLogo from '@/shared/assets/RareMindsLogo';
 import { generateAssessment, getCachedAssessment, cacheAssessment } from '@/features/assessment/api/assessmentGenerationService';
 import {
   createAssessmentAttempt,
@@ -608,8 +609,7 @@ const DynamicAssessment = () => {
             <AlertDialogContent className="bg-white rounded-xl max-w-md">
               {/* RareMinds Logo Header */}
               <div className="flex items-center gap-3 pb-4 border-b border-gray-100">
-                <img 
-                  src="/RareMinds.webp" 
+                <RareMindsLogo 
                   alt="RareMinds Logo" 
                   className="h-8 w-auto object-contain"
                 />

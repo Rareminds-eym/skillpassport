@@ -21,6 +21,12 @@ export interface PagesEnv {
   SSO_SERVICE?: SsoWorkerRpc;
   /** LTE app base URL used for cross-app SSO callback redirects. */
   LTE_APP_URL?: string;
+  /**
+   * Cookie domain for refresh-token scoping across subdomains.
+   * Production: ".rareminds.in"  →  __Secure-refresh_token; Domain=.rareminds.in
+   * Local dev:  not set          →  plain refresh_token (no Secure, no Domain)
+   */
+  COOKIE_DOMAIN?: string;
 
   // Supabase configuration
   SUPABASE_URL?: string;

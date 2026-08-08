@@ -15,6 +15,7 @@ import {
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { SearchBar, CertificateNameModal, CourseEnrollmentModal } from '@/shared/ui';
+import RareMindsLogo from '@/shared/assets/RareMindsLogo';
 import { CourseDetailModal } from '@/features/courses';
 import WeeklyLearningTracker from '@/entities/learner/ui/WeeklyLearningTracker';
 import { CourseAdvancedFilters } from '@/widgets/learner-dashboard';
@@ -689,8 +690,8 @@ const Courses = () => {
               >
                 <div className="relative">
                   <div className="inline-block animate-spin rounded-full h-16 w-16 border-4 border-indigo-200 border-t-indigo-600"></div>
-                  <img
-                    src="/assets/HomePage/RMLogo.webp"
+                  <RareMindsLogo
+                    variant="icon"
                     alt="RareMinds Logo"
                     className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-8 h-8 object-contain"
                   />
@@ -1029,8 +1030,8 @@ const Courses = () => {
                       />
                     ) : (
                       <div className={`w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 ${!canAccessCourse(course) ? 'opacity-60' : ''}`}>
-                        <img
-                          src="/assets/HomePage/RMLogo.webp"
+                        <RareMindsLogo
+                          variant="icon"
                           alt="RareMinds"
                           className="w-20 h-20 object-contain opacity-40"
                         />
@@ -1251,8 +1252,8 @@ const Courses = () => {
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
-                            <img
-                              src="/assets/HomePage/RMLogo.webp"
+                            <RareMindsLogo
+                              variant="icon"
                               alt="RareMinds"
                               className="w-16 h-16 object-contain opacity-40"
                             />

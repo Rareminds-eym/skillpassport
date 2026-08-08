@@ -112,9 +112,6 @@ export const onRequest: PagesFunction = async (context) => {
     }
 
     if (path === '/parse-resume') {
-      if (!getOpenRouterKey(env)) {
-        return apiError(500, 'INTERNAL_ERROR', 'AI service not configured', request);
-      }
       return await handleParseResume(request, env as any, userId);
     }
 

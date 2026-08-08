@@ -5,6 +5,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useLearnerDataByEmail } from '@/entities/learner';
 import { checkAssessmentStatus } from '@/features/assessment/api/externalAssessmentService';
 import { getLogger } from '@/shared/config/logging';
+import RareMindsLogo from '@/shared/assets/RareMindsLogo';
 
 import { useUser } from '@/shared/model/authStore';
 const logger = getLogger('AssessmentStart');
@@ -153,8 +154,7 @@ const AssessmentStart = () => {
         <div>
           {/* Logo */}
           <div className="flex items-center gap-3 z-10 mb-6">
-            <img 
-              src="/RareMinds.webp" 
+            <RareMindsLogo 
               alt="RareMinds Logo" 
               className="h-14 w-auto object-contain"
             />

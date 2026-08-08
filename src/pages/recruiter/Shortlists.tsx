@@ -31,6 +31,7 @@ import {
   logExportActivity
 } from '@/features/opportunities';
 import jsPDF from 'jspdf';
+import { BRAND_LOGO_URL, BRAND_ICON_URL } from '@/shared/config/brand';
 import { SearchBar } from '@/shared/ui';
 import { AdvancedShortlistFilters, ShortlistFilters } from '@/features/recruiter-pipeline';
 import { getLogger } from '@/shared/config/logging';
@@ -580,7 +581,7 @@ const ExportModal = ({ shortlist, isOpen, onClose, onExport }) => {
         // Load and add RareMinds logo at top-left
         const rareMindsLogo = new Image();
         rareMindsLogo.crossOrigin = 'anonymous';
-        rareMindsLogo.src = '/RareMinds.webp';
+        rareMindsLogo.src = BRAND_LOGO_URL;
         await new Promise((resolve, reject) => {
           rareMindsLogo.onload = resolve;
           rareMindsLogo.onerror = reject;
@@ -601,7 +602,7 @@ const ExportModal = ({ shortlist, isOpen, onClose, onExport }) => {
         // Load and add RMLogo at center
         const rmLogo = new Image();
         rmLogo.crossOrigin = 'anonymous';
-        rmLogo.src = '/RMLogo.webp';
+        rmLogo.src = BRAND_ICON_URL;
         await new Promise((resolve, reject) => {
           rmLogo.onload = resolve;
           rmLogo.onerror = reject;

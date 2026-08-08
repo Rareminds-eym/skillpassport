@@ -16,6 +16,8 @@ import { useSubscriptionQuery } from '@/features/subscription/model/useSubscript
 import { useAuthLoading, useIsAuthenticated, useUser, useUserRole } from '@/shared/model/authStore';
 
 const COLLEGE_LEARNER_PROMO_CODE = 'RAREMINDS2026';
+const COLLEGE_LEARNER_PROMO_STARTER_PLAN_CODE = 'skill_starter';
+const COLLEGE_LEARNER_PROMO_STARTER_AMOUNT_ADDON = 501;
 
 const normalizePromoCode = (code) => (code || '').trim().toUpperCase();
 
@@ -33,6 +35,12 @@ const getPlanCode = (plan) => String(
   .replace(/^_+|_+$/g, '');
 
 const getPlanName = (plan) => String(plan?.name || plan?.display_name || '').trim().toLowerCase();
+
+const isCollegeLearnerPromoStarterPlan = (plan) => {
+  const planCode = getPlanCode(plan);
+  const planName = getPlanName(plan);
+  return planCode === COLLEGE_LEARNER_PROMO_STARTER_PLAN_CODE || planName === 'skill starter';
+};
 
 const getUserReferralCode = (user) => normalizePromoCode(
   user?.metadata?.referralCode ||
@@ -66,6 +74,9 @@ const applyEndpointPlanFallback = (plans, forcePromo = false) => {
         }
         : {
           ...plan,
+          price: hasPromoMask && isCollegeLearnerPromoStarterPlan(plan)
+            ? Number(plan.price) + COLLEGE_LEARNER_PROMO_STARTER_AMOUNT_ADDON
+            : plan.price,
           hidePrice: false,
           isDisabled: false,
           availabilityLabel: undefined,

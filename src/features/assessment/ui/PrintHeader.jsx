@@ -80,8 +80,7 @@ const PrintHeader = () => {
           paddingRight: '20px'
         }}
       >
-        <img
-          src="/RareMinds ISO Logo-01.png"
+        <RareMindsLogo
           alt="Rareminds"
           style={{
             height: '40px',

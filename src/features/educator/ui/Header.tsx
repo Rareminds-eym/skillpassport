@@ -9,6 +9,7 @@ import {
 } from '@heroicons/react/24/outline'
 import NotificationPanel from './NotificationPanel'
 import { apiPost } from '@/shared/api/apiClient'
+import RareMindsLogo from '@/shared/assets/RareMindsLogo'
 import { useNotifications } from '@/features/notifications'
 import { getLogger } from '@/shared/config/logging'
 import { useAuthStore } from '@/shared/model/authStore';
@@ -182,8 +183,7 @@ const Header: React.FC<HeaderProps> = ({
 
             {/* Logo */}
             <div className="flex-shrink-0">
-              <img
-                src="/RareMinds ISO Logo-01.png"
+              <RareMindsLogo
                 alt="RareMinds Logo"
                 className="h-8 sm:h-11 w-auto"
               />

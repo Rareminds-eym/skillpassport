@@ -10,6 +10,7 @@ import {
 
 import NotificationPanel from "./NotificationPanel";
 import { useAdminNotifications } from '@/features/notifications';
+import RareMindsLogo from '@/shared/assets/RareMindsLogo';
 
 import { useUser, useAuthActions } from '@/shared/model/authStore';
 interface HeaderProps {
@@ -108,8 +109,7 @@ const Header: React.FC<HeaderProps> = ({
             </button>
             {/* Logo */}
             <div className="flex-shrink-0">
-              <img
-                src="/RareMinds ISO Logo-01.png"
+              <RareMindsLogo
                 alt="RareMinds Logo"
                 className="h-8 sm:h-11 w-auto"
               />

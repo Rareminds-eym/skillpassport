@@ -7,6 +7,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { capitalizeFirstLetter } from '@/features/subscription';
 import { PASSWORD_MIN } from '@/shared/constants';
 import { ssoClient } from '@/shared/api/ssoClient';
+import RareMindsLogo from '@/shared/assets/RareMindsLogo';
 
 // Languages list
 const LANGUAGES = [
@@ -489,7 +490,7 @@ const SignupAdmin = () => {
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex justify-center mb-4">
-            <img src="/RMLogo.webp" alt="Logo" className="w-20 h-20" />
+            <RareMindsLogo variant="icon" alt="Logo" className="w-20 h-20" />
           </div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Create Recruitment Workspace</h1>
           <p className="text-gray-600">Setup your company workspace in a few simple steps</p>

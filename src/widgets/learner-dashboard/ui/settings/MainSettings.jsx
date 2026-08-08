@@ -11,7 +11,6 @@ import {
   Shield,
   User
 } from "lucide-react";
-import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/ButtonNew';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/Card';
 
@@ -38,7 +37,6 @@ import { useLearnerMessageNotifications } from '@/entities/learner';
 import { useLearnerUnreadCount } from "@/entities/learner";
 import { useLearnerRealtimeActivities } from '@/entities/learner/model/useLearnerRealtimeActivities';
 import ResumeParser from "../ResumeParser";
-import { mergeResumeData } from '@/features/digital-portfolio';
 import { safeSave } from '@/shared/lib/settingsErrorHandler';
 
 // Import tab components
@@ -49,35 +47,10 @@ import PrivacyTab from "./PrivacyTab";
 
 import { useUser } from '@/shared/model/authStore';
 
-const firstFilled = (...values) => {
-  for (const value of values) {
-    if (value === null || value === undefined) continue;
-    const normalized = String(value).trim();
-    if (normalized) return normalized;
-  }
-  return '';
-};
-
-const normalizeResumeDataForSettings = (parsedData = {}) => ({
-  ...parsedData,
-  phone: firstFilled(parsedData.phone, parsedData.contact_number),
-  alternatePhone: firstFilled(parsedData.alternatePhone, parsedData.alternate_number),
-  dateOfBirth: firstFilled(parsedData.dateOfBirth, parsedData.date_of_birth),
-  location: firstFilled(parsedData.location, parsedData.city),
-  registrationNumber: firstFilled(parsedData.registrationNumber, parsedData.registration_number),
-  linkedIn: firstFilled(parsedData.linkedIn, parsedData.linkedin_link, parsedData.linkedin),
-  github: firstFilled(parsedData.github, parsedData.github_link),
-  portfolio: firstFilled(parsedData.portfolio, parsedData.portfolio_link, parsedData.website),
-  twitter: firstFilled(parsedData.twitter, parsedData.twitter_link),
-  facebook: firstFilled(parsedData.facebook, parsedData.facebook_link),
-  instagram: firstFilled(parsedData.instagram, parsedData.instagram_link),
-});
-
 const MainSettings = () => {
   const user = useUser();
   const location = useLocation();
   const userEmail = user?.email;
-  const recentUpdatesRef = useRef(null);
 
   const {
     learnerData,
@@ -85,6 +58,7 @@ const MainSettings = () => {
     error: learnerError,
     updateProfile,
     updatePassword,
+    refreshData: refreshLearnerSettings,
   } = useLearnerSettings(userEmail);
 
   // Get education data from the same source as Dashboard
@@ -92,7 +66,6 @@ const MainSettings = () => {
     learnerData: learnerDataWithEducation,
     loading: educationLoading,
     updateEducation,
-    updateTechnicalSkills,
     updateSoftSkills,
     updateSkills,
     updateExperience,
@@ -106,48 +79,36 @@ const MainSettings = () => {
   // Fetch certificates from dedicated table
   const {
     certificates: tableCertificates,
-    loading: certificatesLoading,
-    error: certificatesError,
     refresh: refreshCertificates
   } = useLearnerCertificates(learnerId, !!learnerId);
 
   // Fetch projects from dedicated table
   const {
     projects: tableProjects,
-    loading: projectsLoading,
-    error: projectsError,
     refresh: refreshProjects
   } = useLearnerProjects(learnerId, !!learnerId);
 
   // Fetch experience from dedicated table
   const {
     experience: tableExperience,
-    loading: experienceLoading,
-    error: experienceError,
     refresh: refreshExperience
   } = useLearnerExperience(learnerId, !!learnerId);
 
   // Fetch education from dedicated table
   const {
     education: tableEducation,
-    loading: educationTableLoading,
-    error: educationTableError,
     refresh: refreshEducation
   } = useLearnerEducation(learnerId, !!learnerId);
 
   // Fetch technical skills from dedicated table
   const {
     skills: tableTechnicalSkills,
-    loading: technicalSkillsLoading,
-    error: technicalSkillsError,
     refresh: refreshTechnicalSkills
   } = useLearnerTechnicalSkills(learnerId, !!learnerId);
 
   // Fetch soft skills from dedicated table
   const {
     skills: tableSoftSkills,
-    loading: softSkillsLoading,
-    error: softSkillsError,
     refresh: refreshSoftSkills
   } = useLearnerSoftSkills(learnerId, !!learnerId);
 
@@ -171,18 +132,13 @@ const MainSettings = () => {
   });
 
   // Get unread message count with realtime updates
-  const { unreadCount } = useLearnerUnreadCount(learnerId, !!learnerId);
+  useLearnerUnreadCount(learnerId, !!learnerId);
 
   // Fetch recent updates data from recruitment tables (learner-specific)
   const {
-    activities: recentUpdates,
-    isLoading: recentUpdatesLoading,
-    isError: recentUpdatesError,
     refetch: refreshRecentUpdates,
-    isConnected: realtimeConnected,
   } = useLearnerRealtimeActivities(userEmail, 10);
 
-  const [showAllRecentUpdates, setShowAllRecentUpdates] = useState(false);
   const [activeTab, setActiveTab] = useState("profile");
   const [isSaving, setIsSaving] = useState(false);
   const savingRef = useRef(false);
@@ -257,8 +213,6 @@ const MainSettings = () => {
     programs,
     programSections,
     schoolClasses,
-    loading: institutionsLoading,
-    refreshInstitutions,
   } = useInstitutions();
 
   // Profile settings state
@@ -418,7 +372,6 @@ const MainSettings = () => {
       // For role-based detection, also consider the role itself
       const hasSchoolData = learnerData.schoolId || learnerData.schoolClassId || learnerData.school_name;
       const hasUniversityData = learnerData.universityId || learnerData.universityCollegeId || learnerData.programId || learnerData.university || learnerData.college;
-      const isSchoolPath = hasSchoolData || (isSchoolLearner && !hasUniversityData);
       const isUniversityPath = hasUniversityData || (isCollegeLearner && !hasSchoolData);
       
       // Custom school name (for school learners, stored in schoolName field)
@@ -906,45 +859,6 @@ const MainSettings = () => {
     }
   };
 
-  // General profile save handler - validates and saves all profile data
-  const handleSaveProfile = async () => {
-    // Validate Aadhar number before saving (only if it has a value and is not empty)
-    if (profileData.aadharNumber && profileData.aadharNumber.trim() !== '') {
-      if (profileData.aadharNumber.length !== 12) {
-        toast.error("Aadhar number must be exactly 12 digits");
-        return;
-      }
-      
-      if (profileData.aadharNumber.startsWith('0') || profileData.aadharNumber.startsWith('1')) {
-        toast.error("Aadhar number cannot start with 0 or 1");
-        return;
-      }
-    }
-
-    setIsSaving(true);
-    try {
-      await updateProfile(profileData);
-      toast.success("Profile updated successfully");
-      
-      window.dispatchEvent(new CustomEvent('learner_settings_updated', {
-        detail: { type: 'profile_updated', data: profileData }
-      }));
-      
-      try {
-        if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
-          await refreshRecentUpdates();
-        }
-      } catch (refreshError) {
-        console.warn('Could not refresh recent updates:', refreshError);
-      }
-    } catch (error) {
-      console.error('❌ Error updating profile:', error);
-      toast.error(error.message || "Failed to update profile");
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
   // Tab-specific save handlers - only save relevant fields for each tab
   
   // Personal Info Tab - save basic personal information
@@ -1043,13 +957,8 @@ const MainSettings = () => {
     try {
       const dataToSave = { ...profileData };
       
-      // Determine learner type from role
-      const userRole = learnerData?.userRole;
-      const isSchoolLearner = userRole === 'learner';
-      const isCollegeLearner = userRole === 'learner';
-      
       // Determine which path the learner is on
-      const isUniversityPath = dataToSave.universityId || showCustomUniversity || customUniversityName || 
+      const isUniversityPath = dataToSave.universityId || showCustomUniversity || customUniversityName ||
                                dataToSave.universityCollegeId || showCustomCollege || customCollegeName ||
                                dataToSave.programId || showCustomProgram || customProgramName;
       const isSchoolPath = dataToSave.schoolId || showCustomSchool || customSchoolName ||
@@ -1147,26 +1056,26 @@ const MainSettings = () => {
         // Check for patterns like "1st year", "2nd year", "3rd year", "4th year"
         const yearMatch = lowerSemester.match(/(\d+)(?:st|nd|rd|th)?\s*year/);
         if (yearMatch) {
-          yearNumber = parseInt(yearMatch[1]);
+          yearNumber = parseInt(yearMatch[1], 10);
           
           // Validate year based on program type
-          if (dataToSave.grade && dataToSave.grade.includes('UG') && yearNumber > 5) {
+          if (dataToSave.grade?.includes('UG') && yearNumber > 5) {
             validationError = 'UG programs typically have max 5 years (10 semesters)';
-          } else if (dataToSave.grade && dataToSave.grade.includes('PG') && yearNumber > 2) {
+          } else if (dataToSave.grade?.includes('PG') && yearNumber > 2) {
             validationError = 'PG programs typically have max 2 years (4 semesters)';
           }
         } else {
           // Check for semester numbers and convert to year
           const semMatch = lowerSemester.match(/(?:semester|sem)?\s*(\d+)/);
           if (semMatch) {
-            semesterNumber = parseInt(semMatch[1]);
+            semesterNumber = parseInt(semMatch[1], 10);
             
             // Validate semester based on program type
-            if (dataToSave.grade && dataToSave.grade.includes('UG') && semesterNumber > 10) {
+            if (dataToSave.grade?.includes('UG') && semesterNumber > 10) {
               validationError = 'UG programs typically have max 10 semesters';
-            } else if (dataToSave.grade && dataToSave.grade.includes('PG') && semesterNumber > 4) {
+            } else if (dataToSave.grade?.includes('PG') && semesterNumber > 4) {
               validationError = 'PG programs typically have max 4 semesters';
-            } else if (dataToSave.grade && dataToSave.grade.includes('Diploma') && semesterNumber > 6) {
+            } else if (dataToSave.grade?.includes('Diploma') && semesterNumber > 6) {
               validationError = 'Diploma programs typically have max 6 semesters';
             }
             
@@ -1487,26 +1396,38 @@ const MainSettings = () => {
   };
 
   // Handle resume data extraction and auto-fill
-  const handleResumeDataExtracted = async (parsedData) => {
+  const handleResumeDataExtracted = async () => {
+    // /resume/save (called just before this, from ResumeParser.jsx's
+    // handleSaveToDatabase) is the ONLY backend write path for Resume
+    // Auto-Fill: it already synchronized every entity (Education, Experience,
+    // Projects, Certificates, Technical Skills, Soft Skills) via matcher.ts's
+    // deterministic skip/update/insert logic, and wrote every flat learner
+    // field. This handler must not write again — including the
+    // updateEducation(...) call that used to run here, which went through
+    // updateEducationByEmail (learnerService.ts): that function assigns a
+    // fresh random UUID to any record whose id isn't already a 36-character
+    // UUID, true for every resume-parsed entry (the parser only assigns
+    // small integer ids, never real DB UUIDs), so every existing education
+    // record was computed as "not present" and deleted, then reinserted
+    // under new ids — discarding approval_status/enabled state /resume/save
+    // had just correctly preserved via sync.
+    //
+    // The only remaining responsibility here is to reflect what /resume/save
+    // already persisted: refetch from the database so every section (not
+    // just Education) shows the latest synchronized state without a manual
+    // browser refresh.
     try {
-      const currentProfile = profileData;
-      const normalizedParsedData = normalizeResumeDataForSettings(parsedData);
-      const mergedData = mergeResumeData(currentProfile, normalizedParsedData);
-
-      setProfileData(mergedData);
-
-      await updateProfile(mergedData);
-
-      if (normalizedParsedData.education && normalizedParsedData.education.length > 0) {
-        // Education data will be automatically updated by the hook
-        if (updateEducation) {
-          await updateEducation(normalizedParsedData.education);
-        }
-      }
+      await Promise.all([
+        refreshLearnerSettings?.(),
+        refreshEducation?.(),
+        refreshExperience?.(),
+        refreshProjects?.(),
+        refreshCertificates?.(),
+        refreshTechnicalSkills?.(),
+        refreshSoftSkills?.(),
+      ]);
 
       toast.success("Profile auto-filled from resume successfully!");
-
-      setShowResumeParser(false);
 
       try {
         if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
@@ -1515,8 +1436,11 @@ const MainSettings = () => {
       } catch (refreshError) {
         console.warn('Could not refresh recent updates:', refreshError);
       }
-    } catch {
-      toast.error("Failed to auto-fill profile from resume. Please try again.");
+    } catch (error) {
+      console.error('Failed to refresh profile after resume import:', error);
+      toast.error("Failed to refresh profile after resume import. Please reload the page.");
+    } finally {
+      setShowResumeParser(false);
     }
   };
 
