@@ -17,26 +17,38 @@ import { syncSubscriptionCache, syncUserShadow } from '../../../lib/sync-shadow'
 import { apiSuccess, apiError } from '../../../lib/response';
 
 const logger = createLogger('payments:create-order');
-const COLLEGE_LEARNER_PROMO_CODE = 'RAREMINDS2026';
-const COLLEGE_LEARNER_PROMO_STARTER_AMOUNT_ADDON = 501;
-const COLLEGE_LEARNER_PROMO_STARTER_PLAN_CODES = ['skill_starter'];
-const COLLEGE_LEARNER_PROMO_STARTER_PLAN_NAMES = ['skill starter'];
-const COLLEGE_LEARNER_DISABLED_PLAN_CODES = ['discover', 'career_builder', 'career_accelerator'];
+import { getPromoCampaign, isPlanLockedByCampaign, campaignPriceForPlan, type PromoCampaign } from '../lib/promo-campaigns';
+import { resolvePlanPaymentPrice } from '../lib/plan-pricing';
+
 
 const normalizePromoCode = (code: unknown): string =>
   String(code || '').trim().toUpperCase();
 
-async function isCollegeLearnerRestrictedPlan(
+function parseUserMetadata(raw: unknown): Record<string, unknown> {
+  if (!raw) return {};
+  if (typeof raw === 'object' && raw !== null) return raw as Record<string, unknown>;
+  if (typeof raw === 'string') {
+    try {
+      const parsed = JSON.parse(raw);
+      return typeof parsed === 'object' && parsed !== null ? parsed : {};
+    } catch {
+      return {};
+    }
+  }
+  return {};
+}
+
+async function getOrderContext(
   supabase: ReturnType<typeof getServiceClient>,
   userId: string,
   userEmail: string | undefined,
   planId: unknown,
-): Promise<boolean> {
-  if (!planId) return false;
+): Promise<{ plan: Record<string, unknown> | null; campaign: PromoCampaign | null }> {
+  if (!planId) return { plan: null, campaign: null };
 
   let userQuery = supabase
     .from('users')
-    .select('role, metadata');
+    .select('metadata');
 
   if (userEmail) {
     userQuery = userQuery.eq('email', userEmail);
@@ -48,56 +60,19 @@ async function isCollegeLearnerRestrictedPlan(
     userQuery.maybeSingle(),
     supabase
       .from('plans_cache')
-      .select('plan_code, business_type')
+      .select('pricing_matrix, plan_code')
       .eq('id', planId)
       .eq('is_active', true)
       .maybeSingle(),
   ]);
 
-  const metadata = (userRow?.metadata || {}) as Record<string, unknown>;
-  const referralCode = normalizePromoCode(metadata.referralCode || metadata.referral_code);
-  const planCode = String(planRow?.plan_code || '').toLowerCase();
+  if (!planRow) return { plan: null, campaign: null };
 
-  return (
-    userRow?.role === 'learner' &&
-    planRow?.business_type === 'b2c' &&
-    referralCode === COLLEGE_LEARNER_PROMO_CODE &&
-    COLLEGE_LEARNER_DISABLED_PLAN_CODES.includes(planCode)
-  );
-}
+  const metadata = parseUserMetadata(userRow?.metadata);
+  const referralCode = normalizePromoCode(metadata.referralCode || metadata.referral_code || metadata.promoCode || metadata.promo);
+  const campaign = await getPromoCampaign(supabase, referralCode);
 
-async function isCollegeLearnerPromoStarterPlan(
-  supabase: ReturnType<typeof getServiceClient>,
-  userId: string,
-  userEmail: string | undefined,
-  plan: { plan_code?: string | null; name?: string | null; business_type?: string | null },
-  requestReferralCode?: unknown,
-): Promise<boolean> {
-  let userQuery = supabase
-    .from('users')
-    .select('role, metadata');
-
-  if (userEmail) {
-    userQuery = userQuery.eq('email', userEmail);
-  } else {
-    userQuery = userQuery.eq('id', userId);
-  }
-
-  const { data: userRow } = await userQuery.maybeSingle();
-  const metadata = (userRow?.metadata || {}) as Record<string, unknown>;
-  const referralCode = normalizePromoCode(requestReferralCode || metadata.referralCode || metadata.referral_code);
-  const planCode = String(plan.plan_code || '').toLowerCase();
-  const planName = String(plan.name || '').trim().toLowerCase();
-
-  return (
-    userRow?.role === 'learner' &&
-    plan.business_type === 'b2c' &&
-    referralCode === COLLEGE_LEARNER_PROMO_CODE &&
-    (
-      COLLEGE_LEARNER_PROMO_STARTER_PLAN_CODES.includes(planCode) ||
-      COLLEGE_LEARNER_PROMO_STARTER_PLAN_NAMES.includes(planName)
-    )
-  );
+  return { plan: planRow, campaign };
 }
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
@@ -148,7 +123,7 @@ export async function handleCreateOrder(context: AuthenticatedContext): Promise<
           return apiError(503, 'ERROR', 'Subscription service is temporarily unavailable. Please try again later.', context.request);
         }
         if (ssoError.message?.includes('23505') || ssoError.message?.includes('duplicate')) {
-           return apiError(409, 'CONFLICT', 'User already has an active subscription', context.request);
+          return apiError(409, 'CONFLICT', 'User already has an active subscription', context.request);
         }
         throw ssoError;
       }
@@ -180,49 +155,36 @@ export async function handleCreateOrder(context: AuthenticatedContext): Promise<
       }, context.request);
     }
 
-   
+
 
 
     // Validate amount against DB plan price (industrial-grade: never trust client)
     if (body.planId) {
       const supabase = getServiceClient(env);
-      if (await isCollegeLearnerRestrictedPlan(supabase, user.id, user.email, body.planId)) {
-        return apiError(403, 'PLAN_NOT_AVAILABLE', 'This plan is not available for this referral code.', context.request);
-      }
-
-      const { data: dbPlan } = await supabase
-        .from('plans_cache')
-        .select('plan_code, name, business_type, pricing_matrix')
-        .eq('id', body.planId)
-        .eq('is_active', true)
-        .maybeSingle();
+      const { plan: dbPlan, campaign } = await getOrderContext(supabase, user.id, user.email, body.planId);
 
       if (!dbPlan) {
         logger.warn('Plan not found in plans_cache', { planId: body.planId });
         return apiError(404, 'NOT_FOUND', 'Plan not found or inactive', context.request);
       }
 
-      const pricingMatrix = dbPlan.pricing_matrix as Record<string, any>;
-      const clientAmount = body.amount as number;
-      let isValidPrice = false;
-      const allowPromoStarterAmount = await isCollegeLearnerPromoStarterPlan(supabase, user.id, user.email, dbPlan, body.referralCode);
+      const planCode = String(dbPlan.plan_code || '').toLowerCase();
 
-      if (pricingMatrix) {
-        for (const key in pricingMatrix) {
-          const price = pricingMatrix[key]?.yearly;
-          if (typeof price === 'number') {
-            const expectedPaise = Math.round(price * 100);
-            const promoExpectedPaise = Math.round((price + COLLEGE_LEARNER_PROMO_STARTER_AMOUNT_ADDON) * 100);
-            if (clientAmount === expectedPaise || (allowPromoStarterAmount && clientAmount === promoExpectedPaise)) {
-              isValidPrice = true;
-              break;
-            }
-          }
-        }
+      // Locked campaign plan: reject outright (no order, no payment attempt)
+      if (campaign && isPlanLockedByCampaign(campaign, planCode)) {
+        return apiError(403, 'PLAN_NOT_AVAILABLE', 'This plan is not available for this referral code.', context.request);
       }
 
-      if (!isValidPrice) {
-        logger.warn('Price mismatch or no valid pricing found', { clientAmount, planId: body.planId, pricingMatrix });
+      // Price check: accept base pricing_matrix amounts AND campaign overrides.
+      // Campaign overrides are yearly-only (plans are yearly-billed). Amount
+      // arrives in paise — normalize to INR before matching.
+      const pricingMatrix = (dbPlan.pricing_matrix as Record<string, any>) || {};
+      const campaignYearlyPrice = campaign ? campaignPriceForPlan(campaign, planCode) : null;
+
+      const match = resolvePlanPaymentPrice(pricingMatrix, campaignYearlyPrice, (body.amount as number) / 100);
+
+      if (!match) {
+        logger.warn('Price mismatch or no valid pricing found', { clientAmount: body.amount, planId: body.planId, pricingMatrix });
         return apiError(400, 'VALIDATION_ERROR', 'Plan price does not match. Please refresh and try again.', context.request);
       }
     }

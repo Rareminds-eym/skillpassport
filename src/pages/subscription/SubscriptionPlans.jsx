@@ -15,9 +15,7 @@ import { getRouteForRole } from '@/features/auth/lib/roleBasedRouter';
 import { useSubscriptionQuery } from '@/features/subscription/model/useSubscriptionQuery';
 import { useAuthLoading, useIsAuthenticated, useUser, useUserRole } from '@/shared/model/authStore';
 
-const COLLEGE_LEARNER_PROMO_CODE = 'RAREMINDS2026';
-const COLLEGE_LEARNER_PROMO_STARTER_PLAN_CODE = 'skill_starter';
-const COLLEGE_LEARNER_PROMO_STARTER_AMOUNT_ADDON = 501;
+// ponytail: COLLEGE_LEARNER_PROMO_CODE deleted — campaign logic is now server-side only
 
 const normalizePromoCode = (code) => (code || '').trim().toUpperCase();
 
@@ -36,12 +34,6 @@ const getPlanCode = (plan) => String(
 
 const getPlanName = (plan) => String(plan?.name || plan?.display_name || '').trim().toLowerCase();
 
-const isCollegeLearnerPromoStarterPlan = (plan) => {
-  const planCode = getPlanCode(plan);
-  const planName = getPlanName(plan);
-  return planCode === COLLEGE_LEARNER_PROMO_STARTER_PLAN_CODE || planName === 'skill starter';
-};
-
 const getUserReferralCode = (user) => normalizePromoCode(
   user?.metadata?.referralCode ||
   user?.metadata?.referral_code ||
@@ -51,39 +43,8 @@ const getUserReferralCode = (user) => normalizePromoCode(
   user?.raw_user_meta_data?.referral_code
 );
 
-const applyEndpointPlanFallback = (plans, forcePromo = false) => {
-  const hasPromoMask = forcePromo || plans.some((plan) => plan.hidePrice);
-  if (!hasPromoMask) return plans;
-
-  return plans
-    .map((plan) => {
-      const planCode = getPlanCode(plan);
-      const planName = getPlanName(plan);
-      const isRestricted =
-        ['discover', 'career_builder', 'career_accelerator'].includes(planCode) ||
-        ['discover', 'career builder', 'career accelerator'].includes(planName);
-
-      return isRestricted
-        ? {
-          ...plan,
-          recommended: false,
-          hidePrice: true,
-          isDisabled: true,
-          availabilityLabel: plan.availabilityLabel || 'Not available',
-          actionLabel: plan.actionLabel || 'Get Started',
-        }
-        : {
-          ...plan,
-          price: hasPromoMask && isCollegeLearnerPromoStarterPlan(plan)
-            ? Number(plan.price) + COLLEGE_LEARNER_PROMO_STARTER_AMOUNT_ADDON
-            : plan.price,
-          hidePrice: false,
-          isDisabled: false,
-          availabilityLabel: undefined,
-          actionLabel: undefined,
-        };
-    });
-};
+// ponytail: applyEndpointPlanFallback simplified — server returns isDisabled/hidePrice flags directly
+const applyEndpointPlanFallback = (plans) => plans;
 /**
  * Get the subscription manage path based on user role
  */
@@ -428,9 +389,9 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
   const isDowngrade = subscriptionData && !isCurrentPlan && parseInt(plan.price) < parseInt(currentPlanInList?.price ?? 0);
   const isContactSales = plan.contactSales;
   const planCode = getPlanCode(plan);
-  const effectiveDisabled = Boolean(isDisabled) || (hidePrice && ['discover', 'career_builder', 'career_accelerator'].includes(planCode));
+  const effectiveDisabled = Boolean(isDisabled);
   const planName = getPlanName(plan);
-  const hardPromoDisabled = hidePrice && ['discover', 'career builder', 'career accelerator'].includes(planName);
+  const hardPromoDisabled = Boolean(hidePrice && isDisabled);
 
   // Group features by category for better display
   const featuresByCategory = useMemo(() => {
@@ -504,9 +465,9 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
         ? 'border-emerald-500 shadow-emerald-500/20'
         : effectiveDisabled || hardPromoDisabled
           ? 'border-slate-200 opacity-70 hover:translate-y-0 hover:shadow-lg'
-        : plan.recommended
-          ? 'border-slate-900 shadow-slate-900/10 scale-105'
-          : 'border-slate-200 hover:border-slate-300'
+          : plan.recommended
+            ? 'border-slate-900 shadow-slate-900/10 scale-105'
+            : 'border-slate-200 hover:border-slate-300'
         }`}
     >
       {/* Badges */}
@@ -692,11 +653,11 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
                 ? 'bg-gradient-to-r from-purple-600 to-purple-700 text-white hover:from-purple-700 hover:to-purple-800'
                 : effectiveDisabled || hardPromoDisabled
                   ? 'bg-slate-100 text-slate-400 border-2 border-slate-200 cursor-not-allowed hover:scale-100 hover:shadow-none'
-                : isUpgrade || plan.recommended
-                  ? 'bg-black text-white hover:bg-gray-900'
-                  : isDowngrade
-                    ? 'bg-slate-100 text-slate-400 border-2 border-slate-200 cursor-not-allowed hover:scale-100 hover:shadow-none'
-                    : 'bg-slate-100 text-slate-900 hover:bg-slate-200 border-2 border-slate-300'
+                  : isUpgrade || plan.recommended
+                    ? 'bg-black text-white hover:bg-gray-900'
+                    : isDowngrade
+                      ? 'bg-slate-100 text-slate-400 border-2 border-slate-200 cursor-not-allowed hover:scale-100 hover:shadow-none'
+                      : 'bg-slate-100 text-slate-900 hover:bg-slate-200 border-2 border-slate-300'
                 }`}
             >
               {effectiveDisabled || hardPromoDisabled ? (
@@ -807,18 +768,24 @@ function SubscriptionPlans() {
   }, [pageRole]);
 
   const referralCode = useMemo(
-    () => normalizePromoCode(
-      searchParams.get('referralCode') ||
-      searchParams.get('referral_code') ||
-      searchParams.get('promo') ||
-      searchParams.get('promoCode') ||
-      searchParams.get('code') ||
-      location.state?.referralCode ||
-      getUserReferralCode(user)
-    ),
+    () => {
+      const code = normalizePromoCode(
+        searchParams.get('referralCode') ||
+        searchParams.get('referral_code') ||
+        searchParams.get('promo') ||
+        searchParams.get('promoCode') ||
+        searchParams.get('code') ||
+        location.state?.referralCode ||
+        sessionStorage.getItem('referral_code') ||
+        getUserReferralCode(user)
+      );
+      if (code) {
+        sessionStorage.setItem('referral_code', code);
+      }
+      return code;
+    },
     [searchParams, location.state, user]
   );
-  const isCollegeLearnerPromo = referralCode === COLLEGE_LEARNER_PROMO_CODE;
 
   // Fetch plans EXCLUSIVELY from the Cloudflare Worker API.
   // plans = null while loading, [] or [...] after.
@@ -834,10 +801,10 @@ function SubscriptionPlans() {
     referralCode,
   });
 
-  // Plans exclusively from DB — zero hardcoded fallback
+  // Plans from DB — server applies campaign locks + price overrides
   const plans = useMemo(
-    () => applyEndpointPlanFallback(dbPlans ?? [], isCollegeLearnerPromo),
-    [dbPlans, isCollegeLearnerPromo]
+    () => applyEndpointPlanFallback(dbPlans ?? []),
+    [dbPlans]
   );
   const hasMaskedPlanPrices = useMemo(
     () => plans.some((plan) => Boolean(plan.hidePrice)),
@@ -847,17 +814,10 @@ function SubscriptionPlans() {
     () => plans,
     [plans]
   );
+  // ponytail: isPlanDisabled simplified — server is the source of truth for disabled state
   const isPlanDisabled = useCallback(
-    (plan) => {
-      const planCode = getPlanCode(plan);
-      const planName = getPlanName(plan);
-      return Boolean(plan.isDisabled) ||
-        (hasMaskedPlanPrices && (
-          ['discover', 'career_builder', 'career_accelerator'].includes(planCode) ||
-          ['discover', 'career builder', 'career accelerator'].includes(planName)
-        ));
-    },
-    [hasMaskedPlanPrices]
+    (plan) => Boolean(plan.isDisabled),
+    []
   );
 
   // UI-only content (titles, subtitles, CTA text). No pricing here.

@@ -396,8 +396,43 @@ export class SyncService {
       auth_updated_at: parsed.updated_at ?? new Date().toISOString(),
     };
 
+    const result = await this.upsertSubscription(subPayload, parsed.user_id);
+    if (!result.success) return result;
+    return ok();
+  }
+
+  /**
+   * Upsert into subscription_cache with error mapping for the constraints
+   * that matter in the sync path:
+   *  - 23503 FK on user_id: the SSO user row hasn't arrived yet → NOT_FOUND (retryable)
+   *  - 23505 idx_sub_cache_active_user: SSO allows a new active subscription
+   *    without demoting the previous one, but the app DB enforces one
+   *    active/pending/grace row per user. Demote the user's other active rows
+   *    and retry the upsert once so the cache mirrors SSO truth.
+   */
+  private async upsertSubscription(
+    subPayload: Record<string, unknown>,
+    userId: string | undefined,
+  ): Promise<SyncResult> {
     const { error } = await this.db.from('subscription_cache').upsert(subPayload, { onConflict: 'id' });
-    if (error) return fail('DB_ERROR', error.message, true);
+    if (error) {
+      const isFkViolation = error.code === '23503' || error.message?.includes('foreign key constraint');
+      if (isFkViolation && userId && error.message?.includes('user_id')) {
+        return fail('NOT_FOUND', `User ${userId} not found`, true);
+      }
+      if (error.code === '23505' && userId && error.message?.includes('idx_sub_cache_active_user')) {
+        const { error: demoteError } = await this.db.from('subscription_cache')
+          .update({ status: 'cancelled', auth_updated_at: new Date().toISOString() })
+          .eq('user_id', userId)
+          .in('status', ['active', 'pending', 'grace_period']);
+        if (demoteError) return fail('DB_ERROR', demoteError.message, true);
+        const { error: retryError } = await this.db.from('subscription_cache')
+          .upsert(subPayload, { onConflict: 'id' });
+        if (retryError) return fail('DB_ERROR', retryError.message, true);
+        return ok();
+      }
+      return fail('DB_ERROR', error.message, true);
+    }
     return ok();
   }
 

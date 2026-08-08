@@ -12,6 +12,17 @@ import { PLAN_IDS } from '@/shared/config/subscriptionPlans';
 import { getEntityContent, getEntityTypeParam, getRoleTypeParam, parselearnerType } from '@/shared/lib/getEntityContent';
 
 import { useAuthLoading, useIsAuthenticated, useUser, useUserRole } from '@/shared/model/authStore';
+
+const normalizePromoCode = (code) => (code || '').trim().toUpperCase();
+
+const getUserReferralCode = (user) => normalizePromoCode(
+  user?.metadata?.referralCode ||
+  user?.metadata?.referral_code ||
+  user?.user_metadata?.referralCode ||
+  user?.user_metadata?.referral_code ||
+  user?.raw_user_meta_data?.referralCode ||
+  user?.raw_user_meta_data?.referral_code
+);
 /**
  * Get the subscription manage path based on user role
  */
@@ -342,7 +353,7 @@ FeatureComparisonTable.displayName = 'FeatureComparisonTable';
 
 
 // Plan Card Component - Editorial luxury design
-const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionData, daysRemaining, allPlans, index, isOrganizationMode, onOrganizationPurchase }) => {
+const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionData, daysRemaining, allPlans, index, isOrganizationMode, onOrganizationPurchase, isDisabled = false, hidePrice = false }) => {
   const [showAllFeatures, setShowAllFeatures] = useState(false);
   const currentPlanInList = allPlans.find(p => p.plan_code === subscriptionData?.plan || p.id === subscriptionData?.plan);
   const isUpgrade = subscriptionData && !isCurrentPlan && parseInt(plan.price) > parseInt(currentPlanInList?.price ?? 0);
@@ -379,6 +390,10 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
 
   // Handle organization purchase click
   const handleClick = useCallback(() => {
+    if (isDisabled) {
+      toast('This plan is not available for this referral code.', { duration: 5000, icon: '🔒' });
+      return;
+    }
     if (isDowngrade) {
       toast('To downgrade your plan, please contact our support team.', { duration: 5000, icon: '📧' });
       return;
@@ -388,7 +403,7 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
     } else {
       onSelect(plan);
     }
-  }, [isDowngrade, isOrganizationMode, onOrganizationPurchase, onSelect, plan]);
+  }, [isDisabled, isDowngrade, isOrganizationMode, onOrganizationPurchase, onSelect, plan]);
 
   // Render feature item
   const renderFeature = (feature, idx) => {
@@ -418,22 +433,24 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
     <div
       className={`relative bg-white rounded-3xl border-2 transition-all duration-300 h-full flex flex-col shadow-lg hover:shadow-2xl ${isCurrentPlan
         ? 'border-emerald-500 shadow-emerald-500/20'
-        : plan.recommended
-          ? 'border-slate-900 shadow-slate-900/10 scale-105'
-          : 'border-slate-200 hover:border-slate-300'
+        : isDisabled
+          ? 'border-slate-200 opacity-70 hover:translate-y-0 hover:shadow-lg'
+          : plan.recommended
+            ? 'border-slate-900 shadow-slate-900/10 scale-105'
+            : 'border-slate-200 hover:border-slate-300'
         }`}
     >
       {/* Badges */}
       {isCurrentPlan && (
         <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
           <span className="bg-gradient-to-r from-emerald-500 to-emerald-600 text-white px-5 py-2 rounded-full text-sm font-bold flex items-center gap-2 shadow-xl">
-            <Shield className="h-4 w-4" /> Current Plan
+            <Shield className="h-4 w-4" /> Active Plan
           </span>
         </div>
       )}
-      {!isCurrentPlan && plan.recommended && (
+      {!isCurrentPlan && !isDisabled && plan.recommended && (
         <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
-          <span className="bg-gradient-to-r from-amber-400 to-amber-500 text-slate-900 px-5 py-2 rounded-full text-sm font-bold shadow-xl">
+          <span className="bg-gradient-to-r from-purple-600 to-purple-700 text-white px-5 py-2 rounded-full text-sm font-bold shadow-xl">
             Most Popular
           </span>
         </div>
@@ -452,12 +469,28 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
           <h3 className="text-3xl font-light text-slate-900 mb-2" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
             {plan.name}
           </h3>
-          {plan.tagline && (
-            <p className="text-sm text-amber-600 font-semibold">{plan.tagline}</p>
-          )}
+          {/* Subheading based on plan name */}
+          {plan.name.toLowerCase().includes('freemium') || parseInt(plan.price) === 0 ? (
+            <p className="text-sm text-slate-500 font-light mb-2">Ideal for individuals</p>
+          ) : plan.name.toLowerCase().includes('basic') ? (
+            <p className="text-sm text-slate-500 font-light mb-2">Essential tools for individual learning</p>
+          ) : plan.name.toLowerCase().includes('professional') || plan.name.toLowerCase().includes('pro') ? (
+            <p className="text-sm text-slate-500 font-light mb-2">Advanced features for serious learners</p>
+          ) : plan.name.toLowerCase().includes('premium') || plan.name.toLowerCase().includes('elite') ? (
+            <p className="text-sm text-slate-500 font-light mb-2">Complete toolkit for maximum career success</p>
+          ) : null}
 
           <div className="mt-6">
-            {isContactSales ? (
+            {hidePrice ? (
+              <div className="space-y-2">
+                <div className="hidden">
+                  <span className="text-5xl font-semibold text-slate-900" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
+                    ₹{parseInt(plan.price).toLocaleString()}
+                  </span>
+                  <span className="text-slate-500 font-light"> ({plan.duration})</span>
+                </div>
+              </div>
+            ) : isContactSales ? (
               <span className="text-3xl font-light text-slate-900" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
                 Contact Sales
               </span>
@@ -584,18 +617,21 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
           ) : (
             <button
               onClick={handleClick}
-              className={`w-full py-4 px-4 rounded-2xl font-semibold transition-all shadow-lg hover:shadow-xl hover:scale-105 flex items-center justify-center gap-2 ${isOrganizationMode
-                ? 'bg-gradient-to-r from-purple-600 to-purple-700 text-white hover:from-purple-700 hover:to-purple-800'
-                : (plan.plan_code === 'freemium' || plan.isFree)
-                  ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white hover:from-emerald-600 hover:to-emerald-700'
-                  : isUpgrade || plan.recommended
-                    ? 'bg-gradient-to-r from-slate-800 to-slate-900 text-white hover:from-slate-900 hover:to-black'
-                    : isDowngrade
-                      ? 'bg-slate-100 text-slate-400 border-2 border-slate-200 cursor-not-allowed hover:scale-100 hover:shadow-none'
-                      : 'bg-slate-100 text-slate-900 hover:bg-slate-200 border-2 border-slate-300'
+              disabled={isDisabled}
+              className={`w-full py-4 px-4 rounded-2xl font-semibold transition-all shadow-lg hover:shadow-xl hover:scale-105 flex items-center justify-center gap-2 ${isDisabled
+                ? 'bg-slate-100 text-slate-400 border-2 border-slate-200 cursor-not-allowed hover:scale-100 hover:shadow-none'
+                : isOrganizationMode
+                  ? 'bg-gradient-to-r from-purple-600 to-purple-700 text-white hover:from-purple-700 hover:to-purple-800'
+                  : (plan.plan_code === 'freemium' || plan.isFree)
+                    ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white hover:from-emerald-600 hover:to-emerald-700'
+                    : isUpgrade || plan.recommended
+                      ? 'bg-gradient-to-r from-slate-800 to-slate-900 text-white hover:from-slate-900 hover:to-black'
+                      : isDowngrade
+                        ? 'bg-slate-100 text-slate-400 border-2 border-slate-200 cursor-not-allowed hover:scale-100 hover:shadow-none'
+                        : 'bg-slate-100 text-slate-900 hover:bg-slate-200 border-2 border-slate-300'
                 }`}
             >
-              {isOrganizationMode ? (
+              {isDisabled ? 'Not available' : isOrganizationMode ? (
                 <>
                   <Building2 className="h-5 w-5" />
                   Buy for Organization
@@ -712,6 +748,26 @@ function SubscriptionPlans() {
     return pageRole === 'admin' ? 'b2b' : 'b2c';
   }, [pageRole]);
 
+  const referralCode = useMemo(
+    () => {
+      const code = normalizePromoCode(
+        searchParams.get('referralCode') ||
+        searchParams.get('referral_code') ||
+        searchParams.get('promo') ||
+        searchParams.get('promoCode') ||
+        searchParams.get('code') ||
+        location.state?.referralCode ||
+        sessionStorage.getItem('referral_code') ||
+        getUserReferralCode(user)
+      );
+      if (code) {
+        sessionStorage.setItem('referral_code', code);
+      }
+      return code;
+    },
+    [searchParams, location.state, user]
+  );
+
   // Fetch plans EXCLUSIVELY from the Cloudflare Worker API.
   // plans = null while loading, [] or [...] after.
   const {
@@ -723,6 +779,7 @@ function SubscriptionPlans() {
     businessType,
     entityType: entityTypeParam,
     roleType: roleTypeParam,
+    referralCode,
   });
 
   // Plans exclusively from DB — zero hardcoded fallback
@@ -1389,6 +1446,8 @@ function SubscriptionPlans() {
                   daysRemaining={isAuthenticated && hasCurrentSubscription ? daysRemaining : null}
                   isOrganizationMode={isOrganizationMode}
                   onOrganizationPurchase={handleOrganizationPurchase}
+                  isDisabled={Boolean(plan.isDisabled)}
+                  hidePrice={Boolean(plan.hidePrice)}
                 />
               ))}
             </div>

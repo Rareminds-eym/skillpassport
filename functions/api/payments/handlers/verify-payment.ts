@@ -33,12 +33,10 @@ import type { EventConfirmationTemplateData } from '../../email/types';
 import { fetchImageBytes, generateReceiptPDF, type ReceiptData } from '../../storage/utils/pdf-generator';
 import { R2Client } from '../../storage/utils/r2-client';
 import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../lib/paymentBinding';
+import { getPromoCampaign, campaignPriceForPlan } from '../lib/promo-campaigns';
+import { resolvePlanPaymentPrice } from '../lib/plan-pricing';
 
 const logger = createLogger('verify-payment');
-const COLLEGE_LEARNER_PROMO_CODE = 'RAREMINDS2026';
-const COLLEGE_LEARNER_PROMO_STARTER_AMOUNT_ADDON = 501;
-const COLLEGE_LEARNER_PROMO_STARTER_PLAN_CODES = ['skill_starter'];
-const COLLEGE_LEARNER_PROMO_STARTER_PLAN_NAMES = ['skill starter'];
 
 // Receipt configuration constants
 const RECEIPT_CONFIG = {
@@ -83,37 +81,20 @@ function isPricingMatrix(value: unknown): value is PricingMatrix {
 const normalizePromoCode = (code: unknown): string =>
   String(code || '').trim().toUpperCase();
 
-async function isCollegeLearnerPromoStarterPlan(
+async function getStoredReferralCode(
   supabase: ReturnType<typeof getServiceClient>,
-  userId: string,
   userEmail: string,
-  plan: { plan_code?: string | null; name?: string | null },
-  requestReferralCode?: unknown,
-): Promise<boolean> {
-  let userQuery = supabase
+): Promise<string> {
+  if (!userEmail) return '';
+
+  const { data: userRow } = await supabase
     .from('users')
-    .select('role, metadata');
+    .select('metadata')
+    .eq('email', userEmail)
+    .maybeSingle();
 
-  if (userEmail) {
-    userQuery = userQuery.eq('email', userEmail);
-  } else {
-    userQuery = userQuery.eq('id', userId);
-  }
-
-  const { data: userRow } = await userQuery.maybeSingle();
   const metadata = (userRow?.metadata || {}) as Record<string, unknown>;
-  const referralCode = normalizePromoCode(requestReferralCode || metadata.referralCode || metadata.referral_code);
-  const planCode = String(plan.plan_code || '').toLowerCase();
-  const planName = String(plan.name || '').trim().toLowerCase();
-
-  return (
-    userRow?.role === 'learner' &&
-    referralCode === COLLEGE_LEARNER_PROMO_CODE &&
-    (
-      COLLEGE_LEARNER_PROMO_STARTER_PLAN_CODES.includes(planCode) ||
-      COLLEGE_LEARNER_PROMO_STARTER_PLAN_NAMES.includes(planName)
-    )
-  );
+  return normalizePromoCode(metadata.referralCode || metadata.referral_code || metadata.promoCode || metadata.promo);
 }
 
 export async function handleVerifyPayment(context: AuthenticatedContext): Promise<Response> {
@@ -222,58 +203,19 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
     }
     const pricingMatrix = rawPricingMatrix;
     const clientPrice = plan.price as number;
-    let planPrice: number | undefined;
-    let detectedBillingCycle: 'yearly' | 'monthly' | undefined;
-    const allowPromoStarterAmount = await isCollegeLearnerPromoStarterPlan(supabase, user.id, userEmail, validPlan, plan.referralCode);
 
-    // CRITICAL: Search for ANY matching price in the pricing matrix
-    // Plans may have duration label that doesn't match actual billing cycle
-    // (e.g., "monthly" label for a yearly-billed plan)
-    if (pricingMatrix) {
-      for (const entityKey in pricingMatrix) {
-        const entityPricing = pricingMatrix[entityKey];
+    // CRITICAL: Accept base pricing_matrix amounts AND any campaign price
+    // override for this plan. Campaigns are admin-configured via
+    // promo_campaigns; the override is authoritative when present, but base
+    // prices stay accepted (campaign may only lock plans, not price them).
+    // Plans are yearly-billed only.
+    const storedReferralCode = await getStoredReferralCode(supabase, userEmail);
+    const campaign = await getPromoCampaign(supabase, storedReferralCode);
+    const campaignYearlyPrice = campaign
+      ? campaignPriceForPlan(campaign, String(validPlan.plan_code || ''))
+      : null;
 
-        // Try yearly first
-        const promoYearlyPrice = entityPricing?.yearly
-          ? entityPricing.yearly + COLLEGE_LEARNER_PROMO_STARTER_AMOUNT_ADDON
-          : undefined;
-        if (
-          entityPricing?.yearly &&
-          entityPricing.yearly > 0 &&
-          (entityPricing.yearly === clientPrice || (allowPromoStarterAmount && promoYearlyPrice === clientPrice))
-        ) {
-          planPrice = allowPromoStarterAmount && promoYearlyPrice === clientPrice ? promoYearlyPrice : entityPricing.yearly;
-          detectedBillingCycle = 'yearly';
-          logger.info('Price matched to yearly billing cycle', { 
-            clientPrice, 
-            planPrice, 
-            entityKey,
-            planId: plan.id
-          });
-          break;
-        }
-
-        // Then try monthly
-        const promoMonthlyPrice = entityPricing?.monthly
-          ? entityPricing.monthly + COLLEGE_LEARNER_PROMO_STARTER_AMOUNT_ADDON
-          : undefined;
-        if (
-          entityPricing?.monthly &&
-          entityPricing.monthly > 0 &&
-          (entityPricing.monthly === clientPrice || (allowPromoStarterAmount && promoMonthlyPrice === clientPrice))
-        ) {
-          planPrice = allowPromoStarterAmount && promoMonthlyPrice === clientPrice ? promoMonthlyPrice : entityPricing.monthly;
-          detectedBillingCycle = 'monthly';
-          logger.info('Price matched to monthly billing cycle', { 
-            clientPrice, 
-            planPrice, 
-            entityKey,
-            planId: plan.id
-          });
-          break;
-        }
-      }
-    }
+    const planPrice = resolvePlanPaymentPrice(pricingMatrix, campaignYearlyPrice, clientPrice);
 
     if (typeof planPrice !== 'number') {
       logger.error('Plan price mismatch or no pricing found', new Error('Unable to match client price with plan pricing matrix'), {
@@ -293,12 +235,10 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
       return apiError(400, 'VALIDATION_ERROR', `Amount mismatch: captured ${payment.amount} paise, expected ${expectedPaise}`, context.request);
     }
 
-    // Calculate subscription dates using DETECTED billing cycle, not duration field
-    // (duration field may be incorrect/misleading)
+    // Subscription is yearly-billed only
     const now = new Date();
     const endDate = new Date(now);
-    const durationMonths = detectedBillingCycle === 'yearly' ? 12 : 1;
-    endDate.setMonth(endDate.getMonth() + durationMonths);
+    endDate.setMonth(endDate.getMonth() + 12);
 
     // Check for existing active subscription via shadow table
     const { data: existingCache } = await supabase
@@ -558,7 +498,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
             id: plan.id,
             code: validPlan.plan_code,
             name: plan.name,
-            billing_cycle: detectedBillingCycle,
+            billing_cycle: 'yearly',
           },
         },
       });

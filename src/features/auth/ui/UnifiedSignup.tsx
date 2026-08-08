@@ -324,8 +324,12 @@ const UnifiedSignup = () => {
     searchParams.get('referral_code') ||
     searchParams.get('promo') ||
     searchParams.get('promoCode') ||
-    searchParams.get('code')
+    searchParams.get('code') ||
+    sessionStorage.getItem('referral_code')
   );
+  if (referralCodeFromUrl) {
+    sessionStorage.setItem('referral_code', referralCodeFromUrl);
+  }
   const isReferralCodeLocked = Boolean(referralCodeFromUrl);
 
   const [state, setState] = useState<SignupState>({

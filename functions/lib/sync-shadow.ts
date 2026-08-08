@@ -41,6 +41,43 @@ export async function syncSubscriptionCache(
     }, { onConflict: 'id' });
 
   if (error) {
+    if (error.code === '23505' && error.message?.includes('idx_sub_cache_active_user')) {
+      const { error: demoteError } = await supabase
+        .from('subscription_cache')
+        .update({ status: 'cancelled', auth_updated_at: new Date().toISOString() })
+        .eq('user_id', subscription.user_id)
+        .in('status', ['active', 'pending', 'grace_period']);
+      if (!demoteError) {
+        const { error: retryError } = await supabase
+          .from('subscription_cache')
+          .upsert({
+            id: subscription.id,
+            user_id: subscription.user_id,
+            organization_id: subscription.organization_id || null,
+            plan_id: subscription.plan_id,
+            plan_code: subscription.plan_code || (plan as Record<string, unknown>)?.plan_code,
+            plan_name: subscription.plan_type || (plan as Record<string, unknown>)?.name,
+            plan_type: subscription.plan_type,
+            plan_amount: subscription.plan_amount,
+            billing_cycle: subscription.billing_cycle,
+            status: subscription.status,
+            features: subscription.features || (plan as Record<string, unknown>)?.base_features || [],
+            subscription_start_date: subscription.subscription_start_date,
+            subscription_end_date: subscription.subscription_end_date,
+            is_organization_subscription: subscription.is_organization_subscription || false,
+            organization_type: subscription.organization_type || null,
+            seat_count: subscription.seat_count || 1,
+            product_id: subscription.product_id || (plan as Record<string, unknown>)?.product_id || null,
+            receipt_url: subscription.receipt_url || null,
+            synced_at: new Date().toISOString(),
+            auth_updated_at: subscription.updated_at,
+          }, { onConflict: 'id' });
+        if (retryError) {
+          console.error('[sync-shadow] Failed to sync subscription_cache (after demote):', retryError.message);
+        }
+        return;
+      }
+    }
     console.error('[sync-shadow] Failed to sync subscription_cache:', error.message);
   }
 }

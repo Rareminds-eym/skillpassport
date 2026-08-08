@@ -11,36 +11,27 @@
 
 import { getServiceClient } from '../../../lib/supabase';
 import { apiSuccess, apiError } from '../../../lib/response';
+import { createLogger } from '../../../lib/logger';
 import { initAuth, verifyJWT, extractToken } from '@rareminds-eym/auth-core';
+import { getPromoCampaign, applyCampaignToPlans } from '../lib/promo-campaigns';
 
-const COLLEGE_LEARNER_PROMO_CODE = 'RAREMINDS2026';
-const COLLEGE_LEARNER_ALLOWED_PLAN_CODE = 'skill_starter';
-const COLLEGE_LEARNER_DISABLED_PLAN_CODES = ['discover', 'career_builder', 'career_accelerator'];
+const logger = createLogger('payments:subscription-plans');
 
 const normalizePromoCode = (code: unknown): string =>
   String(code || '').trim().toUpperCase();
 
-const getPlanCode = (plan: Record<string, unknown>): string => {
-  const explicitCode = plan.plan_code || plan.planCode || plan.code;
-  const fallbackCode = plan.display_name || plan.name;
-
-  return String(explicitCode || fallbackCode || '')
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '');
-};
+// ponytail: getPlanCode deleted — was only used by applyCollegeLearnerPromoRules
 
 /**
  * Transform a raw subscription_plans row into the shape the frontend PlanCard expects.
  *
  * DB schema:
- *   - pricing_matrix: { "all": { "monthly": 499, "yearly": 4999, "currency": "INR" } }
+ *   - pricing_matrix: { "all": { "yearly": 4999, "currency": "INR" } }
  *   - entity_config: { "all": { "tagline": "...", "is_recommended": true, ... } }
  *   - base_features: ["feature_key_1", "feature_key_2", ...]
  *
  * Frontend expects:
- *   - plan.price (number — monthly price)
+ *   - plan.price (number — yearly price)
  *   - plan.yearlyPrice (number)
  *   - plan.currency (string)
  *   - plan.tagline (string)
@@ -71,9 +62,8 @@ function transformPlan(raw: Record<string, unknown>, entityType: string): Record
     name: raw.name,
     plan_code: raw.plan_code,
     business_type: raw.business_type,
-    // Flat pricing fields the frontend expects
-    // Note: paid plans are yearly-only. monthly = yearly for backward compat.
-    price: pricing.yearly ?? pricing.monthly ?? 0,
+    // Flat pricing fields the frontend expects (plans are yearly-only)
+    price: pricing.yearly ?? 0,
     yearlyPrice: pricing.yearly ?? 0,
     currency: (pricing.currency as string) || 'INR',
     duration: (config.duration as string) ?? 'yearly',
@@ -122,6 +112,20 @@ async function getOptionalUserIdentity(
   }
 }
 
+function parseUserMetadata(raw: unknown): Record<string, unknown> {
+  if (!raw) return {};
+  if (typeof raw === 'object' && raw !== null) return raw as Record<string, unknown>;
+  if (typeof raw === 'string') {
+    try {
+      const parsed = JSON.parse(raw);
+      return typeof parsed === 'object' && parsed !== null ? parsed : {};
+    } catch {
+      return {};
+    }
+  }
+  return {};
+}
+
 async function getStoredReferralCode(
   supabase: ReturnType<typeof getServiceClient>,
   identity: { id: string | null; email: string | null },
@@ -140,28 +144,11 @@ async function getStoredReferralCode(
 
   const { data } = await query.maybeSingle();
 
-  const metadata = (data?.metadata || {}) as Record<string, unknown>;
-  return normalizePromoCode(metadata.referralCode || metadata.referral_code);
+  const metadata = parseUserMetadata(data?.metadata);
+  return normalizePromoCode(metadata.referralCode || metadata.referral_code || metadata.promoCode || metadata.promo);
 }
 
-function applyCollegeLearnerPromoRules(plans: Record<string, unknown>[]): Record<string, unknown>[] {
-  return plans
-    .map((plan) => {
-      const planCode = getPlanCode(plan);
-      const isDisabled =
-        planCode !== COLLEGE_LEARNER_ALLOWED_PLAN_CODE &&
-        COLLEGE_LEARNER_DISABLED_PLAN_CODES.includes(planCode);
-
-      return {
-        ...plan,
-        recommended: isDisabled ? false : plan.recommended,
-        hidePrice: isDisabled,
-        isDisabled,
-        availabilityLabel: isDisabled ? 'Not available' : undefined,
-        actionLabel: isDisabled ? 'Get Started' : undefined,
-      };
-    });
-}
+// ponytail: applyCollegeLearnerPromoRules deleted — replaced by generic applyCampaignToPlans in promo-campaigns.ts
 
 export async function handleSubscriptionPlans(context: { request: Request; env: Record<string, unknown> }): Promise<Response> {
   const env = context.env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string };
@@ -170,7 +157,7 @@ export async function handleSubscriptionPlans(context: { request: Request; env: 
     const url = new URL(context.request.url);
     const businessType = url.searchParams.get('businessType') || 'b2c';
     const entityType = url.searchParams.get('entityType') || 'all';
-    const roleType = url.searchParams.get('roleType') || 'all';
+
     const referralCodeFromQuery = normalizePromoCode(
       url.searchParams.get('referralCode') ||
       url.searchParams.get('referral_code') ||
@@ -201,7 +188,7 @@ export async function handleSubscriptionPlans(context: { request: Request; env: 
     const { data, error } = await query;
 
     if (error) {
-      console.error('[SubscriptionPlans] Supabase error:', error);
+      logger.error('fetch_subscription_plans_failed', error, { businessType, entityType });
       return apiError(500, 'INTERNAL_ERROR', 'Failed to fetch subscription plans', context.request);
     }
 
@@ -249,7 +236,7 @@ export async function handleSubscriptionPlans(context: { request: Request; env: 
         }
       } catch (featureErr) {
         // Non-critical: subscription_plan_features may not exist after Phase 10 cleanup
-        console.warn('[SubscriptionPlans] subscription_plan_features query failed (non-critical):', featureErr);
+        logger.warn('detailed_features_lookup_failed', { error: String(featureErr) });
       }
     }
 
@@ -257,17 +244,16 @@ export async function handleSubscriptionPlans(context: { request: Request; env: 
     const storedReferralCode = await getStoredReferralCode(supabase, userIdentity);
     const referralCode = storedReferralCode || referralCodeFromQuery;
 
-    if (
-      businessType === 'b2c' &&
-      roleType === 'learner' &&
-      referralCode === COLLEGE_LEARNER_PROMO_CODE
-    ) {
-      plans = applyCollegeLearnerPromoRules(plans);
+    // DB-driven campaign lookup: apply locks + price overrides if campaign exists
+    const campaign = await getPromoCampaign(supabase, referralCode);
+    if (campaign) {
+      plans = applyCampaignToPlans(plans, campaign);
+      logger.info('campaign_applied', { referralCode, campaignCode: campaign.code, planCount: plans.length });
     }
 
     return apiSuccess({ plans }, context.request, 200);
   } catch (error) {
-    console.error('[SubscriptionPlans] Error:', error);
+    logger.error('subscription_plans_handler_failed', error);
     return apiError(500, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Failed to fetch subscription plans', context.request);
   }
 }
