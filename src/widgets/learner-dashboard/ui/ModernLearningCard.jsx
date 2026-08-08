@@ -46,6 +46,7 @@ const ModernLearningCard = ({
   const user = useUser();
   const [isHovered, setIsHovered] = useState(false);
   const [assessmentCompleted, setAssessmentCompleted] = useState(false);
+  const [assessmentFailed, setAssessmentFailed] = useState(false);
   const [assessmentScore, setAssessmentScore] = useState(null);
   const [checkingAssessment, setCheckingAssessment] = useState(true);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -144,10 +145,18 @@ const ModernLearningCard = ({
       if (isExternalCourse && learnerData?.id && item.course) {
         setCheckingAssessment(true);
         const result = await checkAssessmentStatus(learnerData.id, item.course);
-        setAssessmentCompleted(result.status === 'completed');
-        // Store the assessment score if completed
-        if (result.status === 'completed' && result.attempt?.score !== undefined) {
-          setAssessmentScore(result.attempt.score);
+        const score = result.status === 'completed' ? result.attempt?.score : undefined;
+        const submitted = result.status === 'completed' && score !== undefined;
+        // A submitted attempt is either passed (>= 60) or failed (< 60) —
+        // these are two distinct, terminal UI states, neither of which is
+        // "pending". The underlying attempt/score in the database is
+        // unchanged either way; this only affects what the card displays.
+        setAssessmentCompleted(submitted && score >= 60);
+        setAssessmentFailed(submitted && score < 60);
+        // Store the assessment score whenever available, pass or fail, so the
+        // score-tier display (Excellent/Good/Needs Improvement) still renders.
+        if (score !== undefined) {
+          setAssessmentScore(score);
         }
         setCheckingAssessment(false);
       } else {
@@ -391,6 +400,15 @@ const ModernLearningCard = ({
           icon: CheckCircle,
           label: 'Assessment Completed'
         };
+      } else if (assessmentFailed) {
+        // Submitted but did not meet the passing threshold. One attempt
+        // only — this is a terminal state, distinct from "not taken yet".
+        return {
+          bg: 'bg-gradient-to-r from-red-100 to-red-200',
+          text: 'text-red-800',
+          icon: Target,
+          label: 'Assessment Failed'
+        };
       } else {
         // External course added but assessment not taken yet
         return {
@@ -520,7 +538,7 @@ const ModernLearningCard = ({
       if (assessmentCompleted) {
         return certificateUrl ? renderListCertificateButton() : renderListCompletedStatus("Assessment Completed");
       }
-      // Always show assessment button for external courses that haven't completed assessment
+      // Show the assessment button for both "not started" and "failed" states
       return renderListAssessmentButton();
     }
 
@@ -644,7 +662,7 @@ const ModernLearningCard = ({
       if (assessmentCompleted) {
         return certificateUrl ? renderCertificateButton() : renderCompletedStatus("Assessment Completed");
       }
-      // Always show assessment button for external courses that haven't completed assessment
+      // Show the assessment button for both "not started" and "failed" states
       return renderAssessmentButton();
     }
 

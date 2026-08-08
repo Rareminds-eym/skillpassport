@@ -230,8 +230,9 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 /**
  * PUT /api/learners/trainings
  * Applies the outcome of a completed assessment to the linked training record.
- * On a passing score, auto-approves the training (mirrors the manual
- * admin approve-training flow in college-admin/school-admin.ts).
+ * On a passing score, marks the training completed. Approval is a separate
+ * concept handled at training creation / by admin review — this endpoint
+ * never touches approval_status, approved_by, approved_at, or approval_notes.
  */
 export const onRequestPut = withAuth(async (context: AuthenticatedContext) => {
   const startTime = Date.now();
@@ -269,7 +270,7 @@ export const onRequestPut = withAuth(async (context: AuthenticatedContext) => {
   try {
     const { data: existing, error: fetchError } = await supabase
       .from('trainings')
-      .select('id, learner_id, approval_status')
+      .select('id, learner_id, status')
       .eq('id', trainingId)
       .eq('learner_id', learnerId)
       .maybeSingle();
@@ -283,17 +284,13 @@ export const onRequestPut = withAuth(async (context: AuthenticatedContext) => {
       return apiSuccess({ updated: false, reason: 'assessment_not_passed' }, context.request, { startTime });
     }
 
-    if (existing.approval_status === 'approved') {
-      return apiSuccess({ updated: false, reason: 'already_approved' }, context.request, { startTime });
+    if (existing.status === 'completed') {
+      return apiSuccess({ updated: false, reason: 'already_completed' }, context.request, { startTime });
     }
 
     const { data: updated, error: updateError } = await supabase
       .from('trainings')
       .update({
-        approval_status: 'approved',
-        approved_by: user.id,
-        approved_at: new Date().toISOString(),
-        approval_notes: `Auto-approved: assessment passed with score ${score}%`,
         status: 'completed',
         updated_at: new Date().toISOString(),
       })
