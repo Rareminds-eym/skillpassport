@@ -5,3 +5,4 @@ export { LearningSection } from './LearningSection';
 export { ActivitySection } from './ActivitySection';
 export { default as AchievementStats } from './AchievementStats';
 export { default as SkillPassportCard } from './SkillPassportCard';
+export { CareerAITools } from './CareerAITools';
