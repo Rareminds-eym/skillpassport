@@ -114,10 +114,16 @@ export interface SkillPassportCardProps {
     certificates: number;
     verificationStatus: 'active' | 'pending' | 'expired' | 'none';
     lastVerified?: Date;
-    skills: SkillCategory[];
+    skills: SkillWithProficiency[];
   };
   onUpskill?: () => void;
   onViewDetails?: () => void;
+}
+
+export interface SkillWithProficiency {
+  name?: string;
+  skillName?: string;
+  proficiency: number; // 0-100
 }
 
 export interface SkillCategory {
