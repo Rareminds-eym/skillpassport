@@ -14,7 +14,6 @@ import { useLearnerDataByEmail } from '@/entities/learner';
 
 import PersonalInfoSummary from './PersonalInfoSummary';
 import ResumeParser from './ResumeParser';
-import { mergeResumeData } from '@/features/digital-portfolio';
 import { useUser } from '@/shared/model/authStore';
 import {
   educationData,
@@ -140,81 +139,38 @@ const ProfileEditSection = ({ profileEmail }) => {
     }
   };
 
-  const handleResumeDataExtracted = async (parsedData) => {
-
+  const handleResumeDataExtracted = async () => {
+    // /resume/save (called just before this, from ResumeParser.jsx's
+    // handleSaveToDatabase) is the ONLY backend write path for Resume
+    // Auto-Fill: it already synchronized every entity (Education, Experience,
+    // Projects, Certificates, Technical Skills, Soft Skills) via matcher.ts's
+    // deterministic skip/update/insert logic, and wrote every flat learner
+    // field. This handler must not write again.
+    //
+    // A second write used to happen here via handleSave('education', ...),
+    // handleSave('projects', ...), etc. Those went through
+    // updateEducationByEmail/updateProjectsByEmail/etc. (learnerService.ts),
+    // which assign a fresh random UUID to any record whose id isn't already
+    // a 36-character UUID — true for every resume-parsed entry, since the
+    // parser only assigns small integer ids (see EducationEntry.id: number
+    // in resume-parser/types.ts), never real DB UUIDs. Because none of those
+    // fresh UUIDs matched an existing row's id, every existing record for
+    // that entity was computed as "not present in the incoming set" and
+    // deleted, then reinserted under new ids — discarding approval_status,
+    // enabled, and any admin-reviewed state /resume/save's sync had just
+    // correctly preserved, and doing so through a second, non-deterministic
+    // write immediately after the first, correct one.
+    //
+    // The only remaining responsibility here is to reflect what /resume/save
+    // already persisted: refetch from the database so the UI shows the
+    // latest synchronized state without a manual browser refresh.
     try {
-      // Merge parsed data with existing profile data
-      const currentProfile = learnerData?.profile || {};
-      const mergedData = mergeResumeData(currentProfile, parsedData);
-
-
-      // Update profile with merged data
-      if (userEmail && learnerData?.profile) {
-        // Update personal info
-        await handleSave('personalInfo', {
-          name: mergedData.name,
-          email: mergedData.email,
-          contact_number: mergedData.contact_number,
-          age: mergedData.age,
-          date_of_birth: mergedData.date_of_birth,
-          college_school_name: mergedData.college_school_name,
-          university: mergedData.university,
-          registration_number: mergedData.registration_number,
-          district_name: mergedData.district_name,
-          branch_field: mergedData.branch_field,
-          trainer_name: mergedData.trainer_name,
-          nm_id: mergedData.nm_id,
-          course: mergedData.course,
-          alternate_number: mergedData.alternate_number,
-          contact_number_dial_code: mergedData.contact_number_dial_code,
-          skill: mergedData.skill
-        });
-
-        // Update education if present
-        if (mergedData.education && mergedData.education.length > 0) {
-          await handleSave('education', mergedData.education);
-        }
-
-        // Update training if present
-        if (mergedData.training && mergedData.training.length > 0) {
-          await handleSave('training', mergedData.training);
-        }
-
-        // Update experience if present
-        if (mergedData.experience && mergedData.experience.length > 0) {
-          await handleSave('experience', mergedData.experience);
-        }
-
-        // Update projects if present
-        if (mergedData.projects && mergedData.projects.length > 0) {
-          await handleSave('projects', mergedData.projects);
-        }
-
-        // Update certificates if present
-        if (mergedData.certificates && mergedData.certificates.length > 0) {
-          await handleSave('certificates', mergedData.certificates);
-        }
-
-        // Update technical skills if present
-        if (mergedData.technicalSkills && mergedData.technicalSkills.length > 0) {
-          await handleSave('technicalSkills', mergedData.technicalSkills);
-        }
-
-        // Update soft skills if present
-        if (mergedData.softSkills && mergedData.softSkills.length > 0) {
-          await handleSave('softSkills', mergedData.softSkills);
-        }
-
-        // Refresh the data
-        await refresh();
-        setRefreshCounter(prev => prev + 1);
-
-      }
-
-      // Close the resume parser modal
-      setShowResumeParser(false);
+      await refresh();
+      setRefreshCounter(prev => prev + 1);
     } catch (error) {
-      console.error('❌ Error saving resume data:', error);
+      console.error('❌ Error refreshing profile after resume import:', error);
+    } finally {
+      setShowResumeParser(false);
     }
   };
 
@@ -414,7 +370,9 @@ const ProfileEditSection = ({ profileEmail }) => {
                     </div>
                   </div>
                   <button
+                    type="button"
                     onClick={() => setActiveModal(null)}
+                    aria-label="Close"
                     className="w-10 h-10 rounded-full bg-white/90 hover:bg-white flex items-center justify-center text-slate-400 hover:text-slate-600 transition-all duration-200 shadow-sm hover:shadow-md"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

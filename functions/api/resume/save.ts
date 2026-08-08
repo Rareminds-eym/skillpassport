@@ -3,6 +3,7 @@ import { getContextUser, withAuth } from '../../lib/auth';
 import { apiError, apiSuccess } from '../../lib/response';
 import { ADMIN_ROLES } from '../../lib/roleCategories';
 import { getServiceClient } from '../../lib/supabase';
+import { matchEducation, matchExperience, matchProjects, matchCertificates, matchSkills } from './sync/matcher';
 
 // Type definitions for resume data structures
 interface ExperienceInput {
@@ -227,6 +228,29 @@ function getSkillKey(name: string | number | null | undefined, type: string | nu
   return `${normalizeSkillName(name).toLowerCase()}::${String(type || '').trim().toLowerCase()}`;
 }
 
+/**
+ * Split a matcher's toUpsert array into two key-homogeneous batches before
+ * writing to Supabase. Supabase's upsert() derives a shared `columns=`
+ * PostgREST parameter from the batch, so a single call mixing records that
+ * have `id` (changed, matched to an existing row) with records that don't
+ * (new) makes PostgREST treat `id` as an explicit target column for every
+ * row in that one call — including the new rows, which have no value for
+ * it. That suppresses the column's `DEFAULT gen_random_uuid()` for exactly
+ * those rows and inserts a literal NULL instead, violating the NOT NULL
+ * constraint. Sending each batch through its own call — upsert() only for
+ * rows that carry `id`, plain insert() only for rows that don't — keeps
+ * each call's rows uniformly shaped so this never happens.
+ */
+function splitByHasId<T extends { id?: string }>(records: T[]): { withId: T[]; withoutId: T[] } {
+  const withId: T[] = [];
+  const withoutId: T[] = [];
+  for (const record of records) {
+    if (record.id) withId.push(record);
+    else withoutId.push(record);
+  }
+  return { withId, withoutId };
+}
+
 function parseExperienceDates(experience: ExperienceInput): { startDate: string | null; endDate: string | null } {
   const explicitStart = normalizeDate(experience.startDate || experience.start_date);
   const explicitEnd = normalizeDate(experience.endDate || experience.end_date, { yearOnlyAsEnd: true, monthOnlyAsEnd: true });
@@ -309,9 +333,31 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       status: e.status || 'completed',
       approval_status: 'pending',
     }));
-    const { data, error } = await supabase.from('education').insert(records).select();
-    if (error) errors.push({ table: 'education', error: error.message });
-    else results.education = data?.length || 0;
+
+    const { data: existingEducation, error: existingEducationError } = await supabase
+      .from('education')
+      .select('*')
+      .eq('learner_id', learnerId);
+
+    if (existingEducationError) {
+      errors.push({ table: 'education', error: existingEducationError.message });
+    } else {
+      const { toUpsert } = matchEducation(existingEducation || [], records);
+      const { withId, withoutId } = splitByHasId(toUpsert);
+      let educationCount = 0;
+
+      if (withId.length > 0) {
+        const { data, error } = await supabase.from('education').upsert(withId, { onConflict: 'id' }).select();
+        if (error) errors.push({ table: 'education', error: error.message });
+        else educationCount += data?.length || 0;
+      }
+      if (withoutId.length > 0) {
+        const { data, error } = await supabase.from('education').insert(withoutId).select();
+        if (error) errors.push({ table: 'education', error: error.message });
+        else educationCount += data?.length || 0;
+      }
+      results.education = educationCount;
+    }
   }
 
   if (body.experience?.length) {
@@ -329,9 +375,31 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         approval_status: 'pending',
       };
     });
-    const { data, error } = await supabase.from('experience').insert(records).select();
-    if (error) errors.push({ table: 'experience', error: error.message });
-    else results.experience = data?.length || 0;
+
+    const { data: existingExperience, error: existingExperienceError } = await supabase
+      .from('experience')
+      .select('*')
+      .eq('learner_id', learnerId);
+
+    if (existingExperienceError) {
+      errors.push({ table: 'experience', error: existingExperienceError.message });
+    } else {
+      const { toUpsert } = matchExperience(existingExperience || [], records);
+      const { withId, withoutId } = splitByHasId(toUpsert);
+      let experienceCount = 0;
+
+      if (withId.length > 0) {
+        const { data, error } = await supabase.from('experience').upsert(withId, { onConflict: 'id' }).select();
+        if (error) errors.push({ table: 'experience', error: error.message });
+        else experienceCount += data?.length || 0;
+      }
+      if (withoutId.length > 0) {
+        const { data, error } = await supabase.from('experience').insert(withoutId).select();
+        if (error) errors.push({ table: 'experience', error: error.message });
+        else experienceCount += data?.length || 0;
+      }
+      results.experience = experienceCount;
+    }
   }
 
   const allSkills: any[] = [];
@@ -361,20 +429,27 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   if (allSkills.length > 0) {
     const { data: existingSkills, error: existingSkillsError } = await supabase
       .from('skills')
-      .select('name, type')
+      .select('*')
       .eq('learner_id', learnerId);
 
     if (existingSkillsError) {
       errors.push({ table: 'skills', error: existingSkillsError.message });
     } else {
-      const existingSkillKeys = new Set((existingSkills || []).map((s: any) => getSkillKey(s.name, s.type)));
-      const newSkills = allSkills.filter((s) => !existingSkillKeys.has(getSkillKey(s.name, s.type)));
+      const { toUpsert } = matchSkills(existingSkills || [], allSkills);
+      const { withId, withoutId } = splitByHasId(toUpsert);
+      let skillsCount = 0;
 
-      if (newSkills.length > 0) {
-        const { data, error } = await supabase.from('skills').insert(newSkills).select();
+      if (withId.length > 0) {
+        const { data, error } = await supabase.from('skills').upsert(withId, { onConflict: 'id' }).select();
         if (error) errors.push({ table: 'skills', error: error.message });
-        else results.skills = data?.length || 0;
+        else skillsCount += data?.length || 0;
       }
+      if (withoutId.length > 0) {
+        const { data, error } = await supabase.from('skills').insert(withoutId).select();
+        if (error) errors.push({ table: 'skills', error: error.message });
+        else skillsCount += data?.length || 0;
+      }
+      results.skills = skillsCount;
     }
   }
 
@@ -392,9 +467,31 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       status: c.status || 'pending',
       approval_status: 'pending',
     }));
-    const { data, error } = await supabase.from('certificates').insert(records).select();
-    if (error) errors.push({ table: 'certificates', error: error.message });
-    else results.certificates = data?.length || 0;
+
+    const { data: existingCertificates, error: existingCertificatesError } = await supabase
+      .from('certificates')
+      .select('*')
+      .eq('learner_id', learnerId);
+
+    if (existingCertificatesError) {
+      errors.push({ table: 'certificates', error: existingCertificatesError.message });
+    } else {
+      const { toUpsert } = matchCertificates(existingCertificates || [], records);
+      const { withId, withoutId } = splitByHasId(toUpsert);
+      let certificatesCount = 0;
+
+      if (withId.length > 0) {
+        const { data, error } = await supabase.from('certificates').upsert(withId, { onConflict: 'id' }).select();
+        if (error) errors.push({ table: 'certificates', error: error.message });
+        else certificatesCount += data?.length || 0;
+      }
+      if (withoutId.length > 0) {
+        const { data, error } = await supabase.from('certificates').insert(withoutId).select();
+        if (error) errors.push({ table: 'certificates', error: error.message });
+        else certificatesCount += data?.length || 0;
+      }
+      results.certificates = certificatesCount;
+    }
   }
 
   if (body.projects?.length) {
@@ -410,9 +507,31 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       github_link: p.github || '',
       approval_status: 'pending',
     }));
-    const { data, error } = await supabase.from('projects').insert(records).select();
-    if (error) errors.push({ table: 'projects', error: error.message });
-    else results.projects = data?.length || 0;
+
+    const { data: existingProjects, error: existingProjectsError } = await supabase
+      .from('projects')
+      .select('*')
+      .eq('learner_id', learnerId);
+
+    if (existingProjectsError) {
+      errors.push({ table: 'projects', error: existingProjectsError.message });
+    } else {
+      const { toUpsert } = matchProjects(existingProjects || [], records);
+      const { withId, withoutId } = splitByHasId(toUpsert);
+      let projectsCount = 0;
+
+      if (withId.length > 0) {
+        const { data, error } = await supabase.from('projects').upsert(withId, { onConflict: 'id' }).select();
+        if (error) errors.push({ table: 'projects', error: error.message });
+        else projectsCount += data?.length || 0;
+      }
+      if (withoutId.length > 0) {
+        const { data, error } = await supabase.from('projects').insert(withoutId).select();
+        if (error) errors.push({ table: 'projects', error: error.message });
+        else projectsCount += data?.length || 0;
+      }
+      results.projects = projectsCount;
+    }
   }
 
   if (body.training?.length) {
