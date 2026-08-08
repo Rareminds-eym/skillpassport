@@ -90,10 +90,10 @@ export async function handleUnifiedSignup(request: Request, env: PagesEnv, authe
       let roleExists = false;
       const checkRole = existingUser.role || body.role;
       let roleTable = null;
-      
+
       if (checkRole === 'learner') roleTable = 'learners';
       else if (checkRole === 'recruiter') roleTable = 'recruiters';
-      
+
       if (roleTable) {
         const { data: existingRoleRec } = await supabaseAdmin
           .from(roleTable)
@@ -103,7 +103,7 @@ export async function handleUnifiedSignup(request: Request, env: PagesEnv, authe
         roleExists = !!existingRoleRec;
       } else {
         // Admin or educator roles that don't need a self-signup table record
-        roleExists = true; 
+        roleExists = true;
       }
 
       if (roleExists) {
@@ -120,7 +120,7 @@ export async function handleUnifiedSignup(request: Request, env: PagesEnv, authe
           console.error('Failed to repair missing role record:', repairError);
           throw repairError;
         }
-        
+
         return apiSuccess(
           { message: 'Profile role record repaired successfully', data: { userId } },
           request
@@ -229,8 +229,8 @@ export async function handleUnifiedSignup(request: Request, env: PagesEnv, authe
           role: body.role,
           emailSent: emailSent
         },
-        ...(emailSent ? {} : { 
-          warning: 'Account created but welcome email could not be sent. Please check your email or contact support.' 
+        ...(emailSent ? {} : {
+          warning: 'Account created but welcome email could not be sent. Please check your email or contact support.'
         })
       }, request);
     } catch (error) {
@@ -285,7 +285,8 @@ async function createRoleSpecificRecord(
       console.log(`Educator signup: ${role} - record will be created when joining organization`);
       break;
 
-    case 'recruiter': {
+    case 'recruiter':
+    case 'company_admin': {
       const { error } = await supabaseAdmin.from('recruiters').insert({
         user_id: userId,
         name: fullName,

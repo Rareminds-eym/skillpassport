@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { X, Loader2 } from 'lucide-react';
 
 import { useUser } from '@/shared/model/authStore';
+import RareMindsLogo from '@/shared/assets/RareMindsLogo';
 /**
  * Embedded Assessment Component
  * Integrates the RM_Assessment platform into the main application
@@ -111,8 +112,8 @@ const EmbeddedAssessment = ({ onClose }) => {
       <div className="absolute top-0 left-0 right-0 h-16 bg-gradient-to-r from-blue-600 to-indigo-600 shadow-lg z-10 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg bg-white/20 flex items-center justify-center">
-            <img 
-              src="/assets/HomePage/RMLogo.webp" 
+            <RareMindsLogo 
+              variant="icon"
               alt="RareMinds" 
               className="w-6 h-6 object-contain"
             />

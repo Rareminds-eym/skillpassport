@@ -1,4 +1,5 @@
 import { useAuthStore } from '@/shared/model/authStore';
+import RareMindsLogo from '@/shared/assets/RareMindsLogo';
 import { useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -1076,8 +1077,8 @@ const Opportunities = () => {
             >
               <div className="relative">
                 <div className="inline-block animate-spin rounded-full h-16 w-16 border-4 border-indigo-200 border-t-indigo-600"></div>
-                <img
-                  src="/assets/HomePage/RMLogo.webp"
+                <RareMindsLogo
+                  variant="icon"
                   alt="RareMinds Logo"
                   className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-8 h-8 object-contain"
                 />

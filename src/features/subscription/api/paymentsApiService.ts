@@ -59,11 +59,11 @@ export function extractErrorMessage(errorObj) {
  * @param {string} params.userName - User's name
  * @returns {Promise<Object>} Order details from Razorpay
  */
-export async function createOrder({ amount, currency = 'INR', planId, planName, userEmail, userName, isUpgrade }) {
+export async function createOrder({ amount, currency = 'INR', planId, planName, userEmail, userName, isUpgrade, referralCode }) {
   const response = await ssoClient.fetch(`${getBaseUrl()}/create-order`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ amount, currency, planId, planName, userEmail, userName, isUpgrade }),
+    body: JSON.stringify({ amount, currency, planId, planName, userEmail, userName, isUpgrade, referralCode }),
   });
 
   if (!response.ok) {

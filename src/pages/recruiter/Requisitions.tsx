@@ -664,7 +664,7 @@ const Requisitions = () => {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusBadge(req.status)}`}>
                         {getStatusIcon(req.status)}
-                        <span className="ml-1 capitalize">{req.status.replace('_', ' ')}</span>
+                        <span className="ml-1 capitalize">{req.status?.replace('_', ' ') || 'Unknown'}</span>
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -994,7 +994,7 @@ const RequisitionCard = ({ requisition, onView, onEdit, onDelete, onStatusChange
         <div className="mb-4">
           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusBadge(requisition.status)}`}>
             {getStatusIcon(requisition.status)}
-            <span className="ml-1 capitalize">{requisition.status.replace('_', ' ')}</span>
+            <span className="ml-1 capitalize">{requisition.status?.replace('_', ' ') || 'Unknown'}</span>
           </span>
         </div>
 
@@ -1909,7 +1909,7 @@ const ApplicationsModal = ({ requisition, onClose }: RequisitionModalProps) => {
                         <td className="px-4 py-4 whitespace-nowrap">
                           <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(app.application_status)}`}>
                             <ClockIcon className="h-3 w-3 mr-1" />
-                            {app.application_status.replace('_', ' ')}
+                            {app.application_status?.replace('_', ' ') || 'Unknown'}
                           </span>
                         </td>
 
@@ -2030,7 +2030,7 @@ const ApplicationsModal = ({ requisition, onClose }: RequisitionModalProps) => {
                     <div>
                       <label className="block text-sm font-medium text-gray-500">Application Status</label>
                       <span className={`inline-block mt-1 px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(selectedLearner.application_status)}`}>
-                        {selectedLearner.application_status.replace('_', ' ').toUpperCase()}
+                        {selectedLearner.application_status?.replace('_', ' ').toUpperCase() || 'UNKNOWN'}
                       </span>
                     </div>
 

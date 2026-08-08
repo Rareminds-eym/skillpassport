@@ -148,29 +148,23 @@ const VerifyEmail = () => {
             const recruiterType = sessionStorage.getItem('recruiter_type');
             const invitationToken = sessionStorage.getItem('invitation_token');
 
-            // Also check if org name is NULL - indicates new admin recruiter who hasn't set company details
-            const orgName = currentUser?.user_metadata?.organizationName;
-            const hasNullOrgName = !orgName || orgName === null || orgName === 'null';
-
             console.log('[VerifyEmail] Recruitment user detected', {
               userRole,
               roles: userRoles,
               recruiterType,
-              hasInvitationToken: !!invitationToken,
-              orgName,
-              hasNullOrgName
+              hasInvitationToken: !!invitationToken
             });
 
-            // Check if this is a NEW admin recruiter (NULL org name OR recruiter_type=admin)
+            // Check if this is an admin recruiter (owner/company_admin role OR recruiter_type=admin)
             const isCompanyAdmin = userRoles.includes('owner') || userRoles.includes('company_admin');
-            const isNewAdminRecruiter = (recruiterType === 'admin' || (isCompanyAdmin && hasNullOrgName));
+            const isAdminRecruiter = (recruiterType === 'admin' || isCompanyAdmin);
 
-            if (isNewAdminRecruiter && !invitationToken) {
-              // Admin recruiter: Go to onboarding first to set company details
-              // After onboarding, they'll go to subscription plans
-              console.log('[VerifyEmail] New admin recruiter (NULL org) → onboarding (company details first)');
+            if (isAdminRecruiter && !invitationToken) {
+              // Admin recruiter: Go to subscription plans FIRST
+              // After subscription, they'll be redirected to onboarding to set company details
+              console.log('[VerifyEmail] Admin recruiter → subscription plans first');
               sessionStorage.removeItem('recruiter_type'); // Clean up
-              navigate('/recruitment/onboarding/step-1', {
+              navigate('/subscription/plans?type=recruiter', {
                 replace: true,
               });
               return; // CRITICAL: Prevent fallthrough to legacy routing

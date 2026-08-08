@@ -1,4 +1,5 @@
 import { useAuthStore } from '@/shared/model/authStore';
+import RareMindsLogo from '@/shared/assets/RareMindsLogo';
 import { curriculumApprovalService, curriculumChangeRequestService, type CurriculumApprovalDashboard } from '@/features/college-admin';
 import { apiPost } from '@/shared/api/apiClient';
 import { getWSClient } from '@/shared/api/wsRealtimeClient';
@@ -778,8 +779,8 @@ const SyllabusApproval: React.FC = () => {
             >
               <div className="relative">
                 <div className="inline-block animate-spin rounded-full h-16 w-16 border-4 border-indigo-200 border-t-indigo-600"></div>
-                <img
-                  src="/assets/HomePage/RMLogo.webp"
+                <RareMindsLogo
+                  variant="icon"
                   alt="RareMinds Logo"
                   className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-8 h-8 object-contain"
                 />
@@ -819,8 +820,8 @@ const SyllabusApproval: React.FC = () => {
                 >
                   <div className="relative">
                     <div className="inline-block animate-spin rounded-full h-16 w-16 border-4 border-indigo-200 border-t-indigo-600"></div>
-                    <img
-                      src="/assets/HomePage/RMLogo.webp"
+                    <RareMindsLogo
+                      variant="icon"
                       alt="RareMinds Logo"
                       className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-8 h-8 object-contain"
                     />
@@ -1404,8 +1405,8 @@ const SyllabusApproval: React.FC = () => {
                     <div className="flex flex-col items-center justify-center py-16">
                       <div className="relative">
                         <div className="animate-spin rounded-full h-16 w-16 border-4 border-indigo-200 border-t-indigo-600"></div>
-                        <img
-                          src="/assets/HomePage/RMLogo.webp"
+                        <RareMindsLogo
+                          variant="icon"
                           alt="RareMinds Logo"
                           className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-8 h-8 object-contain"
                         />

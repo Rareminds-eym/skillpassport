@@ -1,6 +1,3 @@
-import { SubscriptionDashboard } from '@/features/subscription';
-import { useSubscriptionPlansData } from '@/features/subscription/model';
-import { useSubscriptionQuery } from '@/features/subscription/model/useSubscriptionQuery';
 import {
   AlertCircle,
   ArrowLeft,
@@ -22,24 +19,48 @@ import {
   Shield,
   Sparkles,
   TrendingUp,
-  X as XIcon
+  X as XIcon,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
-
-import { useUsageStatistics } from '@/features/analytics/model/useUsageStatistics';
-import { RECEIPT_CONFIG } from '@/shared/config/constants';
-import { downloadFileFromUrl, generateReceiptFilename } from '@/shared/utils/downloadHelpers';
-import { getPaymentReceiptPresignedUrl } from '@/shared/api';
-import { getLogger } from '@/shared/config/logging';
-import { useUser, useUserRole, useAuthLoading } from '@/shared/model/authStore';
-import { calculateDaysRemaining, calculateProgressPercentage, deactivateSubscription, formatDate, getSubscriptionStatusChecks, pauseSubscription, resumeSubscription } from '@/features/subscription';
-import { getUserSubscriptions } from '@/features/subscription/api';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useLearnerDataByEmail } from '@/entities/learner';
+import { useUsageStatistics } from '@/features/analytics/model/useUsageStatistics';
+import { 
+  calculateDaysRemaining, 
+  calculateProgressPercentage, 
+  deactivateSubscription, 
+  formatDate, 
+  getSubscriptionStatusChecks, 
+  pauseSubscription, 
+  resumeSubscription, 
+  SubscriptionDashboard, 
+} from '@/features/subscription';
+import { getUserPayments } from '@/features/subscription/api';
+import { useSubscriptionPlansData } from '@/features/subscription/model';
+import { useSubscriptionQuery } from '@/features/subscription/model/useSubscriptionQuery';
+import { getPaymentReceiptPresignedUrl } from '@/shared/api';
+import { RECEIPT_CONFIG } from '@/shared/config/constants';
+import { getLogger } from '@/shared/config/logging';
+import { useAuthLoading, useUser, useUserRole } from '@/shared/model/authStore';
+import { downloadFileFromUrl, generateReceiptFilename } from '@/shared/utils/downloadHelpers';
 import { openZohoChat } from '@/shared/utils/zohoChat';
 
 const logger = getLogger('my-subscription');
+
+/**
+ * Returns Tailwind class names and display label for a billing history status badge.
+ * @param {string} status - Transaction status ('paid', 'failed', 'refunded', or any other value)
+ * @returns {{ badgeClass: string, iconClass: string, label: string }}
+ */
+function getStatusBadgeConfig(status) {
+  const configs = {
+    paid:     { badgeClass: 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white', iconClass: 'fill-white', label: 'Paid' },
+    failed:   { badgeClass: 'bg-gradient-to-r from-red-500 to-red-600 text-white',     iconClass: 'fill-white', label: 'Failed' },
+    refunded: { badgeClass: 'bg-gradient-to-r from-amber-500 to-amber-600 text-white',  iconClass: 'fill-white', label: 'Refunded' },
+  };
+  return configs[status] ?? { badgeClass: 'bg-slate-200 text-slate-700', iconClass: 'fill-slate-600', label: 'Pending' };
+}
 
 /**
  * Get the settings path based on current URL path (more reliable than role)
@@ -327,8 +348,16 @@ function MySubscription() {
     
     try {
       // PRIORITY 1: Check if subscription has receipt_url stored in database (R2 key)
+      // Only use this when no specific invoiceData is passed (i.e. main "Download Invoice" button)
+      // If invoiceData is passed (billing history row), skip this and use that transaction's payment ID
+      if (invoiceData && subscriptionData?.receiptUrl) {
+        logger.debug('Bypassing receiptUrl: invoiceData provided, using transaction payment ID instead', {
+          invoicePaymentId: invoiceData.razorpay_payment_id,
+          receiptUrl: subscriptionData.receiptUrl,
+        });
+      }
       const receiptUrl =
-        typeof subscriptionData?.receiptUrl === 'string'
+        !invoiceData && typeof subscriptionData?.receiptUrl === 'string'
           ? subscriptionData.receiptUrl.trim()
           : '';
       
@@ -535,31 +564,51 @@ function MySubscription() {
 
     setLoadingBillingHistory(true);
     try {
-      const result = await getUserSubscriptions(false); // false = optimized query
+      const result = await getUserPayments();
 
       if (result.success && result.data) {
-        // Transform database subscriptions to billing history format
-        // More lenient filter - show all subscriptions that have been processed
         const history = result.data
-          .filter(sub => {
-            // Show if it has any of these statuses
-            const validStatuses = ['active', 'expired', 'cancelled'];
-            const hasValidStatus = validStatuses.includes(sub.status?.toLowerCase());
-            const hasPayment = sub.razorpay_subscription_id;
-            return hasValidStatus || hasPayment;
-          })
-          .map(sub => ({
-            id: sub.id,
-            date: sub.created_at || sub.subscription_start_date,
-            amount: sub.plan_amount || '',
-            status: sub.status === 'active' ? 'paid' : 'completed',
-            description: sub.billing_cycle
-              ? `${sub.plan_type ?? ''} — ${sub.billing_cycle}`
-              : `${sub.plan_type ?? ''}`,
-            planType: sub.plan_type,
-            billingCycle: sub.billing_cycle,
-            subscriptionStatus: sub.status
-          }));
+          .map(tx => {
+            const meta = tx.metadata || {};
+            const plan = meta.plan || {};
+            const planName = plan.name ?? '';
+            const billingCycle = plan.billing_cycle ?? '';
+            const description = planName
+              ? (billingCycle ? `${planName} — ${billingCycle}` : planName)
+              : (() => {
+                  const typeMap = {
+                    upgrade: 'Plan Upgrade',
+                    subscription: 'Subscription',
+                    addon: 'Add-on Purchase',
+                    bulk_purchase: 'Bulk Purchase',
+                    refund: 'Refund',
+                  };
+                  const mappedType = typeMap[tx.transaction_type?.toLowerCase()];
+                  if (!mappedType && tx.transaction_type) {
+                    logger.warn('Unmapped transaction type displayed as raw value', { type: tx.transaction_type });
+                  }
+                    const rawType = typeof tx.transaction_type === 'string'
+                      ? tx.transaction_type.slice(0, 50)
+                      : null;
+                    return mappedType || rawType || 'Purchase';
+                })();
+            const statusMap = {
+              completed: 'paid',
+              failed: 'failed',
+              refunded: 'refunded',
+              pending: 'pending',
+            };
+            return {
+              id: tx.id,
+              date: tx.created_at,
+              amount: tx.amount,
+              status: statusMap[tx.status?.toLowerCase()] || tx.status || 'pending',
+              description,
+              planName,
+              billingCycle,
+              razorpay_payment_id: tx.razorpay_payment_id,
+            };
+          });
 
         setBillingHistory(history);
         setBillingHistoryFetched(true);
@@ -698,6 +747,7 @@ function MySubscription() {
         <div className="bg-white border-b-2 border-slate-200">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
             <button
+              type="button"
               onClick={() => navigate(getSettingsUrl())}
               className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 transition-colors group font-medium"
             >
@@ -717,6 +767,7 @@ function MySubscription() {
               You don't have an active subscription yet. Choose a plan to get started.
             </p>
             <button
+              type="button"
               onClick={() => {
                 // Use userType from URL path (already computed at top of component)
                 navigate(`/subscription/plans?type=${userType}`);
@@ -738,6 +789,7 @@ function MySubscription() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Back to Settings Button */}
           <button
+            type="button"
             onClick={() => navigate(getSettingsUrl())}
             className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 mb-6 transition-colors group font-medium"
           >
@@ -778,6 +830,7 @@ function MySubscription() {
           {/* Tab Navigation - Editorial Style */}
           <div className="mt-8 inline-flex bg-white rounded-2xl p-1.5 shadow-lg border border-slate-200">
             <button
+              type="button"
               onClick={() => setActiveTab('subscription')}
               className={`px-6 py-3 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 ${activeTab === 'subscription'
                 ? 'bg-gradient-to-br from-slate-800 to-slate-900 text-white shadow-lg'
@@ -788,6 +841,7 @@ function MySubscription() {
               Subscription
             </button>
             <button
+              type="button"
               onClick={() => setActiveTab('addons')}
               className={`px-6 py-3 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 ${activeTab === 'addons'
                 ? 'bg-gradient-to-br from-slate-800 to-slate-900 text-white shadow-lg'
@@ -834,6 +888,7 @@ function MySubscription() {
                     }
                   </p>
                   <button
+                    type="button"
                     onClick={handleRenewSubscription}
                     className={`mt-4 px-6 py-3 rounded-2xl text-sm font-semibold transition-all inline-flex items-center gap-2 shadow-lg hover:shadow-xl hover:scale-105 ${isPaused
                       ? 'bg-gradient-to-r from-amber-600 to-amber-700 text-white hover:from-amber-700 hover:to-amber-800'
@@ -1015,6 +1070,7 @@ function MySubscription() {
                     {/* Show More/Less Toggle */}
                     {(hasMoreFeatures || showingAllFeatures) && (
                       <button
+                        type="button"
                         onClick={handleToggleFeatures}
                         disabled={loadingMoreFeatures}
                         className={`mt-5 w-full flex items-center justify-center gap-2 py-3 px-4 text-sm font-semibold rounded-2xl transition-all duration-200 group ${loadingMoreFeatures
@@ -1083,6 +1139,7 @@ function MySubscription() {
                             </span>
                           </div>
                           <button
+                            type="button"
                             onClick={handleToggleAutoRenew}
                             disabled={isTogglingAutoRenew}
                             className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-inner ${autoRenewEnabled ? 'bg-gradient-to-r from-slate-800 to-slate-900' : 'bg-slate-300'
@@ -1114,6 +1171,7 @@ function MySubscription() {
                 {/* Billing History - Editorial Luxury */}
                 <div className="bg-white rounded-3xl border-2 border-slate-200 shadow-lg hover:shadow-xl transition-shadow">
                   <button
+                    type="button"
                     onClick={() => setShowBillingHistory(!showBillingHistory)}
                     onMouseEnter={() => {
                       // Prefetch on hover for instant display
@@ -1158,15 +1216,12 @@ function MySubscription() {
                               </div>
                               <div className="flex items-center gap-3">
                                 <span className="text-sm font-semibold text-slate-900">₹{invoice.amount}</span>
-                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm ${invoice.status === 'success' || invoice.status === 'paid'
-                                  ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white'
-                                  : 'bg-slate-200 text-slate-700'
-                                  }`}>
-                                  <Circle className={`w-1.5 h-1.5 ${invoice.status === 'success' || invoice.status === 'paid' ? 'fill-white' : 'fill-slate-600'
-                                    }`} />
-                                  {invoice.status === 'success' || invoice.status === 'paid' ? 'Paid' : 'Pending'}
+                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm ${getStatusBadgeConfig(invoice.status).badgeClass}`}>
+                                  <Circle className={`w-1.5 h-1.5 ${getStatusBadgeConfig(invoice.status).iconClass}`} />
+                                  {getStatusBadgeConfig(invoice.status).label}
                                 </span>
                                 <button
+                                  type="button"
                                   onClick={() => handleDownloadInvoice(invoice)}
                                   className="p-2 hover:bg-slate-100 rounded-2xl transition-colors"
                                   title="Download Invoice"
@@ -1193,6 +1248,7 @@ function MySubscription() {
                   <div className="p-4 space-y-3">
                     {/* Go to Dashboard - Primary CTA */}
                     <button
+                      type="button"
                       onClick={() => navigate(getDashboardUrl())}
                       className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-slate-800 to-slate-900 text-white rounded-2xl text-sm font-semibold hover:from-slate-900 hover:to-black transition-all group shadow-lg hover:shadow-xl hover:scale-105"
                     >
@@ -1204,6 +1260,7 @@ function MySubscription() {
                     </button>
 
                     <button
+                      type="button"
                       onClick={handleUpgradePlan}
                       className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-2xl text-sm font-semibold hover:from-amber-600 hover:to-amber-700 transition-all group shadow-lg hover:shadow-xl hover:scale-105"
                     >
@@ -1215,6 +1272,7 @@ function MySubscription() {
                     </button>
 
                     <button
+                      type="button"
                       onClick={handleRenewSubscription}
                       className="w-full flex items-center justify-between px-4 py-3 bg-slate-100 text-slate-900 rounded-2xl text-sm font-semibold hover:bg-slate-200 transition-all group border border-slate-200"
                     >
@@ -1227,6 +1285,7 @@ function MySubscription() {
 
                     {isPaused && (
                       <button
+                        type="button"
                         onClick={handleResumeSubscription}
                         disabled={isPausing}
                         className="w-full flex items-center justify-center px-4 py-3 text-emerald-700 bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-2xl text-sm font-semibold hover:from-emerald-100 hover:to-emerald-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed border border-emerald-200 shadow-sm"
@@ -1245,6 +1304,7 @@ function MySubscription() {
                     {isActive && (
                       <>
                         <button
+                          type="button"
                           onClick={() => setShowPauseModal(true)}
                           className="w-full flex items-center justify-center px-4 py-3 text-amber-700 bg-gradient-to-br from-amber-50 to-amber-100 rounded-2xl text-sm font-semibold hover:from-amber-100 hover:to-amber-200 transition-all border border-amber-200 shadow-sm"
                         >
@@ -1254,6 +1314,7 @@ function MySubscription() {
                           </span>
                         </button>
                         <button
+                          type="button"
                           onClick={handleCancelSubscription}
                           className="w-full flex items-center justify-center px-4 py-3 text-slate-600 rounded-2xl text-sm font-semibold hover:bg-slate-50 transition-all border border-slate-200"
                         >
@@ -1305,6 +1366,7 @@ function MySubscription() {
                       </div>
                       <div className="pt-3 border-t border-slate-200">
                         <button
+                          type="button"
                           onClick={() => handleDownloadInvoice(null)}
                           disabled={isDownloadingInvoice}
                           className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-slate-100 text-slate-900 rounded-2xl text-sm font-semibold hover:bg-slate-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed border border-slate-200"
@@ -1341,6 +1403,7 @@ function MySubscription() {
                       Have questions about your subscription or billing?
                     </p>
                     <button
+                      type="button"
                       onClick={handleContactSupport}
                       className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-slate-300 text-slate-900 rounded-2xl text-sm font-semibold hover:bg-slate-50 transition-all hover:scale-105"
                     >
@@ -1372,10 +1435,10 @@ function MySubscription() {
             </div>
 
             {/* Cancellation Feedback */}
-            <div className="mb-6">
-              <label className="block text-sm font-semibold text-slate-900 mb-3 uppercase tracking-wider">
+            <fieldset className="mb-6">
+              <legend className="block text-sm font-semibold text-slate-900 mb-3 uppercase tracking-wider">
                 Why are you canceling? *
-              </label>
+              </legend>
               <div className="space-y-2">
                 {[
                   'Too expensive',
@@ -1397,7 +1460,7 @@ function MySubscription() {
                   </label>
                 ))}
               </div>
-            </div>
+            </fieldset>
 
             {/* Additional Feedback */}
             {cancelReason && (
@@ -1494,10 +1557,10 @@ function MySubscription() {
               </div>
             </div>
 
-            <div className="mb-6">
-              <label className="block text-sm font-semibold text-slate-900 mb-3 uppercase tracking-wider">
+            <fieldset className="mb-6">
+              <legend className="block text-sm font-semibold text-slate-900 mb-3 uppercase tracking-wider">
                 How long would you like to pause?
-              </label>
+              </legend>
               <div className="space-y-2">
                 {[1, 2, 3].map((months) => (
                   <label key={months} className="flex items-center gap-3 p-4 border-2 border-slate-200 rounded-2xl hover:bg-slate-50 cursor-pointer transition-all hover:border-slate-300">
@@ -1513,7 +1576,7 @@ function MySubscription() {
                   </label>
                 ))}
               </div>
-            </div>
+            </fieldset>
 
             <div className="flex gap-3">
               <button
