@@ -7,7 +7,7 @@
 
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Building2, Loader2, ArrowRight, Globe, MapPin, Phone, Mail } from 'lucide-react';
+import { Building2, Loader2, ArrowRight, Globe, MapPin, Phone } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useOnboarding } from './OnboardingContext';
 import { INDUSTRIES, COMPANY_SIZES } from './types';
@@ -23,12 +23,7 @@ export default function OnboardingStep1() {
     const [loading, setLoading] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
 
-    // Pre-fill email from user
-    useEffect(() => {
-        if (user?.email && !formData.email) {
-            setFormData(prev => ({ ...prev, email: user.email || '' }));
-        }
-    }, [user?.email, formData.email]);
+
 
     const handleChange = (field: keyof typeof formData, value: string) => {
         setFormData(prev => ({ ...prev, [field]: value }));
@@ -55,9 +50,6 @@ export default function OnboardingStep1() {
         }
         if (!formData.phone.trim()) {
             newErrors.phone = 'Phone number is required';
-        }
-        if (!formData.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-            newErrors.email = 'Valid email is required';
         }
 
         setErrors(newErrors);
@@ -108,7 +100,6 @@ export default function OnboardingStep1() {
                 action: 'updateOrganization',
                 id: orgId,
                 name: formData.companyName,
-                email: formData.email,
                 phone: formData.phone,
                 address: formData.address,
                 website: formData.website || null,
@@ -129,7 +120,6 @@ export default function OnboardingStep1() {
                 p_company_size: formData.companySize,
                 p_admin_name: `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'Admin',
                 p_phone: formData.phone,
-                p_email: formData.email,
                 p_address: formData.address,
             });
 
@@ -272,29 +262,6 @@ export default function OnboardingStep1() {
                     </div>
                     {errors.phone && (
                         <p className="text-red-500 text-sm mt-1">{errors.phone}</p>
-                    )}
-                </div>
-
-                {/* Email */}
-                <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-2">
-                        Email <span className="text-red-500">*</span>
-                    </label>
-                    <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                            <Mail className="h-5 w-5 text-slate-400" />
-                        </div>
-                        <input
-                            type="email"
-                            value={formData.email}
-                            onChange={(e) => handleChange('email', e.target.value)}
-                            placeholder="contact@company.com"
-                            className={`w-full pl-12 pr-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all ${errors.email ? 'border-red-300 bg-red-50' : 'border-slate-300'
-                                }`}
-                        />
-                    </div>
-                    {errors.email && (
-                        <p className="text-red-500 text-sm mt-1">{errors.email}</p>
                     )}
                 </div>
 
