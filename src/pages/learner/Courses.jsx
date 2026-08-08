@@ -88,6 +88,7 @@ const Courses = () => {
   const [totalCount, setTotalCount] = useState(0); // Total courses count for pagination
   const coursesPerPage = 6;
   const [activeTab, setActiveTab] = useState('courses'); // 'courses' or 'progress'
+  const [courseInterestMap, setCourseInterestMap] = useState(new Map()); // courseId -> is_enabled
   const [enrolledCourseIds, setEnrolledCourseIds] = useState(new Set());
   const [enrollmentProgress, setEnrollmentProgress] = useState({}); // Track progress per course
   const [certificateUrls, setCertificateUrls] = useState({}); // Track certificate URLs per course
@@ -116,6 +117,24 @@ const Courses = () => {
     
     return userPlanLevel >= coursePlanLevel;
   }, [userPlan]);
+
+  // Fetch which courses the learner has shown interest in
+  const fetchInterests = useCallback(async () => {
+    try {
+      const result = await apiGet('/courses/interests');
+      if (result?.data) {
+        const map = new Map(result.data.map(item => [item.course_id, item.is_enabled]));
+        setCourseInterestMap(map);
+      }
+    } catch (error) {
+      logger.error('Error fetching course interests', error);
+    }
+  }, []);
+
+  // Check if a course is enabled for this learner (interest shown)
+  const isCourseEnabled = useCallback((courseId) => {
+    return courseInterestMap.get(courseId) === true;
+  }, [courseInterestMap]);
 
   // Memoized callback for fetching enrollments
   const fetchEnrollments = useCallback(async () => {
@@ -267,8 +286,9 @@ const Courses = () => {
       userEmailRef.current = currentEmail;
       hasFetchedEnrollmentsRef.current = true;
       fetchEnrollments();
+      fetchInterests();
     }
-    // fetchEnrollments is stable (empty deps), so not needed in dependency array
+    // fetchEnrollments and fetchInterests are stable (empty deps), so not needed in dependency array
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.email]);
 
@@ -621,6 +641,8 @@ const Courses = () => {
         }
         await recordCourseInterest(courseId);
         if (!isMountedRef.current) return;
+        // Update interest map immediately so card switches to enabled without refetch
+        setCourseInterestMap(prev => new Map([...prev, [courseId, true]]));
         // The detail modal stays open behind the confirmation - closing it here
         // would unmount the control still showing its pending state. It is closed
         // when the learner dismisses the confirmation.
@@ -1050,32 +1072,30 @@ const Courses = () => {
                     {/* Badges */}
                     <div className="absolute top-2 left-2 flex gap-2">
                       {isCourseCompleted(course.course_id) ? (
-                        <motion.div
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                        >
+                        <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}>
                           <Badge className="bg-gradient-to-r from-emerald-500 to-green-600 text-white border-0 shadow-lg font-semibold px-3 py-1 flex items-center gap-1">
                             <CheckCircle className="w-3 h-3" />
                             Completed
                           </Badge>
                         </motion.div>
                       ) : hasResumableProgress(course.course_id) ? (
-                        <motion.div
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                        >
+                        <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}>
                           <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white border-0 shadow-lg font-semibold px-3 py-1 flex items-center gap-1">
                             <Play className="w-3 h-3" />
                             Resume ({enrollmentProgress[course.course_id]?.progress}%)
                           </Badge>
                         </motion.div>
-                      ) : enrolledCourseIds.has(course.course_id) && (
-                        <motion.div
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                        >
+                      ) : enrolledCourseIds.has(course.course_id) ? (
+                        <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}>
                           <Badge className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white border-0 shadow-lg font-semibold px-3 py-1">
                             Enrolled
+                          </Badge>
+                        </motion.div>
+                      ) : isCourseEnabled(course.course_id) && (
+                        <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}>
+                          <Badge className="bg-gradient-to-r from-green-500 to-teal-500 text-white border-0 shadow-lg font-semibold px-3 py-1 flex items-center gap-1">
+                            <CheckCircle className="w-3 h-3" />
+                            Interested
                           </Badge>
                         </motion.div>
                       )}
@@ -1271,16 +1291,16 @@ const Courses = () => {
                               <Play className="w-3 h-3" />
                               Resume ({enrollmentProgress[course.course_id]?.progress}%)
                             </Badge>
-                          ) : enrolledCourseIds.has(course.course_id) && (
+                          ) : enrolledCourseIds.has(course.course_id) ? (
                             <Badge className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white border-0 shadow-lg font-semibold px-3 py-1">
                               Enrolled
                             </Badge>
-                          )}
-                          {/* {isNewCourse(course.created_at) && (
-                            <Badge className="bg-gradient-to-r from-pink-500 to-rose-500 text-white border-0 shadow-lg font-semibold px-3 py-1">
-                              NEW
+                          ) : isCourseEnabled(course.course_id) && (
+                            <Badge className="bg-gradient-to-r from-green-500 to-teal-500 text-white border-0 shadow-lg font-semibold px-3 py-1 flex items-center gap-1">
+                              <CheckCircle className="w-3 h-3" />
+                              Interested
                             </Badge>
-                          )} */}
+                          )}
                         </div>
                       </div>
 

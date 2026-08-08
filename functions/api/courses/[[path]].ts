@@ -529,16 +529,28 @@ async function handler(context: AuthenticatedContext): Promise<Response> {
     if (courseError) return apiDbError(courseError, request);
     if (!course) return apiError(404, 'NOT_FOUND', 'Course not found', request);
 
-    // ignoreDuplicates so the first expression of interest is preserved - the
-    // unique constraint on (user_id, course_id) makes repeat writes idempotent.
-    // A conflicting insert returns no rows, which is the duplicate outcome and
-    // is returned as success per the project's empty-array convention.
+    // Upsert with is_enabled = true. ignoreDuplicates is false so that a repeat
+    // interest expression (e.g. after a future disable) correctly re-enables the row.
     const { data, error } = await supabase
       .from('learner_course_interests')
-      .upsert({ user_id: user.id, course_id: courseId }, { onConflict: 'user_id,course_id', ignoreDuplicates: true })
+      .upsert({ user_id: user.id, course_id: courseId, is_enabled: true }, { onConflict: 'user_id,course_id', ignoreDuplicates: false })
       .select();
-    // Duplicates never reach this branch (they resolve to empty data above);
-    // this covers all other failure modes, e.g. FK violations or connection errors.
+    if (error) return apiDbError(error, request);
+    return apiSuccess(data || [], request);
+  }
+
+  // GET /api/courses/interests
+  // Returns course_id and is_enabled for all courses the authenticated learner
+  // has interacted with. Frontend uses this to render enabled/disabled course cards.
+  if (path === '/interests' && method === 'GET') {
+    const { data: learner, error: learnerError } = await supabase.from('learners').select('user_id').eq('user_id', user.id).maybeSingle();
+    if (learnerError) return apiDbError(learnerError, request);
+    if (!learner) return apiError(404, 'NOT_FOUND', 'Learner not found', request);
+
+    const { data, error } = await supabase
+      .from('learner_course_interests')
+      .select('course_id, is_enabled')
+      .eq('user_id', user.id);
     if (error) return apiDbError(error, request);
     return apiSuccess(data || [], request);
   }
