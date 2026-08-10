@@ -269,7 +269,7 @@ export default function AddLearningCourseModal({ isOpen, onClose, learnerId, onS
     setLoading(true);
 
     try {
-      const response = await apiPost('/learners/trainings', {
+      await apiPost('/learners/trainings', {
         learnerId,
         training: {
           title: formData.title,
@@ -383,7 +383,7 @@ export default function AddLearningCourseModal({ isOpen, onClose, learnerId, onS
       <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden shadow-2xl">
         {/* Header */}
         <div className="relative bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 px-6 py-5">
-          <button onClick={onClose} className="absolute top-4 right-4 text-white/80 hover:text-white hover:bg-white/10 rounded-full p-1.5">
+          <button type="button" onClick={onClose} className="absolute top-4 right-4 text-white/80 hover:text-white hover:bg-white/10 rounded-full p-1.5">
             <X size={20} />
           </button>
           <div className="flex items-center gap-3">
@@ -442,6 +442,7 @@ export default function AddLearningCourseModal({ isOpen, onClose, learnerId, onS
                 {PLATFORMS.map((platform) => (
                   <button
                     key={platform.id}
+                    type="button"
                     onClick={() => {
                       if (selectedPlatform?.id !== platform.id) {
                         setFormData({ certificate_url: '', title: '', organization: '', instructor: '', completion_date: '', certificate_id: '', description: '', category: '', difficulty: '' });
@@ -547,36 +548,36 @@ export default function AddLearningCourseModal({ isOpen, onClose, learnerId, onS
                 <p className="text-gray-500 text-sm mt-1">Enter the certificate information</p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Course Title <span className="text-red-500">*</span></label>
-                <input type="text" name="title" value={formData.title} onChange={handleInputChange} placeholder="e.g., Machine Learning Specialization" className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm" />
+                <label htmlFor="course-title" className="block text-sm font-medium text-gray-700 mb-1.5">Course Title <span className="text-red-500">*</span></label>
+                <input id="course-title" type="text" name="title" value={formData.title} onChange={handleInputChange} placeholder="e.g., Machine Learning Specialization" className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm" />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Issuing Organization</label>
-                  <input type="text" name="organization" value={formData.organization || selectedPlatform?.name || ''} onChange={handleInputChange} placeholder="e.g., Stanford University" disabled={selectedPlatform?.id !== 'other'} className={`w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm ${selectedPlatform?.id !== 'other' ? 'bg-gray-100 text-gray-600 cursor-not-allowed' : 'focus:ring-2 focus:ring-indigo-500'}`} />
+                  <label htmlFor="course-organization" className="block text-sm font-medium text-gray-700 mb-1.5">Issuing Organization</label>
+                  <input id="course-organization" type="text" name="organization" value={formData.organization || selectedPlatform?.name || ''} onChange={handleInputChange} placeholder="e.g., Stanford University" disabled={selectedPlatform?.id !== 'other'} className={`w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm ${selectedPlatform?.id !== 'other' ? 'bg-gray-100 text-gray-600 cursor-not-allowed' : 'focus:ring-2 focus:ring-indigo-500'}`} />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Instructor Name</label>
-                  <input type="text" name="instructor" value={formData.instructor} onChange={handleInputChange} placeholder="e.g., Andrew Ng" className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm" />
+                  <label htmlFor="course-instructor" className="block text-sm font-medium text-gray-700 mb-1.5">Instructor Name</label>
+                  <input id="course-instructor" type="text" name="instructor" value={formData.instructor} onChange={handleInputChange} placeholder="e.g., Andrew Ng" className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm" />
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Completion Date <span className="text-red-500">*</span></label>
-                <input type="date" name="completion_date" value={formData.completion_date} onChange={handleInputChange} className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm" />
+                <label htmlFor="course-completion-date" className="block text-sm font-medium text-gray-700 mb-1.5">Completion Date <span className="text-red-500">*</span></label>
+                <input id="course-completion-date" type="date" name="completion_date" value={formData.completion_date} onChange={handleInputChange} className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm" />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Certificate URL</label>
-                  <input type="url" name="certificate_url" value={formData.certificate_url} readOnly disabled className="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed text-sm" />
+                  <label htmlFor="course-certificate-url" className="block text-sm font-medium text-gray-700 mb-1.5">Certificate URL</label>
+                  <input id="course-certificate-url" type="url" name="certificate_url" value={formData.certificate_url} readOnly disabled className="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed text-sm" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Certificate ID</label>
-                  <input type="text" name="certificate_id" value={formData.certificate_id} onChange={handleInputChange} placeholder="e.g., UC-ABC123" className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm" />
+                  <label htmlFor="course-certificate-id" className="block text-sm font-medium text-gray-700 mb-1.5">Certificate ID</label>
+                  <input id="course-certificate-id" type="text" name="certificate_id" value={formData.certificate_id} onChange={handleInputChange} placeholder="e.g., UC-ABC123" className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm" />
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Description (Optional)</label>
-                <textarea name="description" value={formData.description} onChange={handleInputChange} placeholder="Brief description of what you learned..." rows="2" className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm resize-none" />
+                <label htmlFor="course-description" className="block text-sm font-medium text-gray-700 mb-1.5">Description (Optional)</label>
+                <textarea id="course-description" name="description" value={formData.description} onChange={handleInputChange} placeholder="Brief description of what you learned..." rows="2" className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm resize-none" />
               </div>
             </div>
           )}
@@ -651,8 +652,9 @@ export default function AddLearningCourseModal({ isOpen, onClose, learnerId, onS
                 <div className="space-y-3">
                   {/* Skill Name */}
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Skill Name *</label>
+                    <label htmlFor="skill-name" className="block text-xs font-medium text-gray-700 mb-1">Skill Name *</label>
                     <input
+                      id="skill-name"
                       type="text"
                       value={currentSkill.name}
                       onChange={(e) => handleSkillChange('name', e.target.value)}
@@ -664,8 +666,9 @@ export default function AddLearningCourseModal({ isOpen, onClose, learnerId, onS
                   {/* Type and Level Row */}
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Type</label>
+                      <label htmlFor="skill-type" className="block text-xs font-medium text-gray-700 mb-1">Type</label>
                       <select
+                        id="skill-type"
                         value={currentSkill.type}
                         onChange={(e) => handleSkillChange('type', e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
@@ -676,8 +679,9 @@ export default function AddLearningCourseModal({ isOpen, onClose, learnerId, onS
                     </div>
 
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Proficiency Level</label>
+                      <label htmlFor="skill-level" className="block text-xs font-medium text-gray-700 mb-1">Proficiency Level</label>
                       <select
+                        id="skill-level"
                         value={currentSkill.level}
                         onChange={(e) => handleSkillChange('level', parseInt(e.target.value))}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
@@ -693,8 +697,9 @@ export default function AddLearningCourseModal({ isOpen, onClose, learnerId, onS
 
                   {/* Description */}
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Description (Optional)</label>
+                    <label htmlFor="skill-description" className="block text-xs font-medium text-gray-700 mb-1">Description (Optional)</label>
                     <input
+                      id="skill-description"
                       type="text"
                       value={currentSkill.description}
                       onChange={(e) => handleSkillChange('description', e.target.value)}
@@ -735,15 +740,15 @@ export default function AddLearningCourseModal({ isOpen, onClose, learnerId, onS
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Category</label>
-                  <select name="category" value={formData.category} onChange={handleInputChange} className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm bg-white">
+                  <label htmlFor="course-category" className="block text-sm font-medium text-gray-700 mb-1.5">Category</label>
+                  <select id="course-category" name="category" value={formData.category} onChange={handleInputChange} className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm bg-white">
                     <option value="">Select category...</option>
                     {CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Difficulty Level</label>
-                  <select name="difficulty" value={formData.difficulty} onChange={handleInputChange} className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm bg-white">
+                  <label htmlFor="course-difficulty" className="block text-sm font-medium text-gray-700 mb-1.5">Difficulty Level</label>
+                  <select id="course-difficulty" name="difficulty" value={formData.difficulty} onChange={handleInputChange} className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm bg-white">
                     <option value="">Select level...</option>
                     {DIFFICULTY_LEVELS.map(level => <option key={level.id} value={level.id}>{level.label}</option>)}
                   </select>
@@ -811,17 +816,17 @@ export default function AddLearningCourseModal({ isOpen, onClose, learnerId, onS
 
         {/* Footer */}
         <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
-          <button onClick={handleBack} disabled={currentStep === 1} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium ${currentStep === 1 ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-200'}`}>
+          <button type="button" onClick={handleBack} disabled={currentStep === 1} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium ${currentStep === 1 ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-200'}`}>
             <ChevronLeft size={18} /> Back
           </button>
           <div className="flex items-center gap-3">
-            <button onClick={onClose} className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg text-sm font-medium">Cancel</button>
+            <button type="button" onClick={onClose} className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg text-sm font-medium">Cancel</button>
             {currentStep < totalSteps ? (
-              <button onClick={handleNext} disabled={!canProceedToNextStep() || extracting} className={`flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-medium ${canProceedToNextStep() && !extracting ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}>
+              <button type="button" onClick={handleNext} disabled={!canProceedToNextStep() || extracting} className={`flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-medium ${canProceedToNextStep() && !extracting ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}>
                 {extracting ? <><Loader className="w-4 h-4 animate-spin" /> Verifying...</> : <>Continue <ChevronRight size={18} /></>}
               </button>
             ) : (
-              <button onClick={handleSubmit} disabled={loading || verifying} className={`flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-medium ${!loading && !verifying ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}>
+              <button type="button" onClick={handleSubmit} disabled={loading || verifying} className={`flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-medium ${!loading && !verifying ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}>
                 {loading ? <><Loader className="w-4 h-4 animate-spin" /> Saving...</> : verifying ? <><Loader className="w-4 h-4 animate-spin" /> Verifying...</> : <><CheckCircle size={18} /> Import Certificate</>}
               </button>
             )}

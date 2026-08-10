@@ -62,7 +62,6 @@ const DynamicAssessment = () => {
   const [error, setError] = useState(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState({});
-  const [timeElapsed, setTimeElapsed] = useState(0);
   const [timeRemaining, setTimeRemaining] = useState(900); // 15 minutes default
   const [showResults, setShowResults] = useState(false);
   const [score, setScore] = useState(0);
@@ -258,7 +257,7 @@ const DynamicAssessment = () => {
       }
 
       // CASE 4: Generate new assessment
-      const generated = await generateAssessment(courseName, courseLevel, 15, courseId);
+      const generated = await generateAssessment(courseName, courseLevel, 15);
       cacheAssessment(courseName, generated);
 
       // Create database attempt — required before the learner can proceed.
@@ -562,6 +561,7 @@ const DynamicAssessment = () => {
         {/* Header */}
         <div className="mb-6 flex items-center justify-between">
           <button
+            type="button"
             onClick={() => setShowExitDialog(true)}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
           >
@@ -619,6 +619,7 @@ const DynamicAssessment = () => {
             {/* Debug: Regenerate button */}
             {import.meta.env.DEV && (
               <button
+                type="button"
                 onClick={() => {
                   if (window.confirm('Regenerate questions? Current progress will be lost.')) {
                     // Clear cache

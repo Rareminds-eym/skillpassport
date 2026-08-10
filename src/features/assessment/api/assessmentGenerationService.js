@@ -105,7 +105,7 @@ export async function loadGeneratedAssessment(courseName) {
 /**
  * Generate assessment using backend API (which calls Claude AI)
  */
-export async function generateAssessment(courseName, level = 'Intermediate', questionCount = 15, courseId = null) {
+export async function generateAssessment(courseName, level = 'Intermediate', questionCount = 15) {
   try {
     console.log('🎯 Generating assessment for:', courseName, 'Level:', level);
 

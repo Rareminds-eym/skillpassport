@@ -37,26 +37,6 @@ export default function SelectCourseModal({ isOpen, onClose, learnerId, onSucces
     }
   };
 
-  const handleSelectCourse = async (course) => {
-    try {
-      await apiPost('/learner-dashboard-widgets/actions', {
-        action: 'enroll-course',
-        learnerId,
-        courseId: course.course_id,
-        courseTitle: course.title,
-        description: course.description,
-        duration: course.duration,
-        university: course.university,
-      });
-
-      onSuccess?.();
-      onClose();
-    } catch (error) {
-      console.error('Error enrolling:', error);
-      alert('Failed to enroll. Please try again.');
-    }
-  };
-
   // Use debounced search for filtering
   const filteredCourses = courses.filter(course =>
     course.title.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
@@ -102,7 +82,7 @@ export default function SelectCourseModal({ isOpen, onClose, learnerId, onSucces
               Select a course from our platform or add an external course
             </p>
           </div>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+          <button type="button" onClick={onClose} className="text-gray-500 hover:text-gray-700">
             <X size={24} />
           </button>
         </div>
@@ -119,6 +99,7 @@ export default function SelectCourseModal({ isOpen, onClose, learnerId, onSucces
             />
           </div>
           <button
+            type="button"
             onClick={() => setShowExternalForm(true)}
             className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors whitespace-nowrap"
           >
@@ -142,6 +123,7 @@ export default function SelectCourseModal({ isOpen, onClose, learnerId, onSucces
                 {searchTerm ? 'Try a different search term' : 'No courses available yet'}
               </p>
               <button
+                type="button"
                 onClick={() => setShowExternalForm(true)}
                 className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
               >

@@ -447,6 +447,7 @@ const ModernLearningCard = ({
   const renderListCertificateButtons = () => (
     <div className="flex items-center gap-2 flex-wrap">
       <button
+        type="button"
         onClick={handleContinue}
         className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl sm:rounded-2xl font-semibold text-sm bg-gradient-to-r from-indigo-500 to-indigo-600 text-white hover:from-indigo-600 hover:to-indigo-700 transition-all duration-300 hover:scale-105 shadow-lg shadow-indigo-500/25"
       >
@@ -458,6 +459,7 @@ const ModernLearningCard = ({
 
   const renderListCertificateButton = () => (
     <button
+      type="button"
       onClick={() => window.open(certificateUrl, "_blank")}
       className="flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 rounded-xl sm:rounded-2xl font-semibold text-sm bg-gradient-to-r from-green-500 to-green-600 text-white hover:from-green-600 hover:to-green-700 transition-all duration-300 hover:scale-105 shadow-lg shadow-green-500/25"
     >
@@ -471,6 +473,7 @@ const ModernLearningCard = ({
     if (isInternalCourse && !certificateUrl) {
       return (
         <button
+          type="button"
           onClick={handleGetCertificate}
           className="flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 rounded-xl sm:rounded-2xl font-semibold text-sm bg-gradient-to-r from-green-500 to-green-600 text-white hover:from-green-600 hover:to-green-700 transition-all duration-300 hover:scale-105 shadow-lg shadow-green-500/25"
         >
@@ -491,6 +494,7 @@ const ModernLearningCard = ({
 
   const renderListAssessmentButton = () => (
     <button
+      type="button"
       onClick={() => navigate("/learner/assessment/platform", {
         state: {
           courseName: item.course || item.title,
@@ -508,7 +512,8 @@ const ModernLearningCard = ({
   );
 
   const renderListContinueButton = () => (
-    <button 
+    <button
+      type="button"
       onClick={handleContinue}
       className="flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 rounded-xl sm:rounded-2xl font-semibold text-sm bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700 transition-all duration-300 hover:scale-105 shadow-lg shadow-blue-500/25"
     >
@@ -518,7 +523,7 @@ const ModernLearningCard = ({
   );
 
   const renderListGenericContinueButton = () => (
-    <button className="flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 rounded-xl sm:rounded-2xl font-semibold text-sm bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700 transition-all duration-300 hover:scale-105 shadow-lg shadow-blue-500/25">
+    <button type="button" className="flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 rounded-xl sm:rounded-2xl font-semibold text-sm bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700 transition-all duration-300 hover:scale-105 shadow-lg shadow-blue-500/25">
       <TrendingUp className="w-4 h-4" />
       Continue Learning
     </button>
@@ -551,7 +556,8 @@ const ModernLearningCard = ({
   const renderCertificateButtons = () => (
     <div className="space-y-2">
       {/* View Course Button */}
-      <button 
+      <button
+        type="button"
         onClick={handleContinue}
         className="flex items-center justify-center gap-2 w-full py-3 rounded-xl sm:rounded-2xl font-bold text-sm bg-gradient-to-r from-indigo-500 to-indigo-600 text-white hover:from-indigo-600 hover:to-indigo-700 transition-all duration-300 hover:scale-105 shadow-lg shadow-indigo-500/25"
       >
@@ -564,6 +570,7 @@ const ModernLearningCard = ({
   // Helper function to render certificate button (for external courses - just "View")
   const renderCertificateButton = () => (
     <button
+      type="button"
       onClick={() => window.open(certificateUrl, "_blank")}
       className="flex items-center justify-center gap-2 w-full py-3 rounded-xl sm:rounded-2xl font-bold text-sm bg-gradient-to-r from-green-500 to-green-600 text-white hover:from-green-600 hover:to-green-700 transition-all duration-300 hover:scale-105 shadow-lg shadow-green-500/25"
     >
@@ -578,6 +585,7 @@ const ModernLearningCard = ({
     if (isInternalCourse && !certificateUrl) {
       return (
         <button
+          type="button"
           onClick={handleGetCertificate}
           className="flex items-center justify-center gap-2 w-full py-3 rounded-xl sm:rounded-2xl font-bold text-sm bg-gradient-to-r from-green-500 to-green-600 text-white hover:from-green-600 hover:to-green-700 transition-all duration-300 hover:scale-105 shadow-lg shadow-green-500/25"
         >
@@ -601,6 +609,7 @@ const ModernLearningCard = ({
   // Helper function to render take assessment button
   const renderAssessmentButton = () => (
     <button
+      type="button"
       onClick={() => navigate("/learner/assessment/platform", {
         state: {
           courseName: item.course || item.title,
@@ -620,7 +629,8 @@ const ModernLearningCard = ({
 
   // Helper function to render continue/start button
   const renderContinueButton = () => (
-    <button 
+    <button
+      type="button"
       onClick={handleContinue}
       className="flex items-center justify-center gap-2 w-full py-3 rounded-xl sm:rounded-2xl font-bold text-sm bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700 transition-all duration-300 hover:scale-105 shadow-md shadow-blue-500/25"
     >
@@ -632,7 +642,7 @@ const ModernLearningCard = ({
 
   // Helper function to render generic continue button
   const renderGenericContinueButton = () => (
-    <button className="flex items-center justify-center gap-2 w-full py-3 rounded-xl sm:rounded-2xl font-bold text-sm bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700 transition-all duration-300 hover:scale-105 shadow-md shadow-blue-500/25">
+    <button type="button" className="flex items-center justify-center gap-2 w-full py-3 rounded-xl sm:rounded-2xl font-bold text-sm bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700 transition-all duration-300 hover:scale-105 shadow-md shadow-blue-500/25">
       <TrendingUp className="w-4 sm:w-5 h-4 sm:h-5" />
       <span className="hidden xs:inline">Continue Learning</span>
       <span className="xs:hidden">Continue</span>
@@ -953,6 +963,7 @@ const ModernLearningCard = ({
               {/* Edit button and 3-dots menu for external courses */}
               {isExternalCourse && !isCourseEnrollment && (
                 <button
+                  type="button"
                   onClick={() => onEdit?.(item)}
                   className="p-2.5 sm:p-3 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl sm:rounded-2xl transition-all duration-200 hover:scale-105 self-center"
                   title="Edit Course"
@@ -965,6 +976,7 @@ const ModernLearningCard = ({
               {((isInternalCourse && isCompleted && certificateUrl) || (isExternalCourse && certificateUrl)) && (
                 <div className="relative" ref={dropdownRef}>
                   <button
+                    type="button"
                     onClick={() => setShowDropdown(!showDropdown)}
                     className="p-2.5 sm:p-3 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl sm:rounded-2xl transition-all duration-200 hover:scale-105 self-center"
                     title="More options"
@@ -977,6 +989,7 @@ const ModernLearningCard = ({
                     <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-lg border border-slate-200 py-2 z-10">
                       {/* View Certificate button */}
                       <button
+                        type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           if (certificateUrl) {
@@ -991,6 +1004,7 @@ const ModernLearningCard = ({
                       </button>
                       {isInternalCourse && (
                         <button
+                          type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             handleDownloadCertificate(e);
@@ -998,8 +1012,8 @@ const ModernLearningCard = ({
                           }}
                           disabled={isDownloading}
                           className={`flex items-center gap-3 w-full px-4 py-2 text-sm transition-colors ${
-                            isDownloading 
-                              ? 'text-gray-400 cursor-not-allowed' 
+                            isDownloading
+                              ? 'text-gray-400 cursor-not-allowed'
                               : 'text-slate-700 hover:bg-green-50 hover:text-green-600'
                           }`}
                         >
@@ -1011,6 +1025,7 @@ const ModernLearningCard = ({
                         <>
                           <div className="border-t border-slate-100 my-1" />
                           <button
+                            type="button"
                             onClick={(e) => {
                               e.stopPropagation();
                               setShowDropdown(false);
@@ -1101,6 +1116,7 @@ const ModernLearningCard = ({
             {isExternalCourse && !isCourseEnrollment && (
               <div className="flex items-center gap-1">
                 <button
+                  type="button"
                   onClick={() => onEdit?.(item)}
                   className="p-1.5 sm:p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg sm:rounded-xl transition-all duration-200 opacity-0 group-hover:opacity-100 hover:scale-105"
                   title="Edit Course"
@@ -1109,6 +1125,7 @@ const ModernLearningCard = ({
                 </button>
                 {onDelete && (
                   <button
+                    type="button"
                     onClick={() => onDelete(item)}
                     className="p-1.5 sm:p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg sm:rounded-xl transition-all duration-200 opacity-0 group-hover:opacity-100 hover:scale-105"
                     title="Delete Certificate"
@@ -1123,6 +1140,7 @@ const ModernLearningCard = ({
             {((isInternalCourse && isCompleted && certificateUrl) || (isExternalCourse && certificateUrl)) && (
               <div className="relative" ref={dropdownRef}>
                 <button
+                  type="button"
                   onClick={() => setShowDropdown(!showDropdown)}
                   className="p-1.5 sm:p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg sm:rounded-xl transition-all duration-200 hover:scale-105"
                   title="More options"
@@ -1135,6 +1153,7 @@ const ModernLearningCard = ({
                   <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-lg border border-slate-200 py-2 z-10">
                     {/* View Certificate button */}
                     <button
+                      type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         if (certificateUrl) {
@@ -1149,6 +1168,7 @@ const ModernLearningCard = ({
                     </button>
                     {isInternalCourse && (
                       <button
+                        type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleDownloadCertificate(e);
@@ -1156,8 +1176,8 @@ const ModernLearningCard = ({
                         }}
                         disabled={isDownloading}
                         className={`flex items-center gap-3 w-full px-4 py-2 text-sm transition-colors ${
-                          isDownloading 
-                            ? 'text-gray-400 cursor-not-allowed' 
+                          isDownloading
+                            ? 'text-gray-400 cursor-not-allowed'
                             : 'text-slate-700 hover:bg-green-50 hover:text-green-600'
                         }`}
                       >
@@ -1169,6 +1189,7 @@ const ModernLearningCard = ({
                       <>
                         <div className="border-t border-slate-100 my-1" />
                         <button
+                          type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             setShowDropdown(false);
