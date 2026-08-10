@@ -138,6 +138,14 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           return apiError(403, 'FORBIDDEN', 'You can only update your own assessment attempt', context.request, { startTime });
         }
 
+        if (
+          !Number.isInteger(questionIndex) ||
+          questionIndex < 0 ||
+          questionIndex >= currentAttempt.questions.length
+        ) {
+          return apiError(400, 'VALIDATION_ERROR', 'Invalid questionIndex for this assessment', context.request, { startTime });
+        }
+
         const resumeIndex = typeof resumeFromIndex === 'number' ? resumeFromIndex : questionIndex + 1;
         const question = currentAttempt.questions[questionIndex];
         const correctAnswer = question?.correct_answer || question?.correctAnswer;

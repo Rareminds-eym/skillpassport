@@ -32,9 +32,11 @@ import {
   checkAssessmentStatus,
   updateTrainingAfterAssessment
 } from '@/features/assessment/api/externalAssessmentService';
-import { useLearnerProfile } from '@/features/learner-profile';
 import { useLearnerDataByEmail } from '@/entities/learner';
 import { useUser } from '@/shared/model/authStore';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('dynamic-assessment');
 
 /**
  * Dynamic Assessment Component
@@ -77,30 +79,15 @@ const DynamicAssessment = () => {
       // 2. We have learner data and course name
       // 3. We haven't loaded an existing attempt yet
       if (!resumeAttempt && loadedExistingAttempt === null && learnerData?.id && courseName) {
-        console.log('🔍 DynamicAssessment: Checking for existing in-progress attempt...', {
-          learnerId: learnerData.id,
-          courseName: courseName
-        });
-        
         const result = await checkAssessmentStatus(learnerData.id, courseName);
-        
-        console.log('📊 DynamicAssessment: Check result:', result);
-        
+
         if (result.status === 'in_progress' && result.attempt) {
-          console.log('✅ DynamicAssessment: Found existing in-progress attempt!', {
-            attemptId: result.attempt.id,
-            currentQuestionIndex: result.attempt.current_question_index,
-            totalQuestions: result.attempt.total_questions,
-            timeRemaining: result.attempt.time_remaining
-          });
           setLoadedExistingAttempt(result.attempt);
         } else if (result.status === 'completed') {
-          console.log('⚠️ DynamicAssessment: Assessment already completed');
           alert('You have already completed this assessment');
           navigate('/learner/my-learning');
           return;
         } else {
-          console.log('ℹ️ DynamicAssessment: No existing attempt found, will create new one');
           setLoadedExistingAttempt(false); // Mark as checked but no attempt found
         }
       }
@@ -111,31 +98,12 @@ const DynamicAssessment = () => {
 
   // Load or generate assessment
   useEffect(() => {
-    console.log('🔄 DynamicAssessment: Load assessment effect triggered', {
-      resumeAttempt: resumeAttempt ? 'YES' : 'NO',
-      loadedExistingAttempt: loadedExistingAttempt === null ? 'NULL' : loadedExistingAttempt === false ? 'FALSE' : 'ATTEMPT_OBJECT'
-    });
-    
     // Only load assessment after we've checked for existing attempts
     // OR if resumeAttempt was passed directly
     if (resumeAttempt || loadedExistingAttempt !== null) {
-      console.log('✅ DynamicAssessment: Conditions met, calling loadAssessment()');
       loadAssessment();
-    } else {
-      console.log('⏳ DynamicAssessment: Waiting for existing attempt check...');
     }
   }, [courseName, resumeAttempt, loadedExistingAttempt]);
-
-  // Debug: Log course info
-  useEffect(() => {
-    console.log('🎓 Assessment Page Loaded:', {
-      courseName,
-      courseLevel,
-      locationState: location.state,
-      resumeAttempt: resumeAttempt ? 'YES' : 'NO',
-      preGeneratedQuestions: preGeneratedQuestions ? 'YES' : 'NO'
-    });
-  }, [courseName, courseLevel, location.state]);
 
   // Timer - countdown for timed assessments
   useEffect(() => {
@@ -160,7 +128,6 @@ const DynamicAssessment = () => {
       const autoSave = setInterval(() => {
         const currentAnswer = answers[assessment.questions[currentQuestionIndex]?.id];
         if (currentAnswer) {
-          console.log('💾 Auto-saving progress...');
           updateAssessmentProgress(
             attemptId,
             currentQuestionIndex,
@@ -175,58 +142,32 @@ const DynamicAssessment = () => {
   }, [loading, showResults, attemptId, currentQuestionIndex, answers, timeRemaining, assessment]);
 
   const loadAssessment = async () => {
-    console.log('📥 DynamicAssessment: loadAssessment() called');
     setLoading(true);
     setError(null);
 
     try {
       // Determine which attempt to use: passed via state or loaded from database
       const attemptToResume = resumeAttempt || (loadedExistingAttempt && loadedExistingAttempt !== false ? loadedExistingAttempt : null);
-      
-      console.log('🔍 DynamicAssessment: Checking attemptToResume:', {
-        hasResumeAttempt: !!resumeAttempt,
-        hasLoadedExistingAttempt: !!(loadedExistingAttempt && loadedExistingAttempt !== false),
-        attemptToResume: attemptToResume ? 'YES' : 'NO'
-      });
-      
+
       // CASE 1: Resuming an in-progress assessment
       if (attemptToResume) {
-        console.log('🔄 DynamicAssessment: CASE 1 - Resuming in-progress assessment:', {
-          attemptId: attemptToResume.id,
-          courseName: attemptToResume.course_name,
-          currentQuestionIndex: attemptToResume.current_question_index,
-          totalQuestions: attemptToResume.total_questions,
-          timeRemaining: attemptToResume.time_remaining
-        });
-        
         // Restore assessment data from attempt
         const restoredAssessment = {
           course: attemptToResume.course_name,
           level: attemptToResume.assessment_level,
           questions: attemptToResume.questions
         };
-        
-        console.log('📦 DynamicAssessment: Restored assessment:', {
-          course: restoredAssessment.course,
-          level: restoredAssessment.level,
-          questionsCount: restoredAssessment.questions?.length
-        });
-        
+
         setAssessment(restoredAssessment);
         setAttemptId(attemptToResume.id);
-        
+
         // Restore progress
         const restoredQuestionIndex = attemptToResume.current_question_index || 0;
         const restoredTimeRemaining = attemptToResume.time_remaining || 900;
-        
-        console.log('⏮️ DynamicAssessment: Restoring progress:', {
-          questionIndex: restoredQuestionIndex,
-          timeRemaining: restoredTimeRemaining
-        });
-        
+
         setCurrentQuestionIndex(restoredQuestionIndex);
         setTimeRemaining(restoredTimeRemaining);
-        
+
         // Restore answers
         const restoredAnswers = {};
         attemptToResume.learner_answers?.forEach((ans, idx) => {
@@ -238,30 +179,18 @@ const DynamicAssessment = () => {
           }
         });
         setAnswers(restoredAnswers);
-        
-        console.log('✅ DynamicAssessment: Assessment resumed successfully!', {
-          questionIndex: restoredQuestionIndex,
-          answersRestored: Object.keys(restoredAnswers).length,
-          timeRemaining: restoredTimeRemaining
-        });
-        
+
         setLoading(false);
         return;
       }
 
-      console.log('➡️ DynamicAssessment: No attempt to resume, proceeding to other cases...');
-
       // CASE 2: Using pre-generated questions
       if (preGeneratedQuestions && Array.isArray(preGeneratedQuestions)) {
-        console.log('✅ Using pre-generated questions:', preGeneratedQuestions.length);
-        
         const generatedAssessment = {
           course: courseName,
           level: courseLevel,
           questions: preGeneratedQuestions
         };
-        
-        setAssessment(generatedAssessment);
 
         // Create database attempt — required before the learner can proceed.
         // Without a persisted attempt, answers/score/completion can never be saved.
@@ -270,6 +199,8 @@ const DynamicAssessment = () => {
           setLoading(false);
           return;
         }
+
+        setAssessment(generatedAssessment);
 
         const result = await createAssessmentAttempt({
           learnerId: learnerData.id,
@@ -280,14 +211,13 @@ const DynamicAssessment = () => {
         });
 
         if (!result.success) {
-          console.error('❌ Could not create database attempt:', result.error);
+          logger.error('Failed to create assessment attempt', undefined, { error: result.error, learnerId: learnerData.id, courseName });
           setError(result.error || 'Failed to start assessment. Please try again.');
           setLoading(false);
           return;
         }
 
         setAttemptId(result.data.id);
-        console.log('✅ Database attempt created:', result.data.id);
 
         setLoading(false);
         return;
@@ -295,18 +225,16 @@ const DynamicAssessment = () => {
 
       // CASE 3: Try to load from cache first
       const cached = getCachedAssessment(courseName);
-      
-      if (cached) {
-        console.log('✅ Using cached assessment for:', courseName);
-        console.log('📅 Cached on:', new Date(cached.cachedAt).toLocaleString());
-        setAssessment(cached);
 
+      if (cached) {
         // Create database attempt — required before the learner can proceed.
         if (!learnerData?.id) {
           setError('Unable to identify your learner profile. Please refresh and try again.');
           setLoading(false);
           return;
         }
+
+        setAssessment(cached);
 
         const result = await createAssessmentAttempt({
           learnerId: learnerData.id,
@@ -317,25 +245,20 @@ const DynamicAssessment = () => {
         });
 
         if (!result.success) {
-          console.error('❌ Could not create database attempt:', result.error);
+          logger.error('Failed to create assessment attempt', undefined, { error: result.error, learnerId: learnerData.id, courseName });
           setError(result.error || 'Failed to start assessment. Please try again.');
           setLoading(false);
           return;
         }
 
         setAttemptId(result.data.id);
-        console.log('✅ Database attempt created:', result.data.id);
 
         setLoading(false);
         return;
       }
 
       // CASE 4: Generate new assessment
-      console.log('🔄 No cache found. Generating new assessment for:', courseName);
       const generated = await generateAssessment(courseName, courseLevel, 15, courseId);
-      
-      console.log('✅ Assessment generated successfully');
-      setAssessment(generated);
       cacheAssessment(courseName, generated);
 
       // Create database attempt — required before the learner can proceed.
@@ -344,6 +267,8 @@ const DynamicAssessment = () => {
         setLoading(false);
         return;
       }
+
+      setAssessment(generated);
 
       const result = await createAssessmentAttempt({
         learnerId: learnerData.id,
@@ -354,18 +279,17 @@ const DynamicAssessment = () => {
       });
 
       if (!result.success) {
-        console.error('❌ Could not create database attempt:', result.error);
+        logger.error('Failed to create assessment attempt', undefined, { error: result.error, learnerId: learnerData.id, courseName });
         setError(result.error || 'Failed to start assessment. Please try again.');
         setLoading(false);
         return;
       }
 
       setAttemptId(result.data.id);
-      console.log('✅ Database attempt created:', result.data.id);
 
       setLoading(false);
     } catch (err) {
-      console.error('❌ Error loading assessment:', err);
+      logger.error('Failed to load assessment', err instanceof Error ? err : new Error(String(err)), { courseName });
       setError(err.message || 'Failed to load assessment');
       setLoading(false);
     }
@@ -388,12 +312,6 @@ const DynamicAssessment = () => {
         setIsSaving(true);
         const currentAnswer = answers[assessment.questions[currentQuestionIndex]?.id];
         if (currentAnswer) {
-          console.log('💾 Saving progress before moving to next question...', {
-            currentQuestionIndex,
-            nextQuestionIndex: currentQuestionIndex + 1,
-            answer: currentAnswer
-          });
-          
           // Save the CURRENT question's answer with the NEXT question index
           // So when user resumes, they start from the next question
           await updateAssessmentProgress(
@@ -422,6 +340,11 @@ const DynamicAssessment = () => {
   };
 
   const handleSubmit = async () => {
+    if (!assessment?.questions) {
+      setError('Assessment data is missing. Please reload the page.');
+      return;
+    }
+
     // Calculate score
     let correctCount = 0;
     assessment.questions.forEach(q => {
@@ -445,12 +368,10 @@ const DynamicAssessment = () => {
     const completionResult = await completeAssessment(attemptId, timeTaken);
 
     if (!completionResult.success) {
-      console.error('❌ Failed to complete assessment:', completionResult.error);
+      logger.error('Failed to complete assessment', undefined, { error: completionResult.error, attemptId });
       setError(completionResult.error || 'Failed to submit your assessment. Please try again.');
       return;
     }
-
-    console.log('✅ Assessment completed in database');
 
     // Update the linked training record (auto-approve on pass)
     const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -458,10 +379,8 @@ const DynamicAssessment = () => {
       const passed = percentage >= 60;
       const trainingUpdate = await updateTrainingAfterAssessment(learnerData.id, courseId, percentage, passed);
 
-      if (trainingUpdate.success) {
-        console.log('✅ Training status updated after assessment', trainingUpdate);
-      } else {
-        console.error('❌ Failed to update training status:', trainingUpdate.error);
+      if (!trainingUpdate.success) {
+        logger.error('Failed to update training status after assessment', undefined, { error: trainingUpdate.error, learnerId: learnerData.id, trainingId: courseId });
       }
     }
 
