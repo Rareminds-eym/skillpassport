@@ -3,6 +3,7 @@
  * External Assessment Service
  * Handles external course assessment attempts
  */
+import { apiPost, apiPut } from '@/shared/api/apiClient';
 
 /**
  * Check if learner has already completed or has in-progress assessment
@@ -12,36 +13,26 @@
  */
 export async function checkAssessmentStatus(learnerId, courseName) {
   try {
-    // Use maybeSingle() instead of single() to avoid 406 error when no rows exist
-    const { data, error } = await supabase
-      .from('external_assessment_attempts')
-      .select('*')
-      .eq('learner_id', learnerId)
-      .eq('course_name', courseName)
-      .maybeSingle();
+    const envelope = await apiPost('/external-assessment/actions', {
+      action: 'check-status', learnerId, courseName,
+    });
+    const result = envelope?.data;
 
-    if (error) {
-      throw error;
-    }
-
-    if (!data) {
+    if (!result || !result.attempt) {
       console.log('ℹ️ checkAssessmentStatus: No attempt found');
       return { status: 'not_started', attempt: null };
     }
 
     console.log('📊 checkAssessmentStatus: Found attempt in database:', {
-      id: data.id,
-      status: data.status,
-      current_question_index: data.current_question_index,
-      time_remaining: data.time_remaining,
-      last_activity_at: data.last_activity_at,
-      answeredCount: data.learner_answers?.filter(a => a.selected_answer !== null).length
+      id: result.attempt.id,
+      status: result.attempt.status,
+      current_question_index: result.attempt.current_question_index,
+      time_remaining: result.attempt.time_remaining,
+      last_activity_at: result.attempt.last_activity_at,
+      answeredCount: result.attempt.learner_answers?.filter(a => a.selected_answer !== null).length
     });
 
-    return {
-      status: data.status, // 'in_progress' or 'completed'
-      attempt: data
-    };
+    return { status: result.status, attempt: result.attempt };
   } catch (error) {
     console.error('Error checking assessment status:', error);
     return { status: 'not_started', attempt: null };
@@ -55,63 +46,19 @@ export async function checkAssessmentStatus(learnerId, courseName) {
  */
 export async function createAssessmentAttempt(attemptData) {
   try {
-    const {
-      learnerId,
-      courseName,
-      courseId,
-      assessmentLevel,
-      questions
-    } = attemptData;
+    const { learnerId, courseName, courseId, assessmentLevel, questions } = attemptData;
 
-    // Initialize empty answers array
-    const emptyAnswers = questions.map((q, idx) => ({
-      question_id: q.id,
-      selected_answer: null,
-      is_correct: null,
-      time_taken: 0
-    }));
+    const envelope = await apiPost('/external-assessment/actions', {
+      action: 'create-attempt', learnerId, courseName, courseId, assessmentLevel, questions,
+    });
 
-    const { data, error } = await supabase
-      .from('external_assessment_attempts')
-      .insert({
-        learner_id: learnerId,
-        course_name: courseName,
-        course_id: courseId,
-        assessment_level: assessmentLevel,
-        total_questions: questions.length,
-        questions: questions,
-        learner_answers: emptyAnswers,
-        current_question_index: 0,
-        status: 'in_progress',
-        time_remaining: 900, // 15 minutes
-        started_at: new Date().toISOString()
-      })
-      .select()
-      .single();
-
-    if (error) {
-      if (error.code === '23505') {
-        return {
-          success: false,
-          data: null,
-          error: 'Assessment already exists for this course'
-        };
-      }
-      throw error;
-    }
-
-    return {
-      success: true,
-      data: data,
-      error: null
-    };
+    return { success: true, data: envelope?.data || null, error: null };
   } catch (error) {
+    if (error.status === 409) {
+      return { success: false, data: null, error: 'Assessment already exists for this course' };
+    }
     console.error('Error creating assessment attempt:', error);
-    return {
-      success: false,
-      data: null,
-      error: error.message || 'Failed to create assessment attempt'
-    };
+    return { success: false, data: null, error: error.message || 'Failed to create assessment attempt' };
   }
 }
 
@@ -126,68 +73,20 @@ export async function createAssessmentAttempt(attemptData) {
  */
 export async function updateAssessmentProgress(attemptId, questionIndex, answer, timeRemaining, resumeFromIndex = null) {
   const resumeIndex = resumeFromIndex !== null ? resumeFromIndex : questionIndex + 1;
-  
+
   console.log('📡 updateAssessmentProgress called:', {
-    attemptId,
-    questionIndex,
-    answer,
-    timeRemaining,
-    resumeFromIndex: resumeIndex
+    attemptId, questionIndex, answer, timeRemaining, resumeFromIndex: resumeIndex
   });
 
   try {
-    // First, get current attempt to update answers array
-    console.log('📡 Fetching current attempt from database...');
-    const { data: currentAttempt, error: fetchError } = await supabase
-      .from('external_assessment_attempts')
-      .select('learner_answers, questions')
-      .eq('id', attemptId)
-      .single();
-
-    if (fetchError) {
-      console.error('❌ Fetch error:', fetchError);
-      throw fetchError;
-    }
-
-    console.log('✅ Current attempt fetched:', {
-      answersCount: currentAttempt.learner_answers?.length,
-      questionsCount: currentAttempt.questions?.length
+    await apiPost('/external-assessment/actions', {
+      action: 'update-progress',
+      attemptId,
+      questionIndex,
+      answer,
+      timeRemaining,
+      resumeFromIndex: resumeIndex,
     });
-
-    // Update the answer for the question at questionIndex
-    const updatedAnswers = [...currentAttempt.learner_answers];
-    const question = currentAttempt.questions[questionIndex];
-    
-    // Check correct answer - handle both formats
-    const correctAnswer = question.correct_answer || question.correctAnswer;
-    
-    updatedAnswers[questionIndex] = {
-      question_id: question.id,
-      selected_answer: answer,
-      is_correct: answer === correctAnswer,
-      time_taken: updatedAnswers[questionIndex]?.time_taken || 0
-    };
-
-    console.log('💾 Saving to database...', {
-      updatingAnswerAt: questionIndex,
-      resumeFromIndex: resumeIndex
-    });
-    
-    // Update database - save where user should resume from
-    const { error: updateError } = await supabase
-      .from('external_assessment_attempts')
-      .update({
-        learner_answers: updatedAnswers,
-        current_question_index: resumeIndex, // Save where to resume from
-        time_remaining: timeRemaining,
-        last_activity_at: new Date().toISOString()
-      })
-      .eq('id', attemptId);
-
-    if (updateError) {
-      console.error('❌ Update error:', updateError);
-      throw updateError;
-    }
 
     console.log('✅ Database updated successfully!', {
       answeredQuestionIndex: questionIndex,
@@ -208,64 +107,41 @@ export async function updateAssessmentProgress(attemptId, questionIndex, answer,
  */
 export async function completeAssessment(attemptId, timeTaken) {
   try {
-    // Get current attempt
-    const { data: attempt, error: fetchError } = await supabase
-      .from('external_assessment_attempts')
-      .select('*')
-      .eq('id', attemptId)
-      .single();
-
-    if (fetchError) throw fetchError;
-
-    // Calculate score
-    const correctCount = attempt.learner_answers.filter(a => a.is_correct).length;
-    const score = Math.round((correctCount / attempt.total_questions) * 100);
-
-    // Calculate difficulty breakdown
-    const breakdown = {
-      easy: { total: 0, correct: 0, percentage: 0 },
-      medium: { total: 0, correct: 0, percentage: 0 },
-      hard: { total: 0, correct: 0, percentage: 0 }
-    };
-
-    attempt.questions.forEach((q, idx) => {
-      const difficulty = q.difficulty;
-      if (breakdown[difficulty]) {
-        breakdown[difficulty].total++;
-        if (attempt.learner_answers[idx]?.is_correct) {
-          breakdown[difficulty].correct++;
-        }
-      }
+    const envelope = await apiPost('/external-assessment/actions', {
+      action: 'complete', attemptId, timeTaken,
     });
 
-    // Calculate percentages
-    Object.keys(breakdown).forEach(key => {
-      if (breakdown[key].total > 0) {
-        breakdown[key].percentage = Math.round(
-          (breakdown[key].correct / breakdown[key].total) * 100
-        );
-      }
-    });
-
-    // Update to completed
-    const { error: updateError } = await supabase
-      .from('external_assessment_attempts')
-      .update({
-        status: 'completed',
-        score: score,
-        correct_answers: correctCount,
-        time_taken: timeTaken,
-        difficulty_breakdown: breakdown,
-        completed_at: new Date().toISOString()
-      })
-      .eq('id', attemptId);
-
-    if (updateError) throw updateError;
-
-    return { success: true, score: score };
+    return { success: true, score: envelope?.data?.score ?? null };
   } catch (error) {
     console.error('Error completing assessment:', error);
     return { success: false, score: null };
+  }
+}
+
+/**
+ * Apply the outcome of a completed assessment to the linked training record.
+ * Auto-approves the training when the learner passed. Routed through the
+ * backend Pages Function (not a direct Supabase write) per the project's
+ * backend-first architecture for write operations on `trainings`.
+ * @param {string} learnerId - Learner UUID
+ * @param {string} trainingId - Training UUID (the course/training this assessment was taken for)
+ * @param {number} score - Percentage score (0-100)
+ * @param {boolean} passed - Whether the learner met the passing threshold
+ * @returns {Promise<{success: boolean, updated?: boolean, error?: string}>}
+ */
+export async function updateTrainingAfterAssessment(learnerId, trainingId, score, passed) {
+  try {
+    const result = await apiPut('/learners/trainings', {
+      learnerId,
+      trainingId,
+      score,
+      passed,
+    });
+
+    return { success: true, ...result?.data };
+  } catch (error) {
+    console.error('Error updating training after assessment:', error);
+    return { success: false, error: error.message || 'Failed to update training status' };
   }
 }
 
@@ -291,50 +167,29 @@ export async function saveAssessmentAttempt(attemptData) {
       completedAt
     } = attemptData;
 
-    const { data, error } = await supabase
-      .from('external_assessment_attempts')
-      .insert({
-        learner_id: learnerId,
-        course_name: courseName,
-        course_id: courseId,
-        assessment_level: assessmentLevel,
-        total_questions: questions.length,
-        questions: questions,
-        learner_answers: learnerAnswers,
-        score: score,
-        correct_answers: correctAnswers,
-        time_taken: timeTaken,
-        difficulty_breakdown: difficultyBreakdown,
-        started_at: startedAt,
-        completed_at: completedAt
-      })
-      .select()
-      .single();
+    const envelope = await apiPost('/external-assessment/actions', {
+      action: 'create-attempt',
+      learnerId,
+      courseName,
+      courseId,
+      assessmentLevel,
+      questions,
+      learnerAnswers,
+      score,
+      correctAnswers,
+      timeTaken,
+      difficultyBreakdown,
+      startedAt,
+      completedAt,
+    });
 
-    if (error) {
-      // Check if it's a duplicate attempt
-      if (error.code === '23505') {
-        return {
-          success: false,
-          data: null,
-          error: 'You have already completed this assessment'
-        };
-      }
-      throw error;
-    }
-
-    return {
-      success: true,
-      data: data,
-      error: null
-    };
+    return { success: true, data: envelope?.data || null, error: null };
   } catch (error) {
+    if (error.status === 409) {
+      return { success: false, data: null, error: 'You have already completed this assessment' };
+    }
     console.error('Error saving assessment attempt:', error);
-    return {
-      success: false,
-      data: null,
-      error: error.message || 'Failed to save assessment attempt'
-    };
+    return { success: false, data: null, error: error.message || 'Failed to save assessment attempt' };
   }
 }
 
@@ -345,15 +200,10 @@ export async function saveAssessmentAttempt(attemptData) {
  */
 export async function getAssessmentHistory(learnerId) {
   try {
-    const { data, error } = await supabase
-      .from('external_assessment_attempts')
-      .select('*')
-      .eq('learner_id', learnerId)
-      .order('completed_at', { ascending: false });
-
-    if (error) throw error;
-
-    return data || [];
+    const envelope = await apiPost('/external-assessment/actions', {
+      action: 'history', learnerId,
+    });
+    return envelope?.data || [];
   } catch (error) {
     console.error('Error fetching assessment history:', error);
     return [];
@@ -368,19 +218,10 @@ export async function getAssessmentHistory(learnerId) {
  */
 export async function getAssessmentByCourse(learnerId, courseName) {
   try {
-    // Use maybeSingle() instead of single() to avoid 406 error when no rows exist
-    const { data, error } = await supabase
-      .from('external_assessment_attempts')
-      .select('*')
-      .eq('learner_id', learnerId)
-      .eq('course_name', courseName)
-      .maybeSingle();
-
-    if (error) {
-      throw error;
-    }
-
-    return data || null;
+    const envelope = await apiPost('/external-assessment/actions', {
+      action: 'get-by-course', learnerId, courseName,
+    });
+    return envelope?.data || null;
   } catch (error) {
     console.error('Error fetching assessment:', error);
     return null;

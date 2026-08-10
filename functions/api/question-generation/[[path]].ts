@@ -21,6 +21,9 @@ import { handleCorsPreflightRequest } from '../../lib/cors';
 import type { PagesFunction, PagesEnv } from '../../lib/types';
 import { withAuth } from '../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import { createLogger } from '../../lib/logger';
+
+const logger = createLogger('question-generation');
 
 import { generateAptitudeQuestions } from './handlers/career-aptitude';
 import { generateKnowledgeQuestions } from './handlers/career-knowledge';
@@ -147,10 +150,15 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
           return apiError(400, 'VALIDATION_ERROR', 'Course name and level are required', request);
         }
 
+        const MAX_QUESTION_COUNT = 50;
+        if (!Number.isInteger(questionCount) || questionCount < 1 || questionCount > MAX_QUESTION_COUNT) {
+          return apiError(400, 'VALIDATION_ERROR', `questionCount must be an integer between 1 and ${MAX_QUESTION_COUNT}`, request);
+        }
+
         const result = await generateAssessment(env as unknown as PagesEnv, courseName, level, questionCount);
         return apiSuccess(result, request);
       } catch (error: any) {
-        console.error('❌ Course assessment generation error:', error);
+        logger.error('Course assessment generation error', error);
         return apiError(500, 'INTERNAL_ERROR', error.message || 'Failed to generate course assessment', request);
       }
     }

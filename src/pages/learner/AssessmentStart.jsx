@@ -111,7 +111,7 @@ const AssessmentStart = () => {
         
         // Use the generateAssessment service which checks database first
         const { generateAssessment } = await import('../../features/assessment/api/assessmentGenerationService');
-        const assessment = await generateAssessment(certificateName, level, 15, courseId);
+        const assessment = await generateAssessment(certificateName, level, 15);
         
         logger.info('Questions loaded, navigating to test');
         

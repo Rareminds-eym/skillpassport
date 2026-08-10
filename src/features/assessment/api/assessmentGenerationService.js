@@ -105,7 +105,7 @@ export async function loadGeneratedAssessment(courseName) {
 /**
  * Generate assessment using backend API (which calls Claude AI)
  */
-export async function generateAssessment(courseName, level = 'Intermediate', questionCount = 15, courseId = null) {
+export async function generateAssessment(courseName, level = 'Intermediate', questionCount = 15) {
   try {
     console.log('🎯 Generating assessment for:', courseName, 'Level:', level);
 
@@ -136,10 +136,18 @@ export async function generateAssessment(courseName, level = 'Intermediate', que
         throw new Error('Invalid API key on server. Please check server configuration.');
       }
 
-      throw new Error(errorData.error || `API Error (${response.status}): Failed to generate assessment`);
+      const errorMessage = typeof errorData.error === 'string'
+        ? errorData.error
+        : errorData.error?.message;
+      throw new Error(errorMessage || `API Error (${response.status}): Failed to generate assessment`);
     }
 
-    const assessment = await response.json();
+    const envelope = await response.json();
+    const assessment = envelope?.data;
+
+    if (!assessment) {
+      throw new Error('Assessment response missing data payload');
+    }
 
     console.log('✅ Generated assessment with AI:', {
       course: assessment.course,
