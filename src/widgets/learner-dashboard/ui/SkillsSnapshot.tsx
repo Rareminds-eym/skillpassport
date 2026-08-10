@@ -18,6 +18,8 @@ import type { SkillsSnapshotProps, SkillMetric } from '../model/types';
  * - "Improve Skill" action with onImproveSkill callback
  * - "View All Skills" button with onViewAll callback
  * 
+ * **Performance Optimization**: Wrapped with React.memo to prevent unnecessary re-renders
+ * 
  * Requirements: 8.1-8.8
  * - Display at least 5 key skills with proficiency percentages (8.1)
  * - Show visual progress bar for each skill's proficiency level (8.2)
@@ -32,7 +34,7 @@ import type { SkillsSnapshotProps, SkillMetric } from '../model/types';
  * @param onViewAll - Callback when "View All Skills" button is clicked
  * @param onImproveSkill - Callback when "Improve Skill" button is clicked for a specific skill
  */
-const SkillsSnapshot: React.FC<SkillsSnapshotProps> = ({
+const SkillsSnapshot: React.FC<SkillsSnapshotProps> = React.memo(({
     skills,
     onViewAll,
     onImproveSkill,
@@ -301,6 +303,8 @@ const SkillsSnapshot: React.FC<SkillsSnapshotProps> = ({
             </Card>
         </motion.div>
     );
-};
+});
+
+SkillsSnapshot.displayName = 'SkillsSnapshot';
 
 export default SkillsSnapshot;

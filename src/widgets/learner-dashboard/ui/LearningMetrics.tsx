@@ -16,6 +16,8 @@ import type { LearningMetricsProps } from '../model/types';
  * - Course status breakdown (in progress, not started) with pie chart
  * - "View Courses" navigation button
  * 
+ * **Performance Optimization**: Wrapped with React.memo to prevent unnecessary re-renders
+ * 
  * Requirements: 3.1-3.8
  * - Display total courses enrolled (3.1)
  * - Display total courses completed (3.2)
@@ -29,7 +31,7 @@ import type { LearningMetricsProps } from '../model/types';
  * @param metrics - Learning statistics including course counts, hours, and completion rate
  * @param onViewCourses - Callback when "View Courses" button is clicked
  */
-const LearningMetrics: React.FC<LearningMetricsProps> = ({
+const LearningMetrics: React.FC<LearningMetricsProps> = React.memo(({
     metrics,
     onViewCourses,
 }) => {
@@ -324,6 +326,8 @@ const LearningMetrics: React.FC<LearningMetricsProps> = ({
             </Card>
         </motion.div>
     );
-};
+});
+
+LearningMetrics.displayName = 'LearningMetrics';
 
 export default LearningMetrics;

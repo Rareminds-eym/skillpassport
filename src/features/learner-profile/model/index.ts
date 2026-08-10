@@ -12,7 +12,8 @@ export { useLearnerActivity } from './useLearnerActivity';
 export { useLearnerMessages } from './useLearnerMessages';
 export { useLearnerSettings } from './useLearnerSettings';
 export { default as useProfileCompletion } from './useProfileCompletion';
-export { useLearnerDashboard } from './useLearnerDashboard';
+export { useCollegeDashboard } from './useCollegeDashboard';
+export { useCollegeDashboard as useLearnerDashboard } from './useCollegeDashboard'; // Alias for backward compatibility
 export { useLearnerAssessment } from './useLearnerAssessment';
 export { useLearnerAIRecommendations } from './useLearnerAIRecommendations';
 

@@ -328,7 +328,7 @@ describe('OpportunitiesWidget', () => {
             );
 
             // First match score should be 95 (higher)
-            const matchBadges = screen.getAllByText(/Match/);
+            const matchBadges = screen.getAllByText(/\d+% Match/);
             expect(matchBadges[0]).toHaveTextContent('95% Match');
             expect(matchBadges[1]).toHaveTextContent('70% Match');
         });

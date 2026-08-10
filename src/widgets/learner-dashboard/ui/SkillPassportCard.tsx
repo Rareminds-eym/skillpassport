@@ -34,10 +34,12 @@ import type { SkillPassportCardProps } from '../model/types';
 /**
  * SkillPassportCard Component
  * 
+ * **Performance Optimization**: Wrapped with React.memo to prevent unnecessary re-renders
+ * 
  * @param props - SkillPassportCardProps containing passport data and callbacks
  * @returns Skill passport card with health breakdown and verification status
  */
-export const SkillPassportCard: React.FC<SkillPassportCardProps> = ({
+export const SkillPassportCard: React.FC<SkillPassportCardProps> = React.memo(({
     passport,
     onUpskill,
     onViewDetails,
@@ -305,7 +307,7 @@ export const SkillPassportCard: React.FC<SkillPassportCardProps> = ({
             </Card>
         </motion.div>
     );
-};
+});
 
 SkillPassportCard.displayName = 'SkillPassportCard';
 

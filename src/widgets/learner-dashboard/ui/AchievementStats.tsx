@@ -18,6 +18,8 @@ import type { AchievementStatsProps } from '../model/types';
  * Removes timeline visualization, preserves proven streak tracking and badge counting logic
  * from the original AchievementsTimeline.jsx component.
  * 
+ * **Performance Optimization**: Wrapped with React.memo to prevent unnecessary re-renders
+ * 
  * @param stats - Achievement statistics (streak, badges, certificates, streakBest, badgesTotal)
  * @param onViewAchievements - Callback when "View Achievements" is clicked
  * 
@@ -28,7 +30,7 @@ import type { AchievementStatsProps } from '../model/types';
  * - Provides link to detailed achievements (2.4)
  * - Shows flame icon alongside streak (2.5)
  */
-const AchievementStats: React.FC<AchievementStatsProps> = ({
+const AchievementStats: React.FC<AchievementStatsProps> = React.memo(({
     stats,
     onViewAchievements,
 }) => {
@@ -156,6 +158,8 @@ const AchievementStats: React.FC<AchievementStatsProps> = ({
             </Card>
         </motion.div>
     );
-};
+});
+
+AchievementStats.displayName = 'AchievementStats';
 
 export default AchievementStats;

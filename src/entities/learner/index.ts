@@ -34,5 +34,62 @@ export { useLearnerRealtimeActivities } from './model/useLearnerRealtimeActiviti
 
 export { default as LearnerProfileDrawer } from './ui/LearnerProfileDrawer';
 export * from './lib';
+
+// Core types
 export type { Learner } from './model/types';
 export type { UICandidate } from './model/useAdminLearners';
+
+// Dashboard Redesign Types (Task 1.1)
+export type {
+    LearnerProfile,
+    EnrollabilityScore,
+    AggregatedLearningMetrics,
+    SkillData,
+    SkillDataExtended,
+    SkillDataDashboard,
+    LearningPath,
+    SkillHealthBreakdown,
+    SkillMetric,
+    CourseProgress as LearnerCourseProgress,
+} from './model/types';
+
+// Additional learner data types
+export type {
+    EducationData,
+    TrainingData,
+    ExperienceData,
+    ProjectData,
+    CertificateData,
+    PersonalInfoData,
+    LearnerUpdateData,
+    TrainingUpdateData,
+    UserCreateData,
+    ServiceResponse,
+    LearnerData,
+    RegistrationData,
+    UserRecord,
+    EducationRecord,
+    TrainingRecord,
+    ExperienceRecord,
+    ProjectRecord,
+    CertificateRecord,
+    SkillRecord,
+    ProfileData,
+    AssessmentResult,
+    IAAssessmentResult,
+    EndSemesterAssessmentResult,
+    PracticalAssessmentResult,
+    VivaAssessmentResult,
+    ArrearsAssessmentResult,
+    CareerReadinessAssessmentResult,
+    AptitudeAssessmentResult,
+    SkillPassport,
+    ProfileObject,
+    EducationUpdateData,
+    TrainingUpdateDataFull,
+    ExperienceUpdateData,
+    ProjectUpdateData,
+    CertificateUpdateData,
+    SkillUpdateData,
+    LearnerApiResponse,
+} from './model/types';

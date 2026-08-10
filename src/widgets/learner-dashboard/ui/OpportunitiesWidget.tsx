@@ -16,9 +16,11 @@ import { OpportunitiesWidgetProps, AIMatchedJob, Opportunity } from '../model/ty
  * - Sort by match score descending
  * - Update styling with gradient theme
  * 
+ * **Performance Optimization**: Wrapped with React.memo to prevent unnecessary re-renders
+ * 
  * @requirements 7.1-7.9, 11.1-11.10
  */
-export const OpportunitiesWidget: React.FC<OpportunitiesWidgetProps> = ({
+export const OpportunitiesWidget: React.FC<OpportunitiesWidgetProps> = React.memo(({
     opportunities,
     matchedJobs = [],
     onViewAll,
@@ -86,10 +88,10 @@ export const OpportunitiesWidget: React.FC<OpportunitiesWidgetProps> = ({
                             </Badge>
                         )}
                         <Badge className={`text-xs ${isInternship
-                                ? '!bg-green-100 !text-green-700'
-                                : opp.employmentType === 'contract'
-                                    ? '!bg-yellow-100 !text-yellow-700'
-                                    : '!bg-blue-100 !text-blue-700'
+                            ? '!bg-green-100 !text-green-700'
+                            : opp.employmentType === 'contract'
+                                ? '!bg-yellow-100 !text-yellow-700'
+                                : '!bg-blue-100 !text-blue-700'
                             }`}>
                             {isInternship ? 'Internship' : opp.employmentType === 'contract' ? 'Contract' : 'Full-Time'}
                         </Badge>
@@ -240,6 +242,8 @@ export const OpportunitiesWidget: React.FC<OpportunitiesWidgetProps> = ({
             </CardContent>
         </Card>
     );
-};
+});
+
+OpportunitiesWidget.displayName = 'OpportunitiesWidget';
 
 export default OpportunitiesWidget;

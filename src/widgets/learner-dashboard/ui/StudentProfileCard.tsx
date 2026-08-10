@@ -22,10 +22,12 @@ import type { StudentProfileCardProps, EnrollabilityScore } from '../model/types
  * - Color-coded score status (excellent/good/average/needs-improvement)
  * - Quick access to full profile editing
  * 
+ * **Performance Optimization**: Wrapped with React.memo to prevent unnecessary re-renders
+ * 
  * @param learnerData - Student profile data including scores and college info
  * @param onViewProfile - Callback when "View Full Profile" is clicked
  */
-const StudentProfileCard: React.FC<StudentProfileCardProps> = ({
+const StudentProfileCard: React.FC<StudentProfileCardProps> = React.memo(({
     learnerData,
     onViewProfile,
 }) => {
@@ -248,6 +250,8 @@ const StudentProfileCard: React.FC<StudentProfileCardProps> = ({
             </CardContent>
         </Card>
     );
-};
+});
+
+StudentProfileCard.displayName = 'StudentProfileCard';
 
 export default StudentProfileCard;

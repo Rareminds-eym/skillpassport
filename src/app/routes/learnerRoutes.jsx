@@ -17,7 +17,8 @@ const DigitalThemeSettings = lazy(() => import('@/pages/digital-pp/settings/Them
 
 const LEARNER_ROLES = ["learner"];
 
-const LearnerDashboard = lazy(() => import("@/pages/learner/Dashboard"));
+// const LearnerDashboard = lazy(() => import("@/pages/learner/Dashboard")); // Old dashboard - kept for potential rollback
+const CollegeDashboard = lazy(() => import("@/pages/learner/CollegeDashboard"));
 const Profile = lazy(() => import("@/pages/learner/Profile"));
 const MySkills = lazy(() => import("@/pages/learner/MySkills"));
 const MyLearning = lazy(() => import("@/pages/learner/MyLearning"));
@@ -64,7 +65,7 @@ export const learnerRoutes = (
       </SubscriptionProtectedRoute>
     }
   >
-    <Route path="dashboard" element={<LearnerDashboard />} />
+    <Route path="dashboard" element={<CollegeDashboard />} />
     <Route path="dashboard/:id" element={<Profile />} />
     <Route path="profile" element={<Profile />} />
     <Route path="profile/:email" element={<Profile />} />

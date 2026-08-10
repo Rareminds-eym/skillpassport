@@ -18,6 +18,8 @@ import type { CurrentLearningPathProps } from '../model/types';
  * - "Change Path" button (navigates to paths selection)
  * - Null state: displays prompt to explore learning paths
  * 
+ * **Performance Optimization**: Wrapped with React.memo to prevent unnecessary re-renders
+ * 
  * Requirements: 6.1-6.9
  * - Display learning path name (6.1)
  * - Display progress percentage 0-100 (6.2)
@@ -33,7 +35,7 @@ import type { CurrentLearningPathProps } from '../model/types';
  * @param onContinue - Callback when "Continue Learning" is clicked
  * @param onChangePath - Callback when "Change Path" or "Explore Learning Paths" is clicked
  */
-const CurrentLearningPath: React.FC<CurrentLearningPathProps> = ({
+const CurrentLearningPath: React.FC<CurrentLearningPathProps> = React.memo(({
     path,
     onContinue,
     onChangePath,
@@ -302,6 +304,8 @@ const CurrentLearningPath: React.FC<CurrentLearningPathProps> = ({
             </Card>
         </motion.div>
     );
-};
+});
+
+CurrentLearningPath.displayName = 'CurrentLearningPath';
 
 export default CurrentLearningPath;

@@ -11,6 +11,7 @@ export { ActivitySection } from './ui/ActivitySection';
 export { default as AddLearningCourseModal } from './ui/AddLearningCourseModal';
 export { default as AdvancedFilters } from './ui/AdvancedFilters';
 export { default as AnalyticsView } from './ui/AnalyticsView';
+export { default as CareerAITools } from './ui/CareerAITools';
 export { default as CourseAdvancedFilters } from './ui/CourseAdvancedFilters';
 export { default as Dashboard } from './ui/Dashboard';
 export { default as DashboardWithSupabase } from './ui/DashboardWithSupabase';
