@@ -38,6 +38,7 @@ interface TrackPayload {
   fit: 'High' | 'Medium' | 'Explore';
   matchScore: number;
   whyItFits: string;
+  industry?: string;
 }
 
 function pickTracks(careerFit: CareerFitShape | null): Array<Omit<TrackPayload, 'attemptId' | 'roleId'> & { roleId?: string; trackName: string }> {
@@ -144,6 +145,39 @@ export const handleLearningTrack: GatewayAction = async (ctx, rawPayload) => {
   const tracks = pickTracks(result.career_fit);
   if (tracks.length === 0) {
     return { ok: true, data: { found: false } };
+  }
+
+  // Fetch industries for the roles
+  const roleIds = tracks.map((t) => t.roleId).filter((id): id is string => typeof id === 'string');
+  const industryMap = new Map<string, string>();
+  if (roleIds.length > 0) {
+    try {
+      const dbRoles = await ctx.db.query<any>(
+        `role_family_roles?id=in.(${roleIds.join(',')})&select=id,role_family_domains(industry_domains(industries(name)))`
+      );
+      for (const row of dbRoles) {
+        const rfd = Array.isArray(row.role_family_domains) ? row.role_family_domains[0] : row.role_family_domains;
+        const idom = rfd ? (Array.isArray(rfd.industry_domains) ? rfd.industry_domains[0] : rfd.industry_domains) : null;
+        const ind = idom ? (Array.isArray(idom.industries) ? idom.industries[0] : idom.industries) : null;
+        const indName = ind?.name;
+        if (typeof indName === 'string') {
+          industryMap.set(row.id, indName);
+        }
+      }
+    } catch (err) {
+      // Degrade gracefully if DB query fails
+      console.warn('Failed to query industry info for roles', err);
+    }
+  }
+
+  // Attach industry to tracks
+  for (const track of tracks) {
+    if (track.roleId) {
+      const ind = industryMap.get(track.roleId);
+      if (ind) {
+        track.industry = ind;
+      }
+    }
   }
 
   const primaryTrack = tracks[0];
