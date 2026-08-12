@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { apiPost } from "@/shared/api/apiClient";
 import { getLogger } from '@/shared/config/logging';
 
@@ -131,6 +131,7 @@ export const useLearnerTrainings = (learnerId, options = {}) => {
         enabled: train.approval_status !== 'rejected',
         source: String(train.source || 'manual'),
         course_id: train.course_id,
+        resumeUrl: train.resume_url,
         skills: skillsByTraining[train.id] || [],
         certificateUrl: (certsByTraining[train.id] || [])[0]?.link || '',
         createdAt: train.created_at,
@@ -222,14 +223,20 @@ export const useLearnerTrainings = (learnerId, options = {}) => {
       const [trainingsResult, enrollmentsResult] = await Promise.all([
         apiPost('/learner-profile/actions', {
           action: 'fetch-trainings', learnerId,
-          filters: { approval_status: 'rejected', sortField: 'created_at' },
+          filters: { sortField: 'created_at' },
         }),
         apiPost('/learner-profile/actions', {
           action: 'fetch-course-enrollments', learnerId,
         }),
       ]);
 
-      const externalTrainings = (trainingsResult?.data || []).filter(t => !t.course_id);
+      // Mirror the list view: a training whose course_id is an enrollment is
+      // shown as its enrollment, so exclude it here to avoid double-counting.
+      const enrollmentCourseIds = new Set(
+        (enrollmentsResult?.data || []).map(e => e.course_id).filter(Boolean),
+      );
+      const externalTrainings = (trainingsResult?.data || [])
+        .filter(t => !t.course_id || !enrollmentCourseIds.has(t.course_id));
       const externalStats = {
         total: externalTrainings.length,
         completed: externalTrainings.filter(t => t.status === 'completed').length,
@@ -260,6 +267,26 @@ export const useLearnerTrainings = (learnerId, options = {}) => {
   useEffect(() => {
     fetchTrainings();
   }, [fetchTrainings]);
+
+  // Pull the learner's LTE courses when MyLearning is shown so the cards are
+  // fresh, then refetch. Cooldown (30s) keeps rapid page revisits cheap; a
+  // failure never blocks rendering (fire-and-forget) — the next view retries.
+  const lastLteSyncRef = useRef(0);
+  useEffect(() => {
+    if (!learnerId) return;
+    const now = Date.now();
+    if (now - lastLteSyncRef.current < 30_000) return;
+    lastLteSyncRef.current = now;
+
+    apiPost('/learner/my-learning/lte-course-sync')
+      .then(() => {
+        void fetchTrainings();
+      })
+      .catch((err) => {
+        logger.warn('LTE sync failed', err instanceof Error ? err : new Error(String(err)));
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [learnerId]);
 
   return {
     trainings,

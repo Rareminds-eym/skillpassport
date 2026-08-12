@@ -80,8 +80,11 @@ const ModernLearningCard = ({
   // Check if this is a course enrollment (started from course player)
   const isCourseEnrollment = item.type === 'course_enrollment' || item.source === 'course_enrollment';
 
+  // Courses synced from LTE push back to LTE on Continue/Start
+  const isLteCourse = item.source === 'lte';
+
   // Check if course is from RareMinds platform (internal) or external
-  const isInternalCourse = isCourseEnrollment || !!(item.course_id && item.source === "internal_course");
+  const isInternalCourse = isCourseEnrollment || !!(item.course_id && (item.source === "internal_course" || isLteCourse));
   const isExternalCourse = !isInternalCourse && (item.source === "external_course" || item.source === "manual");
 
   // Memoize progress calculation to avoid recalculation on re-renders
@@ -210,6 +213,11 @@ const ModernLearningCard = ({
 
   // Handle continue/resume button click
   const handleContinue = () => {
+    if (isLteCourse && item.resumeUrl) {
+      // LTE courses continue inside LTE — open course detail in a new tab
+      window.open(item.resumeUrl, '_blank', 'noopener,noreferrer');
+      return;
+    }
     if (isCourseEnrollment && item.course_id) {
       // Navigate to course player for enrolled courses
       navigate(`/learner/courses/${item.course_id}/learn`);
@@ -402,6 +410,22 @@ const ModernLearningCard = ({
       }
     } else {
       // For internal courses (enrollments), use the course completion status
+      if (item.status === 'not_started') {
+        return {
+          bg: 'bg-gray-100 text-gray-600',
+          text: 'text-gray-600',
+          icon: Play,
+          label: 'Not Started'
+        };
+      }
+      if (item.status === 'paused') {
+        return {
+          bg: 'bg-gradient-to-r from-yellow-100 to-yellow-200',
+          text: 'text-yellow-800',
+          icon: Clock,
+          label: 'Paused'
+        };
+      }
       if (isCompleted) {
         return {
           bg: 'bg-gradient-to-r from-green-100 to-green-200',
@@ -526,10 +550,12 @@ const ModernLearningCard = ({
 
     // Internal courses logic
     if (isCompleted) {
-      return certificateUrl ? renderListCertificateButtons() : renderListCompletedStatus("Course Completed");
+      return isLteCourse
+        ? renderListCompletedStatus("Course Completed")
+        : certificateUrl ? renderListCertificateButtons() : renderListCompletedStatus("Course Completed");
     }
     
-    if (isCourseEnrollment) {
+    if (isCourseEnrollment || isLteCourse) {
       return renderListContinueButton();
     }
     
@@ -650,10 +676,12 @@ const ModernLearningCard = ({
 
     // Internal courses logic
     if (isCompleted) {
-      return certificateUrl ? renderCertificateButtons() : renderCompletedStatus("Course Completed");
+      return isLteCourse
+        ? renderCompletedStatus("Course Completed")
+        : certificateUrl ? renderCertificateButtons() : renderCompletedStatus("Course Completed");
     }
     
-    if (isCourseEnrollment) {
+    if (isCourseEnrollment || isLteCourse) {
       return renderContinueButton();
     }
     
@@ -1239,7 +1267,7 @@ const ModernLearningCard = ({
                   <ListChecks className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-slate-400" />
                   <div>
                     <div className="font-semibold text-sm sm:text-base">{item.totalModules}</div>
-                    <div className="text-xs text-slate-500">{isCourseEnrollment ? 'lessons' : 'modules'}</div>
+                    <div className="text-xs text-slate-500">{isCourseEnrollment ? 'lessons' : isLteCourse ? 'levels' : 'modules'}</div>
                   </div>
                 </div>
               )}
