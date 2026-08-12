@@ -32,9 +32,9 @@ const LearningAnalyticsDashboard = ({ trainings = [], stats = {} }) => {
       return updated.getMonth() === lastMonth && updated.getFullYear() === lastMonthYear;
     }).length;
 
-    // Completion rate
-    const totalCourses = trainings.length;
-    const completedCourses = trainings.filter((t) => t.status === "completed").length;
+    // Completion rate - sourced from stats (already filtered to verified/approved trainings)
+    const totalCourses = stats.total ?? 0;
+    const completedCourses = stats.completed ?? 0;
     const completionRate = totalCourses > 0 ? Math.round((completedCourses / totalCourses) * 100) : 0;
 
     // Total modules completed
@@ -73,7 +73,7 @@ const LearningAnalyticsDashboard = ({ trainings = [], stats = {} }) => {
       courseProgress,
       monthlyTrend,
     };
-  }, [trainings]);
+  }, [trainings, stats]);
 
   // Trend indicator component
   const TrendIndicator = ({ current, previous }) => {

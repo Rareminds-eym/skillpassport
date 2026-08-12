@@ -135,6 +135,7 @@ export default function AddLearningCourseModal({ isOpen, onClose, learnerId, onS
   const [extracting, setExtracting] = useState(false);
   const [extractionSuccess, setExtractionSuccess] = useState(false);
   const [verificationStatus, setVerificationStatus] = useState(null);
+  const [extractedCertificateTitle, setExtractedCertificateTitle] = useState('');
   const verificationStatusRef = useRef(null);
   const errorRef = useRef(null);
   const totalSteps = 5;
@@ -251,6 +252,23 @@ export default function AddLearningCourseModal({ isOpen, onClose, learnerId, onS
         setFormData(prev => ({ ...prev, organization: platformName }));
       }
 
+      const rawExtractedTitle = (result?.data?.certificate?.title || '').trim();
+      const extractionConfidence = result?.data?.certificate?.confidence;
+      if (rawExtractedTitle) {
+        setExtractedCertificateTitle(rawExtractedTitle);
+        // Only high-confidence (platform-adapter) results are safe to write directly into
+        // the field; low/unknown-confidence extraction is shown as a suggestion only
+        // (see the "Extracted from certificate" hint) and must be confirmed by the learner.
+        if (extractionConfidence === 'high') {
+          setFormData(prev => (prev.title.trim() === '' ? { ...prev, title: rawExtractedTitle } : prev));
+        }
+      }
+
+      const extractedCertificateId = (result?.data?.certificate?.certificateId || '').trim();
+      if (extractedCertificateId) {
+        setFormData(prev => (prev.certificate_id.trim() === '' ? { ...prev, certificate_id: extractedCertificateId } : prev));
+      }
+
       setVerificationStatus('success');
       setExtractionSuccess(true);
       return true;
@@ -326,6 +344,7 @@ export default function AddLearningCourseModal({ isOpen, onClose, learnerId, onS
     setVerificationResult(null);
     setExtractionSuccess(false);
     setVerificationStatus(null);
+    setExtractedCertificateTitle('');
   };
 
 
@@ -451,6 +470,7 @@ export default function AddLearningCourseModal({ isOpen, onClose, learnerId, onS
                         setExtractionSuccess(false);
                         setVerificationStatus(null);
                         setVerificationResult(null);
+                        setExtractedCertificateTitle('');
                         setError('');
                       }
                       setSelectedPlatform(platform);
@@ -549,7 +569,34 @@ export default function AddLearningCourseModal({ isOpen, onClose, learnerId, onS
               </div>
               <div>
                 <label htmlFor="course-title" className="block text-sm font-medium text-gray-700 mb-1.5">Course Title <span className="text-red-500">*</span></label>
-                <input id="course-title" type="text" name="title" value={formData.title} onChange={handleInputChange} placeholder="e.g., Machine Learning Specialization" className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm" />
+                {(() => {
+                  // The field is locked only once it actually holds the verified certificate
+                  // title (high-confidence extractions auto-fill it, so this activates
+                  // immediately for them). Low/no-confidence extraction never auto-fills the
+                  // field, so it stays editable with the "Extracted from certificate" hint
+                  // below as a suggestion the learner can type in themselves — locking an
+                  // empty required field would leave the step impossible to complete.
+                  const isVerifiedTitleLocked = formData.title.trim() !== '' && formData.title === extractedCertificateTitle;
+                  return (
+                    <input
+                      id="course-title"
+                      type="text"
+                      name="title"
+                      value={formData.title}
+                      onChange={handleInputChange}
+                      placeholder="e.g., Machine Learning Specialization"
+                      readOnly={isVerifiedTitleLocked}
+                      disabled={isVerifiedTitleLocked}
+                      className={`w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm ${isVerifiedTitleLocked ? 'bg-gray-100 text-gray-600 cursor-not-allowed' : 'focus:ring-2 focus:ring-indigo-500 focus:border-transparent'}`}
+                    />
+                  );
+                })()}
+                {extractedCertificateTitle && formData.title === extractedCertificateTitle && (
+                  <p className="text-xs text-gray-500 mt-1.5">Verified from certificate — this title cannot be edited.</p>
+                )}
+                {extractedCertificateTitle && formData.title !== extractedCertificateTitle && (
+                  <p className="text-xs text-gray-500 mt-1.5">Extracted from certificate: "{extractedCertificateTitle}"</p>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>

@@ -10,7 +10,7 @@
 import { getCorsHeaders } from '../../lib/cors';
 import { apiError, apiSuccess } from '../../lib/response';
 import type { PagesFunction } from '../../lib/types';
-;
+import { normalizeCertificateData } from './lib/extraction-engine';
 
 const ALLOWED_DOMAINS = [
   'udemy.com',
@@ -22,7 +22,8 @@ const ALLOWED_DOMAINS = [
   'skillshare.com',
   'codecademy.com',
   'freecodecamp.org',
-  'ude.my'
+  'ude.my',
+  'codechef.com'
 ];
 
 // ==================== FETCH CERTIFICATE ====================
@@ -117,6 +118,8 @@ async function handleFetchCertificate(request: Request): Promise<Response> {
     platformData.platform = 'linkedin';
   } else if (fetchUrl.includes('edx.org')) {
     platformData.platform = 'edx';
+  } else if (fetchUrl.includes('codechef.com')) {
+    platformData.platform = 'codechef';
   }
 
   // Body snippet for reference
@@ -128,8 +131,14 @@ async function handleFetchCertificate(request: Request): Promise<Response> {
     .trim()
     .slice(0, 5000);
 
+  const certificateIdMatch = fetchUrl.match(/certificates?\/(?:public\/)?([A-Za-z0-9-]+)\/?$/i);
+  const certificateIdFromUrl = certificateIdMatch ? certificateIdMatch[1] : null;
+
+  const certificate = normalizeCertificateData(platformData.platform, html, metadata, certificateIdFromUrl);
+
   return apiSuccess({
     success: true,
+    certificate,
     metadata,
     platformData,
     htmlLength: html.length,

@@ -328,6 +328,29 @@ const DynamicAssessment = () => {
       setCurrentQuestionIndex(prev => prev + 1);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
+      // Persist the final question's answer before submitting — without this,
+      // the backend's persisted learner_answers is missing the last answer,
+      // so its score (read back by My Learning) would differ from the score
+      // calculated here from in-memory answers.
+      if (attemptId) {
+        const finalAnswer = answers[assessment.questions[currentQuestionIndex]?.id];
+        if (finalAnswer) {
+          setIsSaving(true);
+          const saveResult = await updateAssessmentProgress(
+            attemptId,
+            currentQuestionIndex,
+            finalAnswer,
+            timeRemaining,
+            currentQuestionIndex + 1
+          );
+          setIsSaving(false);
+
+          if (!saveResult.success) {
+            setError(saveResult.error || 'Failed to save your final answer. Please try again.');
+            return;
+          }
+        }
+      }
       handleSubmit();
     }
   };
