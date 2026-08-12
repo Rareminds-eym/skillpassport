@@ -131,7 +131,7 @@ async function handleFetchCertificate(request: Request): Promise<Response> {
     .trim()
     .slice(0, 5000);
 
-  const certificateIdMatch = fetchUrl.match(/certificates?\/(?:public\/)?([A-Za-z0-9-]+)\/?$/i);
+  const certificateIdMatch = fetchUrl.match(/(?:certificates?|verify)\/(?:public\/)?([A-Za-z0-9-]+)\/?$/i);
   const certificateIdFromUrl = certificateIdMatch ? certificateIdMatch[1] : null;
 
   const certificate = normalizeCertificateData(platformData.platform, html, metadata, certificateIdFromUrl);
