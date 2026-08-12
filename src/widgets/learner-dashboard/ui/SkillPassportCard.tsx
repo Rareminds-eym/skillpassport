@@ -46,8 +46,19 @@ export const SkillPassportCard: React.FC<SkillPassportCardProps> = React.memo(({
 }) => {
     // Calculate skill health breakdown using shared utility
     const healthBreakdown = React.useMemo(() => {
-        return calculateSkillHealth(passport.skills || []);
-    }, [passport.skills]);
+        // ULTRA-DEFENSIVE: Ensure we always pass an array
+        const skills = passport?.skills;
+
+        // Validate it's actually an array, not just truthy
+        const validSkills = Array.isArray(skills) ? skills : [];
+
+        // Debug logging (can be removed later)
+        if (skills && !Array.isArray(skills)) {
+            console.warn('[SkillPassportCard] passport.skills is not an array:', typeof skills, skills);
+        }
+
+        return calculateSkillHealth(validSkills);
+    }, [passport?.skills]);
 
     // Get verification badge configuration
     const getVerificationBadge = () => {

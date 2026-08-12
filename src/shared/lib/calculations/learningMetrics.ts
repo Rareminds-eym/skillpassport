@@ -51,6 +51,19 @@ export function aggregateLearningMetrics(
     courses: CourseProgress[],
     certificates: Certificate[]
 ): AggregatedLearningMetrics {
+    // Handle invalid input - ensure courses is an array
+    if (!Array.isArray(courses)) {
+        return {
+            coursesEnrolled: 0,
+            coursesCompleted: 0,
+            coursesInProgress: 0,
+            coursesNotStarted: 0,
+            certificatesEarned: Array.isArray(certificates) ? certificates.length : 0,
+            totalLearningHours: 0,
+            completionRate: 0,
+        };
+    }
+
     // Handle empty courses array
     if (courses.length === 0) {
         return {
@@ -58,7 +71,7 @@ export function aggregateLearningMetrics(
             coursesCompleted: 0,
             coursesInProgress: 0,
             coursesNotStarted: 0,
-            certificatesEarned: certificates.length,
+            certificatesEarned: Array.isArray(certificates) ? certificates.length : 0,
             totalLearningHours: 0,
             completionRate: 0,
         };
@@ -71,7 +84,7 @@ export function aggregateLearningMetrics(
     const coursesNotStarted = courses.filter((c) => c.status === 'not-started').length;
 
     // Calculate certificates earned
-    const certificatesEarned = certificates.length;
+    const certificatesEarned = Array.isArray(certificates) ? certificates.length : 0;
 
     // Calculate total learning hours from timeSpent (in minutes)
     // Treat null/undefined timeSpent as 0

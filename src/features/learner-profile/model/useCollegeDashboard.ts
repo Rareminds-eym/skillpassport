@@ -22,7 +22,7 @@ import {
   useAchievements,
   useCurrentLearningPath,
   learnerQueryKeys,
-  type Achievement,
+  type AchievementsData,
 } from '@/shared/api/learnerApi';
 import { calculateEnrollabilityScore, type LearnerWithCourses } from '@/shared/lib/calculations/enrollability';
 import { aggregateLearningMetrics, type Certificate } from '@/shared/lib/calculations/learningMetrics';
@@ -48,7 +48,7 @@ export interface CollegeDashboardState {
   courses: CourseProgress[] | undefined;
   skills: SkillDataExtended[] | undefined;
   opportunities: Opportunity[] | undefined;
-  achievements: Achievement[] | undefined;
+  achievements: AchievementsData | undefined;
   learningPath: LearningPath | null | undefined;
 
   // Calculated Metrics
@@ -161,18 +161,18 @@ export function useCollegeDashboard(): CollegeDashboardState {
   const achievementsQuery = useAchievements();
   const learningPathQuery = useCurrentLearningPath();
 
-  // Extract data from queries
+  // Extract data from queries - Ensure arrays to prevent TypeError
   const profile = profileQuery.data;
-  const courses = coursesQuery.data;
-  const skills = skillsQuery.data;
-  const opportunities = opportunitiesQuery.data;
+  const courses = Array.isArray(coursesQuery.data) ? coursesQuery.data : [];  // FIX: Ensure array to prevent TypeError
+  const skills = Array.isArray(skillsQuery.data) ? skillsQuery.data : [];  // FIX: Ensure array to prevent TypeError
+  const opportunities = Array.isArray(opportunitiesQuery.data) ? opportunitiesQuery.data : [];  // FIX: Ensure array to prevent TypeError
   const achievements = achievementsQuery.data;
   const learningPath = learningPathQuery.data;
 
   // Calculate enrollability score (memoized for performance - Requirement 16.5)
   // Requirements: profile data + courses data
   const enrollabilityScore: EnrollabilityScore | undefined = useMemo(() => {
-    if (!profile || !courses) {
+    if (!profile || !Array.isArray(courses) || courses.length === 0) {
       return undefined;
     }
 
@@ -189,15 +189,15 @@ export function useCollegeDashboard(): CollegeDashboardState {
   // Calculate learning metrics (memoized for performance - Requirement 16.5)
   // Requirements: courses data + achievements data
   const learningMetrics: AggregatedLearningMetrics | undefined = useMemo(() => {
-    if (!courses || !achievements) {
+    if (!Array.isArray(courses) || !achievements) {
       return undefined;
     }
 
-    // Convert achievements to certificates for aggregateLearningMetrics
-    // Filter only certificate-type achievements
-    const certificates: Certificate[] = achievements
-      .filter(a => a.type === 'certificate')
-      .map(a => ({ id: a.id }));
+    // Convert achievements.certificates array to Certificate[] for aggregateLearningMetrics
+    // achievements is now an object with a certificates array property
+    const certificates: Certificate[] = Array.isArray(achievements.certificates)
+      ? achievements.certificates.map(cert => ({ id: cert.id }))
+      : [];
 
     return aggregateLearningMetrics(courses, certificates);
   }, [courses, achievements]);
@@ -205,21 +205,19 @@ export function useCollegeDashboard(): CollegeDashboardState {
   // Calculate skill health breakdown (memoized for performance - Requirement 16.5)
   // Requirements: skills data
   const skillHealth: SkillHealthBreakdown | undefined = useMemo(() => {
-    if (!skills) {
-      return undefined;
-    }
-
-    return calculateSkillHealth(skills);
+    // Always return a valid breakdown, even with empty skills
+    const validSkills = Array.isArray(skills) ? skills : [];
+    return calculateSkillHealth(validSkills);
   }, [skills]);
 
   // Perform AI job matching (memoized for performance - Requirement 16.5)
   // Requirements: opportunities data + skills data
   const matchedJobs: AIMatchedJob[] | undefined = useMemo(() => {
-    if (!opportunities || !skills) {
+    if (!Array.isArray(opportunities) || opportunities.length === 0) {
       return undefined;
     }
-
-    return matchOpportunitiesWithAI(opportunities, skills);
+    const validSkills = Array.isArray(skills) ? skills : [];
+    return matchOpportunitiesWithAI(opportunities, validSkills);
   }, [opportunities, skills]);
 
   // Determine overall loading state

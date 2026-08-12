@@ -22,7 +22,7 @@ import type {
 import type { Opportunity } from '../../entities/opportunity/model/types';
 
 /**
- * Achievement data type
+ * Achievement data type (individual achievement/badge/certificate)
  */
 export interface Achievement {
     id: string;
@@ -31,6 +31,19 @@ export interface Achievement {
     description?: string;
     earnedAt: Date;
     icon?: string;
+}
+
+/**
+ * Achievements data structure returned by the /learner/achievements endpoint
+ * Contains aggregated achievement statistics and collections
+ */
+export interface AchievementsData {
+    currentStreak?: number;
+    longestStreak?: number;
+    badges?: Achievement[];
+    totalBadgesAvailable?: number;
+    certificates?: Achievement[];
+    lastActivity?: Date | string;
 }
 
 /**
@@ -186,15 +199,15 @@ export function useOpportunities(): UseQueryResult<Opportunity[], Error> {
  * 
  * **Endpoint:** GET `/api/learner/achievements`
  * 
- * **Returns:** Achievement data
+ * **Returns:** AchievementsData with aggregated stats and collections
  * 
  * **Validates:** Requirements 12.5, 16.7
  */
-export function useAchievements(): UseQueryResult<Achievement[], Error> {
+export function useAchievements(): UseQueryResult<AchievementsData, Error> {
     return useQuery({
         queryKey: ['learner', 'achievements'],
         queryFn: async () => {
-            const response = await apiGet<Achievement[]>('/learner/achievements');
+            const response = await apiGet<AchievementsData>('/learner/achievements');
             return response;
         },
         staleTime: 5 * 60 * 1000, // 5 minutes

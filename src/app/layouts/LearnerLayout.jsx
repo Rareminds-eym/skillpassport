@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Outlet, useLocation, Link } from 'react-router-dom';
 import { useUser } from '@/shared/model/authStore';
 import { useLearnerDashboard, LearnerTypeSelectionModal } from '@/features/learner-profile';
-import { Header, ProfileHeroEdit } from '@/widgets/learner-dashboard';
+import { NewHeader, Sidebar, MobileSidebar, ProfileHeroEdit } from '@/widgets/learner-dashboard';
 import { FloatingAIButton } from '@/features/career-assistant';
 import {
   EducationEditModal,
@@ -60,6 +60,7 @@ const LearnerLayout = () => {
   const user = useUser();
   const [activeModal, setActiveModal] = useState(null);
   const [showLearnerTypeModal, setShowLearnerTypeModal] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Fetch learner data using backend API
   const {
@@ -131,40 +132,56 @@ const LearnerLayout = () => {
 
   return (
     <div className={`${pageState.isCareerAIPage || isFullScreenAssessment ? "h-screen bg-gray-50 flex flex-col" : "min-h-screen bg-gray-50 flex flex-col"}`}>
-      {!pageState.isAssessmentTestPage && <Header activeTab={pageState.activeTab} />}
-      {!pageState.isViewingOthersProfile && pageState.isDashboardPage && (
-        <ProfileHeroEdit
-          onEditClick={handleEditClick}
-          learnerData={{
-            ...learnerData,
-            education: education || [],
-            experience: experience || [],
-            technicalSkills: technicalSkills || [],
-            softSkills: softSkills || [],
-            training: training || [],
-            projects: projects || [],
-            certificates: certificates || []
-          }}
-          loading={learnerLoading}
+      {!pageState.isAssessmentTestPage && <NewHeader onMobileMenuOpen={() => setMobileMenuOpen(true)} />}
+
+      {/* Mobile Sidebar */}
+      {!pageState.isAssessmentTestPage && (
+        <MobileSidebar
+          isOpen={mobileMenuOpen}
+          onClose={() => setMobileMenuOpen(false)}
         />
       )}
 
-      <main className={pageState.isCareerAIPage ? "flex-1 overflow-hidden" : ""}>
-        <Outlet context={{ activeTab: pageState.activeTab, userData }} />
-      </main>
+      {/* Sidebar - Fixed position */}
+      {!pageState.isAssessmentTestPage && <Sidebar />}
 
-      {!pageState.isCareerAIPage && (
-        <footer className="bg-white border-t border-gray-200 py-4 px-6">
-          <div className="flex items-center justify-between text-sm text-gray-500">
-            <span>© {new Date().getFullYear()} Learner Portal. All rights reserved.</span>
-            <div className="flex items-center gap-4">
-              <Link to="/privacy-policy" className="hover:text-gray-700 transition-colors">Privacy Policy</Link>
-              <Link to="/terms" className="hover:text-gray-700 transition-colors">Terms of Service</Link>
-              <a href="#" className="hover:text-gray-700 transition-colors">Help</a>
+      {/* Main content area with left margin for sidebar on desktop */}
+      <div className={`flex-1 flex flex-col ${!pageState.isAssessmentTestPage ? 'lg:ml-56' : ''}`}>
+        {/* Hero Section - Always visible on dashboard */}
+        {!pageState.isViewingOthersProfile && pageState.isDashboardPage && (
+          <ProfileHeroEdit
+            onEditClick={handleEditClick}
+            learnerData={{
+              ...learnerData,
+              education: education || [],
+              experience: experience || [],
+              technicalSkills: technicalSkills || [],
+              softSkills: softSkills || [],
+              training: training || [],
+              projects: projects || [],
+              certificates: certificates || []
+            }}
+            loading={learnerLoading}
+          />
+        )}
+
+        <main className={pageState.isCareerAIPage ? "flex-1 overflow-hidden" : ""}>
+          <Outlet context={{ activeTab: pageState.activeTab, userData }} />
+        </main>
+
+        {!pageState.isCareerAIPage && (
+          <footer className="bg-white border-t border-gray-200 py-4 px-6">
+            <div className="flex items-center justify-between text-sm text-gray-500">
+              <span>© {new Date().getFullYear()} Learner Portal. All rights reserved.</span>
+              <div className="flex items-center gap-4">
+                <Link to="/privacy-policy" className="hover:text-gray-700 transition-colors">Privacy Policy</Link>
+                <Link to="/terms" className="hover:text-gray-700 transition-colors">Terms of Service</Link>
+                <a href="#" className="hover:text-gray-700 transition-colors">Help</a>
+              </div>
             </div>
-          </div>
-        </footer>
-      )}
+          </footer>
+        )}
+      </div>
 
       {!pageState.isAssessmentTestPage && <FloatingAIButton />}
 

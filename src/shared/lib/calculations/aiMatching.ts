@@ -125,12 +125,12 @@ export function matchOpportunitiesWithAI(
     opportunities: (Opportunity & { requiredSkills?: string[] })[],
     learnerSkills: SkillData[]
 ): AIMatchedJob[] {
-    // Handle edge cases
-    if (!opportunities || opportunities.length === 0) {
+    // Handle edge cases - ensure inputs are arrays
+    if (!Array.isArray(opportunities) || opportunities.length === 0) {
         return [];
     }
 
-    if (!learnerSkills || learnerSkills.length === 0) {
+    if (!Array.isArray(learnerSkills) || learnerSkills.length === 0) {
         return [];
     }
 
@@ -145,8 +145,8 @@ export function matchOpportunitiesWithAI(
     const matchedJobs: AIMatchedJob[] = [];
 
     for (const opportunity of opportunities) {
-        // Skip opportunities without required skills
-        if (!opportunity.requiredSkills || opportunity.requiredSkills.length === 0) {
+        // Skip opportunities without required skills or if requiredSkills is not an array
+        if (!Array.isArray(opportunity.requiredSkills) || opportunity.requiredSkills.length === 0) {
             continue;
         }
 

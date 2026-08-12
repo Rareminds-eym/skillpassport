@@ -100,6 +100,13 @@ export const learnerRoutes = (
     <Route path="assessment/start" element={<AssessmentTestPage />} />
     <Route path="assessment/results" element={<AssessmentResults />} />
 
+    {/* Coming Soon Pages for features not yet implemented */}
+    <Route path="lte" element={<ComingSoon featureName="Learners Transformation Engine" />} />
+    <Route path="educators" element={<ComingSoon featureName="Educators Resource Studio" />} />
+    <Route path="projects" element={<ComingSoon featureName="Projects / Internships" />} />
+    <Route path="certificates" element={<ComingSoon featureName="Certificates" />} />
+    <Route path="mentorship" element={<ComingSoon featureName="Mentorship" />} />
+
     {/* Digital Portfolio routes - wrapped with scoped theme provider */}
     <Route path="digital-portfolio" element={<DigitalPortfolioThemeProvider><HomePage /></DigitalPortfolioThemeProvider>} />
     <Route path="digital-portfolio/portfolio" element={<DigitalPortfolioThemeProvider><DigitalPortfolioPage /></DigitalPortfolioThemeProvider>} />
