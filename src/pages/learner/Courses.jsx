@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { SearchBar, CertificateNameModal } from '@/shared/ui';
+import { SearchBar, CertificateNameModal, CourseEnrollmentModal } from '@/shared/ui';
 import { CourseDetailModal } from '@/features/courses';
 import WeeklyLearningTracker from '@/entities/learner/ui/WeeklyLearningTracker';
 import { CourseAdvancedFilters } from '@/widgets/learner-dashboard';
@@ -35,7 +35,7 @@ import {
 
 import { apiPost, apiGet } from '@/shared/api/apiClient';
 import { downloadCertificate } from '@/shared/lib/certificateUtils';
-import { enrollmentService as courseEnrollmentService } from '@/features/courses';
+import { enrollmentService as courseEnrollmentService, recordCourseInterest } from '@/features/courses';
 import { useSubscriptionQuery } from '@/features/subscription/model/useSubscriptionQuery';
 import { PLAN_IDS, PLAN_HIERARCHY_LEVELS } from '@/shared/config/subscriptionPlans';
 import { getLogger } from '@/shared/config/logging';
@@ -73,6 +73,16 @@ const Courses = () => {
   });
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  // Interest capture: pendingCourseId is the course whose request is in flight,
+  // so only the clicked control shows a pending state.
+  const [pendingCourseId, setPendingCourseId] = useState(null);
+  const [showInterestModal, setShowInterestModal] = useState(false);
+  // Guards state updates from an awaited request that resolves after unmount.
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => { isMountedRef.current = false; };
+  }, []);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0); // Total courses count for pagination
   const coursesPerPage = 6;
@@ -605,9 +615,39 @@ const Courses = () => {
   };
 
   // Handle start course - navigate to course player
-  const handleStartCourse = (course) => {
-    setShowDetailModal(false);
-    navigate(`/learner/courses/${course.course_id}/learn`);
+  /**
+   * Records the learner's interest instead of opening the course.
+   *
+   * The request is awaited so the confirmation is shown only after the record
+   * has been persisted. On failure no confirmation is shown and the learner can
+   * retry by selecting the course again.
+   */
+  const handleStartCourse = async (course) => {
+    const courseId = course?.course_id;
+    if (!courseId) return;
+
+    // Webinars/live events bypass interest capture entirely and open directly,
+    // exactly as all courses did before this feature was introduced.
+    if (course.course_type === 'webinar') {
+      setShowDetailModal(false);
+      navigate(`/learner/courses/${courseId}/learn`);
+      return;
+    }
+
+    setPendingCourseId(courseId);
+    try {
+      await recordCourseInterest(courseId);
+      if (!isMountedRef.current) return;
+      // The detail modal stays open behind the confirmation - closing it here
+      // would unmount the control still showing its pending state. It is closed
+      // when the learner dismisses the confirmation.
+      setShowInterestModal(true);
+    } catch {
+      if (!isMountedRef.current) return;
+      toast.error('Unable to record your interest. Please try again.');
+    } finally {
+      if (isMountedRef.current) setPendingCourseId(null);
+    }
   };
 
   return (
@@ -619,6 +659,17 @@ const Courses = () => {
         onClose={() => setShowDetailModal(false)}
         onStartCourse={handleStartCourse}
         enrollmentProgress={enrollmentProgress}
+        isRecordingInterest={pendingCourseId === selectedCourse?.course_id}
+      />
+
+      {/* Interest Capture Confirmation - dismissing it also closes the detail
+          modal, returning the learner to the course list. */}
+      <CourseEnrollmentModal
+        isOpen={showInterestModal}
+        onClose={() => {
+          setShowInterestModal(false);
+          setShowDetailModal(false);
+        }}
       />
       
       {/* Certificate Generation Modal */}
