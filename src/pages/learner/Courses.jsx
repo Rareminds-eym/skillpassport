@@ -50,6 +50,7 @@ const Courses = () => {
   const userPlan = subscriptionData?.plan ?? PLAN_IDS.FREEMIUM;
   
   const [courses, setCourses] = useState([]);
+  const [assignedCourseIds, setAssignedCourseIds] = useState(new Set());
   const [loading, setLoading] = useState(true);
   const [initialLoad, setInitialLoad] = useState(true);
   const [learnerGrade, setLearnerGrade] = useState(null);
@@ -79,6 +80,7 @@ const Courses = () => {
     isMountedRef.current = true;
     return () => { isMountedRef.current = false; };
   }, []);
+
   // Synchronous duplicate-click guard for handleStartCourse. Unlike
   // pendingCourseId (state, so its update is not visible until the next
   // render), this ref is readable/writable immediately, closing the window
@@ -308,7 +310,7 @@ const Courses = () => {
         limit: coursesPerPage,
         sortBy: sortBy,
         enrollmentRange: advancedFilters.enrollmentRange,
-        postedWithin: advancedFilters.postedWithin
+        postedWithin: advancedFilters.postedWithin,
       };
 
       const res = await apiPost('/learner-pages/actions', {
@@ -318,6 +320,7 @@ const Courses = () => {
 
       setCourses(res?.data?.courses || []);
       setTotalCount(res?.data?.total || 0);
+      setAssignedCourseIds(new Set(res?.data?.assignedCourseIds || []));
 
       if (isFirstLoad) {
         setInitialLoad(false);
@@ -606,14 +609,21 @@ const Courses = () => {
     isCapturingRef.current = true;
 
     try {
-      // Webinars/live events bypass interest capture entirely and open directly,
-      // exactly as all courses did before this feature was introduced.
+      // Webinars bypass interest capture — navigate directly
       if (course.course_type === 'webinar') {
         setShowDetailModal(false);
         navigate(`/learner/courses/${courseId}/learn`);
         return;
       }
 
+      // Assigned courses (in demo_course_access) bypass interest modal — navigate directly
+      if (assignedCourseIds.has(courseId)) {
+        setShowDetailModal(false);
+        navigate(`/learner/courses/${courseId}/learn`);
+        return;
+      }
+
+      // All other courses → show interest modal (existing behavior)
       setPendingCourseId(courseId);
       try {
         if (typeof recordCourseInterest !== 'function') {
@@ -621,9 +631,6 @@ const Courses = () => {
         }
         await recordCourseInterest(courseId);
         if (!isMountedRef.current) return;
-        // The detail modal stays open behind the confirmation - closing it here
-        // would unmount the control still showing its pending state. It is closed
-        // when the learner dismisses the confirmation.
         setShowInterestModal(true);
       } catch (error) {
         logger.error('Failed to record interest', error instanceof Error ? error : new Error(String(error)));
