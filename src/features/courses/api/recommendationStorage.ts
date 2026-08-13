@@ -26,7 +26,7 @@ export const saveRecommendations = async (
  * courseId is sent. Failure is propagated to the caller, which decides what to
  * display - the success modal is shown only after this resolves.
  */
-export const recordCourseInterest = async (courseId) => {
+export const recordCourseInterest = async (courseId: string) => {
   if (!courseId) throw new Error('Course ID is required');
   try {
     return await apiPost('/courses/interests', { courseId });

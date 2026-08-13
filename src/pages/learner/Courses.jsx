@@ -4,11 +4,7 @@ import {
     Award,
     BookOpen,
     CheckCircle,
-    ChevronLeft,
-    ChevronRight,
     Clock,
-    Download,
-    Eye,
     Grid3x3,
     List,
     Lock,
@@ -34,7 +30,6 @@ import {
 } from '@/shared/ui';
 
 import { apiPost, apiGet } from '@/shared/api/apiClient';
-import { downloadCertificate } from '@/shared/lib/certificateUtils';
 import { enrollmentService as courseEnrollmentService, recordCourseInterest } from '@/features/courses';
 import { useSubscriptionQuery } from '@/features/subscription/model/useSubscriptionQuery';
 import { PLAN_IDS, PLAN_HIERARCHY_LEVELS } from '@/shared/config/subscriptionPlans';
@@ -283,14 +278,10 @@ const Courses = () => {
     try {
       setLoading(true);
 
-      // Calculate pagination range
-      const from = (currentPage - 1) * coursesPerPage;
-      const to = from + coursesPerPage - 1;
-
       let classification = null;
       if (learnerGrade) {
         if (/^(Grade\s*)?(\d+)$/i.test(learnerGrade)) {
-          const gradeNum = parseInt(learnerGrade.match(/\d+/)[0]);
+          const gradeNum = parseInt(learnerGrade.match(/\d+/)[0], 10);
           if (gradeNum >= 6 && gradeNum <= 8) classification = 'middle_school';
           else if (gradeNum >= 9 && gradeNum <= 10) classification = 'high_school';
           else if (gradeNum >= 11 && gradeNum <= 12) classification = 'higher_secondary';
@@ -339,7 +330,7 @@ const Courses = () => {
   // Check if course has resumable progress
   const hasResumableProgress = (courseId) => {
     const progress = enrollmentProgress[courseId];
-    return progress && progress.progress > 0 && progress.progress < 100;
+    return progress?.progress > 0 && progress?.progress < 100;
   };
 
   // Check if course is completed
@@ -492,15 +483,6 @@ const Courses = () => {
     }
   }, [user?.email, certificateModal, certificateUrls]); // Fixed: Added certificateUrls to dependency array
 
-  // Check if a course is new (posted within last 24 hours)
-  const isNewCourse = (createdAt) => {
-    if (!createdAt) return false;
-    const courseDate = new Date(createdAt);
-    const now = new Date();
-    const hoursDifference = (now - courseDate) / (1000 * 60 * 60);
-    return hoursDifference <= 24;
-  };
-
   // Reset to page 1 when search or filter changes (but not when page changes)
   useEffect(() => {
     setCurrentPage(1);
@@ -636,6 +618,9 @@ const Courses = () => {
 
     setPendingCourseId(courseId);
     try {
+      if (typeof recordCourseInterest !== 'function') {
+        throw new Error('recordCourseInterest not available');
+      }
       await recordCourseInterest(courseId);
       if (!isMountedRef.current) return;
       // The detail modal stays open behind the confirmation - closing it here

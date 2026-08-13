@@ -8,7 +8,6 @@ import { apiGet } from '@/shared/api/apiClient';
 import { cosineSimilarity } from '@/shared/lib/vectorUtils';
 import { buildProfileText } from './profileBuilder';
 import { generateEmbedding } from '../../api/embeddingService';
-import { generateProfileAndSkillEmbeddings } from '../../api/embeddingBatch';
 import { fetchCoursesWithEmbeddings, fetchCoursesBySkillType, fetchBasicCourses } from './courseRepository';
 import { getDomainKeywordsWithCache } from '../../api/fieldDomainService';
 import {
@@ -47,7 +46,7 @@ export const fallbackKeywordMatching = async (assessmentResults) => {
           const aiKeywords = domainKeywords.split(',').map(k => k.trim().toLowerCase());
           fieldKeywords.push(...aiKeywords);
         }
-      } catch (error) {
+      } catch {
         console.warn('Failed to get AI keywords for fallback, using pattern matching');
       }
     }
