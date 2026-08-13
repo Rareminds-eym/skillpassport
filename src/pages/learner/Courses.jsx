@@ -10,36 +10,46 @@ import {
     Lock,
     Play,
     TrendingUp,
-    Users
+    Users,
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { SearchBar, CertificateNameModal, CourseEnrollmentModal } from '@/shared/ui';
-import RareMindsLogo from '@/shared/assets/RareMindsLogo';
-import { CourseDetailModal } from '@/features/courses';
-import WeeklyLearningTracker from '@/entities/learner/ui/WeeklyLearningTracker';
-import { CourseAdvancedFilters } from '@/widgets/learner-dashboard';
-import { Badge, Button, Card, CardContent, CardHeader, CardTitle } from '@/shared/ui';
-import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from '@/shared/ui';
-
-import { apiPost, apiGet } from '@/shared/api/apiClient';
-import { enrollmentService as courseEnrollmentService, recordCourseInterest } from '@/features/courses';
-import { useSubscriptionQuery } from '@/features/subscription/model/useSubscriptionQuery';
-import { PLAN_IDS, PLAN_HIERARCHY_LEVELS } from '@/shared/config/subscriptionPlans';
-import { getLogger } from '@/shared/config/logging';
-import toast from 'react-hot-toast';
+import { 
+    CourseDetailModal, 
+    enrollmentService as courseEnrollmentService, 
+    recordCourseInterest,
+} from '@/features/courses';
 import { useCertificateModal } from '@/features/certificate-generation';
+import { useSubscriptionQuery } from '@/features/subscription/model/useSubscriptionQuery';
+import { CourseAdvancedFilters } from '@/widgets/learner-dashboard';
+import { apiGet, apiPost } from '@/shared/api/apiClient';
+import { PLAN_HIERARCHY_LEVELS, PLAN_IDS } from '@/shared/config/subscriptionPlans';
+import { getLogger } from '@/shared/config/logging';
+import RareMindsLogo from '@/shared/assets/RareMindsLogo';
 import { viewCertificate } from '@/shared/lib/certificateUtils';
-
 import { useUser } from '@/shared/model/authStore';
+import {
+    Badge,
+    Button,
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+    CertificateNameModal,
+    CourseEnrollmentModal,
+    Pagination,
+    PaginationContent,
+    PaginationEllipsis,
+    PaginationItem,
+    PaginationLink,
+    PaginationNext,
+    PaginationPrevious,
+    SearchBar,
+} from '@/shared/ui';
+import WeeklyLearningTracker from '@/entities/learner/ui/WeeklyLearningTracker';
+
+
 
 const logger = getLogger('courses-page');
 
@@ -50,6 +60,7 @@ const Courses = () => {
   const userPlan = subscriptionData?.plan ?? PLAN_IDS.FREEMIUM;
   
   const [courses, setCourses] = useState([]);
+  const [assignedCourseIds, setAssignedCourseIds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [initialLoad, setInitialLoad] = useState(true);
   const [learnerGrade, setLearnerGrade] = useState(null);
@@ -79,6 +90,7 @@ const Courses = () => {
     isMountedRef.current = true;
     return () => { isMountedRef.current = false; };
   }, []);
+
   // Synchronous duplicate-click guard for handleStartCourse. Unlike
   // pendingCourseId (state, so its update is not visible until the next
   // render), this ref is readable/writable immediately, closing the window
@@ -308,7 +320,7 @@ const Courses = () => {
         limit: coursesPerPage,
         sortBy: sortBy,
         enrollmentRange: advancedFilters.enrollmentRange,
-        postedWithin: advancedFilters.postedWithin
+        postedWithin: advancedFilters.postedWithin,
       };
 
       const res = await apiPost('/learner-pages/actions', {
@@ -318,6 +330,7 @@ const Courses = () => {
 
       setCourses(res?.data?.courses || []);
       setTotalCount(res?.data?.total || 0);
+      setAssignedCourseIds(res?.data?.assignedCourseIds || []);
 
       if (isFirstLoad) {
         setInitialLoad(false);
@@ -606,14 +619,21 @@ const Courses = () => {
     isCapturingRef.current = true;
 
     try {
-      // Webinars/live events bypass interest capture entirely and open directly,
-      // exactly as all courses did before this feature was introduced.
+      // Webinars bypass interest capture — navigate directly
       if (course.course_type === 'webinar') {
         setShowDetailModal(false);
         navigate(`/learner/courses/${courseId}/learn`);
         return;
       }
 
+      // Assigned courses (in demo_course_access) bypass interest modal — navigate directly
+      if (assignedCourseIds.includes(courseId)) {
+        setShowDetailModal(false);
+        navigate(`/learner/courses/${courseId}/learn`);
+        return;
+      }
+
+      // All other courses → show interest modal (existing behavior)
       setPendingCourseId(courseId);
       try {
         if (typeof recordCourseInterest !== 'function') {
@@ -621,9 +641,6 @@ const Courses = () => {
         }
         await recordCourseInterest(courseId);
         if (!isMountedRef.current) return;
-        // The detail modal stays open behind the confirmation - closing it here
-        // would unmount the control still showing its pending state. It is closed
-        // when the learner dismisses the confirmation.
         setShowInterestModal(true);
       } catch (error) {
         logger.error('Failed to record interest', error instanceof Error ? error : new Error(String(error)));
