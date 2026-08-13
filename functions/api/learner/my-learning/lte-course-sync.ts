@@ -26,13 +26,16 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       `learners?user_id=eq.${encodeURIComponent(userId)}&select=id`,
     );
     if (!learner) {
-      return apiSuccess({ found: false, synced: 0, updated: 0 }, context.request);
+      return apiSuccess({ found: false, synced: 0, updated: 0, skipped: 0 }, context.request);
     }
 
     const capabilities = await fetchLteCapabilities(env, userId);
     const result = await upsertLteTrainings(db, learner.id, capabilities);
 
-    return apiSuccess({ found: true, synced: result.synced, updated: result.updated }, context.request);
+    return apiSuccess(
+      { found: true, synced: result.synced, updated: result.updated, skipped: result.skipped },
+      context.request,
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown sync error';
     return apiError(502, 'LTE_SYNC_FAILED', message, context.request);

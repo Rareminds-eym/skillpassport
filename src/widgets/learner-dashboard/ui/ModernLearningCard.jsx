@@ -905,6 +905,38 @@ const ModernLearningCard = ({
                         style={{ width: `${progress}%` }}
                       />
                     </div>
+
+                    {/* LTE per-level progress ladder */}
+                    {item.lteLevels && item.lteLevels.length > 0 && (
+                      <div className="mt-3 space-y-1.5">
+                        {item.lteLevels.map((lvl, idx) => {
+                          const lvlPct = Math.min(100, Math.max(0, Number(lvl.completionPercentage) || 0));
+                          const lvlDone = lvl.status === 'completed' || lvlPct === 100;
+                          return (
+                            <div key={lvl.id || idx} className="flex items-center gap-2">
+                              <span
+                                className={`w-6 shrink-0 text-[11px] font-semibold ${
+                                  lvlDone ? 'text-green-600' : 'text-slate-500'
+                                }`}
+                              >
+                                {lvl.code || `L${idx + 1}`}
+                              </span>
+                              <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                <div
+                                  className={`h-full rounded-full ${lvlDone ? 'bg-green-500' : 'bg-blue-500'}`}
+                                  style={{ width: `${lvlPct}%` }}
+                                />
+                              </div>
+                              {lvl.totalModules > 0 && (
+                                <span className="shrink-0 text-[11px] text-slate-400">
+                                  {lvl.completedModules || 0}/{lvl.totalModules}
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </>
                 )}
               </div>
@@ -949,12 +981,17 @@ const ModernLearningCard = ({
                 ) : (
                   /* Internal Course Stats - Modules, Skills, Duration */
                   <>
-                    {item.totalModules > 0 && (
+                    {item.totalModules > 0 ? (
                       <div className="flex items-center gap-1.5">
                         <ListChecks className="w-4 h-4" />
-                        <span>{item.completedModules || 0}/{item.totalModules} modules</span>
+                        <span>{item.completedModules || 0} of {item.totalModules} modules completed</span>
                       </div>
-                    )}
+                    ) : isLteCourse ? (
+                      <div className="flex items-center gap-1.5">
+                        <Clock className="w-4 h-4" />
+                        <span>Course content not live yet</span>
+                      </div>
+                    ) : null}
                     {item.skills && item.skills.length > 0 && (
                       <div className="flex items-center gap-1.5">
                         <Briefcase className="w-4 h-4" />
@@ -1266,7 +1303,11 @@ const ModernLearningCard = ({
                 <div className="flex items-center gap-2 text-sm text-slate-600 bg-slate-50 rounded-lg sm:rounded-xl p-2.5 sm:p-3">
                   <ListChecks className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-slate-400" />
                   <div>
-                    <div className="font-semibold text-sm sm:text-base">{item.totalModules}</div>
+                    <div className="font-semibold text-sm sm:text-base">
+                      {isLteCourse && item.lteLevels && item.lteLevels.length > 0
+                        ? item.lteLevels.length
+                        : item.totalModules}
+                    </div>
                     <div className="text-xs text-slate-500">{isCourseEnrollment ? 'lessons' : isLteCourse ? 'levels' : 'modules'}</div>
                   </div>
                 </div>

@@ -1,11 +1,21 @@
 import { z } from 'zod';
-import { LTE_CAPABILITY_STATUSES, type LteCapabilityStatus, type LteSyncCapability } from './lte-sync-write';
+import { LTE_CAPABILITY_STATUSES, type LteCapabilityStatus, type LteSyncCapability, type LteSyncLevel } from './lte-sync-write';
 import { callLteGateway, LteGatewayError } from './lte-gateway-client';
 
 export { CALLER_APP, SUPPORTED_ACTIONS, type LteAction } from './lte-gateway-client';
 
 /** Gateway action verb used by this wrapper — must match LTE's action registry. */
 export const ACTION = 'capabilities:get';
+
+const LteLevelSchema = z.object({
+  id: z.string().optional(),
+  code: z.string(),
+  title: z.string(),
+  status: z.string().optional(),
+  completionPercentage: z.number().optional(),
+  totalModules: z.number().optional(),
+  completedModules: z.number().optional(),
+});
 
 const LteCapabilitySchema = z.object({
   id: z.string().min(1),
@@ -16,8 +26,12 @@ const LteCapabilitySchema = z.object({
   currentLevel: z.number().optional(),
   totalLevels: z.number().optional(),
   durationHours: z.number().optional(),
+  totalModules: z.number().optional(),
+  completedModules: z.number().optional(),
+  levels: z.array(LteLevelSchema).optional(),
   roleName: z.string().optional(),
   resumeUrl: z.string().optional(),
+  fingerprint: z.string().optional(),
 });
 
 const CapabilitiesDataSchema = z.object({
@@ -26,6 +40,18 @@ const CapabilitiesDataSchema = z.object({
 
 function isStatus(value?: string): value is LteCapabilityStatus {
   return !!value && (LTE_CAPABILITY_STATUSES as readonly string[]).includes(value);
+}
+
+function mapLevel(level: z.infer<typeof LteLevelSchema>): LteSyncLevel {
+  return {
+    id: level.id,
+    code: level.code,
+    title: level.title,
+    status: level.status ?? 'not_started',
+    completionPercentage: level.completionPercentage ?? 0,
+    totalModules: level.totalModules ?? 0,
+    completedModules: level.completedModules ?? 0,
+  };
 }
 
 /**
@@ -54,8 +80,12 @@ export async function fetchLteCapabilities(
     currentLevel: c.currentLevel ?? 0,
     totalLevels: c.totalLevels ?? 0,
     durationHours: c.durationHours ?? 0,
+    totalModules: c.totalModules ?? 0,
+    completedModules: c.completedModules ?? 0,
+    levels: c.levels && c.levels.length > 0 ? c.levels.map(mapLevel) : [],
     roleName: c.roleName,
     resumeUrl: c.resumeUrl,
+    fingerprint: c.fingerprint,
   }));
 }
 
