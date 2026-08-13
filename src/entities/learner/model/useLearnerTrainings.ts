@@ -222,7 +222,7 @@ export const useLearnerTrainings = (learnerId, options = {}) => {
       const [trainingsResult, enrollmentsResult] = await Promise.all([
         apiPost('/learner-profile/actions', {
           action: 'fetch-trainings', learnerId,
-          filters: { approval_status: 'rejected', sortField: 'created_at' },
+          filters: { approval_status: ['verified', 'approved'], sortField: 'created_at' },
         }),
         apiPost('/learner-profile/actions', {
           action: 'fetch-course-enrollments', learnerId,
