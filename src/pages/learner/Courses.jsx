@@ -60,7 +60,7 @@ const Courses = () => {
   const userPlan = subscriptionData?.plan ?? PLAN_IDS.FREEMIUM;
   
   const [courses, setCourses] = useState([]);
-  const [assignedCourseIds, setAssignedCourseIds] = useState(() => new Set());
+  const [assignedCourseIds, setAssignedCourseIds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [initialLoad, setInitialLoad] = useState(true);
   const [learnerGrade, setLearnerGrade] = useState(null);
@@ -330,7 +330,7 @@ const Courses = () => {
 
       setCourses(res?.data?.courses || []);
       setTotalCount(res?.data?.total || 0);
-      setAssignedCourseIds(new Set(res?.data?.assignedCourseIds || []));
+      setAssignedCourseIds(res?.data?.assignedCourseIds || []);
 
       if (isFirstLoad) {
         setInitialLoad(false);
@@ -627,7 +627,7 @@ const Courses = () => {
       }
 
       // Assigned courses (in demo_course_access) bypass interest modal — navigate directly
-      if (assignedCourseIds.has(courseId)) {
+      if (assignedCourseIds.includes(courseId)) {
         setShowDetailModal(false);
         navigate(`/learner/courses/${courseId}/learn`);
         return;
