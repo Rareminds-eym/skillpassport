@@ -10,36 +10,46 @@ import {
     Lock,
     Play,
     TrendingUp,
-    Users
+    Users,
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { SearchBar, CertificateNameModal, CourseEnrollmentModal } from '@/shared/ui';
-import RareMindsLogo from '@/shared/assets/RareMindsLogo';
-import { CourseDetailModal } from '@/features/courses';
-import WeeklyLearningTracker from '@/entities/learner/ui/WeeklyLearningTracker';
-import { CourseAdvancedFilters } from '@/widgets/learner-dashboard';
-import { Badge, Button, Card, CardContent, CardHeader, CardTitle } from '@/shared/ui';
-import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from '@/shared/ui';
-
-import { apiPost, apiGet } from '@/shared/api/apiClient';
-import { enrollmentService as courseEnrollmentService, recordCourseInterest } from '@/features/courses';
-import { useSubscriptionQuery } from '@/features/subscription/model/useSubscriptionQuery';
-import { PLAN_IDS, PLAN_HIERARCHY_LEVELS } from '@/shared/config/subscriptionPlans';
-import { getLogger } from '@/shared/config/logging';
-import toast from 'react-hot-toast';
+import { 
+    CourseDetailModal, 
+    enrollmentService as courseEnrollmentService, 
+    recordCourseInterest,
+} from '@/features/courses';
 import { useCertificateModal } from '@/features/certificate-generation';
+import { useSubscriptionQuery } from '@/features/subscription/model/useSubscriptionQuery';
+import { CourseAdvancedFilters } from '@/widgets/learner-dashboard';
+import { apiGet, apiPost } from '@/shared/api/apiClient';
+import { PLAN_HIERARCHY_LEVELS, PLAN_IDS } from '@/shared/config/subscriptionPlans';
+import { getLogger } from '@/shared/config/logging';
+import RareMindsLogo from '@/shared/assets/RareMindsLogo';
 import { viewCertificate } from '@/shared/lib/certificateUtils';
-
 import { useUser } from '@/shared/model/authStore';
+import {
+    Badge,
+    Button,
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+    CertificateNameModal,
+    CourseEnrollmentModal,
+    Pagination,
+    PaginationContent,
+    PaginationEllipsis,
+    PaginationItem,
+    PaginationLink,
+    PaginationNext,
+    PaginationPrevious,
+    SearchBar,
+} from '@/shared/ui';
+import WeeklyLearningTracker from '@/entities/learner/ui/WeeklyLearningTracker';
+
+
 
 const logger = getLogger('courses-page');
 
@@ -50,7 +60,7 @@ const Courses = () => {
   const userPlan = subscriptionData?.plan ?? PLAN_IDS.FREEMIUM;
   
   const [courses, setCourses] = useState([]);
-  const [assignedCourseIds, setAssignedCourseIds] = useState(new Set());
+  const [assignedCourseIds, setAssignedCourseIds] = useState(() => new Set());
   const [loading, setLoading] = useState(true);
   const [initialLoad, setInitialLoad] = useState(true);
   const [learnerGrade, setLearnerGrade] = useState(null);

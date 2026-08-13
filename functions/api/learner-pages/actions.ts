@@ -1,5 +1,5 @@
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import { withAuth, getContextUser } from '../../lib/auth';
+import { getContextUser, withAuth } from '../../lib/auth';
 import { apiDbError, apiError, apiSuccess, } from '../../lib/response';
 import { getServiceClient } from '../../lib/supabase';
 
@@ -438,12 +438,17 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         // ── Server-side visibility enforcement ──────────────────────────
         // Derive authenticated user from withAuth context — no userId from frontend
         const authUser = getContextUser(context);
-        const { data: learner } = await supabase
+        if (!authUser?.id) {
+          return apiError(401, 'UNAUTHORIZED', 'Missing authenticated user', context.request, { startTime });
+        }
+        const { data: learner, error: learnerError } = await supabase
           .from('learners')
           .select('id')
           .eq('user_id', authUser.id)
           .maybeSingle();
-
+        if (learnerError && learnerError.code !== 'PGRST116') {
+          return apiDbError(learnerError, context.request, { startTime });
+        }
         let serverAllowedCourseIds: string[] = [];
         if (learner?.id) {
           const { data: accessRows, error: accessError } = await supabase
