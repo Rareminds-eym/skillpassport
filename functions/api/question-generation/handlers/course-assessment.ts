@@ -1,6 +1,6 @@
 
 import { createSupabaseClient } from '../../../lib/supabase';
-import { PagesEnv } from '../../../lib/types';
+import type { PagesEnv } from '../../../lib/types';
 import { SYSTEM_PROMPT } from '../prompts';
 import {
     callOpenRouterWithRetry,
@@ -184,8 +184,6 @@ Before responding, verify you have EXACTLY ${questionCount} questions. Generate 
 
         if (insertError) {
             console.warn('⚠️ Could not cache assessment to database:', insertError.message);
-        } else {
-            console.log('✅ Assessment cached to database');
         }
     } catch (cacheError: any) {
         console.warn('⚠️ Database insert exception:', cacheError.message);

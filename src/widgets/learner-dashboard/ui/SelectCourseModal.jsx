@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { apiPost } from '@/shared/api/apiClient';
-import { X, BookOpen, ExternalLink, Search } from 'lucide-react';
+import { X, BookOpen, ExternalLink } from 'lucide-react';
 import AddLearningCourseModal from './AddLearningCourseModal';
 import LearningProgressBar from './LearningProgressBar';
 import { SearchBar } from '@/shared/ui';

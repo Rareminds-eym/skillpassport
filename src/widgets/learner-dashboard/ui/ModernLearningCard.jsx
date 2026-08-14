@@ -471,13 +471,6 @@ const ModernLearningCard = ({
     );
   };
 
-  const renderListOngoingStatus = () => (
-    <div className="flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 rounded-xl sm:rounded-2xl font-semibold text-sm bg-gradient-to-r from-blue-100 to-blue-200 text-blue-600">
-      <Clock className="w-4 h-4" />
-      <span>Ongoing</span>
-    </div>
-  );
-
   const renderListAssessmentButton = () => (
     <button
       onClick={() => navigate("/learner/assessment/platform", {
@@ -586,15 +579,6 @@ const ModernLearningCard = ({
       </div>
     );
   };
-
-  // Helper function to render ongoing status
-  const renderOngoingStatus = () => (
-    <div className="flex items-center justify-center gap-2 w-full py-3 rounded-xl sm:rounded-2xl font-bold text-sm bg-gradient-to-r from-blue-100 to-blue-200 text-blue-600">
-      <Clock className="w-4 sm:w-5 h-4 sm:h-5" />
-      <span className="hidden xs:inline">Ongoing</span>
-      <span className="xs:hidden">Ongoing</span>
-    </div>
-  );
 
   // Helper function to render take assessment button
   const renderAssessmentButton = () => (
