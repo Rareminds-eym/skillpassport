@@ -636,7 +636,8 @@ const Courses = () => {
         // would unmount the control still showing its pending state. It is closed
         // when the learner dismisses the confirmation.
         setShowInterestModal(true);
-      } catch {
+      } catch (error) {
+        console.error('[Courses] Failed to record interest:', error);
         if (!isMountedRef.current) return;
         toast.error('Unable to record your interest. Please try again.');
       } finally {
@@ -729,6 +730,7 @@ const Courses = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                   {/* Courses Tab */}
                   <button
+                    type="button"
                     onClick={() => setActiveTab('courses')}
                     className={`relative text-left p-4 rounded-lg transition-all ${
                       activeTab === 'courses'
@@ -759,6 +761,7 @@ const Courses = () => {
 
                   {/* Weekly Learning Progress Tab */}
                   <button
+                    type="button"
                     onClick={() => setActiveTab('progress')}
                     className={`relative text-left p-4 rounded-lg transition-all ${
                       activeTab === 'progress'
@@ -821,6 +824,7 @@ const Courses = () => {
                 {/* Branch Filter Toggle - Only show if learner has a branch */}
                 {learnerBranch && (
                   <button
+                    type="button"
                     onClick={() => {
                       isFetchingRef.current = false; // Reset fetch lock
                       setFilterByBranch(!filterByBranch);
@@ -871,12 +875,14 @@ const Courses = () => {
                 {/* View Mode Toggle */}
                 <div className="flex border border-gray-300 rounded-lg overflow-hidden h-12 bg-white shadow-sm">
                   <button
+                    type="button"
                     onClick={() => setViewMode('grid')}
                     className={`px-4 flex items-center justify-center ${viewMode === 'grid' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
                   >
                     <Grid3x3 className="w-5 h-5" />
                   </button>
                   <button
+                    type="button"
                     onClick={() => setViewMode('list')}
                     className={`px-4 flex items-center justify-center ${viewMode === 'list' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
                   >
@@ -887,6 +893,7 @@ const Courses = () => {
                 {/* Clear Filters Button */}
                 {(filterStatus !== 'all' || searchTerm !== '' || sortBy !== 'created_at' || hasActiveAdvancedFilters() || (learnerBranch && !filterByBranch)) && (
                   <button
+                    type="button"
                     onClick={() => {
                       setFilterStatus('all');
                       setSearchTerm('');
