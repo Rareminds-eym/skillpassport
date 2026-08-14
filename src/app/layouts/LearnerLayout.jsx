@@ -4,6 +4,7 @@ import { useUser } from '@/shared/model/authStore';
 import { useLearnerDashboard, LearnerTypeSelectionModal } from '@/features/learner-profile';
 import { NewHeader, Sidebar, MobileSidebar, ProfileHeroEdit } from '@/widgets/learner-dashboard';
 import { FloatingAIButton } from '@/features/career-assistant';
+import { useSidebarStore } from '@/shared/model/sidebarStore';
 import {
   EducationEditModal,
   TrainingEditModal,
@@ -61,6 +62,7 @@ const LearnerLayout = () => {
   const [activeModal, setActiveModal] = useState(null);
   const [showLearnerTypeModal, setShowLearnerTypeModal] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { isCollapsed } = useSidebarStore();
 
   // Fetch learner data using backend API
   const {
@@ -145,8 +147,8 @@ const LearnerLayout = () => {
       {/* Sidebar - Fixed position */}
       {!pageState.isAssessmentTestPage && <Sidebar />}
 
-      {/* Main content area with left margin for sidebar on desktop */}
-      <div className={`flex-1 flex flex-col ${!pageState.isAssessmentTestPage ? 'lg:ml-56' : ''}`}>
+      {/* Main content area with dynamic left margin based on sidebar state */}
+      <div className={`flex-1 flex flex-col transition-all duration-300 ${!pageState.isAssessmentTestPage ? (isCollapsed ? 'lg:ml-16' : 'lg:ml-56') : ''}`}>
         {/* Hero Section - Always visible on dashboard */}
         {!pageState.isViewingOthersProfile && pageState.isDashboardPage && (
           <ProfileHeroEdit

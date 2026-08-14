@@ -16,10 +16,10 @@ import {
     ArrowRightOnRectangleIcon,
 } from "@heroicons/react/24/outline";
 import { useLocation, useNavigate } from "react-router-dom";
-import { useState } from "react";
 import { useUser } from '@/shared/model/authStore';
 import { useLearnerDataByEmail } from '@/entities/learner';
 import { useAuthActions } from '@/shared/model/authStore';
+import { useSidebarStore } from '@/shared/model/sidebarStore';
 import bulbLogo from '@/shared/assets/bulb.png';
 import RareMindsLogo from '@/shared/assets/RareMindsLogo';
 
@@ -36,7 +36,7 @@ const Sidebar = () => {
     const navigate = useNavigate();
     const user = useUser();
     const { logout } = useAuthActions();
-    const [isCollapsed, setIsCollapsed] = useState(false);
+    const { isCollapsed, setIsCollapsed } = useSidebarStore();
 
     const userEmail = user?.email || localStorage.getItem("userEmail");
     const { learnerData } = useLearnerDataByEmail(userEmail);
