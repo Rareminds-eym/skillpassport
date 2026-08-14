@@ -526,12 +526,14 @@ async function handler(context: AuthenticatedContext): Promise<Response> {
     // user.id is the SSO subject claim, which matches learners.user_id - the
     // foreign key target. Confirm the learner profile exists so a missing one
     // returns NOT_FOUND rather than a foreign key violation.
-    const { data: learner } = await supabase.from('learners').select('user_id').eq('user_id', user.id).maybeSingle();
+    const { data: learner, error: learnerError } = await supabase.from('learners').select('user_id').eq('user_id', user.id).maybeSingle();
+    if (learnerError) return apiDbError(learnerError, request);
     if (!learner) return apiError(404, 'NOT_FOUND', 'Learner not found', request);
 
     // Confirm the course exists so an invalid courseId returns NOT_FOUND
     // rather than a foreign key violation.
-    const { data: course } = await supabase.from('courses').select('course_id').eq('course_id', courseId).maybeSingle();
+    const { data: course, error: courseError } = await supabase.from('courses').select('course_id').eq('course_id', courseId).maybeSingle();
+    if (courseError) return apiDbError(courseError, request);
     if (!course) return apiError(404, 'NOT_FOUND', 'Course not found', request);
 
     // ignoreDuplicates so the first expression of interest is preserved - the
@@ -648,7 +650,7 @@ async function handler(context: AuthenticatedContext): Promise<Response> {
     const { data: skillMatches } = await supabase.from('course_skills').select('course_id, skill_name, proficiency_level').ilike('skill_name', `%${skillLower}%`);
     if (!skillMatches?.length) return apiSuccess([], request);
     const courseIds = [...new Set(skillMatches.map((s: any) => s.course_id))];
-    const { data: courses } = await supabase.from('courses').select('course_id, title, code, description, duration, category, target_outcomes, status').in('course_id', courseIds).eq('status', 'Active').is('deleted_at', null);
+    const { data: courses } = await supabase.from('courses').select('course_id, title, code, description, duration, category, target_outcomes, status, course_type').in('course_id', courseIds).eq('status', 'Active').is('deleted_at', null);
     if (!courses?.length) return apiSuccess([], request);
     const { data: allSkills } = await supabase.from('course_skills').select('course_id, skill_name').in('course_id', courseIds);
     const skillsByCourse: Record<string, string[]> = {};
