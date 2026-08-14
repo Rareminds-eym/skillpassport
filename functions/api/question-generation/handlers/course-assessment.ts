@@ -37,12 +37,13 @@ export async function generateAssessment(
             .single();
 
         if (!cacheError && existing) {
+            const cachedQuestions = Array.isArray(existing.questions) ? existing.questions : [];
             console.log(`✅ Returning cached questions for: ${courseName} (${level})`);
             return {
                 course: courseName,
                 level: existing.assessment_level,
-                total_questions: existing.total_questions,
-                questions: existing.questions,
+                total_questions: cachedQuestions.length,
+                questions: cachedQuestions,
                 cached: true
             };
         }
@@ -70,12 +71,14 @@ export async function generateAssessment(
 Before responding, verify you have EXACTLY ${questionCount} questions. Generate ONLY valid JSON with no markdown.`;
 
     // Use OpenRouter with automatic retry and fallback
-    console.log(`🔑 Using OpenRouter with retry for ${questionCount} questions`);
+    // Scale max_tokens with questionCount so the full set of questions fits without truncation
+    const maxTokens = Math.max(1200, questionCount * 180);
+    console.log(`🔑 Using OpenRouter with retry for ${questionCount} questions (maxTokens: ${maxTokens})`);
 
     const jsonText = await callOpenRouterWithRetry(openRouterKey, [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: prompt }
-    ]);
+    ], { maxTokens });
 
     const data = repairAndParseJSON(jsonText);
     let questions = data.questions || data;
@@ -174,7 +177,7 @@ Before responding, verify you have EXACTLY ${questionCount} questions. Generate 
             .insert({
                 certificate_name: courseName,
                 assessment_level: level,
-                total_questions: questionCount,
+                total_questions: questions.length,
                 questions: questions,
                 generated_by: 'openrouter-ai'
             });
@@ -191,7 +194,7 @@ Before responding, verify you have EXACTLY ${questionCount} questions. Generate 
     return {
         course: courseName,
         level: level,
-        total_questions: questionCount,
+        total_questions: questions.length,
         questions: questions,
         cached: false
     };
