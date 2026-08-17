@@ -34,7 +34,7 @@ export { analyzeAssessmentWithGemini } from './geminiAssessmentService';
 // =============================================================================
 
 // External Assessment Service (course-specific skill tests)
-export { checkAssessmentStatus, createAssessmentAttempt, updateAssessmentProgress, completeAssessment, saveAssessmentAttempt, getAssessmentHistory, getAssessmentByCourse } from './externalAssessmentService';
+export { checkAssessmentStatus, createAssessmentAttempt, updateAssessmentProgress, completeAssessment, saveAssessmentAttempt, getAssessmentHistory, getAssessmentByCourse, updateTrainingAfterAssessment } from './externalAssessmentService';
 
 // =============================================================================
 // ADAPTIVE APTITUDE ASSESSMENT SERVICES

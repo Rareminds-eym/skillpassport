@@ -2,11 +2,17 @@
 /**
  * External Assessment Service
  * Handles external course assessment attempts
+ *
+ * All persistence goes through backend Pages Functions:
+ *   POST /api/external-assessment/actions  (attempt lifecycle)
+ *   PUT  /api/learners/trainings           (training approval sync)
+ * The backend uses the service-role client and enforces learner ownership,
+ * which a frontend client cannot do safely under this project's SSO auth.
  */
+import { apiPost, apiPut } from '@/shared/api/apiClient';
 
 type AssessmentStatus = 'not_started' | 'in_progress' | 'completed';
 type AssessmentLevel = 'Beginner' | 'Intermediate' | 'Advanced';
-type Difficulty = 'easy' | 'medium' | 'hard';
 
 interface Question {
   id: number | string;
@@ -68,6 +74,13 @@ interface OperationResult {
   score?: number | null;
 }
 
+interface TrainingUpdateResult {
+  success: boolean;
+  updated?: boolean;
+  reason?: string;
+  error?: string;
+}
+
 interface CreateAttemptData {
   learnerId: string;
   courseName: string;
@@ -99,21 +112,18 @@ export async function checkAssessmentStatus(
   courseName: string
 ): Promise<StatusResult> {
   try {
-    const { data, error } = await supabase
-      .from('external_assessment_attempts')
-      .select('*')
-      .eq('learner_id', learnerId)
-      .eq('course_name', courseName)
-      .maybeSingle();
+    const envelope = await apiPost<{ data?: { status?: string; attempt?: AssessmentAttempt | null } }>(
+      '/external-assessment/actions',
+      { action: 'check-status', learnerId, courseName }
+    );
+    const result = envelope?.data;
 
-    if (error) {
-      throw error;
-    }
-
-    if (!data) {
+    if (!result || !result.attempt) {
       console.log('ℹ️ checkAssessmentStatus: No attempt found');
       return { status: 'not_started', attempt: null };
     }
+
+    const data = result.attempt;
 
     console.log('📊 checkAssessmentStatus: Found attempt in database:', {
       id: data.id,
@@ -125,7 +135,7 @@ export async function checkAssessmentStatus(
     });
 
     return {
-      status: data.status as AssessmentStatus,
+      status: result.status as AssessmentStatus,
       attempt: data as AssessmentAttempt
     };
   } catch (error) {
@@ -149,45 +159,16 @@ export async function createAssessmentAttempt(
       questions
     } = attemptData;
 
-    const emptyAnswers: Answer[] = questions.map((q) => ({
-      question_id: q.id,
-      selected_answer: null,
-      is_correct: null,
-      time_taken: 0
-    }));
-
-    const { data, error } = await supabase
-      .from('external_assessment_attempts')
-      .insert({
-        learner_id: learnerId,
-        course_name: courseName,
-        course_id: courseId,
-        assessment_level: assessmentLevel,
-        total_questions: questions.length,
-        questions: questions,
-        learner_answers: emptyAnswers,
-        current_question_index: 0,
-        status: 'in_progress',
-        time_remaining: 900,
-        started_at: new Date().toISOString()
-      })
-      .select()
-      .single();
-
-    if (error) {
-      if (error.code === '23505') {
-        return {
-          success: false,
-          data: null,
-          error: 'Assessment already exists for this course'
-        };
-      }
-      throw error;
-    }
+    // The backend builds the empty learner_answers array and the remaining
+    // attempt defaults, so only the identifying fields are sent here.
+    const envelope = await apiPost<{ data?: AssessmentAttempt }>(
+      '/external-assessment/actions',
+      { action: 'create-attempt', learnerId, courseName, courseId, assessmentLevel, questions }
+    );
 
     return {
       success: true,
-      data: data as AssessmentAttempt,
+      data: (envelope?.data ?? null) as AssessmentAttempt | null,
       error: null
     };
   } catch (error) {
@@ -222,54 +203,21 @@ export async function updateAssessmentProgress(
   });
 
   try {
-    console.log('📡 Fetching current attempt from database...');
-    const { data: currentAttempt, error: fetchError } = await supabase
-      .from('external_assessment_attempts')
-      .select('learner_answers, questions')
-      .eq('id', attemptId)
-      .single();
-
-    if (fetchError) {
-      console.error('❌ Fetch error:', fetchError);
-      throw fetchError;
-    }
-
-    console.log('✅ Current attempt fetched:', {
-      answersCount: currentAttempt.learner_answers?.length,
-      questionsCount: currentAttempt.questions?.length
-    });
-
-    const updatedAnswers = [...currentAttempt.learner_answers];
-    const question = currentAttempt.questions[questionIndex];
-    
-    const correctAnswer = question.correct_answer || question.correctAnswer;
-    
-    updatedAnswers[questionIndex] = {
-      question_id: question.id,
-      selected_answer: answer,
-      is_correct: answer === correctAnswer,
-      time_taken: updatedAnswers[questionIndex]?.time_taken || 0
-    };
-
     console.log('💾 Saving to database...', {
       updatingAnswerAt: questionIndex,
       resumeFromIndex: resumeIndex
     });
-    
-    const { error: updateError } = await supabase
-      .from('external_assessment_attempts')
-      .update({
-        learner_answers: updatedAnswers,
-        current_question_index: resumeIndex,
-        time_remaining: timeRemaining,
-        last_activity_at: new Date().toISOString()
-      })
-      .eq('id', attemptId);
 
-    if (updateError) {
-      console.error('❌ Update error:', updateError);
-      throw updateError;
-    }
+    // The backend fetches the attempt, scores the answer against the stored
+    // question, and writes the update in one ownership-checked round trip.
+    await apiPost('/external-assessment/actions', {
+      action: 'update-progress',
+      attemptId,
+      questionIndex,
+      answer,
+      timeRemaining,
+      resumeFromIndex: resumeIndex
+    });
 
     console.log('✅ Database updated successfully!', {
       answeredQuestionIndex: questionIndex,
@@ -291,58 +239,17 @@ export async function completeAssessment(
   timeTaken: number
 ): Promise<OperationResult> {
   try {
-    const { data: attempt, error: fetchError } = await supabase
-      .from('external_assessment_attempts')
-      .select('*')
-      .eq('id', attemptId)
-      .single();
+    // The backend recomputes the score and difficulty breakdown from the
+    // stored attempt and marks it completed, so the score is authoritative
+    // server-side rather than trusted from the client.
+    const envelope = await apiPost<{ data?: { score?: number } }>(
+      '/external-assessment/actions',
+      { action: 'complete', attemptId, timeTaken }
+    );
 
-    if (fetchError) throw fetchError;
+    const score = envelope?.data?.score ?? null;
 
-    const typedAttempt = attempt as AssessmentAttempt;
-    const correctCount = typedAttempt.learner_answers.filter((a) => a.is_correct).length;
-    const score = Math.round((correctCount / typedAttempt.total_questions) * 100);
-
-    const breakdown: DifficultyBreakdown = {
-      easy: { total: 0, correct: 0, percentage: 0 },
-      medium: { total: 0, correct: 0, percentage: 0 },
-      hard: { total: 0, correct: 0, percentage: 0 }
-    };
-
-    typedAttempt.questions.forEach((q, idx) => {
-      const difficulty = q.difficulty as Difficulty;
-      if (breakdown[difficulty]) {
-        breakdown[difficulty].total++;
-        if (typedAttempt.learner_answers[idx]?.is_correct) {
-          breakdown[difficulty].correct++;
-        }
-      }
-    });
-
-    Object.keys(breakdown).forEach((key) => {
-      const diff = key as Difficulty;
-      if (breakdown[diff].total > 0) {
-        breakdown[diff].percentage = Math.round(
-          (breakdown[diff].correct / breakdown[diff].total) * 100
-        );
-      }
-    });
-
-    const { error: updateError } = await supabase
-      .from('external_assessment_attempts')
-      .update({
-        status: 'completed',
-        score: score,
-        correct_answers: correctCount,
-        time_taken: timeTaken,
-        difficulty_breakdown: breakdown,
-        completed_at: new Date().toISOString()
-      })
-      .eq('id', attemptId);
-
-    if (updateError) throw updateError;
-
-    return { success: true, score: score };
+    return { success: true, score };
   } catch (error) {
     console.error('Error completing assessment:', error);
     return { success: false, score: null };
@@ -371,40 +278,31 @@ export async function saveAssessmentAttempt(
       completedAt
     } = attemptData;
 
-    const { data, error } = await supabase
-      .from('external_assessment_attempts')
-      .insert({
-        learner_id: learnerId,
-        course_name: courseName,
-        course_id: courseId,
-        assessment_level: assessmentLevel,
-        total_questions: questions.length,
-        questions: questions,
-        learner_answers: learnerAnswers,
-        score: score,
-        correct_answers: correctAnswers,
-        time_taken: timeTaken,
-        difficulty_breakdown: difficultyBreakdown,
-        started_at: startedAt,
-        completed_at: completedAt
-      })
-      .select()
-      .single();
-
-    if (error) {
-      if (error.code === '23505') {
-        return {
-          success: false,
-          data: null,
-          error: 'You have already completed this assessment'
-        };
+    // Routed through create-attempt; the backend owns the insert and its
+    // ownership check. The completed-attempt fields below are accepted by the
+    // same action, which fills in any it does not receive.
+    const envelope = await apiPost<{ data?: AssessmentAttempt }>(
+      '/external-assessment/actions',
+      {
+        action: 'create-attempt',
+        learnerId,
+        courseName,
+        courseId,
+        assessmentLevel,
+        questions,
+        learnerAnswers,
+        score,
+        correctAnswers,
+        timeTaken,
+        difficultyBreakdown,
+        startedAt,
+        completedAt
       }
-      throw error;
-    }
+    );
 
     return {
       success: true,
-      data: data as AssessmentAttempt,
+      data: (envelope?.data ?? null) as AssessmentAttempt | null,
       error: null
     };
   } catch (error) {
@@ -419,19 +317,43 @@ export async function saveAssessmentAttempt(
 }
 
 /**
+ * Applies the outcome of a completed assessment to the linked training record.
+ *
+ * On a passing score the backend auto-approves the training, mirroring the
+ * manual admin approve-training flow. Failures are returned rather than thrown
+ * so the caller can decide whether they are fatal.
+ */
+export async function updateTrainingAfterAssessment(
+  learnerId: string,
+  trainingId: string,
+  score: number,
+  passed: boolean
+): Promise<TrainingUpdateResult> {
+  try {
+    const result = await apiPut<{ data?: { updated?: boolean; reason?: string } }>(
+      '/learners/trainings',
+      { learnerId, trainingId, score, passed }
+    );
+
+    return { success: true, ...result?.data };
+  } catch (error) {
+    const err = error as Error;
+    console.error('Error updating training after assessment:', err);
+    return { success: false, error: err.message || 'Failed to update training status' };
+  }
+}
+
+/**
  * Get learner's assessment history
  */
 export async function getAssessmentHistory(learnerId: string): Promise<AssessmentAttempt[]> {
   try {
-    const { data, error } = await supabase
-      .from('external_assessment_attempts')
-      .select('*')
-      .eq('learner_id', learnerId)
-      .order('completed_at', { ascending: false });
+    const envelope = await apiPost<{ data?: AssessmentAttempt[] }>(
+      '/external-assessment/actions',
+      { action: 'history', learnerId }
+    );
 
-    if (error) throw error;
-
-    return (data || []) as AssessmentAttempt[];
+    return (envelope?.data || []) as AssessmentAttempt[];
   } catch (error) {
     console.error('Error fetching assessment history:', error);
     return [];
@@ -446,18 +368,12 @@ export async function getAssessmentByCourse(
   courseName: string
 ): Promise<AssessmentAttempt | null> {
   try {
-    const { data, error } = await supabase
-      .from('external_assessment_attempts')
-      .select('*')
-      .eq('learner_id', learnerId)
-      .eq('course_name', courseName)
-      .maybeSingle();
+    const envelope = await apiPost<{ data?: AssessmentAttempt | null }>(
+      '/external-assessment/actions',
+      { action: 'get-by-course', learnerId, courseName }
+    );
 
-    if (error) {
-      throw error;
-    }
-
-    return (data as AssessmentAttempt) || null;
+    return (envelope?.data as AssessmentAttempt) || null;
   } catch (error) {
     console.error('Error fetching assessment:', error);
     return null;
