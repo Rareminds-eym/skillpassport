@@ -23,7 +23,6 @@ import { useUser } from '@/shared/model/authStore';
 import { useLearnerDataById } from '@/entities/learner';
 import { apiPost, apiGet } from '@/shared/api/apiClient';
 import { downloadCertificate, viewCertificate } from "@/shared/lib/certificateUtils";
-import { checkAssessmentStatus } from "@/features/assessment/api/externalAssessmentService";
 import toast from 'react-hot-toast';
 import { getLogger } from '@/shared/config/logging';
 import { useCertificateModal } from '@/features/certificate-generation';
@@ -40,14 +39,12 @@ const ModernLearningCard = ({
   item,
   onEdit,
   onDelete,
-  viewMode = 'grid'
+  viewMode = 'grid',
+  assessmentAttempt = null
 }) => {
   const navigate = useNavigate();
   const user = useUser();
   const [isHovered, setIsHovered] = useState(false);
-  const [assessmentCompleted, setAssessmentCompleted] = useState(false);
-  const [assessmentScore, setAssessmentScore] = useState(null);
-  const [checkingAssessment, setCheckingAssessment] = useState(true);
   const [isDownloading, setIsDownloading] = useState(false);
   const [certificateUrl, setCertificateUrl] = useState(item.certificateUrl || null);
   
@@ -83,6 +80,26 @@ const ModernLearningCard = ({
   // Check if course is from RareMinds platform (internal) or external
   const isInternalCourse = isCourseEnrollment || !!(item.course_id && item.source === "internal_course");
   const isExternalCourse = !isInternalCourse && (item.source === "external_course" || item.source === "manual");
+
+  // Derived directly from the assessmentAttempt prop (fetched once, up front, by
+  // the parent page alongside the training list) so the correct status/score is
+  // available on the very first render — no per-card fetch, no loading window.
+  const { assessmentCompleted, assessmentFailed, assessmentScore } = useMemo(() => {
+    if (!isExternalCourse || !assessmentAttempt) {
+      return { assessmentCompleted: false, assessmentFailed: false, assessmentScore: null };
+    }
+    const score = assessmentAttempt.status === 'completed' ? assessmentAttempt.score : undefined;
+    const submitted = assessmentAttempt.status === 'completed' && score !== undefined;
+    // A submitted attempt is either passed (>= 60) or failed (< 60) — these are
+    // two distinct, terminal UI states, neither of which is "pending". The
+    // underlying attempt/score in the database is unchanged either way; this
+    // only affects what the card displays.
+    return {
+      assessmentCompleted: submitted && score >= 60,
+      assessmentFailed: submitted && score < 60,
+      assessmentScore: score !== undefined ? score : null,
+    };
+  }, [isExternalCourse, assessmentAttempt]);
 
   // Memoize progress calculation to avoid recalculation on re-renders
   const progress = useMemo(() => {
@@ -137,26 +154,6 @@ const ModernLearningCard = ({
   // For external courses, completion is based on assessment completion only
   // For internal courses, completion is based on actual progress (100% = all lessons completed)
   const isCompleted = isExternalCourse ? assessmentCompleted : progress >= 100;
-
-  // Check if assessment is already completed or in progress
-  useEffect(() => {
-    const checkCompletion = async () => {
-      if (isExternalCourse && learnerData?.id && item.course) {
-        setCheckingAssessment(true);
-        const result = await checkAssessmentStatus(learnerData.id, item.course);
-        setAssessmentCompleted(result.status === 'completed');
-        // Store the assessment score if completed
-        if (result.status === 'completed' && result.attempt?.score !== undefined) {
-          setAssessmentScore(result.attempt.score);
-        }
-        setCheckingAssessment(false);
-      } else {
-        setCheckingAssessment(false);
-      }
-    };
-    
-    checkCompletion();
-  }, [isExternalCourse, learnerData?.id, item.course]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -391,6 +388,15 @@ const ModernLearningCard = ({
           icon: CheckCircle,
           label: 'Assessment Completed'
         };
+      } else if (assessmentFailed) {
+        // Submitted but did not meet the passing threshold. One attempt
+        // only — this is a terminal state, distinct from "not taken yet".
+        return {
+          bg: 'bg-gradient-to-r from-red-100 to-red-200',
+          text: 'text-red-800',
+          icon: Target,
+          label: 'Assessment Failed'
+        };
       } else {
         // External course added but assessment not taken yet
         return {
@@ -514,11 +520,11 @@ const ModernLearningCard = ({
   // Action button logic for list view
   const renderListActionButton = () => {
     // External courses logic - simplified
-    if (isExternalCourse && !isCourseEnrollment && !checkingAssessment) {
+    if (isExternalCourse && !isCourseEnrollment) {
       if (assessmentCompleted) {
         return certificateUrl ? renderListCertificateButton() : renderListCompletedStatus("Assessment Completed");
       }
-      // Always show assessment button for external courses that haven't completed assessment
+      // Show the assessment button for both "not started" and "failed" states
       return renderListAssessmentButton();
     }
 
@@ -634,11 +640,11 @@ const ModernLearningCard = ({
   // Main function to determine which action button to render
   const renderActionButton = () => {
     // External courses logic - simplified
-    if (isExternalCourse && !isCourseEnrollment && !checkingAssessment) {
+    if (isExternalCourse && !isCourseEnrollment) {
       if (assessmentCompleted) {
         return certificateUrl ? renderCertificateButton() : renderCompletedStatus("Assessment Completed");
       }
-      // Always show assessment button for external courses that haven't completed assessment
+      // Show the assessment button for both "not started" and "failed" states
       return renderAssessmentButton();
     }
 

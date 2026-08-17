@@ -1,5 +1,5 @@
 import { ArrowRight, ArrowUpDown, Award, BarChart3, BookOpen, Filter, GraduationCap, Grid3X3, List, Plus, RefreshCw, Search, TrendingUp, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Pagination } from '@/shared/ui';
 import { LearningAnalyticsDashboard, ModernLearningCard, SelectCourseModal } from '@/widgets/learner-dashboard';
@@ -14,6 +14,7 @@ import { useLearnerTrainings } from '@/entities/learner';
 import { useLearnerMessageNotifications } from '@/entities/learner';
 import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
+import { getAssessmentHistory } from '@/features/assessment/api/externalAssessmentService';
 
 import { useUser } from '@/shared/model/authStore';
 const logger = getLogger('MyLearning');
@@ -166,6 +167,31 @@ const MyLearning = () => {
   const { trainings = [], loading: trainingsLoading, stats = { total: 0, completed: 0, ongoing: 0 }, refetch: refetchTrainings } = useLearnerTrainings(learnerId, {
     sortBy, sortDirection, status: statusFilter, approvalStatus: approvalFilter, searchTerm,
   });
+
+  // Fetch every external-assessment attempt for this learner in one request, so
+  // course cards can show the correct assessment status/score immediately on
+  // mount instead of each card fetching its own status after first render.
+  const [assessmentByCourse, setAssessmentByCourse] = useState({});
+  useEffect(() => {
+    let cancelled = false;
+    if (!learnerId) {
+      setAssessmentByCourse({});
+      return;
+    }
+    getAssessmentHistory(learnerId).then((attempts) => {
+      if (cancelled) return;
+      const lookup = {};
+      // Attempts are returned ordered by completed_at descending, so the first
+      // attempt encountered per course is already the latest one.
+      for (const attempt of attempts || []) {
+        if (attempt?.course_name && !(attempt.course_name in lookup)) {
+          lookup[attempt.course_name] = attempt;
+        }
+      }
+      setAssessmentByCourse(lookup);
+    });
+    return () => { cancelled = true; };
+  }, [learnerId]);
 
   const loading = learnerLoading || trainingsLoading;
   const hasActiveFilters = statusFilter !== 'all' || approvalFilter !== 'all' || searchTerm.trim() !== '';
@@ -633,6 +659,7 @@ const MyLearning = () => {
                           expandedSkills={expandedSkills} 
                           onToggleSkills={toggleSkillExpand}
                           viewMode={viewMode}
+                          assessmentAttempt={assessmentByCourse[item.course] ?? null}
                         />
                       ))}
                     </div>
