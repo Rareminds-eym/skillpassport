@@ -149,15 +149,35 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       }
     }
 
+    const trainingTitle = training?.title || 'Untitled Course';
+
+    // If a completed assessment already exists for this exact learner + course
+    // title (e.g. from before this course was deleted and is now being
+    // re-imported), the new training should start as completed rather than
+    // forcing a retake — the assessment result is preserved independently of
+    // the trainings row via (learner_id, course_name).
+    let initialStatus = training?.status || 'in_progress';
+    const { data: existingCompletedAttempt, error: attemptLookupError } = await supabase
+      .from('external_assessment_attempts')
+      .select('id')
+      .eq('learner_id', learnerId)
+      .eq('course_name', trainingTitle)
+      .eq('status', 'completed')
+      .maybeSingle();
+    if (attemptLookupError) throw attemptLookupError;
+    if (existingCompletedAttempt) {
+      initialStatus = 'completed';
+    }
+
     const trainingRecord: Record<string, unknown> = {
       learner_id: learnerId,
-      title: training?.title || 'Untitled Course',
+      title: trainingTitle,
       organization: training?.organization || training?.provider || '',
       description: training?.description || '',
       duration: training?.duration || '',
       start_date: training?.startDate || training?.start_date || null,
       end_date: training?.endDate || training?.end_date || null,
-      status: training?.status || 'in_progress',
+      status: initialStatus,
       total_modules: training?.total_modules ?? 0,
       completed_modules: training?.completed_modules ?? 0,
       hours_spent: training?.hours_spent ?? 0,
@@ -209,7 +229,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         type: s.type || 'technical',
         level: s.level ?? 1,
         description: s.description || '',
-        approval_status: 'pending',
+        approval_status: 'approved',
         enabled: true,
       }));
       const { error: skillError } = await supabase.from('skills').insert(skillRecords);
@@ -230,8 +250,9 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 /**
  * PUT /api/learners/trainings
  * Applies the outcome of a completed assessment to the linked training record.
- * On a passing score, auto-approves the training (mirrors the manual
- * admin approve-training flow in college-admin/school-admin.ts).
+ * On a passing score, marks the training completed. Approval is a separate
+ * concept handled at training creation / by admin review — this endpoint
+ * never touches approval_status, approved_by, approved_at, or approval_notes.
  */
 export const onRequestPut = withAuth(async (context: AuthenticatedContext) => {
   const startTime = Date.now();
@@ -269,7 +290,7 @@ export const onRequestPut = withAuth(async (context: AuthenticatedContext) => {
   try {
     const { data: existing, error: fetchError } = await supabase
       .from('trainings')
-      .select('id, learner_id, approval_status')
+      .select('id, learner_id, status')
       .eq('id', trainingId)
       .eq('learner_id', learnerId)
       .maybeSingle();
@@ -283,17 +304,13 @@ export const onRequestPut = withAuth(async (context: AuthenticatedContext) => {
       return apiSuccess({ updated: false, reason: 'assessment_not_passed' }, context.request, { startTime });
     }
 
-    if (existing.approval_status === 'approved') {
-      return apiSuccess({ updated: false, reason: 'already_approved' }, context.request, { startTime });
+    if (existing.status === 'completed') {
+      return apiSuccess({ updated: false, reason: 'already_completed' }, context.request, { startTime });
     }
 
     const { data: updated, error: updateError } = await supabase
       .from('trainings')
       .update({
-        approval_status: 'approved',
-        approved_by: user.id,
-        approved_at: new Date().toISOString(),
-        approval_notes: `Auto-approved: assessment passed with score ${score}%`,
         status: 'completed',
         updated_at: new Date().toISOString(),
       })
