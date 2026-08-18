@@ -110,13 +110,8 @@ const TokenPasswordReset = () => {
       if (error instanceof AuthFetchError) {
         if (error.status === 429) {
           errorMessage = 'Too many requests. Please try again in a few minutes.';
-        } else if (error.message) {
-          const rawMsg = error.message as any;
-          if (typeof rawMsg === 'string' && rawMsg !== '[object Object]') {
-            errorMessage = rawMsg;
-          } else if (typeof rawMsg === 'object' && rawMsg?.message) {
-            errorMessage = String(rawMsg.message);
-          }
+        } else if (error.message && error.message !== '[object Object]') {
+          errorMessage = error.message;
         }
       }
 

@@ -76,15 +76,7 @@ export async function onRequestPost(context: { request: Request; env: any }): Pr
 
       if (!userExists) {
         logger.warn('Password reset requested for non-existent email', { email: body.email });
-        const errorText = "We couldn't find an account matching this email address. Please check for typos or sign up.";
-        return new Response(JSON.stringify({
-          success: false,
-          error: errorText,
-          message: errorText
-        }), {
-          status: 400,
-          headers: { 'Content-Type': 'application/json' }
-        });
+        return apiError(400, 'ACCOUNT_NOT_FOUND', "We couldn't find an account matching this email address. Please check for typos or sign up.", request);
       }
     } catch (dbErr) {
       logger.error('Error checking user existence in DB', dbErr as Error);
