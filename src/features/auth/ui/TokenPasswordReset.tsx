@@ -1,18 +1,21 @@
-import { useState, FormEvent, ChangeEvent, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { 
-  Mail,
-  AlertCircle, 
-  CheckCircle, 
-  Loader2, 
-  ArrowLeft, 
-  Shield, 
-  Eye, 
-  EyeOff
+import { AuthFetchError } from '@rareminds-eym/auth-client';
+import {
+    AlertCircle,
+    ArrowLeft,
+    CheckCircle,
+    Eye,
+    EyeOff,
+    Loader2,
+    Mail,
+    Shield,
 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import type { ChangeEvent, FormEvent } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+
 import { ssoClient } from '@/shared/api/ssoClient';
 import { PASSWORD_MIN } from '@/shared/constants';
-import { AuthFetchError } from '@rareminds-eym/auth-client';
+
 
 interface TokenPasswordResetState {
   step: 'loading' | 'email-input' | 'reset' | 'success' | 'error';
@@ -231,6 +234,7 @@ const TokenPasswordReset = () => {
                   Please request a new password reset.
                 </p>
                 <button
+                  type="button"
                   onClick={handleBackToLogin}
                   className="w-full flex items-center justify-center gap-2 py-3 px-4 border border-gray-300 rounded-lg shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200"
                 >
@@ -431,6 +435,7 @@ const TokenPasswordReset = () => {
               </div>
 
               <button
+                type="button"
                 onClick={handleBackToLogin}
                 className="w-full flex items-center justify-center gap-2 py-3 px-4 border border-transparent rounded-lg shadow-sm text-white bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all duration-200"
               >
@@ -445,6 +450,7 @@ const TokenPasswordReset = () => {
           <p>
             {state.step === 'email-input' ? 'Remember your password? ' : 'Need help? '}
             <button
+              type="button"
               onClick={state.step === 'email-input' ? handleBackToLogin : () => {}}
               className="text-blue-600 hover:text-blue-700 font-medium"
             >

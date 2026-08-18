@@ -1,8 +1,18 @@
-import { useState, FormEvent, ChangeEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Mail, AlertCircle, CheckCircle, Loader2, ArrowLeft, Info } from 'lucide-react';
-import { ssoClient } from '@/shared/api/ssoClient';
 import { AuthFetchError } from '@rareminds-eym/auth-client';
+import {
+    AlertCircle,
+    ArrowLeft,
+    CheckCircle,
+    Info,
+    Loader2,
+    Mail,
+} from 'lucide-react';
+import { useState } from 'react';
+import type { ChangeEvent, FormEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
+
+import { ssoClient } from '@/shared/api/ssoClient';
+
 
 interface ForgotPasswordState {
   email: string;
@@ -185,6 +195,7 @@ const UnifiedForgotPassword = () => {
           ) : (
             <div className="space-y-6">
               <button
+                type="button"
                 onClick={handleBackToLogin}
                 className="w-full flex items-center justify-center gap-2 py-3 px-4 border border-transparent rounded-lg shadow-sm text-white bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all duration-200"
               >
@@ -199,6 +210,7 @@ const UnifiedForgotPassword = () => {
           <p>
             Remember your password? {' '}
             <button
+              type="button"
               onClick={handleBackToLogin}
               className="text-blue-600 hover:text-blue-700 font-medium"
             >
