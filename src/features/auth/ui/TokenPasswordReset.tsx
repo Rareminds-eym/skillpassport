@@ -1,18 +1,21 @@
-import { useState, FormEvent, ChangeEvent, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { 
-  Mail,
-  AlertCircle, 
-  CheckCircle, 
-  Loader2, 
-  ArrowLeft, 
-  Shield, 
-  Eye, 
-  EyeOff
+import { AuthFetchError } from '@rareminds-eym/auth-client';
+import {
+    AlertCircle,
+    ArrowLeft,
+    CheckCircle,
+    Eye,
+    EyeOff,
+    Loader2,
+    Mail,
+    Shield,
 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import type { ChangeEvent, FormEvent } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+
 import { ssoClient } from '@/shared/api/ssoClient';
 import { PASSWORD_MIN } from '@/shared/constants';
-import { AuthFetchError } from '@rareminds-eym/auth-client';
+
 
 interface TokenPasswordResetState {
   step: 'loading' | 'email-input' | 'reset' | 'success' | 'error';
@@ -101,21 +104,26 @@ const TokenPasswordReset = () => {
       }));
 
     } catch (error) {
-      if (error instanceof AuthFetchError && error.status === 429) {
-        setState(prev => ({
-          ...prev,
-          loading: false,
-          error: 'Too many requests. Please try again in a few minutes.'
-        }));
-      } else {
-        // Show success regardless (prevents enumeration)
-        setState(prev => ({
-          ...prev,
-          loading: false,
-          step: 'success',
-          email: state.email
-        }));
+      const defaultErrorMsg = "We couldn't find an account matching this email address. Please check for typos or sign up.";
+      let errorMessage = defaultErrorMsg;
+
+      if (error instanceof AuthFetchError) {
+        if (error.status === 429) {
+          errorMessage = 'Too many requests. Please try again in a few minutes.';
+        } else if (error.message && error.message !== '[object Object]') {
+          errorMessage = error.message;
+        }
       }
+
+      if (!errorMessage || errorMessage === '[object Object]') {
+        errorMessage = defaultErrorMsg;
+      }
+
+      setState(prev => ({
+        ...prev,
+        loading: false,
+        error: errorMessage
+      }));
     }
   };
 
@@ -221,6 +229,7 @@ const TokenPasswordReset = () => {
                   Please request a new password reset.
                 </p>
                 <button
+                  type="button"
                   onClick={handleBackToLogin}
                   className="w-full flex items-center justify-center gap-2 py-3 px-4 border border-gray-300 rounded-lg shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200"
                 >
@@ -238,7 +247,9 @@ const TokenPasswordReset = () => {
               {state.error && (
                 <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
                   <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                  <p className="text-sm text-red-800">{state.error}</p>
+                  <p className="text-sm text-red-800">
+                    {state.error}
+                  </p>
                 </div>
               )}
 
@@ -419,6 +430,7 @@ const TokenPasswordReset = () => {
               </div>
 
               <button
+                type="button"
                 onClick={handleBackToLogin}
                 className="w-full flex items-center justify-center gap-2 py-3 px-4 border border-transparent rounded-lg shadow-sm text-white bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all duration-200"
               >
@@ -433,6 +445,7 @@ const TokenPasswordReset = () => {
           <p>
             {state.step === 'email-input' ? 'Remember your password? ' : 'Need help? '}
             <button
+              type="button"
               onClick={state.step === 'email-input' ? handleBackToLogin : () => {}}
               className="text-blue-600 hover:text-blue-700 font-medium"
             >
