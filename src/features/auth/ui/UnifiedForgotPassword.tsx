@@ -110,7 +110,7 @@ const UnifiedForgotPassword = () => {
             <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
               <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
               <p className="text-sm text-red-800">
-                {typeof state.error === 'object' ? (state.error as any)?.message || JSON.stringify(state.error) : state.error}
+                {state.error}
               </p>
             </div>
           )}
