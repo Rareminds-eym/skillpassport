@@ -1,5 +1,5 @@
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import { withAuth } from '../../lib/auth';
+import { getContextUser, withAuth } from '../../lib/auth';
 import { apiDbError, apiError, apiSuccess, } from '../../lib/response';
 import { getServiceClient } from '../../lib/supabase';
 
@@ -434,6 +434,33 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
       case 'fetch-courses-query': {
         const { filters } = params;
+
+        // ── Server-side visibility enforcement ──────────────────────────
+        // Derive authenticated user from withAuth context — no userId from frontend
+        const authUser = getContextUser(context);
+        if (!authUser?.id) {
+          return apiError(401, 'UNAUTHORIZED', 'Missing authenticated user', context.request, { startTime });
+        }
+        const { data: learner, error: learnerError } = await supabase
+          .from('learners')
+          .select('id')
+          .eq('user_id', authUser.id)
+          .maybeSingle();
+        if (learnerError && learnerError.code !== 'PGRST116') {
+          return apiDbError(learnerError, context.request, { startTime });
+        }
+        let serverAllowedCourseIds: string[] = [];
+        if (learner?.id) {
+          const { data: accessRows, error: accessError } = await supabase
+            .from('demo_course_access')
+            .select('course_id')
+            .eq('learner_id', learner.id)
+            .eq('is_enabled', true);
+          if (accessError) return apiDbError(accessError, context.request, { startTime });
+          serverAllowedCourseIds = (accessRows || []).map((row: any) => row.course_id);
+        }
+        // ────────────────────────────────────────────────────────────────
+
         let query = supabase
           .from('courses')
           .select('*', { count: 'exact' })
@@ -469,7 +496,11 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
         const { data, error, count } = await query;
         if (error) return apiDbError(error, context.request, { startTime });
-        return apiSuccess({ courses: data || [], total: count || 0 }, context.request, { startTime });
+        return apiSuccess({
+          courses: data || [],
+          total: count || 0,
+          assignedCourseIds: serverAllowedCourseIds,
+        }, context.request, { startTime });
       }
 
       // ───────── Messages ─────────
