@@ -10,6 +10,7 @@ import { useAuthStore } from '@/shared/model/authStore';
 // import { useStrengthsGrowthPlan } from '@/features/assessment/lib/useStrengthsGrowthPlan';
 import jsPDF from 'jspdf';
 import { generateLteCode } from '@/features/auth/api/lteSsoApi';
+import { CourseEnrollmentModal } from '@/shared/ui';
 
 /**
  * Career Track Modal Component
@@ -25,7 +26,8 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results, 
     const [selectedRole, setSelectedRole] = useState(null);
     const [currentPage, setCurrentPage] = useState(0); // 0 = role selection, 1-5 = wizard pages
     const [showReminderModal, setShowReminderModal] = useState(false);
-    
+    const [showInterestModal, setShowInterestModal] = useState(false);
+
     // RAG Course Matching State
     const [aiMatchedCourses, setAiMatchedCourses] = useState([]);
     const [courseMatchingLoading, setCourseMatchingLoading] = useState(false);
@@ -245,8 +247,17 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results, 
         return roadmap.projects.slice(0, 3);
     };
 
+    // TEMPORARY: Recommended Courses access is disabled pending re-enable.
+    // When flipped back to true, both handlers fall through to the original
+    // LTE/navigation flow unchanged. TODO(anand): re-enable when ready [2026-08-18]
+    const RECOMMENDED_COURSES_ENABLED = false;
+
     // Handle enrolling in first relevant course
     const handleEnrollFirstCourse = () => {
+        if (!RECOMMENDED_COURSES_ENABLED) {
+            setShowInterestModal(true);
+            return;
+        }
         if (relevantCourses.length > 0) {
             const firstCourse = relevantCourses[0];
             const courseId = firstCourse.course_id || firstCourse.id;
@@ -263,6 +274,10 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results, 
 
     // Handle redirecting to LTE course detail page
     const handleLearnMore = async (capabilityCode) => {
+        if (!RECOMMENDED_COURSES_ENABLED) {
+            setShowInterestModal(true);
+            return;
+        }
         try {
             if (!capabilityCode) return;
 
@@ -559,6 +574,7 @@ END:VCALENDAR`;
     };
 
     return (
+        <>
         <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -1671,6 +1687,11 @@ END:VCALENDAR`;
                 </div>
             </motion.div>
         </motion.div>
+        <CourseEnrollmentModal
+            isOpen={showInterestModal}
+            onClose={() => setShowInterestModal(false)}
+        />
+        </>
     );
 };
 
