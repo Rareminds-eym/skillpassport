@@ -101,21 +101,31 @@ const TokenPasswordReset = () => {
       }));
 
     } catch (error) {
-      if (error instanceof AuthFetchError && error.status === 429) {
-        setState(prev => ({
-          ...prev,
-          loading: false,
-          error: 'Too many requests. Please try again in a few minutes.'
-        }));
-      } else {
-        // Show success regardless (prevents enumeration)
-        setState(prev => ({
-          ...prev,
-          loading: false,
-          step: 'success',
-          email: state.email
-        }));
+      const defaultErrorMsg = "We couldn't find an account matching this email address. Please check for typos or sign up.";
+      let errorMessage = defaultErrorMsg;
+
+      if (error instanceof AuthFetchError) {
+        if (error.status === 429) {
+          errorMessage = 'Too many requests. Please try again in a few minutes.';
+        } else if (error.message) {
+          const rawMsg = error.message as any;
+          if (typeof rawMsg === 'string' && rawMsg !== '[object Object]') {
+            errorMessage = rawMsg;
+          } else if (typeof rawMsg === 'object' && rawMsg?.message) {
+            errorMessage = String(rawMsg.message);
+          }
+        }
       }
+
+      if (!errorMessage || errorMessage === '[object Object]') {
+        errorMessage = defaultErrorMsg;
+      }
+
+      setState(prev => ({
+        ...prev,
+        loading: false,
+        error: errorMessage
+      }));
     }
   };
 
@@ -238,7 +248,9 @@ const TokenPasswordReset = () => {
               {state.error && (
                 <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
                   <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                  <p className="text-sm text-red-800">{state.error}</p>
+                  <p className="text-sm text-red-800">
+                    {typeof state.error === 'object' ? (state.error as any)?.message || JSON.stringify(state.error) : state.error}
+                  </p>
                 </div>
               )}
 

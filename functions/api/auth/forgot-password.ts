@@ -9,6 +9,7 @@
 import { z } from 'zod';
 import { createLogger } from '../../lib/logger';
 import { apiError, apiSuccess } from '../../lib/response';
+import { createSupabaseAdminClient } from '../../lib/supabase';
 
 const logger = createLogger('auth-forgot-password');
 
@@ -43,6 +44,52 @@ export async function onRequestPost(context: { request: Request; env: any }): Pr
     logger.info('Processing forgot password request via service binding', {
       email: body.email
     });
+
+    // Check if user exists in database (users table and learners table)
+    if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
+      logger.error('Supabase configuration missing — SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY not set');
+      return apiError(500, 'CONFIGURATION_ERROR', 'Server configuration error. Please try again later.', request);
+    }
+
+    try {
+      const supabaseAdmin = createSupabaseAdminClient(env);
+      const normalizedEmail = body.email.trim().toLowerCase();
+
+      // Tier 1: Check 'users' table (admins, educators, recruiters)
+      const { data: userRecord } = await supabaseAdmin
+        .from('users')
+        .select('id')
+        .eq('email', normalizedEmail)
+        .maybeSingle();
+
+      let userExists = !!userRecord;
+
+      // Tier 2: Check 'learners' table (school and college students)
+      if (!userExists) {
+        const { data: learnerRecord } = await supabaseAdmin
+          .from('learners')
+          .select('id')
+          .eq('email', normalizedEmail)
+          .maybeSingle();
+        userExists = !!learnerRecord;
+      }
+
+      if (!userExists) {
+        logger.warn('Password reset requested for non-existent email', { email: body.email });
+        const errorText = "We couldn't find an account matching this email address. Please check for typos or sign up.";
+        return new Response(JSON.stringify({
+          success: false,
+          error: errorText,
+          message: errorText
+        }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    } catch (dbErr) {
+      logger.error('Error checking user existence in DB', dbErr as Error);
+      return apiError(503, 'SERVICE_UNAVAILABLE', 'Unable to process request. Please try again later.', request);
+    }
 
     // Check if SSO service binding is available
     if (!env.SSO_SERVICE) {
