@@ -36,7 +36,12 @@ export const onRequest: PagesFunction = async (context) => {
   }
 
   // --- Delegate Browser Auth Routes to Auth Core ---
-  if (context.env.SSO_SERVICE && (path.startsWith("/api/auth/") || path.startsWith("/api/v1/auth/"))) {
+  if (
+    context.env.SSO_SERVICE &&
+    (path.startsWith("/api/auth/") || path.startsWith("/api/v1/auth/")) &&
+    path !== "/api/auth/generate-lte-code" &&
+    path !== "/api/v1/auth/generate-lte-code"
+  ) {
     try {
       const auth = getAuthInstance(context.env);
       return await auth.handleBrowserRequest(context.request);
