@@ -1,66 +1,38 @@
-/**
- * Auth Store (SSO-only)
- *
- * Uses @rareminds-eym/auth-client to communicate with the SSO worker.
- * All auth state (user, roles, session) derives from the SSO JWT.
- * No Supabase Auth calls are made from this store.
- *
- * The public API (hooks and types) is preserved from the legacy store
- * so existing consumers continue to work without import changes.
- */
-import { ssoClient } from '@/shared/api/ssoClient';
-import { getLogger } from '@/shared/config/logging';
-import { clearUserContext } from '@/shared/config/monitoring';
-import { startTokenRefresh, stopTokenRefresh, tokenRefreshService } from '@/shared/services/tokenRefreshService';
-import { ROLE_CATEGORIES, type RoleCategory } from '@/shared/types/generated/roles';
-import type { LoginResponse, MeResponse } from '@rareminds-eym/auth-client';
-import { create } from 'zustand';
-import { createJSONStorage, persist } from 'zustand/middleware';
-import { immer } from 'zustand/middleware/immer';
+import { authClient } from "@/shared/api/authClient";
+import { AuthClientError } from "@rareminds-eym/auth-client";
+import { getLogger } from "@/shared/config/logging";
+import { clearUserContext } from "@/shared/config/monitoring";
+import { ROLE_CATEGORIES, type RoleCategory } from "@/shared/types/generated/roles";
+import { create } from "zustand";
+import { createJSONStorage, persist } from "zustand/middleware";
+import { immer } from "zustand/middleware/immer";
 
-const logger = getLogger('auth-store');
-
-// ─── Types ─────────────────────────────────────────────────────
+const logger = getLogger("auth-store");
 
 interface ErrorNotification {
   title: string;
   message: string;
-  type: 'error' | 'warning' | 'info';
+  type: "error" | "warning" | "info";
   action?: {
     label: string;
     handler: () => void;
   };
 }
 
-/**
- * User shape — kept compatible with the legacy store's User type.
- * All fields except `id` are optional so existing consumers continue to work.
- */
 export interface User {
   id: string;
   email?: string;
   name?: string;
   role?: string;
   user_metadata?: any;
-  /** @deprecated Demo mode removed — always false in SSO mode. */
   isDemoMode?: boolean;
-  /** SSO-specific: the org the user is active in */
   orgId?: string;
-  /** SSO-specific: full role list from the JWT */
   roles?: string[];
-  /** SSO-specific: products the user has access to */
   products?: string[];
-  /** SSO-specific: membership status */
   membershipStatus?: string;
-  /** SSO-specific: whether the email has been verified */
   isEmailVerified?: boolean;
 }
 
-/**
- * Session shape — kept for backward compatibility.
- * In SSO mode, the access token is held in memory by auth-client (not persisted here).
- * The `session` field will be null — use `isAuthenticated` instead.
- */
 export interface Session {
   access_token: string;
   refresh_token?: string;
@@ -82,8 +54,7 @@ interface AuthState {
 
   errorNotification: ErrorNotification | null;
 
-  // Actions
-  login: (emailOrUser: string | User, passwordOrSession?: string | Session) => Promise<LoginResponse | void>;
+  login: (emailOrUser: string | User, passwordOrSession?: string | Session) => Promise<any>;
   logout: () => Promise<void>;
   updateUser: (userData: Partial<User>) => void;
   setUser: (user: User | null) => void;
@@ -96,58 +67,30 @@ interface AuthState {
   initialize: () => Promise<void>;
   refreshSession: () => Promise<boolean>;
   checkSessionValidity: () => Promise<Session | null>;
-
-  /** @deprecated No longer needed in SSO mode. Kept for compatibility. */
   restoreUserFromStorage: (sessionUser: any) => User;
 }
 
-// ─── Role helpers ──────────────────────────────────────────────
-
-/**
- * Derive whether any of `roles` belongs to the given role `category`, using the
- * single shared `ROLE_CATEGORIES` grouping (the canonical, compile-time source
- * of truth shared with the rest of the app). This replaces the previous
- * hand-coded per-role helpers so category membership has ONE definition.
- *
- * Behaviour is identical to the old helpers because `ROLE_CATEGORIES` mirrors
- * the same membership lists:
- *   - admin    = ['admin','company_admin','owner','school_admin','college_admin','university_admin']
- *   - educator = ['educator','school_educator','college_educator']
- *   - recruiter= ['recruiter','company_admin','hr']
- *   - learner  = ['learner']
- *
- * NOTE: these flags are UX-only render hints (see `computeRoleFlags`); runtime
- * authorization is enforced server-side, never from this membership check.
- */
 const isInCategory = (roles: string[], category: RoleCategory): boolean => {
   const members = ROLE_CATEGORIES[category] as readonly string[];
   return roles.some((r) => members.includes(r));
 };
 
-/**
- * Pick the most specific role for the legacy `role` field.
- * Prefers specific admin/learner/educator roles over generic ones.
- *
- * NOTE: exported additively for behavior-preservation testing (RBAC spec task
- * 14.2 / Property 10, PC-3). The export is test-only surface — runtime consumers
- * still use the store helpers; the priority list here is the golden contract.
- */
 export function pickPrimaryRole(roles: string[]): string | null {
   if (roles.length === 0) return null;
   const priority = [
-    'university_admin',
-    'college_admin',
-    'school_admin',
-    'owner',
-    'admin',
-    'company_admin',
-    'college_educator',
-    'school_educator',
-    'educator',
-    'learner',
-    'recruiter',
-    'hr',
-    'member',
+    "university_admin",
+    "college_admin",
+    "school_admin",
+    "owner",
+    "admin",
+    "company_admin",
+    "college_educator",
+    "school_educator",
+    "educator",
+    "learner",
+    "recruiter",
+    "hr",
+    "member",
   ];
   for (const p of priority) {
     if (roles.includes(p)) return p;
@@ -155,54 +98,37 @@ export function pickPrimaryRole(roles: string[]): string | null {
   return roles[0];
 }
 
-function mapMeToUser(me: MeResponse): User {
+function mapIdentityToUser(identity: any): User {
+  const roles = identity.roles ? [...identity.roles] : [];
   return {
-    id: me.sub,
-    email: me.email,
-    role: pickPrimaryRole(me.roles) ?? undefined,
-    orgId: me.org_id,
-    roles: me.roles,
-    products: me.products,
-    membershipStatus: me.membership_status,
-    isEmailVerified: me.is_email_verified,
+    id: identity.subject || identity.id,
+    email: identity.email,
+    role: pickPrimaryRole(roles) ?? undefined,
+    orgId: identity.organizationId || identity.org_id,
+    roles,
+    products: identity.products ? [...identity.products] : [],
+    membershipStatus: identity.membershipStatus || identity.membership_status,
+    isEmailVerified: identity.emailVerified ?? identity.is_email_verified,
     isDemoMode: false,
+    user_metadata: identity.userMetadata || identity.user_metadata || {},
   };
 }
 
-/**
- * Compute the UX-only role booleans from the user's JWT-sourced roles.
- *
- * IMPORTANT: these booleans (`isLearner`/`isEducator`/`isAdmin`/`isRecruiter`)
- * are UX-only render hints DERIVED from `user.roles` (which originate from the
- * verified SSO JWT via `getMe()`). They are NOT an authorization boundary and
- * are NOT persisted to localStorage as a trust signal — the server enforces
- * all authorization. They are always re-derived at runtime (login, initialize,
- * rehydrate, cross-tab sync) from the current roles.
- *
- * NOTE: exported additively for behavior-preservation testing (RBAC spec task
- * 14.2 / Property 10, PC-4). Test-only surface; the boolean membership here is
- * the golden contract that must equal the legacy hand-coded logic.
- */
 export function computeRoleFlags(roles: string[]) {
   return {
-    isLearner: isInCategory(roles, 'learner'),
-    isEducator: isInCategory(roles, 'educator'),
-    isAdmin: isInCategory(roles, 'admin'),
-    isRecruiter: isInCategory(roles, 'recruiter'),
+    isLearner: isInCategory(roles, "learner"),
+    isEducator: isInCategory(roles, "educator"),
+    isAdmin: isInCategory(roles, "admin"),
+    isRecruiter: isInCategory(roles, "recruiter"),
   };
 }
 
-// ─── Store ─────────────────────────────────────────────────────
-
-/** Storage key for the persisted auth state. Bumping this value invalidates all existing sessions. */
-const AUTH_STORAGE_KEY = 'skillpassport-auth-v1';
-/** Current persisted state version. Increment when making breaking shape changes. */
+const AUTH_STORAGE_KEY = "skillpassport-auth-v1";
 const AUTH_STORAGE_VERSION = 1;
 
 export const useAuthStore = create<AuthState>()(
   persist(
     immer((set, get) => ({
-      // Initial state
       user: null,
       session: null,
       loading: true,
@@ -214,16 +140,10 @@ export const useAuthStore = create<AuthState>()(
       isRecruiter: false,
       errorNotification: null,
 
-      /**
-       * login() accepts either:
-       *  - (email, password) — performs SSO login via auth-client
-       *  - (user, session?) — legacy signature; sets user directly (used by signup flows that already have user data)
-       */
       login: async (emailOrUser, passwordOrSession) => {
-        // Legacy signature: called with (User, Session?)
-        if (typeof emailOrUser !== 'string') {
+        if (typeof emailOrUser !== "string") {
           const userData = emailOrUser;
-          const sessionData = typeof passwordOrSession === 'string' ? null : (passwordOrSession ?? null);
+          const sessionData = typeof passwordOrSession === "string" ? null : passwordOrSession ?? null;
           const roles = userData.roles ?? (userData.role ? [userData.role] : []);
           set((state) => {
             state.user = { ...state.user, ...userData };
@@ -232,42 +152,58 @@ export const useAuthStore = create<AuthState>()(
             state.role = userData.role ?? pickPrimaryRole(roles);
             Object.assign(state, computeRoleFlags(roles));
           });
-          // Start token refresh service after successful login
-          startTokenRefresh();
           return;
         }
 
-        // SSO signature: (email, password)
         const email = emailOrUser;
         const password = passwordOrSession as string;
-        const res = await ssoClient.login({ email, password });
-        const me = await ssoClient.getMe();
-        const user = mapMeToUser(me);
-        set((state) => {
-          state.user = user;
-          state.isAuthenticated = true;
-          state.role = user.role ?? null;
-          Object.assign(state, computeRoleFlags(me.roles));
-        });
-        // Start token refresh service after successful login
-        startTokenRefresh();
+        const res = await authClient.login({ email, password });
+
+        if (res.status === "rejected") {
+          const httpStatus = res.code === "invalid_credentials" ? 401 : res.code === "blocked" ? 403 : 400;
+          const message = res.code === "invalid_credentials"
+            ? "Invalid email or password"
+            : res.code === "blocked"
+            ? "Your account is not active. Contact support."
+            : `Authentication failed (${res.code})`;
+          throw new AuthClientError(message, "INVALID_RESPONSE", httpStatus);
+        }
+
+        if (res.status === "succeeded") {
+          const identityData = (res.data as any)?.identity;
+          if (identityData) {
+            const user = mapIdentityToUser(identityData);
+            set((state) => {
+              state.user = user;
+              state.isAuthenticated = true;
+              state.role = user.role ?? null;
+              Object.assign(state, computeRoleFlags(user.roles ?? []));
+            });
+          } else {
+            try {
+              const me = await authClient.getMe();
+              if (me.status === "succeeded") {
+                const user = mapIdentityToUser(me.data);
+                set((state) => {
+                  state.user = user;
+                  state.isAuthenticated = true;
+                  state.role = user.role ?? null;
+                  Object.assign(state, computeRoleFlags(user.roles ?? []));
+                });
+              }
+            } catch (err) {
+              logger.warn("getMe failed after login, relying on session state", err as Error);
+            }
+          }
+        }
         return res;
       },
 
       logout: async () => {
-        // Stop token refresh service before logout
-        stopTokenRefresh();
-
         try {
-          await ssoClient.logout();
+          await authClient.logout();
         } catch (err) {
-          logger.error('SSO logout failed', err as Error);
-          // Server revoke failed (rate limit, network error). The
-          // refresh-token cookie is still alive. Flag for retry on next
-          // page load via the pending-logout safety net below.
-          if (typeof window !== 'undefined') {
-            sessionStorage.setItem('pending-logout', 'true');
-          }
+          logger.error("SSO logout failed", err as Error);
         }
 
         set((state) => {
@@ -333,54 +269,40 @@ export const useAuthStore = create<AuthState>()(
         });
       },
 
-      /**
-       * Initialize auth state from the SSO worker.
-       * Called once at app startup before rendering protected routes.
-       *
-       * Strategy (for fast initial render):
-       *  1. Persisted user data from Zustand is already rehydrated (UI renders immediately).
-       *  2. Call initSession() to validate the session with SSO (refresh cookie).
-       *  3. If valid, fetch fresh /auth/me and update state.
-       *  4. If invalid, clear the persisted state.
-       */
       initialize: async () => {
         set((state) => {
           state.loading = true;
         });
 
         try {
-          const { authenticated } = await ssoClient.initSession();
-          if (authenticated) {
-            // Even if the store was rehydrated from localStorage, we MUST
-            // fetch fresh data from the newly refreshed session to ensure
-            // role changes and membership statuses are accurately reflected.
-
-            const me = await ssoClient.getMe();
-            const user = mapMeToUser(me);
-            set((state) => {
-              state.user = user;
-              state.isAuthenticated = true;
-              state.role = user.role ?? null;
-              Object.assign(state, computeRoleFlags(me.roles));
-              state.loading = false;
-            });
-            // Start token refresh service after successful session restoration
-            startTokenRefresh();
-          } else {
-            // No valid session — clear any stale persisted state
-            set((state) => {
-              state.user = null;
-              state.isAuthenticated = false;
-              state.role = null;
-              state.isLearner = false;
-              state.isEducator = false;
-              state.isAdmin = false;
-              state.isRecruiter = false;
-              state.loading = false;
-            });
+          const outcome = await authClient.initialize();
+          if (outcome.status === "authenticated") {
+            const me = await authClient.getMe();
+            if (me.status === "succeeded") {
+              const user = mapIdentityToUser(me.data);
+              set((state) => {
+                state.user = user;
+                state.isAuthenticated = true;
+                state.role = user.role ?? null;
+                Object.assign(state, computeRoleFlags(user.roles ?? []));
+                state.loading = false;
+              });
+              return;
+            }
           }
+
+          set((state) => {
+            state.user = null;
+            state.isAuthenticated = false;
+            state.role = null;
+            state.isLearner = false;
+            state.isEducator = false;
+            state.isAdmin = false;
+            state.isRecruiter = false;
+            state.loading = false;
+          });
         } catch (err) {
-          logger.error('Error initializing auth', err as Error);
+          logger.error("Error initializing auth", err as Error);
           set((state) => {
             state.user = null;
             state.isAuthenticated = false;
@@ -396,32 +318,34 @@ export const useAuthStore = create<AuthState>()(
 
       refreshSession: async () => {
         try {
-          await ssoClient.refresh();
-          const me = await ssoClient.getMe();
-          const user = mapMeToUser(me);
-          set((state) => {
-            state.user = user;
-            state.isAuthenticated = true;
-            state.role = user.role ?? null;
-            Object.assign(state, computeRoleFlags(me.roles));
-          });
-          return true;
+          const outcome = await authClient.initialize();
+          if (outcome.status === "authenticated") {
+            const me = await authClient.getMe();
+            if (me.status === "succeeded") {
+              const user = mapIdentityToUser(me.data);
+              set((state) => {
+                state.user = user;
+                state.isAuthenticated = true;
+                state.role = user.role ?? null;
+                Object.assign(state, computeRoleFlags(user.roles ?? []));
+              });
+              return true;
+            }
+          }
+          return false;
         } catch (err) {
-          logger.warn('Session refresh failed', { message: (err as Error).message });
+          logger.warn("Session refresh failed", { message: (err as Error).message });
           return false;
         }
       },
 
       checkSessionValidity: async () => {
-        // In SSO mode, we don't have a Session object. Return null always.
-        // Consumers should use isAuthenticated instead.
         return get().session;
       },
 
       restoreUserFromStorage: (sessionUser) => {
-        // Legacy method — no longer used in SSO mode. Return a minimal user.
         return {
-          id: sessionUser?.id ?? sessionUser?.sub ?? '',
+          id: sessionUser?.id ?? sessionUser?.sub ?? "",
           email: sessionUser?.email,
         };
       },
@@ -430,36 +354,10 @@ export const useAuthStore = create<AuthState>()(
       name: AUTH_STORAGE_KEY,
       version: AUTH_STORAGE_VERSION,
       storage: createJSONStorage(() => localStorage),
-      /**
-       * Only persist non-sensitive user data. Never persist:
-       * - Access/refresh tokens (auth-client handles these)
-       * - Session objects (derived from SSO)
-       * - Loading state (always starts fresh)
-       * - Error notifications (ephemeral)
-       *
-       * IMPORTANT (§7.6/§7.9): the role BOOLEANS (`isLearner`/`isEducator`/
-       * `isAdmin`/`isRecruiter`) and the derived primary `role` string are NOT
-       * persisted. They are UX-only render hints derived at runtime from
-       * `user.roles` (verified JWT) — persisting them would treat them as a
-       * durable trust signal, which is the anti-pattern this fix removes.
-       * We still persist `user` (which carries `roles` + `role`) for fast
-       * initial render; the booleans and `role` are re-derived from
-       * `user.roles` on rehydrate (see `onRehydrateStorage`) and again by
-       * `initialize()` from a fresh `getMe()`.
-       */
       partialize: (state) => ({
         user: state.user,
         isAuthenticated: state.isAuthenticated,
       }),
-      /**
-       * When rehydrating from storage, reset transient fields so the UI
-       * correctly shows a loading state until initialize() completes.
-       *
-       * The role booleans and `role` are NOT persisted (see `partialize`), so
-       * we DERIVE them here from the persisted `user.roles` rather than trusting
-       * any persisted boolean. This avoids a flash of stale/false flags between
-       * rehydrate and the fresh recompute in `initialize()`.
-       */
       onRehydrateStorage: () => (state) => {
         if (state) {
           state.loading = true;
@@ -471,101 +369,27 @@ export const useAuthStore = create<AuthState>()(
           Object.assign(state, computeRoleFlags(roles));
         }
       },
-    },
-  ),
+    }
+  )
 );
 
-// ─── Cross-tab sync via auth-client ────────────────────────────
-
-if (typeof window !== 'undefined') {
-  // Handle session expiration without hard reloads
-  window.addEventListener('sso-session-expired', () => {
-    const store = useAuthStore.getState();
-    stopTokenRefresh();
-    store.setUser(null);
-  });
-
-  const pendingAuthEvents: Array<'LOGIN' | 'LOGOUT' | 'REFRESH'> = [];
-
-  const handleAuthEvent = async (event: 'LOGIN' | 'LOGOUT' | 'REFRESH') => {
-    const store = useAuthStore.getState();
-
-    // Queue events if auth is still initializing to prevent race conditions
-    if (store.loading) {
-      pendingAuthEvents.push(event);
-      return;
-    }
-
-    if (event === 'LOGOUT') {
-      // Per industry standard (Clerk, Supabase, Auth0): receiving tabs only
-      // clear local state. The server revoke was already handled by the
-      // originating tab's authStore.logout() call. Calling ssoClient.logout()
-      // here would create a broadcast ping-pong storm across tabs.
-      stopTokenRefresh();
-      store.setUser(null);
-    } else if (event === 'LOGIN' || event === 'REFRESH') {
-      // Defensive: skip if store already has up-to-date email verification.
-      // Prevents the event handler from overwriting the store with stale data
-      // when refreshSession() has already fetched fresh data concurrently.
-      const currentState = useAuthStore.getState();
-      if (
-        event === 'REFRESH' &&
-        currentState.isAuthenticated &&
-        currentState.user?.isEmailVerified
-      ) {
-        return;
-      }
-
-      try {
-        const me = await ssoClient.getMe();
-        const user = mapMeToUser(me);
-        useAuthStore.setState({
-          user,
-          isAuthenticated: true,
-          role: user.role ?? null,
-          ...computeRoleFlags(me.roles),
-        });
-        // Ensure token refresh is running after cross-tab login/refresh
-        if (event === 'LOGIN' || !tokenRefreshService.isRunning()) {
-          startTokenRefresh();
-        }
-      } catch {
-        // Session expired during rehydration — ignore
-      }
-    }
-  };
-
-  // Safety net: retry server-side logout if the previous attempt failed
-  // (rate limit, network error). Runs before initSession() to prevent
-  // re-authentication via the still-valid refresh-token cookie.
-  if (sessionStorage.getItem('pending-logout')) {
-    sessionStorage.removeItem('pending-logout');
-    ssoClient.logout().catch(() => {});
+// Subscribe to AuthClient state transitions
+authClient.subscribe((event) => {
+  const phase = event.state.phase;
+  if (phase === "unauthenticated" || phase === "destroyed") {
+    useAuthStore.setState({
+      user: null,
+      session: null,
+      isAuthenticated: false,
+      role: null,
+      isLearner: false,
+      isEducator: false,
+      isAdmin: false,
+      isRecruiter: false,
+      loading: false,
+    });
   }
-
-  ssoClient.onAuthStateChange(handleAuthEvent);
-
-  // Subscribe to store changes to process pending events when loading finishes
-  useAuthStore.subscribe((state, prevState) => {
-    if (prevState.loading && !state.loading && pendingAuthEvents.length > 0) {
-      const eventsToProcess = [...pendingAuthEvents];
-      pendingAuthEvents.length = 0;
-      
-      // Process events sequentially and catch errors so one failure doesn't block others
-      (async () => {
-        for (const event of eventsToProcess) {
-          try {
-            await handleAuthEvent(event);
-          } catch (err) {
-            console.error(`[authStore] Failed to handle queued event ${event}:`, err);
-          }
-        }
-      })();
-    }
-  });
-}
-
-// ─── Convenience hooks (same API as legacy store) ──────────────
+});
 
 export const useUser = () => useAuthStore((state) => state.user);
 export const useSession = () => useAuthStore((state) => state.session);
@@ -599,13 +423,8 @@ export const useTokenRefreshErrorNotification = () => {
   return { showErrorNotification, dismissErrorNotification };
 };
 
-// Export store for direct access
 export default useAuthStore;
 
-/**
- * Initialize all stores.
- * Called once at app startup to initialize auth state via SSO.
- */
 export const initializeStores = async () => {
   await useAuthStore.getState().initialize();
 };

@@ -5,7 +5,7 @@
  * Performs SSO authentication via auth-client, verifies the user has the expected role,
  * and returns a typed result. UI components handle errors and redirects.
  */
-import { AuthFetchError } from '@rareminds-eym/auth-client';
+import { AuthClientError } from '@rareminds-eym/auth-client';
 import { useAuthStore } from '@/shared/model/authStore';
 import { PASSWORD_MIN } from '@/shared/constants';
 import type { UserRole } from '@/features/auth/api';
@@ -23,11 +23,11 @@ export interface SsoLoginResult {
  * Map auth-client errors to user-friendly messages.
  */
 function mapAuthError(err: unknown): string {
-  if (err instanceof AuthFetchError) {
-    if (err.status === 401) return 'Invalid email or password';
-    if (err.status === 403) return 'Your account is not active. Contact support.';
-    if (err.status === 429) return 'Too many attempts. Please try again in a few minutes.';
-    if (err.status >= 500) return 'The authentication service is unavailable. Please try again.';
+  if (err instanceof AuthClientError) {
+    if (err.httpStatus === 401) return 'Invalid email or password';
+    if (err.httpStatus === 403) return 'Your account is not active. Contact support.';
+    if (err.httpStatus === 429) return 'Too many attempts. Please try again in a few minutes.';
+    if (err.httpStatus && err.httpStatus >= 500) return 'The authentication service is unavailable. Please try again.';
     return err.message || 'Authentication failed';
   }
   return (err as Error)?.message ?? 'An unexpected error occurred.';

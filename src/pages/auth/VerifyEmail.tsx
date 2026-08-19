@@ -1,6 +1,6 @@
 import { ssoClient } from '@/shared/api/ssoClient';
 import { useAuthStore, useIsAuthenticated } from '@/shared/model/authStore';
-import { AuthFetchError } from '@rareminds-eym/auth-client';
+import { AuthClientError } from '@rareminds-eym/auth-client';
 import { AlertCircle, CheckCircle, Loader2, Mail } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -290,8 +290,8 @@ const VerifyEmail = () => {
         }, 1500); // Show success message for 1.5 seconds before redirecting
 
       } catch (err) {
-        if (err instanceof AuthFetchError) {
-          if (err.status === 400) setError('This verification link has expired or already been used.');
+        if (err instanceof AuthClientError) {
+          if (err.httpStatus === 400) setError('This verification link has expired or already been used.');
           else setError(err.message || 'Verification failed');
         } else {
           setError('An unexpected error occurred.');
@@ -322,7 +322,7 @@ const VerifyEmail = () => {
       await ssoClient.requestVerification({ redirect_url: window.location.origin });
       setResent(true);
     } catch (err) {
-      if (err instanceof AuthFetchError && err.status === 429) {
+      if (err instanceof AuthClientError && err.httpStatus === 429) {
         setError('Too many requests. Please try again later.');
       } else {
         setError('Failed to resend verification email. Please try again.');

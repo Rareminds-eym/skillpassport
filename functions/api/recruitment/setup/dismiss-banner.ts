@@ -6,37 +6,13 @@
  */
 
 import { createSupabaseClient } from '../../../lib/supabase';
-import { verifyJWT } from '@rareminds-eym/auth-core';
-import type { PagesFunction } from '../../../lib/types';
+import { withAuth, getContextUser } from '../../../lib/auth';
 
-interface Env {
-    SUPABASE_URL: string;
-    SUPABASE_ANON_KEY: string;
-    JWT_PUBLIC_KEY: string;
-}
-
-export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
+export const onRequestPost = withAuth(async (context: any) => {
     try {
-        // 1. Verify JWT from Authorization header
-        const authHeader = request.headers.get('Authorization');
-        if (!authHeader?.startsWith('Bearer ')) {
-            return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-                status: 401,
-                headers: { 'Content-Type': 'application/json' },
-            });
-        }
-
-        const token = authHeader.substring(7);
-        const decoded = await verifyJWT(token, env.JWT_PUBLIC_KEY);
-
-        if (!decoded || !decoded.sub) {
-            return new Response(JSON.stringify({ error: 'Invalid token' }), {
-                status: 401,
-                headers: { 'Content-Type': 'application/json' },
-            });
-        }
-
-        const userId = decoded.sub;
+        const user = getContextUser(context);
+        const userId = user.id || user.sub;
+        const env = context.env;
 
         // 2. Get user's organization from organization_members
         const supabase = createSupabaseClient(env);
@@ -129,4 +105,4 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
             }
         );
     }
-};
+});
