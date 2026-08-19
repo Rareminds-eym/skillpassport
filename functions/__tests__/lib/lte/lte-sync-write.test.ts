@@ -1,101 +1,223 @@
 import { describe, expect, it } from 'vitest';
 import type { WriteDb } from '../../../api/internal/lte/v1/write-db';
-import {
-  upsertLteTrainings,
-  type LteSyncCapability,
-} from '../../../lib/lte/lte-sync-write';
+import { upsertSingleProgressPayload } from '../../../lib/lte/lte-sync-write';
 
-interface FakeRow extends Record<string, unknown> {
+interface TrainingRow extends Record<string, unknown> {
   id: string;
+  learner_id: string;
+  source: string;
   lte_course_id: string;
-  lte_hash?: string | null;
+  title: string;
+  status: string;
+  completed_modules: number;
+  total_modules: number;
+  hours_spent: number;
+  duration: string;
+  resume_url: string | null;
+  approval_status: string;
+  lte_course_code: string | null;
+  lte_levels: unknown;
+  lte_current_level: number;
+  lte_total_levels: number;
 }
 
-function createFakeDb(initial: FakeRow[] = []): { db: WriteDb; rows: FakeRow[] } {
-  const rows: FakeRow[] = [...initial];
+interface SkillRow extends Record<string, unknown> {
+  id: string;
+  learner_id: string;
+  name: string;
+  type: string;
+  level: number;
+  training_id: string | null;
+  verified: boolean;
+  approval_status: string;
+  source: string;
+}
+
+function createFakeDb(initialTrainings: TrainingRow[] = [], initialSkills: SkillRow[] = []) {
+  const trainings: TrainingRow[] = [...initialTrainings];
+  const skills: SkillRow[] = [...initialSkills];
+
   const db: WriteDb = {
-    queryOne: async (_path) => {
-      const match = /lte_course_id=eq\.([^&]+)/.exec(String(_path));
-      const courseId = match ? decodeURIComponent(match[1]) : null;
-      return rows.find((r) => r.lte_course_id === courseId) ?? null;
-    },
-    query: async () => rows,
-    insert: async (_table, row) => {
-      rows.push({ id: `row-${rows.length + 1}`, ...(row as FakeRow) });
+    queryOne: async (path) => {
+      const p = String(path);
+
+      if (p.startsWith('trainings')) {
+        const match = /lte_course_id=eq\.([^&]+)/.exec(p);
+        const courseId = match ? decodeURIComponent(match[1]) : null;
+        return (trainings.find((t) => t.lte_course_id === courseId) as any) ?? null;
+      }
+
+      if (p.startsWith('skills')) {
+        const matchName = /name=eq\.([^&]+)/.exec(p);
+        const skillName = matchName ? decodeURIComponent(matchName[1]) : null;
+        return (skills.find((s) => s.name === skillName) as any) ?? null;
+      }
+
       return null;
     },
-    update: async (_table, id, patch) => {
-      const idx = rows.findIndex((r) => r.id === id);
-      if (idx >= 0) rows[idx] = { ...rows[idx], ...patch };
+    query: async () => trainings,
+    insert: async (table, row) => {
+      if (table === 'trainings') {
+        const newRow = { id: `tr-${trainings.length + 1}`, ...(row as TrainingRow) };
+        trainings.push(newRow);
+        return newRow as any;
+      }
+      if (table === 'skills') {
+        const newRow = { id: `sk-${skills.length + 1}`, ...(row as SkillRow) };
+        skills.push(newRow);
+        return newRow as any;
+      }
+      return null;
+    },
+    update: async (table, id, patch) => {
+      if (table === 'trainings') {
+        const idx = trainings.findIndex((r) => r.id === id);
+        if (idx >= 0) trainings[idx] = { ...trainings[idx], ...patch };
+        return true;
+      }
+      if (table === 'skills') {
+        const idx = skills.findIndex((r) => r.id === id);
+        if (idx >= 0) skills[idx] = { ...skills[idx], ...patch };
+        return true;
+      }
       return true;
     },
   };
-  return { db, rows };
+
+  return { db, trainings, skills };
 }
 
-const cap = (overrides: Partial<LteSyncCapability> = {}): LteSyncCapability => ({
-  id: 'cap-1',
-  name: 'Support exchange member',
-  description: 'Evidence handoffs',
-  status: 'in_progress',
-  currentLevel: 1,
-  totalLevels: 5,
-  durationHours: 35,
-  totalModules: 35,
-  completedModules: 7,
-  levels: [],
-  fingerprint: 'abc123',
-  ...overrides,
-});
-
-describe('upsertLteTrainings (fingerprint delta)', () => {
-  it('inserts a course that does not exist yet and counts it as synced', async () => {
-    const { db, rows } = createFakeDb();
-    const result = await upsertLteTrainings(db, 'learner-1', [cap()]);
-    expect(result).toEqual({ synced: 1, updated: 0, skipped: 0 });
-    expect(rows).toHaveLength(1);
-    expect(rows[0].lte_hash).toBe('abc123');
+describe('upsertSingleProgressPayload', () => {
+  it('throws error when lteCourseId and levelId are missing', async () => {
+    const { db } = createFakeDb();
+    await expect(upsertSingleProgressPayload(db, 'learner-1', {})).rejects.toThrow(
+      'Missing lteCourseId in queue payload',
+    );
   });
 
-  it('skips a course whose stored fingerprint is unchanged', async () => {
-    const { db, rows } = createFakeDb([
-      { id: 'row-1', lte_course_id: 'cap-1', lte_hash: 'abc123' },
-    ]);
-    const result = await upsertLteTrainings(db, 'learner-1', [cap()]);
-    expect(result).toEqual({ synced: 0, updated: 0, skipped: 1 });
-    expect(rows[0].lte_hash).toBe('abc123'); // untouched
-    expect(rows[0].title).toBeUndefined();    // no write happened
+  it('inserts a new LTE training course row and earned skills from queue snapshot payload', async () => {
+    const { db, trainings, skills } = createFakeDb();
+    const payload = {
+      lteCourseId: 'course-101',
+      courseTitle: 'Fullstack GenAI Development',
+      lteCourseCode: 'LTE-GENAI-101',
+      status: 'in_progress',
+      completedModules: 3,
+      totalModules: 10,
+      durationHours: 5,
+      totalDurationHours: 40,
+      resumeUrl: '/my-courses/LTE-GENAI-101',
+      levels: [
+        { id: 'lvl-1', code: 'L1', title: 'Foundation', status: 'completed', completionPercentage: 100 },
+        { id: 'lvl-2', code: 'L2', title: 'Advanced Prompting', status: 'in_progress', completionPercentage: 50 },
+      ],
+      earnedSkills: ['Prompt Engineering', 'LangChain'],
+    };
+
+    const result = await upsertSingleProgressPayload(db, 'learner-1', payload);
+    expect(result).toEqual({ synced: true, trainingId: 'tr-1' });
+
+    expect(trainings).toHaveLength(1);
+    expect(trainings[0]).toMatchObject({
+      source: 'lte',
+      lte_course_id: 'course-101',
+      title: 'Fullstack GenAI Development',
+      organization: 'Rareminds LTE',
+      status: 'ongoing',
+      completed_modules: 3,
+      total_modules: 10,
+      hours_spent: 5,
+      duration: '40 hrs',
+      resume_url: '/my-courses/LTE-GENAI-101',
+      lte_course_code: 'LTE-GENAI-101',
+      lte_current_level: 2,
+      lte_total_levels: 2,
+    });
+
+    expect(skills).toHaveLength(2);
+    expect(skills.map((s) => s.name)).toEqual(['Prompt Engineering', 'LangChain']);
+    expect(skills[0]).toMatchObject({
+      learner_id: 'learner-1',
+      type: 'technical',
+      level: 2,
+      training_id: 'tr-1',
+      verified: true,
+      approval_status: 'approved',
+      source: 'lte',
+    });
   });
 
-  it('updates a course whose fingerprint changed and stores the new hash', async () => {
-    const { db, rows } = createFakeDb([
-      { id: 'row-1', lte_course_id: 'cap-1', lte_hash: 'old-hash' },
+  it('updates existing training course when new module is completed', async () => {
+    const { db, trainings } = createFakeDb([
+      {
+        id: 'tr-existing',
+        learner_id: 'learner-1',
+        source: 'lte',
+        lte_course_id: 'course-101',
+        title: 'Fullstack GenAI Development',
+        status: 'ongoing',
+        completed_modules: 3,
+        total_modules: 10,
+        hours_spent: 5,
+        duration: '40 hrs',
+        resume_url: '/my-courses/LTE-GENAI-101',
+        approval_status: 'approved',
+        lte_course_code: 'LTE-GENAI-101',
+        lte_levels: null,
+        lte_current_level: 2,
+        lte_total_levels: 2,
+      },
     ]);
-    const result = await upsertLteTrainings(db, 'learner-1', [cap()]);
-    expect(result).toEqual({ synced: 0, updated: 1, skipped: 0 });
-    expect(rows[0].lte_hash).toBe('abc123');
-    expect(rows[0].title).toBe('Support exchange member');
+
+    const updatedPayload = {
+      lteCourseId: 'course-101',
+      courseTitle: 'Fullstack GenAI Development',
+      status: 'completed',
+      completedModules: 10,
+      totalModules: 10,
+      durationHours: 40,
+    };
+
+    const result = await upsertSingleProgressPayload(db, 'learner-1', updatedPayload);
+    expect(result).toEqual({ synced: true, trainingId: 'tr-existing' });
+
+    expect(trainings[0].completed_modules).toBe(10);
+    expect(trainings[0].status).toBe('completed');
   });
 
-  it('updates when LTE sends no fingerprint (cannot safely skip)', async () => {
-    const { db } = createFakeDb([
-      { id: 'row-1', lte_course_id: 'cap-1', lte_hash: 'abc123' },
+  it('prevents stale lower module progress from overwriting higher progress', async () => {
+    const { db, trainings } = createFakeDb([
+      {
+        id: 'tr-existing',
+        learner_id: 'learner-1',
+        source: 'lte',
+        lte_course_id: 'course-101',
+        title: 'Fullstack GenAI Development',
+        status: 'completed',
+        completed_modules: 10,
+        total_modules: 10,
+        hours_spent: 40,
+        duration: '40 hrs',
+        resume_url: '/my-courses/LTE-GENAI-101',
+        approval_status: 'approved',
+        lte_course_code: 'LTE-GENAI-101',
+        lte_levels: null,
+        lte_current_level: 2,
+        lte_total_levels: 2,
+      },
     ]);
-    const noFingerprint = cap({ fingerprint: undefined });
-    const result = await upsertLteTrainings(db, 'learner-1', [noFingerprint]);
-    expect(result).toEqual({ synced: 0, updated: 1, skipped: 0 });
-  });
 
-  it('sums synced/updated/skipped across a mixed batch', async () => {
-    const { db } = createFakeDb([
-      { id: 'row-a', lte_course_id: 'cap-a', lte_hash: 'same' },
-      { id: 'row-b', lte_course_id: 'cap-b', lte_hash: 'stale-hash' },
-    ]);
-    const result = await upsertLteTrainings(db, 'learner-1', [
-      cap({ id: 'cap-a', fingerprint: 'same' }),        // skip
-      cap({ id: 'cap-b', fingerprint: 'new-hash' }),     // update
-      cap({ id: 'cap-c', fingerprint: 'brand-new' }),    // insert
-    ]);
-    expect(result).toEqual({ synced: 1, updated: 1, skipped: 1 });
+    const stalePayload = {
+      lteCourseId: 'course-101',
+      status: 'in_progress',
+      completedModules: 2,
+      totalModules: 10,
+    };
+
+    await upsertSingleProgressPayload(db, 'learner-1', stalePayload);
+
+    // Progress and completed status are preserved
+    expect(trainings[0].completed_modules).toBe(10);
+    expect(trainings[0].status).toBe('completed');
   });
 });

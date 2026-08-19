@@ -116,6 +116,9 @@ async function loadTrainings(ctx): Promise<unknown[]> {
     course_id: train.course_id,
     resumeUrl: train.resume_url,
     lteLevels: train.lte_levels || [],
+    lteCode: train.lte_course_code || '',
+    lteCurrentLevel: Number(train.lte_current_level) || 0,
+    lteTotalLevels: Number(train.lte_total_levels) || 0,
     skills: skillsByTraining[train.id] || [],
     certificateUrl: (certsByTraining[train.id] || [])[0]?.link || '',
     createdAt: train.created_at,
@@ -269,30 +272,6 @@ export const useLearnerTrainings = (learnerId, options = {}) => {
     void queryClient.invalidateQueries({ queryKey: ['learner-trainings'] });
     void queryClient.invalidateQueries({ queryKey: ['learner-trainings-stats'] });
   }, [queryClient]);
-
-  // Pull the learner's LTE courses so the cards are fresh, then refresh only if
-  // something actually changed. A failure never blocks rendering (fire-and-forget).
-  const runSync = useCallback(() => {
-    if (!learnerId) return;
-
-    apiPost('/learner/my-learning/lte-course-sync')
-      .then((res) => {
-        const data = res?.data;
-        const changed = !data || data.synced !== 0 || data.updated !== 0;
-        if (changed) invalidate();
-      })
-      .catch((err) => {
-        logger.warn('LTE sync failed', err instanceof Error ? err : new Error(String(err)));
-      });
-  }, [learnerId, invalidate]);
-
-  useEffect(() => {
-    runSync(); // on mount
-    // Also run when the learner returns to the tab, so changes made while away
-    // (e.g. progress in the course player) are pulled and shown on focus.
-    window.addEventListener('focus', runSync);
-    return () => window.removeEventListener('focus', runSync);
-  }, [runSync]);
 
   return {
     trainings: trainingsQuery.data ?? [],
