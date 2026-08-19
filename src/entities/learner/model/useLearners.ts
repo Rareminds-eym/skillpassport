@@ -185,6 +185,21 @@ interface LearnerRow {
     state?: string
     country?: string
   }[]
+  college?: {
+    id: string
+    name: string
+    code?: string
+    city?: string
+    state?: string
+    country?: string
+  } | {
+    id: string
+    name: string
+    code?: string
+    city?: string
+    state?: string
+    country?: string
+  }[]
   grade?: string
   section?: string
   roll_number?: string
@@ -231,6 +246,7 @@ export interface UICandidate {
   trainings: Training[]
   badges: string[]
   ai_score_overall: number
+  created_at?: string
   last_updated?: string
   // Social links
   github_link?: string
@@ -307,12 +323,14 @@ function mapToUICandidate(row: LearnerRow): UICandidate {
 
   // Get school name from joined data or fallback to college_school_name
   const schoolData = Array.isArray(row.schools) ? row.schools[0] : row.schools
-  const collegeData = Array.isArray(row.colleges) ? row.colleges[0] : row.colleges
+  const joinedCollege = row.college || row.colleges
+  const collegeData = Array.isArray(joinedCollege) ? joinedCollege[0] : joinedCollege
   const schoolClassData = Array.isArray(row.school_classes) ? row.school_classes[0] : row.school_classes
   const schoolName = schoolData?.name || row.college_school_name
   const collegeName = collegeData?.name || row.college_school_name || row.university
 
-  const dept = row.branch_field || row.course_name
+  const metadataDepartment = typeof row.metadata?.department_name === 'string' ? row.metadata.department_name : undefined
+  const dept = row.branch_field || metadataDepartment || row.course_name
   const location = row.district_name || row.city
 
   // Use skills from the skills table (already fetched via join)
@@ -348,6 +366,7 @@ function mapToUICandidate(row: LearnerRow): UICandidate {
     trainings,
     badges: ['institution_verified'],
     ai_score_overall: 0,
+    created_at: row.createdAt || row.created_at,
     last_updated: row.updatedAt || row.updated_at || row.imported_at || row.createdAt || row.created_at,
     // Social links
     github_link: row.github_link,

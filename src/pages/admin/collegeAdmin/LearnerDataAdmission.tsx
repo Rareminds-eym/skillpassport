@@ -78,6 +78,37 @@ const CheckboxGroup = ({ options, selectedValues, onChange }: {
   );
 };
 
+const getFilterValue = (value?: unknown): string | null => {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed ? trimmed.toLowerCase() : null;
+};
+
+const getDisplayLabel = (value: string): string =>
+  value
+    .split(/\s+/)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+
+const getAcademicDisplayLabel = (value: string): string =>
+  value
+    .trim()
+    .split(/\s+/)
+    .map((word) => {
+      if (/^[a-z]{2,3}$/i.test(word)) return word.toUpperCase();
+      if (/^[a-z]\.[a-z]+$/i.test(word)) {
+        const [prefix, suffix] = word.split('.');
+        return `${prefix.toUpperCase()}.${suffix.charAt(0).toUpperCase()}${suffix.slice(1).toLowerCase()}`;
+      }
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    })
+    .join(' ');
+
+const getSemesterFilterValue = (learner: any): string | null => {
+  if (!learner.semester || learner.semester <= 0) return null;
+  return String(learner.semester);
+};
+
 const StatusBadgeComponent = ({ status }: { status: string }) => {
   const statusConfig = {
     enrolled: { color: 'bg-green-100 text-green-800', label: 'Enrolled' },
@@ -106,14 +137,14 @@ const LearnerCard = ({ learner, onViewProfile, onAddNote, onViewCareerPath, load
 
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-      <div className="flex items-start justify-between mb-3">
-        <div>
-          <h3 className="font-medium text-gray-900">{learner.name}</h3>
-          <p className="text-sm text-gray-500">{learner.email}</p>
-          <p className="text-xs text-gray-400">{learner.phone || 'N/A'}</p>
+    <div className="min-w-0 bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <div className="min-w-0 flex-1">
+          <h3 className="truncate text-lg font-semibold leading-6 text-gray-900">{learner.name}</h3>
+          <p className="truncate text-sm text-gray-500">{learner.email}</p>
+          <p className="truncate text-xs text-gray-400">{learner.phone || 'N/A'}</p>
         </div>
-        <div className="flex flex-col items-end">
+        <div className="flex shrink-0 flex-col items-end">
           <div className="flex items-center mb-1">
             <StarIcon className="h-4 w-4 text-yellow-400 fill-current" />
             <span className="text-sm font-medium text-gray-700 ml-1">{learner.ai_score_overall || '0'}</span>
@@ -127,12 +158,12 @@ const LearnerCard = ({ learner, onViewProfile, onAddNote, onViewCareerPath, load
 
       <div className="mb-4 space-y-1">
         {(learner.college || learner.profile?.university) && (
-          <p className="text-xs text-gray-600">
+          <p className="truncate text-xs text-gray-600">
             📚 {learner.college || learner.profile?.university}
           </p>
         )}
         {learner.dept && (
-          <p className="text-xs text-gray-600">
+          <p className="truncate text-xs text-gray-600">
             🎓 {learner.dept}
           </p>
         )}
@@ -140,11 +171,11 @@ const LearnerCard = ({ learner, onViewProfile, onAddNote, onViewCareerPath, load
 
 
 
-      <div className="flex items-center justify-between">
-        <span className="text-xs text-gray-500">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <span className="min-w-0 truncate text-xs text-gray-500">
           {learner.location || 'N/A'}
         </span>
-        <div className="flex space-x-1 flex-wrap gap-1">
+        <div className="flex shrink-0 flex-wrap gap-2">
           <button
             onClick={() => onViewProfile(learner)}
             className="inline-flex items-center px-2 py-1 border border-gray-300 rounded text-xs font-medium text-gray-700 bg-white hover:bg-gray-50"
@@ -196,7 +227,8 @@ const LearnerDataAdmission = () => {
   const [filters, setFilters] = useState({
     degree: [] as string[],
     course: [] as string[],
-    college: [] as string[],
+    semester: [] as string[],
+    academicYear: [] as string[],
     status: [] as string[],
     minScore: 0,
     maxScore: 100
@@ -224,20 +256,20 @@ const LearnerDataAdmission = () => {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, sortBy, filters.degree.length, filters.course.length, filters.college.length, filters.status.length, filters.minScore, filters.maxScore]);
+  }, [searchQuery, sortBy, filters.degree.length, filters.course.length, filters.semester.length, filters.academicYear.length, filters.status.length, filters.minScore, filters.maxScore]);
 
   const degreeOptions = useMemo(() => {
     const degreeCounts: any = {};
     learners.forEach(learner => {
-      if (learner.dept) {
-        const normalizedDegree = learner.dept.toLowerCase();
+      const normalizedDegree = getFilterValue(learner.branch_field || learner.dept);
+      if (normalizedDegree) {
         degreeCounts[normalizedDegree] = (degreeCounts[normalizedDegree] || 0) + 1;
       }
     });
     return Object.entries(degreeCounts)
       .map(([degree, count]) => ({
         value: degree,
-        label: degree.charAt(0).toUpperCase() + degree.slice(1),
+        label: getAcademicDisplayLabel(degree),
         count: count as number
       }))
       .sort((a, b) => (b.count as number) - (a.count as number));
@@ -246,36 +278,19 @@ const LearnerDataAdmission = () => {
   const courseOptions = useMemo(() => {
     const courseCounts: any = {};
     learners.forEach(learner => {
-      if (learner.dept) {
-        const normalizedCourse = learner.dept.toLowerCase();
+      const normalizedCourse = getFilterValue(learner.course_name);
+      if (normalizedCourse) {
         courseCounts[normalizedCourse] = (courseCounts[normalizedCourse] || 0) + 1;
       }
     });
     return Object.entries(courseCounts)
       .map(([course, count]) => ({
         value: course,
-        label: course.charAt(0).toUpperCase() + course.slice(1),
+        label: getAcademicDisplayLabel(course),
         count: count as number
       }))
       .sort((a, b) => (b.count as number) - (a.count as number))
       .slice(0, 15);
-  }, [learners]);
-
-  const collegeOptions = useMemo(() => {
-    const collegeCounts: any = {};
-    learners.forEach(learner => {
-      if (learner.college) {
-        const normalizedCollege = learner.college.toLowerCase();
-        collegeCounts[normalizedCollege] = (collegeCounts[normalizedCollege] || 0) + 1;
-      }
-    });
-    return Object.entries(collegeCounts)
-      .map(([college, count]) => ({
-        value: college,
-        label: college.charAt(0).toUpperCase() + college.slice(1),
-        count: count as number
-      }))
-      .sort((a, b) => (b.count as number) - (a.count as number));
   }, [learners]);
 
   const statusOptions = useMemo(() => {
@@ -289,11 +304,48 @@ const LearnerDataAdmission = () => {
     return Object.entries(statusCounts)
       .map(([status, count]) => ({
         value: status,
-        label: status.charAt(0).toUpperCase() + status.slice(1),
+        label: getDisplayLabel(status),
         count: count as number
       }))
       .sort((a, b) => (b.count as number) - (a.count as number));
   }, [learners]);
+
+  const semesterOptions = useMemo(() => {
+    const semesterCounts: any = {};
+    learners.forEach(learner => {
+      const value = getSemesterFilterValue(learner);
+      if (value) {
+        semesterCounts[value] = (semesterCounts[value] || 0) + 1;
+      }
+    });
+    return Object.entries(semesterCounts)
+      .map(([value, count]) => ({
+        value,
+        label: `Semester ${value}`,
+        count: count as number
+      }))
+      .sort((a, b) => Number(a.value) - Number(b.value));
+  }, [learners]);
+
+  const academicYearOptions = useMemo(() => {
+    const academicYearCounts: any = {};
+    learners.forEach(learner => {
+      const value = getFilterValue(learner.admission_academic_year);
+      if (value) {
+        academicYearCounts[value] = (academicYearCounts[value] || 0) + 1;
+      }
+    });
+    return Object.entries(academicYearCounts)
+      .map(([value, count]) => ({
+        value,
+        label: value.toUpperCase(),
+        count: count as number
+      }))
+      .sort((a, b) => b.label.localeCompare(a.label));
+  }, [learners]);
+
+  const activeFilterCount = filters.degree.length + filters.course.length + filters.semester.length + filters.academicYear.length + filters.status.length;
+  const hasActiveFilters = activeFilterCount > 0 || filters.minScore > 0 || filters.maxScore < 100;
 
   const filteredAndSortedlearners = useMemo(() => {
     // Filter learners associated with colleges (college_id is not null)
@@ -315,21 +367,31 @@ const LearnerDataAdmission = () => {
     }
 
     if (filters.degree.length > 0) {
-      result = result.filter(learner =>
-        learner.dept && filters.degree.includes(learner.dept.toLowerCase())
-      );
+      result = result.filter(learner => {
+        const degree = getFilterValue(learner.branch_field || learner.dept);
+        return Boolean(degree && filters.degree.includes(degree));
+      });
     }
 
     if (filters.course.length > 0) {
-      result = result.filter(learner =>
-        learner.dept && filters.course.includes(learner.dept.toLowerCase())
-      );
+      result = result.filter(learner => {
+        const course = getFilterValue(learner.course_name);
+        return Boolean(course && filters.course.includes(course));
+      });
     }
 
-    if (filters.college.length > 0) {
-      result = result.filter(learner =>
-        learner.college && filters.college.includes(learner.college.toLowerCase())
-      );
+    if (filters.semester.length > 0) {
+      result = result.filter(learner => {
+        const semester = getSemesterFilterValue(learner);
+        return Boolean(semester && filters.semester.includes(semester));
+      });
+    }
+
+    if (filters.academicYear.length > 0) {
+      result = result.filter(learner => {
+        const academicYear = getFilterValue(learner.admission_academic_year);
+        return Boolean(academicYear && filters.academicYear.includes(academicYear));
+      });
     }
 
     if (filters.status.length > 0) {
@@ -396,7 +458,8 @@ const LearnerDataAdmission = () => {
     setFilters({
       degree: [],
       course: [],
-      college: [],
+      semester: [],
+      academicYear: [],
       status: [],
       minScore: 0,
       maxScore: 100
@@ -486,7 +549,7 @@ const LearnerDataAdmission = () => {
           <div className="inline-flex items-baseline">
             <h1 className="text-xl font-semibold text-gray-900">Enrollments</h1>
             <span className="ml-2 text-sm text-gray-500">
-              ({totalItems} {searchQuery || filters.degree.length > 0 ? 'matching' : ''} enrollments)
+              ({totalItems} {searchQuery || hasActiveFilters ? 'matching' : ''} enrollments)
             </span>
           </div>
         </div>
@@ -509,9 +572,9 @@ const LearnerDataAdmission = () => {
           >
             <FunnelIcon className="h-4 w-4 mr-2" />
             Filters
-            {(filters.degree.length + filters.course.length + filters.college.length + filters.status.length) > 0 && (
+            {activeFilterCount > 0 && (
               <span className="ml-1 inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white bg-primary-600 rounded-full">
-                {filters.degree.length + filters.course.length + filters.college.length + filters.status.length}
+                {activeFilterCount}
               </span>
             )}
           </button>
@@ -542,7 +605,7 @@ const LearnerDataAdmission = () => {
         <div className="text-left">
           <h1 className="text-xl font-semibold text-gray-900">Enrollments</h1>
           <span className="text-sm text-gray-500">
-            {totalItems} {searchQuery || filters.degree.length > 0 ? 'matching' : ''} enrollments
+            {totalItems} {searchQuery || hasActiveFilters ? 'matching' : ''} enrollments
           </span>
         </div>
 
@@ -601,7 +664,7 @@ const LearnerDataAdmission = () => {
               </div>
 
               <div className="space-y-0">
-                <FilterSection title="Degree" defaultOpen>
+                <FilterSection title="Degree / Department" defaultOpen>
                   <CheckboxGroup
                     options={degreeOptions}
                     selectedValues={filters.degree}
@@ -609,7 +672,7 @@ const LearnerDataAdmission = () => {
                   />
                 </FilterSection>
 
-                <FilterSection title="Course">
+                <FilterSection title="Program / Course">
                   <CheckboxGroup
                     options={courseOptions}
                     selectedValues={filters.course}
@@ -617,11 +680,19 @@ const LearnerDataAdmission = () => {
                   />
                 </FilterSection>
 
-                <FilterSection title="College">
+                <FilterSection title="Semester">
                   <CheckboxGroup
-                    options={collegeOptions}
-                    selectedValues={filters.college}
-                    onChange={(values) => setFilters({ ...filters, college: values })}
+                    options={semesterOptions}
+                    selectedValues={filters.semester}
+                    onChange={(values) => setFilters({ ...filters, semester: values })}
+                  />
+                </FilterSection>
+
+                <FilterSection title="Academic Year">
+                  <CheckboxGroup
+                    options={academicYearOptions}
+                    selectedValues={filters.academicYear}
+                    onChange={(values) => setFilters({ ...filters, academicYear: values })}
                   />
                 </FilterSection>
 
@@ -690,9 +761,9 @@ const LearnerDataAdmission = () => {
             </div>
           </div>
 
-          <div className="px-4 sm:px-6 lg:px-8 flex-1 overflow-y-auto p-4 min-h-0">
+          <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 sm:px-6 lg:px-8">
             {viewMode === 'grid' ? (
-              <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+              <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))] gap-4">
                 {loading && <div className="text-sm text-gray-500">Loading enrollments...</div>}
                 {error && <div className="text-sm text-red-600">{error}</div>}
                 {!loading && paginatedlearners.map((learner) => (
@@ -713,14 +784,14 @@ const LearnerDataAdmission = () => {
                       </svg>
                     </div>
                     <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                      {searchQuery || filters.degree.length > 0 ? 'No Learners Found' : 'No Learners Enrolled Yet'}
+                      {searchQuery || hasActiveFilters ? 'No Learners Found' : 'No Learners Enrolled Yet'}
                     </h3>
                     <p className="text-gray-500 text-center mb-6 max-w-md">
-                      {searchQuery || filters.degree.length > 0
+                      {searchQuery || hasActiveFilters
                         ? 'No learners match your current search or filters. Try adjusting your criteria.'
                         : 'Get started by adding your first learner enrollment to begin managing learner data.'}
                     </p>
-                    {!searchQuery && filters.degree.length === 0 && (
+                    {!searchQuery && !hasActiveFilters && (
                       <button
                         onClick={() => setShowAddlearnerModal(true)}
                         className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
@@ -773,14 +844,14 @@ const LearnerDataAdmission = () => {
                               </svg>
                             </div>
                             <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                              {searchQuery || filters.degree.length > 0 ? 'No Learners Found' : 'No Learners Enrolled Yet'}
+                              {searchQuery || hasActiveFilters ? 'No Learners Found' : 'No Learners Enrolled Yet'}
                             </h3>
                             <p className="text-gray-500 text-center mb-6 max-w-md">
-                              {searchQuery || filters.degree.length > 0
+                              {searchQuery || hasActiveFilters
                                 ? 'No learners match your current search or filters. Try adjusting your criteria.'
                                 : 'Get started by adding your first learner enrollment to begin managing learner data.'}
                             </p>
-                            {!searchQuery && filters.degree.length === 0 && (
+                            {!searchQuery && !hasActiveFilters && (
                               <button
                                 onClick={() => setShowAddlearnerModal(true)}
                                 className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"

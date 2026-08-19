@@ -940,6 +940,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           guardianName, guardianPhone, guardianEmail, guardianRelation, enrollmentDate,
           expectedGraduationDate, hobbies, languages, interests, category, quota, metadata,
           notification_settings,
+          college:organizations!learners_college_id_fkey(id, name, code, city, state, country, organization_type),
           school_classes:school_class_id(id, name, grade, section, academic_year),
           skills!skills_learner_id_fkey(id, name, type, level, description, verified, enabled, approval_status, created_at, updated_at),
           projects!projects_learner_id_fkey(id, title, description, status, start_date, end_date, duration, tech_stack, demo_link, github_link, approval_status, certificate_url, video_url, ppt_url, organization, enabled, created_at, updated_at),
