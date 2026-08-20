@@ -10,14 +10,8 @@ BEGIN;
 ALTER TABLE public.skills
   ADD COLUMN IF NOT EXISTS lte_skill_id uuid;
 
-ALTER TABLE public.skills
-  ADD COLUMN IF NOT EXISTS lte_hash text;
-
 COMMENT ON COLUMN public.skills.lte_skill_id IS
   'LTE skill id for skills pushed via the LTE skill sync (no FK: LTE owns the skill id)';
-
-COMMENT ON COLUMN public.skills.lte_hash IS
-  'LTE content fingerprint (SHA-256) used to skip updating unchanged lte-sourced skills';
 
 -- Upsert key for synced LTE skills (partial: only lte-sourced rows participate)
 CREATE UNIQUE INDEX IF NOT EXISTS uq_skills_lte_skill
