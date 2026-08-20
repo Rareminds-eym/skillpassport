@@ -1,4 +1,7 @@
 import { type WriteDb, WriteDbError } from '../../api/internal/lte/v1/write-db';
+import { createLogger } from '../logger';
+
+const logger = createLogger('lte-sync-write');
 
 /** A single module inside an LTE level (used by the UI progress card ladder). */
 export interface LteSyncModule {
@@ -138,7 +141,7 @@ export async function upsertSingleProgressPayload(
           });
         }
       } catch (skillErr) {
-        // Fail-soft for skills insertion
+        logger.warn('[lte-sync-write] Skill insert fail-soft', { skillName, lteSkillId, error: skillErr });
       }
     }
   }

@@ -4,7 +4,10 @@
  * Direct PostgREST calls: GET (SELECT), POST (INSERT), PATCH (UPDATE by row id).
  */
 
+import { createLogger } from '../../../../lib/logger';
 import type { PagesEnv } from '../../../../lib/types';
+
+const logger = createLogger('write-db');
 
 /**
  * Typed failure from the write facade. `status` is the PostgREST HTTP status;
@@ -53,8 +56,14 @@ export function createWriteDb(env: PagesEnv): WriteDb {
       try {
         const parsed = JSON.parse(body) as { code?: string };
         code = typeof parsed?.code === 'string' ? parsed.code : undefined;
-      } catch {
-        // non-JSON error body — no Postgres code to surface
+      } catch (parseError) {
+        logger.warn('Write DB error body is not JSON', {
+          path,
+          status: response.status,
+          method: init.method,
+          bodyPreview: body.slice(0, 200),
+          parseError: parseError instanceof Error ? parseError.message : String(parseError),
+        });
       }
       throw new WriteDbError(
         `Write DB ${init.method ?? 'request'} failed [${response.status}]: ${body.slice(0, 500)}`,
