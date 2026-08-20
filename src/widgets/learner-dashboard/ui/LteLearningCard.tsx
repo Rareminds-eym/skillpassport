@@ -39,7 +39,7 @@ export function LteLearningCard({ item, onContinue, viewMode = 'grid' }: LteLear
   const badge = getStatusBadge(item.status);
   const StatusIcon = badge.icon;
 
-  const progress = isCompleted
+  const rawProgress = isCompleted
     ? 100
     : item.totalModules > 0
       ? Math.round(((item.completedModules || 0) / item.totalModules) * 100)
@@ -47,7 +47,11 @@ export function LteLearningCard({ item, onContinue, viewMode = 'grid' }: LteLear
         ? Math.round(((item.lteCurrentLevel || 0) / (item.lteTotalLevels || 1)) * 100)
         : 0;
 
+  const progress = Math.min(100, Math.max(0, rawProgress));
+
   const levelCount = item.lteTotalLevels ?? levels.length;
+
+  const actionText = progress > 0 ? 'Continue' : 'Start Course';
 
   const renderActionButton = (full: boolean) =>
     isCompleted ? (
@@ -63,12 +67,13 @@ export function LteLearningCard({ item, onContinue, viewMode = 'grid' }: LteLear
       <button
         type="button"
         onClick={() => onContinue?.(item)}
+        aria-label={`${actionText} ${item.course || item.title}`}
         className={`flex items-center justify-center gap-2 rounded-xl sm:rounded-2xl font-bold text-sm bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700 transition-all duration-300 hover:scale-105 shadow-md shadow-blue-500/25 ${
           full ? 'w-full py-3' : 'px-4 sm:px-6 py-2.5'
         }`}
       >
         <Play className="w-4 h-4" />
-        <span>{progress > 0 ? 'Continue' : 'Start Course'}</span>
+        <span>{actionText}</span>
       </button>
     );
 

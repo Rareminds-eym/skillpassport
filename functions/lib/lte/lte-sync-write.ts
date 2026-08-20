@@ -23,6 +23,11 @@ export interface LteSyncLevel {
   modules?: LteSyncModule[];
 }
 
+function safeNumber(val: unknown, fallback = 0): number {
+  const num = Number(val);
+  return Number.isFinite(num) ? num : fallback;
+}
+
 /**
  * Upserts a single progress payload emitted by `lte` via Cloudflare Queue
  * (`lte-db-sync-queue`) into `skillpassport` database tables (`trainings` & `skills`).
@@ -38,23 +43,24 @@ export async function upsertSingleProgressPayload(
   }
 
   const status = String(payload.status || 'in_progress');
-  const rawCompleted = Math.max(0, Number(payload.completedModules ?? 0));
-  const totalModules = Math.max(0, Number(payload.totalModules ?? 0));
+  const rawCompleted = Math.max(0, safeNumber(payload.completedModules));
+  const totalModules = Math.max(0, safeNumber(payload.totalModules));
   const completedModules = totalModules > 0 ? Math.min(rawCompleted, totalModules) : rawCompleted;
-  const durationHours = Number(payload.durationHours || 0);
+  const durationHours = safeNumber(payload.durationHours);
 
   let currentLevelNum = 1;
   if (Array.isArray(payload.levels) && payload.levels.length > 0) {
-    const activeIdx = payload.levels.findIndex((l: any) => l.status === 'in_progress' || l.status === 'ongoing');
+    const levels = payload.levels as Array<{ status?: string }>;
+    const activeIdx = levels.findIndex((l) => l?.status === 'in_progress' || l?.status === 'ongoing');
     if (activeIdx >= 0) {
       currentLevelNum = activeIdx + 1;
     } else {
-      const completedCount = payload.levels.filter((l: any) => l.status === 'completed').length;
-      currentLevelNum = Math.min(completedCount + 1, payload.levels.length);
+      const completedCount = levels.filter((l) => l?.status === 'completed').length;
+      currentLevelNum = Math.min(completedCount + 1, levels.length);
     }
   }
 
-  const totalDurationHours = Number(payload.totalDurationHours || 35);
+  const totalDurationHours = safeNumber(payload.totalDurationHours, 35);
   const resumeUrl = payload.resumeUrl ? String(payload.resumeUrl) : null;
 
   const row = {
@@ -112,12 +118,13 @@ export async function upsertSingleProgressPayload(
 
   if (Array.isArray(payload.earnedSkills) && payload.earnedSkills.length > 0) {
     for (const item of payload.earnedSkills) {
-      const skillName = typeof item === 'string' ? item.trim() : (item && typeof item === 'object' && 'name' in item) ? String((item as any).name).trim() : '';
+      const obj = item && typeof item === 'object' ? (item as Record<string, unknown>) : null;
+      const skillName = typeof item === 'string' ? item.trim() : (obj?.name && typeof obj.name === 'string') ? obj.name.trim() : '';
       if (!skillName) continue;
 
-      const explicitLevel = (item && typeof item === 'object' && 'level' in item) ? Number((item as any).level) : 0;
+      const explicitLevel = obj && typeof obj.level === 'number' ? obj.level : 0;
       const computedSkillLevel = explicitLevel > 0 ? explicitLevel : Math.max(1, currentLevelNum);
-      const lteSkillId = item && typeof item === 'object' && 'id' in item ? String((item as any).id) : (item && typeof item === 'object' && 'lteSkillId' in item) ? String((item as any).lteSkillId) : null;
+      const lteSkillId = obj && typeof obj.id === 'string' ? obj.id : obj && typeof obj.lteSkillId === 'string' ? obj.lteSkillId : null;
 
       try {
         const queryByLteId = lteSkillId

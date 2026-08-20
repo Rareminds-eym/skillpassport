@@ -2,7 +2,7 @@
 export type LteTrainingStatus = 'not_started' | 'in_progress' | 'ongoing' | 'completed' | 'paused';
 
 /** Human-readable labels for LTE statuses — shared by card + level ladder. */
-export const STATUS_LABELS: Record<string, string> = {
+export const STATUS_LABELS: Record<LteTrainingStatus | string, string> = {
   completed: 'Completed',
   mastered: 'Mastered',
   in_progress: 'In progress',

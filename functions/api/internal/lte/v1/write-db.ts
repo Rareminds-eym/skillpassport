@@ -85,11 +85,12 @@ export function createWriteDb(env: PagesEnv): WriteDb {
       return rows?.[0] ?? null;
     },
     insert: async <T>(table: string, row: Record<string, unknown>): Promise<T | null> => {
-      return request<T>(table, {
+      const result = await request<T | T[]>(table, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Prefer: 'return=representation' },
         body: JSON.stringify(row),
       });
+      return (Array.isArray(result) ? result[0] : result) ?? null;
     },
     update: async (table: string, id: string, patch: Record<string, unknown>): Promise<boolean> => {
       await request<unknown>(`${table}?id=eq.${encodeURIComponent(id)}`, {
