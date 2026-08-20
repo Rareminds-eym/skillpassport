@@ -30,6 +30,8 @@ import { capitalizeName } from "@/shared/lib/helpers";
 import { calculateEmployabilityScore } from "@/shared/lib/employabilityCalculator";
 
 import { useAuthLoading, useUser } from '@/shared/model/authStore';
+import { apiPost } from '@/shared/api/apiClient';
+
 function safeParse(jsonLike) {
   if (!jsonLike) return {};
   if (typeof jsonLike === "object") return jsonLike;
@@ -177,6 +179,18 @@ export default function LearnerPublicViewer() {
   const profile = useMemo(() => ({ ...(raw || {}), ...(parsedProfile || {}) }), [raw, parsedProfile]);
   const [showShareModal, setShowShareModal] = useState(false);
   const [downloading, setDownloading] = useState(false);
+
+  // Track profile view — only fires for logged-in users (viewer_id FK requires a users.id)
+  useEffect(() => {
+    if (!learnerId || !user) return; // skip if not logged in or no learnerId
+    apiPost('/learner-profile/actions', {
+      action: 'track-profile-view',
+      learnerId,
+      viewerType: user.role || 'learner',
+    }).catch(() => {
+      // fire-and-forget — never break the profile page
+    });
+  }, [learnerId, user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const pickArray = (...sources) => {
     for (const src of sources) {

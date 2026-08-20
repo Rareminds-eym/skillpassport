@@ -224,19 +224,42 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
       // ─── Usage Statistics ─────────────────────────────────
       case 'get-usage-stats': {
-        const userId = params.userId || user.id;
+        // Resolve the learners.id from the auth user id (user.id is the Supabase auth UUID,
+        // but personal_assessment_results.learner_id references learners.id which is a
+        // separate UUID — they are NOT the same value).
+        const { data: learnerRow, error: learnerLookupError } = await supabase
+          .from('learners')
+          .select('id')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (learnerLookupError) {
+          console.error('[get-usage-stats] Failed to resolve learner id:', learnerLookupError);
+        }
+
+        const learnerId = learnerRow?.id || null;
 
         const getCount = async (table: string, field = 'learner_id'): Promise<number> => {
+          if (!learnerId) return 0;
           try {
-            const { count } = await supabase.from(table).select('*', { count: 'exact', head: true }).eq(field, userId);
+            const { count } = await supabase.from(table).select('*', { count: 'exact', head: true }).eq(field, learnerId);
             return count || 0;
           } catch { return 0; }
         };
 
         const [assessments, profileViews, reports] = await Promise.all([
-          getCount('personal_assessment_results'),
-          getCount('profile_views'),
-          getCount('learner_reports'),
+          getCount('personal_assessment_results'),         // learner_id = learners.id ✅
+          // profile_views.learner_id references learners(user_id) = auth UUID
+          (async (): Promise<number> => {
+            try {
+              const { count } = await supabase
+                .from('profile_views')
+                .select('*', { count: 'exact', head: true })
+                .eq('learner_id', user.id); // auth UUID directly
+              return count || 0;
+            } catch { return 0; }
+          })(),
+          getCount('learner_reports'),                     // learner_id = learners.id
         ]);
 
         return apiSuccess({
