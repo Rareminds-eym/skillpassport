@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { apiPost } from '@/shared/api/apiClient';
 
 export const useLearnerSkills = (learnerId, skillType, enabled = true) => {
@@ -6,7 +6,7 @@ export const useLearnerSkills = (learnerId, skillType, enabled = true) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const fetchSkills = async () => {
+  const fetchSkills = useCallback(async () => {
     if (!learnerId || !enabled) return;
 
     try {
@@ -37,16 +37,16 @@ export const useLearnerSkills = (learnerId, skillType, enabled = true) => {
       }));
 
       setSkills(transformedData);
-    } catch (err) {
+    } catch (err: any) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
-  };
+  }, [learnerId, skillType, enabled]);
 
   useEffect(() => {
     fetchSkills();
-  }, [learnerId, skillType, enabled]);
+  }, [fetchSkills]);
 
   return { skills, loading, error, refresh: fetchSkills };
 };

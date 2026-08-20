@@ -28,6 +28,7 @@ export { default as LearningCoursesSection } from './ui/LearningCoursesSection';
 export { default as LearningProgressBar } from './ui/LearningProgressBar';
 export { LearningSection } from './ui/LearningSection';
 export { default as ModernLearningCard } from './ui/ModernLearningCard';
+export { LteLearningCard } from './ui/LteLearningCard';
 export { default as NotificationPanel } from './ui/NotificationPanel';
 export { OpportunitiesCard } from './ui/OpportunitiesCard';
 export { default as OpportunityCard } from './ui/OpportunityCard';

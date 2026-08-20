@@ -14,7 +14,10 @@ describe('Gateway Actions Registry Handlers', () => {
       query: dbMocks.query ?? vi.fn(),
       queryOne: dbMocks.queryOne ?? vi.fn(),
     },
-    env: {} as any,
+    env: {
+      SUPABASE_URL: 'https://example.supabase.co',
+      SUPABASE_SERVICE_ROLE_KEY: 'mock-key',
+    } as any,
     request: new Request('https://example.test'),
     requestId: 'test-req-id',
     userId,
@@ -207,6 +210,20 @@ describe('Gateway Actions Registry Handlers', () => {
       expect(result.ok).toBe(true);
       if (result.ok) {
         expect(result.data).toEqual({ hasAssessment: true, hasInProgressAssessment: true });
+      }
+    });
+  });
+
+  describe('lte:sync action', () => {
+    it('should return NOT_FOUND if learner profile does not exist', async () => {
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('[]', { status: 200 }));
+      const { handleLteSync } = await import('../../../../../api/internal/lte/v1/actions/lte-sync');
+      const ctx = createMockContext({});
+
+      const result = await handleLteSync(ctx, { userId });
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe('NOT_FOUND');
       }
     });
   });

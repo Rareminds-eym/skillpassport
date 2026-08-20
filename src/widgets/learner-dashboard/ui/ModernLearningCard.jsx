@@ -402,6 +402,22 @@ const ModernLearningCard = ({
       }
     } else {
       // For internal courses (enrollments), use the course completion status
+      if (item.status === 'not_started') {
+        return {
+          bg: 'bg-gray-100 text-gray-600',
+          text: 'text-gray-600',
+          icon: Play,
+          label: 'Not Started'
+        };
+      }
+      if (item.status === 'paused') {
+        return {
+          bg: 'bg-gradient-to-r from-yellow-100 to-yellow-200',
+          text: 'text-yellow-800',
+          icon: Clock,
+          label: 'Paused'
+        };
+      }
       if (isCompleted) {
         return {
           bg: 'bg-gradient-to-r from-green-100 to-green-200',
@@ -924,7 +940,7 @@ const ModernLearningCard = ({
                     {item.totalModules > 0 && (
                       <div className="flex items-center gap-1.5">
                         <ListChecks className="w-4 h-4" />
-                        <span>{item.completedModules || 0}/{item.totalModules} modules</span>
+                        <span>{item.completedModules || 0} of {item.totalModules} modules completed</span>
                       </div>
                     )}
                     {item.skills && item.skills.length > 0 && (

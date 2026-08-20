@@ -30,6 +30,7 @@ import type { GatewayAction, GatewayContext, GatewayResult } from './types';
 import { handlePing } from './actions/ping';
 import { handleLearningTrack } from './actions/learning-track';
 import { handleLearnerStatus } from './actions/learner-status';
+import { handleLteSync } from './actions/lte-sync';
 
 const logger = createLogger('lte-gateway');
 
@@ -37,6 +38,7 @@ const REGISTRY: Record<string, GatewayAction> = {
   'ping': handlePing,
   'learning-track:get': handleLearningTrack,
   'learner:status': handleLearnerStatus,
+  'lte:sync': handleLteSync,
 };
 
 function gatewayResponse(result: GatewayResult, requestId: string, status = 200): Response {
@@ -123,7 +125,7 @@ export const onRequestPost: PagesFunction<PagesEnv> = async (context) => {
       );
     }
 
-    // 6. Handlers get a SELECT-only DB — no write path exists for them.
+    // 6. Handlers get a SELECT-only DB by default — authorized write actions (e.g. lte:sync) instantiate createWriteDb explicitly.
     const ctx: GatewayContext = {
       db: createReadOnlyDb(env),
       env,
