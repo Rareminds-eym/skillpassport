@@ -3,7 +3,7 @@
  */
 
 import { validateFileSizeConfig } from "./api/storage/config/fileSizeLimits";
-import { getAuthInstance } from "./lib/auth";
+import { getSsoGatewayInstance } from "./lib/auth";
 import { getCorsHeaders } from "./lib/cors";
 import type { PagesFunction } from "./lib/types";
 
@@ -35,7 +35,7 @@ export const onRequest: PagesFunction = async (context) => {
     path = path.slice(0, -1);
   }
 
-  // --- Delegate Browser Auth Routes to Auth Core ---
+  // --- Delegate Browser Auth Routes to Auth Core / SSO Gateway ---
   if (
     context.env.SSO_SERVICE &&
     (path.startsWith("/api/auth/") || path.startsWith("/api/v1/auth/")) &&
@@ -43,10 +43,10 @@ export const onRequest: PagesFunction = async (context) => {
     path !== "/api/v1/auth/generate-lte-code"
   ) {
     try {
-      const auth = getAuthInstance(context.env);
-      return await auth.handleBrowserRequest(context.request);
+      const gateway = getSsoGatewayInstance(context.env);
+      return await gateway.handleBrowserRequest(context.request);
     } catch (err) {
-      console.error("[Middleware] Auth Core browser route handling error:", err);
+      console.error("[Middleware] SSO Gateway browser route handling error:", err);
     }
   }
 

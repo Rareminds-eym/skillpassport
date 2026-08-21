@@ -1,6 +1,7 @@
 /// <reference types="@cloudflare/workers-types" />
-import type { VerifiedAuthUser as SSOAuthUser } from "@rareminds-eym/auth-core";
+import type { VerifiedAuthUser as SSOAuthUser, VerifiedAuthContext } from "@rareminds-eym/auth-core";
 import { createAuth } from "@rareminds-eym/auth-core";
+import { createSsoGateway } from "@rareminds-eym/sso-gateway";
 import { hasAnyFeature } from "./entitlements";
 import { ADMIN_ROLES } from "./roleCategories";
 import { getServiceClient } from "./supabase";
@@ -37,7 +38,7 @@ export function getAuthInstance(env: Record<string, unknown>): ReturnType<typeof
         "http://127.0.0.1:8788",
         "http://127.0.0.1:5173",
         "http://127.0.0.1:5174",
-        "http://127.0.0.1:4173"
+        "http://127.0.0.1:4173",
       ],
       credentialedCors: {
         origins: [
@@ -53,8 +54,8 @@ export function getAuthInstance(env: Record<string, unknown>): ReturnType<typeof
           "http://127.0.0.1:8788",
           "http://127.0.0.1:5173",
           "http://127.0.0.1:5174",
-          "http://127.0.0.1:4173"
-        ]
+          "http://127.0.0.1:4173",
+        ],
       },
       csrf: { name: "X-RM-CSRF", value: "1" },
       cookieMaxAgeSeconds: 604800,
@@ -65,6 +66,40 @@ export function getAuthInstance(env: Record<string, unknown>): ReturnType<typeof
       `Failed to initialize auth-core: ${error instanceof Error ? error.message : String(error)}`
     );
   }
+}
+
+export function getSsoGatewayInstance(env: Record<string, unknown>): ReturnType<typeof createSsoGateway> {
+  const ssoRpcRaw = env.SSO_SERVICE;
+  if (!ssoRpcRaw || typeof ssoRpcRaw !== "object") {
+    throw new Error(
+      "SSO_SERVICE must be a Service Binding to the SSO worker. Check wrangler.toml."
+    );
+  }
+
+  return createSsoGateway({
+    sso: ssoRpcRaw as any,
+    issuer: "sso-api",
+    audience: "sso-client",
+    basePath: "/api/auth",
+    approvedOrigins: [
+      "https://skillpassport.rareminds.in",
+      "http://localhost:3000",
+      "http://localhost:8787",
+      "http://localhost:8788",
+      "http://localhost:5173",
+      "http://localhost:5174",
+      "http://localhost:4173",
+      "http://127.0.0.1:3000",
+      "http://127.0.0.1:8787",
+      "http://127.0.0.1:8788",
+      "http://127.0.0.1:5173",
+      "http://127.0.0.1:5174",
+      "http://127.0.0.1:4173",
+    ],
+    csrf: { name: "X-RM-CSRF", value: "1" },
+    cookieMaxAgeSeconds: 604800,
+    ssoRequestTimeoutMs: 5000,
+  });
 }
 
 /**
@@ -95,7 +130,7 @@ export function withAuth(handler: (context: any) => Promise<Response>) {
     const env = context.env as Record<string, string | Fetcher>;
     const auth = getAuthInstance(env);
 
-    const authenticate = auth.authenticate(async (req, authedContext) => {
+    const authenticate = auth.authenticate(async (_req: Request, authedContext: VerifiedAuthContext) => {
       context.data = context.data ?? {};
       context.data.user = authedContext.user;
 
@@ -114,7 +149,7 @@ export function withAuthAllowUnverified(handler: (context: any) => Promise<Respo
     const env = context.env as Record<string, string | Fetcher>;
     const auth = getAuthInstance(env);
 
-    const authenticate = auth.authenticate(async (req, authedContext) => {
+    const authenticate = auth.authenticate(async (_req: Request, authedContext: VerifiedAuthContext) => {
       context.data = context.data ?? {};
       context.data.user = authedContext.user;
 
@@ -195,7 +230,7 @@ export function requireProduct(
   return (fn: (c: any) => Promise<Response>) => (context: any) => run(context, fn);
 }
 
-export function requireAdmin(handler: (context: any) => Promise<Response> | Response) {
+export function requireAdmin(handler: (context: any) => Promise<Response>) {
   return requireRole([...ADMIN_ROLES], handler);
 }
 

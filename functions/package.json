@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "type": "module",
   "dependencies": {
-    "@rareminds-eym/auth-core": "3.0.0",
+    "@rareminds-eym/auth-core": "file:../../skill-echosystem-packages/auth-core",
+    "@rareminds-eym/entitlements": "file:../../skill-echosystem-packages/entitlements",
+    "@rareminds-eym/sso-gateway": "file:../../skill-echosystem-packages/sso-gateway",
     "@supabase/supabase-js": "2.57.4",
     "aws4fetch": "1.0.20",
     "pdf-lib": "1.17.1",

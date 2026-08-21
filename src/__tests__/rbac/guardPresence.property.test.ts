@@ -81,6 +81,7 @@ const FUNCTIONS_ROOT = path.join(PROJECT_ROOT, 'functions');
  * `functions/` with forward slashes. Each MUST also carry the `// @public-endpoint:` marker.
  */
 const PUBLIC_ALLOWLIST = new Set<string>([
+    'api/auth/[[path]].ts',
     'api/otp/[[path]].ts',
     'api/payments/handlers/create-registration-order.ts',
     'api/payments/handlers/update-registration-payment-status.ts',
