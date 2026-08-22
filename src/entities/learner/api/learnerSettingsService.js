@@ -7,6 +7,7 @@
 
 import { PASSWORD_MIN } from '@/shared/constants';
 import { apiPost } from '@/shared/api/apiClient';
+import { SETTINGS_ERROR_CODES } from '@/shared/lib/settingsErrorHandler';
 
 /**
  * Fetch learner data by email for settings page
@@ -341,14 +342,26 @@ export const updatelearnerPassword = async (email, currentPassword, newPassword)
   } catch (err) {
     const msg = err.message || '';
     if (msg.includes('Current password') || msg.includes('Invalid credentials') || msg.includes('incorrect')) {
-      return { success: false, error: 'Current password is incorrect. Please try again.' };
+      return { success: false, error: 'Current password is incorrect. Please try again.', code: SETTINGS_ERROR_CODES.UNAUTHORIZED };
     }
-    if (msg.includes('same password')) {
-      return { success: false, error: 'New password must be different from your current password.' };
+    if (msg.includes('must be different from current password')) {
+      return { success: false, error: 'New password must be different from your current password.', code: SETTINGS_ERROR_CODES.VALIDATION_ERROR };
     }
-    if (msg.includes('too weak') || msg.includes('8 characters')) {
-      return { success: false, error: `Password must be at least ${PASSWORD_MIN} characters long.` };
+    if (msg.includes('Invalid password')) {
+      return { success: false, error: `Password must be at least ${PASSWORD_MIN} characters long and contain at least 3 of: uppercase letters, lowercase letters, numbers, and special characters.`, code: SETTINGS_ERROR_CODES.VALIDATION_ERROR };
     }
-    return { success: false, error: msg || 'An unexpected error occurred. Please try again.' };
+    if (msg.includes('Invalid or expired access token')) {
+      return { success: false, error: msg, code: SETTINGS_ERROR_CODES.SESSION_EXPIRED };
+    }
+    if (msg.includes('Rate limit exceeded')) {
+      return { success: false, error: msg, code: SETTINGS_ERROR_CODES.RATE_LIMITED };
+    }
+    if (msg.includes('User not found')) {
+      return { success: false, error: msg, code: SETTINGS_ERROR_CODES.NOT_FOUND };
+    }
+    if (msg.includes('is required')) {
+      return { success: false, error: msg, code: SETTINGS_ERROR_CODES.VALIDATION_ERROR };
+    }
+    return { success: false, error: msg || 'An unexpected error occurred. Please try again.', code: SETTINGS_ERROR_CODES.DATABASE_ERROR };
   }
 };

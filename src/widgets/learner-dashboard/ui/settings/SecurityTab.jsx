@@ -15,6 +15,14 @@ const SecurityTab = ({
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  const hasMinLength = passwordData.newPassword.length >= PASSWORD_MIN;
+  const hasComplexity =
+    [/[A-Z]/, /[a-z]/, /[0-9]/, /[^a-zA-Z0-9]/].filter((r) => r.test(passwordData.newPassword)).length >= 3;
+  const passwordsMatch =
+    !!passwordData.newPassword && !!passwordData.confirmPassword && passwordData.newPassword === passwordData.confirmPassword;
+  const isDifferentFromCurrent =
+    !!passwordData.newPassword && !!passwordData.currentPassword && passwordData.newPassword !== passwordData.currentPassword;
+
   return (
     <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl shadow-slate-200/50">
       <CardHeader className="border-b border-slate-100 pb-5">
@@ -104,20 +112,26 @@ const SecurityTab = ({
             </p>
             <ul className="text-xs text-gray-600 space-y-1">
               <li className="flex items-center gap-2">
-                <span className={passwordData.newPassword.length >= PASSWORD_MIN ? "text-green-600 font-bold" : "text-gray-400"}>
-                  {passwordData.newPassword.length >= PASSWORD_MIN ? "✓" : "○"}
+                <span className={hasMinLength ? "text-green-600 font-bold" : "text-gray-400"}>
+                  {hasMinLength ? "✓" : "○"}
                 </span>
                 At least {PASSWORD_MIN} characters long
               </li>
               <li className="flex items-center gap-2">
-                <span className={passwordData.newPassword && passwordData.newPassword === passwordData.confirmPassword && passwordData.confirmPassword ? "text-green-600 font-bold" : "text-gray-400"}>
-                  {passwordData.newPassword && passwordData.newPassword === passwordData.confirmPassword && passwordData.confirmPassword ? "✓" : "○"}
+                <span className={hasComplexity ? "text-green-600 font-bold" : "text-gray-400"}>
+                  {hasComplexity ? "✓" : "○"}
+                </span>
+                At least 3 of the following: uppercase, lowercase, number, and special character
+              </li>
+              <li className="flex items-center gap-2">
+                <span className={passwordsMatch ? "text-green-600 font-bold" : "text-gray-400"}>
+                  {passwordsMatch ? "✓" : "○"}
                 </span>
                 Passwords match
               </li>
               <li className="flex items-center gap-2">
-                <span className={passwordData.newPassword && passwordData.currentPassword && passwordData.newPassword !== passwordData.currentPassword ? "text-green-600 font-bold" : "text-gray-400"}>
-                  {passwordData.newPassword && passwordData.currentPassword && passwordData.newPassword !== passwordData.currentPassword ? "✓" : "○"}
+                <span className={isDifferentFromCurrent ? "text-green-600 font-bold" : "text-gray-400"}>
+                  {isDifferentFromCurrent ? "✓" : "○"}
                 </span>
                 Different from current password
               </li>
@@ -131,7 +145,12 @@ const SecurityTab = ({
             disabled={
               isSaving ||
               !passwordData.currentPassword ||
-              !passwordData.newPassword
+              !passwordData.newPassword ||
+              !passwordData.confirmPassword ||
+              !hasMinLength ||
+              !hasComplexity ||
+              !passwordsMatch ||
+              !isDifferentFromCurrent
             }
             className={`
               inline-flex items-center gap-2

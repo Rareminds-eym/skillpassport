@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { apiPost } from '@/shared/api/apiClient';
 import {
   AlertCircle,
@@ -45,11 +45,13 @@ import SecurityTab from "./SecurityTab";
 import NotificationsTab from "./NotificationsTab";
 import PrivacyTab from "./PrivacyTab";
 
-import { useUser } from '@/shared/model/authStore';
+import { useUser, useAuthActions } from '@/shared/model/authStore';
 
 const MainSettings = () => {
   const user = useUser();
   const location = useLocation();
+  const navigate = useNavigate();
+  const { logout } = useAuthActions();
   const userEmail = user?.email;
 
   const {
@@ -1315,9 +1317,9 @@ const MainSettings = () => {
             newPassword: "",
             confirmPassword: "",
           });
-          
+
           if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
-            refreshRecentUpdates().catch(err => 
+            refreshRecentUpdates().catch(err =>
               console.warn('Could not refresh recent updates:', err)
             );
           }
@@ -1326,6 +1328,17 @@ const MainSettings = () => {
     );
 
     setIsSaving(false);
+
+    // Backend revokes all sessions (including this one) on password change —
+    // clear local auth state and redirect to login, same as the app's existing logout flow.
+    if (result.success) {
+      try {
+        await logout();
+      } finally {
+        navigate("/login");
+      }
+    }
+
     return result;
   };
 
