@@ -362,6 +362,6 @@ export const updatelearnerPassword = async (email, currentPassword, newPassword)
     if (msg.includes('is required')) {
       return { success: false, error: msg, code: SETTINGS_ERROR_CODES.VALIDATION_ERROR };
     }
-    return { success: false, error: msg || 'An unexpected error occurred. Please try again.', code: SETTINGS_ERROR_CODES.DATABASE_ERROR };
+    return { success: false, error: msg || 'An unexpected error occurred. Please try again.', code: SETTINGS_ERROR_CODES.UNEXPECTED_ERROR };
   }
 };
