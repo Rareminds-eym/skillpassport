@@ -273,7 +273,7 @@ export const withTimeout = (promise, ms = 30000) => {
 export const buildSuccessResponse = (section, data = {}, customMessage = null) => {
   return {
     success: true,
-    message: customMessage || SUCCESS_MESSAGES[section] || 'Changes saved successfully',
+    message: customMessage || data?.message || SUCCESS_MESSAGES[section] || 'Changes saved successfully',
     data,
     timestamp: new Date().toISOString(),
   };

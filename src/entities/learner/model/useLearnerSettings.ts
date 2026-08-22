@@ -24,6 +24,7 @@ import {
   updatelearnerPassword
 } from '@/entities/learner/api/learnerSettingsService';
 import { getLogger } from '@/shared/config/logging';
+import { SettingsError, SETTINGS_ERROR_CODES } from '@/shared/lib/settingsErrorHandler';
 
 const logger = getLogger('learner-settings-hook');
 
@@ -83,7 +84,7 @@ export const useLearnerSettings = (email) => {
       if (result.success) {
         return { success: true, message: result.message };
       } else {
-        throw new Error(result.error);
+        throw new SettingsError(result.code || SETTINGS_ERROR_CODES.DATABASE_ERROR, result.error);
       }
     } catch (err) {
       logger.error('Error updating password', err instanceof Error ? err : new Error(String(err)));
