@@ -339,7 +339,7 @@ const ROUTE_ROLE_GOLDENS: Array<{ file: string; constName: string; golden: strin
     {
         file: 'src/app/routes/recruiterRoutes.jsx',
         constName: 'RECRUITER_ROLES',
-        golden: ['recruiter', 'company_admin'],
+        golden: ['recruiter', 'company_admin', 'owner'],
     },
     { file: 'src/app/routes/adminRoutes.jsx', constName: 'COLLEGE_ADMIN_ROLES', golden: ['college_admin'] },
     { file: 'src/app/routes/adminRoutes.jsx', constName: 'SCHOOL_ADMIN_ROLES', golden: ['school_admin'] },

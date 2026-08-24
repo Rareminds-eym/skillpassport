@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { CheckCircle, AlertCircle, Loader2, Eye, EyeOff, Lock, Users } from 'lucide-react';
 import { ssoClient } from '@/shared/api/ssoClient';
 import { useAuthStore } from '@/shared/model/authStore';
-import { AuthFetchError } from '@rareminds-eym/auth-client';
+import { AuthClientError } from '@rareminds-eym/auth-client';
 import { PASSWORD_MIN } from '@/shared/constants';
 
 type InviteState = 'validating' | 'form' | 'loading' | 'success' | 'error';
@@ -265,13 +265,13 @@ const AcceptInvite = () => {
       setState('success');
     } catch (err) {
       let errorMessage = 'Failed to accept invitation.';
-      if (err instanceof Error) {
-        errorMessage = err.message;
-      } else if (err instanceof AuthFetchError) {
-        if (err.status === 400) errorMessage = 'This invitation has expired or already been used.';
-        else if (err.status === 404) errorMessage = 'Invitation not found.';
-        else if (err.status === 409) errorMessage = 'You are already a member of this organization.';
+      if (err instanceof AuthClientError) {
+        if (err.httpStatus === 400) errorMessage = 'This invitation has expired or already been used.';
+        else if (err.httpStatus === 404) errorMessage = 'Invitation not found.';
+        else if (err.httpStatus === 409) errorMessage = 'You are already a member of this organization.';
         else errorMessage = err.message || errorMessage;
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
       }
       setError(errorMessage);
       setState('error');

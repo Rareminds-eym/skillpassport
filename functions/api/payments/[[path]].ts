@@ -29,8 +29,7 @@
  * - GET  /api/payments/health
  */
 
-import { withAuth, getContextUser } from '../../lib/auth';
-import { initAuth, verifyJWT, extractToken } from '@rareminds-eym/auth-core';
+import { withAuth, getContextUser, getAuthInstance } from '../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 
 // Dedicated handlers — all routes use RPC or Supabase-direct (no proxy)
@@ -101,7 +100,6 @@ async function handleOptionalAuthRequest(
   handler: (ctx: AuthenticatedContext) => Promise<Response>,
   fallbackData: unknown
 ): Promise<Response> {
-  // Ensure auth-core is initialized (same lazy singleton pattern as lib/auth.ts)
   const ssoRpcRaw = context.env.SSO_SERVICE;
   if (!ssoRpcRaw || typeof ssoRpcRaw !== 'object') {
     console.warn('[Payments:OptionalAuth] SSO_SERVICE not configured, returning fallback');
@@ -109,32 +107,21 @@ async function handleOptionalAuthRequest(
   }
 
   try {
-    // Initialize auth-core if not already done (same as ensureAuthInitialized in lib/auth.ts)
-    try {
-      initAuth({ ssoRpc: ssoRpcRaw as any });
-    } catch {
-      // Already initialized — that's fine
-    }
+    const auth = getAuthInstance(context.env);
+    let result: Response | null = null;
+    const authenticate = auth.authenticate(async (_req, authedContext) => {
+      context.data = context.data ?? {};
+      context.data.user = authedContext.user;
+      result = await handler(context as AuthenticatedContext);
+      return result;
+    });
 
-    // Extract token from request
-    const token = extractToken(context.request);
-    if (!token) {
+    const res = await authenticate(context.request);
+    if (res.status === 401 || res.status === 403) {
       return apiSuccess(fallbackData, context.request);
     }
-
-    // Try to verify the JWT
-    const user = await verifyJWT(token);
-
-    if (user.membership_status !== 'active') {
-      return apiSuccess(fallbackData, context.request);
-    }
-
-    // Auth succeeded — inject user and call handler
-    if (!context.data) context.data = {};
-    context.data.user = user;
-    return handler(context as AuthenticatedContext);
+    return res;
   } catch {
-    // Auth failed (expired, invalid, tampered, etc.) → return fallback
     return apiSuccess(fallbackData, context.request);
   }
 }

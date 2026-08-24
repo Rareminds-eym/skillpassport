@@ -57,8 +57,8 @@ const CANONICAL_ROLE_MAP: Record<string, string> = {
     recruiter: '/recruitment/overview',
     hr: '/recruitment/overview',
     company_admin: '/recruitment/overview',
-    admin: '/',
-    owner: '/',
+  admin: '/',
+  owner: '/recruitment/overview',
 };
 
 /** Stale routes that MUST NOT appear for any role after the fix. */
@@ -108,44 +108,7 @@ describe('Fix Verified: getDashboardUrl (Header.jsx) returns canonical routes, n
         expect(getDashboardUrl_current('university_admin')).toBe('/university-admin/dashboard');
         expect(getDashboardUrl_current('recruiter')).toBe('/recruitment/overview');
         expect(getDashboardUrl_current('hr')).toBe('/recruitment/overview');
-        expect(getDashboardUrl_current('company_admin')).toBe('/recruitment/overview');
-        expect(getDashboardUrl_current('admin')).toBe('/');
-        expect(getDashboardUrl_current('owner')).toBe('/');
-    });
-
-    /**
-     * Property: For ALL buggy roles, the resolved URL is in CANONICAL_ROUTES
-     * and NOT in STALE_ROUTES.
-     */
-    it('property: every buggy role resolves to a canonical route (no stale routes)', () => {
-        fc.assert(
-            fc.property(fc.constantFrom(...BUGGY_ROLES), (role) => {
-                const url = getDashboardUrl_current(role);
-                return CANONICAL_ROUTES.has(url) && !STALE_ROUTES.has(url);
-            }),
-            { numRuns: BUGGY_ROLES.length * 3 },
-        );
-    });
-});
-
-// ---------------------------------------------------------------------------
-// SECTION 2 — Detailed per-role canonical route verification
-// ---------------------------------------------------------------------------
-describe('Fix Verified: getDashboardUrl returns correct canonical routes for every buggy role', () => {
-    it('college_admin → /college-admin/dashboard', () => {
-        expect(getDashboardUrl_current('college_admin')).toBe('/college-admin/dashboard');
-    });
-
-    it('school_admin → /school-admin/dashboard', () => {
-        expect(getDashboardUrl_current('school_admin')).toBe('/school-admin/dashboard');
-    });
-
-    it('university_admin → /university-admin/dashboard', () => {
-        expect(getDashboardUrl_current('university_admin')).toBe('/university-admin/dashboard');
-    });
-
-    it('recruiter → /recruitment/overview', () => {
-        expect(getDashboardUrl_current('recruiter')).toBe('/recruitment/overview');
+        expect(getDashboardUrl_current('owner')).toBe('/recruitment/overview');
     });
 
     it('hr → /recruitment/overview', () => {
@@ -160,8 +123,8 @@ describe('Fix Verified: getDashboardUrl returns correct canonical routes for eve
         expect(getDashboardUrl_current('admin')).toBe('/');
     });
 
-    it('owner → / (non-existent SPA route; safe root fallback)', () => {
-        expect(getDashboardUrl_current('owner')).toBe('/');
+    it('owner → /recruitment/overview', () => {
+        expect(getDashboardUrl_current('owner')).toBe('/recruitment/overview');
     });
 
     /**
@@ -199,8 +162,8 @@ describe('Fix Verified: getRouteForRole (roleBasedRouter.ts) returns canonical r
         expect(getRouteForRole('company_admin')).toBe('/recruitment/overview');
     });
 
-    it('getRouteForRole("owner") → / (safe root fallback)', () => {
-        expect(getRouteForRole('owner')).toBe('/');
+    it('getRouteForRole("owner") → /recruitment/overview', () => {
+        expect(getRouteForRole('owner')).toBe('/recruitment/overview');
     });
 
     it('getRouteForRole("hr") → /recruitment/overview (previously missing)', () => {

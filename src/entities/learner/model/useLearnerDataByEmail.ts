@@ -54,10 +54,11 @@ export const useLearnerDataByEmail = (email, fallbackToMock = true) => {
           setError(null);
         } else {
           // Check if it's an RLS error
-          const errorMsg = result.error || 'Learner not found';
-          if (errorMsg.toLowerCase().includes('row-level security') ||
-            errorMsg.toLowerCase().includes('rls') ||
-            errorMsg.toLowerCase().includes('permission denied')) {
+          const errorMsg = typeof result.error === 'string' ? result.error : (result.error?.message || 'Learner not found');
+          const lowerError = errorMsg.toLowerCase();
+          if (lowerError.includes('row-level security') ||
+            lowerError.includes('rls') ||
+            lowerError.includes('permission denied')) {
             setError('Database access blocked. Please disable RLS in Supabase.');
           } else {
             setError(errorMsg);

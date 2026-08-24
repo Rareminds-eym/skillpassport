@@ -11,7 +11,7 @@
 
 import { getServiceClient } from '../../../lib/supabase';
 import { apiSuccess, apiError } from '../../../lib/response';
-import { initAuth, verifyJWT, extractToken } from '@rareminds-eym/auth-core';
+import { getAuthInstance } from '../../../lib/auth';
 
 const COLLEGE_LEARNER_PROMO_CODE = 'RAREMINDS2026';
 const COLLEGE_LEARNER_ALLOWED_PLAN_CODE = 'skill_starter';
@@ -100,22 +100,30 @@ async function getOptionalUserIdentity(
   request: Request,
   env: Record<string, unknown>,
 ): Promise<{ id: string | null; email: string | null }> {
-  const token = extractToken(request);
+  const authorization = request.headers.get('Authorization');
+  const token = authorization?.match(/^Bearer\s+(.+)$/i)?.[1]?.trim();
   if (!token || !env.SSO_SERVICE || typeof env.SSO_SERVICE !== 'object') {
     return { id: null, email: null };
   }
 
   try {
-    initAuth({ ssoRpc: env.SSO_SERVICE as any });
-  } catch {
-    // auth-core may already be initialized in this Worker isolate.
-  }
+    const auth = getAuthInstance(env);
+    let identity = { id: null, email: null } as { id: string | null; email: string | null };
+    const response = await auth.authenticate((_req, authedContext) => {
+      identity = {
+        id: authedContext.user.sub || null,
+        email: authedContext.user.email || null,
+      };
+      return new Response(null, { status: 204 });
+    })(request);
 
-  try {
-    const user = await verifyJWT(token);
+    if (response.status === 401 || response.status === 403) {
+      return { id: null, email: null };
+    }
+
     return {
-      id: (user.sub || user.id || null) as string | null,
-      email: (user.email || null) as string | null,
+      id: identity.id,
+      email: identity.email,
     };
   } catch {
     return { id: null, email: null };

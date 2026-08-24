@@ -33,7 +33,7 @@ import { isLocalhost } from '@/shared/lib';
 import { trackSignup } from '@/shared/lib/analytics';
 import { useAuthStore } from '@/shared/model/authStore';
 import { OtpInput } from '@/shared/ui';
-import { AuthFetchError } from '@rareminds-eym/auth-client';
+import { AuthClientError } from '@rareminds-eym/auth-client';
 // `UserRole` is canonically defined ONCE in the generated module (task 6.2).
 import type { UserRole } from '@/shared/types/generated/roles';
 
@@ -704,6 +704,7 @@ const UnifiedSignup = () => {
 
       // Step 1: Create SSO user
       let ssoUserId: string;
+      let ssoUserIdentity: any;
 
       if (isRecruiterAdmin) {
         // Recruiter admin signup: Creates user + org with NULL name
@@ -727,6 +728,7 @@ const UnifiedSignup = () => {
         });
 
         ssoUserId = ssoResult.user.id;
+        ssoUserIdentity = ssoResult.user;
         if (ssoResult.email_sent === false) {
           sessionStorage.setItem('email_sent_failed', 'true');
         }
@@ -757,6 +759,7 @@ const UnifiedSignup = () => {
           },
         });
         ssoUserId = ssoResult.user.id;
+        ssoUserIdentity = ssoResult.user;
         if (ssoResult.email_sent === false) {
           sessionStorage.setItem('email_sent_failed', 'true');
         }
@@ -782,6 +785,7 @@ const UnifiedSignup = () => {
           },
         });
         ssoUserId = ssoResult.user.id;
+        ssoUserIdentity = ssoResult.user;
         if (ssoResult.email_sent === false) {
           sessionStorage.setItem('email_sent_failed', 'true');
         }
@@ -790,18 +794,16 @@ const UnifiedSignup = () => {
       }
 
       // Update auth store with the new user
-      const me = await ssoClient.getMe();
       useAuthStore.setState({
         user: {
-          id: me.sub,
-          email: me.email,
+          id: ssoUserIdentity.sub || ssoUserIdentity.id,
+          email: ssoUserIdentity.email,
           role: state.selectedRole ?? undefined,
-          orgId: me.org_id,
-          roles: me.roles,
-          products: me.products,
-          membershipStatus: me.membership_status,
-          user_metadata: (me as any).user_metadata ?? (me as any).metadata,
-          isEmailVerified: me.is_email_verified,
+          orgId: ssoUserIdentity.org_id,
+          roles: ssoUserIdentity.roles,
+          products: ssoUserIdentity.products,
+          membershipStatus: ssoUserIdentity.membership_status,
+          isEmailVerified: ssoUserIdentity.is_email_verified,
           isDemoMode: false,
         },
         isAuthenticated: true,
@@ -992,9 +994,9 @@ const UnifiedSignup = () => {
       }
     } catch (error: unknown) {
       let errorMessage = 'An error occurred during signup';
-      if (error instanceof AuthFetchError) {
-        if (error.status === 409) errorMessage = 'An account with this email already exists';
-        else if (error.status === 429) errorMessage = 'Too many attempts. Please try again later.';
+      if (error instanceof AuthClientError) {
+        if (error.httpStatus === 409) errorMessage = 'An account with this email already exists';
+        else if (error.httpStatus === 429) errorMessage = 'Too many attempts. Please try again later.';
         else errorMessage = error.message || errorMessage;
       } else if (error instanceof Error) {
         errorMessage = error.message;

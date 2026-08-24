@@ -1,7 +1,5 @@
-import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { withAuth } from '../../lib/auth';
 import { apiError, apiSuccess } from '../../lib/response';
-import { ssoGenerateAuthorizationCode } from '../../lib/sso-client';
 import type { Env } from '../../lib/types';
 
 interface GenerateLteCodeResponse {
@@ -40,7 +38,7 @@ function normalizeExpiry(expiresAt?: string, codeExpiresAt?: string): string | n
   return codeExpiresAt ?? expiresAt ?? null;
 }
 
-export const onRequestPost = withAuth(async (context: AuthenticatedContext<Env>): Promise<Response> => {
+export const onRequestPost = withAuth(async (context: any): Promise<Response> => {
   const { request, env } = context;
   const accessToken = extractBearerToken(request);
 
@@ -62,7 +60,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext<Env>)
   const ua = request.headers.get('User-Agent') ?? undefined;
 
   try {
-    const result = await ssoGenerateAuthorizationCode(env, {
+    const result = await env.SSO_SERVICE.generateAuthorizationCode({
       accessToken,
       targetApp: 'lte',
       redirectUri,

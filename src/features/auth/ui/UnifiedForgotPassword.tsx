@@ -2,7 +2,7 @@ import { useState, FormEvent, ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mail, AlertCircle, CheckCircle, Loader2, ArrowLeft, Info } from 'lucide-react';
 import { ssoClient } from '@/shared/api/ssoClient';
-import { AuthFetchError } from '@rareminds-eym/auth-client';
+import { AuthClientError } from '@rareminds-eym/auth-client';
 
 interface ForgotPasswordState {
   email: string;
@@ -52,7 +52,7 @@ const UnifiedForgotPassword = () => {
     } catch (error) {
       // Even on error, show success to prevent email enumeration
       // Only show actual error for rate limiting or server issues
-      if (error instanceof AuthFetchError && error.status === 429) {
+      if (error instanceof AuthClientError && error.httpStatus === 429) {
         setState(prev => ({
           ...prev,
           loading: false,

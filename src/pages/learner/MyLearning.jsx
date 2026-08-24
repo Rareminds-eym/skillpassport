@@ -2,7 +2,7 @@ import { ArrowRight, ArrowUpDown, Award, BarChart3, BookOpen, Filter, Graduation
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Pagination } from '@/shared/ui';
-import { LearningAnalyticsDashboard, ModernLearningCard, SelectCourseModal } from '@/widgets/learner-dashboard';
+import { LearningAnalyticsDashboard, LteLearningCard, ModernLearningCard, SelectCourseModal } from '@/widgets/learner-dashboard';
 import { TrainingEditModal } from '@/features/learner-profile';
 import { Button, Card, CardContent } from '@/shared/ui';
 import { useAuth } from "@/features/auth";
@@ -214,6 +214,7 @@ const MyLearning = () => {
         
         const isInternalCourse = t.type === 'course_enrollment' || 
                                 t.source === 'course_enrollment' || 
+                                t.source === 'lte' ||
                                 !!(t.course_id && t.source === "internal_course");
         if (!isInternalCourse) return false;
 
@@ -311,6 +312,15 @@ const MyLearning = () => {
   const refresh = async () => { await refreshlearnerData(); refetchTrainings(); };
   
   const handleContinueLearning = (course) => {
+    // LTE courses continue inside LTE
+    if (course.source === 'lte') {
+      if (course.resumeUrl) {
+        window.open(course.resumeUrl, '_blank', 'noopener,noreferrer');
+      } else {
+        logger.warn('LTE course missing resumeUrl', course);
+      }
+      return;
+    }
     // Check if this is an internal course that can be continued on the platform
     const isInternalCourse = !!(course.course_id && course.source === "internal_course");
     const isCourseEnrollment = course.type === 'course_enrollment' || course.source === 'course_enrollment';
@@ -650,17 +660,25 @@ const MyLearning = () => {
                         : 'space-y-4'
                     }`}>
                       {paginatedTrainings.map((item, idx) => (
-                        <ModernLearningCard 
-                          key={item.id || idx} 
-                          item={item} 
-                          onEdit={handleEditItem}
-                          onDelete={handleDeleteItem}
-                          onContinue={handleContinueLearning}
-                          expandedSkills={expandedSkills} 
-                          onToggleSkills={toggleSkillExpand}
-                          viewMode={viewMode}
-                          assessmentAttempt={assessmentByCourse[item.course] ?? null}
-                        />
+                        item.source === 'lte' ? (
+                          <LteLearningCard
+                            key={item.id || idx}
+                            item={item}
+                            onContinue={handleContinueLearning}
+                            viewMode={viewMode}
+                          />
+                        ) : (
+                          <ModernLearningCard 
+                            key={item.id || idx} 
+                            item={item} 
+                            onEdit={handleEditItem}
+                            onDelete={handleDeleteItem}
+                            onContinue={handleContinueLearning}
+                            expandedSkills={expandedSkills} 
+                            onToggleSkills={toggleSkillExpand}
+                            viewMode={viewMode}
+                          />
+                        )
                       ))}
                     </div>
                     

@@ -23,7 +23,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { ssoClient } from '@/shared/api/ssoClient';
 import { useAuthStore } from '@/shared/model/authStore';
-import { AuthFetchError } from '@rareminds-eym/auth-client';
+import { AuthClientError } from '@rareminds-eym/auth-client';
 import { getLogger } from '@/shared/config/logging';
 import { PASSWORD_MIN } from '@/shared/constants';
 import { memberInvitationService, OrganizationInvitation } from '@/entities/organization';
@@ -203,10 +203,10 @@ export default function InvitationSignup() {
 
         } catch (error: unknown) {
             let errorMessage = 'An error occurred during login';
-            if (error instanceof AuthFetchError) {
-                if (error.status === 401) {
+            if (error instanceof AuthClientError) {
+                if (error.httpStatus === 401) {
                     errorMessage = 'Invalid email or password. If you don\'t have an account yet, please create one first.';
-                } else if (error.status === 429) {
+                } else if (error.httpStatus === 429) {
                     errorMessage = 'Too many attempts. Please try again later.';
                 } else {
                     errorMessage = error.message || errorMessage;
