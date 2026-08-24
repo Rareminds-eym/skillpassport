@@ -1,4 +1,5 @@
 /**
+ * @public-endpoint: LTE internal gateway endpoint (service-token authenticated)
  * LTE ↔ SkillPassport internal gateway — THE single door for LTE → Skill data.
  *
  * POST /api/internal/lte/v1

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ssoClient } from '@/shared/api/ssoClient';
 import { useAuthStore } from '@/shared/model/authStore';
-import { AuthFetchError } from '@rareminds-eym/auth-client';
+import { AuthClientError } from '@rareminds-eym/auth-client';
 import type { ValidationData } from './useInvitationValidation';
 
 type AcceptanceState = 'idle' | 'accepting' | 'success' | 'error';
@@ -93,18 +93,18 @@ export function useInvitationAcceptance(): UseInvitationAcceptanceReturn {
         } catch (err) {
             let errorMessage = 'Failed to accept invitation.';
 
-            if (err instanceof Error) {
-                errorMessage = err.message;
-            } else if (err instanceof AuthFetchError) {
-                if (err.status === 400) {
+            if (err instanceof AuthClientError) {
+                if (err.httpStatus === 400) {
                     errorMessage = 'This invitation has expired or already been used.';
-                } else if (err.status === 404) {
+                } else if (err.httpStatus === 404) {
                     errorMessage = 'Invitation not found.';
-                } else if (err.status === 409) {
+                } else if (err.httpStatus === 409) {
                     errorMessage = 'You are already a member of this organization.';
                 } else {
                     errorMessage = err.message || errorMessage;
                 }
+            } else if (err instanceof Error) {
+                errorMessage = err.message;
             }
 
             setError(errorMessage);

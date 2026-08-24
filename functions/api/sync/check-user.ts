@@ -1,4 +1,5 @@
 /**
+ * @public-endpoint: Service binding check for SSO sync
  * PHASE 1: SSO → Skillpassport User Existence Check
  * 
  * This endpoint allows SSO Worker to check if a user exists in Skillpassport DB

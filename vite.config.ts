@@ -9,8 +9,12 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      'jose': path.resolve(__dirname, './node_modules/jose'),
+      '@rareminds-eym/auth-core/internal': path.resolve(__dirname, '../skill-echosystem-packages/auth-core/dist/internal.js'),
+      '@rareminds-eym/auth-core': path.resolve(__dirname, '../skill-echosystem-packages/auth-core/dist/index.js'),
+      '@rareminds-eym/sso-gateway': path.resolve(__dirname, '../skill-echosystem-packages/sso-gateway/dist/index.js'),
+      '@rareminds-eym/entitlements': path.resolve(__dirname, '../skill-echosystem-packages/entitlements/dist/index.js'),
     },
-
   },
   optimizeDeps: {
     exclude: ['lucide-react'],

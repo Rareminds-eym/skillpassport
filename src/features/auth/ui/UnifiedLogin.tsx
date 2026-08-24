@@ -8,7 +8,7 @@ import { PASSWORD_MIN } from '@/shared/constants';
 import { generateLteCode } from '@/features/auth/api/lteSsoApi';
 import { trackLogin } from '@/shared/lib/analytics';
 import { useAuthActions, useAuthStore } from '@/shared/model/authStore';
-import { AuthFetchError } from '@rareminds-eym/auth-client';
+import { AuthClientError } from '@rareminds-eym/auth-client';
 
 interface LoginState {
   email: string;
@@ -125,11 +125,11 @@ const UnifiedLogin = () => {
   };
 
   const mapAuthError = (err: unknown): string => {
-    if (err instanceof AuthFetchError) {
-      if (err.status === 401) return 'Invalid email or password';
-      if (err.status === 403) return 'Your account is not active. Contact support.';
-      if (err.status === 429) return 'Too many attempts. Please try again in a few minutes.';
-      if (err.status >= 500) return 'The authentication service is unavailable. Please try again.';
+    if (err instanceof AuthClientError) {
+      if (err.httpStatus === 401) return 'Invalid email or password';
+      if (err.httpStatus === 403) return 'Your account is not active. Contact support.';
+      if (err.httpStatus === 429) return 'Too many attempts. Please try again in a few minutes.';
+      if (err.httpStatus && err.httpStatus >= 500) return 'The authentication service is unavailable. Please try again.';
       return err.message || 'Authentication failed';
     }
     return 'An unexpected error occurred. Please try again.';
@@ -275,6 +275,11 @@ const UnifiedLogin = () => {
       // For 'educator', accept 'educator', 'school_educator', or 'college_educator'
       // For 'recruiter', accept 'recruiter' or 'owner' (org creators)
       let hasRole = currentRoles.includes(state.selectedRole);
+      if (!hasRole && state.selectedRole === 'learner') {
+        hasRole = currentRoles.length === 0 || currentRoles.some(role =>
+          role === 'learner' || role === 'member' || role === 'user'
+        );
+      }
       if (!hasRole && state.selectedRole === 'educator') {
         hasRole = currentRoles.some(role =>
           role === 'educator' || role === 'school_educator' || role === 'college_educator'

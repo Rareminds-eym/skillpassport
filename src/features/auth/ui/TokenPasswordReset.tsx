@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { ssoClient } from '@/shared/api/ssoClient';
 import { PASSWORD_MIN } from '@/shared/constants';
-import { AuthFetchError } from '@rareminds-eym/auth-client';
+import { AuthClientError } from '@rareminds-eym/auth-client';
 
 interface TokenPasswordResetState {
   step: 'loading' | 'email-input' | 'reset' | 'success' | 'error';
@@ -101,7 +101,7 @@ const TokenPasswordReset = () => {
       }));
 
     } catch (error) {
-      if (error instanceof AuthFetchError && error.status === 429) {
+      if (error instanceof AuthClientError && error.httpStatus === 429) {
         setState(prev => ({
           ...prev,
           loading: false,
@@ -153,9 +153,9 @@ const TokenPasswordReset = () => {
 
     } catch (error) {
       let errorMessage = 'An unexpected error occurred. Please try again';
-      if (error instanceof AuthFetchError) {
-        if (error.status === 400) errorMessage = 'This reset link has expired or already been used. Please request a new one.';
-        else if (error.status === 429) errorMessage = 'Too many attempts. Please try again later.';
+      if (error instanceof AuthClientError) {
+        if (error.httpStatus === 400) errorMessage = 'This reset link has expired or already been used. Please request a new one.';
+        else if (error.httpStatus === 429) errorMessage = 'Too many attempts. Please try again later.';
         else errorMessage = error.message || errorMessage;
       }
       setState(prev => ({

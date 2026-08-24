@@ -1,5 +1,4 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import type { AppDatabase } from '@rareminds-eym/supabase-typegen/types/app.generated';
 import type { PagesEnv } from './types';
 
 /**
@@ -7,9 +6,9 @@ import type { PagesEnv } from './types';
  * This client respects Row Level Security policies.
  * 
  * @param env - Pages environment variables
- * @returns Type-safe Supabase client with AppDatabase types
+ * @returns Supabase client using the native package types
  */
-export function createSupabaseClient(env: PagesEnv): SupabaseClient<AppDatabase> {
+export function createSupabaseClient(env: PagesEnv): SupabaseClient {
   const supabaseUrl = env.SUPABASE_URL || env.VITE_SUPABASE_URL;
   const supabaseKey = env.SUPABASE_ANON_KEY || env.VITE_SUPABASE_ANON_KEY;
 
@@ -17,7 +16,7 @@ export function createSupabaseClient(env: PagesEnv): SupabaseClient<AppDatabase>
     throw new Error('Missing required Supabase environment variables (SUPABASE_URL, SUPABASE_ANON_KEY)');
   }
 
-  return createClient<AppDatabase>(supabaseUrl, supabaseKey, {
+  return createClient(supabaseUrl, supabaseKey, {
     auth: {
       persistSession: false,
       autoRefreshToken: false,
@@ -34,7 +33,7 @@ export function createSupabaseClient(env: PagesEnv): SupabaseClient<AppDatabase>
  * 
  * @param env - Pages environment variables
  * @param context - Optional user context for audit logging (userId, orgId, etc.)
- * @returns Type-safe Supabase client with AppDatabase types
+ * @returns Supabase client using the native package types
  */
 export function createSupabaseAdminClient(
   env: PagesEnv,
@@ -44,7 +43,7 @@ export function createSupabaseAdminClient(
     ipAddress?: string;
     requestId?: string;
   }
-): SupabaseClient<AppDatabase> {
+): SupabaseClient {
   const supabaseUrl = env.SUPABASE_URL || env.VITE_SUPABASE_URL;
   const serviceRoleKey = env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -52,12 +51,7 @@ export function createSupabaseAdminClient(
     throw new Error('Missing required Supabase admin environment variables (SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)');
   }
 
-  // For now, create basic typed client
-  // TODO: Add audit logging when env.ENVIRONMENT === 'production'
-  // import { SupabaseAuditLogger } from '@rareminds-eym/supabase-typegen/security/audit-logger';
-  // const auditLogger = new SupabaseAuditLogger(...);
-  
-  return createClient<AppDatabase>(supabaseUrl, serviceRoleKey, {
+  return createClient(supabaseUrl, serviceRoleKey, {
     auth: {
       persistSession: false,
       autoRefreshToken: false,
@@ -72,8 +66,8 @@ export function createSupabaseAdminClient(
  * 
  * @deprecated Use createSupabaseAdminClient instead for better type safety and audit logging
  */
-export function getServiceClient(env: PagesEnv): SupabaseClient<AppDatabase> {
-  return createClient<AppDatabase>(env.SUPABASE_URL!, env.SUPABASE_SERVICE_ROLE_KEY!, {
+export function getServiceClient(env: PagesEnv): SupabaseClient {
+  return createClient(env.SUPABASE_URL!, env.SUPABASE_SERVICE_ROLE_KEY!, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 }

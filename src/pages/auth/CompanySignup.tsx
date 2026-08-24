@@ -155,10 +155,10 @@ export const CompanySignup: React.FC = () => {
                 throw new Error('Organization was not created in SSO');
             }
 
-            // Step 2: Get fresh user data with roles from SSO
-            const me = await ssoClient.getMe();
+            // Step 2: Use user data with roles from ssoResult
+            const me = ssoResult.user;
             console.log('[CompanySignup] Got user data from SSO', {
-                userId: me.sub,
+                userId: me.sub || me.id,
                 orgId: me.org_id,
                 roles: me.roles,
                 membershipStatus: me.membership_status
@@ -184,7 +184,7 @@ export const CompanySignup: React.FC = () => {
             console.log('[CompanySignup] Setting auth store...');
             useAuthStore.setState({
                 user: {
-                    id: me.sub,
+                    id: me.sub || me.id,
                     email: me.email,
                     role: 'recruiter', // App-level role (mapped from 'owner')
                     orgId: me.org_id,

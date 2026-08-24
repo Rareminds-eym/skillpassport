@@ -47,7 +47,7 @@ describe('Gateway Actions Registry Handlers', () => {
 
     it('should forbid action if requested userId does not match context claims sub', async () => {
       const ctx = createMockContext({});
-      const anotherUserId = '55555555-5555-5555-5555-555555555555';
+      const anotherUserId = '55555555-5555-4555-8555-555555555555';
       const result = await handleLearningTrack(ctx, { userId: anotherUserId });
       expect(result.ok).toBe(false);
       if (!result.ok) {

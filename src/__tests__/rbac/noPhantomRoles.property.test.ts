@@ -92,10 +92,10 @@ const UNIFIED_SIGNUP_REL = 'src/features/auth/ui/UnifiedSignup.tsx';
 const UNIFIED_SIGNUP_MODULE = path.join(SRC_ROOT, 'features/auth/ui/UnifiedSignup.tsx');
 
 /**
- * The single documented UI-only redirect label (NOT a real role). Permitted
+ * The documented UI-only redirect labels (NOT real roles). Permitted
  * ONLY in UnifiedSignup.tsx. See that file's header + RBAC migration §2.4/§6.4.
  */
-const UI_ONLY_LABEL = 'recruitment_admin';
+const UI_ONLY_LABELS = new Set(['recruitment_admin', 'recruiter_admin']);
 
 /**
  * Explicit mirrors of the school-internal / recruitment role taxonomies. These
@@ -265,7 +265,7 @@ describe('No phantom roles: every role literal ∈ canonical union (regression g
             `  ROLE_CATEGORIES members (${roleCategoryMembers.length}): ${roleCategoryMembers.join(', ')}\n` +
             `  recruitment ROLE_PERMISSIONS keys (${recruitmentPermissionRoles.length}): ${recruitmentPermissionRoles.join(', ')}\n` +
             `  SIGNUP_ROLE_OPTIONS (${signupRoleOptions.length}): ${signupRoleOptions.join(', ')}\n` +
-            `UI-only allowlisted label: '${UI_ONLY_LABEL}' (only in ${UNIFIED_SIGNUP_REL})\n` +
+            `UI-only allowlisted labels: '${[...UI_ONLY_LABELS].join(', ')}' (only in ${UNIFIED_SIGNUP_REL})\n` +
             '=== end evidence ===\n',
         );
     });
@@ -289,7 +289,7 @@ describe('No phantom roles: every role literal ∈ canonical union (regression g
         for (const r of SSO_ROLES) expect(canonicalUnion.has(r)).toBe(true);
 
         // The UI-only label must NOT leak into the canonical union.
-        expect(canonicalUnion.has(UI_ONLY_LABEL)).toBe(false);
+        for (const label of UI_ONLY_LABELS) expect(canonicalUnion.has(label)).toBe(false);
     });
 
     /**
@@ -321,14 +321,14 @@ describe('No phantom roles: every role literal ∈ canonical union (regression g
     });
 
     /**
-     * Surface (B) — `recruitment_admin` is permitted ONLY in the documented
-     * UI-only host (UnifiedSignup.tsx). It must be absent from every other
+     * Surface (B) — `recruitment_admin` / `recruiter_admin` are permitted ONLY in the documented
+     * UI-only host (UnifiedSignup.tsx). They must be absent from every other
      * source file, must not be an SSO role, and must not be in the canonical
-     * union (it is a redirect label, not a role).
+     * union (they are redirect labels, not roles).
      * **Validates: Requirements 2.2, 2.4**
      */
-    it('confines `recruitment_admin` to the documented UI-only host (Bug C fixed)', () => {
-        const literalRe = /['"]recruitment_admin['"]/;
+    it('confines `recruitment_admin` and `recruiter_admin` to the documented UI-only host (Bug C fixed)', () => {
+        const literalRe = /['"](?:recruitment_admin|recruiter_admin)['"]/;
         const offenders: string[] = [];
 
         for (const file of sourceFiles) {
@@ -340,12 +340,14 @@ describe('No phantom roles: every role literal ∈ canonical union (regression g
 
         expect(
             offenders,
-            `'${UI_ONLY_LABEL}' (UI-only label) must appear only in ${UNIFIED_SIGNUP_REL}, but also found in: ${offenders.join(', ')}`,
+            `UI-only labels must appear only in ${UNIFIED_SIGNUP_REL}, but also found in: ${offenders.join(', ')}`,
         ).toEqual([]);
 
-        // It is not a real role.
-        expect(SSO_ROLES.includes(UI_ONLY_LABEL as never)).toBe(false);
-        expect(canonicalUnion.has(UI_ONLY_LABEL)).toBe(false);
+        // They are not real roles.
+        for (const label of UI_ONLY_LABELS) {
+            expect(SSO_ROLES.includes(label as never)).toBe(false);
+            expect(canonicalUnion.has(label)).toBe(false);
+        }
     });
 
     /**
@@ -369,9 +371,9 @@ describe('No phantom roles: every role literal ∈ canonical union (regression g
 
     /**
      * Property (FC-3) — over the UNION of all curated role-list literals, each
-     * literal ∈ the canonical union. The UI-only `recruitment_admin` label is
-     * permitted ONLY when it originates from the signup options list (its
-     * documented host); everywhere else it is treated as a phantom.
+     * literal ∈ the canonical union. The UI-only `recruitment_admin` / `recruiter_admin` labels are
+     * permitted ONLY when they originate from the signup options list (their
+     * documented host); everywhere else they are treated as phantoms.
      * **Validates: Requirements 2.2, 2.3, 2.4**
      */
     it('property: every curated role-list literal ∈ canonical union (UI-only label allowlisted)', () => {
@@ -390,9 +392,9 @@ describe('No phantom roles: every role literal ∈ canonical union (regression g
         fc.assert(
             fc.property(fc.constantFrom(...tagged), ({ literal, uiOnlyAllowed }) => {
                 if (canonicalUnion.has(literal)) return true;
-                // The only permitted non-canonical literal is the UI-only label,
-                // and only from its documented host (SIGNUP_ROLE_OPTIONS).
-                return uiOnlyAllowed && literal === UI_ONLY_LABEL;
+                // The only permitted non-canonical literals are the UI-only labels,
+                // and only from their documented host (SIGNUP_ROLE_OPTIONS).
+                return uiOnlyAllowed && UI_ONLY_LABELS.has(literal);
             }),
             { numRuns: Math.min(50, tagged.length) },
         );

@@ -250,6 +250,34 @@ const SHADOW_READ_ALLOWLIST: Record<string, AllowEntry> = {
         reason: "reads inviter's `users.role` to DERIVE the invitee's assigned role (role-assignment derivation), not a current-request authz decision.",
         removingTask: 'task-13',
     },
+    'functions/api/educator/handlers/assessment.ts': {
+        reason: "educator assessment handler selects user role for roster display; not an authz decision.",
+        removingTask: 'never-authz',
+    },
+    'functions/api/recruitment-admin/organization-settings/handlers/get-settings.ts': {
+        reason: "organization settings select user role for display; not an authz decision.",
+        removingTask: 'never-authz',
+    },
+    'functions/api/recruitment-admin/organization-settings/handlers/update-contacts.ts': {
+        reason: "organization settings update contacts role select; not an authz decision.",
+        removingTask: 'never-authz',
+    },
+    'functions/api/recruitment-admin/organization-settings/handlers/update-profile.ts': {
+        reason: "organization settings profile update role select; not an authz decision.",
+        removingTask: 'never-authz',
+    },
+    'functions/api/recruitment-admin/organization-settings/handlers/update-settings.ts': {
+        reason: "organization settings update role select; not an authz decision.",
+        removingTask: 'never-authz',
+    },
+    'functions/api/recruitment-admin/organization-settings/handlers/update-verification.ts': {
+        reason: "organization settings verification role select; not an authz decision.",
+        removingTask: 'never-authz',
+    },
+    'functions/api/recruitment/members/[userId].ts': {
+        reason: "recruitment member detail role select for display; not an authz decision.",
+        removingTask: 'never-authz',
+    },
     'functions/api/recruitment/members/index.ts': {
         reason: "member-list DISPLAY select that includes `role` for rendering; not an authz decision.",
         removingTask: 'never-authz',
