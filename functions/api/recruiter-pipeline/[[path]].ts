@@ -2,6 +2,7 @@ import { withAuth } from '../../lib/auth';
 import { getServiceClient } from '../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { apiSuccess, apiError, apiDbError, apiMethodNotAllowed } from '../../lib/response';
+import { notifyLearnerOfPipelineChange } from '../../lib/pipelineNotifications';
 
 export const onRequest = async (context: any) => {
   if (context.request.method === 'GET') return onRequestGet(context);
@@ -621,45 +622,26 @@ async function handleAction(context: AuthenticatedContext, supabase: any, params
           }]);
       } catch (_) {}
 
-      // Create notification for learner
-      if (currentData.learner_id) {
-        const { data: learnerData } = await supabase
-          .from('learners')
-          .select('user_id')
-          .eq('id', currentData.learner_id)
-          .maybeSingle();
-        
-        if (learnerData?.user_id) {
-          const notificationType = newStage === 'rejected' ? 'candidate_rejected' : 'pipeline_stage_changed';
-          const notificationTitle = 
-            newStage === 'hired' ? "Congratulations! You've been hired!" :
-            newStage === 'offer' ? 'Offer Extended!' :
-            newStage === 'interview_2' ? 'Advanced to Final Interview' :
-            newStage === 'interview_1' ? 'Interview Scheduled' :
-            newStage === 'screened' ? 'Application Screened' :
-            newStage === 'rejected' ? 'Application Status Update' : 'Application Update';
-          const notificationMessage = 
-            newStage === 'hired' ? 'Great news! You have been selected for the position.' :
-            newStage === 'offer' ? 'You have received an offer. Review the details in your dashboard.' :
-            newStage === 'interview_2' ? 'Congratulations! You have been selected for the final interview round.' :
-            newStage === 'interview_1' ? 'You have been selected for an interview.' :
-            newStage === 'screened' ? 'Your application is under review.' :
-            newStage === 'rejected' ? 'Thank you for your interest. We have decided to move forward with other candidates.' :
-            'Your application has been updated.';
-          
-          try {
-            await supabase
-              .from('notifications')
-              .insert([{
-                recipient_id: learnerData.user_id,
-                type: notificationType,
-                title: notificationTitle,
-                message: notificationMessage,
-                read: false,
-                created_at: new Date().toISOString(),
-              }]);
-          } catch (_) {}
-        }
+      // Notify learner of the stage change (preference-gated)
+      {
+        const notificationType = newStage === 'rejected' ? 'candidate_rejected' : 'pipeline_stage_changed';
+        const notificationTitle =
+          newStage === 'hired' ? "Congratulations! You've been hired!" :
+          newStage === 'offer' ? 'Offer Extended!' :
+          newStage === 'interview_2' ? 'Advanced to Final Interview' :
+          newStage === 'interview_1' ? 'Interview Scheduled' :
+          newStage === 'screened' ? 'Application Screened' :
+          newStage === 'rejected' ? 'Application Status Update' : 'Application Update';
+        const notificationMessage =
+          newStage === 'hired' ? 'Great news! You have been selected for the position.' :
+          newStage === 'offer' ? 'You have received an offer. Review the details in your dashboard.' :
+          newStage === 'interview_2' ? 'Congratulations! You have been selected for the final interview round.' :
+          newStage === 'interview_1' ? 'You have been selected for an interview.' :
+          newStage === 'screened' ? 'Your application is under review.' :
+          newStage === 'rejected' ? 'Thank you for your interest. We have decided to move forward with other candidates.' :
+          'Your application has been updated.';
+
+        await notifyLearnerOfPipelineChange(supabase, currentData.learner_id, notificationType, notificationTitle, notificationMessage);
       }
 
       return apiSuccess({ candidate: data }, context.request);
@@ -717,29 +699,14 @@ async function handleAction(context: AuthenticatedContext, supabase: any, params
           }]);
       } catch (_) {}
 
-      // Create notification for learner about rejection
-      if (currentData?.learner_id) {
-        const { data: learnerData } = await supabase
-          .from('learners')
-          .select('user_id')
-          .eq('id', currentData.learner_id)
-          .maybeSingle();
-        
-        if (learnerData?.user_id) {
-          try {
-            await supabase
-              .from('notifications')
-              .insert([{
-                recipient_id: learnerData.user_id,
-                type: 'candidate_rejected',
-                title: 'Application Status Update',
-                message: 'Thank you for your interest. We have decided to move forward with other candidates.',
-                read: false,
-                created_at: new Date().toISOString(),
-              }]);
-          } catch (_) {}
-        }
-      }
+      // Notify learner of the rejection (preference-gated)
+      await notifyLearnerOfPipelineChange(
+        supabase,
+        currentData?.learner_id,
+        'candidate_rejected',
+        'Application Status Update',
+        'Thank you for your interest. We have decided to move forward with other candidates.'
+      );
 
       return apiSuccess({ candidate: data }, context.request);
     }
@@ -801,48 +768,31 @@ async function handleAction(context: AuthenticatedContext, supabase: any, params
         return apiError(400, 'VALIDATION_ERROR', 'pipeline_candidate_id and activity_type required', context.request);
       }
       if (learner_id) {
-        const { data: learnerData } = await supabase
-          .from('learners')
-          .select('user_id')
-          .eq('id', learner_id)
-          .single();
-        if (learnerData?.user_id) {
-          const notificationType = activity_type === 'stage_change'
-            ? (to_stage === 'rejected' ? 'candidate_rejected' : 'pipeline_stage_changed')
-            : 'pipeline_stage_changed';
-          const notificationTitle = activity_type === 'stage_change'
-            ? (to_stage === 'hired' ? "Congratulations! You've been hired!" :
-               to_stage === 'offer' ? 'Offer Extended!' :
-               to_stage === 'interview_2' ? 'Advanced to Final Interview' :
-               to_stage === 'interview_1' ? 'Interview Scheduled' :
-               to_stage === 'screened' ? 'Application Screened' :
-               to_stage === 'rejected' ? 'Application Status Update' : 'Application Update')
-            : (activity_type === 'note_added' ? 'Update on your application' :
-               activity_type === 'next_action_set' ? 'Action Required' : 'Application Update');
-          const notificationMessage = activity_type === 'stage_change'
-            ? (to_stage === 'hired' ? 'Great news! You have been selected for the position.' :
-               to_stage === 'offer' ? 'You have received an offer. Review the details in your dashboard.' :
-               to_stage === 'interview_2' ? 'Congratulations! You have been selected for the final interview round.' :
-               to_stage === 'interview_1' ? 'You have been selected for an interview.' :
-               to_stage === 'screened' ? 'Your application is under review.' :
-               to_stage === 'rejected' ? 'Thank you for your interest. We have decided to move forward with other candidates.' :
-               'Your application has been updated.')
-            : (activity_type === 'note_added' ? 'Your application has been updated with new information.' :
-               activity_type === 'next_action_set' ? 'Next steps for your application have been set.' :
-               'Your application has been updated.');
-          await supabase
-            .from('notifications')
-            .insert([{
-              recipient_id: learnerData.user_id,
-              type: notificationType,
-              title: notificationTitle,
-              message: notificationMessage,
-              read: false,
-              created_at: new Date().toISOString(),
-            }])
-            .select()
-            .single();
-        }
+        const notificationType = activity_type === 'stage_change'
+          ? (to_stage === 'rejected' ? 'candidate_rejected' : 'pipeline_stage_changed')
+          : 'pipeline_stage_changed';
+        const notificationTitle = activity_type === 'stage_change'
+          ? (to_stage === 'hired' ? "Congratulations! You've been hired!" :
+             to_stage === 'offer' ? 'Offer Extended!' :
+             to_stage === 'interview_2' ? 'Advanced to Final Interview' :
+             to_stage === 'interview_1' ? 'Interview Scheduled' :
+             to_stage === 'screened' ? 'Application Screened' :
+             to_stage === 'rejected' ? 'Application Status Update' : 'Application Update')
+          : (activity_type === 'note_added' ? 'Update on your application' :
+             activity_type === 'next_action_set' ? 'Action Required' : 'Application Update');
+        const notificationMessage = activity_type === 'stage_change'
+          ? (to_stage === 'hired' ? 'Great news! You have been selected for the position.' :
+             to_stage === 'offer' ? 'You have received an offer. Review the details in your dashboard.' :
+             to_stage === 'interview_2' ? 'Congratulations! You have been selected for the final interview round.' :
+             to_stage === 'interview_1' ? 'You have been selected for an interview.' :
+             to_stage === 'screened' ? 'Your application is under review.' :
+             to_stage === 'rejected' ? 'Thank you for your interest. We have decided to move forward with other candidates.' :
+             'Your application has been updated.')
+          : (activity_type === 'note_added' ? 'Your application has been updated with new information.' :
+             activity_type === 'next_action_set' ? 'Next steps for your application have been set.' :
+             'Your application has been updated.');
+
+        await notifyLearnerOfPipelineChange(supabase, learner_id, notificationType, notificationTitle, notificationMessage);
       }
       return apiSuccess({ logged: true }, context.request);
     }

@@ -27,7 +27,8 @@ const NotificationsTab = ({
             {
               key: "emailNotifications",
               label: "Email Notifications",
-              description: "Receive notifications via email",
+              description: "This feature is coming soon.",
+              comingSoon: true,
             },
             {
               key: "applicationUpdates",
@@ -47,32 +48,43 @@ const NotificationsTab = ({
           ].map((setting) => (
             <div
               key={setting.key}
-              className="flex items-center justify-between p-4 rounded-xl bg-slate-50"
+              className={`flex items-center justify-between p-4 rounded-xl ${
+                setting.comingSoon ? "bg-slate-100" : "bg-slate-50"
+              }`}
             >
               <div className="flex-1">
-                <p className="text-sm font-semibold text-gray-900">
+                <p className="text-sm font-semibold text-gray-900 flex items-center gap-2">
                   {setting.label}
+                  {setting.comingSoon && (
+                    <span className="text-[10px] font-semibold uppercase tracking-wide bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+                      Coming Soon
+                    </span>
+                  )}
                 </p>
                 <p className="text-xs text-gray-600 mt-0.5">
                   {setting.description}
                 </p>
               </div>
-              <button
-                onClick={() => handleNotificationToggle(setting.key)}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-all duration-300 ${
-                  notificationSettings[setting.key]
-                    ? "bg-blue-600"
-                    : "bg-slate-300"
-                }`}
-              >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-300 shadow-sm ${
+              {!setting.comingSoon && (
+                <button
+                  onClick={() => handleNotificationToggle(setting.key)}
+                  aria-label={setting.label}
+                  aria-pressed={!!notificationSettings[setting.key]}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-all duration-300 ${
                     notificationSettings[setting.key]
-                      ? "translate-x-6"
-                      : "translate-x-1"
+                      ? "bg-blue-600"
+                      : "bg-slate-300"
                   }`}
-                />
-              </button>
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-300 shadow-sm ${
+                      notificationSettings[setting.key]
+                        ? "translate-x-6"
+                        : "translate-x-1"
+                    }`}
+                  />
+                </button>
+              )}
             </div>
           ))}
         </div>
