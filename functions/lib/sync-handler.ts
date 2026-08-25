@@ -1,4 +1,5 @@
 import { SyncService, type SyncResult } from './sync-service';
+import { verifyWebhookSecret } from './sync-auth';
 import { apiSuccess, apiError } from './response';
 import type { PagesEnv } from './types';
 
@@ -6,6 +7,13 @@ export async function handleSyncRequest(
   context: { request: Request; env: PagesEnv },
   handlers: Record<string, (service: SyncService, data: unknown) => Promise<SyncResult>>
 ): Promise<Response> {
+  // Service-to-service gate: only callers holding INTERNAL_WEBHOOK_SECRET
+  // may mutate the app DB through these routes.
+  const auth = await verifyWebhookSecret(context.request, context.env.INTERNAL_WEBHOOK_SECRET);
+  if (!auth.ok) {
+    return apiError(auth.status, 'UNAUTHORIZED', auth.message, context.request);
+  }
+
   let body: unknown;
   try {
     body = await context.request.json();

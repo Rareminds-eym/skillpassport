@@ -61,3 +61,14 @@ CLOUDFLARE_R2_SECRET_ACCESS_KEY=your_r2_secret_key_here
 CLOUDFLARE_R2_BUCKET_NAME=skill-echosystem
 # Optional: public URL for R2 objects (if custom domain is configured)
 # CLOUDFLARE_R2_PUBLIC_URL=https://cdn.skillpassport.rareminds.in
+
+# ==================== GOOGLE OAUTH ====================
+# Server-side authorization-code flow (/api/oauth/google).
+# 1. Create an OAuth Web client in Google Cloud Console.
+# 2. Register redirect URI: http://localhost:<pages-dev-port>/api/oauth/google/callback
+#    (production: https://skillpassport.rareminds.in/api/oauth/google/callback)
+GOOGLE_OAUTH_ENABLED=true
+GOOGLE_CLIENT_ID=your_google_oauth_client_id.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=your_google_client_secret
+# Optional dedicated HMAC key for state cookies; falls back to GOOGLE_CLIENT_SECRET.
+OAUTH_STATE_SECRET=

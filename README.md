@@ -87,6 +87,33 @@ Linux: export NPM_TOKEN=<github installation key>
 
 **Note**: You need to export the `NPM_TOKEN` environment variable in your shell using a GitHub Personal Access Token (PAT) that has `read:packages` permissions before running `npm install`.
 
+### Google OAuth (local & production)
+
+"Continue with Google" is served by `functions/api/oauth/google/*` and the SSO
+worker. Full design: [`GOOGLE_OAUTH_IMPLEMENTATION_PLAN.md`](./GOOGLE_OAUTH_IMPLEMENTATION_PLAN.md)
+· decision record: [ADR-043](./.kiro/adr/ADR-043-google-oauth-authority-layer.md).
+
+| Item | Value |
+|---|---|
+| Enable flag | `GOOGLE_OAUTH_ENABLED=true` (`wrangler.toml` `[vars]`; kill switch) |
+| Secrets | `GOOGLE_CLIENT_SECRET`, optional `OAUTH_STATE_SECRET` (Pages dashboard / `.dev.vars`) |
+| Plain var | `GOOGLE_CLIENT_ID` |
+| Redirect URIs (Google Console) | `https://skillpassport.rareminds.in/api/oauth/google/callback` · `http://localhost:8788/api/oauth/google/callback` |
+
+**Local topology requirement:** Miniflare queues do not deliver across separate
+`wrangler dev` processes. Run sso-worker + auth-sync-consumer together with:
+
+```bash
+cd ../sso-worker && npm run dev:stack   # sso-api + sync consumer in one instance
+npm start                               # this app (pages :8788)
+```
+
+Reset a test user across both local databases at any time:
+
+```bash
+node ../scripts/purge-local-user.mjs --email <email> --apply
+```
+
 ## Documentation
 
 - 📖 [Master Truth Page](./ai-master-truth.md) - Complete product overview

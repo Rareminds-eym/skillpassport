@@ -58,6 +58,8 @@ REALTIME_PARTITIONS = "10"
 SUPABASE_URL = "https://dpooleduinyyzxgrcwko.supabase.co"
 LTE_APP_URL = "https://lte.rareminds.in/"
 COOKIE_DOMAIN = ".rareminds.in"
+GOOGLE_CLIENT_ID = "775729170329-s95ebosv3kj0b844ol87uhcjsgocq2mk.apps.googleusercontent.com"
+GOOGLE_OAUTH_ENABLED = "true"
 
 # ============================================================================
 # SECRETS (DO NOT COMMIT VALUES)
@@ -71,12 +73,14 @@ COOKIE_DOMAIN = ".rareminds.in"
 # - CLOUDFLARE_R2_SECRET_ACCESS_KEY
 # - EMAIL_API_KEY
 # - SIGNING_SECRET (for media access tokens)
+# - GOOGLE_CLIENT_SECRET (Google OAuth token exchange)
 #
 # Required plain vars (set via dashboard):
 # - CLOUDFLARE_R2_ACCESS_KEY_ID
 # - CLOUDFLARE_ACCOUNT_ID
 #
 # Optional secrets (set only if using the feature):
+# - OAUTH_STATE_SECRET (Google OAuth state-cookie HMAC; falls back to GOOGLE_CLIENT_SECRET)
 # - OPENROUTER_API_KEY (AI features)
 # - CLAUDE_API_KEY (AI features)
 # - DEEPGRAM_API_KEY (audio transcription)

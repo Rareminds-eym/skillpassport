@@ -111,3 +111,39 @@ export async function ssoUpdateTransaction(env: SsoEnv, transactionId: string, d
   // Graceful fallback if method is not implemented on worker
   return { id: transactionId, ...data };
 }
+
+export interface SsoOAuthAuthenticateParams {
+  provider: string;
+  providerUserId: string;
+  email: string;
+  emailVerified: boolean;
+  name?: string | null;
+  picture?: string | null;
+}
+
+/** Mirrors the worker's SessionIssueRpcOutcome discriminated union. */
+export type SsoOauthAuthenticateOutcome =
+  | {
+      kind: "issued";
+      session: {
+        accessToken: string;
+        refreshToken: string;
+        remainingLifetimeSeconds: number;
+        identity: Record<string, unknown>;
+      };
+    }
+  | { kind: "rejected"; code: string }
+  | { kind: "rate_limited"; retryAfterSeconds?: number }
+  | { kind: "timeout" }
+  | { kind: "unavailable" }
+  | { kind: "cancelled" };
+
+export async function ssoOauthAuthenticate(
+  env: SsoEnv,
+  params: SsoOAuthAuthenticateParams,
+): Promise<SsoOauthAuthenticateOutcome> {
+  return env.SSO_SERVICE.oauthAuthenticate({
+    ...params,
+    correlationId: crypto.randomUUID(),
+  });
+}
