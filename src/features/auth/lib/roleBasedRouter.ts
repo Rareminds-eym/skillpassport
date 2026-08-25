@@ -1,4 +1,5 @@
 import { getOrgContext } from '@/entities/recruitment/api/orgContextService';
+import { pickPrimaryRole } from '@/shared/model/authStore';
 import { NavigateFunction } from 'react-router-dom';
 
 /**
@@ -27,10 +28,29 @@ export const ROLE_DASHBOARD_MAP: Record<string, string> = {
 /**
  * Get the dashboard route for a specific role
  * @param role - User role
- * @returns Dashboard route path, falling back to '/' for unknown roles
  */
 export const getRouteForRole = (role: string): string =>
   ROLE_DASHBOARD_MAP[role] ?? '/';
+
+/**
+ * Resolve the routing-primary role from a raw roles list.
+ *
+ * `signup_user` grants self-signup learners BOTH `owner` (their personal temp
+ * org) and `learner`. `pickPrimaryRole` ranks owner above learner, which would
+ * route fresh Google learners to the recruitment dashboard. When `owner`
+ * appears alongside `learner`, it is a signup artifact, not an org-owner
+ * signal — strip it before ranking.
+ */
+export const resolveRouteRole = (roles: readonly string[]): string => {
+  const hasLearner = roles.includes('learner');
+  const filtered = hasLearner ? roles.filter((r) => r !== 'owner') : roles;
+  const primary = pickPrimaryRole(filtered);
+  if (!primary) return 'learner';
+  // Org owners route through the recruiter flow (org-context decides admin vs overview).
+  if (primary === 'owner') return 'recruiter';
+  // Unknown roles must never produce a dead route.
+  return ROLE_DASHBOARD_MAP[primary] ? primary : 'learner';
+};
 
 /**
  * Redirect user to their role-specific dashboard

@@ -11,9 +11,12 @@
 import type { PagesFunction } from '@cloudflare/workers-types';
 import { createClient } from '@supabase/supabase-js';
 
+import { verifyWebhookSecret } from '../../lib/sync-auth';
+
 interface Env {
   SUPABASE_URL: string;
   SUPABASE_SERVICE_ROLE_KEY: string;
+  INTERNAL_WEBHOOK_SECRET?: string;
 }
 
 export const onRequest: PagesFunction<Env> = async (context) => {
@@ -23,6 +26,14 @@ export const onRequest: PagesFunction<Env> = async (context) => {
   if (request.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
       status: 405,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  const auth = await verifyWebhookSecret(request, env.INTERNAL_WEBHOOK_SECRET);
+  if (!auth.ok) {
+    return new Response(JSON.stringify({ error: auth.message }), {
+      status: auth.status,
       headers: { 'Content-Type': 'application/json' },
     });
   }

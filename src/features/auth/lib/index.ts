@@ -26,6 +26,7 @@ export {
   getRouteForRole,
   isValidRouteForRole,
   redirectToRoleDashboard,
+  resolveRouteRole,
 } from './roleBasedRouter';
 
 // SSO Login Helper
