@@ -66,8 +66,8 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
         supabase.from('certificates').select('*').in('training_id', trainingIds).eq('enabled', true),
       ]);
 
-      if (skillsResult.error) logger.error('Skills query error', { error: skillsResult.error });
-      if (certsResult.error) logger.error('Certificates query error', { error: certsResult.error });
+      if (skillsResult.error) logger.error('Skills query error', undefined, { error: skillsResult.error });
+      if (certsResult.error) logger.error('Certificates query error', undefined, { error: certsResult.error });
 
       for (const skill of (skillsResult.data || [])) {
         if (!skillMap[skill.training_id]) skillMap[skill.training_id] = [];

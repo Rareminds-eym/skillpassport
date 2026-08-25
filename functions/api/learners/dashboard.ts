@@ -135,7 +135,7 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
     ];
     for (const { name, result } of errorResults) {
       if (result.error) {
-        logger.error(`${name} query error`, { learnerId, error: result.error });
+        logger.error(`${name} query error`, undefined, { learnerId, error: result.error });
       }
     }
 

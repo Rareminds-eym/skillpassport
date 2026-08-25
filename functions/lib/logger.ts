@@ -92,6 +92,14 @@ export function createLogger(service: string, env?: string): Logger {
           message: error.message,
           stack: error.stack,
         };
+      } else if (error !== null && typeof error === 'object') {
+        // Plain objects (e.g. PostgrestError) must serialize by value,
+        // not String() into "[object Object]".
+        try {
+          logEntry['error'] = JSON.parse(JSON.stringify(error));
+        } catch {
+          logEntry['error'] = String(error);
+        }
       } else {
         logEntry['error'] = String(error);
       }
