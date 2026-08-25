@@ -26,6 +26,7 @@ export {
 // ============================================================================
 export { useAuth } from './model';
 export type { AuthState, AuthContextType } from './model';
+export { useIdentity } from './hooks/useIdentity';
 
 // Convenience hooks from authStore
 export {

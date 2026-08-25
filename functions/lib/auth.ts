@@ -2,6 +2,7 @@
 import type { VerifiedAuthUser as SSOAuthUser, VerifiedAuthContext } from "@rareminds-eym/auth-core";
 import { createAuth } from "@rareminds-eym/auth-core";
 import { createSsoGateway } from "@rareminds-eym/sso-gateway";
+import { APPROVED_ORIGINS } from "./app-origins";
 import { hasAnyFeature } from "./entitlements";
 import { ADMIN_ROLES } from "./roleCategories";
 import { getServiceClient } from "./supabase";
@@ -25,37 +26,9 @@ export function getAuthInstance(env: Record<string, unknown>): ReturnType<typeof
       sso: ssoRpcRaw as any,
       issuer: "sso-api",
       audience: "sso-client",
-      approvedOrigins: [
-        "https://skillpassport.rareminds.in",
-        "http://localhost:3000",
-        "http://localhost:8787",
-        "http://localhost:8788",
-        "http://localhost:5173",
-        "http://localhost:5174",
-        "http://localhost:4173",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:8787",
-        "http://127.0.0.1:8788",
-        "http://127.0.0.1:5173",
-        "http://127.0.0.1:5174",
-        "http://127.0.0.1:4173",
-      ],
+      approvedOrigins: [...APPROVED_ORIGINS],
       credentialedCors: {
-        origins: [
-          "https://skillpassport.rareminds.in",
-          "http://localhost:3000",
-          "http://localhost:8787",
-          "http://localhost:8788",
-          "http://localhost:5173",
-          "http://localhost:5174",
-          "http://localhost:4173",
-          "http://127.0.0.1:3000",
-          "http://127.0.0.1:8787",
-          "http://127.0.0.1:8788",
-          "http://127.0.0.1:5173",
-          "http://127.0.0.1:5174",
-          "http://127.0.0.1:4173",
-        ],
+        origins: [...APPROVED_ORIGINS],
       },
       csrf: { name: "X-RM-CSRF", value: "1" },
       cookieMaxAgeSeconds: 604800,
@@ -81,21 +54,7 @@ export function getSsoGatewayInstance(env: Record<string, unknown>): ReturnType<
     issuer: "sso-api",
     audience: "sso-client",
     basePath: "/api/auth",
-    approvedOrigins: [
-      "https://skillpassport.rareminds.in",
-      "http://localhost:3000",
-      "http://localhost:8787",
-      "http://localhost:8788",
-      "http://localhost:5173",
-      "http://localhost:5174",
-      "http://localhost:4173",
-      "http://127.0.0.1:3000",
-      "http://127.0.0.1:8787",
-      "http://127.0.0.1:8788",
-      "http://127.0.0.1:5173",
-      "http://127.0.0.1:5174",
-      "http://127.0.0.1:4173",
-    ],
+    approvedOrigins: [...APPROVED_ORIGINS],
     csrf: { name: "X-RM-CSRF", value: "1" },
     cookieMaxAgeSeconds: 604800,
     ssoRequestTimeoutMs: 5000,

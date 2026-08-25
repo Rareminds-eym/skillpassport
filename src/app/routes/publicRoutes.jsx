@@ -99,6 +99,7 @@ const VerifyEmail = lazy(() => import("@/pages/auth/VerifyEmail"));
 const AcceptInvite = lazy(() => import("@/pages/auth/AcceptInvite"));
 const CompanySignup = lazy(() => import("@/pages/auth/CompanySignup"));
 const InvitationError = lazy(() => import("@/pages/auth/InvitationError"));
+const OAuthCallback = lazy(() => import("@/pages/auth/OAuthCallback"));
 const SignupRecruiter = lazy(() =>
   import("@/pages/auth/components/SignIn/recruitment/SignupRecruiter")
 );
@@ -169,6 +170,9 @@ export const publicRoutes = [
     <Route path="/verify-email" element={<VerifyEmail />} />
     <Route path="/invite/accept" element={<AcceptInvite />} />
     <Route path="/invitation-error" element={<InvitationError />} />
+    {/* Google OAuth landing: session cookie is set by the callback endpoint,
+        so this must render for authenticated users too (no GuestOnlyRoute). */}
+    <Route path="/auth/callback" element={<OAuthCallback />} />
 
     {/* Registration routes */}
     <Route path="/signup/recruitment" element={<GuestOnlyRoute><Register /></GuestOnlyRoute>} />

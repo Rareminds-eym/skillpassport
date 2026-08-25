@@ -32,6 +32,14 @@ export interface PagesEnv {
    */
   COOKIE_DOMAIN?: string;
 
+  // Google OAuth (server-side authorization code flow)
+  GOOGLE_CLIENT_ID?: string;
+  GOOGLE_CLIENT_SECRET?: string;
+  /** Optional dedicated HMAC key for OAuth state cookies; falls back to GOOGLE_CLIENT_SECRET. */
+  OAUTH_STATE_SECRET?: string;
+  /** Kill switch: only "true" enables the Google OAuth start endpoint. */
+  GOOGLE_OAUTH_ENABLED?: string;
+
   // Supabase configuration
   SUPABASE_URL?: string;
   SUPABASE_ANON_KEY?: string;

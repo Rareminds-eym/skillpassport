@@ -40,12 +40,65 @@ function legacyUser(identity: { subject: string; email: string; organizationId: 
  * SSO AuthClient wrapper for backward-compatible call-site delegation.
  * Delegates all lifecycle operations, preserved workflows, and requests to authClient 2.0.0.
  */
+
+// ─── Request budget (circuit breaker against runaway loops) ────────
+// A misbehaving effect must never translate into thousands of identity
+// requests. Budgets are per endpoint family per page-load; tripping opens a
+// short cooldown that fails loud instead of silently spamming the backend.
+const REQUEST_BUDGETS = {
+  me: { max: 20, windowMs: 10_000, cooldownMs: 5_000 },
+  session: { max: 20, windowMs: 10_000, cooldownMs: 5_000 },
+} as const;
+
+type BudgetKey = keyof typeof REQUEST_BUDGETS;
+const budgetHits: Record<BudgetKey, number[]> = { me: [], session: [] };
+const budgetBlockedUntil: Record<BudgetKey, number> = { me: 0, session: 0 };
+
+export class AuthRequestBudgetError extends Error {
+  constructor(key: BudgetKey) {
+    super(`[ssoClient] '${key}' request budget exceeded — runaway loop detected`);
+    this.name = "AuthRequestBudgetError";
+  }
+}
+
+function enforceRequestBudget(key: BudgetKey): void {
+  const { max, windowMs, cooldownMs } = REQUEST_BUDGETS[key];
+  const now = Date.now();
+  if (now < budgetBlockedUntil[key]) throw new AuthRequestBudgetError(key);
+  const hits = (budgetHits[key] = budgetHits[key].filter((t) => now - t < windowMs));
+  hits.push(now);
+  if (hits.length > max) {
+    budgetBlockedUntil[key] = now + cooldownMs;
+    // eslint-disable-next-line no-console
+    console.error(
+      `[ssoClient] '${key}' called ${hits.length}x in ${windowMs / 1000}s — circuit open for ${cooldownMs / 1000}s`,
+      new Error("runaway-caller stack"),
+    );
+    throw new AuthRequestBudgetError(key);
+  }
+}
+
+/** @internal test seam */
+export function __resetRequestBudgetsForTests(): void {
+  budgetHits.me = [];
+  budgetHits.session = [];
+  budgetBlockedUntil.me = 0;
+  budgetBlockedUntil.session = 0;
+}
+
+// ─── Single-flight identity (concurrent callers share one request) ──
+let getMeInFlight: Promise<ReturnType<typeof legacyUser>> | null = null;
+let getMeDevCallCount = 0;
+
 export const ssoClient = {
   fetch: (input: RequestInfo | URL, init?: RequestInit) => authClient.request(input, init),
   getAccessToken: () => null,
-  initSession: async () => {
-    const outcome = await authClient.initialize();
-    return { authenticated: outcome.status === "authenticated" };
+  initSession: () => {
+    enforceRequestBudget("session");
+    return (async () => {
+      const outcome = await authClient.initialize();
+      return { authenticated: outcome.status === "authenticated" };
+    })();
   },
   isInitialized: () => {
     const state = authClient.getState();
@@ -137,14 +190,31 @@ export const ssoClient = {
       throw new Error("Logout could not be confirmed");
     }
   },
-  getMe: async () => {
-    const result = await authClient.getMe();
-    throwOnNonSuccess(result, "Fetching identity");
-    return legacyUser(result.data);
+  getMe: () => {
+    enforceRequestBudget("me");
+    // Single-flight: concurrent callers (StrictMode remounts, multiple
+    // components, parallel bootstraps) share one network request.
+    getMeInFlight ??= (async () => {
+      try {
+        if (import.meta.env.DEV) {
+          getMeDevCallCount += 1;
+          if (getMeDevCallCount % 25 === 0) {
+            // eslint-disable-next-line no-console
+            console.trace(`[ssoClient][dev] getMe call #${getMeDevCallCount} — investigate caller if unexpected`);
+          }
+        }
+        const result = await authClient.getMe();
+        throwOnNonSuccess(result, "Fetching identity");
+        return legacyUser(result.data);
+      } finally {
+        getMeInFlight = null;
+      }
+    })();
+    return getMeInFlight;
   },
-  refresh: async () => {
-    const outcome = await authClient.initialize();
-    return outcome;
+  refresh: () => {
+    enforceRequestBudget("session");
+    return authClient.initialize();
   },
   onAuthStateChange: (listener: (event: any) => void) => authClient.subscribe(listener),
 };
