@@ -3,6 +3,7 @@
  */
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getContextUser, withAuth } from '../../lib/auth';
+import { notifyLearnersOfNewOpportunity } from '../../lib/newOpportunityNotifications';
 import { verifyOrgAccess } from '../../lib/permissions';
 import { apiDbError, apiError, apiMethodNotAllowed, apiSuccess } from '../../lib/response';
 import { getServiceClient } from '../../lib/supabase';
@@ -250,6 +251,7 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       if (!opportunity) return apiError(400, 'VALIDATION_ERROR', 'opportunity data required', context.request);
       const { data, error } = await supabase.from('opportunities').insert([opportunity]).select().single();
       if (error) return apiDbError(error, context.request);
+      await notifyLearnersOfNewOpportunity(supabase, data);
       return apiSuccess({ opportunity: data }, context.request);
     }
 

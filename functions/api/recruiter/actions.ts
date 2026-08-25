@@ -2,6 +2,7 @@ import { withAuth, getContextUser } from '../../lib/auth';
 import { getServiceClient } from '../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { apiSuccess, apiError, apiDbError, apiMethodNotAllowed } from '../../lib/response';
+import { notifyLearnersOfNewOpportunity } from '../../lib/newOpportunityNotifications';
 
 export const onRequest = async (context: any) => {
   if (context.request.method === 'POST') return onRequestPost(context);
@@ -588,6 +589,7 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         .single();
 
       if (error) return apiDbError(error, context.request);
+      await notifyLearnersOfNewOpportunity(supabase, data);
       return apiSuccess(data || {}, context.request);
     }
 
