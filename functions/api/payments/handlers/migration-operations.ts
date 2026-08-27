@@ -3,6 +3,7 @@ import { getContextUser } from '../../../lib/auth';
 import { apiError, apiSuccess } from '../../../lib/response';
 import { ssoListAddonCatalog } from '../../../lib/sso-client';
 import { getServiceClient } from '../../../lib/supabase';
+import { safeParseFloat } from '../../../lib/numbers';
 
 async function trackEvent(supabase: ReturnType<typeof getServiceClient>, userId: string, eventType: string, metadata: Record<string, unknown> = {}): Promise<void> {
   try {
