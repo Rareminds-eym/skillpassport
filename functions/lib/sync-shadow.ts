@@ -45,6 +45,53 @@ export async function syncSubscriptionCache(
   }
 }
 
+export async function ensureDefaultLearnerLicensePool(
+  supabase: SupabaseClient,
+  subscription: Record<string, unknown>,
+): Promise<void> {
+  if (!subscription.is_organization_subscription || !subscription.organization_id || !subscription.id) {
+    return;
+  }
+
+  const organizationId = String(subscription.organization_id);
+  const subscriptionId = String(subscription.id);
+  const organizationType = String(subscription.organization_type || 'college');
+  const seatCount = Number(subscription.seat_count || 1);
+
+  const { data: existing, error: lookupError } = await supabase
+    .from('license_pools')
+    .select('id')
+    .eq('organization_subscription_id', subscriptionId)
+    .eq('member_type', 'learner')
+    .maybeSingle();
+
+  if (lookupError) {
+    console.error('[sync-shadow] Failed to check learner license pool:', lookupError.message);
+    return;
+  }
+  if (existing) return;
+
+  const { error } = await supabase
+    .from('license_pools')
+    .insert({
+      organization_subscription_id: subscriptionId,
+      organization_id: organizationId,
+      organization_type: organizationType,
+      pool_name: 'Learners',
+      member_type: 'learner',
+      allocated_seats: Math.max(1, seatCount),
+      assigned_seats: 0,
+      auto_assign_new_members: true,
+      assignment_criteria: {},
+      is_active: true,
+      created_by: subscription.purchased_by || subscription.user_id,
+    });
+
+  if (error) {
+    console.error('[sync-shadow] Failed to create learner license pool:', error.message);
+  }
+}
+
 export async function syncPlanCache(
   supabase: SupabaseClient,
   plan: Record<string, unknown>,

@@ -17,16 +17,30 @@ import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../li
 import { getServiceClient } from '../../../lib/supabase';
 import {
   ssoCreateSubscription,
+  ssoGetOrgSubscription,
   ssoRecordTransaction,
-  ssoSyncSubscription,
 } from '../../../lib/sso-client';
-import { syncSubscriptionCache, syncUserShadow } from '../../../lib/sync-shadow';
+import { ensureDefaultLearnerLicensePool, syncSubscriptionCache, syncUserShadow } from '../../../lib/sync-shadow';
 import { apiSuccess, apiError } from '../../../lib/response';
 
 // RPC calls throw errors of unknown shape; some carry an HTTP-like numeric
 // `status` (e.g. 409 on a duplicate-key race). This narrows without `any`.
 function hasNumericStatus(error: unknown): error is Record<string, unknown> & { status: number } {
   return typeof error === 'object' && error !== null && typeof (error as Record<string, unknown>).status === 'number';
+}
+
+async function syncLatestOrgSubscription(
+  supabase: ReturnType<typeof getServiceClient>,
+  env: PaymentWorkerEnv & { SSO_SERVICE: Fetcher },
+  orgId: string,
+): Promise<Record<string, unknown> | null> {
+  const syncData = await ssoGetOrgSubscription(env, orgId);
+  const subscription = syncData.subscriptions?.[0] as Record<string, unknown> | undefined;
+  if (!subscription) return null;
+
+  await syncSubscriptionCache(supabase, subscription);
+  await ensureDefaultLearnerLicensePool(supabase, subscription);
+  return subscription;
 }
 
 export async function handleVerifyOrgPayment(context: AuthenticatedContext): Promise<Response> {
@@ -57,10 +71,11 @@ export async function handleVerifyOrgPayment(context: AuthenticatedContext): Pro
 
     // Guard: Verify user is an admin or owner of the organization
     const { data: membership } = await supabase
-      .from('license_assignments')
-      .select('id, role')
+      .from('organization_members')
+      .select('role')
       .eq('user_id', user.id)
       .eq('organization_id', body.org_id as string)
+      .eq('status', 'active')
       .limit(1)
       .maybeSingle();
 
@@ -144,10 +159,7 @@ export async function handleVerifyOrgPayment(context: AuthenticatedContext): Pro
 
         try {
           await syncUserShadow(supabase, user.id, user.email);
-          const syncData = await ssoSyncSubscription(env, user.id);
-          if (syncData.subscription) {
-            await syncSubscriptionCache(supabase, syncData.subscription, syncData.plan);
-          }
+          await syncLatestOrgSubscription(supabase, env, body.org_id as string);
         } catch (syncError) {
           console.error('[VerifyOrgPayment] Shadow sync failed during duplicate handling:', syncError);
         }
@@ -191,11 +203,7 @@ export async function handleVerifyOrgPayment(context: AuthenticatedContext): Pro
     try {
       // Ensure user exists in users_shadow (FK constraint for subscription_cache)
       await syncUserShadow(supabase, user.id, user.email);
-
-      const syncData = await ssoSyncSubscription(env, user.id);
-      if (syncData.subscription) {
-        await syncSubscriptionCache(supabase, syncData.subscription, syncData.plan);
-      }
+      await syncLatestOrgSubscription(supabase, env, body.org_id as string);
     } catch (syncError) {
       console.error('[VerifyOrgPayment] Shadow sync failed (non-critical):', syncError);
     }

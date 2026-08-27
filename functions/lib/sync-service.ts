@@ -1,4 +1,5 @@
 import { createDb, type DbClient } from './db';
+import { ensureDefaultLearnerLicensePool } from './sync-shadow';
 import { mapRolesToOrgMemberRole, LEARNER_SSO_ROLES } from './role-mapper';
 import type { PagesEnv } from './types';
 import { z } from 'zod';
@@ -255,6 +256,68 @@ export class SyncService {
         .update(learnerUpdate)
         .eq('user_id', parsed.user_id);
       if (updateError) return fail('DB_ERROR', updateError.message, true);
+
+      const licenseResult = await this.assignLicenseFromAutoPool(
+        parsed.user_id,
+        parsed.organization_id,
+        orgType,
+        'learner',
+      );
+      if (!licenseResult.success) return licenseResult;
+    }
+
+    return ok();
+  }
+
+  private async assignLicenseFromAutoPool(
+    userId: string,
+    organizationId: string,
+    organizationType: unknown,
+    memberType: 'learner' | 'educator',
+  ): Promise<SyncResult> {
+    if (typeof organizationType !== 'string') return ok();
+
+    const { data: existing, error: existingError } = await this.db
+      .from('license_assignments')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('status', 'active')
+      .limit(1)
+      .maybeSingle();
+    if (existingError) return fail('DB_ERROR', existingError.message, true);
+    if (existing) return ok();
+
+    const { data: pools, error: poolError } = await this.db
+      .from('license_pools')
+      .select('id, organization_subscription_id, available_seats, created_by')
+      .eq('organization_id', organizationId)
+      .eq('organization_type', organizationType)
+      .eq('member_type', memberType)
+      .eq('auto_assign_new_members', true)
+      .eq('is_active', true)
+      .gt('available_seats', 0)
+      .order('created_at', { ascending: true })
+      .limit(1);
+    if (poolError) return fail('DB_ERROR', poolError.message, true);
+
+    const pool = pools?.[0];
+    if (!pool) return ok();
+
+    const { error: assignmentError } = await this.db
+      .from('license_assignments')
+      .insert({
+        license_pool_id: pool.id,
+        organization_subscription_id: pool.organization_subscription_id,
+        user_id: userId,
+        member_type: memberType,
+        status: 'active',
+        assigned_by: pool.created_by || userId,
+      });
+
+    if (assignmentError) {
+      const message = assignmentError.message ?? String(assignmentError);
+      if (message.includes('duplicate key') || message.includes('23505')) return ok();
+      return fail('DB_ERROR', message, true);
     }
 
     return ok();
@@ -398,6 +461,7 @@ export class SyncService {
 
     const { error } = await this.db.from('subscription_cache').upsert(subPayload, { onConflict: 'id' });
     if (error) return fail('DB_ERROR', error.message, true);
+    await ensureDefaultLearnerLicensePool(this.db, subPayload);
     return ok();
   }
 

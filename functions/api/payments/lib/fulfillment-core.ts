@@ -1,6 +1,6 @@
-import { ssoRecordTransaction, ssoRecordAddonPurchase, ssoRecordBundlePurchase, ssoCreateSubscription, ssoUpdateSubscriptionField, ssoSyncSubscription } from '../../../lib/sso-client';
+import { ssoRecordTransaction, ssoRecordAddonPurchase, ssoRecordBundlePurchase, ssoCreateSubscription, ssoUpdateSubscriptionField, ssoSyncSubscription, ssoGetOrgSubscription } from '../../../lib/sso-client';
 import { getServiceClient } from '../../../lib/supabase';
-import { syncUserShadow, syncSubscriptionCache } from '../../../lib/sync-shadow';
+import { syncUserShadow, syncSubscriptionCache, ensureDefaultLearnerLicensePool } from '../../../lib/sync-shadow';
 import type { Fetcher } from '@cloudflare/workers-types';
 
 export interface FulfillmentEnv {
@@ -210,6 +210,7 @@ export async function fulfillOrgSubscription(
     plan_name: string;
     plan_code: string;
     seat_count: number;
+    org_type?: string;
     billing_cycle: string;
     amount: number;
     currency?: string;
@@ -240,6 +241,7 @@ export async function fulfillOrgSubscription(
       razorpay_order_id: payload.razorpay_order_id,
       razorpay_payment_id: payload.razorpay_payment_id,
       organization_id: payload.org_id,
+      organization_type: payload.org_type,
       seat_count: payload.seat_count,
       is_organization_subscription: true,
       is_bulk_purchase: true,
@@ -283,9 +285,11 @@ export async function fulfillOrgSubscription(
   // Sync shadow
   try {
     await syncUserShadow(supabase, payload.user_id, payload.user_email || '');
-    const syncData = await ssoSyncSubscription(ssoEnv, payload.user_id);
-    if (syncData.subscription) {
-      await syncSubscriptionCache(supabase, syncData.subscription, syncData.plan);
+    const syncData = await ssoGetOrgSubscription(ssoEnv, payload.org_id);
+    const orgSubscription = syncData.subscriptions?.[0] as Record<string, unknown> | undefined;
+    if (orgSubscription) {
+      await syncSubscriptionCache(supabase, orgSubscription);
+      await ensureDefaultLearnerLicensePool(supabase, orgSubscription);
     }
   } catch (syncError) {
     console.error('[FulfillmentCore] Shadow sync failed:', syncError);

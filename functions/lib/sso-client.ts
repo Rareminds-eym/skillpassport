@@ -20,6 +20,10 @@ export async function ssoSyncSubscription(env: SsoEnv, userId: string): Promise<
   return env.SSO_SERVICE.syncSubscription(userId);
 }
 
+export async function ssoGetOrgSubscription(env: SsoEnv, orgId: string): Promise<any> {
+  return env.SSO_SERVICE.getOrgSubscription(orgId);
+}
+
 export async function ssoListAddonCatalog(env: SsoEnv, params?: any): Promise<any> {
   return env.SSO_SERVICE.listAddonCatalog(params);
 }
