@@ -354,12 +354,6 @@ export function getPaymentReceiptUrl(fileKey: string, mode: 'download' | 'inline
  * @returns Presigned URL for direct download
  */
 export async function getPaymentReceiptPresignedUrl(fileKeyOrUrl: string, expiresIn: number = 3600): Promise<string> {
-  const authToken = await getAuthToken();
-  
-  if (!authToken) {
-    throw new Error('Authentication required. Please log in.');
-  }
-  
   // Extract file key from full URL if needed
   let fileKey = fileKeyOrUrl;
   if (fileKeyOrUrl.startsWith('http')) {
@@ -394,7 +388,6 @@ export async function getPaymentReceiptPresignedUrl(fileKeyOrUrl: string, expire
     `${API_URL}/payment-receipt/presigned?key=${encodeURIComponent(fileKey)}&expires=${expiresIn}`,
     {
       method: 'GET',
-      headers: getAuthHeaders(authToken),
       signal: timeoutSignal,
     }
   );
