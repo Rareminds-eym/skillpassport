@@ -11,7 +11,7 @@ BEGIN
   IF EXISTS (SELECT 1 FROM public.organizations AS org WHERE lower(org.name)=lower('Soundarya Institute of Management and Science') AND org.id<>v_org_id) THEN
     RAISE EXCEPTION 'Soundarya organization already exists under a different ID';
   END IF;
-  IF EXISTS (SELECT 1 FROM public.users AS usr WHERE lower(usr.email)='soundarya.admin@rareminds.in' AND usr.id<>v_admin_id) THEN
+  IF EXISTS (SELECT 1 FROM public.users AS usr WHERE lower(usr.email)='sims.info@soundaryainstitutions.in' AND usr.id<>v_admin_id) THEN
     RAISE EXCEPTION 'Soundarya admin email already exists under a different ID';
   END IF;
 
@@ -40,13 +40,13 @@ BEGIN
   END IF;
 
   INSERT INTO public.users (email,"organizationId","isActive",metadata,"createdAt","updatedAt",id,"firstName","lastName",last_activity_at,role,temporary_password,password_changed,phone)
-  VALUES ('soundarya.admin@rareminds.in',v_org_id,true,jsonb_build_object('organization_type','college','institution_name','Soundarya Institute of Management and Science','short_name','SIMS','affiliated_university','Bangalore University','university_organization_id',v_university_id::text,'university_college_id',v_university_college_id::text,'onboarding_completed',true,'sso_user_id',v_admin_id::text),NOW(),NOW(),v_admin_id,'Soundarya','College Admin',NULL,'college_admin',NULL,true,NULL)
+  VALUES ('sims.info@soundaryainstitutions.in',v_org_id,true,jsonb_build_object('organization_type','college','institution_name','Soundarya Institute of Management and Science','short_name','SIMS','affiliated_university','Bangalore University','university_organization_id',v_university_id::text,'university_college_id',v_university_college_id::text,'onboarding_completed',true,'sso_user_id',v_admin_id::text),NOW(),NOW(),v_admin_id,'Soundarya','College Admin',NULL,'college_admin',NULL,true,NULL)
   ON CONFLICT (id) DO UPDATE SET email=EXCLUDED.email,"organizationId"=EXCLUDED."organizationId","isActive"=true,metadata=EXCLUDED.metadata,"updatedAt"=NOW(),"firstName"=EXCLUDED."firstName","lastName"=EXCLUDED."lastName",role='college_admin',temporary_password=NULL,password_changed=true;
 END;
 $seed$;
 
 INSERT INTO public.users_shadow (id,email,created_at,updated_at)
-VALUES ('783d8431-a034-5369-ae47-3aca2c4ec618','soundarya.admin@rareminds.in',NOW(),NOW())
+VALUES ('783d8431-a034-5369-ae47-3aca2c4ec618','sims.info@soundaryainstitutions.in',NOW(),NOW())
 ON CONFLICT (id) DO UPDATE SET email=EXCLUDED.email,updated_at=NOW();
 
 INSERT INTO public.plans_cache (id,plan_code,name,business_type,applicable_entities,pricing_matrix,base_features,entity_config,display_order,is_active,synced_at,created_at,updated_at,product_id)
