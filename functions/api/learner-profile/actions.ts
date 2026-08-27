@@ -1,5 +1,5 @@
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import { withAuth } from '../../lib/auth';
+import { withAuth, getContextUser } from '../../lib/auth';
 import { notifyRealtime } from '../../lib/realtime';
 import { apiDbError, apiError, apiSuccess } from '../../lib/response';
 import { getServiceClient } from '../../lib/supabase';
@@ -1187,6 +1187,91 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         }
 
         return apiSuccess(results, context.request, { startTime });
+      }
+
+      // ──────────────────────────────────────────────
+      // ASSESSMENT REPORT LOGGING
+      // ──────────────────────────────────────────────
+
+      case 'log-assessment-report': {
+        const authUser = getContextUser(context);
+        // Resolve learners.id, school_id, college_id from auth user.id
+        const { data: learnerRow } = await supabase
+          .from('learners')
+          .select('id, school_id, college_id')
+          .eq('user_id', authUser.id)
+          .maybeSingle();
+
+        if (!learnerRow?.id) {
+          return apiSuccess({ logged: false }, context.request, { startTime });
+        }
+
+        const orgId = learnerRow.school_id || learnerRow.college_id;
+
+        if (!orgId) {
+          return apiSuccess({ logged: false }, context.request, { startTime });
+        }
+
+        const now = new Date();
+        const year = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+        const academicYear = `${year}-${String(year + 1).slice(2)}`;
+
+        const { error: insertError } = await supabase.from('learner_reports').insert({
+          learner_id: learnerRow.id,
+          school_id: orgId,
+          report_type: 'skill_assessment',
+          title: 'Career Assessment Report',
+          academic_year: academicYear,
+          data: {},
+          generated_by: authUser.id,
+          generated_date: now.toISOString(),
+        });
+
+        if (insertError) {
+          console.error('[log-assessment-report] Insert failed:', insertError.message);
+        }
+
+        return apiSuccess({ logged: !insertError }, context.request, { startTime });
+      }
+
+      // ──────────────────────────────────────────────
+      // PROFILE VIEW TRACKING
+      // ──────────────────────────────────────────────
+
+      case 'track-profile-view': {
+        const { learnerId, viewerType = 'learner' } = params;
+        if (!learnerId) return apiError(400, 'VALIDATION_ERROR', 'Missing learnerId', context.request, { startTime });
+
+        const viewerId = context.data.user.id; // auth UUID of the logged-in viewer
+
+        // profile_views.learner_id references learners(user_id) — the auth UUID.
+        // learnerId from the URL param is learners.id (internal UUID), so resolve user_id first.
+        const { data: learnerRow } = await supabase
+          .from('learners')
+          .select('user_id')
+          .eq('id', learnerId)
+          .maybeSingle();
+
+        if (!learnerRow?.user_id) {
+          // Learner not found — silently succeed so the page doesn't break
+          return apiSuccess({ tracked: false }, context.request, { startTime });
+        }
+
+        const learnerAuthId = learnerRow.user_id; // auth UUID for profile_views.learner_id
+
+        const { error: insertError } = await supabase.from('profile_views').insert({
+          learner_id: learnerAuthId,
+          viewer_id: viewerId,
+          viewer_type: viewerType,
+          viewed_at: new Date().toISOString(),
+        });
+
+        if (insertError) {
+          // Log but don't fail — tracking should never break the profile page
+          console.error('[track-profile-view] Insert failed:', insertError.message);
+        }
+
+        return apiSuccess({ tracked: !insertError }, context.request, { startTime });
       }
 
       default:

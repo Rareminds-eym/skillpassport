@@ -50,6 +50,7 @@ import { TextGenerateEffect } from '@/shared/ui/TextGenerateEffect';
 // Import constants and hooks
 import { RIASEC_NAMES, RIASEC_COLORS, TRAIT_NAMES, TRAIT_COLORS, PRINT_STYLES } from '@/features/assessment';
 import { useAssessmentResults } from '../model/useAssessmentResults';
+import { apiPost } from '@/shared/api/apiClient';
 
 // Import course matching engine
 import { calculateCourseMatchScores, DEGREE_PROGRAMS, COURSE_KNOWLEDGE_BASE } from '../lib/courseMatchingEngine';
@@ -821,6 +822,11 @@ const AssessmentResult = () => {
 
     // Custom print function that opens print view in new window
     const handlePrint = () => {
+        // Fire-and-forget report log — never blocks the print
+        apiPost('/learner-profile/actions', {
+            action: 'log-assessment-report',
+        }).catch(() => {});
+
         const printContent = document.querySelector('.print-view');
         if (!printContent) {
             console.error('Print view not found');
