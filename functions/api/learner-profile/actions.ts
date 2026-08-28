@@ -3,6 +3,12 @@ import { withAuth, getContextUser } from '../../lib/auth';
 import { notifyRealtime } from '../../lib/realtime';
 import { apiDbError, apiError, apiSuccess } from '../../lib/response';
 import { getServiceClient } from '../../lib/supabase';
+import { createLogger } from '../../lib/logger';
+
+const logger = createLogger('learner-profile-actions');
+
+const REPORT_TYPE_SKILL_ASSESSMENT = 'skill_assessment';
+const REPORT_TITLE_CAREER_ASSESSMENT = 'Career Assessment Report';
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const env = context.env as Record<string, string>;
@@ -1219,8 +1225,8 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const { error: insertError } = await supabase.from('learner_reports').insert({
           learner_id: learnerRow.id,
           school_id: orgId,
-          report_type: 'skill_assessment',
-          title: 'Career Assessment Report',
+          report_type: REPORT_TYPE_SKILL_ASSESSMENT,
+          title: REPORT_TITLE_CAREER_ASSESSMENT,
           academic_year: academicYear,
           data: {},
           generated_by: authUser.id,
@@ -1228,7 +1234,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         });
 
         if (insertError) {
-          console.error('[log-assessment-report] Insert failed:', insertError.message);
+          logger.error('[log-assessment-report] Insert failed:', insertError.message);
         }
 
         return apiSuccess({ logged: !insertError }, context.request, { startTime });
@@ -1268,7 +1274,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
         if (insertError) {
           // Log but don't fail — tracking should never break the profile page
-          console.error('[track-profile-view] Insert failed:', insertError.message);
+          logger.error('[track-profile-view] Insert failed:', insertError.message);
         }
 
         return apiSuccess({ tracked: !insertError }, context.request, { startTime });

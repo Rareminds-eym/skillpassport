@@ -2,6 +2,9 @@ import { withAuth, getContextUser } from '../../lib/auth';
 import { getServiceClient } from '../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { apiSuccess, apiError, apiDbError } from '../../lib/response';
+import { createLogger } from '../../lib/logger';
+
+const logger = createLogger('analytics-data');
 
 function buildDateRange(preset: string, start?: string, end?: string): { startDate: string; endDate: string } {
   if (preset === 'custom' && start && end) return { startDate: start, endDate: end };
@@ -234,7 +237,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           .maybeSingle();
 
         if (learnerLookupError) {
-          console.error('[get-usage-stats] Failed to resolve learner id:', learnerLookupError);
+          logger.error('[get-usage-stats] Failed to resolve learner id:', learnerLookupError);
         }
 
         const learnerId = learnerRow?.id || null;
@@ -244,7 +247,10 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           try {
             const { count } = await supabase.from(table).select('*', { count: 'exact', head: true }).eq(field, learnerId);
             return count || 0;
-          } catch { return 0; }
+          } catch (err) {
+            logger.error(`getCount failed for table "${table}"`, { error: err });
+            return 0;
+          }
         };
 
         const [assessments, profileViews, reports] = await Promise.all([
@@ -257,7 +263,10 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
                 .select('*', { count: 'exact', head: true })
                 .eq('learner_id', user.id); // auth UUID directly
               return count || 0;
-            } catch { return 0; }
+            } catch (err) {
+              logger.error('getCount failed for table "profile_views"', { error: err });
+              return 0;
+            }
           })(),
           getCount('learner_reports'),                     // learner_id = learners.id
         ]);
