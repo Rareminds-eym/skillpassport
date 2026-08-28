@@ -16,6 +16,7 @@ import { createLogger } from '../../../lib/logger';
 import { apiError, apiSuccess } from '../../../lib/response';
 import { getServiceClient } from '../../../lib/supabase';
 import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../lib/paymentBinding';
+import { safeParseFloat } from '../../../lib/numbers';
 
 const logger = createLogger('payments:create-bundle-order');
 
