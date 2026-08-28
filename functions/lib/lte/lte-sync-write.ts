@@ -116,23 +116,58 @@ export async function upsertSingleProgressPayload(
     }
   }
 
-  if (Array.isArray(payload.earnedSkills) && payload.earnedSkills.length > 0) {
-    for (const item of payload.earnedSkills) {
+  const earnedSkillItems = [
+    ...(Array.isArray(payload.earnedSkillsDetail) ? payload.earnedSkillsDetail : []),
+    ...(Array.isArray(payload.earnedSkills) ? payload.earnedSkills : []),
+  ];
+
+  if (earnedSkillItems.length > 0) {
+    for (const item of earnedSkillItems) {
       const obj = item && typeof item === 'object' ? (item as Record<string, unknown>) : null;
       const skillName = typeof item === 'string' ? item.trim() : (obj?.name && typeof obj.name === 'string') ? obj.name.trim() : '';
       if (!skillName) continue;
 
-      const explicitLevel = obj && typeof obj.level === 'number' ? obj.level : 0;
+      const rawSkillId =
+        (obj && typeof obj.id === 'string' && obj.id)
+          ? obj.id
+          : obj && typeof obj.lteSkillId === 'string'
+            ? obj.lteSkillId
+            : obj && typeof obj.code === 'string' && obj.code
+              ? obj.code
+              : null;
+      const isUuid = Boolean(rawSkillId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawSkillId));
+      const lteSkillId = isUuid ? rawSkillId : null;
+
+      let explicitLevel = obj && typeof obj.level === 'number' ? obj.level : 0;
+      if (explicitLevel <= 0 && Array.isArray(payload.levels)) {
+        for (let lIdx = 0; lIdx < payload.levels.length; lIdx++) {
+          const lvlObj = payload.levels[lIdx] as Record<string, unknown>;
+          if (Array.isArray(lvlObj?.skills)) {
+            const match = lvlObj.skills.some((s: any) =>
+              s && typeof s === 'object' && (s.id === rawSkillId || s.code === rawSkillId || s.name === skillName)
+            );
+            if (match) {
+              explicitLevel = lIdx + 1;
+              break;
+            }
+          }
+        }
+      }
+      if (explicitLevel <= 0 && rawSkillId) {
+        const codeMatch = rawSkillId.match(/[-_]L([1-5])(?:\b|_|-)/i);
+        if (codeMatch) {
+          explicitLevel = parseInt(codeMatch[1], 10);
+        }
+      }
       const computedSkillLevel = explicitLevel > 0 ? explicitLevel : Math.max(1, currentLevelNum);
-      const lteSkillId = obj && typeof obj.id === 'string' ? obj.id : obj && typeof obj.lteSkillId === 'string' ? obj.lteSkillId : null;
 
       try {
         const queryByLteId = lteSkillId
-          ? `skills?learner_id=eq.${encodeURIComponent(learnerId)}&lte_skill_id=eq.${encodeURIComponent(lteSkillId)}&select=id`
+          ? `skills?learner_id=eq.${encodeURIComponent(learnerId)}&lte_skill_id=eq.${encodeURIComponent(lteSkillId)}&select=id,lte_skill_id`
           : null;
-        const existingSkill = (queryByLteId ? await db.queryOne<{ id: string }>(queryByLteId) : null)
-          || await db.queryOne<{ id: string }>(
-            `skills?learner_id=eq.${encodeURIComponent(learnerId)}&name=eq.${encodeURIComponent(skillName)}&select=id`
+        const existingSkill = (queryByLteId ? await db.queryOne<{ id: string; lte_skill_id?: string | null }>(queryByLteId) : null)
+          || await db.queryOne<{ id: string; lte_skill_id?: string | null }>(
+            `skills?learner_id=eq.${encodeURIComponent(learnerId)}&name=eq.${encodeURIComponent(skillName)}&select=id,lte_skill_id`
           );
         if (!existingSkill) {
           await db.insert('skills', {
@@ -143,8 +178,13 @@ export async function upsertSingleProgressPayload(
             training_id: targetTrainingId,
             verified: true,
             approval_status: 'approved',
-            source: 'lte',
             ...(lteSkillId ? { lte_skill_id: lteSkillId } : {}),
+          });
+        } else if (lteSkillId && !existingSkill.lte_skill_id) {
+          await db.update('skills', existingSkill.id, {
+            lte_skill_id: lteSkillId,
+            level: computedSkillLevel,
+            ...(targetTrainingId ? { training_id: targetTrainingId } : {}),
           });
         }
       } catch (skillErr) {

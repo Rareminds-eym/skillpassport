@@ -143,7 +143,6 @@ describe('upsertSingleProgressPayload', () => {
       training_id: 'tr-1',
       verified: true,
       approval_status: 'approved',
-      source: 'lte',
     });
   });
 
@@ -220,4 +219,45 @@ describe('upsertSingleProgressPayload', () => {
     expect(trainings[0].completed_modules).toBe(10);
     expect(trainings[0].status).toBe('completed');
   });
+
+  it('writes real skills from earnedSkillsDetail using UUID as lte_skill_id', async () => {
+    const { db, skills } = createFakeDb();
+    const uuid1 = '11111111-1111-4111-8111-111111111111';
+    const uuid2 = '22222222-2222-4222-8222-222222222222';
+    const payload = {
+      lteCourseId: 'course-101',
+      courseTitle: 'Fullstack GenAI Development',
+      status: 'completed',
+      completedModules: 10,
+      totalModules: 10,
+      levels: [
+        { id: 'lvl-1', code: 'L1', title: 'Foundation', status: 'completed', completionPercentage: 100 },
+        { id: 'lvl-2', code: 'L2', title: 'Advanced Prompting', status: 'completed', completionPercentage: 100 },
+      ],
+      earnedSkills: ['Foundation'],
+      earnedSkillsDetail: [
+        { id: uuid1, code: 'LOGIC', name: 'Logical Reasoning', description: 'Deducing rules' },
+        { id: uuid2, code: 'PROMPT', name: 'Prompt Engineering', description: 'Crafting prompts' },
+      ],
+    };
+
+    const result = await upsertSingleProgressPayload(db, 'learner-1', payload);
+    expect(result.synced).toBe(true);
+
+    expect(skills.map((s) => s.name).sort()).toEqual([
+      'Foundation',
+      'Logical Reasoning',
+      'Prompt Engineering',
+    ]);
+    const logical = skills.find((s) => s.name === 'Logical Reasoning');
+    expect(logical).toMatchObject({
+      lte_skill_id: uuid1,
+      training_id: 'tr-1',
+      verified: true,
+      approval_status: 'approved',
+    });
+    const prompt = skills.find((s) => s.name === 'Prompt Engineering');
+    expect(prompt).toMatchObject({ lte_skill_id: uuid2 });
+  });
+
 });
