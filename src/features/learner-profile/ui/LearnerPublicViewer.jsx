@@ -1,36 +1,33 @@
-import { useEffect, useMemo, useState, useRef } from "react";
 import {
+  Award,
+  Briefcase,
   Check,
   CheckCircle,
-  Award,
-  Mail,
-  Phone,
-  MapPin,
-  User,
-  Download,
   Copy,
-  Star,
-  Briefcase,
-  GraduationCap,
-  TrendingUp,
-  Share2,
+  Download,
   ExternalLink,
   FolderGit2,
+  GraduationCap,
   Lock,
+  Mail,
+  MapPin,
+  Phone,
+  Share2,
+  Star,
+  TrendingUp,
+  User,
 } from "lucide-react";
-import { useLearnerDataById } from '@/entities/learner';
+import { useEffect, useMemo, useRef, useState } from "react";
+import toast from "react-hot-toast";
 import { useParams } from "react-router-dom";
 
-import toast from 'react-hot-toast';
-import {
-  generateResumePDF,
-} from "@/widgets/learner-dashboard/ui/Generateresumepdf";
+import { useLearnerDataById } from "@/entities/learner";
 import { generateBadges, getBadgeProgress } from "@/features/digital-portfolio";
-import { capitalizeName } from "@/shared/lib/helpers";
+import { apiPost } from "@/shared/api/apiClient";
 import { calculateEmployabilityScore } from "@/shared/lib/employabilityCalculator";
-
-import { useAuthLoading, useUser } from '@/shared/model/authStore';
-import { apiPost } from '@/shared/api/apiClient';
+import { capitalizeName } from "@/shared/lib/helpers";
+import { useAuthLoading, useUser } from "@/shared/model/authStore";
+import { generateResumePDF } from "@/widgets/learner-dashboard/ui/Generateresumepdf";
 
 function safeParse(jsonLike) {
   if (!jsonLike) return {};

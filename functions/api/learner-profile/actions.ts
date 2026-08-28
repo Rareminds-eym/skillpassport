@@ -1,9 +1,10 @@
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import { withAuth, getContextUser } from '../../lib/auth';
+
+import { getContextUser, withAuth } from '../../lib/auth';
+import { createLogger } from '../../lib/logger';
 import { notifyRealtime } from '../../lib/realtime';
 import { apiDbError, apiError, apiSuccess } from '../../lib/response';
 import { getServiceClient } from '../../lib/supabase';
-import { createLogger } from '../../lib/logger';
 
 const logger = createLogger('learner-profile-actions');
 
@@ -1248,7 +1249,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const { learnerId, viewerType = 'learner' } = params;
         if (!learnerId) return apiError(400, 'VALIDATION_ERROR', 'Missing learnerId', context.request, { startTime });
 
-        const viewerId = context.data.user.id; // auth UUID of the logged-in viewer
+        const viewerId = getContextUser(context).id; // auth UUID of the logged-in viewer
 
         // profile_views.learner_id references learners(user_id) — the auth UUID.
         // learnerId from the URL param is learners.id (internal UUID), so resolve user_id first.

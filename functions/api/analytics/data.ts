@@ -1,8 +1,9 @@
-import { withAuth, getContextUser } from '../../lib/auth';
-import { getServiceClient } from '../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import { apiSuccess, apiError, apiDbError } from '../../lib/response';
+
+import { getContextUser, withAuth } from '../../lib/auth';
 import { createLogger } from '../../lib/logger';
+import { apiDbError, apiError, apiSuccess } from '../../lib/response';
+import { getServiceClient } from '../../lib/supabase';
 
 const logger = createLogger('analytics-data');
 
@@ -107,7 +108,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         let sourced = 0, screened = 0, interviewed = 0, offered = 0, hired = 0;
         (candidates || []).forEach((c: any) => {
           if (c.status === 'rejected') return;
-          const s = (c.stage || '').toLowerCase();
+          const s = c.stage?.toLowerCase() ?? '';
           if (s === 'sourced') sourced++;
           else if (s === 'screened') screened++;
           else if (s === 'interview_1' || s === 'interview_2' || s === 'interviewed') interviewed++;

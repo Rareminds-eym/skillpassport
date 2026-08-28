@@ -51,6 +51,8 @@ import { TextGenerateEffect } from '@/shared/ui/TextGenerateEffect';
 import { RIASEC_NAMES, RIASEC_COLORS, TRAIT_NAMES, TRAIT_COLORS, PRINT_STYLES } from '@/features/assessment';
 import { useAssessmentResults } from '../model/useAssessmentResults';
 import { apiPost } from '@/shared/api/apiClient';
+import { getLogger } from '@/shared/config/logging';
+
 
 // Import course matching engine
 import { calculateCourseMatchScores, DEGREE_PROGRAMS, COURSE_KNOWLEDGE_BASE } from '../lib/courseMatchingEngine';
@@ -87,6 +89,8 @@ const GeminiCareerPath = ({ reverse = false }) => {
     const pathLength = useTransform(scrollYProgress, [0, 0.5], [0, 1]);
     const opacity = useTransform(scrollYProgress, [0, 0.3], [0, 1]);
 
+    const logger = getLogger('assessment-result');
+    
     return (
         <div ref={ref} className="relative h-24 md:h-32 lg:h-40 w-full overflow-hidden hidden md:block">
             <svg
@@ -212,7 +216,7 @@ const AnimatedProgressRing = ({ percentage, color, delay = 0 }) => {
 
     useEffect(() => {
         if (isInView) {
-            let start = 0;
+            const start = 0;
             const duration = 2000; // 2 seconds
             const startTime = performance.now();
 
@@ -372,6 +376,8 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
                     >
                         {/* Outer Container with Gradient Border - Clickable Card */}
                         <div
+                            role="button"
+                            tabIndex={0}
                             className="relative rounded-[10px] p-[1px] cursor-pointer transition-all duration-300 hover:scale-105"
                             style={{
                                 width: '100%',
@@ -382,6 +388,7 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
                                 boxShadow: `0 10px 30px -5px rgba(0, 0, 0, 0.3), 0 0 15px 3px ${config.shadow}`,
                             }}
                             onClick={handleCardClick}
+                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleCardClick(); } }}
                             data-tour={dataTour}
                         >
                             {/* Animated Dot - Always visible */}
@@ -827,12 +834,12 @@ const AssessmentResult = () => {
         apiPost('/learner-profile/actions', {
             action: 'log-assessment-report',
         }).catch((err) => {
-            console.error('[log-assessment-report] Failed to log report:', err);
+            logger.error('[log-assessment-report] Failed to log report:', err);
         });
 
         const printContent = document.querySelector('.print-view');
         if (!printContent) {
-            console.error('Print view not found');
+            logger.error('Print view not found');
             window.print();
             return;
         }
@@ -2083,10 +2090,11 @@ const AssessmentResult = () => {
                                                     };
 
                                                     return (
-                                                        <div
+                                                        <button
+                                                            type="button"
                                                             key={course.courseId}
                                                             onClick={handleProgramClick}
-                                                            className={`relative bg-slate-800 rounded-xl border p-5 transition-all hover:shadow-xl hover:scale-[1.02] cursor-pointer ${index === 0 ? 'border-slate-600 shadow-lg shadow-slate-900/50' : 'border-slate-700'
+                                                            className={`relative bg-slate-800 rounded-xl border p-5 transition-all hover:shadow-xl hover:scale-[1.02] cursor-pointer text-left ${index === 0 ? 'border-slate-600 shadow-lg shadow-slate-900/50' : 'border-slate-700'
                                                                 } ${aiCareerPathsLoading ? 'opacity-50 pointer-events-none' : ''}`}
                                                         >
                                                             {/* Rank Badge */}
@@ -2162,7 +2170,7 @@ const AssessmentResult = () => {
                                                                     </div>
                                                                 </div>
                                                             )}
-                                                        </div>
+                                                        </button>
                                                     );
                                                 })}
                                             </div>
