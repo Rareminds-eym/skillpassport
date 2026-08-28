@@ -1,5 +1,6 @@
 import { lazy } from "react";
 import { Navigate, Route } from "react-router-dom";
+import { SubscriptionProtectedRoute } from "@/features/subscription";
 import OrganizationProtectedRoute from "@/features/recruitment/ui/OrganizationProtectedRoute";
 import AdminProtectedRoute from "@/features/recruitment/ui/AdminProtectedRoute";
 import RecruiterLayout from "../layouts/RecruiterLayout";
@@ -37,15 +38,48 @@ const OnboardingStep1 = lazy(() => import("@/pages/recruitment/onboarding/step-1
 const OnboardingStep2 = lazy(() => import("@/pages/recruitment/onboarding/step-2"));
 const OnboardingStep3 = lazy(() => import("@/pages/recruitment/onboarding/step-3"));
 
-// Onboarding route - separate from main recruitment routes (no org protection needed during setup)
+// Onboarding route - protected by subscription requirement (must purchase before accessing onboarding)
 export const recruiterOnboardingRoute = (
   <Route
     key="recruiter-onboarding"
     path="/recruitment/onboarding/*"
   >
-    <Route path="step-1" element={<OnboardingWizard currentStep={1}><OnboardingStep1 /></OnboardingWizard>} />
-    <Route path="step-2" element={<OnboardingWizard currentStep={2}><OnboardingStep2 /></OnboardingWizard>} />
-    <Route path="step-3" element={<OnboardingWizard currentStep={3}><OnboardingStep3 /></OnboardingWizard>} />
+    <Route
+      path="step-1"
+      element={
+        <SubscriptionProtectedRoute
+          allowedRoles={RECRUITER_ROLES}
+          requireSubscription={true}
+          subscriptionFallbackPath="/subscription/plans?type=recruiter"
+        >
+          <OnboardingWizard currentStep={1}><OnboardingStep1 /></OnboardingWizard>
+        </SubscriptionProtectedRoute>
+      }
+    />
+    <Route
+      path="step-2"
+      element={
+        <SubscriptionProtectedRoute
+          allowedRoles={RECRUITER_ROLES}
+          requireSubscription={true}
+          subscriptionFallbackPath="/subscription/plans?type=recruiter"
+        >
+          <OnboardingWizard currentStep={2}><OnboardingStep2 /></OnboardingWizard>
+        </SubscriptionProtectedRoute>
+      }
+    />
+    <Route
+      path="step-3"
+      element={
+        <SubscriptionProtectedRoute
+          allowedRoles={RECRUITER_ROLES}
+          requireSubscription={true}
+          subscriptionFallbackPath="/subscription/plans?type=recruiter"
+        >
+          <OnboardingWizard currentStep={3}><OnboardingStep3 /></OnboardingWizard>
+        </SubscriptionProtectedRoute>
+      }
+    />
     <Route path="step-4" element={<Navigate to="/recruitment/onboarding/step-3" replace />} />
     <Route path="*" element={<Navigate to="/recruitment/onboarding/step-1" replace />} />
   </Route>
@@ -56,9 +90,15 @@ export const recruiterRoutes = (
     key="recruiter-routes"
     path="/recruitment/*"
     element={
-      <OrganizationProtectedRoute allowedRoles={RECRUITER_ROLES}>
-        <RecruiterLayout />
-      </OrganizationProtectedRoute>
+      <SubscriptionProtectedRoute
+        allowedRoles={RECRUITER_ROLES}
+        requireSubscription={true}
+        subscriptionFallbackPath="/subscription/plans?type=recruiter"
+      >
+        <OrganizationProtectedRoute allowedRoles={RECRUITER_ROLES}>
+          <RecruiterLayout />
+        </OrganizationProtectedRoute>
+      </SubscriptionProtectedRoute>
     }
   >
     <Route path="overview" element={<Overview />} />
