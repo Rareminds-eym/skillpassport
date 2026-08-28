@@ -24,6 +24,9 @@ import { useParams } from "react-router-dom";
 import { useLearnerDataById } from "@/entities/learner";
 import { generateBadges, getBadgeProgress } from "@/features/digital-portfolio";
 import { apiPost } from "@/shared/api/apiClient";
+import { getLogger } from "@/shared/config/logging";
+
+const logger = getLogger('learner-public-viewer');
 import { calculateEmployabilityScore } from "@/shared/lib/employabilityCalculator";
 import { capitalizeName } from "@/shared/lib/helpers";
 import { useAuthLoading, useUser } from "@/shared/model/authStore";
@@ -180,13 +183,15 @@ export default function LearnerPublicViewer() {
   // Track profile view — only fires for logged-in users (viewer_id FK requires a users.id)
   useEffect(() => {
     if (!learnerId || !user) return; // skip if not logged in or no learnerId
+    // Fire-and-forget: intentionally non-blocking. Profile view tracking is
+    // best-effort — failures must never interrupt the user's profile page experience.
     apiPost('/learner-profile/actions', {
       action: 'track-profile-view',
       learnerId,
       viewerType: user.role || 'learner',
     }).catch((err) => {
-      // fire-and-forget — never break the profile page
-      console.error('[track-profile-view] Failed to track profile view:', err);
+      // Expected pattern: log but do not rethrow — tracking failure is non-critical
+      logger.error('[track-profile-view] Failed to track profile view:', err);
     });
   }, [learnerId, user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 

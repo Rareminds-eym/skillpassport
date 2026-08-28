@@ -53,6 +53,8 @@ import { useAssessmentResults } from '../model/useAssessmentResults';
 import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 
+const logger = getLogger('assessment-result');
+
 
 // Import course matching engine
 import { calculateCourseMatchScores, DEGREE_PROGRAMS, COURSE_KNOWLEDGE_BASE } from '../lib/courseMatchingEngine';
@@ -89,8 +91,6 @@ const GeminiCareerPath = ({ reverse = false }) => {
     const pathLength = useTransform(scrollYProgress, [0, 0.5], [0, 1]);
     const opacity = useTransform(scrollYProgress, [0, 0.3], [0, 1]);
 
-    const logger = getLogger('assessment-result');
-    
     return (
         <div ref={ref} className="relative h-24 md:h-32 lg:h-40 w-full overflow-hidden hidden md:block">
             <svg
@@ -375,11 +375,11 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
                         className={`flex justify-center ${reverse ? 'md:order-2' : 'md:order-1'}`}
                     >
                         {/* Outer Container with Gradient Border - Clickable Card */}
-                        <div
-                            role="button"
-                            tabIndex={0}
-                            className="relative rounded-[10px] p-[1px] cursor-pointer transition-all duration-300 hover:scale-105"
+                        <button
+                            type="button"
+                            className="relative rounded-[10px] p-[1px] cursor-pointer transition-all duration-300 hover:scale-105 text-left"
                             style={{
+                                display: 'block',
                                 width: '100%',
                                 maxWidth: '320px',
                                 minHeight: '280px',
@@ -388,7 +388,6 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
                                 boxShadow: `0 10px 30px -5px rgba(0, 0, 0, 0.3), 0 0 15px 3px ${config.shadow}`,
                             }}
                             onClick={handleCardClick}
-                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleCardClick(); } }}
                             data-tour={dataTour}
                         >
                             {/* Animated Dot - Always visible */}
@@ -505,7 +504,7 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                        </button>
 
                         {/* Keyframes for dot animation */}
                         <style>{`
@@ -1632,7 +1631,7 @@ const AssessmentResult = () => {
                                     <div data-tour="career-tracks">
                                     {careerFit?.clusters?.length > 0 ? (
                                         careerFit.clusters
-                                            .filter(c => c && c.title && c.roles && (c.roles.entry?.length > 0 || c.roles.mid?.length > 0))
+                                            .filter(c => c?.title && c?.roles && (c.roles.entry?.length > 0 || c.roles.mid?.length > 0))
                                             .map((cluster, index) => (
                                             <CareerCard
                                                 key={index}
