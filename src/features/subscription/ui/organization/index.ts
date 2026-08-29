@@ -45,6 +45,7 @@ export type { PurchaseData } from './BulkPurchaseWizard';
 // Member subscription view components
 export { default as MemberSubscriptionView } from './MemberSubscriptionView';
 export { default as OrganizationProvidedFeatures } from './OrganizationProvidedFeatures';
+export { default as OrganizationLearnerBenefitsCard } from './OrganizationLearnerBenefitsCard';
 export { default as PersonalAddOns } from './PersonalAddOns';
 
 // Shared utilities (skeleton loaders, error handling)

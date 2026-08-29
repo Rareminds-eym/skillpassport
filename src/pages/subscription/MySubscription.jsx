@@ -32,6 +32,7 @@ import {
   deactivateSubscription, 
   formatDate, 
   getSubscriptionStatusChecks, 
+  MemberSubscriptionView,
   pauseSubscription, 
   resumeSubscription, 
   SubscriptionDashboard, 
@@ -102,7 +103,6 @@ function getUserTypeFromUrl(pathname) {
   return 'learner'; // fallback
 }
 
-// Removed FALLBACK_PLANS as per requirement to use DB data only
 
 function MySubscription() {
   const navigate = useNavigate();
@@ -121,6 +121,19 @@ function MySubscription() {
   const settingsPath = useMemo(() => getSettingsPathFromUrl(location.pathname), [location.pathname]);
   const dashboardPath = useMemo(() => getDashboardPathFromUrl(location.pathname), [location.pathname]);
   const userType = useMemo(() => getUserTypeFromUrl(location.pathname), [location.pathname]);
+
+  const isOrganizationLearner = useMemo(() => {
+    return !!(
+      subscriptionData?.is_organization_subscription ||
+      subscriptionData?.organization_id ||
+      user?.school_id ||
+      user?.college_id ||
+      user?.university_id ||
+      user?.organization_id ||
+      user?.organizationId ||
+      userType === 'learner'
+    );
+  }, [subscriptionData, user, userType]);
 
   // Tab state - 'subscription' or 'addons'
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'subscription');
@@ -777,6 +790,53 @@ function MySubscription() {
               View Plans
             </button>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isOrganizationLearner) {
+    const orgName = subscriptionData?.organizationName || subscriptionData?.organization_name || user?.organization_name || user?.organizationName || user?.college_name || user?.collegeName || user?.school_name || user?.schoolName || user?.university_name || user?.universityName || learnerData?.college_name || learnerData?.collegeName || learnerData?.school_name;
+    const orgEmail = subscriptionData?.organizationEmail || subscriptionData?.organization_email || subscriptionData?.organization?.email || user?.organization_email || user?.organizationEmail || user?.college_email || learnerData?.organization_email || learnerData?.college_email || null;
+    const orgPhone = subscriptionData?.organizationPhone || subscriptionData?.organization_phone || subscriptionData?.organization?.phone || user?.organization_phone || user?.organizationPhone || user?.college_phone || learnerData?.organization_phone || learnerData?.college_phone || null;
+    const planTitle = subscriptionData?.planName || subscriptionData?.plan || subscriptionData?.plan_name || subscriptionData?.plan_type;
+    const endDate = subscriptionData?.endDate || subscriptionData?.subscription_end_date;
+    const startDate = subscriptionData?.startDate || subscriptionData?.created_at;
+
+    return (
+      <div className="min-h-screen bg-slate-50 py-8">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="mb-6 flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">My Subscription</h1>
+              <p className="text-gray-500 mt-1">Your active access{orgName ? ` provided by ${orgName}` : ''}</p>
+            </div>
+            <button
+              onClick={() => navigate(dashboardPath)}
+              className="px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors shadow-sm"
+            >
+              Back to Dashboard
+            </button>
+          </div>
+
+          <MemberSubscriptionView
+            hasOrganizationSubscription={true}
+            learnerName={user?.full_name || user?.name || (user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : '') || learnerData?.name}
+            organization={{
+              id: user?.college_id || user?.school_id || user?.university_id || subscriptionData?.organization_id,
+              name: orgName,
+              email: orgEmail,
+              phone: orgPhone,
+              type: user?.school_id ? 'school' : user?.university_id ? 'university' : 'college',
+            }}
+            subscription={{
+              planName: planTitle,
+              startDate: startDate,
+              endDate: endDate,
+              status: 'active',
+              autoRenew: false,
+            }}
+          />
         </div>
       </div>
     );

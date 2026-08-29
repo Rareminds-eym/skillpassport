@@ -465,13 +465,25 @@ function OrganizationSubscriptionPage() {
     try {
       const result = await apiPost<any>('/subscription/actions', { action: 'list-pool-assignments', poolId });
 
-      const members = (result.data || []).map((a: any) => ({
-        id: a.user_id,
-        name: a.user ? `${a.user.first_name || ''} ${a.user.last_name || ''}`.trim() || a.user.email : 'Unknown',
-        email: a.user?.email || '',
-        assignedAt: a.assigned_at,
-        licenseAssignmentId: a.id,
-      }));
+      const members = (result.data || []).map((a: any) => {
+        const u = a.user || a.users || {};
+        const name =
+          a.full_name ||
+          a.name ||
+          u.full_name ||
+          u.name ||
+          [u.first_name || u.firstName, u.last_name || u.lastName].filter(Boolean).join(' ') ||
+          u.email ||
+          'Learner';
+        const email = u.email || a.email || '';
+        return {
+          id: a.user_id,
+          name,
+          email,
+          assignedAt: a.assigned_at,
+          licenseAssignmentId: a.id,
+        };
+      });
 
       setPoolAssignedMembers(members);
     } catch (err) {

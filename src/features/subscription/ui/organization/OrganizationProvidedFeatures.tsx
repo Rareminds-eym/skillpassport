@@ -51,9 +51,11 @@ interface OrganizationProvidedFeaturesProps {
 function OrganizationProvidedFeatures({
   organization,
   subscription,
-  features,
+  features = [],
   className = '',
 }: OrganizationProvidedFeaturesProps) {
+  if (!organization || !subscription) return null;
+
   // Calculate days until expiration
   const daysUntilExpiration = useMemo(() => {
     const now = new Date();
@@ -110,11 +112,9 @@ function OrganizationProvidedFeatures({
 
   const StatusIcon = statusConfig.icon;
 
-  const organizationLabel = {
-    school: 'School',
-    college: 'College',
-    university: 'University',
-  }[organization.type];
+  const organizationLabel = organization.type
+    ? ({ school: 'School', college: 'College', university: 'University' }[organization.type] ?? 'Organization')
+    : 'Organization';
 
   const activeFeatures = features.filter((f) => f.isActive);
 

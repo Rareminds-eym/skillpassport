@@ -9418,7 +9418,7 @@ BEGIN
             WHERE id = NEW.license_pool_id;
             
             UPDATE subscription_cache
-            SET seat_count = COALESCE(seat_count, 0) + 1,
+            SET assigned_seats = COALESCE(assigned_seats, 0) + 1,
                 updated_at = NOW()
             WHERE id = NEW.organization_subscription_id;
         END IF;
@@ -9432,7 +9432,7 @@ BEGIN
             WHERE id = NEW.license_pool_id;
             
             UPDATE subscription_cache
-            SET seat_count = GREATEST(COALESCE(seat_count, 0) - 1, 0),
+            SET assigned_seats = GREATEST(COALESCE(assigned_seats, 0) - 1, 0),
                 updated_at = NOW()
             WHERE id = NEW.organization_subscription_id;
             
@@ -9443,7 +9443,7 @@ BEGIN
             WHERE id = NEW.license_pool_id;
             
             UPDATE subscription_cache
-            SET seat_count = COALESCE(seat_count, 0) + 1,
+            SET assigned_seats = COALESCE(assigned_seats, 0) + 1,
                 updated_at = NOW()
             WHERE id = NEW.organization_subscription_id;
         END IF;
@@ -9457,7 +9457,7 @@ BEGIN
             WHERE id = OLD.license_pool_id;
             
             UPDATE subscription_cache
-            SET seat_count = GREATEST(COALESCE(seat_count, 0) - 1, 0),
+            SET assigned_seats = GREATEST(COALESCE(assigned_seats, 0) - 1, 0),
                 updated_at = NOW()
             WHERE id = OLD.organization_subscription_id;
         END IF;
