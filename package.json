@@ -63,7 +63,7 @@
     "@radix-ui/react-toggle": "1.1.10",
     "@radix-ui/react-toggle-group": "1.1.11",
     "@radix-ui/react-tooltip": "1.2.8",
-    "@rareminds-eym/auth-client": "2.0.0",
+    "@rareminds-eym/auth-client": "2.1.0",
     "@rareminds-eym/auth-core": "3.0.0",
     "@rareminds-eym/entitlements": "1.0.0",
     "@rareminds-eym/identity-client": "1.0.0",

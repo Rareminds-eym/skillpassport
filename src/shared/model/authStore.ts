@@ -65,7 +65,7 @@ interface AuthState {
   dismissErrorNotification: () => void;
 
   initialize: () => Promise<void>;
-  refreshSession: () => Promise<boolean>;
+  refreshSession: (options?: { force?: boolean }) => Promise<boolean>;
   checkSessionValidity: () => Promise<Session | null>;
   restoreUserFromStorage: (sessionUser: any) => User;
 }
@@ -316,9 +316,9 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
-      refreshSession: async () => {
+      refreshSession: async (options?: { force?: boolean }) => {
         try {
-          const outcome = await authClient.initialize();
+          const outcome = await authClient.initialize({ force: options?.force });
           if (outcome.status === "authenticated") {
             const me = await authClient.getMe();
             if (me.status === "succeeded") {
