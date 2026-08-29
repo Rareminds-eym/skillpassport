@@ -204,9 +204,9 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     let org = await findOrg(organizationType);
     if (org?.id) return apiSuccess(org, context.request);
 
-    // 2. Check users table for user's organization_id
-    const { data: userRow } = await supabase.from('users').select('email, organization_id').eq('id', adminId).maybeSingle();
-    if (userRow?.organization_id) return apiSuccess({ id: userRow.organization_id }, context.request);
+    // 2. Check users table for user's organizationId
+    const { data: userRow } = await supabase.from('users').select('email, organizationId').eq('id', adminId).maybeSingle();
+    if ((userRow as any)?.organizationId) return apiSuccess({ id: (userRow as any).organizationId }, context.request);
 
     // 3. Check organization_members
     const { data: member } = await supabase.from('organization_members').select('organization_id').eq('user_id', adminId).limit(1).maybeSingle();
