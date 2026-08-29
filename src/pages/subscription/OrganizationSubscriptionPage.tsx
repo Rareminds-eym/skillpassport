@@ -463,9 +463,17 @@ function OrganizationSubscriptionPage() {
     setIsLoadingPoolAssignments(true);
 
     try {
-      const result = await apiPost<any>('/subscription/actions', { action: 'list-pool-assignments', poolId });
+      const result = await apiPost<{ data: Array<{
+        user_id: string;
+        assigned_at: string;
+        full_name?: string;
+        name?: string;
+        email?: string;
+        user?: { email?: string; first_name?: string; last_name?: string; full_name?: string; name?: string; firstName?: string; lastName?: string };
+        users?: { email?: string; first_name?: string; last_name?: string; full_name?: string; name?: string; firstName?: string; lastName?: string };
+      }> }>('/subscription/actions', { action: 'list-pool-assignments', poolId });
 
-      const members = (result.data || []).map((a: any) => {
+      const members = (result.data || []).map((a) => {
         const u = a.user || a.users || {};
         const name =
           a.full_name ||

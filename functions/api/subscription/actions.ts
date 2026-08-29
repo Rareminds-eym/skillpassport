@@ -190,7 +190,8 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   }
 
   if (action === 'get-org-by-admin-id') {
-    const adminId = body.adminId || body.userId;
+    const rawAdminId = body.adminId || body.userId;
+    const adminId = typeof rawAdminId === 'string' ? rawAdminId.trim() : '';
     const { organizationType, email } = body;
     if (!adminId) return apiSuccess(null, context.request);
 
@@ -206,7 +207,8 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
     // 2. Check users table for user's organizationId
     const { data: userRow } = await supabase.from('users').select('email, organizationId').eq('id', adminId).maybeSingle();
-    if ((userRow as any)?.organizationId) return apiSuccess({ id: (userRow as any).organizationId }, context.request);
+    const userOrgId = (userRow as { organizationId?: string; email?: string } | null)?.organizationId;
+    if (userOrgId) return apiSuccess({ id: userOrgId }, context.request);
 
     // 3. Check organization_members
     const { data: member } = await supabase.from('organization_members').select('organization_id').eq('user_id', adminId).limit(1).maybeSingle();
@@ -254,12 +256,13 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     let subId = body.organizationSubscriptionId || body.subscriptionId || body.organization_subscription_id;
 
     if (!subId) {
-      const fetchSub = (orgId?: string) => {
+      const fetchSub = async (orgId?: string) => {
         let q = supabase.from('subscription_cache').select('id').in('status', ['active', 'pending']).order('created_at', { ascending: false }).limit(1);
         if (orgId) q = q.eq('organization_id', orgId);
-        return q.maybeSingle();
+        return (await q.maybeSingle()).data;
       };
-      subId = (organizationId ? (await fetchSub(organizationId))?.data?.id : null) || (await fetchSub())?.data?.id;
+      const primarySub = organizationId ? await fetchSub(organizationId) : null;
+      subId = primarySub?.id || (await fetchSub())?.id;
     }
 
     const { data, error } = await supabase
@@ -313,20 +316,26 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     if (error) return apiDbError(error, context.request);
     if (!assignments?.length) return apiSuccess([], context.request);
 
-    const userIds = assignments.map((a: any) => a.user_id).filter(Boolean);
+    const userIds = assignments.map((a: { user_id?: string }) => a.user_id).filter((id): id is string => Boolean(id));
 
-    const [{ data: usersData }, { data: learnersData }] = await Promise.all([
+    const [usersRes, learnersRes] = await Promise.all([
       supabase.from('users').select('id, email, firstName, lastName').in('id', userIds),
       supabase.from('learners').select('user_id, email, name').in('user_id', userIds),
     ]);
 
-    const userMap = new Map<string, any>();
-    (usersData || []).forEach((u: any) => {
+    if (usersRes.error) return apiDbError(usersRes.error, context.request);
+    if (learnersRes.error) return apiDbError(learnersRes.error, context.request);
+
+    const usersData = usersRes.data || [];
+    const learnersData = learnersRes.data || [];
+
+    const userMap = new Map<string, { id: string; email: string; full_name: string; name: string }>();
+    usersData.forEach((u: { id: string; email?: string; firstName?: string; lastName?: string }) => {
       const name = [u.firstName, u.lastName].filter(Boolean).join(' ') || u.email;
       if (name) userMap.set(u.id, { id: u.id, email: u.email || '', full_name: name, name });
     });
 
-    (learnersData || []).forEach((l: any) => {
+    learnersData.forEach((l: { user_id?: string; email?: string; name?: string }) => {
       if (l.user_id) {
         const existing = userMap.get(l.user_id);
         const name = l.name || existing?.full_name || l.email || 'Learner';
@@ -335,7 +344,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       }
     });
 
-    const mapped = assignments.map((a: any) => {
+    const mapped = assignments.map((a: { id: string; user_id: string; [key: string]: unknown }) => {
       const userInfo = userMap.get(a.user_id) || { id: a.user_id, email: '', full_name: 'Learner', name: 'Learner' };
       return { ...a, user: userInfo, users: userInfo, full_name: userInfo.full_name, name: userInfo.name };
     });

@@ -56,7 +56,14 @@ export async function handleGetActiveSubscription(context: AuthenticatedContext)
           const effectiveEndDate = licenseExpiry && licenseExpiry < orgEndDate ? licenseExpiry : orgEndDate;
 
           if (effectiveEndDate > new Date()) {
-            let orgDetails: any = null;
+            let orgDetails: {
+              type?: string;
+              name?: string;
+              contact_email?: string;
+              email?: string;
+              contact_phone?: string;
+              phone?: string;
+            } | null = null;
             if (orgCache.organization_id) {
               const { data: orgData } = await supabase
                 .from('organizations')
