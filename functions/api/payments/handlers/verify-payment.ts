@@ -468,6 +468,19 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
         .maybeSingle();
       learnerName = learnerForSubscription?.name;
 
+      let seatCount = typeof body.seat_count === 'number' ? body.seat_count : 1;
+      if (validPlan?.entity_config) {
+        try {
+          const config = typeof validPlan.entity_config === 'string' ? JSON.parse(validPlan.entity_config) : validPlan.entity_config;
+          for (const k in config) {
+            if (config[k]?.max_users) {
+              seatCount = Number(config[k].max_users);
+              break;
+            }
+          }
+        } catch (_) {}
+      }
+
       try {
         subscription = await ssoCreateSubscription(env, {
           user_id: user.id,
@@ -483,6 +496,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
           razorpay_payment_id: body.razorpay_payment_id as string,
           is_recruiter_subscription: isRecruiterPlan,
           is_b2b: isRecruiterPlan,
+          seat_count: seatCount,
         });
       } catch (createError: unknown) {
         const createErrorMessage = createError instanceof Error ? createError.message : String(createError);

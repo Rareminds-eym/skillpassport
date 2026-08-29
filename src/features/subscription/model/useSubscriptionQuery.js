@@ -55,6 +55,9 @@ const formatSubscriptionData = (data) => {
     isOrganizationLicense: data.is_organization_license || false,
     organizationId: data.organization_id || null,
     organizationType: data.organization_type || null,
+    organizationName: data.organization_name || null,
+    organizationEmail: data.organization_email || null,
+    organizationPhone: data.organization_phone || null,
     licenseAssignmentId: data.license_assignment_id || null,
   };
 };

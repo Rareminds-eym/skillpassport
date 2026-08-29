@@ -39,6 +39,7 @@ export {
   PricingBreakdown,
   MemberSubscriptionView,
   OrganizationProvidedFeatures,
+  OrganizationLearnerBenefitsCard,
   OrganizationPurchasePanel,
   PersonalAddOns,
   SubscriptionOverview

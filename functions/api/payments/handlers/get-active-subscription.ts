@@ -56,6 +56,16 @@ export async function handleGetActiveSubscription(context: AuthenticatedContext)
           const effectiveEndDate = licenseExpiry && licenseExpiry < orgEndDate ? licenseExpiry : orgEndDate;
 
           if (effectiveEndDate > new Date()) {
+            let orgDetails: any = null;
+            if (orgCache.organization_id) {
+              const { data: orgData } = await supabase
+                .from('organizations')
+                .select('*')
+                .eq('id', orgCache.organization_id)
+                .maybeSingle();
+              if (orgData) orgDetails = orgData;
+            }
+
             const orgSubscriptionData = {
               id: orgCache.id,
               user_id: userId,
@@ -69,7 +79,10 @@ export async function handleGetActiveSubscription(context: AuthenticatedContext)
               features: orgCache.features || [],
               is_organization_license: true,
               organization_id: orgCache.organization_id,
-              organization_type: orgCache.organization_type,
+              organization_type: orgDetails?.type || orgCache.organization_type,
+              organization_name: orgDetails?.name || orgCache.organization_name,
+              organization_email: orgDetails?.contact_email || orgDetails?.email || orgCache.organization_email,
+              organization_phone: orgDetails?.contact_phone || orgDetails?.phone || orgCache.organization_phone,
               license_assignment_id: licenseAssignment.id,
               subscription_plans: {
                 id: orgCache.plan_id,
