@@ -212,9 +212,9 @@ export const ssoClient = {
     })();
     return getMeInFlight;
   },
-  refresh: () => {
+  refresh: (force = false) => {
     enforceRequestBudget("session");
-    return authClient.initialize();
+    return authClient.initialize({ force });
   },
   onAuthStateChange: (listener: (event: any) => void) => authClient.subscribe(listener),
 };

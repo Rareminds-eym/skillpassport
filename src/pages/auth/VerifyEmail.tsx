@@ -27,17 +27,10 @@ const VerifyEmail = () => {
       try {
         await ssoClient.verifyEmail({ token });
 
-        // Step 1: Immediately update the store — DB confirmed verification.
-        // This ensures EmailVerificationGuard passes reactively across the entire
-        // app without waiting for token rotation, which may short-circuit when
-        // the existing access token is still valid (returning stale isEmailVerified=false).
-        useAuthStore.getState().updateUser({ isEmailVerified: true });
-
-        // Step 2: Rotate the session in the background to exchange the new
-        // refresh-token cookie (issued by the worker during verifyEmail) for a
-        // fresh access token. Best-effort — a rotation failure does NOT re-block
-        // the user since isEmailVerified is already true in the store.
-        const refreshOk = await useAuthStore.getState().refreshSession();
+        // Step 1: Force a session exchange via Web Locks and the SDK vault
+        // to get a fresh access token carrying is_email_verified=true.
+        // This updates the in-memory #vault, notifies subscribers, and updates the Zustand store.
+        const refreshOk = await useAuthStore.getState().refreshSession({ force: true });
 
         console.log('[VerifyEmail] User data after refresh:', {
           role: useAuthStore.getState().user?.role,
@@ -48,9 +41,8 @@ const VerifyEmail = () => {
           isAuthenticated: useAuthStore.getState().isAuthenticated,
         });
 
-        // Step 3: Only fall back to success_session_lost if the session is
-        // genuinely absent (no cookie, different browser). A stale token
-        // (refreshOk=false but isAuthenticated=true) is not a lost session.
+        // Step 2: Only fall back to success_session_lost if the session is
+        // genuinely absent (no cookie, different browser).
         if (!refreshOk && !useAuthStore.getState().isAuthenticated) {
           console.warn('[VerifyEmail] Session lost after verification — redirecting to login', {
             refreshOk,
