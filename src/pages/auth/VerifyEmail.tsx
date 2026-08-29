@@ -33,11 +33,22 @@ const VerifyEmail = () => {
         // the existing access token is still valid (returning stale isEmailVerified=false).
         useAuthStore.getState().updateUser({ isEmailVerified: true });
 
-        // Step 2: Rotate the session in the background to exchange the new
-        // refresh-token cookie (issued by the worker during verifyEmail) for a
-        // fresh access token. Best-effort — a rotation failure does NOT re-block
-        // the user since isEmailVerified is already true in the store.
-        const refreshOk = await useAuthStore.getState().refreshSession();
+        // Step 2: Force a session exchange to get a fresh access token carrying
+        // is_email_verified=true. We cannot use authClient.initialize() here because
+        // it short-circuits when phase === "authenticated". Instead we call the
+        // /api/auth/session endpoint directly — the gateway exchanges the new
+        // refresh-token cookie (issued by verifyEmail) for a fresh access token
+        // and the auth-client vault is updated with the new JWT.
+        let refreshOk = false;
+        try {
+          const sessionRes = await ssoClient.fetch('/api/auth/session', {
+            method: 'POST',
+            headers: { 'X-RM-CSRF': '1' },
+          });
+          refreshOk = sessionRes.ok;
+        } catch {
+          refreshOk = false;
+        }
 
         console.log('[VerifyEmail] User data after refresh:', {
           role: useAuthStore.getState().user?.role,
