@@ -130,10 +130,9 @@ function MySubscription() {
       user?.college_id ||
       user?.university_id ||
       user?.organization_id ||
-      user?.organizationId ||
-      userType === 'learner'
+      user?.organizationId
     );
-  }, [subscriptionData, user, userType]);
+  }, [subscriptionData, user]);
 
   // Tab state - 'subscription' or 'addons'
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'subscription');

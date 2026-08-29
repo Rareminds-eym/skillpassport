@@ -874,14 +874,19 @@ async function getLicensedMembers(context: AuthenticatedContext) {
     return apiError(403, 'FORBIDDEN', 'Not a member of this organization', context.request);
   }
 
-  const [{ data: pools }, { data: orgSubs }] = await Promise.all([
+  const [poolsRes, orgSubsRes] = await Promise.all([
     supabase.from('license_pools').select('id, pool_name').eq('organization_id', orgId),
     supabase.from('subscription_cache').select('id').eq('organization_id', orgId),
   ]);
+  if (poolsRes.error) throw poolsRes.error;
+  if (orgSubsRes.error) throw orgSubsRes.error;
 
-  const poolMap = Object.fromEntries((pools || []).map((p: any) => [p.id, p.pool_name]));
+  const pools = poolsRes.data;
+  const orgSubs = orgSubsRes.data;
+
+  const poolMap = Object.fromEntries((pools || []).map((p: { id: string; pool_name: string }) => [p.id, p.pool_name]));
   const poolIds = Object.keys(poolMap);
-  const subIds = (orgSubs || []).map((s: any) => s.id);
+  const subIds = (orgSubs || []).map((s: { id: string }) => s.id);
 
   if (poolIds.length === 0 && subIds.length === 0) {
     return apiSuccess({ assignments: [], poolMap: {} }, context.request);
@@ -906,24 +911,31 @@ async function getLicensedMembers(context: AuthenticatedContext) {
 // Subscription Cache
 // ============================================================================
 
-async function enrichAssignedSeats(supabase: any, subs: any[]) {
-  if (!subs || subs.length === 0) return [];
-  const subIds = subs.map((s) => s.id);
+type SupabaseClient = ReturnType<typeof getSupabase>;
 
-  const [{ data: assignments }, { data: pools }] = await Promise.all([
+async function enrichAssignedSeats(supabase: SupabaseClient, subs: Array<Record<string, unknown>>) {
+  if (!subs || subs.length === 0) return [];
+  const subIds = subs.map((s) => s.id as string).filter(Boolean);
+
+  const [assignRes, poolRes] = await Promise.all([
     supabase.from('license_assignments').select('organization_subscription_id').in('organization_subscription_id', subIds).eq('status', 'active'),
     supabase.from('license_pools').select('organization_subscription_id, assigned_seats').in('organization_subscription_id', subIds),
   ]);
+  if (assignRes.error) console.error('[enrichAssignedSeats] assignments error:', assignRes.error);
+  if (poolRes.error) console.error('[enrichAssignedSeats] pools error:', poolRes.error);
+
+  const assignments = assignRes.data || [];
+  const pools = poolRes.data || [];
 
   const countBySub: Record<string, number> = {};
-  (assignments || []).forEach((a: any) => {
+  assignments.forEach((a: { organization_subscription_id?: string }) => {
     if (a.organization_subscription_id) {
       countBySub[a.organization_subscription_id] = (countBySub[a.organization_subscription_id] || 0) + 1;
     }
   });
 
   const poolSeatsBySub: Record<string, number> = {};
-  (pools || []).forEach((p: any) => {
+  pools.forEach((p: { organization_subscription_id?: string; assigned_seats?: number }) => {
     if (p.organization_subscription_id) {
       poolSeatsBySub[p.organization_subscription_id] = (poolSeatsBySub[p.organization_subscription_id] || 0) + (p.assigned_seats || 0);
     }
@@ -931,7 +943,7 @@ async function enrichAssignedSeats(supabase: any, subs: any[]) {
 
   return subs.map((s) => ({
     ...s,
-    assigned_seats: Math.max(countBySub[s.id] || 0, poolSeatsBySub[s.id] || 0, s.assigned_seats || 0),
+    assigned_seats: Math.max(countBySub[s.id as string] || 0, poolSeatsBySub[s.id as string] || 0, (s.assigned_seats as number) || 0),
   }));
 }
 
@@ -961,18 +973,23 @@ async function getSubscriptions(context: AuthenticatedContext) {
 
   // 2. Fallback: match by current user (purchased_by or user_id)
   if ((!subs || subs.length === 0) && user?.id) {
+    const cleanUserId = String(user.id).trim();
     const { data: userSubs } = await supabase
       .from('subscription_cache')
       .select('*')
-      .or(`purchased_by.eq.${user.id},user_id.eq.${user.id}`)
+      .or(`purchased_by.eq.${cleanUserId},user_id.eq.${cleanUserId}`)
       .in('status', ['active', 'pending', 'grace_period'])
       .order('created_at', { ascending: false });
 
     if (userSubs && userSubs.length > 0) {
-      await supabase
+      const { error: updateError } = await supabase
         .from('subscription_cache')
         .update({ organization_id: orgId, is_organization_subscription: true, updated_at: new Date().toISOString() })
         .eq('id', userSubs[0].id);
+
+      if (updateError) {
+        console.error('[getSubscriptions] Failed to update subscription cache:', updateError);
+      }
 
       subs = userSubs.map((s) => ({ ...s, organization_id: orgId, is_organization_subscription: true }));
     }
