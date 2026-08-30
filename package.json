@@ -136,6 +136,7 @@
     "@cloudflare/workers-types": "4.20260607.1",
     "@eslint/js": "9.9.1",
     "@locator/babel-jsx": "0.5.1",
+    "@supabase/cli-linux-x64": "^2.106.0",
     "@testing-library/dom": "10.4.1",
     "@testing-library/jest-dom": "6.9.1",
     "@testing-library/react": "16.3.0",
