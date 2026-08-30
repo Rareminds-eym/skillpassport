@@ -421,13 +421,22 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       // ───────── Courses ─────────
 
       case 'fetch-learner-info': {
+        const authUser = getContextUser(context);
         const { email } = params;
-        if (!email) return apiError(400, 'VALIDATION_ERROR', 'email required', context.request, { startTime });
-        const { data, error } = await supabase
+
+        let query = supabase
           .from('learners')
-          .select('grade, branch_field, learner_type')
-          .eq('email', email)
-          .maybeSingle();
+          .select('grade, branch_field, learner_type');
+
+        if (authUser?.id) {
+          query = query.eq('user_id', authUser.id);
+        } else if (email) {
+          query = query.ilike('email', email.trim());
+        } else {
+          return apiError(400, 'VALIDATION_ERROR', 'email required', context.request, { startTime });
+        }
+
+        const { data, error } = await query.maybeSingle();
         if (error && error.code !== 'PGRST116') return apiDbError(error, context.request, { startTime });
         return apiSuccess(data || null, context.request, { startTime });
       }
