@@ -69,7 +69,8 @@ export async function loadCareerAssessmentQuestions(
   gradeLevel: GradeLevel,
   learnerId: string | null = null,
   attemptId: string | null = null,
-  learnerCourse: string | null = null
+  learnerCourse: string | null = null,
+  isResuming = false
 ): Promise<AssessmentQuestions> {
   const questions: AssessmentQuestions = {
     aptitude: null,
@@ -88,14 +89,14 @@ export async function loadCareerAssessmentQuestions(
     if (learnerId) {
       try {
         // Check for saved aptitude questions
-        const savedAptitude = await getSavedQuestionsForLearner(learnerId, normalizedStreamId, 'aptitude');
+        const savedAptitude = await getSavedQuestionsForLearner(learnerId, normalizedStreamId, 'aptitude', gradeLevel);
         if (savedAptitude && savedAptitude.length > 0) {
           questions.aptitude = savedAptitude;
         }
 
-        // Check for saved knowledge questions
-        const knowledgeStreamId = (gradeLevel === 'college' && learnerCourse) ? learnerCourse : normalizedStreamId;
-        const savedKnowledge = await getSavedQuestionsForLearner(learnerId, knowledgeStreamId, 'knowledge');
+        // Check for saved knowledge questions. Cache rows are keyed by the
+        // normalized stream id (for example "mba"), not the display program name.
+        const savedKnowledge = await getSavedQuestionsForLearner(learnerId, normalizedStreamId, 'knowledge', gradeLevel);
         if (savedKnowledge && savedKnowledge.length > 0) {
           questions.knowledge = savedKnowledge;
         }
@@ -110,6 +111,12 @@ export async function loadCareerAssessmentQuestions(
       }
     }
     
+    // Resume must be cache-only. Regenerating changes question IDs/text while
+    // attempts.all_responses still points at the original saved questions.
+    if (isResuming) {
+      return questions;
+    }
+
     // Generate missing aptitude questions (if not loaded from cache)
     if (!questions.aptitude) {
       const aiAptitude = await generateAptitudeQuestions(normalizedStreamId, 50, learnerId, attemptId, gradeLevel);
@@ -126,8 +133,7 @@ export async function loadCareerAssessmentQuestions(
     
     // Generate missing knowledge questions (if not loaded from cache)
     if (!questions.knowledge) {
-      const knowledgeStreamId = (gradeLevel === 'college' && learnerCourse) ? learnerCourse : normalizedStreamId;
-      const aiKnowledge = await generateStreamKnowledgeQuestions(knowledgeStreamId, 20, learnerId, attemptId, gradeLevel);
+      const aiKnowledge = await generateStreamKnowledgeQuestions(normalizedStreamId, 20, learnerId, attemptId, gradeLevel);
 
       if (aiKnowledge && aiKnowledge.length > 0) {
         questions.knowledge = aiKnowledge;

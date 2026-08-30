@@ -22,6 +22,7 @@ export async function handleGetSavedQuestions(request: Request, ctx: RequestCont
   const learnerId = url.searchParams.get('learnerId');
   const streamId = url.searchParams.get('streamId');
   const questionType = url.searchParams.get('questionType') as 'aptitude' | 'knowledge';
+  const gradeLevel = url.searchParams.get('gradeLevel') as any;
 
   if (!learnerId || !streamId || !questionType) {
     return new Response(
@@ -37,7 +38,7 @@ export async function handleGetSavedQuestions(request: Request, ctx: RequestCont
   }
 
   try {
-    const questions = await getSavedQuestionsForLearner(ctx.env, learnerId, streamId, questionType);
+    const questions = await getSavedQuestionsForLearner(ctx.env, learnerId, streamId, questionType, gradeLevel);
 
     return new Response(
       JSON.stringify({

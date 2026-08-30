@@ -30,7 +30,8 @@ interface Question {
 export async function getSavedQuestionsForLearner(
   learnerId: string,
   streamId: string,
-  questionType: QuestionType
+  questionType: QuestionType,
+  gradeLevel: GradeLevel | null = null
 ): Promise<Question[] | null> {
   if (!learnerId) {
     return null;
@@ -46,8 +47,18 @@ export async function getSavedQuestionsForLearner(
       return null;
     }
 
+    const params = new URLSearchParams({
+      learnerId,
+      streamId,
+      questionType,
+    });
+
+    if (gradeLevel) {
+      params.set('gradeLevel', gradeLevel);
+    }
+
     const response = await ssoClient.fetch(
-      `${API_URL}/questions/saved?learnerId=${learnerId}&streamId=${streamId}&questionType=${questionType}`,
+      `${API_URL}/questions/saved?${params.toString()}`,
       {
         method: 'GET',
         headers: {

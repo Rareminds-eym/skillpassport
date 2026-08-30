@@ -108,6 +108,7 @@ const AssessmentTestPage: React.FC = () => {
   const [isLoadingResume, setIsLoadingResume] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [isResumingAdaptive, setIsResumingAdaptive] = useState(false);
+  const [hasCheckedInProgress, setHasCheckedInProgress] = useState(false);
   const [aiSectionTimer, setAiSectionTimer] = useState(59);
 
   // Ref to track pending AI section resume position
@@ -204,7 +205,8 @@ const AssessmentTestPage: React.FC = () => {
     learnerId: learnerId,
     attemptId: store.attemptId,
     learnerProgram: learnerProgram,
-    isResuming: !!resumeData || isResumingAdaptive // Flag to indicate resume operation
+    isResuming: !!resumeData || isResumingAdaptive, // Flag to indicate resume operation
+    enabled: hasCheckedInProgress
   });
 
   // Force reload AI questions when resuming (attemptId becomes available)
@@ -274,6 +276,14 @@ const AssessmentTestPage: React.FC = () => {
           }
           setCurrentScreen('assessment');
         }
+      } else if (currentScreen === 'loading' && pendingAIResumeRef.current) {
+        const { sectionIndex } = pendingAIResumeRef.current;
+        const pendingSection = store.sections[sectionIndex];
+        if (isAISection(pendingSection)) {
+          pendingAIResumeRef.current = null;
+          store.setError('Saved generated questions are missing for this assessment. Please restore the question cache for this attempt before resuming.');
+          setCurrentScreen('error');
+        }
       }
     }
   }, [aiQuestionsHook.loading, aiQuestionsHook.aiQuestions, aiQuestionsHook.error, store.sections, store, currentScreen]);
@@ -300,6 +310,8 @@ const AssessmentTestPage: React.FC = () => {
         }
       } catch {
         setCurrentScreen('grade-selection');
+      } finally {
+        setHasCheckedInProgress(true);
       }
     };
 

@@ -48,6 +48,7 @@ interface UseAIQuestionsOptions {
   attemptId: string | null;
   learnerProgram: string | null;
   isResuming?: boolean; // New flag to indicate if this is a resume operation
+  enabled?: boolean;
 }
 
 interface UseAIQuestionsResult {
@@ -86,7 +87,8 @@ export const useAIQuestions = ({
   learnerId,
   attemptId,
   learnerProgram,
-  isResuming = false
+  isResuming = false,
+  enabled = true
 }: UseAIQuestionsOptions): UseAIQuestionsResult => {
   const [aiQuestions, setAiQuestions] = useState<AIQuestionsState>({
     aptitude: null,
@@ -124,6 +126,10 @@ export const useAIQuestions = ({
   const loadQuestions = useCallback(async () => {
     // Prevent duplicate calls
     if (isLoadingRef.current) {
+      return;
+    }
+
+    if (!enabled) {
       return;
     }
 
@@ -190,7 +196,8 @@ export const useAIQuestions = ({
         gradeLevel,
         learnerId || null,
         attemptId || null,
-        learnerProgram || null
+        learnerProgram || null,
+        isResuming
       );
 
       // Clear aptitude progress interval
@@ -278,7 +285,7 @@ export const useAIQuestions = ({
       setLoading(false);
       isLoadingRef.current = false;
     }
-  }, [gradeLevel, learnerStream, learnerId, attemptId, learnerProgram]);
+  }, [gradeLevel, learnerStream, learnerId, attemptId, learnerProgram, isResuming, enabled]);
 
   useEffect(() => {
     loadQuestions();

@@ -298,6 +298,8 @@ async function loadAISections(supabase: any, streamId?: string | null, gradeLeve
   }
 
   try {
+    const cachedQuestionsByType = await loadCachedAIQuestions(supabase, streamId, gradeLevel);
+
     // === ALWAYS ADD APTITUDE SECTION (questions generated on-demand) ===
     
     sections.push({
@@ -313,7 +315,7 @@ async function loadAISections(supabase: any, streamId?: string | null, gradeLeve
       timeLimit: 15 * 60, // 15 minutes fallback - mapped for frontend
       timeLimitSeconds: 15 * 60, // 15 minutes fallback
       individualTimeLimit: 60, // 1 minute per question
-      questions: [] // Empty - will be generated when user reaches this stage
+      questions: cachedQuestionsByType.aptitude
     });
 
     // === ALWAYS ADD KNOWLEDGE SECTION (questions generated on-demand) ===
@@ -332,7 +334,7 @@ async function loadAISections(supabase: any, streamId?: string | null, gradeLeve
       timeLimit: 30 * 60, // 30 minutes - mapped for frontend
       timeLimitSeconds: 30 * 60, // 30 minutes
       individualTimeLimit: 60, // 1 minute per question
-      questions: [] // Empty - will be generated when user reaches this stage
+      questions: cachedQuestionsByType.knowledge
     });
 
   } catch (error) {
@@ -347,6 +349,56 @@ async function loadAISections(supabase: any, streamId?: string | null, gradeLeve
   });
   
   return sections;
+}
+
+async function loadCachedAIQuestions(
+  supabase: any,
+  streamId?: string | null,
+  gradeLevel?: string
+): Promise<Record<'aptitude' | 'knowledge', AssessmentQuestion[]>> {
+  if (!streamId || !gradeLevel) {
+    return { aptitude: [], knowledge: [] };
+  }
+
+  const { data, error } = await supabase
+    .from('career_assessment_ai_questions')
+    .select('question_type, questions')
+    .eq('stream_id', streamId)
+    .eq('grade_level', gradeLevel)
+    .eq('is_active', true)
+    .in('question_type', ['aptitude', 'knowledge'])
+    .order('generated_at', { ascending: false });
+
+  if (error || !Array.isArray(data)) {
+    if (error) logger.warn('[loadAISections] Failed to load cached AI questions', { error, streamId, gradeLevel });
+    return { aptitude: [], knowledge: [] };
+  }
+
+  const result: Record<'aptitude' | 'knowledge', AssessmentQuestion[]> = { aptitude: [], knowledge: [] };
+
+  for (const row of data) {
+    const questionType = row.question_type as 'aptitude' | 'knowledge';
+    if (result[questionType].length > 0 || !Array.isArray(row.questions)) continue;
+
+    result[questionType] = row.questions.map((q: any, index: number) => ({
+      id: q.id || q.uuid || `${questionType}-${streamId}-${index}`,
+      text: q.text || q.question || '',
+      type: 'mcq',
+      order: index,
+      options: q.options || [],
+      correct: q.correct || q.correct_answer,
+      metadata: q,
+    }));
+  }
+
+  logger.info('[loadAISections] Cached AI questions loaded', {
+    streamId,
+    gradeLevel,
+    aptitudeCount: result.aptitude.length,
+    knowledgeCount: result.knowledge.length,
+  });
+
+  return result;
 }
 
 /**

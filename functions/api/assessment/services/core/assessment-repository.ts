@@ -37,7 +37,8 @@ export async function getSavedQuestionsForLearner(
   env: PagesEnv,
   learnerId: string,
   streamId: string,
-  questionType: QuestionType
+  questionType: QuestionType,
+  gradeLevel: GradeLevel | null = null
 ): Promise<Question[] | null> {
   if (!learnerId) {
     console.log('⚠️ getSavedQuestionsForLearner: No learnerId provided');
@@ -48,19 +49,50 @@ export async function getSavedQuestionsForLearner(
     learner_id: learnerId,
     stream_id: streamId,
     question_type: questionType,
+    grade_level: gradeLevel,
   });
 
   try {
     const supabase = getServiceClient(env as any);
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('career_assessment_ai_questions')
       .select('questions, generated_at, grade_level')
       .eq('learner_id', learnerId)
       .eq('stream_id', streamId)
       .eq('question_type', questionType)
-      .eq('is_active', true)
+      .eq('is_active', true);
+
+    if (gradeLevel) {
+      query = query.eq('grade_level', gradeLevel);
+    }
+
+    let { data, error } = await query
+      .order('generated_at', { ascending: false })
+      .limit(1)
       .maybeSingle();
+
+    if (!data && !error) {
+      let globalQuery = supabase
+        .from('career_assessment_ai_questions')
+        .select('questions, generated_at, grade_level')
+        .is('learner_id', null)
+        .eq('stream_id', streamId)
+        .eq('question_type', questionType)
+        .eq('is_active', true);
+
+      if (gradeLevel) {
+        globalQuery = globalQuery.eq('grade_level', gradeLevel);
+      }
+
+      const globalResult = await globalQuery
+        .order('generated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      data = globalResult.data;
+      error = globalResult.error;
+    }
 
     if (error) {
       console.warn(`⚠️ Database query error for ${questionType} questions:`, {

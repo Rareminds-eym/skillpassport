@@ -92,6 +92,22 @@ export async function generateAptitudeQuestions(
     const supabase = createSupabaseAdminClient(env);
     const isAfter10 = gradeLevel === 'after10';
 
+    const { data: cachedQuestions, error: cacheError } = await supabase
+        .from('career_assessment_ai_questions')
+        .select('questions, generated_at')
+        .eq('stream_id', streamId)
+        .eq('question_type', 'aptitude')
+        .eq('grade_level', gradeLevel || 'general')
+        .eq('is_active', true)
+        .order('generated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+    if (!cacheError && Array.isArray(cachedQuestions?.questions) && cachedQuestions.questions.length > 0) {
+        console.log(`✅ Cache HIT: Returning ${cachedQuestions.questions.length} aptitude questions for stream ${streamId}`);
+        return cachedQuestions.questions;
+    }
+
     console.log(`📚 Grade level detection: streamId=${streamId}, gradeLevel=${gradeLevel}, isAfter10=${isAfter10}`);
 
     const categories = isAfter10 ? SCHOOL_SUBJECT_CATEGORIES : APTITUDE_CATEGORIES;
@@ -565,6 +581,7 @@ IMPORTANT: Avoid these words that suggest images: "shown below", "shown above", 
                 questions: processedQuestions,
                 stream_id: streamId,
                 attempt_id: null,
+                grade_level: gradeLevel || 'general',
                 created_at: new Date().toISOString()
             }, {
                 onConflict: 'learner_id, stream_id, question_type',

@@ -35,6 +35,30 @@ interface StreamMcqScores {
   knowledgeDetails: any | null;            // { score, correctCount, totalQuestions, byTopic, strongTopics, weakTopics, recommendation }
 }
 
+async function fetchQuestionMetadataByIds(
+  supabase: any,
+  questionIds: string[],
+  chunkSize = 50
+): Promise<{ questions: any[]; error: any | null }> {
+  const questions: any[] = [];
+
+  for (let index = 0; index < questionIds.length; index += chunkSize) {
+    const ids = questionIds.slice(index, index + chunkSize);
+    const { data, error } = await supabase
+      .from('personal_assessment_questions')
+      .select('id, section_id, category_mapping, metadata, question_type, question_text, correct_answer')
+      .in('id', ids);
+
+    if (error) {
+      return { questions, error };
+    }
+
+    questions.push(...(data || []));
+  }
+
+  return { questions, error: null };
+}
+
 /**
  * Score the AI-generated stream MCQ answers (aptitude + knowledge). These questions live in
  * career_assessment_ai_questions (questions JSONB array); each has an id/uuid that matches a
@@ -185,11 +209,9 @@ export async function analyzeCollege(
       return Response.json({ error: 'No responses found in attempt' }, { status: 400 });
     }
 
-    // Step 2: Fetch all question metadata (BATCH QUERY - optimized)
-    const { data: questions, error: questionsError } = await supabase
-      .from('personal_assessment_questions')
-      .select('id, section_id, category_mapping, metadata, question_type, question_text, correct_answer')
-      .in('id', questionUUIDs);
+    // Step 2: Fetch question metadata in chunks. Supabase/PostgREST encodes
+    // .in() filters into the URL, and migrated attempts can have 200+ answers.
+    const { questions, error: questionsError } = await fetchQuestionMetadataByIds(supabase, questionUUIDs);
 
     if (questionsError) {
       return Response.json(

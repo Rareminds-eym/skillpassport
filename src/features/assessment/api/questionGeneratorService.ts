@@ -150,7 +150,7 @@ export async function generateStreamKnowledgeQuestions(
     // A cache MISS comes back as an empty array (the backend returns `questions: []`
     // with `cached: false`), and `[]` is truthy. Without the length check this returned
     // 0 knowledge questions and skipped AI generation entirely — the college bug.
-    const saved = await getSavedQuestionsForLearner(learnerId, effectiveStreamId, 'knowledge');
+    const saved = await getSavedQuestionsForLearner(learnerId, effectiveStreamId, 'knowledge', gradeLevel);
     if (saved && saved.length > 0) {
       return saved;
     }
@@ -271,7 +271,7 @@ export async function generateAptitudeQuestions(
   gradeLevel: GradeLevel | null = null
 ): Promise<Question[] | null> {
   if (learnerId) {
-    const saved = await getSavedQuestionsForLearner(learnerId, streamId, 'aptitude');
+    const saved = await getSavedQuestionsForLearner(learnerId, streamId, 'aptitude', gradeLevel);
     if (saved && saved.length > 0) {
       return saved;
     }
