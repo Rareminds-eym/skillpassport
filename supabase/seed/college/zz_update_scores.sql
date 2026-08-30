@@ -36,5 +36,5 @@ SET
         ),
         '{}'::jsonb
     )
-WHERE paa.status = 'completed'
+WHERE paa.status = 'in_progress'
   AND paa.stream_id IN ('mba', 'mca');
