@@ -130,6 +130,12 @@ export const transformAptitudeScores = (dbAptitude) => {
   };
 };
 
+const getRiasecMaxScore = (scores) => {
+  const values = Object.values(scores || {}).map((score) => Number(score) || 0);
+  const highestScore = values.length ? Math.max(...values) : 0;
+  return highestScore > 20 ? Math.max(40, highestScore) : 20;
+};
+
 /**
  * Transform Gemini analysis from nested structure to flattened format
  * Database: {gemini_analysis: {analysis: {...}, career_recommendations: [...], ...}}
@@ -450,7 +456,7 @@ export const transformAssessmentResults = (dbResults) => {
         topThree: (dbResults.top_interests && dbResults.top_interests.length)
           ? dbResults.top_interests
           : (dbResults.riasec_code ? dbResults.riasec_code.split('').slice(0, 3) : []),
-        maxScore: 20
+        maxScore: getRiasecMaxScore(dbResults.riasec_scores)
       },
       
       // Strengths from columns
@@ -461,6 +467,9 @@ export const transformAssessmentResults = (dbResults) => {
 
       // Transform aptitude if exists
       aptitude: transformAptitudeScores(dbResults.aptitude_scores),
+      adaptiveAptitudeResults: dbResults.aptitude_scores || null,
+      streamAptitudeScore: dbResults.stream_aptitude_score || null,
+      streamAptitudeDetails: dbResults.stream_aptitude_details || null,
 
       // Big Five personality
       bigFive: dbResults.personality_scores || null,
@@ -549,7 +558,7 @@ export const transformAssessmentResults = (dbResults) => {
       topThree: (dbResults.top_interests && dbResults.top_interests.length)
         ? dbResults.top_interests
         : (dbResults.riasec_code ? dbResults.riasec_code.split('').slice(0, 3) : []),
-      maxScore: 20
+      maxScore: getRiasecMaxScore(dbResults.riasec_scores)
     },
     
     // ===== STRENGTHS =====
@@ -561,6 +570,9 @@ export const transformAssessmentResults = (dbResults) => {
     // ===== APTITUDE =====
     aptitude: aptitudeTransformed,
     aptitudeOverall: dbResults.aptitude_overall || null,
+    adaptiveAptitudeResults: dbResults.aptitude_scores || null,
+    streamAptitudeScore: dbResults.stream_aptitude_score || null,
+    streamAptitudeDetails: dbResults.stream_aptitude_details || null,
 
     // ===== BIG FIVE PERSONALITY =====
     bigFive: dbResults.bigfive_scores || null,
