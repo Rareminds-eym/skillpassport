@@ -88,13 +88,16 @@ const StageScoresSection = ({ results, riasecNames }) => {
             description: 'Big Five personality dimensions',
             color: 'pink',
             data: bigFive,
-            scores: bigFive ? [
-                { label: 'Openness', value: bigFive.O || 0, max: 5, percentage: Math.round(((bigFive.O || 0) / 5) * 100) },
-                { label: 'Conscientiousness', value: bigFive.C || 0, max: 5, percentage: Math.round(((bigFive.C || 0) / 5) * 100) },
-                { label: 'Extraversion', value: bigFive.E || 0, max: 5, percentage: Math.round(((bigFive.E || 0) / 5) * 100) },
-                { label: 'Agreeableness', value: bigFive.A || 0, max: 5, percentage: Math.round(((bigFive.A || 0) / 5) * 100) },
-                { label: 'Neuroticism', value: bigFive.N || 0, max: 5, percentage: Math.round(((bigFive.N || 0) / 5) * 100) }
-            ] : []
+            scores: bigFive ? (() => {
+                const getScore = (sKey, fKey) => Number(bigFive[sKey] ?? bigFive[fKey] ?? bigFive[fKey.toLowerCase()] ?? 0) || 0;
+                return [
+                    { label: 'Openness', value: getScore('O', 'openness'), max: 5, percentage: Math.round((getScore('O', 'openness') / 5) * 100) },
+                    { label: 'Conscientiousness', value: getScore('C', 'conscientiousness'), max: 5, percentage: Math.round((getScore('C', 'conscientiousness') / 5) * 100) },
+                    { label: 'Extraversion', value: getScore('E', 'extraversion'), max: 5, percentage: Math.round((getScore('E', 'extraversion') / 5) * 100) },
+                    { label: 'Agreeableness', value: getScore('A', 'agreeableness'), max: 5, percentage: Math.round((getScore('A', 'agreeableness') / 5) * 100) },
+                    { label: 'Neuroticism', value: getScore('N', 'neuroticism'), max: 5, percentage: Math.round((getScore('N', 'neuroticism') / 5) * 100) }
+                ];
+            })() : []
         },
         {
             id: 'values',

@@ -338,7 +338,8 @@ const InterestProfileSection = ({ riasec, safeRiasecNames }) => {
     scores = riasec._originalScores;
   }
 
-  const maxScore = riasec.maxScore || 20;
+  const rawMax = Math.max(0, ...Object.values(scores).map(v => Number(v) || 0));
+  const maxScore = riasec.maxScore && riasec.maxScore >= rawMax ? riasec.maxScore : (rawMax > 20 ? 40 : 20);
   const codes = ['R', 'I', 'A', 'S', 'E', 'C'];
   
   // Get top three interests
@@ -698,8 +699,10 @@ const BigFivePersonalitySection = ({ bigFive, safeTraitNames }) => {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '10px', marginTop: '10px' }}>
         {traits.map((trait) => {
-          const score = bigFive[trait] || 0;
-          const percentage = Math.round((score / 5) * 100);
+          const traitFullMap = { O: 'openness', C: 'conscientiousness', E: 'extraversion', A: 'agreeableness', N: 'neuroticism' };
+          const fullKey = traitFullMap[trait];
+          const score = bigFive[trait] ?? bigFive[fullKey] ?? bigFive[fullKey?.toLowerCase()] ?? 0;
+          const percentage = Math.round((Number(score) / 5) * 100);
           const scoreStyle = getScoreStyle(percentage);
 
           return (
@@ -839,7 +842,7 @@ const WorkValuesSection = ({ workValues }) => {
  * and legacy domain-based format (domain → {correct, total, percentage})
  */
 const KnowledgeAssessmentSection = ({ knowledge }) => {
-  if (!knowledge || Object.keys(knowledge).length === 0) return null;
+  if (!knowledge || knowledge.score == null || Object.keys(knowledge).length === 0) return null;
 
   const isFlatFormat = 'totalQuestions' in knowledge || 'correctCount' in knowledge || 'strongTopics' in knowledge;
 

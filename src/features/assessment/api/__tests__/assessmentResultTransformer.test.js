@@ -6,7 +6,6 @@
 import {
   transformAptitudeScores,
   transformGeminiAnalysis,
-  enrichCareerRecommendations,
   transformAssessmentResults,
   validateTransformedResults
 } from '../assessmentResultTransformer';
@@ -81,6 +80,30 @@ describe('transformAptitudeScores', () => {
     expect(result.topStrengths[0]).toBe('Abstract'); // Creative -> Abstract (100%)
     expect(result.topStrengths[1]).toBe('Spatial');  // Technical -> Spatial (80%)
     expect(result.topStrengths[2]).toBe('Numerical'); // Analytical -> Numerical (40%)
+  });
+
+  test('transforms accuracyBySubtag adaptive data preserving correct and total counts', () => {
+    const dbAptitude = {
+      overallAccuracy: 70,
+      accuracyBySubtag: {
+        logical_reasoning: { total: 6, correct: 3, accuracy: 50 },
+        data_interpretation: { total: 8, correct: 5, accuracy: 62.5 },
+        numerical_reasoning: { total: 27, correct: 20, accuracy: 74.07 },
+        pattern_recognition: { total: 9, correct: 7, accuracy: 77.78 }
+      }
+    };
+
+    const result = transformAptitudeScores(dbAptitude);
+
+    expect(result.scores['Logical Reasoning']).toEqual({
+      percentage: 50,
+      correct: 3,
+      total: 6,
+      accuracy: 50
+    });
+    expect(result.scores['Numerical Reasoning'].correct).toBe(20);
+    expect(result.scores['Numerical Reasoning'].total).toBe(27);
+    expect(result.overallScore).toBe(70);
   });
 });
 
@@ -186,65 +209,7 @@ describe('transformGeminiAnalysis', () => {
   });
 });
 
-describe('enrichCareerRecommendations', () => {
-  test('enriches simple career array', () => {
-    const simpleArray = ['Software Engineer', 'Data Scientist'];
-    const riasecScores = { I: 18, R: 15, A: 8, S: 10, E: 7, C: 5 };
 
-    const result = enrichCareerRecommendations(simpleArray, riasecScores);
-
-    expect(result).toHaveLength(2);
-    expect(result[0].title).toBe('Software Engineer');
-    expect(result[0].roles).toBeDefined();
-    expect(result[0].roles.length).toBeGreaterThan(0);
-    expect(result[0].skills).toBeDefined();
-    expect(result[0].skills.length).toBeGreaterThan(0);
-    expect(result[0].salary).toBeDefined();
-    expect(result[0].matchScore).toBeGreaterThan(0);
-  });
-
-  test('handles empty array', () => {
-    const result = enrichCareerRecommendations([]);
-    expect(result).toEqual([]);
-  });
-
-  test('handles null input', () => {
-    const result = enrichCareerRecommendations(null);
-    expect(result).toEqual([]);
-  });
-
-  test('handles unknown career titles', () => {
-    const simpleArray = ['Unknown Career Title'];
-    const result = enrichCareerRecommendations(simpleArray);
-
-    expect(result).toHaveLength(1);
-    expect(result[0].title).toBe('Unknown Career Title');
-    expect(result[0].roles).toEqual([]);
-    expect(result[0].skills).toEqual([]);
-    expect(result[0].salary).toBeNull();
-  });
-
-  test('decreases match score for lower ranked careers', () => {
-    const simpleArray = ['Software Engineer', 'Data Scientist', 'UX Designer'];
-    const riasecScores = { I: 18, R: 15, A: 8, S: 10, E: 7, C: 5 };
-
-    const result = enrichCareerRecommendations(simpleArray, riasecScores);
-
-    expect(result[0].matchScore).toBeGreaterThan(result[1].matchScore);
-    expect(result[1].matchScore).toBeGreaterThan(result[2].matchScore);
-  });
-
-  test('calculates match score based on RIASEC alignment', () => {
-    const simpleArray = ['Software Engineer']; // RIASEC: I, R, C
-    const highMatchScores = { I: 20, R: 18, C: 15, A: 5, S: 5, E: 5 };
-    const lowMatchScores = { I: 5, R: 5, C: 5, A: 20, S: 18, E: 15 };
-
-    const highResult = enrichCareerRecommendations(simpleArray, highMatchScores);
-    const lowResult = enrichCareerRecommendations(simpleArray, lowMatchScores);
-
-    expect(highResult[0].matchScore).toBeGreaterThan(lowResult[0].matchScore);
-  });
-});
 
 describe('transformAssessmentResults', () => {
   test('transforms complete database results', () => {
@@ -328,7 +293,9 @@ describe('transformAssessmentResults', () => {
     expect(result.aptitude.overallScore).toBeDefined();
     
     // Check personality
-    expect(result.bigFive).toEqual(dbResults.personality_scores);
+    expect(result.bigFive.Openness).toBe(4.1);
+    expect(result.bigFive.O).toBe(4.1);
+    expect(result.bigFive.openness).toBe(4.1);
     
     // Check work values
     expect(result.workValues).toEqual(dbResults.work_values_scores);
@@ -515,21 +482,7 @@ describe('Edge Cases and Error Handling', () => {
     // Should handle gracefully without crashing
   });
 
-  test('handles very large RIASEC scores', () => {
-    const simpleArray = ['Software Engineer'];
-    const largeScores = { I: 1000, R: 1000, C: 1000, A: 0, S: 0, E: 0 };
 
-    const result = enrichCareerRecommendations(simpleArray, largeScores);
-
-    expect(result[0].matchScore).toBeLessThanOrEqual(100);
-  });
-
-  test('handles special characters in career titles', () => {
-    const simpleArray = ['Software Engineer & Developer'];
-    const result = enrichCareerRecommendations(simpleArray);
-
-    expect(result[0].title).toBe('Software Engineer & Developer');
-  });
 
   test('handles empty strings in skill development', () => {
     const geminiAnalysis = {

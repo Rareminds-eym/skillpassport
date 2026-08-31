@@ -10,6 +10,33 @@
  */
 
 /**
+ * Normalize Big Five scores (maps both O, C, E, A, N and full lowercase names)
+ */
+export const normalizeBigFive = (rawBigFive: any) => {
+  if (!rawBigFive || typeof rawBigFive !== 'object') return null;
+
+  const O = rawBigFive.O ?? rawBigFive.openness ?? rawBigFive.Openness ?? 0;
+  const C = rawBigFive.C ?? rawBigFive.conscientiousness ?? rawBigFive.Conscientiousness ?? 0;
+  const E = rawBigFive.E ?? rawBigFive.extraversion ?? rawBigFive.Extraversion ?? 0;
+  const A = rawBigFive.A ?? rawBigFive.agreeableness ?? rawBigFive.Agreeableness ?? 0;
+  const N = rawBigFive.N ?? rawBigFive.neuroticism ?? rawBigFive.Neuroticism ?? 0;
+
+  return {
+    ...rawBigFive,
+    O: Number(O) || 0,
+    C: Number(C) || 0,
+    E: Number(E) || 0,
+    A: Number(A) || 0,
+    N: Number(N) || 0,
+    openness: Number(O) || 0,
+    conscientiousness: Number(C) || 0,
+    extraversion: Number(E) || 0,
+    agreeableness: Number(A) || 0,
+    neuroticism: Number(N) || 0,
+  };
+};
+
+/**
  * Transform aptitude scores from database format to PDF format
  * Database: {taskType: {ease, enjoyment}}
  * PDF: {testType: {percentage, raw}}
@@ -21,23 +48,34 @@ export const transformAptitudeScores = (dbAptitude) => {
 
   // Adaptive-aptitude format (college): { accuracyBySubtag: { verbal_reasoning: { accuracy, ... } },
   // overallAccuracy, ... }. Build the { scores, topStrengths, overallScore } shape the UI expects
-  // by treating each reasoning subtag's accuracy as its percentage.
+  // by treating each reasoning subtag's accuracy as its percentage and preserving correct/total questions.
   if (dbAptitude.accuracyBySubtag && typeof dbAptitude.accuracyBySubtag === 'object') {
-    const titleCase = (s) => String(s).replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-    const entries = Object.entries(dbAptitude.accuracyBySubtag)
-      .map(([tag, v]) => [tag, typeof v === 'object' && v ? Number(v.accuracy) || 0 : Number(v) || 0]);
+    const titleCase = (s: string) => String(s).replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+    const scores: Record<string, any> = {};
 
-    const scores = {};
-    entries.forEach(([tag, pct]) => { scores[titleCase(tag)] = { percentage: Math.round(pct) }; });
+    Object.entries(dbAptitude.accuracyBySubtag).forEach(([tag, v]: [string, any]) => {
+      const isObj = typeof v === 'object' && v !== null;
+      const pct = isObj ? Number(v.accuracy) || 0 : Number(v) || 0;
+      const correct = isObj ? Number(v.correct) || 0 : 0;
+      const total = isObj ? Number(v.total) || (correct > 0 ? correct : 1) : 1;
+      const label = titleCase(tag);
 
-    const topStrengths = entries
-      .sort((a, b) => b[1] - a[1])
+      scores[label] = {
+        percentage: Math.round(pct),
+        correct,
+        total,
+        accuracy: pct
+      };
+    });
+
+    const topStrengths = Object.entries(scores)
+      .sort((a, b) => b[1].percentage - a[1].percentage)
       .slice(0, 3)
-      .map(([tag]) => titleCase(tag));
+      .map(([label]) => label);
 
     const overallScore = dbAptitude.overallAccuracy != null
       ? Math.round(Number(dbAptitude.overallAccuracy))
-      : (entries.length ? Math.round(entries.reduce((s, [, p]) => s + p, 0) / entries.length) : null);
+      : (Object.keys(scores).length ? Math.round(Object.values(scores).reduce((s: number, d: any) => s + d.percentage, 0) / Object.keys(scores).length) : null);
 
     return { scores, topStrengths, overallScore };
   }
@@ -442,15 +480,21 @@ export const transformAssessmentResults = (dbResults) => {
     console.log('✅ Data found in individual columns (not in gemini_analysis field)');
     console.log('   Building result from column data...');
     
+    const rawRiasecScores = dbResults.riasec_scores || {};
+    const maxRawScore = Math.max(0, ...Object.values(rawRiasecScores).map((v: any) => Number(v) || 0));
+    const calculatedMaxScore = dbResults.riasec_max_score || (maxRawScore > 20 ? 40 : 20);
+    const rawBigFiveScores = dbResults.bigfive_scores || dbResults.personality_scores;
+    const normalizedBigFive = rawBigFiveScores ? normalizeBigFive(rawBigFiveScores) : null;
+
     // Build the result directly from individual columns
     const transformed = {
       // RIASEC from columns
       riasec: {
-        scores: dbResults.riasec_scores || {},
+        scores: rawRiasecScores,
         topThree: (dbResults.top_interests && dbResults.top_interests.length)
           ? dbResults.top_interests
           : (dbResults.riasec_code ? dbResults.riasec_code.split('').slice(0, 3) : []),
-        maxScore: 20
+        maxScore: calculatedMaxScore
       },
       
       // Strengths from columns
@@ -463,15 +507,15 @@ export const transformAssessmentResults = (dbResults) => {
       aptitude: transformAptitudeScores(dbResults.aptitude_scores),
 
       // Big Five personality
-      bigFive: dbResults.personality_scores || null,
+      bigFive: normalizedBigFive,
 
       // Work values
       workValues: dbResults.work_values_scores || null,
 
       // Knowledge test
-      knowledge: dbResults.knowledge_score !== undefined ? {
+      knowledge: (dbResults.knowledge_score !== undefined && dbResults.knowledge_score !== null) ? {
         score: dbResults.knowledge_score,
-        percentage: dbResults.knowledge_percentage,
+        percentage: dbResults.knowledge_percentage ?? dbResults.knowledge_score,
         totalQuestions: dbResults.knowledge_score && dbResults.knowledge_percentage 
           ? Math.round(dbResults.knowledge_score / (dbResults.knowledge_percentage / 100))
           : null
@@ -522,8 +566,14 @@ export const transformAssessmentResults = (dbResults) => {
   // Transform aptitude scores
   const aptitudeTransformed = transformAptitudeScores(dbResults.aptitude_scores);
 
-  // ✅ REMOVED: enrichCareerRecommendations - no fallback career generation
-  // Career recommendations MUST come from Gemini AI analysis only
+  // Calculate RIASEC max score dynamically (40 if raw scores > 20)
+  const rawRiasecScores = dbResults.riasec_scores || {};
+  const maxRawScore = Math.max(0, ...Object.values(rawRiasecScores).map((v: any) => Number(v) || 0));
+  const calculatedMaxScore = dbResults.riasec_max_score || (maxRawScore > 20 ? 40 : 20);
+
+  // Normalize Big Five scores (mapping single-letter and full-name keys)
+  const rawBigFiveScores = dbResults.bigfive_scores || dbResults.personality_scores;
+  const normalizedBigFive = rawBigFiveScores ? normalizeBigFive(rawBigFiveScores) : null;
 
   // Build transformed result object with ALL database columns
   const transformed = {
@@ -542,14 +592,14 @@ export const transformAssessmentResults = (dbResults) => {
 
     // ===== RIASEC (Interest Profile) =====
     riasec: {
-      scores: dbResults.riasec_scores || {},
+      scores: rawRiasecScores,
       code: dbResults.riasec_code || null,
       // Prefer stored top_interests; otherwise derive the top three letters from the RIASEC code
       // (e.g. "SAC" → ["S","A","C"]), which is what the new pipeline stores.
       topThree: (dbResults.top_interests && dbResults.top_interests.length)
         ? dbResults.top_interests
         : (dbResults.riasec_code ? dbResults.riasec_code.split('').slice(0, 3) : []),
-      maxScore: 20
+      maxScore: calculatedMaxScore
     },
     
     // ===== STRENGTHS =====
@@ -563,23 +613,25 @@ export const transformAssessmentResults = (dbResults) => {
     aptitudeOverall: dbResults.aptitude_overall || null,
 
     // ===== BIG FIVE PERSONALITY =====
-    bigFive: dbResults.bigfive_scores || null,
+    bigFive: normalizedBigFive,
 
     // ===== WORK VALUES =====
     workValues: dbResults.work_values_scores || null,
 
     // ===== KNOWLEDGE TEST =====
-    knowledge: dbResults.knowledge_score !== undefined ? {
+    knowledge: (dbResults.knowledge_score !== undefined && dbResults.knowledge_score !== null) ? {
       score: dbResults.knowledge_score,
-      percentage: dbResults.knowledge_percentage,
+      percentage: dbResults.knowledge_percentage ?? dbResults.knowledge_score,
       details: dbResults.knowledge_details || null,
+      correctCount: dbResults.knowledge_score || 0,
       totalQuestions: dbResults.knowledge_score && dbResults.knowledge_percentage 
         ? Math.round(dbResults.knowledge_score / (dbResults.knowledge_percentage / 100))
-        : null
+        : (dbResults.knowledge_details?.totalQuestions || null)
     } : null,
 
     // ===== EMPLOYABILITY =====
     employability: {
+      score: dbResults.employability_score !== undefined ? dbResults.employability_score : null,
       scores: dbResults.employability_scores || null,
       readiness: dbResults.employability_readiness || null,
       level: dbResults.employability_readiness || 

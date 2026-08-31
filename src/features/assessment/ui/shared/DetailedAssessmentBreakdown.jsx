@@ -70,6 +70,18 @@ const DetailedAssessmentBreakdown = ({ results, riasecNames, gradeLevel }) => {
         return Math.round(values.reduce((sum, val) => sum + val, 0) / values.length);
     };
 
+    // Calculate max RIASEC score dynamically
+    const maxRiasecScore = safeRiasec?.maxScore && safeRiasec.maxScore >= Math.max(0, ...Object.values(safeRiasec.scores || {}).map(v => Number(v) || 0))
+        ? safeRiasec.maxScore
+        : (Math.max(0, ...Object.values(safeRiasec?.scores || {}).map(v => Number(v) || 0)) > 20 ? 40 : 20);
+
+    // Helper for Big Five key fallback
+    const getBigFiveScore = (singleKey, fullKey) => {
+        if (!bigFive) return 0;
+        const val = bigFive[singleKey] ?? bigFive[fullKey] ?? bigFive[fullKey.toLowerCase()] ?? 0;
+        return Number(val) || 0;
+    };
+
     // Define all possible stages
     const allStages = [
         {
@@ -79,13 +91,13 @@ const DetailedAssessmentBreakdown = ({ results, riasecNames, gradeLevel }) => {
             scores: safeRiasec?.scores ? Object.entries(safeRiasec.scores).map(([code, score]) => ({
                 label: `${code} - ${riasecNames?.[code] || code}`,
                 value: score,
-                max: safeRiasec.maxScore || 20,
-                percentage: Math.round((score / (safeRiasec.maxScore || 20)) * 100)
+                max: maxRiasecScore,
+                percentage: Math.round((score / maxRiasecScore) * 100)
             })) : [],
             avgPercentage: safeRiasec?.scores ? Math.round(
                 Object.values(safeRiasec.scores).reduce((sum, s) => sum + s, 0) / 
                 Object.values(safeRiasec.scores).length / 
-                (safeRiasec.maxScore || 20) * 100
+                maxRiasecScore * 100
             ) : 0
         },
         {
@@ -100,10 +112,10 @@ const DetailedAssessmentBreakdown = ({ results, riasecNames, gradeLevel }) => {
                     spatial: 'Spatial Reasoning',
                     clerical: 'Clerical Speed'
                 };
-                const correct = typeof data === 'object' ? (data.correct || 0) : 0;
-                const total = typeof data === 'object' ? (data.total || 1) : 1;
+                const correct = typeof data === 'object' ? (data.correct !== undefined ? data.correct : (data.value || 0)) : 0;
+                const total = typeof data === 'object' ? (data.total !== undefined ? data.total : (data.max || 1)) : 1;
                 const percentage = typeof data === 'object' 
-                    ? (data.percentage || Math.round((correct / total) * 100))
+                    ? (data.percentage !== undefined ? data.percentage : (total > 0 ? Math.round((correct / total) * 100) : 0))
                     : (typeof data === 'number' ? data : 0);
                 
                 return {
@@ -180,14 +192,14 @@ const DetailedAssessmentBreakdown = ({ results, riasecNames, gradeLevel }) => {
             name: 'Personality Traits (Big Five)',
             data: bigFive,
             scores: bigFive ? [
-                { label: 'Openness', value: bigFive.O || 0, max: 5, percentage: Math.round(((bigFive.O || 0) / 5) * 100) },
-                { label: 'Conscientiousness', value: bigFive.C || 0, max: 5, percentage: Math.round(((bigFive.C || 0) / 5) * 100) },
-                { label: 'Extraversion', value: bigFive.E || 0, max: 5, percentage: Math.round(((bigFive.E || 0) / 5) * 100) },
-                { label: 'Agreeableness', value: bigFive.A || 0, max: 5, percentage: Math.round(((bigFive.A || 0) / 5) * 100) },
-                { label: 'Neuroticism', value: bigFive.N || 0, max: 5, percentage: Math.round(((bigFive.N || 0) / 5) * 100) }
+                { label: 'Openness', value: getBigFiveScore('O', 'openness'), max: 5, percentage: Math.round((getBigFiveScore('O', 'openness') / 5) * 100) },
+                { label: 'Conscientiousness', value: getBigFiveScore('C', 'conscientiousness'), max: 5, percentage: Math.round((getBigFiveScore('C', 'conscientiousness') / 5) * 100) },
+                { label: 'Extraversion', value: getBigFiveScore('E', 'extraversion'), max: 5, percentage: Math.round((getBigFiveScore('E', 'extraversion') / 5) * 100) },
+                { label: 'Agreeableness', value: getBigFiveScore('A', 'agreeableness'), max: 5, percentage: Math.round((getBigFiveScore('A', 'agreeableness') / 5) * 100) },
+                { label: 'Neuroticism', value: getBigFiveScore('N', 'neuroticism'), max: 5, percentage: Math.round((getBigFiveScore('N', 'neuroticism') / 5) * 100) }
             ] : [],
             avgPercentage: bigFive ? Math.round(
-                ((bigFive.O || 0) + (bigFive.C || 0) + (bigFive.E || 0) + (bigFive.A || 0) + (bigFive.N || 0)) / 5 / 5 * 100
+                (getBigFiveScore('O', 'openness') + getBigFiveScore('C', 'conscientiousness') + getBigFiveScore('E', 'extraversion') + getBigFiveScore('A', 'agreeableness') + getBigFiveScore('N', 'neuroticism')) / 5 / 5 * 100
             ) : 0
         },
         {
@@ -207,16 +219,16 @@ const DetailedAssessmentBreakdown = ({ results, riasecNames, gradeLevel }) => {
         {
             id: 5,
             name: 'Knowledge Assessment',
-            data: knowledge,
-            scores: knowledge?.score !== undefined ? [
+            data: knowledge?.score != null ? knowledge : null,
+            scores: (knowledge?.score !== undefined && knowledge?.score !== null) ? [
                 {
                     label: 'Overall Knowledge Score',
-                    value: knowledge.correctCount || 0,
-                    max: knowledge.totalQuestions || 0,
-                    percentage: knowledge.score
+                    value: knowledge.correctCount ?? knowledge.score ?? 0,
+                    max: knowledge.totalQuestions ?? 0,
+                    percentage: knowledge.percentage ?? knowledge.score ?? 0
                 }
             ] : [],
-            avgPercentage: knowledge?.score || 0
+            avgPercentage: (knowledge?.score !== undefined && knowledge?.score !== null) ? (knowledge.percentage ?? knowledge.score ?? 0) : 0
         },
         {
             id: 6,
