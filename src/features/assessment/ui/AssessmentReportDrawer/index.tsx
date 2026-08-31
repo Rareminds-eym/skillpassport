@@ -618,7 +618,7 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
                     scores: scores,
                     topThree: riasecCode?.split('').slice(0, 3) || ['R', 'I', 'A'],
                     code: riasecCode || 'RIA',
-                    maxScore: 20
+                    maxScore: Math.max(...Object.values(scores), 0) > 20 ? Math.max(40, ...Object.values(scores)) : 20
                 };
                 
                 console.log('✅ Final RIASEC structure:', riasecResult);
@@ -699,6 +699,9 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
                 scores: assessmentData?.employability_scores || {},
                 readiness: assessmentData?.employability_readiness || 'Low'
             },
+            adaptiveAptitudeResults: assessmentData?.gemini_results?.adaptiveAptitudeResults || assessmentData?.aptitude_scores || null,
+            streamAptitudeScore: assessmentData?.stream_aptitude_score || null,
+            streamAptitudeDetails: assessmentData?.stream_aptitude_details || null,
             knowledge: assessmentData?.gemini_results?.knowledge || {
                 score: assessmentData?.knowledge_score || 0,
                 details: assessmentData?.knowledge_details || {}

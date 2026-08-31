@@ -978,7 +978,7 @@ const AssessmentResult = () => {
                         </div>
 
                         <div className="flex gap-1.5 sm:gap-2 shrink-0">
-                            <Button
+                            {/* <Button
                                 variant="outline"
                                 onClick={handleRetry}
                                 disabled={retrying}
@@ -988,7 +988,7 @@ const AssessmentResult = () => {
                                 <span className="hidden sm:inline ml-1.5">
                                     {retrying ? 'Regenerating...' : 'Regenerate'}
                                 </span>
-                            </Button>
+                            </Button> */}
                             <Button
                                 onClick={handlePrint}
                                 className="bg-slate-800 text-white hover:bg-slate-700 shadow-sm h-8 text-sm font-medium px-2.5 sm:px-3"
@@ -1061,7 +1061,7 @@ const AssessmentResult = () => {
                         </div>
 
                         <div className="flex gap-2">
-                            <Button
+                            {/* <Button
                                 variant="outline"
                                 onClick={handleRetry}
                                 disabled={retrying}
@@ -1078,7 +1078,7 @@ const AssessmentResult = () => {
                                         Regenerate
                                     </>
                                 )}
-                            </Button>
+                            </Button> */}
                             <Button
                                 onClick={handlePrint}
                                 className="bg-slate-800 text-white hover:bg-slate-700 shadow-sm h-8 text-sm font-medium"

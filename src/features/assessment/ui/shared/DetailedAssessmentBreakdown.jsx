@@ -25,6 +25,319 @@ const getPerformanceLabel = (percentage) => {
     return 'Needs Improvement';
 };
 
+const toNumber = (value, fallback = 0) => {
+    const number = Number(value);
+    return Number.isFinite(number) ? number : fallback;
+};
+
+const pickFirstNumber = (...values) => {
+    for (const value of values) {
+        const number = Number(value);
+        if (Number.isFinite(number)) return number;
+    }
+    return 0;
+};
+
+const clampPercentage = (value) => Math.max(0, Math.min(100, Math.round(toNumber(value))));
+
+const getRiasecMaxScore = (riasec) => {
+    const configuredMax = toNumber(riasec?.maxScore, 20);
+    const scores = Object.values(riasec?.scores || {}).map((score) => toNumber(score));
+    const highestScore = scores.length ? Math.max(...scores) : 0;
+
+    if (highestScore > configuredMax) {
+        return Math.max(40, configuredMax, highestScore);
+    }
+
+    return configuredMax;
+};
+
+const RIASEC_DIMENSIONS = {
+    R: { key: 'realistic', name: 'Realistic' },
+    I: { key: 'investigative', name: 'Investigative' },
+    A: { key: 'artistic', name: 'Artistic' },
+    S: { key: 'social', name: 'Social' },
+    E: { key: 'enterprising', name: 'Enterprising' },
+    C: { key: 'conventional', name: 'Conventional' }
+};
+
+const getRiasecLabel = (code) => {
+    const normalizedCode = String(code || '').trim();
+    const upperCode = normalizedCode.toUpperCase();
+    const dimensionFromCode = RIASEC_DIMENSIONS[upperCode];
+
+    if (dimensionFromCode) {
+        return `${upperCode} - ${dimensionFromCode.name}`;
+    }
+
+    const matchedEntry = Object.entries(RIASEC_DIMENSIONS).find(
+        ([, dimension]) => dimension.key === normalizedCode.toLowerCase()
+    );
+
+    if (matchedEntry) {
+        const [letter, dimension] = matchedEntry;
+        return `${letter} - ${dimension.name}`;
+    }
+
+    return normalizedCode;
+};
+
+const getBigFiveScore = (bigFive, shortKey, longKey) => (
+    pickFirstNumber(
+        bigFive?.[longKey],
+        bigFive?.scores?.[longKey],
+        bigFive?.[shortKey],
+        bigFive?.scores?.[shortKey]
+    )
+);
+
+const normalizeWorkValues = (workValues) => {
+    if (!workValues) return [];
+    if (Array.isArray(workValues.topThree)) {
+        return workValues.topThree.map((value) => ({
+            label: value.value || value.label,
+            value: toNumber(value.score ?? value.valueScore),
+            max: 5,
+            percentage: clampPercentage((toNumber(value.score ?? value.valueScore) / 5) * 100)
+        }));
+    }
+
+    const scores = workValues.scores || workValues;
+    if (!scores || typeof scores !== 'object') return [];
+
+    return Object.entries(scores)
+        .filter(([, score]) => Number.isFinite(Number(score)))
+        .sort(([, a], [, b]) => Number(b) - Number(a))
+        .slice(0, 8)
+        .map(([label, score]) => ({
+            label,
+            value: toNumber(score),
+            max: 5,
+            percentage: clampPercentage((toNumber(score) / 5) * 100)
+        }));
+};
+
+const normalizeKnowledgeScore = (knowledge) => {
+    if (!knowledge) return null;
+    const details = knowledge.details || knowledge;
+    const score = pickFirstNumber(knowledge.score, details.score, knowledge.percentage);
+    const correctCount = pickFirstNumber(knowledge.correctCount, details.correctCount);
+    const mappedTotalQuestions = pickFirstNumber(knowledge.totalQuestions, details.totalQuestions);
+    const inferredTotalQuestions = correctCount > 0 && score > 0
+        ? Math.round(correctCount / (score / 100))
+        : 0;
+    const totalQuestions = mappedTotalQuestions || inferredTotalQuestions;
+
+    return {
+        label: 'Overall Knowledge Score',
+        value: correctCount || score,
+        max: totalQuestions || 100,
+        percentage: clampPercentage(score)
+    };
+};
+
+const normalizeAptitudeScore = (domain, data) => {
+    const configs = {
+        verbal: 'Verbal Reasoning',
+        numerical: 'Numerical Ability',
+        abstract: 'Abstract Reasoning',
+        spatial: 'Spatial Reasoning',
+        clerical: 'Clerical Speed',
+        logical_reasoning: 'Logical Reasoning',
+        data_interpretation: 'Data Interpretation',
+        numerical_reasoning: 'Numerical Reasoning',
+        pattern_recognition: 'Pattern Recognition'
+    };
+    const hasCorrectCount = data && typeof data === 'object' && (
+        data.correct !== undefined ||
+        data.correctCount !== undefined
+    );
+    const hasTotalCount = data && typeof data === 'object' && (
+        data.total !== undefined ||
+        data.totalQuestions !== undefined
+    );
+    const percentage = typeof data === 'object'
+        ? pickFirstNumber(data.percentage, data.accuracy, data.score)
+        : toNumber(data);
+    const correct = hasCorrectCount
+        ? pickFirstNumber(data.correct, data.correctCount)
+        : percentage;
+    const total = hasTotalCount
+        ? pickFirstNumber(data.total, data.totalQuestions)
+        : 100;
+
+    return {
+        label: configs[String(domain).toLowerCase()] || String(domain).replace(/_/g, ' '),
+        value: correct,
+        max: total || 100,
+        percentage: clampPercentage(percentage)
+    };
+};
+
+const normalizeEmployabilityScores = (employability) => {
+    if (!employability) return [];
+    const skillScores = employability.skillScores || employability.scores;
+
+    if (skillScores && typeof skillScores === 'object') {
+        return Object.entries(skillScores).map(([skill, score]) => {
+            const numericScore = toNumber(score);
+            const isPercentage = numericScore > 5;
+            const normalizedScore = isPercentage ? numericScore / 20 : numericScore;
+            const percentage = isPercentage ? clampPercentage(numericScore) : clampPercentage((numericScore / 5) * 100);
+
+            return {
+                label: skill,
+                value: normalizedScore,
+                max: 5,
+                percentage
+            };
+        });
+    }
+
+    if (employability.strengthAreas && Array.isArray(employability.strengthAreas)) {
+        return employability.strengthAreas.map((area) => {
+            if (typeof area === 'object' && area.skill) {
+                const score = toNumber(area.score, 4);
+                const isPercentage = score > 5;
+                const normalizedScore = isPercentage ? score / 20 : score;
+                const percentage = isPercentage ? clampPercentage(score) : clampPercentage((score / 5) * 100);
+
+                return {
+                    label: area.skill,
+                    value: normalizedScore,
+                    max: 5,
+                    percentage
+                };
+            }
+
+            return {
+                label: area,
+                value: 4,
+                max: 5,
+                percentage: 80
+            };
+        });
+    }
+
+    return [];
+};
+
+const getEmployabilityAverage = (employability) => {
+    if (!employability) return 0;
+
+    if (employability.overallReadiness) {
+        const readinessMap = { High: 85, Medium: 65, Low: 40 };
+        return readinessMap[employability.overallReadiness] || 70;
+    }
+
+    const scores = normalizeEmployabilityScores(employability);
+    if (scores.length > 0) {
+        return clampPercentage(scores.reduce((sum, score) => sum + score.percentage, 0) / scores.length);
+    }
+
+    return 0;
+};
+
+const getAdaptiveAptitudeData = (results) => (
+    results.adaptiveAptitudeResults ||
+    results.adaptive_aptitude_results ||
+    results.aptitude_scores ||
+    results.gemini_results?.adaptiveAptitudeResults ||
+    null
+);
+
+const normalizeAdaptiveAptitudeScores = (results) => {
+    const adaptiveData = getAdaptiveAptitudeData(results);
+    if (!adaptiveData) return [];
+
+    const rows = [];
+    const aptitudeLevel = pickFirstNumber(adaptiveData.aptitude_level, adaptiveData.aptitudeLevel);
+    if (aptitudeLevel > 0) {
+        rows.push({
+            label: 'Aptitude Level',
+            value: aptitudeLevel,
+            max: 10,
+            percentage: clampPercentage((aptitudeLevel / 10) * 100)
+        });
+    }
+
+    const totalCorrect = pickFirstNumber(adaptiveData.total_correct, adaptiveData.totalCorrect);
+    const totalQuestions = pickFirstNumber(adaptiveData.total_questions, adaptiveData.totalQuestions);
+    const overallAccuracy = pickFirstNumber(adaptiveData.overall_accuracy, adaptiveData.overallAccuracy, results.aptitudeOverall, results.aptitude_overall);
+    if (totalQuestions > 0 || overallAccuracy > 0) {
+        rows.push({
+            label: 'Overall Accuracy',
+            value: totalQuestions > 0 ? totalCorrect : overallAccuracy,
+            max: totalQuestions > 0 ? totalQuestions : 100,
+            percentage: clampPercentage(overallAccuracy)
+        });
+    }
+
+    const accuracyBySubtag = adaptiveData.accuracy_by_subtag || adaptiveData.accuracyBySubtag || {};
+    const subtagLabels = {
+        verbal_reasoning: 'Verbal Reasoning',
+        logical_reasoning: 'Logical Reasoning',
+        spatial_reasoning: 'Spatial Reasoning',
+        numerical_reasoning: 'Numerical Reasoning',
+        pattern_recognition: 'Pattern Recognition',
+        data_interpretation: 'Data Interpretation'
+    };
+
+    Object.entries(accuracyBySubtag).forEach(([subtag, data]) => {
+        if (data && data.total > 0) {
+            rows.push({
+                label: subtagLabels[subtag] || subtag.replace(/_/g, ' '),
+                value: pickFirstNumber(data.correct),
+                max: pickFirstNumber(data.total) || 1,
+                percentage: clampPercentage(data.accuracy)
+            });
+        }
+    });
+
+    return rows;
+};
+
+const normalizeStreamAptitudeScores = (results) => {
+    const details = results.streamAptitudeDetails || results.stream_aptitude_details;
+    if (!details) return [];
+
+    const byDifficulty = details.byDifficulty || details.by_difficulty || {};
+    const rows = Object.entries(byDifficulty)
+        .filter(([, data]) => data && typeof data === 'object')
+        .map(([difficulty, data]) => {
+            const correct = pickFirstNumber(data.correct, data.correctCount);
+            const total = pickFirstNumber(data.total, data.totalQuestions);
+            const percentage = pickFirstNumber(
+                data.percentage,
+                data.accuracy,
+                total > 0 ? (correct / total) * 100 : 0
+            );
+
+            return {
+                label: `${difficulty.charAt(0).toUpperCase()}${difficulty.slice(1)} Difficulty`,
+                value: correct,
+                max: total || 1,
+                percentage: clampPercentage(percentage)
+            };
+        });
+
+    if (rows.length > 0) return rows;
+
+    const score = pickFirstNumber(results.streamAptitudeScore, results.stream_aptitude_score, details.score);
+    const correctCount = pickFirstNumber(details.correctCount);
+    const mappedTotalQuestions = pickFirstNumber(details.totalQuestions);
+    const inferredTotalQuestions = correctCount > 0 && score > 0
+        ? Math.round(correctCount / (score / 100))
+        : 0;
+
+    return [{
+        label: 'Overall Stream Aptitude',
+        value: correctCount || score,
+        max: mappedTotalQuestions || inferredTotalQuestions || 100,
+        percentage: clampPercentage(score)
+    }];
+};
+
 /**
  * DetailedAssessmentBreakdown Component
  * @param {Object} props - Component props
@@ -36,6 +349,21 @@ const DetailedAssessmentBreakdown = ({ results, riasecNames, gradeLevel }) => {
     if (!results) return null;
 
     const { riasec, aptitude, bigFive, workValues, knowledge, employability } = results;
+    const adaptiveAptitudeScores = normalizeAdaptiveAptitudeScores(results);
+    const adaptiveAptitudeData = getAdaptiveAptitudeData(results);
+    const adaptiveAptitudeAverage = pickFirstNumber(
+        adaptiveAptitudeData?.overall_accuracy,
+        adaptiveAptitudeData?.overallAccuracy,
+        results.aptitudeOverall,
+        results.aptitude_overall
+    );
+    const streamAptitudeScores = normalizeStreamAptitudeScores(results);
+    const streamAptitudeScore = pickFirstNumber(
+        results.streamAptitudeScore,
+        results.stream_aptitude_score,
+        results.streamAptitudeDetails?.score,
+        results.stream_aptitude_details?.score
+    );
 
     // 🔧 CRITICAL FIX: Check BOTH locations for _originalScores
     let safeRiasec = riasec;
@@ -71,238 +399,82 @@ const DetailedAssessmentBreakdown = ({ results, riasecNames, gradeLevel }) => {
     };
 
     // Define all possible stages
+    const riasecMaxScore = getRiasecMaxScore(safeRiasec);
     const allStages = [
         {
             id: 1,
             name: 'Interest Explorer (RIASEC)',
             data: safeRiasec,
             scores: safeRiasec?.scores ? Object.entries(safeRiasec.scores).map(([code, score]) => ({
-                label: `${code} - ${riasecNames?.[code] || code}`,
+                label: getRiasecLabel(code),
                 value: score,
-                max: safeRiasec.maxScore || 20,
-                percentage: Math.round((score / (safeRiasec.maxScore || 20)) * 100)
+                max: riasecMaxScore,
+                percentage: clampPercentage((score / riasecMaxScore) * 100)
             })) : [],
-            avgPercentage: safeRiasec?.scores ? Math.round(
-                Object.values(safeRiasec.scores).reduce((sum, s) => sum + s, 0) / 
-                Object.values(safeRiasec.scores).length / 
-                (safeRiasec.maxScore || 20) * 100
+            avgPercentage: safeRiasec?.scores ? clampPercentage(
+                Object.values(safeRiasec.scores).reduce((sum, s) => sum + s, 0) /
+                Object.values(safeRiasec.scores).length /
+                riasecMaxScore * 100
             ) : 0
         },
         {
             id: 2,
-            name: 'Cognitive Abilities (Aptitude)',
-            data: aptitude,
-            scores: aptitude?.scores ? Object.entries(aptitude.scores).map(([domain, data]) => {
-                const configs = {
-                    verbal: 'Verbal Reasoning',
-                    numerical: 'Numerical Ability',
-                    abstract: 'Abstract Reasoning',
-                    spatial: 'Spatial Reasoning',
-                    clerical: 'Clerical Speed'
-                };
-                const correct = typeof data === 'object' ? (data.correct || 0) : 0;
-                const total = typeof data === 'object' ? (data.total || 1) : 1;
-                const percentage = typeof data === 'object' 
-                    ? (data.percentage || Math.round((correct / total) * 100))
-                    : (typeof data === 'number' ? data : 0);
-                
-                return {
-                    label: configs[domain.toLowerCase()] || domain,
-                    value: correct,
-                    max: total,
-                    percentage
-                };
-            }) : [],
-            avgPercentage: aptitude?.scores ? Math.round(
-                Object.values(aptitude.scores).reduce((sum, data) => {
-                    const pct = typeof data === 'object' ? (data.percentage || 0) : (typeof data === 'number' ? data : 0);
-                    return sum + pct;
-                }, 0) / Object.values(aptitude.scores).length
-            ) : 0
-        },
-        {
-            id: 2.5,
-            name: 'Adaptive Aptitude Test',
-            data: results.adaptiveAptitudeResults || results.adaptive_aptitude_results || results.gemini_results?.adaptiveAptitudeResults,
-            scores: (() => {
-                const adaptiveData = results.adaptiveAptitudeResults || results.adaptive_aptitude_results || results.gemini_results?.adaptiveAptitudeResults;
-                if (!adaptiveData) return [];
-                
-                const scores = [];
-                
-                // Overall metrics
-                scores.push({
-                    label: 'Aptitude Level',
-                    value: adaptiveData.aptitude_level || adaptiveData.aptitudeLevel || 0,
-                    max: 10,
-                    percentage: Math.round(((adaptiveData.aptitude_level || adaptiveData.aptitudeLevel || 0) / 10) * 100)
-                });
-                
-                scores.push({
-                    label: 'Overall Accuracy',
-                    value: adaptiveData.total_correct || adaptiveData.totalCorrect || 0,
-                    max: adaptiveData.total_questions || adaptiveData.totalQuestions || 1,
-                    percentage: Math.round(parseFloat(adaptiveData.overall_accuracy || adaptiveData.overallAccuracy || 0))
-                });
-                
-                // Breakdown by subtag (question type)
-                const accuracyBySubtag = adaptiveData.accuracy_by_subtag || adaptiveData.accuracyBySubtag || {};
-                const subtagLabels = {
-                    'verbal_reasoning': 'Verbal Reasoning',
-                    'logical_reasoning': 'Logical Reasoning',
-                    'spatial_reasoning': 'Spatial Reasoning',
-                    'numerical_reasoning': 'Numerical Reasoning',
-                    'pattern_recognition': 'Pattern Recognition',
-                    'data_interpretation': 'Data Interpretation'
-                };
-                
-                Object.entries(accuracyBySubtag).forEach(([subtag, data]) => {
-                    if (data && data.total > 0) {
-                        scores.push({
-                            label: subtagLabels[subtag] || subtag,
-                            value: data.correct || 0,
-                            max: data.total || 1,
-                            percentage: Math.round(data.accuracy || 0)
-                        });
-                    }
-                });
-                
-                return scores;
-            })(),
-            avgPercentage: (() => {
-                const adaptiveData = results.adaptiveAptitudeResults || results.adaptive_aptitude_results || results.gemini_results?.adaptiveAptitudeResults;
-                if (!adaptiveData) return 0;
-                return Math.round(parseFloat(adaptiveData.overall_accuracy || adaptiveData.overallAccuracy || 0));
-            })()
-        },
-        {
-            id: 3,
             name: 'Personality Traits (Big Five)',
             data: bigFive,
             scores: bigFive ? [
-                { label: 'Openness', value: bigFive.O || 0, max: 5, percentage: Math.round(((bigFive.O || 0) / 5) * 100) },
-                { label: 'Conscientiousness', value: bigFive.C || 0, max: 5, percentage: Math.round(((bigFive.C || 0) / 5) * 100) },
-                { label: 'Extraversion', value: bigFive.E || 0, max: 5, percentage: Math.round(((bigFive.E || 0) / 5) * 100) },
-                { label: 'Agreeableness', value: bigFive.A || 0, max: 5, percentage: Math.round(((bigFive.A || 0) / 5) * 100) },
-                { label: 'Neuroticism', value: bigFive.N || 0, max: 5, percentage: Math.round(((bigFive.N || 0) / 5) * 100) }
+                { label: 'Openness', value: getBigFiveScore(bigFive, 'O', 'openness'), max: 5, percentage: clampPercentage((getBigFiveScore(bigFive, 'O', 'openness') / 5) * 100) },
+                { label: 'Conscientiousness', value: getBigFiveScore(bigFive, 'C', 'conscientiousness'), max: 5, percentage: clampPercentage((getBigFiveScore(bigFive, 'C', 'conscientiousness') / 5) * 100) },
+                { label: 'Extraversion', value: getBigFiveScore(bigFive, 'E', 'extraversion'), max: 5, percentage: clampPercentage((getBigFiveScore(bigFive, 'E', 'extraversion') / 5) * 100) },
+                { label: 'Agreeableness', value: getBigFiveScore(bigFive, 'A', 'agreeableness'), max: 5, percentage: clampPercentage((getBigFiveScore(bigFive, 'A', 'agreeableness') / 5) * 100) },
+                { label: 'Neuroticism', value: getBigFiveScore(bigFive, 'N', 'neuroticism'), max: 5, percentage: clampPercentage((getBigFiveScore(bigFive, 'N', 'neuroticism') / 5) * 100) }
             ] : [],
-            avgPercentage: bigFive ? Math.round(
-                ((bigFive.O || 0) + (bigFive.C || 0) + (bigFive.E || 0) + (bigFive.A || 0) + (bigFive.N || 0)) / 5 / 5 * 100
+            avgPercentage: bigFive ? clampPercentage(
+                (
+                    getBigFiveScore(bigFive, 'O', 'openness') +
+                    getBigFiveScore(bigFive, 'C', 'conscientiousness') +
+                    getBigFiveScore(bigFive, 'E', 'extraversion') +
+                    getBigFiveScore(bigFive, 'A', 'agreeableness') +
+                    getBigFiveScore(bigFive, 'N', 'neuroticism')
+                ) / 5 / 5 * 100
+            ) : 0
+        },
+        {
+            id: 3,
+            name: 'Work Values',
+            data: workValues,
+            scores: normalizeWorkValues(workValues),
+            avgPercentage: normalizeWorkValues(workValues).length ? clampPercentage(
+                normalizeWorkValues(workValues).reduce((sum, val) => sum + val.percentage, 0) / normalizeWorkValues(workValues).length
             ) : 0
         },
         {
             id: 4,
-            name: 'Work Values',
-            data: workValues,
-            scores: workValues?.topThree?.map((val) => ({
-                label: val.value,
-                value: val.score,
-                max: 5,
-                percentage: Math.round((val.score / 5) * 100)
-            })) || [],
-            avgPercentage: workValues?.topThree ? Math.round(
-                workValues.topThree.reduce((sum, val) => sum + val.score, 0) / workValues.topThree.length / 5 * 100
-            ) : 0
+            name: 'Employability Skills',
+            data: employability,
+            scores: normalizeEmployabilityScores(employability),
+            avgPercentage: getEmployabilityAverage(employability)
         },
         {
             id: 5,
-            name: 'Knowledge Assessment',
-            data: knowledge,
-            scores: knowledge?.score !== undefined ? [
-                {
-                    label: 'Overall Knowledge Score',
-                    value: knowledge.correctCount || 0,
-                    max: knowledge.totalQuestions || 0,
-                    percentage: knowledge.score
-                }
-            ] : [],
-            avgPercentage: knowledge?.score || 0
+            name: 'Adaptive Aptitude Test',
+            data: adaptiveAptitudeScores.length > 0 ? adaptiveAptitudeScores : null,
+            scores: adaptiveAptitudeScores,
+            avgPercentage: clampPercentage(adaptiveAptitudeAverage)
         },
         {
             id: 6,
-            name: 'Employability Skills',
-            data: employability,
-            scores: (() => {
-                if (!employability) return [];
-                
-                // Handle skillScores object (e.g., {Teamwork: 4.67, Leadership: 5, ...})
-                if (employability.skillScores && typeof employability.skillScores === 'object') {
-                    return Object.entries(employability.skillScores).map(([skill, score]) => {
-                        // Check if score is already a percentage (> 5) or a 0-5 scale
-                        const isPercentage = score > 5;
-                        const normalizedScore = isPercentage ? score / 20 : score; // If percentage, convert back to 0-5 scale
-                        const percentage = isPercentage ? Math.round(score) : Math.round((score / 5) * 100);
-                        
-                        return {
-                            label: skill,
-                            value: normalizedScore,
-                            max: 5,
-                            percentage: percentage
-                        };
-                    });
-                }
-                
-                // Handle strengthAreas array (e.g., ["Leadership", "Teamwork", ...])
-                if (employability.strengthAreas && Array.isArray(employability.strengthAreas)) {
-                    return employability.strengthAreas.map((area) => {
-                        // If area is an object with skill and score
-                        if (typeof area === 'object' && area.skill) {
-                            const score = area.score || 4;
-                            const isPercentage = score > 5;
-                            const normalizedScore = isPercentage ? score / 20 : score;
-                            const percentage = isPercentage ? Math.round(score) : Math.round((score / 5) * 100);
-                            
-                            return {
-                                label: area.skill,
-                                value: normalizedScore,
-                                max: 5,
-                                percentage: percentage
-                            };
-                        }
-                        // If area is just a string, use default score
-                        return {
-                            label: area,
-                            value: 4,
-                            max: 5,
-                            percentage: 80
-                        };
-                    });
-                }
-                
-                return [];
-            })(),
-            avgPercentage: (() => {
-                if (!employability) return 0;
-                
-                // Use overallReadiness if available
-                if (employability.overallReadiness) {
-                    const readinessMap = { 'High': 85, 'Medium': 65, 'Low': 40 };
-                    return readinessMap[employability.overallReadiness] || 70;
-                }
-                
-                // Calculate from skillScores
-                if (employability.skillScores && typeof employability.skillScores === 'object') {
-                    const scores = Object.values(employability.skillScores);
-                    // Check if scores are already percentages (> 5) or 0-5 scale
-                    const firstScore = scores[0] || 0;
-                    const isPercentage = firstScore > 5;
-                    
-                    if (isPercentage) {
-                        // Scores are already percentages, just average them
-                        return Math.round(scores.reduce((sum, s) => sum + s, 0) / scores.length);
-                    } else {
-                        // Scores are 0-5 scale, convert to percentage
-                        return Math.round(scores.reduce((sum, s) => sum + s, 0) / scores.length / 5 * 100);
-                    }
-                }
-                
-                // Default for strengthAreas
-                if (employability.strengthAreas && employability.strengthAreas.length > 0) {
-                    return 80;
-                }
-                
-                return 0;
-            })()
+            name: 'Stream Based Aptitude',
+            data: streamAptitudeScores.length > 0 ? streamAptitudeScores : null,
+            scores: streamAptitudeScores,
+            avgPercentage: clampPercentage(streamAptitudeScore),
+            allowHeaderOnly: true
+        },
+        {
+            id: 7,
+            name: 'Stream Knowledge',
+            data: knowledge,
+            scores: normalizeKnowledgeScore(knowledge) ? [normalizeKnowledgeScore(knowledge)] : [],
+            avgPercentage: normalizeKnowledgeScore(knowledge)?.percentage || 0
         }
     ];
 
@@ -320,25 +492,25 @@ const DetailedAssessmentBreakdown = ({ results, riasecNames, gradeLevel }) => {
                 return allStages.filter(s => {
                     // Always include RIASEC (stage 1) if it has data
                     if (s.id === 1 && s.data) return true;
-                    // Always include Adaptive Aptitude (stage 2.5) if it has data
-                    if (s.id === 2.5 && s.data) return true;
+                    // Always include Adaptive Aptitude if it has data
+                    if (s.id === 5 && s.data && s.scores.length > 0) return true;
                     // Don't include other stages for middle/high school
                     return false;
                 });
             
             case 'after10':
-                // Grades 11-12: RIASEC, Stream Aptitude, Adaptive Aptitude (if available), Big Five, Work Values, Employability
-                // Note: Knowledge section (stage 5) is NOT included for after10 (stream-agnostic assessment)
-                return allStages.filter(s => [1, 2, 2.5, 3, 4, 6].includes(s.id) && s.data);
+                // Grades 11-12: RIASEC, Big Five, Work Values, Employability, Adaptive Aptitude, Stream Aptitude
+                // Note: Knowledge section is NOT included for after10 (stream-agnostic assessment)
+                return allStages.filter(s => [1, 2, 3, 4, 5, 6].includes(s.id) && s.data && s.scores.length > 0);
             
             case 'after12':
             case 'college':
                 // After 12 & College: All stages including Employability and Knowledge
-                return allStages.filter(s => s.data);
+                return allStages.filter(s => s.data && s.scores.length > 0);
             
             default:
                 // Show all available stages that have data
-                return allStages.filter(s => s.data);
+                return allStages.filter(s => s.data && s.scores.length > 0);
         }
     };
 
@@ -355,16 +527,16 @@ const DetailedAssessmentBreakdown = ({ results, riasecNames, gradeLevel }) => {
             case 'after10':
                 // After 10th has 6 possible stages:
                 // 1. RIASEC (Career Interests)
-                // 2. Stream Aptitude
-                // 2.5. Adaptive Aptitude
-                // 3. Big Five Personality
-                // 4. Work Values
-                // 6. Employability Skills
-                // Note: Knowledge (stage 5) is NOT included for after10
+                // 2. Big Five Personality
+                // 3. Work Values
+                // 4. Employability Skills
+                // 5. Adaptive Aptitude
+                // 6. Stream Aptitude
+                // Note: Knowledge is NOT included for after10
                 return 6;
             case 'after12':
             case 'college':
-                // All 7 stages including Employability and Knowledge
+                // RIASEC, Big Five, Work Values, Employability, Adaptive Aptitude, Stream Aptitude, Knowledge
                 return 7;
             default:
                 return stages.length;
@@ -440,7 +612,15 @@ const DetailedAssessmentBreakdown = ({ results, riasecNames, gradeLevel }) => {
 
             {/* Stage Details */}
             {stages.map((stage) => {
-                if (!stage.data || stage.scores.length === 0) return null;
+                if (!stage.data || (stage.scores.length === 0 && !stage.allowHeaderOnly)) return null;
+
+                const hasUsableRows = stage.scores.length > 0 && stage.scores.some((score) => (
+                    Number.isFinite(score.value) &&
+                    Number.isFinite(score.max) &&
+                    score.max > 0 &&
+                    Number.isFinite(score.percentage) &&
+                    score.percentage > 0
+                ));
 
                 return (
                     <div key={stage.id} style={{
@@ -475,6 +655,7 @@ const DetailedAssessmentBreakdown = ({ results, riasecNames, gradeLevel }) => {
                         </div>
 
                         {/* Score Details Table - matching print view table style */}
+                        {hasUsableRows && (
                         <div style={{ padding: '0' }}>
                             <table style={printStyles.table}>
                                 <thead>
@@ -568,6 +749,7 @@ const DetailedAssessmentBreakdown = ({ results, riasecNames, gradeLevel }) => {
                                 </tbody>
                             </table>
                         </div>
+                        )}
 
                         {/* Stage Summary removed to save space */}
                     </div>
