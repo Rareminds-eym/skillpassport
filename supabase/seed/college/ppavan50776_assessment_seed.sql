@@ -1,5 +1,5 @@
 -- Generated Google Forms assessment migration
--- Learner: ppavan50559@gmail.com
+-- Learner: ppavan50776@gmail.com
 -- Target tables: personal_assessment_attempts, adaptive_aptitude_sessions, adaptive_aptitude_responses, adaptive_aptitude_results
 -- Existing learner and question UUIDs are reused.
 -- response_time_ms/average_response_time_ms are 0 because Google Forms did not record per-question timing.
@@ -7,16 +7,16 @@
 BEGIN;
 
 -- ============================================================
--- Learner: ppavan50559@gmail.com
+-- Learner: ppavan50776@gmail.com
 -- Source: Assessment Answers.xlsx (Google Forms migration)
 -- ============================================================
 DO $$
 DECLARE
     v_learner_id uuid;
 BEGIN
-    SELECT id INTO v_learner_id FROM public.learners WHERE lower(email) = lower('ppavan50559@gmail.com') LIMIT 1;
+    SELECT id INTO v_learner_id FROM public.learners WHERE lower(email) = lower('ppavan50776@gmail.com') LIMIT 1;
     IF v_learner_id IS NULL THEN
-        RAISE EXCEPTION 'Learner not found for email: %', 'ppavan50559@gmail.com';
+        RAISE EXCEPTION 'Learner not found for email: %', 'ppavan50776@gmail.com';
     END IF;
 
     INSERT INTO public.adaptive_aptitude_sessions (
