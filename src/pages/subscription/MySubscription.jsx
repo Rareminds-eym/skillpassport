@@ -124,7 +124,10 @@ function MySubscription() {
 
   const isOrganizationLearner = useMemo(() => {
     return !!(
+      subscriptionData?.isOrganizationLicense ||
+      subscriptionData?.is_organization_license ||
       subscriptionData?.is_organization_subscription ||
+      subscriptionData?.organizationId ||
       subscriptionData?.organization_id ||
       user?.school_id ||
       user?.college_id ||
@@ -822,7 +825,7 @@ function MySubscription() {
             hasOrganizationSubscription={true}
             learnerName={user?.full_name || user?.name || (user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : '') || learnerData?.name}
             organization={{
-              id: user?.college_id || user?.school_id || user?.university_id || subscriptionData?.organization_id,
+              id: subscriptionData?.organizationId || subscriptionData?.organization_id || user?.college_id || user?.school_id || user?.university_id || user?.organization_id,
               name: orgName,
               email: orgEmail,
               phone: orgPhone,
