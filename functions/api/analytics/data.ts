@@ -238,9 +238,14 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           .maybeSingle();
 
         if (learnerLookupError) {
-          logger.error('[get-usage-stats] Failed to resolve learner id:', learnerLookupError);
+          logger.error('[get-usage-stats] Failed to resolve learner id', {
+            error: learnerLookupError,
+            userId: user.id,
+          });
+          return apiDbError(learnerLookupError, context.request, { startTime });
         }
 
+        // learnerRow being null is valid — new user with no activity yet; all counts will be 0
         const learnerId = learnerRow?.id || null;
 
         const getCount = async (table: string, field = 'learner_id'): Promise<number> => {
@@ -254,22 +259,37 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           }
         };
 
-        const [assessments, profileViews, reports] = await Promise.all([
-          getCount('personal_assessment_results'),         // learner_id = learners.id ✅
-          // profile_views.learner_id references learners(user_id) = auth UUID
-          (async (): Promise<number> => {
-            try {
-              const { count } = await supabase
-                .from('profile_views')
-                .select('*', { count: 'exact', head: true })
-                .eq('learner_id', user.id); // auth UUID directly
-              return count || 0;
-            } catch (err) {
-              logger.error('getCount failed for table "profile_views"', { error: err });
+        // profile_views uses user.id (auth UUID) directly — cannot reuse getCount()
+        // which operates on learnerId (internal learners.id UUID).
+        const getProfileViewCount = async (): Promise<number> => {
+          try {
+            const { count, error: profileViewsError } = await supabase
+              .from('profile_views')
+              .select('*', { count: 'exact', head: true })
+              .eq('learner_id', user.id); // auth UUID, not learners.id
+            if (profileViewsError) {
+              logger.error('[get-usage-stats] profile_views count query failed', {
+                error: profileViewsError,
+                userId: user.id,
+                table: 'profile_views',
+              });
               return 0;
             }
-          })(),
-          getCount('learner_reports'),                     // learner_id = learners.id
+            return count || 0;
+          } catch (err) {
+            logger.error('[get-usage-stats] profile_views unexpected error', {
+              error: err,
+              userId: user.id,
+              table: 'profile_views',
+            });
+            return 0;
+          }
+        };
+
+        const [assessments, profileViews, reports] = await Promise.all([
+          getCount('personal_assessment_results'),   // learner_id = learners.id ✅
+          getProfileViewCount(),                     // learner_id = auth UUID ✅
+          getCount('learner_reports'),               // learner_id = learners.id ✅
         ]);
 
         return apiSuccess({

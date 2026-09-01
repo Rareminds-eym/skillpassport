@@ -216,7 +216,6 @@ const AnimatedProgressRing = ({ percentage, color, delay = 0 }) => {
 
     useEffect(() => {
         if (isInView) {
-            const start = 0;
             const duration = 2000; // 2 seconds
             const startTime = performance.now();
 
