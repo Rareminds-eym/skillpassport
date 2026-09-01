@@ -421,13 +421,22 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       // ───────── Courses ─────────
 
       case 'fetch-learner-info': {
+        const authUser = getContextUser(context);
         const { email } = params;
-        if (!email) return apiError(400, 'VALIDATION_ERROR', 'email required', context.request, { startTime });
-        const { data, error } = await supabase
+
+        let query = supabase
           .from('learners')
-          .select('grade, branch_field, learner_type')
-          .eq('email', email)
-          .maybeSingle();
+          .select('grade, branch_field, learner_type');
+
+        if (authUser?.id) {
+          query = query.eq('user_id', authUser.id);
+        } else if (email) {
+          query = query.ilike('email', email.trim());
+        } else {
+          return apiError(400, 'VALIDATION_ERROR', 'email required', context.request, { startTime });
+        }
+
+        const { data, error } = await query.maybeSingle();
         if (error && error.code !== 'PGRST116') return apiDbError(error, context.request, { startTime });
         return apiSuccess(data || null, context.request, { startTime });
       }
@@ -441,64 +450,134 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         if (!authUser?.id) {
           return apiError(401, 'UNAUTHORIZED', 'Missing authenticated user', context.request, { startTime });
         }
-        const { data: learner, error: learnerError } = await supabase
-          .from('learners')
-          .select('id')
-          .eq('user_id', authUser.id)
-          .maybeSingle();
-        if (learnerError && learnerError.code !== 'PGRST116') {
-          return apiDbError(learnerError, context.request, { startTime });
-        }
-        let serverAllowedCourseIds: string[] = [];
-        if (learner?.id) {
-          const { data: accessRows, error: accessError } = await supabase
-            .from('demo_course_access')
-            .select('course_id')
-            .eq('learner_id', learner.id)
-            .eq('is_enabled', true);
-          if (accessError) return apiDbError(accessError, context.request, { startTime });
-          serverAllowedCourseIds = (accessRows || []).map((row: any) => row.course_id);
-        }
-        // ────────────────────────────────────────────────────────────────
 
+        // Parallel Task 1: Fetch learner demo course access
+        const learnerAccessPromise = (async () => {
+          try {
+            const { data: learner, error: learnerError } = await supabase
+              .from('learners')
+              .select('id')
+              .eq('user_id', authUser.id)
+              .maybeSingle();
+
+            if (learnerError && learnerError.code !== 'PGRST116') {
+              throw learnerError;
+            }
+            if (!learner?.id) return [];
+
+            const { data: accessRows, error: accessError } = await supabase
+              .from('demo_course_access')
+              .select('course_id')
+              .eq('learner_id', learner.id)
+              .eq('is_enabled', true);
+
+            if (accessError) throw accessError;
+            return (accessRows || []).map((row: any) => row.course_id);
+          } catch (err) {
+            console.error('[fetch-courses-query] Error fetching learner demo access:', err);
+            return [];
+          }
+        })();
+
+        // Parallel Task 2: Build and execute course catalog query
         let query = supabase
           .from('courses')
           .select('*', { count: 'exact' })
-          .in('status', filters?.status || ['Active', 'Upcoming'])
           .is('deleted_at', null);
 
+        // Status filter
+        if (filters?.status) {
+          if (Array.isArray(filters.status)) {
+            query = query.in('status', filters.status);
+          } else if (filters.status !== 'all') {
+            query = query.eq('status', filters.status);
+          }
+        } else {
+          query = query.in('status', ['Active', 'Upcoming']);
+        }
+
+        // Classification filter (middle_school, high_school, higher_secondary, college)
         if (filters?.classification) {
           query = query.or(`classification.eq.${filters.classification},classification.is.null`);
         }
-        if (filters?.branchField && (!filters?.categoryFilter || filters.categoryFilter.length === 0)) {
-          query = query.or(`category.eq.${filters.branchField},category.is.null`);
+
+        // Search filter with strict sanitization (strip PostgREST control characters to prevent syntax errors / injection)
+        if (filters?.search && typeof filters.search === 'string') {
+          const cleanSearch = filters.search.replace(/[,()"\\]/g, ' ').trim();
+          if (cleanSearch) {
+            query = query.or(`title.ilike.%${cleanSearch}%,description.ilike.%${cleanSearch}%,code.ilike.%${cleanSearch}%`);
+          }
         }
-        if (filters?.search) {
-          const s = filters.search;
-          query = query.or(`title.ilike.%${s}%,description.ilike.%${s}%,code.ilike.%${s}%`);
-        }
-        if (filters?.filterStatus && filters.filterStatus !== 'all') {
-          query = query.eq('status', filters.filterStatus);
-        }
-        if (filters?.categories && filters.categories.length > 0) {
+
+        // Categories filter (from advanced filters)
+        if (filters?.categories && Array.isArray(filters.categories) && filters.categories.length > 0) {
           query = query.in('category', filters.categories);
         }
-        if (filters?.skillTypes && filters.skillTypes.length > 0) {
+
+        // Skill types filter
+        if (filters?.skillTypes && Array.isArray(filters.skillTypes) && filters.skillTypes.length > 0) {
           query = query.in('skill_type', filters.skillTypes);
         }
-        if (filters?.durations && filters.durations.length > 0) {
+
+        // Durations filter
+        if (filters?.durations && Array.isArray(filters.durations) && filters.durations.length > 0) {
           query = query.in('duration', filters.durations);
         }
 
-        const limit = filters?.limit || 20;
-        const offset = ((filters?.page || 1) - 1) * limit;
-        query = query.range(offset, offset + limit - 1).order('created_at', { ascending: false });
+        // Popularity / Enrollment Range filter
+        if (filters?.enrollmentRange && typeof filters.enrollmentRange === 'string') {
+          switch (filters.enrollmentRange) {
+            case '1-25':
+              query = query.gte('enrollment_count', 0).lte('enrollment_count', 25);
+              break;
+            case '26-100':
+              query = query.gte('enrollment_count', 26).lte('enrollment_count', 100);
+              break;
+            case '101-500':
+              query = query.gte('enrollment_count', 101).lte('enrollment_count', 500);
+              break;
+            case '500+':
+              query = query.gte('enrollment_count', 500);
+              break;
+          }
+        }
 
-        const { data, error, count } = await query;
-        if (error) return apiDbError(error, context.request, { startTime });
+        // Recency / Posted Within filter (days)
+        if (filters?.postedWithin && typeof filters.postedWithin === 'string') {
+          const days = parseInt(filters.postedWithin, 10);
+          if (!isNaN(days) && days > 0) {
+            const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+            query = query.gte('created_at', cutoff);
+          }
+        }
+
+        // Dynamic safe sorting allowlist
+        const sortMap: Record<string, { column: string; ascending: boolean }> = {
+          title: { column: 'title', ascending: true },
+          enrollment_count: { column: 'enrollment_count', ascending: false },
+          created_at: { column: 'created_at', ascending: false },
+        };
+        const sortConfig = (filters?.sortBy && sortMap[filters.sortBy]) || sortMap.created_at;
+
+        const limit = Math.min(Math.max(1, Number(filters?.limit) || 20), 100);
+        const page = Math.max(1, Number(filters?.page) || 1);
+        const offset = (page - 1) * limit;
+
+        query = query.range(offset, offset + limit - 1).order(sortConfig.column, { ascending: sortConfig.ascending });
+
+        // Execute course catalog query and learner demo access lookup concurrently
+        const [coursesResult, serverAllowedCourseIds] = await Promise.all([
+          query,
+          learnerAccessPromise,
+        ]);
+
+        if (coursesResult.error) {
+          return apiDbError(coursesResult.error, context.request, { startTime });
+        }
+
         return apiSuccess({
-          courses: data || [],
-          total: count || 0,
+          courses: coursesResult.data || [],
+          total: coursesResult.count || 0,
           assignedCourseIds: serverAllowedCourseIds,
         }, context.request, { startTime });
       }

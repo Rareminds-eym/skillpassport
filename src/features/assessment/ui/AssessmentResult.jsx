@@ -994,8 +994,7 @@ const AssessmentResult = () => {
                         </div>
 
                         <div className="flex gap-1.5 sm:gap-2 shrink-0">
-                            <Button
-                                type="button"
+                            {/* <Button
                                 variant="outline"
                                 onClick={handleRetry}
                                 disabled={retrying}
@@ -1005,7 +1004,7 @@ const AssessmentResult = () => {
                                 <span className="hidden sm:inline ml-1.5">
                                     {retrying ? 'Regenerating...' : 'Regenerate'}
                                 </span>
-                            </Button>
+                            </Button> */}
                             <Button
                                 type="button"
                                 onClick={handlePrint}
@@ -1080,8 +1079,7 @@ const AssessmentResult = () => {
                         </div>
 
                         <div className="flex gap-2">
-                            <Button
-                                type="button"
+                            {/* <Button
                                 variant="outline"
                                 onClick={handleRetry}
                                 disabled={retrying}
@@ -1098,7 +1096,7 @@ const AssessmentResult = () => {
                                         Regenerate
                                     </>
                                 )}
-                            </Button>
+                            </Button> */}
                             <Button
                                 type="button"
                                 onClick={handlePrint}

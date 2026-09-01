@@ -260,7 +260,7 @@ const UnifiedLogin = () => {
               sessionStorage.removeItem('invitation_email');
               sessionStorage.removeItem('invitation_return_url');
 
-              await useAuthStore.getState().refreshSession();
+              await useAuthStore.getState().refreshSession({ force: true });
 
               const isCompanyAdmin = invitationResult.memberType?.includes('company_admin');
               const isRecruiter = invitationResult.memberType?.includes('recruiter');

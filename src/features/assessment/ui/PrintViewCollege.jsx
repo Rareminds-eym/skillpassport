@@ -12,6 +12,69 @@ import PrintStyles from './shared/PrintStyles';
 import Watermarks, { DataPrivacyNotice, ReportDisclaimer } from './shared/Watermarks';
 import DetailedAssessmentBreakdown from './shared/DetailedAssessmentBreakdown';
 
+const pickFirstNumber = (...values) => {
+  for (const value of values) {
+    const number = Number(value);
+    if (Number.isFinite(number)) return number;
+  }
+  return 0;
+};
+
+const clampPercentage = (value) => Math.max(0, Math.min(100, Math.round(pickFirstNumber(value))));
+
+const getRiasecMaxScore = (riasec) => {
+  const configuredMax = pickFirstNumber(riasec?.maxScore) || 20;
+  const scores = Object.values(riasec?.scores || {}).map((score) => pickFirstNumber(score));
+  const highestScore = scores.length ? Math.max(...scores) : 0;
+
+  if (highestScore > configuredMax) {
+    return Math.max(40, configuredMax, highestScore);
+  }
+
+  return configuredMax;
+};
+
+const getRiasecScore = (scores, code) => {
+  const scoreKeys = {
+    R: 'realistic',
+    I: 'investigative',
+    A: 'artistic',
+    S: 'social',
+    E: 'enterprising',
+    C: 'conventional'
+  };
+
+  return pickFirstNumber(scores?.[code], scores?.[scoreKeys[code]]);
+};
+
+const getBigFiveTraitScore = (bigFive, shortKey, longKey) => (
+  pickFirstNumber(
+    bigFive?.[longKey],
+    bigFive?.scores?.[longKey],
+    bigFive?.[shortKey],
+    bigFive?.scores?.[shortKey]
+  )
+);
+
+const normalizeKnowledgeSummary = (knowledge) => {
+  const details = knowledge?.details || knowledge || {};
+  const percentage = clampPercentage(pickFirstNumber(knowledge?.score, details.score, knowledge?.percentage));
+  const correctCount = pickFirstNumber(knowledge?.correctCount, details.correctCount);
+  const mappedTotalQuestions = pickFirstNumber(knowledge?.totalQuestions, details.totalQuestions);
+  const inferredTotalQuestions = correctCount > 0 && percentage > 0
+    ? Math.round(correctCount / (percentage / 100))
+    : 0;
+
+  return {
+    percentage,
+    correctCount,
+    totalQuestions: mappedTotalQuestions || inferredTotalQuestions,
+    strongTopics: knowledge?.strongTopics || details.strongTopics || [],
+    weakTopics: knowledge?.weakTopics || details.weakTopics || [],
+    recommendation: knowledge?.recommendation || details.recommendation
+  };
+};
+
 /**
  * Learning Styles Section
  * Displays learner's preferred learning approaches
@@ -205,7 +268,6 @@ const PrintViewCollege = ({ results, learnerInfo, riasecNames, traitNames, cours
   const learningStyle = normalizedResults.learningStyle || normalizedResults.gemini_results?.learningStyle;
   const characterStrengths = normalizedResults.characterStrengths || normalizedResults.gemini_results?.characterStrengths;
   const timingAnalysis = normalizedResults.timingAnalysis || normalizedResults.gemini_results?.timingAnalysis;
-  const adaptiveAptitudeResults = normalizedResults.adaptiveAptitudeResults || normalizedResults.gemini_results?.adaptiveAptitudeResults;
   const dbCourseRecommendations = normalizedResults.courseRecommendations || normalizedResults.platformCourses || normalizedResults.gemini_results?.courseRecommendations || normalizedResults.gemini_results?.platformCourses;
 
 
@@ -269,7 +331,6 @@ const PrintViewCollege = ({ results, learnerInfo, riasecNames, traitNames, cours
         )}
 
         {timingAnalysis && <TimingAnalysisSection timingAnalysis={timingAnalysis} />}
-        {adaptiveAptitudeResults && <AdaptiveAptitudeResultsSection adaptiveAptitudeResults={adaptiveAptitudeResults} />}
 
         <ReportDisclaimer />
       </div>
@@ -300,8 +361,8 @@ const PrintViewCollege = ({ results, learnerInfo, riasecNames, traitNames, cours
         {profileSnapshot && <ProfileSnapshotSection profileSnapshot={profileSnapshot} />}
         {finalNote && <FinalNoteSection finalNote={finalNote} />}
 
-        <DetailedAssessmentBreakdown 
-          results={results} 
+        <DetailedAssessmentBreakdown
+          results={normalizedResults}
           riasecNames={safeRiasecNames}
           gradeLevel="college"
         />
@@ -314,7 +375,6 @@ const PrintViewCollege = ({ results, learnerInfo, riasecNames, traitNames, cours
         )}
 
         {timingAnalysis && <TimingAnalysisSection timingAnalysis={timingAnalysis} />}
-        {adaptiveAptitudeResults && <AdaptiveAptitudeResultsSection adaptiveAptitudeResults={adaptiveAptitudeResults} />}
 
         <ReportDisclaimer />
       </div>
@@ -338,12 +398,12 @@ const InterestProfileSection = ({ riasec, safeRiasecNames }) => {
     scores = riasec._originalScores;
   }
 
-  const maxScore = riasec.maxScore || 20;
+  const maxScore = getRiasecMaxScore(riasec);
   const codes = ['R', 'I', 'A', 'S', 'E', 'C'];
   
   // Get top three interests
   const topThree = riasec.topThree || codes
-    .map(code => ({ code, score: scores[code] || 0 }))
+    .map(code => ({ code, score: getRiasecScore(scores, code) }))
     .sort((a, b) => b.score - a.score)
     .slice(0, 3)
     .map(item => item.code);
@@ -408,8 +468,8 @@ const InterestProfileSection = ({ riasec, safeRiasecNames }) => {
           zIndex: 1
         }}>
           {topThree.map((code, idx) => {
-            const score = scores[code] || 0;
-            
+            const score = getRiasecScore(scores, code);
+
             return (
               <div key={code} style={{ width: '28%', textAlign: 'center' }}>
                 <div style={{ fontWeight: 'bold', fontSize: '11px', color: '#1e293b', marginBottom: '4px' }}>
@@ -511,7 +571,7 @@ const InterestProfileSection = ({ riasec, safeRiasecNames }) => {
           <h4 style={{ fontSize: '10px', fontWeight: 'bold', color: '#1e293b', marginBottom: '6px' }}>Score Breakdown</h4>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
             {codes.map((code) => {
-              const pct = riasec.percentages[code] || 0;
+              const pct = clampPercentage(riasec.percentages[code] || 0);
               const barColor = topThree.includes(code) ? '#3b82f6' : '#94a3b8';
               return (
                 <div key={code} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -599,9 +659,24 @@ const CognitiveAbilitiesSection = ({ aptitude }) => {
         </thead>
         <tbody>
           {Object.entries(aptitude.scores).map(([ability, scoreData]) => {
-            const correct = scoreData.correct || 0;
-            const total = scoreData.total || 0;
-            const percentage = scoreData.percentage || (total > 0 ? Math.round((correct / total) * 100) : 0);
+            const hasCorrectCount = scoreData && typeof scoreData === 'object' && (
+              scoreData.correct !== undefined ||
+              scoreData.correctCount !== undefined
+            );
+            const hasTotalCount = scoreData && typeof scoreData === 'object' && (
+              scoreData.total !== undefined ||
+              scoreData.totalQuestions !== undefined
+            );
+            const rawPercentage = typeof scoreData === 'object'
+              ? pickFirstNumber(scoreData.percentage, scoreData.accuracy, scoreData.score)
+              : pickFirstNumber(scoreData);
+            const percentage = clampPercentage(rawPercentage);
+            const correct = hasCorrectCount
+              ? pickFirstNumber(scoreData.correct, scoreData.correctCount)
+              : percentage;
+            const total = hasTotalCount
+              ? pickFirstNumber(scoreData.total, scoreData.totalQuestions)
+              : 100;
             const scoreStyle = getScoreStyle(percentage);
             const isTopStrength = aptitude.topStrengths?.includes(ability);
 
@@ -698,8 +773,15 @@ const BigFivePersonalitySection = ({ bigFive, safeTraitNames }) => {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '10px', marginTop: '10px' }}>
         {traits.map((trait) => {
-          const score = bigFive[trait] || 0;
-          const percentage = Math.round((score / 5) * 100);
+          const longTraitKeys = {
+            O: 'openness',
+            C: 'conscientiousness',
+            E: 'extraversion',
+            A: 'agreeableness',
+            N: 'neuroticism'
+          };
+          const score = getBigFiveTraitScore(bigFive, trait, longTraitKeys[trait]);
+          const percentage = clampPercentage((score / 5) * 100);
           const scoreStyle = getScoreStyle(percentage);
 
           return (
@@ -841,15 +923,17 @@ const WorkValuesSection = ({ workValues }) => {
 const KnowledgeAssessmentSection = ({ knowledge }) => {
   if (!knowledge || Object.keys(knowledge).length === 0) return null;
 
-  const isFlatFormat = 'totalQuestions' in knowledge || 'correctCount' in knowledge || 'strongTopics' in knowledge;
+  const isFlatFormat = 'score' in knowledge || 'details' in knowledge || 'totalQuestions' in knowledge || 'correctCount' in knowledge || 'strongTopics' in knowledge;
 
   if (isFlatFormat) {
-    const percentage = typeof knowledge.score === 'number' ? Math.round(knowledge.score) : 0;
+    const normalizedKnowledge = normalizeKnowledgeSummary(knowledge);
+    const percentage = normalizedKnowledge.percentage;
     const scoreStyle = getScoreStyle(percentage);
-    const correctCount = knowledge.correctCount || 0;
-    const totalQuestions = knowledge.totalQuestions || 0;
-    const strongTopics = knowledge.strongTopics || [];
-    const weakTopics = knowledge.weakTopics || [];
+    const correctCount = normalizedKnowledge.correctCount;
+    const totalQuestions = normalizedKnowledge.totalQuestions;
+    const strongTopics = normalizedKnowledge.strongTopics;
+    const weakTopics = normalizedKnowledge.weakTopics;
+    const scoreText = totalQuestions > 0 ? `${correctCount}/${totalQuestions}` : `${percentage}%`;
 
     return (
       <>
@@ -861,7 +945,7 @@ const KnowledgeAssessmentSection = ({ knowledge }) => {
             <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#0369a1' }}>Overall Knowledge Score</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span style={{ fontSize: '10px', fontWeight: '600', color: '#1e293b' }}>
-                {correctCount}/{totalQuestions}
+                {scoreText}
               </span>
               <span style={{ ...printStyles.badge, background: scoreStyle.bg, color: scoreStyle.color, border: `1px solid ${scoreStyle.border}`, fontSize: '10px', fontWeight: 'bold' }}>
                 {percentage}%
@@ -904,10 +988,10 @@ const KnowledgeAssessmentSection = ({ knowledge }) => {
         )}
 
         {/* Recommendation */}
-        {knowledge.recommendation && (
+        {normalizedKnowledge.recommendation && (
           <div style={{ ...printStyles.card, background: '#eff6ff', border: '1px solid #bfdbfe' }}>
             <p style={{ margin: '0', fontSize: '9px', lineHeight: '1.5', color: '#1e40af' }}>
-              <strong>Recommendation:</strong> {safeRender(knowledge.recommendation)}
+              <strong>Recommendation:</strong> {safeRender(normalizedKnowledge.recommendation)}
             </p>
           </div>
         )}
@@ -918,9 +1002,9 @@ const KnowledgeAssessmentSection = ({ knowledge }) => {
   // Legacy domain-based format: { domainName: { correct, total, percentage }, ... }
   const getPercentage = (score) => {
     if (typeof score === 'object' && score !== null) {
-      return score.percentage || (score.total > 0 ? Math.round((score.correct / score.total) * 100) : 0);
+      return clampPercentage(score.percentage || (score.total > 0 ? (score.correct / score.total) * 100 : 0));
     }
-    return Math.round(score);
+    return clampPercentage(score);
   };
 
   const sortedDomains = Object.entries(knowledge)
@@ -1036,7 +1120,7 @@ const EmployabilityScoreSection = ({ employability }) => {
           <div style={printStyles.twoCol}>
             {Object.entries(employability.skillScores).map(([skill, score]) => {
               const isPercentage = score > 5;
-              const percentage = isPercentage ? Math.round(score) : Math.round((score / 5) * 100);
+              const percentage = isPercentage ? clampPercentage(score) : clampPercentage((score / 5) * 100);
               const scoreStyle = getScoreStyle(percentage);
               return (
                 <div key={skill} style={printStyles.card}>
@@ -1059,7 +1143,7 @@ const EmployabilityScoreSection = ({ employability }) => {
           <h3 style={printStyles.subTitle}>Score Breakdown</h3>
           <div style={printStyles.twoCol}>
             {Object.entries(employability.breakdown).map(([component, score]) => {
-              const percentage = Math.round(score);
+              const percentage = clampPercentage(score);
               const scoreStyle = getScoreStyle(percentage);
               return (
                 <div key={component} style={printStyles.card}>
@@ -2333,151 +2417,6 @@ const TimingAnalysisSection = ({ timingAnalysis }) => {
                 </p>
               </div>
             ))}
-          </div>
-        </div>
-      )}
-    </>
-  );
-};
-
-/**
- * AdaptiveAptitudeResultsSection Component
- * Renders detailed adaptive aptitude breakdown: accuracy by subtag, difficulty, overall stats
- */
-const AdaptiveAptitudeResultsSection = ({ adaptiveAptitudeResults }) => {
-  if (!adaptiveAptitudeResults) return null;
-
-  const avgResponseSec = adaptiveAptitudeResults.averageResponseTimeMs
-    ? (adaptiveAptitudeResults.averageResponseTimeMs / 1000).toFixed(1)
-    : null;
-
-  const tierLabels = { H: 'High', M: 'Medium', L: 'Low' };
-  const tierColors = {
-    H: { bg: '#dcfce7', color: '#166534', border: '#86efac' },
-    M: { bg: '#fef9c3', color: '#854d0e', border: '#fde047' },
-    L: { bg: '#fee2e2', color: '#991b1b', border: '#fca5a5' }
-  };
-  const tier = adaptiveAptitudeResults.tier || '';
-  const tColors = tierColors[tier] || tierColors['M'];
-
-  return (
-    <>
-      <h2 style={{ ...printStyles.sectionTitle, marginTop: '12px' }}>Adaptive Aptitude Assessment</h2>
-
-      {/* Summary Stats */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
-        {tier && (
-          <div style={{ ...printStyles.card, flex: '1', minWidth: '90px', textAlign: 'center' }}>
-            <div style={{ fontSize: '8px', color: '#6b7280', marginBottom: '4px' }}>Tier</div>
-            <span style={{ ...printStyles.badge, background: tColors.bg, color: tColors.color, border: `1px solid ${tColors.border}`, fontSize: '10px', fontWeight: 'bold' }}>
-              {tierLabels[tier] || tier}
-            </span>
-          </div>
-        )}
-        {adaptiveAptitudeResults.overallAccuracy != null && (
-          <div style={{ ...printStyles.card, flex: '1', minWidth: '90px', textAlign: 'center' }}>
-            <div style={{ fontSize: '8px', color: '#6b7280', marginBottom: '4px' }}>Overall Accuracy</div>
-            <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#0369a1' }}>
-              {Math.round(adaptiveAptitudeResults.overallAccuracy)}%
-            </div>
-          </div>
-        )}
-        {adaptiveAptitudeResults.totalCorrect != null && adaptiveAptitudeResults.totalQuestions != null && (
-          <div style={{ ...printStyles.card, flex: '1', minWidth: '90px', textAlign: 'center' }}>
-            <div style={{ fontSize: '8px', color: '#6b7280', marginBottom: '4px' }}>Score</div>
-            <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#1e293b' }}>
-              {adaptiveAptitudeResults.totalCorrect}/{adaptiveAptitudeResults.totalQuestions}
-            </div>
-          </div>
-        )}
-        {avgResponseSec && (
-          <div style={{ ...printStyles.card, flex: '1', minWidth: '90px', textAlign: 'center' }}>
-            <div style={{ fontSize: '8px', color: '#6b7280', marginBottom: '4px' }}>Avg Response</div>
-            <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#1e293b' }}>
-              {avgResponseSec}s
-            </div>
-          </div>
-        )}
-        {adaptiveAptitudeResults.pathClassification && (
-          <div style={{ ...printStyles.card, flex: '1', minWidth: '90px', textAlign: 'center' }}>
-            <div style={{ fontSize: '8px', color: '#6b7280', marginBottom: '4px' }}>Path</div>
-            <span style={{ ...printStyles.badge, background: '#e0e7ff', color: '#4338ca', border: '1px solid #a5b4fc', fontSize: '9px', fontWeight: '600', textTransform: 'capitalize' }}>
-              {adaptiveAptitudeResults.pathClassification}
-            </span>
-          </div>
-        )}
-      </div>
-
-      {/* Accuracy by Subtag */}
-      {adaptiveAptitudeResults.accuracyBySubtag && Object.keys(adaptiveAptitudeResults.accuracyBySubtag).length > 0 && (
-        <div style={{ marginBottom: '10px' }}>
-          <h3 style={printStyles.subTitle}>Accuracy by Cognitive Area</h3>
-          <table style={printStyles.table}>
-            <thead>
-              <tr>
-                <th style={printStyles.th}>Cognitive Area</th>
-                <th style={{ ...printStyles.th, width: '80px', textAlign: 'center' }}>Score</th>
-                <th style={{ ...printStyles.th, width: '140px' }}>Accuracy</th>
-              </tr>
-            </thead>
-            <tbody>
-              {Object.entries(adaptiveAptitudeResults.accuracyBySubtag)
-                .sort(([, a], [, b]) => (b.accuracy || 0) - (a.accuracy || 0))
-                .map(([subtag, data]) => {
-                  const accuracy = Math.round(data.accuracy || 0);
-                  const scoreStyle = getScoreStyle(accuracy);
-                  return (
-                    <tr key={subtag}>
-                      <td style={printStyles.td}>
-                        <span style={{ fontWeight: '600', fontSize: '10px', textTransform: 'capitalize' }}>
-                          {subtag.replace(/_/g, ' ')}
-                        </span>
-                      </td>
-                      <td style={{ ...printStyles.td, textAlign: 'center', fontWeight: '600' }}>
-                        {data.correct || 0}/{data.total || 0}
-                      </td>
-                      <td style={printStyles.td}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <div style={{ flex: 1 }}>
-                            <div style={printStyles.progressBar}>
-                              <div style={{ width: `${accuracy}%`, height: '100%', background: accuracy >= 70 ? '#22c55e' : accuracy >= 40 ? '#eab308' : '#ef4444', borderRadius: '4px' }}></div>
-                            </div>
-                          </div>
-                          <span style={{ ...printStyles.badge, background: scoreStyle.bg, color: scoreStyle.color, border: `1px solid ${scoreStyle.border}` }}>
-                            {accuracy}%
-                          </span>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* Accuracy by Difficulty */}
-      {adaptiveAptitudeResults.accuracyByDifficulty && Object.keys(adaptiveAptitudeResults.accuracyByDifficulty).length > 0 && (
-        <div>
-          <h3 style={printStyles.subTitle}>Performance by Difficulty Level</h3>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-            {Object.entries(adaptiveAptitudeResults.accuracyByDifficulty)
-              .sort(([a], [b]) => Number(a) - Number(b))
-              .map(([level, data]) => {
-                const accuracy = Math.round(data.accuracy || 0);
-                const scoreStyle = getScoreStyle(accuracy);
-                return (
-                  <div key={level} style={{ ...printStyles.card, flex: '1', minWidth: '80px', textAlign: 'center' }}>
-                    <div style={{ fontSize: '8px', color: '#6b7280', marginBottom: '2px' }}>Level {level}</div>
-                    <div style={{ fontSize: '14px', fontWeight: 'bold', color: scoreStyle.color, marginBottom: '2px' }}>
-                      {accuracy}%
-                    </div>
-                    <div style={{ fontSize: '8px', color: '#6b7280' }}>
-                      {data.correct || 0}/{data.total || 0}
-                    </div>
-                  </div>
-                );
-              })}
           </div>
         </div>
       )}
