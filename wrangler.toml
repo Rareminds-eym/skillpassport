@@ -56,7 +56,7 @@ entrypoint = "EmailService"
 ENVIRONMENT = "production"
 REALTIME_PARTITIONS = "10"
 SUPABASE_URL = "https://dpooleduinyyzxgrcwko.supabase.co"
-LTE_APP_URL = "https://lte.rareminds.in/"
+LTE_APP_URL = "https://lte-staging.rareminds.in/"
 COOKIE_DOMAIN = ".rareminds.in"
 GOOGLE_CLIENT_ID = "775729170329-s95ebosv3kj0b844ol87uhcjsgocq2mk.apps.googleusercontent.com"
 GOOGLE_OAUTH_ENABLED = "true"
@@ -74,6 +74,7 @@ GOOGLE_OAUTH_ENABLED = "true"
 # - EMAIL_API_KEY
 # - SIGNING_SECRET (for media access tokens)
 # - GOOGLE_CLIENT_SECRET (Google OAuth token exchange)
+# - LTE_INTERNAL_SECRET
 #
 # Required plain vars (set via dashboard):
 # - CLOUDFLARE_R2_ACCESS_KEY_ID
