@@ -7,6 +7,7 @@ import { generateRoleOverview, getFallbackRoleOverview } from '@/features/counse
 import { matchCoursesForRole as matchCoursesForRoleRAG } from '@/features/courses';
 import { apiPost, apiGet } from '@/shared/api/apiClient';
 import { useAuthStore } from '@/shared/model/authStore';
+import { authClient } from '@/shared/api/authClient';
 // import { useStrengthsGrowthPlan } from '@/features/assessment/lib/useStrengthsGrowthPlan';
 import jsPDF from 'jspdf';
 import { generateLteCode } from '@/features/auth/api/lteSsoApi';
@@ -137,6 +138,30 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results, 
             setCourseMatchingLoading(true);
 
             try {
+                // Ensure auth vault is initialized before withAuth call - avoids MISSING_CREDENTIALS 401 on cold start
+                try {
+                    if (authClient.getState().phase === 'uninitialized') {
+                        const initResult = await authClient.initialize();
+                        if (initResult?.status === 'unauthenticated') {
+                            console.warn('[CareerTrackModal] Auth init unauthenticated - user may need to re-login');
+                        }
+                    }
+                } catch (initError) {
+                    const code = initError?.code || initError?.error?.code || 'UNKNOWN';
+                    const status = initError?.httpStatus || initError?.status;
+                    console.warn('[CareerTrackModal] Auth init failed:', { code, status, message: initError?.message });
+
+                    // Retryable errors (network/rate-limit) - apiPost will retry via vault refresh
+                    if (initError?.retryable) {
+                        console.info('[CareerTrackModal] Retryable init error - proceeding to apiPost for vault refresh');
+                    } else if (code === 'SESSION_EXPIRED' || code === 'MISSING_CREDENTIALS' || status === 401) {
+                        console.error('[CareerTrackModal] Session expired - clearing loading and showing fallback');
+                        // Don't throw - let outer try/catch handle RAG fallback, but log for observability
+                    } else {
+                        console.error('[CareerTrackModal] Unexpected auth init error:', initError);
+                    }
+                    // Intentionally not throwing - apiPost will surface 401 with proper code for withAuth
+                }
                 // Try HTTP endpoint first (new assessments with capabilities)
                 try {
                     const capResponse = await apiPost('/assessment/get-role-capabilities', {
@@ -162,6 +187,11 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results, 
                         return;
                     }
                 } catch (httpError) {
+                    // Surface 401 MISSING_CREDENTIALS clearly - caller needs login redirect
+                    const code = httpError?.code || httpError?.message || '';
+                    if (String(code).includes('MISSING_CREDENTIALS') || String(httpError?.status) === '401') {
+                        console.error('[CareerTrackModal] Authentication required - session expired. Redirect to login.', httpError);
+                    }
                     console.warn('[CareerTrackModal] HTTP endpoint failed, trying RAG fallback:', httpError);
                 }
 
