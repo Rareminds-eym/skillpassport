@@ -9,7 +9,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { isStale } from '../../lib/sync-shadow';
+import { resolveUserEntitlement } from './org-subscription';
 
 const PLAN_HIERARCHY = [
   'freemium',
@@ -53,63 +53,38 @@ export async function checkServerFeatureAccess(
   feature: string
 ): Promise<FeatureAccessResult> {
   try {
-    const { data: cached, error } = await supabase
-      .from('subscription_cache')
-      .select('id, status, plan_code, features, synced_at')
-      .eq('user_id', userId)
-      .in('status', ['active', 'grace_period'])
-      .maybeSingle();
+    const entitlement = await resolveUserEntitlement(supabase, userId);
 
-    if (error) {
-      console.error('[ServerFeatureGating] Error fetching subscription_cache:', error);
+    if (entitlement) {
+      const planCode = entitlement.plan_code;
+
+      if (planCode === 'freemium') {
+        const hasAccess = FREEMIUM_FEATURES[feature] === true;
+        return {
+          hasAccess,
+          reason: hasAccess ? undefined : 'Feature not included in Freemium plan',
+          planCode,
+          requiresUpgrade: !hasAccess,
+        };
+      }
+
+      const planFeatures = entitlement.features || [];
+      const hasFeature = planFeatures.includes(feature) || entitlement.is_organization_license === true;
       return {
-        hasAccess: false,
-        reason: 'Unable to verify subscription',
-        requiresUpgrade: false,
-      };
-    }
-
-    if (!cached) {
-      return {
-        hasAccess: false,
-        reason: 'No active subscription',
-        requiresUpgrade: true,
-      };
-    }
-
-    // Self-healing: if stale, trigger async refresh (non-blocking)
-    if (isStale(cached.synced_at)) {
-      refreshCacheAsync(supabase, userId).catch(() => {});
-    }
-
-    const planCode = cached.plan_code;
-
-    if (!planCode) {
-      return {
-        hasAccess: false,
-        reason: 'Invalid subscription plan',
-        requiresUpgrade: false,
-      };
-    }
-
-    if (planCode === 'freemium') {
-      const hasAccess = FREEMIUM_FEATURES[feature] === true;
-      return {
-        hasAccess,
-        reason: hasAccess ? undefined : 'Feature not included in Freemium plan',
+        hasAccess: hasFeature,
+        reason: hasFeature ? undefined : 'Feature not included in current plan',
         planCode,
-        requiresUpgrade: !hasAccess,
+        requiresUpgrade: !hasFeature,
       };
     }
 
-    const planFeatures: string[] = Array.isArray(cached.features) ? cached.features : [];
-    const hasFeature = planFeatures.includes(feature);
-
+    // Fallback for users without paid subscription — check if feature is allowed on freemium tier
+    const isFreemiumAllowed = FREEMIUM_FEATURES[feature] === true;
     return {
-      hasAccess: hasFeature,
-      reason: hasFeature ? undefined : 'Feature not included in current plan',
-      planCode,
-      requiresUpgrade: !hasFeature,
+      hasAccess: isFreemiumAllowed,
+      reason: isFreemiumAllowed ? undefined : 'No active subscription',
+      planCode: 'freemium',
+      requiresUpgrade: !isFreemiumAllowed,
     };
   } catch (error) {
     console.error('[ServerFeatureGating] Unexpected error:', error);
@@ -222,32 +197,3 @@ export function requireFeature(feature: string) {
   };
 }
 
-async function refreshCacheAsync(supabase: SupabaseClient, userId: string): Promise<void> {
-  // Self-healing: when a stale cache entry is detected during a feature check,
-  // attempt to refresh it from the auth DB. Since this module doesn't have
-  // access to the Cloudflare env (SSO_SERVICE binding), we use the supabase
-  // client to call the `refresh_subscription_cache` RPC if it exists,
-  // or fall back to marking the entry for the reconciliation cron to pick up.
-  try {
-    // Attempt direct sync via database function (if deployed)
-    const { error: rpcError } = await supabase.rpc('refresh_subscription_cache_for_user', {
-      target_user_id: userId,
-    });
-
-    if (rpcError) {
-      // RPC not deployed or failed — this is expected pre-migration.
-      // The nightly reconciliation cron will correct the stale data.
-      // Also, the next payment handler call will write-through sync.
-      console.warn(
-        `[ServerFeatureGating] Self-heal RPC unavailable for user ${userId}: ${rpcError.message}. ` +
-        'Reconciliation cron will correct on next cycle.'
-      );
-    } else {
-      console.log(`[ServerFeatureGating] Self-healed stale cache for user ${userId}`);
-    }
-  } catch (err) {
-    // Non-critical — feature gating still uses whatever cache data exists.
-    // The write-through sync on the next mutation will correct this.
-    console.warn('[ServerFeatureGating] Self-heal failed (non-critical):', err);
-  }
-}
