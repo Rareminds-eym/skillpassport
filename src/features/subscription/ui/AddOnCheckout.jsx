@@ -26,8 +26,8 @@ import {
 import { useCallback, useMemo, useState } from 'react';
 
 import { clearFeatureAccessCache } from '@/features/subscription/model/useFeatureGate';
-import { addOnPaymentService } from '@/features/subscription';
-import { loadRazorpayScript } from '@/features/subscription/api';
+import addOnPaymentService from '@/features/subscription/api/addOnPaymentService';
+import { loadRazorpayScript } from '@/features/subscription/api/razorpayService';
 
 import { useSubscription } from '@/features/subscription/model/subscriptionStore';
 /**

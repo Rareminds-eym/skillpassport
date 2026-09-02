@@ -7,7 +7,6 @@
  */
 
 import { ssoClient } from '@/shared/api/ssoClient';
-import { apiGet } from '@/shared/api/apiClient';
 import { extractErrorMessage } from './paymentsApiService';
 
 // Use Pages Functions for payments (not direct worker access)

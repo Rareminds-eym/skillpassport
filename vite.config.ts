@@ -75,6 +75,21 @@ export default defineConfig({
             return 'vendor-supabase';
           }
 
+          if (packageName.startsWith('@rareminds-eym/') ||
+            packageName === '@fingerprintjs/fingerprintjs' ||
+            packageName === 'jose' ||
+            packageName === 'aws4fetch') {
+            return 'vendor-auth';
+          }
+
+          if (packageName === '@google/generative-ai' || packageName === 'openai') {
+            return 'vendor-ai';
+          }
+
+          if (packageName === '@tanstack/react-query' || packageName === 'zustand') {
+            return 'vendor-state';
+          }
+
           // Charts - group together
           if (packageName.startsWith('victory') || packageName === 'victory-vendor' ||
             packageName.startsWith('d3-') || packageName === 'recharts' ||
@@ -89,11 +104,24 @@ export default defineConfig({
             return 'vendor-animation';
           }
 
-          // PDF/Document libraries - group together
-          if (packageName === 'jspdf' || packageName === 'jspdf-autotable' ||
-            packageName === 'pdfjs-dist' || packageName === 'pdf-lib' ||
-            packageName === 'html2canvas' || packageName === 'docx') {
-            return 'vendor-pdf';
+          if (packageName === 'pdfjs-dist') {
+            return 'vendor-pdfjs';
+          }
+
+          if (packageName === 'jspdf' || packageName === 'jspdf-autotable') {
+            return 'vendor-jspdf';
+          }
+
+          if (packageName === 'pdf-lib') {
+            return 'vendor-pdflib';
+          }
+
+          if (packageName === 'html2canvas') {
+            return 'vendor-html2canvas';
+          }
+
+          if (packageName === 'docx') {
+            return 'vendor-docx';
           }
 
           // Icons - group together
@@ -102,9 +130,31 @@ export default defineConfig({
             return 'vendor-icons';
           }
 
-          // Split large data libraries into separate chunks to stay under 25MB limit
           if (packageName === 'country-state-city') {
-            return 'vendor-geo-data';
+            const normalizedId = id.replace(/\\/g, '/');
+
+            if (
+              normalizedId.includes('/lib/city.') ||
+              normalizedId.includes('/lib/assets/city.json')
+            ) {
+              return 'vendor-geo-city';
+            }
+
+            if (
+              normalizedId.includes('/lib/state.') ||
+              normalizedId.includes('/lib/assets/state.json')
+            ) {
+              return 'vendor-geo-state';
+            }
+
+            if (
+              normalizedId.includes('/lib/country.') ||
+              normalizedId.includes('/lib/assets/country.json')
+            ) {
+              return 'vendor-geo-country';
+            }
+
+            return 'vendor-geo';
           }
 
           if (packageName === 'xlsx') {
@@ -117,6 +167,40 @@ export default defineConfig({
 
           if (packageName === 'papaparse' || packageName === 'csv-parse') {
             return 'vendor-csv';
+          }
+
+          if (packageName === 'react-markdown' ||
+            packageName === 'rehype-sanitize' ||
+            packageName.startsWith('remark-') ||
+            packageName.startsWith('rehype-') ||
+            packageName.startsWith('micromark') ||
+            packageName.startsWith('mdast-') ||
+            packageName.startsWith('hast-') ||
+            packageName.startsWith('unist-') ||
+            packageName === 'unified' ||
+            packageName === 'vfile') {
+            return 'vendor-markdown';
+          }
+
+          if (packageName === 'react-hook-form' ||
+            packageName === 'react-datepicker' ||
+            packageName === 'react-day-picker' ||
+            packageName === 'react-calendar' ||
+            packageName === 'cmdk' ||
+            packageName === 'embla-carousel-react') {
+            return 'vendor-forms';
+          }
+
+          if (packageName === 'date-fns' ||
+            packageName === 'uuid' ||
+            packageName === 'zod' ||
+            packageName === 'qrcode' ||
+            packageName === 'qrcode.react' ||
+            packageName === 'file-saver' ||
+            packageName === 'class-variance-authority' ||
+            packageName === 'clsx' ||
+            packageName === 'tailwind-merge') {
+            return 'vendor-utils';
           }
 
           // Everything else

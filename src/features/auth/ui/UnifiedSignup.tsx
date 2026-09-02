@@ -1,4 +1,4 @@
-import { City, Country, State } from 'country-state-city';
+import { getAllCountries, getCitiesOfState, getStatesOfCountry, type CountryOption } from '@/shared/lib/geoLocation';
 import {
   AlertCircle,
   ArrowRight,
@@ -116,8 +116,6 @@ interface SignupState {
   inviteOrgName: string | null;
   inviteValidated: boolean;
 }
-
-const ALL_COUNTRIES = Country.getAllCountries();
 
 // Country codes for phone numbers with flags - comprehensive list
 const COUNTRY_CODES = [
@@ -339,6 +337,7 @@ const UnifiedSignup = () => {
   });
 
   const [currentStep, setCurrentStep] = useState(1);
+  const [allCountries, setAllCountries] = useState<CountryOption[]>([]);
   const [states, setStates] = useState<any[]>([]);
   const [cities, setCities] = useState<any[]>([]);
   const [countryCodeDropdownOpen, setCountryCodeDropdownOpen] = useState(false);
@@ -443,6 +442,10 @@ const UnifiedSignup = () => {
 
   const selectedCountry = COUNTRY_CODES.find(cc => cc.dialCode === state.countryCode) || COUNTRY_CODES[0];
 
+  useEffect(() => {
+    void getAllCountries().then(setAllCountries).catch(() => setAllCountries([]));
+  }, []);
+
   // `allRoles` is the curated set of options the signup dropdown offers
   // (SIGNUP_ROLE_OPTIONS above, which excludes educators — onboarded via the
   // admin flow). 'recruitment_admin' is the UI-only redirect label (NOT an SSO
@@ -462,9 +465,14 @@ const UnifiedSignup = () => {
   // Load states when country changes
   useEffect(() => {
     if (state.country) {
-      const stateList = State.getStatesOfCountry(state.country);
-      setStates(stateList || []);
+      void getStatesOfCountry(state.country)
+        .then((stateList) => setStates(stateList || []))
+        .catch(() => setStates([]));
+      setCities([]);
       setState(prev => ({ ...prev, state: '', city: '' }));
+    } else {
+      setStates([]);
+      setCities([]);
     }
   }, [state.country]);
 
@@ -473,9 +481,14 @@ const UnifiedSignup = () => {
     if (state.state && state.country) {
       const stateObj = states.find(s => s.name === state.state);
       if (stateObj) {
-        const cityList = City.getCitiesOfState(state.country, stateObj.isoCode);
-        setCities(cityList || []);
+        void getCitiesOfState(state.country, stateObj.isoCode)
+          .then((cityList) => setCities(cityList || []))
+          .catch(() => setCities([]));
+      } else {
+        setCities([]);
       }
+    } else {
+      setCities([]);
     }
   }, [state.state, state.country, states]);
 
@@ -689,7 +702,7 @@ const UnifiedSignup = () => {
     // Track signup_submit — form is valid, API call is about to start
     trackSignup.submit(
       state.selectedRole || undefined,
-      ALL_COUNTRIES.find(c => c.isoCode === state.country)?.name
+      allCountries.find(c => c.isoCode === state.country)?.name
     );
 
     setState(prev => ({ ...prev, loading: true, error: '' }));
@@ -1514,7 +1527,7 @@ const UnifiedSignup = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Country <span className="text-red-500">*</span></label>
                     <select name="country" value={state.country} onChange={handleInputChange} className="block w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all outline-none">
                       <option value="">Select Country</option>
-                      {ALL_COUNTRIES.map(c => <option key={c.isoCode} value={c.isoCode}>{c.name}</option>)}
+                      {allCountries.map(c => <option key={c.isoCode} value={c.isoCode}>{c.name}</option>)}
                     </select>
                   </div>
                   <div>

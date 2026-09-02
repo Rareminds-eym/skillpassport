@@ -1,4 +1,4 @@
-import { City, Country, State } from 'country-state-city';
+import { getAllCountries, getCitiesOfState, getStatesOfCountry } from '@/shared/lib/geoLocation';
 import {
     AlertCircle,
     CheckCircle,
@@ -13,9 +13,6 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import DatePicker from './DatePicker';
-
-// Get all countries from the library
-const ALL_COUNTRIES = Country.getAllCountries();
 
 // Preferred languages - comprehensive list
 const LANGUAGES = [
@@ -70,18 +67,25 @@ export default function SignupFormFields({
 }) {
   const [cities, setCities] = useState([]);
   const [states, setStates] = useState([]);
+  const [allCountries, setAllCountries] = useState([]);
   const [loadingCities, setLoadingCities] = useState(false);
   const [loadingStates, setLoadingStates] = useState(false);
+
+  useEffect(() => {
+    getAllCountries().then(setAllCountries).catch(() => setAllCountries([]));
+  }, []);
 
   // Load states when country changes
   useEffect(() => {
     if (formData.country) {
       setLoadingStates(true);
-      const stateList = State.getStatesOfCountry(formData.country);
-      setStates(stateList || []);
-      setLoadingStates(false);
+      getStatesOfCountry(formData.country)
+        .then((stateList) => setStates(stateList || []))
+        .catch(() => setStates([]))
+        .finally(() => setLoadingStates(false));
     } else {
       setStates([]);
+      setCities([]);
     }
   }, [formData.country]);
 
@@ -91,12 +95,14 @@ export default function SignupFormFields({
       setLoadingCities(true);
       const stateObj = states.find(s => s.name === formData.state);
       if (stateObj) {
-        const cityList = City.getCitiesOfState(formData.country, stateObj.isoCode);
-        setCities(cityList || []);
+        getCitiesOfState(formData.country, stateObj.isoCode)
+          .then((cityList) => setCities(cityList || []))
+          .catch(() => setCities([]))
+          .finally(() => setLoadingCities(false));
       } else {
         setCities([]);
+        setLoadingCities(false);
       }
-      setLoadingCities(false);
     } else {
       setCities([]);
     }
@@ -424,7 +430,7 @@ export default function SignupFormFields({
             }`}
           >
             <option value="">Select Country</option>
-            {ALL_COUNTRIES.map(country => (
+            {allCountries.map(country => (
               <option key={country.isoCode} value={country.isoCode}>
                 {country.name}
               </option>
@@ -587,4 +593,4 @@ export default function SignupFormFields({
 }
 
 // Export constants for use in other components
-export { ALL_COUNTRIES, LANGUAGES };
+export { LANGUAGES };

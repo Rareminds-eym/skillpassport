@@ -9,7 +9,7 @@
  * - Preferred language
  */
 
-import { City, Country, State } from 'country-state-city';
+import { getAllCountries, getCitiesOfState, getStatesOfCountry, type CountryOption } from '@/shared/lib/geoLocation';
 import { AlertCircle, ArrowRight, CheckCircle, ChevronDown, Loader2, UserCircle } from 'lucide-react';
 import { ChangeEvent, FormEvent, useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -22,8 +22,6 @@ import { sendOtp, verifyOtp as verifyOtpApi } from '@/features/auth/api/otpServi
 import { OtpInput } from '@/shared/ui';
 
 const logger = getLogger('complete-profile');
-
-const ALL_COUNTRIES = Country.getAllCountries();
 
 const COUNTRY_CODES = [
     { code: 'IN', dialCode: '+91', name: 'India', flag: '🇮🇳' },
@@ -89,6 +87,7 @@ export default function CompleteProfile() {
 
     const [states, setStates] = useState<any[]>([]);
     const [cities, setCities] = useState<any[]>([]);
+    const [allCountries, setAllCountries] = useState<CountryOption[]>([]);
     const [countryCodeDropdownOpen, setCountryCodeDropdownOpen] = useState(false);
     const countryCodeRef = useRef<HTMLDivElement>(null);
     const verifyingOtpRef = useRef(false);
@@ -108,12 +107,21 @@ export default function CompleteProfile() {
 
     const selectedCountry = COUNTRY_CODES.find(cc => cc.dialCode === state.countryCode) || COUNTRY_CODES[0];
 
+    useEffect(() => {
+        void getAllCountries().then(setAllCountries).catch(() => setAllCountries([]));
+    }, []);
+
     // Load states when country changes
     useEffect(() => {
         if (state.country) {
-            const stateList = State.getStatesOfCountry(state.country);
-            setStates(stateList || []);
+            void getStatesOfCountry(state.country)
+                .then((stateList) => setStates(stateList || []))
+                .catch(() => setStates([]));
+            setCities([]);
             setState(prev => ({ ...prev, state: '', city: '' }));
+        } else {
+            setStates([]);
+            setCities([]);
         }
     }, [state.country]);
 
@@ -122,9 +130,14 @@ export default function CompleteProfile() {
         if (state.state && state.country) {
             const stateObj = states.find(s => s.name === state.state);
             if (stateObj) {
-                const cityList = City.getCitiesOfState(state.country, stateObj.isoCode);
-                setCities(cityList || []);
+                void getCitiesOfState(state.country, stateObj.isoCode)
+                    .then((cityList) => setCities(cityList || []))
+                    .catch(() => setCities([]));
+            } else {
+                setCities([]);
             }
+        } else {
+            setCities([]);
         }
     }, [state.state, state.country, states]);
 
@@ -448,7 +461,7 @@ export default function CompleteProfile() {
                                     className="block w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all outline-none"
                                 >
                                     <option value="">Select Country</option>
-                                    {ALL_COUNTRIES.map(c => (
+                                    {allCountries.map(c => (
                                         <option key={c.isoCode} value={c.isoCode}>{c.name}</option>
                                     ))}
                                 </select>

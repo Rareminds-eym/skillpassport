@@ -1,10 +1,10 @@
 import { useAuthStore } from '@/shared/model/authStore';
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
-import { addOnPaymentService } from '@/features/subscription';
+import addOnPaymentService from '@/features/subscription/api/addOnPaymentService';
 
-import { entitlementService } from '@/features/subscription';
-import { clearFeatureAccessCache } from '@/features/subscription/';
+import entitlementService from '@/features/subscription/api/entitlementService';
+import { clearFeatureAccessCache } from '@/features/subscription/model/useFeatureGate';
 
 // ============================================================================
 // Types

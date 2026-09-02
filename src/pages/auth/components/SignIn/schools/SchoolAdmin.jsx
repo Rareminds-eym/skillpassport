@@ -1,4 +1,4 @@
-import { City, State } from 'country-state-city';
+import { getCitiesOfState, getStatesOfCountry } from '@/shared/lib/geoLocation';
 import { useEffect, useRef, useState } from 'react';
 import { capitalizeFirstLetter } from '@/features/subscription/lib';
 import { PASSWORD_MIN } from '@/shared/constants';
@@ -68,11 +68,10 @@ const SchoolAdmin = () => {
   const [showCaptcha, setShowCaptcha] = useState(false);
   const [cities, setCities] = useState([]);
   const [adminCities, setAdminCities] = useState([]);
+  const [indianStates, setIndianStates] = useState([]);
   const [otpSent, setOtpSent] = useState(false);
   const [sendingOtp, setSendingOtp] = useState(false);
   const [verifyingOtp, setVerifyingOtp] = useState(false);
-
-  const INDIAN_STATES = State.getStatesOfCountry('IN');
 
   const blobRefs = {
     // School Details
@@ -526,18 +525,25 @@ const SchoolAdmin = () => {
     return value.replace(/\D/g, '').slice(0, 10);
   };
 
+  useEffect(() => {
+    getStatesOfCountry('IN').then(setIndianStates).catch(() => setIndianStates([]));
+  }, []);
+
   // Load admin cities when admin state changes
   useEffect(() => {
     if (formData.adminState) {
-      const stateObj = INDIAN_STATES.find(s => s.name === formData.adminState);
+      const stateObj = indianStates.find(s => s.name === formData.adminState);
       if (stateObj) {
-        const cityList = City.getCitiesOfState('IN', stateObj.isoCode);
-        setAdminCities(cityList);
+        getCitiesOfState('IN', stateObj.isoCode)
+          .then(setAdminCities)
+          .catch(() => setAdminCities([]));
+      } else {
+        setAdminCities([]);
       }
     } else {
       setAdminCities([]);
     }
-  }, [formData.adminState]);
+  }, [formData.adminState, indianStates]);
 
   const handleSendOtp = async () => {
     if (!formData.phoneNumber || formData.phoneNumber.length !== 10) return;
@@ -602,7 +608,7 @@ const SchoolAdmin = () => {
   }, []);
 
   // Handle state change to load cities
-  const handleStateChange = (e) => {
+  const handleStateChange = async (e) => {
     const selectedState = e.target.value;
     setFormData(prev => ({
       ...prev,
@@ -612,13 +618,19 @@ const SchoolAdmin = () => {
     }));
 
     // Find ISO code for the selected state and load cities
-    const stateObj = State.getStatesOfCountry("IN").find(
+    const stateObj = indianStates.find(
       (s) => s.name === selectedState
     );
 
     if (stateObj) {
-      const cityList = City.getCitiesOfState("IN", stateObj.isoCode);
-      setCities(cityList);
+      try {
+        const cityList = await getCitiesOfState("IN", stateObj.isoCode);
+        setCities(cityList);
+      } catch {
+        setCities([]);
+      }
+    } else {
+      setCities([]);
     }
 
     validateField('state', selectedState);
@@ -1004,7 +1016,7 @@ const SchoolAdmin = () => {
                     }`}
                   >
                     <option value="">State *</option>
-                    {State.getStatesOfCountry("IN").map((s) => (
+                    {indianStates.map((s) => (
                       <option key={s.isoCode} value={s.name}>
                         {s.name}
                       </option>

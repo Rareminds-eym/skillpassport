@@ -7,8 +7,8 @@ import { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { clearFeatureAccessCache, useFeatureGate } from '@/features/subscription/model/useFeatureGate';
-import { addOnPaymentService } from '@/features/subscription';
-import { loadRazorpayScript } from '@/features/subscription/api';
+import addOnPaymentService from '@/features/subscription/api/addOnPaymentService';
+import { loadRazorpayScript } from '@/features/subscription/api/razorpayService';
 
 import { useSubscription } from '@/features/subscription/model/subscriptionStore';
 export function FeatureGate({

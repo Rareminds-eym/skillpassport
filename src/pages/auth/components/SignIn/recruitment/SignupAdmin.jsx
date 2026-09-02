@@ -1,6 +1,6 @@
 
 
-import { City, State } from 'country-state-city';
+import { getCitiesOfState, getStatesOfCountry } from '@/shared/lib/geoLocation';
 import { AlertCircle, Building2, CheckCircle2, Eye, EyeOff, Gift, Globe, Languages, Loader2, MapPin, Phone, Shield, User } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
@@ -138,11 +138,10 @@ const SignupAdmin = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
   const [adminCities, setAdminCities] = useState([]);
+  const [indianStates, setIndianStates] = useState([]);
   const [otpSent, setOtpSent] = useState(false);
   const [sendingOtp, setSendingOtp] = useState(false);
   const [verifyingOtp, setVerifyingOtp] = useState(false);
-
-  const INDIAN_STATES = State.getStatesOfCountry('IN');
 
   const companySizes = ['1-10', '11-50', '51-200', '201-500', '501-1000', '1000+'];
 
@@ -153,7 +152,7 @@ const SignupAdmin = () => {
     'Agriculture', 'Energy & Utilities', 'Other'
   ];
 
-  const indianStates = [
+  const fallbackIndianStates = [
     'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
     'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka',
     'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram',
@@ -168,18 +167,29 @@ const SignupAdmin = () => {
     'HR Business Partner', 'Other'
   ];
 
+  const indianStateNames = indianStates.length
+    ? indianStates.map(state => state.name)
+    : fallbackIndianStates;
+
+  useEffect(() => {
+    getStatesOfCountry('IN').then(setIndianStates).catch(() => setIndianStates([]));
+  }, []);
+
   // Load admin cities when admin state changes
   useEffect(() => {
     if (formData.adminState && formData.adminCountry === 'IN') {
-      const stateObj = INDIAN_STATES.find(s => s.name === formData.adminState);
+      const stateObj = indianStates.find(s => s.name === formData.adminState);
       if (stateObj) {
-        const cityList = City.getCitiesOfState('IN', stateObj.isoCode);
-        setAdminCities(cityList);
+        getCitiesOfState('IN', stateObj.isoCode)
+          .then(setAdminCities)
+          .catch(() => setAdminCities([]));
+      } else {
+        setAdminCities([]);
       }
     } else {
       setAdminCities([]);
     }
-  }, [formData.adminState, formData.adminCountry]);
+  }, [formData.adminState, formData.adminCountry, indianStates]);
 
   const handleSendOtp = async () => {
     if (!formData.adminPhone || formData.adminPhone.length !== 10) return;
@@ -605,7 +615,7 @@ const SignupAdmin = () => {
                   <SelectField
                     label="State"
                     name="hqState"
-                    options={indianStates}
+                    options={indianStateNames}
                     required
                     value={formData.hqState}
                     onChange={handleChange}
@@ -883,7 +893,7 @@ const SignupAdmin = () => {
                       className={`w-full pl-10 pr-4 py-3 border-2 rounded-lg ${errors.adminState ? 'border-red-500' : 'border-gray-200'}`}
                     >
                       <option value="">Select State / UT</option>
-                      {INDIAN_STATES.map(state => (
+                      {indianStates.map(state => (
                         <option key={state.isoCode} value={state.name}>{state.name}</option>
                       ))}
                     </select>

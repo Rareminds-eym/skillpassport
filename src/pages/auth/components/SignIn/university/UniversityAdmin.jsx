@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { State, City } from 'country-state-city';
+import { getCitiesOfState, getStatesOfCountry } from '@/shared/lib/geoLocation';
 import { PASSWORD_MIN } from '@/shared/constants';
 
 const UniversityAdmin = () => {
@@ -44,6 +44,7 @@ const UniversityAdmin = () => {
   const [termsViewed, setTermsViewed] = useState(false);
   const [showCaptcha, setShowCaptcha] = useState(false);
   const [cities, setCities] = useState([]);
+  const [indianStates, setIndianStates] = useState([]);
 
   const blobRefs = {
     // University Details
@@ -103,6 +104,10 @@ const UniversityAdmin = () => {
     'Head of Department',
     'Other'
   ];
+
+  useEffect(() => {
+    getStatesOfCountry('IN').then(setIndianStates).catch(() => setIndianStates([]));
+  }, []);
 
   // Generate university code based on name and type
   const generateUniversityCode = () => {
@@ -498,7 +503,7 @@ const UniversityAdmin = () => {
   }, []);
 
   // Handle state change to load cities
-  const handleStateChange = (e) => {
+  const handleStateChange = async (e) => {
     const selectedState = e.target.value;
     setFormData(prev => ({
       ...prev,
@@ -508,13 +513,19 @@ const UniversityAdmin = () => {
     }));
 
     // Find ISO code for the selected state and load cities
-    const stateObj = State.getStatesOfCountry("IN").find(
+    const stateObj = indianStates.find(
       (s) => s.name === selectedState
     );
 
     if (stateObj) {
-      const cityList = City.getCitiesOfState("IN", stateObj.isoCode);
-      setCities(cityList);
+      try {
+        const cityList = await getCitiesOfState("IN", stateObj.isoCode);
+        setCities(cityList);
+      } catch {
+        setCities([]);
+      }
+    } else {
+      setCities([]);
     }
 
     validateField('state', selectedState);
@@ -900,7 +911,7 @@ const UniversityAdmin = () => {
                     }`}
                   >
                     <option value="">State *</option>
-                    {State.getStatesOfCountry("IN").map((s) => (
+                    {indianStates.map((s) => (
                       <option key={s.isoCode} value={s.name}>
                         {s.name}
                       </option>

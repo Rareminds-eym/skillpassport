@@ -180,7 +180,7 @@ export {
   formatPhoneNumber
 } from './lib/signupValidation';
 
-export { default as SignupFormFields, ALL_COUNTRIES, LANGUAGES } from './ui/shared/SignupFormFields';
+export { default as SignupFormFields, LANGUAGES } from './ui/shared/SignupFormFields';
 
 export { default as addOnCatalogService } from './api/addOnCatalogService';
 
