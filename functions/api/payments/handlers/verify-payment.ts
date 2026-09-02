@@ -478,7 +478,9 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
               break;
             }
           }
-        } catch (_) {}
+        } catch (err) {
+          console.error('[verify-payment] Error parsing entity_config:', err);
+        }
       }
 
       try {

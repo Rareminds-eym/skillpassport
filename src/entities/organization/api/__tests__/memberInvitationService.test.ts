@@ -32,8 +32,9 @@ function createMockResponse<T>(data: T, status = 200, ok = true): Response {
   return {
     ok,
     status,
-    statusText: ok ? 'OK' : 'Error',
+    statusText: status === 200 ? 'OK' : 'Error',
     headers: new Headers(),
+    redirected: false,
     json: async () => data,
     text: async () => JSON.stringify(data),
     blob: async () => new Blob([JSON.stringify(data)]),
@@ -53,7 +54,7 @@ describe('MemberInvitationService', () => {
   beforeEach(() => {
     service = new MemberInvitationService();
     vi.clearAllMocks();
-    vi.mocked(useAuthStore.getState).mockReturnValue({ user: { id: 'admin-456' } } as any);
+    vi.mocked(useAuthStore.getState).mockReturnValue({ user: { id: 'admin-456' } } as unknown as ReturnType<typeof useAuthStore.getState>);
   });
 
   afterEach(() => {
@@ -95,7 +96,7 @@ describe('MemberInvitationService', () => {
     });
 
     it('should throw error when user not authenticated', async () => {
-      vi.mocked(useAuthStore.getState).mockReturnValue({ user: null } as any);
+      vi.mocked(useAuthStore.getState).mockReturnValue({ user: null } as unknown as ReturnType<typeof useAuthStore.getState>);
 
       await expect(service.inviteMember(mockRequest))
         .rejects.toThrow('User not authenticated');
@@ -192,6 +193,60 @@ describe('MemberInvitationService', () => {
 
       expect(result.invitation.status).toBe('accepted');
       expect(result.organizationName).toBe('St. Mary School');
+    });
+
+    it('should throw error for expired invitation', async () => {
+      vi.mocked(ssoClient.fetch).mockResolvedValue(
+        createMockResponse({ error: { message: 'Invitation has expired' } }, 410, false)
+      );
+
+      await expect(service.acceptInvitation('expired-token', 'user-789'))
+        .rejects.toThrow('Invitation has expired');
+    });
+
+    it('should throw error when invitation not found', async () => {
+      vi.mocked(ssoClient.fetch).mockResolvedValue(
+        createMockResponse({ error: { message: 'Invalid or expired invitation' } }, 404, false)
+      );
+
+      await expect(service.acceptInvitation('invalid-token', 'user-789'))
+        .rejects.toThrow('Invalid or expired invitation');
+    });
+
+    it('should map auto-assign license flag from accepted invitation', async () => {
+      const mockData = {
+        id: 'inv-001',
+        organization_id: 'org-123',
+        organization_type: 'school',
+        invitee_email: 'teacher@school.edu',
+        invitee_role: 'educator',
+        invited_by: 'admin-456',
+        license_pool_id: 'pool-001',
+        status: 'accepted',
+        invitation_token: 'token-abc',
+        expires_at: new Date().toISOString(),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        organization_name: 'St. Mary School'
+      };
+
+      vi.mocked(ssoClient.fetch).mockResolvedValue(createMockResponse({ data: mockData }));
+
+      const result = await service.acceptInvitation('token-abc', 'user-789');
+
+      expect(result.invitation.autoAssignSubscription).toBe(true);
+      expect(result.invitation.targetLicensePoolId).toBe('pool-001');
+    });
+  });
+
+  describe('resendInvitation', () => {
+    it('should throw error when invitation not found', async () => {
+      vi.mocked(ssoClient.fetch).mockResolvedValue(
+        createMockResponse({ error: { message: 'Invitation not found' } }, 404, false)
+      );
+
+      await expect(service.resendInvitation('inv-invalid'))
+        .rejects.toThrow('Invitation not found');
     });
   });
 

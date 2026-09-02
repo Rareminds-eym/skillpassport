@@ -20,8 +20,9 @@ function createMockResponse<T>(data: T, status = 200, ok = true): Response {
   return {
     ok,
     status,
-    statusText: ok ? 'OK' : 'Error',
+    statusText: status === 200 ? 'OK' : 'Error',
     headers: new Headers(),
+    redirected: false,
     json: async () => data,
     text: async () => JSON.stringify(data),
     blob: async () => new Blob([JSON.stringify(data)]),

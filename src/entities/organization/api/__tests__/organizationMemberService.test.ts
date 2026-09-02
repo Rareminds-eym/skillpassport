@@ -14,7 +14,7 @@ describe('OrganizationMemberService - License Assignment Enrichment', () => {
 
   it('should enrich members with active license assignments from getLicensedMembers endpoint', async () => {
     // 1. Mock getLearners response
-    vi.mocked(apiGet).mockImplementation(async (url: string) => {
+    vi.mocked(apiGet).mockImplementation(async (url: string): Promise<{ data: any }> => {
       if (url.includes('action=getLearners')) {
         return {
           data: {
@@ -29,12 +29,12 @@ describe('OrganizationMemberService - License Assignment Enrichment', () => {
             ],
             total: 1,
           },
-        } as any;
+        };
       }
       if (url.includes('action=getEducators')) {
         return {
           data: { members: [], total: 0 },
-        } as any;
+        };
       }
       if (url.includes('action=getLicensedMembers')) {
         return {
@@ -51,9 +51,9 @@ describe('OrganizationMemberService - License Assignment Enrichment', () => {
               'pool-alpha': 'Alpha Pool',
             },
           },
-        } as any;
+        };
       }
-      return { data: null } as any;
+      return { data: null };
     });
 
     const result = await organizationMemberService.fetchOrganizationMembers({

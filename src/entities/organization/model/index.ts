@@ -58,5 +58,3 @@ export type {
 export {
   normalizePoolMemberAssignment,
 } from './normalization';
-
-
