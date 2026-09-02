@@ -32,8 +32,9 @@ function createMockResponse<T>(data: T, status = 200, ok = true): Response {
   return {
     ok,
     status,
-    statusText: ok ? 'OK' : 'Error',
+    statusText: status === 200 ? 'OK' : 'Error',
     headers: new Headers(),
+    redirected: false,
     json: async () => data,
     text: async () => JSON.stringify(data),
     blob: async () => new Blob([JSON.stringify(data)]),
@@ -55,7 +56,7 @@ describe('LicenseManagementService', () => {
     vi.clearAllMocks();
     vi.mocked(useAuthStore.getState).mockReturnValue({
       user: { id: 'user-789' }
-    } as any);
+    } as unknown as ReturnType<typeof useAuthStore.getState>);
   });
 
   afterEach(() => {
@@ -102,7 +103,7 @@ describe('LicenseManagementService', () => {
     });
 
     it('should throw error when user not authenticated', async () => {
-      vi.mocked(useAuthStore.getState).mockReturnValue({ user: null } as any);
+      vi.mocked(useAuthStore.getState).mockReturnValue({ user: null } as unknown as ReturnType<typeof useAuthStore.getState>);
 
       await expect(service.createLicensePool(mockRequest))
         .rejects.toThrow('User not authenticated');

@@ -885,8 +885,8 @@ async function getLicensedMembers(context: AuthenticatedContext) {
   const orgSubs = orgSubsRes.data;
 
   const poolMap = Object.fromEntries((pools || []).map((p: { id: string; pool_name: string }) => [p.id, p.pool_name]));
-  const poolIds = Object.keys(poolMap);
-  const subIds = (orgSubs || []).map((s: { id: string }) => s.id);
+  const poolIds = Object.keys(poolMap).filter((id) => typeof id === 'string' && /^[a-zA-Z0-9_-]+$/.test(id));
+  const subIds = (orgSubs || []).map((s: { id: string }) => s.id).filter((id) => typeof id === 'string' && /^[a-zA-Z0-9_-]+$/.test(id));
 
   if (poolIds.length === 0 && subIds.length === 0) {
     return apiSuccess({ assignments: [], poolMap: {} }, context.request);
@@ -894,7 +894,7 @@ async function getLicensedMembers(context: AuthenticatedContext) {
 
   let query = supabase.from('license_assignments').select('id, user_id, assigned_at, license_pool_id, organization_subscription_id').eq('status', 'active');
   if (poolIds.length > 0 && subIds.length > 0) {
-    query = query.or(`license_pool_id.in.(${poolIds.join(',')}),organization_subscription_id.in.(${subIds.join(',')})`);
+    query = query.or(`license_pool_id.in.("${poolIds.join('","')}"),organization_subscription_id.in.("${subIds.join('","')}")`);
   } else if (poolIds.length > 0) {
     query = query.in('license_pool_id', poolIds);
   } else {
@@ -1068,7 +1068,10 @@ async function bulkGrantEntitlements(context: AuthenticatedContext, body: any) {
 
   const { data, error } = await supabase.from('user_entitlements').insert(records).select();
   if (error) throw error;
-  return apiSuccess(data || [], context.request);
+  if (!data || data.length !== records.length) {
+    throw new Error(`Bulk entitlements insert incomplete: expected ${records.length}, got ${data?.length || 0}`);
+  }
+  return apiSuccess(data, context.request);
 }
 
 async function bulkRevokeEntitlements(context: AuthenticatedContext, body: any) {
