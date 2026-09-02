@@ -38,7 +38,6 @@ export {
   SeatSelector,
   PricingBreakdown,
   MemberSubscriptionView,
-  OrganizationProvidedFeatures,
   OrganizationLearnerBenefitsCard,
   OrganizationPurchasePanel,
   PersonalAddOns,

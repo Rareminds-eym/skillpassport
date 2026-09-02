@@ -84,14 +84,6 @@ function MemberSubscriptionPage() {
     };
   }, [hasOrganizationSubscription]);
   
-  // Organization features - in production, fetch from service
-  const organizationFeatures = useMemo(() => [
-    { id: '1', name: 'Skill Assessments', description: 'Access to all skill assessments', isActive: true },
-    { id: '2', name: 'Learning Courses', description: 'Full course library access', isActive: true },
-    { id: '3', name: 'Digital Portfolio', description: 'Create and share your portfolio', isActive: true },
-    { id: '4', name: 'Career Guidance', description: 'Basic career guidance tools', isActive: true },
-  ], []);
-  
   // Purchased add-ons - in production, fetch from service
   const purchasedAddOns = useMemo(() => [], []);
   
@@ -108,7 +100,7 @@ function MemberSubscriptionPage() {
     }
   }, [navigate]);
   
-  const handleManageAddOn = useCallback((_addOnId: string) => {
+  const handleManageAddOn = useCallback(() => {
     toast.success('Opening add-on management...');
   }, []);
   
@@ -150,7 +142,6 @@ function MemberSubscriptionPage() {
         hasOrganizationSubscription={hasOrganizationSubscription}
         organization={organization}
         subscription={subscription}
-        organizationFeatures={organizationFeatures}
         purchasedAddOns={purchasedAddOns}
         availableAddOns={AVAILABLE_ADDONS}
         onPurchaseAddOn={handlePurchaseAddOn}

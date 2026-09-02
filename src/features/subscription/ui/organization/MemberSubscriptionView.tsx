@@ -2,7 +2,8 @@
  * MemberSubscriptionView Component
  * 
  * Main view for members to see their subscription status.
- * Combines organization-provided features and personal add-ons.
+ * Shows members their organization-provided subscription benefits
+ * and personal add-ons.
  * Includes expiration warnings and countdown timers.
  * 
  * Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 9.4
@@ -17,16 +18,8 @@ import {
   X,
 } from 'lucide-react';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
-import OrganizationProvidedFeatures from './OrganizationProvidedFeatures';
 import OrganizationLearnerBenefitsCard from './OrganizationLearnerBenefitsCard';
 import PersonalAddOns from './PersonalAddOns';
-
-interface OrganizationFeature {
-  id: string;
-  name: string;
-  description?: string;
-  isActive: boolean;
-}
 
 interface OrganizationInfo {
   id: string;
@@ -73,7 +66,6 @@ interface MemberSubscriptionViewProps {
   hasOrganizationSubscription: boolean;
   organization?: OrganizationInfo;
   subscription?: SubscriptionInfo;
-  organizationFeatures?: OrganizationFeature[];
 
   // Personal add-ons
   purchasedAddOns: PurchasedAddOn[];
@@ -93,7 +85,6 @@ function MemberSubscriptionView({
   hasOrganizationSubscription,
   organization,
   subscription,
-  organizationFeatures = [],
   purchasedAddOns = [],
   availableAddOns = [],
   onPurchaseAddOn,
