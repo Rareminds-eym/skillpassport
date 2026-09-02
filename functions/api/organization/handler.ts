@@ -963,6 +963,12 @@ async function getSubscriptions(context: AuthenticatedContext) {
   const orgId = url.searchParams.get('orgId');
   if (!orgId) return apiError(400, 'VALIDATION_ERROR', 'orgId is required', context.request);
 
+  // 🔒 SECURITY: Verify user is a member of the organization
+  const membership = await verifyOrgMembership(supabase, getUserId(context), orgId);
+  if (!membership) {
+    return apiError(403, 'FORBIDDEN', 'Not a member of this organization', context.request);
+  }
+
   // 1. Direct match by organization_id
   let { data: subs } = await supabase
     .from('subscription_cache')
@@ -995,17 +1001,8 @@ async function getSubscriptions(context: AuthenticatedContext) {
     }
   }
 
-  // 3. Broad Fallback: check any active subscription in cache
-  if (!subs || subs.length === 0) {
-    const { data: anySub } = await supabase
-      .from('subscription_cache')
-      .select('*')
-      .in('status', ['active', 'pending'])
-      .order('created_at', { ascending: false })
-      .limit(1);
-
-    subs = anySub || [];
-  }
+  // NOTE: No broad fallback across all organizations — an unscoped fallback here would
+  // leak other organizations' subscriptions to any authenticated user.
 
   const enriched = await enrichAssignedSeats(supabase, subs || []);
   return apiSuccess(enriched, context.request);

@@ -191,11 +191,36 @@ export interface OrganizationPurchaseData {
   metadata?: Record<string, any>;
 }
 
-export interface OrganizationOrderResult {
-  id: string;
-  amount: number;
-  currency: string;
-  razorpayOrderId: string;
-  status: string;
-  createdAt: string;
+export interface PoolAssignmentRawUser {
+  email?: string;
+  first_name?: string;
+  last_name?: string;
+  full_name?: string;
+  name?: string;
+  firstName?: string;
+  lastName?: string;
 }
+
+export interface PoolAssignmentRawItem {
+  id?: string;
+  user_id: string;
+  assigned_at: string;
+  full_name?: string;
+  name?: string;
+  email?: string;
+  user?: PoolAssignmentRawUser;
+  users?: PoolAssignmentRawUser;
+}
+
+export interface PoolAssignmentApiResponse {
+  data?: PoolAssignmentRawItem[];
+}
+
+export interface NormalizedPoolMemberAssignment {
+  id: string;
+  name: string;
+  email: string;
+  assignedAt: string;
+  licenseAssignmentId?: string;
+}
+
