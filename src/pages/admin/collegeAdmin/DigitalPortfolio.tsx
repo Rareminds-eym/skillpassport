@@ -1,11 +1,11 @@
 import {
-    ChevronDownIcon,
-    EyeIcon,
-    FolderIcon,
-    FunnelIcon,
-    Squares2X2Icon,
-    StarIcon,
-    TableCellsIcon
+  ChevronDownIcon,
+  EyeIcon,
+  FolderIcon,
+  FunnelIcon,
+  Squares2X2Icon,
+  StarIcon,
+  TableCellsIcon
 } from '@heroicons/react/24/outline';
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -88,7 +88,7 @@ const BadgeComponent = ({ badges }) => {
 
 const PortfolioCard = ({ learner, onViewPortfolio }: any) => {
   return (
-    <div 
+    <div
       className="bg-white border border-gray-200 rounded-lg p-5 hover:shadow-md transition-all duration-200 cursor-pointer group"
       onClick={() => onViewPortfolio(learner)}
     >
@@ -206,53 +206,65 @@ const CollegeAdminDigitalPortfolio = () => {
   // Fetch college info and learners
   useEffect(() => {
     const fetchData = async () => {
-      if (!user?.email) return;
+      if (!user?.email) {
+        console.log('[DigitalPortfolio] No user email, skipping fetch');
+        return;
+      }
 
       try {
         setLoading(true);
 
         // Find college by matching email in organizations table (case-insensitive)
+        console.log('[DigitalPortfolio] Fetching org for user:', user.email);
         const orgRes: any = await apiPost('/college-admin/actions', {
           action: 'get-org-by-admin-or-email',
           userId: user.id,
           email: user.email
         });
 
+        console.log('[DigitalPortfolio] Org response:', orgRes);
+
         if (!orgRes.success || !orgRes.data?.id) {
           logger.error('Error fetching organization', orgRes.error, { email: user.email });
+          console.error('[DigitalPortfolio] Failed to get org:', orgRes);
           setLoading(false);
           return;
         }
 
         const collegeId = orgRes.data.id;
         const collegeData = orgRes.data;
-        
+
+        console.log('[DigitalPortfolio] College ID:', collegeId);
         setCollegeInfo(collegeData);
 
         // Fetch learners from the same college using the learners table with skills, projects, and experience
+        console.log('[DigitalPortfolio] Fetching digital portfolios for college:', collegeId);
         const learnersRes: any = await apiPost('/college-admin/actions', {
           action: 'get-digital-portfolios',
           college_id: collegeId
         });
 
+        console.log('[DigitalPortfolio] Learners response:', learnersRes);
+
         if (!learnersRes.success) {
           logger.error('Error fetching learners:', learnersRes.error);
+          console.error('[DigitalPortfolio] Failed to fetch learners:', learnersRes);
           throw new Error(learnersRes.error || 'Failed to fetch learners');
         }
-        
+
         const learnersData = learnersRes.data;
 
         // Transform data to match the expected format
         const transformedlearners = learnersData?.map(learner => {
           // Parse metadata for additional profile information
           const metadata = learner.metadata || {};
-          
+
           // Find internship from experience data
-          const internshipExperience = learner.experience?.find(exp => 
-            exp.role?.toLowerCase().includes('intern') || 
+          const internshipExperience = learner.experience?.find(exp =>
+            exp.role?.toLowerCase().includes('intern') ||
             exp.organization?.toLowerCase().includes('intern')
           );
-          
+
           return {
             id: learner.id,
             name: learner.name || 'N/A',
@@ -450,7 +462,7 @@ const CollegeAdminDigitalPortfolio = () => {
     });
   };
 
-  const activeFilterCount = filters.skills.length + filters.departments.length + 
+  const activeFilterCount = filters.skills.length + filters.departments.length +
     filters.badges.length + filters.locations.length;
 
   return (
@@ -502,21 +514,19 @@ const CollegeAdminDigitalPortfolio = () => {
           <div className="flex rounded-md shadow-sm">
             <button
               onClick={() => setViewMode('grid')}
-              className={`px-3 py-2 text-sm font-medium rounded-l-md border ${
-                viewMode === 'grid'
+              className={`px-3 py-2 text-sm font-medium rounded-l-md border ${viewMode === 'grid'
                   ? 'bg-primary-50 border-primary-300 text-primary-700'
                   : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-              }`}
+                }`}
             >
               <Squares2X2Icon className="h-4 w-4" />
             </button>
             <button
               onClick={() => setViewMode('table')}
-              className={`px-3 py-2 text-sm font-medium rounded-r-md border-t border-r border-b ${
-                viewMode === 'table'
+              className={`px-3 py-2 text-sm font-medium rounded-r-md border-t border-r border-b ${viewMode === 'table'
                   ? 'bg-primary-50 border-primary-300 text-primary-700'
                   : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-              }`}
+                }`}
             >
               <TableCellsIcon className="h-4 w-4" />
             </button>
@@ -558,21 +568,19 @@ const CollegeAdminDigitalPortfolio = () => {
           <div className="flex rounded-md shadow-sm">
             <button
               onClick={() => setViewMode('grid')}
-              className={`px-3 py-2 text-sm font-medium rounded-l-md border ${
-                viewMode === 'grid'
+              className={`px-3 py-2 text-sm font-medium rounded-l-md border ${viewMode === 'grid'
                   ? 'bg-primary-50 border-primary-300 text-primary-700'
                   : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-              }`}
+                }`}
             >
               <Squares2X2Icon className="h-4 w-4" />
             </button>
             <button
               onClick={() => setViewMode('table')}
-              className={`px-3 py-2 text-sm font-medium rounded-r-md border-t border-r border-b ${
-                viewMode === 'table'
+              className={`px-3 py-2 text-sm font-medium rounded-r-md border-t border-r border-b ${viewMode === 'table'
                   ? 'bg-primary-50 border-primary-300 text-primary-700'
                   : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-              }`}
+                }`}
             >
               <TableCellsIcon className="h-4 w-4" />
             </button>
@@ -685,7 +693,7 @@ const CollegeAdminDigitalPortfolio = () => {
                 <p className="text-sm text-gray-500 mb-4">
                   {searchQuery || activeFilterCount > 0
                     ? 'No portfolios match your current filters'
-                    : collegeInfo 
+                    : collegeInfo
                       ? `No learner portfolios available in ${collegeInfo.name}`
                       : 'No learner portfolios available'}
                 </p>

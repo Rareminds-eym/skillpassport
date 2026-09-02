@@ -1131,7 +1131,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
       case 'fetch-enrolled-learner-list': {
         const { collegeId, departmentId, programId, semester, search, page, pageSize } = params;
-        let query = supabase.from('learners').select('id, name, roll_number, email, contact_number, college_id, program_id, semester, section, enrollmentDate, created_at, updated_at, programs!learners_program_id_fkey(id, name, code, department_id, departments!programs_department_id_fkey(id, name, code))').eq('is_deleted', false).not('program_id', 'is', null).order('name', { ascending: true });
+        let query = supabase.from('learners').select('id, name, roll_number, email, contact_number, college_id, program_id, semester, section, enrollmentDate, created_at, updated_at, programs!learners_program_id_fkey(id, name, code, department_id, departments!programs_department_id_fkey(id, name, code))').eq('is_deleted', false).order('name', { ascending: true });
         if (collegeId) query = query.eq('college_id', collegeId);
         if (programId) query = query.eq('program_id', programId);
         if (semester) query = query.eq('semester', semester);
@@ -1141,7 +1141,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const transformed = (data || []).map((l: any) => ({
           learner_id: l.id, learner_name: l.name, roll_number: l.roll_number, email: l.email, contact_number: l.contact_number,
           college_id: l.college_id, department_id: l.programs?.department_id || '', department_name: l.programs?.departments?.name || 'N/A',
-          department_code: l.programs?.departments?.code || '', program_id: l.program_id, program_name: l.programs?.name || 'N/A',
+          department_code: l.programs?.departments?.code || '', program_id: l.program_id || null, program_name: l.programs?.name || 'Not Enrolled',
           program_code: l.programs?.code || '', section: l.section || 'Not Assigned', semester: l.semester || 1,
           enrollment_date: l.enrollmentDate || l.created_at, created_at: l.created_at, updated_at: l.updated_at,
         }));

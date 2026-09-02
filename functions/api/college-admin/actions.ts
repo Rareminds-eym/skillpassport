@@ -211,6 +211,8 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
       case 'get-digital-portfolios': {
         const { college_id } = params;
+        console.log('[get-digital-portfolios] Received college_id:', college_id);
+
         if (!college_id) return apiError(400, 'VALIDATION_ERROR', 'Missing college_id', context.request, { startTime });
 
         const { data: learnersData, error: learnersError } = await supabase
@@ -237,7 +239,13 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
             experience:experience(organization, role, start_date, end_date, duration, verified)
           `)
           .eq('college_id', college_id)
-          .not('college_id', 'is', null);
+          .eq('is_deleted', false);
+
+        console.log('[get-digital-portfolios] Query result:', {
+          count: learnersData?.length || 0,
+          error: learnersError?.message,
+          sampleLearner: learnersData?.[0]?.name
+        });
 
         if (learnersError) return apiDbError(learnersError, context.request, { startTime });
         return apiSuccess(learnersData, context.request, { startTime });

@@ -1,29 +1,29 @@
 import {
-    AcademicCapIcon,
-    BanknotesIcon,
-    BellIcon,
-    BookOpenIcon,
-    BriefcaseIcon,
-    BuildingLibraryIcon,
-    BuildingOffice2Icon,
-    CalendarDaysIcon,
-    ChartBarIcon,
-    ChartPieIcon,
-    ChevronDownIcon,
-    ClipboardDocumentListIcon,
-    ClipboardIcon,
-    Cog6ToothIcon,
-    CreditCardIcon,
-    DocumentChartBarIcon,
-    FolderIcon,
-    FolderOpenIcon,
-    HomeIcon,
-    LockClosedIcon,
-    ShieldCheckIcon,
-    SparklesIcon,
-    UserGroupIcon,
-    UserIcon,
-    WrenchScrewdriverIcon,
+  AcademicCapIcon,
+  BanknotesIcon,
+  BellIcon,
+  BookOpenIcon,
+  BriefcaseIcon,
+  BuildingLibraryIcon,
+  BuildingOffice2Icon,
+  CalendarDaysIcon,
+  ChartBarIcon,
+  ChartPieIcon,
+  ChevronDownIcon,
+  ClipboardDocumentListIcon,
+  ClipboardIcon,
+  Cog6ToothIcon,
+  CreditCardIcon,
+  DocumentChartBarIcon,
+  FolderIcon,
+  FolderOpenIcon,
+  HomeIcon,
+  LockClosedIcon,
+  ShieldCheckIcon,
+  SparklesIcon,
+  UserGroupIcon,
+  UserIcon,
+  WrenchScrewdriverIcon,
 } from "@heroicons/react/24/outline";
 import { TrophyIcon } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -531,14 +531,12 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }:
             name: "Attendance Policies",
             path: "/college-admin/learners/attendance-policies",
             icon: ClipboardDocumentListIcon,
-            disabled: true,
           },
-          
+
           {
             name: "Performance",
             path: "/college-admin/learners/performance",
             icon: ChartBarIcon,
-            disabled: true,
           },
           {
             name: "Assessment Results",
@@ -554,15 +552,14 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }:
             name: "Graduation & Alumni",
             path: "/college-admin/learners/graduation",
             icon: AcademicCapIcon,
-            disabled: true,
           },
           {
-             name: "Verifications",
+            name: "Verifications",
             path: "/college-admin/learners/verifications",
             icon: ChartPieIcon,
           },
           {
-             name: "Communication",
+            name: "Communication",
             path: "/college-admin/learners/communication",
             icon: BellIcon,
           }
@@ -627,13 +624,11 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }:
             name: "Coverage Tracker",
             path: "/college-admin/academics/coverage-tracker",
             icon: ChartBarIcon,
-            disabled: true,
           },
           {
             name: "Academic Calendar",
             path: "/college-admin/academics/calendar",
             icon: CalendarDaysIcon,
-            disabled: true,
           },
         ],
       },
@@ -650,13 +645,11 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }:
             name: "Grading & Assessments",
             path: "/college-admin/examinations/assessment-grading",
             icon: ChartBarIcon,
-            disabled: true,
           },
           {
             name: "Transcripts",
             path: "/college-admin/examinations/transcripts",
             icon: DocumentChartBarIcon,
-            disabled: true,
           },
         ],
       },
@@ -673,7 +666,6 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }:
             name: "Skill Development",
             path: "/college-admin/skill-development",
             icon: SparklesIcon,
-            disabled: true,
           },
           {
             name: "Mentors",
@@ -823,20 +815,20 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }:
                   // Exact path matching with proper handling of nested routes
                   const currentPath = location.pathname;
                   const itemPath = item.path;
-                  
+
                   // Check if this is an exact match or if it's a parent path with no other longer matching paths
                   const isExactMatch = currentPath === itemPath;
                   const isParentMatch = currentPath.startsWith(itemPath + '/');
-                  
+
                   // Find if there's a more specific path that matches better
-                  const hasMoreSpecificMatch = group.items.some(otherItem => 
-                    otherItem !== item && 
-                    currentPath.startsWith(otherItem.path) && 
+                  const hasMoreSpecificMatch = group.items.some(otherItem =>
+                    otherItem !== item &&
+                    currentPath.startsWith(otherItem.path) &&
                     otherItem.path.length > itemPath.length
                   );
-                  
+
                   const isActive = isExactMatch || (isParentMatch && !hasMoreSpecificMatch);
-                  
+
                   return (
                     <button
                       key={item.name}
@@ -846,8 +838,8 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }:
                         (item as any).disabled
                           ? "text-gray-400 bg-gray-50 cursor-not-allowed opacity-60"
                           : isActive
-                          ? "bg-indigo-50 text-indigo-600 border-l-2 border-indigo-500"
-                          : "text-gray-600 hover:bg-gray-50 hover:text-indigo-600",
+                            ? "bg-indigo-50 text-indigo-600 border-l-2 border-indigo-500"
+                            : "text-gray-600 hover:bg-gray-50 hover:text-indigo-600",
                         "group w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-all duration-200"
                       )}
                     >
@@ -856,8 +848,8 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }:
                           (item as any).disabled
                             ? "text-gray-400"
                             : isActive
-                            ? "text-indigo-600"
-                            : "text-gray-400 group-hover:text-indigo-500",
+                              ? "text-indigo-600"
+                              : "text-gray-400 group-hover:text-indigo-500",
                           "h-5 w-5 flex-shrink-0"
                         )}
                       />
