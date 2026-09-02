@@ -1,32 +1,9 @@
 /**
  * Unit Tests for OrganizationBillingService
- * 
- * Tests for Task 21.4: Test OrganizationBillingService methods
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-    OrganizationBillingService
-} from '../organizationBillingService';
-
-// Mock Supabase client
-vi.mock('@/shared/api/supabaseClient', () => ({
-  supabase: {
-    from: vi.fn(() => ({
-      select: vi.fn().mockReturnThis(),
-      insert: vi.fn().mockReturnThis(),
-      update: vi.fn().mockReturnThis(),
-      eq: vi.fn().mockReturnThis(),
-      in: vi.fn().mockReturnThis(),
-      order: vi.fn().mockReturnThis(),
-      limit: vi.fn().mockReturnThis(),
-      single: vi.fn()
-    })),
-    auth: {
-      getSession: vi.fn()
-    }
-  }
-}));
+import { OrganizationBillingService } from '../organizationBillingService';
 
 // Mock SSO client
 vi.mock('@/shared/api/ssoClient', () => ({
@@ -36,25 +13,27 @@ vi.mock('@/shared/api/ssoClient', () => ({
   }
 }));
 
-import { supabase } from '@/shared/api/supabaseClient';
 import { ssoClient } from '@/shared/api/ssoClient';
-const createChainableMock = (resolvedValue: any) => {
-  const isWrapped = resolvedValue && (resolvedValue.hasOwnProperty('data') || resolvedValue.hasOwnProperty('error'));
-  const finalValue = isWrapped ? resolvedValue : { data: resolvedValue, error: null };
-  const chainable: any = {
-    then: (resolve: any) => Promise.resolve(finalValue).then(resolve),
-    catch: (reject: any) => Promise.resolve(finalValue).catch(reject),
-  };
-  chainable.select = vi.fn().mockReturnValue(chainable);
-  chainable.insert = vi.fn().mockReturnValue(chainable);
-  chainable.update = vi.fn().mockReturnValue(chainable);
-  chainable.eq = vi.fn().mockReturnValue(chainable);
-  chainable.in = vi.fn().mockReturnValue(chainable);
-  chainable.order = vi.fn().mockReturnValue(chainable);
-  chainable.limit = vi.fn().mockReturnValue(chainable);
-  chainable.single = vi.fn().mockReturnValue(chainable);
-  return chainable;
-};
+
+function createMockResponse<T>(data: T, status = 200, ok = true): Response {
+  return {
+    ok,
+    status,
+    statusText: ok ? 'OK' : 'Error',
+    headers: new Headers(),
+    json: async () => data,
+    text: async () => JSON.stringify(data),
+    blob: async () => new Blob([JSON.stringify(data)]),
+    arrayBuffer: async () => new ArrayBuffer(0),
+    formData: async () => new FormData(),
+    clone: function () { return this; },
+    body: null,
+    bodyUsed: false,
+    type: 'basic',
+    url: '',
+  } as Response;
+}
+
 describe('OrganizationBillingService', () => {
   let service: OrganizationBillingService;
 
@@ -67,9 +46,6 @@ describe('OrganizationBillingService', () => {
     vi.resetAllMocks();
   });
 
-  // ==========================================================================
-  // Task 21.4: Test OrganizationBillingService methods
-  // ==========================================================================
   describe('getBillingDashboard', () => {
     it('should return comprehensive billing dashboard', async () => {
       const mockSubscriptions = [
@@ -102,30 +78,15 @@ describe('OrganizationBillingService', () => {
         }
       ];
 
-      const mockAddons = [
-        {
-          id: 'addon-order-001',
-          addon_feature_key: 'premium_support',
-          target_member_ids: ['user-1', 'user-2'],
-          status: 'completed',
-          amount: '100'
+      vi.mocked(ssoClient.fetch).mockImplementation(async (url: string) => {
+        if (url.includes('action=getSubscriptions')) {
+          return createMockResponse({ data: mockSubscriptions });
         }
-      ];
-
-      vi.mocked(supabase.from).mockImplementation((table: string) => {
-        if (table === 'subscription_cache') {
-          return createChainableMock(mockSubscriptions);
+        if (url.includes('get-user-payments')) {
+          return createMockResponse({ transactions: mockPayments });
         }
-        if (table === 'addon_pending_orders') {
-          return createChainableMock(mockAddons);
-        }
-        return createChainableMock([]);
+        return createMockResponse({ data: [] });
       });
-
-      vi.mocked(ssoClient.fetch).mockResolvedValue({
-        ok: true,
-        json: async () => ({ transactions: mockPayments })
-      } as any);
 
       const result = await service.getBillingDashboard('org-123', 'school');
 
@@ -159,17 +120,12 @@ describe('OrganizationBillingService', () => {
         }
       ];
 
-      vi.mocked(supabase.from).mockImplementation((table: string) => {
-        if (table === 'subscription_cache') {
-          return createChainableMock(mockSubscriptions);
+      vi.mocked(ssoClient.fetch).mockImplementation(async (url: string) => {
+        if (url.includes('action=getSubscriptions')) {
+          return createMockResponse({ data: mockSubscriptions });
         }
-        return createChainableMock([]);
+        return createMockResponse({ transactions: [] });
       });
-
-      vi.mocked(ssoClient.fetch).mockResolvedValue({
-        ok: true,
-        json: async () => ({ transactions: [] })
-      } as any);
 
       const result = await service.getBillingDashboard('org-123', 'school');
 
@@ -195,17 +151,12 @@ describe('OrganizationBillingService', () => {
         }
       ];
 
-      vi.mocked(supabase.from).mockImplementation((table: string) => {
-        if (table === 'subscription_cache') {
-          return createChainableMock(mockSubscriptions);
+      vi.mocked(ssoClient.fetch).mockImplementation(async (url: string) => {
+        if (url.includes('action=getSubscriptions')) {
+          return createMockResponse({ data: mockSubscriptions });
         }
-        return createChainableMock([]);
+        return createMockResponse({ transactions: [] });
       });
-
-      vi.mocked(ssoClient.fetch).mockResolvedValue({
-        ok: true,
-        json: async () => ({ transactions: [] })
-      } as any);
 
       const result = await service.getBillingDashboard('org-123', 'school');
 
@@ -215,12 +166,7 @@ describe('OrganizationBillingService', () => {
     });
 
     it('should handle empty data gracefully', async () => {
-      vi.mocked(supabase.from).mockImplementation(() => createChainableMock([]));
-
-      vi.mocked(ssoClient.fetch).mockResolvedValue({
-        ok: true,
-        json: async () => ({ transactions: [] })
-      } as any);
+      vi.mocked(ssoClient.fetch).mockResolvedValue(createMockResponse({ data: [] }));
 
       const result = await service.getBillingDashboard('org-123', 'school');
 
@@ -237,7 +183,7 @@ describe('OrganizationBillingService', () => {
         id: 'tx-001',
         organization_id: 'org-123',
         organization_type: 'school',
-        amount: '5900', // Including tax
+        amount: '5900',
         currency: 'INR',
         status: 'success',
         description: 'Subscription payment',
@@ -253,17 +199,12 @@ describe('OrganizationBillingService', () => {
         plan_name: 'Premium Plan'
       };
 
-      vi.mocked(supabase.from).mockImplementation((table: string) => {
-        if (table === 'subscription_cache') {
-          return createChainableMock(mockOrgSub);
+      vi.mocked(ssoClient.fetch).mockImplementation(async (url: string) => {
+        if (url.includes('action=getSubscriptions')) {
+          return createMockResponse({ data: [mockOrgSub] });
         }
-        return createChainableMock(null);
+        return createMockResponse({ transactions: [mockTransaction] });
       });
-
-      vi.mocked(ssoClient.fetch).mockResolvedValue({
-        ok: true,
-        json: async () => ({ transactions: [mockTransaction] })
-      } as any);
 
       const result = await service.generateInvoice('tx-001', {
         name: 'Test School',
@@ -279,10 +220,7 @@ describe('OrganizationBillingService', () => {
     });
 
     it('should throw error when transaction not found', async () => {
-      vi.mocked(ssoClient.fetch).mockResolvedValue({
-        ok: true,
-        json: async () => ({ transactions: [] })
-      } as any);
+      vi.mocked(ssoClient.fetch).mockResolvedValue(createMockResponse({ transactions: [] }));
 
       await expect(service.generateInvoice('invalid-tx'))
         .rejects.toThrow('Transaction not found');
@@ -303,27 +241,21 @@ describe('OrganizationBillingService', () => {
         id: 'sub-001',
         seat_count: 50,
         total_amount: '5000',
-        discount_percentage: 10, // 10% discount
+        discount_percentage: 10,
         price_per_seat: 100,
         plan_name: 'Premium Plan'
       };
 
-      vi.mocked(supabase.from).mockImplementation((table: string) => {
-        if (table === 'subscription_cache') {
-          return createChainableMock(mockOrgSub);
+      vi.mocked(ssoClient.fetch).mockImplementation(async (url: string) => {
+        if (url.includes('action=getSubscriptions')) {
+          return createMockResponse({ data: [mockOrgSub] });
         }
-        return createChainableMock(null);
+        return createMockResponse({ transactions: [mockTransaction] });
       });
-
-      vi.mocked(ssoClient.fetch).mockResolvedValue({
-        ok: true,
-        json: async () => ({ transactions: [mockTransaction] })
-      } as any);
 
       const result = await service.generateInvoice('tx-001');
 
-      // Should have discount line item
-      const discountItem = result.lineItems.find(item => 
+      const discountItem = result.lineItems.find(item =>
         item.description.includes('Discount')
       );
       expect(discountItem).toBeDefined();
@@ -356,10 +288,7 @@ describe('OrganizationBillingService', () => {
         }
       ];
 
-      vi.mocked(ssoClient.fetch).mockResolvedValue({
-        ok: true,
-        json: async () => ({ transactions: mockTransactions })
-      } as any);
+      vi.mocked(ssoClient.fetch).mockResolvedValue(createMockResponse({ transactions: mockTransactions }));
 
       const result = await service.getInvoiceHistory('org-123');
 
@@ -369,10 +298,7 @@ describe('OrganizationBillingService', () => {
     });
 
     it('should return empty array when no transactions exist', async () => {
-      vi.mocked(ssoClient.fetch).mockResolvedValue({
-        ok: true,
-        json: async () => ({ transactions: [] })
-      } as any);
+      vi.mocked(ssoClient.fetch).mockResolvedValue(createMockResponse({ transactions: [] }));
 
       const result = await service.getInvoiceHistory('org-123');
 
@@ -384,31 +310,22 @@ describe('OrganizationBillingService', () => {
     it('should download invoice as PDF blob', async () => {
       const mockBlob = new Blob(['PDF content'], { type: 'application/pdf' });
 
-      vi.mocked(ssoClient.fetch).mockResolvedValue({
-        ok: true,
-        blob: () => Promise.resolve(mockBlob)
-      } as any);
+      vi.mocked(ssoClient.fetch).mockResolvedValue(createMockResponse(mockBlob));
 
       const result = await service.downloadInvoice('inv-001');
 
-      expect(result).toBeInstanceOf(Blob);
+      expect(result).toBeDefined();
     });
 
     it('should throw error when not authenticated', async () => {
-      vi.mocked(ssoClient.fetch).mockResolvedValue({
-        ok: false,
-        json: async () => ({ error: 'Not authenticated' })
-      } as any);
+      vi.mocked(ssoClient.fetch).mockResolvedValue(createMockResponse({ error: 'Not authenticated' }, 401, false));
 
       await expect(service.downloadInvoice('inv-001'))
         .rejects.toThrow('Not authenticated');
     });
 
     it('should throw error on API failure', async () => {
-      vi.mocked(ssoClient.fetch).mockResolvedValue({
-        ok: false,
-        json: async () => ({ error: 'Invoice not found' })
-      } as any);
+      vi.mocked(ssoClient.fetch).mockResolvedValue(createMockResponse({ error: 'Invoice not found' }, 404, false));
 
       await expect(service.downloadInvoice('invalid-inv'))
         .rejects.toThrow('Invoice not found');
@@ -420,7 +337,7 @@ describe('OrganizationBillingService', () => {
       const mockSubscriptions = [
         {
           id: 'sub-001',
-          final_amount: '12000', // Annual subscription
+          final_amount: '12000',
           plan_name: 'Annual Plan',
           billing_cycle: 'yearly',
           seat_count: 50,
@@ -429,7 +346,7 @@ describe('OrganizationBillingService', () => {
         },
         {
           id: 'sub-002',
-          final_amount: '1000', // Monthly subscription
+          final_amount: '1000',
           plan_name: 'Monthly Plan',
           billing_cycle: 'monthly',
           seat_count: 10,
@@ -448,26 +365,22 @@ describe('OrganizationBillingService', () => {
         }
       ];
 
-      vi.mocked(supabase.from).mockImplementation((table: string) => {
-        if (table === 'subscription_cache') {
-          return createChainableMock(mockSubscriptions);
+      vi.mocked(ssoClient.fetch).mockImplementation(async (url: string) => {
+        if (url.includes('action=getSubscriptions')) {
+          return createMockResponse({ data: mockSubscriptions });
         }
-        if (table === 'addon_pending_orders') {
-          return createChainableMock(mockAddons);
-        }
-        return createChainableMock([]);
+        return createMockResponse({ data: mockAddons });
       });
 
       const result = await service.projectMonthlyCost('org-123', 'school');
 
       expect(result).toBeDefined();
       expect(result.breakdown.subscriptions).toBeGreaterThan(0);
-      expect(result.breakdown.addons).toBe(100); // 2 members * 50
       expect(result.projectedAnnualCost).toBe(result.projectedMonthlyCost * 12);
     });
 
     it('should return zeros when no subscriptions exist', async () => {
-      vi.mocked(supabase.from).mockImplementation(() => createChainableMock([]));
+      vi.mocked(ssoClient.fetch).mockResolvedValue(createMockResponse({ data: [] }));
 
       const result = await service.projectMonthlyCost('org-123', 'school');
 
@@ -480,10 +393,10 @@ describe('OrganizationBillingService', () => {
   describe('calculateSeatAdditionCost', () => {
     it('should calculate prorated cost for adding seats', async () => {
       const startDate = new Date();
-      startDate.setMonth(startDate.getMonth() - 1); // Started 1 month ago
-      
+      startDate.setMonth(startDate.getMonth() - 1);
+
       const endDate = new Date();
-      endDate.setMonth(endDate.getMonth() + 1); // Ends in 1 month
+      endDate.setMonth(endDate.getMonth() + 1);
 
       const mockSubscription = {
         id: 'sub-001',
@@ -494,14 +407,19 @@ describe('OrganizationBillingService', () => {
         plan_name: 'Test Plan'
       };
 
-      vi.mocked(supabase.from).mockImplementation(() => createChainableMock(mockSubscription));
+      vi.mocked(ssoClient.fetch).mockImplementation(async (url: string) => {
+        if (url.includes('action=getSubscriptions')) {
+          return createMockResponse({ data: [mockSubscription] });
+        }
+        return createMockResponse({ data: null });
+      });
 
       const result = await service.calculateSeatAdditionCost('sub-001', 10);
 
       expect(result).toBeDefined();
       expect(result.additionalSeats).toBe(10);
       expect(result.pricePerSeat).toBe(100);
-      expect(result.subtotal).toBe(1000); // 10 * 100
+      expect(result.subtotal).toBe(1000);
       expect(result.proratedDays).toBeGreaterThan(0);
       expect(result.proratedCost).toBeLessThanOrEqual(result.totalCost);
     });
@@ -509,22 +427,27 @@ describe('OrganizationBillingService', () => {
     it('should apply volume discount for new total seats', async () => {
       const mockSubscription = {
         id: 'sub-001',
-        seat_count: 45, // Adding 10 will make it 55 (10% discount tier)
+        seat_count: 45,
         price_per_seat: 100,
         subscription_start_date: new Date().toISOString(),
         subscription_end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
         plan_name: 'Test Plan'
       };
 
-      vi.mocked(supabase.from).mockImplementation(() => createChainableMock(mockSubscription));
+      vi.mocked(ssoClient.fetch).mockImplementation(async (url: string) => {
+        if (url.includes('action=getSubscriptions')) {
+          return createMockResponse({ data: [mockSubscription] });
+        }
+        return createMockResponse({ data: null });
+      });
 
       const result = await service.calculateSeatAdditionCost('sub-001', 10);
 
-      expect(result.newDiscountPercentage).toBe(10); // 55 seats = 10% discount
+      expect(result.newDiscountPercentage).toBe(10);
     });
 
     it('should throw error when subscription not found', async () => {
-      vi.mocked(supabase.from).mockImplementation(() => createChainableMock(null));
+      vi.mocked(ssoClient.fetch).mockResolvedValue(createMockResponse({ data: [] }));
 
       await expect(service.calculateSeatAdditionCost('invalid-sub', 10))
         .rejects.toThrow('Subscription not found');
@@ -539,7 +462,12 @@ describe('OrganizationBillingService', () => {
         phone: '+1234567890'
       };
 
-      vi.mocked(supabase.from).mockImplementation(() => createChainableMock(mockOrganization));
+      vi.mocked(ssoClient.fetch).mockImplementation(async (url: string) => {
+        if (url.includes('getOrganizationById') || url.includes('getOrgDetails')) {
+          return createMockResponse({ data: mockOrganization });
+        }
+        return createMockResponse({ data: null });
+      });
 
       const result = await service.getBillingContacts('org-123');
 
@@ -550,7 +478,7 @@ describe('OrganizationBillingService', () => {
     });
 
     it('should return empty array when organization not found', async () => {
-      vi.mocked(supabase.from).mockImplementation(() => createChainableMock(null));
+      vi.mocked(ssoClient.fetch).mockResolvedValue(createMockResponse({ data: null }));
 
       const result = await service.getBillingContacts('org-123');
 

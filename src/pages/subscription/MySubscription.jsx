@@ -122,20 +122,7 @@ function MySubscription() {
   const dashboardPath = useMemo(() => getDashboardPathFromUrl(location.pathname), [location.pathname]);
   const userType = useMemo(() => getUserTypeFromUrl(location.pathname), [location.pathname]);
 
-  const isOrganizationLearner = useMemo(() => {
-    return !!(
-      subscriptionData?.isOrganizationLicense ||
-      subscriptionData?.is_organization_license ||
-      subscriptionData?.is_organization_subscription ||
-      subscriptionData?.organizationId ||
-      subscriptionData?.organization_id ||
-      user?.school_id ||
-      user?.college_id ||
-      user?.university_id ||
-      user?.organization_id ||
-      user?.organizationId
-    );
-  }, [subscriptionData, user]);
+  const isOrganizationLearner = Boolean(subscriptionData?.isOrganizationLicense);
 
   // Tab state - 'subscription' or 'addons'
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'subscription');
@@ -798,12 +785,12 @@ function MySubscription() {
   }
 
   if (isOrganizationLearner) {
-    const orgName = subscriptionData?.organizationName || subscriptionData?.organization_name || user?.organization_name || user?.organizationName || user?.college_name || user?.collegeName || user?.school_name || user?.schoolName || user?.university_name || user?.universityName || learnerData?.college_name || learnerData?.collegeName || learnerData?.school_name;
-    const orgEmail = subscriptionData?.organizationEmail || subscriptionData?.organization_email || subscriptionData?.organization?.email || user?.organization_email || user?.organizationEmail || user?.college_email || learnerData?.organization_email || learnerData?.college_email || null;
-    const orgPhone = subscriptionData?.organizationPhone || subscriptionData?.organization_phone || subscriptionData?.organization?.phone || user?.organization_phone || user?.organizationPhone || user?.college_phone || learnerData?.organization_phone || learnerData?.college_phone || null;
-    const planTitle = subscriptionData?.planName || subscriptionData?.plan || subscriptionData?.plan_name || subscriptionData?.plan_type;
-    const endDate = subscriptionData?.endDate || subscriptionData?.subscription_end_date;
-    const startDate = subscriptionData?.startDate || subscriptionData?.created_at;
+    const orgName = subscriptionData?.organizationName;
+    const orgEmail = subscriptionData?.organizationEmail;
+    const orgPhone = subscriptionData?.organizationPhone;
+    const planTitle = subscriptionData?.planName;
+    const endDate = subscriptionData?.endDate;
+    const startDate = subscriptionData?.startDate;
 
     return (
       <div className="min-h-screen bg-slate-50 py-8">
@@ -823,13 +810,13 @@ function MySubscription() {
 
           <MemberSubscriptionView
             hasOrganizationSubscription={true}
-            learnerName={user?.full_name || user?.name || (user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : '') || learnerData?.name}
+            learnerName={user?.full_name}
             organization={{
-              id: subscriptionData?.organizationId || subscriptionData?.organization_id || user?.college_id || user?.school_id || user?.university_id || user?.organization_id,
+              id: subscriptionData?.organizationId,
               name: orgName,
               email: orgEmail,
               phone: orgPhone,
-              type: user?.school_id ? 'school' : user?.university_id ? 'university' : 'college',
+              type: subscriptionData?.organizationType,
             }}
             subscription={{
               planName: planTitle,

@@ -54,18 +54,26 @@ function OrganizationProvidedFeatures({
   features = [],
   className = '',
 }: OrganizationProvidedFeaturesProps) {
-  if (!organization || !subscription) return null;
-
   // Calculate days until expiration
   const daysUntilExpiration = useMemo(() => {
+    if (!subscription?.endDate) return 0;
     const now = new Date();
     const end = new Date(subscription.endDate);
     const diffTime = end.getTime() - now.getTime();
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  }, [subscription.endDate]);
+  }, [subscription?.endDate]);
 
   // Determine status styling
   const statusConfig = useMemo(() => {
+    if (!subscription?.status) {
+      return {
+        bgColor: 'bg-gray-50',
+        borderColor: 'border-gray-200',
+        textColor: 'text-gray-700',
+        icon: Shield,
+        label: 'Unknown',
+      };
+    }
     switch (subscription.status) {
       case 'active':
         return {
@@ -108,15 +116,21 @@ function OrganizationProvidedFeatures({
           label: 'Unknown',
         };
     }
-  }, [subscription.status, daysUntilExpiration]);
+  }, [subscription?.status, daysUntilExpiration]);
+
+  const organizationLabel = useMemo(() => {
+    if (!organization?.type) return 'Organization';
+    return ({ school: 'School', college: 'College', university: 'University' }[organization.type] ?? 'Organization');
+  }, [organization?.type]);
+
+  const activeFeatures = useMemo(() => {
+    return (features || []).filter((f) => f.isActive);
+  }, [features]);
+
+  if (!organization || !subscription) return null;
 
   const StatusIcon = statusConfig.icon;
 
-  const organizationLabel = organization.type
-    ? ({ school: 'School', college: 'College', university: 'University' }[organization.type] ?? 'Organization')
-    : 'Organization';
-
-  const activeFeatures = features.filter((f) => f.isActive);
 
   return (
     <div className={`bg-white rounded-2xl border border-gray-200 overflow-hidden ${className}`}>

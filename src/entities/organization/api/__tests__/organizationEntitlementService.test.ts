@@ -1,36 +1,39 @@
 /**
  * Unit Tests for OrganizationEntitlementService
- * 
- * Tests for Task 21.3: Test OrganizationEntitlementService methods
- * Tests for Task 21.8: Test access control checks
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { LicenseAssignment } from '../licenseManagementService';
-import {
-    OrganizationEntitlementService
-} from '../organizationEntitlementService';
+import { OrganizationEntitlementService } from '../organizationEntitlementService';
 
-// Mock Supabase client
-vi.mock('@/shared/api/supabaseClient', () => ({
-  supabase: {
-    from: vi.fn(() => ({
-      select: vi.fn().mockReturnThis(),
-      insert: vi.fn().mockReturnThis(),
-      update: vi.fn().mockReturnThis(),
-      eq: vi.fn().mockReturnThis(),
-      in: vi.fn().mockReturnThis(),
-      or: vi.fn().mockReturnThis(),
-      single: vi.fn(),
-      order: vi.fn().mockReturnThis()
-    })),
-    auth: {
-      getUser: vi.fn()
-    }
+// Mock SSO client
+vi.mock('@/shared/api/ssoClient', () => ({
+  ssoClient: {
+    fetch: vi.fn(),
+    getAccessToken: vi.fn(() => 'test-token')
   }
 }));
 
-import { supabase } from '@/shared/api/supabaseClient';
+import { ssoClient } from '@/shared/api/ssoClient';
+
+function createMockResponse<T>(data: T, status = 200, ok = true): Response {
+  return {
+    ok,
+    status,
+    statusText: ok ? 'OK' : 'Error',
+    headers: new Headers(),
+    json: async () => data,
+    text: async () => JSON.stringify(data),
+    blob: async () => new Blob([JSON.stringify(data)]),
+    arrayBuffer: async () => new ArrayBuffer(0),
+    formData: async () => new FormData(),
+    clone: function () { return this; },
+    body: null,
+    bodyUsed: false,
+    type: 'basic',
+    url: '',
+  } as Response;
+}
 
 describe('OrganizationEntitlementService', () => {
   let service: OrganizationEntitlementService;
@@ -44,9 +47,6 @@ describe('OrganizationEntitlementService', () => {
     vi.resetAllMocks();
   });
 
-  // ==========================================================================
-  // Task 21.3: Test OrganizationEntitlementService methods
-  // ==========================================================================
   describe('grantEntitlementsFromAssignment', () => {
     const mockAssignment: LicenseAssignment = {
       id: 'assign-001',
@@ -62,89 +62,39 @@ describe('OrganizationEntitlementService', () => {
     };
 
     it('should grant entitlements for all plan features', async () => {
-      const mockSubscription = {
-        plan_id: 'plan-001'
-      };
-
       const mockPlan = {
-        base_features: ['feature_ai_assistant', 'feature_analytics', 'feature_reports']
+        features: ['feature_ai_assistant', 'feature_analytics']
       };
 
-      const mockEntitlement = {
-        id: 'ent-001',
-        user_id: 'user-123',
-        feature_key: 'feature_ai_assistant',
-        is_active: true,
-        granted_by_organization: true,
-        organization_subscription_id: 'sub-001',
-        granted_by: 'admin-456',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
-
-      let callCount = 0;
-      vi.mocked(supabase.from).mockImplementation((table: string) => {
-        callCount++;
-        if (table === 'subscription_cache') {
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockReturnThis(),
-            single: vi.fn().mockResolvedValue({ data: mockSubscription, error: null })
-          } as any;
+      vi.mocked(ssoClient.fetch).mockImplementation(async (url: string, init?: RequestInit) => {
+        if (typeof url === 'string' && url.includes('getPlansCache')) {
+          return createMockResponse({ data: mockPlan });
         }
-        if (table === 'plans_cache') {
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockReturnThis(),
-            single: vi.fn().mockResolvedValue({ data: mockPlan, error: null })
-          } as any;
-        }
-        // user_entitlements insert
-        return {
-          insert: vi.fn().mockReturnThis(),
-          select: vi.fn().mockReturnThis(),
-          single: vi.fn().mockResolvedValue({ data: mockEntitlement, error: null })
-        } as any;
+        const body = JSON.parse(String(init?.body || '{}'));
+        return createMockResponse({
+          data: {
+            id: 'ent-001',
+            user_id: body.userId,
+            feature_key: body.featureKey,
+            is_active: true,
+            granted_by_organization: true,
+            organization_subscription_id: body.organizationSubscriptionId,
+            granted_by: body.grantedBy,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }
+        });
       });
 
       const result = await service.grantEntitlementsFromAssignment(mockAssignment);
 
       expect(result).toBeDefined();
-      expect(result.length).toBeGreaterThan(0);
-    });
-
-    it('should throw error when subscription not found', async () => {
-      vi.mocked(supabase.from).mockImplementation(() => ({
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({ data: null, error: null })
-      } as any));
-
-      await expect(service.grantEntitlementsFromAssignment(mockAssignment))
-        .rejects.toThrow('Subscription not found');
+      expect(result.length).toBe(2);
+      expect(result[0].featureKey).toBe('feature_ai_assistant');
     });
 
     it('should throw error when plan features not found', async () => {
-      const mockSubscription = {
-        plan_id: 'plan-001'
-      };
-
-      let callCount = 0;
-      vi.mocked(supabase.from).mockImplementation((table: string) => {
-        callCount++;
-        if (table === 'subscription_cache') {
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockReturnThis(),
-            single: vi.fn().mockResolvedValue({ data: mockSubscription, error: null })
-          } as any;
-        }
-        return {
-          select: vi.fn().mockReturnThis(),
-          eq: vi.fn().mockReturnThis(),
-          single: vi.fn().mockResolvedValue({ data: null, error: null })
-        } as any;
-      });
+      vi.mocked(ssoClient.fetch).mockResolvedValue(createMockResponse({ data: null }));
 
       await expect(service.grantEntitlementsFromAssignment(mockAssignment))
         .rejects.toThrow('Plan features not found');
@@ -153,31 +103,19 @@ describe('OrganizationEntitlementService', () => {
 
   describe('revokeEntitlementsFromAssignment', () => {
     it('should revoke all organization-provided entitlements', async () => {
-      const mockAssignment = {
-        user_id: 'user-123',
-        organization_subscription_id: 'sub-001'
-      };
-
-      let callCount = 0;
-      vi.mocked(supabase.from).mockImplementation((table: string) => {
-        callCount++;
-        if (callCount === 1) {
-          // Get assignment
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockReturnThis(),
-            single: vi.fn().mockResolvedValue({ data: mockAssignment, error: null })
-          } as any;
+      const mockAssignments = [
+        {
+          id: 'assign-001',
+          user_id: 'user-123',
+          organization_subscription_id: 'sub-001'
         }
-        // Update entitlements - support 3 chained .eq() calls
-        const chainable: any = {};
-        chainable.update = vi.fn().mockReturnValue(chainable);
-        chainable.eq = vi.fn().mockImplementation(() => ({
-          eq: vi.fn().mockImplementation(() => ({
-            eq: vi.fn().mockResolvedValue({ error: null })
-          }))
-        }));
-        return chainable;
+      ];
+
+      vi.mocked(ssoClient.fetch).mockImplementation(async (url: string) => {
+        if (typeof url === 'string' && url.includes('getPoolAssignments')) {
+          return createMockResponse({ data: mockAssignments });
+        }
+        return createMockResponse({ success: true });
       });
 
       await expect(service.revokeEntitlementsFromAssignment('assign-001'))
@@ -185,101 +123,58 @@ describe('OrganizationEntitlementService', () => {
     });
 
     it('should throw error when assignment not found', async () => {
-      vi.mocked(supabase.from).mockImplementation(() => ({
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({ data: null, error: null })
-      } as any));
+      vi.mocked(ssoClient.fetch).mockResolvedValue(createMockResponse({ data: [] }));
 
-      await expect(service.revokeEntitlementsFromAssignment('invalid-assign'))
+      await expect(service.revokeEntitlementsFromAssignment('assign-999'))
         .rejects.toThrow('Assignment not found');
     });
   });
 
-  // ==========================================================================
-  // Task 21.8: Test access control checks
-  // ==========================================================================
   describe('hasOrganizationAccess', () => {
     it('should return organization access when user has org-provided entitlement', async () => {
-      const mockOrgEntitlement = {
-        id: 'ent-001',
-        user_id: 'user-123',
-        feature_key: 'feature_ai_assistant',
-        is_active: true,
-        granted_by_organization: true,
-        expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-      };
+      const mockEntitlements = [
+        {
+          id: 'ent-001',
+          user_id: 'user-123',
+          feature_key: 'feature_ai',
+          is_active: true,
+          granted_by_organization: true,
+          expires_at: null
+        }
+      ];
 
-      vi.mocked(supabase.from).mockImplementation(() => ({
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({ data: mockOrgEntitlement, error: null })
-      } as any));
+      vi.mocked(ssoClient.fetch).mockResolvedValue(createMockResponse({ data: mockEntitlements }));
 
-      const result = await service.hasOrganizationAccess('user-123', 'feature_ai_assistant');
+      const result = await service.hasOrganizationAccess('user-123', 'feature_ai');
 
       expect(result.hasAccess).toBe(true);
       expect(result.source).toBe('organization');
     });
 
     it('should return personal access when user has self-purchased entitlement', async () => {
-      const mockPersonalEntitlement = {
-        id: 'ent-002',
-        user_id: 'user-123',
-        feature_key: 'feature_ai_assistant',
-        is_active: true,
-        granted_by_organization: false,
-        expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-      };
-
-      let callCount = 0;
-      vi.mocked(supabase.from).mockImplementation(() => {
-        callCount++;
-        if (callCount === 1) {
-          // No org entitlement
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockReturnThis(),
-            single: vi.fn().mockResolvedValue({ data: null, error: { code: 'PGRST116' } })
-          } as any;
+      const mockEntitlements = [
+        {
+          id: 'ent-002',
+          user_id: 'user-123',
+          feature_key: 'feature_ai',
+          is_active: true,
+          granted_by_organization: false,
+          expires_at: new Date(Date.now() + 86400000).toISOString()
         }
-        // Personal entitlement found
-        return {
-          select: vi.fn().mockReturnThis(),
-          eq: vi.fn().mockReturnThis(),
-          or: vi.fn().mockReturnThis(),
-          single: vi.fn().mockResolvedValue({ data: mockPersonalEntitlement, error: null })
-        } as any;
-      });
+      ];
 
-      const result = await service.hasOrganizationAccess('user-123', 'feature_ai_assistant');
+      vi.mocked(ssoClient.fetch).mockResolvedValue(createMockResponse({ data: mockEntitlements }));
+
+      const result = await service.hasOrganizationAccess('user-123', 'feature_ai');
 
       expect(result.hasAccess).toBe(true);
       expect(result.source).toBe('personal');
     });
 
     it('should return no access when user has no entitlement', async () => {
-      vi.mocked(supabase.from).mockImplementation(() => ({
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        or: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({ data: null, error: { code: 'PGRST116' } })
-      } as any));
+      vi.mocked(ssoClient.fetch).mockResolvedValue(createMockResponse({ data: [] }));
 
-      const result = await service.hasOrganizationAccess('user-123', 'feature_ai_assistant');
-
-      expect(result.hasAccess).toBe(false);
-      expect(result.source).toBe('none');
-    });
-
-    it('should handle errors gracefully and return no access', async () => {
-      vi.mocked(supabase.from).mockImplementation(() => ({
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        single: vi.fn().mockRejectedValue(new Error('Database error'))
-      } as any));
-
-      const result = await service.hasOrganizationAccess('user-123', 'feature_ai_assistant');
+      const result = await service.hasOrganizationAccess('user-123', 'feature_ai');
 
       expect(result.hasAccess).toBe(false);
       expect(result.source).toBe('none');
@@ -292,115 +187,52 @@ describe('OrganizationEntitlementService', () => {
         {
           id: 'ent-001',
           user_id: 'user-123',
-          feature_key: 'feature_ai_assistant',
+          feature_key: 'feature_ai',
           is_active: true,
           granted_by_organization: true,
-          organization_subscription_id: 'sub-001',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         },
         {
           id: 'ent-002',
           user_id: 'user-123',
-          feature_key: 'feature_premium_support',
+          feature_key: 'feature_custom',
           is_active: true,
           granted_by_organization: false,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        },
-        {
-          id: 'ent-003',
-          user_id: 'user-123',
-          feature_key: 'feature_analytics',
-          is_active: true,
-          granted_by_organization: true,
-          organization_subscription_id: 'sub-001',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         }
       ];
 
-      // Create chainable mock that supports multiple .eq() calls
-      const createChainableMock = () => {
-        const chainable: any = {};
-        chainable.select = vi.fn().mockReturnValue(chainable);
-        chainable.eq = vi.fn().mockImplementation(() => ({
-          eq: vi.fn().mockResolvedValue({ data: mockEntitlements, error: null })
-        }));
-        return chainable;
-      };
-
-      vi.mocked(supabase.from).mockImplementation(() => createChainableMock());
+      vi.mocked(ssoClient.fetch).mockResolvedValue(createMockResponse({ data: mockEntitlements }));
 
       const result = await service.getUserEntitlements('user-123');
 
-      expect(result.organizationProvided).toHaveLength(2);
+      expect(result.organizationProvided).toHaveLength(1);
       expect(result.selfPurchased).toHaveLength(1);
-      expect(result.organizationProvided[0].featureKey).toBe('feature_ai_assistant');
-      expect(result.selfPurchased[0].featureKey).toBe('feature_premium_support');
-    });
-
-    it('should return empty arrays when no entitlements exist', async () => {
-      const createChainableMock = () => {
-        const chainable: any = {};
-        chainable.select = vi.fn().mockReturnValue(chainable);
-        chainable.eq = vi.fn().mockImplementation(() => ({
-          eq: vi.fn().mockResolvedValue({ data: [], error: null })
-        }));
-        return chainable;
-      };
-
-      vi.mocked(supabase.from).mockImplementation(() => createChainableMock());
-
-      const result = await service.getUserEntitlements('user-123');
-
-      expect(result.organizationProvided).toHaveLength(0);
-      expect(result.selfPurchased).toHaveLength(0);
+      expect(result.organizationProvided[0].featureKey).toBe('feature_ai');
     });
   });
 
   describe('syncOrganizationEntitlements', () => {
-    it('should revoke and re-grant entitlements for all active assignments', async () => {
+    it('should sync entitlements for active assignments', async () => {
       const mockAssignments = [
         {
           id: 'assign-001',
           user_id: 'user-123',
           organization_subscription_id: 'sub-001',
-          member_type: 'educator',
-          status: 'active'
-        },
-        {
-          id: 'assign-002',
-          user_id: 'user-456',
-          organization_subscription_id: 'sub-001',
-          member_type: 'educator',
-          status: 'active'
+          userId: 'user-123',
+          organizationSubscriptionId: 'sub-001'
         }
       ];
 
-      const mockSubscription = { plan_id: 'plan-001' };
-      const mockPlan = { base_features: ['feature_ai'] };
+      const mockPlan = { features: ['feature_ai'] };
 
-      let callCount = 0;
-      vi.mocked(supabase.from).mockImplementation((table: string) => {
-        callCount++;
-        if (callCount === 1) {
-          // Get assignments - support chained .eq() calls
-          const chainable: any = {};
-          chainable.select = vi.fn().mockReturnValue(chainable);
-          chainable.eq = vi.fn().mockImplementation(() => ({
-            eq: vi.fn().mockResolvedValue({ data: mockAssignments, error: null })
-          }));
-          return chainable;
-        }
-        // Subsequent calls for revoke/grant operations
-        return {
-          select: vi.fn().mockReturnThis(),
-          update: vi.fn().mockReturnThis(),
-          insert: vi.fn().mockReturnThis(),
-          eq: vi.fn().mockReturnThis(),
-          single: vi.fn().mockResolvedValue({ data: table === 'subscription_cache' ? mockSubscription : mockPlan, error: null })
-        } as any;
+      vi.mocked(ssoClient.fetch).mockImplementation(async (url: string) => {
+        if (url.includes('getSubscriptions')) return createMockResponse({ data: mockAssignments });
+        if (url.includes('getPoolAssignments')) return createMockResponse({ data: mockAssignments });
+        if (url.includes('getPlansCache')) return createMockResponse({ data: mockPlan });
+        return createMockResponse({ data: { id: 'ent-1', user_id: 'user-123', feature_key: 'feature_ai' } });
       });
 
       await expect(service.syncOrganizationEntitlements('sub-001'))
@@ -408,16 +240,7 @@ describe('OrganizationEntitlementService', () => {
     });
 
     it('should do nothing when no active assignments exist', async () => {
-      const createChainableMock = () => {
-        const chainable: any = {};
-        chainable.select = vi.fn().mockReturnValue(chainable);
-        chainable.eq = vi.fn().mockImplementation(() => ({
-          eq: vi.fn().mockResolvedValue({ data: [], error: null })
-        }));
-        return chainable;
-      };
-
-      vi.mocked(supabase.from).mockImplementation(() => createChainableMock());
+      vi.mocked(ssoClient.fetch).mockResolvedValue(createMockResponse({ data: [] }));
 
       await expect(service.syncOrganizationEntitlements('sub-001'))
         .resolves.not.toThrow();
@@ -426,159 +249,76 @@ describe('OrganizationEntitlementService', () => {
 
   describe('bulkGrantEntitlements', () => {
     it('should grant entitlements to multiple users', async () => {
-      const mockEntitlement = {
-        id: 'ent-001',
-        user_id: 'user-123',
-        feature_key: 'feature_ai_assistant',
-        is_active: true,
-        granted_by_organization: true,
-        organization_subscription_id: 'sub-001',
-        granted_by: 'admin-456',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
+      const mockResult = [
+        {
+          id: 'ent-001',
+          userId: 'user-123',
+          featureKey: 'feature_ai',
+          isActive: true,
+          grantedByOrganization: true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }
+      ];
 
-      vi.mocked(supabase.from).mockImplementation(() => ({
-        insert: vi.fn().mockReturnThis(),
-        select: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({ data: mockEntitlement, error: null })
-      } as any));
+      vi.mocked(ssoClient.fetch).mockResolvedValue(createMockResponse({ data: mockResult }));
 
       const result = await service.bulkGrantEntitlements(
-        ['user-123', 'user-456'],
-        ['feature_ai_assistant', 'feature_analytics'],
+        ['user-123'],
+        ['feature_ai'],
         'sub-001',
-        'admin-789'
+        'admin-456'
       );
 
-      expect(result.length).toBeGreaterThan(0);
-    });
-
-    it('should continue on individual failures', async () => {
-      let callCount = 0;
-      vi.mocked(supabase.from).mockImplementation(() => {
-        callCount++;
-        return {
-          insert: vi.fn().mockReturnThis(),
-          select: vi.fn().mockReturnThis(),
-          single: vi.fn().mockImplementation(() => {
-            if (callCount === 1) {
-              return Promise.resolve({ data: null, error: { message: 'Duplicate' } });
-            }
-            return Promise.resolve({
-              data: {
-                id: `ent-${callCount}`,
-                user_id: 'user-456',
-                feature_key: 'feature_ai_assistant',
-                is_active: true,
-                granted_by_organization: true,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-              },
-              error: null
-            });
-          })
-        } as any;
-      });
-
-      const result = await service.bulkGrantEntitlements(
-        ['user-123', 'user-456'],
-        ['feature_ai_assistant'],
-        'sub-001',
-        'admin-789'
-      );
-
-      // Should have at least one successful grant
-      expect(result.length).toBeGreaterThanOrEqual(0);
+      expect(result).toHaveLength(1);
     });
   });
 
   describe('bulkRevokeEntitlements', () => {
     it('should revoke entitlements from multiple users', async () => {
-      // Create chainable mock that supports .in() and .eq() chaining
-      const createChainableMock = () => {
-        const chainable: any = {};
-        chainable.update = vi.fn().mockReturnValue(chainable);
-        chainable.in = vi.fn().mockReturnValue(chainable);
-        chainable.eq = vi.fn().mockImplementation(() => ({
-          eq: vi.fn().mockResolvedValue({ error: null })
-        }));
-        return chainable;
-      };
-
-      vi.mocked(supabase.from).mockImplementation(() => createChainableMock());
+      vi.mocked(ssoClient.fetch).mockResolvedValue(createMockResponse({ success: true }));
 
       await expect(service.bulkRevokeEntitlements(
-        ['user-123', 'user-456'],
+        ['user-123'],
         'sub-001'
       )).resolves.not.toThrow();
     });
 
-    it('should throw error on database failure', async () => {
-      const createChainableMock = () => {
-        const chainable: any = {};
-        chainable.update = vi.fn().mockReturnValue(chainable);
-        chainable.in = vi.fn().mockReturnValue(chainable);
-        chainable.eq = vi.fn().mockImplementation(() => ({
-          eq: vi.fn().mockResolvedValue({ error: { message: 'Database error' } })
-        }));
-        return chainable;
-      };
-
-      vi.mocked(supabase.from).mockImplementation(() => createChainableMock());
+    it('should throw error on failure', async () => {
+      vi.mocked(ssoClient.fetch).mockResolvedValue(createMockResponse({ error: { message: 'Revoke failed' } }, 500, false));
 
       await expect(service.bulkRevokeEntitlements(
-        ['user-123', 'user-456'],
+        ['user-123'],
         'sub-001'
-      )).rejects.toThrow();
+      )).rejects.toThrow('Revoke failed');
     });
   });
 
   describe('getOrganizationEntitlementStats', () => {
     it('should return correct statistics', async () => {
-      const mockEntitlements = [
-        { user_id: 'user-1', feature_key: 'feature_ai' },
-        { user_id: 'user-1', feature_key: 'feature_analytics' },
-        { user_id: 'user-2', feature_key: 'feature_ai' },
-        { user_id: 'user-2', feature_key: 'feature_analytics' },
-        { user_id: 'user-3', feature_key: 'feature_ai' }
-      ];
-
-      // Create chainable mock that supports 3 .eq() calls
-      const createChainableMock = () => {
-        const chainable: any = {};
-        chainable.select = vi.fn().mockReturnValue(chainable);
-        chainable.eq = vi.fn().mockImplementation(() => ({
-          eq: vi.fn().mockImplementation(() => ({
-            eq: vi.fn().mockResolvedValue({ data: mockEntitlements, error: null })
-          }))
-        }));
-        return chainable;
+      const mockStats = {
+        totalMembers: 3,
+        activeEntitlements: 5,
+        featureBreakdown: { feature_ai: 3 }
       };
 
-      vi.mocked(supabase.from).mockImplementation(() => createChainableMock());
+      vi.mocked(ssoClient.fetch).mockResolvedValue(createMockResponse({ data: mockStats }));
 
       const result = await service.getOrganizationEntitlementStats('sub-001');
 
       expect(result.totalMembers).toBe(3);
       expect(result.activeEntitlements).toBe(5);
       expect(result.featureBreakdown['feature_ai']).toBe(3);
-      expect(result.featureBreakdown['feature_analytics']).toBe(2);
     });
 
     it('should return zeros when no entitlements exist', async () => {
-      const createChainableMock = () => {
-        const chainable: any = {};
-        chainable.select = vi.fn().mockReturnValue(chainable);
-        chainable.eq = vi.fn().mockImplementation(() => ({
-          eq: vi.fn().mockImplementation(() => ({
-            eq: vi.fn().mockResolvedValue({ data: null, error: null })
-          }))
-        }));
-        return chainable;
+      const mockStats = {
+        totalMembers: 0,
+        activeEntitlements: 0,
+        featureBreakdown: {}
       };
 
-      vi.mocked(supabase.from).mockImplementation(() => createChainableMock());
+      vi.mocked(ssoClient.fetch).mockResolvedValue(createMockResponse({ data: mockStats }));
 
       const result = await service.getOrganizationEntitlementStats('sub-001');
 

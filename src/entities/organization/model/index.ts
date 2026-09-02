@@ -47,3 +47,16 @@ export {
   getMemberTypeLabel,
   formatMemberCount,
 } from './utils';
+
+export type {
+  PoolAssignmentApiResponse,
+  PoolAssignmentRawItem,
+  PoolAssignmentRawUser,
+  NormalizedPoolMemberAssignment,
+} from './types';
+
+export {
+  normalizePoolMemberAssignment,
+} from './normalization';
+
+
