@@ -3,6 +3,9 @@ import type { PagesEnv } from '../../lib/types';
 import { getContextUser } from '../../lib/auth';
 import { apiError, apiSuccess } from '../../lib/response';
 import { getServiceClient } from '../../lib/supabase';
+import { createLogger } from '../../lib/logger';
+
+const logger = createLogger('organization-handler');
 
 function getSupabase(context: AuthenticatedContext) {
   const env = context.env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string };
@@ -921,8 +924,13 @@ async function enrichAssignedSeats(supabase: SupabaseClient, subs: Array<Record<
     supabase.from('license_assignments').select('organization_subscription_id').in('organization_subscription_id', subIds).eq('status', 'active'),
     supabase.from('license_pools').select('organization_subscription_id, assigned_seats').in('organization_subscription_id', subIds),
   ]);
-  if (assignRes.error) console.error('[enrichAssignedSeats] assignments error:', assignRes.error);
-  if (poolRes.error) console.error('[enrichAssignedSeats] pools error:', poolRes.error);
+
+  // Seat enrichment is non-critical, but failures must be observable: log
+  // structured details and flag the affected records so stale/zero seat
+  // counts are never silently reported as healthy data.
+  if (assignRes.error) logger.warn('enrichAssignedSeats: license_assignments query failed', { error: assignRes.error });
+  if (poolRes.error) logger.warn('enrichAssignedSeats: license_pools query failed', { error: poolRes.error });
+  const enrichmentFailed = Boolean(assignRes.error || poolRes.error);
 
   const assignments = assignRes.data || [];
   const pools = poolRes.data || [];
@@ -943,6 +951,7 @@ async function enrichAssignedSeats(supabase: SupabaseClient, subs: Array<Record<
 
   return subs.map((s) => ({
     ...s,
+    ...(enrichmentFailed ? { seats_enrichment_failed: true } : {}),
     assigned_seats: Math.max(countBySub[s.id as string] || 0, poolSeatsBySub[s.id as string] || 0, (s.assigned_seats as number) || 0),
   }));
 }

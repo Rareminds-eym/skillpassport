@@ -822,7 +822,7 @@ function MySubscription() {
               planName: planTitle,
               startDate: startDate,
               endDate: endDate,
-              status: 'active',
+              status: subscriptionData?.status || 'active',
               autoRenew: false,
             }}
           />

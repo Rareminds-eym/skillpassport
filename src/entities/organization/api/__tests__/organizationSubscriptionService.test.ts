@@ -116,6 +116,32 @@ describe('OrganizationSubscriptionService', () => {
       expect(result.taxAmount).toBe(1440); // 18% of 8000
       expect(result.finalAmount).toBe(9440);
     });
+
+    // Restored: these edge-case tests were dropped in commit 256f0fce
+    // ("clean up and streamline unit test suites") without documented rationale.
+    // They cover the 30% discount tier and boundary seat counts, so they are
+    // reinstated to keep pricing regressions detectable.
+    it('should calculate correct pricing with 30% volume discount (500 seats)', () => {
+      const result = calculateBulkPricing(100, 500);
+      expect(result.subtotal).toBe(50000);
+      expect(result.discountPercentage).toBe(30);
+      expect(result.discountAmount).toBe(15000);
+      expect(result.taxAmount).toBe(6300); // 18% of 35000
+      expect(result.finalAmount).toBe(41300);
+    });
+
+    it('should calculate correct price per seat', () => {
+      const result = calculateBulkPricing(100, 100);
+      expect(result.pricePerSeat).toBe(result.finalAmount / result.seatCount);
+    });
+
+    it('should handle edge case of 1 seat', () => {
+      const result = calculateBulkPricing(500, 1);
+      expect(result.seatCount).toBe(1);
+      expect(result.subtotal).toBe(500);
+      expect(result.discountPercentage).toBe(0);
+      expect(result.finalAmount).toBe(590); // 500 * 1.18
+    });
   });
 
   // ==========================================================================

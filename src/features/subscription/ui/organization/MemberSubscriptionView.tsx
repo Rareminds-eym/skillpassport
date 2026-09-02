@@ -176,7 +176,6 @@ function MemberSubscriptionView({
           organizationType={organization.type}
           planName={subscription.planName}
           validUntil={subscription.endDate}
-          adminName={organization.adminName}
           adminEmail={organization.adminEmail}
         />
       )}
