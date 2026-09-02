@@ -479,7 +479,9 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
             }
           }
         } catch (err) {
-          console.error('[verify-payment] Error parsing entity_config:', err);
+          logger.warn('Error parsing entity_config', {
+            error: err instanceof Error ? err.message : String(err),
+          });
         }
       }
 

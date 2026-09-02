@@ -194,6 +194,12 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     const adminId = typeof rawAdminId === 'string' ? rawAdminId.trim() : '';
     const { organizationType, email } = body;
     if (!adminId) return apiSuccess(null, context.request);
+    // adminId is interpolated into a PostgREST `or()` filter below, where
+    // commas, dots and parens have semantic meaning. Restrict it to safe
+    // identifier characters so filter clauses cannot be injected.
+    if (adminId.length > 255 || !/^[a-zA-Z0-9_-]+$/.test(adminId)) {
+      return apiSuccess(null, context.request);
+    }
 
     const findOrg = async (typeFilter?: string) => {
       let q = supabase.from('organizations').select('id').or(`admin_id.eq.${adminId},created_by.eq.${adminId}`);

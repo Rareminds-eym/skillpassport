@@ -15,8 +15,6 @@ export interface OrganizationLearnerBenefitsCardProps {
   organizationType?: 'school' | 'college' | 'university';
   planName?: string;
   validUntil?: Date | string;
-  assignedAt?: Date | string;
-  adminName?: string;
   adminEmail?: string;
   className?: string;
 }
@@ -28,7 +26,6 @@ function OrganizationLearnerBenefitsCard({
   organizationType,
   planName,
   validUntil,
-  adminName,
   adminEmail,
   className = '',
 }: OrganizationLearnerBenefitsCardProps) {
@@ -78,7 +75,7 @@ function OrganizationLearnerBenefitsCard({
                 {displayEmail && (
                   <div className="flex items-center gap-1.5 bg-white/10 px-2.5 py-1 rounded-md text-slate-200">
                     <Mail className="w-3.5 h-3.5 text-slate-300 flex-shrink-0" />
-                    <a href={`mailto:${displayEmail}`} className="hover:underline hover:text-white transition-colors font-medium">
+                    <a href={`mailto:${encodeURIComponent(displayEmail)}`} className="hover:underline hover:text-white transition-colors font-medium">
                       {displayEmail}
                     </a>
                   </div>
@@ -86,7 +83,7 @@ function OrganizationLearnerBenefitsCard({
                 {organizationPhone && (
                   <div className="flex items-center gap-1.5 bg-white/10 px-2.5 py-1 rounded-md text-slate-200">
                     <Phone className="w-3.5 h-3.5 text-slate-300 flex-shrink-0" />
-                    <a href={`tel:${organizationPhone}`} className="hover:underline hover:text-white transition-colors font-medium">
+                    <a href={`tel:${encodeURIComponent(organizationPhone.replace(/\s+/g, ''))}`} className="hover:underline hover:text-white transition-colors font-medium">
                       {organizationPhone}
                     </a>
                   </div>
