@@ -989,24 +989,27 @@ async function getSubscriptions(context: AuthenticatedContext) {
   // 2. Fallback: match by current user (purchased_by or user_id)
   if ((!subs || subs.length === 0) && user?.id) {
     const cleanUserId = String(user.id).trim();
-    const { data: userSubs } = await supabase
-      .from('subscription_cache')
-      .select('*')
-      .or(`purchased_by.eq.${cleanUserId},user_id.eq.${cleanUserId}`)
-      .in('status', ['active', 'pending', 'grace_period'])
-      .order('created_at', { ascending: false });
-
-    if (userSubs && userSubs.length > 0) {
-      const { error: updateError } = await supabase
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanUserId);
+    if (isUuid) {
+      const { data: userSubs } = await supabase
         .from('subscription_cache')
-        .update({ organization_id: orgId, is_organization_subscription: true, updated_at: new Date().toISOString() })
-        .eq('id', userSubs[0].id);
+        .select('*')
+        .or(`purchased_by.eq.${cleanUserId},user_id.eq.${cleanUserId}`)
+        .in('status', ['active', 'pending', 'grace_period'])
+        .order('created_at', { ascending: false });
 
-      if (updateError) {
-        console.error('[getSubscriptions] Failed to update subscription cache:', updateError);
+      if (userSubs && userSubs.length > 0) {
+        const { error: updateError } = await supabase
+          .from('subscription_cache')
+          .update({ organization_id: orgId, is_organization_subscription: true, updated_at: new Date().toISOString() })
+          .eq('id', userSubs[0].id);
+
+        if (updateError) {
+          console.error('[getSubscriptions] Failed to update subscription cache:', updateError);
+        }
+
+        subs = userSubs.map((s) => ({ ...s, organization_id: orgId, is_organization_subscription: true }));
       }
-
-      subs = userSubs.map((s) => ({ ...s, organization_id: orgId, is_organization_subscription: true }));
     }
   }
 
