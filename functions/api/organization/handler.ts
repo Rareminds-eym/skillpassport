@@ -127,7 +127,8 @@ async function getLicensePools(context: AuthenticatedContext) {
   if (orgType) query = query.eq('organization_type', orgType);
   const { data, error } = await query.order('created_at', { ascending: false });
   if (error) throw error;
-  return apiSuccess(data || [], context.request);
+  const enriched = await enrichPoolAssignedSeats(supabase, data || []);
+  return apiSuccess(enriched, context.request);
 }
 
 async function updatePoolAllocation(context: AuthenticatedContext, body: any) {
@@ -145,6 +146,19 @@ async function updatePoolAllocation(context: AuthenticatedContext, body: any) {
   return apiSuccess(data, context.request);
 }
 
+async function adjustSeatCounters(supabase: SupabaseClient, poolId: string, subId: string, delta: number) {
+  const now = new Date().toISOString();
+  const [poolRes, subRes] = await Promise.all([
+    supabase.from('license_pools').select('assigned_seats').eq('id', poolId).single(),
+    supabase.from('subscription_cache').select('assigned_seats').eq('id', subId).single(),
+  ]);
+
+  await Promise.all([
+    poolRes.data && supabase.from('license_pools').update({ assigned_seats: Math.max(0, (poolRes.data.assigned_seats || 0) + delta), updated_at: now }).eq('id', poolId),
+    subRes.data && supabase.from('subscription_cache').update({ assigned_seats: Math.max(0, (subRes.data.assigned_seats || 0) + delta), updated_at: now }).eq('id', subId),
+  ]);
+}
+
 async function assignLicense(context: AuthenticatedContext, body: any) {
   const supabase = getSupabase(context);
   const { poolId, userId: targetUserId } = body;
@@ -159,6 +173,8 @@ async function assignLicense(context: AuthenticatedContext, body: any) {
 
   const { data, error } = await supabase.from('license_assignments').insert({ license_pool_id: poolId, organization_subscription_id: pool.organization_subscription_id, user_id: targetUserId, member_type: pool.member_type, status: 'active', assigned_by: assignedBy }).select().single();
   if (error) throw error;
+
+  await adjustSeatCounters(supabase, poolId, pool.organization_subscription_id, 1);
   return apiSuccess(data, context.request);
 }
 
@@ -167,8 +183,15 @@ async function unassignLicense(context: AuthenticatedContext, body: any) {
   const { assignmentId, reason } = body;
   const revokedBy = getUserId(context);
 
+  const { data: assignment } = await supabase.from('license_assignments').select('id, license_pool_id, organization_subscription_id, status').eq('id', assignmentId).single();
+
   const { error } = await supabase.from('license_assignments').update({ status: 'revoked', revoked_at: new Date().toISOString(), revoked_by: revokedBy, revocation_reason: reason, updated_at: new Date().toISOString() }).eq('id', assignmentId);
   if (error) throw error;
+
+  if (assignment && assignment.status === 'active') {
+    await adjustSeatCounters(supabase, assignment.license_pool_id, assignment.organization_subscription_id, -1);
+  }
+
   return apiSuccess({ success: true }, context.request);
 }
 
@@ -915,6 +938,26 @@ async function getLicensedMembers(context: AuthenticatedContext) {
 // ============================================================================
 
 type SupabaseClient = ReturnType<typeof getSupabase>;
+
+async function enrichPoolAssignedSeats(supabase: SupabaseClient, pools: Array<Record<string, unknown>>) {
+  if (!pools?.length) return [];
+  const { data: assignments } = await supabase
+    .from('license_assignments')
+    .select('license_pool_id')
+    .in('license_pool_id', pools.map((p) => p.id as string).filter(Boolean))
+    .eq('status', 'active');
+
+  const counts = (assignments || []).reduce((acc: Record<string, number>, a: any) => {
+    if (a.license_pool_id) acc[a.license_pool_id] = (acc[a.license_pool_id] || 0) + 1;
+    return acc;
+  }, {});
+
+  return pools.map((p) => {
+    const allocated = Number(p.allocated_seats || 0);
+    const assigned = counts[p.id as string] ?? Number(p.assigned_seats || 0);
+    return { ...p, assigned_seats: assigned, available_seats: Math.max(0, allocated - assigned) };
+  });
+}
 
 async function enrichAssignedSeats(supabase: SupabaseClient, subs: Array<Record<string, unknown>>) {
   if (!subs || subs.length === 0) return [];
