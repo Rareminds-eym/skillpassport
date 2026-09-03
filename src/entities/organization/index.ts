@@ -15,13 +15,15 @@ export type {
   OrgSubscriptionPurchaseRequest,
   PricingBreakdown,
   RenewalOptions,
-  OrganizationMember,
-  FetchMembersOptions,
   FetchMembersResult,
   OrganizationInvitation,
   OrganizationEntitlement,
   OrganizationPurchaseData,
   OrganizationOrderResult,
+  PoolAssignmentApiResponse,
+  PoolAssignmentRawItem,
+  PoolAssignmentRawUser,
+  NormalizedPoolMemberAssignment,
 } from './model';
 
 export {
@@ -45,6 +47,7 @@ export {
   isSubscriptionActive,
   getMemberTypeLabel,
   formatMemberCount,
+  normalizePoolMemberAssignment,
 } from './model';
 
 // API exports

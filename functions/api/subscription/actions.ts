@@ -190,19 +190,64 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   }
 
   if (action === 'get-org-by-admin-id') {
-    const { adminId, organizationType } = body;
-    const { data, error } = await supabase
-      .from('organizations')
-      .select('id')
-      .eq('organization_type', organizationType)
-      .eq('admin_id', adminId)
-      .maybeSingle();
-    if (error) return apiDbError(error, context.request);
-    return apiSuccess(data, context.request);
+    const rawAdminId = body.adminId || body.userId;
+    const adminId = typeof rawAdminId === 'string' ? rawAdminId.trim() : '';
+    const { organizationType, email } = body;
+    if (!adminId) return apiSuccess(null, context.request);
+    // adminId is interpolated into a PostgREST `or()` filter below, where
+    // commas, dots and parens have semantic meaning. Restrict it to safe
+    // identifier characters so filter clauses cannot be injected.
+    if (adminId.length > 255 || !/^[a-zA-Z0-9_-]+$/.test(adminId)) {
+      return apiSuccess(null, context.request);
+    }
+
+    const findOrg = async (typeFilter?: string) => {
+      let q = supabase.from('organizations').select('id').or(`admin_id.eq.${adminId},created_by.eq.${adminId}`);
+      if (typeFilter) q = q.eq('organization_type', typeFilter);
+      return (await q.maybeSingle()).data;
+    };
+
+    // 1. Direct admin_id or created_by match on organizations
+    let org = await findOrg(organizationType);
+    if (org?.id) return apiSuccess(org, context.request);
+
+    // 2. Check users table for user's organizationId
+    const { data: userRow } = await supabase.from('users').select('email, organizationId').eq('id', adminId).maybeSingle();
+    const userOrgId = (userRow as { organizationId?: string; email?: string } | null)?.organizationId;
+    if (userOrgId) return apiSuccess({ id: userOrgId }, context.request);
+
+    // 3. Check organization_members
+    const { data: member } = await supabase.from('organization_members').select('organization_id').eq('user_id', adminId).limit(1).maybeSingle();
+    if (member?.organization_id) return apiSuccess({ id: member.organization_id }, context.request);
+
+    // 4. Check by email (from body or userRow)
+    const userEmail = email || userRow?.email;
+    if (userEmail) {
+      let eq = supabase.from('organizations').select('id').ilike('email', userEmail);
+      if (organizationType) eq = eq.eq('organization_type', organizationType);
+      const { data: emailOrg } = await eq.maybeSingle();
+      if (emailOrg?.id) return apiSuccess(emailOrg, context.request);
+    }
+
+    // 5. Check college_lecturers
+    const { data: college } = await supabase.from('college_lecturers').select('collegeId').eq('user_id', adminId).maybeSingle();
+    if (college?.collegeId) return apiSuccess({ id: college.collegeId }, context.request);
+
+    // 6. Check school_educators
+    const { data: school } = await supabase.from('school_educators').select('school_id').eq('user_id', adminId).maybeSingle();
+    if (school?.school_id) return apiSuccess({ id: school.school_id }, context.request);
+
+    // 7. Check organizations without organization_type filter (broad fallback)
+    if (organizationType && (org = await findOrg())) return apiSuccess(org, context.request);
+
+    return apiSuccess(null, context.request);
   }
 
   if (action === 'get-org-details') {
     const { organizationId } = body;
+    if (!organizationId) {
+      return apiSuccess(null, context.request);
+    }
     const { data, error } = await supabase
       .from('organizations')
       .select('*')
@@ -213,18 +258,62 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   }
 
   if (action === 'create-license-pool') {
-    const { organizationId, organizationType, subscriptionId, poolName, memberType, allocatedSeats, autoAssignNewMembers, createdBy } = body;
+    const { organizationId, organizationType, poolName, memberType, allocatedSeats, autoAssignNewMembers, createdBy } = body;
+    let subId = body.organizationSubscriptionId || body.subscriptionId || body.organization_subscription_id;
+
+    if (!organizationId) {
+      return apiError(400, 'VALIDATION_ERROR', 'organizationId is required to create a license pool', context.request);
+    }
+    if (!poolName || typeof poolName !== 'string' || !poolName.trim()) {
+      return apiError(400, 'VALIDATION_ERROR', 'poolName is required to create a license pool', context.request);
+    }
+    if (typeof allocatedSeats !== 'number' || allocatedSeats <= 0) {
+      return apiError(400, 'VALIDATION_ERROR', 'allocatedSeats must be a positive number', context.request);
+    }
+
+    try {
+      if (!subId) {
+        const { data: primarySub, error: subError } = await supabase
+          .from('subscription_cache')
+          .select('id')
+          .eq('organization_id', organizationId)
+          .in('status', ['active', 'pending'])
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (subError) return apiDbError(subError, context.request);
+        subId = primarySub?.id;
+      } else {
+        const { data: validSub, error: subError } = await supabase
+          .from('subscription_cache')
+          .select('id')
+          .eq('id', subId)
+          .eq('organization_id', organizationId)
+          .maybeSingle();
+        if (subError) return apiDbError(subError, context.request);
+        if (!validSub) {
+          return apiError(400, 'VALIDATION_ERROR', `Subscription ${subId} does not belong to organization ${organizationId}`, context.request);
+        }
+      }
+    } catch (err) {
+      return apiError(500, 'SERVER_ERROR', err instanceof Error ? err.message : 'Subscription resolution failed', context.request);
+    }
+
+    if (!subId) {
+      return apiError(400, 'VALIDATION_ERROR', `No active or pending subscription found for organization ${organizationId}`, context.request);
+    }
+
     const { data, error } = await supabase
       .from('license_pools')
       .insert({
         organization_id: organizationId,
         organization_type: organizationType,
-        organization_subscription_id: subscriptionId,
-        pool_name: poolName,
+        organization_subscription_id: subId,
+        pool_name: poolName.trim(),
         member_type: memberType,
         allocated_seats: allocatedSeats,
         assigned_seats: 0,
-        auto_assign_new_members: autoAssignNewMembers,
+        auto_assign_new_members: autoAssignNewMembers ?? false,
         is_active: true,
         created_by: createdBy,
       })
@@ -235,7 +324,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   }
 
   if (action === 'update-license-pool') {
-    const { poolId, ...updates } = body;
+    const { action: _act, poolId, ...updates } = body;
     const { error } = await supabase
       .from('license_pools')
       .update({ ...updates, updated_at: new Date().toISOString() })
@@ -256,18 +345,49 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
   if (action === 'list-pool-assignments') {
     const { poolId } = body;
-    const { data, error } = await supabase
+    const { data: assignments, error } = await supabase
       .from('license_assignments')
-      .select(`
-        id,
-        user_id,
-        assigned_at,
-        users:user_id (id, email, first_name, last_name)
-      `)
+      .select('id, user_id, assigned_at')
       .eq('license_pool_id', poolId)
       .eq('status', 'active');
+
     if (error) return apiDbError(error, context.request);
-    return apiSuccess(data ?? [], context.request);
+    if (!assignments?.length) return apiSuccess([], context.request);
+
+    const userIds = assignments.map((a: { user_id?: string }) => a.user_id).filter((id): id is string => Boolean(id));
+
+    const [usersRes, learnersRes] = await Promise.all([
+      supabase.from('users').select('id, email, firstName, lastName').in('id', userIds),
+      supabase.from('learners').select('user_id, email, name').in('user_id', userIds),
+    ]);
+
+    if (usersRes.error) return apiDbError(usersRes.error, context.request);
+    if (learnersRes.error) return apiDbError(learnersRes.error, context.request);
+
+    const usersData = usersRes.data || [];
+    const learnersData = learnersRes.data || [];
+
+    const userMap = new Map<string, { id: string; email: string; full_name: string; name: string }>();
+    usersData.forEach((u: { id: string; email?: string; firstName?: string; lastName?: string }) => {
+      const name = [u.firstName, u.lastName].filter(Boolean).join(' ') || u.email;
+      if (name) userMap.set(u.id, { id: u.id, email: u.email || '', full_name: name, name });
+    });
+
+    learnersData.forEach((l: { user_id?: string; email?: string; name?: string }) => {
+      if (l.user_id) {
+        const existing = userMap.get(l.user_id);
+        const name = l.name || existing?.full_name || l.email || 'Learner';
+        const email = l.email || existing?.email || '';
+        userMap.set(l.user_id, { id: l.user_id, email, full_name: name, name });
+      }
+    });
+
+    const mapped = assignments.map((a: { id: string; user_id: string; [key: string]: unknown }) => {
+      const userInfo = userMap.get(a.user_id) || { id: a.user_id, email: '', full_name: 'Learner', name: 'Learner' };
+      return { ...a, user: userInfo, users: userInfo, full_name: userInfo.full_name, name: userInfo.name };
+    });
+
+    return apiSuccess(mapped, context.request);
   }
 
   if (action === 'revoke-license-assignment') {

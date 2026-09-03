@@ -32,6 +32,7 @@ import {
   deactivateSubscription, 
   formatDate, 
   getSubscriptionStatusChecks, 
+  MemberSubscriptionView,
   pauseSubscription, 
   resumeSubscription, 
   SubscriptionDashboard, 
@@ -102,7 +103,6 @@ function getUserTypeFromUrl(pathname) {
   return 'learner'; // fallback
 }
 
-// Removed FALLBACK_PLANS as per requirement to use DB data only
 
 function MySubscription() {
   const navigate = useNavigate();
@@ -121,6 +121,8 @@ function MySubscription() {
   const settingsPath = useMemo(() => getSettingsPathFromUrl(location.pathname), [location.pathname]);
   const dashboardPath = useMemo(() => getDashboardPathFromUrl(location.pathname), [location.pathname]);
   const userType = useMemo(() => getUserTypeFromUrl(location.pathname), [location.pathname]);
+
+  const isOrganizationLearner = Boolean(subscriptionData?.isOrganizationLicense);
 
   // Tab state - 'subscription' or 'addons'
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'subscription');
@@ -777,6 +779,53 @@ function MySubscription() {
               View Plans
             </button>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isOrganizationLearner) {
+    const orgName = subscriptionData?.organizationName;
+    const orgEmail = subscriptionData?.organizationEmail;
+    const orgPhone = subscriptionData?.organizationPhone;
+    const planTitle = subscriptionData?.planName;
+    const endDate = subscriptionData?.endDate;
+    const startDate = subscriptionData?.startDate;
+
+    return (
+      <div className="min-h-screen bg-slate-50 py-8">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="mb-6 flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">My Subscription</h1>
+              <p className="text-gray-500 mt-1">Your active access{orgName ? ` provided by ${orgName}` : ''}</p>
+            </div>
+            <button
+              onClick={() => navigate(dashboardPath)}
+              className="px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors shadow-sm"
+            >
+              Back to Dashboard
+            </button>
+          </div>
+
+          <MemberSubscriptionView
+            hasOrganizationSubscription={true}
+            learnerName={user?.full_name}
+            organization={{
+              id: subscriptionData?.organizationId,
+              name: orgName,
+              email: orgEmail,
+              phone: orgPhone,
+              type: subscriptionData?.organizationType,
+            }}
+            subscription={{
+              planName: planTitle,
+              startDate: startDate,
+              endDate: endDate,
+              status: subscriptionData?.status || 'active',
+              autoRenew: false,
+            }}
+          />
         </div>
       </div>
     );

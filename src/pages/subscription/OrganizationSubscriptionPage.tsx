@@ -23,6 +23,8 @@ import { useNavigate } from 'react-router-dom';
 import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 import { useUser, useIsAuthenticated } from '@/shared/model/authStore';
+import { type PoolAssignmentApiResponse, normalizePoolMemberAssignment } from '@/entities/organization';
+
 
 const logger = getLogger('organization-subscription');
 interface OrganizationDetails {
@@ -463,16 +465,8 @@ function OrganizationSubscriptionPage() {
     setIsLoadingPoolAssignments(true);
 
     try {
-      const result = await apiPost<any>('/subscription/actions', { action: 'list-pool-assignments', poolId });
-
-      const members = (result.data || []).map((a: any) => ({
-        id: a.user_id,
-        name: a.user ? `${a.user.first_name || ''} ${a.user.last_name || ''}`.trim() || a.user.email : 'Unknown',
-        email: a.user?.email || '',
-        assignedAt: a.assigned_at,
-        licenseAssignmentId: a.id,
-      }));
-
+      const result = await apiPost<PoolAssignmentApiResponse>('/subscription/actions', { action: 'list-pool-assignments', poolId });
+      const members = (result.data || []).map(normalizePoolMemberAssignment);
       setPoolAssignedMembers(members);
     } catch (err) {
       logger.error('ViewPoolAssignments error', err as Error);

@@ -1,8 +1,12 @@
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import type { PagesEnv } from '../../lib/types';
 import { getContextUser } from '../../lib/auth';
 import { apiError, apiSuccess } from '../../lib/response';
 import { getServiceClient } from '../../lib/supabase';
+import { createLogger } from '../../lib/logger';
+
+const logger = createLogger('organization-handler');
 
 function getSupabase(context: AuthenticatedContext) {
   const env = context.env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string };
@@ -25,7 +29,7 @@ type MemberType = 'educator' | 'learner';
  * @returns Member data with role if user is a member, null otherwise
  */
 async function verifyOrgMembership(
-  supabase: any,
+  supabase: SupabaseClient,
   userId: string,
   orgId: string
 ): Promise<{ role: string; status: string } | null> {
@@ -124,7 +128,8 @@ async function getLicensePools(context: AuthenticatedContext) {
   if (orgType) query = query.eq('organization_type', orgType);
   const { data, error } = await query.order('created_at', { ascending: false });
   if (error) throw error;
-  return apiSuccess(data || [], context.request);
+  const enriched = await enrichPoolAssignedSeats(supabase, data || []);
+  return apiSuccess(enriched, context.request);
 }
 
 async function updatePoolAllocation(context: AuthenticatedContext, body: any) {
@@ -142,6 +147,28 @@ async function updatePoolAllocation(context: AuthenticatedContext, body: any) {
   return apiSuccess(data, context.request);
 }
 
+async function adjustSeatCounters(supabase: SupabaseClient, poolId: string, subId: string, delta: number) {
+  const now = new Date().toISOString();
+  const [poolRes, subRes] = await Promise.all([
+    supabase.from('license_pools').select('assigned_seats').eq('id', poolId).single(),
+    supabase.from('subscription_cache').select('assigned_seats').eq('id', subId).single(),
+  ]);
+
+  if (poolRes.error) throw poolRes.error;
+  if (subRes.error) throw subRes.error;
+
+  const newPoolSeats = Math.max(0, (poolRes.data?.assigned_seats || 0) + delta);
+  const newSubSeats = Math.max(0, (subRes.data?.assigned_seats || 0) + delta);
+
+  const [poolUpdate, subUpdate] = await Promise.all([
+    supabase.from('license_pools').update({ assigned_seats: newPoolSeats, updated_at: now }).eq('id', poolId),
+    supabase.from('subscription_cache').update({ assigned_seats: newSubSeats, updated_at: now }).eq('id', subId),
+  ]);
+
+  if (poolUpdate.error) throw poolUpdate.error;
+  if (subUpdate.error) throw subUpdate.error;
+}
+
 async function assignLicense(context: AuthenticatedContext, body: any) {
   const supabase = getSupabase(context);
   const { poolId, userId: targetUserId } = body;
@@ -156,6 +183,8 @@ async function assignLicense(context: AuthenticatedContext, body: any) {
 
   const { data, error } = await supabase.from('license_assignments').insert({ license_pool_id: poolId, organization_subscription_id: pool.organization_subscription_id, user_id: targetUserId, member_type: pool.member_type, status: 'active', assigned_by: assignedBy }).select().single();
   if (error) throw error;
+
+  await adjustSeatCounters(supabase, poolId, pool.organization_subscription_id, 1);
   return apiSuccess(data, context.request);
 }
 
@@ -164,8 +193,15 @@ async function unassignLicense(context: AuthenticatedContext, body: any) {
   const { assignmentId, reason } = body;
   const revokedBy = getUserId(context);
 
+  const { data: assignment } = await supabase.from('license_assignments').select('id, license_pool_id, organization_subscription_id, status').eq('id', assignmentId).single();
+
   const { error } = await supabase.from('license_assignments').update({ status: 'revoked', revoked_at: new Date().toISOString(), revoked_by: revokedBy, revocation_reason: reason, updated_at: new Date().toISOString() }).eq('id', assignmentId);
   if (error) throw error;
+
+  if (assignment && assignment.status === 'active') {
+    await adjustSeatCounters(supabase, assignment.license_pool_id, assignment.organization_subscription_id, -1);
+  }
+
   return apiSuccess({ success: true }, context.request);
 }
 
@@ -863,45 +899,176 @@ async function getEducators(context: AuthenticatedContext) {
 
 async function getLicensedMembers(context: AuthenticatedContext) {
   const supabase = getSupabase(context);
+  const userId = getUserId(context);
   const url = new URL(context.request.url);
   const orgId = url.searchParams.get('orgId');
+  if (!orgId) return apiError(400, 'VALIDATION_ERROR', 'orgId is required', context.request);
 
-  const { data: assignments } = await supabase.from('license_assignments').select('id, user_id, assigned_at, license_pool_id').in('user_id', []).eq('status', 'active');
-  const poolIds = [...new Set((assignments || []).map((a: any) => a.license_pool_id))];
-  let poolMap = new Map<string, string>();
-  if (poolIds.length > 0) {
-    const { data: pools } = await supabase.from('license_pools').select('id, pool_name').in('id', poolIds).eq('organization_id', orgId);
-    (pools || []).forEach((p: any) => poolMap.set(p.id, p.pool_name));
+  // 🔒 SECURITY: Verify user is a member of the organization
+  const membership = await verifyOrgMembership(supabase, userId, orgId);
+  if (!membership) {
+    return apiError(403, 'FORBIDDEN', 'Not a member of this organization', context.request);
   }
-  return apiSuccess({ assignments: assignments || [], poolMap: Object.fromEntries(poolMap) }, context.request);
+
+  const [poolsRes, orgSubsRes] = await Promise.all([
+    supabase.from('license_pools').select('id, pool_name').eq('organization_id', orgId),
+    supabase.from('subscription_cache').select('id').eq('organization_id', orgId),
+  ]);
+  if (poolsRes.error) throw poolsRes.error;
+  if (orgSubsRes.error) throw orgSubsRes.error;
+
+  const pools = poolsRes.data;
+  const orgSubs = orgSubsRes.data;
+
+  const poolMap = Object.fromEntries((pools || []).map((p: { id: string; pool_name: string }) => [p.id, p.pool_name]));
+  const poolIds = Object.keys(poolMap).filter((id) => typeof id === 'string' && /^[a-zA-Z0-9_-]+$/.test(id));
+  const subIds = (orgSubs || []).map((s: { id: string }) => s.id).filter((id) => typeof id === 'string' && /^[a-zA-Z0-9_-]+$/.test(id));
+
+  if (poolIds.length === 0 && subIds.length === 0) {
+    return apiSuccess({ assignments: [], poolMap: {} }, context.request);
+  }
+
+  let query = supabase.from('license_assignments').select('id, user_id, assigned_at, license_pool_id, organization_subscription_id').eq('status', 'active');
+  if (poolIds.length > 0 && subIds.length > 0) {
+    query = query.or(`license_pool_id.in.("${poolIds.join('","')}"),organization_subscription_id.in.("${subIds.join('","')}")`);
+  } else if (poolIds.length > 0) {
+    query = query.in('license_pool_id', poolIds);
+  } else {
+    query = query.in('organization_subscription_id', subIds);
+  }
+
+  const { data: assignments, error } = await query;
+  if (error) throw error;
+
+  return apiSuccess({ assignments: assignments || [], poolMap }, context.request);
 }
 
 // ============================================================================
 // Subscription Cache
 // ============================================================================
 
+async function enrichPoolAssignedSeats(supabase: SupabaseClient, pools: Array<Record<string, unknown>>) {
+  if (!pools?.length) return [];
+  const { data: assignments } = await supabase
+    .from('license_assignments')
+    .select('license_pool_id')
+    .in('license_pool_id', pools.map((p) => p.id as string).filter(Boolean))
+    .eq('status', 'active');
+
+  const counts = (assignments || []).reduce((acc: Record<string, number>, a: any) => {
+    if (a.license_pool_id) acc[a.license_pool_id] = (acc[a.license_pool_id] || 0) + 1;
+    return acc;
+  }, {});
+
+  return pools.map((p) => {
+    const allocated = Number(p.allocated_seats || 0);
+    const assigned = counts[p.id as string] ?? Number(p.assigned_seats || 0);
+    return { ...p, assigned_seats: assigned, available_seats: Math.max(0, allocated - assigned) };
+  });
+}
+
+async function enrichAssignedSeats(supabase: SupabaseClient, subs: Array<Record<string, unknown>>) {
+  if (!subs || subs.length === 0) return [];
+  const subIds = subs.map((s) => s.id as string).filter(Boolean);
+
+  const [assignRes, poolRes] = await Promise.all([
+    supabase.from('license_assignments').select('organization_subscription_id').in('organization_subscription_id', subIds).eq('status', 'active'),
+    supabase.from('license_pools').select('organization_subscription_id, assigned_seats').in('organization_subscription_id', subIds),
+  ]);
+
+  // Seat enrichment is non-critical, but failures must be observable: log
+  // structured details and flag the affected records so stale/zero seat
+  // counts are never silently reported as healthy data.
+  if (assignRes.error) logger.warn('enrichAssignedSeats: license_assignments query failed', { error: assignRes.error });
+  if (poolRes.error) logger.warn('enrichAssignedSeats: license_pools query failed', { error: poolRes.error });
+  const enrichmentFailed = Boolean(assignRes.error || poolRes.error);
+
+  const assignments = assignRes.data || [];
+  const pools = poolRes.data || [];
+
+  const countBySub: Record<string, number> = {};
+  assignments.forEach((a: { organization_subscription_id?: string }) => {
+    if (a.organization_subscription_id) {
+      countBySub[a.organization_subscription_id] = (countBySub[a.organization_subscription_id] || 0) + 1;
+    }
+  });
+
+  const poolSeatsBySub: Record<string, number> = {};
+  pools.forEach((p: { organization_subscription_id?: string; assigned_seats?: number }) => {
+    if (p.organization_subscription_id) {
+      poolSeatsBySub[p.organization_subscription_id] = (poolSeatsBySub[p.organization_subscription_id] || 0) + (p.assigned_seats || 0);
+    }
+  });
+
+  return subs.map((s) => ({
+    ...s,
+    ...(enrichmentFailed ? { seats_enrichment_failed: true } : {}),
+    assigned_seats: Math.max(countBySub[s.id as string] || 0, poolSeatsBySub[s.id as string] || 0, (s.assigned_seats as number) || 0),
+  }));
+}
+
 async function getSubscriptions(context: AuthenticatedContext) {
+  const user = getContextUser(context);
   const supabase = getSupabase(context);
   const url = new URL(context.request.url);
-  const orgId = url.searchParams.get('orgId');
-  const orgType = url.searchParams.get('orgType');
   const subId = url.searchParams.get('subId');
-  const isOrgSub = url.searchParams.get('isOrgSub') !== 'false';
 
   if (subId) {
     const { data, error } = await supabase.from('subscription_cache').select('*').eq('id', subId).single();
     if (error) throw error;
-    return apiSuccess(data, context.request);
+    const [enriched] = await enrichAssignedSeats(supabase, data ? [data] : []);
+    return apiSuccess(enriched || data, context.request);
   }
 
+  const orgId = url.searchParams.get('orgId');
   if (!orgId) return apiError(400, 'VALIDATION_ERROR', 'orgId is required', context.request);
-  let query = supabase.from('subscription_cache').select('*').eq('organization_id', orgId);
-  if (orgType) query = query.eq('organization_type', orgType);
-  if (isOrgSub) query = query.eq('is_organization_subscription', true);
-  query = query.order('created_at', { ascending: false });
-  const { data, error } = await query;
-  if (error) throw error;
-  return apiSuccess(data || [], context.request);
+
+  // 🔒 SECURITY: Verify user is a member of the organization
+  const membership = await verifyOrgMembership(supabase, getUserId(context), orgId);
+  if (!membership) {
+    return apiError(403, 'FORBIDDEN', 'Not a member of this organization', context.request);
+  }
+
+  // 1. Direct match by organization_id
+  let { data: subs } = await supabase
+    .from('subscription_cache')
+    .select('*')
+    .eq('organization_id', orgId)
+    .in('status', ['active', 'pending', 'grace_period'])
+    .order('created_at', { ascending: false });
+
+  // 2. Fallback: match by current user (purchased_by or user_id)
+  if ((!subs || subs.length === 0) && user?.id) {
+    const cleanUserId = String(user.id).trim();
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanUserId);
+    if (isUuid) {
+      const { data: userSubs } = await supabase
+        .from('subscription_cache')
+        .select('*')
+        .or(`purchased_by.eq.${cleanUserId},user_id.eq.${cleanUserId}`)
+        .in('status', ['active', 'pending', 'grace_period'])
+        .order('created_at', { ascending: false });
+
+      if (userSubs && userSubs.length > 0) {
+        const { error: updateError } = await supabase
+          .from('subscription_cache')
+          .update({ organization_id: orgId, is_organization_subscription: true, updated_at: new Date().toISOString() })
+          .eq('id', userSubs[0].id);
+
+        if (updateError) {
+          logger.error('[getSubscriptions] Failed to update subscription cache:', { error: updateError, subId: userSubs[0].id });
+        }
+
+        subs = userSubs.map((s) => ({ ...s, organization_id: orgId, is_organization_subscription: true }));
+      }
+    }
+  }
+
+  // NOTE: No broad fallback across all organizations — an unscoped fallback here would
+  // leak other organizations' subscriptions to any authenticated user.
+
+  const enriched = await enrichAssignedSeats(supabase, subs || []);
+  return apiSuccess(enriched, context.request);
 }
 
 async function getPlansCache(context: AuthenticatedContext) {
@@ -951,14 +1118,23 @@ async function bulkGrantEntitlements(context: AuthenticatedContext, body: any) {
   const supabase = getSupabase(context);
   const { userIds, featureKeys, organizationSubscriptionId, grantedBy } = body;
 
-  const results = [];
-  for (const userId of userIds) {
-    for (const featureKey of featureKeys) {
-      const { data, error } = await supabase.from('user_entitlements').insert({ user_id: userId, feature_key: featureKey, is_active: true, granted_by_organization: true, organization_subscription_id: organizationSubscriptionId, granted_by: grantedBy }).select().single();
-      if (data) results.push(data);
-    }
+  const records = userIds.flatMap((userId: string) =>
+    featureKeys.map((featureKey: string) => ({
+      user_id: userId,
+      feature_key: featureKey,
+      is_active: true,
+      granted_by_organization: true,
+      organization_subscription_id: organizationSubscriptionId,
+      granted_by: grantedBy,
+    }))
+  );
+
+  const { data, error } = await supabase.from('user_entitlements').insert(records).select();
+  if (error) throw error;
+  if (!data || data.length !== records.length) {
+    throw new Error(`Bulk entitlements insert incomplete: expected ${records.length}, got ${data?.length || 0}`);
   }
-  return apiSuccess(results, context.request);
+  return apiSuccess(data, context.request);
 }
 
 async function bulkRevokeEntitlements(context: AuthenticatedContext, body: any) {
