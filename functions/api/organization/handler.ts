@@ -1056,7 +1056,7 @@ async function getSubscriptions(context: AuthenticatedContext) {
           .eq('id', userSubs[0].id);
 
         if (updateError) {
-          console.error('[getSubscriptions] Failed to update subscription cache:', updateError);
+          logger.error('[getSubscriptions] Failed to update subscription cache:', { error: updateError, subId: userSubs[0].id });
         }
 
         subs = userSubs.map((s) => ({ ...s, organization_id: orgId, is_organization_subscription: true }));

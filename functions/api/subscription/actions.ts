@@ -261,14 +261,46 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     const { organizationId, organizationType, poolName, memberType, allocatedSeats, autoAssignNewMembers, createdBy } = body;
     let subId = body.organizationSubscriptionId || body.subscriptionId || body.organization_subscription_id;
 
+    if (!organizationId) {
+      return apiError(400, 'VALIDATION_ERROR', 'organizationId is required to create a license pool', context.request);
+    }
+    if (!poolName || typeof poolName !== 'string' || !poolName.trim()) {
+      return apiError(400, 'VALIDATION_ERROR', 'poolName is required to create a license pool', context.request);
+    }
+    if (typeof allocatedSeats !== 'number' || allocatedSeats <= 0) {
+      return apiError(400, 'VALIDATION_ERROR', 'allocatedSeats must be a positive number', context.request);
+    }
+
+    try {
+      if (!subId) {
+        const { data: primarySub, error: subError } = await supabase
+          .from('subscription_cache')
+          .select('id')
+          .eq('organization_id', organizationId)
+          .in('status', ['active', 'pending'])
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (subError) return apiDbError(subError, context.request);
+        subId = primarySub?.id;
+      } else {
+        const { data: validSub, error: subError } = await supabase
+          .from('subscription_cache')
+          .select('id')
+          .eq('id', subId)
+          .eq('organization_id', organizationId)
+          .maybeSingle();
+        if (subError) return apiDbError(subError, context.request);
+        if (!validSub) {
+          return apiError(400, 'VALIDATION_ERROR', `Subscription ${subId} does not belong to organization ${organizationId}`, context.request);
+        }
+      }
+    } catch (err) {
+      return apiError(500, 'SERVER_ERROR', err instanceof Error ? err.message : 'Subscription resolution failed', context.request);
+    }
+
     if (!subId) {
-      const fetchSub = async (orgId?: string) => {
-        let q = supabase.from('subscription_cache').select('id').in('status', ['active', 'pending']).order('created_at', { ascending: false }).limit(1);
-        if (orgId) q = q.eq('organization_id', orgId);
-        return (await q.maybeSingle()).data;
-      };
-      const primarySub = organizationId ? await fetchSub(organizationId) : null;
-      subId = primarySub?.id || (await fetchSub())?.id;
+      return apiError(400, 'VALIDATION_ERROR', `No active or pending subscription found for organization ${organizationId}`, context.request);
     }
 
     const { data, error } = await supabase
@@ -277,11 +309,11 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         organization_id: organizationId,
         organization_type: organizationType,
         organization_subscription_id: subId,
-        pool_name: poolName,
+        pool_name: poolName.trim(),
         member_type: memberType,
         allocated_seats: allocatedSeats,
         assigned_seats: 0,
-        auto_assign_new_members: autoAssignNewMembers,
+        auto_assign_new_members: autoAssignNewMembers ?? false,
         is_active: true,
         created_by: createdBy,
       })
