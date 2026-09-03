@@ -1,4 +1,5 @@
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import type { PagesEnv } from '../../lib/types';
 import { getContextUser } from '../../lib/auth';
 import { apiError, apiSuccess } from '../../lib/response';
@@ -28,7 +29,7 @@ type MemberType = 'educator' | 'learner';
  * @returns Member data with role if user is a member, null otherwise
  */
 async function verifyOrgMembership(
-  supabase: any,
+  supabase: SupabaseClient,
   userId: string,
   orgId: string
 ): Promise<{ role: string; status: string } | null> {
@@ -153,10 +154,19 @@ async function adjustSeatCounters(supabase: SupabaseClient, poolId: string, subI
     supabase.from('subscription_cache').select('assigned_seats').eq('id', subId).single(),
   ]);
 
-  await Promise.all([
-    poolRes.data && supabase.from('license_pools').update({ assigned_seats: Math.max(0, (poolRes.data.assigned_seats || 0) + delta), updated_at: now }).eq('id', poolId),
-    subRes.data && supabase.from('subscription_cache').update({ assigned_seats: Math.max(0, (subRes.data.assigned_seats || 0) + delta), updated_at: now }).eq('id', subId),
+  if (poolRes.error) throw poolRes.error;
+  if (subRes.error) throw subRes.error;
+
+  const newPoolSeats = Math.max(0, (poolRes.data?.assigned_seats || 0) + delta);
+  const newSubSeats = Math.max(0, (subRes.data?.assigned_seats || 0) + delta);
+
+  const [poolUpdate, subUpdate] = await Promise.all([
+    supabase.from('license_pools').update({ assigned_seats: newPoolSeats, updated_at: now }).eq('id', poolId),
+    supabase.from('subscription_cache').update({ assigned_seats: newSubSeats, updated_at: now }).eq('id', subId),
   ]);
+
+  if (poolUpdate.error) throw poolUpdate.error;
+  if (subUpdate.error) throw subUpdate.error;
 }
 
 async function assignLicense(context: AuthenticatedContext, body: any) {
@@ -936,8 +946,6 @@ async function getLicensedMembers(context: AuthenticatedContext) {
 // ============================================================================
 // Subscription Cache
 // ============================================================================
-
-type SupabaseClient = ReturnType<typeof getSupabase>;
 
 async function enrichPoolAssignedSeats(supabase: SupabaseClient, pools: Array<Record<string, unknown>>) {
   if (!pools?.length) return [];
