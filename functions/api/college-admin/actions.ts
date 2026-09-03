@@ -258,6 +258,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const { data: learnersData, error: learnersError } = await supabase
           .from('learners')
           .select(`
+            id,
             user_id, 
             name, 
             email, 
@@ -273,11 +274,11 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         if (learnersError) return apiDbError(learnersError, context.request, { startTime });
         if (!learnersData || learnersData.length === 0) return apiSuccess([], context.request, { startTime });
 
-        const validLearners = learnersData.filter((s: any) => s.user_id != null);
+        const validLearners = learnersData.filter((s: any) => s.id != null);
         if (validLearners.length === 0) return apiSuccess([], context.request, { startTime });
 
-        const learnerIds = validLearners.map((s: any) => s.user_id);
-        const learnerMap = new Map(validLearners.map((s: any) => [s.user_id, s]));
+        const learnerIds = validLearners.map((s: any) => s.id);
+        const learnerMap = new Map(validLearners.map((s: any) => [s.id, s]));
 
         const { data, error: fetchError } = await supabase
           .from('personal_assessment_results')
