@@ -92,7 +92,20 @@ let getMeDevCallCount = 0;
 
 export const ssoClient = {
   fetch: (input: RequestInfo | URL, init?: RequestInit) => authClient.request(input, init),
-  getAccessToken: () => null,
+  // Deprecated: direct token access bypasses vault + replay guard. Use ssoClient.fetch / apiPost which attaches Bearer via authClient vault.
+  // Kept for legacy httpClient callers - now reads from authClient state vault via private accessor.
+  getAccessToken: (): string | null => {
+    try {
+      // @ts-ignore - access private vault for legacy callers; returns null if unauthenticated
+      const vault = (authClient as unknown as { _vault?: { read: () => string | null } })?._vault
+        ?? (authClient as unknown as { vault?: { read: () => string | null } })?.vault;
+      if (vault?.read) return vault.read();
+      // Fallback: derive from state - identity presence means vault has token, but raw token not exposed; return null to force apiClient path
+      return null;
+    } catch {
+      return null;
+    }
+  },
   initSession: () => {
     enforceRequestBudget("session");
     return (async () => {
@@ -212,9 +225,9 @@ export const ssoClient = {
     })();
     return getMeInFlight;
   },
-  refresh: () => {
+  refresh: (force = false) => {
     enforceRequestBudget("session");
-    return authClient.initialize();
+    return authClient.initialize({ force });
   },
   onAuthStateChange: (listener: (event: any) => void) => authClient.subscribe(listener),
 };

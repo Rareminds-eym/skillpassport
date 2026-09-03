@@ -27,27 +27,26 @@ const VerifyEmail = () => {
       try {
         await ssoClient.verifyEmail({ token });
 
-        // Refresh session to get updated user data with is_email_verified = true
-        const refreshOk = await useAuthStore.getState().refreshSession();
-
-        // Log user data after refresh for debugging
-        const refreshedUser = useAuthStore.getState().user;
-        const isEmailVerified = refreshedUser?.isEmailVerified === true;
+        // Step 1: Force a session exchange via Web Locks and the SDK vault
+        // to get a fresh access token carrying is_email_verified=true.
+        // This updates the in-memory #vault, notifies subscribers, and updates the Zustand store.
+        const refreshOk = await useAuthStore.getState().refreshSession({ force: true });
 
         console.log('[VerifyEmail] User data after refresh:', {
-          role: refreshedUser?.role,
-          roles: refreshedUser?.roles,
-          orgId: refreshedUser?.orgId,
-          isEmailVerified,
+          role: useAuthStore.getState().user?.role,
+          roles: useAuthStore.getState().user?.roles,
+          orgId: useAuthStore.getState().user?.orgId,
+          isEmailVerified: useAuthStore.getState().user?.isEmailVerified,
           refreshOk,
           isAuthenticated: useAuthStore.getState().isAuthenticated,
         });
 
-        if (!refreshOk || !isEmailVerified) {
-          console.warn('[VerifyEmail] Session lost or stale after verification', {
+        // Step 2: Only fall back to success_session_lost if the session is
+        // genuinely absent (no cookie, different browser).
+        if (!refreshOk && !useAuthStore.getState().isAuthenticated) {
+          console.warn('[VerifyEmail] Session lost after verification — redirecting to login', {
             refreshOk,
-            isEmailVerified,
-            user: refreshedUser,
+            isAuthenticated: useAuthStore.getState().isAuthenticated,
           });
           setState('success_session_lost');
           return;

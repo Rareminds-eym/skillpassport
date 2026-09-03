@@ -54,7 +54,7 @@ const Courses = () => {
   const [initialLoad, setInitialLoad] = useState(true);
   const [learnerGrade, setLearnerGrade] = useState(null);
   const [learnerBranch, setLearnerBranch] = useState(null);
-  const [filterByBranch, setFilterByBranch] = useState(true); // Toggle for branch filtering
+  const [filterByBranch, setFilterByBranch] = useState(false); // Toggle for branch filtering (defaults to false for full catalog view)
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
@@ -94,9 +94,8 @@ const Courses = () => {
   const [preparingCertificate, setPreparingCertificate] = useState(null); // Track which certificate is being prepared
   const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
   
-  // Refs to prevent duplicate fetches and track initialization
-  const isFetchingRef = useRef(false);
-  const hasFetchedCoursesRef = useRef(false);
+  // Refs to prevent duplicate fetches and track request sequence
+  const fetchRequestIdRef = useRef(0);
   const hasFetchedEnrollmentsRef = useRef(false);
   const userEmailRef = useRef(user?.email);
   const preparingCertificateRef = useRef(new Set()); // Track certificates currently being prepared
@@ -211,74 +210,8 @@ const Courses = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Fetch courses and enrollments from Supabase
-  // Use user?.email as dependency instead of user object to prevent re-fetches on object reference changes
-  useEffect(() => {
-    // Fetch courses once on mount - don't wait for learner info if it's taking too long
-    // We'll show all courses if grade/branch is not available
-    if (!hasFetchedCoursesRef.current) {
-      hasFetchedCoursesRef.current = true;
-      fetchCourses();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only run once on mount
-
-  // Fetch courses when search, filter, sort, or page changes
-  useEffect(() => {
-    // Skip initial load (handled by the effect above)
-    if (hasFetchedCoursesRef.current) {
-      fetchCourses();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedSearch, filterStatus, sortBy, advancedFilters, currentPage, filterByBranch, learnerGrade, learnerBranch]);
-
-  // Fetch learner grade and branch for filtering
-  useEffect(() => {
-    const fetchlearnerInfo = async () => {
-      if (!user?.email) return;
-      
-      try {
-        const res = await apiPost('/learner-pages/actions', {
-          action: 'fetch-learner-info',
-          email: user.email,
-        });
-        
-        if (res?.data) {
-          setLearnerGrade(res.data.grade);
-          setLearnerBranch(res.data.branch_field);
-          
-          // Note: No need to manually call fetchCourses() here
-          // The filter-watching useEffect will automatically trigger when learnerGrade/learnerBranch change
-        }
-      } catch (error) {
-        logger.error('Error fetching learner info', error);
-      }
-    };
-    
-    fetchlearnerInfo();
-  }, [user?.email]);
-
-  // Separate effect for enrollments - only when user email changes
-  useEffect(() => {
-    const currentEmail = user?.email;
-    
-    // Only fetch if email exists and either hasn't been fetched or email changed
-    if (currentEmail && (!hasFetchedEnrollmentsRef.current || userEmailRef.current !== currentEmail)) {
-      userEmailRef.current = currentEmail;
-      hasFetchedEnrollmentsRef.current = true;
-      fetchEnrollments();
-    }
-    // fetchEnrollments is stable (empty deps), so not needed in dependency array
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.email]);
-
   const fetchCourses = useCallback(async () => {
-    // Prevent duplicate fetches
-    if (isFetchingRef.current) {
-      return;
-    }
-    
-    isFetchingRef.current = true;
+    const currentRequestId = ++fetchRequestIdRef.current;
     const isFirstLoad = initialLoad;
 
     try {
@@ -299,7 +232,7 @@ const Courses = () => {
       const filters = {
         status: filterStatus !== 'all' ? filterStatus : ['Active', 'Upcoming'],
         classification,
-        branchField: filterByBranch && learnerBranch?.trim() && advancedFilters.category.length === 0 ? learnerBranch : undefined,
+        branchField: filterByBranch && learnerBranch?.trim() && advancedFilters.category.length === 0 ? learnerBranch.trim() : undefined,
         search: debouncedSearch?.trim() || undefined,
         categories: advancedFilters.category.length > 0 ? advancedFilters.category : undefined,
         skillTypes: advancedFilters.skillType.length > 0 ? advancedFilters.skillType : undefined,
@@ -316,6 +249,9 @@ const Courses = () => {
         filters,
       });
 
+      // Discard if a newer request was initiated while this request was in flight
+      if (currentRequestId !== fetchRequestIdRef.current) return;
+
       setCourses(res?.data?.courses || []);
       setTotalCount(res?.data?.total || 0);
       setAssignedCourseIds(res?.data?.assignedCourseIds || []);
@@ -324,15 +260,57 @@ const Courses = () => {
         setInitialLoad(false);
       }
     } catch (error) {
+      if (currentRequestId !== fetchRequestIdRef.current) return;
       logger.error('Error fetching courses', error);
       if (isFirstLoad) {
         setInitialLoad(false);
       }
     } finally {
-      setLoading(false);
-      isFetchingRef.current = false;
+      if (currentRequestId === fetchRequestIdRef.current) {
+        setLoading(false);
+      }
     }
   }, [debouncedSearch, filterStatus, sortBy, initialLoad, advancedFilters, currentPage, learnerGrade, learnerBranch, filterByBranch]);
+
+  // Fetch courses on initial mount and whenever search, filter, sort, or pagination dependencies change
+  useEffect(() => {
+    fetchCourses();
+  }, [fetchCourses]);
+
+  // Fetch learner grade and branch for filtering
+  useEffect(() => {
+    const fetchlearnerInfo = async () => {
+      if (!user?.email) return;
+      
+      try {
+        const res = await apiPost('/learner-pages/actions', {
+          action: 'fetch-learner-info',
+          email: user.email,
+        });
+        
+        if (res?.data) {
+          setLearnerGrade(res.data.grade);
+          setLearnerBranch(res.data.branch_field);
+        }
+      } catch (error) {
+        logger.error('Error fetching learner info', error);
+      }
+    };
+    
+    fetchlearnerInfo();
+  }, [user?.email]);
+
+  // Separate effect for enrollments - only when user email changes
+  useEffect(() => {
+    const currentEmail = user?.email;
+    
+    // Only fetch if email exists and either hasn't been fetched or email changed
+    if (currentEmail && (!hasFetchedEnrollmentsRef.current || userEmailRef.current !== currentEmail)) {
+      userEmailRef.current = currentEmail;
+      hasFetchedEnrollmentsRef.current = true;
+      fetchEnrollments();
+    }
+  }, [user?.email, fetchEnrollments]);
 
   // Check if course has resumable progress
   const hasResumableProgress = (courseId) => {
@@ -836,7 +814,6 @@ const Courses = () => {
                   <button
                     type="button"
                     onClick={() => {
-                      isFetchingRef.current = false; // Reset fetch lock
                       setFilterByBranch(!filterByBranch);
                     }}
                     className={`h-12 px-4 rounded-lg transition-all shadow-sm flex items-center gap-2 whitespace-nowrap ${
@@ -901,7 +878,7 @@ const Courses = () => {
                 </div>
 
                 {/* Clear Filters Button */}
-                {(filterStatus !== 'all' || searchTerm !== '' || sortBy !== 'created_at' || hasActiveAdvancedFilters() || (learnerBranch && !filterByBranch)) && (
+                {(filterStatus !== 'all' || searchTerm !== '' || sortBy !== 'created_at' || hasActiveAdvancedFilters() || filterByBranch) && (
                   <button
                     type="button"
                     onClick={() => {
@@ -909,7 +886,7 @@ const Courses = () => {
                       setSearchTerm('');
                       setDebouncedSearch('');
                       setSortBy('created_at');
-                      setFilterByBranch(true);
+                      setFilterByBranch(false);
                       setAdvancedFilters({
                         category: [],
                         skillType: [],

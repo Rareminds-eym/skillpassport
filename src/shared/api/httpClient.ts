@@ -26,22 +26,18 @@ export const defaultHeaders = {
 
 /**
  * Create authenticated headers with token
+ * @deprecated Use ssoClient.fetch / apiClient.apiPost which attach Bearer via authClient vault + replay guard.
+ * This helper is kept for legacy callers but will NOT inject Authorization (vault is private).
+ * Migrate to makeRequest/makeAuthenticatedRequest → ssoClient.fetch path.
  */
 export async function createAuthHeaders(customHeaders: Record<string, string> = {}): Promise<Record<string, string>> {
-  // Validate environment variables on first API call
   validateEnvironment();
-
-  const headers: Record<string, string> = {
+  // Do NOT manually inject Bearer - authClient.request attaches it from vault atomically with refresh/replay logic.
+  // Returning only default headers forces callers to use ssoClient.fetch path below.
+  return {
     ...defaultHeaders,
     ...customHeaders,
   };
-
-  const token = ssoClient.getAccessToken();
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-
-  return headers;
 }
 
 /**
@@ -71,17 +67,27 @@ export async function makeRequest<T>(
 
 /**
  * Authenticated HTTP request wrapper
+ * Uses ssoClient.fetch so vault + refresh + replay + X-RM-CSRF are applied correctly.
+ * withAuth Pages Functions require Authorization: Bearer from vault - never plain fetch.
  */
 export async function makeAuthenticatedRequest<T>(
   url: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const authHeaders = await createAuthHeaders(options.headers as Record<string, string>);
-
-  return makeRequest<T>(url, {
+  validateEnvironment();
+  const response = await ssoClient.fetch(url, {
     ...options,
-    headers: authHeaders,
+    headers: {
+      ...defaultHeaders,
+      ...options.headers,
+    },
   });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({} as Record<string, unknown>));
+    const msg = (body as { error?: { message?: string } })?.error?.message ?? `HTTP ${response.status}: ${response.statusText}`;
+    throw new Error(msg);
+  }
+  return response.json() as Promise<T>;
 }
 
 /**

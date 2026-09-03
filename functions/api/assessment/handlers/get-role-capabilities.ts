@@ -52,18 +52,35 @@ export async function getRoleCapabilitiesHandler(context: AuthenticatedContext<E
 
     console.log(`[get-role-capabilities] Cache miss - fetching from LTE`);
 
-    // Step 2: Not cached - fetch from LTE
-    const lteUrl = env.LTE_APP_URL;
-    const response = await fetch(`${lteUrl}/api/v1/capabilities`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ roleId })
-    });
+    // Step 2: Not cached - fetch from LTE (with timeout + graceful fallback, never 502 to browser)
+    const lteUrl = (env.LTE_APP_URL as string) || '';
+    if (!lteUrl) {
+      console.error('[get-role-capabilities] LTE_APP_URL not configured - returning empty, frontend will RAG fallback');
+      return apiSuccess([], context.request, { startTime });
+    }
+    let response: Response;
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      try {
+        response = await fetch(`${lteUrl}/api/v1/capabilities`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ roleId }),
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    } catch (fetchError: any) {
+      console.error(`[get-role-capabilities] LTE fetch failed (timeout/network): ${fetchError?.message || fetchError} - returning empty for RAG fallback`);
+      return apiSuccess([], context.request, { startTime });
+    }
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`[get-role-capabilities] LTE error: ${errorText.substring(0, 200)}`);
-      return apiError(502, 'LTE_ERROR', `LTE API returned ${response.status}`, context.request, { startTime });
+      const errorText = await response.text().catch(() => '');
+      console.error(`[get-role-capabilities] LTE error ${response.status}: ${errorText.substring(0, 200)} - returning empty for RAG fallback`);
+      return apiSuccess([], context.request, { startTime });
     }
 
     const lteResponse = await response.json() as any;
