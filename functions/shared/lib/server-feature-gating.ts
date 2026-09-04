@@ -9,7 +9,10 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { createLogger } from '../../lib/logger';
 import { isStale } from '../../lib/sync-shadow';
+
+const logger = createLogger('server-feature-gating');
 
 const PLAN_HIERARCHY = [
   'freemium',
@@ -61,7 +64,7 @@ export async function checkServerFeatureAccess(
       .maybeSingle();
 
     if (error) {
-      console.error('[ServerFeatureGating] Error fetching subscription_cache:', error);
+      logger.error('Error fetching subscription_cache', { error: (error as Error).message, userId });
       return {
         hasAccess: false,
         reason: 'Unable to verify subscription',
@@ -112,7 +115,7 @@ export async function checkServerFeatureAccess(
       requiresUpgrade: !hasFeature,
     };
   } catch (error) {
-    console.error('[ServerFeatureGating] Unexpected error:', error);
+    logger.error('Unexpected error', { error: (error as Error).message, userId });
     return {
       hasAccess: false,
       reason: 'Internal error',
@@ -134,13 +137,13 @@ export async function verifyPlanExists(
       .maybeSingle();
 
     if (error) {
-      console.error('[ServerFeatureGating] Error verifying plan:', error);
+      logger.error('Error verifying plan', { error: (error as Error).message, planCode });
       return { exists: false };
     }
 
     return { exists: !!plan, plan };
   } catch (error) {
-    console.error('[ServerFeatureGating] Unexpected error verifying plan:', error);
+    logger.error('Unexpected error verifying plan', { error: (error as Error).message, planCode });
     return { exists: false };
   }
 }
@@ -159,7 +162,7 @@ export async function canUpgradeToPlan(
       .maybeSingle();
 
     if (error) {
-      console.error('[ServerFeatureGating] Error fetching subscription_cache:', error);
+      logger.error('Error fetching subscription_cache', { error: (error as Error).message, userId });
       return { canUpgrade: false, reason: 'Unable to verify current subscription' };
     }
 
@@ -188,7 +191,7 @@ export async function canUpgradeToPlan(
       currentPlanCode,
     };
   } catch (error) {
-    console.error('[ServerFeatureGating] Unexpected error checking upgrade eligibility:', error);
+    logger.error('Unexpected error checking upgrade eligibility', { error: (error as Error).message, userId });
     return { canUpgrade: false, reason: 'Internal error' };
   }
 }
@@ -235,19 +238,14 @@ async function refreshCacheAsync(supabase: SupabaseClient, userId: string): Prom
     });
 
     if (rpcError) {
-      // RPC not deployed or failed — this is expected pre-migration.
-      // The nightly reconciliation cron will correct the stale data.
-      // Also, the next payment handler call will write-through sync.
-      console.warn(
-        `[ServerFeatureGating] Self-heal RPC unavailable for user ${userId}: ${rpcError.message}. ` +
-        'Reconciliation cron will correct on next cycle.'
-      );
+      logger.warn('Self-heal RPC unavailable', { userId, error: rpcError.message });
+      logger.info('heal_metric', { metric: 'heal_cache_miss_total', status: 'fallback_cron', userId } as any);
     } else {
-      console.log(`[ServerFeatureGating] Self-healed stale cache for user ${userId}`);
+      logger.info('Self-healed stale cache', { userId });
+      logger.info('heal_metric', { metric: 'heal_cache_miss_total', status: 'success', userId } as any);
     }
   } catch (err) {
-    // Non-critical — feature gating still uses whatever cache data exists.
-    // The write-through sync on the next mutation will correct this.
-    console.warn('[ServerFeatureGating] Self-heal failed (non-critical):', err);
+    logger.warn('Self-heal failed (non-critical)', { userId, error: (err as Error).message });
+    logger.info('heal_metric', { metric: 'heal_cache_miss_total', status: 'failure', userId } as any);
   }
 }

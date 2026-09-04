@@ -11,6 +11,7 @@
  * Uses service_role to bypass RLS. Requires SSO authentication.
  */
 import { withAuth, getContextUser } from '../../lib/auth';
+import { ensureAppUserAndLearner } from '../../lib/heal-user';
 import { getServiceClient } from '../../lib/supabase';
 import { createLogger } from '../../lib/logger';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
@@ -41,12 +42,25 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
       return apiError(500, 'DATABASE_ERROR', 'Failed to fetch learner data', context.request, { startTime });
     }
 
+    let finalLearner: any = learnerData;
     if (!learnerData) {
       logger.warn('No learner found', { userId, userEmail });
-      return apiError(404, 'NOT_FOUND', `No learner record found for user_id "${userId}"`, context.request, { startTime });
+      const heal = await ensureAppUserAndLearner(supabase as any, context.env as any, { sub: userId, email: userEmail }, String(startTime));
+      if (heal.healed) {
+        const { data: healed } = await supabase.from('learners').select('*').eq('user_id', userId).maybeSingle();
+        if (healed) {
+          logger.info('Healed learner for ai-recommendations', { userId, learnerId: healed.id });
+          finalLearner = healed;
+        } else {
+          return apiError(404, 'NOT_FOUND', `No learner record found for user_id "${userId}"`, context.request, { startTime });
+        }
+      } else {
+        return apiError(404, 'NOT_FOUND', `No learner record found for user_id "${userId}"`, context.request, { startTime });
+      }
     }
 
-    const learnerId = learnerData.id;
+    const learnerId = finalLearner.id;
+    const resolvedLearner = finalLearner;
     logger.info('Learner found', { learnerId, userId });
 
     // Step 2: Get learner's skills for matching
@@ -105,16 +119,16 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
       }
 
       // Employment type matching (15% weight)
-      if (learnerData.preferred_employment_types && Array.isArray(learnerData.preferred_employment_types)) {
-        if (learnerData.preferred_employment_types.includes(opp.employment_type)) {
+      if (resolvedLearner.preferred_employment_types && Array.isArray(resolvedLearner.preferred_employment_types)) {
+        if (resolvedLearner.preferred_employment_types.includes(opp.employment_type)) {
           matchScore += 15;
           matchReasons.employment_type_match = true;
         }
       }
 
       // Location matching (15% weight)
-      if (learnerData.preferred_locations && Array.isArray(learnerData.preferred_locations)) {
-        if (learnerData.preferred_locations.some((loc: string) => 
+      if (resolvedLearner.preferred_locations && Array.isArray(resolvedLearner.preferred_locations)) {
+        if (resolvedLearner.preferred_locations.some((loc: string) => 
           opp.location?.toLowerCase().includes(loc.toLowerCase())
         )) {
           matchScore += 15;
@@ -123,17 +137,17 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
       }
 
       // Department/sector matching (15% weight)
-      if (learnerData.preferred_departments && Array.isArray(learnerData.preferred_departments)) {
-        if (learnerData.preferred_departments.includes(opp.department) || 
-            learnerData.preferred_departments.includes(opp.sector)) {
+      if (resolvedLearner.preferred_departments && Array.isArray(resolvedLearner.preferred_departments)) {
+        if (resolvedLearner.preferred_departments.includes(opp.department) || 
+            resolvedLearner.preferred_departments.includes(opp.sector)) {
           matchScore += 15;
           matchReasons.department_match = true;
         }
       }
 
       // Experience level matching (10% weight)
-      if (learnerData.experience_level && opp.experience_level) {
-        if (learnerData.experience_level === opp.experience_level) {
+      if (resolvedLearner.experience_level && opp.experience_level) {
+        if (resolvedLearner.experience_level === opp.experience_level) {
           matchScore += 10;
           matchReasons.experience_match = true;
         }
@@ -182,9 +196,9 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
           soft: softSkills
         },
         preferences: {
-          employmentTypes: learnerData.preferred_employment_types || [],
-          locations: learnerData.preferred_locations || [],
-          departments: learnerData.preferred_departments || []
+          employmentTypes: resolvedLearner.preferred_employment_types || [],
+          locations: resolvedLearner.preferred_locations || [],
+          departments: resolvedLearner.preferred_departments || []
         }
       }
     };

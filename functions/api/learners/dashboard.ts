@@ -1,5 +1,6 @@
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getContextUser, withAuth } from '../../lib/auth';
+import { ensureAppUserAndLearner } from '../../lib/heal-user';
 import { createLogger } from '../../lib/logger';
 import { apiError, apiSuccess } from '../../lib/response';
 import { ADMIN_ROLES } from '../../lib/roleCategories';
@@ -98,13 +99,37 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
             mismatch: debugData.user_id !== userId,
           });
         }
-        return apiError(404, 'NOT_FOUND', `No learner record found for user_id "${userId}"`, context.request, { startTime });
+        // Self-heal: cache-miss → fetch SSO source-of-truth (user_id canonical, role/org from sso-db) and upsert
+        const heal = await ensureAppUserAndLearner(supabase as any, context.env as any, { sub: userId, email: userEmail }, String(startTime));
+        if (heal.healed) {
+          const { data: healed } = await supabase.from('learners').select('*').eq('user_id', userId).maybeSingle();
+          if (healed) {
+            logger.info('Healed learner on read-repair', { userId, learnerId: healed.id });
+            learnerData = healed;
+            learnerId = healed.id;
+          } else {
+            return apiError(404, 'NOT_FOUND', `No learner record found for user_id "${userId}"`, context.request, { startTime });
+          }
+        } else {
+          return apiError(404, 'NOT_FOUND', `No learner record found for user_id "${userId}"`, context.request, { startTime });
+        }
+      } else {
+        learnerData = data;
+        learnerId = data.id;
       }
-      learnerData = data;
-      learnerId = data.id;
     }
 
     logger.info('Learner found', { learnerId, userId, userEmail });
+
+    // Also heal subscription_cache if missing even when learners exists (fixes 302 to /subscription/plans)
+    try {
+      const { data: subCache } = await supabase.from('subscription_cache').select('id').eq('user_id', userId).limit(1).maybeSingle();
+      if (!subCache) {
+        const { ensureAppUserAndLearner: heal2 } = await import('../../lib/heal-user');
+        await heal2(supabase as any, context.env as any, { sub: userId, email: userEmail }, String(startTime));
+        logger.info('Healed subscription on dashboard read-repair', { userId });
+      }
+    } catch {}
 
     const [
       educationResult,

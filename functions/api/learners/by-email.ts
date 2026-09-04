@@ -10,6 +10,7 @@
  */
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getContextUser, withAuth } from '../../lib/auth';
+import { ensureAppUserAndLearner } from '../../lib/heal-user';
 import { apiError, apiSuccess } from '../../lib/response';
 import { ADMIN_ROLES } from '../../lib/roleCategories';
 import { getServiceClient } from '../../lib/supabase';
@@ -220,6 +221,32 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
     if (ilikeData) {
       console.log(`[LearnersByEmail] Found by ILIKE! Actual email="${ilikeData.email}"`);
       return apiError(404, 'CASE_MISMATCH', `Email case mismatch. DB has "${ilikeData.email}" but requested "${email}".`, context.request, { startTime });
+    }
+
+    // Self-heal: try to create from SSO before final 404 (skip for admin viewing others)
+    if (!isAdmin || user.email === email) {
+      const heal = await ensureAppUserAndLearner(supabase as any, context.env as any, { sub: userId, email });
+      if (heal.healed) {
+        const { data: healed } = await supabase.from('learners').select('*').eq('user_id', userId).maybeSingle();
+        if (healed) {
+          console.log(`[LearnersByEmail] Healed on read-repair for user_id="${userId}"`);
+          // Return healed via strategy 3 path
+          const learnerId = healed.id;
+          const [skillPassports, projects, certificates, experience, skills, trainings, educationData, userSettings] = await Promise.all([
+            supabase.from('skill_passports').select('*').eq('learner_id', learnerId),
+            supabase.from('projects').select('*').eq('learner_id', learnerId),
+            supabase.from('certificates').select('*').eq('learner_id', learnerId),
+            supabase.from('experience').select('*').eq('learner_id', learnerId),
+            supabase.from('skills').select('*').eq('learner_id', learnerId),
+            supabase.from('trainings').select('*').eq('learner_id', learnerId),
+            supabase.from('education').select('*').eq('learner_id', learnerId),
+            supabase.from('user_settings').select('privacy_settings').eq('user_id', healed.user_id).maybeSingle(),
+          ]);
+          let privacySettings = { profileVisibility: 'public' };
+          if (userSettings.data?.privacy_settings) privacySettings = userSettings.data.privacy_settings;
+          return apiSuccess({ ...healed, privacySettings, skill_passports: skillPassports.data || [], projects: projects.data || [], certificates: certificates.data || [], experience: experience.data || [], skills: skills.data || [], trainings: trainings.data || [], education: educationData.data || [] }, context.request, { startTime });
+        }
+      }
     }
 
     // Nothing found

@@ -12,8 +12,12 @@
 
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getContextUser } from '../../../lib/auth';
+import { createLogger } from '../../../lib/logger';
 import { getServiceClient } from '../../../lib/supabase';
 import { apiSuccess, apiError, apiDbError } from '../../../lib/response';
+import { syncSubscriptionCache, syncUserShadow } from '../../../lib/sync-shadow';
+
+const logger = createLogger('get-active-subscription');
 
 export async function handleGetActiveSubscription(context: AuthenticatedContext): Promise<Response> {
   const startTime = Date.now();
@@ -162,6 +166,57 @@ export async function handleGetActiveSubscription(context: AuthenticatedContext)
         }, context.request, { startTime });
       }
 
+      // Self-healing fallback: cache miss → check SSO source-of-truth via service binding
+      // This handles local dev dockers (8788) where SYNC_QUEUE consumer is not running,
+      // and any future direct SSO inserts. Fail-soft: on SSO failure return null (current behavior).
+      try {
+        const ssoRaw = (context.env as Record<string, unknown>).SSO_SERVICE;
+        if (ssoRaw && typeof ssoRaw === 'object') {
+          const sso = ssoRaw as {
+            syncSubscription?: (userId: string) => Promise<{ subscription: Record<string, unknown> | null; plan: Record<string, unknown> | null }>;
+            getUserSubscription?: (userId: string) => Promise<{ subscription: Record<string, unknown> | null; plan: Record<string, unknown> | null }>;
+          };
+          const fetcher = sso.syncSubscription ?? sso.getUserSubscription;
+          if (fetcher) {
+            const { subscription, plan } = await fetcher.call(sso, userId);
+            if (subscription) {
+              // Ensure FK users_shadow exists before cache upsert
+              await syncUserShadow(supabase, userId, (subscription as { email?: string }).email || user.email);
+              await syncSubscriptionCache(supabase, subscription as Record<string, unknown>, plan as Record<string, unknown> | null);
+              // Re-read the just-synced cache row to return canonical shape
+              const { data: synced } = await supabase
+                .from('subscription_cache')
+                .select('*')
+                .eq('user_id', userId)
+                .in('status', ['active', 'paused', 'cancelled', 'grace_period'])
+                .order('updated_at', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+              if (synced) {
+                return apiSuccess({
+                  ...synced,
+                  subscription_plans: {
+                    id: synced.plan_id,
+                    name: synced.plan_name || synced.plan_type,
+                    plan_code: synced.plan_code,
+                  },
+                }, context.request, { startTime });
+              }
+              // Fallback: return SSO data directly if re-read fails
+              return apiSuccess({
+                ...(subscription as Record<string, unknown>),
+                subscription_plans: plan
+                  ? { id: (plan as { id?: string }).id, name: (plan as { name?: string }).name, plan_code: (plan as { plan_code?: string }).plan_code }
+                  : undefined,
+              }, context.request, { startTime });
+            }
+          }
+        }
+      } catch (e) {
+        logger.warn('SSO fallback failed (fail-soft, returning null)', { error: e instanceof Error ? e.message : String(e), userId });
+        logger.info('heal_metric', { metric: 'heal_cache_miss_total', status: 'fallback_null', userId } as any);
+      }
+
       return apiSuccess(null, context.request, { startTime });
     }
 
@@ -175,7 +230,7 @@ export async function handleGetActiveSubscription(context: AuthenticatedContext)
       },
     }, context.request, { startTime });
   } catch (error) {
-    console.error('[GetActiveSubscription] Error:', error);
+    logger.error('GetActiveSubscription error', { error: (error as Error).message, userId: (error as any)?.userId, stack: (error as Error).stack });
     return apiError(500, 'INTERNAL_ERROR', 'An internal error occurred', context.request, { startTime });
   }
 }

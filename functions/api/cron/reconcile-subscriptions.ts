@@ -13,10 +13,13 @@
  * Protected by a shared cron secret — not accessible to end users.
  */
 
+import { createLogger } from '../../lib/logger';
 import { apiError, apiSuccess } from '../../lib/response';
 import { ssoSyncPlans, ssoSyncSubscription } from '../../lib/sso-client';
 import { getServiceClient } from '../../lib/supabase';
 import { syncAllPlansCache, syncRolesShadow, syncSubscriptionCache } from '../../lib/sync-shadow';
+
+const logger = createLogger('reconcile');
 
 interface ReconcileEnv {
   SUPABASE_URL: string;
@@ -102,11 +105,12 @@ export async function onRequestPost(context: { request: Request; env: ReconcileE
       }
     }
 
-    console.log('[Reconcile] Completed:', JSON.stringify(results));
+    logger.info('Reconcile completed', { results });
+    logger.info('heal_metric', { metric: 'reconcile_run', ...results } as any);
 
     return apiSuccess(results, request);
   } catch (error: any) {
-    console.error('[Reconcile] Fatal error:', error);
+    logger.error('Reconcile fatal error', { error: (error as Error).message });
     return apiError(500, 'INTERNAL_ERROR', error.message, request);
   }
 }

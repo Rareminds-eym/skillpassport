@@ -227,16 +227,19 @@ export class SyncService {
       .eq('id', parsed.user_id);
     const user = users?.[0];
 
-    if (user) {
-      const learnerName = [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email;
-      const { error: learnerError } = await this.db.from('learners').upsert({
-        user_id: parsed.user_id,
-        name: learnerName,
-        email: user.email,
-        approval_status: 'approved',
-      }, { onConflict: 'user_id' });
-      if (learnerError) return fail('DB_ERROR', learnerError.message, true);
+    if (!user) {
+      // FK order: membership arrived before user — retry after user.created
+      return fail('NOT_FOUND', `User ${parsed.user_id} not found for learners`, true);
     }
+
+    const learnerName = [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email;
+    const { error: learnerError } = await this.db.from('learners').upsert({
+      user_id: parsed.user_id,
+      name: learnerName,
+      email: user.email,
+      approval_status: 'approved',
+    }, { onConflict: 'user_id' });
+    if (learnerError) return fail('DB_ERROR', learnerError.message, true);
 
     const { data: orgs } = await this.db.from('organizations')
       .select('organization_type')
