@@ -149,16 +149,41 @@ async function updatePoolAllocation(context: AuthenticatedContext, body: any) {
 
 async function adjustSeatCounters(supabase: SupabaseClient, poolId: string, subId: string, delta: number) {
   const now = new Date().toISOString();
-  const [poolRes, subRes] = await Promise.all([
-    supabase.from('license_pools').select('assigned_seats').eq('id', poolId).single(),
-    supabase.from('subscription_cache').select('assigned_seats').eq('id', subId).single(),
+
+  // Recalculate assigned seats from ground-truth active assignments to eliminate counter drift
+  const [activePoolRes, activeSubRes] = await Promise.all([
+    supabase.from('license_assignments').select('id', { count: 'exact', head: true }).eq('license_pool_id', poolId).eq('status', 'active'),
+    supabase.from('license_assignments').select('id', { count: 'exact', head: true }).eq('organization_subscription_id', subId).eq('status', 'active'),
   ]);
 
-  if (poolRes.error) throw poolRes.error;
-  if (subRes.error) throw subRes.error;
+  const poolCount = activePoolRes.count;
+  const subCount = activeSubRes.count;
 
-  const newPoolSeats = Math.max(0, (poolRes.data?.assigned_seats || 0) + delta);
-  const newSubSeats = Math.max(0, (subRes.data?.assigned_seats || 0) + delta);
+  // 🔒 Observability: never silently fall back to the drift-prone delta path —
+  // log the failure so stale seat counters are attributable in production.
+  if (activePoolRes.error) {
+    logger.warn('adjustSeatCounters: license_pool assignment count query failed, falling back to delta adjustment', { poolId, error: activePoolRes.error });
+  }
+  if (activeSubRes.error) {
+    logger.warn('adjustSeatCounters: subscription assignment count query failed, falling back to delta adjustment', { subId, error: activeSubRes.error });
+  }
+
+  let newPoolSeats: number;
+  let newSubSeats: number;
+
+  if (poolCount !== null && subCount !== null) {
+    newPoolSeats = poolCount;
+    newSubSeats = subCount;
+  } else {
+    const [poolRes, subRes] = await Promise.all([
+      supabase.from('license_pools').select('assigned_seats').eq('id', poolId).single(),
+      supabase.from('subscription_cache').select('assigned_seats').eq('id', subId).single(),
+    ]);
+    if (poolRes.error) throw poolRes.error;
+    if (subRes.error) throw subRes.error;
+    newPoolSeats = Math.max(0, (poolRes.data?.assigned_seats || 0) + delta);
+    newSubSeats = Math.max(0, (subRes.data?.assigned_seats || 0) + delta);
+  }
 
   const [poolUpdate, subUpdate] = await Promise.all([
     supabase.from('license_pools').update({ assigned_seats: newPoolSeats, updated_at: now }).eq('id', poolId),
@@ -174,9 +199,20 @@ async function assignLicense(context: AuthenticatedContext, body: any) {
   const { poolId, userId: targetUserId } = body;
   const assignedBy = getUserId(context);
 
-  const { data: pool } = await supabase.from('license_pools').select('*').eq('id', poolId).single();
-  if (!pool) return apiError(404, 'NOT_FOUND', 'License pool not found', context.request);
-  if (pool.available_seats <= 0) return apiError(400, 'VALIDATION_ERROR', 'No available seats in pool', context.request);
+  const { data: poolRaw } = await supabase.from('license_pools').select('*').eq('id', poolId).single();
+  if (!poolRaw) return apiError(404, 'NOT_FOUND', 'License pool not found', context.request);
+
+  // 🔒 SECURITY: Only org admins can assign licenses from the org's pools
+  const membership = await verifyOrgMembership(supabase, assignedBy, poolRaw.organization_id);
+  if (!membership) {
+    return apiError(403, 'FORBIDDEN', 'Not a member of this organization', context.request);
+  }
+  if (!isAdmin(membership.role)) {
+    return apiError(403, 'FORBIDDEN', 'Insufficient permissions. Admin role required.', context.request);
+  }
+
+  const [pool] = await enrichPoolAssignedSeats(supabase, [poolRaw]);
+  if (!pool || (pool.available_seats ?? 0) <= 0) return apiError(400, 'VALIDATION_ERROR', 'No available seats in pool', context.request);
 
   const { data: existing } = await supabase.from('license_assignments').select('id').eq('user_id', targetUserId).eq('organization_subscription_id', pool.organization_subscription_id).eq('status', 'active').single();
   if (existing) return apiError(409, 'DUPLICATE', 'User already has an active license assignment', context.request);
@@ -194,6 +230,18 @@ async function unassignLicense(context: AuthenticatedContext, body: any) {
   const revokedBy = getUserId(context);
 
   const { data: assignment } = await supabase.from('license_assignments').select('id, license_pool_id, organization_subscription_id, status').eq('id', assignmentId).single();
+  if (!assignment) return apiError(404, 'NOT_FOUND', 'License assignment not found', context.request);
+
+  // 🔒 SECURITY: Only org admins can revoke licenses
+  const { data: pool } = await supabase.from('license_pools').select('organization_id').eq('id', assignment.license_pool_id).single();
+  if (!pool) return apiError(404, 'NOT_FOUND', 'License pool not found', context.request);
+  const membership = await verifyOrgMembership(supabase, revokedBy, pool.organization_id);
+  if (!membership) {
+    return apiError(403, 'FORBIDDEN', 'Not a member of this organization', context.request);
+  }
+  if (!isAdmin(membership.role)) {
+    return apiError(403, 'FORBIDDEN', 'Insufficient permissions. Admin role required.', context.request);
+  }
 
   const { error } = await supabase.from('license_assignments').update({ status: 'revoked', revoked_at: new Date().toISOString(), revoked_by: revokedBy, revocation_reason: reason, updated_at: new Date().toISOString() }).eq('id', assignmentId);
   if (error) throw error;
@@ -212,6 +260,17 @@ async function transferLicense(context: AuthenticatedContext, body: any) {
 
   const { data: currentAssignment } = await supabase.from('license_assignments').select('*').eq('user_id', fromUserId).eq('organization_subscription_id', organizationSubscriptionId).eq('status', 'active').single();
   if (!currentAssignment) return apiError(404, 'NOT_FOUND', 'No active assignment found for source user', context.request);
+
+  // 🔒 SECURITY: Only org admins can transfer licenses
+  const { data: pool } = await supabase.from('license_pools').select('organization_id').eq('id', currentAssignment.license_pool_id).single();
+  if (!pool) return apiError(404, 'NOT_FOUND', 'License pool not found', context.request);
+  const membership = await verifyOrgMembership(supabase, transferredBy, pool.organization_id);
+  if (!membership) {
+    return apiError(403, 'FORBIDDEN', 'Not a member of this organization', context.request);
+  }
+  if (!isAdmin(membership.role)) {
+    return apiError(403, 'FORBIDDEN', 'Insufficient permissions. Admin role required.', context.request);
+  }
 
   await supabase.from('license_assignments').update({ status: 'revoked', revoked_at: new Date().toISOString(), revoked_by: transferredBy, revocation_reason: 'Transferred to another user', updated_at: new Date().toISOString() }).eq('id', currentAssignment.id);
 
@@ -949,11 +1008,18 @@ async function getLicensedMembers(context: AuthenticatedContext) {
 
 async function enrichPoolAssignedSeats(supabase: SupabaseClient, pools: Array<Record<string, unknown>>) {
   if (!pools?.length) return [];
-  const { data: assignments } = await supabase
+  const { data: assignments, error: assignmentsError } = await supabase
     .from('license_assignments')
     .select('license_pool_id')
     .in('license_pool_id', pools.map((p) => p.id as string).filter(Boolean))
     .eq('status', 'active');
+
+  // 🔒 Observability: on enrichment failure the caller silently falls back to
+  // the stored assigned_seats counter — surface that so stale counts are
+  // never silently reported as healthy data (mirrors enrichAssignedSeats).
+  if (assignmentsError) {
+    logger.warn('enrichPoolAssignedSeats: license_assignments query failed, falling back to stored counters', { error: assignmentsError });
+  }
 
   const counts = (assignments || []).reduce((acc: Record<string, number>, a: any) => {
     if (a.license_pool_id) acc[a.license_pool_id] = (acc[a.license_pool_id] || 0) + 1;
