@@ -50,6 +50,11 @@ import { TextGenerateEffect } from '@/shared/ui/TextGenerateEffect';
 // Import constants and hooks
 import { RIASEC_NAMES, RIASEC_COLORS, TRAIT_NAMES, TRAIT_COLORS, PRINT_STYLES } from '@/features/assessment';
 import { useAssessmentResults } from '../model/useAssessmentResults';
+import { apiPost } from '@/shared/api/apiClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('assessment-result');
+
 
 // Import course matching engine
 import { calculateCourseMatchScores, DEGREE_PROGRAMS, COURSE_KNOWLEDGE_BASE } from '../lib/courseMatchingEngine';
@@ -96,6 +101,7 @@ const GeminiCareerPath = ({ reverse = false }) => {
                 xmlns="http://www.w3.org/2000/svg"
                 className="absolute inset-0"
                 preserveAspectRatio="none"
+                aria-hidden="true"
             >
                 <defs>
                     <linearGradient id={`geminiGradient${reverse ? 'R' : 'L'}`} x1="0%" y1="0%" x2="100%" y2="0%">
@@ -210,7 +216,6 @@ const AnimatedProgressRing = ({ percentage, color, delay = 0 }) => {
 
     useEffect(() => {
         if (isInView) {
-            let start = 0;
             const duration = 2000; // 2 seconds
             const startTime = performance.now();
 
@@ -219,7 +224,7 @@ const AnimatedProgressRing = ({ percentage, color, delay = 0 }) => {
                 const progress = Math.min(elapsed / duration, 1);
 
                 // Easing function (easeOutCubic)
-                const eased = 1 - Math.pow(1 - progress, 3);
+                const eased = 1 - (1 - progress) ** 3;
                 const current = Math.floor(eased * percentage);
 
                 setDisplayValue(current);
@@ -242,7 +247,7 @@ const AnimatedProgressRing = ({ percentage, color, delay = 0 }) => {
             className="relative"
             style={{ width: size, height: size }}
         >
-            <svg width={size} height={size} className="transform -rotate-90">
+            <svg width={size} height={size} className="transform -rotate-90" aria-hidden="true">
                 {/* Background circle */}
                 <circle
                     cx={size / 2}
@@ -369,9 +374,11 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
                         className={`flex justify-center ${reverse ? 'md:order-2' : 'md:order-1'}`}
                     >
                         {/* Outer Container with Gradient Border - Clickable Card */}
-                        <div
-                            className="relative rounded-[10px] p-[1px] cursor-pointer transition-all duration-300 hover:scale-105"
+                        <button
+                            type="button"
+                            className="relative rounded-[10px] p-[1px] cursor-pointer transition-all duration-300 hover:scale-105 text-left"
                             style={{
+                                display: 'block',
                                 width: '100%',
                                 maxWidth: '320px',
                                 minHeight: '280px',
@@ -496,7 +503,7 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                        </button>
 
                         {/* Keyframes for dot animation */}
                         <style>{`
@@ -821,9 +828,16 @@ const AssessmentResult = () => {
 
     // Custom print function that opens print view in new window
     const handlePrint = () => {
+        // Fire-and-forget report log — never blocks the print
+        apiPost('/learner-profile/actions', {
+            action: 'log-assessment-report',
+        }).catch((err) => {
+            logger.error('[log-assessment-report] Failed to log report:', err);
+        });
+
         const printContent = document.querySelector('.print-view');
         if (!printContent) {
-            console.error('Print view not found');
+            logger.error('Print view not found');
             window.print();
             return;
         }
@@ -960,6 +974,7 @@ const AssessmentResult = () => {
                 <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-blue-100 py-3 px-3 sm:px-8 lg:px-12 xl:px-16 print:hidden print-hidden">
                     <div className="relative w-full flex items-center justify-between gap-2">
                         <Button
+                            type="button"
                             variant="ghost"
                             onClick={() => navigate('/learner/dashboard')}
                             className="text-slate-600 hover:text-slate-900 h-8 text-sm px-2 sm:px-3 shrink-0"
@@ -990,6 +1005,7 @@ const AssessmentResult = () => {
                                 </span>
                             </Button> */}
                             <Button
+                                type="button"
                                 onClick={handlePrint}
                                 className="bg-slate-800 text-white hover:bg-slate-700 shadow-sm h-8 text-sm font-medium px-2.5 sm:px-3"
                             >
@@ -1043,6 +1059,7 @@ const AssessmentResult = () => {
                 >
                     <div className="relative flex justify-between items-center bg-white/95 backdrop-blur-md shadow-md border-b border-gray-200 px-6 py-3" data-tour="navigation-actions">
                         <Button
+                            type="button"
                             variant="ghost"
                             onClick={() => navigate('/learner/dashboard')}
                             className="text-slate-600 hover:text-slate-900 hover:bg-slate-100 h-8 text-sm"
@@ -1080,6 +1097,7 @@ const AssessmentResult = () => {
                                 )}
                             </Button> */}
                             <Button
+                                type="button"
                                 onClick={handlePrint}
                                 className="bg-slate-800 text-white hover:bg-slate-700 shadow-sm h-8 text-sm font-medium"
                             >
@@ -1255,7 +1273,8 @@ const AssessmentResult = () => {
                             <div className="flex justify-center mb-8">
                                 <div className="flex items-center gap-4">
                                     {/* Step 1 */}
-                                    <div
+                                    <button
+                                        type="button"
                                         className={`flex items-center gap-2 cursor-pointer transition-all duration-300 ${after10Step === 1 ? 'opacity-100' : 'opacity-50 hover:opacity-75'}`}
                                         onClick={() => setAfter10Step(1)}
                                     >
@@ -1270,13 +1289,14 @@ const AssessmentResult = () => {
                                         <span className={`font-medium text-sm hidden sm:block ${after10Step === 1 ? 'text-blue-600' : 'text-gray-500'}`}>
                                             11th/12th Stream
                                         </span>
-                                    </div>
+                                    </button>
 
                                     {/* Connector */}
                                     <div className={`w-16 h-1 rounded-full transition-all duration-500 ${after10Step > 1 ? 'bg-green-500' : 'bg-gray-200'}`} />
 
                                     {/* Step 2 */}
-                                    <div
+                                    <button
+                                        type="button"
                                         className={`flex items-center gap-2 cursor-pointer transition-all duration-300 ${after10Step === 2 ? 'opacity-100' : 'opacity-50 hover:opacity-75'}`}
                                         onClick={() => after10Step > 1 && setAfter10Step(2)}
                                     >
@@ -1289,7 +1309,7 @@ const AssessmentResult = () => {
                                         <span className={`font-medium text-sm hidden sm:block ${after10Step === 2 ? 'text-blue-600' : 'text-gray-500'}`}>
                                             Career Paths
                                         </span>
-                                    </div>
+                                    </button>
                                 </div>
                             </div>
 
@@ -1531,6 +1551,7 @@ const AssessmentResult = () => {
                                                         {/* Next Button - Dark theme with hover effect like back card */}
                                                         <div className="flex justify-center pt-4">
                                                             <motion.button
+                                                                type="button"
                                                                 onClick={() => setAfter10Step(2)}
                                                                 className="group flex items-center gap-3 px-4 py-2 text-white font-semibold rounded-xl transition-all duration-300"
                                                                 style={{
@@ -1579,6 +1600,7 @@ const AssessmentResult = () => {
                                         className="flex items-center gap-4 mb-6"
                                     >
                                         <button
+                                            type="button"
                                             onClick={() => setAfter10Step(1)}
                                             className="flex items-center gap-2 px-4 py-2 text-gray-400 hover:text-white transition-colors"
                                         >
@@ -1604,9 +1626,9 @@ const AssessmentResult = () => {
 
                                     {/* Career Cards - Only show clusters with valid roles */}
                                     <div data-tour="career-tracks">
-                                    {careerFit && careerFit.clusters && careerFit.clusters.length > 0 ? (
+                                    {careerFit?.clusters?.length > 0 ? (
                                         careerFit.clusters
-                                            .filter(c => c && c.title && c.roles && (c.roles.entry?.length > 0 || c.roles.mid?.length > 0))
+                                            .filter(c => c?.title && c?.roles && (c.roles.entry?.length > 0 || c.roles.mid?.length > 0))
                                             .map((cluster, index) => (
                                             <CareerCard
                                                 key={index}
@@ -1660,7 +1682,8 @@ const AssessmentResult = () => {
                             <div className="flex justify-center mb-8">
                                 <div className="flex items-center gap-4">
                                     {/* Step 1 - Recommended Programs */}
-                                    <div
+                                    <button
+                                        type="button"
                                         className={`flex items-center gap-2 cursor-pointer transition-all duration-300 ${activeRecommendationTab === 'primary' ? 'opacity-100' : 'opacity-50 hover:opacity-75'}`}
                                         onClick={() => setActiveRecommendationTab('primary')}
                                         data-tour="programs-tab-button"
@@ -1676,13 +1699,14 @@ const AssessmentResult = () => {
                                         <span className={`font-medium text-sm hidden sm:block ${activeRecommendationTab === 'primary' ? 'text-blue-600' : 'text-gray-500'}`}>
                                             Recommended Programs
                                         </span>
-                                    </div>
+                                    </button>
 
                                     {/* Connector */}
                                     <div className={`w-16 h-1 rounded-full transition-all duration-500 ${activeRecommendationTab === 'career' ? 'bg-green-500' : 'bg-gray-200'}`} />
 
                                     {/* Step 2 - Career Recommendations */}
-                                    <div
+                                    <button
+                                        type="button"
                                         className={`flex items-center gap-2 cursor-pointer transition-all duration-300 ${activeRecommendationTab === 'career' ? 'opacity-100' : 'opacity-50 hover:opacity-75'}`}
                                         onClick={() => setActiveRecommendationTab('career')}
                                         data-tour="career-tab-button"
@@ -1696,7 +1720,7 @@ const AssessmentResult = () => {
                                         <span className={`font-medium text-sm hidden sm:block ${activeRecommendationTab === 'career' ? 'text-blue-600' : 'text-gray-500'}`}>
                                             Career Recommendations
                                         </span>
-                                    </div>
+                                    </button>
                                 </div>
                             </div>
 
@@ -1935,6 +1959,7 @@ const AssessmentResult = () => {
                                                                         {/* View Career Clusters Button */}
                                                                         <div className="flex justify-center pt-4">
                                                                             <motion.button
+                                                                                type="button"
                                                                                 onClick={() => setActiveRecommendationTab('career')}
                                                                                 className="group flex items-center gap-3 px-6 py-3 text-white font-semibold rounded-xl transition-all duration-300"
                                                                                 style={{
@@ -2061,10 +2086,11 @@ const AssessmentResult = () => {
                                                     };
 
                                                     return (
-                                                        <div
+                                                        <button
+                                                            type="button"
                                                             key={course.courseId}
                                                             onClick={handleProgramClick}
-                                                            className={`relative bg-slate-800 rounded-xl border p-5 transition-all hover:shadow-xl hover:scale-[1.02] cursor-pointer ${index === 0 ? 'border-slate-600 shadow-lg shadow-slate-900/50' : 'border-slate-700'
+                                                            className={`relative bg-slate-800 rounded-xl border p-5 transition-all hover:shadow-xl hover:scale-[1.02] cursor-pointer text-left ${index === 0 ? 'border-slate-600 shadow-lg shadow-slate-900/50' : 'border-slate-700'
                                                                 } ${aiCareerPathsLoading ? 'opacity-50 pointer-events-none' : ''}`}
                                                         >
                                                             {/* Rank Badge */}
@@ -2140,7 +2166,7 @@ const AssessmentResult = () => {
                                                                     </div>
                                                                 </div>
                                                             )}
-                                                        </div>
+                                                        </button>
                                                     );
                                                 })}
                                             </div>
@@ -2164,7 +2190,7 @@ const AssessmentResult = () => {
                             )}
 
                             {/* CAREER TAB CONTENT */}
-                            {activeRecommendationTab === 'career' && careerFit && careerFit.clusters && careerFit.clusters.length > 0 && (
+                            {activeRecommendationTab === 'career' && careerFit?.clusters?.length > 0 && (
                                 <div className="space-y-8" data-tour="career-recommendations">
                                     {/* Career Recommendations using CareerCard components */}
                                     {careerFit.clusters.map((cluster, index) => (
@@ -2188,7 +2214,7 @@ const AssessmentResult = () => {
                             )}
 
                             {/* Fallback for Career tab when no career data */}
-                            {activeRecommendationTab === 'career' && (!careerFit || !careerFit.clusters || careerFit.clusters.length === 0) && (
+                            {activeRecommendationTab === 'career' && !careerFit?.clusters?.length && (
                                 <div className="bg-slate-800 rounded-xl p-8 text-center border border-slate-700">
                                     <Briefcase className="w-12 h-12 text-slate-400 mx-auto mb-4" />
                                     <h3 className="text-lg font-semibold text-white mb-2">Career Recommendations Loading...</h3>
@@ -2215,7 +2241,7 @@ const AssessmentResult = () => {
                     {/* ═══════════════════════════════════════════════════════════════════════════════ */}
                     {/* CAREER RECOMMENDATIONS - For all other grade levels (middle, high school, etc.) */}
                     {/* ═══════════════════════════════════════════════════════════════════════════════ */}
-                    {gradeLevel !== 'after10' && gradeLevel !== 'after12' && careerFit && careerFit.clusters && careerFit.clusters.length > 0 && (
+                    {gradeLevel !== 'after10' && gradeLevel !== 'after12' && careerFit?.clusters?.length > 0 && (
                         <div className="mb-8">
                             <div className="space-y-8" data-tour="career-tracks">
                                 {/* Career Recommendations using CareerCard components with original colorful design */}

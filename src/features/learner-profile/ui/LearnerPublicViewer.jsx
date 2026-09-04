@@ -1,35 +1,37 @@
-import { useEffect, useMemo, useState, useRef } from "react";
 import {
+  Award,
+  Briefcase,
   Check,
   CheckCircle,
-  Award,
-  Mail,
-  Phone,
-  MapPin,
-  User,
-  Download,
   Copy,
-  Star,
-  Briefcase,
-  GraduationCap,
-  TrendingUp,
-  Share2,
+  Download,
   ExternalLink,
   FolderGit2,
+  GraduationCap,
   Lock,
+  Mail,
+  MapPin,
+  Phone,
+  Share2,
+  Star,
+  TrendingUp,
+  User,
 } from "lucide-react";
-import { useLearnerDataById } from '@/entities/learner';
+import { useEffect, useMemo, useRef, useState } from "react";
+import toast from "react-hot-toast";
 import { useParams } from "react-router-dom";
 
-import toast from 'react-hot-toast';
-import {
-  generateResumePDF,
-} from "@/widgets/learner-dashboard/ui/Generateresumepdf";
+import { useLearnerDataById } from "@/entities/learner";
 import { generateBadges, getBadgeProgress } from "@/features/digital-portfolio";
-import { capitalizeName } from "@/shared/lib/helpers";
-import { calculateEmployabilityScore } from "@/shared/lib/employabilityCalculator";
+import { apiPost } from "@/shared/api/apiClient";
+import { getLogger } from "@/shared/config/logging";
 
-import { useAuthLoading, useUser } from '@/shared/model/authStore';
+const logger = getLogger('learner-public-viewer');
+import { calculateEmployabilityScore } from "@/shared/lib/employabilityCalculator";
+import { capitalizeName } from "@/shared/lib/helpers";
+import { useAuthLoading, useUser } from "@/shared/model/authStore";
+import { generateResumePDF } from "@/widgets/learner-dashboard/ui/Generateresumepdf";
+
 function safeParse(jsonLike) {
   if (!jsonLike) return {};
   if (typeof jsonLike === "object") return jsonLike;
@@ -177,6 +179,21 @@ export default function LearnerPublicViewer() {
   const profile = useMemo(() => ({ ...(raw || {}), ...(parsedProfile || {}) }), [raw, parsedProfile]);
   const [showShareModal, setShowShareModal] = useState(false);
   const [downloading, setDownloading] = useState(false);
+
+  // Track profile view — only fires for logged-in users (viewer_id FK requires a users.id)
+  useEffect(() => {
+    if (!learnerId || !user) return; // skip if not logged in or no learnerId
+    // Fire-and-forget: intentionally non-blocking. Profile view tracking is
+    // best-effort — failures must never interrupt the user's profile page experience.
+    apiPost('/learner-profile/actions', {
+      action: 'track-profile-view',
+      learnerId,
+      viewerType: user.role || 'learner',
+    }).catch((err) => {
+      // Expected pattern: log but do not rethrow — tracking failure is non-critical
+      logger.error('[track-profile-view] Failed to track profile view:', err);
+    });
+  }, [learnerId, user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const pickArray = (...sources) => {
     for (const src of sources) {
@@ -720,6 +737,7 @@ export default function LearnerPublicViewer() {
                   <div className="mt-4 flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:gap-3 w-full">
                     <div className="flex w-full sm:w-auto gap-3 justify-between">
                       <button
+                        type="button"
                         onClick={handleDownloadResume}
                         disabled={downloading}
                         className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border-2 border-gray-200 hover:bg-gray-50"
@@ -735,6 +753,7 @@ export default function LearnerPublicViewer() {
                       </button>
 
                       <button
+                        type="button"
                         onClick={handleShare}
                         title="Share"
                         className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white hover:bg-gray-50 border-2 border-gray-200 text-sm font-medium transition-all duration-200"
@@ -824,6 +843,7 @@ export default function LearnerPublicViewer() {
                           </dd>
                           {emailAddr && (
                             <button
+                              type="button"
                               onClick={() => {
                                 navigator.clipboard.writeText(emailAddr);
                                 toast.success(`${emailAddr} has been copied to clipboard.`);
@@ -856,6 +876,7 @@ export default function LearnerPublicViewer() {
                           </dd>
                           {phone && (
                             <button
+                              type="button"
                               onClick={() => {
                                 navigator.clipboard.writeText(phone);
                                 toast.success(`${phone} has been copied to clipboard.`);
@@ -903,6 +924,7 @@ export default function LearnerPublicViewer() {
               >
                 {tabs.map((t, idx) => (
                   <button
+                    type="button"
                     key={t}
                     role="tab"
                     aria-selected={activeTab === t}
@@ -1583,6 +1605,7 @@ export default function LearnerPublicViewer() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md mx-4 relative animate-fade-in-up">
             <button
+              type="button"
               className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-2xl font-bold transition-colors"
               onClick={() => setShowShareModal(false)}
               aria-label="Close"
@@ -1610,6 +1633,7 @@ export default function LearnerPublicViewer() {
                     className="w-5 h-5"
                     fill="currentColor"
                     viewBox="0 0 24 24"
+                    aria-hidden="true"
                   >
                     <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967..." />
                   </svg>
@@ -1629,6 +1653,7 @@ export default function LearnerPublicViewer() {
                     className="w-5 h-5"
                     fill="currentColor"
                     viewBox="0 0 24 24"
+                    aria-hidden="true"
                   >
                     <path d="M20.447 20.452h-3.554v-5.569..." />
                   </svg>
@@ -1648,6 +1673,7 @@ export default function LearnerPublicViewer() {
                     className="w-5 h-5"
                     fill="currentColor"
                     viewBox="0 0 24 24"
+                    aria-hidden="true"
                   >
                     <path d="M18.244 2.25h3.308l-7.227..." />
                   </svg>
@@ -1669,6 +1695,7 @@ export default function LearnerPublicViewer() {
                     stroke="currentColor"
                     strokeWidth="2"
                     viewBox="0 0 24 24"
+                    aria-hidden="true"
                   >
                     <path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8..." />
                   </svg>
@@ -1678,11 +1705,12 @@ export default function LearnerPublicViewer() {
 
               {/* Copy Link */}
               <div className="pt-4 border-t border-gray-200">
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                <label htmlFor="copy-link-input" className="block text-sm font-semibold text-gray-700 mb-2">
                   Or copy link:
                 </label>
                 <div className="flex gap-2">
                   <input
+                    id="copy-link-input"
                     type="text"
                     value={qrCodeValue}
                     readOnly
@@ -1690,6 +1718,7 @@ export default function LearnerPublicViewer() {
                     onFocus={(e) => e.target.select()}
                   />
                   <button
+                    type="button"
                     onClick={handleCopyLink}
                     className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold transition-colors shadow-md"
                   >
