@@ -392,7 +392,13 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
 
       // Only include institution-related fields that are actually set
       if (profileData.schoolId) dataToSave.schoolId = profileData.schoolId;
-      if (profileData.universityId) dataToSave.universityId = profileData.universityId;
+      if (profileData.universityId) {
+        dataToSave.universityId = profileData.universityId;
+        const selectedUniversity = universities?.find((uni: any) => uni.id === profileData.universityId);
+        if (selectedUniversity?.name) {
+          dataToSave.university = selectedUniversity.name;
+        }
+      }
       if (profileData.universityCollegeId) dataToSave.universityCollegeId = profileData.universityCollegeId;
       if (profileData.programId) {
         dataToSave.programId = profileData.programId;
