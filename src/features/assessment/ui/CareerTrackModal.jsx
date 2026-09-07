@@ -381,7 +381,7 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results, 
         // Active track: journey continues in the LTE app. The email is passed
         // so LTE auto-logs into the matching accounts row (no login screen).
         const userEmail = useAuthStore.getState().user?.email || '';
-        const lteUrl = new URL('https://lte.rareminds.in');
+        const lteUrl = new URL('https://ltedemo.rareminds.in');
         if (userEmail) lteUrl.searchParams.set('email', userEmail);
         window.open(lteUrl.toString(), '_blank');
         return;
