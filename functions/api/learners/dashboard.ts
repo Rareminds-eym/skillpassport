@@ -99,8 +99,15 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
             mismatch: debugData.user_id !== userId,
           });
         }
-        // Self-heal: cache-miss → fetch SSO source-of-truth (user_id canonical, role/org from sso-db) and upsert
-        const heal = await ensureAppUserAndLearner(supabase as any, context.env as any, { sub: userId, email: userEmail }, String(startTime));
+        // Self-heal: cache-miss → fetch SSO source-of-truth (gated by heal-user flag)
+        const { isHealEnabled: isHealEnabledDash } = await import('../../lib/healConfig');
+        let heal: { healed: boolean; reason: string } = { healed: false, reason: 'flag_disabled' };
+        if (await isHealEnabledDash(context.env as Record<string, unknown>, 'heal-user')) {
+          heal = await ensureAppUserAndLearner(supabase as any, context.env as any, { sub: userId, email: userEmail }, String(startTime));
+        } else {
+          const { createLogger: _logDash } = await import('../../lib/logger');
+          _logDash('heal-user').info('heal_metric', { metric: 'heal_cache_miss_total', status: 'heal_disabled', flag: 'heal-user', userId } as any);
+        }
         if (heal.healed) {
           const { data: healed } = await supabase.from('learners').select('*').eq('user_id', userId).maybeSingle();
           if (healed) {
@@ -125,9 +132,14 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
     try {
       const { data: subCache } = await supabase.from('subscription_cache').select('id').eq('user_id', userId).limit(1).maybeSingle();
       if (!subCache) {
-        const { ensureAppUserAndLearner: heal2 } = await import('../../lib/heal-user');
-        await heal2(supabase as any, context.env as any, { sub: userId, email: userEmail }, String(startTime));
-        logger.info('Healed subscription on dashboard read-repair', { userId });
+        const { isHealEnabled: isHealEnabledSub } = await import('../../lib/healConfig');
+        if (await isHealEnabledSub(context.env as Record<string, unknown>, 'heal-user')) {
+          const { ensureAppUserAndLearner: heal2 } = await import('../../lib/heal-user');
+          await heal2(supabase as any, context.env as any, { sub: userId, email: userEmail }, String(startTime));
+          logger.info('Healed subscription on dashboard read-repair', { userId });
+        } else {
+          logger.info('heal_metric', { metric: 'heal_cache_miss_total', status: 'heal_disabled', flag: 'heal-user', userId } as any);
+        }
       }
     } catch {}
 

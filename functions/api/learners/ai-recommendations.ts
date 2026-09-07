@@ -45,7 +45,13 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
     let finalLearner: any = learnerData;
     if (!learnerData) {
       logger.warn('No learner found', { userId, userEmail });
-      const heal = await ensureAppUserAndLearner(supabase as any, context.env as any, { sub: userId, email: userEmail }, String(startTime));
+      const { isHealEnabled } = await import('../../lib/healConfig');
+      let heal: { healed: boolean; reason: string } = { healed: false, reason: 'flag_disabled' };
+      if (await isHealEnabled(context.env as Record<string, unknown>, 'heal-user')) {
+        heal = await ensureAppUserAndLearner(supabase as any, context.env as any, { sub: userId, email: userEmail }, String(startTime));
+      } else {
+        logger.info('heal_metric', { metric: 'heal_cache_miss_total', status: 'heal_disabled', flag: 'heal-user', userId } as any);
+      }
       if (heal.healed) {
         const { data: healed } = await supabase.from('learners').select('*').eq('user_id', userId).maybeSingle();
         if (healed) {

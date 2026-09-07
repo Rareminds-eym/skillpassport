@@ -188,54 +188,26 @@ export async function analyzeHigherSecondary(
       const fetched = await tryFetchAdaptiveResults(supabase, resolvedSessionId);
 
       if (fetched && !fetched.results) {
-        const { data: completedSession } = await supabase
-          .from('adaptive_aptitude_sessions')
-          .select('id, questions_answered, current_difficulty')
-          .eq('learner_id', learnerId)
-          .eq('status', 'completed')
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        if (completedSession && completedSession.id !== resolvedSessionId) {
-          resolvedSessionId = completedSession.id;
-          const fallback = await tryFetchAdaptiveResults(supabase, resolvedSessionId);
-          if (fallback) {
-            adaptiveData = {
-              questionsAnswered: fallback.session.questions_answered,
-              difficulty: fallback.session.current_difficulty,
-              aptitudeLevel: fallback.results?.aptitude_level ?? null,
-              confidenceTag: fallback.results?.confidence_tag ?? null,
-              tier: fallback.results?.tier ?? null,
-              totalQuestions: fallback.results?.total_questions ?? null,
-              totalCorrect: fallback.results?.total_correct ?? null,
-              overallAccuracy: fallback.results?.overall_accuracy ?? null,
-              accuracyByDifficulty: fallback.results?.accuracy_by_difficulty ?? null,
-              accuracyBySubtag: fallback.results?.accuracy_by_subtag ?? null,
-              pathClassification: fallback.results?.path_classification ?? null,
-              averageResponseTimeMs: fallback.results?.average_response_time_ms ?? null,
-            };
-            if (fallback.results?.overall_accuracy != null) {
-              aptitudeOverall = parseFloat(fallback.results.overall_accuracy);
-            }
-          }
-        }
-      } else if (fetched) {
+        // FIX: Do NOT swap to another learner session (data corruption — cross-attempt FK hijack). Treat as no adaptive data.
+        const { createLogger: _logAssess } = await import('../../../../lib/logger');
+        _logAssess('assessment').warn('Adaptive session has no results, skipping swap', { attemptId, learnerId, resolvedSessionId });
+      }
+      if (fetched?.results) {
         adaptiveData = {
           questionsAnswered: fetched.session.questions_answered,
           difficulty: fetched.session.current_difficulty,
-          aptitudeLevel: fetched.results?.aptitude_level ?? null,
-          confidenceTag: fetched.results?.confidence_tag ?? null,
-          tier: fetched.results?.tier ?? null,
-          totalQuestions: fetched.results?.total_questions ?? null,
-          totalCorrect: fetched.results?.total_correct ?? null,
-          overallAccuracy: fetched.results?.overall_accuracy ?? null,
-          accuracyByDifficulty: fetched.results?.accuracy_by_difficulty ?? null,
-          accuracyBySubtag: fetched.results?.accuracy_by_subtag ?? null,
-          pathClassification: fetched.results?.path_classification ?? null,
-          averageResponseTimeMs: fetched.results?.average_response_time_ms ?? null,
+          aptitudeLevel: fetched.results.aptitude_level ?? null,
+          confidenceTag: fetched.results.confidence_tag ?? null,
+          tier: fetched.results.tier ?? null,
+          totalQuestions: fetched.results.total_questions ?? null,
+          totalCorrect: fetched.results.total_correct ?? null,
+          overallAccuracy: fetched.results.overall_accuracy ?? null,
+          accuracyByDifficulty: fetched.results.accuracy_by_difficulty ?? null,
+          accuracyBySubtag: fetched.results.accuracy_by_subtag ?? null,
+          pathClassification: fetched.results.path_classification ?? null,
+          averageResponseTimeMs: fetched.results.average_response_time_ms ?? null,
         };
-        if (fetched.results?.overall_accuracy != null) {
+        if (fetched.results.overall_accuracy != null) {
           aptitudeOverall = parseFloat(fetched.results.overall_accuracy);
         }
       }

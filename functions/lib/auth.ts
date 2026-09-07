@@ -97,11 +97,17 @@ export function withAuth(handler: (context: any) => Promise<Response>) {
       if (blocked) return blocked;
 
       // Async self-heal (eventual, no block) where SYNC_QUEUE consumer is absent.
-      // Now enabled for all envs (was gated ENVIRONMENT!=='production'); fail-soft never blocks request.
+      // Gated by heal-user flag (Flagship binding or env HEAL_MODE). Fail-soft never blocks request.
       // Heals users/learners/members/subscription when any is missing (full parity).
       try {
         const waitUntil = (context as any).waitUntil as ((p: Promise<any>) => void) | undefined;
         const healPromise = (async () => {
+          const { isHealEnabled } = await import('./healConfig');
+          if (!await isHealEnabled(env as Record<string, unknown>, 'heal-user')) {
+            const { createLogger } = await import('./logger');
+            createLogger('heal-user').info('heal_metric', { metric: 'heal_cache_miss_total', status: 'heal_disabled', flag: 'heal-user', userId: authedContext.user.sub } as any);
+            return;
+          }
           const { getServiceClient: getSvc } = await import('./supabase');
           const { ensureAppUserAndLearner } = await import('./heal-user');
           const svc = getSvc(env as any);

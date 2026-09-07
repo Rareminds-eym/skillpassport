@@ -81,8 +81,11 @@ export async function checkServerFeatureAccess(
     }
 
     // Self-healing: if stale, trigger async refresh (non-blocking)
+    // Dead RPC removed: refreshCacheAsync always fallback_cron (no migration defines refresh_subscription_cache_for_user).
+    // Keep isStale detection for metric but do not call dead RPC; rely on cron-reconcile-heal and get-active-subscription heal.
+    // TODO: replace with SSO_SERVICE sync if env available.
     if (isStale(cached.synced_at)) {
-      refreshCacheAsync(supabase, userId).catch(() => {});
+      logger.info('heal_metric', { metric: 'heal_cache_miss_total', status: 'stale_detected', userId, synced_at: cached.synced_at } as any);
     }
 
     const planCode = cached.plan_code;
@@ -225,27 +228,11 @@ export function requireFeature(feature: string) {
   };
 }
 
-async function refreshCacheAsync(supabase: SupabaseClient, userId: string): Promise<void> {
-  // Self-healing: when a stale cache entry is detected during a feature check,
-  // attempt to refresh it from the auth DB. Since this module doesn't have
-  // access to the Cloudflare env (SSO_SERVICE binding), we use the supabase
-  // client to call the `refresh_subscription_cache` RPC if it exists,
-  // or fall back to marking the entry for the reconciliation cron to pick up.
-  try {
-    // Attempt direct sync via database function (if deployed)
-    const { error: rpcError } = await supabase.rpc('refresh_subscription_cache_for_user', {
-      target_user_id: userId,
-    });
-
-    if (rpcError) {
-      logger.warn('Self-heal RPC unavailable', { userId, error: rpcError.message });
-      logger.info('heal_metric', { metric: 'heal_cache_miss_total', status: 'fallback_cron', userId } as any);
-    } else {
-      logger.info('Self-healed stale cache', { userId });
-      logger.info('heal_metric', { metric: 'heal_cache_miss_total', status: 'success', userId } as any);
-    }
-  } catch (err) {
-    logger.warn('Self-heal failed (non-critical)', { userId, error: (err as Error).message });
-    logger.info('heal_metric', { metric: 'heal_cache_miss_total', status: 'failure', userId } as any);
-  }
+/**
+ * @deprecated Dead code — RPC refresh_subscription_cache_for_user has no migration (false positive H4).
+ * Kept for reference. Do NOT call. Stale is now observed via stale_detected metric and healed by cron + get-active-subscription SSO fallback.
+ */
+async function refreshCacheAsync(_supabase: SupabaseClient, _userId: string): Promise<void> {
+  // No-op: previously called supabase.rpc('refresh_subscription_cache_for_user') which never existed.
+  // Intentionally left empty; call site now emits stale_detected and relies on cron-reconcile-heal.
 }

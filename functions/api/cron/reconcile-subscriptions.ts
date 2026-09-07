@@ -37,6 +37,13 @@ export async function onRequestPost(context: { request: Request; env: ReconcileE
     return apiError(401, 'UNAUTHORIZED', 'Unauthorized', request);
   }
 
+  // Gated by cron-reconcile-heal flag (Flagship or env HEAL_MODE)
+  const { isHealEnabled } = await import('../../lib/healConfig');
+  if (!await isHealEnabled(env as unknown as Record<string, unknown>, 'cron-reconcile-heal')) {
+    logger.info('heal_metric', { metric: 'reconcile_run', status: 'heal_disabled', flag: 'cron-reconcile-heal' } as any);
+    return apiSuccess({ subscriptions_checked: 0, subscriptions_synced: 0, plans_synced: 0, roles_synced: 0, roles_deleted: 0, errors: ['heal_disabled: cron-reconcile-heal flag is disabled'] }, request);
+  }
+
   const supabase = getServiceClient(env);
   const results = {
     subscriptions_checked: 0,

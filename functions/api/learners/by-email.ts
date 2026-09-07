@@ -223,9 +223,16 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
       return apiError(404, 'CASE_MISMATCH', `Email case mismatch. DB has "${ilikeData.email}" but requested "${email}".`, context.request, { startTime });
     }
 
-    // Self-heal: try to create from SSO before final 404 (skip for admin viewing others)
+    // Self-heal: try to create from SSO before final 404 (gated by heal-user flag, skip for admin viewing others)
     if (!isAdmin || user.email === email) {
-      const heal = await ensureAppUserAndLearner(supabase as any, context.env as any, { sub: userId, email });
+      const { isHealEnabled } = await import('../../lib/healConfig');
+      let heal: { healed: boolean; reason: string } = { healed: false, reason: 'flag_disabled' };
+      if (await isHealEnabled(context.env as Record<string, unknown>, 'heal-user')) {
+        heal = await ensureAppUserAndLearner(supabase as any, context.env as any, { sub: userId, email });
+      } else {
+        const { createLogger } = await import('../../lib/logger');
+        createLogger('heal-user').info('heal_metric', { metric: 'heal_cache_miss_total', status: 'heal_disabled', flag: 'heal-user', userId } as any);
+      }
       if (heal.healed) {
         const { data: healed } = await supabase.from('learners').select('*').eq('user_id', userId).maybeSingle();
         if (healed) {

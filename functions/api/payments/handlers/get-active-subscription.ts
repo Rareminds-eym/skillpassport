@@ -12,7 +12,9 @@
 
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getContextUser } from '../../../lib/auth';
+import { isHealEnabled } from '../../../lib/healConfig';
 import { createLogger } from '../../../lib/logger';
+import { withResilience } from '../../../lib/resilience';
 import { getServiceClient } from '../../../lib/supabase';
 import { apiSuccess, apiError, apiDbError } from '../../../lib/response';
 import { syncSubscriptionCache, syncUserShadow } from '../../../lib/sync-shadow';
@@ -167,8 +169,11 @@ export async function handleGetActiveSubscription(context: AuthenticatedContext)
       }
 
       // Self-healing fallback: cache miss → check SSO source-of-truth via service binding
-      // This handles local dev dockers (8788) where SYNC_QUEUE consumer is not running,
-      // and any future direct SSO inserts. Fail-soft: on SSO failure return null (current behavior).
+      // Gated by subscription-cache-heal flag (Flagship or env HEAL_MODE). Now wrapped with
+      // withResilience (breaker 5/30s) to avoid storm. Fail-soft: on SSO failure return null.
+      if (!await isHealEnabled(context.env as Record<string, unknown>, 'subscription-cache-heal')) {
+        logger.info('heal_metric', { metric: 'heal_cache_miss_total', status: 'heal_disabled', flag: 'subscription-cache-heal', userId } as any);
+      } else {
       try {
         const ssoRaw = (context.env as Record<string, unknown>).SSO_SERVICE;
         if (ssoRaw && typeof ssoRaw === 'object') {
@@ -178,7 +183,7 @@ export async function handleGetActiveSubscription(context: AuthenticatedContext)
           };
           const fetcher = sso.syncSubscription ?? sso.getUserSubscription;
           if (fetcher) {
-            const { subscription, plan } = await fetcher.call(sso, userId);
+            const { subscription, plan } = await withResilience('heal:syncSubscription', () => fetcher.call(sso, userId), { env: context.env as Record<string, unknown> });
             if (subscription) {
               // Ensure FK users_shadow exists before cache upsert
               await syncUserShadow(supabase, userId, (subscription as { email?: string }).email || user.email);
@@ -216,6 +221,7 @@ export async function handleGetActiveSubscription(context: AuthenticatedContext)
         logger.warn('SSO fallback failed (fail-soft, returning null)', { error: e instanceof Error ? e.message : String(e), userId });
         logger.info('heal_metric', { metric: 'heal_cache_miss_total', status: 'fallback_null', userId } as any);
       }
+      } // end flag enabled
 
       return apiSuccess(null, context.request, { startTime });
     }

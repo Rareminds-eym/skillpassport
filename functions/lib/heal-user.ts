@@ -69,13 +69,19 @@ export async function ensureAppUserAndLearner(
   const email = normalizeEmail(rawEmail);
 
   try {
+    // Gated by heal-user flag (also gated at call sites; this is defense-in-depth)
+    const { isHealEnabledSync } = await import('./healConfig');
+    if (!isHealEnabledSync(env as Record<string, unknown>, 'heal-user')) {
+      log.info('heal_metric', { requestId, metric: 'heal_cache_miss_total', status: 'heal_disabled', flag: 'heal-user', userId } as any);
+      return { healed: false, reason: 'flag_disabled' };
+    }
     if (!env.SSO_SERVICE) {
       log.warn('heal skipped: SSO_SERVICE not configured', { userId, requestId });
       return { healed: false, reason: 'no_binding' };
     }
 
-    // Fetch SSO source-of-truth with resilience (timeout 5s, retry 2, breaker 5/30s) — before early-exit so blocked status propagates
-    const ssoUser = await withResilience('heal:getUserById', () => env.SSO_SERVICE!.getUserById(userId));
+    // Fetch SSO source-of-truth with resilience (timeout 5s, retry 2, breaker 5/30s + Flagship DISABLED) — before early-exit so blocked status propagates
+    const ssoUser = await withResilience('heal:getUserById', () => env.SSO_SERVICE!.getUserById(userId), { env: env as Record<string, unknown> });
     if (!ssoUser) {
       // Avoid PII in logs — log userId only, email is PII
       log.warn('heal: SSO user not found', { userId, requestId });
@@ -120,7 +126,7 @@ export async function ensureAppUserAndLearner(
 
     const membershipRes = await withResilience('heal:getUserMemberships', () =>
       env.SSO_SERVICE!.getUserMemberships(userId),
-    );
+    { env: env as Record<string, unknown> });
     const memberships: { id: string; org_id: string; role: string; status: string }[] =
       (membershipRes as any)?.memberships || [];
     const primary = memberships.find((m) => m.status === 'active') || memberships[0] || null;
@@ -134,7 +140,7 @@ export async function ensureAppUserAndLearner(
     let orgs: typeof org[] = [];
     if (orgId && env.SSO_SERVICE.getOrganizationById) {
       try {
-        org = await withResilience('heal:getOrganizationById', () => env.SSO_SERVICE!.getOrganizationById(orgId));
+        org = await withResilience('heal:getOrganizationById', () => env.SSO_SERVICE!.getOrganizationById(orgId), { env: env as Record<string, unknown> });
         // Fetch additional orgs for multi-membership
         for (const oid of allOrgIds) {
           if (oid === orgId) {
@@ -142,7 +148,7 @@ export async function ensureAppUserAndLearner(
             continue;
           }
           try {
-            const o = await withResilience('heal:getOrganizationById', () => env.SSO_SERVICE!.getOrganizationById(oid));
+            const o = await withResilience('heal:getOrganizationById', () => env.SSO_SERVICE!.getOrganizationById(oid), { env: env as Record<string, unknown> });
             if (o) orgs.push(o);
           } catch {}
         }
@@ -153,7 +159,7 @@ export async function ensureAppUserAndLearner(
     } else if (allOrgIds.length > 0 && env.SSO_SERVICE.getOrganizationById) {
       for (const oid of allOrgIds) {
         try {
-          const o = await withResilience('heal:getOrganizationById', () => env.SSO_SERVICE!.getOrganizationById(oid));
+          const o = await withResilience('heal:getOrganizationById', () => env.SSO_SERVICE!.getOrganizationById(oid), { env: env as Record<string, unknown> });
           if (o) orgs.push(o);
         } catch {}
       }
@@ -162,7 +168,7 @@ export async function ensureAppUserAndLearner(
 
     const subRes = await withResilience('heal:syncSubscription', () =>
       (env.SSO_SERVICE!.syncSubscription || env.SSO_SERVICE!.getUserSubscription)(userId),
-    ).catch(() => ({ subscription: null, plan: null }));
+    { env: env as Record<string, unknown> }).catch(() => ({ subscription: null, plan: null }));
     const subscription = (subRes as any)?.subscription as Record<string, unknown> | null;
     const plan = (subRes as any)?.plan as Record<string, unknown> | null;
 
