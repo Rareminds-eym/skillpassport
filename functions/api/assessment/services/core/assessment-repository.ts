@@ -70,6 +70,8 @@ export async function getSavedQuestionsForLearner(
       .eq('grade_level', gradeLevel)
       .eq('question_type', questionType)
       .eq('is_active', true)
+      .order('created_at', { ascending: true })
+      .limit(1)
       .maybeSingle();
 
     if (error) {
