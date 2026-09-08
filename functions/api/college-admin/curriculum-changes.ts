@@ -9,7 +9,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const env = context.env as Record<string, string>;
   const supabase = getServiceClient(env as any);
 
-  // 🔒 Feature Gate: Lock Curriculum Changes
+  //Feature Gate: Lock Curriculum Changes
   const isEntitled = await hasFeatureEntitlement(supabase, user.id, 'curriculum_builder');
   if (!isEntitled) {
     return apiError(403, 'FEATURE_ACCESS_DENIED', 'Curriculum Builder requires an active plan or Curriculum Builder add-on.', context.request);
