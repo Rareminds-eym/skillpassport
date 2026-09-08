@@ -5,7 +5,7 @@
  * Generates aptitude questions progressively and sends them to the client as they're created
  */
 
-import { createSupabaseClient } from '../../../lib/supabase';
+import { createSupabaseClient, createSupabaseAdminClient } from '../../../lib/supabase';
 import { PagesEnv } from '../../../lib/types';
 import { apiError } from '../../../lib/response';
 import { SCHOOL_SUBJECT_PROMPT, APTITUDE_PROMPT } from '../prompts';
@@ -55,10 +55,37 @@ export async function handleStreamingAptitude(
         return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON', request);
     }
 
-    const { streamId, learnerId, attemptId, gradeLevel } = body;
+    // attemptId is accepted by the request body (frontend contract unchanged) but not
+    // used in this handler - verified it has no functional role beyond the old
+    // "if (learnerId && attemptId)" save gate, replaced by gradeLevel below.
+    const { streamId, learnerId, gradeLevel: requestedGradeLevel } = body;
 
     if (!streamId) {
         return apiError(400, 'VALIDATION_ERROR', 'Stream ID is required', request);
+    }
+
+    // Validate streamId against personal_assessment_streams before any AI generation or
+    // canonical question creation - same pattern as start.ts, questions.ts, and the
+    // non-streaming generate-aptitude/generate-knowledge endpoints in [[path]].ts. Never
+    // falls back to 'college'; an unresolvable/inactive streamId is rejected outright.
+    //
+    // The stream's OWN registered grade_level is authoritative for the assessment
+    // content tier - the client-supplied gradeLevel is only a UI/enrollment-category
+    // selection and is never independently trusted once a real streamId is known.
+    const adminSupabase = createSupabaseAdminClient(env);
+    const { data: streamRow } = await adminSupabase
+        .from('personal_assessment_streams')
+        .select('id, grade_level')
+        .eq('id', streamId)
+        .eq('is_active', true)
+        .maybeSingle();
+
+    if (!streamRow) {
+        return apiError(400, 'VALIDATION_ERROR', 'Invalid streamId', request);
+    }
+    const gradeLevel = streamRow.grade_level;
+    if (requestedGradeLevel !== gradeLevel) {
+        console.log(`ℹ️ gradeLevel reconciled to stream catalog value: requested=${requestedGradeLevel}, effective=${gradeLevel}`);
     }
 
     const { openRouter: openRouterKey } = getAPIKeys(env);
@@ -260,8 +287,33 @@ export async function handleStreamingAptitude(
                     console.log(`✅ Batch ${batchNum}/2 complete: ${batchQuestions.length} questions streamed`);
                 }
 
-                // Save to database if learnerId and attemptId provided
-                if (learnerId && attemptId) {
+                // Shared canonical question set: identity is (stream_id, grade_level,
+                // question_type), not learner_id. get_or_create_shared_questions()
+                // returns the existing canonical set if one already exists for this
+                // combination, or persists allGeneratedQuestions as the new canonical
+                // set if none exists yet — it never overwrites an existing set (see
+                // supabase/migrations/20260907044042_get_or_create_shared_questions.sql).
+                //
+                // attemptId is NOT used here: verified it has no functional role in this
+                // file beyond the old "if (learnerId && attemptId)" gate — it was never
+                // part of the save payload (the old upsert never wrote attempt_id) and
+                // is not part of the new canonical identity either. gradeLevel replaces
+                // it as the required gate, consistent with career-knowledge.ts /
+                // career-aptitude.ts.
+                //
+                // IMPORTANT STREAMING-SPECIFIC NOTE: unlike the non-streaming handlers,
+                // each question here is already sent to the client individually as it
+                // is generated (see the per-question controller.enqueue above), before
+                // this save step runs. If this request loses the race for a brand-new
+                // combination (another request already created the canonical set), the
+                // client has already received THIS request's generated content, not the
+                // canonical content now stored in the database. This save step correctly
+                // never overwrites the existing canonical set - the RPC guarantees that
+                // by design - but the previously-streamed questions and the persisted
+                // canonical set can differ in that case. We surface this via the
+                // existing 'warning' event so the client is not silently left holding
+                // mismatched content.
+                if (gradeLevel) {
                     controller.enqueue(encoder.encode(`data: ${JSON.stringify({
                         type: 'progress',
                         message: 'Saving questions to database...',
@@ -269,18 +321,13 @@ export async function handleStreamingAptitude(
                         total: totalQuestions
                     })}\n\n`));
 
-                    const { error } = await supabase
-                        .from('career_assessment_ai_questions')
-                        .upsert({
-                            learner_id: learnerId,
-                            question_type: 'aptitude',
-                            questions: allGeneratedQuestions,
-                            stream_id: streamId,
-                            created_at: new Date().toISOString()
-                        }, {
-                            onConflict: 'learner_id, stream_id, question_type',
-                            ignoreDuplicates: false
-                        });
+                    const { data, error } = await supabase.rpc('get_or_create_shared_questions', {
+                        p_stream_id: streamId,
+                        p_grade_level: gradeLevel,
+                        p_question_type: 'aptitude',
+                        p_questions: allGeneratedQuestions,
+                        p_learner_id: learnerId || null
+                    });
 
                     if (error) {
                         console.error('❌ Database error:', error);
@@ -288,7 +335,17 @@ export async function handleStreamingAptitude(
                             type: 'warning',
                             message: 'Questions generated but not saved to database'
                         })}\n\n`));
+                    } else if (data && data.is_new === false) {
+                        console.log('♻️ Another request already created the canonical aptitude set for this combination - streamed questions were not persisted');
+                        controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                            type: 'warning',
+                            message: 'A shared question set for this stream and grade already exists — the questions just streamed were not saved as canonical. Please refresh to load the existing set.'
+                        })}\n\n`));
+                    } else {
+                        console.log('✅ New canonical aptitude set created');
                     }
+                } else {
+                    console.warn('⚠️ No gradeLevel provided — skipping shared question set save');
                 }
 
                 // Send completion event

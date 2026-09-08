@@ -31,15 +31,21 @@ interface StreamMcqScores {
   knowledgeDetails: any | null;            // { score, correctCount, totalQuestions, byTopic, strongTopics, weakTopics, recommendation }
 }
 
+// Shared canonical question set: identity is (stream_id, grade_level), not learner_id -
+// canonical rows are written with learner_id = NULL (see get_or_create_shared_questions()),
+// so a learner reusing a set they did not personally generate must be looked up by
+// stream_id + grade_level, or their score would silently compute as 0.
 async function scoreStreamMcq(
   supabase: any,
-  learnerId: string,
+  streamId: string,
+  gradeLevel: string,
   allResponses: Record<string, any>
 ): Promise<StreamMcqScores> {
   const { data: sets } = await supabase
     .from('career_assessment_ai_questions')
     .select('question_type, questions')
-    .eq('learner_id', learnerId)
+    .eq('stream_id', streamId)
+    .eq('grade_level', gradeLevel)
     .eq('is_active', true);
 
   const apt = { correct: 0, total: 0, byDiff: {} as Record<string, { correct: number; total: number }> };
@@ -441,7 +447,7 @@ export async function analyzeAfter12(
     }
 
     // Step 13b: Score stream MCQ
-    const streamMcq = await scoreStreamMcq(supabase, learnerId, allResponses);
+    const streamMcq = await scoreStreamMcq(supabase, attempt.stream_id, attempt.grade_level, allResponses);
     const effectiveKnowledgeScore = streamMcq.knowledgeScore ?? knowledgePercentage;
 
     // Step 13b2: Generate aptitude insights

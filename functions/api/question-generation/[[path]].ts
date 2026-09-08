@@ -22,6 +22,7 @@ import type { PagesFunction, PagesEnv } from '../../lib/types';
 import { withAuth } from '../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { createLogger } from '../../lib/logger';
+import { createSupabaseAdminClient } from '../../lib/supabase';
 
 const logger = createLogger('question-generation');
 
@@ -35,6 +36,36 @@ import {
 } from './handlers/adaptive-bank';
 import { generateAssessment } from './handlers/course-assessment';
 import { handleStreamingAptitude } from './handlers/streaming';
+
+/**
+ * Validate a client-supplied streamId against personal_assessment_streams before it is
+ * used to generate or create a shared canonical question set. Never falls back to
+ * 'college' - an unresolvable/inactive streamId is rejected outright.
+ *
+ * The stream's OWN registered grade_level is authoritative for the assessment content
+ * tier and is returned as `effectiveGradeLevel` - the client-supplied gradeLevel is only
+ * a UI/enrollment-category selection and is never independently trusted once a real
+ * streamId is known. Callers must use the returned effectiveGradeLevel, not the
+ * gradeLevel they passed in, for generation and the shared canonical key.
+ * Same validation pattern as functions/api/assessment/handlers/start.ts and questions.ts.
+ */
+async function validateStreamGrade(
+  env: PagesEnv,
+  streamId: string
+): Promise<{ valid: boolean; error?: string; effectiveGradeLevel?: string }> {
+  const supabase = createSupabaseAdminClient(env);
+  const { data: streamRow } = await supabase
+    .from('personal_assessment_streams')
+    .select('id, grade_level')
+    .eq('id', streamId)
+    .eq('is_active', true)
+    .maybeSingle();
+
+  if (!streamRow) {
+    return { valid: false, error: 'Invalid streamId' };
+  }
+  return { valid: true, effectiveGradeLevel: streamRow.grade_level };
+}
 
 export const onRequest: PagesFunction<PagesEnv> = async (context) => {
   let { request, env }: { request: Request; env: Record<string, string> } = context as any;
@@ -80,11 +111,21 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
       try {
         const body = await request.json() as any;
         console.log('📥 Request body:', JSON.stringify(body, null, 2));
-        const { streamId, questionsPerCategory = 5, learnerId, attemptId, gradeLevel } = body;
+        const { streamId, questionsPerCategory = 5, learnerId, attemptId, gradeLevel: requestedGradeLevel } = body;
 
         if (!streamId) {
           console.error('❌ Missing streamId in request');
           return apiError(400, 'VALIDATION_ERROR', 'Stream ID is required', request);
+        }
+
+        const aptitudeStreamCheck = await validateStreamGrade(env as unknown as PagesEnv, streamId);
+        if (!aptitudeStreamCheck.valid) {
+          console.error('❌ streamId validation failed:', aptitudeStreamCheck.error);
+          return apiError(400, 'VALIDATION_ERROR', aptitudeStreamCheck.error!, request);
+        }
+        const gradeLevel = aptitudeStreamCheck.effectiveGradeLevel!;
+        if (requestedGradeLevel !== gradeLevel) {
+          console.log(`ℹ️ gradeLevel reconciled to stream catalog value: requested=${requestedGradeLevel}, effective=${gradeLevel}`);
         }
 
         const result = await generateAptitudeQuestions(env as unknown as PagesEnv, streamId, questionsPerCategory, learnerId, attemptId, gradeLevel);
@@ -113,16 +154,26 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
       try {
         const body = await request.json() as any;
         console.log('📥 Request body:', JSON.stringify(body, null, 2));
-        const { streamId, streamName, topics, questionCount = 20, learnerId, attemptId, gradeLevel, isCollegeLearner } = body;
+        const { streamId, streamName, topics, questionCount = 20, learnerId, attemptId, gradeLevel: requestedGradeLevel, isCollegeLearner } = body;
 
-        // For college learners and higher secondary (11th/12th), topics can be null (AI will determine dynamically)
-        const usesDynamicTopics = isCollegeLearner || gradeLevel === 'higher_secondary';
-        
         if (!streamId || !streamName) {
           console.error('❌ Missing required fields:', { streamId, streamName });
           return apiError(400, 'VALIDATION_ERROR', 'Stream ID and name are required', request);
         }
-        
+
+        const knowledgeStreamCheck = await validateStreamGrade(env as unknown as PagesEnv, streamId);
+        if (!knowledgeStreamCheck.valid) {
+          console.error('❌ streamId validation failed:', knowledgeStreamCheck.error);
+          return apiError(400, 'VALIDATION_ERROR', knowledgeStreamCheck.error!, request);
+        }
+        const gradeLevel = knowledgeStreamCheck.effectiveGradeLevel!;
+        if (requestedGradeLevel !== gradeLevel) {
+          console.log(`ℹ️ gradeLevel reconciled to stream catalog value: requested=${requestedGradeLevel}, effective=${gradeLevel}`);
+        }
+
+        // For college learners and higher secondary (11th/12th), topics can be null (AI will determine dynamically)
+        const usesDynamicTopics = isCollegeLearner || gradeLevel === 'higher_secondary';
+
         // Topics are optional for college learners and 11th/12th learners
         if (!usesDynamicTopics && !topics) {
           console.error('❌ Topics required for non-college/non-higher-secondary learners');

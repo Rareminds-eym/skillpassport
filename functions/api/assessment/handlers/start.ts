@@ -71,11 +71,12 @@ export async function startHandler(context: AuthenticatedContext) {
       return Response.json({ error: validation.message }, { status: 400 });
     }
 
-    const { gradeLevel, streamId } = body;
-    
-    logger.info('Starting assessment', { 
-      userId: user.sub, 
-      gradeLevel, 
+    const { streamId } = body;
+    let gradeLevel = body.gradeLevel;
+
+    logger.info('Starting assessment', {
+      userId: user.sub,
+      gradeLevel,
       streamId,
       hasEnv: !!env,
       hasQuestionGenUrl: !!env?.QUESTION_GENERATION_API_URL
@@ -105,22 +106,47 @@ export async function startHandler(context: AuthenticatedContext) {
 
     const learnerId = learnerData!.id;
 
-    // Resolve the requested stream to a real personal_assessment_streams row. The frontend
-    // normalizes a program name to a stream id (e.g. hospitality "Hotel Management" → 'bhm')
-    // that may have no table row, which would violate the stream_id FK. Any unknown stream
-    // falls back to the generic 'college' stream. RAG steering is unaffected — career
-    // recommendations use learner_context.programName, not stream_id.
-    let effectiveStreamId: string | null = streamId || null;
+    // Validate the requested streamId against personal_assessment_streams before using
+    // it as part of the shared canonical question set identity
+    // (stream_id + grade_level + question_type). Client-supplied streamId must resolve
+    // to a real, active row - never silently fall back to the generic 'college' stream,
+    // since that would let an unresolvable request pool onto (and potentially create) a
+    // shared question set that doesn't actually belong to it.
+    //
+    // The stream's OWN registered grade_level is authoritative for the assessment
+    // content tier - the client-supplied gradeLevel is only ever a UI/enrollment-category
+    // selection (which grade-selection button the learner clicked) and is NOT
+    // independently trusted once a real streamId is known. A learner's UI-selected grade
+    // (e.g. 'college', because they are enrolled as a college_student) and the catalog
+    // tier a specific stream's content was authored for (e.g. 'bca' -> 'after12', a
+    // generic program name whose specialized siblings like 'bca_ds' ARE 'college') are
+    // two different concepts that both happen to use the same string values - they are
+    // never guaranteed to match, and mismatching does not mean the request is invalid.
+    // Reassigning gradeLevel here (rather than rejecting) ensures every downstream use
+    // - attempt creation, section loading, generation, and the shared canonical key -
+    // consistently uses the one authoritative value.
+    const effectiveStreamId: string | null = streamId || null;
     if (effectiveStreamId) {
       const { data: streamRow } = await supabase
         .from('personal_assessment_streams')
-        .select('id')
+        .select('id, grade_level')
         .eq('id', effectiveStreamId)
+        .eq('is_active', true)
         .maybeSingle();
+
       if (!streamRow) {
-        logger.warn('Unknown stream_id — falling back to college', { requestedStreamId: effectiveStreamId });
-        effectiveStreamId = 'college';
+        logger.warn('Unknown or inactive stream_id rejected', { requestedStreamId: effectiveStreamId });
+        return Response.json({ error: 'Invalid streamId' }, { status: 400 });
       }
+
+      if (streamRow.grade_level !== gradeLevel) {
+        logger.info('streamId/gradeLevel mismatch - using stream catalog grade as authoritative', {
+          requestedStreamId: effectiveStreamId,
+          requestedGradeLevel: gradeLevel,
+          effectiveGradeLevel: streamRow.grade_level,
+        });
+      }
+      gradeLevel = streamRow.grade_level;
     }
 
     // **CRITICAL: Check for existing in-progress attempt BEFORE creating new one**
