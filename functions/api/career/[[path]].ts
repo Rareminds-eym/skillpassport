@@ -25,6 +25,8 @@ import type { PagesFunction } from '../../lib/types';
 import { apiSuccess, apiError } from '../../lib/response';
 import { handleCorsPreflightRequest } from '../../lib/cors';
 import { withAuth, getContextUser } from '../../lib/auth';
+import { getServiceClient } from '../../lib/supabase';
+import { hasFeatureEntitlement } from '../../lib/entitlements';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getAPIKeys } from '../shared/ai-config';
 import { handleCareerChat } from './handlers/chat';
@@ -80,6 +82,16 @@ export const onRequest: PagesFunction = async (context) => {
       request = authContext.request;
       const user = getContextUser(authContext);
       const userId = user.id;
+
+      // Feature Gate: Lock Career AI endpoints
+      const AI_PATHS = ['/chat', '/career-ai-chat', '/', '/analyze-assessment', '/generate-field-keywords', '/parse-resume'];
+      if (AI_PATHS.includes(path)) {
+        const supabase = getServiceClient(env as any);
+        const isEntitled = await hasFeatureEntitlement(supabase, userId, 'career_ai');
+        if (!isEntitled) {
+          return apiError(403, 'FEATURE_ACCESS_DENIED', 'Career AI requires an active subscription or Career AI add-on.', request);
+        }
+      }
 
     // Route requests
     if (path === '/chat' || path === '/career-ai-chat' || path === '/') {

@@ -174,12 +174,18 @@ export async function resolveUserEntitlement(
       .from('subscription_cache')
       .select('*')
       .eq('user_id', userId)
-      .in('status', ['active', 'grace_period', 'paused'])
+      .in('status', ['active', 'grace_period', 'paused', 'cancelled'])
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
 
     if (indSub) {
+      if (indSub.status === 'cancelled') {
+        const endDate = indSub.subscription_end_date ? new Date(indSub.subscription_end_date) : null;
+        if (!endDate || endDate < new Date()) {
+          return null; // Expired cancelled subscription
+        }
+      }
       return {
         id: indSub.id,
         user_id: userId,
