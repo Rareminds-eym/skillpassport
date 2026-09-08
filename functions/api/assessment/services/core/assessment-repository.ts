@@ -31,22 +31,32 @@ interface Question {
 }
 
 /**
- * Get saved questions for a learner (for resume functionality)
+ * Get the shared canonical question set for a stream+grade+type combination
+ * (for resume functionality, and as the pre-generation cache check).
+ *
+ * Identity is (stream_id, grade_level, question_type) - NOT learner_id. Shared
+ * canonical rows (see get_or_create_shared_questions(),
+ * supabase/migrations/20260907044042_get_or_create_shared_questions.sql) are
+ * written with learner_id = NULL, so a learner_id-based lookup could never find
+ * a canonical set created by a different learner. learnerId is still accepted
+ * and used for logging/diagnostics only - it plays no role in the query.
  */
 export async function getSavedQuestionsForLearner(
   env: PagesEnv,
   learnerId: string,
   streamId: string,
-  questionType: QuestionType
+  questionType: QuestionType,
+  gradeLevel: string
 ): Promise<Question[] | null> {
-  if (!learnerId) {
-    console.log('⚠️ getSavedQuestionsForLearner: No learnerId provided');
+  if (!gradeLevel) {
+    console.log('⚠️ getSavedQuestionsForLearner: No gradeLevel provided');
     return null;
   }
 
   console.log(`🔍 Checking for cached ${questionType} questions:`, {
-    learner_id: learnerId,
+    learner_id: learnerId || 'not specified',
     stream_id: streamId,
+    grade_level: gradeLevel,
     question_type: questionType,
   });
 
@@ -56,8 +66,8 @@ export async function getSavedQuestionsForLearner(
     const { data, error } = await supabase
       .from('career_assessment_ai_questions')
       .select('questions, generated_at, grade_level')
-      .eq('learner_id', learnerId)
       .eq('stream_id', streamId)
+      .eq('grade_level', gradeLevel)
       .eq('question_type', questionType)
       .eq('is_active', true)
       .maybeSingle();
