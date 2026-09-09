@@ -19,7 +19,247 @@ const VerifyEmail = () => {
   const [resent, setResent] = useState(false);
   const [emailFailed] = useState(() => sessionStorage.getItem('email_sent_failed') === 'true');
 
+  // Extract redirect logic into a separate function
+  const handlePostVerificationRedirect = async () => {
+    const currentUser = useAuthStore.getState().user;
+    const userRole = currentUser?.role || useAuthStore.getState().role;
+    const userRoles = currentUser?.roles || [];
+
+    console.log('[VerifyEmail] Auto-redirecting after verification', {
+      userRole,
+      orgId: currentUser?.orgId,
+      roles: userRoles,
+      isAuthenticated: useAuthStore.getState().isAuthenticated
+    });
+
+    // CRITICAL FIX: Check if user just accepted an invitation during signup
+    // If so, redirect to login to get fresh JWT with membership roles
+    const invitationJustAccepted = sessionStorage.getItem('invitation_just_accepted');
+    const postVerificationRedirect = sessionStorage.getItem('post_signup_verification_redirect');
+    const invitationOrgId = sessionStorage.getItem('invitation_org_id');
+    const invitationRole = sessionStorage.getItem('invitation_role');
+
+    if (invitationJustAccepted === 'true') {
+      console.log('[VerifyEmail] User just accepted invitation during signup', {
+        orgId: invitationOrgId,
+        role: invitationRole,
+        targetRedirect: postVerificationRedirect
+      });
+      console.log('[VerifyEmail] Redirecting to login to obtain fresh JWT with membership');
+
+      // Keep the context for post-login redirect
+      // Don't clear invitation_just_accepted yet - login will use it
+      navigate('/login', { replace: true });
+      return;
+    }
+
+    // If the session didn't restore (email link opened without the
+    // refresh-token cookie), we can't know the user's role — send them to
+    // login. After login the role-based routing / subscription guard takes
+    // them to the correct plans page.
+    if (!useAuthStore.getState().isAuthenticated) {
+      console.log('[VerifyEmail] Not authenticated after verification, redirecting to login');
+      navigate('/login?verified=1', { replace: true });
+      return;
+    }
+
+    // Institution admins (school/college/university) must be detected
+    // BEFORE the recruitment check: they also carry the 'owner' role
+    // (org creator), which would otherwise misroute them to recruitment.
+    const isInstitutionAdmin =
+      userRoles.includes('school_admin') ||
+      userRoles.includes('college_admin') ||
+      userRoles.includes('university_admin');
+
+    // Check if user has any recruitment vertical roles. Exclude
+    // institution admins so the shared 'owner' role doesn't match here.
+    const isRecruitmentUser =
+      !isInstitutionAdmin && (
+        userRole === 'recruiter' ||
+        userRoles.includes('recruiter') ||
+        userRoles.includes('company_admin') ||
+        userRoles.includes('viewer') ||
+        userRoles.includes('owner')
+      );
+
+    // Legacy flow: Check if there's an invitation token still in sessionStorage
+    // (This shouldn't happen anymore with the new flow, but keep for safety)
+    const invitationToken = sessionStorage.getItem('invitation_token');
+    const invitationReturnUrl = sessionStorage.getItem('invitation_return_url');
+
+    if (invitationToken || invitationReturnUrl) {
+      // User came from recruitment invitation (legacy path)
+      console.log('[VerifyEmail] LEGACY: Redirecting to login for invitation auto-acceptance', {
+        userRole,
+        roles: userRoles,
+        hasInvitationToken: !!invitationToken
+      });
+      navigate('/login', { replace: true });
+      return; // CRITICAL: Stop execution after navigation
+    } else if (isInstitutionAdmin) {
+      // Institution admin who just signed up — send to institution
+      // subscription plans (b2b) for their role.
+      console.log('[VerifyEmail] Redirecting institution admin to subscription plans', {
+        userRole,
+        roles: userRoles,
+        orgId: currentUser?.orgId,
+      });
+      navigate(`/subscription/plans?type=${userRole}`, { replace: true });
+      return; // CRITICAL: Stop execution after navigation
+    } else if (isRecruitmentUser) {
+      // NEW ROUTING LOGIC: Check recruiterType from sessionStorage
+      const recruiterType = sessionStorage.getItem('recruiter_type');
+      const invitationToken = sessionStorage.getItem('invitation_token');
+
+      console.log('[VerifyEmail] Recruitment user detected', {
+        userRole,
+        roles: userRoles,
+        recruiterType,
+        hasInvitationToken: !!invitationToken
+      });
+
+      // Check if this is an admin recruiter (owner/company_admin role OR recruiter_type=admin)
+      const isCompanyAdmin = userRoles.includes('owner') || userRoles.includes('company_admin');
+      const isAdminRecruiter = (recruiterType === 'admin' || isCompanyAdmin);
+
+      if (isAdminRecruiter && !invitationToken) {
+        // Admin recruiter: Go to subscription plans FIRST
+        // After subscription, they'll be redirected to onboarding to set company details
+        console.log('[VerifyEmail] Admin recruiter → subscription plans first');
+        sessionStorage.removeItem('recruiter_type'); // Clean up
+        navigate('/subscription/plans?type=recruiter', {
+          replace: true,
+        });
+        return; // CRITICAL: Prevent fallthrough to legacy routing
+      } else if (recruiterType === 'invited' && invitationToken) {
+        // Invited recruiter: Auto-accept invitation, then go to dashboard
+        console.log('[VerifyEmail] Invited recruiter → auto-accepting invitation');
+
+        try {
+          const response = await fetch('/api/recruitment/invitations/accept', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: invitationToken }),
+          });
+
+          if (response.ok) {
+            const result = await response.json();
+            console.log('[VerifyEmail] Invitation accepted successfully:', result);
+
+            // Clean up
+            sessionStorage.removeItem('recruiter_type');
+            sessionStorage.removeItem('invitation_token');
+            sessionStorage.removeItem('invitation_email');
+            sessionStorage.removeItem('invitation_org_id');
+            sessionStorage.removeItem('invitation_org_name');
+
+            // Force logout and redirect to login to get fresh JWT with membership
+            console.log('[VerifyEmail] Logging out to get fresh JWT with org membership');
+            await ssoClient.logout();
+            useAuthStore.setState({
+              user: null,
+              isAuthenticated: false,
+              role: null,
+            });
+
+            // Store redirect target for after login
+            sessionStorage.setItem('post_login_redirect', '/recruitment/overview');
+            navigate('/login?verified=1&invited=1', { replace: true });
+            return; // CRITICAL: Stop execution after navigation
+          } else {
+            // Invitation acceptance failed - show error
+            const errorData = await response.json();
+            console.error('[VerifyEmail] Invitation acceptance failed:', errorData);
+
+            // Redirect to error page with details
+            navigate('/invitation-error', {
+              replace: true,
+              state: {
+                errorType: response.status === 409 ? 'already_used' :
+                  response.status === 410 ? 'expired' :
+                    response.status === 404 ? 'invalid' : 'unknown',
+                errorMessage: errorData.error,
+              }
+            });
+            return; // CRITICAL: Stop execution after error navigation
+          }
+        } catch (error) {
+          console.error('[VerifyEmail] Invitation acceptance error:', error);
+          navigate('/invitation-error', {
+            replace: true,
+            state: { errorType: 'unknown', errorMessage: 'Failed to process invitation' }
+          });
+          return; // CRITICAL: Stop execution after error navigation
+        }
+      } else {
+        // Fallback: Legacy recruitment user routing (no recruiterType stored)
+        const isCompanyAdmin = userRoles.includes('owner') || userRoles.includes('company_admin');
+
+        if (isCompanyAdmin) {
+          console.log('[VerifyEmail] LEGACY: Company admin → syncing org and redirecting to subscription plans');
+
+          // Sync organization from SSO to Skillpassport DB
+          // Admin recruiters create org in SSO DB during signup, but it needs to be synced to local DB
+          const orgId = currentUser?.orgId;
+          const orgName = currentUser?.user_metadata?.organizationName || `${currentUser?.user_metadata?.firstName}'s Organization`;
+
+          if (orgId) {
+            try {
+              console.log('[VerifyEmail] Syncing organization to local DB:', { orgId, orgName });
+              await fetch('/api/organization', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  action: 'create-local-organization',
+                  p_organization_id: orgId,
+                  p_organization_name: orgName,
+                  p_recruitment_enabled: true,
+                  p_max_recruiters: 10,
+                }),
+              });
+              console.log('[VerifyEmail] ✓ Organization synced to local DB');
+            } catch (syncError) {
+              console.error('[VerifyEmail] Failed to sync organization (non-critical):', syncError);
+              // Non-critical: Continue with redirect even if sync fails
+              // The org context will try to load from FDW as fallback
+            }
+          }
+
+          navigate('/subscription/plans?type=recruiter', { replace: true });
+          return; // CRITICAL: Stop execution after navigation
+        } else {
+          console.log('[VerifyEmail] LEGACY: Invited recruiter → overview dashboard');
+          navigate('/recruitment/overview', { replace: true });
+          return; // CRITICAL: Stop execution after navigation
+        }
+      }
+    } else {
+      // Regular learner user - go to subscription plans
+      console.log('[VerifyEmail] Redirecting to regular subscription plans', {
+        userRole,
+        roles: userRoles
+      });
+      navigate('/subscription/plans', { replace: true });
+      return; // CRITICAL: Stop execution after navigation
+    }
+  };
+
   useEffect(() => {
+    // Check if we just reloaded after verification
+    const emailJustVerified = sessionStorage.getItem('email_just_verified');
+    if (emailJustVerified === 'true') {
+      console.log('[VerifyEmail] Detected post-verification reload, proceeding with redirect');
+      sessionStorage.removeItem('email_just_verified');
+      setState('success');
+      // Trigger the redirect logic immediately
+      setTimeout(() => {
+        handlePostVerificationRedirect();
+      }, 1500);
+      return;
+    }
+
     if (!token) return;
     let redirectTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -27,260 +267,27 @@ const VerifyEmail = () => {
       try {
         await ssoClient.verifyEmail({ token });
 
-        // Step 1: Force a session exchange via Web Locks and the SDK vault
-        // to get a fresh access token carrying is_email_verified=true.
-        // This updates the in-memory #vault, notifies subscribers, and updates the Zustand store.
-        const refreshOk = await useAuthStore.getState().refreshSession({ force: true });
+        // CRITICAL FIX: Force immediate page reload to ensure JWT token is refreshed
+        // The problem: Even if refreshSession() updates Zustand store, the Authorization header
+        // in pending/subsequent HTTP requests still contains the OLD JWT with emailVerified=false
+        // Solution: Force full page reload IMMEDIATELY to clear all tokens and re-authenticate
+        console.log('[VerifyEmail] Email verified successfully, forcing page reload to refresh JWT');
 
-        console.log('[VerifyEmail] User data after refresh:', {
-          role: useAuthStore.getState().user?.role,
-          roles: useAuthStore.getState().user?.roles,
-          orgId: useAuthStore.getState().user?.orgId,
-          isEmailVerified: useAuthStore.getState().user?.isEmailVerified,
-          refreshOk,
-          isAuthenticated: useAuthStore.getState().isAuthenticated,
-        });
+        // Mark verification as complete before reload
+        sessionStorage.setItem('email_just_verified', 'true');
+
+        // Force full page reload - this will:
+        // 1. Clear all in-memory tokens
+        // 2. Trigger auth state restoration from cookies
+        // 3. Fetch fresh JWT with is_email_verified=true
+        // 4. Update Authorization header in all HTTP clients
+        window.location.reload();
+        return;
 
         // Step 2: Only fall back to success_session_lost if the session is
         // genuinely absent (no cookie, different browser).
-        if (!refreshOk && !useAuthStore.getState().isAuthenticated) {
-          console.warn('[VerifyEmail] Session lost after verification — redirecting to login', {
-            refreshOk,
-            isAuthenticated: useAuthStore.getState().isAuthenticated,
-          });
-          setState('success_session_lost');
-          return;
-        }
-
-        // Set success state
-        setState('success');
-
-        // Auto-redirect after a short delay to show success message
-        setTimeout(async () => {
-          const currentUser = useAuthStore.getState().user;
-          const userRole = currentUser?.role || useAuthStore.getState().role;
-          const userRoles = currentUser?.roles || [];
-
-          console.log('[VerifyEmail] Auto-redirecting after verification', {
-            userRole,
-            orgId: currentUser?.orgId,
-            roles: userRoles,
-            isAuthenticated: useAuthStore.getState().isAuthenticated
-          });
-
-          // CRITICAL FIX: Check if user just accepted an invitation during signup
-          // If so, redirect to login to get fresh JWT with membership roles
-          const invitationJustAccepted = sessionStorage.getItem('invitation_just_accepted');
-          const postVerificationRedirect = sessionStorage.getItem('post_signup_verification_redirect');
-          const invitationOrgId = sessionStorage.getItem('invitation_org_id');
-          const invitationRole = sessionStorage.getItem('invitation_role');
-
-          if (invitationJustAccepted === 'true') {
-            console.log('[VerifyEmail] User just accepted invitation during signup', {
-              orgId: invitationOrgId,
-              role: invitationRole,
-              targetRedirect: postVerificationRedirect
-            });
-            console.log('[VerifyEmail] Redirecting to login to obtain fresh JWT with membership');
-
-            // Keep the context for post-login redirect
-            // Don't clear invitation_just_accepted yet - login will use it
-            navigate('/login', { replace: true });
-            return;
-          }
-
-          // If the session didn't restore (email link opened without the
-          // refresh-token cookie), we can't know the user's role — send them to
-          // login. After login the role-based routing / subscription guard takes
-          // them to the correct plans page.
-          if (!useAuthStore.getState().isAuthenticated) {
-            console.log('[VerifyEmail] Not authenticated after verification, redirecting to login');
-            navigate('/login?verified=1', { replace: true });
-            return;
-          }
-
-          // Institution admins (school/college/university) must be detected
-          // BEFORE the recruitment check: they also carry the 'owner' role
-          // (org creator), which would otherwise misroute them to recruitment.
-          const isInstitutionAdmin =
-            userRoles.includes('school_admin') ||
-            userRoles.includes('college_admin') ||
-            userRoles.includes('university_admin');
-
-          // Check if user has any recruitment vertical roles. Exclude
-          // institution admins so the shared 'owner' role doesn't match here.
-          const isRecruitmentUser =
-            !isInstitutionAdmin && (
-              userRole === 'recruiter' ||
-              userRoles.includes('recruiter') ||
-              userRoles.includes('company_admin') ||
-              userRoles.includes('viewer') ||
-              userRoles.includes('owner')
-            );
-
-          // Legacy flow: Check if there's an invitation token still in sessionStorage
-          // (This shouldn't happen anymore with the new flow, but keep for safety)
-          const invitationToken = sessionStorage.getItem('invitation_token');
-          const invitationReturnUrl = sessionStorage.getItem('invitation_return_url');
-
-          if (invitationToken || invitationReturnUrl) {
-            // User came from recruitment invitation (legacy path)
-            console.log('[VerifyEmail] LEGACY: Redirecting to login for invitation auto-acceptance', {
-              userRole,
-              roles: userRoles,
-              hasInvitationToken: !!invitationToken
-            });
-            navigate('/login', { replace: true });
-            return; // CRITICAL: Stop execution after navigation
-          } else if (isInstitutionAdmin) {
-            // Institution admin who just signed up — send to institution
-            // subscription plans (b2b) for their role.
-            console.log('[VerifyEmail] Redirecting institution admin to subscription plans', {
-              userRole,
-              roles: userRoles,
-              orgId: currentUser?.orgId,
-            });
-            navigate(`/subscription/plans?type=${userRole}`, { replace: true });
-            return; // CRITICAL: Stop execution after navigation
-          } else if (isRecruitmentUser) {
-            // NEW ROUTING LOGIC: Check recruiterType from sessionStorage
-            const recruiterType = sessionStorage.getItem('recruiter_type');
-            const invitationToken = sessionStorage.getItem('invitation_token');
-
-            console.log('[VerifyEmail] Recruitment user detected', {
-              userRole,
-              roles: userRoles,
-              recruiterType,
-              hasInvitationToken: !!invitationToken
-            });
-
-            // Check if this is an admin recruiter (owner/company_admin role OR recruiter_type=admin)
-            const isCompanyAdmin = userRoles.includes('owner') || userRoles.includes('company_admin');
-            const isAdminRecruiter = (recruiterType === 'admin' || isCompanyAdmin);
-
-            if (isAdminRecruiter && !invitationToken) {
-              // Admin recruiter: Go to subscription plans FIRST
-              // After subscription, they'll be redirected to onboarding to set company details
-              console.log('[VerifyEmail] Admin recruiter → subscription plans first');
-              sessionStorage.removeItem('recruiter_type'); // Clean up
-              navigate('/subscription/plans?type=recruiter', {
-                replace: true,
-              });
-              return; // CRITICAL: Prevent fallthrough to legacy routing
-            } else if (recruiterType === 'invited' && invitationToken) {
-              // Invited recruiter: Auto-accept invitation, then go to dashboard
-              console.log('[VerifyEmail] Invited recruiter → auto-accepting invitation');
-
-              try {
-                const response = await fetch('/api/recruitment/invitations/accept', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ token: invitationToken }),
-                });
-
-                if (response.ok) {
-                  const result = await response.json();
-                  console.log('[VerifyEmail] Invitation accepted successfully:', result);
-
-                  // Clean up
-                  sessionStorage.removeItem('recruiter_type');
-                  sessionStorage.removeItem('invitation_token');
-                  sessionStorage.removeItem('invitation_email');
-                  sessionStorage.removeItem('invitation_org_id');
-                  sessionStorage.removeItem('invitation_org_name');
-
-                  // Force logout and redirect to login to get fresh JWT with membership
-                  console.log('[VerifyEmail] Logging out to get fresh JWT with org membership');
-                  await ssoClient.logout();
-                  useAuthStore.setState({
-                    user: null,
-                    isAuthenticated: false,
-                    role: null,
-                  });
-
-                  // Store redirect target for after login
-                  sessionStorage.setItem('post_login_redirect', '/recruitment/overview');
-                  navigate('/login?verified=1&invited=1', { replace: true });
-                  return; // CRITICAL: Stop execution after navigation
-                } else {
-                  // Invitation acceptance failed - show error
-                  const errorData = await response.json();
-                  console.error('[VerifyEmail] Invitation acceptance failed:', errorData);
-
-                  // Redirect to error page with details
-                  navigate('/invitation-error', {
-                    replace: true,
-                    state: {
-                      errorType: response.status === 409 ? 'already_used' :
-                        response.status === 410 ? 'expired' :
-                          response.status === 404 ? 'invalid' : 'unknown',
-                      errorMessage: errorData.error,
-                    }
-                  });
-                  return; // CRITICAL: Stop execution after error navigation
-                }
-              } catch (error) {
-                console.error('[VerifyEmail] Invitation acceptance error:', error);
-                navigate('/invitation-error', {
-                  replace: true,
-                  state: { errorType: 'unknown', errorMessage: 'Failed to process invitation' }
-                });
-                return; // CRITICAL: Stop execution after error navigation
-              }
-            } else {
-              // Fallback: Legacy recruitment user routing (no recruiterType stored)
-              const isCompanyAdmin = userRoles.includes('owner') || userRoles.includes('company_admin');
-
-              if (isCompanyAdmin) {
-                console.log('[VerifyEmail] LEGACY: Company admin → syncing org and redirecting to subscription plans');
-
-                // Sync organization from SSO to Skillpassport DB
-                // Admin recruiters create org in SSO DB during signup, but it needs to be synced to local DB
-                const orgId = currentUser?.orgId;
-                const orgName = currentUser?.user_metadata?.organizationName || `${currentUser?.user_metadata?.firstName}'s Organization`;
-
-                if (orgId) {
-                  try {
-                    console.log('[VerifyEmail] Syncing organization to local DB:', { orgId, orgName });
-                    await fetch('/api/organization', {
-                      method: 'POST',
-                      headers: {
-                        'Content-Type': 'application/json',
-                      },
-                      body: JSON.stringify({
-                        action: 'create-local-organization',
-                        p_organization_id: orgId,
-                        p_organization_name: orgName,
-                        p_recruitment_enabled: true,
-                        p_max_recruiters: 10,
-                      }),
-                    });
-                    console.log('[VerifyEmail] ✓ Organization synced to local DB');
-                  } catch (syncError) {
-                    console.error('[VerifyEmail] Failed to sync organization (non-critical):', syncError);
-                    // Non-critical: Continue with redirect even if sync fails
-                    // The org context will try to load from FDW as fallback
-                  }
-                }
-
-                navigate('/subscription/plans?type=recruiter', { replace: true });
-                return; // CRITICAL: Stop execution after navigation
-              } else {
-                console.log('[VerifyEmail] LEGACY: Invited recruiter → overview dashboard');
-                navigate('/recruitment/overview', { replace: true });
-                return; // CRITICAL: Stop execution after navigation
-              }
-            }
-          } else {
-            // Regular learner user - go to subscription plans
-            console.log('[VerifyEmail] Redirecting to regular subscription plans', {
-              userRole,
-              roles: userRoles
-            });
-            navigate('/subscription/plans', { replace: true });
-            return; // CRITICAL: Stop execution after navigation
-          }
-        }, 1500); // Show success message for 1.5 seconds before redirecting
+        // Note: This check never runs because we reload immediately above
+        // Keeping for reference in case reload strategy changes
 
       } catch (err) {
         if (err instanceof AuthClientError) {

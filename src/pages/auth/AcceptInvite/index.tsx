@@ -137,9 +137,30 @@ const AcceptInvite = () => {
                         <InvitationSuccess
                             organizationName={validationData?.organizationName}
                             isRecruitmentInvite={isRecruitmentInvite}
-                            onNavigate={() =>
-                                navigate(isRecruitmentInvite ? '/recruitment/overview' : '/')
-                            }
+                            onNavigate={async () => {
+                                // Log current auth state for debugging
+                                const currentUser = useAuthStore.getState().user;
+                                const isAuth = useAuthStore.getState().isAuthenticated;
+                                console.log('[AcceptInvite] Button clicked - Auth state:', {
+                                    isAuthenticated: isAuth,
+                                    userId: currentUser?.id,
+                                    email: currentUser?.email,
+                                    roles: currentUser?.roles,
+                                });
+                                
+                                // Prefetch subscription before navigating to ensure SubscriptionProtectedRoute has data
+                                try {
+                                    const subResponse = await fetch('/api/payments/get-active-subscription');
+                                    if (subResponse.ok) {
+                                        const subData = await subResponse.json();
+                                        console.log('[AcceptInvite] Button click - Subscription prefetched:', subData?.data?.status || 'none');
+                                    }
+                                } catch (err) {
+                                    console.warn('[AcceptInvite] Button click - Subscription prefetch failed:', err);
+                                }
+
+                                navigate(isRecruitmentInvite ? '/recruitment/overview' : '/');
+                            }}
                         />
                     )}
 

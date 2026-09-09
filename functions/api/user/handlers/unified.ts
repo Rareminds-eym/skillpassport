@@ -286,6 +286,7 @@ async function createRoleSpecificRecord(
       break;
 
     case 'recruiter':
+    case 'recruiter_admin':
     case 'company_admin': {
       const { error } = await supabaseAdmin.from('recruiters').insert({
         user_id: userId,

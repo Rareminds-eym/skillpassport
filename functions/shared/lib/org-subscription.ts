@@ -37,6 +37,8 @@ export async function resolveUserEntitlement(
   supabase: SupabaseClient,
   userId: string
 ): Promise<EntitlementResult | null> {
+  console.log('[resolveUserEntitlement] Starting entitlement check', { userId });
+
   try {
     if (!userId) return null;
 
@@ -109,7 +111,15 @@ export async function resolveUserEntitlement(
       return null;
     }
 
-    // STEP 1.7: Org-wide student entitlement fallback via learners table
+    // STEP 1.7: Org-wide entitlement fallback via organization lookup
+    // This covers:
+    // - Learners via learners table (college_id, school_id)
+    // - Invited recruiters via users.organizationId
+    // - Organization owners via organizations.created_by
+    // - Other organization members
+    let orgId: string | null = null;
+
+    // First check learners table for students
     const { data: learner } = await supabase
       .from('learners')
       .select('college_id, school_id, status')
@@ -117,8 +127,37 @@ export async function resolveUserEntitlement(
       .eq('status', 'active')
       .maybeSingle();
 
-    const orgId = learner?.college_id || learner?.school_id;
+    orgId = learner?.college_id || learner?.school_id || null;
+
+    // If no org found via learners, check users table (for invited members)
+    if (!orgId) {
+      const { data: userData } = await supabase
+        .from('users')
+        .select('organizationId, role')
+        .eq('id', userId)
+        .maybeSingle();
+
+      orgId = userData?.organizationId || null;
+    }
+
+    // If still no org found, check if user is an organization owner (created_by)
+    // This covers recruiter_admin and other org creators who don't have organizationId set
+    if (!orgId) {
+      const { data: ownedOrg } = await supabase
+        .from('organizations')
+        .select('id')
+        .eq('created_by', userId)
+        .maybeSingle();
+
+      orgId = ownedOrg?.id || null;
+
+      if (orgId) {
+        console.log('[resolveUserEntitlement] Found organization via created_by', { userId, orgId });
+      }
+    }
+
     if (orgId) {
+      console.log('[resolveUserEntitlement] Checking organization subscription', { userId, orgId });
       const nowIso = new Date().toISOString();
       const { data: orgSub } = await supabase
         .from('subscription_cache')
@@ -130,6 +169,14 @@ export async function resolveUserEntitlement(
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
+
+      console.log('[resolveUserEntitlement] Organization subscription query result', {
+        userId,
+        orgId,
+        found: !!orgSub,
+        status: orgSub?.status,
+        plan: orgSub?.plan_code
+      });
 
       if (orgSub) {
         let orgDetails: OrganizationDetails | null = null;
@@ -170,6 +217,7 @@ export async function resolveUserEntitlement(
     }
 
     // STEP 2: Individual subscription check
+    console.log('[resolveUserEntitlement] Checking individual subscription', { userId });
     const { data: indSub } = await supabase
       .from('subscription_cache')
       .select('*')
@@ -178,6 +226,13 @@ export async function resolveUserEntitlement(
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
+
+    console.log('[resolveUserEntitlement] Individual subscription query result', {
+      userId,
+      found: !!indSub,
+      status: indSub?.status,
+      plan: indSub?.plan_code
+    });
 
     if (indSub) {
       return {
@@ -202,6 +257,7 @@ export async function resolveUserEntitlement(
     }
 
     // STEP 3: Fallback null (fail closed)
+    console.log('[resolveUserEntitlement] No subscription found, returning null', { userId });
     return null;
   } catch (err) {
     console.error('[resolveUserEntitlement] Error during resolution:', err);

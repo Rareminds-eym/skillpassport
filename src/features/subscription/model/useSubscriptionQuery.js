@@ -67,7 +67,15 @@ const formatSubscriptionData = (data) => {
  * Determines whether the user has platform access, why, and any warnings.
  */
 const computeAccessState = (sub) => {
+  console.log('[useSubscriptionQuery] 🔐 Computing access state for subscription:', sub ? {
+    status: sub.status,
+    plan: sub.plan,
+    isOrgLicense: sub.isOrganizationLicense,
+    orgId: sub.organizationId
+  } : 'null');
+
   if (!sub) {
+    console.log('[useSubscriptionQuery] ❌ No subscription data → hasAccess=false, reason=no_subscription');
     return {
       hasAccess: false,
       accessReason: 'no_subscription',
@@ -130,7 +138,9 @@ const computeAccessState = (sub) => {
     }
   }
 
-  return { hasAccess, accessReason, showWarning, warningType, warningMessage, daysUntilExpiry };
+  const result = { hasAccess, accessReason, showWarning, warningType, warningMessage, daysUntilExpiry };
+  console.log('[useSubscriptionQuery] ✅ Access state computed:', result);
+  return result;
 };
 
 /**
@@ -138,20 +148,41 @@ const computeAccessState = (sub) => {
  * Returns null if no subscription exists (user should be redirected to subscription page)
  */
 const fetchSubscription = async (userId) => {
-  if (!userId) return null;
+  console.log('[useSubscriptionQuery] 🔍 Fetching subscription for userId:', userId);
 
+  if (!userId) {
+    console.log('[useSubscriptionQuery] ❌ No userId provided, returning null');
+    return null;
+  }
+
+  console.log('[useSubscriptionQuery] Calling getActiveSubscription API...');
   const result = await getActiveSubscription();
+  console.log('[useSubscriptionQuery] API result:', {
+    success: result.success,
+    hasData: !!result.data,
+    status: result.data?.status,
+    error: result.error
+  });
 
   if (!result.success) {
+    console.error('[useSubscriptionQuery] ❌ API returned success=false:', result.error);
     throw new Error(result.error || 'Failed to fetch subscription');
   }
 
   if (result.data) {
-    return formatSubscriptionData(result.data);
+    const formatted = formatSubscriptionData(result.data);
+    console.log('[useSubscriptionQuery] ✅ Subscription found and formatted:', {
+      plan: formatted.plan,
+      status: formatted.status,
+      isOrgLicense: formatted.isOrganizationLicense,
+      orgId: formatted.organizationId
+    });
+    return formatted;
   }
 
   // No subscription found - return null instead of throwing
   // Frontend will handle showing subscription purchase page
+  console.log('[useSubscriptionQuery] ⚠️ No subscription data found, returning null');
   return null;
 };
 

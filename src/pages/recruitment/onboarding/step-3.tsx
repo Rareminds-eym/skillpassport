@@ -25,6 +25,24 @@ export default function OnboardingStep3() {
             localStorage.removeItem('onboarding_draft');
             resetOnboarding();
 
+            // Invalidate org context query to force refetch with newly created organization
+            // This prevents redirect loop back to onboarding
+            try {
+                const { useQueryClient } = await import('@tanstack/react-query');
+                const { recruitmentQueryKeys } = await import('@/shared/lib/queryKeys/recruitment');
+                const { useAuthStore } = await import('@/shared/model/authStore');
+                const queryClient = useQueryClient();
+                const user = useAuthStore.getState().user;
+                if (user?.id) {
+                    await queryClient.invalidateQueries({
+                        queryKey: recruitmentQueryKeys.orgContext(user.id)
+                    });
+                    console.log('[OnboardingStep3] Org context query invalidated, will refetch on dashboard load');
+                }
+            } catch (err) {
+                console.warn('[OnboardingStep3] Failed to invalidate org context (non-critical):', err);
+            }
+
             toast.success('Company setup complete! Welcome to your recruitment dashboard.', {
                 duration: 3000,
             });

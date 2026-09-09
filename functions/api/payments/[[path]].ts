@@ -29,7 +29,7 @@
  * - GET  /api/payments/health
  */
 
-import { withAuth, getContextUser, getAuthInstance } from '../../lib/auth';
+import { withAuth, withAuthAllowUnverified, getContextUser, getAuthInstance } from '../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 
 // Dedicated handlers — all routes use RPC or Supabase-direct (no proxy)
@@ -183,9 +183,37 @@ export async function onRequest(context: { request: Request; env: Record<string,
     return handleOptionalAuthRequest(context, handleGetUserEntitlements, []);
   }
 
-  // All other endpoints require SSO authentication
+  // Create order — allow unverified emails (recruiter_admin signup flow: signup → purchase → verify → onboard)
+  // Must come BEFORE handleAuthenticatedRequest so it doesn't get email verification check
+  if (path === '/create-order') {
+    if (method !== 'POST') return methodNotAllowed(context.request);
+    return handleCreateOrderAllowUnverified(context as AuthenticatedContext);
+  }
+
+  // Verify payment — allow unverified emails (payment happens before email verification)
+  // Must come BEFORE handleAuthenticatedRequest so it doesn't get email verification check
+  if (path === '/verify-payment') {
+    if (method !== 'POST') return methodNotAllowed(context.request);
+    return handleVerifyPaymentAllowUnverified(context as AuthenticatedContext);
+  }
+
+  // All other endpoints require SSO authentication + email verification
   return handleAuthenticatedRequest(context as AuthenticatedContext);
 }
+
+const handleCreateOrderAllowUnverified = withAuthAllowUnverified(async (context: AuthenticatedContext) => {
+  const user = getContextUser(context);
+  const requestId = crypto.randomUUID();
+  console.log(`[Payments:${requestId}] POST /create-order user=${user.id} emailVerified=${user.is_email_verified}`);
+  return handleCreateOrder(context);
+});
+
+const handleVerifyPaymentAllowUnverified = withAuthAllowUnverified(async (context: AuthenticatedContext) => {
+  const user = getContextUser(context);
+  const requestId = crypto.randomUUID();
+  console.log(`[Payments:${requestId}] POST /verify-payment user=${user.id} emailVerified=${user.is_email_verified}`);
+  return handleVerifyPayment(context);
+});
 
 const handleAuthenticatedRequest = withAuth(async (context: AuthenticatedContext) => {
   const url = new URL(context.request.url);
@@ -199,15 +227,8 @@ const handleAuthenticatedRequest = withAuth(async (context: AuthenticatedContext
 
   // --- POST routes ---
 
-  if (path === '/create-order') {
-    if (method !== 'POST') return methodNotAllowed(context.request);
-    return handleCreateOrder(context);
-  }
-
-  if (path === '/verify-payment') {
-    if (method !== 'POST') return methodNotAllowed(context.request);
-    return handleVerifyPayment(context);
-  }
+  // create-order is handled above with withAuthAllowUnverified
+  // verify-payment is handled above with withAuthAllowUnverified
 
   if (path === '/deactivate-subscription') {
     if (method !== 'POST') return methodNotAllowed(context.request);
