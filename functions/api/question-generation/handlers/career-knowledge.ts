@@ -84,8 +84,35 @@ export async function generateKnowledgeQuestions(
     
     // Treat higher_secondary (11th/12th) same as college for dynamic topic generation
     const usesDynamicTopics = isCollegeLearner || gradeLevel === 'higher_secondary';
-    
+
     const supabase = createSupabaseAdminClient(env);
+
+    // Canonical-set pre-check: if a shared question set already exists for this
+    // (stream_id, grade_level, question_type), return it immediately and skip AI
+    // generation entirely. Without this, every caller regenerates via OpenRouter
+    // before get_or_create_shared_questions() is reached at the end of this
+    // function, defeating the shared-question requirement for every learner after
+    // the first. This is a plain SELECT (no advisory lock needed here - the lock
+    // only guards the decide-and-write step inside the RPC, which remains the sole
+    // writer and sole concurrency authority for first-time creation).
+    if (gradeLevel) {
+        const { data: existing } = await supabase
+            .from('career_assessment_ai_questions')
+            .select('questions')
+            .eq('stream_id', streamId)
+            .eq('grade_level', gradeLevel)
+            .eq('question_type', 'knowledge')
+            .eq('is_active', true)
+            .is('learner_id', null)
+            .order('created_at', { ascending: true })
+            .limit(1)
+            .maybeSingle();
+
+        if (existing?.questions) {
+            console.log('♻️ Reusing existing canonical knowledge set - skipping AI generation');
+            return existing.questions;
+        }
+    }
 
     const { openRouter: openRouterKey } = getAPIKeys(env);
 
