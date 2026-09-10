@@ -7,16 +7,6 @@ name = "skill-passport-portal"
 compatibility_date = "2026-09-04"
 compatibility_flags = ["nodejs_compat"]
 
-[observability]
-enabled = true
-
-[observability.logs]
-head_sampling_rate = 1
-
-[observability.traces]
-enabled = true
-head_sampling_rate = 0.01
-
 # Flagship feature flags (Cloudflare native, KV+DO backed, sub-ms edge eval)
 # Public beta 2026-05-26 — Worker binding replaces env-var toggles for DORA elite MTTR
 # Requires app created in Cloudflare dashboard → flagship app_id
