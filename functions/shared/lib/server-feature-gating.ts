@@ -5,7 +5,7 @@
  * access to premium features through API manipulation.
  *
  * Reads from subscription_cache and plans_cache shadow tables (app DB)
- * for <1ms feature checks. Self-heals stale cache entries via async refresh.
+ * for fast feature checks. Self-heals stale cache entries via async refresh.
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -58,7 +58,7 @@ export async function checkServerFeatureAccess(
   try {
     const { data: cached, error } = await supabase
       .from('subscription_cache')
-      .select('id, status, plan_code, features, synced_at')
+      .select('id, status, plan_code, features, synced_at, is_organization_subscription')
       .eq('user_id', userId)
       .in('status', ['active', 'grace_period'])
       .maybeSingle();
@@ -73,19 +73,24 @@ export async function checkServerFeatureAccess(
     }
 
     if (!cached) {
+      const isFreemiumAllowed = FREEMIUM_FEATURES[feature] === true;
       return {
-        hasAccess: false,
-        reason: 'No active subscription',
-        requiresUpgrade: true,
+        hasAccess: isFreemiumAllowed,
+        reason: isFreemiumAllowed ? undefined : 'No active subscription',
+        planCode: 'freemium',
+        requiresUpgrade: !isFreemiumAllowed,
       };
     }
 
-    // Self-healing: if stale, trigger async refresh (non-blocking)
-    // Dead RPC removed: refreshCacheAsync always fallback_cron (no migration defines refresh_subscription_cache_for_user).
-    // Keep isStale detection for metric but do not call dead RPC; rely on cron-reconcile-heal and get-active-subscription heal.
-    // TODO: replace with SSO_SERVICE sync if env available.
+    // Dead RPC removed: refresh_subscription_cache_for_user has no migration.
+    // Keep stale detection for metrics; cache is healed by cron and get-active-subscription fallback.
     if (isStale(cached.synced_at)) {
-      logger.info('heal_metric', { metric: 'heal_cache_miss_total', status: 'stale_detected', userId, synced_at: cached.synced_at } as any);
+      logger.info('heal_metric', {
+        metric: 'heal_cache_miss_total',
+        status: 'stale_detected',
+        userId,
+        synced_at: cached.synced_at,
+      } as any);
     }
 
     const planCode = cached.plan_code;
@@ -108,8 +113,8 @@ export async function checkServerFeatureAccess(
       };
     }
 
-    const planFeatures: string[] = Array.isArray(cached.features) ? cached.features : [];
-    const hasFeature = planFeatures.includes(feature);
+    const planFeatures = Array.isArray(cached.features) ? cached.features : [];
+    const hasFeature = planFeatures.includes(feature) || cached.is_organization_subscription === true;
 
     return {
       hasAccess: hasFeature,
@@ -229,7 +234,7 @@ export function requireFeature(feature: string) {
 }
 
 /**
- * @deprecated Dead code — RPC refresh_subscription_cache_for_user has no migration (false positive H4).
+ * @deprecated Dead code: RPC refresh_subscription_cache_for_user has no migration.
  * Kept for reference. Do NOT call. Stale is now observed via stale_detected metric and healed by cron + get-active-subscription SSO fallback.
  */
 async function refreshCacheAsync(_supabase: SupabaseClient, _userId: string): Promise<void> {

@@ -240,3 +240,4 @@ export async function handleGetActiveSubscription(context: AuthenticatedContext)
     return apiError(500, 'INTERNAL_ERROR', 'An internal error occurred', context.request, { startTime });
   }
 }
+
