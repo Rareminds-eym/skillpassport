@@ -30,7 +30,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { checkServerFeatureAccess } from '../shared/lib/server-feature-gating';
 
 /** Subscription statuses that count as currently-entitling. */
-const ENTITLING_STATUSES = ['active', 'grace_period'] as const;
+const ENTITLING_STATUSES = ['active', 'grace_period', 'cancelled'] as const;
 
 /**
  * Resolve whether the user holds an active purchased ADD-ON entitlement for a
@@ -38,7 +38,7 @@ const ENTITLING_STATUSES = ['active', 'grace_period'] as const;
  *
  * Canonical add-on state lives SSO-side (`addon_purchases`/`bundle_purchases`)
  * and is mirrored into `user_entitlements`. An entitlement counts only when its
- * `status` is one of {@link ENTITLING_STATUSES}.
+ * `status` is one of {@link ENTITLING_STATUSES} and its expiration has not passed.
  *
  * FAIL-CLOSED: any query error (including a missing table, code `42P01`) or
  * unexpected throw resolves to `false`.
@@ -54,12 +54,15 @@ export async function hasActiveAddonEntitlement(
     featureKey: string,
 ): Promise<boolean> {
     try {
+        const nowIso = new Date().toISOString();
         const { data, error } = await supabase
             .from('user_entitlements')
-            .select('id')
+            .select('id, end_date, status')
             .eq('user_id', userId)
             .eq('feature_key', featureKey)
             .in('status', ENTITLING_STATUSES as unknown as string[])
+            .or(`end_date.gte.${nowIso},end_date.is.null`)
+            .order('end_date', { ascending: false })
             .limit(1)
             .maybeSingle();
 

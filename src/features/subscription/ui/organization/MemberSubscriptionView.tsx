@@ -2,34 +2,30 @@
  * MemberSubscriptionView Component
  * 
  * Main view for members to see their subscription status.
- * Combines organization-provided features and personal add-ons.
+ * Shows members their organization-provided subscription benefits
+ * and personal add-ons.
  * Includes expiration warnings and countdown timers.
  * 
  * Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 9.4
  */
 
 import {
-    AlertTriangle,
-    Bell,
-    Calendar,
-    Clock,
-    RefreshCw,
-    X,
+  AlertTriangle,
+  Bell,
+  Calendar,
+  Clock,
+  RefreshCw,
+  X,
 } from 'lucide-react';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
-import OrganizationProvidedFeatures from './OrganizationProvidedFeatures';
+import OrganizationLearnerBenefitsCard from './OrganizationLearnerBenefitsCard';
 import PersonalAddOns from './PersonalAddOns';
-
-interface OrganizationFeature {
-  id: string;
-  name: string;
-  description?: string;
-  isActive: boolean;
-}
 
 interface OrganizationInfo {
   id: string;
   name: string;
+  email?: string;
+  phone?: string;
   type: 'school' | 'college' | 'university';
   adminName?: string;
   adminEmail?: string;
@@ -70,18 +66,17 @@ interface MemberSubscriptionViewProps {
   hasOrganizationSubscription: boolean;
   organization?: OrganizationInfo;
   subscription?: SubscriptionInfo;
-  organizationFeatures?: OrganizationFeature[];
-  
+
   // Personal add-ons
   purchasedAddOns: PurchasedAddOn[];
   availableAddOns: AvailableAddOn[];
-  
+
   // Callbacks
   onPurchaseAddOn: (addOnId: string) => void;
   onManageAddOn: (addOnId: string) => void;
   onContactAdmin?: () => void;
   onDismissWarning?: () => void;
-  
+
   // Loading state
   isLoading?: boolean;
 }
@@ -90,9 +85,8 @@ function MemberSubscriptionView({
   hasOrganizationSubscription,
   organization,
   subscription,
-  organizationFeatures = [],
-  purchasedAddOns,
-  availableAddOns,
+  purchasedAddOns = [],
+  availableAddOns = [],
   onPurchaseAddOn,
   onManageAddOn,
   onContactAdmin,
@@ -123,7 +117,7 @@ function MemberSubscriptionView({
   // Check for any expiring add-ons
   const expiringAddOns = useMemo(() => {
     const now = new Date();
-    return purchasedAddOns.filter((addOn) => {
+    return (purchasedAddOns || []).filter((addOn) => {
       if (!addOn.expiryDate || !addOn.isActive) return false;
       const expiry = new Date(addOn.expiryDate);
       const daysRemaining = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
@@ -140,10 +134,10 @@ function MemberSubscriptionView({
     return <LoadingSkeleton />;
   }
 
-  const showOrgExpirationWarning = 
-    showExpirationBanner && 
-    hasOrganizationSubscription && 
-    expirationDetails && 
+  const showOrgExpirationWarning =
+    showExpirationBanner &&
+    hasOrganizationSubscription &&
+    expirationDetails &&
     (expirationDetails.isExpiringSoon || expirationDetails.isGracePeriod);
 
   return (
@@ -166,10 +160,14 @@ function MemberSubscriptionView({
 
       {/* Organization Provided Features */}
       {hasOrganizationSubscription && organization && subscription && (
-        <OrganizationProvidedFeatures
-          organization={organization}
-          subscription={subscription}
-          features={organizationFeatures}
+        <OrganizationLearnerBenefitsCard
+          organizationName={organization.name}
+          organizationEmail={organization.email || organization.adminEmail}
+          organizationPhone={organization.phone}
+          organizationType={organization.type}
+          planName={subscription.planName}
+          validUntil={subscription.endDate}
+          adminEmail={organization.adminEmail}
         />
       )}
 
@@ -212,9 +210,9 @@ function ExpirationWarningBanner({
       const now = new Date();
       const targetDate = new Date();
       targetDate.setDate(targetDate.getDate() + daysRemaining);
-      
+
       const diff = targetDate.getTime() - now.getTime();
-      
+
       setCountdown({
         days: Math.floor(diff / (1000 * 60 * 60 * 24)),
         hours: Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
@@ -280,22 +278,20 @@ function ExpirationWarningBanner({
             {onContactAdmin && (
               <button
                 onClick={onContactAdmin}
-                className={`px-3 py-1.5 text-sm font-medium rounded-lg ${
-                  isGracePeriod
+                className={`px-3 py-1.5 text-sm font-medium rounded-lg ${isGracePeriod
                     ? 'bg-red-600 text-white hover:bg-red-700'
                     : 'bg-amber-600 text-white hover:bg-amber-700'
-                } transition-colors`}
+                  } transition-colors`}
               >
                 Contact Admin
               </button>
             )}
             <button
               onClick={onDismiss}
-              className={`px-3 py-1.5 text-sm font-medium rounded-lg ${
-                isGracePeriod
+              className={`px-3 py-1.5 text-sm font-medium rounded-lg ${isGracePeriod
                   ? 'text-red-700 hover:bg-red-100'
                   : 'text-amber-700 hover:bg-amber-100'
-              } transition-colors`}
+                } transition-colors`}
             >
               Remind Me Later
             </button>
@@ -334,9 +330,9 @@ function AddOnExpirationWarning({ addOns }: AddOnExpirationWarningProps) {
             {addOns.map((addOn) => {
               const daysLeft = addOn.expiryDate
                 ? Math.ceil(
-                    (new Date(addOn.expiryDate).getTime() - new Date().getTime()) /
-                      (1000 * 60 * 60 * 24)
-                  )
+                  (new Date(addOn.expiryDate).getTime() - new Date().getTime()) /
+                  (1000 * 60 * 60 * 24)
+                )
                 : 0;
               return (
                 <li key={addOn.id} className="text-sm text-purple-600 flex items-center gap-2">
@@ -364,8 +360,8 @@ function NoOrganizationSubscription() {
         No Organization Subscription
       </h4>
       <p className="text-sm text-gray-500 max-w-md mx-auto">
-        You don't have an active subscription from your organization. 
-        Contact your organization admin if you believe this is an error, 
+        You don't have an active subscription from your organization.
+        Contact your organization admin if you believe this is an error,
         or explore personal add-ons below.
       </p>
     </div>
