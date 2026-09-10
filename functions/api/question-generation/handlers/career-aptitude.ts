@@ -88,8 +88,36 @@ export async function generateAptitudeQuestions(
     console.log(`📋 Grade Level: ${gradeLevel || 'not specified'}`);
     console.log(`📋 Learner ID: ${learnerId || 'not specified'}`);
     console.log(`📋 Attempt ID: ${attemptId || 'not specified'}`);
-    
+
     const supabase = createSupabaseAdminClient(env);
+
+    // Canonical-set pre-check: if a shared question set already exists for this
+    // (stream_id, grade_level, question_type), return it immediately and skip AI
+    // generation entirely. Without this, every caller regenerates via OpenRouter
+    // before get_or_create_shared_questions() is reached at the end of this
+    // function, defeating the shared-question requirement for every learner after
+    // the first. This is a plain SELECT (no advisory lock needed here - the lock
+    // only guards the decide-and-write step inside the RPC, which remains the sole
+    // writer and sole concurrency authority for first-time creation).
+    if (gradeLevel) {
+        const { data: existing } = await supabase
+            .from('career_assessment_ai_questions')
+            .select('questions')
+            .eq('stream_id', streamId)
+            .eq('grade_level', gradeLevel)
+            .eq('question_type', 'aptitude')
+            .eq('is_active', true)
+            .is('learner_id', null)
+            .order('created_at', { ascending: true })
+            .limit(1)
+            .maybeSingle();
+
+        if (existing?.questions) {
+            console.log('♻️ Reusing existing canonical aptitude set - skipping AI generation');
+            return existing.questions;
+        }
+    }
+
     const isAfter10 = gradeLevel === 'after10';
 
     console.log(`📚 Grade level detection: streamId=${streamId}, gradeLevel=${gradeLevel}, isAfter10=${isAfter10}`);
@@ -553,31 +581,43 @@ IMPORTANT: Avoid these words that suggest images: "shown below", "shown above", 
         };
     });
 
-    if (learnerId) {
-        // Use upsert to handle potential race conditions or re-generation.
-        // Save whenever learnerId is known — attemptId is nullable metadata only;
-        // the uniqueness constraint is (learner_id, stream_id, question_type).
-        const { error } = await supabase
-            .from('career_assessment_ai_questions')
-            .upsert({
-                learner_id: learnerId,
-                question_type: 'aptitude',
-                questions: processedQuestions,
-                stream_id: streamId,
-                attempt_id: null,
-                created_at: new Date().toISOString()
-            }, {
-                onConflict: 'learner_id, stream_id, question_type',
-                ignoreDuplicates: false // Update if exists
-            });
+    // Shared canonical question set: identity is (stream_id, grade_level, question_type),
+    // not learner_id. get_or_create_shared_questions() returns the existing canonical set
+    // if one already exists for this combination, or persists processedQuestions as the
+    // new canonical set if none exists yet — it never overwrites an existing set (see
+    // supabase/migrations/20260907044042_get_or_create_shared_questions.sql). The caller
+    // always uses whatever the function returns, which may be someone else's canonical
+    // set rather than the content just generated here. gradeLevel is passed as the
+    // row-level canonical identity — the grade_level embedded inside each question
+    // object (line 551) is display/content metadata only and is not used for lookup.
+    let questionsToReturn = processedQuestions;
+
+    if (!gradeLevel) {
+        // gradeLevel is required to identify the canonical set. Without it we cannot
+        // safely save (would be ambiguous which grade this belongs to) — return the
+        // generated questions in-memory only, same fallback behavior as career-knowledge.ts.
+        console.warn('⚠️ No gradeLevel provided — skipping shared question set save');
+    } else {
+        const { data, error } = await supabase.rpc('get_or_create_shared_questions', {
+            p_stream_id: streamId,
+            p_grade_level: gradeLevel,
+            p_question_type: 'aptitude',
+            p_questions: processedQuestions,
+            p_learner_id: learnerId || null
+        });
 
         if (error) {
-            console.error('❌ Database error saving aptitude questions:', error);
+            console.error('❌ Database error saving shared aptitude questions:', error);
             // Don't throw error here to allow the generated questions to be returned to frontend
             // identifying this as a non-fatal error for the user experience
+        } else if (data?.questions) {
+            questionsToReturn = data.questions;
+            console.log(data.is_new
+                ? '✅ New canonical aptitude set created'
+                : '♻️ Reusing existing canonical aptitude set');
         }
     }
 
-    console.log(`📦 Returning ${processedQuestions.length} questions`);
-    return processedQuestions;
+    console.log(`📦 Returning ${questionsToReturn.length} questions`);
+    return questionsToReturn;
 }

@@ -4,8 +4,15 @@
 
 pages_build_output_dir = "dist"
 name = "skill-passport-portal"
-compatibility_date = "2026-06-08"
+compatibility_date = "2026-09-04"
 compatibility_flags = ["nodejs_compat"]
+
+# Flagship feature flags (Cloudflare native, KV+DO backed, sub-ms edge eval)
+# Public beta 2026-05-26 — Worker binding replaces env-var toggles for DORA elite MTTR
+# Requires app created in Cloudflare dashboard → flagship app_id
+# [[flagship]]
+# binding = "FLAGS"
+# app_id = "<FILL_FROM_DASHBOARD>"
 
 # ============================================================================
 # DURABLE OBJECT BINDINGS
@@ -60,6 +67,10 @@ LTE_APP_URL = "https://lte.rareminds.in"
 COOKIE_DOMAIN = ".rareminds.in"
 GOOGLE_CLIENT_ID = "775729170329-s95ebosv3kj0b844ol87uhcjsgocq2mk.apps.googleusercontent.com"
 GOOGLE_OAUTH_ENABLED = "true"
+# Self-healing toggles — Flagship (env.FLAGS) primary, env fallback when Flagship not provisioned
+# Safe defaults: heal enabled (true). Set to "disabled" to turn off a heal without redeploy (after Flagship) or via dashboard env var.
+HEAL_MODE = "enabled"
+# HEAL_CATEGORIES = '{"heal-user":"enabled","subscription-cache-heal":"enabled","cron-reconcile-heal":"enabled","resilience-breaker":"enabled","ws-reconnect-heal":"enabled"}'
 
 # ============================================================================
 # SECRETS (DO NOT COMMIT VALUES)
@@ -90,3 +101,5 @@ GOOGLE_OAUTH_ENABLED = "true"
 # - ADMIN_EMAIL (admin notification recipient)
 # - APP_URL (public app base URL for email links)
 # - FROM_EMAIL, FROM_NAME (default sender identity)
+# - FLAGS (Flagship binding) app_id — see [[flagship]] above
+# - HEAL_MODE / HEAL_CATEGORIES — self-healing flags (enabled|disabled|log-only), see [vars] HEAL_*

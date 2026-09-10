@@ -5,11 +5,14 @@
  * access to premium features through API manipulation.
  *
  * Reads from subscription_cache and plans_cache shadow tables (app DB)
- * for <1ms feature checks. Self-heals stale cache entries via async refresh.
+ * for fast feature checks. Self-heals stale cache entries via async refresh.
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { resolveUserEntitlement } from './org-subscription';
+import { createLogger } from '../../lib/logger';
+import { isStale } from '../../lib/sync-shadow';
+
+const logger = createLogger('server-feature-gating');
 
 const PLAN_HIERARCHY = [
   'freemium',
@@ -53,41 +56,74 @@ export async function checkServerFeatureAccess(
   feature: string
 ): Promise<FeatureAccessResult> {
   try {
-    const entitlement = await resolveUserEntitlement(supabase, userId);
+    const { data: cached, error } = await supabase
+      .from('subscription_cache')
+      .select('id, status, plan_code, features, synced_at, is_organization_subscription')
+      .eq('user_id', userId)
+      .in('status', ['active', 'grace_period'])
+      .maybeSingle();
 
-    if (entitlement) {
-      const planCode = entitlement.plan_code;
-
-      if (planCode === 'freemium') {
-        const hasAccess = FREEMIUM_FEATURES[feature] === true;
-        return {
-          hasAccess,
-          reason: hasAccess ? undefined : 'Feature not included in Freemium plan',
-          planCode,
-          requiresUpgrade: !hasAccess,
-        };
-      }
-
-      const planFeatures = entitlement.features || [];
-      const hasFeature = planFeatures.includes(feature) || entitlement.is_organization_license === true;
+    if (error) {
+      logger.error('Error fetching subscription_cache', { error: (error as Error).message, userId });
       return {
-        hasAccess: hasFeature,
-        reason: hasFeature ? undefined : 'Feature not included in current plan',
-        planCode,
-        requiresUpgrade: !hasFeature,
+        hasAccess: false,
+        reason: 'Unable to verify subscription',
+        requiresUpgrade: false,
       };
     }
 
-    // Fallback for users without paid subscription — check if feature is allowed on freemium tier
-    const isFreemiumAllowed = FREEMIUM_FEATURES[feature] === true;
+    if (!cached) {
+      const isFreemiumAllowed = FREEMIUM_FEATURES[feature] === true;
+      return {
+        hasAccess: isFreemiumAllowed,
+        reason: isFreemiumAllowed ? undefined : 'No active subscription',
+        planCode: 'freemium',
+        requiresUpgrade: !isFreemiumAllowed,
+      };
+    }
+
+    // Dead RPC removed: refresh_subscription_cache_for_user has no migration.
+    // Keep stale detection for metrics; cache is healed by cron and get-active-subscription fallback.
+    if (isStale(cached.synced_at)) {
+      logger.info('heal_metric', {
+        metric: 'heal_cache_miss_total',
+        status: 'stale_detected',
+        userId,
+        synced_at: cached.synced_at,
+      } as any);
+    }
+
+    const planCode = cached.plan_code;
+
+    if (!planCode) {
+      return {
+        hasAccess: false,
+        reason: 'Invalid subscription plan',
+        requiresUpgrade: false,
+      };
+    }
+
+    if (planCode === 'freemium') {
+      const hasAccess = FREEMIUM_FEATURES[feature] === true;
+      return {
+        hasAccess,
+        reason: hasAccess ? undefined : 'Feature not included in Freemium plan',
+        planCode,
+        requiresUpgrade: !hasAccess,
+      };
+    }
+
+    const planFeatures = Array.isArray(cached.features) ? cached.features : [];
+    const hasFeature = planFeatures.includes(feature) || cached.is_organization_subscription === true;
+
     return {
-      hasAccess: isFreemiumAllowed,
-      reason: isFreemiumAllowed ? undefined : 'No active subscription',
-      planCode: 'freemium',
-      requiresUpgrade: !isFreemiumAllowed,
+      hasAccess: hasFeature,
+      reason: hasFeature ? undefined : 'Feature not included in current plan',
+      planCode,
+      requiresUpgrade: !hasFeature,
     };
   } catch (error) {
-    console.error('[ServerFeatureGating] Unexpected error:', error);
+    logger.error('Unexpected error', { error: (error as Error).message, userId });
     return {
       hasAccess: false,
       reason: 'Internal error',
@@ -109,13 +145,13 @@ export async function verifyPlanExists(
       .maybeSingle();
 
     if (error) {
-      console.error('[ServerFeatureGating] Error verifying plan:', error);
+      logger.error('Error verifying plan', { error: (error as Error).message, planCode });
       return { exists: false };
     }
 
     return { exists: !!plan, plan };
   } catch (error) {
-    console.error('[ServerFeatureGating] Unexpected error verifying plan:', error);
+    logger.error('Unexpected error verifying plan', { error: (error as Error).message, planCode });
     return { exists: false };
   }
 }
@@ -134,7 +170,7 @@ export async function canUpgradeToPlan(
       .maybeSingle();
 
     if (error) {
-      console.error('[ServerFeatureGating] Error fetching subscription_cache:', error);
+      logger.error('Error fetching subscription_cache', { error: (error as Error).message, userId });
       return { canUpgrade: false, reason: 'Unable to verify current subscription' };
     }
 
@@ -163,7 +199,7 @@ export async function canUpgradeToPlan(
       currentPlanCode,
     };
   } catch (error) {
-    console.error('[ServerFeatureGating] Unexpected error checking upgrade eligibility:', error);
+    logger.error('Unexpected error checking upgrade eligibility', { error: (error as Error).message, userId });
     return { canUpgrade: false, reason: 'Internal error' };
   }
 }
@@ -197,3 +233,11 @@ export function requireFeature(feature: string) {
   };
 }
 
+/**
+ * @deprecated Dead code: RPC refresh_subscription_cache_for_user has no migration.
+ * Kept for reference. Do NOT call. Stale is now observed via stale_detected metric and healed by cron + get-active-subscription SSO fallback.
+ */
+async function refreshCacheAsync(_supabase: SupabaseClient, _userId: string): Promise<void> {
+  // No-op: previously called supabase.rpc('refresh_subscription_cache_for_user') which never existed.
+  // Intentionally left empty; call site now emits stale_detected and relies on cron-reconcile-heal.
+}

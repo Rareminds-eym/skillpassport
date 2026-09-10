@@ -307,8 +307,9 @@ const AssessmentTestPage: React.FC = () => {
   }, [user?.id, learnerId, loadingLearnerGrade]);
 
   // Handle stream/category selection (defined first so it can be used by handleGradeSelect)
-  const handleStreamSelect = useCallback(async (streamId: string): Promise<void> => {
-    if (!selectedGrade) return;
+  const handleStreamSelect = useCallback(async (streamId: string, gradeOverride?: string): Promise<void> => {
+    const gradeForAssessment = gradeOverride || selectedGrade;
+    if (!gradeForAssessment) return;
 
     setSelectedStream(streamId);
     store.setLoading(true);
@@ -318,7 +319,7 @@ const AssessmentTestPage: React.FC = () => {
       // Check if there's already an in-progress assessment for this grade/stream
       // to avoid creating duplicate attempts
       const resumeStreamId = resumeData?.streamId || resumeData?.stream_id;
-      if (resumeData?.gradeLevel === selectedGrade && resumeStreamId === streamId) {
+      if (resumeData?.gradeLevel === gradeForAssessment && resumeStreamId === streamId) {
         // Resume existing attempt instead of creating a new one
         const { gradeLevel, streamId: resumeStreamId, currentSectionIndex, currentQuestionIndex, answers, elapsedTime, attemptId, sections } = resumeData;
 
@@ -343,12 +344,12 @@ const AssessmentTestPage: React.FC = () => {
       } else {
         // Create new assessment only if there's no matching in-progress one
         const result: StartAssessmentResponse = await startAssessment({
-          gradeLevel: selectedGrade,
+          gradeLevel: gradeForAssessment,
           streamId,
         });
 
         if (result.success && result.attemptId) {
-          store.initializeAssessment(result.sections, result.attemptId, selectedGrade, streamId);
+          store.initializeAssessment(result.sections, result.attemptId, gradeForAssessment, streamId);
           setShowSectionIntro(true); // Show section intro before questions
           setCurrentScreen('section-intro');
           setResumeData(null); // Clear any old resume data
@@ -377,12 +378,12 @@ const AssessmentTestPage: React.FC = () => {
     // For middle school and high school: skip category selection and go directly to section intro
     if (gradeLevel === 'middle' || gradeLevel === 'highschool') {
       // These grade levels will start assessment with the appropriate stream
-      handleStreamSelect(gradeLevel === 'middle' ? 'middle_school' : 'high_school');
+      handleStreamSelect(gradeLevel === 'middle' ? 'middle_school' : 'high_school', gradeLevel);
     } else if (gradeLevel === 'college') {
       // College learners skip field selection and start assessment with normalized program stream
       // Use learnerProgram from useLearnerGrade hook (already extracted with priority)
       const normalizedStream = learnerProgram ? normalizeStreamId(learnerProgram) : 'college';
-      handleStreamSelect(normalizedStream);
+      handleStreamSelect(normalizedStream, gradeLevel);
     } else {
       // Other grade levels (higher_secondary, after10, after12) need category selection
       setCurrentScreen('category-selection');

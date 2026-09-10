@@ -22,7 +22,7 @@ import { useUser } from '@/shared/model/authStore';
  * @property {string|null} detectedGradeLevel - Detected grade level from learner's grade
  * @property {number|null} monthsInGrade - Months since learner started current grade
  * @property {boolean} isCollegeLearner - Whether learner is a college learner
- * @property {boolean} loadinglearnerGrade - Whether learner grade is loading
+ * @property {boolean} loadingLearnerGrade - Whether learner grade is loading
  * @property {boolean} shouldShowAllOptions - Whether to show all grade options
  * @property {boolean} shouldFilterByGrade - Whether to filter options by grade
  * @property {string|null} learnerProgram - Learner's program name (for college learners)
@@ -258,7 +258,7 @@ export const GradeSelectionScreen = ({
   detectedGradeLevel,
   monthsInGrade,
   isCollegeLearner,
-  loadinglearnerGrade,
+  loadingLearnerGrade,
   shouldShowAllOptions,
   shouldFilterByGrade,
   learnerProgram = null,
@@ -277,7 +277,7 @@ export const GradeSelectionScreen = ({
   );
 
   // Show loading while fetching learner grade
-  if (loadinglearnerGrade && shouldFilterByGrade) {
+  if (loadingLearnerGrade && shouldFilterByGrade) {
     return <LoadingScreen />;
   }
 

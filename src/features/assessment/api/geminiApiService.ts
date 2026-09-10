@@ -103,15 +103,14 @@ export const callOpenRouterAssessment = async (assessmentData: AssessmentData): 
   const { getApiUrl } = await import('@/shared/api/apiUtils');
   const API_URL = getApiUrl('analyze-assessment');
 
-  // Get auth token (via SSO, not Supabase auth which is disabled)
+  // Auth is handled by ssoClient.fetch() below (attaches the Bearer token via
+  // authClient.request() internally). ssoClient.getAccessToken() was removed here -
+  // it read authClient's private #vault field via a guessed property name
+  // (_vault/vault) that a JS private class field can never expose externally, so it
+  // always returned null regardless of whether the user was actually authenticated.
+  // If the user is genuinely unauthenticated, the request below fails with a real
+  // 401/403, handled by the existing !response.ok check.
   updateProgress('sending', 'Authenticating...');
-  const token = ssoClient.getAccessToken();
-
-  if (!token) {
-    logger.error('[FRONTEND] ❌ No auth token found');
-    updateProgress('error', 'Authentication required');
-    throw new Error('Authentication required for assessment analysis');
-  }
 
   logger.info('[FRONTEND] 🤖 Sending assessment data to backend for analysis...');
   logger.info('[FRONTEND] 📊 Grade Level:', { gradeLevel: assessmentData.gradeLevel, stream: assessmentData.stream });
