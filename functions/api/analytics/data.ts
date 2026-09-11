@@ -246,17 +246,19 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         }
 
         // learnerRow being null is valid — new user with no activity yet; all counts will be 0
-        const learnerId = learnerRow?.id || null;
+        const learnerId = learnerRow?.id ?? null;
 
         const getCount = async (table: string, field = 'learner_id'): Promise<number> => {
           if (!learnerId) return 0;
-          try {
-            const { count } = await supabase.from(table).select('*', { count: 'exact', head: true }).eq(field, learnerId);
-            return count || 0;
-          } catch (err) {
-            logger.error(`getCount failed for table "${table}"`, { error: err });
+          const { count, error: countError } = await supabase
+            .from(table)
+            .select('*', { count: 'exact', head: true })
+            .eq(field, learnerId);
+          if (countError) {
+            logger.error(`getCount failed for table "${table}"`, { error: countError });
             return 0;
           }
+          return count ?? 0;
         };
 
         // profile_views uses user.id (auth UUID) directly — cannot reuse getCount()

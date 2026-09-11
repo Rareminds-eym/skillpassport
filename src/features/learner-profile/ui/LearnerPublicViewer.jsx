@@ -26,7 +26,6 @@ import { generateBadges, getBadgeProgress } from "@/features/digital-portfolio";
 import { apiPost } from "@/shared/api/apiClient";
 import { getLogger } from "@/shared/config/logging";
 
-const logger = getLogger('learner-public-viewer');
 import { calculateEmployabilityScore } from "@/shared/lib/employabilityCalculator";
 import { capitalizeName } from "@/shared/lib/helpers";
 import { useAuthLoading, useUser } from "@/shared/model/authStore";
@@ -167,6 +166,7 @@ function Donut({ value }) {
 }
 
 export default function LearnerPublicViewer() {
+  const logger = getLogger('learner-public-viewer');
   const user = useUser();
   const authLoading = useAuthLoading();
   // const navigate = useNavigate();
@@ -204,7 +204,7 @@ export default function LearnerPublicViewer() {
       // Expected pattern: log but do not rethrow — tracking failure is non-critical
       logger.error('[track-profile-view] Failed to track profile view:', err);
     });
-  }, [learnerId, user?.id, loading, learnerData]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [learnerId, user?.id, loading, learnerData]);
 
   const pickArray = (...sources) => {
     for (const src of sources) {

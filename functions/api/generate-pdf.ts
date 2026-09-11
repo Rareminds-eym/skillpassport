@@ -63,7 +63,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   }
 
   // ── Call Cloudflare Browser Run REST API to generate PDF ──
-  let pdfBuffer: ArrayBuffer;
+  let pdfBuffer: ArrayBuffer | undefined;
   try {
     const cfRes = await fetch(
       `https://api.cloudflare.com/client/v4/accounts/${cfAccountId}/browser-rendering/pdf`,
@@ -155,14 +155,14 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         pdfBuffer = modifiedBytes.buffer.slice(
           modifiedBytes.byteOffset,
           modifiedBytes.byteOffset + modifiedBytes.byteLength
-        );
+        ) as ArrayBuffer;
       }
-    } catch (maskErr: any) {
-      logger.error('[generate-pdf] Failed to mask cover page header/footer', { error: maskErr?.message });
+    } catch (maskErr: unknown) {
+      logger.error('[generate-pdf] Failed to mask cover page header/footer', { error: maskErr instanceof Error ? maskErr.message : String(maskErr) });
     }
 
-  } catch (err: any) {
-    logger.error('[generate-pdf] Cloudflare Browser Run fetch failed', { error: err?.message });
+  } catch (err: unknown) {
+    logger.error('[generate-pdf] Cloudflare Browser Run fetch failed', { error: err instanceof Error ? err.message : String(err) });
     return new Response(JSON.stringify({ error: 'PDF service unreachable' }), {
       status: 502,
       headers: { 'Content-Type': 'application/json' },
@@ -200,11 +200,19 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         });
       }
     }
-  } catch (err: any) {
-    logger.error('[generate-pdf] Failed to log report', { error: err?.message });
+  } catch (err: unknown) {
+    logger.error('[generate-pdf] Failed to log report', { error: err instanceof Error ? err.message : String(err) });
   }
 
   // ── Return PDF binary to frontend ──────────────────────────────────
+  if (!pdfBuffer) {
+    logger.error('[generate-pdf] pdfBuffer is undefined — this should not happen');
+    return new Response(JSON.stringify({ error: 'PDF generation failed unexpectedly' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
   const downloadFilename = docTitle
     ? (docTitle.endsWith('.pdf') ? docTitle : `${docTitle}.pdf`)
     : 'Career-Assessment-Report.pdf';

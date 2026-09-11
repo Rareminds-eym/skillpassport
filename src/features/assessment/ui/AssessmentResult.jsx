@@ -571,6 +571,7 @@ const AssessmentResult = () => {
     const [aiCareerPathsLoading, setAiCareerPathsLoading] = useState(false);
     const lastScrollY = useRef(0);
     const [isPdfGenerating, setIsPdfGenerating] = useState(false);
+    const [pdfError, setPdfError] = useState(null);
 
     useEffect(() => {
         const handleScroll = () => {
@@ -844,12 +845,15 @@ const AssessmentResult = () => {
                     continue;
                 }
                 const blob = await res.blob();
-                const base64 = await new Promise((resolve) => {
+                const base64 = await new Promise((resolve, reject) => {
                     const reader = new FileReader();
                     reader.onload = () => resolve(reader.result);
+                    reader.onerror = () => reject(new Error(`FileReader failed for ${path}`));
                     reader.readAsDataURL(blob);
                 });
-                htmlString = htmlString.replaceAll(path, base64);
+                if (base64) {
+                    htmlString = htmlString.replaceAll(path, base64);
+                }
             } catch (e) {
                 logger.warn('[inlineImages] Error inlining image:', path, e);
             }
@@ -953,7 +957,16 @@ const AssessmentResult = () => {
                 body: JSON.stringify({ html, title: reportTitle }),
             });
 
-            if (!res.ok) throw new Error('PDF generation failed: ' + res.status);
+            if (!res.ok) {
+                let serverMsg = '';
+                try {
+                    const errJson = await res.json();
+                    serverMsg = errJson.error || errJson.message || '';
+                } catch (parseErr) {
+                    logger.warn('[handlePrint] Could not parse error response body:', parseErr);
+                }
+                throw new Error(`PDF generation failed (${res.status})${serverMsg ? ': ' + serverMsg : ''}`);
+            }
 
             const blob = await res.blob();
             const url = URL.createObjectURL(blob);
@@ -964,9 +977,11 @@ const AssessmentResult = () => {
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
+            setPdfError(null);
 
         } catch (err) {
             logger.error('[handlePrint] PDF download failed:', err);
+            setPdfError('Failed to generate PDF. Please try again.');
         } finally {
             setIsPdfGenerating(false);
         }
