@@ -1202,20 +1202,14 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
       case 'log-assessment-report': {
         const authUser = getContextUser(context);
-        // Resolve learners.id, school_id, college_id from auth user.id
+        // Resolve learners.id from auth user.id
         const { data: learnerRow } = await supabase
           .from('learners')
-          .select('id, school_id, college_id')
+          .select('id')
           .eq('user_id', authUser.id)
           .maybeSingle();
 
         if (!learnerRow?.id) {
-          return apiSuccess({ logged: false }, context.request, { startTime });
-        }
-
-        const orgId = learnerRow.school_id || learnerRow.college_id;
-
-        if (!orgId) {
           return apiSuccess({ logged: false }, context.request, { startTime });
         }
 
@@ -1225,7 +1219,6 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
         const { error: insertError } = await supabase.from('learner_reports').insert({
           learner_id: learnerRow.id,
-          school_id: orgId,
           report_type: REPORT_TYPE_SKILL_ASSESSMENT,
           title: REPORT_TITLE_CAREER_ASSESSMENT,
           academic_year: academicYear,
@@ -1265,6 +1258,11 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         }
 
         const learnerAuthId = learnerRow.user_id; // auth UUID for profile_views.learner_id
+
+        // Skip self-views — viewer is the profile owner
+        if (viewerId === learnerAuthId) {
+          return apiSuccess({ tracked: false, reason: 'self-view' }, context.request, { startTime });
+        }
 
         const { error: insertError } = await supabase.from('profile_views').insert({
           learner_id: learnerAuthId,

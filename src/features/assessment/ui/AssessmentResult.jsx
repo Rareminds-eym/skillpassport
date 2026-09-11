@@ -15,7 +15,8 @@ import {
     CheckCircle2,
     ClipboardCheck,
     TrendingUp,
-    ChevronRight
+    ChevronRight,
+    Loader2
 } from 'lucide-react';
 import { Button } from "@/shared/ui/ButtonNew";
 import {
@@ -51,6 +52,7 @@ import { TextGenerateEffect } from '@/shared/ui/TextGenerateEffect';
 import { RIASEC_NAMES, RIASEC_COLORS, TRAIT_NAMES, TRAIT_COLORS, PRINT_STYLES } from '@/features/assessment';
 import { useAssessmentResults } from '../model/useAssessmentResults';
 import { apiPost } from '@/shared/api/apiClient';
+import { ssoClient } from '@/shared/api/ssoClient';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('assessment-result');
@@ -568,6 +570,7 @@ const AssessmentResult = () => {
     const [after10Step, setAfter10Step] = useState(1); // 1 = Stream Recommendation, 2 = Career Clusters (stepper for after10)
     const [aiCareerPathsLoading, setAiCareerPathsLoading] = useState(false);
     const lastScrollY = useRef(0);
+    const [isPdfGenerating, setIsPdfGenerating] = useState(false);
 
     useEffect(() => {
         const handleScroll = () => {
@@ -826,68 +829,147 @@ const AssessmentResult = () => {
         return streamRec;
     }, [gradeLevel, results, learnerAcademicData]);
 
-    // Custom print function that opens print view in new window
-    const handlePrint = () => {
-        // Fire-and-forget report log — never blocks the print
-        apiPost('/learner-profile/actions', {
-            action: 'log-assessment-report',
-        }).catch((err) => {
-            logger.error('[log-assessment-report] Failed to log report:', err);
-        });
+    // Converts relative image paths to base64 so Browserless can render them without needing localhost access
+    const inlineImages = async (htmlString) => {
+        const imgRegex = /src=["'](\/[^"']+)["']/g;
+        const matches = [...htmlString.matchAll(imgRegex)];
+        const unique = [...new Set(matches.map(m => m[1]))];
 
+        for (const path of unique) {
+            try {
+                const fetchUrl = path.startsWith('/') ? `${window.location.origin}${path}` : path;
+                const res = await fetch(fetchUrl);
+                if (!res.ok) {
+                    logger.warn('[inlineImages] Failed to fetch image:', path, res.status);
+                    continue;
+                }
+                const blob = await res.blob();
+                const base64 = await new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result);
+                    reader.readAsDataURL(blob);
+                });
+                htmlString = htmlString.replaceAll(path, base64);
+            } catch (e) {
+                logger.warn('[inlineImages] Error inlining image:', path, e);
+            }
+        }
+        return htmlString;
+    };
+
+    const handlePrint = async () => {
         const printContent = document.querySelector('.print-view');
         if (!printContent) {
-            logger.error('Print view not found');
-            window.print();
+            logger.error('[handlePrint] .print-view element not found');
             return;
         }
+        if (isPdfGenerating) return;
 
-        const printWindow = window.open('', '_blank');
-        if (!printWindow) {
-            // Fallback to regular print if popup blocked
-            window.print();
-            return;
-        }
+        setIsPdfGenerating(true);
+        try {
+            // Clone the print-view to avoid mutating the live DOM
+            const clone = printContent.cloneNode(true);
 
-        printWindow.document.write(`
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <title>Career Assessment Report</title>
+            // Remove .print-content elements (screen-only duplicate content)
+            clone.querySelectorAll('.print-content').forEach(el => el.remove());
+            // Show .print-pages elements (print-only content, hidden on screen)
+            clone.querySelectorAll('.print-pages').forEach(el => {
+                el.style.display = 'block';
+                el.style.visibility = 'visible';
+            });
+
+            // Extract watermarks to be direct children of <body> so Chromium print engine repeats them across all pages
+            const watermarkEls = clone.querySelectorAll('.print-only-watermark');
+            let watermarksHtml = '';
+            watermarkEls.forEach(el => {
+                el.style.display = 'block';
+                el.style.visibility = 'visible';
+                el.style.pointerEvents = 'none';
+                el.style.zIndex = '0';
+                // Remove position from inline style so div[style*="position: fixed"] in PRINT_STYLES cannot match and hide it
+                el.style.removeProperty('position');
+                watermarksHtml += el.outerHTML;
+                el.remove(); // Remove from inside clone so it's not nested inside .print-view
+            });
+
+            // Remove .print-footer (position:fixed causes extra blank pages)
+            clone.querySelectorAll('.print-footer').forEach(el => el.remove());
+
+            // Make cover page transparent and centered to remove right-side gap and let watermarks show on Page 1
+            const coverPageEl = clone.querySelector('.cover-page');
+            if (coverPageEl) {
+                coverPageEl.style.background = 'transparent';
+                coverPageEl.style.width = '100%';
+                coverPageEl.style.maxWidth = '100%';
+                coverPageEl.style.boxSizing = 'border-box';
+                coverPageEl.style.margin = '0 auto';
+                coverPageEl.style.padding = '15mm 15mm 0 15mm';
+            }
+
+            // Build HTML with watermarks directly under <body>, centered layout, and transparent backgrounds
+            const watermarkStyles = `
                 <style>
-                    @page {
-                        size: A4 portrait;
-                        margin: 12mm 15mm;
+                    .print-view {
+                        background: transparent !important;
+                        padding: 0 !important;
+                        margin: 0 auto !important;
+                        width: 100% !important;
                     }
-                    body {
-                        margin: 0;
-                        padding: 0;
-                        font-family: Arial, Helvetica, sans-serif;
-                        -webkit-print-color-adjust: exact;
-                        print-color-adjust: exact;
+                    .cover-page {
+                        background: transparent !important;
+                        width: 100% !important;
+                        max-width: 100% !important;
+                        box-sizing: border-box !important;
+                        margin: 0 auto !important;
+                        padding: 15mm 15mm 0 15mm !important;
                     }
-                    * {
-                        box-sizing: border-box;
+                    div.print-only-watermark,
+                    div.print-only-watermark[style],
+                    div[class*="print-only-watermark"] {
+                        display: block !important;
+                        visibility: visible !important;
+                        position: fixed !important;
+                        pointer-events: none !important;
+                        z-index: 0 !important;
                     }
-                    img {
-                        max-width: 100%;
+                    div.print-only-watermark img,
+                    img[alt*="Watermark"] {
+                        display: block !important;
+                        visibility: visible !important;
+                        -webkit-print-color-adjust: exact !important;
+                        print-color-adjust: exact !important;
                     }
                 </style>
-            </head>
-            <body>
-                ${printContent.innerHTML}
-            </body>
-            </html>
-        `);
-        printWindow.document.close();
+            `;
+            const reportTitle = 'Career-Assessment-Report-' + (learnerInfo?.name || 'Report').replace(/\s+/g, '-');
+            let html = '<!DOCTYPE html><html><head><meta charset="utf-8"/><title>' + reportTitle + '</title><meta name="viewport" content="width=device-width, initial-scale=1"/><style>' + PRINT_STYLES + '</style>' + watermarkStyles + '</head><body>' + watermarksHtml + clone.outerHTML + '</body></html>';
 
-        // Wait for content to load then print
-        printWindow.onload = () => {
-            setTimeout(() => {
-                printWindow.print();
-                printWindow.close();
-            }, 250);
-        };
+            // Inline all local images as base64 so Browserless can render them
+            html = await inlineImages(html);
+
+            const res = await ssoClient.fetch('/api/generate-pdf', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ html, title: reportTitle }),
+            });
+
+            if (!res.ok) throw new Error('PDF generation failed: ' + res.status);
+
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = reportTitle + '.pdf';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+        } catch (err) {
+            logger.error('[handlePrint] PDF download failed:', err);
+        } finally {
+            setIsPdfGenerating(false);
+        }
     };
 
     // Handle career track card click
@@ -993,24 +1075,23 @@ const AssessmentResult = () => {
                         </div>
 
                         <div className="flex gap-1.5 sm:gap-2 shrink-0">
-                            {/* <Button
-                                variant="outline"
-                                onClick={handleRetry}
-                                disabled={retrying}
-                                className="border-slate-300 text-slate-600 hover:bg-slate-100 hover:text-slate-900 hover:border-slate-400 h-8 text-sm px-2.5 sm:px-3"
-                            >
-                                <RefreshCw className={`w-3.5 h-3.5 ${retrying ? 'animate-spin' : ''}`} />
-                                <span className="hidden sm:inline ml-1.5">
-                                    {retrying ? 'Regenerating...' : 'Regenerate'}
-                                </span>
-                            </Button> */}
                             <Button
                                 type="button"
                                 onClick={handlePrint}
-                                className="bg-slate-800 text-white hover:bg-slate-700 shadow-sm h-8 text-sm font-medium px-2.5 sm:px-3"
+                                disabled={isPdfGenerating}
+                                className="bg-slate-800 text-white hover:bg-slate-700 shadow-sm h-8 text-sm font-medium px-2.5 sm:px-3 disabled:opacity-75 disabled:cursor-not-allowed"
                             >
-                                <Download className="w-3.5 h-3.5" />
-                                <span className="hidden sm:inline ml-1.5">Download PDF</span>
+                                {isPdfGenerating ? (
+                                    <>
+                                        <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                                        <span className="hidden sm:inline">Generating PDF...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Download className="w-3.5 h-3.5 mr-1.5" />
+                                        <span className="hidden sm:inline">Download PDF</span>
+                                    </>
+                                )}
                             </Button>
                         </div>
                     </div>
@@ -1078,37 +1159,27 @@ const AssessmentResult = () => {
                         </div>
 
                         <div className="flex gap-2">
-                            {/* <Button
-                                variant="outline"
-                                onClick={handleRetry}
-                                disabled={retrying}
-                                className="border-slate-300 text-slate-600 hover:bg-slate-100 hover:text-slate-900 hover:border-slate-400 h-8 text-sm"
-                            >
-                                {retrying ? (
-                                    <>
-                                        <RefreshCw className="w-3 h-3 mr-1.5 animate-spin" />
-                                        Regenerating...
-                                    </>
-                                ) : (
-                                    <>
-                                        <RefreshCw className="w-3 h-3 mr-1.5" />
-                                        Regenerate
-                                    </>
-                                )}
-                            </Button> */}
                             <Button
                                 type="button"
                                 onClick={handlePrint}
-                                className="bg-slate-800 text-white hover:bg-slate-700 shadow-sm h-8 text-sm font-medium"
+                                disabled={isPdfGenerating}
+                                className="bg-slate-800 text-white hover:bg-slate-700 shadow-sm h-8 text-sm font-medium disabled:opacity-75 disabled:cursor-not-allowed"
                             >
-                                <Download className="w-3 h-3 mr-1.5" />
-                                Download PDF
+                                {isPdfGenerating ? (
+                                    <>
+                                        <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                                        Generating PDF...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Download className="w-3.5 h-3.5 mr-1.5" />
+                                        Download PDF
+                                    </>
+                                )}
                             </Button>
                         </div>
                     </div>
                 </div>
-
-                {/* Incomplete Data Warning Banner */}
                 {/* {hasIncompleteData && (
                     <div className="max-w-6xl mx-auto mb-6 print:hidden print-hidden">
                         <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-4">

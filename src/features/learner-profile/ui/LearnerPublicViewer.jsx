@@ -180,9 +180,20 @@ export default function LearnerPublicViewer() {
   const [showShareModal, setShowShareModal] = useState(false);
   const [downloading, setDownloading] = useState(false);
 
-  // Track profile view — only fires for logged-in users (viewer_id FK requires a users.id)
+  // Track profile view — fires only when:
+  // 1. Profile has fully loaded (loading === false and learnerData is present)
+  // 2. Viewer is logged in
+  // 3. Viewer is NOT the profile owner (no self-views) — backend also enforces this
   useEffect(() => {
-    if (!learnerId || !user) return; // skip if not logged in or no learnerId
+    if (!learnerId || !user) return;           // not logged in
+    if (loading || !learnerData) return;       // profile not fully loaded yet
+
+    // learnerData.id is the internal learner UUID (learners.id).
+    // user.id is the auth UUID — different column, so frontend can't reliably compare.
+    // Self-view is enforced on the backend; skip here only if emails match (best-effort).
+    const profileEmail = learnerData?.email || learnerData?.profile?.email;
+    if (profileEmail && user.email && user.email === profileEmail) return; // skip self-view (fallback)
+
     // Fire-and-forget: intentionally non-blocking. Profile view tracking is
     // best-effort — failures must never interrupt the user's profile page experience.
     apiPost('/learner-profile/actions', {
@@ -193,7 +204,7 @@ export default function LearnerPublicViewer() {
       // Expected pattern: log but do not rethrow — tracking failure is non-critical
       logger.error('[track-profile-view] Failed to track profile view:', err);
     });
-  }, [learnerId, user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [learnerId, user?.id, loading, learnerData]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const pickArray = (...sources) => {
     for (const src of sources) {
