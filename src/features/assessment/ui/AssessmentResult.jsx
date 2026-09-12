@@ -15,7 +15,8 @@ import {
     CheckCircle2,
     ClipboardCheck,
     TrendingUp,
-    ChevronRight
+    ChevronRight,
+    Loader2
 } from 'lucide-react';
 import { Button } from "@/shared/ui/ButtonNew";
 import {
@@ -50,6 +51,11 @@ import { TextGenerateEffect } from '@/shared/ui/TextGenerateEffect';
 // Import constants and hooks
 import { RIASEC_NAMES, RIASEC_COLORS, TRAIT_NAMES, TRAIT_COLORS, PRINT_STYLES } from '@/features/assessment';
 import { useAssessmentResults } from '../model/useAssessmentResults';
+import { ssoClient } from '@/shared/api/ssoClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('assessment-result');
+
 
 // Import course matching engine
 import { calculateCourseMatchScores, DEGREE_PROGRAMS, COURSE_KNOWLEDGE_BASE } from '../lib/courseMatchingEngine';
@@ -96,6 +102,7 @@ const GeminiCareerPath = ({ reverse = false }) => {
                 xmlns="http://www.w3.org/2000/svg"
                 className="absolute inset-0"
                 preserveAspectRatio="none"
+                aria-hidden="true"
             >
                 <defs>
                     <linearGradient id={`geminiGradient${reverse ? 'R' : 'L'}`} x1="0%" y1="0%" x2="100%" y2="0%">
@@ -210,7 +217,6 @@ const AnimatedProgressRing = ({ percentage, color, delay = 0 }) => {
 
     useEffect(() => {
         if (isInView) {
-            let start = 0;
             const duration = 2000; // 2 seconds
             const startTime = performance.now();
 
@@ -219,7 +225,7 @@ const AnimatedProgressRing = ({ percentage, color, delay = 0 }) => {
                 const progress = Math.min(elapsed / duration, 1);
 
                 // Easing function (easeOutCubic)
-                const eased = 1 - Math.pow(1 - progress, 3);
+                const eased = 1 - (1 - progress) ** 3;
                 const current = Math.floor(eased * percentage);
 
                 setDisplayValue(current);
@@ -242,7 +248,7 @@ const AnimatedProgressRing = ({ percentage, color, delay = 0 }) => {
             className="relative"
             style={{ width: size, height: size }}
         >
-            <svg width={size} height={size} className="transform -rotate-90">
+            <svg width={size} height={size} className="transform -rotate-90" aria-hidden="true">
                 {/* Background circle */}
                 <circle
                     cx={size / 2}
@@ -369,9 +375,11 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
                         className={`flex justify-center ${reverse ? 'md:order-2' : 'md:order-1'}`}
                     >
                         {/* Outer Container with Gradient Border - Clickable Card */}
-                        <div
-                            className="relative rounded-[10px] p-[1px] cursor-pointer transition-all duration-300 hover:scale-105"
+                        <button
+                            type="button"
+                            className="relative rounded-[10px] p-[1px] cursor-pointer transition-all duration-300 hover:scale-105 text-left"
                             style={{
+                                display: 'block',
                                 width: '100%',
                                 maxWidth: '320px',
                                 minHeight: '280px',
@@ -496,7 +504,7 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                        </button>
 
                         {/* Keyframes for dot animation */}
                         <style>{`
@@ -561,6 +569,8 @@ const AssessmentResult = () => {
     const [after10Step, setAfter10Step] = useState(1); // 1 = Stream Recommendation, 2 = Career Clusters (stepper for after10)
     const [aiCareerPathsLoading, setAiCareerPathsLoading] = useState(false);
     const lastScrollY = useRef(0);
+    const [isPdfGenerating, setIsPdfGenerating] = useState(false);
+    const [pdfError, setPdfError] = useState(null);
 
     useEffect(() => {
         const handleScroll = () => {
@@ -819,61 +829,182 @@ const AssessmentResult = () => {
         return streamRec;
     }, [gradeLevel, results, learnerAcademicData]);
 
-    // Custom print function that opens print view in new window
-    const handlePrint = () => {
+    // Converts relative image paths to base64 so Browserless can render them without needing localhost access
+    const inlineImages = async (htmlString) => {
+        const imgRegex = /src=["'](\/[^"']+)["']/g;
+        const matches = [...htmlString.matchAll(imgRegex)];
+        const unique = [...new Set(matches.map(m => m[1]))];
+        let failedCount = 0;
+
+        for (const path of unique) {
+            try {
+                const fetchUrl = path.startsWith('/') ? `${window.location.origin}${path}` : path;
+                const res = await fetch(fetchUrl);
+                if (!res.ok) {
+                    logger.warn('[inlineImages] Failed to fetch image:', path, res.status);
+                    failedCount++;
+                    continue;
+                }
+                const blob = await res.blob();
+                const base64 = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result);
+                    reader.onerror = () => reject(new Error(`FileReader failed for ${path}`));
+                    reader.onabort = () => reject(new Error(`FileReader aborted for ${path}`));
+                    reader.readAsDataURL(blob);
+                });
+                if (base64) {
+                    htmlString = htmlString.replaceAll(path, base64);
+                }
+            } catch (e) {
+                logger.warn('[inlineImages] Error inlining image:', path, e);
+                failedCount++;
+            }
+        }
+
+        if (failedCount > 0) {
+            setPdfError(`PDF generated with ${failedCount} missing image(s). Content is complete.`);
+        }
+
+        return htmlString;
+    };
+
+    const handlePrint = async () => {
         const printContent = document.querySelector('.print-view');
         if (!printContent) {
-            console.error('Print view not found');
-            window.print();
+            logger.error('[handlePrint] .print-view element not found');
             return;
         }
+        if (isPdfGenerating) return;
 
-        const printWindow = window.open('', '_blank');
-        if (!printWindow) {
-            // Fallback to regular print if popup blocked
-            window.print();
-            return;
-        }
+        setIsPdfGenerating(true);
+        try {
+            // Clone the print-view to avoid mutating the live DOM
+            const clone = printContent.cloneNode(true);
 
-        printWindow.document.write(`
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <title>Career Assessment Report</title>
+            // Remove .print-content elements (screen-only duplicate content)
+            clone.querySelectorAll('.print-content').forEach(el => el.remove());
+            // Show .print-pages elements (print-only content, hidden on screen)
+            clone.querySelectorAll('.print-pages').forEach(el => {
+                el.style.display = 'block';
+                el.style.visibility = 'visible';
+            });
+
+            // Extract watermarks to be direct children of <body> so Chromium print engine repeats them across all pages
+            const watermarkEls = clone.querySelectorAll('.print-only-watermark');
+            let watermarksHtml = '';
+            watermarkEls.forEach(el => {
+                el.style.display = 'block';
+                el.style.visibility = 'visible';
+                el.style.pointerEvents = 'none';
+                el.style.zIndex = '0';
+                // Remove position from inline style so div[style*="position: fixed"] in PRINT_STYLES cannot match and hide it
+                el.style.removeProperty('position');
+                watermarksHtml += el.outerHTML;
+                el.remove(); // Remove from inside clone so it's not nested inside .print-view
+            });
+
+            // Remove .print-footer (position:fixed causes extra blank pages)
+            clone.querySelectorAll('.print-footer').forEach(el => el.remove());
+
+            // Make cover page transparent and centered to remove right-side gap and let watermarks show on Page 1
+            const coverPageEl = clone.querySelector('.cover-page');
+            if (coverPageEl) {
+                coverPageEl.style.background = 'transparent';
+                coverPageEl.style.width = '100%';
+                coverPageEl.style.maxWidth = '100%';
+                coverPageEl.style.boxSizing = 'border-box';
+                coverPageEl.style.margin = '0 auto';
+                coverPageEl.style.padding = '15mm 15mm 0 15mm';
+            }
+
+            // Build HTML with watermarks directly under <body>, centered layout, and transparent backgrounds
+            const watermarkStyles = `
                 <style>
-                    @page {
-                        size: A4 portrait;
-                        margin: 12mm 15mm;
+                    .print-view {
+                        background: transparent !important;
+                        padding: 0 !important;
+                        margin: 0 auto !important;
+                        width: 100% !important;
                     }
-                    body {
-                        margin: 0;
-                        padding: 0;
-                        font-family: Arial, Helvetica, sans-serif;
-                        -webkit-print-color-adjust: exact;
-                        print-color-adjust: exact;
+                    .cover-page {
+                        background: transparent !important;
+                        width: 100% !important;
+                        max-width: 100% !important;
+                        box-sizing: border-box !important;
+                        margin: 0 auto !important;
+                        padding: 15mm 15mm 0 15mm !important;
                     }
-                    * {
-                        box-sizing: border-box;
+                    div.print-only-watermark,
+                    div.print-only-watermark[style],
+                    div[class*="print-only-watermark"] {
+                        display: block !important;
+                        visibility: visible !important;
+                        position: fixed !important;
+                        pointer-events: none !important;
+                        z-index: 0 !important;
                     }
-                    img {
-                        max-width: 100%;
+                    div.print-only-watermark img,
+                    img[alt*="Watermark"] {
+                        display: block !important;
+                        visibility: visible !important;
+                        -webkit-print-color-adjust: exact !important;
+                        print-color-adjust: exact !important;
                     }
                 </style>
-            </head>
-            <body>
-                ${printContent.innerHTML}
-            </body>
-            </html>
-        `);
-        printWindow.document.close();
+            `;
+            const reportTitle = `Career-Assessment-Report-${(learnerInfo?.name || 'Report').replace(/\s+/g, '-')}`;
+            let html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>${reportTitle}</title><meta name="viewport" content="width=device-width, initial-scale=1"/><style>${PRINT_STYLES}</style>${watermarkStyles}</head><body>${watermarksHtml}${clone.outerHTML}</body></html>`;
 
-        // Wait for content to load then print
-        printWindow.onload = () => {
-            setTimeout(() => {
-                printWindow.print();
-                printWindow.close();
-            }, 250);
-        };
+            // Inline all local images as base64 so Browserless can render them
+            html = await inlineImages(html);
+
+            let res;
+            try {
+                res = await ssoClient.fetch('/api/generate-pdf', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ html, title: reportTitle }),
+                });
+            } catch (networkErr) {
+                logger.error('[handlePrint] Network error calling PDF API:', networkErr);
+                throw new Error('Network error. Please check your connection and try again.');
+            }
+
+            if (!res.ok) {
+                let serverMsg = '';
+                try {
+                    const errJson = await res.json();
+                    serverMsg = errJson.error || errJson.message || '';
+                } catch (parseErr) {
+                    logger.warn('[handlePrint] Could not parse error response body:', parseErr);
+                }
+                throw new Error(`PDF generation failed (${res.status})${serverMsg ? `: ${serverMsg}` : ''}`);
+            }
+            const contentType = res.headers.get('content-type') || '';
+            if (!contentType.includes('application/pdf')) {
+                throw new Error('Unexpected response format from PDF service');
+            }
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            try {
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${reportTitle}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                setPdfError(null);
+            } finally {
+                URL.revokeObjectURL(url);
+            }
+
+        } catch (err) {
+            logger.error('[handlePrint] PDF download failed:', err);
+            setPdfError('Failed to generate PDF. Please try again.');
+        } finally {
+            setIsPdfGenerating(false);
+        }
     };
 
     // Handle career track card click
@@ -960,6 +1091,7 @@ const AssessmentResult = () => {
                 <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-blue-100 py-3 px-3 sm:px-8 lg:px-12 xl:px-16 print:hidden print-hidden">
                     <div className="relative w-full flex items-center justify-between gap-2">
                         <Button
+                            type="button"
                             variant="ghost"
                             onClick={() => navigate('/learner/dashboard')}
                             className="text-slate-600 hover:text-slate-900 h-8 text-sm px-2 sm:px-3 shrink-0"
@@ -978,27 +1110,45 @@ const AssessmentResult = () => {
                         </div>
 
                         <div className="flex gap-1.5 sm:gap-2 shrink-0">
-                            {/* <Button
-                                variant="outline"
-                                onClick={handleRetry}
-                                disabled={retrying}
-                                className="border-slate-300 text-slate-600 hover:bg-slate-100 hover:text-slate-900 hover:border-slate-400 h-8 text-sm px-2.5 sm:px-3"
-                            >
-                                <RefreshCw className={`w-3.5 h-3.5 ${retrying ? 'animate-spin' : ''}`} />
-                                <span className="hidden sm:inline ml-1.5">
-                                    {retrying ? 'Regenerating...' : 'Regenerate'}
-                                </span>
-                            </Button> */}
                             <Button
+                                type="button"
                                 onClick={handlePrint}
-                                className="bg-slate-800 text-white hover:bg-slate-700 shadow-sm h-8 text-sm font-medium px-2.5 sm:px-3"
+                                disabled={isPdfGenerating}
+                                className="bg-slate-800 text-white hover:bg-slate-700 shadow-sm h-8 text-sm font-medium px-2.5 sm:px-3 disabled:opacity-75 disabled:cursor-not-allowed"
                             >
-                                <Download className="w-3.5 h-3.5" />
-                                <span className="hidden sm:inline ml-1.5">Download PDF</span>
+                                {isPdfGenerating ? (
+                                    <>
+                                        <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                                        <span className="hidden sm:inline">Generating PDF...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Download className="w-3.5 h-3.5 mr-1.5" />
+                                        <span className="hidden sm:inline">Download PDF</span>
+                                    </>
+                                )}
                             </Button>
                         </div>
                     </div>
                 </header>
+
+                {/* PDF error/warning notification */}
+                {pdfError && (
+                    <div className="fixed top-14 left-0 right-0 z-40 flex justify-center px-4 pt-2 print:hidden">
+                        <div className="bg-amber-50 border border-amber-300 text-amber-800 text-sm rounded-lg px-4 py-2 shadow flex items-center gap-2 max-w-lg">
+                            <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                            <span>{pdfError}</span>
+                            <button
+                                type="button"
+                                onClick={() => setPdfError(null)}
+                                className="ml-2 text-amber-600 hover:text-amber-800 flex-shrink-0"
+                                aria-label="Dismiss"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+                    </div>
+                )}
 
                 {/* Growth Map Content */}
                 <MiddleSchoolGrowthMap
@@ -1043,6 +1193,7 @@ const AssessmentResult = () => {
                 >
                     <div className="relative flex justify-between items-center bg-white/95 backdrop-blur-md shadow-md border-b border-gray-200 px-6 py-3" data-tour="navigation-actions">
                         <Button
+                            type="button"
                             variant="ghost"
                             onClick={() => navigate('/learner/dashboard')}
                             className="text-slate-600 hover:text-slate-900 hover:bg-slate-100 h-8 text-sm"
@@ -1061,36 +1212,27 @@ const AssessmentResult = () => {
                         </div>
 
                         <div className="flex gap-2">
-                            {/* <Button
-                                variant="outline"
-                                onClick={handleRetry}
-                                disabled={retrying}
-                                className="border-slate-300 text-slate-600 hover:bg-slate-100 hover:text-slate-900 hover:border-slate-400 h-8 text-sm"
+                            <Button
+                                type="button"
+                                onClick={handlePrint}
+                                disabled={isPdfGenerating}
+                                className="bg-slate-800 text-white hover:bg-slate-700 shadow-sm h-8 text-sm font-medium disabled:opacity-75 disabled:cursor-not-allowed"
                             >
-                                {retrying ? (
+                                {isPdfGenerating ? (
                                     <>
-                                        <RefreshCw className="w-3 h-3 mr-1.5 animate-spin" />
-                                        Regenerating...
+                                        <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                                        Generating PDF...
                                     </>
                                 ) : (
                                     <>
-                                        <RefreshCw className="w-3 h-3 mr-1.5" />
-                                        Regenerate
+                                        <Download className="w-3.5 h-3.5 mr-1.5" />
+                                        Download PDF
                                     </>
                                 )}
-                            </Button> */}
-                            <Button
-                                onClick={handlePrint}
-                                className="bg-slate-800 text-white hover:bg-slate-700 shadow-sm h-8 text-sm font-medium"
-                            >
-                                <Download className="w-3 h-3 mr-1.5" />
-                                Download PDF
                             </Button>
                         </div>
                     </div>
                 </div>
-
-                {/* Incomplete Data Warning Banner */}
                 {/* {hasIncompleteData && (
                     <div className="max-w-6xl mx-auto mb-6 print:hidden print-hidden">
                         <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-4">
@@ -1255,9 +1397,11 @@ const AssessmentResult = () => {
                             <div className="flex justify-center mb-8">
                                 <div className="flex items-center gap-4">
                                     {/* Step 1 */}
-                                    <div
+                                    <button
+                                        type="button"
                                         className={`flex items-center gap-2 cursor-pointer transition-all duration-300 ${after10Step === 1 ? 'opacity-100' : 'opacity-50 hover:opacity-75'}`}
                                         onClick={() => setAfter10Step(1)}
+                                        aria-current={after10Step === 1 ? 'page' : undefined}
                                     >
                                         <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all duration-300 ${after10Step === 1
                                             ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg shadow-blue-500/30'
@@ -1270,15 +1414,17 @@ const AssessmentResult = () => {
                                         <span className={`font-medium text-sm hidden sm:block ${after10Step === 1 ? 'text-blue-600' : 'text-gray-500'}`}>
                                             11th/12th Stream
                                         </span>
-                                    </div>
+                                    </button>
 
                                     {/* Connector */}
                                     <div className={`w-16 h-1 rounded-full transition-all duration-500 ${after10Step > 1 ? 'bg-green-500' : 'bg-gray-200'}`} />
 
                                     {/* Step 2 */}
-                                    <div
+                                    <button
+                                        type="button"
                                         className={`flex items-center gap-2 cursor-pointer transition-all duration-300 ${after10Step === 2 ? 'opacity-100' : 'opacity-50 hover:opacity-75'}`}
                                         onClick={() => after10Step > 1 && setAfter10Step(2)}
+                                        aria-current={after10Step === 2 ? 'page' : undefined}
                                     >
                                         <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all duration-300 ${after10Step === 2
                                             ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg shadow-blue-500/30'
@@ -1289,7 +1435,7 @@ const AssessmentResult = () => {
                                         <span className={`font-medium text-sm hidden sm:block ${after10Step === 2 ? 'text-blue-600' : 'text-gray-500'}`}>
                                             Career Paths
                                         </span>
-                                    </div>
+                                    </button>
                                 </div>
                             </div>
 
@@ -1531,6 +1677,7 @@ const AssessmentResult = () => {
                                                         {/* Next Button - Dark theme with hover effect like back card */}
                                                         <div className="flex justify-center pt-4">
                                                             <motion.button
+                                                                type="button"
                                                                 onClick={() => setAfter10Step(2)}
                                                                 className="group flex items-center gap-3 px-4 py-2 text-white font-semibold rounded-xl transition-all duration-300"
                                                                 style={{
@@ -1579,6 +1726,7 @@ const AssessmentResult = () => {
                                         className="flex items-center gap-4 mb-6"
                                     >
                                         <button
+                                            type="button"
                                             onClick={() => setAfter10Step(1)}
                                             className="flex items-center gap-2 px-4 py-2 text-gray-400 hover:text-white transition-colors"
                                         >
@@ -1604,9 +1752,9 @@ const AssessmentResult = () => {
 
                                     {/* Career Cards - Only show clusters with valid roles */}
                                     <div data-tour="career-tracks">
-                                    {careerFit && careerFit.clusters && careerFit.clusters.length > 0 ? (
+                                    {careerFit?.clusters?.length > 0 ? (
                                         careerFit.clusters
-                                            .filter(c => c && c.title && c.roles && (c.roles.entry?.length > 0 || c.roles.mid?.length > 0))
+                                            .filter(c => c?.title && c?.roles && (c?.roles?.entry?.length > 0 || c?.roles?.mid?.length > 0))
                                             .map((cluster, index) => (
                                             <CareerCard
                                                 key={index}
@@ -1660,9 +1808,11 @@ const AssessmentResult = () => {
                             <div className="flex justify-center mb-8">
                                 <div className="flex items-center gap-4">
                                     {/* Step 1 - Recommended Programs */}
-                                    <div
+                                    <button
+                                        type="button"
                                         className={`flex items-center gap-2 cursor-pointer transition-all duration-300 ${activeRecommendationTab === 'primary' ? 'opacity-100' : 'opacity-50 hover:opacity-75'}`}
                                         onClick={() => setActiveRecommendationTab('primary')}
+                                        aria-current={activeRecommendationTab === 'primary' ? 'page' : undefined}
                                         data-tour="programs-tab-button"
                                     >
                                         <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all duration-300 ${activeRecommendationTab === 'primary'
@@ -1676,15 +1826,17 @@ const AssessmentResult = () => {
                                         <span className={`font-medium text-sm hidden sm:block ${activeRecommendationTab === 'primary' ? 'text-blue-600' : 'text-gray-500'}`}>
                                             Recommended Programs
                                         </span>
-                                    </div>
+                                    </button>
 
                                     {/* Connector */}
                                     <div className={`w-16 h-1 rounded-full transition-all duration-500 ${activeRecommendationTab === 'career' ? 'bg-green-500' : 'bg-gray-200'}`} />
 
                                     {/* Step 2 - Career Recommendations */}
-                                    <div
+                                    <button
+                                        type="button"
                                         className={`flex items-center gap-2 cursor-pointer transition-all duration-300 ${activeRecommendationTab === 'career' ? 'opacity-100' : 'opacity-50 hover:opacity-75'}`}
                                         onClick={() => setActiveRecommendationTab('career')}
+                                        aria-current={activeRecommendationTab === 'career' ? 'page' : undefined}
                                         data-tour="career-tab-button"
                                     >
                                         <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all duration-300 ${activeRecommendationTab === 'career'
@@ -1696,7 +1848,7 @@ const AssessmentResult = () => {
                                         <span className={`font-medium text-sm hidden sm:block ${activeRecommendationTab === 'career' ? 'text-blue-600' : 'text-gray-500'}`}>
                                             Career Recommendations
                                         </span>
-                                    </div>
+                                    </button>
                                 </div>
                             </div>
 
@@ -1935,6 +2087,7 @@ const AssessmentResult = () => {
                                                                         {/* View Career Clusters Button */}
                                                                         <div className="flex justify-center pt-4">
                                                                             <motion.button
+                                                                                type="button"
                                                                                 onClick={() => setActiveRecommendationTab('career')}
                                                                                 className="group flex items-center gap-3 px-6 py-3 text-white font-semibold rounded-xl transition-all duration-300"
                                                                                 style={{
@@ -2061,10 +2214,12 @@ const AssessmentResult = () => {
                                                     };
 
                                                     return (
-                                                        <div
+                                                        <button
+                                                            type="button"
                                                             key={course.courseId}
                                                             onClick={handleProgramClick}
-                                                            className={`relative bg-slate-800 rounded-xl border p-5 transition-all hover:shadow-xl hover:scale-[1.02] cursor-pointer ${index === 0 ? 'border-slate-600 shadow-lg shadow-slate-900/50' : 'border-slate-700'
+                                                            aria-current={selectedTrack?.cluster?.title === course.courseName ? 'true' : undefined}
+                                                            className={`relative bg-slate-800 rounded-xl border p-5 transition-all hover:shadow-xl hover:scale-[1.02] cursor-pointer text-left ${index === 0 ? 'border-slate-600 shadow-lg shadow-slate-900/50' : 'border-slate-700'
                                                                 } ${aiCareerPathsLoading ? 'opacity-50 pointer-events-none' : ''}`}
                                                         >
                                                             {/* Rank Badge */}
@@ -2140,7 +2295,7 @@ const AssessmentResult = () => {
                                                                     </div>
                                                                 </div>
                                                             )}
-                                                        </div>
+                                                        </button>
                                                     );
                                                 })}
                                             </div>
@@ -2164,10 +2319,10 @@ const AssessmentResult = () => {
                             )}
 
                             {/* CAREER TAB CONTENT */}
-                            {activeRecommendationTab === 'career' && careerFit && careerFit.clusters && careerFit.clusters.length > 0 && (
+                            {activeRecommendationTab === 'career' && careerFit?.clusters?.length > 0 && (
                                 <div className="space-y-8" data-tour="career-recommendations">
                                     {/* Career Recommendations using CareerCard components */}
-                                    {careerFit.clusters.map((cluster, index) => (
+                                    {careerFit?.clusters?.map((cluster, index) => (
                                         <CareerCard
                                             key={index}
                                             cluster={cluster}
@@ -2188,7 +2343,7 @@ const AssessmentResult = () => {
                             )}
 
                             {/* Fallback for Career tab when no career data */}
-                            {activeRecommendationTab === 'career' && (!careerFit || !careerFit.clusters || careerFit.clusters.length === 0) && (
+                            {activeRecommendationTab === 'career' && !careerFit?.clusters?.length && (
                                 <div className="bg-slate-800 rounded-xl p-8 text-center border border-slate-700">
                                     <Briefcase className="w-12 h-12 text-slate-400 mx-auto mb-4" />
                                     <h3 className="text-lg font-semibold text-white mb-2">Career Recommendations Loading...</h3>
@@ -2215,11 +2370,11 @@ const AssessmentResult = () => {
                     {/* ═══════════════════════════════════════════════════════════════════════════════ */}
                     {/* CAREER RECOMMENDATIONS - For all other grade levels (middle, high school, etc.) */}
                     {/* ═══════════════════════════════════════════════════════════════════════════════ */}
-                    {gradeLevel !== 'after10' && gradeLevel !== 'after12' && careerFit && careerFit.clusters && careerFit.clusters.length > 0 && (
+                    {gradeLevel !== 'after10' && gradeLevel !== 'after12' && careerFit?.clusters?.length > 0 && (
                         <div className="mb-8">
                             <div className="space-y-8" data-tour="career-tracks">
                                 {/* Career Recommendations using CareerCard components with original colorful design */}
-                                {careerFit.clusters.map((cluster, index) => (
+                                {careerFit?.clusters?.map((cluster, index) => (
                                     <CareerCard
                                         key={index}
                                         cluster={cluster}
