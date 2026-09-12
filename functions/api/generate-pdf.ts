@@ -198,10 +198,18 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         logger.error('[generate-pdf] learner_reports insert failed', {
           error: insertError.message,
         });
+        return new Response(JSON.stringify({ error: 'Failed to record report log' }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' },
+        });
       }
     }
   } catch (err: unknown) {
     logger.error('[generate-pdf] Failed to log report', { error: err instanceof Error ? err.message : String(err) });
+    return new Response(JSON.stringify({ error: 'Failed to record report log' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 
   // ── Return PDF binary to frontend ──────────────────────────────────

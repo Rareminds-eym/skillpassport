@@ -51,7 +51,6 @@ import { TextGenerateEffect } from '@/shared/ui/TextGenerateEffect';
 // Import constants and hooks
 import { RIASEC_NAMES, RIASEC_COLORS, TRAIT_NAMES, TRAIT_COLORS, PRINT_STYLES } from '@/features/assessment';
 import { useAssessmentResults } from '../model/useAssessmentResults';
-import { apiPost } from '@/shared/api/apiClient';
 import { ssoClient } from '@/shared/api/ssoClient';
 import { getLogger } from '@/shared/config/logging';
 
@@ -835,6 +834,7 @@ const AssessmentResult = () => {
         const imgRegex = /src=["'](\/[^"']+)["']/g;
         const matches = [...htmlString.matchAll(imgRegex)];
         const unique = [...new Set(matches.map(m => m[1]))];
+        let failedCount = 0;
 
         for (const path of unique) {
             try {
@@ -842,6 +842,7 @@ const AssessmentResult = () => {
                 const res = await fetch(fetchUrl);
                 if (!res.ok) {
                     logger.warn('[inlineImages] Failed to fetch image:', path, res.status);
+                    failedCount++;
                     continue;
                 }
                 const blob = await res.blob();
@@ -849,6 +850,7 @@ const AssessmentResult = () => {
                     const reader = new FileReader();
                     reader.onload = () => resolve(reader.result);
                     reader.onerror = () => reject(new Error(`FileReader failed for ${path}`));
+                    reader.onabort = () => reject(new Error(`FileReader aborted for ${path}`));
                     reader.readAsDataURL(blob);
                 });
                 if (base64) {
@@ -856,8 +858,14 @@ const AssessmentResult = () => {
                 }
             } catch (e) {
                 logger.warn('[inlineImages] Error inlining image:', path, e);
+                failedCount++;
             }
         }
+
+        if (failedCount > 0) {
+            setPdfError(`PDF generated with ${failedCount} missing image(s). Content is complete.`);
+        }
+
         return htmlString;
     };
 
@@ -945,8 +953,8 @@ const AssessmentResult = () => {
                     }
                 </style>
             `;
-            const reportTitle = 'Career-Assessment-Report-' + (learnerInfo?.name || 'Report').replace(/\s+/g, '-');
-            let html = '<!DOCTYPE html><html><head><meta charset="utf-8"/><title>' + reportTitle + '</title><meta name="viewport" content="width=device-width, initial-scale=1"/><style>' + PRINT_STYLES + '</style>' + watermarkStyles + '</head><body>' + watermarksHtml + clone.outerHTML + '</body></html>';
+            const reportTitle = `Career-Assessment-Report-${(learnerInfo?.name || 'Report').replace(/\s+/g, '-')}`;
+            let html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>${reportTitle}</title><meta name="viewport" content="width=device-width, initial-scale=1"/><style>${PRINT_STYLES}</style>${watermarkStyles}</head><body>${watermarksHtml}${clone.outerHTML}</body></html>`;
 
             // Inline all local images as base64 so Browserless can render them
             html = await inlineImages(html);
@@ -965,19 +973,25 @@ const AssessmentResult = () => {
                 } catch (parseErr) {
                     logger.warn('[handlePrint] Could not parse error response body:', parseErr);
                 }
-                throw new Error(`PDF generation failed (${res.status})${serverMsg ? ': ' + serverMsg : ''}`);
+                throw new Error(`PDF generation failed (${res.status})${serverMsg ? `: ${serverMsg}` : ''}`);
             }
-
+            const contentType = res.headers.get('content-type') || '';
+            if (!contentType.includes('application/pdf')) {
+                throw new Error('Unexpected response format from PDF service');
+            }
             const blob = await res.blob();
             const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = reportTitle + '.pdf';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            setPdfError(null);
+            try {
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${reportTitle}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                setPdfError(null);
+            } finally {
+                URL.revokeObjectURL(url);
+            }
 
         } catch (err) {
             logger.error('[handlePrint] PDF download failed:', err);

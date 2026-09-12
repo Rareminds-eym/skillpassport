@@ -278,9 +278,11 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
               return 0;
             }
             return count || 0;
-          } catch (err) {
-            logger.error('[get-usage-stats] profile_views unexpected error', {
-              error: err,
+          } catch (err: unknown) {
+            const errorMsg = err instanceof Error ? err.message : String(err);
+            const isNetworkError = err instanceof TypeError && errorMsg.toLowerCase().includes('fetch');
+            logger.error(`[get-usage-stats] profile_views ${isNetworkError ? 'network' : 'unexpected'} error`, {
+              error: errorMsg,
               userId: user.id,
               table: 'profile_views',
             });
@@ -289,9 +291,9 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         };
 
         const [assessments, profileViews, reports] = await Promise.all([
-          getCount('personal_assessment_results'),   // learner_id = learners.id ✅
-          getProfileViewCount(),                     // learner_id = auth UUID ✅
-          getCount('learner_reports'),               // learner_id = learners.id ✅
+          getCount('personal_assessment_results'),   // learner_id = learners.id 
+          getProfileViewCount(),                     // learner_id = auth UUID 
+          getCount('learner_reports'),               // learner_id = learners.id 
         ]);
 
         return apiSuccess({
