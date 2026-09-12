@@ -204,7 +204,7 @@ export default function LearnerPublicViewer() {
       // Expected pattern: log but do not rethrow — tracking failure is non-critical
       logger.error('[track-profile-view] Failed to track profile view:', err);
     });
-  }, [learnerId, user?.id, loading, learnerData]);
+  }, [learnerId, user?.id, loading, learnerData?.id]);
 
   const pickArray = (...sources) => {
     for (const src of sources) {

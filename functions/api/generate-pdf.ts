@@ -10,7 +10,7 @@ const logger = createLogger('generate-pdf');
 const REPORT_TYPE_SKILL_ASSESSMENT = 'skill_assessment';
 const REPORT_TITLE_CAREER_ASSESSMENT = 'Career Assessment Report';
 
-export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
+export const onRequestPost = withAuth(async (context: AuthenticatedContext): Promise<Response> => {
   const env = context.env as Record<string, string>;
   const authUser = getContextUser(context);
 
@@ -124,7 +124,8 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       const pdfDoc = await PDFDocument.load(pdfBuffer);
 
       // Set PDF Document Title metadata so PDF readers (like Adobe Acrobat) show learner name instead of about:blank
-      if (docTitle) {
+      // Length-capped to 255 chars to prevent potential ReDoS via pdf-lib's internal regex processing
+      if (docTitle && docTitle.length < 256) {
         pdfDoc.setTitle(docTitle);
       }
 

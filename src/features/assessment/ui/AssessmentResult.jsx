@@ -959,11 +959,17 @@ const AssessmentResult = () => {
             // Inline all local images as base64 so Browserless can render them
             html = await inlineImages(html);
 
-            const res = await ssoClient.fetch('/api/generate-pdf', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ html, title: reportTitle }),
-            });
+            let res;
+            try {
+                res = await ssoClient.fetch('/api/generate-pdf', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ html, title: reportTitle }),
+                });
+            } catch (networkErr) {
+                logger.error('[handlePrint] Network error calling PDF API:', networkErr);
+                throw new Error('Network error. Please check your connection and try again.');
+            }
 
             if (!res.ok) {
                 let serverMsg = '';
@@ -1125,6 +1131,24 @@ const AssessmentResult = () => {
                         </div>
                     </div>
                 </header>
+
+                {/* PDF error/warning notification */}
+                {pdfError && (
+                    <div className="fixed top-14 left-0 right-0 z-40 flex justify-center px-4 pt-2 print:hidden">
+                        <div className="bg-amber-50 border border-amber-300 text-amber-800 text-sm rounded-lg px-4 py-2 shadow flex items-center gap-2 max-w-lg">
+                            <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                            <span>{pdfError}</span>
+                            <button
+                                type="button"
+                                onClick={() => setPdfError(null)}
+                                className="ml-2 text-amber-600 hover:text-amber-800 flex-shrink-0"
+                                aria-label="Dismiss"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+                    </div>
+                )}
 
                 {/* Growth Map Content */}
                 <MiddleSchoolGrowthMap
@@ -1377,6 +1401,7 @@ const AssessmentResult = () => {
                                         type="button"
                                         className={`flex items-center gap-2 cursor-pointer transition-all duration-300 ${after10Step === 1 ? 'opacity-100' : 'opacity-50 hover:opacity-75'}`}
                                         onClick={() => setAfter10Step(1)}
+                                        aria-current={after10Step === 1 ? 'page' : undefined}
                                     >
                                         <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all duration-300 ${after10Step === 1
                                             ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg shadow-blue-500/30'
@@ -1399,6 +1424,7 @@ const AssessmentResult = () => {
                                         type="button"
                                         className={`flex items-center gap-2 cursor-pointer transition-all duration-300 ${after10Step === 2 ? 'opacity-100' : 'opacity-50 hover:opacity-75'}`}
                                         onClick={() => after10Step > 1 && setAfter10Step(2)}
+                                        aria-current={after10Step === 2 ? 'page' : undefined}
                                     >
                                         <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all duration-300 ${after10Step === 2
                                             ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg shadow-blue-500/30'
@@ -1728,7 +1754,7 @@ const AssessmentResult = () => {
                                     <div data-tour="career-tracks">
                                     {careerFit?.clusters?.length > 0 ? (
                                         careerFit.clusters
-                                            .filter(c => c?.title && c?.roles && (c.roles.entry?.length > 0 || c.roles.mid?.length > 0))
+                                            .filter(c => c?.title && c?.roles && (c?.roles?.entry?.length > 0 || c?.roles?.mid?.length > 0))
                                             .map((cluster, index) => (
                                             <CareerCard
                                                 key={index}
@@ -1786,6 +1812,7 @@ const AssessmentResult = () => {
                                         type="button"
                                         className={`flex items-center gap-2 cursor-pointer transition-all duration-300 ${activeRecommendationTab === 'primary' ? 'opacity-100' : 'opacity-50 hover:opacity-75'}`}
                                         onClick={() => setActiveRecommendationTab('primary')}
+                                        aria-current={activeRecommendationTab === 'primary' ? 'page' : undefined}
                                         data-tour="programs-tab-button"
                                     >
                                         <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all duration-300 ${activeRecommendationTab === 'primary'
@@ -1809,6 +1836,7 @@ const AssessmentResult = () => {
                                         type="button"
                                         className={`flex items-center gap-2 cursor-pointer transition-all duration-300 ${activeRecommendationTab === 'career' ? 'opacity-100' : 'opacity-50 hover:opacity-75'}`}
                                         onClick={() => setActiveRecommendationTab('career')}
+                                        aria-current={activeRecommendationTab === 'career' ? 'page' : undefined}
                                         data-tour="career-tab-button"
                                     >
                                         <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all duration-300 ${activeRecommendationTab === 'career'
@@ -2190,6 +2218,7 @@ const AssessmentResult = () => {
                                                             type="button"
                                                             key={course.courseId}
                                                             onClick={handleProgramClick}
+                                                            aria-current={selectedTrack?.cluster?.title === course.courseName ? 'true' : undefined}
                                                             className={`relative bg-slate-800 rounded-xl border p-5 transition-all hover:shadow-xl hover:scale-[1.02] cursor-pointer text-left ${index === 0 ? 'border-slate-600 shadow-lg shadow-slate-900/50' : 'border-slate-700'
                                                                 } ${aiCareerPathsLoading ? 'opacity-50 pointer-events-none' : ''}`}
                                                         >
@@ -2293,7 +2322,7 @@ const AssessmentResult = () => {
                             {activeRecommendationTab === 'career' && careerFit?.clusters?.length > 0 && (
                                 <div className="space-y-8" data-tour="career-recommendations">
                                     {/* Career Recommendations using CareerCard components */}
-                                    {careerFit.clusters.map((cluster, index) => (
+                                    {careerFit?.clusters?.map((cluster, index) => (
                                         <CareerCard
                                             key={index}
                                             cluster={cluster}
@@ -2345,7 +2374,7 @@ const AssessmentResult = () => {
                         <div className="mb-8">
                             <div className="space-y-8" data-tour="career-tracks">
                                 {/* Career Recommendations using CareerCard components with original colorful design */}
-                                {careerFit.clusters.map((cluster, index) => (
+                                {careerFit?.clusters?.map((cluster, index) => (
                                     <CareerCard
                                         key={index}
                                         cluster={cluster}

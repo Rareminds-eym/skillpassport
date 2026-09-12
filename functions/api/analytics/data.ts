@@ -255,7 +255,11 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
             .select('*', { count: 'exact', head: true })
             .eq(field, learnerId);
           if (countError) {
-            logger.error(`getCount failed for table "${table}"`, { error: countError });
+            logger.error(`getCount failed for table "${table}"`, {
+              error: countError,
+              userId: user.id,
+              table,
+            });
             return 0;
           }
           return count ?? 0;
