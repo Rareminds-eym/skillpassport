@@ -1,45 +1,92 @@
 /**
- * Generate Strengths & Growth Plan Handler
+ * Generate Strengths & Growth Plan Handler — RPC cutover.
  *
- * Generates personalized "Your Strengths & Growth Plan" using AI
- * Based on: role capabilities + learner assessment results
+ * Cut over 2026-09-12: direct OpenRouter call replaced by
+ * `seniorEducator({ feature: 'growth-plan' })`. Every pre/post step is
+ * preserved exactly (validation, occupations/capabilities reads, per-role
+ * gemini_results cache, store merge). The single deliberate difference:
+ * reasoning executes in ai-worker over the typed contract instead of direct
+ * provider calls from Pages.
  */
 
 import { getServiceClient } from '../../../lib/supabase';
-import { callOpenRouterWithRetry, repairAndParseJSON, getAPIKeys } from '../../shared/ai-config';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import { getAiWorker, rpcErrorToHttpStatus } from '../../ai/lib/aiBinding';
+import { issueExecutionAssertion } from '../../ai/lib/assertion';
+import type { EducatorRequest } from '@rareminds-eym/ai-protocol';
 
-export async function generateStrengthsGrowthPlanHandler(context: AuthenticatedContext) {
+type GrowthPlanRpcRequest = Extract<EducatorRequest, { feature: 'growth-plan' }>;
+
+export interface GrowthPlanPorts {
+  supabase?: {
+    from(table: string): {
+      select(cols: string): {
+        eq(col: string, val: unknown): {
+          maybeSingle(): Promise<{ data: unknown; error: unknown }>;
+          single(): Promise<{ data: unknown; error: unknown }>;
+        };
+        in(col: string, vals: unknown[]): {
+          order(col: string, opts: unknown): {
+            limit(n: number): Promise<{ data: unknown; error: unknown }>;
+          };
+        };
+      };
+      update(values: unknown): {
+        eq(col: string, val: unknown): {
+          select(): Promise<{ data: unknown; error: unknown }>;
+        };
+      };
+      insert(values: unknown): {
+        select(): Promise<{ data: unknown; error: unknown }>;
+      };
+    };
+  };
+  callWorker?: (args: {
+    env: Record<string, unknown>;
+    userId: string;
+    roleName: string;
+    capabilities: string[];
+    learnerRiasec: Record<string, number>;
+  }) => Promise<
+    | { ok: true; data: { strengths: Array<{ title: string; reason: string }>; growthAreas: Array<{ title: string; reason: string }>; immediateActions: Array<{ title: string }>; timeline: Array<{ month: string; capability: string }> } }
+    | { ok: false; code: string; message: string }
+  >;
+}
+
+export async function generateStrengthsGrowthPlanHandler(
+  context: AuthenticatedContext,
+  ports: GrowthPlanPorts = {},
+): Promise<Response> {
   const env = context.env as Record<string, string>;
-  const supabase = getServiceClient(env as any);
+  const supabase = (ports.supabase as unknown as ReturnType<typeof getServiceClient>) ?? getServiceClient(env as any);
+  const userId =
+    ((context.data as unknown as { user?: { sub?: string; id?: string } })?.user?.sub ??
+      (context.data as unknown as { user?: { sub?: string; id?: string } })?.user?.id ??
+      'unknown') as string;
 
   try {
-    const requestData = await context.request.json() as any;
-    const { roleName, learnerProfile } = requestData;
+    const requestData = (await context.request.json()) as unknown as Record<string, unknown>;
+    const roleName = requestData.roleName as string | undefined;
+    const learnerProfile = requestData.learnerProfile as { riasec?: Record<string, number> } | undefined;
 
     if (!roleName || !learnerProfile) {
       return Response.json(
         { error: 'roleName and learnerProfile are required' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-    const { openRouter } = getAPIKeys(env);
-
-    // Get role's required capabilities. Multi-domain roles have one occupation
-    // row per domain (same name), so fetch all ids — .single() would throw.
-    // role_capability_sequence links directly to occupations (the role_domains
-    // table no longer exists), and RIASEC context lives on the sequence row.
+    // Get role's required capabilities.
     const { data: occupations } = await supabase
       .from('occupations')
       .select('id')
       .eq('name', roleName);
 
-    if (!occupations || occupations.length === 0) {
+    if (!occupations || (occupations as unknown[]).length === 0) {
       return Response.json({ error: 'Role not found' }, { status: 404 });
     }
 
-    const occupationIds = occupations.map((o: any) => o.id);
+    const occupationIds = (occupations as Array<{ id: string }>).map((o) => o.id);
 
     const { data: capabilitySequence } = await supabase
       .from('role_capability_sequence')
@@ -55,25 +102,34 @@ export async function generateStrengthsGrowthPlanHandler(context: AuthenticatedC
       .order('sequence_step', { ascending: true })
       .limit(6);
 
-    if (!capabilitySequence || capabilitySequence.length === 0) {
+    if (!capabilitySequence || (capabilitySequence as unknown[]).length === 0) {
       return Response.json({ error: 'No capabilities found for role' }, { status: 404 });
     }
 
-    const capabilities = capabilitySequence.map((item: any) => ({
-      name: item.capability_master?.name,
-      description: item.capability_master?.description,
-      priority: item.capability_priority,
-      level: item.required_level,
-      primaryRiasec: item.primary_riasec_context,
-      secondaryRiasec: item.secondary_riasec_context
-    }));
+    const capabilities = (capabilitySequence as Array<{ capability_master?: { name: string; description: string } }>).map(
+      (item: unknown) => {
+        const row = item as {
+          capability_master?: { name: string; description: string };
+          capability_priority?: string;
+          required_level?: number;
+          primary_riasec_context?: string;
+          secondary_riasec_context?: string;
+        };
+        return {
+          name: row.capability_master?.name,
+          description: row.capability_master?.description,
+          priority: row.capability_priority,
+          level: row.required_level,
+          primaryRiasec: row.primary_riasec_context,
+          secondaryRiasec: row.secondary_riasec_context,
+        };
+      },
+    );
 
-    // Check if already generated (stored in gemini_results)
-    const assessmentResultId = requestData.assessmentResultId;
+    const assessmentResultId = requestData.assessmentResultId as string | undefined;
     console.log('[Strengths-Growth-Plan] Starting... assessmentResultId:', assessmentResultId, 'roleName:', roleName);
 
     if (assessmentResultId) {
-      // Fetch current gemini_results from DB
       const { data: existing, error: fetchError } = await supabase
         .from('personal_assessment_results')
         .select('gemini_results')
@@ -81,89 +137,55 @@ export async function generateStrengthsGrowthPlanHandler(context: AuthenticatedC
         .maybeSingle();
 
       if (fetchError) {
-        console.log('[Strengths-Growth-Plan] ⚠️  Fetch error:', fetchError.message);
+        console.log('[Strengths-Growth-Plan] ⚠️  Fetch error:', (fetchError as { message?: string }).message);
       } else {
         console.log('[Strengths-Growth-Plan] 📊 Fetched data:', {
-          hasGeminiResults: !!existing?.gemini_results,
-          geminiResultsKeys: Object.keys(existing?.gemini_results || {})
+          hasGeminiResults: !!((existing as { gemini_results?: unknown })?.gemini_results),
+          geminiResultsKeys: Object.keys(((existing as { gemini_results?: Record<string, unknown> })?.gemini_results as Record<string, unknown>) || {}),
         });
       }
 
-      // Check if cached for this specific role
-      const cachedForRole = existing?.gemini_results?.strengthsGrowthPlan?.[roleName];
+      const cachedForRole = (existing as { gemini_results?: { strengthsGrowthPlan?: Record<string, unknown> } })?.gemini_results
+        ?.strengthsGrowthPlan?.[roleName];
       if (cachedForRole) {
         console.log('[Strengths-Growth-Plan] ✅ USING CACHED DATA for role:', roleName);
-        return Response.json({
-          strengths: cachedForRole.strengths || [],
-          growthAreas: cachedForRole.growthAreas || [],
-          immediateActions: cachedForRole.immediateActions || [],
-          timeline: cachedForRole.timeline || [],
-          cached: true
-        }, { status: 200 });
+        const cached = cachedForRole as Record<string, unknown>;
+        return Response.json(
+          {
+            strengths: (cached.strengths as unknown[]) || [],
+            growthAreas: (cached.growthAreas as unknown[]) || [],
+            immediateActions: (cached.immediateActions as unknown[]) || [],
+            timeline: (cached.timeline as unknown[]) || [],
+            cached: true,
+          },
+          { status: 200 },
+        );
       }
     }
 
-    // AI Prompt - BEGINNER-FRIENDLY, SUPER SIMPLE
-    const learnerRiasec = learnerProfile.riasec || {};
-    const capabilityNames = capabilities.map((c: any) => c.name);
+    // Worker call (the single deliberate difference)
+    const learnerRiasec = (learnerProfile as { riasec?: Record<string, number> }).riasec || {};
+    const capabilityNames = capabilities.map((c: { name?: string }) => c.name as string).filter(Boolean);
 
-    const prompt = `You help students understand what they need to learn for "${roleName}".
-Write in VERY SIMPLE language - like explaining to a 12 year old.
-NO technical jargon. NO complex words.
+    const result = ports.callWorker
+      ? await ports.callWorker({ env: env as unknown as Record<string, unknown>, userId, roleName, capabilities: capabilityNames, learnerRiasec })
+      : await callGrowthPlanWorker(env, userId, { roleName, capabilities: capabilityNames, learnerRiasec });
 
-**Skills they need to learn:**
-${capabilityNames.map((name: string) => `- ${name}`).join('\n')}
+    if (!result.ok) {
+      const status = rpcErrorToHttpStatus(new Error(`${result.code}: ${result.message}`));
+      // Preserve original 500 shape for internal failures; map known codes precisely
+      if (status === 403 || status === 429 || status === 400) {
+        return Response.json({ error: result.message.slice(0, 500) }, { status });
+      }
+      return Response.json(
+        { error: 'Failed to generate plan', details: result.message.slice(0, 500) },
+        { status: status === 503 ? 500 : status },
+      );
+    }
 
-RULES:
-1. Use SIMPLE words only (no technical terms)
-2. Each item = 1 short sentence (under 15 words)
-3. Strengths = what they're already good at
-4. Growth areas = what they need to learn
-5. Actions = simple things to do this week
-6. Timeline = when to learn each skill
+    const parsed = result.data;
 
-Example GOOD answers:
-- "You are good at solving problems" (simple!)
-- "Learn how to clean data" (simple!)
-- "Read a tutorial online" (simple!)
-
-Example BAD answers (don't do this):
-- "Evaluate statistical experiments" (too technical)
-- "Construct leakage-safe predictive feature datasets" (too technical)
-
-Generate JSON ONLY:
-{
-  "strengths": [
-    {"title": "Simple skill they know", "reason": "why in simple words"}
-  ],
-  "growthAreas": [
-    {"title": "Simple skill to learn", "reason": "why in simple words"}
-  ],
-  "immediateActions": [
-    {"title": "simple action 1"},
-    {"title": "simple action 2"},
-    {"title": "simple action 3"}
-  ],
-  "timeline": [
-    {"month": "Month 1-2", "capability": "First simple skill"},
-    {"month": "Month 3-4", "capability": "Second simple skill"},
-    {"month": "Month 5-6", "capability": "Third simple skill"}
-  ]
-}`;
-
-    // Call OpenRouter with 4o-mini
-    const aiResponse = await callOpenRouterWithRetry(openRouter, [
-      { role: 'user', content: prompt }
-    ], {
-      models: ['openai/gpt-4o-mini'],
-      maxTokens: 1024,
-      temperature: 0.7
-    });
-
-    // Parse JSON response
-    const result = repairAndParseJSON(aiResponse, true);
-
-    // Store in gemini_results for future use
+    // Store in gemini_results for future use (preserved exactly)
     if (assessmentResultId) {
       console.log('[Strengths-Growth-Plan] 💾 Storing cache for role:', roleName);
 
@@ -174,28 +196,28 @@ Generate JSON ONLY:
         .maybeSingle();
 
       if (fetchError) {
-        console.error('[Strengths-Growth-Plan] ❌ Failed to fetch current record:', fetchError.message);
+        console.error('[Strengths-Growth-Plan] ❌ Failed to fetch current record:', (fetchError as { message?: string }).message);
       } else {
         console.log('[Strengths-Growth-Plan] ✓ Fetched current record for update');
       }
 
       const updatedGeminiResults = {
-        ...(current?.gemini_results || {}),
+        ...(((current as { gemini_results?: Record<string, unknown> })?.gemini_results as Record<string, unknown>) || {}),
         strengthsGrowthPlan: {
-          ...(current?.gemini_results?.strengthsGrowthPlan || {}),
+          ...((((current as { gemini_results?: { strengthsGrowthPlan?: Record<string, unknown> } })?.gemini_results as { strengthsGrowthPlan?: Record<string, unknown> })?.strengthsGrowthPlan as Record<string, unknown>) || {}),
           [roleName]: {
-            strengths: result.strengths || [],
-            growthAreas: result.growthAreas || [],
-            immediateActions: result.immediateActions || [],
-            timeline: result.timeline || []
-          }
-        }
+            strengths: parsed.strengths || [],
+            growthAreas: parsed.growthAreas || [],
+            immediateActions: parsed.immediateActions || [],
+            timeline: parsed.timeline || [],
+          },
+        },
       };
 
       console.log('[Strengths-Growth-Plan] 📦 Data to store:', {
         assessmentId: assessmentResultId,
         roleName,
-        dataStructure: JSON.stringify(updatedGeminiResults).substring(0, 100)
+        dataStructure: JSON.stringify(updatedGeminiResults).substring(0, 100),
       });
 
       const { error: updateError, data: updateData } = await supabase
@@ -205,25 +227,24 @@ Generate JSON ONLY:
         .select();
 
       if (updateError) {
-        console.error('[Strengths-Growth-Plan] ❌ Failed to store in DB:', updateError.message);
+        console.error('[Strengths-Growth-Plan] ❌ Failed to store in DB:', (updateError as { message?: string }).message);
         console.error('[Strengths-Growth-Plan] Error details:', updateError);
       } else {
-        console.log('[Strengths-Growth-Plan] Updated record count:', updateData?.length);
+        console.log('[Strengths-Growth-Plan] Updated record count:', (updateData as unknown[] | undefined)?.length);
 
-        // If no rows updated, the record doesn't exist - INSERT it instead
-        if (!updateData || updateData.length === 0) {
+        if (!updateData || (updateData as unknown[]).length === 0) {
           console.log('[Strengths-Growth-Plan] ⚠️  No rows updated, attempting INSERT instead');
 
-          const { error: insertError, data: insertData } = await supabase
+          const { error: insertError } = await supabase
             .from('personal_assessment_results')
             .insert({
               id: assessmentResultId,
-              gemini_results: updatedGeminiResults
+              gemini_results: updatedGeminiResults,
             })
             .select();
 
           if (insertError) {
-            console.error('[Strengths-Growth-Plan] ❌ Failed to INSERT in DB:', insertError.message);
+            console.error('[Strengths-Growth-Plan] ❌ Failed to INSERT in DB:', (insertError as { message?: string }).message);
           } else {
             console.log('[Strengths-Growth-Plan] ✅ Successfully INSERTED cache in DB');
           }
@@ -235,18 +256,69 @@ Generate JSON ONLY:
       console.log('[Strengths-Growth-Plan] ⚠️  No assessmentResultId provided, cache not stored');
     }
 
-    return Response.json({
-      strengths: result.strengths || [],
-      growthAreas: result.growthAreas || [],
-      immediateActions: result.immediateActions || [],
-      timeline: result.timeline || [],
-      cached: false
-    }, { status: 200 });
+    return Response.json(
+      {
+        strengths: parsed.strengths || [],
+        growthAreas: parsed.growthAreas || [],
+        immediateActions: parsed.immediateActions || [],
+        timeline: parsed.timeline || [],
+        cached: false,
+      },
+      { status: 200 },
+    );
   } catch (error) {
+    // Preserve original error shape for transport/binding failures
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.includes('binding is not configured') || message.includes('AI_ASSERT_SECRET')) {
+      console.error('[Strengths-Growth-Plan] transport error:', message);
+      return Response.json({ error: 'Failed to generate plan', details: 'AI service not configured' }, { status: 500 });
+    }
     console.error('Generate strengths & growth plan error:', error);
     return Response.json(
-      { error: 'Failed to generate plan', details: (error as any).message },
-      { status: 500 }
+      { error: 'Failed to generate plan', details: (error as { message?: string }).message },
+      { status: 500 },
     );
   }
+}
+
+async function callGrowthPlanWorker(
+  env: Record<string, string>,
+  userId: string,
+  input: { roleName: string; capabilities: string[]; learnerRiasec: Record<string, number> },
+): Promise<{ ok: true; data: GrowthPlanRpcRequest['input'] extends infer _ ? { strengths: Array<{ title: string; reason: string }>; growthAreas: Array<{ title: string; reason: string }>; immediateActions: Array<{ title: string }>; timeline: Array<{ month: string; capability: string }> } : never } | { ok: false; code: string; message: string }> {
+  const secret = env.AI_ASSERT_SECRET;
+  if (!secret) throw new Error('AI_ASSERT_SECRET is not configured');
+  const worker = getAiWorker(env as unknown as Parameters<typeof getAiWorker>[0]);
+  const assertion = await issueExecutionAssertion(secret, {
+    issuer: 'skillpassport',
+    action: 'seniorEducator.growth-plan',
+    userId,
+    product: 'skillpassport',
+    entitlements: ['career_ai'],
+  });
+  const request: GrowthPlanRpcRequest = {
+    contractVersion: '1',
+    requestId: crypto.randomUUID(),
+    operationId: crypto.randomUUID(),
+    executionAssertion: assertion,
+    actor: {
+      actorId: userId,
+      product: 'skillpassport',
+      goals: [],
+      responsibilities: [],
+      permissions: [],
+      capabilities: ['career_ai'],
+      resourceScope: [],
+      relevantContext: [],
+    },
+    feature: 'growth-plan',
+    input,
+  };
+  const result = await worker.seniorEducator(request);
+  if (result && typeof result === 'object' && 'duplicate' in (result as Record<string, unknown>)) {
+    return { ok: false, code: 'IDEMPOTENCY_CONFLICT', message: 'duplicate execution' };
+  }
+  if (result instanceof Response) throw new Error('INTERNAL_ERROR: unexpected stream for growth-plan');
+  if (!result.ok) return { ok: false, code: result.error.code, message: result.error.message };
+  return { ok: true, data: result.data as unknown as { strengths: Array<{ title: string; reason: string }>; growthAreas: Array<{ title: string; reason: string }>; immediateActions: Array<{ title: string }>; timeline: Array<{ month: string; capability: string }> } };
 }

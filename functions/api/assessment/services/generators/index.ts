@@ -13,6 +13,3 @@ export type { After10Synthesis } from './synthesis-after10';
 
 export { generateAfter12Synthesis } from './synthesis-after12';
 export type { After12Synthesis } from './synthesis-after12';
-
-export { generateCollegeSynthesis } from './synthesis-college';
-export type { CollegeSynthesis } from './synthesis-college';

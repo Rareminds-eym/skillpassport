@@ -334,9 +334,14 @@ export async function abandonAttempt(attemptId: string): Promise<{ success: bool
 
 /**
  * Analyze completed assessment
- * Backend generates results and stores in database
+ * Backend generates results and stores in database. For durable jobs the
+ * backend may return HTTP 202 with a job reference; callers must poll the
+ * execution status endpoint until terminal rather than treating it as completed.
  */
-export async function analyzeAssessment(attemptId: string, gradeLevel: string): Promise<{ success: boolean; error?: string }> {
+export async function analyzeAssessment(
+  attemptId: string,
+  gradeLevel: string,
+): Promise<{ success: boolean; pending?: boolean; job?: { executionId: string; workflowId?: string; state: string }; error?: string }> {
   try {
     const response = await ssoClient.fetch(`${API_BASE}/analyze`, {
       method: 'POST',
@@ -344,21 +349,54 @@ export async function analyzeAssessment(attemptId: string, gradeLevel: string): 
       body: JSON.stringify({ attemptId, gradeLevel }),
     });
 
+    const data = await response.json().catch(() => ({} as Record<string, unknown>));
+
+    if (response.status === 202) {
+      const job = (data as { job?: { executionId: string; workflowId: string; state: string } }).job;
+      if (job?.executionId) {
+        return { success: true, pending: true, job };
+      }
+      // 202 without job is still pending; let caller poll via attempt status
+      return { success: true, pending: true };
+    }
+
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: 'Unknown error' }));
       return {
         success: false,
-        error: error.message || 'Failed to analyze assessment'
+        error: (data as { message?: string; error?: string }).message || (data as { error?: string }).error || 'Failed to analyze assessment',
       };
     }
 
-    const data = await response.json();
-    return { success: data.success !== false };
-  } catch (err: any) {
+    // Backend may return { success: true, job: {...}, state: 'queued' } with 200 edge
+    if ((data as { job?: unknown }).job) {
+      const job = (data as { job: { executionId: string; workflowId: string; state: string } }).job;
+      if (job?.executionId) return { success: true, pending: true, job };
+    }
+
+    return { success: (data as { success?: boolean }).success !== false };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Network error';
     return {
       success: false,
-      error: err.message || 'Network error'
+      error: message,
     };
+  }
+}
+
+export async function getExecutionStatus(executionId: string): Promise<{ state: string; error?: { code: string; message: string } } | null> {
+  try {
+    const response = await ssoClient.fetch(`/api/ai/executions/${encodeURIComponent(executionId)}`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!response.ok) return null;
+    const data = await response.json() as { data?: { state: string; error?: { code: string; message: string } }; state?: string };
+    // Handler returns { success: true, data: { executionId, state, result } } via apiSuccess
+    const payload = (data as { data?: unknown }).data ?? data;
+    if (payload && typeof payload === 'object' && 'state' in payload) return payload as { state: string };
+    return null;
+  } catch {
+    return null;
   }
 }
 

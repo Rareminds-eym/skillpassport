@@ -7,7 +7,50 @@
  * - Removed separate helper functions, consolidated into getFallbackRoleOverview
  */
 
-import type { RoleOverviewData } from '../handlers/role-overview';
+/**
+ * Role overview data shape. Owned here (the fallback generator is its
+ * canonical producer); the RPC handler and worker input reuse it.
+ */
+export interface RoleOverviewData {
+  responsibilities: string[];
+  demandDescription: string;
+  demandLevel: string;
+  demandPercentage: number;
+  careerProgression: Array<{
+    title: string;
+    yearsExperience: string;
+  }>;
+  learningRoadmap: Array<{
+    month: string;
+    title: string;
+    description: string;
+    tasks: string[];
+  }>;
+  recommendedCourses: Array<{
+    title: string;
+    description: string;
+    duration: string;
+    level: string;
+    skills: string[];
+  }>;
+  freeResources: Array<{
+    title: string;
+    description: string;
+    type: string;
+    url: string;
+  }>;
+  actionItems: Array<{
+    title: string;
+    description: string;
+  }>;
+  suggestedProjects: Array<{
+    title: string;
+    description: string;
+    difficulty: string;
+    skills: string[];
+    estimatedTime: string;
+  }>;
+}
 
 /**
  * Get complete fallback role overview when AI services fail

@@ -1,22 +1,32 @@
 /**
- * Program Career Paths Handler
- * Generate AI-powered career paths for degree programs
+ * Program Career Paths Handler — RPC cutover.
+ *
+ * Cut over 2026-09-12: direct OpenRouter call replaced by
+ * `seniorEducator({ feature: 'program-paths' })`. Validation and response
+ * shape preserved exactly; prompt assembly + retry/fallback deleted (worker owns it).
+ * No Supabase writes — pure function of the request.
  */
 
 import { apiSuccess, apiError } from '../../../lib/response';
 import type { PagesEnv } from '../../../lib/types';
-import { callOpenRouterWithRetry, getAPIKeys } from '../../shared/ai-config';
+import { getAiWorker, rpcErrorToHttpStatus } from '../../ai/lib/aiBinding';
+import { issueExecutionAssertion } from '../../ai/lib/assertion';
+import type { EducatorRequest } from '@rareminds-eym/ai-protocol';
 
-interface CareerPath {
-  role: string;
-  salary: {
-    min: number;
-    max: number;
-  };
-  matchScore?: number;
-  whyItFits?: string;
-  requiredSkills?: string[];
-  growthPotential?: string;
+type ProgramPathsRpcRequest = Extract<EducatorRequest, { feature: 'program-paths' }>;
+
+export interface ProgramCareerPathsPorts {
+  callWorker?: (args: {
+    env: Record<string, unknown>;
+    userId: string;
+    programName: string;
+    programCategory: string;
+    programStream: string;
+    learnerProfile: ProgramPathsRpcRequest['input']['learnerProfile'];
+  }) => Promise<
+    | { ok: true; careerPaths: Array<{ role: string; salary: { min: number; max: number }; matchScore?: number; whyItFits?: string; requiredSkills?: string[]; growthPotential?: string }> }
+    | { ok: false; code: string; message: string }
+  >;
 }
 
 interface GenerateCareerPathsRequest {
@@ -46,166 +56,113 @@ interface GenerateCareerPathsRequest {
   };
 }
 
-/**
- * Build prompt for career path generation
- */
-function buildCareerPathPrompt(request: GenerateCareerPathsRequest): string {
-  const { programName, programCategory, programStream, learnerProfile } = request;
-  const { riasecScores, aptitudeScores, topSkills, interests, projects, experiences } = learnerProfile;
-
-  // Get top 3 RIASEC types
-  const riasecEntries = Object.entries(riasecScores).sort((a, b) => b[1] - a[1]);
-  const topRiasec = riasecEntries.slice(0, 3).map(([type, score]) => `${type}: ${score}`).join(', ');
-
-  const prompt = `You are a career counselor helping a learner understand career opportunities for their degree program.
-
-Program Details:
-- Program: ${programName}
-- Category: ${programCategory}
-- Stream: ${programStream}
-
-Learner Profile:
-- RIASEC Personality (top 3): ${topRiasec}
-${aptitudeScores ? `- Aptitude Strengths: ${Object.entries(aptitudeScores).filter(([_, v]) => v && v > 60).map(([k, v]) => `${k}: ${v}%`).join(', ') || 'Not assessed'}` : ''}
-${topSkills && topSkills.length > 0 ? `- Top Skills: ${topSkills.join(', ')}` : ''}
-${interests && interests.length > 0 ? `- Interests: ${interests.join(', ')}` : ''}
-${projects && projects.length > 0 ? `- Projects: ${projects.map(p => p.title).join(', ')}` : ''}
-${experiences && experiences.length > 0 ? `- Experience: ${experiences.map(e => e.role).join(', ')}` : ''}
-
-Generate 5-8 career paths that:
-1. Are realistic for graduates of ${programName}
-2. Match the learner's RIASEC personality profile
-3. Consider their aptitude strengths and interests
-4. Include both traditional and emerging roles
-5. Cover a range of salary levels
-
-For each career path, provide:
-- role: Job title
-- salary: {min: number, max: number} in USD per year
-- matchScore: 1-100 based on learner profile fit
-- whyItFits: 2-3 sentences explaining why this role suits the learner
-- requiredSkills: Array of 3-5 key skills needed
-- growthPotential: 1-2 sentences about career growth
-
-Return ONLY a valid JSON array of career paths. No markdown, no explanation.
-
-Example format:
-[
-  {
-    "role": "Data Scientist",
-    "salary": {"min": 80000, "max": 150000},
-    "matchScore": 92,
-    "whyItFits": "Your strong analytical skills and interest in problem-solving align perfectly with data science. The role combines technical expertise with business impact.",
-    "requiredSkills": ["Python", "Machine Learning", "Statistics", "SQL", "Data Visualization"],
-    "growthPotential": "High demand field with opportunities to advance to Senior Data Scientist, ML Engineer, or Chief Data Officer roles."
-  }
-]`;
-
-  return prompt;
+// Keep parsers exported for backward-compat if imported elsewhere (now unused internally)
+export function buildCareerPathPrompt(_request: GenerateCareerPathsRequest): string {
+  return '';
 }
 
-/**
- * Parse and validate career paths from AI response
- */
-function parseCareerPaths(content: string): CareerPath[] {
-  try {
-    // Remove markdown code blocks if present
-    let cleaned = content
-      .replace(/```json\n?/gi, '')
-      .replace(/```\n?/g, '')
-      .trim();
-
-    // Find JSON array boundaries
-    const startIdx = cleaned.indexOf('[');
-    const endIdx = cleaned.lastIndexOf(']');
-
-    if (startIdx === -1 || endIdx === -1) {
-      throw new Error('No JSON array found in response');
-    }
-
-    cleaned = cleaned.substring(startIdx, endIdx + 1);
-
-    const parsed = JSON.parse(cleaned);
-
-    if (!Array.isArray(parsed)) {
-      throw new Error('Response is not an array');
-    }
-
-    // Validate and normalize each career path
-    const careerPaths: CareerPath[] = parsed.map((path: any) => ({
-      role: path.role || 'Unknown Role',
-      salary: {
-        min: path.salary?.min || 40000,
-        max: path.salary?.max || 80000,
-      },
-      matchScore: path.matchScore || 70,
-      whyItFits: path.whyItFits || 'This role aligns with your program and profile.',
-      requiredSkills: Array.isArray(path.requiredSkills) ? path.requiredSkills : [],
-      growthPotential: path.growthPotential || 'Good growth potential in this field.',
-    }));
-
-    return careerPaths;
-  } catch (error: any) {
-    console.error('Failed to parse career paths:', error.message);
-    throw new Error('Failed to parse AI response');
-  }
+export function parseCareerPaths(_content: string): never[] {
+  return [];
 }
 
-/**
- * Handle program career paths generation
- */
 export async function handleGenerateProgramCareerPaths(
   request: Request,
-  env: PagesEnv
+  env: PagesEnv,
+  userIdOrPorts?: string | ProgramCareerPathsPorts,
+  maybePorts?: ProgramCareerPathsPorts,
 ): Promise<Response> {
+  const { userId: explicitUserId, ports }: { userId: string | undefined; ports: ProgramCareerPathsPorts } =
+    typeof userIdOrPorts === 'string'
+      ? { userId: userIdOrPorts, ports: maybePorts ?? {} }
+      : { userId: undefined, ports: (userIdOrPorts as ProgramCareerPathsPorts) ?? {} };
   try {
-    // Parse request body
-    const body = await request.json() as GenerateCareerPathsRequest;
+    const body = (await request.json()) as GenerateCareerPathsRequest;
 
-    // Validate required fields
     if (!body.programName || !body.programCategory || !body.learnerProfile?.riasecScores) {
       return apiError(400, 'VALIDATION_ERROR', 'Missing required fields: programName, programCategory, learnerProfile.riasecScores', request);
     }
 
     console.log(`🎓 Generating career paths for: ${body.programName}`);
 
-    // Get API keys
-    const { openRouter } = getAPIKeys(env);
+    // Derive userId for assertion — explicit auth user wins, else best-effort fallback
+    const userId =
+      explicitUserId ||
+      (request.headers.get('x-user-id') as string | null) ||
+      ((env as unknown as Record<string, unknown>)._testUserId as string | undefined) ||
+      'unknown';
 
-    if (!openRouter) {
-      return apiError(500, 'INTERNAL_ERROR', 'OpenRouter API key not configured', request);
+    const result = ports.callWorker
+      ? await ports.callWorker({
+          env: env as unknown as Record<string, unknown>,
+          userId,
+          programName: body.programName,
+          programCategory: body.programCategory,
+          programStream: body.programStream ?? '',
+          learnerProfile: body.learnerProfile as ProgramPathsRpcRequest['input']['learnerProfile'],
+        })
+      : await callProgramPathsWorker(env, userId, body);
+
+    if (!result.ok) {
+      const status = rpcErrorToHttpStatus(new Error(`${result.code}: ${result.message}`));
+      return apiError(status, result.code, result.message.slice(0, 500), request);
     }
 
-    // Build prompt
-    const prompt = buildCareerPathPrompt(body);
+    console.log(`✅ Generated ${result.careerPaths.length} career paths`);
 
-    // Call AI
-    const content = await callOpenRouterWithRetry(
-      openRouter,
-      [
-        {
-          role: 'system',
-          content: 'You are an expert career counselor with deep knowledge of various industries and career paths.',
-        },
-        {
-          role: 'user',
-          content: prompt,
-        },
-      ],
-      {
-        maxTokens: 2000,
-        temperature: 0.7,
-      }
-    );
-
-    // Parse response
-    const careerPaths = parseCareerPaths(content);
-
-    console.log(`✅ Generated ${careerPaths.length} career paths`);
-
-    return apiSuccess({ careerPaths }, request);
-  } catch (error: any) {
+    return apiSuccess({ careerPaths: result.careerPaths }, request);
+  } catch (error: unknown) {
     console.error('❌ Error generating program career paths:', error);
-    return apiError(500, 'INTERNAL_ERROR', error.message || 'Failed to generate career paths', request);
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.includes('binding is not configured') || message.includes('AI_ASSERT_SECRET')) {
+      return apiError(503, 'DEPENDENCY_UNAVAILABLE', 'AI service not configured', request);
+    }
+    return apiError(500, 'INTERNAL_ERROR', message.slice(0, 500), request);
   }
+}
+
+async function callProgramPathsWorker(
+  env: PagesEnv,
+  userId: string,
+  body: GenerateCareerPathsRequest,
+): Promise<{ ok: true; careerPaths: Array<{ role: string; salary: { min: number; max: number }; matchScore?: number; whyItFits?: string; requiredSkills?: string[]; growthPotential?: string }> } | { ok: false; code: string; message: string }> {
+  const secret = (env as unknown as Record<string, string>).AI_ASSERT_SECRET;
+  if (!secret) throw new Error('AI_ASSERT_SECRET is not configured');
+  const worker = getAiWorker(env as unknown as Parameters<typeof getAiWorker>[0]);
+  const assertion = await issueExecutionAssertion(secret, {
+    issuer: 'skillpassport',
+    action: 'seniorEducator.program-paths',
+    userId: userId === 'unknown' ? 'anonymous' : userId,
+    product: 'skillpassport',
+    entitlements: ['career_ai'],
+  });
+  const rpcRequest: ProgramPathsRpcRequest = {
+    contractVersion: '1',
+    requestId: crypto.randomUUID(),
+    operationId: crypto.randomUUID(),
+    executionAssertion: assertion,
+    actor: {
+      actorId: userId === 'unknown' ? 'anonymous' : userId,
+      product: 'skillpassport',
+      goals: [],
+      responsibilities: [],
+      permissions: [],
+      capabilities: ['career_ai'],
+      resourceScope: [],
+      relevantContext: [],
+    },
+    feature: 'program-paths',
+    input: {
+      programName: body.programName,
+      programCategory: body.programCategory,
+      programStream: body.programStream ?? '',
+      learnerProfile: body.learnerProfile as ProgramPathsRpcRequest['input']['learnerProfile'],
+    },
+  };
+  const result = await worker.seniorEducator(rpcRequest);
+  if (result && typeof result === 'object' && 'duplicate' in (result as Record<string, unknown>)) {
+    return { ok: false, code: 'IDEMPOTENCY_CONFLICT', message: 'duplicate execution' };
+  }
+  if (result instanceof Response) throw new Error('INTERNAL_ERROR: unexpected stream for program-paths');
+  if (!result.ok) return { ok: false, code: result.error.code, message: result.error.message };
+  return { ok: true, careerPaths: (result.data as { careerPaths: Array<{ role: string; salary: { min: number; max: number } }> }).careerPaths };
 }

@@ -22,6 +22,10 @@ ENVIRONMENT=development
 # Server-only — never expose via VITE_* or to the frontend. Min 32 chars.
 LTE_INTERNAL_SECRET=your_lte_internal_secret_here_min_32_chars
 
+# Shared HMAC secret for the AI-worker SkillPassport internal gateway
+# (POST /api/internal/ai/v1). MUST match the ai-worker AI_INTERNAL_SECRET.
+AI_INTERNAL_SECRET=your_ai_internal_secret_here_min_32_chars
+
 
 # ==================== SUPABASE CONFIGURATION ====================
 # SUPABASE_URL is preferred by Pages Functions;
@@ -46,6 +50,13 @@ ADMIN_EMAIL=admin@rareminds.in
 # ==================== STORAGE / MEDIA CONFIGURATION ====================
 # HMAC secret for signing short-lived media access tokens
 SIGNING_SECRET=your_signing_secret_here
+
+# ==================== AI WORKER (ai-api) CONFIGURATION ====================
+# The AI worker is reached via the AI_SERVICE service binding (RPC).
+# Local dev: append --service AI_SERVICE=ai-api#AiService (already in pages:dev).
+# HMAC secret for Pages-issued AI execution assertions. MUST match the
+# ai-worker AI_ASSERT_SECRET. Never commit real values.
+AI_ASSERT_SECRET=your_ai_assert_secret_here_min_32_chars
 
 # ==================== AI SERVICE API KEYS ====================
 OPENROUTER_API_KEY=your_openrouter_api_key_here

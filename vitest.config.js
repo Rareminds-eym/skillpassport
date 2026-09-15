@@ -35,6 +35,7 @@ export default defineConfig({
       '@rareminds-eym/auth-core': path.resolve(__dirname, '../skill-echosystem-packages/auth-core/dist/index.js'),
       '@rareminds-eym/sso-gateway': path.resolve(__dirname, '../skill-echosystem-packages/sso-gateway/dist/index.js'),
       '@rareminds-eym/entitlements': path.resolve(__dirname, '../skill-echosystem-packages/entitlements/dist/index.js'),
+      '@rareminds-eym/ai-protocol': path.resolve(__dirname, '../skill-echosystem-packages/ai-protocol/dist/index.js'),
     },
   },
 });

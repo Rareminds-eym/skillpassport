@@ -19,10 +19,11 @@
 import { apiSuccess, apiError } from '../../lib/response';
 import { handleCorsPreflightRequest } from '../../lib/cors';
 import type { PagesFunction, PagesEnv } from '../../lib/types';
-import { withAuth } from '../../lib/auth';
+import { withAuth, getContextUser } from '../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { createLogger } from '../../lib/logger';
 import { createSupabaseAdminClient } from '../../lib/supabase';
+import { rpcErrorToHttpStatus } from '../ai/lib/aiBinding';
 
 const logger = createLogger('question-generation');
 
@@ -128,22 +129,29 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
           console.log(`ℹ️ gradeLevel reconciled to stream catalog value: requested=${requestedGradeLevel}, effective=${gradeLevel}`);
         }
 
-        const result = await generateAptitudeQuestions(env as unknown as PagesEnv, streamId, questionsPerCategory, learnerId, attemptId, gradeLevel);
+        const userId = getContextUser(authContext).id;
+        const result = await generateAptitudeQuestions(env as unknown as PagesEnv, streamId, questionsPerCategory, learnerId, attemptId, gradeLevel, userId);
         console.log(`✅ Aptitude generation complete: ${result?.length || 0} questions`);
         // Wrap in {questions: [...]} format for frontend compatibility
         return apiSuccess({ questions: result }, request);
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('❌ Aptitude generation error:', error);
-        return apiError(500, 'INTERNAL_ERROR', error.message || 'Failed to generate aptitude questions', request);
+        const status = (error as { status?: number })?.status ?? rpcErrorToHttpStatus(error);
+        const code = (error as { code?: string })?.code ?? (status === 403 ? 'FEATURE_ACCESS_DENIED' : status === 429 ? 'RATE_LIMIT_EXCEEDED' : status === 409 ? 'IDEMPOTENCY_CONFLICT' : 'INTERNAL_ERROR');
+        const message = error instanceof Error ? error.message : 'Failed to generate aptitude questions';
+        return apiError(status, code, message.slice(0, 500), request);
       }
     }
 
     if (path === '/career-assessment/generate-aptitude/stream' && request.method === 'POST') {
       try {
-        return await handleStreamingAptitude(request, env as unknown as PagesEnv);
-      } catch (error: any) {
+        return await handleStreamingAptitude(request, env as unknown as PagesEnv, authContext);
+      } catch (error: unknown) {
         console.error('❌ Streaming aptitude error:', error);
-        return apiError(500, 'INTERNAL_ERROR', error.message || 'Failed to stream aptitude questions', request);
+        const status = (error as { status?: number })?.status ?? rpcErrorToHttpStatus(error);
+        const code = (error as { code?: string })?.code ?? 'INTERNAL_ERROR';
+        const message = error instanceof Error ? error.message : 'Failed to stream aptitude questions';
+        return apiError(status, code, message.slice(0, 500), request);
       }
     }
 
@@ -180,13 +188,17 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
           return apiError(400, 'VALIDATION_ERROR', 'Topics are required for learners below 11th grade', request);
         }
 
-        const result = await generateKnowledgeQuestions(env as unknown as PagesEnv, streamId, streamName, topics, questionCount, learnerId, attemptId, gradeLevel, isCollegeLearner);
+        const userId = getContextUser(authContext).id;
+        const result = await generateKnowledgeQuestions(env as unknown as PagesEnv, streamId, streamName, topics, questionCount, learnerId, attemptId, gradeLevel, isCollegeLearner, userId);
         console.log(`✅ Knowledge generation complete: ${result?.length || 0} questions`);
         // Wrap in {questions: [...]} format for frontend compatibility
         return apiSuccess({ questions: result }, request);
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('❌ Knowledge generation error:', error);
-        return apiError(500, 'INTERNAL_ERROR', error.message || 'Failed to generate knowledge questions', request);
+        const status = (error as { status?: number })?.status ?? rpcErrorToHttpStatus(error);
+        const code = (error as { code?: string })?.code ?? (status === 403 ? 'FEATURE_ACCESS_DENIED' : status === 429 ? 'RATE_LIMIT_EXCEEDED' : status === 409 ? 'IDEMPOTENCY_CONFLICT' : 'INTERNAL_ERROR');
+        const message = error instanceof Error ? error.message : 'Failed to generate knowledge questions';
+        return apiError(status, code, message.slice(0, 500), request);
       }
     }
 
@@ -206,11 +218,15 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
           return apiError(400, 'VALIDATION_ERROR', `questionCount must be an integer between 1 and ${MAX_QUESTION_COUNT}`, request);
         }
 
-        const result = await generateAssessment(env as unknown as PagesEnv, courseName, level, questionCount);
+        const userId = getContextUser(authContext).id;
+        const result = await generateAssessment(env as unknown as PagesEnv, courseName, level, questionCount, userId);
         return apiSuccess(result, request);
-      } catch (error: any) {
-        logger.error('Course assessment generation error', error);
-        return apiError(500, 'INTERNAL_ERROR', error.message || 'Failed to generate course assessment', request);
+      } catch (error: unknown) {
+        logger.error('Course assessment generation error', error as Error);
+        const status = (error as { status?: number })?.status ?? rpcErrorToHttpStatus(error);
+        const code = (error as { code?: string })?.code ?? (status === 403 ? 'FEATURE_ACCESS_DENIED' : status === 429 ? 'RATE_LIMIT_EXCEEDED' : status === 409 ? 'IDEMPOTENCY_CONFLICT' : 'INTERNAL_ERROR');
+        const message = error instanceof Error ? error.message : 'Failed to generate course assessment';
+        return apiError(status, code, message.slice(0, 500), request);
       }
     }
 

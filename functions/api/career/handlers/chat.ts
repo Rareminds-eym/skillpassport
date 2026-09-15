@@ -1,65 +1,202 @@
 /**
- * Career Chat Handler - Streaming AI chat with career guidance
- * 
- * Features:
- * - Safety guardrails (prompt injection, harmful content, PII redaction)
- * - Intent detection with chip-based overrides
- * - Conversation phase management
- * - Memory compression for long conversations
- * - Rich context builders (learner, assessment, progress, courses, opportunities)
- * - Enhanced system prompt with few-shot examples and chain-of-thought
+ * Career Chat Handler - Streaming AI chat via the AI worker (RPC cutover).
+ *
+ * Cut over 2026-09-12: the direct-OpenRouter implementation was replaced by
+ * the worker path (see migration record). Every pre/post-step is preserved
+ * exactly (rate limit, guards, conversation load, quota pre-check, intent +
+ * phase, context builders, system prompt + memory assembly, guardrail
+ * validation, `save_career_ai_message` persistence, legacy browser SSE
+ * shape). The single deliberate difference: reasoning executes in ai-worker
+ * over the protocol 0.24.0 `{ system, history }` context channel instead of
+ * direct provider calls from Pages.
  */
 
 import { apiError } from '../../../lib/response';
 import { createSupabaseAdminClient } from '../../../lib/supabase';
 import { sanitizeInput, generateConversationTitle } from '../../../lib/validation';
 import { checkRateLimit } from '../utils/rate-limit';
-import { API_CONFIG, MODEL_PROFILES, getAPIKeys } from '../../shared/ai-config';
+import { getAPIKeys } from '../../shared/ai-config';
 import type { ChatRequest, StoredMessage, CareerIntent, Opportunity } from '../types';
-
-// AI modules
 import { validateResponse } from '../ai/guardrails';
 import { detectIntent } from '../ai/intent-detection';
 import { compressContext, buildMemoryContext } from '../ai/memory';
-import { getConversationPhase, getPhaseParameters } from '../ai/conversation-phase';
+import { getConversationPhase } from '../ai/conversation-phase';
 import { buildEnhancedSystemPrompt } from '../ai/prompts/enhanced-system-prompt';
-
-// Context builders
 import { buildlearnerContext } from '../context/learner';
 import { buildAssessmentContext } from '../context/assessment';
 import { buildCareerProgressContext } from '../context/progress';
 import { buildCourseContext } from '../context/courses';
 import { fetchSmartOpportunities } from '../context/smart-opportunities';
+import { getAiWorker, type AiServiceBinding } from '../../ai/lib/aiBinding';
+import { issueExecutionAssertion } from '../../ai/lib/assertion';
 
+interface QueryChain {
+  select(cols: string): QueryChain;
+  eq(col: string, val: unknown): QueryChain;
+  single(): Promise<{ data: unknown; error: unknown }>;
+}
 
-export async function handleCareerChat(request: Request, env: Record<string, string>, userId: string): Promise<Response> {
+interface SupabaseLike {
+  from(table: string): QueryChain;
+  rpc(name: string, args: Record<string, unknown>): Promise<{ data: unknown; error: unknown }>;
+}
+
+export interface AssembledContext {
+  conversationPhase: string;
+  intent: CareerIntent;
+  confidence: string;
+  hasAssessment: boolean;
+  systemPromptWithMemory: string;
+  historyTail: Array<{ role: 'user' | 'assistant'; content: string }>;
+}
+
+export interface ChatFlipPorts {
+  checkRateLimit?: (userId: string, env: Record<string, string>) => Promise<boolean>;
+  loadConversation?: (
+    db: () => SupabaseLike,
+    conversationId: string,
+    learnerId: string,
+  ) => Promise<{ messages: StoredMessage[]; updated_at: string } | null>;
+  countUserMessages?: (db: () => SupabaseLike, learnerId: string) => Promise<number | null>;
+  assembleContext?: (args: {
+    db: () => SupabaseLike;
+    dbAdmin: () => DbClient;
+    env: Record<string, string>;
+    learnerId: string;
+    message: string;
+    chips: string[];
+    history: StoredMessage[];
+  }) => Promise<AssembledContext | null>;
+  callWorker?: (args: {
+    env: Record<string, unknown>;
+    userId: string;
+    rpcConversationId: string;
+    message: string;
+    system: string;
+    history: Array<{ role: 'user' | 'assistant'; content: string }>;
+  }) => Promise<Response>;
+  saveMessages?: (
+    db: () => SupabaseLike,
+    args: { learnerId: string; conversationId: string | null; title: string; messages: StoredMessage[] },
+  ) => Promise<{ success: boolean; conversation_id?: string; error?: string }>;
+}
+
+type DbClient = ReturnType<typeof createSupabaseAdminClient>;
+
+async function defaultLoadConversation(db: DbClient, conversationId: string, learnerId: string) {
+  const chain = (db as unknown as SupabaseLike).from('career_ai_conversations');
+  const { data, error } = await chain.select('messages, updated_at').eq('id', conversationId).eq('learner_id', learnerId).single();
+  void error;
+  return (data ?? null) as { messages: unknown; updated_at: string } | null;
+}
+
+/** Legacy-identical assembly: phase, intent, profile/assessment/progress/courses, system prompt, memory tail. */
+async function defaultAssembleContext(args: {
+  db: () => SupabaseLike;
+  dbAdmin: () => DbClient;
+  env: Record<string, string>;
+  learnerId: string;
+  message: string;
+  chips: string[];
+  history: StoredMessage[];
+}): Promise<AssembledContext | null> {
+  const { env, learnerId, message, chips, history } = args;
+  const db = args.db();
+  const dbAdmin = args.dbAdmin();
+  const conversationPhase = getConversationPhase(history.length);
+  const intentResult = detectIntent(message, chips, history);
+
+  const [learnerProfile, assessmentContext, progressContext, courseContext] = await Promise.all([
+    buildlearnerContext(dbAdmin, learnerId),
+    buildAssessmentContext(dbAdmin, learnerId),
+    buildCareerProgressContext(db as never, learnerId),
+    buildCourseContext(db as never, learnerId),
+  ]);
+
+  if (!learnerProfile) return null;
+
+  let opportunities: Opportunity[] = [];
+  const jobRelatedIntents: CareerIntent[] = ['find-jobs', 'skill-gap', 'career-guidance', 'application-status'];
+  if (jobRelatedIntents.includes(intentResult.intent)) {
+    const { openRouter: openRouterKey } = getAPIKeys(env);
+    opportunities = await fetchSmartOpportunities(db as never, {
+      userMessage: message,
+      conversationHistory: history,
+      learnerProfile,
+      intent: intentResult.intent,
+      openRouterKey,
+    });
+  }
+
+  const systemPrompt = buildEnhancedSystemPrompt({
+    profile: learnerProfile,
+    assessment: assessmentContext,
+    progress: progressContext,
+    opportunities,
+    phase: conversationPhase,
+    intentResult,
+    courseContext,
+  });
+
+  let memoryContext = '';
+  let recentMessages = history;
+  if (history.length > 10) {
+    const compressed = compressContext(history, 10);
+    recentMessages = compressed.recentMessages;
+    memoryContext = buildMemoryContext(compressed);
+  } else {
+    recentMessages = history.slice(-10);
+  }
+
+  return {
+    conversationPhase,
+    intent: intentResult.intent,
+    confidence: intentResult.confidence,
+    hasAssessment: Boolean(
+      (assessmentContext as { hasAssessment?: boolean } | null)?.hasAssessment,
+    ),
+    systemPromptWithMemory: memoryContext ? `${systemPrompt}\n\n${memoryContext}` : systemPrompt,
+    historyTail: recentMessages.map((m) => ({ role: m.role, content: m.content })),
+  };
+}
+
+export async function handleCareerChat(
+  request: Request,
+  env: Record<string, string>,
+  userId: string,
+  ports: ChatFlipPorts = {},
+): Promise<Response> {
   if (request.method !== 'POST') {
     return apiError(405, 'ERROR', 'Method not allowed', request);
   }
 
   const startTime = Date.now();
   const learnerId = userId;
-  const supabase = createSupabaseAdminClient(env);
-  const supabaseAdmin = supabase;
+  // Lazily created: stubbed ports in tests never touch the network, and
+  // client construction itself requires env vars — so build it only when
+  // a default (live) port runs.
+  let adminClient: DbClient | null = null;
+  const admin = (): DbClient => (adminClient ??= createSupabaseAdminClient(env));
+  const db = (): SupabaseLike => admin() as unknown as SupabaseLike;
 
-  // Rate limiting
-  if (!await checkRateLimit(learnerId, env)) {
+  const limited = ports.checkRateLimit
+    ? await ports.checkRateLimit(learnerId, env)
+    : await checkRateLimit(learnerId, env);
+  if (!limited) {
     return apiError(429, 'ERROR', 'Too many requests. Please wait a moment.', request);
   }
 
-  // Parse request
   let body: ChatRequest;
   try {
-    body = await request.json() as ChatRequest;
+    body = (await request.json()) as ChatRequest;
   } catch {
     return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON', request);
   }
 
   const { conversationId, message, selectedChips = [] } = body;
 
-  // SECURITY: Validate request size
   const contentLength = request.headers.get('content-length');
-  if (contentLength && parseInt(contentLength) > 1048576) { // 1MB limit
+  if (contentLength && parseInt(contentLength) > 1048576) {
     return apiError(413, 'ERROR', 'Request too large', request);
   }
 
@@ -67,7 +204,6 @@ export async function handleCareerChat(request: Request, env: Record<string, str
     return apiError(400, 'VALIDATION_ERROR', 'Message is required', request);
   }
 
-  // SECURITY: Strict message length validation
   if (message.length > 10000) {
     return apiError(400, 'VALIDATION_ERROR', 'Message too long. Maximum 10,000 characters.', request);
   }
@@ -76,306 +212,190 @@ export async function handleCareerChat(request: Request, env: Record<string, str
   if (!sanitizedMessage) {
     return apiError(400, 'VALIDATION_ERROR', 'Invalid message', request);
   }
-
-  // Use sanitizedMessage as processedMessage
   const processedMessage = sanitizedMessage;
 
-  // Get OpenRouter API key using shared utility
-  const { openRouter: openRouterKey } = getAPIKeys(env);
-  if (!openRouterKey) {
-    return apiError(500, 'INTERNAL_ERROR', 'AI service not configured', request);
-  }
-
   try {
-    // ==================== FETCH CONVERSATION HISTORY ====================
+    // ==================== FETCH CONVERSATION HISTORY (legacy-identical) ====================
     let existingMessages: StoredMessage[] = [];
     let existingConversation: { messages: unknown; updated_at: string } | null = null;
 
     if (conversationId) {
-      // SECURITY: Use SELECT FOR UPDATE to prevent race conditions
-      const { data: conv, error: fetchError } = await supabase
-        .from('career_ai_conversations')
-        .select('messages, updated_at')
-        .eq('id', conversationId)
-        .single();
-
-      // Security: Explicit validation - if conversationId provided but not found, deny access
-      if (fetchError || !conv) {
+      const conv = ports.loadConversation
+        ? await ports.loadConversation(db, conversationId, learnerId)
+        : await defaultLoadConversation(admin(), conversationId, learnerId);
+      if (!conv) {
         return apiError(403, 'FORBIDDEN', 'Conversation not found or access denied', request);
       }
-
       existingConversation = conv;
-      existingMessages = Array.isArray(conv.messages) ? conv.messages : [];
+      existingMessages = Array.isArray(conv.messages) ? (conv.messages as StoredMessage[]) : [];
     }
 
-    // ==================== QUOTA PRE-CHECK ====================
-    // CRITICAL: p_learner_id from middleware (userId), never from client payload
-    const { data: userMsgCount, error: countError } = await supabase
-      .rpc('count_career_ai_user_messages', { p_learner_id: learnerId });
+    // ==================== QUOTA PRE-CHECK (legacy-identical, pre-spend) ====================
+    const userMsgCount = ports.countUserMessages
+      ? await ports.countUserMessages(db, learnerId)
+      : await (async () => {
+          const { data, error } = await db().rpc('count_career_ai_user_messages', { p_learner_id: learnerId });
+          if (error) return null;
+          return data as number;
+        })();
 
-    if (!countError && userMsgCount >= 2) {
-      console.log(`[QUOTA] User ${learnerId} has reached message limit (${userMsgCount} user messages)`);
+    if (userMsgCount !== null && userMsgCount >= 2) {
       return apiError(403, 'QUOTA_EXCEEDED', 'You have used your 2 free messages.', request);
     }
 
-    // ==================== DETERMINE PHASE AND INTENT ====================
-    const messageCount = existingMessages.length;
-    const conversationPhase = getConversationPhase(messageCount);
-    const intentResult = detectIntent(processedMessage, selectedChips, existingMessages);
-    const phaseParams = getPhaseParameters(conversationPhase, intentResult.intent);
+    // ==================== PHASE, INTENT, CONTEXT (legacy-identical) ====================
+    // Thunks: the client is built only if the running branch needs it —
+    // stubbed ports in tests never touch the network or env vars.
+    const ctxArgs = {
+      db,
+      dbAdmin: admin,
+      env,
+      learnerId,
+      message: processedMessage,
+      chips: selectedChips,
+      history: existingMessages,
+    };
+    const assembled = ports.assembleContext
+      ? await ports.assembleContext(ctxArgs)
+      : await defaultAssembleContext(ctxArgs);
 
-    console.log(`[ANALYSIS] Phase: ${conversationPhase} | Intent: ${intentResult.intent} (${intentResult.confidence})`);
-
-    // ==================== BUILD CONTEXT IN PARALLEL ====================
-    const [learnerProfile, assessmentContext, progressContext, courseContext] = await Promise.all([
-      buildlearnerContext(supabaseAdmin, learnerId),
-      buildAssessmentContext(supabaseAdmin, learnerId),
-      buildCareerProgressContext(supabase, learnerId),
-      buildCourseContext(supabase, learnerId)
-    ]);
-
-    if (!learnerProfile) {
+    if (!assembled) {
       return apiError(500, 'INTERNAL_ERROR', 'Unable to load learner profile', request);
     }
 
-    console.log(`[CONTEXT] Profile: ${learnerProfile.name}, Skills: ${learnerProfile.technicalSkills.length}`);
+    const { conversationPhase, intent, confidence, hasAssessment, systemPromptWithMemory, historyTail } = assembled;
 
-    // ==================== FETCH OPPORTUNITIES FOR RELEVANT INTENTS ====================
-    let opportunities: Opportunity[] = [];
-    const jobRelatedIntents: CareerIntent[] = ['find-jobs', 'skill-gap', 'career-guidance', 'application-status'];
-    if (jobRelatedIntents.includes(intentResult.intent)) {
-      // Use AI-driven context-aware fetching for job-related queries
-      opportunities = await fetchSmartOpportunities(supabase, {
-        userMessage: processedMessage,
-        conversationHistory: existingMessages,
-        learnerProfile,
-        intent: intentResult.intent,
-        openRouterKey
-      });
-      console.log(`[CONTEXT] AI-fetched ${opportunities.length} opportunities`);
-      if (opportunities.length > 0) {
-        console.log(`[CONTEXT] Sample job: ${opportunities[0].title} at ${opportunities[0].company_name}`);
-      } else {
-        console.log(`[CONTEXT] ⚠️ WARNING: No opportunities returned from fetchSmartOpportunities`);
-      }
-    }
-
-    // ==================== BUILD ENHANCED SYSTEM PROMPT ====================
-    const systemPrompt = buildEnhancedSystemPrompt({
-      profile: learnerProfile,
-      assessment: assessmentContext,
-      progress: progressContext,
-      opportunities,
-      phase: conversationPhase,
-      intentResult,
-      courseContext
-    });
-
-    // ==================== PREPARE MESSAGES WITH MEMORY COMPRESSION ====================
+    // ==================== MEMORY TAIL (legacy-identical) ====================
     const turnId = crypto.randomUUID();
     const userMessage: StoredMessage = {
       id: turnId,
       role: 'user',
       content: processedMessage,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
 
-    let memoryContext = '';
-    let recentMessages = existingMessages;
-
-    if (existingMessages.length > 10) {
-      const compressed = compressContext(existingMessages, 10);
-      recentMessages = compressed.recentMessages;
-      memoryContext = buildMemoryContext(compressed);
-    } else {
-      recentMessages = existingMessages.slice(-10);
-    }
-
-    const systemPromptWithMemory = memoryContext 
-      ? `${systemPrompt}\n\n${memoryContext}` 
-      : systemPrompt;
-
-    const aiMessages = [
-      { role: 'system', content: systemPromptWithMemory },
-      ...recentMessages.map(m => ({ role: m.role, content: m.content })),
-      { role: 'user', content: processedMessage }
-    ];
-
-    // ==================== CALL AI WITH MODEL FALLBACK ====================
-    const chatProfile = MODEL_PROFILES['chat'];
-    const modelsToTry = [chatProfile.primary, ...chatProfile.fallbacks];
-
-    let response: Response | null = null;
-
-    for (let i = 0; i < modelsToTry.length; i++) {
-      const model = modelsToTry[i];
-      const isRetry = i > 0;
-
-      if (isRetry) {
-        console.log(`🔄 [Chat] Fallback ${i}: Trying ${model}...`);
-      } else {
-        console.log(`[Chat] Trying model: ${model}`);
-      }
-
-      const attemptResponse = await fetch(API_CONFIG.OPENROUTER.endpoint, {
-        method: 'POST',
-        headers: {
-          ...API_CONFIG.OPENROUTER.headers,
-          'Authorization': `Bearer ${openRouterKey}`,
-        },
-        body: JSON.stringify({
-          model: model,
-          messages: aiMessages,
-          stream: true,
-          max_tokens: phaseParams.max_tokens,
-          temperature: phaseParams.temperature
+    // ==================== WORKER CALL (the single deliberate difference) ====================
+    const rpcConversationId = conversationId || crypto.randomUUID();
+    const workerResponse = ports.callWorker
+      ? await ports.callWorker({
+          env: env as unknown as Record<string, unknown>,
+          userId,
+          rpcConversationId,
+          message: processedMessage,
+          system: systemPromptWithMemory,
+          history: historyTail,
         })
-      });
+      : await callChatWorker(env, userId, {
+          conversationId: rpcConversationId,
+          message: processedMessage,
+          system: systemPromptWithMemory,
+          history: historyTail,
+        });
 
-      if (attemptResponse.ok) {
-        response = attemptResponse;
-        if (isRetry) {
-          console.log(`✅ [Chat] Fallback succeeded with ${model}`);
-        } else {
-          console.log(`✅ [Chat] Primary model ${model} succeeded`);
-        }
-        break;
-      } else {
-        const errorText = await attemptResponse.text();
-        console.error(`❌ [Chat] ${model} failed (${attemptResponse.status}):`, errorText.substring(0, 150));
-      }
-    }
-
-    if (!response) {
-      return apiError(503, 'ERROR', 'AI service temporarily unavailable. All models are currently rate-limited. Please try again in a moment.', request);
-    }
-
-    // ==================== STREAM RESPONSE ====================
+    // ==================== STREAM ADAPTATION (house → legacy shape) ====================
     const encoder = new TextEncoder();
-    const decoder = new TextDecoder();
     let assistantMessage = '';
     let finalConversationId = conversationId;
 
     const stream = new ReadableStream({
       async start(controller) {
         try {
-          const reader = response.body?.getReader();
-          if (!reader) throw new Error('No response body');
-
-          let buffer = '';
-
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            const chunk = decoder.decode(value, { stream: true });
-            buffer += chunk;
-
-            const lines = buffer.split('\n');
-            buffer = lines.pop() || '';
-
-            for (const line of lines) {
-              const trimmedLine = line.trim();
-              if (!trimmedLine.startsWith('data: ')) continue;
-
-              const data = trimmedLine.replace('data: ', '').trim();
-              if (data === '[DONE]') continue;
-
-              try {
-                const parsed = JSON.parse(data);
-                let content = parsed.choices?.[0]?.delta?.content;
-
-                if (!content && parsed.choices?.[0]?.message?.content) {
-                  content = parsed.choices[0].message.content;
-                }
-                if (!content && parsed.choices?.[0]?.text) {
-                  content = parsed.choices[0].text;
-                }
-
-                if (content) {
-                  assistantMessage += content;
-                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
-                }
-              } catch {
-                /* Skip invalid JSON */
-              }
+          const text = await workerResponse.text();
+          for (const line of text.split('\n')) {
+            const trimmed = line.trim();
+            if (!trimmed.startsWith('data: ')) continue;
+            const data = trimmed.replace('data: ', '').trim();
+            if (!data) continue;
+            let event: { type?: string; text?: string; error?: { code?: string; message?: string } };
+            try {
+              event = JSON.parse(data) as typeof event;
+            } catch {
+              continue;
             }
+            if (event.type === 'delta' && typeof event.text === 'string' && event.text) {
+              assistantMessage += event.text;
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: event.text })}\n\n`));
+            } else if (event.type === 'failed') {
+              throw new Error('WORKER_FAILED');
+            }
+            // started/completed/clarification/unsupported carry no browser payload.
           }
 
-          // ==================== VALIDATE RESPONSE ====================
+          // ==================== VALIDATE + SAVE (legacy-identical) ====================
           const responseValidation = validateResponse(assistantMessage);
           if (responseValidation.flags.length > 0) {
             console.log(`[RESPONSE FLAGS] ${responseValidation.flags.join(', ')}`);
           }
 
-          console.log(`[Chat] Stream complete. Message length: ${assistantMessage.length}`);
-
-          // ==================== SAVE CONVERSATION ====================
-          // CRITICAL: learnerId from middleware, never from client payload
           const assistantMessageObj: StoredMessage = {
             id: turnId,
             role: 'assistant',
             content: assistantMessage,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
           };
 
           const newMessages = [userMessage, assistantMessageObj];
 
-          const { data: saveResult, error: saveError } = await supabase
-            .rpc('save_career_ai_message', {
-              p_learner_id: learnerId,
-              p_conversation_id: conversationId || null,
-              p_title: existingConversation ? '' : generateConversationTitle(processedMessage).slice(0, 255),
-              p_messages: newMessages
-            });
+          const saved = ports.saveMessages
+            ? await ports.saveMessages(db, {
+                learnerId,
+                conversationId: conversationId || null,
+                title: existingConversation ? '' : generateConversationTitle(processedMessage).slice(0, 255),
+                messages: newMessages,
+              })
+            : await (async () => {
+                const { data, error } = await db().rpc('save_career_ai_message', {
+                  p_learner_id: learnerId,
+                  p_conversation_id: conversationId || null,
+                  p_title: existingConversation ? '' : generateConversationTitle(processedMessage).slice(0, 255),
+                  p_messages: newMessages,
+                });
+                if (error) return { success: false as const, error: 'DB_ERROR' };
+                const row = data as { success: boolean; conversation_id?: string; error?: string };
+                if (!row.success) return { success: false as const, error: row.error ?? 'DB_ERROR' };
+                return { success: true as const, conversation_id: row.conversation_id ?? '' };
+              })();
 
-          if (saveError) {
-            console.error('[DB ERROR] RPC call failed:', saveError);
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({
-              done: true,
-              error: 'DB_ERROR'
-            })}\n\n`));
+          if (!saved.success) {
+            const errorPayload =
+              saved.error === 'QUOTA_EXCEEDED'
+                ? { type: 'QUOTA_EXCEEDED', used: 2, limit: 2, remaining: 0 }
+                : 'DB_ERROR';
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true, error: errorPayload })}\n\n`));
             controller.close();
             return;
           }
 
-          if (!saveResult.success) {
-            console.warn('[QUOTA] Save rejected:', saveResult.error);
-            const errorPayload = saveResult.error === 'QUOTA_EXCEEDED'
-              ? { type: 'QUOTA_EXCEEDED', used: 2, limit: 2, remaining: 0 }
-              : 'DB_ERROR';
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({
-              done: true,
-              error: errorPayload
-            })}\n\n`));
-            controller.close();
-            return;
-          }
+          finalConversationId = saved.conversation_id || conversationId;
 
-          finalConversationId = saveResult.conversation_id;
-
-          // ==================== SEND COMPLETION EVENT ====================
           const executionTime = Date.now() - startTime;
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({
-            done: true,
-            conversationId: finalConversationId,
-            messageId: assistantMessageObj.id,
-            intent: intentResult.intent,
-            intentConfidence: intentResult.confidence,
-            phase: conversationPhase,
-            hasAssessment: assessmentContext.hasAssessment,
-            executionTime
-          })}\n\n`));
-
-          console.log(`[COMPLETE] Intent: ${intentResult.intent}, Time: ${executionTime}ms`);
+          controller.enqueue(
+            encoder.encode(
+              `data: ${JSON.stringify({
+                done: true,
+                conversationId: finalConversationId,
+                messageId: assistantMessageObj.id,
+                intent,
+                intentConfidence: confidence,
+                phase: conversationPhase,
+                hasAssessment,
+                executionTime,
+              })}\n\n`,
+            ),
+          );
           controller.close();
-
         } catch (error) {
-          console.error('[STREAM ERROR]', error);
+          if (error instanceof Error && error.message === 'WORKER_FAILED') {
+            controller.enqueue(
+              encoder.encode(`data: ${JSON.stringify({ error: 'Worker generation failed' })}\n\n`),
+            );
+            controller.close();
+            return;
+          }
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: 'Stream processing error' })}\n\n`));
           controller.close();
         }
-      }
+      },
     });
 
     return new Response(stream, {
@@ -383,12 +403,59 @@ export async function handleCareerChat(request: Request, env: Record<string, str
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
         'Connection': 'keep-alive',
-        'Access-Control-Allow-Origin': '*'
-      }
+        'Access-Control-Allow-Origin': '*',
+      },
     });
-
   } catch (error) {
-    console.error('Career chat error:', error);
+    console.error('Career chat (worker) error:', error);
     return apiError(500, 'INTERNAL_ERROR', 'Internal server error', request);
   }
+}
+
+async function callChatWorker(
+  env: Record<string, string>,
+  userId: string,
+  input: { conversationId: string; message: string; system: string; history: Array<{ role: 'user' | 'assistant'; content: string }> },
+): Promise<Response> {
+  const secret = env.AI_ASSERT_SECRET;
+  if (!secret) throw new Error('AI_ASSERT_SECRET is not configured');
+  const worker: AiServiceBinding = getAiWorker(env as unknown as Parameters<typeof getAiWorker>[0]);
+  const assertion = await issueExecutionAssertion(secret, {
+    issuer: 'skillpassport',
+    action: 'careerTalentStrategist.chat',
+    userId,
+    product: 'skillpassport',
+    entitlements: ['career_ai'],
+  });
+  // Clamp to protocol limits (career.ts: message 8000, system 12000, history content 8000, max 12 items)
+  const clampedInput = {
+    conversationId: input.conversationId,
+    message: input.message.slice(0, 8000),
+    ...(input.system && input.system.trim() ? { system: input.system.slice(0, 12000) } : {}),
+    ...(input.history?.length
+      ? {
+          history: input.history.slice(-12).map((h) => ({ role: h.role, content: h.content.slice(0, 8000) })),
+        }
+      : {}),
+  } as typeof input;
+  const result = await worker.careerTalentStrategist({
+    contractVersion: '1',
+    requestId: crypto.randomUUID(),
+    operationId: crypto.randomUUID(),
+    executionAssertion: assertion,
+    actor: {
+      actorId: userId,
+      product: 'skillpassport',
+      goals: [],
+      responsibilities: [],
+      permissions: [],
+      capabilities: ['career_ai'],
+      resourceScope: [],
+      relevantContext: [],
+    },
+    feature: 'chat',
+    input: clampedInput,
+  });
+  if (result instanceof Response) return result;
+  throw new Error('WORKER_FAILED');
 }

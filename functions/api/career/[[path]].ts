@@ -117,9 +117,7 @@ export const onRequest: PagesFunction = async (context) => {
     }
 
     if (path === '/generate-field-keywords') {
-      if (!getOpenRouterKey(env)) {
-        return apiError(500, 'INTERNAL_ERROR', 'AI service not configured', request);
-      }
+      // RPC cutover: provider credentials live in ai-worker now; no Pages key required.
       return await handleGenerateFieldKeywords(request, env as any, userId);
     }
 

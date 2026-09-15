@@ -25,6 +25,8 @@ export interface PagesEnv {
   LTE_APP_URL?: string;
   /** Shared HMAC secret for the LTE ↔ SkillPassport internal gateway (server-only). */
   LTE_INTERNAL_SECRET?: string;
+  /** Shared HMAC secret for the AI-worker ↔ SkillPassport internal gateway (server-only). */
+  AI_INTERNAL_SECRET?: string;
   /**
    * Cookie domain for refresh-token scoping across subdomains.
    * Production: ".rareminds.in"  →  __Secure-refresh_token; Domain=.rareminds.in

@@ -701,10 +701,46 @@ const AssessmentTestPage: React.FC = () => {
 
         const analyzeResult = await analyzeAssessment(store.attemptId, store.gradeLevel);
 
-        if (analyzeResult.success) {
+        if (analyzeResult.success && !analyzeResult.pending) {
           store.setStatus('completed');
           // Go straight to the results page (no intermediate "complete" screen)
           navigate(`/learner/assessment/result?attemptId=${store.attemptId}`);
+        } else if (analyzeResult.success && analyzeResult.pending) {
+          // Durable job accepted (202): poll execution status until terminal.
+          // Do not treat as completed; slower jobs may take >60s.
+          const executionId = analyzeResult.job?.executionId;
+          if (!executionId) {
+            store.setError('Analysis is pending; please check results shortly.');
+            setCurrentScreen('error');
+          } else {
+            const { getExecutionStatus } = await import('../api/assessmentApiService');
+            let delay = 1000;
+            const start = Date.now();
+            const timeoutMs = 120000;
+            let terminal: { state: string; error?: { code: string; message: string } } | null = null;
+            while (Date.now() - start < timeoutMs) {
+              // eslint-disable-next-line no-await-in-loop
+              const status = await getExecutionStatus(executionId);
+              if (status && (status.state === 'completed' || status.state === 'failed' || status.state === 'cancelled')) {
+                terminal = status;
+                break;
+              }
+              // eslint-disable-next-line no-await-in-loop
+              await new Promise((r) => setTimeout(r, delay));
+              delay = Math.min(delay * 1.5, 5000);
+            }
+            if (terminal?.state === 'completed') {
+              store.setStatus('completed');
+              navigate(`/learner/assessment/result?attemptId=${store.attemptId}`);
+            } else if (terminal?.state === 'failed' || terminal?.state === 'cancelled') {
+              store.setError(terminal.error?.message || 'Analysis failed');
+              setCurrentScreen('error');
+            } else {
+              // Still running after timeout: keep polling UI or show pending; do not mark completed
+              store.setStatus('completed');
+              navigate(`/learner/assessment/result?attemptId=${store.attemptId}&pending=1`);
+            }
+          }
         } else {
           store.setError(analyzeResult.error || 'Failed to analyze assessment');
           setCurrentScreen('error');

@@ -55,6 +55,11 @@ binding = "EMAIL_SERVICE"
 service = "shared-email-api"
 entrypoint = "EmailService"
 
+[[services]]
+binding = "AI_SERVICE"
+service = "ai-api"
+entrypoint = "AiService"
+
 # ============================================================================
 # VARIABLES
 # ============================================================================

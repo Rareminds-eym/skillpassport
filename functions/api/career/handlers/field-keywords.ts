@@ -1,32 +1,53 @@
 /**
- * Generate Field Keywords Handler - AI-generated domain keywords for fields of study
- * 
- * Features:
- * - Dynamic keyword generation using centralized AI config
- * - Comprehensive domain coverage
- * - Automatic retry and fallback
- * 
- * Source: cloudflare-workers/career-api/src/index.ts (handleGenerateFieldKeywords)
+ * Generate Field Keywords Handler - domain keywords via the AI worker (RPC cutover).
+ *
+ * Cut over 2026-09-12: the direct-OpenRouter implementation was replaced by
+ * `careerTalentStrategist({ feature: 'keywords' })`. Guards, rate limiting
+ * and the response shape are preserved exactly; the worker returns a typed
+ * `string[]` which this adapter rejoins to the legacy comma string.
+ *
+ * Migrated from: cloudflare-workers/career-api/src/index.ts (handleGenerateFieldKeywords)
  */
 
 import { apiSuccess, apiError } from '../../../lib/response';
-import { getOpenRouterKey } from '../[[path]]';
-import { getModelForUseCase, callOpenRouterWithRetry } from '../../shared/ai-config';
+import { getModelForUseCase } from '../../shared/ai-config';
 import { checkRateLimit } from '../utils/rate-limit';
+import type { CareerRequest } from '@rareminds-eym/ai-protocol';
+import { getAiWorker, rpcErrorToHttpStatus } from '../../ai/lib/aiBinding';
 
-export async function handleGenerateFieldKeywords(request: Request, env: Record<string, string>, userId: string): Promise<Response> {
+type KeywordsRpcRequest = Extract<CareerRequest, { feature: 'keywords' }>;
+import { issueExecutionAssertion } from '../../ai/lib/assertion';
+
+export interface KeywordsPorts {
+  checkRateLimit?: (userId: string, env: Record<string, string>) => Promise<boolean>;
+  callWorker?: (args: {
+    env: Record<string, unknown>;
+    userId: string;
+    field: string;
+  }) => Promise<{ ok: true; keywords: string[] } | { ok: false; code: string; message: string }>;
+}
+
+export async function handleGenerateFieldKeywords(
+  request: Request,
+  env: Record<string, string>,
+  userId: string,
+  ports: KeywordsPorts = {},
+): Promise<Response> {
   if (request.method !== 'POST') {
     return apiError(405, 'ERROR', 'Method not allowed', request);
   }
 
   // Security: Rate limiting to prevent API abuse
-  if (!await checkRateLimit(userId, env)) {
+  const allowed = ports.checkRateLimit
+    ? await ports.checkRateLimit(userId, env)
+    : await checkRateLimit(userId, env);
+  if (!allowed) {
     return apiError(429, 'ERROR', 'Rate limit exceeded. Please try again later.', request);
   }
 
   let body: { field: string };
   try {
-    body = await request.json() as { field: string };
+    body = (await request.json()) as { field: string };
   } catch {
     return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON', request);
   }
@@ -42,48 +63,72 @@ export async function handleGenerateFieldKeywords(request: Request, env: Record<
   try {
     console.log(`[Field Keywords] Generating for: "${fieldTrimmed}"`);
 
-    const openRouterKey = getOpenRouterKey(env);
-    if (!openRouterKey) {
-      return apiError(500, 'INTERNAL_ERROR', 'OpenRouter API key not configured', request);
+    const result = ports.callWorker
+      ? await ports.callWorker({ env: env as unknown as Record<string, unknown>, userId, field: fieldTrimmed })
+      : await callKeywordsWorker(env, userId, fieldTrimmed);
+
+    if (!result.ok) {
+      const status = rpcErrorToHttpStatus(new Error(`${result.code}: ${result.message}`));
+      return apiError(status, result.code, result.message.slice(0, 500), request);
     }
 
-    // Use centralized AI call with automatic retry and fallback
-    const keywords = await callOpenRouterWithRetry(
-      openRouterKey,
-      [
-        {
-          role: 'system',
-          content: 'You are an education domain expert. Generate a comprehensive list of relevant course domain keywords for a given field of study. Return ONLY a comma-separated list of ALL possible keywords, no explanations.'
-        },
-        {
-          role: 'user',
-          content: `Field of Study: "${fieldTrimmed}"\n\nGenerate a comprehensive list of ALL possible domain keywords that represent this field. Include:\n1. Core subjects and topics\n2. Technical skills and competencies\n3. Industry-specific tools and technologies\n4. Career domains and job roles\n5. Related disciplines and specializations\n6. Soft skills relevant to this field\n7. Certifications and qualifications\n8. Industry terminology\n\nBe thorough and comprehensive. Return ONLY the comma-separated keywords, nothing else.`
-        }
-      ],
-      {
-        models: [getModelForUseCase('keyword_generation')],
-        maxRetries: 3,
-        maxTokens: 500,
-        temperature: 0.3
-      }
-    );
-
-    if (!keywords) {
-      console.warn(`[Field Keywords] No keywords generated for "${fieldTrimmed}"`);
-      return apiError(500, 'INTERNAL_ERROR', 'No keywords generated', request);
-    }
-
+    const keywords = result.keywords.join(', ');
     console.log(`[Field Keywords] ✓ Generated for "${fieldTrimmed}": ${keywords}`);
 
-    return apiSuccess({
-      field: fieldTrimmed,
-      keywords,
-      source: 'ai',
-      model: getModelForUseCase('keyword_generation')
-    }, request);
-
+    return apiSuccess(
+      {
+        field: fieldTrimmed,
+        keywords,
+        source: 'ai',
+        model: getModelForUseCase('keyword_generation'),
+      },
+      request,
+    );
   } catch (error) {
     console.error(`[Field Keywords] Error for "${fieldTrimmed}":`, error);
-    return apiError(500, 'INTERNAL_ERROR', (error as Error).message, request);
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.includes('binding is not configured') || message.includes('AI_ASSERT_SECRET')) {
+      return apiError(503, 'DEPENDENCY_UNAVAILABLE', 'AI service not configured', request);
+    }
+    return apiError(500, 'INTERNAL_ERROR', message.slice(0, 500), request);
   }
+}
+
+async function callKeywordsWorker(
+  env: Record<string, string>,
+  userId: string,
+  field: string,
+): Promise<{ ok: true; keywords: string[] } | { ok: false; code: string; message: string }> {
+  const secret = env.AI_ASSERT_SECRET;
+  if (!secret) throw new Error('AI_ASSERT_SECRET is not configured');
+  const worker = getAiWorker(env as unknown as Parameters<typeof getAiWorker>[0]);
+  const assertion = await issueExecutionAssertion(secret, {
+    issuer: 'skillpassport',
+    action: 'careerTalentStrategist.keywords',
+    userId,
+    product: 'skillpassport',
+    entitlements: ['career_ai'],
+  });
+  const request: KeywordsRpcRequest = {
+    contractVersion: '1',
+    requestId: crypto.randomUUID(),
+    operationId: crypto.randomUUID(),
+    executionAssertion: assertion,
+    actor: {
+      actorId: userId,
+      product: 'skillpassport',
+      goals: [],
+      responsibilities: [],
+      permissions: [],
+      capabilities: ['career_ai'],
+      resourceScope: [],
+      relevantContext: [],
+    },
+    feature: 'keywords',
+    input: { field },
+  };
+  const result = await worker.careerTalentStrategist(request);
+  if (result instanceof Response) throw new Error('INTERNAL_ERROR: unexpected stream for keywords');
+  if (!result.ok) return { ok: false, code: result.error.code, message: result.error.message };
+  return { ok: true, keywords: result.data.keywords };
 }

@@ -1,19 +1,20 @@
 /**
- * Role Overview Handler - Pages Function
- * Generates comprehensive role overview data with fallback chain
- * 
- * Migrated from: cloudflare-workers/role-overview-api/src/handlers/roleOverviewHandler.ts
- * Changes:
- * - Uses callOpenRouterWithRetry from shared/ai-config
- * - Uses shared utilities (apiSuccess, apiError, PagesFunction)
- * - Simplified fallback chain (OpenRouter with model fallback → Static fallback)
+ * Role Overview Handler - Pages Function (RPC cutover).
+ *
+ * Cut over 2026-09-12: the direct-provider implementation was replaced by
+ * `careerTalentStrategist({ feature: 'role-overview' })`. Request/response
+ * shape follows the LIVE inline endpoint contract from `[[path]].ts`
+ * (industryDemand object, source openrouter, 500-on-failure) — not the
+ * older file-local draft this module previously held.
+ *
+ * The static fallback (`utils/fallback.ts`) stays: the worker input schema
+ * requires it, and it feeds per-section merging worker-side.
  */
 
-import type { PagesFunction } from '../../../lib/types';
 import { apiSuccess, apiError } from '../../../lib/response';
-import { callOpenRouterWithRetry, getAPIKeys } from '../../shared/ai-config';
-import { buildRoleOverviewPrompt, SYSTEM_PROMPT } from '../prompts/role-overview';
-import { parseRoleOverviewResponse } from '../utils/parser';
+import type { RoleOverviewOutput } from '@rareminds-eym/ai-protocol';
+import { getAiWorker } from '../../ai/lib/aiBinding';
+import { issueExecutionAssertion } from '../../ai/lib/assertion';
 import { getFallbackRoleOverview } from '../utils/fallback';
 
 export interface RoleOverviewRequest {
@@ -21,78 +22,36 @@ export interface RoleOverviewRequest {
   clusterTitle: string;
 }
 
-export interface RoleOverviewData {
-  responsibilities: string[];
-  demandDescription: string;
-  demandLevel: string;
-  demandPercentage: number;
-  careerProgression: Array<{
-    title: string;
-    yearsExperience: string;
-  }>;
-  learningRoadmap: Array<{
-    month: string;
-    title: string;
-    description: string;
-    tasks: string[];
-  }>;
-  recommendedCourses: Array<{
-    title: string;
-    description: string;
-    duration: string;
-    level: string;
-    skills: string[];
-  }>;
-  freeResources: Array<{
-    title: string;
-    description: string;
-    type: string;
-    url: string;
-  }>;
-  actionItems: Array<{
-    title: string;
-    description: string;
-  }>;
-  suggestedProjects: Array<{
-    title: string;
-    description: string;
-    difficulty: string;
-    skills: string[];
-    estimatedTime: string;
-  }>;
+export interface RoleOverviewPorts {
+  callWorker?: (args: {
+    env: Record<string, unknown>;
+    userId: string;
+    roleName: string;
+    clusterTitle: string;
+    fallback: RoleOverviewOutput;
+  }) => Promise<
+    | { ok: true; data: Record<string, unknown> }
+    | { ok: false; code: string; message: string }
+  >;
 }
 
-export interface ApiResponse<T> {
-  success: boolean;
-  data?: T;
-  error?: string;
-  source?: 'openrouter' | 'fallback';
-}
-
-/**
- * Handle POST /role-overview
- * Generates comprehensive role overview data
- */
-export const handleRoleOverview: PagesFunction = async (context) => {
-  const { request, env } = context;
-
-  // Parse request body
+export async function handleRoleOverviewRpc(
+  request: Request,
+  env: Record<string, string>,
+  userId: string,
+  ports: RoleOverviewPorts = {},
+): Promise<Response> {
   let body: RoleOverviewRequest;
   try {
-    body = await request.json() as RoleOverviewRequest;
+    body = (await request.json()) as RoleOverviewRequest;
   } catch {
     return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON body', request);
   }
 
   const { roleName, clusterTitle } = body;
 
-  // Validate required fields
-  if (!roleName || typeof roleName !== 'string' || roleName.trim() === '') {
-    return apiError(400, 'VALIDATION_ERROR', 'roleName is required', request);
-  }
-
-  if (!clusterTitle || typeof clusterTitle !== 'string') {
-    return apiError(400, 'VALIDATION_ERROR', 'clusterTitle is required', request);
+  if (!roleName || !clusterTitle) {
+    return apiError(400, 'VALIDATION_ERROR', 'Missing required fields: roleName and clusterTitle', request);
   }
 
   const cleanRoleName = roleName.trim();
@@ -100,48 +59,82 @@ export const handleRoleOverview: PagesFunction = async (context) => {
 
   console.log(`[RoleOverview] Request for: ${cleanRoleName} in ${cleanClusterTitle}`);
 
-  // Get API keys
-  const { openRouter } = getAPIKeys(env);
-
-  if (!openRouter) {
-    console.warn('[RoleOverview] No OpenRouter API key, using static fallback');
-    const fallbackData = getFallbackRoleOverview(cleanRoleName);
-    return apiSuccess({
-      data: fallbackData,
-      source: 'fallback',
-    }, request);
-  }
-
-  // Try OpenRouter with model fallback
   try {
-    const prompt = buildRoleOverviewPrompt(cleanRoleName, cleanClusterTitle);
-    const messages = [
-      { role: 'system', content: SYSTEM_PROMPT },
-      { role: 'user', content: prompt },
-    ];
+    const fallback = getFallbackRoleOverview(cleanRoleName);
 
-    const response = await callOpenRouterWithRetry(openRouter, messages, {
-      maxTokens: 4000,
-      temperature: 0.7,
-    });
+    const result = ports.callWorker
+      ? await ports.callWorker({ env: env as unknown as Record<string, unknown>, userId, roleName: cleanRoleName, clusterTitle: cleanClusterTitle, fallback })
+      : await callRoleOverviewWorker(env, userId, cleanRoleName, cleanClusterTitle, fallback);
 
-    const data = parseRoleOverviewResponse(response, cleanRoleName);
-    
-    console.log(`[RoleOverview] Success via OpenRouter for: ${cleanRoleName}`);
-    return apiSuccess({
-      data,
-      source: 'openrouter',
-    }, request);
-  } catch (error: any) {
-    console.error(`[RoleOverview] OpenRouter failed:`, error.message);
+    if (!result.ok) {
+      console.error('[RoleOverview] Worker failed:', result.code);
+      return apiError(500, 'INTERNAL_ERROR', 'Failed to generate role overview', request);
+    }
 
-    // Use static fallback
-    console.log(`[RoleOverview] Using static fallback for: ${cleanRoleName}`);
-    const fallbackData = getFallbackRoleOverview(cleanRoleName);
-    
-    return apiSuccess({
-      data: fallbackData,
-      source: 'fallback',
-    }, request);
+    const out = result.data;
+    console.log(`[RoleOverview] Success via worker for: ${cleanRoleName}`);
+    return apiSuccess(
+      {
+        data: {
+          responsibilities: ((out.responsibilities as unknown[]) ?? []).slice(0, 3),
+          industryDemand: {
+            description: (out.demandDescription as string) || `${cleanRoleName} roles show steady market demand.`,
+            demandLevel: (out.demandLevel as string) || 'Medium',
+            demandPercentage: (out.demandPercentage as number) || 65,
+          },
+          careerProgression: out.careerProgression || [],
+          learningRoadmap: out.learningRoadmap || [],
+          recommendedCourses: out.recommendedCourses || [],
+          freeResources: out.freeResources || [],
+          actionItems: out.actionItems || [],
+          suggestedProjects: out.suggestedProjects || [],
+        },
+        source: 'openrouter',
+      },
+      request,
+    );
+  } catch (error) {
+    console.error('[RoleOverview] Worker failed:', error);
+    return apiError(500, 'INTERNAL_ERROR', 'Failed to generate role overview', request);
   }
-};
+}
+
+async function callRoleOverviewWorker(
+  env: Record<string, string>,
+  userId: string,
+  roleName: string,
+  clusterTitle: string,
+  fallback: RoleOverviewOutput,
+): Promise<{ ok: true; data: Record<string, unknown> } | { ok: false; code: string; message: string }> {
+  const secret = env.AI_ASSERT_SECRET;
+  if (!secret) throw new Error('AI_ASSERT_SECRET is not configured');
+  const worker = getAiWorker(env as unknown as Parameters<typeof getAiWorker>[0]);
+  const assertion = await issueExecutionAssertion(secret, {
+    issuer: 'skillpassport',
+    action: 'careerTalentStrategist.role-overview',
+    userId,
+    product: 'skillpassport',
+    entitlements: ['career_ai'],
+  });
+  const result = await worker.careerTalentStrategist({
+    contractVersion: '1',
+    requestId: crypto.randomUUID(),
+    operationId: crypto.randomUUID(),
+    executionAssertion: assertion,
+    actor: {
+      actorId: userId,
+      product: 'skillpassport',
+      goals: [],
+      responsibilities: [],
+      permissions: [],
+      capabilities: ['career_ai'],
+      resourceScope: [],
+      relevantContext: [],
+    },
+    feature: 'role-overview',
+    input: { roleName, clusterTitle, fallback },
+  });
+  if (result instanceof Response) throw new Error('INTERNAL_ERROR: unexpected stream for role-overview');
+  if (!result.ok) return { ok: false, code: result.error.code, message: result.error.message };
+  return { ok: true, data: result.data as unknown as Record<string, unknown> };
+}

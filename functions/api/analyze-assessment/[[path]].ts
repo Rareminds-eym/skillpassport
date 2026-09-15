@@ -50,9 +50,9 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
       return await handleAnalyzeAssessment(request, env as unknown as PagesEnv, userId);
     }
 
-    // Program career paths endpoint
+    // Program career paths endpoint (RPC cutover)
     if (path === '/generate-program-career-paths' && request.method === 'POST') {
-      return await handleGenerateProgramCareerPaths(request, env as unknown as PagesEnv);
+      return await handleGenerateProgramCareerPaths(request, env as unknown as PagesEnv, userId);
     }
 
     // 404 for unknown routes

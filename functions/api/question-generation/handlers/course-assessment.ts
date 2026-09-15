@@ -1,33 +1,54 @@
-
 import { createSupabaseClient } from '../../../lib/supabase';
 import type { PagesEnv } from '../../../lib/types';
-import { SYSTEM_PROMPT } from '../prompts';
-import {
-    callOpenRouterWithRetry,
-    repairAndParseJSON,
-    generateUUID,
-    getAPIKeys
-} from '../../shared/ai-config';
+import { getAiWorker, rpcErrorToHttpStatus } from '../../ai/lib/aiBinding';
+import { issueExecutionAssertion } from '../../ai/lib/assertion';
+import type { EducatorRequest } from '@rareminds-eym/ai-protocol';
 
-// All utility functions are now imported from centralized ai-config.ts
+type CourseRpcRequest = Extract<EducatorRequest, { feature: 'generate-course' }>;
+
+export interface CourseAssessmentPorts {
+  supabase?: ReturnType<typeof createSupabaseClient>;
+  callWorker?: (args: {
+    env: Record<string, unknown>;
+    userId: string;
+    courseName: string;
+    level: string;
+    questionCount: number;
+  }) => Promise<
+    | { ok: true; data: { course: string; level: string; total_questions: number; questions: unknown[] } }
+    | { ok: false; code: string; message: string }
+  >;
+}
 
 /**
- * Course assessment generation handler with database caching
- * 
- * Features:
- * - Checks cache before generating (returns cached if exists)
- * - Validates and fixes questions (adds missing fields, shuffles options)
- * - Saves generated questions to database for future use
+ * Course assessment generation handler with database caching — RPC cutover.
+ *
+ * Cut over 2026-09-12: OpenRouter prompt/retry + repair/parse + strict
+ * validation + shuffle deleted (worker owns prompt, scaled maxTokens, filter,
+ * repair, shuffle, sequential IDs). Cache check + insert stay in Pages
+ * (DB-owned). Single deliberate difference: generation via
+ * `seniorEducator({ feature: 'generate-course' })`.
  */
 export async function generateAssessment(
     env: PagesEnv,
     courseName: string,
     level: string,
-    questionCount: number = 10
+    questionCount: number = 10,
+    userIdOrPorts?: string | CourseAssessmentPorts,
+    maybePorts?: CourseAssessmentPorts,
 ) {
-    const supabase = createSupabaseClient(env);
+    let userId: string | undefined;
+    let ports: CourseAssessmentPorts | undefined;
+    if (typeof userIdOrPorts === 'string') {
+        userId = userIdOrPorts;
+        ports = maybePorts;
+    } else if (userIdOrPorts && typeof userIdOrPorts === 'object') {
+        ports = userIdOrPorts as CourseAssessmentPorts;
+    }
+    const p = ports ?? {};
+    const supabase = p.supabase ?? createSupabaseClient(env);
 
-    // Check cache first
+    // Check cache first — preserved exactly
     try {
         const { data: existing, error: cacheError } = await supabase
             .from('generated_external_assessment')
@@ -37,140 +58,55 @@ export async function generateAssessment(
             .single();
 
         if (!cacheError && existing) {
-            const cachedQuestions = Array.isArray(existing.questions) ? existing.questions : [];
+            const cachedQuestions = Array.isArray((existing as { questions?: unknown[] }).questions) ? (existing as { questions: unknown[] }).questions : [];
             console.log(`✅ Returning cached questions for: ${courseName} (${level})`);
             return {
                 course: courseName,
-                level: existing.assessment_level,
+                level: (existing as { assessment_level: string }).assessment_level,
                 total_questions: cachedQuestions.length,
                 questions: cachedQuestions,
                 cached: true
             };
         }
-    } catch (dbError: any) {
-        console.warn('⚠️ Database cache check failed, will generate new questions:', dbError.message);
+    } catch (dbError: unknown) {
+        console.warn('⚠️ Database cache check failed, will generate new questions:', (dbError as Error).message);
     }
 
     console.log(`📝 Generating new questions for: ${courseName} (${level})`);
 
-    const { openRouter: openRouterKey } = getAPIKeys(env);
+    const effectiveUserId = userId ?? 'unknown';
 
-    if (!openRouterKey) {
-        throw new Error('OpenRouter API key not configured');
+    // Worker call (the single deliberate difference)
+    const result = p.callWorker
+        ? await p.callWorker({ env: env as unknown as Record<string, unknown>, userId: effectiveUserId, courseName, level, questionCount })
+        : await callCourseWorker(env as unknown as Record<string, string>, effectiveUserId, { courseName, level, questionCount });
+
+    if (!result.ok) {
+        // Preserve router's 500 mapping but surface correct code for tests
+        const status = rpcErrorToHttpStatus(new Error(`${result.code}: ${result.message}`));
+        const err: Error & { status?: number; code?: string } = new Error(`${result.code}: ${result.message}`);
+        (err as { status?: number }).status = status;
+        (err as { code?: string }).code = result.code;
+        throw err;
     }
 
-    const prompt = SYSTEM_PROMPT
-        .replace(/\{\{COURSE_NAME\}\}/g, courseName)
-        .replace(/\{\{LEVEL\}\}/g, level)
-        .replace(/\{\{QUESTION_COUNT\}\}/g, questionCount.toString());
+    const data = result.data as { questions: unknown[]; course: string; level: string };
+    let questions: unknown[] = data.questions as unknown[];
 
-    const systemPrompt = `You are an expert assessment creator for ${courseName}. 
+    // Worker already validated, repaired, and shuffled. Pages only adds
+    // DB-level enrichment (uuid, course_name, level, created_at) before insert
+    // to keep DB row shape identical to legacy.
+    const { generateUUID } = await import('../../shared/ai-config');
+    questions = (questions as Array<Record<string, unknown>>).map((q, idx) => ({
+        ...q,
+        id: (q as { id?: number }).id ?? idx + 1,
+        uuid: (q as { uuid?: string }).uuid ?? generateUUID(),
+        course_name: courseName,
+        level,
+        created_at: (q as { created_at?: string }).created_at ?? new Date().toISOString()
+    }));
 
-🎯 CRITICAL: You MUST generate EXACTLY ${questionCount} questions. This is a strict requirement.
-
-Before responding, verify you have EXACTLY ${questionCount} questions. Generate ONLY valid JSON with no markdown.`;
-
-    // Use OpenRouter with automatic retry and fallback
-    // Scale max_tokens with questionCount so the full set of questions fits without truncation
-    const maxTokens = Math.max(1200, questionCount * 180);
-    console.log(`🔑 Using OpenRouter with retry for ${questionCount} questions (maxTokens: ${maxTokens})`);
-
-    const jsonText = await callOpenRouterWithRetry(openRouterKey, [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: prompt }
-    ], { maxTokens });
-
-    const data = repairAndParseJSON(jsonText);
-    let questions = data.questions || data;
-
-    if (!Array.isArray(questions)) {
-        throw new Error('Expected array of questions from AI response');
-    }
-
-    console.log(`✅ Generated ${questions.length} questions for ${courseName}`);
-
-    // STRICT validation: Filter out invalid questions
-    const validQuestions: any[] = [];
-    let filteredCount = 0;
-    
-    for (let idx = 0; idx < questions.length; idx++) {
-        const q = questions[idx];
-        const questionText = q.question?.toLowerCase().trim() || q.text?.toLowerCase().trim() || '';
-        
-        // Check for image references
-        const imageKeywords = [
-            'graph', 'chart', 'table', 'diagram', 'image', 'picture', 'figure', 
-            'shown below', 'shown above', 'visual', 'illustration', 'drawing',
-            'sketch', 'photo', 'photograph', 'display', 'depicts', 'shows',
-            'given figure', 'following figure', 'above figure', 'below figure',
-            'mirror image', 'reflection', 'rotate', 'flip', 'shape', 'pattern',
-            'look at', 'observe', 'see the', 'view the', 'refer to',
-            'as shown', 'as depicted', 'as illustrated'
-        ];
-        if (imageKeywords.some(keyword => questionText.includes(keyword))) {
-            console.warn(`⚠️ Question ${idx + 1} has image reference, filtering out`);
-            filteredCount++;
-            continue;
-        }
-        
-        // Validate options if MCQ
-        if (q.type === 'mcq' && q.options) {
-            const optionValues: string[] = Array.isArray(q.options) 
-                ? q.options.map((v: unknown) => String(v).toLowerCase().trim())
-                : Object.values(q.options).map((v: unknown) => String(v).toLowerCase().trim());
-            
-            const uniqueOptions = new Set(optionValues);
-            
-            if (uniqueOptions.size < optionValues.length) {
-                console.warn(`⚠️ Question ${idx + 1} has duplicate options, filtering out`);
-                filteredCount++;
-                continue;
-            }
-            
-            if (optionValues.some(v => !v || v.length === 0)) {
-                console.warn(`⚠️ Question ${idx + 1} has empty options, filtering out`);
-                filteredCount++;
-                continue;
-            }
-        }
-        
-        validQuestions.push(q);
-    }
-    
-    console.log(`🔍 After validation: ${validQuestions.length}/${questions.length} valid questions (filtered: ${filteredCount})`);
-    questions = validQuestions;
-
-    // Use sequential numeric IDs for consistency
-    questions = questions.map((q: any, idx: number) => {
-        // Add missing correct_answer (use first option as fallback)
-        if (!q.correct_answer && q.options?.length > 0) {
-            q.correct_answer = q.options[0];
-            console.warn(`⚠️ Question ${idx + 1} missing correct_answer, using first option`);
-        }
-
-        // Add missing estimated_time based on difficulty
-        if (!q.estimated_time) {
-            q.estimated_time = q.difficulty === 'easy' ? 50 : q.difficulty === 'medium' ? 80 : 110;
-        }
-
-        // Shuffle MCQ options while preserving correct answer
-        if (q.type === 'mcq' && q.options?.length > 0) {
-            const correctAnswer = q.correct_answer;
-            q.options = [...q.options].sort(() => Math.random() - 0.5);
-            q.correct_answer = correctAnswer;
-        }
-
-        return {
-            ...q,
-            id: idx + 1, // Sequential numeric ID
-            uuid: generateUUID(), // Keep UUID for database uniqueness
-            course_name: courseName,
-            level,
-            created_at: new Date().toISOString()
-        };
-    });
-
-    // Cache to database
+    // Cache to database — preserved exactly
     try {
         const { error: insertError } = await supabase
             .from('generated_external_assessment')
@@ -183,10 +119,10 @@ Before responding, verify you have EXACTLY ${questionCount} questions. Generate 
             });
 
         if (insertError) {
-            console.warn('⚠️ Could not cache assessment to database:', insertError.message);
+            console.warn('⚠️ Could not cache assessment to database:', (insertError as { message?: string }).message);
         }
-    } catch (cacheError: any) {
-        console.warn('⚠️ Database insert exception:', cacheError.message);
+    } catch (cacheError: unknown) {
+        console.warn('⚠️ Database insert exception:', (cacheError as Error).message);
     }
 
     return {
@@ -196,4 +132,41 @@ Before responding, verify you have EXACTLY ${questionCount} questions. Generate 
         questions: questions,
         cached: false
     };
+}
+
+async function callCourseWorker(
+  env: Record<string, string>,
+  userId: string,
+  input: { courseName: string; level: string; questionCount: number },
+): Promise<{ ok: true; data: { course: string; level: string; total_questions: number; questions: unknown[] } } | { ok: false; code: string; message: string }> {
+  const secret = env.AI_ASSERT_SECRET;
+  if (!secret) throw new Error('AI_ASSERT_SECRET is not configured');
+  const worker = getAiWorker(env as unknown as Parameters<typeof getAiWorker>[0]);
+  const assertion = await issueExecutionAssertion(secret, {
+    issuer: 'skillpassport',
+    action: 'seniorEducator.generate-course',
+    userId,
+    product: 'skillpassport',
+    entitlements: ['career_ai'],
+  });
+  const request: CourseRpcRequest = {
+    contractVersion: '1',
+    requestId: crypto.randomUUID(),
+    operationId: crypto.randomUUID(),
+    executionAssertion: assertion,
+    actor: { actorId: userId, product: 'skillpassport', goals: [], responsibilities: [], permissions: [], capabilities: ['career_ai'], resourceScope: [], relevantContext: [] },
+    feature: 'generate-course',
+    input: {
+      courseName: input.courseName,
+      level: input.level,
+      questionCount: input.questionCount,
+    },
+  };
+  const result = await worker.seniorEducator(request);
+  if (result && typeof result === 'object' && 'duplicate' in (result as Record<string, unknown>)) {
+    return { ok: false, code: 'IDEMPOTENCY_CONFLICT', message: 'duplicate execution' };
+  }
+  if (result instanceof Response) throw new Error('INTERNAL_ERROR: unexpected stream for generate-course');
+  if (!result.ok) return { ok: false, code: result.error.code, message: result.error.message };
+  return { ok: true, data: result.data as { course: string; level: string; total_questions: number; questions: unknown[] } };
 }

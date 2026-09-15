@@ -16,13 +16,10 @@ import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { createSupabaseAdminClient } from '../../../lib/supabase';
 import { apiSuccess, apiError } from '../../../lib/response';
 import { transcribeVideo } from '../utils/transcription';
-import { 
-  generateVideoSummary, 
-  extractNotableQuotes, 
-  generateQuizQuestions, 
-  generateFlashcards 
-} from '../utils/video-processing';
 import { generateSRT, generateVTT } from '../utils/subtitle-generation';
+import { getAiWorker } from '../../ai/lib/aiBinding';
+import { issueExecutionAssertion } from '../../ai/lib/assertion';
+import type { EducatorRequest } from '@rareminds-eym/ai-protocol';
 
 interface VideoSummarizerRequestBody {
   videoUrl?: string;
@@ -56,7 +53,7 @@ interface VideoSummarizerRequestBody {
  * - Full video summary data
  */
 export const onRequestPost = async (context: AuthenticatedContext) => {
-  const { request, env, waitUntil } = context;
+  const { request, env, waitUntil } = context as unknown as { request: Request; env: Record<string, unknown>; waitUntil: (p: Promise<unknown>) => void };
   try {
 
     // Parse request body
@@ -152,23 +149,26 @@ export const onRequestPost = async (context: AuthenticatedContext) => {
 
         console.log(`Transcription complete: ${segments.length} segments, ${duration}s duration`);
 
-        // Step 2: Generate AI summary first
-        const summaryResult = await generateVideoSummary(env as unknown as Record<string, any>, transcript, segments);
-        const { summary, keyPoints, chapters, topics } = summaryResult;
+        // Step 2+3: Single RPC for all AI generation (summary + quotes + quiz + flashcards)
+        // Replaces 4 direct OpenRouter calls (video-processing.ts). Transcription stays in Pages.
+        // Worker mirrors the same orchestration: summary first, then quotes/quiz/flashcards in parallel,
+        // each degrading to [] on failure — never throws. enableQuiz/enableFlashcards are passed
+        // through so worker can skip those calls (source parity: .catch → []).
+        const userId = ((context as unknown) as { data?: { user?: { sub?: string } } }).data?.user?.sub ?? 'unknown';
+        const videoResult = await callVideoWorker(
+          env as unknown as Record<string, string>,
+          userId,
+          {
+            transcript: transcript.slice(0, 20000),
+            segments: segments.slice(0, 128),
+            enableQuiz,
+            enableFlashcards,
+          }
+        );
+        if (!videoResult.ok) throw new Error(`${videoResult.code}: ${videoResult.message}`);
+        const { summary, keyPoints, chapters, topics, quotes: notableQuotes, quiz: quizQuestions, flashcards } = videoResult.data;
 
         console.log(`AI summary complete: ${keyPoints.length} key points, ${chapters.length} chapters`);
-
-        // Step 3: Generate quiz and flashcards using the summary data
-        const [notableQuotes, quizQuestions, flashcards] = await Promise.all([
-          extractNotableQuotes(env as unknown as Record<string, any>, segments),
-          enableQuiz 
-            ? generateQuizQuestions(env as unknown as Record<string, any>, transcript, summary, keyPoints).catch(err => { console.error('Quiz generation failed:', err); return []; })
-            : Promise.resolve([]),
-          enableFlashcards 
-            ? generateFlashcards(env as unknown as Record<string, any>, transcript, keyPoints, topics).catch(err => { console.error('Flashcards generation failed:', err); return []; })
-            : Promise.resolve([])
-        ]);
-
         console.log(`Quiz and flashcards complete: ${quizQuestions.length} questions, ${flashcards.length} cards`);
 
         // Step 3: Generate subtitle formats
@@ -240,3 +240,46 @@ export const onRequestPost = async (context: AuthenticatedContext) => {
     return apiError(500, 'INTERNAL_ERROR', 'Internal server error', request);
   }
 };
+
+type VideoRpcRequest = Extract<EducatorRequest, { feature: 'summarize-video' }>;
+
+async function callVideoWorker(
+  env: Record<string, string>,
+  userId: string,
+  input: { transcript: string; segments: unknown[]; enableQuiz: boolean; enableFlashcards: boolean },
+): Promise<
+  | { ok: true; data: { summary: string; keyPoints: string[]; chapters: unknown[]; topics: string[]; quotes: unknown[]; quiz: unknown[]; flashcards: unknown[] } }
+  | { ok: false; code: string; message: string }
+> {
+  const secret = env.AI_ASSERT_SECRET;
+  if (!secret) throw new Error('AI_ASSERT_SECRET is not configured');
+  const worker = getAiWorker(env as unknown as Parameters<typeof getAiWorker>[0]);
+  const assertion = await issueExecutionAssertion(secret, {
+    issuer: 'skillpassport',
+    action: 'seniorEducator.summarize-video',
+    userId,
+    product: 'skillpassport',
+    entitlements: ['career_ai'],
+  });
+  const request: VideoRpcRequest = {
+    contractVersion: '1',
+    requestId: crypto.randomUUID(),
+    operationId: crypto.randomUUID(),
+    executionAssertion: assertion,
+    actor: { actorId: userId, product: 'skillpassport', goals: [], responsibilities: [], permissions: [], capabilities: ['career_ai'], resourceScope: [], relevantContext: [] },
+    feature: 'summarize-video',
+    input: {
+      transcript: input.transcript,
+      segments: input.segments as never,
+      enableQuiz: input.enableQuiz,
+      enableFlashcards: input.enableFlashcards,
+    },
+  };
+  const result = await worker.seniorEducator(request);
+  if (result && typeof result === 'object' && 'duplicate' in (result as Record<string, unknown>)) {
+    return { ok: false, code: 'IDEMPOTENCY_CONFLICT', message: 'duplicate execution' };
+  }
+  if (result instanceof Response) throw new Error('INTERNAL_ERROR: unexpected stream for summarize-video');
+  if (!result.ok) return { ok: false, code: result.error.code, message: result.error.message };
+  return { ok: true, data: result.data as never };
+}
