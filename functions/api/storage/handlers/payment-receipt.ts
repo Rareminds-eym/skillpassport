@@ -270,8 +270,7 @@ export const handleGetPaymentReceipt: PagesFunction = async (context) => {
 };
 
 /**
- * Get presigned URL for payment receipt download
- * Allows temporary access without JWT authentication
+ * Get a proxied URL for payment receipt download.
  */
 export const handleGetPaymentReceiptPresigned: PagesFunction = async (context) => {
   const { request, env, user } = context as any;
@@ -288,7 +287,7 @@ export const handleGetPaymentReceiptPresigned: PagesFunction = async (context) =
   try {
     const url = new URL(request.url);
     let fileKey = url.searchParams.get('key');
-    const expiresIn = parseInt(url.searchParams.get('expires') || '3600', 10); // Default 1 hour
+    const mode = url.searchParams.get('mode') || 'download';
 
     // Also support extracting key from full URL
     const fileUrl = url.searchParams.get('url');
@@ -308,9 +307,9 @@ export const handleGetPaymentReceiptPresigned: PagesFunction = async (context) =
       return apiError(400, 'VALIDATION_ERROR', 'File key or URL is required', request);
     }
 
-    logger.info('Received file key for presigned URL', { fileKey });
+    logger.info('Received file key for receipt proxy URL', { fileKey });
 
-    // Initialize R2 client
+    // Initialize R2 client so missing binding fails at this boundary.
     const r2Client = new R2Client(env);
 
     // Check if fileKey is a partial pattern (doesn't end with .pdf and has timestamp placeholder)
@@ -375,21 +374,35 @@ export const handleGetPaymentReceiptPresigned: PagesFunction = async (context) =
           ) {
             fileKey = sub.receipt_url;
             logger.info('Found exact receipt path from database subscription', { fileKey });
-          } else {
-            logger.error('Receipt not found in database for payment ID', new Error('Receipt not found'), {
-              paymentId,
-              userId: user.id,
-            });
-            return apiError(404, 'NOT_FOUND', 'Receipt not found. It may still be generating.', request);
           }
         }
       } catch (dbError) {
-        logger.error('Failed to fetch receipt path from database', {
+        logger.warn('Failed to fetch receipt path from database, checking R2 prefix', {
           error: dbError instanceof Error ? dbError.message : String(dbError),
           paymentId,
           userId: user.id,
         });
-        return apiError(404, 'NOT_FOUND', 'Receipt not found. It may still be generating.', request);
+      }
+
+      if (!fileKey.endsWith('.pdf')) {
+        const prefix = `${fileKey}_`;
+        logger.info('Checking R2 for receipt matching partial key', { prefix });
+        const matches = await r2Client.list(prefix, 10);
+        const receipt = matches
+          .filter((object) => object.key.endsWith('.pdf'))
+          .sort((a, b) => b.lastModified.getTime() - a.lastModified.getTime())[0];
+
+        if (receipt) {
+          fileKey = receipt.key;
+          logger.info('Found exact receipt path from R2 prefix', { fileKey });
+        } else {
+          logger.warn('Receipt not found in database or R2 for payment ID', {
+            paymentId,
+            userId: user.id,
+            prefix,
+          });
+          return apiError(404, 'NOT_FOUND', 'Receipt not found. It may still be generating.', request);
+        }
       }
     }
 
@@ -419,16 +432,23 @@ export const handleGetPaymentReceiptPresigned: PagesFunction = async (context) =
       }
     }
 
-    logger.info('Ownership validated, generating presigned URL');
+    logger.info('Ownership validated, generating receipt proxy URL');
 
-    // Generate presigned URL (max 7 days)
-    const presignedUrl = await r2Client.generatePresignedGetUrl(fileKey, Math.min(expiresIn, 604800));
+    const receiptUrl = new URL(
+      `/api/storage/payment-receipt?key=${encodeURIComponent(fileKey)}&mode=${encodeURIComponent(mode)}`,
+      url.origin
+    ).toString();
 
-    logger.info('Generated presigned URL', { fileKey });
+    logger.info('Generated receipt proxy URL', { fileKey });
 
-    return apiSuccess({ presignedUrl, fileKey, expiresIn: Math.min(expiresIn, 604800) }, request);
+    return apiSuccess({
+      presignedUrl: receiptUrl,
+      url: receiptUrl,
+      fileKey,
+      expiresAt: null,
+    }, request);
   } catch (error) {
     logErrorSafely('GetPaymentReceiptPresigned', error);
-    return apiError(500, 'INTERNAL_ERROR', 'Failed to generate presigned URL', request);
+    return apiError(500, 'INTERNAL_ERROR', 'Failed to generate receipt URL', request);
   }
 };

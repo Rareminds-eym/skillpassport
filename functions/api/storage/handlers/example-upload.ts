@@ -54,45 +54,22 @@ export const handleExampleUpload: PagesFunction = async (context) => {
 };
 
 /**
- * Example handler showing presigned URL generation
+ * Example handler for the deprecated direct R2 presigned upload flow.
  */
 export const handleExamplePresigned: PagesFunction = async (context) => {
-  const { request, env } = context;
+  const { request } = context;
 
   try {
-    const r2 = new R2Client(env);
-
-    const body = await request.json() as {
-      filename: string;
-      contentType: string;
-    };
-
-    const { filename, contentType } = body;
-
-    if (!filename || !contentType) {
-      return apiError(400, 'VALIDATION_ERROR', 'filename and contentType are required', request);
-    }
-
-    // Generate unique file key
-    const timestamp = Date.now();
-    const randomString = crypto.randomUUID().replace(/-/g, '').substring(0, 16);
-    const extension = filename.substring(filename.lastIndexOf('.'));
-    const fileKey = `uploads/${timestamp}-${randomString}${extension}`;
-
-    // Generate presigned URL
-    const { url, headers } = await r2.generatePresignedUrl(
-      fileKey,
-      contentType
+    await request.json().catch(() => undefined);
+    return apiError(
+      410,
+      'PRESIGNED_UPLOAD_DISABLED',
+      'Direct R2 presigned uploads are disabled. Use POST /api/storage/upload.',
+      request
     );
-
-    return apiSuccess({
-      uploadUrl: url,
-      fileKey,
-      headers,
-    }, request);
   } catch (error) {
     console.error('Presigned URL error:', error);
-    return apiError(500, 'INTERNAL_ERROR', (error as Error).message || 'Failed to generate presigned URL', request);
+    return apiError(500, 'INTERNAL_ERROR', (error as Error).message || 'Presigned upload is disabled', request);
   }
 };
 

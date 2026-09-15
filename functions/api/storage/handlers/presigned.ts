@@ -1,10 +1,10 @@
 /**
- * Presigned URL Handlers
+ * Legacy URL Handlers
  * 
- * Handles presigned URL generation for client-side uploads:
- * - POST /presigned - Generate presigned URL for upload
+ * Handles URL helpers after moving to binding-only R2:
+ * - POST /presigned - Deprecated; direct R2 presigned uploads are disabled
  * - POST /confirm - Confirm upload completion and get public URL
- * - POST /get-url - Get public URL from file key
+ * - POST /get-url - Get authenticated proxy URL from file key
  * - POST /get-file-url - Alias for get-url
  */
 
@@ -38,11 +38,20 @@ interface GetUrlRequestBody {
   fileKey: string;
 }
 
+function createDocumentProxyUrl(request: Request, fileKey: string, mode: 'inline' | 'download' = 'inline'): string {
+  const url = new URL(request.url);
+  return new URL(
+    `/api/storage/document-access?key=${encodeURIComponent(fileKey)}&mode=${mode}`,
+    url.origin
+  ).toString();
+}
+
 /**
- * Generate presigned URL for client-side upload
+ * Direct-to-R2 presigned uploads are not supported with binding-only R2.
+ * Clients should upload through POST /api/storage/upload instead.
  */
 export const handlePresigned: PagesFunction = async (context) => {
-  const { request, env, user } = context;
+  const { request, user } = context;
 
   // Require authentication
   if (!user) {
@@ -54,31 +63,13 @@ export const handlePresigned: PagesFunction = async (context) => {
   }
 
   try {
-    const body = await request.json() as PresignedRequestBody;
-    const { filename, contentType, courseId, lessonId } = body;
-
-    // Validate required fields
-    if (!filename || !contentType || !courseId || !lessonId) {
-      return apiError(400, 'VALIDATION_ERROR', 'Missing required fields', request);
-    }
-
-    // Initialize R2 client
-    const r2Client = new R2Client(env);
-
-    // Generate unique file key with user ID
-    const timestamp = Date.now();
-    const randomString = crypto.randomUUID().replace(/-/g, '').substring(0, 16);
-    const extension = filename.substring(filename.lastIndexOf('.'));
-    const fileKey = `courses/${courseId}/lessons/${lessonId}/${user.id}/${timestamp}-${randomString}${extension}`;
-
-    // Generate presigned URL with proper parameters
-    const presignedData = await r2Client.generatePresignedUrl(fileKey, contentType);
-
-    return apiSuccess({
-      uploadUrl: presignedData.url,
-      fileKey,
-      headers: presignedData.headers,
-    }, request);
+    await request.json().catch(() => undefined) as PresignedRequestBody | undefined;
+    return apiError(
+      410,
+      'PRESIGNED_UPLOAD_DISABLED',
+      'Direct R2 presigned uploads are disabled. Use POST /api/storage/upload.',
+      request
+    );
   } catch (error) {
     logErrorSafely('Presigned', error);
     return apiError(500, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Unknown error', request);
@@ -139,8 +130,7 @@ export const handleConfirm: PagesFunction = async (context) => {
 };
 
 /**
- * Get presigned URL from file key for downloading/viewing
- * Returns a temporary signed URL valid for 7 days
+ * Get an authenticated proxy URL from file key for downloading/viewing.
  */
 export const handleGetUrl: PagesFunction = async (context) => {
   const { request, env } = context;
@@ -158,13 +148,12 @@ export const handleGetUrl: PagesFunction = async (context) => {
       return apiError(400, 'VALIDATION_ERROR', 'fileKey is required', request);
     }
 
-    // Initialize R2 client
-    const r2Client = new R2Client(env);
+    // Initialize R2 client so missing binding fails at this boundary.
+    new R2Client(env);
 
-    // Generate presigned URL for GET request (7 days expiry for course content)
-    const presignedUrl = await r2Client.generatePresignedGetUrl(fileKey, 604800); // 7 days in seconds
+    const proxyUrl = createDocumentProxyUrl(request, fileKey, 'inline');
 
-    return apiSuccess({ url: presignedUrl }, request);
+    return apiSuccess({ url: proxyUrl, expiresAt: null }, request);
   } catch (error) {
     logErrorSafely('GetUrl', error);
     return apiError(500, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Unknown error', request);
@@ -177,9 +166,6 @@ export const handleGetUrl: PagesFunction = async (context) => {
 export const handleGetFileUrl = handleGetUrl;
 
 /** Signed URL lifetime for profile media — short window to limit sharing. */
-const PROFILE_MEDIA_TTL_SECONDS = 300; // 5 minutes
-
-
 export const handleProfileMediaUrl: PagesFunction = async (context) => {
   const { request, env, user } = context;
 
@@ -221,13 +207,13 @@ export const handleProfileMediaUrl: PagesFunction = async (context) => {
       return apiError(403, 'FORBIDDEN', 'You do not have access to this file', request);
     }
 
-    const r2Client = new R2Client(env);
-    const signedUrl = await r2Client.generatePresignedGetUrl(fileKey, PROFILE_MEDIA_TTL_SECONDS);
+    // Initialize R2 client so missing binding fails at this boundary.
+    new R2Client(env);
+    const proxyUrl = createDocumentProxyUrl(request, fileKey, 'inline');
 
     return apiSuccess({
-      url: signedUrl,
-      expiresIn: PROFILE_MEDIA_TTL_SECONDS,
-      expiresAt: new Date(Date.now() + PROFILE_MEDIA_TTL_SECONDS * 1000).toISOString(),
+      url: proxyUrl,
+      expiresAt: null,
     }, request);
   } catch (error) {
     logErrorSafely('ProfileMediaUrl', error);

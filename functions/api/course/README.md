@@ -4,7 +4,7 @@ Migrated from `cloudflare-workers/course-api` (1561 lines, 6 endpoints)
 
 ## Endpoints
 
-1. `/api/course/get-file-url` - Generate presigned URLs for R2 files
+1. `/api/course/get-file-url` - Return authenticated storage proxy URLs for R2 files
 2. `/api/course/ai-tutor-suggestions` - Generate suggested questions for lessons
 3. `/api/course/ai-tutor-chat` - AI tutor chat with streaming and conversation phases
 4. `/api/course/ai-tutor-feedback` - Submit feedback on AI responses
@@ -13,7 +13,7 @@ Migrated from `cloudflare-workers/course-api` (1561 lines, 6 endpoints)
 
 ## Features
 
-- **R2 Integration**: Presigned URLs for secure file access
+- **R2 Integration**: Binding-only R2 access through the shared storage proxy
 - **AI Tutor**: Context-aware tutoring with conversation phases (opening, exploring, deep_dive)
 - **Video Processing**: Transcription (Deepgram/Groq), summarization, sentiment analysis, speaker diarization
 - **Progress Tracking**: learner course progress management
@@ -28,7 +28,6 @@ Migrated from `cloudflare-workers/course-api` (1561 lines, 6 endpoints)
 ## Dependencies
 
 - `@supabase/supabase-js` - Database client
-- `aws4fetch` - AWS signature for R2 presigned URLs
 - OpenRouter API for AI models
 - Deepgram API for transcription (primary)
 - Groq API for transcription (fallback)
@@ -41,10 +40,8 @@ Migrated from `cloudflare-workers/course-api` (1561 lines, 6 endpoints)
 - `OPENROUTER_API_KEY`
 - `DEEPGRAM_API_KEY` (optional)
 - `GROQ_API_KEY` (optional)
-- `CLOUDFLARE_ACCOUNT_ID`
-- `CLOUDFLARE_R2_ACCESS_KEY_ID`
-- `CLOUDFLARE_R2_SECRET_ACCESS_KEY`
-- `CLOUDFLARE_R2_BUCKET_NAME`
+- `R2_BUCKET` binding, configured in `wrangler.toml`
+- `CLOUDFLARE_R2_PUBLIC_URL` (optional, only if a public/custom R2 domain is configured)
 
 ## Key Features
 

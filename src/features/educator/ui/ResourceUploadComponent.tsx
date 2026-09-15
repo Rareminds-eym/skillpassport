@@ -12,9 +12,11 @@ import {
 } from '@heroicons/react/24/outline';
 import { Resource, FileUpload } from '@/shared/types/educator/course';
 import { validateFileSize, getValidationErrorMessage } from '@/shared/lib/file-validation';
-import { getFileSizeLimit, formatFileSize as formatFileSizeUtil } from '@/shared/config/fileSizeLimits';
+import { getFileSizeLimit } from '@/shared/config/fileSizeLimits';
 import { getLogger } from '@/shared/config/logging';
-import { ssoClient } from '@/shared/api/ssoClient';
+import { deleteFile as deleteStorageFile, uploadFile as uploadStorageFile } from '@/shared/api/storageApiService';
+
+const logger = getLogger('EducatorResourceUploadComponent');
 
 // Extend FileUpload type locally to include serverProgress
 interface ExtendedFileUpload extends FileUpload {
@@ -35,17 +37,12 @@ interface ResourceUploadComponentProps {
   lessonId: string;
 }
 
-const UPLOAD_TIMEOUT = 600000; // 10 minutes in milliseconds
 const ALLOWED_FILE_TYPES = {
   pdf: ['.pdf'],
   document: ['.doc', '.docx', '.ppt', '.pptx', '.txt'],
   video: ['.mp4', '.mov', '.avi', '.mkv', '.webm'],
   image: ['.jpg', '.jpeg', '.png', '.gif', '.svg', '.webp']
 };
-
-// For Netlify Functions, use relative path. For local dev, use localhost
-const API_BASE_URL = import.meta.env.VITE_EXTERNAL_API_KEY ||
-  (import.meta.env.MODE === 'production' ? '' : 'http://localhost:3001');
 
 const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
   onResourcesAdded,
@@ -155,92 +152,18 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
         )
       );
 
-      // STEP 1: Request presigned URL
-      const presignedResponse = await ssoClient.fetch(`${API_BASE_URL}/api/upload/presigned`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          filename: file.name,
-          contentType: file.type,
-          fileSize: file.size,
-          courseId,
-          lessonId,
-        }),
+      setFileUploads(prev =>
+        prev.map((fu, i) =>
+          i === index ? { ...fu, progress: 25 } : fu
+        )
+      );
+
+      const uploadedData = await uploadStorageFile(file, {
+        filename: file.name,
+        context: 'course_resource',
+        courseId,
+        lessonId,
       });
-
-      if (!presignedResponse.ok) {
-        const errorData = await presignedResponse.json().catch(() => ({}));
-        throw new Error(errorData.error || `Failed to get upload URL (${presignedResponse.status})`);
-      }
-
-      const { data: presignedData } = await presignedResponse.json();
-      const { uploadUrl, fileKey } = presignedData;
-
-      // STEP 2: Upload directly to R2
-      await new Promise<void>((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-
-        // Track upload progress
-        xhr.upload.addEventListener('progress', (e) => {
-          if (e.lengthComputable) {
-            const progress = (e.loaded / e.total) * 100;
-            setFileUploads(prev =>
-              prev.map((fu, i) =>
-                i === index ? { ...fu, progress } : fu
-              )
-            );
-          }
-        });
-
-        // Handle completion
-        xhr.addEventListener('load', () => {
-          if (xhr.status === 200) {
-            resolve();
-          } else {
-            reject(new Error(`Upload to R2 failed (Status: ${xhr.status})`));
-          }
-        });
-
-        // Handle errors
-        xhr.addEventListener('error', () => {
-          reject(new Error('Network error during R2 upload'));
-        });
-
-        // Handle timeout
-        xhr.addEventListener('timeout', () => {
-          const fileSizeMB = (file.size / 1024 / 1024).toFixed(2);
-          reject(new Error(`Upload timed out for ${file.name} (${fileSizeMB}MB)`));
-        });
-
-        // Upload to R2
-        xhr.open('PUT', uploadUrl);
-        xhr.setRequestHeader('Content-Type', file.type);
-        xhr.timeout = UPLOAD_TIMEOUT;
-        xhr.send(file);
-      });
-
-      // STEP 3: Confirm upload
-      const confirmResponse = await ssoClient.fetch(`${API_BASE_URL}/api/upload/confirm`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          fileKey,
-          fileName: file.name,
-          fileSize: file.size,
-          fileType: file.type,
-        }),
-      });
-
-      if (!confirmResponse.ok) {
-        const errorData = await confirmResponse.json().catch(() => ({}));
-        throw new Error(errorData.error || `Failed to confirm upload (${confirmResponse.status})`);
-      }
-
-      const { data: uploadedData } = await confirmResponse.json();
 
       setFileUploads(prev =>
         prev.map((fu, i) =>
@@ -329,9 +252,7 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
     // If file was already uploaded to R2, delete it from storage
     if (upload.status === 'completed' && upload.uploadedData?.key) {
       try {
-        await ssoClient.fetch(`${API_BASE_URL}/api/file/${upload.uploadedData.key}`, {
-          method: 'DELETE',
-        });
+        await deleteStorageFile(upload.uploadedData.key);
       } catch (error) {
         logger.error('Failed to delete file from R2', error as Error, { fileKey: upload.uploadedData.key });
       }

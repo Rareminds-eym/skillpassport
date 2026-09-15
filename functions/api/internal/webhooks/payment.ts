@@ -35,7 +35,7 @@ import {
 } from '../../payments/lib/fulfillment-core';
 import { getServiceClient } from '../../../lib/supabase';
 import { R2Client } from '../../storage/utils/r2-client';
-import { generateReceiptPDF, fetchImageBytes, type ReceiptData } from '../../storage/utils/pdf-generator';
+import { fetchImageBytes, generateReceiptPDF, type ReceiptData } from '../../storage/utils/pdf-generator';
 import { generateUserConfirmationHtml, getUserConfirmationSubject } from '../../email/services/templates';
 import type { EventConfirmationTemplateData } from '../../email/types';
 import { sendEmailSafe } from '../../../lib/email-service';
@@ -384,7 +384,7 @@ async function generateAndSendReceipt(
       await r2.upload(receiptKey, pdfBytes.buffer as ArrayBuffer, 'application/pdf', {
         'Content-Disposition': `attachment; filename="${filename}"`,
       });
-      receiptUrl = await r2.generatePresignedGetUrl(receiptKey, 604800);
+      receiptUrl = `/api/storage/payment-receipt?key=${encodeURIComponent(receiptKey)}&mode=download`;
 
       result.receiptGenerated = true;
       logger.info('Receipt generated successfully', {
