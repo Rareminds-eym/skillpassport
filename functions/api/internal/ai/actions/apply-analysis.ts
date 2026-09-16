@@ -33,9 +33,14 @@ export async function handleApplyAnalysis(
   ) {
     return { ok: false, error: { code: 'STALE_REVISION', message: 'Attempt changed since analysis started' } };
   }
-  const receipt = await db.mergeReport(parsed.data.attemptId, parsed.data.operationId, {
-    analysis: parsed.data.report,
-  });
+  const receipt = await db.mergeReport(
+    parsed.data.attemptId,
+    parsed.data.operationId,
+    {
+      analysis: parsed.data.report,
+    },
+    parsed.data.expectedUpdatedAt,
+  );
   return {
     ok: true,
     data: {

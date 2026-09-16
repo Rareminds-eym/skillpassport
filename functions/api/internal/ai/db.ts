@@ -15,6 +15,7 @@ export interface AttemptRow {
   learner_context?: unknown;
   /** Row revision token for optimistic-concurrency apply checks. */
   updated_at?: string | null;
+  started_at?: string | null;
 }
 
 export interface QuestionRow {
@@ -101,5 +102,5 @@ export interface AiDataPort {
     alpha?: number;
   }): Promise<RoleRow[]>;
   getReport(attemptId: string): Promise<{ results: Record<string, unknown> } | null>;
-  mergeReport(attemptId: string, operationId: string, patch: Record<string, unknown>): Promise<{ duplicate: boolean; at: string }>;
+  mergeReport(attemptId: string, operationId: string, patch: Record<string, unknown>, expectedUpdatedAt?: string): Promise<{ duplicate: boolean; at: string }>;
 }
