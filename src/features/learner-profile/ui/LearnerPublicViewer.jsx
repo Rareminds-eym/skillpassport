@@ -28,7 +28,7 @@ import { getLogger } from "@/shared/config/logging";
 
 import { calculateEmployabilityScore } from "@/shared/lib/employabilityCalculator";
 import { capitalizeName } from "@/shared/lib/helpers";
-import { useAuthLoading, useUser } from "@/shared/model/authStore";
+import { useAuthLoading, useUser, useUserRole } from "@/shared/model/authStore";
 import { generateResumePDF } from "@/widgets/learner-dashboard/ui/Generateresumepdf";
 
 function safeParse(jsonLike) {
@@ -169,6 +169,7 @@ export default function LearnerPublicViewer() {
   const logger = getLogger('learner-public-viewer');
   const user = useUser();
   const authLoading = useAuthLoading();
+  const { isRecruiter: isRecruiterFlag, isAdmin: isAdminFlag } = useUserRole();
   // const navigate = useNavigate();
   const { learnerId } = useParams();
   const { learnerData, loading, error } = useLearnerDataById(learnerId);
@@ -632,9 +633,12 @@ export default function LearnerPublicViewer() {
   // Role-based access control
   const userRole = user.role?.toLowerCase();
   const isLearner = userRole === "learner";
-  const isRecruiter = userRole === "recruiter";
+  // Recruitment users get SSO roles 'member' (recruiter) or 'owner' (company_admin)
+  // in user.role — use store flags which check the full roles[] array correctly.
+  // 'member' is an SSO-level role for invited recruiters not yet in ROLE_CATEGORIES.recruiter
+  const isRecruiter = isRecruiterFlag || user?.roles?.includes('member');
   const isEducator = userRole === "educator" || userRole === "school_educator" || userRole === "college_educator";
-  const isAdmin = userRole?.includes("admin") || userRole === "principal" || userRole === "it_admin";
+  const isAdmin = isAdminFlag || userRole === "principal" || userRole === "it_admin";
 
   // Check if user has permission to view this learner profile
   const hasAccess = isLearner || // Learners can view all learner profiles

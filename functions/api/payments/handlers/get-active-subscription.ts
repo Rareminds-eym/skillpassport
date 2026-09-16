@@ -103,6 +103,82 @@ export async function handleGetActiveSubscription(context: AuthenticatedContext)
       .maybeSingle();
 
     // =========================================================================
+    // STEP 1.7: Check for recruitment org membership (invited recruiters)
+    // =========================================================================
+    const { data: orgMembership, error: orgMembershipError } = await supabase
+      .from('organization_members')
+      .select('organization_id, role, status')
+      .eq('user_id', userId)
+      .eq('status', 'active')
+      .maybeSingle();
+
+    logger.info('[DEBUG] STEP 1.7 organization_members result', {
+      userId,
+      found: !!orgMembership,
+      orgId: orgMembership?.organization_id,
+      orgRole: orgMembership?.role,
+      error: orgMembershipError?.message,
+    });
+
+    if (orgMembership?.organization_id) {
+      const { data: orgSub, error: orgSubError } = await supabase
+        .from('subscription_cache')
+        .select('*')
+        .eq('organization_id', orgMembership.organization_id)
+        .eq('status', 'active')
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      logger.info('[DEBUG] STEP 1.7 org subscription_cache by organization_id', {
+        userId,
+        orgId: orgMembership.organization_id,
+        orgSubFound: !!orgSub,
+        orgSubStatus: orgSub?.status,
+        orgSubEndDate: orgSub?.subscription_end_date,
+        orgSubPlanCode: orgSub?.plan_code,
+        orgSubOrgId: orgSub?.organization_id,
+        error: orgSubError?.message,
+        isExpired: orgSub ? new Date(orgSub.subscription_end_date) <= new Date() : null,
+      });
+
+      if (orgSub && new Date(orgSub.subscription_end_date) > new Date()) {
+        logger.info('[DEBUG] STEP 1.7 GRANTING ACCESS via org membership', {
+          userId,
+          orgId: orgMembership.organization_id,
+          planCode: orgSub.plan_code,
+        });
+
+        return apiSuccess({
+          id: orgSub.id,
+          user_id: userId,
+          plan_id: orgSub.plan_id,
+          plan_type: orgSub.plan_name || orgSub.plan_type || 'Organization Plan',
+          plan_code: orgSub.plan_code,
+          status: 'active',
+          subscription_start_date: orgSub.subscription_start_date,
+          subscription_end_date: orgSub.subscription_end_date,
+          auto_renew: false,
+          features: orgSub.features || [],
+          is_organization_license: true,
+          organization_id: orgSub.organization_id,
+          organization_type: orgSub.organization_type,
+          license_assignment_id: null,
+          subscription_plans: {
+            id: orgSub.plan_id,
+            name: orgSub.plan_name || orgSub.plan_type,
+            plan_code: orgSub.plan_code,
+          },
+        }, context.request, { startTime });
+      }
+
+      logger.info('[DEBUG] STEP 1.7 org membership found but no active org subscription', {
+        userId,
+        orgId: orgMembership.organization_id,
+      });
+    }
+
+    // =========================================================================
     // STEP 2: Check for individual subscription via subscription_cache
     // =========================================================================
     const { data, error } = await supabase

@@ -352,7 +352,7 @@ async function handleAcceptInvitation(context: any): Promise<Response> {
         // Map recruitment role to SSO role
         const roleMapping: Record<string, string> = {
             'company_admin': 'admin',
-            'recruiter': 'member',
+            'recruiter': 'recruiter',  // Keep as recruiter, not member!
             'viewer': 'member',
         };
         const ssoRoleName = roleMapping[invitation.invitee_role] || 'member';
