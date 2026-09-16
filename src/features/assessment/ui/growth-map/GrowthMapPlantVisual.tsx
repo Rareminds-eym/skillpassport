@@ -81,6 +81,7 @@ export const GrowthMapPlantVisual: React.FC<Props> = ({ currentStage, previewSta
     null
   );
   const previousImageRef = useRef({ src: plantImage, heightPercent: imageHeightPercent });
+  const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (previousImageRef.current.src === plantImage) return;
@@ -217,16 +218,21 @@ export const GrowthMapPlantVisual: React.FC<Props> = ({ currentStage, previewSta
                 style={{ height: `${outgoingImage.heightPercent}%`, width: 'auto' }}
               />
             )}
-            <img
-              src={plantImage}
-              alt={`Growth stage: ${displayStage.growthLevelLabel}`}
-              className={
-                outgoingImage
-                  ? 'plant-fade-in absolute max-h-[224px] max-w-[208px] object-contain'
-                  : 'max-h-[224px] max-w-[208px] object-contain'
-              }
-              style={{ height: `${imageHeightPercent}%`, width: 'auto' }}
-            />
+            {!failedImages.has(plantImage) && (
+              <img
+                src={plantImage}
+                alt={`Growth stage: ${displayStage.growthLevelLabel}`}
+                className={
+                  outgoingImage
+                    ? 'plant-fade-in absolute max-h-[224px] max-w-[208px] object-contain'
+                    : 'max-h-[224px] max-w-[208px] object-contain'
+                }
+                style={{ height: `${imageHeightPercent}%`, width: 'auto' }}
+                onError={() =>
+                  setFailedImages((prev) => new Set(prev).add(plantImage))
+                }
+              />
+            )}
           </div>
         </div>
       </div>
