@@ -104,8 +104,9 @@ export const handleConfirm: PagesFunction = async (context) => {
     // Initialize R2 client
     const r2Client = new R2Client(env);
 
-    // Generate public URL
-    const fileUrl = r2Client.getPublicUrl(fileKey);
+    const fileUrl = r2Client.hasPublicUrl()
+      ? r2Client.getPublicUrl(fileKey)
+      : createDocumentProxyUrl(request, fileKey, 'inline');
 
     return apiSuccess({
       key: fileKey,

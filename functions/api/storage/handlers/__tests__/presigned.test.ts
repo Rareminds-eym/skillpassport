@@ -6,10 +6,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { handleConfirm, handleGetFileUrl, handleGetUrl, handlePresigned } from '../presigned';
 
 const mockGetPublicUrl = vi.fn();
+const mockHasPublicUrl = vi.fn();
 
 vi.mock('../../utils/r2-client', () => ({
   R2Client: vi.fn().mockImplementation(() => ({
     getPublicUrl: mockGetPublicUrl,
+    hasPublicUrl: mockHasPublicUrl,
   })),
 }));
 
@@ -20,6 +22,7 @@ describe('Legacy URL Handlers', () => {
   beforeEach(() => {
     mockEnv = { R2_BUCKET: {} };
     mockGetPublicUrl.mockReturnValue('https://storage.example.com/uploads/user-123/file.pdf');
+    mockHasPublicUrl.mockReturnValue(true);
     vi.clearAllMocks();
   });
 
@@ -76,6 +79,28 @@ describe('Legacy URL Handlers', () => {
         size: 1024,
         type: 'application/pdf',
       });
+    });
+
+    it('confirms upload with a proxy URL when public URL is not configured', async () => {
+      mockHasPublicUrl.mockReturnValue(false);
+      const request = new Request('http://localhost/api/storage/confirm', {
+        method: 'POST',
+        body: JSON.stringify({
+          fileKey: 'uploads/user-123/file.pdf',
+          fileName: 'file.pdf',
+          fileSize: 1024,
+          fileType: 'application/pdf',
+        }),
+      });
+
+      const response = await handleConfirm({ request, env: mockEnv, user } as any);
+      const data = await response.json() as any;
+
+      expect(response.status).toBe(200);
+      expect(data.data.url).toBe(
+        'http://localhost/api/storage/document-access?key=uploads%2Fuser-123%2Ffile.pdf&mode=inline'
+      );
+      expect(mockGetPublicUrl).not.toHaveBeenCalled();
     });
   });
 

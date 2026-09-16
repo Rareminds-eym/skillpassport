@@ -134,9 +134,7 @@ export const handleUploadPaymentReceipt: PagesFunction = async ({ request, env }
 
     logger.info(`Upload completed in ${duration}ms`);
 
-    const fileUrl = r2Client.hasPublicUrl()
-      ? r2Client.getPublicUrl(fileKey)
-      : createPaymentReceiptProxyUrl(request, fileKey);
+    const fileUrl = createPaymentReceiptProxyUrl(request, fileKey);
 
     logger.info('Upload successful', { fileUrl, fileKey });
 
