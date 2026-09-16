@@ -736,7 +736,7 @@ async function handleCreateInvitation(context: AuthenticatedContext): Promise<Re
                 console.log('[invitations] Found existing user:', existingUserId);
             }
         } catch (ssoError) {
-            console.log('[invitations] No existing user found in SSO (this is fine)');
+            console.log('[invitations] No existing user found in SSO (this is fine):', ssoError);
         }
 
         // If user exists, check if they're already a member of this org

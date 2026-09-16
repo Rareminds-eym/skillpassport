@@ -112,12 +112,22 @@ export async function handleGetActiveSubscription(context: AuthenticatedContext)
       .eq('status', 'active')
       .maybeSingle();
 
-    logger.info('[DEBUG] STEP 1.7 organization_members result', {
+    // Handle database errors (not "no record found")
+    if (orgMembershipError) {
+      logger.error('STEP 1.7 organization_members query failed', {
+        userId,
+        error: orgMembershipError.message,
+        code: orgMembershipError.code,
+      });
+      // Return error response for unexpected DB failures
+      return apiError('Database error checking organization membership', context.request, { startTime });
+    }
+
+    logger.debug('STEP 1.7 organization_members result', {
       userId,
       found: !!orgMembership,
       orgId: orgMembership?.organization_id,
       orgRole: orgMembership?.role,
-      error: orgMembershipError?.message,
     });
 
     if (orgMembership?.organization_id) {
@@ -130,7 +140,19 @@ export async function handleGetActiveSubscription(context: AuthenticatedContext)
         .limit(1)
         .maybeSingle();
 
-      logger.info('[DEBUG] STEP 1.7 org subscription_cache by organization_id', {
+      // Handle database errors (not "no record found")
+      if (orgSubError) {
+        logger.error('STEP 1.7 subscription_cache query by organization_id failed', {
+          userId,
+          orgId: orgMembership.organization_id,
+          error: orgSubError.message,
+          code: orgSubError.code,
+        });
+        // Return error response for unexpected DB failures
+        return apiError('Database error checking organization subscription', context.request, { startTime });
+      }
+
+      logger.debug('STEP 1.7 org subscription_cache by organization_id', {
         userId,
         orgId: orgMembership.organization_id,
         orgSubFound: !!orgSub,
@@ -138,12 +160,11 @@ export async function handleGetActiveSubscription(context: AuthenticatedContext)
         orgSubEndDate: orgSub?.subscription_end_date,
         orgSubPlanCode: orgSub?.plan_code,
         orgSubOrgId: orgSub?.organization_id,
-        error: orgSubError?.message,
-        isExpired: orgSub ? new Date(orgSub.subscription_end_date) <= new Date() : null,
+        isExpired: orgSub && orgSub.subscription_end_date ? new Date(orgSub.subscription_end_date) <= new Date() : null,
       });
 
-      if (orgSub && new Date(orgSub.subscription_end_date) > new Date()) {
-        logger.info('[DEBUG] STEP 1.7 GRANTING ACCESS via org membership', {
+      if (orgSub && orgSub.subscription_end_date && new Date(orgSub.subscription_end_date) > new Date()) {
+        logger.debug('STEP 1.7 GRANTING ACCESS via org membership', {
           userId,
           orgId: orgMembership.organization_id,
           planCode: orgSub.plan_code,
@@ -172,7 +193,7 @@ export async function handleGetActiveSubscription(context: AuthenticatedContext)
         }, context.request, { startTime });
       }
 
-      logger.info('[DEBUG] STEP 1.7 org membership found but no active org subscription', {
+      logger.debug('STEP 1.7 org membership found but no active org subscription', {
         userId,
         orgId: orgMembership.organization_id,
       });

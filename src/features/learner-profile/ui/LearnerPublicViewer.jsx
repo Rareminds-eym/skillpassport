@@ -37,6 +37,7 @@ function safeParse(jsonLike) {
   try {
     return JSON.parse(jsonLike);
   } catch (err) {
+    console.warn('Primary JSON parse failed, attempting fallback:', err);
     try {
       return JSON.parse(
         String(jsonLike)
@@ -169,7 +170,7 @@ export default function LearnerPublicViewer() {
   const logger = getLogger('learner-public-viewer');
   const user = useUser();
   const authLoading = useAuthLoading();
-  const { isRecruiter: isRecruiterFlag, isAdmin: isAdminFlag } = useUserRole();
+  const { isRecruiter: isRecruiterFlag = false, isAdmin: isAdminFlag = false } = useUserRole() || {};
   // const navigate = useNavigate();
   const { learnerId } = useParams();
   const { learnerData, loading, error } = useLearnerDataById(learnerId);
@@ -1638,7 +1639,7 @@ export default function LearnerPublicViewer() {
                 {/* WhatsApp */}
                 <a
                   href={`https://wa.me/?text=${encodeURIComponent(
-                    "Check out this Skill Passport: " + qrCodeValue
+                    `Check out this Skill Passport: ${qrCodeValue}`
                   )}`}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -1700,7 +1701,7 @@ export default function LearnerPublicViewer() {
                   href={`mailto:?subject=${encodeURIComponent(
                     "Check out this Skill Passport"
                   )}&body=${encodeURIComponent(
-                    "Here is the Skill Passport link: " + qrCodeValue
+                    `Here is the Skill Passport link: ${qrCodeValue}`
                   )}`}
                   className="flex items-center justify-center gap-2 px-4 py-3 bg-red-500 hover:bg-red-600 text-white rounded-lg font-semibold transition-colors shadow-md"
                 >
