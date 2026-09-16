@@ -473,6 +473,7 @@ export async function analyzeMiddleSchool(
             thinking_styles: reports.thinking_styles,
             what_i_have: reports.what_i_have,
             what_i_need: reports.what_i_need,
+            stage_guidance: reports.stage_guidance,
           },
         })
         .eq('attempt_id', attemptId);

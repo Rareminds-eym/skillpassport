@@ -1,67 +1,58 @@
-import React, { useState } from 'react';
-import { Trophy, Compass, ArrowRight } from 'lucide-react';
+import type { FC } from 'react';
+import { ArrowRight, Trophy } from 'lucide-react';
 
 interface JourneyFinaleProps {
   name: string;
   unlockedCount: number;
+  variant?: 'band' | 'card';
+  ctaLabel?: string;
+  showCta?: boolean;
 }
 
-/**
- * Closing celebration band of the Growth Map.
- * Bold navy banner congratulating the learner, linking onward to the portfolio.
- */
-export const JourneyFinale: React.FC<JourneyFinaleProps> = ({ name, unlockedCount }) => {
-  const [avatarError, setAvatarError] = useState(false);
+export const JourneyFinale: FC<JourneyFinaleProps> = ({
+  name,
+  variant = 'card',
+  ctaLabel = 'Explore My Portfolio',
+  showCta = true,
+}) => {
+  const content = (
+    <div className="flex flex-col items-center gap-8 md:flex-row">
+      <div className="flex h-20 w-20 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-amber-300 to-amber-500 shadow-lg">
+        <Trophy size={36} className="text-white" />
+      </div>
+
+      <div className="flex-1 text-center md:text-left">
+        <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-amber-500/20 px-3 py-1 text-xs font-bold text-amber-300">
+          <Trophy size={12} />
+          CONGRATULATIONS!
+        </div>
+        <h2 className="mb-2 text-2xl font-bold text-white">Congratulations, {name}!</h2>
+        <p className="mb-5 max-w-2xl text-sm leading-relaxed text-gray-300">
+          You've completed your Growth Map Journey. Every question answered, reflection written, and activity
+          completed has unlocked a piece of your potential. You are growing into a curious, capable, and
+          confident learner!
+        </p>
+        {showCta && (
+          <button
+            onClick={() => {
+              window.location.href = '/learner/courses';
+            }}
+            className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-700"
+          >
+            {ctaLabel} <ArrowRight size={14} />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+
+  if (variant === 'band') {
+    return content;
+  }
 
   return (
-    <div className="relative overflow-hidden rounded-[24px] bg-gradient-to-br from-[#11145A] via-[#1a2273] to-[#1D4ED8] shadow-[0_16px_40px_rgba(17,20,90,0.25)] p-6 sm:p-8">
-
-      {/* Decorative glows */}
-      <div className="absolute -top-16 -right-16 w-56 h-56 bg-blue-500/20 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-20 -left-10 w-48 h-48 bg-indigo-400/15 rounded-full blur-3xl pointer-events-none" />
-
-      <div className="relative z-10 flex flex-col lg:flex-row items-center gap-6 lg:gap-8">
-
-        {/* Avatar / trophy */}
-        <div className="shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white/10 border-2 border-white/25 flex items-center justify-center overflow-hidden backdrop-blur-sm">
-          {!avatarError ? (
-            <img
-              src="/student_avatar.png"
-              alt="Student Avatar"
-              className="w-full h-full object-cover rounded-full"
-              onError={() => setAvatarError(true)}
-            />
-          ) : (
-            <Trophy className="text-amber-400 w-8 h-8" />
-          )}
-        </div>
-
-        {/* Text */}
-        <div className="space-y-2 min-w-0 flex-1 text-center lg:text-left">
-          <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight leading-tight font-sans">
-            Congratulations, {name}!
-          </h2>
-
-          <p className="text-xs sm:text-sm font-medium text-blue-100/90 leading-relaxed font-sans max-w-2xl">
-            You've completed your Growth Map Journey! Every question answered, reflection written, and
-            activity completed has unlocked a piece of your potential. You are growing into a curious,
-            capable, and confident learner! 🎉
-          </p>
-        </div>
-
-        {/* CTA */}
-        <div className="shrink-0 w-full sm:w-auto">
-          <button
-            onClick={() => (window.location.href = '/learner/digital-portfolio')}
-            className="w-full sm:w-auto px-7 py-4 bg-white text-[#11145A] hover:bg-blue-50 font-black text-sm rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 flex items-center justify-center gap-2.5 cursor-pointer active:scale-[0.98] font-sans"
-          >
-            <Compass size={16} className="text-blue-600" />
-            <span>Explore My Portfolio</span>
-            <ArrowRight size={14} className="text-blue-600" />
-          </button>
-        </div>
-
-      </div>
+    <div className="rounded-2xl bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-6 shadow-lg sm:p-8">
+      {content}
     </div>
   );
 };

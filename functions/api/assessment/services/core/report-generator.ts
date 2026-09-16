@@ -98,6 +98,51 @@ export interface WhatIHaveItem {
 }
 
 /**
+ * One guidance view inside a Growth Map stage's modal (Parent Translation,
+ * Instructional Implications, or Actionable Next Steps). Grounded in that
+ * stage's own real growth_map/aptitude_scores evidence — never fabricated.
+ */
+export interface StageGuidanceBlock {
+  title: string;
+  subtitle: string;
+  desc: string;
+  highlights: string[]; // 2-3 entries — 3 only when the stage's evidence genuinely supports a 3rd distinct point
+}
+
+/**
+ * Learner-specific inner section heading + one-sentence description for a
+ * Growth Map stage's own display card (e.g. replacing the hardcoded "My
+ * Capability Wheel" / "Your growth across 8 core capabilities..." pair).
+ * Grounded in the SAME Step-A identified evidence as that stage's guidance
+ * blocks — never fabricated. Optional: older reports predate this field and
+ * the frontend falls back to its existing static copy when absent or invalid.
+ */
+export interface SectionIntro {
+  heading: string; // short UI heading, not a sentence (e.g. "Your Curiosity in Action")
+  description: string; // one short sentence for directly below the heading
+}
+
+/** The 3 guidance views for one Growth Map stage, plus its section intro. */
+export interface StageGuidanceEntry {
+  parent: StageGuidanceBlock;
+  instructional: StageGuidanceBlock;
+  actionSteps: StageGuidanceBlock;
+  sectionIntro?: SectionIntro;
+}
+
+/** stage_guidance keyed by the 8 Growth Map stage IDs (growthStageConfig.ts StageId). */
+export interface StageGuidance {
+  capabilityWheel: StageGuidanceEntry;
+  interestWorlds: StageGuidanceEntry;
+  characterConstellation: StageGuidanceEntry;
+  selfSocial: StageGuidanceEntry;
+  explorerMap: StageGuidanceEntry;
+  thinkingStyle: StageGuidanceEntry;
+  whatIHaveNeed: StageGuidanceEntry;
+  missions: StageGuidanceEntry;
+}
+
+/**
  * Complete report structure returned by LLM (8 outputs per PRD Section 18 + BRD Section 18.1)
  */
 export interface MiddleSchoolReports {
@@ -122,12 +167,21 @@ export interface MiddleSchoolReports {
   thinking_styles: ThinkingStyle[];
   what_i_have?: WhatIHaveItem[]; // BRD FR-33: Strengths with evidence
   what_i_need?: WhatIHaveItem[]; // BRD FR-33: Growth areas stated positively
+  stage_guidance: StageGuidance;
 }
 
 const REPORT_GENERATION_CONFIG = {
   models: ['openai/gpt-4o-mini', 'google/gemini-2.0-flash-001'],
   // 8 reports incl. explorer insights for up to ~15 worlds — 2500 tokens truncated
   // the JSON mid-array and broke parsing, so give the response ample headroom.
+  // Kept at 8000 (not raised for the 9th output, stage_guidance) — measured
+  // estimate for all 9 outputs combined is ~5600 tokens, comfortably under
+  // 8000, so no increase was needed. A live test at 10000 hit OpenRouter's
+  // account credit ceiling (402, account could only afford ~9199 at test
+  // time) even before stage_guidance content was generated — raising this
+  // further trades token headroom for real request failures against a
+  // credit balance that fluctuates, which is a worse trade than keeping the
+  // existing, already-proven-safe 8000 value.
   maxTokens: 8000,
   temperature: 0.1,
 };
@@ -141,6 +195,18 @@ const REQUIRED_CAPABILITIES = [
   'Execution & Independence',
   'Exposure & Career Awareness',
   'Portfolio & Evidence',
+] as const;
+
+// Must match StageId in src/features/assessment/ui/growth-map/growthStageConfig.ts
+const REQUIRED_STAGE_IDS = [
+  'capabilityWheel',
+  'interestWorlds',
+  'characterConstellation',
+  'selfSocial',
+  'explorerMap',
+  'thinkingStyle',
+  'whatIHaveNeed',
+  'missions',
 ] as const;
 
 function isValidCapabilityInsights(insights: any): boolean {
@@ -246,6 +312,77 @@ function isValidThinkingStyles(styles: any): boolean {
   );
 }
 
+function isValidStageGuidanceBlock(block: any): boolean {
+  return (
+    block &&
+    typeof block === 'object' &&
+    typeof block.title === 'string' &&
+    typeof block.subtitle === 'string' &&
+    typeof block.desc === 'string' &&
+    Array.isArray(block.highlights) &&
+    block.highlights.length >= 2 &&
+    block.highlights.length <= 3 &&
+    block.highlights.every((h: any) => typeof h === 'string' && h.length > 0)
+  );
+}
+
+/**
+ * Defensive length caps for sectionIntro (heading/description), independent
+ * of isValidStageGuidance: a stage whose parent/instructional/actionSteps are
+ * all valid must still render those even if sectionIntro alone is malformed
+ * or excessively long, since the frontend falls back to static copy per
+ * stage for this one field rather than losing the whole stage's guidance.
+ * Caps are generous (not word-perfect enforcement of the prompt's guidance)
+ * so minor LLM variance doesn't discard an otherwise-good heading/description.
+ */
+const SECTION_INTRO_MAX_HEADING_LENGTH = 60;
+const SECTION_INTRO_MAX_DESCRIPTION_LENGTH = 220;
+
+function isValidSectionIntro(intro: unknown): intro is SectionIntro {
+  if (!intro || typeof intro !== 'object') return false;
+  const i = intro as Record<string, unknown>;
+  return (
+    typeof i.heading === 'string' &&
+    i.heading.trim().length > 0 &&
+    i.heading.length <= SECTION_INTRO_MAX_HEADING_LENGTH &&
+    typeof i.description === 'string' &&
+    i.description.trim().length > 0 &&
+    i.description.length <= SECTION_INTRO_MAX_DESCRIPTION_LENGTH
+  );
+}
+
+function isValidStageGuidance(guidance: any): boolean {
+  if (!guidance || typeof guidance !== 'object') return false;
+
+  return REQUIRED_STAGE_IDS.every((stageId) => {
+    const entry = guidance[stageId];
+    return (
+      entry &&
+      typeof entry === 'object' &&
+      isValidStageGuidanceBlock(entry.parent) &&
+      isValidStageGuidanceBlock(entry.instructional) &&
+      isValidStageGuidanceBlock(entry.actionSteps)
+    );
+  });
+}
+
+/**
+ * sectionIntro is validated and sanitized per-stage AFTER the required
+ * stage_guidance shape check passes, dropping only the malformed/oversized
+ * entries rather than failing the whole generation — this field is additive
+ * UI copy, not part of the REQUIRED stage_guidance contract.
+ */
+function sanitizeSectionIntros(guidance: unknown): void {
+  if (!guidance || typeof guidance !== 'object') return;
+  const g = guidance as Record<string, { sectionIntro?: unknown } | undefined>;
+  for (const stageId of REQUIRED_STAGE_IDS) {
+    const entry = g[stageId];
+    if (entry && typeof entry === 'object' && !isValidSectionIntro(entry.sectionIntro)) {
+      delete entry.sectionIntro;
+    }
+  }
+}
+
 function isValidWhatIHaveNeed(items: any): boolean {
   return (
     Array.isArray(items) &&
@@ -327,6 +464,7 @@ export async function generateMiddleSchoolReports(
         thinkingStyles: isValidThinkingStyles(parsed.thinking_styles),
         whatIHave: !parsed.what_i_have || isValidWhatIHaveNeed(parsed.what_i_have),
         whatINeed: !parsed.what_i_need || isValidWhatIHaveNeed(parsed.what_i_need),
+        stageGuidance: isValidStageGuidance(parsed.stage_guidance),
       };
 
       const allValid = Object.values(validations).every((v) => v);
@@ -334,6 +472,12 @@ export async function generateMiddleSchoolReports(
         console.error(`[REPORT-GEN-MS] Validation failed (attempt ${attempt}/${MAX_ATTEMPTS}):`, validations);
         continue;
       }
+
+      // stage_guidance itself is valid (required fields above) — now drop any
+      // malformed/oversized sectionIntro per-stage rather than failing the
+      // whole generation over this additive field (frontend falls back to
+      // static copy for a stage whose sectionIntro was stripped here).
+      sanitizeSectionIntros(parsed.stage_guidance);
 
       console.log('[REPORT-GEN-MS] ✓ Generated:', {
         strengths: parsed.character_strengths_descriptions.length,
@@ -345,6 +489,7 @@ export async function generateMiddleSchoolReports(
         thinkingStyles: parsed.thinking_styles.length,
         whatIHave: parsed.what_i_have?.length || 0,
         whatINeed: parsed.what_i_need?.length || 0,
+        stageGuidanceStages: Object.keys(parsed.stage_guidance || {}).length,
       });
 
       return parsed;

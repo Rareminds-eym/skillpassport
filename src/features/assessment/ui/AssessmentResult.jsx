@@ -73,7 +73,7 @@ import { normalizeCourseRecommendations } from '../index';
 import AssessmentDebugPanel from './AssessmentDebugPanel';
 
 // Import Middle School Growth Map for Grade 6-8
-import { MiddleSchoolGrowthMap } from './growth-map';
+import { MiddleSchoolGrowthMap, ViewToggle } from './growth-map';
 
 // Import Tour Components - Now handled globally
 // Tours are managed by GlobalTourManager in App.tsx
@@ -562,6 +562,7 @@ const AssessmentResult = () => {
     const [searchParams] = useSearchParams();
     const [activeSection, setActiveSection] = useState(null);
     const [isNavbarVisible, setIsNavbarVisible] = useState(true);
+    const [growthMapViewMode, setGrowthMapViewMode] = useState('tabbed'); // 'tabbed' or 'scroll' — Grade 6-8 Growth Map only
     const [selectedTrack, setSelectedTrack] = useState(null);
     const [selectedRole, setSelectedRole] = useState(null);
     const [currentStep, setCurrentStep] = useState(0); // 0 = role selection, 1-3 = wizard pages
@@ -1109,7 +1110,8 @@ const AssessmentResult = () => {
                             />
                         </div>
 
-                        <div className="flex gap-1.5 sm:gap-2 shrink-0">
+                        <div className="flex gap-1.5 sm:gap-2 shrink-0 items-center">
+                            <ViewToggle mode={growthMapViewMode} onChange={setGrowthMapViewMode} />
                             <Button
                                 type="button"
                                 onClick={handlePrint}
@@ -1156,8 +1158,13 @@ const AssessmentResult = () => {
                         name: learnerInfo?.name || 'Student',
                         grade: learnerInfo?.grade || '6',
                         school: learnerInfo?.school || 'School',
+                        enrollmentNumber: learnerInfo?.regNo || '—',
+                        assessmentDate: results?.attempt_data?.completedAt
+                            ? new Date(results.attempt_data.completedAt).toLocaleDateString('en-GB')
+                            : '—',
                     }}
                     reports={results.gemini_results}
+                    viewMode={growthMapViewMode}
                 />
             </>
         );
