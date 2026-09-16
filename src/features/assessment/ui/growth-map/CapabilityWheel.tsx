@@ -1,4 +1,4 @@
-import { useState, type FC } from 'react';
+import { useEffect, useState, type FC } from 'react';
 import { X } from 'lucide-react';
 
 export interface CapabilityArea {
@@ -73,6 +73,18 @@ export const BoltCapabilityWheel: FC<BoltCapabilityWheelProps> = ({
 }) => {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (selectedIndex === null) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setSelectedIndex(null);
+        onActiveCapabilityChange?.(null);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [selectedIndex, onActiveCapabilityChange]);
 
   if (!capabilities?.length) return null;
 

@@ -23,6 +23,7 @@ interface Props {
   doneCount: number;
 }
 
+// eslint-disable-next-line no-unused-vars, @typescript-eslint/no-unused-vars
 export const GrowthMapScrollView: FC<Props> = ({ learnerInfo, reports, doneCount }) => {
   const sectionSurfaceClass =
     'mx-auto max-w-6xl rounded-[1.75rem] border border-slate-300/80 bg-white px-5 py-6 shadow-[0_14px_36px_rgba(15,23,42,0.12)] sm:px-8 sm:py-7';
@@ -142,7 +143,6 @@ export const GrowthMapScrollView: FC<Props> = ({ learnerInfo, reports, doneCount
           <div className="mx-auto max-w-6xl px-5 sm:px-8">
             <JourneyFinale
               name={learnerInfo.name}
-              unlockedCount={doneCount}
               variant="band"
               ctaLabel="Explore Courses"
             />

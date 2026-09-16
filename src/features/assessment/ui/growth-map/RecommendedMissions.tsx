@@ -1,5 +1,17 @@
 import type { FC, ReactNode } from 'react';
-import { ChevronRight, Clock, Cpu, Palette, Rocket, Users } from 'lucide-react';
+import {
+  Award,
+  Brain,
+  ChevronRight,
+  Clock,
+  Compass,
+  Cpu,
+  Heart,
+  Lightbulb,
+  MessageSquare,
+  Rocket,
+  Users,
+} from 'lucide-react';
 import { isValidSectionIntro, type SectionIntro } from './growthStageConfig';
 
 interface Mission {
@@ -21,34 +33,27 @@ interface MissionVisual {
   color: string;
 }
 
+// Keyed on the canonical capability_target values (see REQUIRED_CAPABILITIES in
+// functions/api/assessment/services/core/report-generator.ts). Mirrors the
+// icon choices already used for these same capability names in CapabilityStrengths.tsx.
+const CAPABILITY_VISUALS: Record<string, MissionVisual> = {
+  'Self / EQ': { icon: <Heart size={20} className="text-pink-600" />, color: 'border-pink-200' },
+  'Social / SQ': { icon: <Users size={20} className="text-emerald-600" />, color: 'border-emerald-200' },
+  'Thinking & Problem Solving': { icon: <Brain size={20} className="text-purple-600" />, color: 'border-purple-200' },
+  Communication: { icon: <MessageSquare size={20} className="text-blue-600" />, color: 'border-blue-200' },
+  'Digital & AI Literacy': { icon: <Cpu size={20} className="text-indigo-600" />, color: 'border-indigo-200' },
+  'Execution & Independence': { icon: <Award size={20} className="text-amber-600" />, color: 'border-amber-200' },
+  'Exposure & Career Awareness': { icon: <Compass size={20} className="text-cyan-600" />, color: 'border-cyan-200' },
+  'Portfolio & Evidence': { icon: <Lightbulb size={20} className="text-violet-600" />, color: 'border-violet-200' },
+};
+
+const DEFAULT_MISSION_VISUAL: MissionVisual = {
+  icon: <Rocket size={20} className="text-blue-600" />,
+  color: 'border-blue-200',
+};
+
 function missionVisual(mission: Mission): MissionVisual {
-  const text = `${mission.mission_name} ${mission.capability_target}`.toLowerCase();
-
-  if (text.includes('social') || text.includes('team') || text.includes('communication')) {
-    return {
-      icon: <Users size={20} className="text-blue-600" />,
-      color: 'border-blue-200',
-    };
-  }
-
-  if (text.includes('digital') || text.includes('tech') || text.includes('ai')) {
-    return {
-      icon: <Cpu size={20} className="text-emerald-600" />,
-      color: 'border-emerald-200',
-    };
-  }
-
-  if (text.includes('creative') || text.includes('creativity') || text.includes('design')) {
-    return {
-      icon: <Palette size={20} className="text-amber-600" />,
-      color: 'border-amber-200',
-    };
-  }
-
-  return {
-    icon: <Rocket size={20} className="text-blue-600" />,
-    color: 'border-blue-200',
-  };
+  return CAPABILITY_VISUALS[mission.capability_target] ?? DEFAULT_MISSION_VISUAL;
 }
 
 export const RecommendedMissions: FC<Props> = ({ missions = [], sectionIntro }) => {

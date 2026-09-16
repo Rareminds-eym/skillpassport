@@ -1,9 +1,9 @@
 import type { FC } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ArrowRight, Trophy } from 'lucide-react';
 
 interface JourneyFinaleProps {
   name: string;
-  unlockedCount: number;
   variant?: 'band' | 'card';
   ctaLabel?: string;
   showCta?: boolean;
@@ -15,6 +15,7 @@ export const JourneyFinale: FC<JourneyFinaleProps> = ({
   ctaLabel = 'Explore My Portfolio',
   showCta = true,
 }) => {
+  const navigate = useNavigate();
   const content = (
     <div className="flex flex-col items-center gap-8 md:flex-row">
       <div className="flex h-20 w-20 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-amber-300 to-amber-500 shadow-lg">
@@ -35,7 +36,7 @@ export const JourneyFinale: FC<JourneyFinaleProps> = ({
         {showCta && (
           <button
             onClick={() => {
-              window.location.href = '/learner/courses';
+              navigate('/learner/courses');
             }}
             className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-700"
           >

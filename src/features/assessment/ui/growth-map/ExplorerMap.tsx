@@ -208,6 +208,15 @@ export const ExplorerMap: FC<Props> = ({ explorerMap, explorerInsights, sectionI
                       key={`${world.label}-${index}`}
                       className="cursor-pointer"
                       onClick={() => setSelectedIndex(index)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          setSelectedIndex(index);
+                        }
+                      }}
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`${world.label}${isExplored ? ' (explored)' : ' (to explore)'}`}
                     >
                       {isActive && (
                         <circle cx={cx} cy={cy} r={NODE_RADIUS + 6} fill="none" stroke="#3b82f6" strokeWidth={1.5} opacity={0.3} />

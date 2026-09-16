@@ -135,7 +135,12 @@ export const StrengthsCharacter: FC<Props> = ({ strengths, isActive, sectionIntr
       )}
 
       <div className="relative w-full" style={{ aspectRatio: '400 / 340' }}>
-        <svg viewBox="0 0 400 340" className="absolute inset-0 w-full h-full" preserveAspectRatio="xMidYMid meet">
+        <svg
+          viewBox="0 0 400 340"
+          className="absolute inset-0 w-full h-full"
+          preserveAspectRatio="xMidYMid meet"
+          aria-hidden="true"
+        >
           {EDGES.filter(([a, b]) => a < nodes.length && b < nodes.length).map(([a, b], index) => {
             const active = isEdgeActive(a, b);
             const dim = hovered !== null && !active;
