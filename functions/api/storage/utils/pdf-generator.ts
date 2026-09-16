@@ -129,14 +129,33 @@ export async function generateReceiptPDF(data: ReceiptData): Promise<Uint8Array>
   const fontRegular = await doc.embedFont(StandardFonts.Helvetica);
   const fontBold    = await doc.embedFont(StandardFonts.HelveticaBold);
 
-  // ── Watermark (drawn first so it sits behind all content) ──────────────
-  if (watermarkBytes) {
+  const embedImage = async (bytes: Uint8Array | undefined, label: string) => {
+    if (!bytes) return null;
     try {
-      const wmImg = await doc.embedPng(watermarkBytes);
+      return await doc.embedPng(bytes);
+    } catch {
+      try {
+        return await doc.embedJpg(bytes);
+      } catch (err) {
+        console.warn(`[GenerateReceiptPDF] ${label} embed failed (non-critical):`, err);
+        return null;
+      }
+    }
+  };
+
+  const embeddedLogo = await embedImage(logoBytes, 'Logo');
+  const embeddedWatermark =
+    watermarkBytes === logoBytes
+      ? embeddedLogo
+      : await embedImage(watermarkBytes, 'Watermark');
+
+  // ── Watermark (drawn first so it sits behind all content) ──────────────
+  if (embeddedWatermark) {
+    try {
       const wmSize = mm(80);
       const wmX = (width  - wmSize) / 2;
       const wmY = (height - wmSize) / 2;
-      page.drawImage(wmImg, {
+      page.drawImage(embeddedWatermark, {
         x: wmX, y: wmY,
         width: wmSize, height: wmSize,
         opacity: 0.08,
@@ -223,20 +242,10 @@ export async function generateReceiptPDF(data: ReceiptData): Promise<Uint8Array>
   if (logoBytes) {
     try {
       // pdf-lib supports PNG and JPEG only — WebP will throw and fall through to text
-      let logoImg;
-      try {
-        logoImg = await doc.embedPng(logoBytes);
-      } catch {
-        try {
-          logoImg = await doc.embedJpg(logoBytes);
-        } catch {
-          logoImg = null;
-        }
-      }
-      if (logoImg) {
+      if (embeddedLogo) {
         const logoW = mm(40);
         const logoH = mm(20);
-        page.drawImage(logoImg, {
+        page.drawImage(embeddedLogo, {
           x: margin,
           y: pdfY(yFromTop + logoH),
           width: logoW,

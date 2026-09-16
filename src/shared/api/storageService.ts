@@ -224,48 +224,16 @@ class StorageService {
   }
 
   /**
-   * Get presigned URL for large file uploads
+   * @deprecated Direct R2 presigned uploads are disabled. Use uploadFile instead.
    */
   async getPresignedUrl(filename: string, contentType: string, learnerId: string): Promise<PresignedResponse> {
-    try {
-      const token = await this.getAuthToken();
-      
-      if (!token) {
-        return {
-          success: false,
-          error: 'Authentication required. Please log in.'
-        };
-      }
-
-      const response = await ssoClient.fetch(`${this.baseUrl}/presigned`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          },
-        body: JSON.stringify({
-          filename,
-          contentType,
-          courseId: 'learners',
-          lessonId: learnerId,
-        }),
-      });
-
-      if (response.status === 401) {
-        return {
-          success: false,
-          error: 'Authentication failed. Please refresh and log in again.'
-        };
-      }
-
-      const result = await response.json();
-      return result;
-    } catch (error) {
-      logger.error('Presigned URL error', error as Error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to get presigned URL'
-      };
-    }
+    void filename;
+    void contentType;
+    void learnerId;
+    return {
+      success: false,
+      error: 'Direct R2 presigned uploads are disabled. Use uploadFile instead.'
+    };
   }
 
   /**
@@ -327,12 +295,15 @@ class StorageService {
         };
       }
 
+      const value = url.trim();
+      const payload = /^https?:\/\//i.test(value) ? { url: value } : { key: value };
+
       const response = await ssoClient.fetch(`${this.baseUrl}/delete`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           },
-        body: JSON.stringify({ url }),
+        body: JSON.stringify(payload),
       });
 
       if (response.status === 401) {

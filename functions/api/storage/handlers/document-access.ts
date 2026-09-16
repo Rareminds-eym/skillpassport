@@ -17,6 +17,7 @@ import {
   createAuthorizationError,
   logErrorSafely,
 } from '../utils/error-handling';
+import { checkLessonAccess } from '../utils/course-authorization';
 
 type PagesFunction = (context: { request: Request; env: any }) => Promise<Response> | Response;
 
@@ -56,9 +57,33 @@ export const handleDocumentAccess: PagesFunction = async (context) => {
         return createAuthenticationError('/document-access', 'missing_token');
       }
 
-      // Validate ownership (check if file key contains user ID)
-      const isOwner = fileKey.includes(authenticatedContext.user.id);
-      if (!isOwner) {
+      const segments = fileKey.split('/');
+      const isCourseResource = segments[0] === 'courses' && segments[2] === 'lessons';
+
+      if (isCourseResource) {
+        const courseId = segments[1];
+        const lessonId = segments[3];
+
+        if (!authenticatedContext.supabase) {
+          return apiError(500, 'INTERNAL_ERROR', 'Supabase client is not configured', request);
+        }
+
+        const authCheck = await checkLessonAccess(
+          authenticatedContext.supabase,
+          authenticatedContext.user.id,
+          courseId,
+          lessonId
+        );
+
+        if (!authCheck.authorized) {
+          return createAuthorizationError(
+            authenticatedContext.user.id,
+            fileKey,
+            'ownership_mismatch',
+            authCheck.error || 'You do not have permission to access this course resource'
+          );
+        }
+      } else if (!fileKey.includes(authenticatedContext.user.id)) {
         return createAuthorizationError(
           authenticatedContext.user.id,
           fileKey,

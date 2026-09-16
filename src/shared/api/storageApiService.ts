@@ -15,7 +15,8 @@ const logger = getLogger('storage-api');
 const API_URL = getApiUrl('storage');
 
 /**
- * Get authentication token from current session
+ * Get authentication token from current session.
+ * Kept for legacy non-upload endpoints that still accept explicit auth headers.
  */
 async function getAuthToken(): Promise<string | null> {
   try {
@@ -40,6 +41,9 @@ interface UploadOptions {
   folder?: string;
   filename?: string;
   contentType?: string;
+  context?: string;
+  courseId?: string;
+  lessonId?: string;
 }
 
 /**
@@ -50,23 +54,20 @@ export async function uploadFile(
   options: UploadOptions,
   token?: string
 ): Promise<any> {
-  // Get token automatically if not provided
-  const authToken = token || await getAuthToken();
-  
-  if (!authToken) {
-    throw new Error('Authentication required. Please log in.');
-  }
-
+  void token;
   const formData = new FormData();
   formData.append('file', file);
   if (options.folder) formData.append('folder', options.folder);
   if (options.filename) formData.append('filename', options.filename);
   if (options.contentType) formData.append('contentType', options.contentType);
+  if (options.context) formData.append('context', options.context);
+  if (options.courseId) formData.append('courseId', options.courseId);
+  if (options.lessonId) formData.append('lessonId', options.lessonId);
 
   try {
     const response = await ssoClient.fetch(`${API_URL}/upload`, {
       method: 'POST',
-      headers: getAuthHeaders(authToken, true),
+      headers: getAuthHeaders(undefined, true),
       body: formData,
     });
 
@@ -108,10 +109,13 @@ export async function deleteFile(fileUrl: string, token?: string): Promise<any> 
     throw new Error('Authentication required. Please log in.');
   }
 
+  const value = fileUrl.trim();
+  const payload = /^https?:\/\//i.test(value) ? { url: value } : { key: value };
+
   const response = await ssoClient.fetch(`${API_URL}/delete`, {
     method: 'POST',
     headers: getAuthHeaders(authToken),
-    body: JSON.stringify({ url: fileUrl }),
+    body: JSON.stringify(payload),
   });
 
   if (!response.ok) {
@@ -159,7 +163,7 @@ interface PresignedUrlParams {
 }
 
 /**
- * Get presigned URL for large file upload
+ * @deprecated Direct R2 presigned uploads are disabled. Use uploadFile instead.
  */
 export async function getPresignedUrl(
   params: PresignedUrlParams,
@@ -172,25 +176,8 @@ export async function getPresignedUrl(
     throw new Error('Authentication required. Please log in.');
   }
 
-  const response = await ssoClient.fetch(`${API_URL}/presigned`, {
-    method: 'POST',
-    headers: getAuthHeaders(authToken),
-    body: JSON.stringify(params),
-  });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({})) as { error?: string };
-    
-    if (response.status === 401) {
-      throw new Error('Authentication failed. Please refresh the page and log in again.');
-    } else if (response.status === 403) {
-      throw new Error('Access denied. You may not have permission to upload files.');
-    }
-    
-    throw new Error(error.error || 'Failed to get presigned URL');
-  }
-
-  return response.json();
+  void params;
+  throw new Error('Direct R2 presigned uploads are disabled. Use uploadFile instead.');
 }
 
 interface ConfirmUploadParams {
@@ -348,10 +335,10 @@ export function getPaymentReceiptUrl(fileKey: string, mode: 'download' | 'inline
 }
 
 /**
- * Get presigned URL for payment receipt download (temporary access without auth)
+ * Get proxied URL for payment receipt download.
  * @param fileKeyOrUrl - The file key or full URL of the receipt
- * @param expiresIn - Expiration time in seconds (default: 3600 = 1 hour, max: 604800 = 7 days)
- * @returns Presigned URL for direct download
+ * @param expiresIn - Kept for backward compatibility; ignored by binding-only storage.
+ * @returns Authenticated application URL for download
  */
 export async function getPaymentReceiptPresignedUrl(fileKeyOrUrl: string, expiresIn: number = 3600): Promise<string> {
   // Extract file key from full URL if needed
@@ -410,21 +397,23 @@ export async function getPaymentReceiptPresignedUrl(fileKeyOrUrl: string, expire
     success?: boolean;
     data?: {
       presignedUrl?: string;
+      url?: string;
     };
     presignedUrl?: string;
+    url?: string;
   }
 
   const result = await response.json() as PresignedUrlResponse;
   
-  const presignedUrl = result.success && result.data?.presignedUrl
-    ? result.data.presignedUrl
-    : result.presignedUrl;
+  const receiptDownloadUrl = result.success
+    ? result.data?.url || result.data?.presignedUrl
+    : result.url || result.presignedUrl;
 
-  if (!presignedUrl || typeof presignedUrl !== 'string') {
-    throw new Error('Invalid API response: presignedUrl not found or invalid type');
+  if (!receiptDownloadUrl || typeof receiptDownloadUrl !== 'string') {
+    throw new Error('Invalid API response: receipt download URL not found or invalid type');
   }
 
-  return presignedUrl;
+  return receiptDownloadUrl;
 }
 
 export default {

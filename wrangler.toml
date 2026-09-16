@@ -55,6 +55,10 @@ binding = "EMAIL_SERVICE"
 service = "shared-email-api"
 entrypoint = "EmailService"
 
+[[r2_buckets]]
+binding = "R2_BUCKET"
+bucket_name = "skill-echosystem"
+
 # ============================================================================
 # VARIABLES
 # ============================================================================
