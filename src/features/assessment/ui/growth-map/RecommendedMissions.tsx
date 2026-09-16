@@ -65,7 +65,7 @@ export const RecommendedMissions: FC<Props> = ({ missions = [], sectionIntro }) 
     <div>
       <div className="mb-1 flex items-center justify-between">
         {intro && <h2 className="text-base font-bold text-gray-800">{intro.heading}</h2>}
-        <button className="flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:underline">
+        <button type="button" className="flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:underline">
           START LEARNING <ChevronRight size={11} />
         </button>
       </div>
@@ -109,7 +109,7 @@ export const RecommendedMissions: FC<Props> = ({ missions = [], sectionIntro }) 
 
               <div className="mt-auto flex items-center justify-between border-t border-gray-100 pt-3">
                 <span className="text-xs font-semibold text-emerald-600">READY TO START</span>
-                <button className="flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-blue-700">
+                <button type="button" className="flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-blue-700">
                   <ChevronRight size={11} /> Start Mission
                 </button>
               </div>

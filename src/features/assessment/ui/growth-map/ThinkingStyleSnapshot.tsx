@@ -23,9 +23,10 @@ interface StyleCard {
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#f43f5e'];
 
+const STYLE_ICONS = [<Puzzle size={16} />, <Brain size={16} />, <Eye size={16} />, <BarChart2 size={16} />];
+
 function iconFor(index: number) {
-  const icons = [<Puzzle size={16} />, <Brain size={16} />, <Eye size={16} />, <BarChart2 size={16} />];
-  return icons[index % icons.length];
+  return STYLE_ICONS[index % STYLE_ICONS.length];
 }
 
 export const ThinkingStyleSnapshot: FC<Props> = ({ thinkingStyles, isActive, sectionIntro }) => {
