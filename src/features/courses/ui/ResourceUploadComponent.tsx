@@ -161,12 +161,6 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
         )
       );
 
-      setFileUploads(prev =>
-        prev.map((fu, i) =>
-          i === index ? { ...fu, progress: 25 } : fu
-        )
-      );
-
       const uploadedData = await uploadStorageFile(file, {
         filename: file.name,
         context: 'course_resource',
@@ -262,6 +256,8 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
         await deleteStorageFile(upload.uploadedData.key);
       } catch (error) {
         logger.error('Failed to delete file from R2', error instanceof Error ? error : new Error('Unknown error'));
+        setError(`Could not delete ${upload.file.name} from storage. Please try again.`);
+        return;
       }
     }
     // For pending files, just remove from list (no cleanup needed)

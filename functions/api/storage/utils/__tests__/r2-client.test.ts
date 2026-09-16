@@ -7,6 +7,16 @@ import { R2Client } from '../r2-client';
 import type { PagesEnv } from '../../../../lib/types';
 
 describe('R2Client', () => {
+  const createBodyStream = (content: string) => {
+    const encoder = new TextEncoder();
+    return new ReadableStream({
+      start(controller) {
+        controller.enqueue(encoder.encode(content));
+        controller.close();
+      },
+    });
+  };
+
   let mockBucket: {
     put: ReturnType<typeof vi.fn>;
     get: ReturnType<typeof vi.fn>;
@@ -19,7 +29,7 @@ describe('R2Client', () => {
     mockBucket = {
       put: vi.fn().mockResolvedValue({}),
       get: vi.fn().mockResolvedValue({
-        body: new Blob(['file content']).stream(),
+        body: createBodyStream('file content'),
         httpMetadata: { contentType: 'text/plain' },
         size: 12,
         httpEtag: '"etag-1"',
@@ -65,9 +75,8 @@ describe('R2Client', () => {
       const client = new R2Client(mockEnv);
       const fileContent = new ArrayBuffer(100);
 
-      const result = await client.upload('test/file.txt', fileContent, 'text/plain');
+      await client.upload('test/file.txt', fileContent, 'text/plain');
 
-      expect(result).toBe('https://test.r2.dev/test/file.txt');
       expect(mockBucket.put).toHaveBeenCalledWith('test/file.txt', fileContent, {
         httpMetadata: {
           contentType: 'text/plain',
@@ -186,10 +195,15 @@ describe('R2Client', () => {
       expect(client.getPublicUrl('test/file.txt')).toBe('https://test.r2.dev/test/file.txt');
     });
 
-    it('returns the object key when no public URL is configured', () => {
+    it('throws when no public URL is configured', () => {
       const client = new R2Client({ R2_BUCKET: mockBucket as any });
 
-      expect(client.getPublicUrl('test/file.txt')).toBe('test/file.txt');
+      expect(() => client.getPublicUrl('test/file.txt')).toThrow('Public URL not configured for R2 bucket');
+    });
+
+    it('reports whether a public URL is configured', () => {
+      expect(new R2Client(mockEnv).hasPublicUrl()).toBe(true);
+      expect(new R2Client({ R2_BUCKET: mockBucket as any }).hasPublicUrl()).toBe(false);
     });
   });
 

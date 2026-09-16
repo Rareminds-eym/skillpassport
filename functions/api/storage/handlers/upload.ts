@@ -180,6 +180,14 @@ import { createLogger } from '../../../lib/logger';
 
 const logger = createLogger('storage-upload');
 
+function createDocumentProxyUrl(request: Request, fileKey: string, mode: 'inline' | 'download' = 'inline'): string {
+  const url = new URL(request.url);
+  return new URL(
+    `/api/storage/document-access?key=${encodeURIComponent(fileKey)}&mode=${mode}`,
+    url.origin
+  ).toString();
+}
+
 /**
  * Allowed file types (MIME types)
  * Add more as needed
@@ -441,7 +449,7 @@ export const handleUpload: PagesFunction = async (context) => {
     const contentType = signatureValidation.actualType || file.type;
 
     // Upload to R2
-    const fileUrl = await r2.upload(
+    await r2.upload(
       fileKey,
       arrayBuffer,
       contentType,
@@ -449,6 +457,9 @@ export const handleUpload: PagesFunction = async (context) => {
         'Content-Disposition': `attachment; filename="${filename}"`,
       }
     );
+    const fileUrl = r2.hasPublicUrl()
+      ? r2.getPublicUrl(fileKey)
+      : createDocumentProxyUrl(request, fileKey, 'inline');
 
     logger.info('File uploaded successfully', { fileKey, filename, size: file.size, type: contentType });
 

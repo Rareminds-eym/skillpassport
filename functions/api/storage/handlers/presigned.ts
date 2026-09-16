@@ -19,14 +19,6 @@ import {
 
 type PagesFunction = (context: AuthenticatedContext) => Promise<Response> | Response;
 
-interface PresignedRequestBody {
-  filename: string;
-  contentType: string;
-  fileSize?: number;
-  courseId: string;
-  lessonId: string;
-}
-
 interface ConfirmRequestBody {
   fileKey: string;
   fileName?: string;
@@ -63,7 +55,6 @@ export const handlePresigned: PagesFunction = async (context) => {
   }
 
   try {
-    await request.json().catch(() => undefined) as PresignedRequestBody | undefined;
     return apiError(
       410,
       'PRESIGNED_UPLOAD_DISABLED',

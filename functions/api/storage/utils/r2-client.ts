@@ -38,15 +38,13 @@ export class R2Client {
     body: ArrayBuffer,
     contentType: string,
     additionalHeaders?: Record<string, string>
-  ): Promise<string> {
+  ): Promise<void> {
     await this.r2Bucket.put(key, body, {
       httpMetadata: {
         contentType,
         contentDisposition: additionalHeaders?.['Content-Disposition'],
       },
     });
-
-    return this.getPublicUrl(key);
   }
 
   /**
@@ -120,10 +118,14 @@ export class R2Client {
    */
   getPublicUrl(key: string): string {
     if (!this.publicUrl) {
-      return key;
+      throw new Error('Public URL not configured for R2 bucket');
     }
 
     return `${this.publicUrl}/${key.replace(/^\/+/, '')}`;
+  }
+
+  hasPublicUrl(): boolean {
+    return Boolean(this.publicUrl);
   }
 
   /**

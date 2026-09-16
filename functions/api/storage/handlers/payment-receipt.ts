@@ -34,6 +34,14 @@ const DateUtils = {
   },
 };
 
+function createPaymentReceiptProxyUrl(request: Request, fileKey: string, mode: 'inline' | 'download' = 'download'): string {
+  const url = new URL(request.url);
+  return new URL(
+    `/api/storage/payment-receipt?key=${encodeURIComponent(fileKey)}&mode=${mode}`,
+    url.origin
+  ).toString();
+}
+
 interface UploadReceiptRequestBody {
   pdfBase64: string;
   paymentId: string;
@@ -126,8 +134,9 @@ export const handleUploadPaymentReceipt: PagesFunction = async ({ request, env }
 
     logger.info(`Upload completed in ${duration}ms`);
 
-    // Generate public URL
-    const fileUrl = r2Client.getPublicUrl(fileKey);
+    const fileUrl = r2Client.hasPublicUrl()
+      ? r2Client.getPublicUrl(fileKey)
+      : createPaymentReceiptProxyUrl(request, fileKey);
 
     logger.info('Upload successful', { fileUrl, fileKey });
 

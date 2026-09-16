@@ -10,6 +10,14 @@ import type { PagesFunction } from '../../../lib/types';
 import { apiSuccess, apiError } from '../../../lib/response';;
 import { R2Client } from '../utils/r2-client';
 
+function createDocumentProxyUrl(request: Request, fileKey: string, mode: 'inline' | 'download' = 'inline'): string {
+  const url = new URL(request.url);
+  return new URL(
+    `/api/storage/document-access?key=${encodeURIComponent(fileKey)}&mode=${mode}`,
+    url.origin
+  ).toString();
+}
+
 /**
  * Example handler showing R2Client usage
  * This demonstrates the pattern that will be used in actual handlers
@@ -34,7 +42,7 @@ export const handleExampleUpload: PagesFunction = async (context) => {
     const arrayBuffer = await file.arrayBuffer();
 
     // Upload to R2
-    const fileUrl = await r2.upload(
+    await r2.upload(
       filename,
       arrayBuffer,
       file.type,
@@ -42,6 +50,9 @@ export const handleExampleUpload: PagesFunction = async (context) => {
         'Content-Disposition': `attachment; filename="${file.name}"`,
       }
     );
+    const fileUrl = r2.hasPublicUrl()
+      ? r2.getPublicUrl(filename)
+      : createDocumentProxyUrl(request, filename);
 
     return apiSuccess({
       url: fileUrl,
@@ -124,7 +135,9 @@ export const handleExampleList: PagesFunction = async (context) => {
     // Transform to include public URLs
     const filesWithUrls = files.map(file => ({
       key: file.key,
-      url: r2.getPublicUrl(file.key),
+      url: r2.hasPublicUrl()
+        ? r2.getPublicUrl(file.key)
+        : createDocumentProxyUrl(request, file.key),
       size: file.size,
       lastModified: file.lastModified.toISOString(),
     }));
