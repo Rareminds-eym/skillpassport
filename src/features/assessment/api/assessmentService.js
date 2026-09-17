@@ -2092,5 +2092,8 @@ export default {
   calculateAptitudeScores,
   calculateKnowledgeScores,
   saveAptitudeScores,
-  saveKnowledgeScores
+  saveKnowledgeScores,
+  retryClusterGeneration
 };
+
+export { retryClusterGeneration } from './assessmentApiService';

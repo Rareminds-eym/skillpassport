@@ -52,8 +52,6 @@ export {
   FeatureGate,
   SubscriptionBanner,
   SubscriptionRouteGuard,
-  PaymentSuccess,
-  PaymentFailure,
   SubscriptionSettingsSection
 } from './ui/shared';
 

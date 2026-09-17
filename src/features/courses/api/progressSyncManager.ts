@@ -5,6 +5,7 @@
  */
 
 import { getLogger } from '@/shared/config/logging';
+import { courseProgressService } from './courseProgressService';
 
 const DB_NAME = 'courseProgressDB';
 const DB_VERSION = 1;
@@ -193,8 +194,6 @@ class ProgressSyncManager {
 
   // Sync individual item to server
   async syncItem(item) {
-    const { courseProgressService } = await import('./courseProgressService');
-    
     switch (item.type) {
       case 'videoPosition':
         return courseProgressService.saveVideoPosition(

@@ -9,10 +9,6 @@ export { default as SubscriptionRouteGuard } from './SubscriptionRouteGuard';
 export { FeatureLockOverlay } from './FeatureLockOverlay';
 export { UpgradePrompt } from './UpgradePrompt';
 
-// Payment Result Pages
-export { default as PaymentSuccess } from './PaymentSuccess';
-export { default as PaymentFailure } from './PaymentFailure';
-
 // Signup Form Components
 export { default as DatePicker } from './DatePicker';
 

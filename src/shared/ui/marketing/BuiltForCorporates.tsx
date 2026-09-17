@@ -1,4 +1,3 @@
-"use client";
 
 import { Eye, CheckCircle, BarChart3, Link2 } from "lucide-react";
 import RadialOrbitalTimeline from "@/shared/ui/marketing/orbit-timeline/radial-orbital-timeline.tsx";

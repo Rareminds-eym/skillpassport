@@ -40,6 +40,12 @@ export default defineConfig({
     chunkSizeWarningLimit: 1000,
     target: 'esnext',
     rollupOptions: {
+      onwarn(warning, warn) {
+        // Suppress "use client" directive warnings from third-party libraries
+        if (warning.code === 'MODULE_LEVEL_DIRECTIVE') return;
+        if (warning.message && warning.message.includes("Can't resolve original location of error")) return;
+        warn(warning);
+      },
       output: {
         entryFileNames: 'assets/[name]-[hash].js',
         chunkFileNames: 'assets/[name]-[hash].js',
