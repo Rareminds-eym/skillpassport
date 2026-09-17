@@ -12,19 +12,52 @@ const DB_VERSION = 1;
 const STORE_NAME = 'progressQueue';
 const logger = getLogger('progress-sync-manager');
 
+export interface SyncItem {
+  id?: number;
+  type: 'videoPosition' | 'lessonStatus' | 'timeSpent' | 'restorePoint' | 'quizAnswer' | string;
+  data: any;
+  timestamp: number;
+  synced: boolean;
+  syncedAt?: number;
+  retryCount: number;
+  lastRetry?: number;
+}
+
+export type SyncEventType = 'online' | 'offline' | 'syncStart' | 'syncComplete' | 'syncError';
+
+export interface SyncEvent {
+  type: SyncEventType;
+  synced?: number;
+  failed?: number;
+  error?: unknown;
+}
+
+export type SyncListener = (event: SyncEvent) => void;
+
+export interface SyncStatus {
+  isOnline: boolean;
+  pendingCount: number;
+  syncInProgress: boolean;
+}
+
 class ProgressSyncManager {
+  private db: IDBDatabase | null = null;
+  public isOnline: boolean;
+  public syncInProgress: boolean = false;
+  private listeners: Set<SyncListener> = new Set();
+
   constructor() {
     this.db = null;
     this.isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
     this.syncInProgress = false;
     this.listeners = new Set();
-    
+
     // Listen for online/offline events
     if (typeof window !== 'undefined') {
       window.addEventListener('online', () => this.handleOnline());
       window.addEventListener('offline', () => this.handleOffline());
     }
-    
+
     // Initialize database
     if (typeof indexedDB !== 'undefined') {
       this.initDB();
@@ -32,11 +65,11 @@ class ProgressSyncManager {
   }
 
   // Initialize IndexedDB
-  async initDB() {
+  async initDB(): Promise<IDBDatabase | null> {
     if (typeof indexedDB === 'undefined') {
       return null;
     }
-    return new Promise((resolve, reject) => {
+    return new Promise<IDBDatabase>((resolve, reject) => {
       const request = indexedDB.open(DB_NAME, DB_VERSION);
 
       request.onerror = () => {
@@ -47,7 +80,7 @@ class ProgressSyncManager {
       request.onsuccess = () => {
         this.db = request.result;
         resolve(this.db);
-        
+
         // Sync any pending items if online
         if (this.isOnline) {
           this.syncPendingProgress();
@@ -55,12 +88,12 @@ class ProgressSyncManager {
       };
 
       request.onupgradeneeded = (event) => {
-        const db = event.target.result;
-        
+        const db = (event.target as IDBOpenDBRequest).result;
+
         if (!db.objectStoreNames.contains(STORE_NAME)) {
-          const store = db.createObjectStore(STORE_NAME, { 
-            keyPath: 'id', 
-            autoIncrement: true 
+          const store = db.createObjectStore(STORE_NAME, {
+            keyPath: 'id',
+            autoIncrement: true
           });
           store.createIndex('timestamp', 'timestamp', { unique: false });
           store.createIndex('type', 'type', { unique: false });
@@ -70,38 +103,38 @@ class ProgressSyncManager {
   }
 
   // Handle coming online
-  async handleOnline() {
+  async handleOnline(): Promise<void> {
     this.isOnline = true;
     this.notifyListeners({ type: 'online' });
     await this.syncPendingProgress();
   }
 
   // Handle going offline
-  handleOffline() {
+  handleOffline(): void {
     this.isOnline = false;
     this.notifyListeners({ type: 'offline' });
   }
 
   // Add listener for sync events
-  addListener(callback) {
+  addListener(callback: SyncListener): () => boolean {
     this.listeners.add(callback);
     return () => this.listeners.delete(callback);
   }
 
   // Notify all listeners
-  notifyListeners(event) {
+  notifyListeners(event: SyncEvent): void {
     this.listeners.forEach(callback => callback(event));
   }
 
   // Queue progress update for sync
-  async queueProgress(type, data) {
+  async queueProgress(type: string, data: any): Promise<IDBValidKey | null> {
     if (!this.db) await this.initDB();
     if (!this.db) {
       logger.warn('Cannot queue progress: IndexedDB not available');
       return null;
     }
 
-    const item = {
+    const item: SyncItem = {
       type,
       data,
       timestamp: Date.now(),
@@ -109,14 +142,18 @@ class ProgressSyncManager {
       retryCount: 0
     };
 
-    return new Promise((resolve, reject) => {
+    return new Promise<IDBValidKey>((resolve, reject) => {
+      if (!this.db) {
+        reject(new Error('IndexedDB not initialized'));
+        return;
+      }
       const transaction = this.db.transaction([STORE_NAME], 'readwrite');
       const store = transaction.objectStore(STORE_NAME);
       const request = store.add(item);
 
       request.onsuccess = () => {
         resolve(request.result);
-        
+
         // Try to sync immediately if online
         if (this.isOnline) {
           this.syncPendingProgress();
@@ -131,17 +168,22 @@ class ProgressSyncManager {
   }
 
   // Get all pending progress items
-  async getPendingProgress() {
+  async getPendingProgress(): Promise<SyncItem[]> {
     if (!this.db) await this.initDB();
     if (!this.db) return [];
 
-    return new Promise((resolve, reject) => {
+    return new Promise<SyncItem[]>((resolve, reject) => {
+      if (!this.db) {
+        resolve([]);
+        return;
+      }
       const transaction = this.db.transaction([STORE_NAME], 'readonly');
       const store = transaction.objectStore(STORE_NAME);
       const request = store.getAll();
 
       request.onsuccess = () => {
-        const pending = request.result.filter(item => !item.synced);
+        const items = (request.result as SyncItem[]) || [];
+        const pending = items.filter(item => !item.synced);
         resolve(pending);
       };
 
@@ -150,15 +192,15 @@ class ProgressSyncManager {
   }
 
   // Sync all pending progress to server
-  async syncPendingProgress() {
+  async syncPendingProgress(): Promise<void> {
     if (this.syncInProgress || !this.isOnline) return;
-    
+
     this.syncInProgress = true;
     this.notifyListeners({ type: 'syncStart' });
 
     try {
       const pending = await this.getPendingProgress();
-      
+
       if (pending.length === 0) {
         this.syncInProgress = false;
         return;
@@ -170,11 +212,15 @@ class ProgressSyncManager {
       for (const item of pending) {
         try {
           await this.syncItem(item);
-          await this.markSynced(item.id);
+          if (item.id !== undefined) {
+            await this.markSynced(item.id);
+          }
           synced++;
         } catch (error) {
           logger.error('Failed to sync item', error instanceof Error ? error : new Error(String(error)));
-          await this.incrementRetry(item.id);
+          if (item.id !== undefined) {
+            await this.incrementRetry(item.id);
+          }
           failed++;
         }
       }
@@ -193,7 +239,7 @@ class ProgressSyncManager {
   }
 
   // Sync individual item to server
-  async syncItem(item) {
+  async syncItem(item: SyncItem): Promise<any> {
     switch (item.type) {
       case 'videoPosition':
         return courseProgressService.saveVideoPosition(
@@ -203,7 +249,7 @@ class ProgressSyncManager {
           item.data.position,
           item.data.duration
         );
-      
+
       case 'lessonStatus':
         return courseProgressService.updateLessonStatus(
           item.data.learnerId,
@@ -211,7 +257,7 @@ class ProgressSyncManager {
           item.data.lessonId,
           item.data.status
         );
-      
+
       case 'timeSpent':
         return courseProgressService.saveTimeSpent(
           item.data.learnerId,
@@ -219,7 +265,7 @@ class ProgressSyncManager {
           item.data.lessonId,
           item.data.seconds
         );
-      
+
       case 'restorePoint':
         return courseProgressService.saveRestorePoint(
           item.data.learnerId,
@@ -229,7 +275,7 @@ class ProgressSyncManager {
           item.data.lessonId,
           item.data.videoPosition
         );
-      
+
       case 'quizAnswer':
         return courseProgressService.saveQuizAnswer(
           item.data.learnerId,
@@ -238,23 +284,27 @@ class ProgressSyncManager {
           item.data.questionId,
           item.data.answer
         );
-      
+
       default:
         return Promise.resolve();
     }
   }
 
   // Mark item as synced
-  async markSynced(id) {
+  async markSynced(id: number | IDBValidKey): Promise<void> {
     if (!this.db) return;
 
-    return new Promise((resolve, reject) => {
+    return new Promise<void>((resolve, reject) => {
+      if (!this.db) {
+        resolve();
+        return;
+      }
       const transaction = this.db.transaction([STORE_NAME], 'readwrite');
       const store = transaction.objectStore(STORE_NAME);
       const request = store.get(id);
 
       request.onsuccess = () => {
-        const item = request.result;
+        const item = request.result as SyncItem | undefined;
         if (item) {
           item.synced = true;
           item.syncedAt = Date.now();
@@ -268,20 +318,24 @@ class ProgressSyncManager {
   }
 
   // Increment retry count for failed item
-  async incrementRetry(id) {
+  async incrementRetry(id: number | IDBValidKey): Promise<void> {
     if (!this.db) return;
 
-    return new Promise((resolve, reject) => {
+    return new Promise<void>((resolve, reject) => {
+      if (!this.db) {
+        resolve();
+        return;
+      }
       const transaction = this.db.transaction([STORE_NAME], 'readwrite');
       const store = transaction.objectStore(STORE_NAME);
       const request = store.get(id);
 
       request.onsuccess = () => {
-        const item = request.result;
+        const item = request.result as SyncItem | undefined;
         if (item) {
           item.retryCount = (item.retryCount || 0) + 1;
           item.lastRetry = Date.now();
-          
+
           // Remove items that have failed too many times
           if (item.retryCount >= 5) {
             store.delete(id);
@@ -297,20 +351,25 @@ class ProgressSyncManager {
   }
 
   // Clean up old synced items (older than 24 hours)
-  async cleanupSyncedItems() {
+  async cleanupSyncedItems(): Promise<void> {
     if (!this.db) return;
 
     const cutoff = Date.now() - (24 * 60 * 60 * 1000);
 
-    return new Promise((resolve, reject) => {
+    return new Promise<void>((resolve, reject) => {
+      if (!this.db) {
+        resolve();
+        return;
+      }
       const transaction = this.db.transaction([STORE_NAME], 'readwrite');
       const store = transaction.objectStore(STORE_NAME);
       const request = store.openCursor();
 
       request.onsuccess = (event) => {
-        const cursor = event.target.result;
+        const cursor = (event.target as IDBRequest<IDBCursorWithValue | null>).result;
         if (cursor) {
-          if (cursor.value.synced && cursor.value.syncedAt < cutoff) {
+          const val = cursor.value as SyncItem;
+          if (val.synced && val.syncedAt && val.syncedAt < cutoff) {
             cursor.delete();
           }
           cursor.continue();
@@ -324,7 +383,7 @@ class ProgressSyncManager {
   }
 
   // Get sync status
-  async getSyncStatus() {
+  async getSyncStatus(): Promise<SyncStatus> {
     const pending = await this.getPendingProgress();
     return {
       isOnline: this.isOnline,
@@ -334,7 +393,7 @@ class ProgressSyncManager {
   }
 
   // Force sync now
-  async forceSync() {
+  async forceSync(): Promise<void> {
     if (!this.isOnline) {
       throw new Error('Cannot sync while offline');
     }
@@ -345,3 +404,4 @@ class ProgressSyncManager {
 // Singleton instance
 export const progressSyncManager = new ProgressSyncManager();
 export default progressSyncManager;
+
