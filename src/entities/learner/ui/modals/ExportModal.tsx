@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
-import jsPDF from 'jspdf';
 import { Learner } from '@/shared/types';
 
 interface ExportModalProps {
@@ -15,7 +14,9 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, learner }) =
     type: 'application_summary'
   });
 
-  const generatePDF = (learner: Learner, _settings: any) => {
+  const generatePDF = async (learner: Learner, _settings: any) => {
+    const jspdfModule = await import('jspdf');
+    const jsPDF = jspdfModule.jsPDF || jspdfModule.default;
     const doc = new jsPDF();
     const pageHeight = doc.internal.pageSize.height;
     const pageWidth = doc.internal.pageSize.width;
@@ -157,14 +158,14 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, learner }) =
     window.URL.revokeObjectURL(url);
   };
 
-  const handleExport = () => {
+  const handleExport = async () => {
     const filename = `${learner.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}`;
 
     if (exportSettings.format === 'csv') {
       const content = generateCSV(learner);
       downloadFile(content, filename + '.csv', 'csv');
     } else {
-      const pdfDoc = generatePDF(learner, exportSettings);
+      const pdfDoc = await generatePDF(learner, exportSettings);
       pdfDoc.save(filename + '.pdf');
     }
 

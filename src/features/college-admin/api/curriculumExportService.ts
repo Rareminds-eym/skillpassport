@@ -1,7 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
-import * as XLSX from 'xlsx';
+// Dynamic imports for jsPDF and XLSX below
 import { saveAs } from 'file-saver';
 
 interface Chapter {
@@ -41,7 +39,9 @@ interface CurriculumExportData {
 /**
  * Export curriculum to PDF format
  */
-export const exportCurriculumToPDF = (data: CurriculumExportData): void => {
+export const exportCurriculumToPDF = async (data: CurriculumExportData): Promise<void> => {
+  const jspdfModule = await import('jspdf');
+  const jsPDF = jspdfModule.jsPDF || jspdfModule.default;
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   let yPosition = 20;
@@ -227,7 +227,8 @@ export const exportCurriculumToPDF = (data: CurriculumExportData): void => {
 /**
  * Export curriculum to Excel format
  */
-export const exportCurriculumToExcel = (data: CurriculumExportData): void => {
+export const exportCurriculumToExcel = async (data: CurriculumExportData): Promise<void> => {
+  const XLSX = await import('xlsx');
   const workbook = XLSX.utils.book_new();
 
   // Sheet 1: Overview
@@ -396,14 +397,14 @@ export const exportCurriculumToExcel = (data: CurriculumExportData): void => {
 /**
  * Export curriculum in the specified format
  */
-export const exportCurriculum = (
+export const exportCurriculum = async (
   format: 'pdf' | 'excel',
   data: CurriculumExportData
-): void => {
+): Promise<void> => {
   if (format === 'pdf') {
-    exportCurriculumToPDF(data);
+    await exportCurriculumToPDF(data);
   } else if (format === 'excel') {
-    exportCurriculumToExcel(data);
+    await exportCurriculumToExcel(data);
   } else {
     throw new Error(`Unsupported export format: ${format}`);
   }

@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useAIJobMatching } from '@/features/opportunities';
-import { FeatureGate } from '@/features/subscription';
+import { FeatureGate } from '@/features/subscription/ui/shared/FeatureGate';
 
 /**
  * RecommendedJobs - AI-powered job recommendations with industrial-grade caching

@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { Header } from "@/widgets/admin-navigation";
-import { Sidebar } from '@/features/admin';
-import { AICounsellingFAB } from "@/features/admin";
+import Sidebar from '@/features/admin/ui/Sidebar';
+import AICounsellingFAB from "@/features/admin/ui/AICounsellingFAB";
 const AdminLayout = () => {
     const [showMobileMenu, setShowMobileMenu] = useState(false);
     const [activeTab, setActiveTab] = useState("dashboard");

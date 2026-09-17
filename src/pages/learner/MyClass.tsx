@@ -1,13 +1,13 @@
 import { useAuthStore } from '@/shared/model/authStore';
 import React, { useState, useEffect } from 'react';
 import { Loader2, AlertCircle } from 'lucide-react';
-import { useAuth } from '@/features/auth';
+import { useAuth } from '@/features/auth/model';
 
 import { useLearnerProfile } from '@/features/learner-profile/model/useLearnerProfile';
 import { useLearnerDataByEmail } from '@/entities/learner';
 
 // Import learner type detection service
-import { getlearnerTypeInfo } from '@/features/college-admin';
+import { getlearnerTypeInfo } from '@/features/college-admin/api/collegeClassService';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('MyClass');
