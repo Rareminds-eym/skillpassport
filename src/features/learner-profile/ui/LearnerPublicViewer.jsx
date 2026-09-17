@@ -28,7 +28,7 @@ import { getLogger } from "@/shared/config/logging";
 
 import { calculateEmployabilityScore } from "@/shared/lib/employabilityCalculator";
 import { capitalizeName } from "@/shared/lib/helpers";
-import { useAuthLoading, useUser } from "@/shared/model/authStore";
+import { useAuthLoading, useUser, useUserRole } from "@/shared/model/authStore";
 import { generateResumePDF } from "@/widgets/learner-dashboard/ui/Generateresumepdf";
 
 function safeParse(jsonLike) {
@@ -37,6 +37,7 @@ function safeParse(jsonLike) {
   try {
     return JSON.parse(jsonLike);
   } catch (err) {
+    console.warn('Primary JSON parse failed, attempting fallback:', err);
     try {
       return JSON.parse(
         String(jsonLike)
@@ -106,7 +107,7 @@ function SkillBadge({ skill, type = "technical" }) {
       {/* Category */}
       <p className="text-sm text-gray-500 truncate">
         {skill.category ||
-          (skill.type && skill.type.replace(/_/g, " ")) ||
+          skill.type?.replace(/_/g, " ") ||
           (type === "soft" ? "Soft Skill" : "Technical Skill")}
       </p>
       {/* Stars */}
@@ -169,6 +170,7 @@ export default function LearnerPublicViewer() {
   const logger = getLogger('learner-public-viewer');
   const user = useUser();
   const authLoading = useAuthLoading();
+  const { isRecruiter: isRecruiterFlag = false, isAdmin: isAdminFlag = false } = useUserRole() || {};
   // const navigate = useNavigate();
   const { learnerId } = useParams();
   const { learnerData, loading, error } = useLearnerDataById(learnerId);
@@ -632,9 +634,12 @@ export default function LearnerPublicViewer() {
   // Role-based access control
   const userRole = user.role?.toLowerCase();
   const isLearner = userRole === "learner";
-  const isRecruiter = userRole === "recruiter";
+  // Recruitment users get SSO roles 'member' (recruiter) or 'owner' (company_admin)
+  // in user.role — use store flags which check the full roles[] array correctly.
+  // 'member' is an SSO-level role for invited recruiters not yet in ROLE_CATEGORIES.recruiter
+  const isRecruiter = isRecruiterFlag || user?.roles?.includes('member');
   const isEducator = userRole === "educator" || userRole === "school_educator" || userRole === "college_educator";
-  const isAdmin = userRole?.includes("admin") || userRole === "principal" || userRole === "it_admin";
+  const isAdmin = isAdminFlag || userRole === "principal" || userRole === "it_admin";
 
   // Check if user has permission to view this learner profile
   const hasAccess = isLearner || // Learners can view all learner profiles
@@ -1634,7 +1639,7 @@ export default function LearnerPublicViewer() {
                 {/* WhatsApp */}
                 <a
                   href={`https://wa.me/?text=${encodeURIComponent(
-                    "Check out this Skill Passport: " + qrCodeValue
+                    `Check out this Skill Passport: ${qrCodeValue}`
                   )}`}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -1696,7 +1701,7 @@ export default function LearnerPublicViewer() {
                   href={`mailto:?subject=${encodeURIComponent(
                     "Check out this Skill Passport"
                   )}&body=${encodeURIComponent(
-                    "Here is the Skill Passport link: " + qrCodeValue
+                    `Here is the Skill Passport link: ${qrCodeValue}`
                   )}`}
                   className="flex items-center justify-center gap-2 px-4 py-3 bg-red-500 hover:bg-red-600 text-white rounded-lg font-semibold transition-colors shadow-md"
                 >

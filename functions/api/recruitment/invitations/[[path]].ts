@@ -2,12 +2,20 @@
  * Recruitment Invitations API Router
  * Handles all /api/recruitment/invitations/* routes
  */
-
-import { withAuth } from '../../../lib/auth';
-import { getServiceClient } from '../../../lib/supabase';
-import { verifyOrgAccess, PERMISSIONS } from '../../../lib/permissions';
-import { ssoCreateMember, ssoAssignMembershipRole, ssoUpdateMembershipStatus, ssoGetUserByEmail, ssoGetUserMemberships, ssoListRoles, ssoCreateMembership } from '../../../lib/sso-client';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import { withAuth } from '../../../lib/auth';
+import { PERMISSIONS, verifyOrgAccess } from '../../../lib/permissions';
+import {
+  ssoAssignMembershipRole,
+  ssoCreateMember,
+  ssoCreateMembership,
+  ssoGetUserByEmail,
+  ssoGetUserMemberships,
+  ssoListRoles,
+  ssoUpdateMembershipStatus,
+} from '../../../lib/sso-client';
+import { getServiceClient } from '../../../lib/supabase';
+
 
 /**
  * GET /api/recruitment/invitations
@@ -352,7 +360,7 @@ async function handleAcceptInvitation(context: any): Promise<Response> {
         // Map recruitment role to SSO role
         const roleMapping: Record<string, string> = {
             'company_admin': 'admin',
-            'recruiter': 'member',
+            'recruiter': 'recruiter',  // Keep as recruiter, not member!
             'viewer': 'member',
         };
         const ssoRoleName = roleMapping[invitation.invitee_role] || 'member';
@@ -736,7 +744,7 @@ async function handleCreateInvitation(context: AuthenticatedContext): Promise<Re
                 console.log('[invitations] Found existing user:', existingUserId);
             }
         } catch (ssoError) {
-            console.log('[invitations] No existing user found in SSO (this is fine)');
+            console.log('[invitations] No existing user found in SSO (this is fine):', ssoError);
         }
 
         // If user exists, check if they're already a member of this org
