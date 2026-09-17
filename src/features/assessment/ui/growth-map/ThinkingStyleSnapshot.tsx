@@ -22,11 +22,23 @@ interface StyleCard {
 }
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#f43f5e'];
+const RADAR_SIZE = 260;
+const RADAR_CENTER = RADAR_SIZE / 2;
+const RADAR_RADIUS = 90;
+const RADAR_RINGS = [0.25, 0.5, 0.75, 1];
+const NEUTRAL_RADIUS_RATIO = 0.68;
 
 const STYLE_ICONS = [<Puzzle size={16} />, <Brain size={16} />, <Eye size={16} />, <BarChart2 size={16} />];
 
 function iconFor(index: number) {
   return STYLE_ICONS[index % STYLE_ICONS.length];
+}
+
+function axisPoint(angle: number, radius: number) {
+  return {
+    x: RADAR_CENTER + radius * Math.cos(angle - Math.PI / 2),
+    y: RADAR_CENTER + radius * Math.sin(angle - Math.PI / 2),
+  };
 }
 
 export const ThinkingStyleSnapshot: FC<Props> = ({ thinkingStyles, isActive, sectionIntro }) => {
@@ -42,6 +54,11 @@ export const ThinkingStyleSnapshot: FC<Props> = ({ thinkingStyles, isActive, sec
     color: COLORS[index % COLORS.length],
     description: style.description,
   }));
+  const angles = styles.map((_, index) => (index * 2 * Math.PI) / styles.length);
+  const radarPoints = styles.map((_, index) =>
+    axisPoint(angles[index], RADAR_RADIUS * NEUTRAL_RADIUS_RATIO)
+  );
+  const radarPolygon = radarPoints.map((point) => `${point.x},${point.y}`).join(' ');
 
   return (
     <div className={isActive ? 'ring-2 ring-blue-300 rounded-2xl' : undefined}>
@@ -56,31 +73,145 @@ export const ThinkingStyleSnapshot: FC<Props> = ({ thinkingStyles, isActive, sec
       )}
 
       <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {styles.map((style, index) => (
-            <div
-              key={style.label}
-              className="rounded-xl border p-4 cursor-pointer transition-all"
-              style={{
-                borderColor: hovered === index ? style.color : '#e5e7eb',
-                borderWidth: hovered === index ? 2 : 1,
-                backgroundColor: hovered === index ? `${style.color}08` : '#f9fafb',
-              }}
-              onMouseEnter={() => setHovered(index)}
-              onMouseLeave={() => setHovered(null)}
-            >
-              <div className="flex items-center gap-2 mb-2">
-                <span
-                  className="flex h-7 w-7 items-center justify-center rounded-full"
-                  style={{ color: style.color, backgroundColor: `${style.color}15` }}
+        <div className="flex flex-col items-center gap-8 md:flex-row">
+          <div className="relative shrink-0" style={{ width: RADAR_SIZE, height: RADAR_SIZE }}>
+            <svg viewBox={`0 0 ${RADAR_SIZE} ${RADAR_SIZE}`} className="h-full w-full">
+              {RADAR_RINGS.map((ring) => {
+                const points = angles
+                  .map((angle) => {
+                    const point = axisPoint(angle, RADAR_RADIUS * ring);
+                    return `${point.x},${point.y}`;
+                  })
+                  .join(' ');
+
+                return (
+                  <polygon
+                    key={ring}
+                    points={points}
+                    fill="none"
+                    stroke="#e5e7eb"
+                    strokeWidth={1}
+                  />
+                );
+              })}
+
+              {angles.map((angle, index) => {
+                const point = axisPoint(angle, RADAR_RADIUS);
+                return (
+                  <line
+                    key={styles[index].label}
+                    x1={RADAR_CENTER}
+                    y1={RADAR_CENTER}
+                    x2={point.x}
+                    y2={point.y}
+                    stroke="#e5e7eb"
+                    strokeWidth={1}
+                  />
+                );
+              })}
+
+              <polygon
+                points={radarPolygon}
+                fill="rgba(59,130,246,0.12)"
+                stroke="#3b82f6"
+                strokeWidth={2}
+                strokeLinejoin="round"
+              />
+
+              {radarPoints.map((point, index) => (
+                <g key={styles[index].label}>
+                  <circle
+                    cx={point.x}
+                    cy={point.y}
+                    r={hovered === index ? 7 : 5}
+                    fill={styles[index].color}
+                    stroke="white"
+                    strokeWidth={2}
+                    className="cursor-pointer transition-all"
+                    onMouseEnter={() => setHovered(index)}
+                    onMouseLeave={() => setHovered(null)}
+                  />
+                  {hovered === index && (
+                    <circle
+                      cx={point.x}
+                      cy={point.y}
+                      r={12}
+                      fill="none"
+                      stroke={styles[index].color}
+                      strokeWidth={1.5}
+                      opacity={0.4}
+                      className="animate-ping"
+                    />
+                  )}
+                </g>
+              ))}
+
+              <circle cx={RADAR_CENTER} cy={RADAR_CENTER} r={3} fill="#9ca3af" />
+
+              {styles.map((style, index) => {
+                const point = axisPoint(angles[index], RADAR_RADIUS + 28);
+                return (
+                  <text
+                    key={style.label}
+                    x={point.x}
+                    y={point.y}
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                    className="cursor-pointer text-[10px] font-semibold"
+                    fill={hovered === index ? style.color : '#6b7280'}
+                    onMouseEnter={() => setHovered(index)}
+                    onMouseLeave={() => setHovered(null)}
+                  >
+                    {style.label}
+                  </text>
+                );
+              })}
+            </svg>
+          </div>
+
+          <div className="w-full flex-1">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {styles.map((style, index) => (
+                <div
+                  key={style.label}
+                  className="rounded-xl border p-4 cursor-pointer transition-all"
+                  style={{
+                    borderColor: hovered === index ? style.color : '#e5e7eb',
+                    borderWidth: hovered === index ? 2 : 1,
+                    backgroundColor: hovered === index ? `${style.color}08` : '#f9fafb',
+                  }}
+                  onMouseEnter={() => setHovered(index)}
+                  onMouseLeave={() => setHovered(null)}
                 >
-                  {style.icon}
-                </span>
-                <span className="text-sm font-bold text-gray-800">{style.label}</span>
-              </div>
-              <p className="text-xs text-gray-600 leading-relaxed">{style.description}</p>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span
+                      className="flex h-7 w-7 items-center justify-center rounded-full"
+                      style={{ color: style.color, backgroundColor: `${style.color}15` }}
+                    >
+                      {style.icon}
+                    </span>
+                    <span className="text-sm font-bold text-gray-800">{style.label}</span>
+                  </div>
+                  <p className="text-xs text-gray-600 leading-relaxed">{style.description}</p>
+                </div>
+              ))}
             </div>
-          ))}
+
+            <div className="mt-4 min-h-[44px] rounded-xl border border-gray-100 bg-gray-50 p-3">
+              {hovered !== null ? (
+                <div className="flex items-start gap-2">
+                  <span style={{ color: styles[hovered].color }} className="mt-0.5">
+                    {styles[hovered].icon}
+                  </span>
+                  <p className="text-xs leading-relaxed text-gray-600">{styles[hovered].description}</p>
+                </div>
+              ) : (
+                <p className="text-xs text-gray-400">
+                  Hover a point or label to see how this thinking power grows.
+                </p>
+              )}
+              </div>
+            </div>
         </div>
       </div>
 
