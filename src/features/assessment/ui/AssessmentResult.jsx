@@ -604,6 +604,7 @@ const AssessmentResult = () => {
         learnerAcademicData,
         validationWarnings,
         handleRetry,
+        handleRegenerate,
         handleClusterRetry,
         validateResults,
         navigate,
@@ -1212,6 +1213,24 @@ const AssessmentResult = () => {
                         </div>
 
                         <div className="flex gap-2">
+                            <Button
+                                type="button"
+                                onClick={handleRegenerate}
+                                disabled={retrying || isPdfGenerating}
+                                className="bg-amber-600 text-white hover:bg-amber-700 shadow-sm h-8 text-sm font-medium disabled:opacity-75 disabled:cursor-not-allowed"
+                            >
+                                {retrying ? (
+                                    <>
+                                        <RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                                        Regenerating...
+                                    </>
+                                ) : (
+                                    <>
+                                        <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
+                                        Regenerate Report
+                                    </>
+                                )}
+                            </Button>
                             <Button
                                 type="button"
                                 onClick={handlePrint}

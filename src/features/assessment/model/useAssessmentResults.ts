@@ -147,6 +147,7 @@ interface UseAssessmentResultsReturn {
   learnerAcademicData: LearnerAcademicData;
   validationWarnings: string[];
   handleRetry: () => void;
+  handleRegenerate: () => Promise<void>;
   handleClusterRetry: () => Promise<void>;
   validateResults: () => string[];
   navigate: NavigateFunction;
@@ -180,6 +181,7 @@ export const useAssessmentResults = (): UseAssessmentResultsReturn => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState<boolean>(false);
+  const [regenerating, setRegenerating] = useState<boolean>(false);
   const [isClusterRetry, setIsClusterRetry] = useState<boolean>(false);
   const [isClusterGenerationFailed, setIsClusterGenerationFailed] = useState<boolean>(false);
   const [gradeLevel, setGradeLevel] = useState<string>('after12');
@@ -237,6 +239,24 @@ export const useAssessmentResults = (): UseAssessmentResultsReturn => {
   const handleRetry = useCallback((): void => {
     loadResults(true);
   }, [loadResults]);
+
+  const handleRegenerate = useCallback(async (): Promise<void> => {
+    if (!attemptId) return;
+
+    try {
+      setRegenerating(true);
+      setLoading(true);
+      setError(null);
+
+      await assessmentService.regenerateResult(attemptId, gradeLevel);
+      await loadResults(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Regeneration failed. Please try again.');
+    } finally {
+      setRegenerating(false);
+      setLoading(false);
+    }
+  }, [attemptId, gradeLevel, loadResults]);
 
   const handleClusterRetry = useCallback(async (): Promise<void> => {
     if (!attemptId) return;
@@ -299,7 +319,7 @@ export const useAssessmentResults = (): UseAssessmentResultsReturn => {
     results,
     loading,
     error,
-    retrying,
+    retrying: retrying || regenerating,
     retryAttemptCount: 0,
     gradeLevel,
     monthsInGrade,
@@ -307,6 +327,7 @@ export const useAssessmentResults = (): UseAssessmentResultsReturn => {
     learnerAcademicData: { subjectMarks: [], projects: [], experiences: [], education: [] },
     validationWarnings: [],
     handleRetry,
+    handleRegenerate,
     handleClusterRetry,
     validateResults,
     navigate,
@@ -314,5 +335,5 @@ export const useAssessmentResults = (): UseAssessmentResultsReturn => {
     resultData: results,
     isClusterRetry,
     isClusterGenerationFailed,
-  }), [results, loading, error, retrying, gradeLevel, monthsInGrade, learnerInfo, handleRetry, handleClusterRetry, validateResults, navigate, isClusterRetry, isClusterGenerationFailed]);
+  }), [results, loading, error, retrying, regenerating, gradeLevel, monthsInGrade, learnerInfo, handleRetry, handleRegenerate, handleClusterRetry, validateResults, navigate, isClusterRetry, isClusterGenerationFailed]);
 };
