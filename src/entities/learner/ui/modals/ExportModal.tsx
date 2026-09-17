@@ -159,7 +159,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, learner }) =
   };
 
   const handleExport = async () => {
-    const filename = `${learner.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}`;
+    const filename = `${(learner.name || 'learner').replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}`;
 
     if (exportSettings.format === 'csv') {
       const content = generateCSV(learner);
