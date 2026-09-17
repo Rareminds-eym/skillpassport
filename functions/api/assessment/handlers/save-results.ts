@@ -351,7 +351,13 @@ export async function saveResultsHandler(context: AuthenticatedContext) {
       adaptiveAptitudeSessionId: validatedSessionId
     });
 
-    // STEP 1: Save results using service role (bypasses RLS)
+    // STEP 1: Explicitly delete any old result record for this attempt to ensure clean wipe on regeneration
+    await supabase
+      .from('personal_assessment_results')
+      .delete()
+      .eq('attempt_id', attemptId);
+
+    // STEP 2: Save fresh results using service role (bypasses RLS)
     const { data: results, error: resultsError } = await supabase
       .from('personal_assessment_results')
       .upsert(dataToInsert, {

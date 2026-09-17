@@ -1214,6 +1214,26 @@ const AssessmentResult = () => {
                         <div className="flex gap-2">
                             <Button
                                 type="button"
+                                onClick={handleClusterRetry}
+                                disabled={isClusterRetry || retrying || isPdfGenerating}
+                                className="bg-amber-600 text-white hover:bg-amber-700 shadow-sm h-8 text-sm font-medium disabled:opacity-75 disabled:cursor-not-allowed"
+                                title="Delete old result record and regenerate 3 career tracks with updated mapping"
+                            >
+                                {isClusterRetry ? (
+                                    <>
+                                        <RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                                        Regenerating...
+                                    </>
+                                ) : (
+                                    <>
+                                        <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
+                                        Regenerate Report
+                                    </>
+                                )}
+                            </Button>
+
+                            <Button
+                                type="button"
                                 onClick={handlePrint}
                                 disabled={isPdfGenerating}
                                 className="bg-slate-800 text-white hover:bg-slate-700 shadow-sm h-8 text-sm font-medium disabled:opacity-75 disabled:cursor-not-allowed"
@@ -1233,7 +1253,7 @@ const AssessmentResult = () => {
                         </div>
                     </div>
                 </div>
-                {/* {hasIncompleteData && (
+                {hasIncompleteData && (
                     <div className="max-w-6xl mx-auto mb-6 print:hidden print-hidden">
                         <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-4">
                             <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
@@ -1246,11 +1266,11 @@ const AssessmentResult = () => {
                                 </p>
                                 <Button
                                     size="sm"
-                                    onClick={handleRetry}
-                                    disabled={retrying}
+                                    onClick={handleClusterRetry}
+                                    disabled={isClusterRetry || retrying}
                                     className="bg-amber-600 hover:bg-amber-700 text-white"
                                 >
-                                    {retrying ? (
+                                    {isClusterRetry || retrying ? (
                                         <>
                                             <RefreshCw className="w-3 h-3 mr-1 animate-spin" />
                                             Regenerating...
@@ -1265,7 +1285,7 @@ const AssessmentResult = () => {
                             </div>
                         </div>
                     </div>
-                )} */}
+                )}
 
                 {/* Aptitude Data Quality Warning Banner */}
                 {/* {results?._aptitudeWarning && !results._aptitudeWarning.isValid && (

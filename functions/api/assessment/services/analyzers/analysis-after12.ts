@@ -1,4 +1,4 @@
-﻿/**
+/**
  * After 12th Assessment Analysis
  *
  * For students who have completed 12th grade and are deciding between higher education, immediate employment, certifications, or gap year,
@@ -562,7 +562,12 @@ export async function analyzeAfter12(
       );
     }
 
-    // Step 16: Store results
+    // Step 16: Store results — delete existing result record if any to ensure clean wipe on regeneration, then store fresh results
+    await supabase
+      .from('personal_assessment_results')
+      .delete()
+      .eq('attempt_id', attemptId);
+
     const { error: insertError } = await supabase
       .from('personal_assessment_results')
       .upsert(

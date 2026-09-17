@@ -6,6 +6,9 @@ import { ssoClient } from '@/shared/api/ssoClient';
 
 import { supabase } from '@/shared/api/supabaseClient';
 import { calculateStreamRecommendations } from '../lib/streamMatchingEngine';
+import { retryClusterGeneration } from './assessmentApiService';
+
+export { retryClusterGeneration };
 
 /**
  * Validate and enhance stream recommendation for After 10th learners
@@ -2092,5 +2095,6 @@ export default {
   calculateAptitudeScores,
   calculateKnowledgeScores,
   saveAptitudeScores,
-  saveKnowledgeScores
+  saveKnowledgeScores,
+  retryClusterGeneration
 };

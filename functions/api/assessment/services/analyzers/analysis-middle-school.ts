@@ -373,7 +373,12 @@ export async function analyzeMiddleSchool(
       );
     }
 
-    // Step 9: Store results — upsert so re-running analyze on the same attempt updates rather than errors
+    // Step 9: Store results — delete existing result record if any to ensure clean wipe on regeneration, then store fresh results
+    await supabase
+      .from('personal_assessment_results')
+      .delete()
+      .eq('attempt_id', attemptId);
+
     const { error: insertError } = await supabase
       .from('personal_assessment_results')
       .upsert(

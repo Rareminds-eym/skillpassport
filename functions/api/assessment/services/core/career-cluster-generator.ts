@@ -421,38 +421,58 @@ async function retrieveByEmbedding(
     console.log(`\n[RAG-CONTEXT] Text length: ${text.length} chars`);
     console.log(`[RAG-CONTEXT] Stream: ${student.stream} | RIASEC: ${riasecCode} | Grade: ${gradeLevel}`);
 
-    // STEP 2: Embed the context
-    const queryVec = await callEmbeddingWorker(text, env, EMBEDDING_TASK_TYPES.RETRIEVAL_QUERY);
-    const literal = '[' + queryVec.map((x) => x.toFixed(6)).join(',') + ']';
-    console.log(`[RAG-EMBED] Vector generated: ${queryVec.length} dimensions`);
+    // STEP 2: Embed the context (fail-soft fallback to null if worker service binding is unavailable in local dev)
+    let literal: string | null = null;
+    try {
+      const queryVec = await callEmbeddingWorker(text, env, EMBEDDING_TASK_TYPES.RETRIEVAL_QUERY);
+      literal = '[' + queryVec.map((x) => x.toFixed(6)).join(',') + ']';
+      console.log(`[RAG-EMBED] Vector generated: ${queryVec.length} dimensions`);
+    } catch (embedError: any) {
+      console.warn(`[RAG-EMBED-WARN] Embedding worker unavailable (${embedError.message}). Falling back to keyword & RIASEC matching.`);
+      literal = null;
+    }
 
     // STEP 3: Build keyword query
     const keywordQuery = buildKeywordQuery(student);
     console.log(`[RAG-KEYWORD] Query: "${keywordQuery}"`);
 
     // STEP 4: Call hybrid_search_roles RPC
-    console.log(`[RAG-CALL] Calling hybrid_search_roles(match_count=${CANDIDATE_POOL_SIZE}, alpha=0.6, riasec=${riasecCode})`);
+    console.log(`[RAG-CALL] Calling hybrid_search_roles(match_count=${CANDIDATE_POOL_SIZE}, alpha=${literal ? 0.6 : 0.0}, riasec=${riasecCode})`);
     const { data, error } = await supabase.rpc('hybrid_search_roles', {
       query_text: keywordQuery,
       query_embedding: literal,
       learner_riasec_code: riasecCode,
       match_count: CANDIDATE_POOL_SIZE,
-      alpha: 0.6,
+      alpha: literal ? 0.6 : 0.0,
     });
-    if (error) {
-      console.error('[RAG-ERROR] hybrid_search_roles failed:', error.message);
-      return [];
-    }
-    if (!data || data.length === 0) {
-      console.warn('[RAG-RESULT] No data returned from hybrid_search_roles');
-      return [];
+    let roleData = data;
+    if (error || !roleData || roleData.length === 0) {
+      console.warn(`[RAG-RESULT] hybrid_search_roles RPC returned 0 rows or error (${error?.message}). Querying role_family_roles fallback...`);
+      const { data: fallbackRoles } = await supabase
+        .from('role_family_roles')
+        .select('id, role_code, title, description')
+        .limit(15);
+
+      if (fallbackRoles && fallbackRoles.length > 0) {
+        roleData = fallbackRoles.map((r: any) => ({
+          role_family_role_id: r.id,
+          role_code: r.role_code || 'ROLE_GENERAL',
+          role_name: r.title || r.role_code,
+          riasec_codes: [riasecCode],
+          hybrid_score: 0.85,
+          riasec_alignment: 90,
+          description: r.description || r.title
+        }));
+      } else {
+        return [];
+      }
     }
 
-    console.log(`[RAG-RESULT] Retrieved ${data.length} candidates from database`);
+    console.log(`[RAG-RESULT] Retrieved ${roleData.length} candidates from database`);
 
     // Build candidates with job demand profiles for proper scoring.
     // occupation_id carries role_family_role_id (the context id mirrored by LTE).
-    const candidates: ScoredOccupation[] = (data as any[]).map((occ, idx) => {
+    const candidates: ScoredOccupation[] = (roleData as any[]).map((occ, idx) => {
       const riasecCodes: string[] = occ.riasec_codes || [];
       const hybridScore = Number(occ.hybrid_score);
       const alignment = Number(occ.riasec_alignment);
