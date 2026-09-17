@@ -107,7 +107,7 @@ function SkillBadge({ skill, type = "technical" }) {
       {/* Category */}
       <p className="text-sm text-gray-500 truncate">
         {skill.category ||
-          (skill.type && skill.type.replace(/_/g, " ")) ||
+          skill.type?.replace(/_/g, " ") ||
           (type === "soft" ? "Soft Skill" : "Technical Skill")}
       </p>
       {/* Stars */}
