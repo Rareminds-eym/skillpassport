@@ -4,7 +4,7 @@ import PromotionalBanner from '@/shared/ui/marketing/PromotionalBanner';
 import AssessmentPromotionalBanner from '@/shared/ui/marketing/AssessmentPromotionalBanner';
 import { useUserRole } from '@/entities/user';
 import { useCurrentPromotional, useAssessmentPromotional } from '@/features/promotional';
-import { useAuth } from '@/features/auth';
+import { useAuth } from '@/features/auth/model';
 
 const PortfolioLayout = () => {
   const { event, showBanner, dismissBanner, getTimeRemaining } = useCurrentPromotional();

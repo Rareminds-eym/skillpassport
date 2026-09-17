@@ -15,7 +15,7 @@ import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
 
-import { useLearnerDataByEmail } from '@/entities/learner';
+import { useLearnerDataByEmail } from '@/entities/learner/model/useLearnerDataByEmail';
 import { isLearner } from '@/entities/learner/lib/learnerType';
 
 import { useUser } from '@/shared/model/authStore';

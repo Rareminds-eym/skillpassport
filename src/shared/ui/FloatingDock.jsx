@@ -1,5 +1,5 @@
 import { cn } from "@/shared/lib/utils";
-import { IconLayoutNavbarCollapse } from "@tabler/icons-react";
+import { Menu as IconLayoutNavbarCollapse } from "lucide-react";
 import {
   AnimatePresence,
   MotionValue,

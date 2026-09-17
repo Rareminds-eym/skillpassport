@@ -1,8 +1,8 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useLearnerProfile } from '@/features/learner-profile';
-import { useOpportunities } from '@/features/opportunities';
-import { useAIRecommendations } from '@/features/ai-tutor';
+import { useLearnerProfile } from '@/features/learner-profile/model/useLearnerProfile';
+import useOpportunities from '@/features/opportunities/model/useOpportunities';
+import useAIRecommendations from '@/features/ai-tutor/model/useAIRecommendations';
 import { OpportunitiesCard } from './OpportunitiesCard';
 import { ProfileSection } from './ProfileSection';
 import { LearningSection } from './LearningSection';

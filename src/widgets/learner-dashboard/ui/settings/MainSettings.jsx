@@ -23,7 +23,7 @@ import { useLearnerExperience } from '@/entities/learner';
 import { useLearnerEducation } from '@/entities/learner';
 import { useLearnerTechnicalSkills, useLearnerSoftSkills } from '@/entities/learner';
 import { useInstitutions } from '@/entities/institution';
-import { SubscriptionSettingsSection } from '@/features/subscription';
+import SubscriptionSettingsSection from '@/features/subscription/ui/shared/SubscriptionSettingsSection';
 import { 
   EducationEditModal, 
   SoftSkillsEditModal, 

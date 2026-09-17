@@ -4,9 +4,9 @@ import { Award, Book, Briefcase, Camera, CheckCircle, ChevronLeft, ChevronRight,
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import { useAuth } from '@/features/auth';
+import { useAuth } from '@/features/auth/model';
 import { ProfileCompletionModal, ProfileCompletionErrorBoundary } from '@/features/digital-portfolio';
-import { useProfileCompletionPrompt } from '@/features/learner-profile';
+import { useProfileCompletionPrompt } from '@/features/learner-profile/model/useProfileCompletionPrompt';
 import { getLogger } from '@/shared/config/logging';
 
 import { usePortfolio } from '@/features/digital-portfolio/model/portfolioStore';

@@ -8,9 +8,9 @@ import {
   ClockIcon
 } from '@heroicons/react/24/outline';
 import { 
-  IconSparkles, 
-  IconBrain
-} from '@tabler/icons-react';
+  Sparkles, 
+  Brain
+} from 'lucide-react';
 import { apiGet } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 
@@ -319,7 +319,7 @@ const CoursesTab: React.FC<CoursesTabProps> = ({ courses, loading, learnerId }) 
       {/* Course Recommendations Section */}
       <div>
         <div className="flex items-center gap-2 mb-4">
-          <IconSparkles className="h-5 w-5 text-blue-600" />
+          <Sparkles className="h-5 w-5 text-blue-600" />
           <div>
             <h3 className="text-lg font-semibold text-gray-900">Course Recommendations</h3>
             <p className="text-sm text-gray-600">Based on your assessment results</p>
@@ -341,7 +341,7 @@ const CoursesTab: React.FC<CoursesTabProps> = ({ courses, loading, learnerId }) 
         ) : (
           <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 mb-6">
             <div className="text-center">
-              <IconBrain className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+              <Brain className="h-8 w-8 text-gray-400 mx-auto mb-2" />
               <p className="text-sm text-gray-600">Complete your assessment to get personalized course recommendations</p>
             </div>
           </div>

@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '@/features/auth';
+import { useAuth } from '@/features/auth/model';
 
-import { Header, Sidebar, MobileTabBar, CandidateProfileDrawer } from '@/features/recruiter-pipeline';
-
-import { FloatingRecruiterAIButton } from '@/features/recruiter-pipeline';
+import Header from '@/features/recruiter-pipeline/ui/Header';
+import Sidebar from '@/features/recruiter-pipeline/ui/Sidebar';
+import MobileTabBar from '@/features/recruiter-pipeline/ui/MobileTabBar';
+import FloatingRecruiterAIButton from '@/shared/ui/FloatingRecruiterAIButton';
+const CandidateProfileDrawer = React.lazy(() => import('@/features/recruiter-pipeline/ui/CandidateProfileDrawer'));
 import { useResponsive } from '@/shared/lib/hooks';
 import { Candidate } from '@/entities/recruiter';
 import { useUnreadMessagesCount } from '@/features/messaging';
@@ -89,11 +91,13 @@ const RecruiterLayout: React.FC = () => {
       )}
 
       {/* Candidate Profile Drawer */}
-      <CandidateProfileDrawer
-        candidate={selectedCandidate}
-        isOpen={showCandidateDrawer}
-        onClose={handleCloseCandidateDrawer}
-      />
+      <React.Suspense fallback={null}>
+        <CandidateProfileDrawer
+          candidate={selectedCandidate}
+          isOpen={showCandidateDrawer}
+          onClose={handleCloseCandidateDrawer}
+        />
+      </React.Suspense>
 
       {/* Mobile menu overlay */}
       {showMobileMenu && (

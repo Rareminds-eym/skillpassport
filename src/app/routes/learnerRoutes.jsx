@@ -1,6 +1,6 @@
 import { lazy, Outlet } from "react";
 import { Navigate, Route } from "react-router-dom";
-import { SubscriptionProtectedRoute } from "@/features/subscription";
+import SubscriptionProtectedRoute from "@/features/subscription/ui/shared/SubscriptionProtectedRoute";
 import LearnerLayout from "../layouts/LearnerLayout";
 import { DigitalPortfolioThemeProvider } from "@/features/digital-portfolio/providers/DigitalPortfolioThemeProvider";
 
