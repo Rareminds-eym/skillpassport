@@ -14,7 +14,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, learner }) =
     type: 'application_summary'
   });
 
-  const generatePDF = async (learner: Learner, _settings: any) => {
+  const generatePDF = async (learner: Learner, _settings?: { format?: string; type?: string }) => {
     const jspdfModule = await import('jspdf');
     const jsPDF = jspdfModule.jsPDF || jspdfModule.default;
     const doc = new jsPDF();

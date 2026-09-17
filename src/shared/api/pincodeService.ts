@@ -4,6 +4,14 @@
  * Replaces the 33MB static 'indian-pincodes' client bundle with zero-payload API queries.
  */
 
+interface RawPostOffice {
+  Pincode?: string;
+  Name?: string;
+  District?: string;
+  State?: string;
+  Country?: string;
+}
+
 export interface PincodeResult {
   pincode: string;
   name: string;
@@ -48,7 +56,7 @@ export async function searchIndianPincodes(query: string, signal?: AbortSignal):
       return [];
     }
 
-    const results: PincodeResult[] = data[0].PostOffice.map((po: any) => ({
+    const results: PincodeResult[] = data[0].PostOffice.map((po: RawPostOffice) => ({
       pincode: po.Pincode || '',
       name: po.Name || '',
       district: po.District || '',

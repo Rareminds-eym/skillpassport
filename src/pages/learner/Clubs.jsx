@@ -8,7 +8,6 @@ import {
     Award,
     Clock,
     MapPin,
-    AlertCircle,
     CheckCircle,
 } from "lucide-react";
 import { apiPost } from '@/shared/api/apiClient';
