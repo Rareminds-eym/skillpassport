@@ -1,9 +1,9 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo } from 'react';
 
-import { getActiveSubscription } from '@/features/subscription/api';
+import { getActiveSubscription } from '@/features/subscription/api/subscriptionService';
 import { queryLogger } from '@/shared/lib/debug/queryLogger';
-import { isActiveOrPaused } from '@/features/subscription/lib';
+import { isActiveOrPaused } from '@/features/subscription/lib/subscriptionHelpers';
 import { queryKeys } from '@/shared/lib/queryKeys';
 
 import { useUser } from '@/shared/model/authStore';
@@ -55,6 +55,9 @@ const formatSubscriptionData = (data) => {
     isOrganizationLicense: data.is_organization_license || false,
     organizationId: data.organization_id || null,
     organizationType: data.organization_type || null,
+    organizationName: data.organization_name || null,
+    organizationEmail: data.organization_email || null,
+    organizationPhone: data.organization_phone || null,
     licenseAssignmentId: data.license_assignment_id || null,
   };
 };

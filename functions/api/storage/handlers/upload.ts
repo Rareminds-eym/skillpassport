@@ -180,6 +180,14 @@ import { createLogger } from '../../../lib/logger';
 
 const logger = createLogger('storage-upload');
 
+function createDocumentProxyUrl(request: Request, fileKey: string, mode: 'inline' | 'download' = 'inline'): string {
+  const url = new URL(request.url);
+  return new URL(
+    `/api/storage/document-access?key=${encodeURIComponent(fileKey)}&mode=${mode}`,
+    url.origin
+  ).toString();
+}
+
 /**
  * Allowed file types (MIME types)
  * Add more as needed
@@ -243,13 +251,21 @@ function validateFileType(type: string): { valid: boolean; error?: string } {
 }
 
 /**
- * Generate unique file key
- * Format: uploads/{userId}/{timestamp}-{uuid}.{extension}
+ * Generate unique file key.
  */
-function generateUniqueKey(filename: string, userId: string): string {
+function generateUniqueKey(
+  filename: string,
+  userId: string,
+  options?: { courseId?: string; lessonId?: string }
+): string {
   const timestamp = Date.now();
   const randomString = crypto.randomUUID().replace(/-/g, '').substring(0, 16);
   const extension = filename.substring(filename.lastIndexOf('.'));
+
+  if (options?.courseId && options?.lessonId) {
+    return `courses/${options.courseId}/lessons/${options.lessonId}/${userId}/${timestamp}-${randomString}${extension}`;
+  }
+
   return `uploads/${userId}/${timestamp}-${randomString}${extension}`;
 }
 
@@ -266,6 +282,8 @@ export const handleUpload: PagesFunction = async (context) => {
     const file = formData.get('file') as File;
     const filename = formData.get('filename') as string;
     const uploadContext = (formData.get('context') as string) || 'default';
+    const courseId = (formData.get('courseId') as string | null)?.trim();
+    const lessonId = (formData.get('lessonId') as string | null)?.trim();
 
     // Validate upload context using centralized configuration
     if (!VALID_UPLOAD_CONTEXTS.includes(uploadContext)) {
@@ -420,10 +438,10 @@ export const handleUpload: PagesFunction = async (context) => {
     // Create R2 client
     const r2 = new R2Client(env);
 
-    // Generate unique file key with user ID
-    // Format: uploads/{userId}/{timestamp}-{uuid}.{extension}
-    // This ensures files are organized by user and have unique names
-    const fileKey = generateUniqueKey(filename, userId);
+    const fileKey = generateUniqueKey(filename, userId, {
+      courseId: courseId || undefined,
+      lessonId: lessonId || undefined,
+    });
 
     // Use validated actualType from signature validation for R2 upload
     // This ensures the Content-Type header in R2 matches the actual file type
@@ -431,7 +449,7 @@ export const handleUpload: PagesFunction = async (context) => {
     const contentType = signatureValidation.actualType || file.type;
 
     // Upload to R2
-    const fileUrl = await r2.upload(
+    await r2.upload(
       fileKey,
       arrayBuffer,
       contentType,
@@ -439,6 +457,9 @@ export const handleUpload: PagesFunction = async (context) => {
         'Content-Disposition': `attachment; filename="${filename}"`,
       }
     );
+    const fileUrl = r2.hasPublicUrl()
+      ? r2.getPublicUrl(fileKey)
+      : createDocumentProxyUrl(request, fileKey, 'inline');
 
     logger.info('File uploaded successfully', { fileKey, filename, size: file.size, type: contentType });
 

@@ -88,14 +88,17 @@ export async function loadCareerAssessmentQuestions(
     if (learnerId) {
       try {
         // Check for saved aptitude questions
-        const savedAptitude = await getSavedQuestionsForLearner(learnerId, normalizedStreamId, 'aptitude');
+        const savedAptitude = await getSavedQuestionsForLearner(learnerId, normalizedStreamId, 'aptitude', gradeLevel);
         if (savedAptitude && savedAptitude.length > 0) {
           questions.aptitude = savedAptitude;
         }
 
-        // Check for saved knowledge questions
-        const knowledgeStreamId = (gradeLevel === 'college' && learnerCourse) ? learnerCourse : normalizedStreamId;
-        const savedKnowledge = await getSavedQuestionsForLearner(learnerId, knowledgeStreamId, 'knowledge');
+        // Check for saved knowledge questions. learnerCourse must be normalized the same
+        // way as normalizedStreamId - using it raw (e.g. "BCA") diverges from Aptitude's
+        // normalized value (e.g. "bca"), producing two different stream identities for the
+        // same learner/attempt and failing stream/grade validation downstream.
+        const knowledgeStreamId = (gradeLevel === 'college' && learnerCourse) ? normalizeStreamId(learnerCourse) : normalizedStreamId;
+        const savedKnowledge = await getSavedQuestionsForLearner(learnerId, knowledgeStreamId, 'knowledge', gradeLevel);
         if (savedKnowledge && savedKnowledge.length > 0) {
           questions.knowledge = savedKnowledge;
         }
@@ -126,7 +129,7 @@ export async function loadCareerAssessmentQuestions(
     
     // Generate missing knowledge questions (if not loaded from cache)
     if (!questions.knowledge) {
-      const knowledgeStreamId = (gradeLevel === 'college' && learnerCourse) ? learnerCourse : normalizedStreamId;
+      const knowledgeStreamId = (gradeLevel === 'college' && learnerCourse) ? normalizeStreamId(learnerCourse) : normalizedStreamId;
       const aiKnowledge = await generateStreamKnowledgeQuestions(knowledgeStreamId, 20, learnerId, attemptId, gradeLevel);
 
       if (aiKnowledge && aiKnowledge.length > 0) {

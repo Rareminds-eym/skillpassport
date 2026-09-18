@@ -468,6 +468,23 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
         .maybeSingle();
       learnerName = learnerForSubscription?.name;
 
+      let seatCount = typeof body.seat_count === 'number' ? body.seat_count : 1;
+      if (validPlan?.entity_config) {
+        try {
+          const config = typeof validPlan.entity_config === 'string' ? JSON.parse(validPlan.entity_config) : validPlan.entity_config;
+          for (const k in config) {
+            if (config[k]?.max_users) {
+              seatCount = Number(config[k].max_users);
+              break;
+            }
+          }
+        } catch (err) {
+          logger.warn('Error parsing entity_config', {
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+      }
+
       try {
         subscription = await ssoCreateSubscription(env, {
           user_id: user.id,
@@ -483,6 +500,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
           razorpay_payment_id: body.razorpay_payment_id as string,
           is_recruiter_subscription: isRecruiterPlan,
           is_b2b: isRecruiterPlan,
+          seat_count: seatCount,
         });
       } catch (createError: unknown) {
         const createErrorMessage = createError instanceof Error ? createError.message : String(createError);
@@ -672,17 +690,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
       context.waitUntil(receiptPromise);
     }
 
-    // For the email, we'll use a temporary presigned URL (receipt will be in email anyway)
-    let receiptUrl: string | null = null;
-    try {
-      const pagesEnv = env as unknown as PagesEnv;
-      const r2 = new R2Client(pagesEnv);
-      receiptUrl = await r2.generatePresignedGetUrl(receiptKeyForGeneration, 604800);
-      logger.info('Generated temporary presigned URL for email', { receiptKey: receiptKeyForGeneration });
-    } catch (presignErr) {
-      const errorMsg = presignErr instanceof Error ? presignErr.message : String(presignErr);
-      logger.warn('Failed to generate presigned URL for email (non-critical)', { error: errorMsg });
-    }
+    const receiptUrl = `/api/storage/payment-receipt?key=${encodeURIComponent(receiptKeyForGeneration)}&mode=download`;
 
     // Step 5: Send payment confirmation email (unchanged)
     try {

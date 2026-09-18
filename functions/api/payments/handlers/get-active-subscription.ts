@@ -11,9 +11,15 @@
  */
 
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import { getContextUser } from '../../../lib/auth';
-import { getServiceClient } from '../../../lib/supabase';
 import { apiSuccess, apiError, apiDbError } from '../../../lib/response';
+import { getContextUser } from '../../../lib/auth';
+import { isHealEnabled } from '../../../lib/healConfig';
+import { createLogger } from '../../../lib/logger';
+import { withResilience } from '../../../lib/resilience';
+import { getServiceClient } from '../../../lib/supabase';
+import { syncSubscriptionCache, syncUserShadow } from '../../../lib/sync-shadow';
+
+const logger = createLogger('get-active-subscription');
 
 export async function handleGetActiveSubscription(context: AuthenticatedContext): Promise<Response> {
   const startTime = Date.now();
@@ -97,6 +103,103 @@ export async function handleGetActiveSubscription(context: AuthenticatedContext)
       .maybeSingle();
 
     // =========================================================================
+    // STEP 1.7: Check for recruitment org membership (invited recruiters)
+    // =========================================================================
+    const { data: orgMembership, error: orgMembershipError } = await supabase
+      .from('organization_members')
+      .select('organization_id, role, status')
+      .eq('user_id', userId)
+      .eq('status', 'active')
+      .maybeSingle();
+
+    // Handle database errors (not "no record found")
+    if (orgMembershipError) {
+      logger.error('STEP 1.7 organization_members query failed', {
+        userId,
+        error: orgMembershipError.message,
+        code: orgMembershipError.code,
+      });
+      // Return error response for unexpected DB failures
+      return apiError('Database error checking organization membership', context.request, { startTime });
+    }
+
+    logger.debug('STEP 1.7 organization_members result', {
+      userId,
+      found: !!orgMembership,
+      orgId: orgMembership?.organization_id,
+      orgRole: orgMembership?.role,
+    });
+
+    if (orgMembership?.organization_id) {
+      const { data: orgSub, error: orgSubError } = await supabase
+        .from('subscription_cache')
+        .select('*')
+        .eq('organization_id', orgMembership.organization_id)
+        .eq('status', 'active')
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      // Handle database errors (not "no record found")
+      if (orgSubError) {
+        logger.error('STEP 1.7 subscription_cache query by organization_id failed', {
+          userId,
+          orgId: orgMembership.organization_id,
+          error: orgSubError.message,
+          code: orgSubError.code,
+        });
+        // Return error response for unexpected DB failures
+        return apiError('Database error checking organization subscription', context.request, { startTime });
+      }
+
+      logger.debug('STEP 1.7 org subscription_cache by organization_id', {
+        userId,
+        orgId: orgMembership.organization_id,
+        orgSubFound: !!orgSub,
+        orgSubStatus: orgSub?.status,
+        orgSubEndDate: orgSub?.subscription_end_date,
+        orgSubPlanCode: orgSub?.plan_code,
+        orgSubOrgId: orgSub?.organization_id,
+        isExpired: orgSub && orgSub.subscription_end_date ? new Date(orgSub.subscription_end_date) <= new Date() : null,
+      });
+
+      if (orgSub && orgSub.subscription_end_date && new Date(orgSub.subscription_end_date) > new Date()) {
+        logger.debug('STEP 1.7 GRANTING ACCESS via org membership', {
+          userId,
+          orgId: orgMembership.organization_id,
+          planCode: orgSub.plan_code,
+        });
+
+        return apiSuccess({
+          id: orgSub.id,
+          user_id: userId,
+          plan_id: orgSub.plan_id,
+          plan_type: orgSub.plan_name || orgSub.plan_type || 'Organization Plan',
+          plan_code: orgSub.plan_code,
+          status: 'active',
+          subscription_start_date: orgSub.subscription_start_date,
+          subscription_end_date: orgSub.subscription_end_date,
+          auto_renew: false,
+          features: orgSub.features || [],
+          is_organization_license: true,
+          organization_id: orgSub.organization_id,
+          organization_type: orgSub.organization_type,
+          license_assignment_id: null,
+          subscription_plans: {
+            id: orgSub.plan_id,
+            name: orgSub.plan_name || orgSub.plan_type,
+            plan_code: orgSub.plan_code,
+          },
+        }, context.request, { startTime });
+      }
+
+      logger.debug('STEP 1.7 org membership found but no active org subscription', {
+        userId,
+        orgId: orgMembership.organization_id,
+      });
+    }
+
+    // =========================================================================
     // STEP 2: Check for individual subscription via subscription_cache
     // =========================================================================
     const { data, error } = await supabase
@@ -162,6 +265,61 @@ export async function handleGetActiveSubscription(context: AuthenticatedContext)
         }, context.request, { startTime });
       }
 
+      // Self-healing fallback: cache miss → check SSO source-of-truth via service binding
+      // Gated by subscription-cache-heal flag (Flagship or env HEAL_MODE). Now wrapped with
+      // withResilience (breaker 5/30s) to avoid storm. Fail-soft: on SSO failure return null.
+      if (!await isHealEnabled(context.env as Record<string, unknown>, 'subscription-cache-heal')) {
+        logger.info('heal_metric', { metric: 'heal_cache_miss_total', status: 'heal_disabled', flag: 'subscription-cache-heal', userId } as any);
+      } else {
+      try {
+        const ssoRaw = (context.env as Record<string, unknown>).SSO_SERVICE;
+        if (ssoRaw && typeof ssoRaw === 'object') {
+          const sso = ssoRaw as {
+            syncSubscription?: (userId: string) => Promise<{ subscription: Record<string, unknown> | null; plan: Record<string, unknown> | null }>;
+            getUserSubscription?: (userId: string) => Promise<{ subscription: Record<string, unknown> | null; plan: Record<string, unknown> | null }>;
+          };
+          const fetcher = sso.syncSubscription ?? sso.getUserSubscription;
+          if (fetcher) {
+            const { subscription, plan } = await withResilience('heal:syncSubscription', () => fetcher.call(sso, userId), { env: context.env as Record<string, unknown> });
+            if (subscription) {
+              // Ensure FK users_shadow exists before cache upsert
+              await syncUserShadow(supabase, userId, (subscription as { email?: string }).email || user.email);
+              await syncSubscriptionCache(supabase, subscription as Record<string, unknown>, plan as Record<string, unknown> | null);
+              // Re-read the just-synced cache row to return canonical shape
+              const { data: synced } = await supabase
+                .from('subscription_cache')
+                .select('*')
+                .eq('user_id', userId)
+                .in('status', ['active', 'paused', 'cancelled', 'grace_period'])
+                .order('updated_at', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+              if (synced) {
+                return apiSuccess({
+                  ...synced,
+                  subscription_plans: {
+                    id: synced.plan_id,
+                    name: synced.plan_name || synced.plan_type,
+                    plan_code: synced.plan_code,
+                  },
+                }, context.request, { startTime });
+              }
+              // Fallback: return SSO data directly if re-read fails
+              return apiSuccess({
+                ...(subscription as Record<string, unknown>),
+                subscription_plans: plan
+                  ? { id: (plan as { id?: string }).id, name: (plan as { name?: string }).name, plan_code: (plan as { plan_code?: string }).plan_code }
+                  : undefined,
+              }, context.request, { startTime });
+            }
+          }
+        }
+      } catch (e) {
+        logger.warn('SSO fallback failed (fail-soft, returning null)', { error: e instanceof Error ? e.message : String(e), userId });
+        logger.info('heal_metric', { metric: 'heal_cache_miss_total', status: 'fallback_null', userId } as any);
+      }
+      } // end flag enabled
+
       return apiSuccess(null, context.request, { startTime });
     }
 
@@ -175,7 +333,8 @@ export async function handleGetActiveSubscription(context: AuthenticatedContext)
       },
     }, context.request, { startTime });
   } catch (error) {
-    console.error('[GetActiveSubscription] Error:', error);
+    logger.error('GetActiveSubscription error', { error: (error as Error).message, userId: (error as any)?.userId, stack: (error as Error).stack });
     return apiError(500, 'INTERNAL_ERROR', 'An internal error occurred', context.request, { startTime });
   }
 }
+

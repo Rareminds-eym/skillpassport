@@ -76,6 +76,14 @@ export async function ssoGetUserByEmail(env: SsoEnv, email: string): Promise<any
   return env.SSO_SERVICE.getUserByEmail(email);
 }
 
+export async function ssoGetUserById(env: SsoEnv, userId: string): Promise<any> {
+  return env.SSO_SERVICE.getUserById(userId);
+}
+
+export async function ssoGetOrganizationById(env: SsoEnv, orgId: string): Promise<any> {
+  return env.SSO_SERVICE.getOrganizationById(orgId);
+}
+
 export async function ssoGetUserMemberships(env: SsoEnv, userId: string): Promise<any> {
   return env.SSO_SERVICE.getUserMemberships(userId);
 }

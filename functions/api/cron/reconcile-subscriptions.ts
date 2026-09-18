@@ -13,10 +13,13 @@
  * Protected by a shared cron secret — not accessible to end users.
  */
 
+import { createLogger } from '../../lib/logger';
 import { apiError, apiSuccess } from '../../lib/response';
 import { ssoSyncPlans, ssoSyncSubscription } from '../../lib/sso-client';
 import { getServiceClient } from '../../lib/supabase';
 import { syncAllPlansCache, syncRolesShadow, syncSubscriptionCache } from '../../lib/sync-shadow';
+
+const logger = createLogger('reconcile');
 
 interface ReconcileEnv {
   SUPABASE_URL: string;
@@ -32,6 +35,13 @@ export async function onRequestPost(context: { request: Request; env: ReconcileE
   const cronSecret = request.headers.get('X-Cron-Secret');
   if (!env.CRON_SECRET || cronSecret !== env.CRON_SECRET) {
     return apiError(401, 'UNAUTHORIZED', 'Unauthorized', request);
+  }
+
+  // Gated by cron-reconcile-heal flag (Flagship or env HEAL_MODE)
+  const { isHealEnabled } = await import('../../lib/healConfig');
+  if (!await isHealEnabled(env as unknown as Record<string, unknown>, 'cron-reconcile-heal')) {
+    logger.info('heal_metric', { metric: 'reconcile_run', status: 'heal_disabled', flag: 'cron-reconcile-heal' } as any);
+    return apiSuccess({ subscriptions_checked: 0, subscriptions_synced: 0, plans_synced: 0, roles_synced: 0, roles_deleted: 0, errors: ['heal_disabled: cron-reconcile-heal flag is disabled'] }, request);
   }
 
   const supabase = getServiceClient(env);
@@ -102,11 +112,12 @@ export async function onRequestPost(context: { request: Request; env: ReconcileE
       }
     }
 
-    console.log('[Reconcile] Completed:', JSON.stringify(results));
+    logger.info('Reconcile completed', { results });
+    logger.info('heal_metric', { metric: 'reconcile_run', ...results } as any);
 
     return apiSuccess(results, request);
   } catch (error: any) {
-    console.error('[Reconcile] Fatal error:', error);
+    logger.error('Reconcile fatal error', { error: (error as Error).message });
     return apiError(500, 'INTERNAL_ERROR', error.message, request);
   }
 }

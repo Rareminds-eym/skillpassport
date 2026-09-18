@@ -7,7 +7,9 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { createLogger } from './logger';
 
+const logger = createLogger('sync-shadow');
 const STALENESS_THRESHOLD_MINUTES = 60;
 
 export async function syncSubscriptionCache(
@@ -23,7 +25,8 @@ export async function syncSubscriptionCache(
       organization_id: subscription.organization_id || null,
       plan_id: subscription.plan_id,
       plan_code: subscription.plan_code || (plan as Record<string, unknown>)?.plan_code,
-      plan_name: subscription.plan_type || (plan as Record<string, unknown>)?.name,
+      // Fix I4: plan_name should be plan.name not plan_type
+      plan_name: (plan as Record<string, unknown>)?.name || (subscription.plan_name as string) || (subscription.plan_type as string) || null,
       plan_type: subscription.plan_type,
       plan_amount: subscription.plan_amount,
       billing_cycle: subscription.billing_cycle,
@@ -33,7 +36,8 @@ export async function syncSubscriptionCache(
       subscription_end_date: subscription.subscription_end_date,
       is_organization_subscription: subscription.is_organization_subscription || false,
       organization_type: subscription.organization_type || null,
-      seat_count: subscription.seat_count || 1,
+      seat_count: (subscription.seat_count as number) ?? 1,
+      assigned_seats: (subscription.assigned_seats as number) ?? (subscription as any).assignedSeats ?? 0,
       product_id: subscription.product_id || (plan as Record<string, unknown>)?.product_id || null,
       receipt_url: subscription.receipt_url || null,
       synced_at: new Date().toISOString(),
@@ -41,7 +45,8 @@ export async function syncSubscriptionCache(
     }, { onConflict: 'id' });
 
   if (error) {
-    console.error('[sync-shadow] Failed to sync subscription_cache:', error.message);
+    logger.error('Failed to sync subscription_cache', { error: error.message });
+    logger.info('heal_metric', { metric: 'sync_shadow_failure', table: 'subscription_cache', error: error.message } as any);
   }
 }
 
@@ -68,7 +73,7 @@ export async function syncPlanCache(
     }, { onConflict: 'id' });
 
   if (error) {
-    console.error('[sync-shadow] Failed to sync plans_cache:', error.message);
+    logger.error('Failed to sync plans_cache', { error: error.message });
   }
 }
 
@@ -98,20 +103,13 @@ export async function syncUserShadow(
   userId: string,
   email?: string,
 ): Promise<void> {
-  const { data: existing } = await supabase
+  // Use upsert to be idempotent under concurrent heals (fix I6: INSERT → 23505)
+  const { error } = await supabase
     .from('users_shadow')
-    .select('id')
-    .eq('id', userId)
-    .maybeSingle();
+    .upsert({ id: userId, email: email || `${userId}@unknown` }, { onConflict: 'id' });
 
-  if (!existing) {
-    const { error } = await supabase
-      .from('users_shadow')
-      .insert({ id: userId, email: email || `${userId}@unknown` });
-
-    if (error) {
-      console.error('[sync-shadow] Failed to sync users_shadow:', error.message);
-    }
+  if (error) {
+    logger.error('Failed to sync users_shadow', { error: error.message });
   }
 }
 
@@ -196,7 +194,7 @@ export async function syncRolesShadow(
   let roles: SsoRole[];
   try {
     if (!env?.SSO_SERVICE) {
-      console.error('[sync-shadow] SSO_SERVICE binding not configured; skipping roles sync');
+      logger.error('SSO_SERVICE binding not configured; skipping roles sync');
       result.error = 'SSO_SERVICE binding not configured';
       return result;
     }
@@ -204,10 +202,7 @@ export async function syncRolesShadow(
     const response = await ssoService.listRoles();
     roles = (response?.roles ?? []) as SsoRole[];
   } catch (err) {
-    console.error(
-      '[sync-shadow] Failed to fetch roles via SSO_SERVICE.listRoles():',
-      err instanceof Error ? err.message : String(err),
-    );
+    logger.error('Failed to fetch roles via SSO_SERVICE.listRoles()', { error: err instanceof Error ? err.message : String(err) });
     result.error = 'listRoles RPC failed';
     return result;
   }
@@ -215,7 +210,7 @@ export async function syncRolesShadow(
   // Guard: never reconcile from an empty source (treat as a soft failure) — this
   // prevents an empty/degraded RPC response from wiping the shadow.
   if (roles.length === 0) {
-    console.error('[sync-shadow] SSO_SERVICE.listRoles() returned no roles; leaving shadow unchanged');
+    logger.error('SSO_SERVICE.listRoles() returned no roles; leaving shadow unchanged');
     result.error = 'no roles returned';
     return result;
   }
@@ -236,7 +231,7 @@ export async function syncRolesShadow(
     );
 
   if (upsertError) {
-    console.error('[sync-shadow] Failed to sync roles shadow:', upsertError.message);
+    logger.error('Failed to sync roles shadow', { error: upsertError.message });
     result.error = upsertError.message;
     return result;
   }
@@ -253,7 +248,7 @@ export async function syncRolesShadow(
     .select('name');
 
   if (deleteError) {
-    console.error('[sync-shadow] Failed to prune orphan roles from shadow:', deleteError.message);
+    logger.error('Failed to prune orphan roles from shadow', { error: deleteError.message });
     result.error = deleteError.message;
     return result;
   }

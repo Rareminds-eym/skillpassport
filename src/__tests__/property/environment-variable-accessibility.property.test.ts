@@ -21,10 +21,7 @@ interface TestEnv {
   AWS_ACCESS_KEY_ID?: string;
   AWS_SECRET_ACCESS_KEY?: string;
   AWS_REGION?: string;
-  CLOUDFLARE_ACCOUNT_ID?: string;
-  CLOUDFLARE_R2_ACCESS_KEY_ID?: string;
-  CLOUDFLARE_R2_SECRET_ACCESS_KEY?: string;
-  CLOUDFLARE_R2_BUCKET_NAME?: string;
+  R2_BUCKET?: unknown;
 }
 
 // API-specific environment variable requirements
@@ -32,10 +29,10 @@ const API_ENV_REQUIREMENTS: Record<string, string[]> = {
   'adaptive-session': ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'SUPABASE_SERVICE_ROLE_KEY', 'OPENROUTER_API_KEY'],
   'analyze-assessment': ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'OPENROUTER_API_KEY', 'CLAUDE_API_KEY'],
   'career': ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'OPENROUTER_API_KEY', 'GEMINI_API_KEY'],
-  'course': ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'CLOUDFLARE_R2_ACCESS_KEY_ID', 'CLOUDFLARE_R2_SECRET_ACCESS_KEY'],
+  'course': ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'R2_BUCKET'],
   'fetch-certificate': ['SUPABASE_URL', 'SUPABASE_ANON_KEY'],
   'otp': ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_REGION'],
-  'storage': ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'CLOUDFLARE_R2_ACCESS_KEY_ID', 'CLOUDFLARE_R2_SECRET_ACCESS_KEY', 'CLOUDFLARE_R2_BUCKET_NAME'],
+  'storage': ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'R2_BUCKET'],
   'streak': ['SUPABASE_URL', 'SUPABASE_ANON_KEY'],
   'user': ['SUPABASE_URL', 'SUPABASE_ANON_KEY'],
   'adaptive-aptitude': ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'OPENROUTER_API_KEY', 'CLAUDE_API_KEY'],
@@ -71,10 +68,7 @@ function createCompleteEnv(): TestEnv {
     AWS_ACCESS_KEY_ID: 'test-aws-access-key',
     AWS_SECRET_ACCESS_KEY: 'test-aws-secret-key',
     AWS_REGION: 'us-east-1',
-    CLOUDFLARE_ACCOUNT_ID: 'test-account-id',
-    CLOUDFLARE_R2_ACCESS_KEY_ID: 'test-r2-access-key',
-    CLOUDFLARE_R2_SECRET_ACCESS_KEY: 'test-r2-secret-key',
-    CLOUDFLARE_R2_BUCKET_NAME: 'test-bucket',
+    R2_BUCKET: {},
   };
 }
 
@@ -129,7 +123,7 @@ describe('Property 2: Environment Variable Accessibility', () => {
       expect(env.AWS_REGION).toBeDefined();
     });
 
-    it('should provide access to R2 credentials for storage APIs', () => {
+    it('should provide access to the R2 bucket binding for storage APIs', () => {
       const env = createCompleteEnv();
       const storageApis = ['storage', 'course'];
       
@@ -138,8 +132,7 @@ describe('Property 2: Environment Variable Accessibility', () => {
         expect(result.valid).toBe(true);
       });
       
-      expect(env.CLOUDFLARE_R2_ACCESS_KEY_ID).toBeDefined();
-      expect(env.CLOUDFLARE_R2_SECRET_ACCESS_KEY).toBeDefined();
+      expect(env.R2_BUCKET).toBeDefined();
     });
   });
 
@@ -169,12 +162,12 @@ describe('Property 2: Environment Variable Accessibility', () => {
       expect(result.missing).toContain('AWS_SECRET_ACCESS_KEY');
     });
 
-    it('should detect missing R2 credentials', () => {
-      const env = createPartialEnv(['CLOUDFLARE_R2_ACCESS_KEY_ID']);
+    it('should detect missing R2 bucket binding', () => {
+      const env = createPartialEnv(['R2_BUCKET']);
       const result = validateEnvironment('storage', env);
       
       expect(result.valid).toBe(false);
-      expect(result.missing).toContain('CLOUDFLARE_R2_ACCESS_KEY_ID');
+      expect(result.missing).toContain('R2_BUCKET');
     });
 
     it('should detect multiple missing variables', () => {
@@ -211,12 +204,10 @@ describe('Property 2: Environment Variable Accessibility', () => {
       expect(required).toContain('AWS_REGION');
     });
 
-    it('should validate storage API requires R2 credentials', () => {
+    it('should validate storage API requires the R2 bucket binding', () => {
       const required = API_ENV_REQUIREMENTS['storage'];
       
-      expect(required).toContain('CLOUDFLARE_R2_ACCESS_KEY_ID');
-      expect(required).toContain('CLOUDFLARE_R2_SECRET_ACCESS_KEY');
-      expect(required).toContain('CLOUDFLARE_R2_BUCKET_NAME');
+      expect(required).toContain('R2_BUCKET');
     });
 
     it('should validate simple APIs only require Supabase', () => {

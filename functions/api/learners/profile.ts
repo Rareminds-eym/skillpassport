@@ -34,6 +34,7 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
         grade_start_date,
         school_class_id,
         school_id,
+        universityId,
         university_college_id,
         program_id,
         course_name,
@@ -104,7 +105,7 @@ export const onRequestPut = withAuth(async (context: AuthenticatedContext) => {
   interface LearnerUpdateData {
     school_id?: string | null;
     school_class_id?: string | null;
-    university_id?: string | null;
+    universityId?: string | null;
     university_college_id?: string | null;
     program_id?: string | null;
     program_section_id?: string | null;
@@ -161,7 +162,7 @@ export const onRequestPut = withAuth(async (context: AuthenticatedContext) => {
 
     if (body.schoolId !== undefined) updateData.school_id = toNullIfEmpty(body.schoolId);
     if (body.schoolClassId !== undefined) updateData.school_class_id = toNullIfEmpty(body.schoolClassId);
-    if (body.universityId !== undefined) updateData.university_id = toNullIfEmpty(body.universityId);
+    if (body.universityId !== undefined) updateData.universityId = toNullIfEmpty(body.universityId);
     if (body.universityCollegeId !== undefined) updateData.university_college_id = toNullIfEmpty(body.universityCollegeId);
     if (body.programId !== undefined) updateData.program_id = toNullIfEmpty(body.programId);
     if (body.programSectionId !== undefined) updateData.program_section_id = toNullIfEmpty(body.programSectionId);

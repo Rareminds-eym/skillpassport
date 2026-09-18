@@ -1,6 +1,6 @@
 import { lazy } from "react";
 import { Navigate, Route } from "react-router-dom";
-import { SubscriptionProtectedRoute } from "@/features/subscription";
+import SubscriptionProtectedRoute from "@/features/subscription/ui/shared/SubscriptionProtectedRoute";
 import EducatorLayout from "../layouts/EducatorLayout";
 
 const EDUCATOR_ROLES = ["educator", "school_educator", "college_educator"];

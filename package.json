@@ -8,8 +8,8 @@
     "dev:local": "vite --mode development --port 8788",
     "dev": "vite --mode development --port 3000",
     "dev:prod": "vite --port 8788",
-    "build": "node --max-old-space-size=8192 ./node_modules/vite/bin/vite.js build",
-    "build:dev": "node --max-old-space-size=12288 ./node_modules/vite/bin/vite.js build --mode development",
+    "build": "node --max-old-space-size=4096 ./node_modules/vite/bin/vite.js build",
+    "build:dev": "node --max-old-space-size=4096 ./node_modules/vite/bin/vite.js build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest",
@@ -36,6 +36,7 @@
     "@heroicons/react": "2.2.0",
     "@leenguyen/react-flip-clock-countdown": "1.7.2",
     "@lottiefiles/dotlottie-react": "0.17.10",
+    "@openfeature/server-sdk": "^1.23.0",
     "@paper-design/shaders-react": "0.0.71",
     "@radix-ui/react-accordion": "1.2.12",
     "@radix-ui/react-alert-dialog": "1.1.15",
@@ -69,13 +70,11 @@
     "@rareminds-eym/identity-client": "1.0.0",
     "@rareminds-eym/sso-gateway": "1.0.0",
     "@supabase/supabase-js": "2.57.4",
-    "@tabler/icons-react": "2.47.0",
     "@tanstack/react-query": "5.90.3",
     "@tsparticles/react": "3.0.0",
     "@tsparticles/slim": "3.9.1",
     "@types/react-vertical-timeline-component": "3.3.6",
     "apexcharts": "5.3.5",
-    "aws4fetch": "1.0.20",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
     "cmdk": "1.1.1",
@@ -89,7 +88,6 @@
     "framer-motion": "12.38.0",
     "gsap": "3.13.0",
     "html2canvas": "1.4.1",
-    "indian-pincodes": "1.1.0",
     "jose": "6.2.8",
     "jspdf": "3.0.4",
     "jspdf-autotable": "5.0.7",
@@ -136,7 +134,6 @@
     "@cloudflare/workers-types": "4.20260607.1",
     "@eslint/js": "9.9.1",
     "@locator/babel-jsx": "0.5.1",
-    "@supabase/cli-linux-x64": "^2.106.0",
     "@testing-library/dom": "10.4.1",
     "@testing-library/jest-dom": "6.9.1",
     "@testing-library/react": "16.3.0",
@@ -166,7 +163,7 @@
     "jsdom": "27.2.0",
     "postcss": "8.4.35",
     "puppeteer": "24.37.1",
-    "supabase": "2.106.0",
+    "supabase": "2.109.1",
     "tailwindcss": "3.4.1",
     "ts-jest": "29.4.6",
     "ts-node": "10.9.2",
@@ -178,6 +175,7 @@
     "wrangler": "4.120.1"
   },
   "optionalDependencies": {
-    "@rollup/rollup-linux-x64-gnu": "4.62.2"
+    "@rollup/rollup-linux-x64-gnu": "4.62.2",
+    "@rollup/rollup-win32-x64-msvc": "4.62.2"
   }
 }

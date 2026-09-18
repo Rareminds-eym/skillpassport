@@ -14,7 +14,8 @@ import {
 } from 'lucide-react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { SearchBar, CertificateNameModal, CourseEnrollmentModal } from '@/shared/ui';
+import { SearchBar, CourseEnrollmentModal } from '@/shared/ui';
+import CertificateNameModal from '@/shared/ui/CertificateNameModal';
 import { CourseDetailModal } from '@/features/courses';
 import WeeklyLearningTracker from '@/entities/learner/ui/WeeklyLearningTracker';
 import { CourseAdvancedFilters } from '@/widgets/learner-dashboard';
