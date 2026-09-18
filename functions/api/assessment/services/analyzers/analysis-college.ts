@@ -6,6 +6,7 @@
  */
 
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import type { RIASECScores, AdaptiveAptitudeData, StudentProfile } from '../../types';
 import { getTopCategories, getTopScores } from '../../lib/analysis-helpers';
 import { generateCollegeCareerClusters } from '../core/career-cluster-generator';
@@ -35,12 +36,28 @@ interface StreamMcqScores {
   knowledgeDetails: any | null;            // { score, correctCount, totalQuestions, byTopic, strongTopics, weakTopics, recommendation }
 }
 
+interface QuestionMetadata {
+  id: string;
+  section_id: string | null;
+  category_mapping: Record<string, unknown> | null;
+  metadata: Record<string, unknown> | null;
+  question_type: string | null;
+  question_text: string | null;
+  correct_answer: unknown;
+}
+
+type QuestionMetadataError = {
+  message?: string;
+  failedChunk?: number;
+  failedQuestionIds?: string[];
+};
+
 async function fetchQuestionMetadataByIds(
-  supabase: any,
+  supabase: SupabaseClient,
   questionIds: string[],
   chunkSize = 50
-): Promise<{ questions: any[]; error: any | null }> {
-  const questions: any[] = [];
+): Promise<{ questions: QuestionMetadata[]; error: QuestionMetadataError | null }> {
+  const questions: QuestionMetadata[] = [];
 
   for (let index = 0; index < questionIds.length; index += chunkSize) {
     const ids = questionIds.slice(index, index + chunkSize);
@@ -50,10 +67,17 @@ async function fetchQuestionMetadataByIds(
       .in('id', ids);
 
     if (error) {
-      return { questions, error };
+      return {
+        questions,
+        error: {
+          ...error,
+          failedChunk: Math.floor(index / chunkSize),
+          failedQuestionIds: ids,
+        },
+      };
     }
 
-    questions.push(...(data || []));
+    questions.push(...((data || []) as QuestionMetadata[]));
   }
 
   return { questions, error: null };

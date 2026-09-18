@@ -7,20 +7,22 @@
 
 import { getServiceClient } from '../../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import type { PagesEnv } from '../../../lib/types';
+import { isValidUUID } from '../../../shared/lib/validation';
 import type { AnalyzeRequest } from '../types';
 import { analyzeHandler } from './analyze';
 
 export async function regenerateHandler(context: AuthenticatedContext) {
   const user = context.data.user;
-  const env = context.env as Record<string, string>;
-  const supabase = getServiceClient(env as any);
+  const env = context.env as PagesEnv;
+  const supabase = getServiceClient(env);
 
   try {
     const body = (await context.request.json()) as AnalyzeRequest;
     const { attemptId, gradeLevel } = body;
 
-    if (!attemptId) {
-      return Response.json({ error: 'attemptId required' }, { status: 400 });
+    if (!attemptId || typeof attemptId !== 'string' || !isValidUUID(attemptId)) {
+      return Response.json({ error: 'Invalid attemptId format' }, { status: 400 });
     }
 
     const { data: learnerData, error: learnerError } = await supabase
