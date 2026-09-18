@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, useInView, useScroll, useTransform } from 'framer-motion';
 import { useSearchParams } from 'react-router-dom';
 import {
     Target,
     Briefcase,
-    Zap,
     Rocket,
     Download,
     AlertCircle,
@@ -31,12 +30,10 @@ import {
     PrintView,
     LoadingState,
     ReportHeader,
-    SummaryCard,
     ProfileSection,
     CareerSection,
     SkillsSection,
     RoadmapSection,
-    StageScoresSection
 } from './sections';
 
 // Import screens
@@ -49,7 +46,7 @@ import CareerTrackModal from './CareerTrackModal';
 import { TextGenerateEffect } from '@/shared/ui/TextGenerateEffect';
 
 // Import constants and hooks
-import { RIASEC_NAMES, RIASEC_COLORS, TRAIT_NAMES, TRAIT_COLORS, PRINT_STYLES } from '@/features/assessment';
+import { RIASEC_NAMES, TRAIT_NAMES, PRINT_STYLES } from '@/features/assessment';
 import { useAssessmentResults } from '../model/useAssessmentResults';
 import { ssoClient } from '@/shared/api/ssoClient';
 import { getLogger } from '@/shared/config/logging';
@@ -65,9 +62,6 @@ import { generateProgramCareerPathsWithFallback } from '@/features/counselling';
 
 // Import stream matching engine for after 10th learners
 import { calculateStreamRecommendations } from '../lib/streamMatchingEngine';
-
-// Import centralized utilities from assessment feature
-import { normalizeCourseRecommendations } from '../index';
 
 // Import Debug Panel for development
 import AssessmentDebugPanel from './AssessmentDebugPanel';
@@ -563,8 +557,6 @@ const AssessmentResult = () => {
     const [activeSection, setActiveSection] = useState(null);
     const [isNavbarVisible, setIsNavbarVisible] = useState(true);
     const [selectedTrack, setSelectedTrack] = useState(null);
-    const [selectedRole, setSelectedRole] = useState(null);
-    const [currentStep, setCurrentStep] = useState(0); // 0 = role selection, 1-3 = wizard pages
     const [activeRecommendationTab, setActiveRecommendationTab] = useState('primary'); // 'primary' or 'career' - default to primary (stream for after10, degree for after12)
     const [after10Step, setAfter10Step] = useState(1); // 1 = Stream Recommendation, 2 = Career Clusters (stepper for after10)
     const [aiCareerPathsLoading, setAiCareerPathsLoading] = useState(false);
@@ -597,20 +589,18 @@ const AssessmentResult = () => {
         loading,
         error,
         retrying,
+        regenerating,
         retryAttemptCount,
         gradeLevel,
         monthsInGrade,
         learnerInfo,
         learnerAcademicData,
-        validationWarnings,
         handleRetry,
         handleRegenerate,
         handleClusterRetry,
-        validateResults,
         navigate,
         attemptData,
         resultData,
-        isClusterRetry,
         isClusterGenerationFailed
     } = useAssessmentResults();
 
@@ -1019,38 +1009,11 @@ const AssessmentResult = () => {
             matchScore: cluster.matchScore ?? 0,
             whyItFits: cluster.whyItFits || '',
         });
-        setSelectedRole(null);
-        setCurrentStep(0);
     };
 
     // Close track modal
     const closeTrackModal = () => {
         setSelectedTrack(null);
-        setSelectedRole(null);
-        setCurrentStep(0);
-    };
-
-    // Handle role selection
-    const handleRoleSelect = (role) => {
-        setSelectedRole(role);
-        setCurrentStep(1);
-    };
-
-    // Navigate to next step
-    const goToNextStep = () => {
-        if (currentStep < 3) {
-            setCurrentStep(currentStep + 1);
-        }
-    };
-
-    // Navigate to previous step
-    const goToPrevStep = () => {
-        if (currentStep > 1) {
-            setCurrentStep(currentStep - 1);
-        } else if (currentStep === 1) {
-            setCurrentStep(0);
-            setSelectedRole(null);
-        }
     };
 
     // Loading state
@@ -1164,9 +1127,7 @@ const AssessmentResult = () => {
         );
     }
 
-    const { riasec, aptitude, knowledge, careerFit, skillGap, roadmap, employability, streamRecommendation } = results;
-    const missingFields = validateResults();
-    const hasIncompleteData = missingFields.length > 0;
+    const { careerFit, skillGap, roadmap, streamRecommendation } = results;
 
     return (
         <>
@@ -1216,10 +1177,10 @@ const AssessmentResult = () => {
                             <Button
                                 type="button"
                                 onClick={handleRegenerate}
-                                disabled={retrying || isPdfGenerating}
+                                disabled={regenerating || isPdfGenerating}
                                 className="bg-amber-600 text-white hover:bg-amber-700 shadow-sm h-8 text-sm font-medium disabled:opacity-75 disabled:cursor-not-allowed"
                             >
-                                {retrying ? (
+                                {regenerating ? (
                                     <>
                                         <RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" />
                                         Regenerating...
@@ -2207,7 +2168,7 @@ const AssessmentResult = () => {
                                                                     reasons: course.reasons
                                                                 }
                                                             });
-                                                        } catch (error) {
+                                                        } catch {
                                                             // Silently fallback to hardcoded paths - this is expected when Worker is not deployed
                                                             console.log('[PROGRAM_CLICK] Using fallback career paths');
                                                             // Fallback to hardcoded paths on error

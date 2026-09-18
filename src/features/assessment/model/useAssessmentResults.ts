@@ -140,6 +140,7 @@ interface UseAssessmentResultsReturn {
   loading: boolean;
   error: string | null;
   retrying: boolean;
+  regenerating: boolean;
   retryAttemptCount: number;
   gradeLevel: string;
   monthsInGrade: null;
@@ -320,6 +321,7 @@ export const useAssessmentResults = (): UseAssessmentResultsReturn => {
     loading,
     error,
     retrying: retrying || regenerating,
+    regenerating,
     retryAttemptCount: 0,
     gradeLevel,
     monthsInGrade,

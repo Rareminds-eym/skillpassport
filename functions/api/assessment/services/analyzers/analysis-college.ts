@@ -501,7 +501,7 @@ export async function analyzeCollege(
         };
         if (fetched.results.overall_accuracy != null) {
           const parsed = parseFloat(String(fetched.results.overall_accuracy));
-          aptitudeOverall = !isNaN(parsed) ? parsed : null;
+          aptitudeOverall = !Number.isNaN(parsed) ? parsed : null;
         }
       }
     }
