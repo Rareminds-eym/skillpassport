@@ -69,10 +69,51 @@ export async function regenerateHandler(context: AuthenticatedContext) {
       }),
     });
 
-    return analyzeHandler({
+    const analysisResponse = await analyzeHandler({
       ...context,
       request: regenerateRequest,
     });
+
+    if (!analysisResponse.ok) {
+      return analysisResponse;
+    }
+
+    const completedAt = new Date().toISOString();
+
+    const { error: resultStatusError } = await supabase
+      .from('personal_assessment_results')
+      .update({
+        status: 'completed',
+        updated_at: completedAt,
+      })
+      .eq('attempt_id', attemptId)
+      .eq('learner_id', learnerData.id);
+
+    if (resultStatusError) {
+      return Response.json(
+        { error: 'Failed to mark regenerated result completed', message: resultStatusError.message },
+        { status: 500 }
+      );
+    }
+
+    const { error: attemptStatusError } = await supabase
+      .from('personal_assessment_attempts')
+      .update({
+        status: 'completed',
+        completed_at: completedAt,
+        updated_at: completedAt,
+      })
+      .eq('id', attemptId)
+      .eq('learner_id', learnerData.id);
+
+    if (attemptStatusError) {
+      return Response.json(
+        { error: 'Failed to mark assessment attempt completed', message: attemptStatusError.message },
+        { status: 500 }
+      );
+    }
+
+    return analysisResponse;
   } catch (error) {
     return Response.json(
       {
