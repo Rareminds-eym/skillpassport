@@ -1,16 +1,15 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useAuthStore } from '@/shared/model/authStore';
-import React, { useState, useEffect } from "react";
+import { useState, useEffect, type FC, type FormEvent } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   PlusCircleIcon,
   XMarkIcon,
   PencilIcon,
   UserGroupIcon,
   AcademicCapIcon,
-  ChevronDownIcon,
   FunnelIcon,
   MagnifyingGlassIcon,
-  ArrowPathIcon,
 } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
 import { getLogger } from '@/shared/config/logging';
@@ -52,8 +51,11 @@ interface Faculty {
   email: string;
 }
 
-const ProgramSectionManagement: React.FC = () => {
+const ProgramSectionManagement: FC = () => {
   const logger = getLogger('college-admin-sections');
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const returnTo = searchParams.get("returnTo");
   const [collegeId, setCollegeId] = useState<string | null>(null);
   const [sections, setSections] = useState<ProgramSection[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -98,6 +100,13 @@ const ProgramSectionManagement: React.FC = () => {
       loadData();
     }
   }, [collegeId]);
+
+  useEffect(() => {
+    if (searchParams.get("create") === "section" && departments.length > 0 && programs.length > 0) {
+      setSelectedSection(null);
+      setIsModalOpen(true);
+    }
+  }, [searchParams, departments.length, programs.length]);
 
   const loadData = async () => {
     if (!collegeId) return;
@@ -177,7 +186,11 @@ const ProgramSectionManagement: React.FC = () => {
       toast.success(selectedSection ? "Section updated successfully" : "Section created successfully");
       
       setIsModalOpen(false);
-      loadData(); // Reload data to show changes
+      await loadData(); // Reload data to show changes
+
+      if (!selectedSection && returnTo) {
+        navigate(returnTo);
+      }
     } catch (error: any) {
       logger.error("Error saving section:", error as Error);
       toast.error(`Failed to save section: ${error.message}`);
@@ -497,7 +510,7 @@ const ProgramSectionManagement: React.FC = () => {
 };
 
 // Section Form Modal Component
-const SectionFormModal: React.FC<{
+const SectionFormModal: FC<{
   isOpen: boolean;
   onClose: () => void;
   onSave: (data: Partial<ProgramSection>) => void;
@@ -516,7 +529,7 @@ const SectionFormModal: React.FC<{
     status: section?.status || "active",
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     
     const dept = departments.find((d) => d.id === formData.department_id);

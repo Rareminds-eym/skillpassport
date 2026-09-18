@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useAuthStore } from '@/shared/model/authStore';
-import React, { useState, useEffect } from "react";
+import { useState, useEffect, type FC } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   UserGroupIcon,
   FunnelIcon,
@@ -23,8 +24,9 @@ const logger = getLogger('college-admin-enrolled-learners');
 
 const ITEMS_PER_PAGE = 10;
 
-const EnrolledLearners: React.FC = () => {
+const EnrolledLearners: FC = () => {
   const user = useUser();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [collegeId, setCollegeId] = useState<string | null>(null);
 
   const [learners, setlearners] = useState<EnrolledLearnerView[]>([]);
@@ -102,6 +104,16 @@ const EnrolledLearners: React.FC = () => {
   }, [collegeId]);
 
   useEffect(() => {
+    if (searchParams.get("enroll") === "open") {
+      setShowEnrollModal(true);
+      setSearchParams((params) => {
+        params.delete("enroll");
+        return params;
+      }, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
+
+  useEffect(() => {
     if (departmentFilter) {
       loadPrograms(departmentFilter);
     } else {
@@ -162,7 +174,7 @@ const EnrolledLearners: React.FC = () => {
         college_id: collegeId,
         department_id: departmentFilter || undefined,
         program_id: programFilter || undefined,
-        semester: semesterFilter ? parseInt(semesterFilter) : undefined,
+        semester: semesterFilter ? parseInt(semesterFilter, 10) : undefined,
         search: searchTerm || undefined,
       });
 
@@ -458,13 +470,14 @@ const EnrolledLearners: React.FC = () => {
 
 
 // Modern Enrollment Modal Component
-const EnrolllearnersModal: React.FC<{
+const EnrolllearnersModal: FC<{
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
   departments: any[];
   collegeId: string | null;
 }> = ({ isOpen, onClose, onSuccess, departments, collegeId }) => {
+  const navigate = useNavigate();
   // Form state
   const [selectedDepartment, setSelectedDepartment] = useState("");
   const [selectedProgram, setSelectedProgram] = useState("");
@@ -685,6 +698,23 @@ const EnrolllearnersModal: React.FC<{
 
   const selectedProgData = programs.find(p => p.id === selectedProgram);
   const selectedDeptData = departments.find(d => d.id === selectedDepartment);
+  const shouldShowCreateDepartmentPrompt = departments.length === 0;
+  const shouldShowCreateProgramPrompt = selectedDepartment && !loading && programs.length === 0;
+  const shouldShowCreateSemesterPrompt = selectedProgram && availableSemesters.length === 0;
+  const shouldShowCreateSectionPrompt = selectedProgram && selectedSemester && sections.length === 0;
+  const enrollmentReturnTo = encodeURIComponent("/college-admin/learners/enrolled?enroll=open");
+
+  const handleCreateDepartment = () => {
+    navigate(`/college-admin/departments/management?create=department&returnTo=${enrollmentReturnTo}`);
+  };
+
+  const handleCreateProgram = () => {
+    navigate(`/college-admin/academics/programs?create=program&returnTo=${enrollmentReturnTo}`);
+  };
+
+  const handleCreateSection = () => {
+    navigate(`/college-admin/academics/program-sections?create=section&returnTo=${enrollmentReturnTo}`);
+  };
 
   if (!isOpen) return null;
 
@@ -692,7 +722,9 @@ const EnrolllearnersModal: React.FC<{
     <div className="fixed inset-0 z-50 overflow-hidden">
       <div className="flex min-h-screen">
         {/* Backdrop */}
-        <div
+        <button
+          type="button"
+          aria-label="Close enrollment modal"
           className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity"
           onClick={onClose}
         />
@@ -714,6 +746,7 @@ const EnrolllearnersModal: React.FC<{
                   </p>
                 </div>
                 <button
+                  type="button"
                   onClick={onClose}
                   className="p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition"
                 >
@@ -734,12 +767,18 @@ const EnrolllearnersModal: React.FC<{
                 <div className="space-y-4">
                   {/* Department */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    <label htmlFor="enroll-department" className="block text-sm font-medium text-gray-700 mb-1.5">
                       Department <span className="text-red-500">*</span>
                     </label>
                     <select
+                      id="enroll-department"
                       value={selectedDepartment}
                       onChange={(e) => {
+                        if (e.target.value === "__add_department__") {
+                          handleCreateDepartment();
+                          return;
+                        }
+
                         setSelectedDepartment(e.target.value);
                         setSelectedProgram("");
                         setSelectedlearners([]);
@@ -752,17 +791,26 @@ const EnrolllearnersModal: React.FC<{
                           {dept.name}
                         </option>
                       ))}
+                      <option value="__add_department__">+ Add Department</option>
                     </select>
                   </div>
 
                   {/* Program */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    <label htmlFor="enroll-program" className="block text-sm font-medium text-gray-700 mb-1.5">
                       Program <span className="text-red-500">*</span>
                     </label>
                     <select
+                      id="enroll-program"
                       value={selectedProgram}
-                      onChange={(e) => setSelectedProgram(e.target.value)}
+                      onChange={(e) => {
+                        if (e.target.value === "__add_program__") {
+                          handleCreateProgram();
+                          return;
+                        }
+
+                        setSelectedProgram(e.target.value);
+                      }}
                       className="w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition disabled:bg-gray-100 disabled:cursor-not-allowed"
                       disabled={!selectedDepartment || loading}
                     >
@@ -774,12 +822,15 @@ const EnrolllearnersModal: React.FC<{
                           {prog.name} {prog.code ? `(${prog.code})` : ""}
                         </option>
                       ))}
+                      {selectedDepartment && !loading && (
+                        <option value="__add_program__">+ Add Program</option>
+                      )}
                     </select>
                   </div>
 
                   {/* Semester */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    <label id="enroll-semester-label" className="block text-sm font-medium text-gray-700 mb-1.5">
                       Semester <span className="text-red-500">*</span>
                     </label>
                     {availableSemesters.length > 0 ? (
@@ -788,6 +839,7 @@ const EnrolllearnersModal: React.FC<{
                           <button
                             key={sem}
                             type="button"
+                            aria-labelledby="enroll-semester-label"
                             onClick={() => setSelectedSemester(sem.toString())}
                             className={`py-2 text-sm font-medium rounded-lg border transition ${selectedSemester === sem.toString()
                               ? "bg-blue-600 text-white border-blue-600"
@@ -797,22 +849,48 @@ const EnrolllearnersModal: React.FC<{
                             {sem}
                           </button>
                         ))}
+                        <button
+                          type="button"
+                          onClick={handleCreateSection}
+                          className="col-span-4 mt-1 rounded-lg border border-dashed border-blue-300 bg-blue-50 py-2 text-sm font-medium text-blue-700 transition hover:border-blue-400 hover:bg-blue-100"
+                        >
+                          + Add Semester Section
+                        </button>
                       </div>
                     ) : (
-                      <p className="text-sm text-gray-500 py-2">
-                        {selectedProgram ? "No semesters configured for this program" : "Select a program first"}
-                      </p>
+                      <div className="py-2">
+                        <p className="text-sm text-gray-500">
+                          {selectedProgram ? "No semesters configured for this program" : "Select a program first"}
+                        </p>
+                        {selectedProgram && (
+                          <button
+                            type="button"
+                            onClick={handleCreateSection}
+                            className="mt-3 inline-flex items-center rounded-lg border border-dashed border-blue-300 bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700 transition hover:border-blue-400 hover:bg-blue-100"
+                          >
+                            + Add Semester Section
+                          </button>
+                        )}
+                      </div>
                     )}
                   </div>
 
                   {/* Section */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    <label htmlFor="enroll-section" className="block text-sm font-medium text-gray-700 mb-1.5">
                       Section <span className="text-red-500">*</span>
                     </label>
                     <select
+                      id="enroll-section"
                       value={selectedSection}
-                      onChange={(e) => setSelectedSection(e.target.value)}
+                      onChange={(e) => {
+                        if (e.target.value === "__add_section__") {
+                          handleCreateSection();
+                          return;
+                        }
+
+                        setSelectedSection(e.target.value);
+                      }}
                       className="w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition disabled:bg-gray-100 disabled:cursor-not-allowed"
                       disabled={!selectedProgram || !selectedSemester}
                     >
@@ -822,6 +900,9 @@ const EnrolllearnersModal: React.FC<{
                           Section {sec.section} ({sec.current_learners || 0}/{sec.max_learners || 60})
                         </option>
                       ))}
+                      {selectedProgram && selectedSemester && (
+                        <option value="__add_section__">+ Add Section</option>
+                      )}
                     </select>
                   </div>
                 </div>
@@ -876,15 +957,88 @@ const EnrolllearnersModal: React.FC<{
 
                 {/* Learner List */}
                 <div className="flex-1 overflow-y-auto p-4">
-                  {!selectedProgram ? (
+                  {shouldShowCreateDepartmentPrompt ? (
                     <div className="flex flex-col items-center justify-center h-full text-center py-12">
                       <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
                         <AcademicCapIcon className="h-8 w-8 text-gray-400" />
                       </div>
-                      <p className="text-gray-500 font-medium">Select a Program First</p>
-                      <p className="text-sm text-gray-400 mt-1">
-                        Choose department and program to view available learners
+                      <p className="text-gray-700 font-semibold">No Departments Found</p>
+                      <p className="text-sm text-gray-400 mt-1 max-w-sm">
+                        Create a department first, then come back here to choose a program and enroll learners.
                       </p>
+                      <button
+                        type="button"
+                        onClick={handleCreateDepartment}
+                        className="mt-5 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
+                      >
+                        <AcademicCapIcon className="h-5 w-5" />
+                        Create Department
+                      </button>
+                    </div>
+                  ) : shouldShowCreateSemesterPrompt ? (
+                    <div className="flex flex-col items-center justify-center h-full text-center py-12">
+                      <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                        <AcademicCapIcon className="h-8 w-8 text-gray-400" />
+                      </div>
+                      <p className="text-gray-700 font-semibold">No Semesters Configured</p>
+                      <p className="text-sm text-gray-400 mt-1 max-w-sm">
+                        Add a section for a semester in {selectedProgData?.name || "this program"}, then come back here to enroll learners.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={handleCreateSection}
+                        className="mt-5 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
+                      >
+                        <AcademicCapIcon className="h-5 w-5" />
+                        Create Semester Section
+                      </button>
+                    </div>
+                  ) : shouldShowCreateSectionPrompt ? (
+                    <div className="flex flex-col items-center justify-center h-full text-center py-12">
+                      <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                        <UserGroupIcon className="h-8 w-8 text-gray-400" />
+                      </div>
+                      <p className="text-gray-700 font-semibold">No Sections Found</p>
+                      <p className="text-sm text-gray-400 mt-1 max-w-sm">
+                        Create a section for semester {selectedSemester}, then come back here to enroll learners.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={handleCreateSection}
+                        className="mt-5 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
+                      >
+                        <UserGroupIcon className="h-5 w-5" />
+                        Create Section
+                      </button>
+                    </div>
+                  ) : !selectedProgram ? (
+                    <div className="flex flex-col items-center justify-center h-full text-center py-12">
+                      <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                        <AcademicCapIcon className="h-8 w-8 text-gray-400" />
+                      </div>
+                      {shouldShowCreateProgramPrompt ? (
+                        <>
+                          <p className="text-gray-700 font-semibold">No Programs Found</p>
+                          <p className="text-sm text-gray-400 mt-1 max-w-sm">
+                            Create a program for {selectedDeptData?.name || "this department"}, then come back here to enroll learners.
+                          </p>
+                          <button
+                            type="button"
+                            onClick={handleCreateProgram}
+                            className="mt-5 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
+                          >
+                            <AcademicCapIcon className="h-5 w-5" />
+                            Create Program
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-gray-500 font-medium">Select a Program First</p>
+                          <p className="text-sm text-gray-400 mt-1">
+                            Choose department and program to view available learners
+                          </p>
+                        </>
+                      )}
                     </div>
                   ) : loadinglearners ? (
                     <div className="flex items-center justify-center h-full">
@@ -925,6 +1079,7 @@ const EnrolllearnersModal: React.FC<{
                         </label>
                         {selectedlearners.length > 0 && (
                           <button
+                            type="button"
                             onClick={() => setSelectedlearners([])}
                             className="text-xs text-red-600 hover:text-red-700 font-medium"
                           >
@@ -1018,12 +1173,14 @@ const EnrolllearnersModal: React.FC<{
 
                 <div className="flex items-center gap-3">
                   <button
+                    type="button"
                     onClick={onClose}
                     className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition"
                   >
                     Cancel
                   </button>
                   <button
+                    type="button"
                     onClick={handleEnroll}
                     disabled={selectedlearners.length === 0 || !selectedProgram || !selectedSemester || !selectedSection || enrolling}
                     className="px-5 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"

@@ -21,7 +21,8 @@ import {
     XMarkIcon,
 } from "@heroicons/react/24/outline";
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type FC } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from 'react-hot-toast';
 import { Pagination } from '@/shared/ui';
 import { SearchBar } from '@/shared/ui';
@@ -163,9 +164,12 @@ const EmptyState = ({ onCreate }: { onCreate: () => void }) => {
   );
 };
 
-const DepartmentManagement: React.FC = () => {
+const DepartmentManagement: FC = () => {
   const user = useUser();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const returnTo = searchParams.get("returnTo");
   
   // Fetch college ID from organizations table using admin_id
   const { data: collegeData, error: collegeError } = useQuery({
@@ -213,6 +217,12 @@ const DepartmentManagement: React.FC = () => {
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [departmentToDelete, setDepartmentToDelete] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (searchParams.get("create") === "department") {
+      setShowAddModal(true);
+    }
+  }, [searchParams]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -288,6 +298,9 @@ const DepartmentManagement: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.college.departments.all });
       toast.success('Department created successfully');
       setShowAddModal(false);
+      if (returnTo?.startsWith('/') && !returnTo.startsWith('//')) {
+        navigate(returnTo);
+      }
     },
     onError: (error: any) => {
       toast.error(error.message || 'Failed to create department');
@@ -327,18 +340,6 @@ const DepartmentManagement: React.FC = () => {
       toast.error(error.message || 'Failed to delete department');
     },
   });
-
-  // Sample data for courses and faculty (these would also come from API in production)
-  const [allCourses] = useState<Course[]>([
-    { id: 1, code: "CS101", name: "Introduction to Programming", credits: 4, semester: 1 },
-    { id: 2, code: "CS102", name: "Data Structures", credits: 4, semester: 2 },
-    { id: 3, code: "CS201", name: "Algorithms", credits: 4, semester: 3 },
-    { id: 4, code: "CS202", name: "Database Systems", credits: 3, semester: 4 },
-    { id: 5, code: "EC101", name: "Circuit Theory", credits: 4, semester: 1 },
-    { id: 6, code: "EC102", name: "Digital Electronics", credits: 4, semester: 2 },
-    { id: 7, code: "ME101", name: "Engineering Mechanics", credits: 4, semester: 1 },
-    { id: 8, code: "ME102", name: "Thermodynamics", credits: 4, semester: 2 },
-  ]);
 
   // Fetch all faculty for the college dynamically
   const { data: allFaculty = [], isLoading: facultyLoading } = useQuery({
@@ -569,8 +570,13 @@ const DepartmentManagement: React.FC = () => {
 
   // Faculty assignment mutation
   const facultyAssignmentMutation = useMutation({
-    mutationFn: ({ departmentId, facultyIds }: { departmentId: string; facultyIds: string[] }) =>
-      departmentService.assignFacultyToDepartment(departmentId, facultyIds, user?.id!),
+    mutationFn: ({ departmentId, facultyIds }: { departmentId: string; facultyIds: string[] }) => {
+      if (!user?.id) {
+        throw new Error('User ID not found. Please refresh the page and try again.');
+      }
+
+      return departmentService.assignFacultyToDepartment(departmentId, facultyIds, user.id);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.college.departments.all });
       queryClient.invalidateQueries({ queryKey: ['college-faculty'] });
@@ -608,34 +614,6 @@ const DepartmentManagement: React.FC = () => {
       logger.error('Error assigning HOD:', error);
       toast.error(error.message || 'Failed to assign HOD');
     }
-  };
-
-  // Add learners mutation
-  const addlearnersMutation = useMutation({
-    mutationFn: ({ departmentId, learners }: { 
-      departmentId: string; 
-      learners: Array<{
-        rollNumber: string;
-        firstName: string;
-        lastName: string;
-        email: string;
-        phone?: string;
-        semester?: number;
-        program?: string;
-      }> 
-    }) => departmentService.addlearnersToDepartment(departmentId, learners),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.college.departments.all });
-      toast.success('Learners added successfully');
-      setSelectedDepartment(null);
-    },
-    onError: (error: any) => {
-      toast.error(error.message || 'Failed to add learners');
-    },
-  });
-
-  const handleSavelearners = (deptId: string, learners: any[]) => {
-    addlearnersMutation.mutate({ departmentId: deptId, learners });
   };
 
   const handleEditDepartment = (dept: Department) => {
