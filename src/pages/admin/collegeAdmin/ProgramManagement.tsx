@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useAuthStore } from '@/shared/model/authStore';
-import React, { useState, useEffect } from "react";
+import { useState, useEffect, type FC, type FormEvent } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   PlusCircleIcon,
   XMarkIcon,
@@ -8,7 +9,6 @@ import {
   AcademicCapIcon,
   FunnelIcon,
   MagnifyingGlassIcon,
-  ArrowPathIcon,
   TrashIcon,
 } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
@@ -35,8 +35,11 @@ interface Department {
   status: string;
 }
 
-const ProgramManagement: React.FC = () => {
+const ProgramManagement: FC = () => {
   const logger = getLogger('college-admin-programs');
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const returnTo = searchParams.get("returnTo");
   const [collegeId, setCollegeId] = useState<string | null>(null);
   const [programs, setPrograms] = useState<Program[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -78,6 +81,13 @@ const ProgramManagement: React.FC = () => {
       loadData();
     }
   }, [collegeId]);
+
+  useEffect(() => {
+    if (searchParams.get("create") === "program" && departments.length > 0) {
+      setSelectedProgram(null);
+      setIsModalOpen(true);
+    }
+  }, [searchParams, departments.length]);
 
   const loadData = async () => {
     if (!collegeId) return;
@@ -164,7 +174,11 @@ const ProgramManagement: React.FC = () => {
       toast.success(selectedProgram ? "Program updated successfully" : "Program created successfully");
       
       setIsModalOpen(false);
-      loadData();
+      await loadData();
+
+      if (!selectedProgram && returnTo) {
+        navigate(returnTo);
+      }
     } catch (error: any) {
       logger.error("Error saving program:", error as Error);
       toast.error(`Failed to save program: ${error.message}`);
@@ -466,7 +480,7 @@ const ProgramManagement: React.FC = () => {
 };
 
 // Program Form Modal Component
-const ProgramFormModal: React.FC<{
+const ProgramFormModal: FC<{
   isOpen: boolean;
   onClose: () => void;
   onSave: (data: Partial<Program>) => void;
@@ -482,7 +496,7 @@ const ProgramFormModal: React.FC<{
     status: program?.status || "active",
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     onSave(formData);
   };
