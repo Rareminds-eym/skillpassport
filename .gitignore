@@ -97,3 +97,9 @@ cloudflare-workers/payments-worker
 graphify-out/
 # Added by code-review-graph
 .code-review-graph/
+
+# Database dumps and backups - keep historical archives ignored, track latest backup
+supabase/backups/*
+!supabase/backups/README.md
+!supabase/backups/latest/
+!supabase/backups/latest/**
