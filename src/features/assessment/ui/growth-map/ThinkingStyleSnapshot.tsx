@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { BrainCircuit, Lightbulb, Sparkles, BarChart3, Network } from 'lucide-react';
+import { useState, type FC, type ReactNode } from 'react';
+import { BarChart2, Brain, Eye, Puzzle } from 'lucide-react';
+import { isValidSectionIntro, type SectionIntro } from './growthStageConfig';
 
 interface ThinkingStyle {
   title: string;
@@ -10,158 +11,213 @@ interface ThinkingStyle {
 interface Props {
   thinkingStyles?: ThinkingStyle[];
   isActive?: boolean;
+  sectionIntro?: SectionIntro;
 }
 
-const getIconComponent = (iconName?: string, size = 18) => {
-  switch (iconName) {
-    case 'BrainCircuit':
-      return <BrainCircuit size={size} />;
-    case 'Lightbulb':
-      return <Lightbulb size={size} />;
-    case 'Sparkles':
-      return <Sparkles size={size} />;
-    case 'BarChart3':
-      return <BarChart3 size={size} />;
-    default:
-      return <Lightbulb size={size} />;
-  }
-};
-
-interface NodeTheme {
-  iconBg: string;
-  iconText: string;
-  dot: string;
-  cardBorder: string;
-  cardHoverBorder: string;
-  connector: string;
+interface StyleCard {
+  label: string;
+  icon: ReactNode;
+  color: string;
+  description: string;
 }
 
-// Unified minimal theme for all nodes to match the strict Navy/Blue brand colors
-const minimalTheme: NodeTheme = {
-  iconBg: 'bg-blue-50',
-  iconText: 'text-blue-600',
-  dot: 'bg-[#11145A]',
-  cardBorder: 'border-slate-100',
-  cardHoverBorder: 'border-[#11145A]/40',
-  connector: 'bg-[#11145A]',
-};
+const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#f43f5e'];
+const RADAR_SIZE = 260;
+const RADAR_CENTER = RADAR_SIZE / 2;
+const RADAR_RADIUS = 90;
+const RADAR_RINGS = [0.25, 0.5, 0.75, 1];
+const NEUTRAL_RADIUS_RATIO = 0.68;
 
-/**
- * Thinking Skills Tree — Section 5 of the Grade 6-8 Growth Map.
- * A vertical skill-tree: Navy root node feeding four themed thinking-style
- * branches. Spine, dots and connectors share exact pixel geometry so every
- * branch visibly attaches to the trunk.
- */
-export const ThinkingStyleSnapshot: React.FC<Props> = ({ thinkingStyles, isActive }) => {
-  const [activeNode, setActiveNode] = useState<number | null>(null);
+const STYLE_ICONS = [<Puzzle size={16} />, <Brain size={16} />, <Eye size={16} />, <BarChart2 size={16} />];
+
+function iconFor(index: number) {
+  return STYLE_ICONS[index % STYLE_ICONS.length];
+}
+
+function axisPoint(angle: number, radius: number) {
+  return {
+    x: RADAR_CENTER + radius * Math.cos(angle - Math.PI / 2),
+    y: RADAR_CENTER + radius * Math.sin(angle - Math.PI / 2),
+  };
+}
+
+export const ThinkingStyleSnapshot: FC<Props> = ({ thinkingStyles, isActive, sectionIntro }) => {
+  const [hovered, setHovered] = useState<number | null>(null);
 
   if (!thinkingStyles?.length) return null;
 
-  // Geometry constants — spine center sits at x = 18px
-  // Root circle w-9 (36px) at left-0 → center 18. Dots w-4 (16px) at left 10px → center 18.
+  const intro = isValidSectionIntro(sectionIntro) ? sectionIntro : null;
+
+  const styles: StyleCard[] = thinkingStyles.map((style, index) => ({
+    label: style.title,
+    icon: iconFor(index),
+    color: COLORS[index % COLORS.length],
+    description: style.description,
+  }));
+  const angles = styles.map((_, index) => (index * 2 * Math.PI) / styles.length);
+  const radarPoints = styles.map((_, index) =>
+    axisPoint(angles[index], RADAR_RADIUS * NEUTRAL_RADIUS_RATIO)
+  );
+  const radarPolygon = radarPoints.map((point) => `${point.x},${point.y}`).join(' ');
+
   return (
-    <div
-      className={`bg-white rounded-[24px] p-6 sm:p-8 border border-blue-100 shadow-[0_12px_32px_rgba(29,78,216,0.03)] flex flex-col h-full gap-6 select-none transition-all duration-500 ${
-        isActive ? 'ring-2 ring-blue-300' : ''
-      }`}
-    >
-      {/* Header */}
-      <div className="space-y-1.5 pb-4 border-b border-slate-100">
-        <div className="flex items-center gap-2.5">
-          <span className="p-2 bg-blue-50 text-blue-600 rounded-xl border border-blue-100/60">
-            <Network size={20} />
-          </span>
-          <h2 className="text-lg sm:text-xl font-black text-[#11145A] tracking-tight font-sans">
-            5. My Thinking Style Snapshot
-          </h2>
-        </div>
-        <p className="text-xs sm:text-sm text-slate-500 font-medium leading-relaxed font-sans">
-          Four thinking powers growing from one core. Hover a branch to light it up — every style is learnable.
-        </p>
+    <div className={isActive ? 'ring-2 ring-blue-300 rounded-2xl' : undefined}>
+      <div className="flex items-center gap-2 mb-1">
+        <span className="text-xs font-bold bg-gray-900 text-white px-3 py-1 rounded-full">FREE THINKING ENGINE</span>
       </div>
+      {intro && (
+        <>
+          <h2 className="text-base font-bold text-gray-800 mt-2 mb-1">{intro.heading}</h2>
+          <p className="text-xs text-gray-500 mb-6">{intro.description}</p>
+        </>
+      )}
 
-      {/* Tree — grows to fill available height so the card matches its grid partner */}
-      <div className="flex-1 flex flex-col">
-        <div className="relative flex-1 flex flex-col">
+      <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+        <div className="flex flex-col items-center gap-8 md:flex-row">
+          <div className="relative shrink-0" style={{ width: RADAR_SIZE, height: RADAR_SIZE }}>
+            <svg viewBox={`0 0 ${RADAR_SIZE} ${RADAR_SIZE}`} className="h-full w-full">
+              {RADAR_RINGS.map((ring) => {
+                const points = angles
+                  .map((angle) => {
+                    const point = axisPoint(angle, RADAR_RADIUS * ring);
+                    return `${point.x},${point.y}`;
+                  })
+                  .join(' ');
 
-        {/* Spine — runs from below the root circle down to the last branch dot */}
-        <div className="absolute left-[17px] top-9 bottom-7 w-[2px] rounded-full bg-gradient-to-b from-[#11145A] via-blue-200 to-slate-200" />
+                return (
+                  <polygon
+                    key={ring}
+                    points={points}
+                    fill="none"
+                    stroke="#e5e7eb"
+                    strokeWidth={1}
+                  />
+                );
+              })}
 
-        {/* Root node */}
-        <div className="relative z-10 flex items-center gap-3 mb-6">
-          <div className="w-9 h-9 rounded-full bg-[#11145A] border-[3px] border-white shadow-[0_4px_12px_rgba(17,20,90,0.35)] flex items-center justify-center text-white flex-shrink-0">
-            <BrainCircuit size={16} />
-          </div>
-          <span className="bg-[#11145A] text-white text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full">
-            Core Thinking Engine
-          </span>
-        </div>
+              {angles.map((angle, index) => {
+                const point = axisPoint(angle, RADAR_RADIUS);
+                return (
+                  <line
+                    key={styles[index].label}
+                    x1={RADAR_CENTER}
+                    y1={RADAR_CENTER}
+                    x2={point.x}
+                    y2={point.y}
+                    stroke="#e5e7eb"
+                    strokeWidth={1}
+                  />
+                );
+              })}
 
-        {/* Branches — distribute evenly across the available height */}
-        <div className="flex-1 flex flex-col justify-around gap-4 pb-2">
-          {thinkingStyles.map((style, idx) => {
-            const isHovered = activeNode === idx;
+              <polygon
+                points={radarPolygon}
+                fill="rgba(59,130,246,0.12)"
+                stroke="#3b82f6"
+                strokeWidth={2}
+                strokeLinejoin="round"
+              />
 
-            return (
-               <div
-                key={idx}
-                onMouseEnter={() => setActiveNode(idx)}
-                onMouseLeave={() => setActiveNode(null)}
-                className="relative flex items-center group"
-              >
-                {/* Branch dot — centered on the spine */}
-                <div
-                  className={`absolute left-[10px] w-4 h-4 rounded-full border-2 border-white shadow-sm z-10 transition-transform duration-300 ${minimalTheme.dot} ${
-                    isHovered ? 'scale-125' : ''
-                  }`}
-                />
+              {radarPoints.map((point, index) => (
+                <g key={styles[index].label}>
+                  <circle
+                    cx={point.x}
+                    cy={point.y}
+                    r={hovered === index ? 7 : 5}
+                    fill={styles[index].color}
+                    stroke="white"
+                    strokeWidth={2}
+                    className="cursor-pointer transition-all"
+                    onMouseEnter={() => setHovered(index)}
+                    onMouseLeave={() => setHovered(null)}
+                  />
+                  {hovered === index && (
+                    <circle
+                      cx={point.x}
+                      cy={point.y}
+                      r={12}
+                      fill="none"
+                      stroke={styles[index].color}
+                      strokeWidth={1.5}
+                      opacity={0.4}
+                      className="animate-ping"
+                    />
+                  )}
+                </g>
+              ))}
 
-                {/* Connector from spine to card */}
-                <div
-                  className={`absolute left-[18px] w-7 h-[2px] transition-colors duration-300 ${
-                    isHovered ? minimalTheme.connector : 'bg-slate-200'
-                  }`}
-                />
+              <circle cx={RADAR_CENTER} cy={RADAR_CENTER} r={3} fill="#9ca3af" />
 
-                {/* Branch card */}
-                <div
-                  className={`ml-12 flex-1 flex items-start gap-3.5 p-4 rounded-[16px] border bg-white transition-all duration-300 cursor-default ${
-                    isHovered
-                      ? `${minimalTheme.cardHoverBorder} shadow-md -translate-y-0.5`
-                      : `${minimalTheme.cardBorder} shadow-sm`
-                  }`}
-                >
-                  {/* Icon */}
-                  <div
-                    className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 border border-slate-100 ${minimalTheme.iconBg} ${minimalTheme.iconText}`}
+              {styles.map((style, index) => {
+                const point = axisPoint(angles[index], RADAR_RADIUS + 28);
+                return (
+                  <text
+                    key={style.label}
+                    x={point.x}
+                    y={point.y}
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                    className="cursor-pointer text-[10px] font-semibold"
+                    fill={hovered === index ? style.color : '#6b7280'}
+                    onMouseEnter={() => setHovered(index)}
+                    onMouseLeave={() => setHovered(null)}
                   >
-                    {getIconComponent(style.icon)}
-                  </div>
+                    {style.label}
+                  </text>
+                );
+              })}
+            </svg>
+          </div>
 
-                  {/* Text */}
-                  <div className="min-w-0 space-y-1 mt-0.5">
-                    <h3 className="text-sm font-black text-[#11145A] tracking-tight leading-tight font-sans">
-                      {style.title}
-                    </h3>
-                    <p className="text-xs text-slate-500 font-medium leading-relaxed font-sans">
-                      {style.description}
-                    </p>
+          <div className="w-full flex-1">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {styles.map((style, index) => (
+                <div
+                  key={style.label}
+                  className="rounded-xl border p-4 cursor-pointer transition-all"
+                  style={{
+                    borderColor: hovered === index ? style.color : '#e5e7eb',
+                    borderWidth: hovered === index ? 2 : 1,
+                    backgroundColor: hovered === index ? `${style.color}08` : '#f9fafb',
+                  }}
+                  onMouseEnter={() => setHovered(index)}
+                  onMouseLeave={() => setHovered(null)}
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <span
+                      className="flex h-7 w-7 items-center justify-center rounded-full"
+                      style={{ color: style.color, backgroundColor: `${style.color}15` }}
+                    >
+                      {style.icon}
+                    </span>
+                    <span className="text-sm font-bold text-gray-800">{style.label}</span>
                   </div>
+                  <p className="text-xs text-gray-600 leading-relaxed">{style.description}</p>
                 </div>
+              ))}
+            </div>
+
+            <div className="mt-4 min-h-[44px] rounded-xl border border-gray-100 bg-gray-50 p-3">
+              {hovered !== null ? (
+                <div className="flex items-start gap-2">
+                  <span style={{ color: styles[hovered].color }} className="mt-0.5">
+                    {styles[hovered].icon}
+                  </span>
+                  <p className="text-xs leading-relaxed text-gray-600">{styles[hovered].description}</p>
+                </div>
+              ) : (
+                <p className="text-xs text-gray-400">
+                  Hover a point or label to see how this thinking power grows.
+                </p>
+              )}
               </div>
-            );
-          })}
-        </div>
+            </div>
         </div>
       </div>
 
-      {/* Footer tip */}
-      <div className="bg-[#F8FAFF] p-4 rounded-[16px] border border-blue-100/80 flex items-start gap-2.5">
-        <Sparkles className="text-[#11145A] flex-shrink-0 mt-0.5" size={14} />
-        <p className="text-xs text-[#11145A]/80 font-bold leading-relaxed font-sans">
-          Thinking styles are mental modes you can switch on. Grow new branches by trying tasks outside your comfort zone!
-        </p>
-      </div>
+      <p className="text-xs text-gray-400 mt-5">
+        Thinking styles are mental modes you can switch on. Grow new branches by trying tasks outside your comfort zone!
+      </p>
     </div>
   );
 };
