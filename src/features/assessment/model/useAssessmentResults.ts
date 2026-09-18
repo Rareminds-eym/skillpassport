@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { NavigateFunction } from 'react-router-dom';
 import * as assessmentService from '../api/assessmentService';
+import { retryClusterGeneration } from '../api/assessmentApiService';
 import { transformAssessmentResults } from '../api/assessmentResultTransformer';
 
 /**
@@ -246,7 +247,7 @@ export const useAssessmentResults = (): UseAssessmentResultsReturn => {
       setError(null);
 
       // Call the cluster generation retry API
-      const result = await assessmentService.retryClusterGeneration(attemptId, gradeLevel);
+      const result = await retryClusterGeneration(attemptId, gradeLevel);
 
       if (result.success) {
         // Cluster generation succeeded, wait a moment then reload results

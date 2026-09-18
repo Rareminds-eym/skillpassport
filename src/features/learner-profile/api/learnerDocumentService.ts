@@ -1,4 +1,5 @@
 import { apiPost } from '@/shared/api/apiClient';
+import { uploadFile, deleteFile, getDocumentUrl } from '@/shared/api/fileUploadService';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('learnerDocumentService');
@@ -23,7 +24,6 @@ export const uploadlearnerDocument = async (
   documentType: LearnerDocument['type']
 ): Promise<DocumentUploadResult> => {
   try {
-    const { uploadFile, deleteFile } = await import('@/shared/api/fileUploadService');
     const uploadResult = await uploadFile(file, `learners/${learnerId}`);
 
     if (!uploadResult.success || !uploadResult.url) {
@@ -97,7 +97,6 @@ export const deletelearnerDocument = async (
       documents: updatedDocuments,
     });
 
-    const { deleteFile } = await import('@/shared/api/fileUploadService');
     await deleteFile(documentUrl);
 
     return true;
@@ -107,7 +106,6 @@ export const deletelearnerDocument = async (
 };
 
 export const getlearnerDocumentUrl = (documentUrl: string, mode: 'inline' | 'download' = 'inline'): string => {
-  const { getDocumentUrl } = require('@/shared/api/fileUploadService');
   return getDocumentUrl(documentUrl, mode);
 };
 
