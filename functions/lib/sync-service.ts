@@ -38,6 +38,85 @@ function safeParseJSON(value: string, fallback: unknown[]): unknown[] {
   }
 }
 
+/** DD-MM-YYYY / DD/MM/YYYY / YYYY-MM-DD → YYYY-MM-DD for date-typed columns. */
+function toISODate(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+  const match = trimmed.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})$/);
+  if (match) {
+    const [, day, month, year] = match;
+    const iso = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    const date = new Date(iso);
+    if (date.getFullYear() === Number(year) && date.getMonth() === Number(month) - 1 && date.getDate() === Number(day)) {
+      return iso;
+    }
+  }
+  return undefined;
+}
+
+function truncate(value: unknown, max: number): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  return trimmed.length > max ? trimmed.substring(0, max) : trimmed;
+}
+
+function isUUID(value: unknown): value is string {
+  return typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+}
+
+/**
+ * Map an SSO `learner_profile` payload to `learners` table columns — the same
+ * column reference the learner Settings page reads/writes
+ * (learnerSettingsService.js `fieldMapping`: phone→contactNumber,
+ * alternatePhone→alternate_number, registrationNumber→registration_number,
+ * enrollmentNumber→enrollmentNumber, rollNumber→roll_number, guardian*→guardian*,
+ * bloodGroup→bloodGroup, dateOfBirth→dateOfBirth, ...). Unknown keys are
+ * dropped; length/date/uuid guards mirror the column definitions so a bad
+ * CSV cell can never fail the sync insert.
+ */
+export function mapLearnerProfileToColumns(profile: Record<string, unknown> | undefined): Record<string, unknown> {
+  if (!profile || typeof profile !== 'object') return {};
+  const columns: Record<string, unknown> = {};
+  const set = (column: string, value: unknown) => {
+    if (value !== undefined && value !== null && value !== '') {
+      columns[column] = value;
+    }
+  };
+  set('contactNumber', truncate(profile.contactNumber, 20));
+  set('alternate_number', truncate(profile.alternate_number, 20));
+  set('dateOfBirth', toISODate(profile.dateOfBirth));
+  set('gender', truncate(profile.gender, 20));
+  set('enrollmentNumber', truncate(profile.enrollmentNumber, 100));
+  set('registration_number', truncate(profile.registration_number, 100));
+  set('roll_number', truncate(profile.roll_number, 50));
+  set('admission_number', truncate(profile.admission_number, 100));
+  set('category', truncate(profile.category, 50));
+  set('quota', truncate(profile.quota, 50));
+  set('admission_academic_year', truncate(profile.admission_academic_year, 10));
+  set('bloodGroup', truncate(profile.bloodGroup, 5));
+  set('district_name', truncate(profile.district_name, 100));
+  set('university', truncate(profile.university, 150));
+  set('profilePicture', truncate(profile.profilePicture, 500));
+  set('guardianName', truncate(profile.guardianName, 200));
+  set('guardianPhone', truncate(profile.guardianPhone, 20));
+  set('guardianEmail', truncate(profile.guardianEmail, 255));
+  set('guardianRelation', truncate(profile.guardianRelation, 50));
+  set('address', truncate(profile.address, 1000));
+  set('city', truncate(profile.city, 100));
+  set('state', truncate(profile.state, 100));
+  set('country', truncate(profile.country, 100));
+  set('pincode', truncate(profile.pincode, 10));
+  if (isUUID(profile.program_id)) {
+    columns.program_id = profile.program_id;
+  }
+  set('grade', truncate(profile.grade, 10));
+  set('section', truncate(profile.section, 10));
+  return columns;
+}
+
 export class SyncService {
   private db: DbClient;
 
@@ -232,33 +311,28 @@ export class SyncService {
       return fail('NOT_FOUND', `User ${parsed.user_id} not found for learners`, true);
     }
 
-    const learnerName = [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email;
-    const { error: learnerError } = await this.db.from('learners').upsert({
-      user_id: parsed.user_id,
-      name: learnerName,
-      email: user.email,
-      approval_status: 'approved',
-    }, { onConflict: 'user_id' });
-    if (learnerError) return fail('DB_ERROR', learnerError.message, true);
-
     const { data: orgs } = await this.db.from('organizations')
       .select('organization_type')
       .eq('id', parsed.organization_id);
     const orgType = orgs?.[0]?.organization_type;
 
-    const learnerUpdate: Record<string, unknown> = {};
+    const learnerName = [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email;
+    const learnerPayload: Record<string, unknown> = {
+      user_id: parsed.user_id,
+      name: learnerName,
+      email: user.email,
+      approval_status: 'approved',
+      ...mapLearnerProfileToColumns(parsed.learner_profile),
+    };
+
     if (orgType === 'school') {
-      learnerUpdate.school_id = parsed.organization_id;
+      learnerPayload.school_id = parsed.organization_id;
     } else if (orgType === 'college') {
-      learnerUpdate.college_id = parsed.organization_id;
+      learnerPayload.college_id = parsed.organization_id;
     }
 
-    if (Object.keys(learnerUpdate).length > 0) {
-      const { error: updateError } = await this.db.from('learners')
-        .update(learnerUpdate)
-        .eq('user_id', parsed.user_id);
-      if (updateError) return fail('DB_ERROR', updateError.message, true);
-    }
+    const { error: learnerError } = await this.db.from('learners').upsert(learnerPayload, { onConflict: 'user_id' });
+    if (learnerError) return fail('DB_ERROR', learnerError.message, true);
 
     return ok();
   }

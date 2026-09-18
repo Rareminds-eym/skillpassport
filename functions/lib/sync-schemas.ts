@@ -38,6 +38,9 @@ export const MembershipPayloadSchema = z.object({
   organization_id: z.string(),
   roles: z.array(z.string()).optional(),
   status: z.string().optional(),
+  // Learner profile keyed by `learners` column names, sent by SSO bulk
+  // import so the shadow learners row carries every Settings-displayed field.
+  learner_profile: z.record(z.string(), z.unknown()).optional(),
 });
 export type MembershipPayloadData = z.infer<typeof MembershipPayloadSchema>;
 
