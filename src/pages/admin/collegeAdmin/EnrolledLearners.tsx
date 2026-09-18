@@ -174,7 +174,7 @@ const EnrolledLearners: FC = () => {
         college_id: collegeId,
         department_id: departmentFilter || undefined,
         program_id: programFilter || undefined,
-        semester: semesterFilter ? parseInt(semesterFilter) : undefined,
+        semester: semesterFilter ? parseInt(semesterFilter, 10) : undefined,
         search: searchTerm || undefined,
       });
 
@@ -722,7 +722,9 @@ const EnrolllearnersModal: FC<{
     <div className="fixed inset-0 z-50 overflow-hidden">
       <div className="flex min-h-screen">
         {/* Backdrop */}
-        <div
+        <button
+          type="button"
+          aria-label="Close enrollment modal"
           className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity"
           onClick={onClose}
         />
@@ -744,6 +746,7 @@ const EnrolllearnersModal: FC<{
                   </p>
                 </div>
                 <button
+                  type="button"
                   onClick={onClose}
                   className="p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition"
                 >
@@ -764,10 +767,11 @@ const EnrolllearnersModal: FC<{
                 <div className="space-y-4">
                   {/* Department */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    <label htmlFor="enroll-department" className="block text-sm font-medium text-gray-700 mb-1.5">
                       Department <span className="text-red-500">*</span>
                     </label>
                     <select
+                      id="enroll-department"
                       value={selectedDepartment}
                       onChange={(e) => {
                         if (e.target.value === "__add_department__") {
@@ -793,10 +797,11 @@ const EnrolllearnersModal: FC<{
 
                   {/* Program */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    <label htmlFor="enroll-program" className="block text-sm font-medium text-gray-700 mb-1.5">
                       Program <span className="text-red-500">*</span>
                     </label>
                     <select
+                      id="enroll-program"
                       value={selectedProgram}
                       onChange={(e) => {
                         if (e.target.value === "__add_program__") {
@@ -825,7 +830,7 @@ const EnrolllearnersModal: FC<{
 
                   {/* Semester */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    <label id="enroll-semester-label" className="block text-sm font-medium text-gray-700 mb-1.5">
                       Semester <span className="text-red-500">*</span>
                     </label>
                     {availableSemesters.length > 0 ? (
@@ -834,6 +839,7 @@ const EnrolllearnersModal: FC<{
                           <button
                             key={sem}
                             type="button"
+                            aria-labelledby="enroll-semester-label"
                             onClick={() => setSelectedSemester(sem.toString())}
                             className={`py-2 text-sm font-medium rounded-lg border transition ${selectedSemester === sem.toString()
                               ? "bg-blue-600 text-white border-blue-600"
@@ -871,10 +877,11 @@ const EnrolllearnersModal: FC<{
 
                   {/* Section */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    <label htmlFor="enroll-section" className="block text-sm font-medium text-gray-700 mb-1.5">
                       Section <span className="text-red-500">*</span>
                     </label>
                     <select
+                      id="enroll-section"
                       value={selectedSection}
                       onChange={(e) => {
                         if (e.target.value === "__add_section__") {
@@ -1072,6 +1079,7 @@ const EnrolllearnersModal: FC<{
                         </label>
                         {selectedlearners.length > 0 && (
                           <button
+                            type="button"
                             onClick={() => setSelectedlearners([])}
                             className="text-xs text-red-600 hover:text-red-700 font-medium"
                           >
@@ -1165,12 +1173,14 @@ const EnrolllearnersModal: FC<{
 
                 <div className="flex items-center gap-3">
                   <button
+                    type="button"
                     onClick={onClose}
                     className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition"
                   >
                     Cancel
                   </button>
                   <button
+                    type="button"
                     onClick={handleEnroll}
                     disabled={selectedlearners.length === 0 || !selectedProgram || !selectedSemester || !selectedSection || enrolling}
                     className="px-5 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"

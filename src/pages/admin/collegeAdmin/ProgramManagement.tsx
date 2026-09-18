@@ -506,7 +506,9 @@ const ProgramFormModal: FC<{
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex min-h-screen items-center justify-center p-4">
-        <div
+        <button
+          type="button"
+          aria-label="Close program form"
           className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm"
           onClick={onClose}
         />
@@ -516,6 +518,7 @@ const ProgramFormModal: FC<{
               {program ? "Edit Program" : "Create New Program"}
             </h2>
             <button
+              type="button"
               onClick={onClose}
               className="p-2 text-gray-400 hover:bg-gray-100 rounded-lg"
             >
@@ -526,10 +529,11 @@ const ProgramFormModal: FC<{
           <form onSubmit={handleSubmit} className="p-6 space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="program-name" className="block text-sm font-medium text-gray-700 mb-1">
                   Program Name *
                 </label>
                 <input
+                  id="program-name"
                   type="text"
                   value={formData.name}
                   onChange={(e) =>
@@ -542,10 +546,11 @@ const ProgramFormModal: FC<{
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="program-code" className="block text-sm font-medium text-gray-700 mb-1">
                   Program Code *
                 </label>
                 <input
+                  id="program-code"
                   type="text"
                   value={formData.code}
                   onChange={(e) =>
@@ -558,10 +563,11 @@ const ProgramFormModal: FC<{
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="program-department" className="block text-sm font-medium text-gray-700 mb-1">
                   Department *
                 </label>
                 <select
+                  id="program-department"
                   value={formData.department_id}
                   onChange={(e) =>
                     setFormData({ ...formData, department_id: e.target.value })
@@ -579,10 +585,11 @@ const ProgramFormModal: FC<{
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="program-degree-level" className="block text-sm font-medium text-gray-700 mb-1">
                   Degree Level *
                 </label>
                 <select
+                  id="program-degree-level"
                   value={formData.degree_level}
                   onChange={(e) =>
                     setFormData({ ...formData, degree_level: e.target.value })
@@ -598,10 +605,11 @@ const ProgramFormModal: FC<{
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="program-status" className="block text-sm font-medium text-gray-700 mb-1">
                   Status *
                 </label>
                 <select
+                  id="program-status"
                   value={formData.status}
                   onChange={(e) =>
                     setFormData({ ...formData, status: e.target.value as "active" | "inactive" })
@@ -615,10 +623,11 @@ const ProgramFormModal: FC<{
               </div>
 
               <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="program-description" className="block text-sm font-medium text-gray-700 mb-1">
                   Description (Optional)
                 </label>
                 <textarea
+                  id="program-description"
                   value={formData.description}
                   onChange={(e) =>
                     setFormData({ ...formData, description: e.target.value })

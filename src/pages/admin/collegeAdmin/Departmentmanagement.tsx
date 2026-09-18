@@ -298,7 +298,7 @@ const DepartmentManagement: FC = () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.college.departments.all });
       toast.success('Department created successfully');
       setShowAddModal(false);
-      if (returnTo) {
+      if (returnTo?.startsWith('/') && !returnTo.startsWith('//')) {
         navigate(returnTo);
       }
     },
