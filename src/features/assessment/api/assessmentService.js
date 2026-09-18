@@ -1,4 +1,5 @@
 import { ssoClient } from '@/shared/api/ssoClient';
+import { retryClusterGeneration } from './assessmentApiService';
 /**
  * Assessment Service
  * Handles all database operations for the assessment system
@@ -2096,4 +2097,4 @@ export default {
   retryClusterGeneration
 };
 
-export { retryClusterGeneration } from './assessmentApiService';
+export { retryClusterGeneration };

@@ -83,7 +83,7 @@ class ProgressSyncManager {
 
         // Sync any pending items if online
         if (this.isOnline) {
-          this.syncPendingProgress();
+          void this.syncPendingProgress();
         }
       };
 
@@ -156,7 +156,7 @@ class ProgressSyncManager {
 
         // Try to sync immediately if online
         if (this.isOnline) {
-          this.syncPendingProgress();
+          void this.syncPendingProgress();
         }
       };
 
