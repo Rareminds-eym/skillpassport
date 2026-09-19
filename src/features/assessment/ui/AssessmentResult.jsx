@@ -1174,6 +1174,7 @@ const AssessmentResult = () => {
                         </div>
 
                         <div className="flex gap-2">
+                            {/* Regenerate Report button hidden — commented out
                             <Button
                                 type="button"
                                 onClick={handleRegenerate}
@@ -1192,6 +1193,7 @@ const AssessmentResult = () => {
                                     </>
                                 )}
                             </Button>
+                            */}
                             <Button
                                 type="button"
                                 onClick={handlePrint}
