@@ -6,6 +6,7 @@
  */
 
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import type { RIASECScores, AdaptiveAptitudeData, StudentProfile } from '../../types';
 import { getTopCategories, getTopScores } from '../../lib/analysis-helpers';
 import { generateCollegeCareerClusters } from '../core/career-cluster-generator';
@@ -33,6 +34,53 @@ interface StreamMcqScores {
   streamAptitudeDetails: any | null;       // { score, correctCount, totalQuestions, byDifficulty }
   knowledgeScore: number | null;           // 0-100 overall
   knowledgeDetails: any | null;            // { score, correctCount, totalQuestions, byTopic, strongTopics, weakTopics, recommendation }
+}
+
+interface QuestionMetadata {
+  id: string;
+  section_id: string | null;
+  category_mapping: Record<string, unknown> | null;
+  metadata: Record<string, unknown> | null;
+  question_type: string | null;
+  question_text: string | null;
+  correct_answer: unknown;
+}
+
+type QuestionMetadataError = {
+  message?: string;
+  failedChunk?: number;
+  failedQuestionIds?: string[];
+};
+
+async function fetchQuestionMetadataByIds(
+  supabase: SupabaseClient,
+  questionIds: string[],
+  chunkSize = 50
+): Promise<{ questions: QuestionMetadata[]; error: QuestionMetadataError | null }> {
+  const questions: QuestionMetadata[] = [];
+
+  for (let index = 0; index < questionIds.length; index += chunkSize) {
+    const ids = questionIds.slice(index, index + chunkSize);
+    const { data, error } = await supabase
+      .from('personal_assessment_questions')
+      .select('id, section_id, category_mapping, metadata, question_type, question_text, correct_answer')
+      .in('id', ids);
+
+    if (error) {
+      return {
+        questions,
+        error: {
+          ...error,
+          failedChunk: Math.floor(index / chunkSize),
+          failedQuestionIds: ids,
+        },
+      };
+    }
+
+    questions.push(...((data || []) as QuestionMetadata[]));
+  }
+
+  return { questions, error: null };
 }
 
 /**
@@ -192,11 +240,9 @@ export async function analyzeCollege(
       return Response.json({ error: 'No responses found in attempt' }, { status: 400 });
     }
 
-    // Step 2: Fetch all question metadata (BATCH QUERY - optimized)
-    const { data: questions, error: questionsError } = await supabase
-      .from('personal_assessment_questions')
-      .select('id, section_id, category_mapping, metadata, question_type, question_text, correct_answer')
-      .in('id', questionUUIDs);
+    // Step 2: Fetch question metadata in chunks. Supabase/PostgREST encodes
+    // .in() filters into the URL, and migrated attempts can have 200+ answers.
+    const { questions, error: questionsError } = await fetchQuestionMetadataByIds(supabase, questionUUIDs);
 
     if (questionsError) {
       return Response.json(
@@ -455,7 +501,7 @@ export async function analyzeCollege(
         };
         if (fetched.results.overall_accuracy != null) {
           const parsed = parseFloat(String(fetched.results.overall_accuracy));
-          aptitudeOverall = !isNaN(parsed) ? parsed : null;
+          aptitudeOverall = !Number.isNaN(parsed) ? parsed : null;
         }
       }
     }
