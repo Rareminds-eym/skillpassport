@@ -1073,6 +1073,26 @@ export const getResult = async (attemptId) => {
   return response.json();
 };
 
+/**
+ * Regenerate a stored assessment result for an attempt.
+ * Backend deletes the existing result row and runs the same analyze flow used
+ * after assessment submission.
+ */
+export const regenerateResult = async (attemptId, gradeLevel) => {
+  const response = await ssoClient.fetch('/api/assessment/regenerate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ attemptId, gradeLevel }),
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.message || err.error || `Failed to regenerate result (${response.status})`);
+  }
+
+  return response.json();
+};
+
 export const getAttemptWithResults = async (attemptId) => {
   // 🔧 CRITICAL FIX: Join with personal_assessment_results to get the result record
   const { data, error } = await supabase
