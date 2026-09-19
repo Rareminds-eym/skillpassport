@@ -18,7 +18,11 @@ export async function regenerateHandler(context: AuthenticatedContext) {
   const supabase = getServiceClient(env);
 
   try {
-    const body = (await context.request.json()) as AnalyzeRequest;
+    const raw = await context.request.json();
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+      return Response.json({ error: 'Invalid request body' }, { status: 400 });
+    }
+    const body = raw as AnalyzeRequest;
     const { attemptId, gradeLevel } = body;
 
     if (!attemptId || typeof attemptId !== 'string' || !isValidUUID(attemptId)) {
