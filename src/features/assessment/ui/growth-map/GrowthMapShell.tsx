@@ -95,7 +95,8 @@ export const GrowthMapShell: FC<Props> = ({ learnerInfo, reports, viewMode = 'ta
       const next = new Set(prev);
       next.add(fromId);
       if (attemptId) {
-        saveGrowthMapProgress(attemptId, Array.from(next)).catch(() => {
+        saveGrowthMapProgress(attemptId, Array.from(next)).catch((error) => {
+          console.warn('Failed to persist growth map progress:', error);
           // Non-fatal — local progress for this session still works even if
           // the persisted save fails; it will simply not survive a refresh.
         });

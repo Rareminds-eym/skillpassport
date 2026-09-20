@@ -143,6 +143,11 @@ export const ThinkingStyleSnapshot: FC<Props> = ({ thinkingStyles, isActive, sec
                     className="cursor-pointer transition-all"
                     onMouseEnter={() => setHovered(index)}
                     onMouseLeave={() => setHovered(null)}
+                    onFocus={() => setHovered(index)}
+                    onBlur={() => setHovered(null)}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`${styles[index].label} thinking style`}
                   />
                   {hovered === index && (
                     <circle
@@ -174,6 +179,11 @@ export const ThinkingStyleSnapshot: FC<Props> = ({ thinkingStyles, isActive, sec
                     fill={hovered === index ? style.color : '#6b7280'}
                     onMouseEnter={() => setHovered(index)}
                     onMouseLeave={() => setHovered(null)}
+                    onFocus={() => setHovered(index)}
+                    onBlur={() => setHovered(null)}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={style.label}
                   >
                     {style.label}
                   </text>

@@ -74,7 +74,7 @@ export const ExplorerMap: FC<Props> = ({ explorerMap, explorerInsights, sectionI
   const intro = isValidSectionIntro(sectionIntro) ? sectionIntro : null;
   const insights = useMemo(
     () => [...(explorerInsights?.exploredWorlds || []), ...(explorerInsights?.toExploreWorlds || [])],
-    [explorerInsights]
+    [explorerInsights?.exploredWorlds, explorerInsights?.toExploreWorlds]
   );
 
   if (!explorerMap) return null;
