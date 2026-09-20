@@ -1165,6 +1165,7 @@ const AssessmentResult = () => {
                     }}
                     reports={results.gemini_results}
                     viewMode={growthMapViewMode}
+                    attemptId={effectiveAttemptId}
                 />
             </>
         );

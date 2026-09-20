@@ -134,7 +134,7 @@ ${JSON.stringify(input.aptitude_scores, null, 2)}
 
 ---
 
-RETURN THIS JSON (9 OUTPUTS ONLY - NO markdown, NO extra text):
+RETURN THIS JSON (8 OUTPUTS ONLY - NO markdown, NO extra text):
 {
   "character_strengths_descriptions": [
     {"label": "Curious", "description": "I love asking questions and learning new things about the world.", "tag": "Love Learning"},
@@ -171,18 +171,12 @@ RETURN THIS JSON (9 OUTPUTS ONLY - NO markdown, NO extra text):
   },
   "thinking_styles": [
     {"title": "Pattern Recognition", "description": "You're wonderful at spotting connections and patterns! Your mind naturally sees how things link together.", "icon": "BrainCircuit"},
-    {"title": "Problem Solving", "description": "You tackle challenging problems with confidence! You break them down and work through them.", "icon": "Lightbulb"},
-    {"title": "Visual Thinking", "description": "You think in pictures and spaces! You can imagine how things fit together beautifully.", "icon": "Sparkles"},
-    {"title": "Decision Making", "description": "You make thoughtful decisions! You carefully think through your choices.", "icon": "BarChart3"}
+    {"title": "Logical Reasoning", "description": "You're learning to work through logical steps. Each puzzle you try helps you build this skill!", "icon": "Lightbulb"},
+    {"title": "Spatial Reasoning", "description": "You think in pictures and spaces! You can imagine how things fit together beautifully.", "icon": "Sparkles"},
+    {"title": "Numerical Reasoning", "description": "You're building confidence working with numbers. Practice is helping you grow this skill!", "icon": "BarChart3"}
   ],
-  "what_i_have": [
-    {"capability_area": "Social / SQ", "score_out_of_5": 4.5},
-    {"capability_area": "Communication", "score_out_of_5": 4.2}
-  ],
-  "what_i_need": [
-    {"capability_area": "Digital & AI Literacy", "score_out_of_5": 2.5},
-    {"capability_area": "Execution & Independence", "score_out_of_5": 2.8}
-  ],
+  // NOTE: the 4 titles above are only an EXAMPLE — you select the actual 4 (from the 6
+  // legitimate categories) based on THIS learner's own accuracyBySubtag evidence.
   "stage_guidance": {
     "capabilityWheel": {
       "sectionIntro": {"heading": "Short 2-5 word learner-specific heading naming the identified capability_wheel evidence", "description": "One short sentence (under 20 words) summarizing what THIS stage's identified evidence shows for this learner."},
@@ -420,55 +414,56 @@ EXAMPLE (Generate for EVERY world, not just 2-3):
 
 REPORT 5: THINKING STYLE SNAPSHOT
 For: Learner-facing display of actual thinking patterns from Adaptive Aptitude Test
-Source: Use aptitude_scores.accuracyBySubtag, pathClassification, confidenceTag, accuracyByDifficulty
-Format: Array of 4 thinking styles based on actual problem-solving patterns
+Source: Use aptitude_scores.accuracyBySubtag
+Format: Array of EXACTLY 4 thinking styles, SELECTED BY YOU from the 6 legitimate categories below
 
-4 THINKING STYLES (based on Adaptive Aptitude performance):
-1. Pattern Recognition - Score from accuracyBySubtag.pattern_recognition
-2. Problem Solving - Score from accuracyBySubtag.problem_solving
-3. Visual Thinking - Score from accuracyBySubtag.spatial_reasoning + pathClassification
-4. Decision Making - Score from accuracyBySubtag.decision_making + confidenceTag
+THE 6 LEGITIMATE CATEGORIES (this is the ONLY set of titles you may use):
+1. Pattern Recognition - Source: accuracyBySubtag["pattern_recognition"]
+2. Spatial Reasoning - Source: accuracyBySubtag["spatial_reasoning"]
+3. Verbal Reasoning - Source: accuracyBySubtag["verbal_reasoning"]
+4. Logical Reasoning - Source: accuracyBySubtag["logical_reasoning"]
+5. Numerical Reasoning - Source: accuracyBySubtag["numerical_reasoning"]
+6. Data Interpretation - Source: accuracyBySubtag["data_interpretation"]
 
-For each style, generate:
-- title: Exact name from list above
+YOUR TASK: Look at this learner's actual accuracyBySubtag evidence across all 6 categories and SELECT
+THE 4 MOST MEANINGFUL for this specific learner (e.g. their clearest strengths and/or their areas with
+the most room to grow — whichever combination best reflects this learner's real pattern). Do not pick
+the same 4 by default or alphabetically — base the selection on this learner's own evidence.
+
+For each of your 4 SELECTED styles, generate:
+- title: EXACT name from the 6 legitimate categories above (no variations, no new titles)
 - description: How they performed on this thinking style during the Adaptive Aptitude Test (15-25 words, learner-friendly)
 - icon: BrainCircuit, Lightbulb, Sparkles, or BarChart3 (choose appropriate one)
 
-LOGIC FOR EACH STYLE (NO percentages, NO harsh words):
-1. Pattern Recognition
-   - Source: accuracyBySubtag["pattern_recognition"]
-   - If score > 85%: "You're wonderful at spotting connections and patterns. Your mind naturally sees how things link together!"
-   - If score 70-85%: "You're developing great pattern-spotting skills. You can see connections in interesting ways!"
-   - If score < 70%: "You're learning to spot patterns. Each time you look for connections, you get better!"
+LOGIC FOR EACH STYLE (NO percentages, NO harsh words) — apply this same tiered pattern using that
+category's own accuracyBySubtag score, only for the 4 categories you selected:
+- If score > 85%: Warm, confident language celebrating this as a clear strength (e.g. "You're wonderful at spotting connections and patterns. Your mind naturally sees how things link together!")
+- If score 70-85%: Encouraging language noting solid, developing skill (e.g. "You're developing great pattern-spotting skills. You can see connections in interesting ways!")
+- If score < 70%: Growth-focused language framing it as a skill still growing (e.g. "You're learning to spot patterns. Each time you look for connections, you get better!")
+Adapt the wording naturally to each category's own subject matter (e.g. for Verbal Reasoning describe
+performance with words/reading, for Numerical Reasoning describe performance with numbers) while
+keeping the same encouraging tone and structure.
 
-2. Problem Solving
-   - Source: accuracyBySubtag["problem_solving"] + accuracyByDifficulty["hard"]
-   - If both > 80%: "You tackle challenging problems with confidence! You break them down and work through them beautifully!"
-   - If score > 75%: "You're good at working through problems step-by-step. You don't give up!"
-   - If score < 75%: "You're learning to solve problems. With practice, you get more confident!"
-
-3. Visual Thinking
-   - Source: accuracyBySubtag["spatial_reasoning"] + pathClassification
-   - If "visual" in pathClassification AND score > 75%: "You think in pictures and spaces! You can imagine how things fit together beautifully!"
-   - If score > 75%: "You're great at visualizing and imagining. You see the bigger picture!"
-   - If score < 75%: "You're learning to think visually. Imagination is a skill that grows!"
-
-4. Decision Making
-   - Source: accuracyBySubtag["decision_making"] + confidenceTag
-   - If confidenceTag "High" and score > 80%: "You make thoughtful decisions! You carefully think through your choices and feel sure about them."
-   - If score > 75%: "You're good at thinking through choices. You weigh options carefully!"
-   - If score < 75%: "You're developing your decision-making skills. It gets easier with practice!"
-
-EXAMPLE (friendly, no percentages):
-{
-  "title": "Pattern Recognition",
-  "description": "You're wonderful at spotting connections and patterns! Your mind naturally sees how things link together and relate to each other.",
-  "icon": "BrainCircuit"
-}
+EXAMPLE (friendly, no percentages — showing 2 of the 4 you'd return):
+[
+  {
+    "title": "Pattern Recognition",
+    "description": "You're wonderful at spotting connections and patterns! Your mind naturally sees how things link together and relate to each other.",
+    "icon": "BrainCircuit"
+  },
+  {
+    "title": "Logical Reasoning",
+    "description": "You're learning to work through logical steps. Each puzzle you try helps you build this skill!",
+    "icon": "Lightbulb"
+  }
+]
 
 RULES:
-✓ Generate ALL 4 thinking styles based on actual aptitude test performance
-✓ Use scores to judge level (high/medium/low) - do NOT mention percentages
+✓ Return EXACTLY 4 entries — no more, no fewer
+✓ Every title MUST be one of the 6 legitimate category names above, spelled exactly as shown
+✓ All 4 titles MUST be unique — never repeat a category
+✓ YOU choose which 4 based on this learner's actual accuracyBySubtag evidence — do not default to a fixed set
+✓ Use scores to judge level (high/medium/low) - do NOT mention percentages or scores in the description text
 ✓ Use FRIENDLY, ENCOURAGING language suitable for ages 11-14
 ✓ Match strength level to actual performance
 ✓ Use second-person language ("You...")
@@ -476,38 +471,6 @@ RULES:
 ✓ NO comparison language - focus only on learner's own thinking style
 ✓ Say "You're learning" not "You're not good at"
 ✓ Be positive and growth-focused throughout
-
----
-
-REPORT 7: WHAT I HAVE / WHAT I NEED (Per BRD FR-33 & PRD Section 18.1)
-For: Learner-facing display showing strengths and growth areas
-Source: Use capability_wheel scores to identify highest and lowest performers
-Format: Two arrays - what_i_have (strengths) and what_i_need (growth areas)
-
-LOGIC (Critical - use actual scores):
-- "what_i_have": Top 2-3 capability areas with HIGHEST scores (Confident or Ready for Next Level status, score ≥ 3.0)
-- "what_i_need": Bottom 2-3 capability areas with LOWEST scores (Starting or Practicing status, score < 3.0)
-
-RULES:
-✓ Select based on actual capability_wheel scores
-✓ what_i_have = highest scores sorted descending
-✓ what_i_need = lowest scores sorted ascending
-✓ Include 2-3 items in each array
-✓ Show scores to 1 decimal place
-✓ Use positive, encouraging language in both sections
-✓ what_i_need should be framed as growth opportunities, not weaknesses
-
-EXAMPLE:
-{
-  "what_i_have": [
-    {"capability_area": "Social / SQ", "score_out_of_5": 4.5},
-    {"capability_area": "Communication", "score_out_of_5": 4.2}
-  ],
-  "what_i_need": [
-    {"capability_area": "Digital & AI Literacy", "score_out_of_5": 2.5},
-    {"capability_area": "Execution & Independence", "score_out_of_5": 2.8}
-  ]
-}
 
 ---
 
@@ -613,20 +576,17 @@ STRICT EVIDENCE-ONLY GUARDRAILS (apply to ALL sub-sections — this is non-negot
 ---
 
 JSON RULES:
-✓ ALL 9 fields present (character_strengths_descriptions, capability_insights, assessmentReport, mission_recommendations, my_interest_worlds, explorer_insights, thinking_styles, what_i_have, what_i_need, stage_guidance)
+✓ ALL 8 fields present (character_strengths_descriptions, capability_insights, assessmentReport, mission_recommendations, my_interest_worlds, explorer_insights, thinking_styles, stage_guidance)
 ✓ stage_guidance has EXACTLY 8 keys: capabilityWheel, interestWorlds, characterConstellation, selfSocial, explorerMap, thinkingStyle, whatIHaveNeed, missions
 ✓ Each stage_guidance[stageId] has the 3 REQUIRED keys: parent, instructional, actionSteps — plus an OPTIONAL 4th key "sectionIntro" (include it whenever that stage's evidence supports one; omit it entirely for that stage if not, do not include it with vague/empty content)
 ✓ Each of parent/instructional/actionSteps has EXACTLY: title (string), subtitle (string), desc (string), highlights (array of 2-3 strings — 3 only when genuinely evidence-supported, never padded)
 ✓ When present, "sectionIntro" has EXACTLY: heading (string, 2-5 words), description (string, one sentence, under 20 words)
 ✓ character_strengths_descriptions is an array of 6-8 objects with "label", "description", "tag" fields
-✓ thinking_styles is an array of exactly 4 objects with "title", "description", "icon" fields
+✓ thinking_styles is an array of EXACTLY 4 objects with "title", "description", "icon" fields — each "title" is one of the 6 legitimate categories (Pattern Recognition, Spatial Reasoning, Verbal Reasoning, Logical Reasoning, Numerical Reasoning, Data Interpretation), YOU select which 4 based on this learner's evidence, and all 4 titles must be unique
 ✓ explorer_insights has "exploredWorlds" and "toExploreWorlds" arrays
 ✓ exploredWorlds array must match ALL worlds from growth_map.explorer_map.explored (do not limit)
 ✓ toExploreWorlds array must match ALL worlds from growth_map.explorer_map.to_explore (do not limit)
 ✓ Each world in explorer_insights has: icon, worldName, whyThisWorld, evidenceFromGrowth, whatItMeans, nextStep
-✓ what_i_have is an array of 2-3 highest-scoring capabilities (Confident/Ready for Next Level)
-✓ what_i_need is an array of 2-3 lowest-scoring capabilities (Starting/Practicing)
-✓ Each capability item has: capability_area (string), score_out_of_5 (number, 1 decimal)
 ✓ Thinking style icons must be one of: BrainCircuit, Lightbulb, Sparkles, BarChart3
 ✓ Explorer map icons must be one of: briefcase, hammer, palette, users, leaf, laptop, heart, lightbulb
 ✓ Each text field is a single string (NO line breaks, NO markdown)

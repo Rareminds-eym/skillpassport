@@ -78,6 +78,11 @@ export const STAGE_ORDER: StageMeta[] = [
 ];
 
 export interface StageReports {
+  /** Persisted Growth Map stage-completion progress (see GrowthMapShell) —
+   * stored inside gemini_results, not a separate database column. */
+  growth_map_progress?: {
+    completedStageIds?: StageId[];
+  };
   my_interest_worlds?: Array<any>;
   character_strengths_descriptions?: Array<{
     label: string;
@@ -112,6 +117,7 @@ export interface StageReports {
     title: string;
     description: string;
     icon: string;
+    value?: number;
   }>;
   capability_wheel?: Array<{
     capability_area: string;

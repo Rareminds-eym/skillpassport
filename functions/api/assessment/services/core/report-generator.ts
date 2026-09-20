@@ -297,6 +297,19 @@ function isValidExplorerInsights(insights: any, explorerMap?: any): boolean {
   return true;
 }
 
+// The only 6 legitimate Thinking Style categories — each corresponds exactly
+// to a real Adaptive Aptitude accuracy_by_subtag key (see the title-to-subtag
+// lookup in analysis-middle-school.ts). Gemini selects 4 of these 6 per
+// learner; the app never invents or substitutes a different title.
+const LEGITIMATE_THINKING_STYLES = [
+  'Pattern Recognition',
+  'Spatial Reasoning',
+  'Verbal Reasoning',
+  'Logical Reasoning',
+  'Numerical Reasoning',
+  'Data Interpretation',
+] as const;
+
 function isValidThinkingStyles(styles: any): boolean {
   const validIcons = ['BrainCircuit', 'Lightbulb', 'Sparkles', 'BarChart3'];
 
@@ -306,9 +319,11 @@ function isValidThinkingStyles(styles: any): boolean {
     styles.every(
       (s) =>
         typeof s.title === 'string' &&
+        (LEGITIMATE_THINKING_STYLES as readonly string[]).includes(s.title) &&
         typeof s.description === 'string' &&
         validIcons.includes(s.icon)
-    )
+    ) &&
+    new Set(styles.map((s) => s.title)).size === 4
   );
 }
 
@@ -383,19 +398,6 @@ function sanitizeSectionIntros(guidance: unknown): void {
   }
 }
 
-function isValidWhatIHaveNeed(items: any): boolean {
-  return (
-    Array.isArray(items) &&
-    items.length >= 2 &&
-    items.length <= 3 &&
-    items.every(
-      (item) =>
-        typeof item.capability_area === 'string' &&
-        typeof item.score_out_of_5 === 'number'
-    )
-  );
-}
-
 export async function generateMiddleSchoolReports(
   growthMap: any,
   learnerName: string,
@@ -462,8 +464,6 @@ export async function generateMiddleSchoolReports(
         interestWorlds: isValidInterestWorlds(parsed.my_interest_worlds),
         explorerInsights: isValidExplorerInsights(parsed.explorer_insights, growthMap?.explorer_map),
         thinkingStyles: isValidThinkingStyles(parsed.thinking_styles),
-        whatIHave: !parsed.what_i_have || isValidWhatIHaveNeed(parsed.what_i_have),
-        whatINeed: !parsed.what_i_need || isValidWhatIHaveNeed(parsed.what_i_need),
         stageGuidance: isValidStageGuidance(parsed.stage_guidance),
       };
 
@@ -487,8 +487,6 @@ export async function generateMiddleSchoolReports(
         exploredWorlds: parsed.explorer_insights.exploredWorlds.length,
         toExploreWorlds: parsed.explorer_insights.toExploreWorlds.length,
         thinkingStyles: parsed.thinking_styles.length,
-        whatIHave: parsed.what_i_have?.length || 0,
-        whatINeed: parsed.what_i_need?.length || 0,
         stageGuidanceStages: Object.keys(parsed.stage_guidance || {}).length,
       });
 

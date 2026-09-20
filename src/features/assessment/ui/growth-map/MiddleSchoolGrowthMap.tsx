@@ -14,12 +14,22 @@ interface MiddleSchoolGrowthMapProps {
   };
   reports: StageReports;
   viewMode?: GrowthMapViewMode;
+  /** Needed to persist Growth Map stage-completion progress. */
+  attemptId?: string;
 }
 
 export const MiddleSchoolGrowthMap: React.FC<MiddleSchoolGrowthMapProps> = ({
   learnerInfo,
   reports,
   viewMode,
+  attemptId,
 }) => {
-  return <GrowthMapShell learnerInfo={learnerInfo} reports={reports} viewMode={viewMode} />;
+  return (
+    <GrowthMapShell
+      learnerInfo={learnerInfo}
+      reports={reports}
+      viewMode={viewMode}
+      attemptId={attemptId}
+    />
+  );
 };

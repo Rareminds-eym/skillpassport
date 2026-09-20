@@ -479,6 +479,7 @@ export const GrowthMapStageModal: FC<Props> = ({
             </div>
 
             <button
+              type="button"
               onClick={onClose}
               aria-label="Close modal"
               className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800"
@@ -507,6 +508,7 @@ export const GrowthMapStageModal: FC<Props> = ({
 
           <div className="flex items-center justify-between border-t border-slate-200 bg-white px-6 py-3.5">
             <button
+              type="button"
               onClick={goPrev}
               disabled={openIndex === 0}
               className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-xs font-bold transition ${
@@ -524,6 +526,7 @@ export const GrowthMapStageModal: FC<Props> = ({
 
             {openIndex >= total - 1 ? (
               <button
+                type="button"
                 onClick={onClose}
                 className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2 text-xs font-bold text-white shadow-md shadow-emerald-500/20 transition hover:bg-emerald-700 hover:shadow-lg"
               >
@@ -531,6 +534,7 @@ export const GrowthMapStageModal: FC<Props> = ({
               </button>
             ) : (
               <button
+                type="button"
                 onClick={goNext}
                 className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2 text-xs font-bold text-white shadow-md shadow-blue-500/20 transition hover:bg-blue-700 hover:shadow-lg"
               >

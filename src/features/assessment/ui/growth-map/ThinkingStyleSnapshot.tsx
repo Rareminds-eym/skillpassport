@@ -6,6 +6,7 @@ interface ThinkingStyle {
   title: string;
   description: string;
   icon: string;
+  value?: number;
 }
 
 interface Props {
@@ -19,12 +20,16 @@ interface StyleCard {
   icon: ReactNode;
   color: string;
   description: string;
+  value: number | null;
 }
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#f43f5e'];
-const RADAR_SIZE = 260;
+// viewBox is taller/wider than the ring radius so axis labels (up to
+// "Pattern Recognition"-length text) have room to render without being
+// clipped by the SVG's default overflow:hidden at the viewBox edge.
+const RADAR_SIZE = 300;
 const RADAR_CENTER = RADAR_SIZE / 2;
-const RADAR_RADIUS = 90;
+const RADAR_RADIUS = 82;
 const RADAR_RINGS = [0.25, 0.5, 0.75, 1];
 const NEUTRAL_RADIUS_RATIO = 0.68;
 
@@ -53,11 +58,19 @@ export const ThinkingStyleSnapshot: FC<Props> = ({ thinkingStyles, isActive, sec
     icon: iconFor(index),
     color: COLORS[index % COLORS.length],
     description: style.description,
+    value: typeof style.value === 'number' ? Math.max(0, Math.min(100, style.value)) : null,
   }));
+  // Each axis independently uses its own real Adaptive Aptitude value when
+  // present (e.g. Pattern Recognition, Visual Thinking) — styles with no
+  // legitimate real match (e.g. Problem Solving, Decision Making) fall back to
+  // the fixed neutral radius for that one axis only, rather than fabricating a
+  // number or forcing the whole radar to go neutral just because some styles
+  // lack real data.
   const angles = styles.map((_, index) => (index * 2 * Math.PI) / styles.length);
-  const radarPoints = styles.map((_, index) =>
-    axisPoint(angles[index], RADAR_RADIUS * NEUTRAL_RADIUS_RATIO)
-  );
+  const radarPoints = styles.map((style, index) => {
+    const radiusRatio = style.value !== null ? style.value / 100 : NEUTRAL_RADIUS_RATIO;
+    return axisPoint(angles[index], RADAR_RADIUS * radiusRatio);
+  });
   const radarPolygon = radarPoints.map((point) => `${point.x},${point.y}`).join(' ');
 
   return (
@@ -75,7 +88,7 @@ export const ThinkingStyleSnapshot: FC<Props> = ({ thinkingStyles, isActive, sec
       <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
         <div className="flex flex-col items-center gap-8 md:flex-row">
           <div className="relative shrink-0" style={{ width: RADAR_SIZE, height: RADAR_SIZE }}>
-            <svg viewBox={`0 0 ${RADAR_SIZE} ${RADAR_SIZE}`} className="h-full w-full">
+            <svg viewBox={`0 0 ${RADAR_SIZE} ${RADAR_SIZE}`} className="h-full w-full overflow-visible">
               {RADAR_RINGS.map((ring) => {
                 const points = angles
                   .map((angle) => {
@@ -192,7 +205,19 @@ export const ThinkingStyleSnapshot: FC<Props> = ({ thinkingStyles, isActive, sec
                     </span>
                     <span className="text-sm font-bold text-gray-800">{style.label}</span>
                   </div>
-                  <p className="text-xs text-gray-600 leading-relaxed">{style.description}</p>
+                  {style.value !== null && (
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-gray-200">
+                        <div
+                          className="h-full rounded-full transition-all duration-500"
+                          style={{ width: `${style.value}%`, backgroundColor: style.color }}
+                        />
+                      </div>
+                      <span className="text-xs font-bold" style={{ color: style.color }}>
+                        {style.value}
+                      </span>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -203,7 +228,7 @@ export const ThinkingStyleSnapshot: FC<Props> = ({ thinkingStyles, isActive, sec
                   <span style={{ color: styles[hovered].color }} className="mt-0.5">
                     {styles[hovered].icon}
                   </span>
-                  <p className="text-xs leading-relaxed text-gray-600">{styles[hovered].description}</p>
+                  <span className="text-xs font-semibold text-gray-700">{styles[hovered].label}</span>
                 </div>
               ) : (
                 <p className="text-xs text-gray-400">

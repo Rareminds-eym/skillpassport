@@ -5,10 +5,12 @@ import { GrowthMapStageList } from './GrowthMapStageList';
 import { GrowthMapStageModal } from './GrowthMapStageModal';
 import { GrowthMapScrollView } from './GrowthMapScrollView';
 import type { GrowthMapViewMode } from './ViewToggle';
+import { saveGrowthMapProgress } from '../../api/assessmentApiService';
 import {
   STAGE_ORDER,
   deriveStageStatuses,
   countDoneStages,
+  getCurrentStage,
   type StageId,
   type StageMeta,
   type StageReports,
@@ -28,15 +30,22 @@ interface Props {
    * Bolt reference's Scroll mode. Owned by AssessmentResult.jsx so the
    * ViewToggle button in its header can control this component. */
   viewMode?: GrowthMapViewMode;
+  /** Needed to persist Growth Map stage-completion progress. Progress is
+   * skipped (session-only) if this is not provided. */
+  attemptId?: string;
 }
 
-export const GrowthMapShell: FC<Props> = ({ learnerInfo, reports, viewMode = 'tabbed' }) => {
-  // Session-only progression: which stages the learner has clicked "Next
-  // Section" past. Starts empty on every page load (no DB/localStorage), so
-  // Stage 1 is always Current and Stages 2-8 always Locked on a fresh load —
-  // independent of how much gemini_results content already exists.
+function initialCompletedStageIds(reports: StageReports): ReadonlySet<StageId> {
+  return new Set(reports.growth_map_progress?.completedStageIds ?? []);
+}
+
+export const GrowthMapShell: FC<Props> = ({ learnerInfo, reports, viewMode = 'tabbed', attemptId }) => {
+  // Restored from gemini_results.growth_map_progress (persisted via
+  // saveGrowthMapProgress in handleAdvance below) so a page refresh or
+  // navigating away and back preserves which stages were already completed,
+  // instead of always restarting at Stage 1.
   const [completedStageIds, setCompletedStageIds] = useState<ReadonlySet<StageId>>(
-    () => new Set()
+    () => initialCompletedStageIds(reports)
   );
   const statuses = useMemo(
     () => deriveStageStatuses(completedStageIds),
@@ -45,11 +54,14 @@ export const GrowthMapShell: FC<Props> = ({ learnerInfo, reports, viewMode = 'ta
   const doneCount = useMemo(() => countDoneStages(statuses), [statuses]);
 
   // The single source of truth for "which stage is the plant/modal currently
-  // showing" — always starts at Stage 1 (Seedling Sprout / Capability Wheel),
-  // matching the Bolt reference's actual initial state, then only ever moves
-  // in response to explicit user action (Explore, Previous/Next). Closing the
-  // modal does NOT reset this — the plant stays on the last-viewed stage.
-  const [activeStageId, setActiveStageId] = useState<StageId>(STAGE_ORDER[0].id);
+  // showing" — initializes to the derived Current stage (the first stage not
+  // yet completed) so a learner who already finished several stages resumes
+  // there instead of always at Stage 1, then only ever moves in response to
+  // explicit user action (Explore, Previous/Next). Closing the modal does NOT
+  // reset this — the plant stays on the last-viewed stage.
+  const [activeStageId, setActiveStageId] = useState<StageId>(
+    () => getCurrentStage(deriveStageStatuses(initialCompletedStageIds(reports))).id
+  );
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [hoveredStageId, setHoveredStageId] = useState<StageId | null>(null);
 
@@ -76,10 +88,18 @@ export const GrowthMapShell: FC<Props> = ({ learnerInfo, reports, viewMode = 'ta
   // The ONLY action that marks a stage Done and unlocks the next one:
   // clicking "Next Section" inside the modal. Marks the stage the learner is
   // currently leaving as complete, then moves the modal to the next stage.
+  // Also persists the updated completed-stage list (fire-and-forget, non-
+  // fatal to the UI if it fails) so this survives a refresh/navigation.
   const handleAdvance = (fromId: StageId, toId: StageId) => {
     setCompletedStageIds((prev) => {
       const next = new Set(prev);
       next.add(fromId);
+      if (attemptId) {
+        saveGrowthMapProgress(attemptId, Array.from(next)).catch(() => {
+          // Non-fatal — local progress for this session still works even if
+          // the persisted save fails; it will simply not survive a refresh.
+        });
+      }
       return next;
     });
     setActiveStageId(toId);
