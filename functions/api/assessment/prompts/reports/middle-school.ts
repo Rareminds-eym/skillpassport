@@ -118,7 +118,7 @@ USE SIMPLE LANGUAGE:
     'missions',
   ] as const;
 
-  const user = `Create 9 short reports for ${learner_name} (Grade ${learner_grade}).
+  const user = `Create 8 short reports for ${learner_name} (Grade ${learner_grade}).
 
 GROWTH MAP DATA:
 ${JSON.stringify(growth_map, null, 2)}

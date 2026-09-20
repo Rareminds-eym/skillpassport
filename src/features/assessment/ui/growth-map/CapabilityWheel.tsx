@@ -151,6 +151,16 @@ export const BoltCapabilityWheel: FC<BoltCapabilityWheelProps> = ({
                   setSelectedIndex(index);
                   onActiveCapabilityChange?.(item);
                 }}
+                onFocus={() => {
+                  setHoveredIndex(index);
+                  onActiveCapabilityChange?.(item);
+                }}
+                onBlur={() => {
+                  setHoveredIndex(null);
+                  if (selectedIndex === null) onActiveCapabilityChange?.(null);
+                }}
+                role="button"
+                tabIndex={0}
                 style={{ cursor: 'pointer', transition: 'opacity 180ms ease' }}
               />
             );
@@ -208,6 +218,16 @@ export const BoltCapabilityWheel: FC<BoltCapabilityWheelProps> = ({
                   setSelectedIndex(index);
                   onActiveCapabilityChange?.(item);
                 }}
+                onFocus={() => {
+                  setHoveredIndex(index);
+                  onActiveCapabilityChange?.(item);
+                }}
+                onBlur={() => {
+                  setHoveredIndex(null);
+                  if (selectedIndex === null) onActiveCapabilityChange?.(null);
+                }}
+                role="button"
+                tabIndex={0}
                 className="cursor-pointer"
               >
                 {lines.map((line, lineIndex) => (

@@ -37,6 +37,15 @@ const TOP_Y = 72;
 const BOTTOM_Y = 132;
 const VIEW_HEIGHT = 224;
 
+// Map colors (design system: gray-200 / emerald-500 / emerald-100 / gray-100 / blue-500 / blue-600 / gray-300)
+const TRACK_COLOR = '#e5e7eb';
+const EXPLORED_COLOR = '#10b981';
+const TO_EXPLORE_COLOR = '#3b82f6';
+const ACTIVE_NODE_STROKE_COLOR = '#2563eb';
+const EXPLORED_NODE_FILL_COLOR = '#d1fae5';
+const UNEXPLORED_NODE_FILL_COLOR = '#f3f4f6';
+const UNEXPLORED_NODE_STROKE_COLOR = '#d1d5db';
+
 function buildCurvePath(points: { cx: number; cy: number }[]) {
   if (points.length < 2) return '';
   let d = `M ${points[0].cx} ${points[0].cy}`;
@@ -175,13 +184,13 @@ export const ExplorerMap: FC<Props> = ({ explorerMap, explorerInsights, sectionI
           <div className="rounded-2xl border border-gray-200 bg-gray-50 p-5">
             <div className="overflow-x-auto px-1 pb-3">
               <svg viewBox={`0 0 ${width} ${VIEW_HEIGHT}`} className="block" style={{ minWidth: width, height: VIEW_HEIGHT }}>
-                <path d={buildCurvePath(positions)} fill="none" stroke="#e5e7eb" strokeWidth={2} strokeDasharray="5 4" />
+                <path d={buildCurvePath(positions)} fill="none" stroke={TRACK_COLOR} strokeWidth={2} strokeDasharray="5 4" />
 
                 {exploredCount > 1 && (
                   <path
                     d={buildCurvePath(positions.slice(0, exploredCount))}
                     fill="none"
-                    stroke="#10b981"
+                    stroke={EXPLORED_COLOR}
                     strokeWidth={2.5}
                   />
                 )}
@@ -190,7 +199,7 @@ export const ExplorerMap: FC<Props> = ({ explorerMap, explorerInsights, sectionI
                   <path
                     d={buildCurvePath(positions.slice(Math.max(exploredCount - 1, 0)))}
                     fill="none"
-                    stroke="#3b82f6"
+                    stroke={TO_EXPLORE_COLOR}
                     strokeWidth={2.5}
                     strokeDasharray="6 3"
                   />
@@ -219,14 +228,14 @@ export const ExplorerMap: FC<Props> = ({ explorerMap, explorerInsights, sectionI
                       aria-label={`${world.label}${isExplored ? ' (explored)' : ' (to explore)'}`}
                     >
                       {isActive && (
-                        <circle cx={cx} cy={cy} r={NODE_RADIUS + 6} fill="none" stroke="#3b82f6" strokeWidth={1.5} opacity={0.3} />
+                        <circle cx={cx} cy={cy} r={NODE_RADIUS + 6} fill="none" stroke={TO_EXPLORE_COLOR} strokeWidth={1.5} opacity={0.3} />
                       )}
                       <circle
                         cx={cx}
                         cy={cy}
                         r={NODE_RADIUS}
-                        fill={isActive ? '#3b82f6' : isExplored ? '#d1fae5' : '#f3f4f6'}
-                        stroke={isActive ? '#2563eb' : isExplored ? '#10b981' : '#d1d5db'}
+                        fill={isActive ? TO_EXPLORE_COLOR : isExplored ? EXPLORED_NODE_FILL_COLOR : UNEXPLORED_NODE_FILL_COLOR}
+                        stroke={isActive ? ACTIVE_NODE_STROKE_COLOR : isExplored ? EXPLORED_COLOR : UNEXPLORED_NODE_STROKE_COLOR}
                         strokeWidth={1.5}
                       />
                       <text
