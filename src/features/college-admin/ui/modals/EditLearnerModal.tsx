@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { XMarkIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import { updateLearner } from '@/features/learner-profile/api';
-import { Country, State, City } from 'country-state-city';
-import pincodes from 'indian-pincodes';
+const loadGeoData = () => import('country-state-city');
+import { searchIndianPincodes, PincodeResult } from '@/shared/api/pincodeService';
 import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 
@@ -113,12 +113,13 @@ const EditLearnerModal: React.FC<EditlearnerModalProps> = ({
   const stateDropdownRef = useRef<HTMLDivElement>(null);
   const cityDropdownRef = useRef<HTMLDivElement>(null);
   
-  // Pincode dropdown states (indian-pincodes)
-  const [allPincodes, setAllPincodes] = useState<any[]>([]);
-  const [filteredPincodes, setFilteredPincodes] = useState<any[]>([]);
+  // Pincode dropdown states (on-demand lookup)
+  const [filteredPincodes, setFilteredPincodes] = useState<PincodeResult[]>([]);
   const [pincodeSearch, setPincodeSearch] = useState('');
+  const [isSearchingPincodes, setIsSearchingPincodes] = useState(false);
   const [showPincodeDropdown, setShowPincodeDropdown] = useState(false);
   const pincodeDropdownRef = useRef<HTMLDivElement>(null);
+  const pincodeDebounceRef = useRef<NodeJS.Timeout | null>(null);
   
   const [validationErrors, setValidationErrors] = useState<{
     contact_number?: string;
@@ -331,16 +332,9 @@ const EditLearnerModal: React.FC<EditlearnerModalProps> = ({
   };
 
   useEffect(() => {
-    const allCountries = Country.getAllCountries();
-    setCountries(allCountries);
-
-    try {
-      const pincodeData = pincodes.getAllPincodes();
-      setAllPincodes(pincodeData);
-      setFilteredPincodes(pincodeData.slice(0, 50));
-    } catch (error) {
-      logger.error('Error loading pincodes', error instanceof Error ? error : new Error(String(error)));
-    }
+    loadGeoData().then(({ Country }) => {
+      setCountries(Country.getAllCountries());
+    });
   }, []);
   
   // Handle click outside dropdowns
@@ -463,21 +457,23 @@ const EditLearnerModal: React.FC<EditlearnerModalProps> = ({
       
       // Initialize location dropdowns based on existing data
       if (learner.country) {
-        const selectedCountry = Country.getAllCountries().find(c => c.name === learner.country);
-        if (selectedCountry) {
-          const countryStates = State.getStatesOfCountry(selectedCountry.isoCode);
-          setStates(countryStates);
-          setFilteredStates(countryStates);
-          
-          if (learner.state) {
-            const selectedState = countryStates.find(s => s.name === learner.state);
-            if (selectedState) {
-              const stateCities = City.getCitiesOfState(selectedCountry.isoCode, selectedState.isoCode);
-              setCities(stateCities);
-              setFilteredCities(stateCities);
+        loadGeoData().then(({ Country, State, City }) => {
+          const selectedCountry = Country.getAllCountries().find(c => c.name === learner.country);
+          if (selectedCountry) {
+            const countryStates = State.getStatesOfCountry(selectedCountry.isoCode);
+            setStates(countryStates);
+            setFilteredStates(countryStates);
+            
+            if (learner.state) {
+              const selectedState = countryStates.find(s => s.name === learner.state);
+              if (selectedState) {
+                const stateCities = City.getCitiesOfState(selectedCountry.isoCode, selectedState.isoCode);
+                setCities(stateCities);
+                setFilteredCities(stateCities);
+              }
             }
           }
-        }
+        });
       }
       
       // Set search fields to show existing data
@@ -539,24 +535,33 @@ const EditLearnerModal: React.FC<EditlearnerModalProps> = ({
 
   const handlePincodeSearch = (searchValue: string) => {
     setPincodeSearch(searchValue);
+    setFormData(prev => ({
+      ...prev,
+      pincode: searchValue,
+    }));
 
-    if (!searchValue.trim()) {
-      setFilteredPincodes(allPincodes.slice(0, 50));
+    if (pincodeDebounceRef.current) {
+      clearTimeout(pincodeDebounceRef.current);
+    }
+
+    if (!searchValue.trim() || searchValue.trim().length < 3) {
+      setFilteredPincodes([]);
+      setIsSearchingPincodes(false);
       return;
     }
 
-    const filtered = allPincodes.filter((item) => {
-      const matchesPincode = item.pincode.toString().includes(searchValue);
-      const matchesName = item.name?.toLowerCase().includes(searchValue.toLowerCase());
-      const matchesDistrict = item.district?.toLowerCase().includes(searchValue.toLowerCase());
-      const matchesState = item.state?.toLowerCase().includes(searchValue.toLowerCase());
-      return matchesPincode || matchesName || matchesDistrict || matchesState;
-    }).slice(0, 100);
-
-    setFilteredPincodes(filtered);
+    setIsSearchingPincodes(true);
+    pincodeDebounceRef.current = setTimeout(async () => {
+      try {
+        const results = await searchIndianPincodes(searchValue);
+        setFilteredPincodes(results);
+      } finally {
+        setIsSearchingPincodes(false);
+      }
+    }, 300);
   };
   
-  const handlePincodeSelect = (pincodeData: any) => {
+  const handlePincodeSelect = (pincodeData: PincodeResult) => {
     const newCountry = pincodeData.country || 'India';
     const newState = pincodeData.state || '';
     const newCity = pincodeData.name || '';
@@ -579,16 +584,18 @@ const EditLearnerModal: React.FC<EditlearnerModalProps> = ({
 
     const selectedCountry = countries.find(c => c.name === newCountry);
     if (selectedCountry) {
-      const countryStates = State.getStatesOfCountry(selectedCountry.isoCode);
-      setStates(countryStates);
-      setFilteredStates(countryStates);
+      loadGeoData().then(({ State, City }) => {
+        const countryStates = State.getStatesOfCountry(selectedCountry.isoCode);
+        setStates(countryStates);
+        setFilteredStates(countryStates);
 
-      const selectedState = countryStates.find(s => s.name === newState);
-      if (selectedState) {
-        const stateCities = City.getCitiesOfState(selectedCountry.isoCode, selectedState.isoCode);
-        setCities(stateCities);
-        setFilteredCities(stateCities);
-      }
+        const selectedState = countryStates.find(s => s.name === newState);
+        if (selectedState) {
+          const stateCities = City.getCitiesOfState(selectedCountry.isoCode, selectedState.isoCode);
+          setCities(stateCities);
+          setFilteredCities(stateCities);
+        }
+      });
     }
 
     setShowPincodeDropdown(false);
@@ -699,13 +706,15 @@ const EditLearnerModal: React.FC<EditlearnerModalProps> = ({
     if (name === 'country') {
       const selectedCountry = countries.find(c => c.name === value);
       if (selectedCountry) {
-        const countryStates = State.getStatesOfCountry(selectedCountry.isoCode);
-        setStates(countryStates);
-        setCities([]);
-        newFormData.state = '';
-        newFormData.city = '';
-        newFormData.district_name = '';
-        newFormData.pincode = '';
+        loadGeoData().then(({ State }) => {
+          const countryStates = State.getStatesOfCountry(selectedCountry.isoCode);
+          setStates(countryStates);
+          setCities([]);
+          newFormData.state = '';
+          newFormData.city = '';
+          newFormData.district_name = '';
+          newFormData.pincode = '';
+        });
       }
     }
 
@@ -713,11 +722,13 @@ const EditLearnerModal: React.FC<EditlearnerModalProps> = ({
       const selectedCountry = countries.find(c => c.name === formData.country);
       const selectedState = states.find(s => s.name === value);
       if (selectedCountry && selectedState) {
-        const stateCities = City.getCitiesOfState(selectedCountry.isoCode, selectedState.isoCode);
-        setCities(stateCities);
-        newFormData.city = '';
-        newFormData.district_name = '';
-        newFormData.pincode = '';
+        loadGeoData().then(({ City }) => {
+          const stateCities = City.getCitiesOfState(selectedCountry.isoCode, selectedState.isoCode);
+          setCities(stateCities);
+          newFormData.city = '';
+          newFormData.district_name = '';
+          newFormData.pincode = '';
+        });
       }
     }
 
@@ -1319,7 +1330,11 @@ const EditLearnerModal: React.FC<EditlearnerModalProps> = ({
                           ))
                         ) : (
                           <div className="p-3 text-sm text-gray-500 text-center">
-                            {pincodeSearch ? `No pincodes found for "${pincodeSearch}"` : 'Start typing to search...'}
+                            {isSearchingPincodes
+                              ? 'Searching pincodes...'
+                              : pincodeSearch.length >= 3
+                              ? `No pincodes found for "${pincodeSearch}"`
+                              : 'Type at least 3 characters or 6 digits to search...'}
                           </div>
                         )}
                       </div>

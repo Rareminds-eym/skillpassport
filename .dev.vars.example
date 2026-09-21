@@ -66,11 +66,9 @@ OPENROUTER_API_KEY=your_openrouter_api_key_here
 
 
 # ==================== CLOUDFLARE R2 CONFIGURATION (for Storage) ====================
-CLOUDFLARE_ACCOUNT_ID=your_cloudflare_account_id_here
-CLOUDFLARE_R2_ACCESS_KEY_ID=your_r2_access_key_here
-CLOUDFLARE_R2_SECRET_ACCESS_KEY=your_r2_secret_key_here
-CLOUDFLARE_R2_BUCKET_NAME=skill-echosystem
-# Optional: public URL for R2 objects (if custom domain is configured)
+# R2 storage is provided by the R2_BUCKET binding in wrangler.toml.
+# Local wrangler dev uses local R2 state unless you explicitly run remote mode.
+# Optional: public URL for R2 objects (if a custom domain is configured)
 # CLOUDFLARE_R2_PUBLIC_URL=https://cdn.skillpassport.rareminds.in
 
 # ==================== GOOGLE OAUTH ====================

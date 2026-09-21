@@ -658,7 +658,7 @@ function PaymentSuccess() {
   // Extract receipt status to avoid stale closure in useCallback
   const receiptStatus = transactionDetails?.receipt_status;
 
-  // Handle receipt download using presigned URL
+  // Handle receipt download using an authenticated storage URL.
   const handleDownloadReceipt = useCallback(async () => {
     try {
       // Check if receipt is still being generated
@@ -690,12 +690,12 @@ function PaymentSuccess() {
       }
 
       if (fileIdentifier) {
-        log.info('Requesting presigned URL for:', fileIdentifier);
-        const presignedUrl = await getPaymentReceiptPresignedUrl(fileIdentifier, 3600);
+        log.info('Requesting receipt download URL for:', fileIdentifier);
+        const receiptDownloadUrl = await getPaymentReceiptPresignedUrl(fileIdentifier, 3600);
 
         // Use shared download helper with fallback mechanism
         try {
-          await downloadFileFromUrl(presignedUrl, generateReceiptFilename());
+          await downloadFileFromUrl(receiptDownloadUrl, generateReceiptFilename());
           toast.success('Receipt downloading!');
           return;
         } catch (downloadError) {

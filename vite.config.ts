@@ -32,7 +32,6 @@ export default defineConfig({
       'react-icons/bs',
       'react-icons/hi',
       'react-icons/fi',
-      '@tabler/icons-react',
     ],
   },
   build: {
@@ -41,12 +40,23 @@ export default defineConfig({
     chunkSizeWarningLimit: 1000,
     target: 'esnext',
     rollupOptions: {
-      maxParallelFileOps: 1,
+      onwarn(warning, warn) {
+        // Suppress "use client" directive warnings from third-party libraries
+        if (warning.code === 'MODULE_LEVEL_DIRECTIVE') return;
+        if (warning.message && warning.message.includes("Can't resolve original location of error")) return;
+        warn(warning);
+      },
       output: {
         entryFileNames: 'assets/[name]-[hash].js',
         chunkFileNames: 'assets/[name]-[hash].js',
         assetFileNames: 'assets/[name]-[hash].[ext]',
         manualChunks(id) {
+          if (id.includes('commonjsHelpers')) {
+            return 'vendor-react';
+          }
+          if (id.includes('vite/preload-helper')) {
+            return 'vendor';
+          }
           if (!id.includes('node_modules')) return undefined;
 
           // Extract package name from node_modules path
@@ -63,11 +73,6 @@ export default defineConfig({
             packageName === 'react-router-dom' || packageName === 'react-is' ||
             packageName === 'scheduler') {
             return 'vendor-react';
-          }
-
-          // Radix UI components - group together
-          if (packageName.startsWith('@radix-ui/')) {
-            return 'vendor-radix';
           }
 
           // Supabase - group together
@@ -98,7 +103,7 @@ export default defineConfig({
 
           // Icons - group together
           if (packageName === 'react-icons' || packageName === '@heroicons/react' ||
-            packageName === '@tabler/icons-react' || packageName === 'lucide-react') {
+            packageName === 'lucide-react') {
             return 'vendor-icons';
           }
 
@@ -109,10 +114,6 @@ export default defineConfig({
 
           if (packageName === 'xlsx') {
             return 'vendor-xlsx';
-          }
-
-          if (packageName === 'indian-pincodes') {
-            return 'vendor-pincodes';
           }
 
           if (packageName === 'papaparse' || packageName === 'csv-parse') {

@@ -9,7 +9,6 @@ import { apiPost, apiGet } from '@/shared/api/apiClient';
 import { useAuthStore } from '@/shared/model/authStore';
 import { authClient } from '@/shared/api/authClient';
 // import { useStrengthsGrowthPlan } from '@/features/assessment/lib/useStrengthsGrowthPlan';
-import jsPDF from 'jspdf';
 import { generateLteCode } from '@/features/auth/api/lteSsoApi';
 import { CourseEnrollmentModal } from '@/shared/ui';
 
@@ -328,7 +327,9 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results, 
     };
 
     // Generate PDF roadmap
-    const handleDownloadRoadmap = () => {
+    const handleDownloadRoadmap = async () => {
+        const jspdfModule = await import('jspdf');
+        const jsPDF = jspdfModule.jsPDF || jspdfModule.default;
         const doc = new jsPDF();
         const roleName = getRoleName(selectedRole);
         const clusterTitle = selectedTrack.cluster?.title || '';

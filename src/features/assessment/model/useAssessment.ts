@@ -7,7 +7,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 
-import * as assessmentService from '@/features/assessment';
+import * as assessmentService from '../api/assessmentService';
 
 import { useUser } from '@/shared/model/authStore';
 export const useAssessment = () => {

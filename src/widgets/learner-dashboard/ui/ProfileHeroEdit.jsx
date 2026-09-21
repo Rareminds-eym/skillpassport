@@ -16,14 +16,14 @@ import {
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 import {
-  IconBrandFacebook,
-  IconBrandGithub,
-  IconBrandInstagram,
-  IconBrandLinkedin,
-  IconBrandTwitter,
-  IconBrandYoutube,
-  IconWorld,
-} from "@tabler/icons-react";
+  Facebook as IconBrandFacebook,
+  Github as IconBrandGithub,
+  Instagram as IconBrandInstagram,
+  Linkedin as IconBrandLinkedin,
+  Twitter as IconBrandTwitter,
+  Youtube as IconBrandYoutube,
+  Globe as IconWorld,
+} from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { FileText, Rocket, Sprout, Star, Wrench } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
@@ -31,7 +31,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { apiPost } from '@/shared/api/apiClient';
-import { generateBadges } from "@/features/digital-portfolio";
+import { generateBadges } from "@/features/digital-portfolio/api/badgeService";
 import {
   calculateEmployabilityScore,
   getDefaultEmployabilityScore,

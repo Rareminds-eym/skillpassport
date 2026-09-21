@@ -17,7 +17,7 @@ import toast from 'react-hot-toast';
 import { useAuthStore } from '@/shared/model/authStore';
 import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
-import { DatePicker } from '@/features/subscription';
+import DatePicker from '@/features/subscription/ui/shared/DatePicker';
 import { sendOtp, verifyOtp as verifyOtpApi } from '@/features/auth/api/otpService';
 import { OtpInput } from '@/shared/ui';
 

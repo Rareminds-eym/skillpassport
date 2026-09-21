@@ -690,17 +690,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
       context.waitUntil(receiptPromise);
     }
 
-    // For the email, we'll use a temporary presigned URL (receipt will be in email anyway)
-    let receiptUrl: string | null = null;
-    try {
-      const pagesEnv = env as unknown as PagesEnv;
-      const r2 = new R2Client(pagesEnv);
-      receiptUrl = await r2.generatePresignedGetUrl(receiptKeyForGeneration, 604800);
-      logger.info('Generated temporary presigned URL for email', { receiptKey: receiptKeyForGeneration });
-    } catch (presignErr) {
-      const errorMsg = presignErr instanceof Error ? presignErr.message : String(presignErr);
-      logger.warn('Failed to generate presigned URL for email (non-critical)', { error: errorMsg });
-    }
+    const receiptUrl = `/api/storage/payment-receipt?key=${encodeURIComponent(receiptKeyForGeneration)}&mode=download`;
 
     // Step 5: Send payment confirmation email (unchanged)
     try {

@@ -6,20 +6,7 @@
  */
 
 // ============================================================================
-// UI COMPONENTS
-// ============================================================================
-export {
-  UnifiedLogin,
-  UnifiedSignup,
-  UnifiedForgotPassword,
-  PasswordReset,
-  ResetPassword,
-  TokenPasswordReset,
-  LoginAdmin,
-  LoginLearner,
-  LoginEducator,
-  LoginRecruiter,
-} from './ui';
+// UI COMPONENTS (Import directly from '@/features/auth/ui' to prevent bundle bloat)
 
 // ============================================================================
 // STATE MANAGEMENT

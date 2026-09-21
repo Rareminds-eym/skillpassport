@@ -60,6 +60,10 @@ binding = "AI_SERVICE"
 service = "ai-api"
 entrypoint = "AiService"
 
+[[r2_buckets]]
+binding = "R2_BUCKET"
+bucket_name = "skill-echosystem"
+
 # ============================================================================
 # VARIABLES
 # ============================================================================
