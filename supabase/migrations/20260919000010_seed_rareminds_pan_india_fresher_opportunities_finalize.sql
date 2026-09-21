@@ -43,6 +43,6 @@ SET recruiter_id = sr.recruiter_id,
     updated_at = timezone('utc'::text, now())
 FROM selected_recruiter sr
 JOIN public.users u ON u.id = sr.created_by_uuid
-WHERE position('"source_workbook":"Rareminds_Pan_India_Fresher_Opportunity_Tracker 4.xlsx"' in o.description) > 0;
+WHERE position('careers@rareminds.in' in o.description) > 0;
 
 COMMIT;
