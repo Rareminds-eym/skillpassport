@@ -16,7 +16,7 @@
     "test:property": "vitest --run src/__tests__/property/",
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
     "workers:dev": "concurrently -n \"email,pay,sso,realtime\" -c \"blue,yellow,magenta,cyan\" \"npm run workers:email\" \"npm run workers:payments\" \"npm run workers:sso\" \"npm run workers:realtime\"",
-    "pages:dev": "wrangler pages dev dist --compatibility-date=2026-06-08 --port=8788 --service PAYMENT_WORKER=razorpay-api --service SSO_SERVICE=sso-api#SsoWorker --service REALTIME_WORKER=realtime-worker --service EMBEDDING_SERVICE=embedding-api#EmbeddingService --service EMAIL_SERVICE=shared-email-api",
+    "pages:dev": "wrangler pages dev dist --compatibility-date=2026-06-08 --port=8788 --r2 R2_BUCKET --service PAYMENT_WORKER=razorpay-api --service SSO_SERVICE=sso-api#SsoWorker --service REALTIME_WORKER=realtime-worker --service EMBEDDING_SERVICE=embedding-api#EmbeddingService --service EMAIL_SERVICE=shared-email-api",
     "pages:build": "npm run build",
     "workers:email": "cd ../email-worker && wrangler dev --port=9001 --inspector-port=9229",
     "workers:payments": "cd ../payment-worker && wrangler dev --port=9003 --inspector-port=9232",
@@ -31,7 +31,7 @@
     "db:backup:seed:public": "python3 scripts/backup_remote_db.py --public-only",
     "db:backup:compress": "python3 scripts/backup_remote_db.py --compress",
     "db:backup:verify": "python3 scripts/backup_remote_db.py --verify latest",
-    "pages:start": "wrangler pages dev dist --compatibility-date=2026-06-08 --port=8788 --live-reload=false --service PAYMENT_WORKER=razorpay-api --service SSO_SERVICE=sso-api#SsoWorker --service REALTIME_WORKER=realtime-worker --service EMBEDDING_SERVICE=embedding-api#EmbeddingService --service EMAIL_SERVICE=shared-email-api",
+    "pages:start": "wrangler pages dev dist --compatibility-date=2026-06-08 --port=8788 --live-reload=false --r2 R2_BUCKET --service PAYMENT_WORKER=razorpay-api --service SSO_SERVICE=sso-api#SsoWorker --service REALTIME_WORKER=realtime-worker --service EMBEDDING_SERVICE=embedding-api#EmbeddingService --service EMAIL_SERVICE=shared-email-api",
     "cleanup": "bash scripts/cleanup-ports.sh"
   },
   "dependencies": {

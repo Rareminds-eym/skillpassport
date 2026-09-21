@@ -28,8 +28,13 @@ function EmailVerificationGuard({ children }: { children: React.ReactNode }) {
   const authLoading = useAuthLoading();
 
   if (authLoading || (isAuthenticated && !user)) return (
-    <div className="min-h-screen flex items-center justify-center bg-white">
-      <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-indigo-950 dark:to-gray-900">
+      <div className="text-center">
+        <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-white shadow-xl flex items-center justify-center p-3">
+          <img src="/RMLogo.webp" alt="RareMinds" className="w-full h-full object-contain" />
+        </div>
+        <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto" />
+      </div>
     </div>
   );
 
@@ -44,7 +49,7 @@ function EmailVerificationGuard({ children }: { children: React.ReactNode }) {
       '/invite/accept',
     ];
     const isAllowedPath = allowedPaths.some(path => location.pathname.startsWith(path));
-    
+
     if (!isAllowedPath) {
       logger.info('[auth] Redirecting unverified user to /verify-email', {
         userId: user.id,
