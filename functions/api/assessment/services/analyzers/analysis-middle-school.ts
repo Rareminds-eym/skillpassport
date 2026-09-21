@@ -294,13 +294,16 @@ export async function analyzeMiddleSchool(
     exposureExplored.sort(byScoreDesc);
     exposureToExplore.sort((a, b) => a.score - b.score);
 
-    // "What I Have" = capability areas the learner is already strong in (Growing and above);
-    // "What I Need Next" = areas still Starting/Practicing. Both drawn from the same wheel scores.
+    // "What I Have" = capability areas the learner is already strong in (Growing and above).
+    // "What I Need Next" = the learner's next growth areas — always the 4 lowest-scoring
+    // capabilities, regardless of absolute score. This is intentionally NOT a "< 3.0 gap"
+    // filter: a learner who scores 3.0+ (or even 5/5) on every capability still has relatively
+    // lower and higher areas, and "What I Need Next" should always point to their next growth
+    // frontier rather than going empty once there are no genuine below-threshold gaps.
     const capabilitySorted = [...capabilityScores].sort((a, b) => b.score_out_of_5 - a.score_out_of_5);
     const whatIHave = capabilitySorted.filter((c) => c.score_out_of_5 >= 3.0).slice(0, 4);
     const whatINeedNext = [...capabilityScores]
       .sort((a, b) => a.score_out_of_5 - b.score_out_of_5)
-      .filter((c) => c.score_out_of_5 < 3.0)
       .slice(0, 4);
 
     // Recommended missions: the learner's strongest interest worlds carry a mission_trigger

@@ -98,14 +98,18 @@ export interface WhatIHaveItem {
 }
 
 /**
- * One guidance view inside a Growth Map stage's modal (Parent Translation,
- * Instructional Implications, or Actionable Next Steps). Grounded in that
- * stage's own real growth_map/aptitude_scores evidence — never fabricated.
+ * The 3 canonical guidance "kinds" every stage's sections are built from —
+ * matches growthStageConfig.ts's GuidanceSectionKind on the frontend. A
+ * stage's approved UI title for a kind lives ONLY in the frontend's
+ * STAGE_GUIDANCE_SECTIONS registry (app-owned display copy) — Gemini and this
+ * validator only ever deal with the kind + generated content, never a title.
  */
-export interface StageGuidanceBlock {
-  title: string;
-  subtitle: string;
-  desc: string;
+export type GuidanceSectionKind = 'parent' | 'teacher' | 'action';
+
+/** Real generated content for one guidance section — no title/subtitle here;
+ * those are app-owned and supplied by the frontend registry at render time. */
+export interface GuidanceSectionContent {
+  desc: string; // 12-18 words, one plain sentence naming the specific identified observation
   highlights: string[]; // 2-3 entries — 3 only when the stage's evidence genuinely supports a 3rd distinct point
 }
 
@@ -114,7 +118,7 @@ export interface StageGuidanceBlock {
  * Growth Map stage's own display card (e.g. replacing the hardcoded "My
  * Capability Wheel" / "Your growth across 8 core capabilities..." pair).
  * Grounded in the SAME Step-A identified evidence as that stage's guidance
- * blocks — never fabricated. Optional: older reports predate this field and
+ * sections — never fabricated. Optional: older reports predate this field and
  * the frontend falls back to its existing static copy when absent or invalid.
  */
 export interface SectionIntro {
@@ -122,16 +126,20 @@ export interface SectionIntro {
   description: string; // one short sentence for directly below the heading
 }
 
-/** The 3 guidance views for one Growth Map stage, plus its section intro. */
+/**
+ * One Growth Map stage's guidance entry (v2 schema): Gemini supplies only
+ * `sections[kind]` content for whichever kinds THIS stage's app-owned
+ * registry actually lists (see STAGE_SECTION_KINDS below) — it never decides
+ * which kinds exist, their order, or their titles.
+ */
 export interface StageGuidanceEntry {
-  parent: StageGuidanceBlock;
-  instructional: StageGuidanceBlock;
-  actionSteps: StageGuidanceBlock;
   sectionIntro?: SectionIntro;
+  sections: Partial<Record<GuidanceSectionKind, GuidanceSectionContent>>;
 }
 
 /** stage_guidance keyed by the 8 Growth Map stage IDs (growthStageConfig.ts StageId). */
 export interface StageGuidance {
+  version: 2;
   capabilityWheel: StageGuidanceEntry;
   interestWorlds: StageGuidanceEntry;
   characterConstellation: StageGuidanceEntry;
@@ -209,6 +217,30 @@ const REQUIRED_STAGE_IDS = [
   'missions',
 ] as const;
 
+/**
+ * App-owned mapping of which guidance section KINDS exist for each stage —
+ * must match STAGE_GUIDANCE_SECTIONS in
+ * src/features/assessment/ui/growth-map/growthStageConfig.ts (kind list only;
+ * titles/subtitles are frontend-only display copy, irrelevant to validation).
+ * This is the backend's enforcement that Gemini can only ever populate a
+ * section kind that this stage's registry actually lists — an unknown kind,
+ * or a kind not listed for this stage, is never accepted into stage_guidance.
+ * Verified against the real Bolt reference (TabbedView.tsx sectionGuidance):
+ * whatIHaveNeed has only parent+action (no teacher/classroom section), and
+ * missions has only teacher (no parent/action section) — every other stage
+ * has all 3 kinds.
+ */
+const STAGE_SECTION_KINDS: Record<(typeof REQUIRED_STAGE_IDS)[number], readonly GuidanceSectionKind[]> = {
+  capabilityWheel: ['parent', 'teacher', 'action'],
+  interestWorlds: ['parent', 'teacher', 'action'],
+  characterConstellation: ['parent', 'teacher', 'action'],
+  selfSocial: ['parent', 'teacher', 'action'],
+  explorerMap: ['parent', 'teacher', 'action'],
+  thinkingStyle: ['parent', 'teacher', 'action'],
+  whatIHaveNeed: ['parent', 'action'],
+  missions: ['teacher'],
+};
+
 function isValidCapabilityInsights(insights: any): boolean {
   return (
     insights &&
@@ -228,10 +260,12 @@ function isValidCharacterStrengths(strengths: any): boolean {
   );
 }
 
+const REQUIRED_MISSION_COUNT = 3;
+
 function isValidMissions(missions: any): boolean {
   return (
     Array.isArray(missions) &&
-    missions.length > 0 &&
+    missions.length === REQUIRED_MISSION_COUNT &&
     missions.every((m) =>
       m.priority &&
       typeof m.priority === 'number' &&
@@ -327,17 +361,18 @@ function isValidThinkingStyles(styles: any): boolean {
   );
 }
 
-function isValidStageGuidanceBlock(block: any): boolean {
+/** Validates one section's generated content only (desc + highlights) — no
+ * title/subtitle field exists in Gemini's output at all in the v2 schema. */
+function isValidGuidanceSectionContent(content: any): boolean {
   return (
-    block &&
-    typeof block === 'object' &&
-    typeof block.title === 'string' &&
-    typeof block.subtitle === 'string' &&
-    typeof block.desc === 'string' &&
-    Array.isArray(block.highlights) &&
-    block.highlights.length >= 2 &&
-    block.highlights.length <= 3 &&
-    block.highlights.every((h: any) => typeof h === 'string' && h.length > 0)
+    content &&
+    typeof content === 'object' &&
+    typeof content.desc === 'string' &&
+    content.desc.trim().length > 0 &&
+    Array.isArray(content.highlights) &&
+    content.highlights.length >= 2 &&
+    content.highlights.length <= 3 &&
+    content.highlights.every((h: any) => typeof h === 'string' && h.trim().length > 0)
   );
 }
 
@@ -366,18 +401,37 @@ function isValidSectionIntro(intro: unknown): intro is SectionIntro {
   );
 }
 
+/**
+ * Validates the v2 stage_guidance shape: for each stage, `sections` must be
+ * an object containing valid generated content for EXACTLY the kinds listed
+ * in that stage's STAGE_SECTION_KINDS entry (app-owned) — no more, no fewer.
+ * A stage returning an extra/unknown kind (one this stage's registry doesn't
+ * list) fails validation entirely rather than silently being accepted and
+ * possibly rendered — Gemini cannot introduce a section the app doesn't own.
+ */
 function isValidStageGuidance(guidance: any): boolean {
   if (!guidance || typeof guidance !== 'object') return false;
+  if (guidance.version !== 2) return false;
 
   return REQUIRED_STAGE_IDS.every((stageId) => {
     const entry = guidance[stageId];
-    return (
-      entry &&
-      typeof entry === 'object' &&
-      isValidStageGuidanceBlock(entry.parent) &&
-      isValidStageGuidanceBlock(entry.instructional) &&
-      isValidStageGuidanceBlock(entry.actionSteps)
+    if (!entry || typeof entry !== 'object' || !entry.sections || typeof entry.sections !== 'object') {
+      return false;
+    }
+
+    const requiredKinds = STAGE_SECTION_KINDS[stageId];
+    const returnedKinds = Object.keys(entry.sections);
+
+    // Every kind this stage requires must be present and valid.
+    const hasAllRequired = requiredKinds.every((kind) =>
+      isValidGuidanceSectionContent(entry.sections[kind])
     );
+    // No kind outside this stage's approved set may be present at all.
+    const hasNoExtraKinds = returnedKinds.every((kind) =>
+      (requiredKinds as readonly string[]).includes(kind)
+    );
+
+    return hasAllRequired && hasNoExtraKinds;
   });
 }
 

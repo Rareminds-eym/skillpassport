@@ -1,5 +1,5 @@
-import { useMemo, useState, type FC } from 'react';
-import { ChevronRight, ExternalLink, MapPin, Rocket } from 'lucide-react';
+import { useMemo, useRef, useState, type FC } from 'react';
+import { ChevronLeft, ChevronRight, ExternalLink, MapPin, Rocket } from 'lucide-react';
 import { isValidSectionIntro, type SectionIntro } from './growthStageConfig';
 
 interface GrowthItem {
@@ -71,6 +71,7 @@ function splitLabel(label: string) {
 
 export const ExplorerMap: FC<Props> = ({ explorerMap, explorerInsights, sectionIntro }) => {
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const mapScrollRef = useRef<HTMLDivElement>(null);
   const intro = isValidSectionIntro(sectionIntro) ? sectionIntro : null;
   const insights = useMemo(
     () => [...(explorerInsights?.exploredWorlds || []), ...(explorerInsights?.toExploreWorlds || [])],
@@ -99,6 +100,22 @@ export const ExplorerMap: FC<Props> = ({ explorerMap, explorerInsights, sectionI
 
   const exploredCount = explored.length;
   const unexploredCount = toExplore.length;
+  const canGoPrev = selectedIndex > 0;
+  const canGoNext = selectedIndex < allWorlds.length - 1;
+
+  const scrollToWorld = (index: number) => {
+    const clampedIndex = Math.max(0, Math.min(index, allWorlds.length - 1));
+    setSelectedIndex(clampedIndex);
+
+    const scrollNode = mapScrollRef.current;
+    if (!scrollNode) return;
+
+    const targetX = positions[clampedIndex]?.cx ?? 0;
+    scrollNode.scrollTo({
+      left: Math.max(targetX - scrollNode.clientWidth / 2, 0),
+      behavior: 'smooth',
+    });
+  };
 
   return (
     <div>
@@ -182,7 +199,7 @@ export const ExplorerMap: FC<Props> = ({ explorerMap, explorerInsights, sectionI
           </div>
 
           <div className="rounded-2xl border border-gray-200 bg-gray-50 p-5">
-            <div className="overflow-x-auto px-1 pb-3">
+            <div ref={mapScrollRef} className="overflow-x-auto px-1 pb-3">
               <svg viewBox={`0 0 ${width} ${VIEW_HEIGHT}`} className="block" style={{ minWidth: width, height: VIEW_HEIGHT }}>
                 <path d={buildCurvePath(positions)} fill="none" stroke={TRACK_COLOR} strokeWidth={2} strokeDasharray="5 4" />
 
@@ -215,17 +232,19 @@ export const ExplorerMap: FC<Props> = ({ explorerMap, explorerInsights, sectionI
                   return (
                     <g
                       key={`${world.label}-${index}`}
-                      className="cursor-pointer"
-                      onClick={() => setSelectedIndex(index)}
+                      className="cursor-pointer outline-none focus:outline-none focus-visible:outline-none"
+                      style={{ outline: 'none' }}
+                      onClick={() => scrollToWorld(index)}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' || e.key === ' ') {
                           e.preventDefault();
-                          setSelectedIndex(index);
+                          scrollToWorld(index);
                         }
                       }}
                       role="button"
                       tabIndex={0}
                       aria-label={`${world.label}${isExplored ? ' (explored)' : ' (to explore)'}`}
+                      aria-current={isActive ? 'step' : undefined}
                     >
                       {isActive && (
                         <circle cx={cx} cy={cy} r={NODE_RADIUS + 6} fill="none" stroke={TO_EXPLORE_COLOR} strokeWidth={1.5} opacity={0.3} />
@@ -268,6 +287,27 @@ export const ExplorerMap: FC<Props> = ({ explorerMap, explorerInsights, sectionI
                   );
                 })}
               </svg>
+            </div>
+            <div className="mt-1 flex items-center justify-between px-1">
+              <button
+                type="button"
+                onClick={() => scrollToWorld(selectedIndex - 1)}
+                disabled={!canGoPrev}
+                aria-label="Previous explorer world"
+                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 disabled:cursor-not-allowed disabled:opacity-35"
+              >
+                <ChevronLeft size={16} />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => scrollToWorld(selectedIndex + 1)}
+                disabled={!canGoNext}
+                aria-label="Next explorer world"
+                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 disabled:cursor-not-allowed disabled:opacity-35"
+              >
+                <ChevronRight size={16} />
+              </button>
             </div>
           </div>
         </div>
