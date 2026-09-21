@@ -67,7 +67,7 @@ WITH specialization_updates (
     ('roopeshgc2003@gmail.com', 'Master of Business Administration - Business Analytics'),
     ('sahanaanandaiah@gmail.com', 'Master of Business Administration - Business Analytics'),
     ('sanjanakumarmesthakumarmestha@gmail.com', 'Master of Business Administration - HR and Business Analytics'),
-    ('santhoshsanthu00121@gmail.com', 'Master of Business Administration - Finance'),
+    ('santhoshgowda2102@gmail.com', 'Master of Business Administration - Finance'),
     ('sevanthi752@gmail.com', 'Master of Computer Applications'),
     ('shivaganesh2046@gmail.com', 'Master of Business Administration - Marketing'),
     ('shivakumar07505@gmail.com', 'Master of Business Administration - Marketing and Finance'),
