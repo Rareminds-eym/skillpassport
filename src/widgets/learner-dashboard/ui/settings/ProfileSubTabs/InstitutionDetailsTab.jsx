@@ -485,6 +485,27 @@ const InstitutionDetailsTab = ({
           )}
         </div>
 
+        {/* Specialization */}
+        <div className="space-y-2">
+          <label className="text-sm font-semibold text-gray-700">
+            Specialization <span className="text-gray-400 text-xs font-normal">(e.g., AI/ML, Finance, CyberSecurity)</span>
+          </label>
+          <input
+            type="text"
+            value={profileData.specialization || ''}
+            onChange={(e) => handleInstitutionChange('specialization', e.target.value)}
+            placeholder="Enter specialization (e.g., Artificial Intelligence, Marketing, Cybersecurity)"
+            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm disabled:bg-gray-50 disabled:cursor-not-allowed"
+            disabled={(!profileData.programId && !showCustomProgram && !customProgramName) || !!profileData.schoolId || showCustomSchool || !!customSchoolName}
+            maxLength={150}
+          />
+          {(!profileData.programId && !showCustomProgram && !customProgramName) ? (
+            <p className="text-xs text-gray-500">Please select a program first</p>
+          ) : (
+            <p className="text-xs text-gray-400">Optional — your focus area within the program</p>
+          )}
+        </div>
+
         {/* Semester/Section */}
         <div className="space-y-2">
           <label className="text-sm font-semibold text-gray-700">

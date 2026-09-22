@@ -92,6 +92,7 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
   const [customUniversityName, setCustomUniversityName] = useState('');
   const [customCollegeName, setCustomCollegeName] = useState('');
   const [customProgramName, setCustomProgramName] = useState('');
+  const [specialization, setSpecialization] = useState('');
 
   // Hooks
   const { updateProfile } = useLearnerSettings(userEmail);
@@ -149,6 +150,7 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
         instagram: initialProfileData.instagram_link || initialProfileData.instagram || "",
         portfolio: initialProfileData.portfolio_link || initialProfileData.portfolio || "",
       });
+      setSpecialization(initialProfileData.specialization || "");
 
       // Detect learner type from multiple sources
       // Priority: learner_type field > IDs present > undetermined
@@ -407,6 +409,7 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
           dataToSave.branch = profileData.branch;
         }
       }
+      if (specialization && specialization.trim()) dataToSave.specialization = specialization.trim();
       if (profileData.grade) dataToSave.grade = profileData.grade;
       if (profileData.gradeStartDate) dataToSave.gradeStartDate = profileData.gradeStartDate;
       if (profileData.semester) dataToSave.semester = profileData.semester;
@@ -414,7 +417,6 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
 
       logger.debug('Saving profile data (institution fields only)', dataToSave);
 
-      // Pass only the fields being updated
       const result = await updateProfile(dataToSave);
 
       logger.debug('Profile update result', result);
@@ -433,7 +435,7 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
         detail: { type: 'profile_updated', data: dataToSave }
       }));
 
-      // Delay reload to ensure database is updated
+      // Delay to ensure database is updated before assessment start
       setTimeout(() => {
         onComplete();
       }, 500);
@@ -730,6 +732,22 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
                       {(!profileData.universityCollegeId && !showCustomCollege && !customCollegeName) && (
                         <p className="text-xs text-gray-500">Please select a college first</p>
                       )}
+                    </div>
+                  )}
+
+                  {/* Specialization */}
+                  {(profileData.programId || showCustomProgram || customProgramName) && (
+                    <div className="space-y-2">
+                      <label className="text-sm font-semibold text-gray-700" htmlFor="specialization">Specialization <span className="text-gray-400 text-xs font-normal">(e.g., AI/ML, Finance)</span></label>
+                      <input
+                        type="text"
+                        value={specialization}
+                        onChange={(e) => setSpecialization(e.target.value)}
+                        placeholder="Enter specialization (e.g., Artificial Intelligence)"
+                        className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                        maxLength={150}
+                      />
+                      <p className="text-xs text-gray-400">Optional — your focus area within the program</p>
                     </div>
                   )}
 
