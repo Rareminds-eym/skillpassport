@@ -7,6 +7,7 @@ import {
   type VideoEntry,
 } from '@/features/digital-portfolio';
 import { getVideoPortfolioUrl } from '@/shared/api/storageApiService';
+import { ssoClient } from '@/shared/api/ssoClient';
 
 interface VideoEditDrawerProps {
   isOpen: boolean;
@@ -40,6 +41,8 @@ const VideoEditDrawer: React.FC<VideoEditDrawerProps> = ({
   const [loadingVideo, setLoadingVideo] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [showPublishModal, setShowPublishModal] = useState(false);
+  const [pendingPublishState, setPendingPublishState] = useState(false);
   const tagInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -63,13 +66,60 @@ const VideoEditDrawer: React.FC<VideoEditDrawerProps> = ({
     }
   }, [video]);
 
+  // Update video playback to respect trim settings
+  useEffect(() => {
+    const videoElement = videoRef.current;
+    if (!videoElement || !videoUrl) return;
+
+    const handleLoadedMetadata = () => {
+      const duration = videoElement.duration;
+      const startTime = (trimStart / 100) * duration;
+      videoElement.currentTime = startTime;
+    };
+
+    const handleTimeUpdate = () => {
+      const duration = videoElement.duration;
+      const currentTime = videoElement.currentTime;
+      const endTime = (trimEnd / 100) * duration;
+
+      if (currentTime >= endTime) {
+        videoElement.pause();
+        videoElement.currentTime = (trimStart / 100) * duration; // Reset to start
+      }
+    };
+
+    videoElement.addEventListener('loadedmetadata', handleLoadedMetadata);
+    videoElement.addEventListener('timeupdate', handleTimeUpdate);
+
+    return () => {
+      videoElement.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      videoElement.removeEventListener('timeupdate', handleTimeUpdate);
+    };
+  }, [videoUrl, trimStart, trimEnd]);
+
   const loadVideo = async () => {
     if (!video?.videoUrl) return;
 
     setLoadingVideo(true);
     try {
-      const url = await getVideoPortfolioUrl(video.videoUrl, 'stream');
-      setVideoUrl(url);
+      // Get the video URL
+      const url = getVideoPortfolioUrl(video.videoUrl, 'inline');
+      console.log('Fetching video from:', url);
+
+      // Fetch the video with authentication using ssoClient
+      const response = await ssoClient.fetch(url, {
+        method: 'GET',
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to load video: ${response.status} ${response.statusText}`);
+      }
+
+      // Convert response to blob and create object URL
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      setVideoUrl(blobUrl);
+      console.log('Video blob URL created successfully');
     } catch (error) {
       console.error('Failed to load video:', error);
       toast.error('Failed to load video preview');
@@ -77,6 +127,15 @@ const VideoEditDrawer: React.FC<VideoEditDrawerProps> = ({
       setLoadingVideo(false);
     }
   };
+
+  // Cleanup blob URL on unmount
+  useEffect(() => {
+    return () => {
+      if (videoUrl && videoUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(videoUrl);
+      }
+    };
+  }, [videoUrl]);
 
   const handleAddTag = () => {
     if (tagInput.trim() && !tags.includes(tagInput.trim())) {
@@ -100,6 +159,45 @@ const VideoEditDrawer: React.FC<VideoEditDrawerProps> = ({
     }
   };
 
+  // Handle trim slider changes and update video position
+  const handleTrimStartChange = (value: number) => {
+    setTrimStart(value);
+    const videoElement = videoRef.current;
+    if (videoElement && videoElement.duration) {
+      const startTime = (value / 100) * videoElement.duration;
+      videoElement.currentTime = startTime;
+    }
+  };
+
+  const handleTrimEndChange = (value: number) => {
+    setTrimEnd(value);
+    // Optionally jump to end position for preview
+    const videoElement = videoRef.current;
+    if (videoElement && videoElement.duration) {
+      const endTime = (value / 100) * videoElement.duration;
+      videoElement.currentTime = endTime;
+    }
+  };
+
+  // Preview the trimmed section
+  const handlePreviewTrim = () => {
+    const videoElement = videoRef.current;
+    if (!videoElement || !videoElement.duration) return;
+
+    // Scroll to the video player smoothly
+    videoElement.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start'
+    });
+
+    // Small delay to let scroll complete before playing
+    setTimeout(() => {
+      const startTime = (trimStart / 100) * videoElement.duration;
+      videoElement.currentTime = startTime;
+      videoElement.play();
+    }, 300);
+  };
+
   const handleSave = async () => {
     if (!video) return;
 
@@ -118,6 +216,11 @@ const VideoEditDrawer: React.FC<VideoEditDrawerProps> = ({
         thumbnailColor: COVER_THUMBNAILS[selectedThumbnail],
         trimStart,
         trimEnd,
+        // Auto-set status to VERIFIED and approval to approved when publishing
+        ...(showOnPublic && {
+          status: 'VERIFIED',
+          approvalStatus: 'approved',
+        }),
       });
 
       toast.success('Video updated successfully');
@@ -128,6 +231,27 @@ const VideoEditDrawer: React.FC<VideoEditDrawerProps> = ({
     } finally {
       setSaving(false);
     }
+  };
+
+  const handlePublicToggle = (newState: boolean) => {
+    if (newState && !showOnPublic) {
+      // User wants to publish - show confirmation modal
+      setPendingPublishState(true);
+      setShowPublishModal(true);
+    } else {
+      // User wants to unpublish - no confirmation needed
+      setShowOnPublic(false);
+    }
+  };
+
+  const handleConfirmPublish = () => {
+    setShowOnPublic(true);
+    setShowPublishModal(false);
+  };
+
+  const handleCancelPublish = () => {
+    setPendingPublishState(false);
+    setShowPublishModal(false);
   };
 
   const handleDelete = async () => {
@@ -204,7 +328,15 @@ const VideoEditDrawer: React.FC<VideoEditDrawerProps> = ({
                       ref={videoRef}
                       src={videoUrl}
                       controls
+                      crossOrigin="use-credentials"
                       className="w-full h-full object-cover"
+                      onError={(e) => {
+                        console.error('Video loading error:', e);
+                        toast.error('Failed to load video. Please try again.');
+                      }}
+                      onLoadedMetadata={() => {
+                        console.log('Video metadata loaded successfully');
+                      }}
                     >
                       Your browser does not support video playback.
                     </video>
@@ -328,7 +460,7 @@ const VideoEditDrawer: React.FC<VideoEditDrawerProps> = ({
                       min="0"
                       max={Math.max(0, trimEnd - 5)}
                       value={trimStart}
-                      onChange={(e) => setTrimStart(Number(e.target.value))}
+                      onChange={(e) => handleTrimStartChange(Number(e.target.value))}
                       className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-indigo-600 [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-indigo-600 [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:cursor-pointer"
                     />
                   </div>
@@ -348,16 +480,24 @@ const VideoEditDrawer: React.FC<VideoEditDrawerProps> = ({
                       min={Math.min(100, trimStart + 5)}
                       max="100"
                       value={trimEnd}
-                      onChange={(e) => setTrimEnd(Number(e.target.value))}
+                      onChange={(e) => handleTrimEndChange(Number(e.target.value))}
                       className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-indigo-600 [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-indigo-600 [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:cursor-pointer"
                     />
                   </div>
 
                   {/* Selected Duration Info */}
-                  <div className="flex items-center justify-center pt-2">
+                  <div className="flex items-center justify-between pt-2">
                     <span className="text-sm text-gray-600 dark:text-gray-400">
                       Selected: <span className="font-medium text-indigo-600 dark:text-indigo-400">{trimEnd - trimStart}%</span> of video
                     </span>
+                    <button
+                      onClick={handlePreviewTrim}
+                      disabled={loadingVideo || !videoUrl}
+                      className="px-3 py-1.5 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 rounded-lg hover:bg-indigo-200 dark:hover:bg-indigo-900/50 transition-colors text-sm font-medium flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Play className="w-3.5 h-3.5" />
+                      Preview Trim
+                    </button>
                   </div>
                 </div>
               </div>
@@ -384,28 +524,21 @@ const VideoEditDrawer: React.FC<VideoEditDrawerProps> = ({
 
               {/* Show on Public Portfolio */}
               <div>
-                <div className={`flex items-center justify-between p-4 rounded-lg ${video.status === 'VERIFIED'
-                    ? 'bg-gray-50 dark:bg-gray-700'
-                    : 'bg-gray-100 dark:bg-gray-800 opacity-60'
-                  }`}>
+                <div className="flex items-center justify-between p-4 rounded-lg bg-gray-50 dark:bg-gray-700">
                   <div>
                     <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-1">
                       Show on public portfolio
                     </h4>
                     <p className="text-xs text-gray-600 dark:text-gray-400">
-                      {video.status === 'VERIFIED'
-                        ? 'Visitors to your profile can view this entry'
-                        : `Must be VERIFIED to show publicly (currently: ${video.status})`
-                      }
+                      Visitors to your profile can view this entry
                     </p>
                   </div>
                   <button
-                    onClick={() => setShowOnPublic(!showOnPublic)}
-                    disabled={video.status !== 'VERIFIED'}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${showOnPublic && video.status === 'VERIFIED'
-                        ? 'bg-indigo-600'
-                        : 'bg-gray-300 dark:bg-gray-600'
-                      } ${video.status !== 'VERIFIED' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    onClick={() => handlePublicToggle(!showOnPublic)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${showOnPublic
+                      ? 'bg-indigo-600'
+                      : 'bg-gray-300 dark:bg-gray-600'
+                      }`}
                   >
                     <span
                       className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${showOnPublic ? 'translate-x-6' : 'translate-x-1'
@@ -413,14 +546,6 @@ const VideoEditDrawer: React.FC<VideoEditDrawerProps> = ({
                     />
                   </button>
                 </div>
-
-                {/* Helper Text for Non-Verified Videos */}
-                {video.status !== 'VERIFIED' && (
-                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-2 flex items-center gap-1">
-                    <span>⚠️</span>
-                    <span>Submit your video for review to make it publicly visible</span>
-                  </p>
-                )}
               </div>
             </div>
 
@@ -462,6 +587,56 @@ const VideoEditDrawer: React.FC<VideoEditDrawerProps> = ({
               </div>
             </div>
           </motion.div>
+
+          {/* Publish Confirmation Modal */}
+          <AnimatePresence>
+            {showPublishModal && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4"
+                onClick={handleCancelPublish}
+              >
+                <motion.div
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.9, opacity: 0 }}
+                  onClick={(e) => e.stopPropagation()}
+                  className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4"
+                >
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center flex-shrink-0">
+                      <Play className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                        Publish to public portfolio?
+                      </h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        This video will be visible to anyone viewing your public portfolio. You can unpublish it anytime.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3 pt-2">
+                    <button
+                      onClick={handleCancelPublish}
+                      className="flex-1 px-4 py-2.5 border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors font-medium"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleConfirmPublish}
+                      className="flex-1 px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-blue-600 dark:from-indigo-500 dark:to-blue-500 text-white rounded-xl hover:shadow-lg transition-all font-medium"
+                    >
+                      Publish
+                    </button>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </>
       )}
     </AnimatePresence>

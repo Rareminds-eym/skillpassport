@@ -283,35 +283,38 @@ export async function handleVideoPortfolioDownload(
 
     // Check for Range header (video streaming)
     const rangeHeader = request.headers.get('Range');
-    const r2Object = await r2Client.getObject(fileKey, rangeHeader);
+    console.log('[VIDEO-DOWNLOAD] Range header:', rangeHeader);
 
-    if (!r2Object || !r2Object.body) {
+    // R2Client.getObject returns a Response object
+    const r2Response = await r2Client.getObject(fileKey, rangeHeader);
+    console.log('[VIDEO-DOWNLOAD] R2 response retrieved:', {
+      ok: r2Response.ok,
+      status: r2Response.status,
+      hasBody: !!r2Response.body,
+      contentType: r2Response.headers.get('Content-Type'),
+      contentLength: r2Response.headers.get('Content-Length')
+    });
+
+    if (!r2Response.ok) {
       return createError(404, 'NOT_FOUND', 'Video not found');
     }
 
     // Get filename
     const filename = keyParts[2];
 
-    // Build response headers
-    const headers = new Headers();
-    headers.set('Content-Type', r2Object.contentType || 'video/mp4');
-    headers.set('Content-Length', r2Object.size.toString());
-    headers.set('Accept-Ranges', 'bytes');
+    // Clone headers from R2 response and add additional headers
+    const headers = new Headers(r2Response.headers);
     headers.set('Cache-Control', 'private, max-age=3600');
 
     // Set Content-Disposition
     const disposition = mode === 'download' ? 'attachment' : 'inline';
     headers.set('Content-Disposition', `${disposition}; filename="${filename}"`);
 
-    // Handle range request
-    let status = 200;
-    if (rangeHeader && r2Object.range) {
-      status = 206; // Partial Content
-      headers.set('Content-Range', r2Object.range.toString());
-    }
+    console.log('[VIDEO-DOWNLOAD] Sending response with status:', r2Response.status);
 
-    return new Response(r2Object.body, {
-      status,
+    // Return the response with updated headers
+    return new Response(r2Response.body, {
+      status: r2Response.status,
       headers,
     });
   } catch (error: any) {

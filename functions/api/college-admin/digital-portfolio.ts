@@ -351,7 +351,9 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           thumbnailColor,
           trimStart,
           trimEnd,
-          showOnPublic
+          showOnPublic,
+          status,
+          approvalStatus
         } = params;
 
         if (!videoId) {
@@ -377,6 +379,8 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         if (trimStart !== undefined) updates.trim_start = trimStart;
         if (trimEnd !== undefined) updates.trim_end = trimEnd;
         if (showOnPublic !== undefined) updates.show_on_public = showOnPublic;
+        if (status !== undefined) updates.status = status;
+        if (approvalStatus !== undefined) updates.approval_status = approvalStatus;
 
         if (Object.keys(updates).length === 0) {
           return apiError(400, 'VALIDATION_ERROR', 'No fields to update', context.request, { startTime });
