@@ -23,8 +23,10 @@
  * - assessmentReport: 200-250 words
  * - mission_recommendations: EXACTLY 3 structured missions (not text)
  * - my_interest_worlds: 5-8 worlds, 15-20 words per evidenceSummary
- * - stage_guidance: ~12-18 word desc + 2-3 highlights (8-12 words each) per section, only for the
- *   section kinds each stage requires (most stages: 3 kinds; whatIHaveNeed: 2 kinds; missions: 1 kind)
+ * - stage_guidance: ~12-18 word desc + highlights (8-12 words each) per section, only for the
+ *   section kinds each stage requires (most stages: 3 kinds; whatIHaveNeed: 2 kinds; missions: 1 kind).
+ *   Highlight COUNT is a fixed per-stage number, not a range: Stages 1-6 = exactly 3 per section;
+ *   Stage 7 (whatIHaveNeed) and Stage 8 (missions) = exactly 2 per section.
  * - stage_guidance.sectionIntro (optional, per stage): heading 2-5 words, description under 20 words
  *
  * Per BRD Section 10: Capability Wheel Areas (8-area model)
@@ -187,10 +189,12 @@ RETURN THIS JSON (8 OUTPUTS ONLY - NO markdown, NO extra text):
     "capabilityWheel": {
       "sectionIntro": {"heading": "<2-5 word heading naming the identified capability_wheel evidence>", "description": "<one sentence, under 20 words, summarizing what THIS stage's identified evidence shows>"},
       "sections": {
-        "parent": {"desc": "<short observation naming the specific capability_wheel evidence, plain language for a parent>", "highlights": ["<home scenario tied to the strongest identified item>", "<home scenario tied to a second identified item>", "<only if genuinely supported: a third distinct facet>"]},
-        "teacher": {"desc": "<short observation naming the specific capability_wheel evidence, for a teacher>", "highlights": ["<classroom adjustment tied to the strongest identified item>", "<classroom adjustment tied to a second identified item>"]},
-        "action": {"desc": "<one short framing sentence naming the identified capability_wheel evidence>", "highlights": ["<concrete task tied to the strongest identified item>", "<concrete task tied to a second identified item>"]}
+        "parent": {"desc": "<short observation naming the specific capability_wheel evidence, plain language for a parent>", "highlights": ["<home scenario tied to the strongest identified item>", "<home scenario tied to a second identified item>", "<home scenario tied to a third distinct facet of the identified evidence>"]},
+        "teacher": {"desc": "<short observation naming the specific capability_wheel evidence, for a teacher>", "highlights": ["<classroom adjustment tied to the strongest identified item>", "<classroom adjustment tied to a second identified item>", "<classroom adjustment tied to a third distinct facet of the identified evidence>"]},
+        "action": {"desc": "<one short framing sentence naming the identified capability_wheel evidence>", "highlights": ["<concrete task tied to the strongest identified item>", "<concrete task tied to a second identified item>", "<concrete task tied to a third distinct facet of the identified evidence>"]}
       }
+      // NOTE: this stage (and every Stage 1-6 stage) requires EXACTLY 3 highlights per section — see
+      // the EXACT COUNT RULE in REPORT 8 below. This example shows 3 in every section deliberately.
     },
     "whatIHaveNeed": {
       "sectionIntro": {"heading": "<...>", "description": "<...>"},
@@ -198,16 +202,18 @@ RETURN THIS JSON (8 OUTPUTS ONLY - NO markdown, NO extra text):
         "parent": {"desc": "<observation naming the specific growth_map.what_i_have item(s)>", "highlights": ["<...>", "<...>"]},
         "action": {"desc": "<observation naming the specific growth_map.what_i_need_next item(s)>", "highlights": ["<concrete step tied to a specific what_i_need_next item>", "<...>"]}
       }
+      // NOTE: whatIHaveNeed (Stage 7) requires EXACTLY 2 highlights per section — never 3 here.
     },
     "missions": {
       "sectionIntro": {"heading": "<...>", "description": "<...>"},
       "sections": {
         "teacher": {"desc": "<observation for a teacher tied to the recommended missions>", "highlights": ["<...>", "<...>"]}
       }
+      // NOTE: missions (Stage 8) requires EXACTLY 2 highlights — never 3 here.
     }
     // ... the remaining 5 stages (interestWorlds, characterConstellation, selfSocial,
-    // explorerMap, thinkingStyle) each also require "parent", "teacher", AND "action" —
-    // see the exact per-stage section list in REPORT 8 below.
+    // explorerMap, thinkingStyle) each also require "parent", "teacher", AND "action",
+    // EACH WITH EXACTLY 3 HIGHLIGHTS — see the exact per-stage section list in REPORT 8 below.
   }
 }
 
@@ -576,18 +582,23 @@ Each section is an object with EXACTLY these 2 fields (NO "title", NO "subtitle"
 - "desc" (string, 12-18 words): ONE plain sentence stating the specific identified observation. Lead
   with the observation itself — do NOT open with "This shows that...", "This means...", or similar
   explanatory throat-clearing.
-- "highlights" (array of 2-3 strings, 8-12 words each — see COUNT RULE below): concrete points, each
-  traceable to a specific identified item from Step A
+- "highlights" (array of strings, 8-12 words each — see EXACT COUNT RULE below, count depends on stage):
+  concrete points, each traceable to a specific identified item from Step A
 
-COUNT RULE FOR "highlights" (apply the same way in every section, every stage):
-- Use 3 highlights when the stage's Step-A evidence genuinely supports 3 distinct, meaningful points —
-  e.g. one per identified item (strongest / second strongest / growth area), or if only one or two
-  distinct items exist, up to 3 different facets of that same evidence (what it shows / why it matters
-  for this audience / how the learner could build on it)
-- Use exactly 2 when the evidence only supports 2 genuinely distinct points for that stage (this is
-  CORRECT, not incomplete)
-- NEVER add a 3rd highlight that isn't traceable to Step A's identified items just to reach 3 — a
-  generic filler point is worse than stopping at 2
+⚠️ EXACT COUNT RULE FOR "highlights" (this is a FIXED count per stage, NOT a range — you MUST hit the
+exact number below for every section you generate; returning the wrong count will be REJECTED):
+- Stages 1-6 (capabilityWheel, interestWorlds, characterConstellation, selfSocial, explorerMap,
+  thinkingStyle) — EVERY required section (parent, teacher, action) MUST have EXACTLY 3 highlights.
+  2 is NOT acceptable for these stages under any circumstance.
+- Stage 7 (whatIHaveNeed) — EVERY required section (parent, action) MUST have EXACTLY 2 highlights.
+- Stage 8 (missions) — its one required section (teacher) MUST have EXACTLY 2 highlights.
+
+For Stages 1-6's exactly-3 requirement: build the 3 highlights from up to 3 distinct identified items
+from Step A (strongest / second strongest / growth area). If Step A only turned up 1-2 distinct items
+for that stage, use up to 3 different genuine facets of that SAME real evidence (e.g. what it shows /
+why it matters for this audience / how the learner could build on it) to reach 3 — every highlight must
+still be traceable to a real identified item, never invented. Do NOT pad with a generic, non-evidence
+filler sentence just to hit the count — find a real third facet of the real evidence instead.
 
 MAKE EACH STAGE'S VIEWS ANSWER DIFFERENT QUESTIONS ABOUT THE SAME EVIDENCE
 (sectionIntro plus this stage's section kinds must never just restate each other in different words):
@@ -602,8 +613,8 @@ MAKE EACH STAGE'S VIEWS ANSWER DIFFERENT QUESTIONS ABOUT THE SAME EVIDENCE
   item(s) — not a generic encouragement that would apply to any student. Professional but simple tone.
   NO scores, NO comparisons to other students.
 - "action" kind (where required): Answers "What can the learner try, tied directly to this exact
-  evidence?" Written directly to the learner ("You..."). Each of the 2-3 highlights should be a
-  concrete, doable task tied to a different identified item where possible — not generic advice.
+  evidence?" Written directly to the learner ("You..."). Each highlight should be a concrete, doable
+  task tied to a different identified item where possible — not generic advice.
 
 STRICT EVIDENCE-ONLY GUARDRAILS (apply to ALL sections — this is non-negotiable):
 ✓ Every "desc" and "highlights" entry MUST be traceable to a Step-A identified item in growth_map/aptitude_scores for THAT stage — do not invent evidence, achievements, or specifics not present in the data
@@ -621,7 +632,7 @@ JSON RULES:
 ✓ mission_recommendations is an array of EXACTLY 3 objects — never 2, never 4 or more
 ✓ stage_guidance has "version": 2 plus EXACTLY 8 stage keys: capabilityWheel, interestWorlds, characterConstellation, selfSocial, explorerMap, thinkingStyle, whatIHaveNeed, missions
 ✓ Each stage_guidance[stageId] has a "sections" object containing ONLY the section kinds required for that stage (capabilityWheel/interestWorlds/characterConstellation/selfSocial/explorerMap/thinkingStyle: parent+teacher+action; whatIHaveNeed: parent+action; missions: teacher) — plus an OPTIONAL "sectionIntro" (include it whenever that stage's evidence supports one; omit it entirely for that stage if not, do not include it with vague/empty content)
-✓ Each section inside "sections" has EXACTLY: desc (string), highlights (array of 2-3 strings — 3 only when genuinely evidence-supported, never padded) — NO title, NO subtitle field
+✓ Each section inside "sections" has EXACTLY: desc (string), highlights (array of strings) — NO title, NO subtitle field. highlights count is FIXED per stage, not a range: Stages 1-6 (capabilityWheel/interestWorlds/characterConstellation/selfSocial/explorerMap/thinkingStyle) = EXACTLY 3 per section; Stage 7 (whatIHaveNeed) = EXACTLY 2 per section; Stage 8 (missions) = EXACTLY 2
 ✓ When present, "sectionIntro" has EXACTLY: heading (string, 2-5 words), description (string, one sentence, under 20 words)
 ✓ character_strengths_descriptions is an array of 6-8 objects with "label", "description", "tag" fields
 ✓ thinking_styles is an array of EXACTLY 4 objects with "title", "description", "icon" fields — each "title" is one of the 6 legitimate categories (Pattern Recognition, Spatial Reasoning, Verbal Reasoning, Logical Reasoning, Numerical Reasoning, Data Interpretation), YOU select which 4 based on this learner's evidence, and all 4 titles must be unique

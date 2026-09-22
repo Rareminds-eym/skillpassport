@@ -241,6 +241,25 @@ const STAGE_SECTION_KINDS: Record<(typeof REQUIRED_STAGE_IDS)[number], readonly 
   missions: ['teacher'],
 };
 
+/**
+ * App-owned required highlight count per stage — verified against the real
+ * Bolt reference (TabbedView.tsx sectionGuidance): Stages 1-6 always have
+ * exactly 3 highlights per section (parent/teacher/action), while Stage 7
+ * (whatIHaveNeed) and Stage 8 (missions) always have exactly 2. This is a
+ * fixed per-stage count, not a "2-3, either is fine" range — Gemini must
+ * hit the exact number for the stage it's writing, never pad or fall short.
+ */
+const STAGE_HIGHLIGHT_COUNT: Record<(typeof REQUIRED_STAGE_IDS)[number], number> = {
+  capabilityWheel: 3,
+  interestWorlds: 3,
+  characterConstellation: 3,
+  selfSocial: 3,
+  explorerMap: 3,
+  thinkingStyle: 3,
+  whatIHaveNeed: 2,
+  missions: 2,
+};
+
 function isValidCapabilityInsights(insights: any): boolean {
   return (
     insights &&
@@ -362,16 +381,17 @@ function isValidThinkingStyles(styles: any): boolean {
 }
 
 /** Validates one section's generated content only (desc + highlights) — no
- * title/subtitle field exists in Gemini's output at all in the v2 schema. */
-function isValidGuidanceSectionContent(content: any): boolean {
+ * title/subtitle field exists in Gemini's output at all in the v2 schema.
+ * `expectedCount` is this stage's fixed required highlight count (see
+ * STAGE_HIGHLIGHT_COUNT) — not a range; the array must match it exactly. */
+function isValidGuidanceSectionContent(content: any, expectedCount: number): boolean {
   return (
     content &&
     typeof content === 'object' &&
     typeof content.desc === 'string' &&
     content.desc.trim().length > 0 &&
     Array.isArray(content.highlights) &&
-    content.highlights.length >= 2 &&
-    content.highlights.length <= 3 &&
+    content.highlights.length === expectedCount &&
     content.highlights.every((h: any) => typeof h === 'string' && h.trim().length > 0)
   );
 }
@@ -421,10 +441,12 @@ function isValidStageGuidance(guidance: any): boolean {
 
     const requiredKinds = STAGE_SECTION_KINDS[stageId];
     const returnedKinds = Object.keys(entry.sections);
+    const expectedCount = STAGE_HIGHLIGHT_COUNT[stageId];
 
-    // Every kind this stage requires must be present and valid.
+    // Every kind this stage requires must be present and valid, with EXACTLY
+    // this stage's required highlight count — not a 2-3 range.
     const hasAllRequired = requiredKinds.every((kind) =>
-      isValidGuidanceSectionContent(entry.sections[kind])
+      isValidGuidanceSectionContent(entry.sections[kind], expectedCount)
     );
     // No kind outside this stage's approved set may be present at all.
     const hasNoExtraKinds = returnedKinds.every((kind) =>
