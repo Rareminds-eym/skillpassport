@@ -11,8 +11,6 @@
 -- recruiter identity is fabricated. Clean local databases may therefore have
 -- NULL ownership until the recruiter user is seeded; learners can still apply.
 -- Public application contact: careers@rareminds.in. No password is stored here.
--- Original tracker fields that have no opportunities-table column are preserved in
--- the JSON object following the [Tracker metadata] marker in description.
 
 BEGIN;
 
