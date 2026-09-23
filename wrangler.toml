@@ -64,6 +64,7 @@ bucket_name = "skill-echosystem"
 # ============================================================================
 
 [vars]
+EDUCATORS_APP_URL = "https://educators.rareminds.in"
 ENVIRONMENT = "production"
 REALTIME_PARTITIONS = "10"
 SUPABASE_URL = "https://dpooleduinyyzxgrcwko.supabase.co"

@@ -57,7 +57,8 @@ function baseEnv(overrides: Record<string, unknown> = {}) {
     GOOGLE_CLIENT_SECRET: 'test-client-secret',
     OAUTH_STATE_SECRET: 'test-state-secret',
     SSO_SERVICE: {
-      oauthAuthenticate: vi.fn(async () => ({
+      recordSkillpassportAccess: vi.fn(async () => undefined),
+      oauthAuthenticateSkillpassport: vi.fn(async () => ({
         kind: 'issued',
         correlationId: 'c-1',
         session: {
@@ -243,7 +244,7 @@ describe('GET /api/oauth/google/callback', () => {
     expect(cookies).toContain('__Host-rm-refresh=rt-123; Secure; HttpOnly; Path=/; SameSite=Strict; Max-Age=604800');
     expect(cookies).toContain('__Host-rm-oauth-state=;'); // cleared (single-use)
 
-    expect(env.SSO_SERVICE.oauthAuthenticate).toHaveBeenCalledWith(expect.objectContaining({
+    expect(env.SSO_SERVICE.oauthAuthenticateSkillpassport).toHaveBeenCalledWith(expect.objectContaining({
       provider: 'google',
       providerUserId: 'google-sub-abc',
       email: 'learner@example.com',
@@ -277,7 +278,7 @@ describe('GET /api/oauth/google/callback', () => {
   it('maps an SSO rejection to identity_rejected for blocked accounts', async () => {
     const { value, nonce } = await makeState();
     const env = baseEnv({
-      SSO_SERVICE: { oauthAuthenticate: vi.fn(async () => ({ kind: 'rejected', correlationId: 'c-2', code: 'account_blocked' })) },
+      SSO_SERVICE: { oauthAuthenticateSkillpassport: vi.fn(async () => ({ kind: 'rejected', correlationId: 'c-2', code: 'account_blocked' })) },
     });
 
     vi.stubGlobal(

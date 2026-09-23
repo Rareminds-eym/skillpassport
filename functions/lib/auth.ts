@@ -1,3 +1,4 @@
+import { skillpassportIdentity } from './application-identity';
 /// <reference types="@cloudflare/workers-types" />
 import type { VerifiedAuthUser as SSOAuthUser, VerifiedAuthContext } from "@rareminds-eym/auth-core";
 import { createAuth } from "@rareminds-eym/auth-core";
@@ -23,7 +24,7 @@ export function getAuthInstance(env: Record<string, unknown>): ReturnType<typeof
 
   try {
     return createAuth({
-      sso: ssoRpcRaw as any,
+      sso: skillpassportIdentity(ssoRpcRaw) as any,
       issuer: "sso-api",
       audience: "sso-client",
       approvedOrigins: [...APPROVED_ORIGINS],
@@ -50,7 +51,7 @@ export function getSsoGatewayInstance(env: Record<string, unknown>): ReturnType<
   }
 
   return createSsoGateway({
-    sso: ssoRpcRaw as any,
+    sso: skillpassportIdentity(ssoRpcRaw) as any,
     issuer: "sso-api",
     audience: "sso-client",
     basePath: "/api/auth",

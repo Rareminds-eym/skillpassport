@@ -85,6 +85,8 @@ export function mapLearnerProfileToColumns(profile: Record<string, unknown> | un
       columns[column] = value;
     }
   };
+  if (typeof profile.learner_id === 'string' && /^LRN-[A-Z]{3}\d{2}-\d{8}$/.test(profile.learner_id)) set('learner_id', profile.learner_id);
+  if (profile.learner_type === 'teacher') set('learner_type', 'teacher');
   set('contactNumber', truncate(profile.contactNumber, 20));
   set('alternate_number', truncate(profile.alternate_number, 20));
   set('dateOfBirth', toISODate(profile.dateOfBirth));
@@ -158,6 +160,14 @@ export class SyncService {
       updatePayload.phone = userMetadata.phone;
     }
 
+    if (typeof userMetadata.campaign_educator_id === 'string') {
+      const { data: existing, error: readError } = await this.db.from('users').select('metadata').eq('id', parsed.id).maybeSingle();
+      if (readError) return fail('DB_ERROR', readError.message, true);
+      updatePayload.metadata = { ...(existing?.metadata ?? {}),
+        campaign_educator_id: userMetadata.campaign_educator_id,
+        ...(userMetadata.source ? { source: userMetadata.source } : {}),
+      };
+    }
     const { error } = await this.db.from('users').upsert(updatePayload, { onConflict: 'id' });
     if (error) return fail('DB_ERROR', error.message, true);
     return ok();

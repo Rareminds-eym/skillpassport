@@ -1,3 +1,4 @@
+import { skillpassportIdentity } from './application-identity';
 /**
  * SSO Service RPC Client Wrapper
  *
@@ -150,7 +151,7 @@ export async function ssoOauthAuthenticate(
   env: SsoEnv,
   params: SsoOAuthAuthenticateParams,
 ): Promise<SsoOauthAuthenticateOutcome> {
-  return env.SSO_SERVICE.oauthAuthenticate({
+  return skillpassportIdentity(env.SSO_SERVICE).oauthAuthenticate({
     ...params,
     correlationId: crypto.randomUUID(),
   });
