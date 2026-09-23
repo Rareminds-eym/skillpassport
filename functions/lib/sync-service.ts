@@ -445,10 +445,32 @@ export class SyncService {
     let parsed: z.infer<typeof SubscriptionCreatedSchema>;
     try { parsed = SubscriptionCreatedSchema.parse(data); }
     catch (err) { return fail('VALIDATION_ERROR', err instanceof Error ? err.message : 'Invalid subscription created data', false); }
+
+    const isOrgSub = typeof parsed.is_organization_subscription === 'string'
+      ? parsed.is_organization_subscription === 'true'
+      : (parsed.is_organization_subscription ?? false);
+
+    // New org subs must have explicit capacity; keep 1 only for individual
+    if (isOrgSub && parsed.seat_count === undefined) {
+      return fail('VALIDATION_ERROR', 'seat_count is required for organization subscriptions', false);
+    }
+
+    const { data: existing } = await this.db.from('subscription_cache')
+      .select('seat_count, assigned_seats, auth_updated_at, is_organization_subscription, organization_id')
+      .eq('id', parsed.id)
+      .maybeSingle() as { data: { seat_count: number; assigned_seats: number; auth_updated_at: string | null; is_organization_subscription: boolean; organization_id: string | null } | null };
+
+    // Stale-event guard: reject if incoming is older than existing
+    const incomingTs = parsed.updated_at ? new Date(parsed.updated_at).getTime() : 0;
+    const existingTs = existing?.auth_updated_at ? new Date(existing.auth_updated_at as string).getTime() : 0;
+    if (existing && incomingTs && existingTs && incomingTs < existingTs) {
+      return ok();
+    }
+
     const subPayload: Record<string, unknown> = {
       id: parsed.id,
       user_id: parsed.user_id,
-      organization_id: parsed.organization_id ?? null,
+      organization_id: parsed.organization_id ?? existing?.organization_id ?? null,
       plan_id: parsed.plan_id ?? null,
       plan_code: parsed.plan_code,
       plan_name: parsed.plan_type ?? null,
@@ -463,15 +485,23 @@ export class SyncService {
           : [],
       subscription_start_date: parsed.subscription_start_date ?? null,
       subscription_end_date: parsed.subscription_end_date ?? null,
-      is_organization_subscription:
-        typeof parsed.is_organization_subscription === 'string'
-          ? parsed.is_organization_subscription === 'true'
-          : (parsed.is_organization_subscription ?? false),
-      seat_count: parsed.seat_count ?? 1,
-      assigned_seats: parsed.assigned_seats ?? 0,
+      is_organization_subscription: isOrgSub,
+      seat_count: parsed.seat_count ?? (existing ? (existing.seat_count as number) : (isOrgSub ? undefined as unknown as number : 1)),
+      assigned_seats: parsed.assigned_seats ?? (existing ? (existing.assigned_seats as number) : 0),
       product_id: parsed.product_id ?? null,
       auth_updated_at: parsed.updated_at ?? new Date().toISOString(),
     };
+
+    // Guard for org create with no capacity: already failed above, but double-check
+    if (isOrgSub && subPayload.seat_count === undefined) {
+      return fail('VALIDATION_ERROR', 'seat_count is required for organization subscriptions', false);
+    }
+    if (!isOrgSub && subPayload.seat_count === undefined) subPayload.seat_count = 1;
+
+    // Preserve assigned_seats locally maintained if incoming is stale/missing
+    if (existing && parsed.assigned_seats === undefined) {
+      subPayload.assigned_seats = existing.assigned_seats;
+    }
 
     const { error } = await this.db.from('subscription_cache').upsert(subPayload, { onConflict: 'id' });
     if (error) return fail('DB_ERROR', error.message, true);
@@ -482,6 +512,19 @@ export class SyncService {
     let parsed: z.infer<typeof SubscriptionUpdatedSchema>;
     try { parsed = SubscriptionUpdatedSchema.parse(data); }
     catch (err) { return fail('VALIDATION_ERROR', err instanceof Error ? err.message : 'Invalid subscription updated data', false); }
+
+    const { data: existing } = await this.db.from('subscription_cache')
+      .select('seat_count, assigned_seats, auth_updated_at')
+      .eq('id', parsed.id)
+      .maybeSingle() as { data: { seat_count: number; assigned_seats: number; auth_updated_at: string | null } | null };
+
+    // Stale-event guard
+    const incomingTs = parsed.updated_at ? new Date(parsed.updated_at).getTime() : 0;
+    const existingTs = existing?.auth_updated_at ? new Date(existing.auth_updated_at as string).getTime() : 0;
+    if (existing && incomingTs && existingTs && incomingTs < existingTs) {
+      return ok();
+    }
+
     const subPayload: Record<string, unknown> = {};
 
     if (parsed.user_id !== undefined) subPayload.user_id = parsed.user_id;
@@ -511,10 +554,22 @@ export class SyncService {
           : parsed.is_organization_subscription;
     }
     if (parsed.seat_count !== undefined) subPayload.seat_count = parsed.seat_count;
+    else if (existing) {
+      // Preserve existing capacity when omitted (do not fallback to 1)
+    }
     if (parsed.assigned_seats !== undefined) subPayload.assigned_seats = parsed.assigned_seats;
+    else if (existing) {
+      // Preserve locally maintained assigned_seats
+    }
     if (parsed.product_id !== undefined) subPayload.product_id = parsed.product_id;
 
     subPayload.auth_updated_at = parsed.updated_at ?? new Date().toISOString();
+
+    // Nothing to update except timestamp and existing values preserved
+    if (Object.keys(subPayload).length === 1 && subPayload.auth_updated_at) {
+      // Still need to check if we should update timestamp when stale
+      return ok();
+    }
 
     const { error } = await this.db.from('subscription_cache')
       .update(subPayload)
