@@ -974,13 +974,9 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
                                         <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                                             <p className="text-xs text-blue-600 font-semibold mb-1">
                                                 {(() => {
-                                                    // Use learner_grade from learners table to determine roll number type
-                                                    const learnerGrade = learner?.learner_grade || learner?.grade;
-                                                    // College learners: UG, PG, or variations like "UG Year 1", "PG Year 2", etc.
-                                                    const isCollegeLearner = learnerGrade && (
-                                                        learnerGrade.toUpperCase().includes('UG') || 
-                                                        learnerGrade.toUpperCase().includes('PG')
-                                                    );
+                                                    const learnerGrade = learner?.learner_grade || learner?.grade || learnerInfo?.grade || '';
+                                                    const g = String(learnerGrade).toLowerCase();
+                                                    const isCollegeLearner = g.includes('ug') || g.includes('pg') || g.includes('college') || g.includes('diploma') || learner?.learner_type?.toLowerCase().includes('college') || !!learner?.program_name || !!learner?.program_id;
                                                     return isCollegeLearner ? 'College Roll No.' : 'School Roll No.';
                                                 })()}
                                             </p>
@@ -1046,7 +1042,14 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
                                             <p className="font-bold text-gray-900 text-sm">{learnerInfo?.grade || 'Grade 6'}</p>
                                         </div>
                                         <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                                            <p className="text-xs text-blue-600 font-semibold mb-1">School</p>
+                                            <p className="text-xs text-blue-600 font-semibold mb-1">
+                                                {(() => {
+                                                    const learnerGrade = learner?.learner_grade || learner?.grade || learnerInfo?.grade || '';
+                                                    const g = String(learnerGrade).toLowerCase();
+                                                    const isCollegeLearner = g.includes('ug') || g.includes('pg') || g.includes('college') || g.includes('diploma') || learner?.learner_type?.toLowerCase().includes('college') || !!learner?.program_name || !!learner?.program_id;
+                                                    return isCollegeLearner ? 'College' : 'School';
+                                                })()}
+                                            </p>
                                             <p className="font-bold text-gray-900 text-sm">{learnerInfo?.school || 'School'}</p>
                                         </div>
                                         <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">

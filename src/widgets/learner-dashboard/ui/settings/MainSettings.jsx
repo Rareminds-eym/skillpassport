@@ -236,6 +236,7 @@ const MainSettings = () => {
     branch: "",
     college: "",
     school_name: "",
+    specialization: "",
     registrationNumber: "",
     enrollmentNumber: "",
     currentCgpa: "",
@@ -325,6 +326,7 @@ const MainSettings = () => {
         branch: learnerData.branch || "",
         college: learnerData.college || "",
         school_name: learnerData.school_name || "",
+        specialization: learnerData.specialization || "",
         registrationNumber: learnerData.registrationNumber || "",
         enrollmentNumber: learnerData.enrollmentNumber || "",
         currentCgpa: learnerData.currentCgpa || "",
@@ -982,6 +984,7 @@ const MainSettings = () => {
         dataToSave.programSectionId = null;
         dataToSave.university = null;
         dataToSave.branch = null;
+        dataToSave.specialization = null;
         // Note: school_name is handled separately in custom school logic below
         // Don't clear it here as it may contain valid custom school name
         
