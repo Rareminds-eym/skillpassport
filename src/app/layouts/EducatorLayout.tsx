@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, lazy, Suspense } from "react";
 import { Outlet, useLocation } from "react-router-dom";
-import { Header } from "@/features/educator";
-import { Sidebar } from '@/features/educator';
-import { LearnerProfileDrawer } from "@/features/learner-profile";
-import { FloatingEducatorAIButton } from '@/features/educator';
-import { useEducatorSchool } from '@/features/educator';
+import Header from "@/features/educator/ui/Header";
+import Sidebar from '@/features/educator/ui/Sidebar';
+const LearnerProfileDrawer = lazy(() => import("@/features/learner-profile/ui/LearnerProfileDrawer/LearnerProfileDrawer"));
+import FloatingEducatorAIButton from '@/shared/ui/FloatingEducatorAIButton';
+import { useEducatorSchool } from '@/features/educator/model/useEducatorSchool';
 
 const EducatorLayout: React.FC = () => {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
@@ -92,14 +92,18 @@ const EducatorLayout: React.FC = () => {
       </div>
 
       {/* Learner Drawer */}
-      <LearnerProfileDrawer
-        learner={selectedLearner}
-        isOpen={showLearnerDrawer}
-        onClose={handleCloseLearnerDrawer}
-        userRole={educatorType === 'school' ? 'school_educator' : 'college_educator'}
-        schoolId={educatorSchool?.id}
-        collegeId={educatorCollege?.id}
-      />
+      {showLearnerDrawer && (
+        <Suspense fallback={null}>
+          <LearnerProfileDrawer
+            learner={selectedLearner}
+            isOpen={showLearnerDrawer}
+            onClose={handleCloseLearnerDrawer}
+            userRole={educatorType === 'school' ? 'school_educator' : 'college_educator'}
+            schoolId={educatorSchool?.id}
+            collegeId={educatorCollege?.id}
+          />
+        </Suspense>
+      )}
 
       {/* Floating AI Button */}
       <FloatingEducatorAIButton />

@@ -1,5 +1,3 @@
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
 import QRCode from 'qrcode';
 import { saveAs } from 'file-saver';
 import { getLogger } from '@/shared/config/logging';
@@ -24,6 +22,10 @@ export const exportAsPDF = async (
     if (!element) {
       throw new Error('Portfolio content not found');
     }
+
+    const { default: html2canvas } = await import('html2canvas');
+    const jspdfModule = await import('jspdf');
+    const jsPDF = jspdfModule.jsPDF || jspdfModule.default;
 
     // Capture the element as canvas
     const canvas = await html2canvas(element, {
@@ -343,6 +345,8 @@ export const exportResume = async (
   filename: string = 'resume.pdf'
 ): Promise<void> => {
   try {
+    const jspdfModule = await import('jspdf');
+    const jsPDF = jspdfModule.jsPDF || jspdfModule.default;
     const pdf = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',

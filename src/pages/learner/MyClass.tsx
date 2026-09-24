@@ -1,13 +1,10 @@
-import { useAuthStore } from '@/shared/model/authStore';
 import React, { useState, useEffect } from 'react';
 import { Loader2, AlertCircle } from 'lucide-react';
-import { useAuth } from '@/features/auth';
-
-import { useLearnerProfile } from '@/features/learner-profile/model/useLearnerProfile';
+import { useAuthStore, useUser } from '@/shared/model/authStore';
 import { useLearnerDataByEmail } from '@/entities/learner';
 
 // Import learner type detection service
-import { getlearnerTypeInfo } from '@/features/college-admin';
+import { getlearnerTypeInfo } from '@/features/college-admin/api/collegeClassService';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('MyClass');
@@ -17,8 +14,6 @@ import { SchoolMyClass } from '@/features/myclass';
 
 // Import College Components  
 import { CollegeMyClass } from '@/features/myclass';
-
-import { useUser } from '@/shared/model/authStore';
 /**
  * MyClass - Smart Router Component
  * 
@@ -34,7 +29,7 @@ import { useUser } from '@/shared/model/authStore';
 const MyClass: React.FC = () => {
   const user = useUser();
   const userEmail = (useAuthStore.getState().user?.email || localStorage.getItem("userEmail")) || user?.email;
-  const { learnerData, loading: authLoading } = useLearnerDataByEmail(userEmail);
+  const { learnerData, loading: authLoading } = useLearnerDataByEmail(userEmail) as { learnerData: any; loading: boolean };
   const learnerId = learnerData?.id;
 
   // State for learner type detection
@@ -64,7 +59,7 @@ const MyClass: React.FC = () => {
         setlearnerTypeInfo(typeInfo);
         setError(null);
       } catch (err) {
-        logger.error('Error determining learner type', err);
+        logger.error('Error determining learner type', err instanceof Error ? err : new Error(String(err)));
         setError('Failed to load learner information. Please try refreshing the page.');
       } finally {
         setLoading(false);
@@ -97,6 +92,7 @@ const MyClass: React.FC = () => {
           <h2 className="text-xl font-semibold text-gray-900 mb-2">Unable to Load Class</h2>
           <p className="text-gray-600 mb-4">{error}</p>
           <button
+            type="button"
             onClick={() => window.location.reload()}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >

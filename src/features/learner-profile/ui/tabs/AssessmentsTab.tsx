@@ -13,15 +13,15 @@ import {
   AcademicCapIcon
 } from '@heroicons/react/24/outline';
 import { 
-  IconBrain, 
-  IconTarget, 
-  IconTrendingUp,
-  IconSchool,
-  IconBuilding,
-  IconMoodSmile,
-  IconCalculator,
-  IconUsers
-} from '@tabler/icons-react';
+  Brain as IconBrain, 
+  Target as IconTarget, 
+  TrendingUp as IconTrendingUp,
+  School as IconSchool,
+  Building as IconBuilding,
+  Smile as IconMoodSmile,
+  Calculator as IconCalculator,
+  Users as IconUsers
+} from 'lucide-react';
 import { formatStreamId } from '@/shared/lib/utils/formatters';
 
 interface AssessmentsTabProps {

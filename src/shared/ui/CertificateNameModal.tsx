@@ -325,3 +325,5 @@ export const CertificateNameModal = ({
     </AnimatePresence>
   );
 };
+
+export default CertificateNameModal;
