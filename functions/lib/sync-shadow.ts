@@ -17,12 +17,42 @@ export async function syncSubscriptionCache(
   subscription: Record<string, unknown>,
   plan?: Record<string, unknown> | null,
 ): Promise<void> {
+  // Preservation + staleness guard: don't overwrite existing 5000 with incomplete 1
+  const { data: existing } = await supabase
+    .from('subscription_cache')
+    .select('seat_count, assigned_seats, auth_updated_at, is_organization_subscription, organization_id')
+    .eq('id', subscription.id as string)
+    .maybeSingle() as unknown as { data: { seat_count: number; assigned_seats: number; auth_updated_at: string | null; is_organization_subscription: boolean; organization_id: string | null } | null };
+
+  const incomingTs = (subscription.updated_at as string | undefined) ? new Date(subscription.updated_at as string).getTime() : 0;
+  const existingTs = existing?.auth_updated_at ? new Date(existing.auth_updated_at as string).getTime() : 0;
+  if (existing && incomingTs && existingTs && incomingTs < existingTs) {
+    return;
+  }
+
+  const isOrg = (subscription.is_organization_subscription as boolean) ?? existing?.is_organization_subscription ?? false;
+  const incomingSeat = subscription.seat_count as number | undefined;
+  const incomingAssigned = (subscription.assigned_seats as number | undefined) ?? (subscription as unknown as { assignedSeats?: number }).assignedSeats;
+
+  let seatCount: number | undefined;
+  if (incomingSeat !== undefined && incomingSeat !== null) seatCount = incomingSeat;
+  else if (existing) seatCount = existing.seat_count;
+  else seatCount = isOrg ? undefined : 1;
+
+  // Require valid capacity for new org subs
+  if (isOrg && seatCount === undefined) {
+    logger.error('syncSubscriptionCache: missing seat_count for org subscription', { id: subscription.id });
+    return;
+  }
+
+  const assignedSeats = incomingAssigned !== undefined && incomingAssigned !== null ? incomingAssigned : (existing ? existing.assigned_seats : 0);
+
   const { error } = await supabase
     .from('subscription_cache')
     .upsert({
       id: subscription.id,
       user_id: subscription.user_id,
-      organization_id: subscription.organization_id || null,
+      organization_id: (subscription.organization_id as string | null) ?? existing?.organization_id ?? null,
       plan_id: subscription.plan_id,
       plan_code: subscription.plan_code || (plan as Record<string, unknown>)?.plan_code,
       // Fix I4: plan_name should be plan.name not plan_type
@@ -34,10 +64,10 @@ export async function syncSubscriptionCache(
       features: subscription.features || (plan as Record<string, unknown>)?.base_features || [],
       subscription_start_date: subscription.subscription_start_date,
       subscription_end_date: subscription.subscription_end_date,
-      is_organization_subscription: subscription.is_organization_subscription || false,
+      is_organization_subscription: isOrg,
       organization_type: subscription.organization_type || null,
-      seat_count: (subscription.seat_count as number) ?? 1,
-      assigned_seats: (subscription.assigned_seats as number) ?? (subscription as any).assignedSeats ?? 0,
+      seat_count: seatCount as number,
+      assigned_seats: assignedSeats,
       product_id: subscription.product_id || (plan as Record<string, unknown>)?.product_id || null,
       receipt_url: subscription.receipt_url || null,
       synced_at: new Date().toISOString(),
