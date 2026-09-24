@@ -18,6 +18,7 @@ import { Pagination } from '@/shared/ui';
 import { SearchBar } from '@/shared/ui';
 import { getLogger } from '@/shared/config/logging';
 import { apiPost } from '@/shared/api/apiClient';
+import { formatProgramLabel, getProgramSpecializations } from '@/shared/lib';
 
 import { useUser } from '@/shared/model/authStore';
 const logger = getLogger('college-admin-enrolled-learners');
@@ -365,7 +366,7 @@ const EnrolledLearners: FC = () => {
             <option value="">All Programs</option>
             {programs.map((prog) => (
               <option key={prog.id} value={prog.id}>
-                {prog.name}
+                {formatProgramLabel(prog.name, prog)}
               </option>
             ))}
           </select>
@@ -819,7 +820,9 @@ const EnrolllearnersModal: FC<{
                       </option>
                       {programs.map((prog) => (
                         <option key={prog.id} value={prog.id}>
-                          {prog.name} {prog.code ? `(${prog.code})` : ""}
+                          {getProgramSpecializations(prog).length > 0
+                            ? formatProgramLabel(prog.name, prog)
+                            : `${prog.name} ${prog.code ? `(${prog.code})` : ""}`}
                         </option>
                       ))}
                       {selectedDepartment && !loading && (

@@ -597,6 +597,15 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       case 'save-program': {
         const { program_id, data, user_id } = params;
 
+        // Normalize specializations to a trimmed text[]: accepts an array from
+        // the admin UI or a legacy comma-separated string; empty => '{}'.
+        const specializations = Array.isArray(data.specializations)
+          ? data.specializations.map((s: string) => String(s).trim()).filter(Boolean)
+          : String(data.specializations ?? "")
+              .split(",")
+              .map((s) => s.trim())
+              .filter(Boolean);
+
         if (program_id) {
           const { error } = await supabase
             .from("programs")
@@ -606,6 +615,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
               description: data.description,
               degree_level: data.degree_level,
               department_id: data.department_id,
+              specializations,
               status: data.status,
               updated_by: user_id,
             })
@@ -620,6 +630,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
               description: data.description,
               degree_level: data.degree_level,
               department_id: data.department_id,
+              specializations,
               status: data.status || "active",
               created_by: user_id,
             });
@@ -673,7 +684,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       case 'get-programs': {
         const { data, error } = await supabase
           .from('programs')
-          .select('id, name, department_id')
+          .select('id, name, code, department_id, specializations')
           .eq('status', 'active')
           .order('name');
 

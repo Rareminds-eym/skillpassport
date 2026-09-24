@@ -14,6 +14,7 @@ import {
 import toast from "react-hot-toast";
 import { getLogger } from '@/shared/config/logging';
 import { apiPost } from '@/shared/api/apiClient';
+import { formatProgramLabel } from '@/shared/lib';
 
 interface ProgramSection {
   id: string;
@@ -361,7 +362,7 @@ const ProgramSectionManagement: FC = () => {
               .filter((p) => !departmentFilter || p.department_id === departmentFilter)
               .map((prog) => (
                 <option key={prog.id} value={prog.id}>
-                  {prog.name}
+                  {formatProgramLabel(prog.name, prog)}
                 </option>
               ))}
           </select>

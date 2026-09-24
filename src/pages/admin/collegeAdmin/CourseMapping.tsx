@@ -20,6 +20,9 @@ import {
 import React, { useEffect, useMemo, useState } from "react";
 import toast from 'react-hot-toast';
 import { KPICard } from '@/features/analytics';
+import { Pagination } from '@/shared/ui';
+import { ConfirmationModal } from '@/shared/ui';
+import { formatProgramLabel, getProgramSpecializations } from '@/shared/lib';
 import {
   type Course,
   type CourseMapping,
@@ -671,7 +674,7 @@ const CloneSemesterModal = ({
                             <option value="">Select program</option>
                             {programs.map((program) => (
                                 <option key={program.id} value={program.id}>
-                                    {program.name}
+                                    {formatProgramLabel(program.name, program)}
                                 </option>
                             ))}
                         </select>
@@ -708,7 +711,7 @@ const CloneSemesterModal = ({
                             <option value="">Select program</option>
                             {programs.map((program) => (
                                 <option key={program.id} value={program.id}>
-                                    {program.name}
+                                    {formatProgramLabel(program.name, program)}
                                 </option>
                             ))}
                         </select>
@@ -1461,7 +1464,9 @@ const CourseMapping: React.FC = () => {
                                 <option value="">Select Program</option>
                                 {programs.map((p) => (
                                     <option key={p.id} value={p.id}>
-                                        {p.name} ({p.code})
+                                        {getProgramSpecializations(p).length > 0
+                                            ? formatProgramLabel(p.name, p)
+                                            : `${p.name} (${p.code})`}
                                     </option>
                                 ))}
                             </select>

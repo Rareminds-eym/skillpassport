@@ -23,6 +23,7 @@ interface Program {
   degree_level: string;
   department_id: string;
   department_name?: string;
+  specializations?: string[];
   status: "active" | "inactive";
   created_at: string;
   updated_at: string;
@@ -114,6 +115,12 @@ const ProgramManagement: FC = () => {
         degree_level: p.degree_level,
         department_id: p.department_id,
         department_name: p.departments?.name || "No Department",
+        specializations: Array.isArray(p.specializations)
+          ? p.specializations.map((s: any) => String(s).trim()).filter(Boolean)
+          : String(p.specializations ?? "")
+              .split(",")
+              .map((s) => s.trim())
+              .filter(Boolean),
         status: p.status,
         created_at: p.created_at,
         updated_at: p.updated_at,
@@ -194,7 +201,8 @@ const ProgramManagement: FC = () => {
       return (
         program.name.toLowerCase().includes(search) ||
         program.code.toLowerCase().includes(search) ||
-        program.department_name?.toLowerCase().includes(search)
+        program.department_name?.toLowerCase().includes(search) ||
+        (program.specializations ?? []).join(", ").toLowerCase().includes(search)
       );
     }
     return true;
@@ -411,6 +419,9 @@ const ProgramManagement: FC = () => {
                     Degree Level
                   </th>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">
+                    Specializations
+                  </th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">
                     Status
                   </th>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">
@@ -437,6 +448,22 @@ const ProgramManagement: FC = () => {
                     </td>
                     <td className="px-4 py-3">
                       {getDegreeLevelBadge(program.degree_level)}
+                    </td>
+                    <td className="px-4 py-3">
+                      {program.specializations && program.specializations.length > 0 ? (
+                        <div className="flex flex-wrap gap-1 max-w-56">
+                          {program.specializations.map((s, i) => (
+                              <span
+                                key={`${s}-${i}`}
+                                className="px-2 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-full text-xs font-medium"
+                              >
+                                {s}
+                              </span>
+                            ))}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-gray-400">—</span>
+                      )}
                     </td>
                     <td className="px-4 py-3">{getStatusBadge(program.status)}</td>
                     <td className="px-4 py-3">
@@ -493,12 +520,19 @@ const ProgramFormModal: FC<{
     description: program?.description || "",
     degree_level: program?.degree_level || "Undergraduate",
     department_id: program?.department_id || "",
+    specializations: Array.isArray(program?.specializations)
+      ? program.specializations.join(", ")
+      : "",
     status: program?.status || "active",
   });
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    onSave(formData);
+    const specializations = formData.specializations
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    onSave({ ...formData, specializations });
   };
 
   if (!isOpen) return null;
@@ -620,6 +654,26 @@ const ProgramFormModal: FC<{
                   <option value="active">Active</option>
                   <option value="inactive">Inactive</option>
                 </select>
+              </div>
+
+              <div className="col-span-2">
+                <label htmlFor="program-specializations" className="block text-sm font-medium text-gray-700 mb-1">
+                  Specialization(s)
+                </label>
+                <input
+                  id="program-specializations"
+                  type="text"
+                  value={formData.specializations}
+                  onChange={(e) =>
+                    setFormData({ ...formData, specializations: e.target.value })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  placeholder="e.g., Artificial Intelligence, Cybersecurity, Data Science"
+                  aria-describedby="program-specializations-hint"
+                />
+                <p id="program-specializations-hint" className="mt-1 text-xs text-gray-500">
+                  Single or multiple — separate multiple specializations with commas (,).
+                </p>
               </div>
 
               <div className="col-span-2">

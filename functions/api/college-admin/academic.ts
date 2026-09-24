@@ -679,7 +679,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       case 'get-mapping-programs': {
         let query = supabase
           .from('programs')
-          .select('id, name, code, department_id, degree_level')
+          .select('id, name, code, department_id, degree_level, specializations')
           .eq('status', 'active')
           .order('name');
 

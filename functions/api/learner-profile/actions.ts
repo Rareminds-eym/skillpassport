@@ -937,7 +937,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         let query = supabase.from('learners').select(`
           id, user_id, learner_id, name, email, contact_number, alternate_number, contact_dial_code,
           date_of_birth, age, gender, bloodGroup, district_name, university, university_main,
-          branch_field, college_school_name, course_name, registration_number, enrollmentNumber,
+          branch_field, specialization, college_school_name, course_name, registration_number, enrollmentNumber,
           github_link, linkedin_link, twitter_link, facebook_link, instagram_link, portfolio_link,
           youtube_link, other_social_links, approval_status, trainer_name, bio, address, city,
           state, country, pincode, resumeUrl, profilePicture, contactNumber, dateOfBirth,
@@ -1173,7 +1173,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           { key: 'universities', table: 'organizations', select: 'id, name, city, state, code', filters: { organization_type: 'university', account_status: ['active', 'pending'] }, order: 'name' },
           { key: 'universityColleges', table: 'university_colleges', select: 'id, name, code, university_id', order: 'name' },
           { key: 'departments', table: 'departments', select: 'id, name, code, college_id', order: 'name' },
-          { key: 'programs', table: 'programs', select: 'id, name, code, degree_level, department_id', order: 'name' },
+          { key: 'programs', table: 'programs', select: 'id, name, code, degree_level, department_id, specializations', order: 'name' },
           { key: 'schoolClasses', table: 'school_classes', select: 'id, name, grade, section, school_id', order: ['grade', 'section'] },
           { key: 'programSections', table: 'program_sections', select: 'id, program_id, semester, section', order: ['semester', 'section'] },
         ];
