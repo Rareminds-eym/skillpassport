@@ -1,7 +1,8 @@
 ﻿import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getContextUser } from '../../../lib/auth';
+import { apiDbError, apiError, apiSuccess } from '../../../lib/response';
 import { getServiceClient } from '../../../lib/supabase';
-import { apiSuccess, apiDbError, apiError } from '../../../lib/response';
+
 
 const getSub = (context: AuthenticatedContext) => getServiceClient(context.env as any);
 
@@ -486,7 +487,7 @@ export async function handleGetEducatorTypeByUserId(context: AuthenticatedContex
 
     const { data: collegeLecturer } = await supabase
       .from('college_lecturers')
-      .select('id, collegeId, user_id')
+      .select('id, collegeId, user_id, metadata')
       .eq('user_id', userId)
       .maybeSingle();
 
