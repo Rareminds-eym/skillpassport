@@ -27,6 +27,7 @@ import { saveResultsHandler } from './handlers/save-results';
 import { checkInProgressHandler } from './handlers/check-in-progress';
 import { analyzeHandler } from './handlers/analyze';
 import { growthMapProgressHandler } from './handlers/growth-map-progress';
+import { regenerateHandler } from './handlers/regenerate';
 import { resultHandler } from './handlers/result';
 import { generateStrengthsGrowthPlanHandler } from './handlers/generate-strengths-growth-plan';
 import { getRoleCapabilitiesHandler } from './handlers/get-role-capabilities';
@@ -61,6 +62,8 @@ export const onRequestPost = withAuth(async (context: any) => {
       return analyzeHandler(context);
     } else if (path === '/growth-map-progress') {
       return growthMapProgressHandler(context);
+    } else if (path === '/regenerate') {
+      return regenerateHandler(context);
     } else if (path === '/generate-strengths-growth-plan') {
       return generateStrengthsGrowthPlanHandler(context);
     } else if (path === '/get-role-capabilities') {
