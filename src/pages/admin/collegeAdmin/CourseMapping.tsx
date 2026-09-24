@@ -1101,6 +1101,7 @@ const CourseMapping: React.FC = () => {
     const loadCourseMappings = async () => {
         // Guard: Don't call API if required parameters are missing
         if (!selectedProgramId || !selectedSemester) {
+            setCourseMappings([]);
             return;
         }
 
@@ -1115,6 +1116,7 @@ const CourseMapping: React.FC = () => {
     const checkSemesterLock = async () => {
         // Guard: Don't call API if required parameters are missing
         if (!selectedProgramId || !selectedSemester) {
+            setIsLocked(false);
             return;
         }
 
@@ -1568,7 +1570,6 @@ const CourseMapping: React.FC = () => {
                                     value={typeFilter as any}
                                     onChange={(e) => setTypeFilter(e.target.value as any)}
                                     className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white min-w-[140px]"
-                                    aria-label="Filter by course type"
                                 >
                                     <option value="">All Types</option>
                                     <option value="core">Core</option>

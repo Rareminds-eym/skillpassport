@@ -8,6 +8,9 @@ import { apiDbError, apiError, apiMethodNotAllowed, apiSuccess } from '../../lib
 import { resolveUserOrganization } from '../../lib/resolve-organization';
 import { getServiceClient } from '../../lib/supabase';
 import type { PagesEnv } from '../../lib/types';
+import { createLogger } from '../../lib/logger';
+
+const logger = createLogger('college-admin-faculty');
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const user = getContextUser(context);
@@ -244,7 +247,12 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           let metadata;
           try {
             metadata = typeof r.metadata === 'string' ? JSON.parse(r.metadata) : r.metadata;
-          } catch {
+          } catch (error) {
+            logger.error('faculty_metadata_parse_failed', error instanceof Error ? error : new Error(String(error)), {
+              lecturerId: r.id,
+              employeeId: r.employeeId,
+              metadataPreview: typeof r.metadata === 'string' ? r.metadata.substring(0, 100) : 'not-string'
+            });
             metadata = {};
           }
           return {

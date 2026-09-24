@@ -1655,8 +1655,8 @@ const LearnerRow: React.FC<LearnerRowProps> = ({ learner, record, isDisabled, on
 
           {/* Status Buttons */}
           <div>
-            <span className="block text-xs font-medium text-gray-700 mb-2">Status</span>
-            <div className="grid grid-cols-3 gap-2">
+            <span id={`status-label-${learner.id}`} className="block text-xs font-medium text-gray-700 mb-2">Status</span>
+            <div role="group" aria-labelledby={`status-label-${learner.id}`} className="grid grid-cols-3 gap-2">
               {statusButtons.map((btn) => {
                 const Icon = btn.icon;
                 return (

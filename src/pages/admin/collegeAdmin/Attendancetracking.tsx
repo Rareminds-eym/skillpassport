@@ -1054,7 +1054,7 @@ const AttendanceTracking: React.FC = () => {
       colors: ["#4f46e5"],
       dataLabels: { enabled: false },
       xaxis: {
-        categories: weeklyTrend.length === 7 ? weeklyTrend.map(d => d.dayName) : ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+        categories: weeklyTrend.length === 7 ? weeklyTrend.map(d => d.dayName || 'N/A') : ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
         labels: { style: { colors: "#6b7280" } },
       },
       yaxis: {

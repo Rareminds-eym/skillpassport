@@ -272,7 +272,7 @@ export async function ensureAppUserAndLearner(
       
       // Check if user has ONLY learner-allowed roles
       // If user has ANY role not in the allowed list (e.g., admin, college_educator, unknown_role), skip learner creation
-      const hasOnlyLearnerRoles = allRoles.length > 0 && 
+      const hasOnlyLearnerRoles = Array.isArray(allRoles) && allRoles.length > 0 && 
         allRoles.every(r => LEARNER_ALLOWED_ROLES.includes(r));
       
       // Only create learner record if user has ONLY learner-allowed roles

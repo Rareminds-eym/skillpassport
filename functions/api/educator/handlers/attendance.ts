@@ -488,31 +488,69 @@ export async function handleGetCollegeSchedule(params: any, context: Authenticat
 
     // Calculate actual learner counts for each session
     const sessionsWithCounts = await Promise.all((existingSessions || []).map(async (session: any) => {
-      // Get program_id from program_name
-      const { data: programData } = await supabase
-        .from('programs')
-        .select('id')
-        .eq('name', session.program_name)
-        .single();
+      try {
+        // Validate session has program_name
+        if (!session.program_name) {
+          logger.error('session_missing_program_name', new Error('Session missing program_name'), { 
+            sessionId: session.id 
+          });
+          return {
+            ...session,
+            total_learners: session.total_learners || 0
+          };
+        }
 
-      let actualLearnerCount = session.total_learners || 0;
-      
-      if (programData?.id) {
-        const { count } = await supabase
-          .from('learners')
-          .select('*', { count: 'exact', head: true })
-          .eq('program_id', programData.id)
-          .eq('semester', session.semester)
-          .eq('section', session.section)
-          .eq('is_deleted', false);
+        // Get program_id from program_name
+        const { data: programData, error: programError } = await supabase
+          .from('programs')
+          .select('id')
+          .eq('name', session.program_name)
+          .single();
 
-        actualLearnerCount = count || 0;
+        if (programError) {
+          logger.error('program_lookup_failed_for_session', programError, { 
+            sessionId: session.id, 
+            programName: session.program_name 
+          });
+          return {
+            ...session,
+            total_learners: session.total_learners || 0
+          };
+        }
+
+        let actualLearnerCount = session.total_learners || 0;
+        
+        if (programData?.id) {
+          const { count, error: countError } = await supabase
+            .from('learners')
+            .select('*', { count: 'exact', head: true })
+            .eq('program_id', programData.id)
+            .eq('semester', session.semester)
+            .eq('section', session.section)
+            .eq('is_deleted', false);
+
+          if (countError) {
+            logger.error('learner_count_failed_for_session', countError, { 
+              sessionId: session.id, 
+              programId: programData.id 
+            });
+          } else {
+            actualLearnerCount = count || 0;
+          }
+        }
+
+        return {
+          ...session,
+          total_learners: actualLearnerCount
+        };
+      } catch (error) {
+        logger.error('session_count_calculation_failed', error, { sessionId: session.id });
+        // Return session with fallback count on individual failure
+        return {
+          ...session,
+          total_learners: session.total_learners || 0
+        };
       }
-
-      return {
-        ...session,
-        total_learners: actualLearnerCount
-      };
     }));
 
     return apiSuccess({ sessions: sessionsWithCounts }, context.request, { startTime });
@@ -628,6 +666,16 @@ export async function handleStartCollegeAttendanceSession(params: any, context: 
       logger.error('college_session_not_found', sessionError, { sessionId });
       return apiError(404, 'NOT_FOUND', 'Session not found', context.request, { startTime });
     }
+
+    // Validate that session has required program information
+    if (!session.program_name) {
+      logger.error('college_session_missing_program', new Error('Session missing program_name'), { 
+        sessionId, 
+        session 
+      });
+      return apiError(400, 'VALIDATION_ERROR', 'Session is missing program information', context.request, { startTime });
+    }
+
     // Look up program_id from program_name
     const { data: program, error: programError } = await supabase
       .from('programs')
