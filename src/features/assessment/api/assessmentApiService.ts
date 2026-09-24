@@ -363,6 +363,40 @@ export async function analyzeAssessment(attemptId: string, gradeLevel: string): 
 }
 
 /**
+ * Persist which Growth Map stages a learner has completed, so progress
+ * survives a page refresh or navigating away and back. Stored inside the
+ * existing gemini_results JSONB (no new database column).
+ */
+export async function saveGrowthMapProgress(
+  attemptId: string,
+  completedStageIds: string[]
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const response = await ssoClient.fetch(`${API_BASE}/growth-map-progress`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ attemptId, completedStageIds }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: 'Unknown error' }));
+      return {
+        success: false,
+        error: error.message || 'Failed to save growth map progress',
+      };
+    }
+
+    const data = await response.json();
+    return { success: data.success !== false };
+  } catch (err: any) {
+    return {
+      success: false,
+      error: err.message || 'Network error',
+    };
+  }
+}
+
+/**
  * Get the latest completed assessment result for a learner
  */
 export async function getLatestResult(learnerId: string) {

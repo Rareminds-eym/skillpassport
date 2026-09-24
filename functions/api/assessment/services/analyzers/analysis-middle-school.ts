@@ -29,6 +29,47 @@ function getCapabilityStatusLabel(score: number): string {
   return 'Ready for Next Level';
 }
 
+/**
+ * Attaches the real Adaptive Aptitude accuracy to each Gemini-selected
+ * thinking_styles entry. Gemini's title/description/icon are never touched —
+ * this only adds a "value" field, purely in application code, after Gemini has
+ * already selected its 4 categories from the 6 legitimate ones. Each of the 6
+ * legitimate titles maps 1:1 to its real accuracy_by_subtag key — this table
+ * never selects or influences WHICH 4 categories are shown, it only looks up
+ * the real number for whatever Gemini already chose. Older stored results may
+ * still contain the previous fixed titles ("Problem Solving", "Decision
+ * Making", "Visual Thinking") from before this contract changed; those simply
+ * find no entry here (or "Visual Thinking" no longer matches) and are left
+ * without a value, exactly as they were originally generated — this function
+ * is only ever invoked at generation time, never against already-stored data,
+ * so existing records are unaffected either way.
+ */
+function attachThinkingStyleValues(
+  thinkingStyles: Array<{ title: string; description: string; icon: string; value?: number }>,
+  accuracyBySubtag: Record<string, unknown> | null | undefined
+): Array<{ title: string; description: string; icon: string; value?: number }> {
+  if (!accuracyBySubtag) return thinkingStyles;
+
+  const TITLE_TO_SUBTAG: Record<string, string> = {
+    'Pattern Recognition': 'pattern_recognition',
+    'Spatial Reasoning': 'spatial_reasoning',
+    'Verbal Reasoning': 'verbal_reasoning',
+    'Logical Reasoning': 'logical_reasoning',
+    'Numerical Reasoning': 'numerical_reasoning',
+    'Data Interpretation': 'data_interpretation',
+  };
+
+  return thinkingStyles.map((style) => {
+    const subtagKey = TITLE_TO_SUBTAG[style.title];
+    if (!subtagKey) return style;
+
+    const subtag = accuracyBySubtag[subtagKey] as { accuracy?: number } | undefined;
+    if (!subtag || typeof subtag.accuracy !== 'number') return style;
+
+    return { ...style, value: Math.round(subtag.accuracy) };
+  });
+}
+
 async function tryFetchAdaptiveResults(supabase: any, sessionId: string) {
   const { data: session } = await supabase
     .from('adaptive_aptitude_sessions')
@@ -253,13 +294,16 @@ export async function analyzeMiddleSchool(
     exposureExplored.sort(byScoreDesc);
     exposureToExplore.sort((a, b) => a.score - b.score);
 
-    // "What I Have" = capability areas the learner is already strong in (Growing and above);
-    // "What I Need Next" = areas still Starting/Practicing. Both drawn from the same wheel scores.
+    // "What I Have" = capability areas the learner is already strong in (Growing and above).
+    // "What I Need Next" = the learner's next growth areas — always the 4 lowest-scoring
+    // capabilities, regardless of absolute score. This is intentionally NOT a "< 3.0 gap"
+    // filter: a learner who scores 3.0+ (or even 5/5) on every capability still has relatively
+    // lower and higher areas, and "What I Need Next" should always point to their next growth
+    // frontier rather than going empty once there are no genuine below-threshold gaps.
     const capabilitySorted = [...capabilityScores].sort((a, b) => b.score_out_of_5 - a.score_out_of_5);
     const whatIHave = capabilitySorted.filter((c) => c.score_out_of_5 >= 3.0).slice(0, 4);
     const whatINeedNext = [...capabilityScores]
       .sort((a, b) => a.score_out_of_5 - b.score_out_of_5)
-      .filter((c) => c.score_out_of_5 < 3.0)
       .slice(0, 4);
 
     // Recommended missions: the learner's strongest interest worlds carry a mission_trigger
@@ -457,8 +501,21 @@ export async function analyzeMiddleSchool(
     );
 
     // Step 13: Store reports in gemini_results (non-fatal update)
-    // Stores complete growthMap (evaluated data) + all LLM-generated insights including what_i_have/what_i_need (BRD FR-33)
+    // Stores complete growthMap (evaluated data) + all LLM-generated insights.
+    // what_i_have/what_i_need (BRD FR-33) are deterministic, not LLM-generated —
+    // see growthMap.what_i_have/what_i_need_next above (Step 3c).
     if (reports) {
+      // Attach real Adaptive Aptitude accuracy to each of the 4 Gemini-selected
+      // thinking_styles entries (Gemini chooses which 4 of the 6 legitimate
+      // categories to use; every legitimate title has a real matching subtag,
+      // so all 4 should receive a value here). Gemini's own title/description/
+      // icon output is untouched — this is a pure application-code merge after
+      // generation, not something Gemini is asked to generate or echo.
+      const thinkingStylesWithValues = attachThinkingStyleValues(
+        reports.thinking_styles,
+        adaptiveData?.accuracyBySubtag ?? null
+      );
+
       const { error: reportUpdateError } = await supabase
         .from('personal_assessment_results')
         .update({
@@ -470,9 +527,16 @@ export async function analyzeMiddleSchool(
             mission_recommendations: reports.mission_recommendations,
             my_interest_worlds: reports.my_interest_worlds,
             explorer_insights: reports.explorer_insights,
-            thinking_styles: reports.thinking_styles,
-            what_i_have: reports.what_i_have,
-            what_i_need: reports.what_i_need,
+            thinking_styles: thinkingStylesWithValues,
+            // Deterministic, evidence-derived values — NOT Gemini output. Gemini was
+            // previously asked to compute these itself and frequently echoed the
+            // prompt's own illustrative example values instead of this learner's
+            // real scores (e.g. always "Social / SQ": 4.5, "Communication": 4.2).
+            // growthMap.what_i_have / what_i_need_next are already computed above
+            // (Step 3c) directly from this learner's real capability_wheel scores.
+            what_i_have: growthMap.what_i_have,
+            what_i_need: growthMap.what_i_need_next,
+            stage_guidance: reports.stage_guidance,
           },
         })
         .eq('attempt_id', attemptId);

@@ -10,6 +10,7 @@
  * - POST /api/assessment/update-progress - Update position and timings
  * - POST /api/assessment/submit - Submit completed assessment
  * - POST /api/assessment/abandon - Abandon in-progress assessment
+ * - POST /api/assessment/growth-map-progress - Persist Growth Map stage completion
  * - GET /api/assessment/check-in-progress - Check for in-progress assessments
  */
 
@@ -25,6 +26,7 @@ import { abandonHandler } from './handlers/abandon';
 import { saveResultsHandler } from './handlers/save-results';
 import { checkInProgressHandler } from './handlers/check-in-progress';
 import { analyzeHandler } from './handlers/analyze';
+import { growthMapProgressHandler } from './handlers/growth-map-progress';
 import { regenerateHandler } from './handlers/regenerate';
 import { resultHandler } from './handlers/result';
 import { generateStrengthsGrowthPlanHandler } from './handlers/generate-strengths-growth-plan';
@@ -58,6 +60,8 @@ export const onRequestPost = withAuth(async (context: any) => {
       return saveResultsHandler(context);
     } else if (path === '/analyze') {
       return analyzeHandler(context);
+    } else if (path === '/growth-map-progress') {
+      return growthMapProgressHandler(context);
     } else if (path === '/regenerate') {
       return regenerateHandler(context);
     } else if (path === '/generate-strengths-growth-plan') {
