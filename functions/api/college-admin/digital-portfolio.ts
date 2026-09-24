@@ -226,6 +226,287 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         }, context.request, { startTime });
       }
 
+      // ── Video Portfolio ──
+      case 'get-videos': {
+        const user = getContextUser(context);
+        const { learnerId } = params;
+
+        // If learnerId provided, verify access (must be own learner or admin)
+        const targetLearnerId = learnerId || user.learnerId;
+        if (!targetLearnerId) {
+          return apiError(400, 'VALIDATION_ERROR', 'Missing learnerId', context.request, { startTime });
+        }
+
+        // Query videos directly from video_portfolio table
+        const { data: videos, error, count } = await supabase
+          .from('video_portfolio')
+          .select('*', { count: 'exact' })
+          .eq('learner_id', targetLearnerId)
+          .order('created_at', { ascending: false });
+
+        if (error) return apiDbError(error, context.request, { startTime });
+
+        // Map database snake_case to camelCase for frontend
+        const mappedVideos = (videos || []).map(video => ({
+          id: video.id,
+          learnerId: video.learner_id,
+          title: video.title,
+          description: video.description,
+          tags: video.tags || [],
+          videoUrl: video.video_url,
+          thumbnailColor: video.thumbnail_color,
+          thumbnailType: video.thumbnail_type,
+          thumbnailValue: video.thumbnail_value,
+          duration: video.duration,
+          fileSizeBytes: video.file_size_bytes,
+          mimeType: video.mime_type,
+          trimStart: video.trim_start,
+          trimEnd: video.trim_end,
+          status: video.status,
+          approvalStatus: video.approval_status,
+          showOnPublic: video.show_on_public,
+          reviewedBy: video.reviewed_by,
+          reviewedAt: video.reviewed_at,
+          rejectionReason: video.rejection_reason,
+          createdAt: video.created_at,
+          updatedAt: video.updated_at
+        }));
+
+        return apiSuccess({
+          videos: mappedVideos,
+          totalCount: count || 0,
+          maxAllowed: 5
+        }, context.request, { startTime });
+      }
+
+      case 'create-video': {
+        const user = getContextUser(context);
+        const {
+          learnerId,
+          title,
+          description,
+          tags,
+          videoUrl,
+          thumbnailColor,
+          duration,
+          fileSizeBytes,
+          mimeType,
+          trimStart,
+          trimEnd,
+          showOnPublic
+        } = params;
+
+        // Verify ownership
+        if (!learnerId || !title || !videoUrl) {
+          return apiError(400, 'VALIDATION_ERROR', 'Missing required fields: learnerId, title, videoUrl', context.request, { startTime });
+        }
+
+        // Check quota (max 5 videos per learner)
+        const { count, error: countError } = await supabase
+          .from('video_portfolio')
+          .select('*', { count: 'exact', head: true })
+          .eq('learner_id', learnerId);
+
+        if (countError) return apiDbError(countError, context.request, { startTime });
+
+        if (count !== null && count >= 5) {
+          return apiError(403, 'QUOTA_EXCEEDED', 'Maximum 5 videos allowed per learner', context.request, { startTime });
+        }
+
+        // Insert video
+        const { data, error } = await supabase
+          .from('video_portfolio')
+          .insert([{
+            learner_id: learnerId,
+            title,
+            description: description || null,
+            tags: tags || [],
+            video_url: videoUrl,
+            thumbnail_color: thumbnailColor || '#2D3E5F',
+            duration: duration || null,
+            file_size_bytes: fileSizeBytes || null,
+            mime_type: mimeType || 'video/mp4',
+            trim_start: trimStart ?? 0,
+            trim_end: trimEnd ?? 100,
+            show_on_public: showOnPublic ?? false,
+            status: 'DRAFT',
+            approval_status: 'pending'
+          }])
+          .select()
+          .single();
+
+        if (error) return apiDbError(error, context.request, { startTime });
+
+        return apiSuccess({
+          id: data.id,
+          message: 'Video created successfully'
+        }, context.request, { startTime });
+      }
+
+      case 'update-video': {
+        const user = getContextUser(context);
+        const {
+          videoId,
+          title,
+          description,
+          tags,
+          thumbnailColor,
+          thumbnailType,
+          thumbnailValue,
+          trimStart,
+          trimEnd,
+          showOnPublic,
+          status,
+          approvalStatus
+        } = params;
+
+        if (!videoId) {
+          return apiError(400, 'VALIDATION_ERROR', 'Missing videoId', context.request, { startTime });
+        }
+
+        // Get video to verify ownership
+        const { data: video, error: fetchError } = await supabase
+          .from('video_portfolio')
+          .select('learner_id')
+          .eq('id', videoId)
+          .single();
+
+        if (fetchError) return apiDbError(fetchError, context.request, { startTime });
+        if (!video) return apiError(404, 'NOT_FOUND', 'Video not found', context.request, { startTime });
+
+        // Build update object
+        const updates: Record<string, any> = {};
+        if (title !== undefined) updates.title = title;
+        if (description !== undefined) updates.description = description;
+        if (tags !== undefined) updates.tags = tags;
+        if (thumbnailColor !== undefined) updates.thumbnail_color = thumbnailColor;
+        if (thumbnailType !== undefined) updates.thumbnail_type = thumbnailType;
+        if (thumbnailValue !== undefined) updates.thumbnail_value = thumbnailValue;
+        if (trimStart !== undefined) updates.trim_start = trimStart;
+        if (trimEnd !== undefined) updates.trim_end = trimEnd;
+        if (showOnPublic !== undefined) updates.show_on_public = showOnPublic;
+        if (status !== undefined) updates.status = status;
+        if (approvalStatus !== undefined) updates.approval_status = approvalStatus;
+
+        if (Object.keys(updates).length === 0) {
+          return apiError(400, 'VALIDATION_ERROR', 'No fields to update', context.request, { startTime });
+        }
+
+        // Update video
+        const { error } = await supabase
+          .from('video_portfolio')
+          .update(updates)
+          .eq('id', videoId);
+
+        if (error) return apiDbError(error, context.request, { startTime });
+
+        return apiSuccess({ message: 'Video updated successfully' }, context.request, { startTime });
+      }
+
+      case 'delete-video': {
+        const user = getContextUser(context);
+        const { videoId } = params;
+
+        if (!videoId) {
+          return apiError(400, 'VALIDATION_ERROR', 'Missing videoId', context.request, { startTime });
+        }
+
+        // Get video to get R2 key and verify ownership
+        const { data: video, error: fetchError } = await supabase
+          .from('video_portfolio')
+          .select('learner_id, video_url')
+          .eq('id', videoId)
+          .single();
+
+        if (fetchError) return apiDbError(fetchError, context.request, { startTime });
+        if (!video) return apiError(404, 'NOT_FOUND', 'Video not found', context.request, { startTime });
+
+        // Delete from R2 first
+        try {
+          const { R2Client } = await import('../storage/utils/r2-client');
+          const r2Client = new R2Client(env.R2_BUCKET as any, env);
+          await r2Client.delete(video.video_url);
+        } catch (r2Error: any) {
+          console.error('Error deleting video from R2:', r2Error);
+          // Continue with DB deletion even if R2 fails
+        }
+
+        // Delete from database
+        const { error } = await supabase
+          .from('video_portfolio')
+          .delete()
+          .eq('id', videoId);
+
+        if (error) return apiDbError(error, context.request, { startTime });
+
+        return apiSuccess({ message: 'Video deleted successfully' }, context.request, { startTime });
+      }
+
+      case 'approve-video': {
+        const user = getContextUser(context);
+        const { videoId } = params;
+
+        if (!videoId) {
+          return apiError(400, 'VALIDATION_ERROR', 'Missing videoId', context.request, { startTime });
+        }
+
+        // Update video approval status
+        const { error } = await supabase
+          .from('video_portfolio')
+          .update({
+            approval_status: 'approved',
+            status: 'VERIFIED',
+            reviewed_by: user.id,
+            reviewed_at: new Date().toISOString(),
+            rejection_reason: null
+          })
+          .eq('id', videoId);
+
+        if (error) return apiDbError(error, context.request, { startTime });
+
+        return apiSuccess({ message: 'Video approved successfully' }, context.request, { startTime });
+      }
+
+      case 'reject-video': {
+        const user = getContextUser(context);
+        const { videoId, rejectionReason } = params;
+
+        if (!videoId || !rejectionReason) {
+          return apiError(400, 'VALIDATION_ERROR', 'Missing videoId or rejectionReason', context.request, { startTime });
+        }
+
+        // Update video approval status
+        const { error } = await supabase
+          .from('video_portfolio')
+          .update({
+            approval_status: 'rejected',
+            status: 'REJECTED',
+            reviewed_by: user.id,
+            reviewed_at: new Date().toISOString(),
+            rejection_reason: rejectionReason
+          })
+          .eq('id', videoId);
+
+        if (error) return apiDbError(error, context.request, { startTime });
+
+        return apiSuccess({ message: 'Video rejected successfully' }, context.request, { startTime });
+      }
+
+      case 'get-pending-videos': {
+        const { limit = 50 } = params;
+
+        // Use helper function to get pending videos
+        const { data: videos, error } = await supabase
+          .rpc('get_pending_video_portfolio', { limit_count: limit });
+
+        if (error) return apiDbError(error, context.request, { startTime });
+
+        return apiSuccess({
+          videos: videos || [],
+          totalCount: videos?.length || 0
+        }, context.request, { startTime });
+      }
+
       default:
         return apiError(400, 'VALIDATION_ERROR', `Unknown action: ${action}`, context.request, { startTime });
     }

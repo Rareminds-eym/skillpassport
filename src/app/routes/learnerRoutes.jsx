@@ -9,6 +9,7 @@ const HomePage = lazy(() => import('@/pages/digital-pp/HomePage'));
 const DigitalPassportPage = lazy(() => import('@/pages/digital-pp/PassportPage'));
 const DigitalPortfolioPage = lazy(() => import('@/pages/digital-pp/PortfolioPage'));
 const DigitalVideoPortfolioPage = lazy(() => import('@/pages/digital-pp/VideoPortfolioPage'));
+const VideoPortfolioManagePage = lazy(() => import('@/pages/digital-pp/VideoPortfolioManagePage'));
 const DigitalExportSettings = lazy(() => import('@/pages/digital-pp/settings/ExportSettings'));
 const DigitalLayoutSettings = lazy(() => import('@/pages/digital-pp/settings/LayoutSettings'));
 const DigitalProfileSettings = lazy(() => import('@/pages/digital-pp/settings/ProfileSettings'));
@@ -104,6 +105,7 @@ export const learnerRoutes = (
     <Route path="digital-portfolio/portfolio" element={<DigitalPortfolioThemeProvider><DigitalPortfolioPage /></DigitalPortfolioThemeProvider>} />
     <Route path="digital-portfolio/passport" element={<DigitalPortfolioThemeProvider><DigitalPassportPage /></DigitalPortfolioThemeProvider>} />
     <Route path="digital-portfolio/video" element={<DigitalPortfolioThemeProvider><DigitalVideoPortfolioPage /></DigitalPortfolioThemeProvider>} />
+    <Route path="digital-portfolio/video/manage" element={<DigitalPortfolioThemeProvider><VideoPortfolioManagePage /></DigitalPortfolioThemeProvider>} />
     <Route path="digital-portfolio/settings/theme" element={<DigitalPortfolioThemeProvider><DigitalThemeSettings /></DigitalPortfolioThemeProvider>} />
     <Route path="digital-portfolio/settings/layout" element={<DigitalPortfolioThemeProvider><DigitalLayoutSettings /></DigitalPortfolioThemeProvider>} />
     <Route path="digital-portfolio/settings/export" element={<DigitalPortfolioThemeProvider><DigitalExportSettings /></DigitalPortfolioThemeProvider>} />
