@@ -445,7 +445,7 @@ const MarkAttendance: React.FC = () => {
         sessionId: slot.id,
         selectedDate,
         classId: slot.class_id,
-        semester: parseInt(slot.class_grade?.replace(/\D/g, '') || '1')
+        semester: parseInt(slot.class_grade?.replace(/\D/g, '') || '1', 10)
       });
 
       // Unwrap the response - apiPost wraps it in { success, data, error }
@@ -660,7 +660,7 @@ const MarkAttendance: React.FC = () => {
         college_id: collegeId,
         department_name: departmentName,
         program_name: programName,
-        semester: parseInt(semester),
+        semester: parseInt(semester, 10),
         section: section,
       }));
 
@@ -943,6 +943,7 @@ const ScheduleView: React.FC<ScheduleViewProps> = ({
             {/* Clear Filters Button */}
             {(selectedClass !== "all" || selectedSubject !== "all" || searchQuery) && (
               <button
+                type = "button"
                 onClick={() => {
                   setSelectedClass("all");
                   setSelectedSubject("all");
@@ -987,6 +988,7 @@ const ScheduleView: React.FC<ScheduleViewProps> = ({
               <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
                 Class: {selectedClass}
                 <button
+                  type = "button"
                   onClick={() => {
                     setSelectedClass("all");
                     setCurrentPage(1);
@@ -1001,6 +1003,7 @@ const ScheduleView: React.FC<ScheduleViewProps> = ({
               <span className="inline-flex items-center gap-1 px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium">
                 Subject: {selectedSubject}
                 <button
+                  type = "button"
                   onClick={() => {
                     setSelectedSubject("all");
                     setCurrentPage(1);
@@ -1041,6 +1044,7 @@ const ScheduleView: React.FC<ScheduleViewProps> = ({
             </p>
             {searchQuery && (
               <button
+                type = "button"
                 onClick={() => setSearchQuery("")}
                 className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700"
               >
@@ -1073,6 +1077,7 @@ const ScheduleView: React.FC<ScheduleViewProps> = ({
                 </p>
                 <div className="flex gap-2">
                   <button
+                    type = "button"
                     onClick={() => setCurrentPage(currentPage - 1)}
                     disabled={currentPage === 1}
                     className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1082,6 +1087,7 @@ const ScheduleView: React.FC<ScheduleViewProps> = ({
                   <div className="hidden sm:flex gap-1">
                     {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                       <button
+                        type = "button"
                         key={page}
                         onClick={() => setCurrentPage(page)}
                         className={`px-3 py-2 rounded-lg text-sm font-medium ${
@@ -1099,6 +1105,7 @@ const ScheduleView: React.FC<ScheduleViewProps> = ({
                     {currentPage} / {totalPages}
                   </div>
                   <button
+                    type = "button"
                     onClick={() => setCurrentPage(currentPage + 1)}
                     disabled={currentPage === totalPages}
                     className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1238,6 +1245,7 @@ const SlotCard: React.FC<SlotCardProps> = ({ slot, isFuture, onStartSession }) =
 
         {/* Action Button */}
         <button
+          type = "button"
           onClick={() => onStartSession(slot)}
           disabled={isFuture || slot.is_locked}
           className={`w-full py-3 px-4 rounded-lg font-semibold text-sm transition-all flex items-center justify-center gap-2 ${
@@ -1315,6 +1323,7 @@ const MarkingView: React.FC<MarkingViewProps> = ({
       <div className="p-4 sm:p-6 lg:p-8 mb-2">
         {/* Back Button */}
         <button
+          type = "button"
           onClick={onBack}
           className="flex items-center gap-2 text-gray-600 hover:text-gray-900 font-medium transition-colors mb-4"
         >
@@ -1402,6 +1411,7 @@ const MarkingView: React.FC<MarkingViewProps> = ({
           {/* Quick Actions - Always show to allow editing */}
           <div className="flex gap-2">
               <button
+                type = "button"
                 onClick={() => markAllAs("present")}
                 className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700 transition-colors"
               >
@@ -1409,6 +1419,7 @@ const MarkingView: React.FC<MarkingViewProps> = ({
                 All Present
               </button>
               <button
+                type = "button"
                 onClick={() => markAllAs("absent")}
                 className="flex items-center gap-2 px-4 py-2.5 bg-rose-600 text-white rounded-lg text-sm font-semibold hover:bg-rose-700 transition-colors"
               >
@@ -1460,6 +1471,7 @@ const MarkingView: React.FC<MarkingViewProps> = ({
         {/* Submit Button - Always show to allow resubmission */}
         <div className="mt-6 flex justify-end">
             <button
+              type = "button"
               onClick={submitAttendance}
               disabled={submitting}
               className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
@@ -1565,6 +1577,7 @@ const LearnerRow: React.FC<LearnerRowProps> = ({ learner, record, isDisabled, on
                 const Icon = btn.icon;
                 return (
                   <button
+                    type = "button"
                     key={btn.value}
                     onClick={() => {
                       if (!isDisabled) {
@@ -1642,12 +1655,13 @@ const LearnerRow: React.FC<LearnerRowProps> = ({ learner, record, isDisabled, on
 
           {/* Status Buttons */}
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-2">Status</label>
+            <span className="block text-xs font-medium text-gray-700 mb-2">Status</span>
             <div className="grid grid-cols-3 gap-2">
               {statusButtons.map((btn) => {
                 const Icon = btn.icon;
                 return (
                   <button
+                    type = "button"
                     key={btn.value}
                     onClick={() => {
                       if (!isDisabled) {
@@ -1660,7 +1674,7 @@ const LearnerRow: React.FC<LearnerRowProps> = ({ learner, record, isDisabled, on
                       }
                     }}
                     disabled={isDisabled}
-                    className={getButtonClasses(btn.value) + " justify-center"}
+                    className={`${getButtonClasses(btn.value)} justify-center`}
                   >
                     <Icon className="h-4 w-4" />
                     <span>{btn.label}</span>
@@ -1672,8 +1686,11 @@ const LearnerRow: React.FC<LearnerRowProps> = ({ learner, record, isDisabled, on
 
           {/* Time In */}
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-2">Time In</label>
+            <label 
+            htmlFor={`time-in-${learner.id}`}
+            className="block text-xs font-medium text-gray-700 mb-2">Time In</label>
             <input
+              id={`time-in-${learner.id}`}
               type="time"
               value={record?.time_in || ""}
               onChange={(e) => onUpdate(learner.id, "time_in", e.target.value)}
@@ -1684,8 +1701,9 @@ const LearnerRow: React.FC<LearnerRowProps> = ({ learner, record, isDisabled, on
 
           {/* Remarks */}
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-2">Remarks</label>
+            <label htmlFor={`remarks-${learner.id}`} className="block text-xs font-medium text-gray-700 mb-2">Remarks</label>
             <input
+              id={`remarks-${learner.id}`}
               type="text"
               value={record?.remarks || ""}
               onChange={(e) => onUpdate(learner.id, "remarks", e.target.value)}

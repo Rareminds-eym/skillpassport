@@ -1,8 +1,10 @@
 ﻿import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getContextUser } from '../../../lib/auth';
-import { getServiceClient } from '../../../lib/supabase';
-import { apiSuccess, apiDbError, apiError } from '../../../lib/response';
 import { createLogger } from '../../../lib/logger';
+import { apiDbError, apiError, apiSuccess } from '../../../lib/response';
+import { getServiceClient } from '../../../lib/supabase';
+
+
 
 const logger = createLogger('educator-attendance');
 const getSub = (context: AuthenticatedContext) => getServiceClient(context.env as any);

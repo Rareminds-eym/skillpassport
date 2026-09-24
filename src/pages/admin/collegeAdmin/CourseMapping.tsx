@@ -1,50 +1,48 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useEffect, useMemo, useState } from "react";
 import {
-    PlusCircleIcon,
-    XMarkIcon,
-    BookOpenIcon,
-    CheckCircleIcon,
-    ArrowPathIcon,
-    InformationCircleIcon,
-    AcademicCapIcon,
-    CheckIcon,
-    XCircleIcon,
-    PencilIcon,
-    LockClosedIcon,
-    LockOpenIcon,
-    ExclamationTriangleIcon,
-    UserGroupIcon,
-    ClipboardDocumentListIcon,
-    ChevronDownIcon,
-} from "@heroicons/react/24/outline";
+  AcademicCapIcon,
+  ArrowPathIcon,
+  BookOpenIcon,
+  CheckCircleIcon,
+  CheckIcon,
+  ChevronDownIcon,
+  ClipboardDocumentListIcon,
+  ExclamationTriangleIcon,
+  InformationCircleIcon,
+  LockClosedIcon,
+  LockOpenIcon,
+  PencilIcon,
+  PlusCircleIcon,
+  UserGroupIcon,
+  XCircleIcon,
+  XMarkIcon,
+} from '@heroicons/react/24/outline';
+import React, { useEffect, useMemo, useState } from "react";
 import toast from 'react-hot-toast';
-import { SearchBar } from '@/shared/ui';
 import { KPICard } from '@/features/analytics';
-import { Pagination } from '@/shared/ui';
-import { ConfirmationModal } from '@/shared/ui';
+import {
+  type Course,
+  type CourseMapping,
+  type Department,
+  type Faculty,
+  type Program,
+  cloneSemesterStructure,
+  deleteCourseMapping,
+  getCourseMappingDepartments,
+  getCourseMappingFaculty,
+  getCourseMappingPrograms,
+  getCourseMappings,
+  getCourses,
+  isSemesterLocked,
+  lockSemester,
+  mapCourse,
+  unlockSemester,
+  updateCourseMapping,
+} from '@/features/college-admin';
 import { getLogger } from '@/shared/config/logging';
+import { ConfirmationModal, Pagination, SearchBar } from '@/shared/ui';
 
 const logger = getLogger('course-mapping');
-import {
-    getCourseMappingDepartments,
-    getCourseMappingPrograms,
-    getCourses,
-    getCourseMappingFaculty,
-    getCourseMappings,
-    mapCourse,
-    updateCourseMapping,
-    deleteCourseMapping,
-    lockSemester,
-    unlockSemester,
-    isSemesterLocked,
-    cloneSemesterStructure,
-    type Department,
-    type Program,
-    type Course,
-    type Faculty,
-    type CourseMapping,
-} from '@/features/college-admin';
 
 interface CourseMappingFormData {
     courseId?: string;
@@ -102,6 +100,7 @@ const ModalWrapper = ({
                             )}
                         </div>
                         <button
+                            type="button"
                             onClick={onClose}
                             className="ml-4 rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
                             aria-label="Close"
@@ -296,10 +295,11 @@ const AddEditCourseMappingModal = ({
                 {/* Course Selection */}
                 {!isEditing && (
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label htmlFor="course-selection" className="block text-sm font-medium text-gray-700 mb-2">
                             Select Course <span className="text-red-500">*</span>
                         </label>
                         <select
+                            id="course-selection"
                             value={isNewCourse ? "new" : selectedCourseId}
                             onChange={(e) => handleCourseSelect(e.target.value)}
                             className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors"
@@ -346,10 +346,11 @@ const AddEditCourseMappingModal = ({
                 {/* Course Details */}
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label htmlFor="course-code" className="block text-sm font-medium text-gray-700 mb-2">
                             Course Code <span className="text-red-500">*</span>
                         </label>
                         <input
+                            id="course-code"
                             value={courseCode}
                             onChange={(e) => setCourseCode(e.target.value.toUpperCase())}
                             disabled={isEditing || (!isNewCourse && !selectedCourseId)} // Disable if editing OR no course selected (including default option)
@@ -360,10 +361,11 @@ const AddEditCourseMappingModal = ({
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label htmlFor="course-credits" className="block text-sm font-medium text-gray-700 mb-2">
                             Credits <span className="text-red-500">*</span>
                         </label>
                         <input
+                            id="course-credits"
                             type="number"
                             min="1"
                             max="20"
@@ -376,10 +378,11 @@ const AddEditCourseMappingModal = ({
                     </div>
 
                     <div className="sm:col-span-2">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label htmlFor="course-name" className="block text-sm font-medium text-gray-700 mb-2">
                             Course Name <span className="text-red-500">*</span>
                         </label>
                         <input
+                            id="course-name"
                             value={courseName}
                             onChange={(e) => setCourseName(e.target.value)}
                             disabled={isEditing || (!isNewCourse && !selectedCourseId)} // Disable if editing OR no course selected (including default option)
@@ -389,10 +392,11 @@ const AddEditCourseMappingModal = ({
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label htmlFor="offering-type" className="block text-sm font-medium text-gray-700 mb-2">
                             Offering Type <span className="text-red-500">*</span>
                         </label>
                         <select
+                            id="offering-type"
                             value={offeringType}
                             onChange={(e) => setOfferingType(e.target.value as 'core' | 'dept_elective' | 'open_elective')}
                             className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors"
@@ -404,10 +408,11 @@ const AddEditCourseMappingModal = ({
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label htmlFor="faculty-allocation" className="block text-sm font-medium text-gray-700 mb-2">
                             Faculty Allocation <span className="text-red-500">*</span>
                         </label>
                         <select
+                            id="faculty-allocation"
                             value={facultyId}
                             onChange={(e) => setFacultyId(e.target.value)}
                             className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors"
@@ -423,10 +428,11 @@ const AddEditCourseMappingModal = ({
 
                     {(offeringType === 'dept_elective' || offeringType === 'open_elective') && (
                         <div className="sm:col-span-2">
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                            <label htmlFor="learner-capacity" className="block text-sm font-medium text-gray-700 mb-2">
                                 Learner Capacity <span className="text-red-500">*</span>
                             </label>
                             <input
+                                id="learner-capacity"
                                 type="number"
                                 min="1"
                                 max="200"
@@ -442,6 +448,7 @@ const AddEditCourseMappingModal = ({
 
             <div className="mt-8 flex justify-end gap-3">
                 <button
+                    type="button"
                     onClick={handleClose}
                     disabled={submitting}
                     className="rounded-lg border border-gray-300 px-5 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
@@ -449,6 +456,7 @@ const AddEditCourseMappingModal = ({
                     Cancel
                 </button>
                 <button
+                    type="button"
                     onClick={handleSubmit}
                     disabled={submitting}
                     className="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:bg-indigo-400 disabled:cursor-not-allowed transition-colors inline-flex items-center gap-2"
@@ -511,6 +519,7 @@ const CourseMappingCard = ({
             {/* Action Buttons */}
             <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 <button
+                    type="button"
                     onClick={() => onEdit(mapping)}
                     disabled={isLocked}
                     className="p-1.5 rounded-lg text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -519,6 +528,7 @@ const CourseMappingCard = ({
                     <PencilIcon className="h-4 w-4" />
                 </button>
                 <button
+                    type="button"
                     onClick={() => onDelete(mapping.id)}
                     disabled={isLocked}
                     className="p-1.5 rounded-lg text-gray-500 hover:text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -649,10 +659,11 @@ const CloneSemesterModal = ({
             <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label htmlFor="from-program" className="block text-sm font-medium text-gray-700 mb-2">
                             From Program
                         </label>
                         <select
+                            id="from-program"
                             value={fromProgramId}
                             onChange={(e) => setFromProgramId(e.target.value)}
                             className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors"
@@ -666,10 +677,11 @@ const CloneSemesterModal = ({
                         </select>
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label htmlFor="from-semester" className="block text-sm font-medium text-gray-700 mb-2">
                             From Semester
                         </label>
                         <select
+                            id="from-semester"
                             value={fromSemester as any}
                             onChange={(e) => setFromSemester(e.target.value === "" ? "" : Number(e.target.value))}
                             className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors"
@@ -684,10 +696,11 @@ const CloneSemesterModal = ({
 
                 <div className="grid grid-cols-2 gap-4">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label htmlFor="to-program" className="block text-sm font-medium text-gray-700 mb-2">
                             To Program
                         </label>
                         <select
+                            id="to-program"
                             value={toProgramId}
                             onChange={(e) => setToProgramId(e.target.value)}
                             className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors"
@@ -701,10 +714,11 @@ const CloneSemesterModal = ({
                         </select>
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label htmlFor="to-semester" className="block text-sm font-medium text-gray-700 mb-2">
                             To Semester
                         </label>
                         <select
+                            id="to-semester"
                             value={toSemester as any}
                             onChange={(e) => setToSemester(e.target.value === "" ? "" : Number(e.target.value))}
                             className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors"
@@ -720,6 +734,7 @@ const CloneSemesterModal = ({
 
             <div className="mt-6 flex justify-end gap-3">
                 <button
+                    type="button"
                     onClick={onClose}
                     disabled={submitting}
                     className="rounded-lg border border-gray-300 px-5 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
@@ -727,6 +742,7 @@ const CloneSemesterModal = ({
                     Cancel
                 </button>
                 <button
+                    type="button"
                     onClick={handleSubmit}
                     disabled={submitting || fromSemester === "" || toSemester === "" || !fromProgramId || !toProgramId}
                     className="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors inline-flex items-center gap-2"
@@ -842,6 +858,7 @@ const ElectiveManagementModal = ({
                                     
                                     {!isEditing && (
                                         <button
+                                            type="button"
                                             onClick={() => handleEditStart(mapping)}
                                             className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
                                             title="Edit elective settings"
@@ -855,10 +872,11 @@ const ElectiveManagementModal = ({
                                     <div className="space-y-3 bg-gray-50 rounded-lg p-3">
                                         <div className="grid grid-cols-2 gap-3">
                                             <div>
-                                                <label className="block text-xs font-medium text-gray-700 mb-1">
+                                                <label htmlFor={`faculty-assignment-${mapping.id}`} className="block text-xs font-medium text-gray-700 mb-1">
                                                     Faculty Assignment
                                                 </label>
                                                 <select
+                                                    id={`faculty-assignment-${mapping.id}`}
                                                     value={tempData.facultyId}
                                                     onChange={(e) => setTempData(prev => ({ ...prev, facultyId: e.target.value }))}
                                                     className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
@@ -873,10 +891,11 @@ const ElectiveManagementModal = ({
                                             </div>
                                             
                                             <div>
-                                                <label className="block text-xs font-medium text-gray-700 mb-1">
+                                                <label htmlFor={`learner-capacity-edit-${mapping.id}`} className="block text-xs font-medium text-gray-700 mb-1">
                                                     Learner Capacity
                                                 </label>
                                                 <input
+                                                    id={`learner-capacity-edit-${mapping.id}`}
                                                     type="number"
                                                     min="1"
                                                     max="200"
@@ -890,6 +909,7 @@ const ElectiveManagementModal = ({
                                         
                                         <div className="flex justify-end gap-2">
                                             <button
+                                                type="button"
                                                 onClick={handleEditCancel}
                                                 disabled={submitting}
                                                 className="px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50"
@@ -897,6 +917,7 @@ const ElectiveManagementModal = ({
                                                 Cancel
                                             </button>
                                             <button
+                                                type="button"
                                                 onClick={handleEditSave}
                                                 disabled={submitting || tempData.capacity === "" || tempData.capacity === undefined || !tempData.facultyId}
                                                 className="px-3 py-1.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 rounded-lg transition-colors inline-flex items-center gap-1"
@@ -952,6 +973,7 @@ const ElectiveManagementModal = ({
                         </span> need setup
                     </div>
                     <button
+                        type="button"
                         onClick={onClose}
                         className="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-indigo-700 transition-colors"
                     >
@@ -1332,6 +1354,7 @@ const CourseMapping: React.FC = () => {
                     <h3 className="text-lg font-medium text-gray-900 mb-2">Failed to Load Data</h3>
                     <p className="text-gray-600 mb-4">{error}</p>
                     <button
+                        type="button"
                         onClick={loadInitialData}
                         className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
                     >
@@ -1364,6 +1387,7 @@ const CourseMapping: React.FC = () => {
 
                     <div className="flex flex-wrap gap-3">
                         <button
+                            type="button"
                             onClick={() => {
                                 setEditingMapping(null);
                                 setShowAddModal(true);
@@ -1376,6 +1400,7 @@ const CourseMapping: React.FC = () => {
                         </button>
                         
                         <button
+                            type="button"
                             onClick={() => setShowCloneModal(true)}
                             disabled={isLocked}
                             className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 active:scale-95 transition-all disabled:bg-gray-100 disabled:cursor-not-allowed"
@@ -1385,6 +1410,7 @@ const CourseMapping: React.FC = () => {
                         </button>
                         
                         <button
+                            type="button"
                             onClick={() => setShowElectiveModal(true)}
                             className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 active:scale-95 transition-all"
                         >
@@ -1401,10 +1427,11 @@ const CourseMapping: React.FC = () => {
                     {/* Department & Program Selector */}
                     <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 space-y-4">
                         <div>
-                            <label className="block text-sm font-semibold text-gray-900 mb-3">
+                            <label htmlFor="department-selector" className="block text-sm font-semibold text-gray-900 mb-3">
                                 Department <span className="text-red-500">*</span>
                             </label>
                             <select
+                                id="department-selector"
                                 value={selectedDeptId}
                                 onChange={(e) => setSelectedDeptId(e.target.value)}
                                 className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors"
@@ -1419,10 +1446,11 @@ const CourseMapping: React.FC = () => {
                         </div>
                         
                         <div>
-                            <label className="block text-sm font-semibold text-gray-900 mb-3">
+                            <label htmlFor="program-selector" className="block text-sm font-semibold text-gray-900 mb-3">
                                 Program <span className="text-red-500">*</span>
                             </label>
                             <select
+                                id="program-selector"
                                 value={selectedProgramId}
                                 onChange={(e) => setSelectedProgramId(e.target.value)}
                                 disabled={!selectedDeptId}
@@ -1438,10 +1466,11 @@ const CourseMapping: React.FC = () => {
                         </div>
 
                         <div>
-                            <label className="block text-sm font-semibold text-gray-900 mb-3">
+                            <label htmlFor="semester-selector" className="block text-sm font-semibold text-gray-900 mb-3">
                                 Semester
                             </label>
                             <select
+                                id="semester-selector"
                                 value={selectedSemester}
                                 onChange={(e) => setSelectedSemester(Number(e.target.value))}
                                 disabled={!selectedProgramId}
@@ -1533,10 +1562,13 @@ const CourseMapping: React.FC = () => {
                             {/* Primary Filters */}
                             <div className="flex gap-3 items-center">
                                 {/* Type Filter */}
+                                <label htmlFor="type-filter" className="sr-only">Filter by type</label>
                                 <select
+                                    id="type-filter"
                                     value={typeFilter as any}
                                     onChange={(e) => setTypeFilter(e.target.value as any)}
                                     className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white min-w-[140px]"
+                                    aria-label="Filter by course type"
                                 >
                                     <option value="">All Types</option>
                                     <option value="core">Core</option>
@@ -1546,6 +1578,7 @@ const CourseMapping: React.FC = () => {
                                 
                                 {/* More Filters Toggle */}
                                 <button
+                                    type="button"
                                     onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
                                     className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border transition-colors ${
                                         showAdvancedFilters || facultyFilter || creditsFilter || sortBy !== 'semester' || sortOrder !== 'asc'
@@ -1566,8 +1599,9 @@ const CourseMapping: React.FC = () => {
                                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 flex-1">
                                         {/* Faculty Filter */}
                                         <div>
-                                            <label className="block text-xs font-medium text-gray-700 mb-1.5">Faculty</label>
+                                            <label htmlFor="faculty-filter" className="block text-xs font-medium text-gray-700 mb-1.5">Faculty</label>
                                             <select
+                                                id="faculty-filter"
                                                 value={facultyFilter}
                                                 onChange={(e) => setFacultyFilter(e.target.value)}
                                                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white"
@@ -1583,8 +1617,9 @@ const CourseMapping: React.FC = () => {
 
                                         {/* Credits Filter */}
                                         <div>
-                                            <label className="block text-xs font-medium text-gray-700 mb-1.5">Credits</label>
+                                            <label htmlFor="credits-filter" className="block text-xs font-medium text-gray-700 mb-1.5">Credits</label>
                                             <select
+                                                id="credits-filter"
                                                 value={creditsFilter}
                                                 onChange={(e) => setCreditsFilter(e.target.value)}
                                                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white"
@@ -1600,8 +1635,9 @@ const CourseMapping: React.FC = () => {
 
                                         {/* Sort By */}
                                         <div>
-                                            <label className="block text-xs font-medium text-gray-700 mb-1.5">Sort By</label>
+                                            <label htmlFor="sort-by" className="block text-xs font-medium text-gray-700 mb-1.5">Sort By</label>
                                             <select
+                                                id="sort-by"
                                                 value={sortBy}
                                                 onChange={(e) => setSortBy(e.target.value as any)}
                                                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white"
@@ -1615,8 +1651,9 @@ const CourseMapping: React.FC = () => {
 
                                         {/* Sort Order */}
                                         <div>
-                                            <label className="block text-xs font-medium text-gray-700 mb-1.5">Order</label>
+                                            <label htmlFor="sort-order" className="block text-xs font-medium text-gray-700 mb-1.5">Order</label>
                                             <select
+                                                id="sort-order"
                                                 value={sortOrder}
                                                 onChange={(e) => setSortOrder(e.target.value as any)}
                                                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white"
@@ -1630,6 +1667,7 @@ const CourseMapping: React.FC = () => {
                                     {/* Clear Filters */}
                                     {(searchQuery || typeFilter !== "" || facultyFilter || creditsFilter || sortBy !== 'semester' || sortOrder !== 'asc') && (
                                         <button
+                                            type="button"
                                             onClick={() => {
                                                 setSearchQuery("");
                                                 setTypeFilter("");
@@ -1664,6 +1702,7 @@ const CourseMapping: React.FC = () => {
                             
                             {selectedProgramId && (
                                 <button
+                                    type="button"
                                     onClick={handleToggleLock}
                                     className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium shadow-sm transition-colors ${
                                         isLocked 
@@ -1738,6 +1777,7 @@ const CourseMapping: React.FC = () => {
                                 </p>
                                 {!isLocked && !searchQuery && !typeFilter && !facultyFilter && !creditsFilter && (
                                     <button
+                                        type="button"
                                         onClick={() => {
                                             setEditingMapping(null);
                                             setShowAddModal(true);
