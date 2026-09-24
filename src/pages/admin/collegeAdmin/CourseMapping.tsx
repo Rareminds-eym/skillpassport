@@ -23,6 +23,9 @@ import { SearchBar } from '@/shared/ui';
 import { KPICard } from '@/features/analytics';
 import { Pagination } from '@/shared/ui';
 import { ConfirmationModal } from '@/shared/ui';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('course-mapping');
 import {
     getCourseMappingDepartments,
     getCourseMappingPrograms,
@@ -1074,6 +1077,11 @@ const CourseMapping: React.FC = () => {
     };
 
     const loadCourseMappings = async () => {
+        // Guard: Don't call API if required parameters are missing
+        if (!selectedProgramId || !selectedSemester) {
+            return;
+        }
+
         try {
             const mappingsData = await getCourseMappings(selectedProgramId, selectedSemester, searchQuery, typeFilter || undefined);
             setCourseMappings(mappingsData);
@@ -1083,6 +1091,11 @@ const CourseMapping: React.FC = () => {
     };
 
     const checkSemesterLock = async () => {
+        // Guard: Don't call API if required parameters are missing
+        if (!selectedProgramId || !selectedSemester) {
+            return;
+        }
+
         try {
             const locked = await isSemesterLocked(selectedProgramId, selectedSemester);
             setIsLocked(locked);

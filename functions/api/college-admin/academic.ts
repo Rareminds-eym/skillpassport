@@ -396,7 +396,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
               lecturer_id,
               college_lecturers!inner(
                 id, first_name, last_name, email, user_id,
-                accountStatus, collegeId
+                accountStatus, collegeId, metadata
               )
             `)
             .eq('department_id', department_id)
@@ -413,7 +413,10 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
             const facultyList = assignments.map((a: any) => {
               const lec = a.college_lecturers;
-              const name = `${lec.first_name || ''} ${lec.last_name || ''}`.trim() || lec.email || 'Unknown';
+              const metadata = lec.metadata || {};
+              const firstName = metadata.first_name || '';
+              const lastName = metadata.last_name || '';
+              const name = `${firstName} ${lastName}`.trim() || lec.email || 'Unknown';
               return {
                 id: lec.user_id || lec.id,
                 name,
@@ -430,7 +433,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         // Fallback: get all college lecturers + college_educator role users
         const { data: collegeLecturers, error: lecError } = await supabase
           .from('college_lecturers')
-          .select('id, first_name, last_name, email, user_id, department, accountStatus')
+          .select('id, first_name, last_name, email, user_id, department, accountStatus, metadata')
           .eq('collegeId', collegeId)
           .eq('accountStatus', 'active')
           .not('user_id', 'is', null);
@@ -447,7 +450,10 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         if (collegeLecturers) {
           for (const lec of collegeLecturers) {
             if (lec.user_id) {
-              const name = `${lec.first_name || ''} ${lec.last_name || ''}`.trim() || lec.email || 'Unknown';
+              const metadata = lec.metadata || {};
+              const firstName = metadata.first_name || '';
+              const lastName = metadata.last_name || '';
+              const name = `${firstName} ${lastName}`.trim() || lec.email || 'Unknown';
               facultyMap.set(lec.user_id, {
                 id: lec.user_id,
                 name,

@@ -486,7 +486,7 @@ export async function handleGetEducatorTypeByUserId(context: AuthenticatedContex
 
     const { data: collegeLecturer } = await supabase
       .from('college_lecturers')
-      .select('id, collegeId, user_id')
+      .select('id, collegeId, user_id, metadata')
       .eq('user_id', userId)
       .maybeSingle();
 

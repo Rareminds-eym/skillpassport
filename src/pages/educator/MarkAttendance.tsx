@@ -105,6 +105,7 @@ const MarkAttendance: React.FC = () => {
   const [selectedSubject, setSelectedSubject] = useState<string>("all");
   const [educatorType, setEducatorType] = useState<'school' | 'college' | null>(null);
   const [collegeId, setCollegeId] = useState<string | null>(null);
+  const [facultyName, setFacultyName] = useState<string>('');
 
   // Get current educator info (school or college)
   useEffect(() => {
@@ -119,13 +120,16 @@ const MarkAttendance: React.FC = () => {
         logger.info('Fetching educator info', { userId: user.id });
 
         try {
-          const educatorData = await apiPost<{
+          const response = await apiPost<{
             type: 'school' | 'college' | null;
             schoolEducator?: { id: string; school_id: string; user_id: string };
-            collegeLecturer?: { id: string; collegeId: string; user_id: string };
+            collegeLecturer?: { id: string; collegeId: string; user_id: string; metadata?: any };
           }>('/educator/actions', {
             action: 'get-educator-type-by-user-id'
           });
+
+          // The apiPost wraps the response in { success, data, error }
+          const educatorData = response?.data || response;
 
           if (educatorData?.type === 'school' && educatorData.schoolEducator) {
             logger.info('Found school educator', { schoolEducator: educatorData.schoolEducator });
@@ -148,6 +152,16 @@ const MarkAttendance: React.FC = () => {
             setEducatorUserId(educatorData.collegeLecturer.user_id);
             setCollegeId(educatorData.collegeLecturer.collegeId);
             setEducatorType('college');
+            
+            // Extract faculty name from metadata
+            const metadata = educatorData.collegeLecturer.metadata;
+            if (metadata && typeof metadata === 'object') {
+              const firstName = metadata.first_name || '';
+              const lastName = metadata.last_name || '';
+              setFacultyName(`${firstName} ${lastName}`.trim() || 'Faculty');
+            } else {
+              setFacultyName('Faculty');
+            }
             return;
           }
 
@@ -238,16 +252,8 @@ const MarkAttendance: React.FC = () => {
         selectedDate
       });
 
-      const existingSessions = response?.sessions || [];
-
-      logger.info('College sessions query result', {
-        data: existingSessions,
-        query: {
-          faculty_id: educatorId,
-          date: selectedDate,
-          college_id: collegeId
-        }
-      });
+      // apiPost wraps response in { success, data, error } format
+      const existingSessions = response?.data?.sessions || response?.sessions || [];
 
       // Convert college sessions to TimetableSlot format
       const collegeSlots: TimetableSlot[] = existingSessions.map((session: any, index: number) => ({
@@ -442,9 +448,11 @@ const MarkAttendance: React.FC = () => {
         semester: parseInt(slot.class_grade?.replace(/\D/g, '') || '1')
       });
 
-      const existingRecords = response?.existingRecords || [];
-      const isSubmitted = response?.isSubmitted || false;
-      const formattedlearners = response?.learners || [];
+      // Unwrap the response - apiPost wraps it in { success, data, error }
+      const data = response?.data || response;
+      const existingRecords = data?.existingRecords || [];
+      const isSubmitted = data?.isSubmitted || false;
+      const formattedlearners = data?.learners || [];
 
       const recordsMap = new Map<string, AttendanceRecord>();
 
@@ -625,6 +633,14 @@ const MarkAttendance: React.FC = () => {
     if (!activeSession || !educatorUserId || !collegeId) return;
 
     try {
+      // Parse class_id to extract department and program info
+      // Format: "Department-ProgramName-Semester-Section"
+      const classParts = activeSession.slot.class_id.split('-');
+      const section = classParts[classParts.length - 1];
+      const semester = classParts[classParts.length - 2];
+      const programName = classParts.slice(1, classParts.length - 2).join('-');
+      const departmentName = classParts[0];
+
       const recordsToInsert = Array.from(activeSession.records.values()).map((record) => ({
         session_id: activeSession.slot.id,
         learner_id: record.learner_id,
@@ -636,12 +652,38 @@ const MarkAttendance: React.FC = () => {
         time_out: null,
         subject_name: activeSession.slot.subject_name,
         faculty_id: educatorId,
+        faculty_name: facultyName || 'Faculty',
         location: activeSession.slot.room_number,
         remarks: record.remarks || null,
         marked_by: educatorUserId,
         marked_at: new Date().toISOString(),
         college_id: collegeId,
+        department_name: departmentName,
+        program_name: programName,
+        semester: parseInt(semester),
+        section: section,
       }));
+
+      // Calculate attendance statistics
+      const presentCount = recordsToInsert.filter(r => r.status === 'present').length;
+      const absentCount = recordsToInsert.filter(r => r.status === 'absent').length;
+      const lateCount = recordsToInsert.filter(r => r.status === 'late').length;
+      const excusedCount = recordsToInsert.filter(r => r.status === 'excused').length;
+      const totalLearners = activeSession.learners.length;
+      const attendancePercentage = totalLearners > 0 
+        ? ((presentCount + lateCount + excusedCount) / totalLearners) * 100 
+        : 0;
+
+      // Session update data
+      const sessionUpdateData = {
+        total_learners: totalLearners,
+        present_count: presentCount,
+        absent_count: absentCount,
+        late_count: lateCount,
+        excused_count: excusedCount,
+        attendance_percentage: attendancePercentage,
+        status: 'completed',
+      };
 
       await apiPost('/educator/actions', {
         action: 'submit-college-attendance',
@@ -650,6 +692,7 @@ const MarkAttendance: React.FC = () => {
         classId: activeSession.slot.class_id,
         educatorId,
         records: recordsToInsert,
+        sessionUpdateData,
         isResubmit: activeSession.isSubmitted
       });
 
@@ -853,7 +896,6 @@ const ScheduleView: React.FC<ScheduleViewProps> = ({
                 type="date"
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
-                max={new Date().toISOString().split("T")[0]}
                 className="pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white"
               />
             </div>

@@ -2,7 +2,9 @@
 import { getContextUser } from '../../../lib/auth';
 import { getServiceClient } from '../../../lib/supabase';
 import { apiSuccess, apiDbError, apiError } from '../../../lib/response';
+import { createLogger } from '../../../lib/logger';
 
+const logger = createLogger('educator-attendance');
 const getSub = (context: AuthenticatedContext) => getServiceClient(context.env as any);
 
 
@@ -481,7 +483,37 @@ export async function handleGetCollegeSchedule(params: any, context: Authenticat
       .order('start_time');
 
     if (sessionsError) return apiDbError(sessionsError, context.request, { startTime });
-    return apiSuccess({ sessions: existingSessions || [] }, context.request, { startTime });
+
+    // Calculate actual learner counts for each session
+    const sessionsWithCounts = await Promise.all((existingSessions || []).map(async (session: any) => {
+      // Get program_id from program_name
+      const { data: programData } = await supabase
+        .from('programs')
+        .select('id')
+        .eq('name', session.program_name)
+        .single();
+
+      let actualLearnerCount = session.total_learners || 0;
+      
+      if (programData?.id) {
+        const { count } = await supabase
+          .from('learners')
+          .select('*', { count: 'exact', head: true })
+          .eq('program_id', programData.id)
+          .eq('semester', session.semester)
+          .eq('section', session.section)
+          .eq('is_deleted', false);
+
+        actualLearnerCount = count || 0;
+      }
+
+      return {
+        ...session,
+        total_learners: actualLearnerCount
+      };
+    }));
+
+    return apiSuccess({ sessions: sessionsWithCounts }, context.request, { startTime });
   } catch (error) {
     return apiDbError(error, context.request, { startTime });
   }
@@ -578,59 +610,67 @@ export async function handleStartCollegeAttendanceSession(params: any, context: 
       .eq('session_id', sessionId)
       .eq('date', selectedDate);
 
-    const classParts = classId.split('-');
-    const secondToLast = classParts[classParts.length - 2];
-    const isOldFormat = !isNaN(parseInt(secondToLast)) && secondToLast.length <= 2;
+    logger.debug('college_existing_records_fetched', {
+      sessionId,
+      count: existingRecords?.length || 0,
+    });
 
-    let program_id: string;
-    const section = classParts[classParts.length - 1];
-    const semesterValue = parseInt(classParts[classParts.length - 2]);
+    // Get session details to find program information
+    const { data: session, error: sessionError } = await supabase
+      .from('college_attendance_sessions')
+      .select('program_name, semester, section')
+      .eq('id', sessionId)
+      .single();
 
-    if (isOldFormat) {
-      const programNameParts = classParts.slice(1, classParts.length - 2);
-      const programName = programNameParts.join('-');
-      const { data: programData } = await supabase
-        .from('programs')
-        .select('id')
-        .eq('name', programName)
-        .maybeSingle();
-      if (!programData) return apiError(400, 'NOT_FOUND', `Program not found: ${programName}`, context.request, { startTime });
-      program_id = programData.id;
-    } else {
-      const programIdParts = classParts.slice(classParts.length - 7, classParts.length - 2);
-      program_id = programIdParts.join('-');
+    if (!session) {
+      logger.error('college_session_not_found', sessionError, { sessionId });
+      return apiError(404, 'NOT_FOUND', 'Session not found', context.request, { startTime });
+    }
+    // Look up program_id from program_name
+    const { data: program, error: programError } = await supabase
+      .from('programs')
+      .select('id')
+      .eq('name', session.program_name)
+      .maybeSingle();
+
+    if (!program) {
+      logger.error('college_program_not_found', programError, {
+        sessionId,
+        programName: session.program_name,
+      });
+      return apiError(404, 'NOT_FOUND', `Program not found: ${session.program_name}`, context.request, { startTime });
     }
 
+    // Now query learners using the correct program_id
     const { data: learners, error: learnersError } = await supabase
       .from('learners')
       .select('id, name, roll_number, grade, section, profilePicture')
       .eq('is_deleted', false)
-      .eq('program_id', program_id)
-      .eq('semester', semesterValue)
-      .eq('section', section)
+      .eq('program_id', program.id)
+      .eq('semester', session.semester)
+      .eq('section', session.section)
       .order('roll_number');
 
-    if (learnersError) return apiDbError(learnersError, context.request, { startTime });
+    if (learnersError) {
+      logger.error('college_learners_fetch_failed', learnersError, { sessionId, programId: program.id });
+      return apiDbError(learnersError, context.request, { startTime });
+    }
 
-    return apiSuccess({
+    const result = {
       existingRecords: existingRecords || [],
       isSubmitted: (existingRecords && existingRecords.length > 0),
       learners: (learners || []).map((s: any) => ({
         id: s.id,
         name: s.name,
         roll_number: s.roll_number || 'N/A',
-        grade: `Semester ${semesterValue}`,
-        section: s.section || section,
+        grade: `Semester ${session.semester}`,
+        section: s.section || session.section,
         profilePicture: s.profilePicture
       }))
-    }, context.request, { startTime });
+    };
+    return apiSuccess(result, context.request, { startTime });
   } catch (error) {
+    logger.error('college_attendance_session_start_exception', error, { sessionId });
     return apiDbError(error, context.request, { startTime });
   }
 }
-
-
-
-
-
-

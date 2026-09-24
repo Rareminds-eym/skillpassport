@@ -238,7 +238,11 @@ const AttendanceDetailsModal = ({
     );
 
     // Get today's records (for selected session) with full learner list
-    const sessionRecords = allRecords.filter(r => r.date === session.date && r.subject === subjectGroup.subject);
+    const sessionRecords = allRecords.filter(r => {
+        const matches = r.sessionId === selectedSessionId;
+        return matches;
+    });
+
     const todaysRecords = classlearners.map((learner) => {
         const record = sessionRecords.find((r) => r.learnerId === learner.id);
         return record || {

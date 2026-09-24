@@ -140,7 +140,17 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const avgAttendance = sessions.length > 0
           ? (sessions.reduce((acc: number, s: any) => acc + (s.attendance_percentage || 0), 0) / sessions.length).toFixed(1)
           : '0';
-        const totallearners = sessions.reduce((acc: number, s: any) => acc + (s.total_learners || 0), 0);
+        
+        // Get unique learner count from attendance records
+        const { data: recordsData } = await supabase
+          .from('college_attendance_records')
+          .select('learner_id')
+          .eq('college_id', collegeId)
+          .gte('date', last30Days);
+        
+        const uniqueLearnerIds = new Set((recordsData || []).map((r: any) => r.learner_id));
+        const totallearners = uniqueLearnerIds.size;
+        
         const totalPresent = sessions.reduce((acc: number, s: any) => acc + (s.present_count || 0), 0);
         const totalAbsent = sessions.reduce((acc: number, s: any) => acc + (s.absent_count || 0), 0);
         const lowAttendanceSessions = sessions.filter((s: any) => (s.attendance_percentage || 0) < 75).length;
@@ -154,6 +164,107 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           totalAbsent,
           lowAttendanceSessions,
         }, context.request, { startTime });
+      }
+
+      // ─────────────────────────────────────────────────
+      // Get department-wise attendance statistics
+      // ─────────────────────────────────────────────────
+      case 'get-department-stats': {
+        const { collegeId } = body;
+
+        const last30Days = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+        const { data, error } = await supabase
+          .from('college_attendance_sessions')
+          .select('department_name, attendance_percentage, status')
+          .eq('college_id', collegeId)
+          .eq('status', 'completed')
+          .gte('date', last30Days);
+
+        if (error) return apiDbError(error, context.request, { startTime });
+
+        // Group by department and calculate average
+        const departmentMap = new Map<string, { total: number; count: number }>();
+        
+        (data || []).forEach((session: any) => {
+          const dept = session.department_name;
+          if (!dept) return;
+          
+          if (!departmentMap.has(dept)) {
+            departmentMap.set(dept, { total: 0, count: 0 });
+          }
+          
+          const stats = departmentMap.get(dept)!;
+          stats.total += session.attendance_percentage || 0;
+          stats.count += 1;
+        });
+
+        // Calculate averages and format for chart
+        const departmentStats = Array.from(departmentMap.entries()).map(([dept, stats]) => ({
+          department: dept,
+          avgAttendance: stats.count > 0 ? Math.round(stats.total / stats.count) : 0,
+        })).sort((a, b) => b.avgAttendance - a.avgAttendance); // Sort by attendance (highest first)
+
+        return apiSuccess({ departmentStats }, context.request, { startTime });
+      }
+
+      // ─────────────────────────────────────────────────
+      // Get weekly attendance trend (always Mon-Sun sequential)
+      // ─────────────────────────────────────────────────
+      case 'get-weekly-trend': {
+        const { collegeId } = body;
+
+        // Always show current week Monday-Sunday
+        const today = new Date();
+        const currentDayOfWeek = today.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+        const mondayOffset = currentDayOfWeek === 0 ? -6 : -(currentDayOfWeek - 1);
+        
+        const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        const weekData = weekDays.map((dayName, index) => {
+          const date = new Date(today);
+          date.setDate(date.getDate() + mondayOffset + index);
+          return {
+            date: date.toISOString().split('T')[0],
+            dayName,
+          };
+        });
+
+        const dateStrings = weekData.map(d => d.date);
+
+        const { data, error } = await supabase
+          .from('college_attendance_sessions')
+          .select('date, attendance_percentage, status')
+          .eq('college_id', collegeId)
+          .in('date', dateStrings);
+
+        if (error) return apiDbError(error, context.request, { startTime });
+
+        // Group by date and calculate average
+        const dateMap = new Map<string, { total: number; count: number }>();
+        
+        (data || []).forEach((session: any) => {
+          if (session.status !== 'completed') return;
+          
+          if (!dateMap.has(session.date)) {
+            dateMap.set(session.date, { total: 0, count: 0 });
+          }
+          
+          const stats = dateMap.get(session.date)!;
+          stats.total += session.attendance_percentage || 0;
+          stats.count += 1;
+        });
+
+        // Build trend data in Mon-Sun order
+        const weeklyTrend = weekData.map(({ date, dayName }) => {
+          const stats = dateMap.get(date);
+          return {
+            date,
+            dayName,
+            avgAttendance: stats && stats.count > 0 ? Math.round(stats.total / stats.count) : 0,
+          };
+        });
+
+        return apiSuccess({ weeklyTrend }, context.request, { startTime });
       }
 
       // ─────────────────────────────────────────────────
@@ -181,7 +292,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
               .eq('status', 'active')
               .not('section', 'is', null),
             supabase.from('college_lecturers')
-              .select('id,first_name,last_name,email,department,"collegeId"')
+              .select('id,first_name,last_name,email,department,"collegeId",metadata')
               .eq('"accountStatus"', 'active')
               .eq('"collegeId"', collegeId),
             supabase.from('college_courses')
@@ -201,7 +312,10 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const uniqueSections = [...new Set((sectionsResult.data || []).map((s: any) => s.section))].sort();
 
         const facultyOptions = (facultyResult.data || []).map((f: any) => {
-          const displayName = f.first_name && f.last_name ? `${f.first_name} ${f.last_name}` : f.email;
+          const metadata = f.metadata || {};
+          const firstName = metadata.first_name || '';
+          const lastName = metadata.last_name || '';
+          const displayName = firstName && lastName ? `${firstName} ${lastName}` : f.email;
           return { value: f.id, label: `${displayName} (${f.department || 'No Dept'})` };
         });
 
@@ -246,6 +360,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           facultyName: record.faculty_name,
           location: record.location,
           remarks: record.remarks,
+          sessionId: record.session_id,
         }));
 
         return apiSuccess({ records }, context.request, { startTime });
@@ -314,6 +429,52 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       }
 
       // ─────────────────────────────────────────────────
+      // Get learners for a specific subject group
+      // ─────────────────────────────────────────────────
+      case 'get-subject-learners': {
+        const { department, course, semester, section } = body;
+
+        // First, get program_id from programs table
+        const { data: programData, error: programError } = await supabase
+          .from('programs')
+          .select('id')
+          .eq('name', course)
+          .maybeSingle();
+
+        if (programError) return apiDbError(programError, context.request, { startTime });
+
+        if (!programData) {
+          return apiSuccess({ learners: [] }, context.request, { startTime });
+        }
+
+        const programId = programData.id;
+
+        // Fetch learners matching the criteria
+        const { data: learnersData, error: learnersError } = await supabase
+          .from('learners')
+          .select('id, name, roll_number, program_id, semester, section')
+          .eq('is_deleted', false)
+          .eq('program_id', programId)
+          .eq('semester', parseInt(semester))
+          .eq('section', section)
+          .order('roll_number');
+
+        if (learnersError) return apiDbError(learnersError, context.request, { startTime });
+
+        const learners = (learnersData || []).map((learner: any) => ({
+          id: learner.id,
+          name: learner.name,
+          rollNumber: learner.roll_number,
+          department: department,
+          course: course,
+          semester: learner.semester,
+          section: learner.section,
+        }));
+
+        return apiSuccess({ learners }, context.request, { startTime });
+      }
+
+      // ─────────────────────────────────────────────────
       // Delete sessions for a subject group
       // ─────────────────────────────────────────────────
       case 'delete-sessions': {
@@ -341,7 +502,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
         const { data, error } = await supabase
           .from('college_lecturers')
-          .select('collegeId, first_name, last_name')
+          .select('collegeId, first_name, last_name, metadata')
           .eq('id', facultyId)
           .single();
 
@@ -350,12 +511,17 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           return apiSuccess({ faculty: null }, context.request, { startTime });
         }
 
+        const metadata = data.metadata || {};
+        const firstName = metadata.first_name || '';
+        const lastName = metadata.last_name || '';
+        const fullName = `${firstName} ${lastName}`.trim() || 'Unknown';
+
         return apiSuccess({
           faculty: {
             collegeId: data.collegeId,
-            firstName: data.first_name,
-            lastName: data.last_name,
-            fullName: `${data.first_name} ${data.last_name}`,
+            firstName,
+            lastName,
+            fullName,
           },
         }, context.request, { startTime });
       }

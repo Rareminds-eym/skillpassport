@@ -317,6 +317,7 @@ const AttendanceTracking: React.FC = () => {
   // Dynamic data states
   const [subjectGroups, setSubjectGroups] = useState<SubjectGroup[]>([]);
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
+  const [learners, setLearners] = useState<AttendanceLearner[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [analytics, setAnalytics] = useState({
@@ -328,6 +329,8 @@ const AttendanceTracking: React.FC = () => {
     totalAbsent: 0,
     lowAttendanceSessions: 0,
   });
+  const [departmentStats, setDepartmentStats] = useState<Array<{ department: string; avgAttendance: number }>>([]);
+  const [weeklyTrend, setWeeklyTrend] = useState<Array<{ date: string; dayName: string; avgAttendance: number }>>([]);
 
   // Filter options from API
   const [filterOptions, setFilterOptions] = useState({
@@ -412,6 +415,36 @@ const AttendanceTracking: React.FC = () => {
     }
   };
 
+  const fetchDepartmentStats = async () => {
+    if (!collegeId) return;
+    
+    try {
+      const response: any = await apiPost('/college-admin/attendance', {
+        action: 'get-department-stats',
+        collegeId,
+      });
+
+      setDepartmentStats(response.data?.departmentStats || []);
+    } catch (err: any) {
+      logger.error('Failed to fetch department stats:', err as Error);
+    }
+  };
+
+  const fetchWeeklyTrend = async () => {
+    if (!collegeId) return;
+    
+    try {
+      const response: any = await apiPost('/college-admin/attendance', {
+        action: 'get-weekly-trend',
+        collegeId,
+      });
+
+      setWeeklyTrend(response.data?.weeklyTrend || []);
+    } catch (err: any) {
+      logger.error('Failed to fetch weekly trend:', err as Error);
+    }
+  };
+
   const fetchFilterOptions = async () => {
     try {
       if (!collegeId) return;
@@ -470,26 +503,18 @@ const AttendanceTracking: React.FC = () => {
   const loadDepartments = async () => {
     try {
       const result = await curriculumService.getDepartments();
-      if (result.success) {
-        setDepartmentsData(result.data || []);
-      } else {
-        toast.error('Failed to load departments');
-      }
+      setDepartmentsData(result || []);
     } catch (error) {
       logger.error('Error loading departments:', error as Error);
       toast.error('Failed to load departments');
+      setDepartmentsData([]);
     }
   };
 
   const loadPrograms = async (departmentId: string) => {
     try {
       const result = await curriculumService.getPrograms(departmentId);
-      if (result.success) {
-        setProgramsData(result.data || []);
-      } else {
-        toast.error('Failed to load programs');
-        setProgramsData([]);
-      }
+      setProgramsData(result || []);
     } catch (error) {
       logger.error('Error loading programs:', error as Error);
       toast.error('Failed to load programs');
@@ -500,12 +525,7 @@ const AttendanceTracking: React.FC = () => {
   const loadSemesters = async (programId: string) => {
     try {
       const result = await curriculumService.getSemesters(programId);
-      if (result.success) {
-        setSemestersData(result.data || []);
-      } else {
-        toast.error('Failed to load semesters');
-        setSemestersData([]);
-      }
+      setSemestersData(result || []);
     } catch (error) {
       logger.error('Error loading semesters:', error as Error);
       toast.error('Failed to load semesters');
@@ -516,12 +536,7 @@ const AttendanceTracking: React.FC = () => {
   const loadCourses = async (programId: string, semester: number) => {
     try {
       const result = await curriculumService.getCourses(programId, semester);
-      if (result.success) {
-        setCoursesData(result.data || []);
-      } else {
-        toast.error('Failed to load courses');
-        setCoursesData([]);
-      }
+      setCoursesData(result || []);
     } catch (error) {
       logger.error('Error loading courses:', error as Error);
       toast.error('Failed to load courses');
@@ -558,6 +573,8 @@ const AttendanceTracking: React.FC = () => {
     if (collegeId) {
       fetchAnalytics();
       fetchFilterOptions();
+      fetchDepartmentStats();
+      fetchWeeklyTrend();
       loadDepartments();
     }
   }, [collegeId]);
@@ -667,7 +684,8 @@ const AttendanceTracking: React.FC = () => {
 
   const handleViewDetails = async (subjectGroup: SubjectGroup) => {
     try {
-      const response: any = await apiPost('/college-admin/attendance', {
+      // Fetch sessions
+      const sessionsResponse: any = await apiPost('/college-admin/attendance', {
         action: 'get-sessions',
         subjectGroup: {
           subject: subjectGroup.subject,
@@ -678,17 +696,27 @@ const AttendanceTracking: React.FC = () => {
         },
       });
 
-      if (!response.data?.sessions) {
+      if (!sessionsResponse.data?.sessions) {
         alert('Error loading session details');
         return;
       }
 
+      // Fetch learners for this subject group
+      const learnersResponse: any = await apiPost('/college-admin/attendance', {
+        action: 'get-subject-learners',
+        department: subjectGroup.department,
+        course: subjectGroup.course,
+        semester: subjectGroup.semester,
+        section: subjectGroup.section,
+      });
+
       const updatedSubjectGroup = {
         ...subjectGroup,
-        sessions: response.data.sessions,
+        sessions: sessionsResponse.data.sessions,
       };
 
       setSelectedSubjectGroup(updatedSubjectGroup);
+      setLearners(learnersResponse.data?.learners || []);
       
       await fetchAttendanceRecords(subjectGroup.subject);
       
@@ -993,12 +1021,12 @@ const AttendanceTracking: React.FC = () => {
     }
   };
 
-  // Chart data
+  // Chart data - Uses real data from DB, backend guarantees Mon-Sun sequential order
   const attendanceTrendData = {
     series: [
       {
         name: "Attendance %",
-        data: [85, 82, 87, 83, 86, 84, 88],
+        data: weeklyTrend.length === 7 ? weeklyTrend.map(d => d.avgAttendance) : [0, 0, 0, 0, 0, 0, 0],
       },
     ],
     options: {
@@ -1011,7 +1039,7 @@ const AttendanceTracking: React.FC = () => {
       colors: ["#4f46e5"],
       dataLabels: { enabled: false },
       xaxis: {
-        categories: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+        categories: weeklyTrend.length === 7 ? weeklyTrend.map(d => d.dayName) : ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
         labels: { style: { colors: "#6b7280" } },
       },
       yaxis: {
@@ -1023,27 +1051,32 @@ const AttendanceTracking: React.FC = () => {
     },
   };
 
-  const departmentComparisonData = {
-    series: [
-      {
-        name: "Attendance %",
-        data: [88, 82, 85, 79, 86],
+  const departmentComparisonData = useMemo(() => {
+    const departments = departmentStats.map(d => d.department);
+    const attendanceValues = departmentStats.map(d => d.avgAttendance);
+    
+    return {
+      series: [
+        {
+          name: "Attendance %",
+          data: attendanceValues.length > 0 ? attendanceValues : [0],
+        },
+      ],
+      options: {
+        chart: { type: "bar" as const, toolbar: { show: false } },
+        plotOptions: { bar: { horizontal: true, borderRadius: 8 } },
+        colors: ["#4f46e5"],
+        dataLabels: { enabled: false },
+        xaxis: {
+          categories: departments.length > 0 ? departments : ['No Data'],
+          labels: { style: { colors: "#6b7280" } },
+        },
+        yaxis: { labels: { style: { colors: "#6b7280" } } },
+        grid: { borderColor: "#f1f5f9" },
+        tooltip: { theme: "light" },
       },
-    ],
-    options: {
-      chart: { type: "bar" as const, toolbar: { show: false } },
-      plotOptions: { bar: { horizontal: true, borderRadius: 8 } },
-      colors: ["#4f46e5"],
-      dataLabels: { enabled: false },
-      xaxis: {
-        categories: ["CSE", "ECE", "MECH", "CIVIL", "EEE"],
-        labels: { style: { colors: "#6b7280" } },
-      },
-      yaxis: { labels: { style: { colors: "#6b7280" } } },
-      grid: { borderColor: "#f1f5f9" },
-      tooltip: { theme: "light" },
-    },
-  };
+    };
+  }, [departmentStats]);
 
   const totalFilters =
     filters.departments.length +
@@ -1567,7 +1600,7 @@ const AttendanceTracking: React.FC = () => {
         records={attendanceRecords.filter(
           (r) => r.subject === selectedSubjectGroup?.subject
         )}
-        learners={[]}
+        learners={learners}
         allRecords={attendanceRecords}
         onViewlearnerHistory={(learner) => {
           // Convert ProfileLearner to AttendanceLearner

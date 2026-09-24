@@ -77,7 +77,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           : [{ name: "Classes", path: "/educator/classes", icon: AcademicCapIcon }]
         ),
         { name: "TimeTable", path: "/educator/my-timetable", icon: AcademicCapIcon, disabled: true },
-        { name: "Mark Attendance", path: "/educator/mark-attendance", icon: ClipboardDocumentCheckIcon, disabled: true },
+        { name: "Mark Attendance", path: "/educator/mark-attendance", icon: ClipboardDocumentCheckIcon },
         { name: "Assessment Results", path: "/educator/assessment-results", icon: ClipboardDocumentListIcon },
         // { name: "Courses", path: "/educator/courses", icon: BookOpenIcon },
         { name: "Courses", path: "/educator/browse-courses", icon: BookOpenIcon },
