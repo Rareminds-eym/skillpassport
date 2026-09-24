@@ -31,7 +31,9 @@ export interface VideoEntry {
 
   // Storage
   videoUrl: string;           // R2 key
-  thumbnailColor: string;     // Hex color code
+  thumbnailColor: string;     // Hex color code (deprecated, kept for backward compatibility)
+  thumbnailType?: string;     // 'color' | 'logo' | 'upload' | 'frame'
+  thumbnailValue?: string;    // hex code, image URL, timestamp, or 'rm-logo'
 
   // Properties
   duration: string | null;    // Format: "4:02"
@@ -95,6 +97,8 @@ export interface UpdateVideoRequest {
   description?: string;
   tags?: string[];
   thumbnailColor?: string;
+  thumbnailType?: string;     // 'color' | 'logo' | 'upload' | 'frame'
+  thumbnailValue?: string;    // hex code, image URL, timestamp, or 'rm-logo'
   trimStart?: number;
   trimEnd?: number;
   showOnPublic?: boolean;

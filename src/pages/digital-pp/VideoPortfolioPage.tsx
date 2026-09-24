@@ -1,7 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Upload, Video, Edit, Trash2, Eye, Clock, MoreVertical, Loader2, ArrowRight } from 'lucide-react';
+import { Upload, Video, Edit, Trash2, Settings, Play, Loader2, ArrowRight, X } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
+import VideoPortfolioLoader from '../../components/VideoPortfolioLoader';
 import { FeatureGate } from '@/features/subscription';
 import VideoEditDrawer from './VideoEditDrawer';
 import {
@@ -17,8 +19,37 @@ import {
 } from '@/features/digital-portfolio';
 import { useUser } from '@/shared/model/authStore';
 import { useLearnerDataByEmail } from '@/entities/learner/model/useLearnerDataByEmail';
+import { getVideoPortfolioUrl } from '@/shared/api/storageApiService';
+import { ssoClient } from '@/shared/api/ssoClient';
 
 const MAX_VIDEOS = 5;
+
+// Helper function to get thumbnail style based on type
+const getThumbnailStyle = (video: VideoEntryType): React.CSSProperties => {
+  const thumbType = (video as any).thumbnailType || 'color';
+  const thumbValue = (video as any).thumbnailValue || video.thumbnailColor || '#6B7280';
+
+  if (thumbType === 'color') {
+    return { backgroundColor: thumbValue };
+  } else if (thumbType === 'logo') {
+    return {
+      backgroundColor: '#fff',
+      backgroundImage: `url(/RMLogo.webp)`,
+      backgroundSize: 'contain',
+      backgroundPosition: 'center',
+      backgroundRepeat: 'no-repeat',
+    };
+  } else if (thumbType === 'upload' || thumbType === 'frame') {
+    return {
+      backgroundColor: '#000',
+      backgroundImage: `url(${thumbValue})`,
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+    };
+  }
+
+  return { backgroundColor: thumbValue || '#6B7280' };
+};
 
 // Helper function to get video duration
 const getVideoDuration = (file: File): Promise<string> => {
@@ -29,16 +60,13 @@ const getVideoDuration = (file: File): Promise<string> => {
     video.onloadedmetadata = () => {
       window.URL.revokeObjectURL(video.src);
       const duration = video.duration;
-
-      // Format as MM:SS
       const minutes = Math.floor(duration / 60);
       const seconds = Math.floor(duration % 60);
-      const formatted = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-
-      resolve(formatted);
+      resolve(`${minutes}:${seconds.toString().padStart(2, '0')}`);
     };
 
     video.onerror = () => {
+      window.URL.revokeObjectURL(video.src);
       reject(new Error('Failed to load video metadata'));
     };
 
@@ -46,57 +74,54 @@ const getVideoDuration = (file: File): Promise<string> => {
   });
 };
 
-// Helper function to format dates with time
-const formatVideoDate = (dateString: string): string => {
-  // Handle missing or invalid date
-  if (!dateString) {
-    console.warn('Missing createdAt date for video');
-    return 'Just uploaded';
-  }
+// Helper function to get relative time (e.g., "2 hours ago", "3 days ago")
+const getRelativeTime = (date: string | Date): string => {
+  const now = new Date();
+  const past = new Date(date);
+  const diffInMs = now.getTime() - past.getTime();
+  const diffInSeconds = Math.floor(diffInMs / 1000);
+  const diffInMinutes = Math.floor(diffInSeconds / 60);
+  const diffInHours = Math.floor(diffInMinutes / 60);
+  const diffInDays = Math.floor(diffInHours / 24);
+  const diffInWeeks = Math.floor(diffInDays / 7);
+  const diffInMonths = Math.floor(diffInDays / 30);
+  const diffInYears = Math.floor(diffInDays / 365);
 
-  try {
-    const date = new Date(dateString);
-
-    // Check if date is valid
-    if (isNaN(date.getTime())) {
-      console.warn('Invalid createdAt date:', dateString);
-      return 'Just uploaded';
-    }
-
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / (1000 * 60));
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-    // For very recent uploads, show relative time
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins} min ago`;
-    if (diffHours < 24) return `${diffHours} hrs ago`;
-    if (diffDays === 1) return 'Yesterday';
-    if (diffDays < 7) return `${diffDays} days ago`;
-
-    // For older uploads, show full date and time
-    return date.toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
-    });
-  } catch (error) {
-    console.error('Error formatting date:', dateString, error);
-    return 'Just uploaded';
+  if (diffInSeconds < 60) {
+    return 'just now';
+  } else if (diffInMinutes < 60) {
+    return `${diffInMinutes} ${diffInMinutes === 1 ? 'minute' : 'minutes'} ago`;
+  } else if (diffInHours < 24) {
+    return `${diffInHours} ${diffInHours === 1 ? 'hour' : 'hours'} ago`;
+  } else if (diffInDays < 7) {
+    return `${diffInDays} ${diffInDays === 1 ? 'day' : 'days'} ago`;
+  } else if (diffInWeeks < 4) {
+    return `${diffInWeeks} ${diffInWeeks === 1 ? 'week' : 'weeks'} ago`;
+  } else if (diffInMonths < 12) {
+    return `${diffInMonths} ${diffInMonths === 1 ? 'month' : 'months'} ago`;
+  } else {
+    return `${diffInYears} ${diffInYears === 1 ? 'year' : 'years'} ago`;
   }
 };
 
+function VideoPortfolioPage() {
+  return (
+    <FeatureGate featureKey="video_portfolio">
+      <VideoPortfolioPageContent />
+    </FeatureGate>
+  );
+}
+
 const VideoPortfolioPageContent: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'manage' | 'preview'>('manage');
   const [selectedVideo, setSelectedVideo] = useState<VideoEntryType | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [currentPlayingVideo, setCurrentPlayingVideo] = useState<VideoEntryType | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [loadingVideo, setLoadingVideo] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const navigate = useNavigate();
 
   // Get user and learner data
   const user = useUser();
@@ -119,18 +144,6 @@ const VideoPortfolioPageContent: React.FC = () => {
   const deleteVideo = useVideoPortfolioStore(state => state.deleteVideo);
   const clearError = useVideoPortfolioStore(state => state.clearError);
 
-  // Debug: Log video data
-  useEffect(() => {
-    if (videos && videos.length > 0) {
-      console.log('Video data received:', videos.map(v => ({
-        id: v.id,
-        title: v.title,
-        createdAt: v.createdAt,
-        duration: v.duration
-      })));
-    }
-  }, [videos]);
-
   // Fetch videos on mount when learnerId is available
   useEffect(() => {
     if (learnerId && !learnerLoading) {
@@ -148,6 +161,71 @@ const VideoPortfolioPageContent: React.FC = () => {
       clearError();
     }
   }, [error, clearError]);
+
+  // Filter only published videos for display
+  const publishedVideos = videos.filter(v => v.showOnPublic && v.approvalStatus === 'approved');
+
+  // Set first published video as current playing video on mount
+  useEffect(() => {
+    if (publishedVideos.length > 0 && !currentPlayingVideo) {
+      setCurrentPlayingVideo(publishedVideos[0]);
+    }
+  }, [publishedVideos.length]);
+
+  // Load video when current playing video changes
+  useEffect(() => {
+    if (currentPlayingVideo) {
+      loadVideo(currentPlayingVideo);
+    } else {
+      // Clear video URL when no video is playing
+      if (videoUrl && videoUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(videoUrl);
+      }
+      setVideoUrl(null);
+    }
+  }, [currentPlayingVideo?.id]);
+
+  // Cleanup blob URL on unmount
+  useEffect(() => {
+    return () => {
+      if (videoUrl && videoUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(videoUrl);
+      }
+    };
+  }, [videoUrl]);
+
+  const loadVideo = async (video: VideoEntryType) => {
+    if (!video?.videoUrl) return;
+
+    setLoadingVideo(true);
+    try {
+      const url = getVideoPortfolioUrl(video.videoUrl, 'inline');
+      const response = await ssoClient.fetch(url, {
+        method: 'GET',
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to load video: ${response.status} ${response.statusText}`);
+      }
+
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      setVideoUrl(blobUrl);
+    } catch (error) {
+      console.error('Failed to load video:', error);
+      toast.error('Failed to load video');
+    } finally {
+      setLoadingVideo(false);
+    }
+  };
+
+  const handleVideoClick = (video: VideoEntryType) => {
+    // Revoke old blob URL
+    if (videoUrl && videoUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(videoUrl);
+    }
+    setCurrentPlayingVideo(video);
+  };
 
   const handleBrowseFiles = () => {
     fileInputRef.current?.click();
@@ -204,19 +282,18 @@ const VideoPortfolioPageContent: React.FC = () => {
         console.log('Video duration calculated:', duration);
       } catch (err) {
         console.warn('Failed to calculate video duration:', err);
-        // Continue without duration
       }
 
       const { id } = await uploadAndCreateVideo(
         file,
         {
           learnerId,
-          title: file.name.replace(/\.[^/.]+$/, ''), // Remove extension
+          title: file.name.replace(/\.[^/.]+$/, ''),
           description: '',
           tags: [],
           thumbnailColor: '#6B7280',
           showOnPublic: false,
-          duration, // Pass calculated duration
+          duration,
         },
         userName
       );
@@ -229,9 +306,11 @@ const VideoPortfolioPageContent: React.FC = () => {
         setSelectedVideo(newVideo);
         setIsDrawerOpen(true);
       }
+
+      // Close manage modal after upload
+      setIsManageModalOpen(false);
     } catch (err: any) {
       console.error('Upload failed:', err);
-      // Error toast already shown by store
     }
   };
 
@@ -241,186 +320,37 @@ const VideoPortfolioPageContent: React.FC = () => {
   };
 
   const handleDeleteVideo = async (videoId: string) => {
-    const video = videos.find(v => v.id === videoId);
-    if (video && window.confirm(`Delete "${video.title}"? This action cannot be undone.`)) {
-      try {
-        await deleteVideo(videoId);
-        toast.success('Video deleted successfully');
+    if (!window.confirm('Are you sure you want to delete this video? This action cannot be undone.')) {
+      return;
+    }
 
-        // Close drawer if the deleted video was being edited
-        if (selectedVideo?.id === videoId) {
-          setIsDrawerOpen(false);
-          setSelectedVideo(null);
-        }
-      } catch (err: any) {
-        console.error('Delete failed:', err);
-        // Error toast already shown by store
-      }
+    try {
+      await deleteVideo(videoId);
+      toast.success('Video deleted successfully');
+    } catch (err: any) {
+      console.error('Delete failed:', err);
+      toast.error(err.message || 'Failed to delete video');
     }
   };
 
-  const handleSaveVideo = () => {
-    // Video is already updated via the drawer's direct store calls
+  const handleDrawerClose = () => {
     setIsDrawerOpen(false);
     setSelectedVideo(null);
-  };
-
-  const handleCloseDrawer = () => {
-    setIsDrawerOpen(false);
-    setSelectedVideo(null);
-  };
-
-  const getStatusBadge = (status: VideoEntryType['status']) => {
-    switch (status) {
-      case 'VERIFIED':
-        return (
-          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
-            ● VERIFIED
-          </span>
-        );
-      case 'PROCESSING':
-        return (
-          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
-            ● PROCESSING
-          </span>
-        );
-      case 'DRAFT':
-        return (
-          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 border border-yellow-300 dark:border-yellow-700">
-            DRAFT
-          </span>
-        );
-      case 'REJECTED':
-        return (
-          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 border border-red-300 dark:border-red-700">
-            ✖ REJECTED
-          </span>
-        );
-      default:
-        return null;
+    // Refresh videos after editing
+    if (learnerId) {
+      fetchVideos(learnerId);
     }
   };
 
-  const filteredVideos = activeTab === 'preview'
-    ? videos.filter(v => v.showOnPublic && v.approvalStatus === 'approved')
-    : videos;
-
-  // Full-page loader for initial load
-  if ((loading || learnerLoading) && videos.length === 0) {
-    return (
-      <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-indigo-950 dark:to-gray-900">
-        {/* Animated Ripple Background */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <motion.div
-            className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-400/10 dark:bg-indigo-500/10 rounded-full blur-3xl"
-            animate={{
-              scale: [1, 1.2, 1],
-              opacity: [0.3, 0.5, 0.3],
-            }}
-            transition={{
-              duration: 8,
-              repeat: Infinity,
-              ease: "easeInOut",
-            }}
-          />
-          <motion.div
-            className="absolute top-1/3 right-1/4 w-80 h-80 bg-purple-400/10 dark:bg-purple-500/10 rounded-full blur-3xl"
-            animate={{
-              scale: [1.2, 1, 1.2],
-              opacity: [0.4, 0.6, 0.4],
-            }}
-            transition={{
-              duration: 10,
-              repeat: Infinity,
-              ease: "easeInOut",
-              delay: 1,
-            }}
-          />
-          <motion.div
-            className="absolute bottom-1/4 left-1/3 w-72 h-72 bg-blue-400/10 dark:bg-blue-500/10 rounded-full blur-3xl"
-            animate={{
-              scale: [1, 1.3, 1],
-              opacity: [0.3, 0.5, 0.3],
-            }}
-            transition={{
-              duration: 12,
-              repeat: Infinity,
-              ease: "easeInOut",
-              delay: 2,
-            }}
-          />
-        </div>
-
-        {/* Loader Content */}
-        <div className="relative z-10 flex items-center justify-center min-h-screen">
-          <div className="text-center">
-            {/* Animated Logo with Ripple Effect */}
-            <div className="relative mb-6 inline-block">
-              <motion.div
-                animate={{
-                  scale: [1, 1.05, 1],
-                  opacity: [0.8, 1, 0.8],
-                }}
-                transition={{
-                  duration: 1.5,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                }}
-                className="w-24 h-24 rounded-full bg-white shadow-2xl flex items-center justify-center relative z-10 p-4"
-              >
-                <img src="/RMLogo.webp" alt="RareMinds" className="w-full h-full object-contain" />
-              </motion.div>
-              <motion.div
-                animate={{
-                  scale: [1, 1.3, 1],
-                  opacity: [0.3, 0, 0.3],
-                }}
-                transition={{
-                  duration: 1.5,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                }}
-                className="absolute inset-0 w-24 h-24 rounded-full bg-gradient-to-br from-indigo-500 to-blue-600 dark:from-indigo-400 dark:to-blue-500"
-              />
-            </div>
-
-            {/* Loading Text */}
-            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-              Video Portfolio
-            </h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-              Loading your videos...
-            </p>
-
-            {/* Animated Dots */}
-            <div className="flex gap-2 justify-center">
-              {[0, 1, 2].map((i) => (
-                <motion.div
-                  key={i}
-                  animate={{
-                    y: [0, -8, 0],
-                  }}
-                  transition={{
-                    duration: 0.5,
-                    repeat: Infinity,
-                    delay: i * 0.1,
-                    ease: "easeInOut",
-                  }}
-                  className="w-2.5 h-2.5 rounded-full bg-indigo-600 dark:bg-indigo-400"
-                />
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+  // Full-page loader for initial load - Show loader while fetching OR while learner data is loading
+  if ((loading && videos.length === 0) || learnerLoading) {
+    return <VideoPortfolioLoader />;
   }
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-indigo-950 dark:to-gray-900">
       {/* Animated Ripple Background */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {/* Ripple circles */}
         <motion.div
           className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-400/10 dark:bg-indigo-500/10 rounded-full blur-3xl"
           animate={{
@@ -433,310 +363,232 @@ const VideoPortfolioPageContent: React.FC = () => {
             ease: "easeInOut",
           }}
         />
-        <motion.div
-          className="absolute top-1/3 right-1/4 w-80 h-80 bg-purple-400/10 dark:bg-purple-500/10 rounded-full blur-3xl"
-          animate={{
-            scale: [1.2, 1, 1.2],
-            opacity: [0.4, 0.6, 0.4],
-          }}
-          transition={{
-            duration: 10,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: 1,
-          }}
-        />
-        <motion.div
-          className="absolute bottom-1/4 left-1/3 w-72 h-72 bg-blue-400/10 dark:bg-blue-500/10 rounded-full blur-3xl"
-          animate={{
-            scale: [1, 1.3, 1],
-            opacity: [0.3, 0.5, 0.3],
-          }}
-          transition={{
-            duration: 12,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: 2,
-          }}
-        />
       </div>
 
       <div className="relative z-10 max-w-7xl mx-auto px-6 py-8">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-            Video Portfolio
-          </h1>
-          <p className="text-sm text-gray-600 dark:text-gray-400">
-            {videoCount} of {maxAllowed} videos used
-          </p>
-
-          {/* Tabs */}
-          <div className="flex items-center space-x-1 mt-6 border-b border-gray-200 dark:border-gray-700">
-            <button
-              onClick={() => setActiveTab('manage')}
-              className={`px-4 py-2 font-medium text-sm transition-colors relative ${activeTab === 'manage'
-                ? 'text-gray-900 dark:text-white'
-                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-                }`}
-            >
-              Manage
-              {activeTab === 'manage' && (
-                <motion.div
-                  layoutId="activeTab"
-                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-900 dark:bg-white"
-                  transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                />
-              )}
-            </button>
-            <button
-              onClick={() => setActiveTab('preview')}
-              className={`px-4 py-2 font-medium text-sm transition-colors relative ${activeTab === 'preview'
-                ? 'text-gray-900 dark:text-white'
-                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-                }`}
-            >
-              Public Preview
-              {activeTab === 'preview' && (
-                <motion.div
-                  layoutId="activeTab"
-                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-900 dark:bg-white"
-                  transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                />
-              )}
-            </button>
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+              Video Portfolio
+            </h1>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              {publishedVideos.length} published {publishedVideos.length === 1 ? 'video' : 'videos'}
+            </p>
           </div>
+
+          {/* Settings Icon */}
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => navigate('/learner/digital-portfolio/video/manage')}
+            className="p-3 bg-white dark:bg-gray-800 rounded-xl shadow-lg hover:shadow-xl transition-all border border-gray-200 dark:border-gray-700"
+            title="Manage Videos"
+          >
+            <Settings className="w-6 h-6 text-gray-700 dark:text-gray-300" />
+          </motion.button>
         </div>
 
-        {/* Upload Area */}
-        {activeTab === 'manage' && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-8"
-          >
-            {/* Upload Progress Bar */}
-            {uploadProgress !== null && (
-              <div className="mb-4 bg-white dark:bg-gray-800 rounded-lg p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Uploading video...
-                  </span>
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    {uploadProgress}%
-                  </span>
-                </div>
-                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                  <div
-                    className="bg-[#2D3E5F] h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${uploadProgress}%` }}
-                  />
-                </div>
-              </div>
-            )}
-
-            <div
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-              className={`border-2 border-dashed rounded-lg p-8 transition-all ${isDragging
-                ? 'border-[#2D3E5F] bg-[#2D3E5F]/5 dark:bg-[#2D3E5F]/10'
-                : !canUploadMore || loading
-                  ? 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 opacity-50 cursor-not-allowed'
-                  : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 hover:border-[#2D3E5F] dark:hover:border-[#2D3E5F]'
-                }`}
-            >
-              <div className="flex flex-col items-center justify-center text-center">
-                <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center mb-3">
-                  <Upload className="w-6 h-6 text-gray-500 dark:text-gray-400" />
-                </div>
-                <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-1">
-                  Add a new video
-                </h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                  Drag a file here, or browse from your device.
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-500 mb-4">
-                  MP4, MOV, AVI, WebM • Max 100 MB
-                </p>
-                <motion.div
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <button
-                    onClick={handleBrowseFiles}
-                    disabled={!canUploadMore || loading}
-                    className="inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 dark:from-indigo-500 dark:to-blue-500 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all group relative overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <span className="relative z-10 flex items-center">
-                      {loading ? 'Uploading...' : 'Browse files'}
-                      {!loading && <Upload className="w-5 h-5 ml-2" />}
-                    </span>
-                    {!loading && (
-                      <span className="absolute top-0 left-[-40px] h-full w-0 bg-gradient-to-r from-blue-700 to-indigo-700 dark:from-blue-600 dark:to-indigo-600 transform skew-x-[45deg] transition-all duration-700 group-hover:w-[160%] -z-0"></span>
-                    )}
-                  </button>
-                </motion.div>
-                {!canUploadMore && (
-                  <p className="text-xs text-red-600 dark:text-red-400 mt-2">
-                    Maximum {maxAllowed} videos reached
-                  </p>
-                )}
-              </div>
+        {/* Main Content */}
+        {publishedVideos.length === 0 ? (
+          // Empty State
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-16 text-center shadow-xl">
+            <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900/30 dark:to-purple-900/30 flex items-center justify-center">
+              <Video className="w-10 h-10 text-indigo-600 dark:text-indigo-400" />
             </div>
-          </motion.div>
-        )}
-
-        {/* Video Entries */}
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Your entries
-            </h2>
-            <span className="text-sm text-gray-500 dark:text-gray-400">
-              {filteredVideos.length} {filteredVideos.length === 1 ? 'video' : 'videos'}
-            </span>
+            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
+              Publish Your Portfolio
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-8 max-w-md mx-auto">
+              Upload your first video and publish it to showcase your skills and projects to the world
+            </p>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => navigate('/learner/digital-portfolio/video/manage')}
+              className="inline-flex items-center justify-center px-8 py-4 bg-gradient-to-r from-indigo-600 to-blue-600 dark:from-indigo-500 dark:to-blue-500 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all group relative overflow-hidden"
+            >
+              <span className="relative z-10 flex items-center">
+                Upload Your First Video
+                <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
+              </span>
+              <span className="absolute top-0 left-[-40px] h-full w-0 bg-gradient-to-r from-blue-700 to-indigo-700 dark:from-blue-600 dark:to-indigo-600 transform skew-x-[45deg] transition-all duration-700 group-hover:w-[160%] -z-0"></span>
+            </motion.button>
           </div>
-
-          {/* Empty state */}
-          {filteredVideos.length === 0 ? (
-            <div className="bg-white dark:bg-gray-800 rounded-lg p-12 text-center">
-              <Video className="w-12 h-12 mx-auto mb-3 text-gray-400 dark:text-gray-500" />
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                {activeTab === 'preview' ? 'No public videos yet' : 'No videos uploaded yet'}
-              </h3>
-              <p className="text-gray-600 dark:text-gray-400 mb-4">
-                {activeTab === 'preview'
-                  ? 'Upload a video and set it to public to see it here'
-                  : 'Upload your first video to showcase your skills'}
-              </p>
-              {activeTab === 'manage' && canUploadMore && (
-                <motion.div
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
+        ) : (
+          // Video Display Layout (YouTube-style)
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Left Side - Video Player */}
+            <div className="lg:col-span-2 space-y-4">
+              {/* Video Player */}
+              <div className="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-xl">
+                <div
+                  className="w-full aspect-video bg-black flex items-center justify-center relative"
+                  style={currentPlayingVideo ? getThumbnailStyle(currentPlayingVideo) : { backgroundColor: '#000' }}
                 >
-                  <button
-                    onClick={handleBrowseFiles}
-                    className="inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 dark:from-indigo-500 dark:to-blue-500 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all group relative overflow-hidden"
-                  >
-                    <span className="relative z-10 flex items-center">
-                      Upload Video
-                      <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
-                    </span>
-                    <span className="absolute top-0 left-[-40px] h-full w-0 bg-gradient-to-r from-blue-700 to-indigo-700 dark:from-blue-600 dark:to-indigo-600 transform skew-x-[45deg] transition-all duration-700 group-hover:w-[160%] -z-0"></span>
-                  </button>
-                </motion.div>
+                  {loadingVideo ? (
+                    <div className="absolute inset-0 flex items-center justify-center bg-gray-900/50">
+                      <Loader2 className="w-12 h-12 text-white animate-spin" />
+                    </div>
+                  ) : videoUrl && currentPlayingVideo ? (
+                    <video
+                      ref={videoRef}
+                      src={videoUrl}
+                      controls
+                      crossOrigin="use-credentials"
+                      className="w-full h-full"
+                      onError={(e) => {
+                        console.error('Video loading error:', e);
+                        toast.error('Failed to load video');
+                      }}
+                    >
+                      Your browser does not support video playback.
+                    </video>
+                  ) : (
+                    <div className="flex items-center justify-center">
+                      <Play className="w-16 h-16 text-white opacity-50" />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Video Details */}
+              {currentPlayingVideo && (
+                <div className="space-y-4">
+                  {/* Title */}
+                  <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-xl">
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                      {currentPlayingVideo.title}
+                    </h2>
+                  </div>
+
+                  {/* Description, User Profile, Tags, and Upload Date */}
+                  <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-xl space-y-4">
+                    {/* User Profile and Upload Date */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-semibold">
+                          {userName.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <h3 className="text-base font-semibold text-gray-900 dark:text-white">
+                            {userName}
+                          </h3>
+                        </div>
+                      </div>
+
+                      {/* Upload Date */}
+                      {currentPlayingVideo.createdAt && (
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          {getRelativeTime(currentPlayingVideo.createdAt)}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Description */}
+                    {currentPlayingVideo.description && (
+                      <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
+                        {currentPlayingVideo.description}
+                      </p>
+                    )}
+
+                    {/* Tags */}
+                    {currentPlayingVideo.tags && currentPlayingVideo.tags.length > 0 && (
+                      <div className="pt-2">
+                        <div className="flex flex-wrap gap-2">
+                          {currentPlayingVideo.tags.map((tag, idx) => (
+                            <span
+                              key={idx}
+                              className="px-3 py-1.5 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 text-sm font-medium rounded-lg border border-indigo-200 dark:border-indigo-800"
+                            >
+                              #{tag}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
               )}
             </div>
-          ) : (
+
+            {/* Right Side - Video List */}
             <div className="space-y-3">
-              <AnimatePresence>
-                {filteredVideos.map((video, index) => (
-                  <motion.div
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white px-2">
+                All Videos
+              </h3>
+              <div className="space-y-3 max-h-[calc(100vh-200px)] overflow-y-auto p-2
+               scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent">
+                {publishedVideos.map((video) => (
+                  <motion.button
                     key={video.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, x: -100 }}
-                    transition={{ delay: index * 0.05 }}
-                    className="bg-white dark:bg-gray-800 rounded-lg p-4 hover:shadow-md transition-shadow"
+                    onClick={() => handleVideoClick(video)}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className={`w-full bg-white dark:bg-gray-800 rounded-xl p-3 transition-all text-left focus:outline-none ${currentPlayingVideo?.id === video.id
+                      ? 'ring-2 ring-indigo-500 shadow-lg'
+                      : 'hover:shadow-md'
+                      }`}
                   >
-                    <div className="flex items-start gap-4">
-                      {/* Video Thumbnail */}
+                    <div className="flex gap-3">
+                      {/* Thumbnail */}
                       <div className="flex-shrink-0">
                         <div
-                          className="w-32 h-20 rounded-lg flex items-center justify-center relative"
-                          style={{ backgroundColor: video.thumbnailColor || '#6B7280' }}
+                          className="w-40 h-24 rounded-lg flex items-center justify-center relative overflow-hidden"
+                          style={getThumbnailStyle(video)}
                         >
-                          <Video className="w-8 h-8 text-white opacity-80" />
+                          {/* Only show video icon if it's a color thumbnail */}
+                          {(!(video as any).thumbnailType || (video as any).thumbnailType === 'color') && (
+                            <Video className="w-6 h-6 text-white opacity-80" />
+                          )}
                           {video.duration && (
                             <div className="absolute bottom-1 right-1 px-1.5 py-0.5 bg-black/70 rounded text-xs text-white font-medium">
                               {video.duration}
                             </div>
                           )}
-                        </div>
-                      </div>
-
-                      {/* Video Info */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between mb-2">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <h3 className="text-base font-semibold text-gray-900 dark:text-white">
-                                {video.title}
-                              </h3>
-                              {/* Status Badge */}
-                              {video.showOnPublic ? (
-                                <span className="inline-flex items-center px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-medium rounded border border-green-300 dark:border-green-700">
-                                  Published
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs font-medium rounded border border-gray-300 dark:border-gray-600">
-                                  Draft
-                                </span>
-                              )}
-                            </div>
-                            {video.description && (
-                              <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 mb-2">
-                                {video.description}
-                              </p>
-                            )}
-                          </div>
-                          {activeTab === 'manage' && (
-                            <div className="flex items-center gap-2 ml-4">
-                              <button
-                                onClick={() => handleEditVideo(video)}
-                                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                                title="Edit"
-                              >
-                                <Edit className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-                              </button>
-                              <button
-                                onClick={() => handleDeleteVideo(video.id)}
-                                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                                title="Delete"
-                              >
-                                <Trash2 className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-                              </button>
+                          {currentPlayingVideo?.id === video.id && (
+                            <div className="absolute inset-0 bg-indigo-500/20 flex items-center justify-center">
+                              <Play className="w-8 h-8 text-white" />
                             </div>
                           )}
                         </div>
+                      </div>
 
-                        {/* Tags */}
+                      {/* Info */}
+                      <div className="flex-1 min-w-0">
+                        <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-1 line-clamp-2">
+                          {video.title}
+                        </h4>
+                        {video.description && (
+                          <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-2 mb-2">
+                            {video.description}
+                          </p>
+                        )}
                         {video.tags && video.tags.length > 0 && (
-                          <div className="flex flex-wrap gap-2 mb-2">
-                            {video.tags.map((tag, idx) => (
+                          <div className="flex flex-wrap gap-1">
+                            {video.tags.slice(0, 2).map((tag, idx) => (
                               <span
                                 key={idx}
-                                className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-xs text-gray-700 dark:text-gray-300 rounded"
+                                className="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-xs text-gray-600 dark:text-gray-400 rounded"
                               >
                                 {tag}
                               </span>
                             ))}
+                            {video.tags.length > 2 && (
+                              <span className="px-2 py-0.5 text-xs text-gray-500 dark:text-gray-500">
+                                +{video.tags.length - 2}
+                              </span>
+                            )}
                           </div>
                         )}
-
-                        {/* Status, Upload Date/Time, and Duration */}
-                        <div className="flex items-center justify-between text-xs">
-                          <div className="flex items-center gap-3">
-                            {getStatusBadge(video.status)}
-                            <span className="text-gray-500 dark:text-gray-400">
-                              Uploaded: {formatVideoDate(video.createdAt)}
-                            </span>
-                          </div>
-                          {video.duration && (
-                            <span className="text-gray-600 dark:text-gray-400 font-medium">
-                              Duration: {video.duration}
-                            </span>
-                          )}
-                        </div>
                       </div>
                     </div>
-                  </motion.div>
+                  </motion.button>
                 ))}
-              </AnimatePresence>
+              </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Hidden File Input */}
@@ -748,20 +600,14 @@ const VideoPortfolioPageContent: React.FC = () => {
         className="hidden"
       />
 
-      {/* Edit Drawer */}
+      {/* Video Edit Drawer */}
       <VideoEditDrawer
         isOpen={isDrawerOpen}
         video={selectedVideo}
-        onClose={handleCloseDrawer}
+        onClose={handleDrawerClose}
       />
     </div>
   );
 };
-
-const VideoPortfolioPage: React.FC = () => (
-  <FeatureGate featureKey="video_portfolio" showUpgradePrompt={true}>
-    <VideoPortfolioPageContent />
-  </FeatureGate>
-);
 
 export default VideoPortfolioPage;

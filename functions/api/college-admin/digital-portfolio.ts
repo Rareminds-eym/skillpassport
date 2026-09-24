@@ -255,6 +255,8 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           tags: video.tags || [],
           videoUrl: video.video_url,
           thumbnailColor: video.thumbnail_color,
+          thumbnailType: video.thumbnail_type,
+          thumbnailValue: video.thumbnail_value,
           duration: video.duration,
           fileSizeBytes: video.file_size_bytes,
           mimeType: video.mime_type,
@@ -349,6 +351,8 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           description,
           tags,
           thumbnailColor,
+          thumbnailType,
+          thumbnailValue,
           trimStart,
           trimEnd,
           showOnPublic,
@@ -376,6 +380,8 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         if (description !== undefined) updates.description = description;
         if (tags !== undefined) updates.tags = tags;
         if (thumbnailColor !== undefined) updates.thumbnail_color = thumbnailColor;
+        if (thumbnailType !== undefined) updates.thumbnail_type = thumbnailType;
+        if (thumbnailValue !== undefined) updates.thumbnail_value = thumbnailValue;
         if (trimStart !== undefined) updates.trim_start = trimStart;
         if (trimEnd !== undefined) updates.trim_end = trimEnd;
         if (showOnPublic !== undefined) updates.show_on_public = showOnPublic;

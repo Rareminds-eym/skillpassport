@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Play, Tag, Trash2, Loader2 } from 'lucide-react';
+import { X, Play, Tag, Trash2, Loader2, Upload, Image as ImageIcon, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
   useVideoPortfolioStore,
@@ -8,12 +8,34 @@ import {
 } from '@/features/digital-portfolio';
 import { getVideoPortfolioUrl } from '@/shared/api/storageApiService';
 import { ssoClient } from '@/shared/api/ssoClient';
+import * as storageApiService from '@/shared/api/storageApiService';
+import { useUser } from '@/shared/model/authStore';
 
 interface VideoEditDrawerProps {
   isOpen: boolean;
   video: VideoEntry | null;
   onClose: () => void;
 }
+
+// Thumbnail option types
+type ThumbnailType = 'color' | 'logo' | 'upload' | 'frame';
+
+interface ThumbnailOption {
+  type: ThumbnailType;
+  value: string | null;
+  label?: string;
+}
+
+const THUMBNAIL_OPTIONS: ThumbnailOption[] = [
+  { type: 'upload', value: null, label: 'Upload Image' },
+  { type: 'logo', value: 'rm-logo', label: 'RM Logo' },
+  { type: 'frame', value: null, label: 'Capture Frame' },
+  { type: 'color', value: '#2D3E5F', label: 'Dark Blue' },
+  { type: 'color', value: '#4A5568', label: 'Gray' },
+  { type: 'color', value: '#374151', label: 'Dark Gray' },
+];
+
+const RM_LOGO_PATH = '/RMLogo.webp';
 
 const COVER_THUMBNAILS = [
   '#2D3E5F',
@@ -35,20 +57,32 @@ const VideoEditDrawer: React.FC<VideoEditDrawerProps> = ({
   const [tagInput, setTagInput] = useState('');
   const [showOnPublic, setShowOnPublic] = useState(false);
   const [selectedThumbnail, setSelectedThumbnail] = useState(0);
+  const [thumbnailType, setThumbnailType] = useState<ThumbnailType>('color');
+  const [thumbnailValue, setThumbnailValue] = useState<string>('#2D3E5F');
+  const [uploadedThumbnail, setUploadedThumbnail] = useState<string | null>(null);
+  const [capturedFrame, setCapturedFrame] = useState<string | null>(null);
   const [trimStart, setTrimStart] = useState(0);
   const [trimEnd, setTrimEnd] = useState(100);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [loadingVideo, setLoadingVideo] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [replacing, setReplacing] = useState(false);
   const [showPublishModal, setShowPublishModal] = useState(false);
   const [pendingPublishState, setPendingPublishState] = useState(false);
   const tagInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const thumbnailInputRef = useRef<HTMLInputElement>(null);
+  const replaceVideoInputRef = useRef<HTMLInputElement>(null);
 
   // Store actions
   const updateVideo = useVideoPortfolioStore(state => state.updateVideo);
   const deleteVideo = useVideoPortfolioStore(state => state.deleteVideo);
+  const fetchVideos = useVideoPortfolioStore(state => state.fetchVideos);
+
+  // Get user info
+  const user = useUser();
+  const userName = user?.name || 'User';
 
   // Initialize form when video changes
   useEffect(() => {
@@ -57,7 +91,27 @@ const VideoEditDrawer: React.FC<VideoEditDrawerProps> = ({
       setDescription(video.description || '');
       setTags(video.tags || []);
       setShowOnPublic(video.showOnPublic);
-      setSelectedThumbnail(COVER_THUMBNAILS.indexOf(video.thumbnailColor || '#2D3E5F'));
+
+      // Parse thumbnail data (backward compatible)
+      const thumbType = (video as any).thumbnailType || 'color';
+      const thumbValue = (video as any).thumbnailValue || video.thumbnailColor || '#2D3E5F';
+
+      setThumbnailType(thumbType);
+      setThumbnailValue(thumbValue);
+
+      // Set selected thumbnail index based on type
+      const optionIndex = THUMBNAIL_OPTIONS.findIndex(
+        opt => opt.type === thumbType && (opt.value === thumbValue || opt.type === thumbType)
+      );
+      setSelectedThumbnail(optionIndex >= 0 ? optionIndex : 0);
+
+      // Restore uploaded/captured thumbnails if applicable
+      if (thumbType === 'upload') {
+        setUploadedThumbnail(thumbValue);
+      } else if (thumbType === 'frame') {
+        setCapturedFrame(thumbValue);
+      }
+
       setTrimStart(video.trimStart || 0);
       setTrimEnd(video.trimEnd || 100);
 
@@ -159,6 +213,100 @@ const VideoEditDrawer: React.FC<VideoEditDrawerProps> = ({
     }
   };
 
+  // Handle thumbnail selection
+  const handleThumbnailSelect = (index: number) => {
+    const option = THUMBNAIL_OPTIONS[index];
+    setSelectedThumbnail(index);
+
+    if (option.type === 'upload') {
+      // Trigger file input
+      thumbnailInputRef.current?.click();
+    } else if (option.type === 'frame') {
+      // Capture current video frame
+      handleCaptureFrame();
+    } else {
+      // Color or logo
+      setThumbnailType(option.type);
+      setThumbnailValue(option.value || '');
+    }
+  };
+
+  // Handle thumbnail image upload
+  const handleThumbnailUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select a valid image file');
+      return;
+    }
+
+    // Validate file size (5MB)
+    const MAX_SIZE = 5 * 1024 * 1024;
+    if (file.size > MAX_SIZE) {
+      toast.error('Image too large. Maximum 5MB allowed.');
+      return;
+    }
+
+    // Read file and create preview
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const imageUrl = event.target?.result as string;
+      setUploadedThumbnail(imageUrl);
+      setThumbnailType('upload');
+      setThumbnailValue(imageUrl);
+
+      // Update selected option to upload
+      const uploadIndex = THUMBNAIL_OPTIONS.findIndex(opt => opt.type === 'upload');
+      if (uploadIndex >= 0) {
+        setSelectedThumbnail(uploadIndex);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Handle capturing frame from video
+  const handleCaptureFrame = () => {
+    const videoElement = videoRef.current;
+    if (!videoElement || !videoUrl) {
+      toast.error('Video not loaded. Please wait.');
+      return;
+    }
+
+    try {
+      // Create canvas and capture current frame
+      const canvas = document.createElement('canvas');
+      canvas.width = videoElement.videoWidth;
+      canvas.height = videoElement.videoHeight;
+
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        toast.error('Failed to capture frame');
+        return;
+      }
+
+      ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+
+      // Convert to data URL
+      const frameDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+      setCapturedFrame(frameDataUrl);
+      setThumbnailType('frame');
+      setThumbnailValue(frameDataUrl);
+
+      // Update selected option to frame
+      const frameIndex = THUMBNAIL_OPTIONS.findIndex(opt => opt.type === 'frame');
+      if (frameIndex >= 0) {
+        setSelectedThumbnail(frameIndex);
+      }
+
+      toast.success('Frame captured successfully');
+    } catch (error) {
+      console.error('Failed to capture frame:', error);
+      toast.error('Failed to capture frame');
+    }
+  };
+
   // Handle trim slider changes and update video position
   const handleTrimStartChange = (value: number) => {
     setTrimStart(value);
@@ -208,12 +356,14 @@ const VideoEditDrawer: React.FC<VideoEditDrawerProps> = ({
 
     setSaving(true);
     try {
-      await updateVideo(video.id, {
+      const updateData = {
         title: title.trim(),
         description: description.trim(),
         tags,
         showOnPublic,
-        thumbnailColor: COVER_THUMBNAILS[selectedThumbnail],
+        thumbnailColor: COVER_THUMBNAILS[selectedThumbnail], // Keep for backward compatibility
+        thumbnailType,
+        thumbnailValue,
         trimStart,
         trimEnd,
         // Auto-set status to VERIFIED and approval to approved when publishing
@@ -221,7 +371,9 @@ const VideoEditDrawer: React.FC<VideoEditDrawerProps> = ({
           status: 'VERIFIED',
           approvalStatus: 'approved',
         }),
-      });
+      };
+
+      await updateVideo(video.id, updateData as any);
 
       toast.success('Video updated successfully');
       onClose();
@@ -275,6 +427,98 @@ const VideoEditDrawer: React.FC<VideoEditDrawerProps> = ({
     }
   };
 
+  const handleReplaceVideo = () => {
+    replaceVideoInputRef.current?.click();
+  };
+
+  const handleReplaceVideoFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !video) return;
+
+    // Validate file type
+    if (!file.type.startsWith('video/')) {
+      toast.error('Please select a valid video file');
+      return;
+    }
+
+    // Validate file size (100MB)
+    const MAX_FILE_SIZE = 100 * 1024 * 1024;
+    if (file.size > MAX_FILE_SIZE) {
+      toast.error('Video file too large. Maximum 100MB allowed.');
+      return;
+    }
+
+    if (!window.confirm('Replace this video? The current video will be deleted and replaced with the new one.')) {
+      return;
+    }
+
+    setReplacing(true);
+    try {
+      // Generate new video ID
+      const videoId = `vid_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+
+      // Upload new video to R2
+      const uploadResult = await storageApiService.uploadVideoPortfolio(
+        file,
+        videoId,
+        userName
+      );
+
+      // Calculate duration for new video
+      let duration: string | undefined;
+      try {
+        const videoDuration = await new Promise<string>((resolve, reject) => {
+          const videoEl = document.createElement('video');
+          videoEl.preload = 'metadata';
+          videoEl.onloadedmetadata = () => {
+            window.URL.revokeObjectURL(videoEl.src);
+            const dur = videoEl.duration;
+            const minutes = Math.floor(dur / 60);
+            const seconds = Math.floor(dur % 60);
+            resolve(`${minutes}:${seconds.toString().padStart(2, '0')}`);
+          };
+          videoEl.onerror = () => {
+            window.URL.revokeObjectURL(videoEl.src);
+            reject(new Error('Failed to load video metadata'));
+          };
+          videoEl.src = URL.createObjectURL(file);
+        });
+        duration = videoDuration;
+      } catch (err) {
+        console.warn('Failed to calculate video duration:', err);
+      }
+
+      // Update video with new URL and metadata
+      await updateVideo(video.id, {
+        videoUrl: uploadResult.fileKey,
+        duration: duration || video.duration,
+        fileSizeBytes: uploadResult.fileSize,
+        mimeType: file.type,
+        trimStart: 0,
+        trimEnd: 100,
+      } as any);
+
+      toast.success('Video replaced successfully');
+
+      // Reload the video
+      if (video.learnerId) {
+        await fetchVideos(video.learnerId);
+      }
+
+      // Reload video in drawer
+      loadVideo();
+    } catch (error: any) {
+      console.error('Failed to replace video:', error);
+      toast.error(error.message || 'Failed to replace video');
+    } finally {
+      setReplacing(false);
+      // Clear the file input
+      if (replaceVideoInputRef.current) {
+        replaceVideoInputRef.current.value = '';
+      }
+    }
+  };
+
   if (!video) return null;
 
   return (
@@ -317,7 +561,16 @@ const VideoEditDrawer: React.FC<VideoEditDrawerProps> = ({
               <div>
                 <div
                   className="w-full aspect-video rounded-lg flex items-center justify-center relative mb-4 overflow-hidden"
-                  style={{ backgroundColor: COVER_THUMBNAILS[selectedThumbnail] }}
+                  style={{
+                    backgroundColor: thumbnailType === 'color' ? thumbnailValue : '#000',
+                    backgroundImage: thumbnailType === 'upload' || thumbnailType === 'frame'
+                      ? `url(${thumbnailValue})`
+                      : thumbnailType === 'logo'
+                        ? `url(/RMLogo.webp)`
+                        : 'none',
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                  }}
                 >
                   {loadingVideo ? (
                     <div className="absolute inset-0 flex items-center justify-center bg-gray-900/50">
@@ -434,7 +687,19 @@ const VideoEditDrawer: React.FC<VideoEditDrawerProps> = ({
                 </label>
                 <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 space-y-4">
                   {/* Video Timeline Visual */}
-                  <div className="relative h-16 rounded-lg overflow-hidden" style={{ backgroundColor: COVER_THUMBNAILS[selectedThumbnail] }}>
+                  <div
+                    className="relative h-16 rounded-lg overflow-hidden"
+                    style={{
+                      backgroundColor: thumbnailType === 'color' ? thumbnailValue : '#000',
+                      backgroundImage: thumbnailType === 'upload' || thumbnailType === 'frame'
+                        ? `url(${thumbnailValue})`
+                        : thumbnailType === 'logo'
+                          ? `url(/RMLogo.webp)`
+                          : 'none',
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center',
+                    }}
+                  >
                     {/* Trim Overlay */}
                     <div
                       className="absolute top-0 bottom-0 bg-indigo-500/30 border-l-2 border-r-2 border-indigo-500"
@@ -508,18 +773,50 @@ const VideoEditDrawer: React.FC<VideoEditDrawerProps> = ({
                   Cover thumbnail
                 </label>
                 <div className="grid grid-cols-3 gap-3">
-                  {COVER_THUMBNAILS.map((color, idx) => (
+                  {THUMBNAIL_OPTIONS.map((option, idx) => (
                     <button
                       key={idx}
-                      onClick={() => setSelectedThumbnail(idx)}
-                      className={`aspect-video rounded-lg transition-all ${selectedThumbnail === idx
-                        ? 'ring-2 ring-[#2D3E5F] ring-offset-2 dark:ring-offset-gray-800'
-                        : 'hover:opacity-80'
+                      onClick={() => handleThumbnailSelect(idx)}
+                      className={`aspect-video rounded-lg transition-all relative overflow-hidden ${selectedThumbnail === idx
+                        ? 'ring-2 ring-indigo-600 ring-offset-2 dark:ring-offset-gray-800'
+                        : 'hover:opacity-80 border-2 border-gray-200 dark:border-gray-600'
                         }`}
-                      style={{ backgroundColor: color }}
-                    />
+                      style={{
+                        backgroundColor: option.type === 'color' ? option.value || '#000' : '#f3f4f6',
+                        backgroundImage:
+                          option.type === 'logo'
+                            ? `url(/RMLogo.webp)`
+                            : option.type === 'upload' && uploadedThumbnail
+                              ? `url(${uploadedThumbnail})`
+                              : option.type === 'frame' && capturedFrame
+                                ? `url(${capturedFrame})`
+                                : 'none',
+                        backgroundSize: option.type === 'logo' ? 'contain' : 'cover',
+                        backgroundPosition: 'center',
+                        backgroundRepeat: 'no-repeat',
+                      }}
+                    >
+                      {/* Upload placeholder */}
+                      {option.type === 'upload' && !uploadedThumbnail && (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-100 dark:bg-gray-700">
+                          <Upload className="w-6 h-6 text-gray-400 dark:text-gray-500 mb-1" />
+                          <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Upload</span>
+                        </div>
+                      )}
+
+                      {/* Frame capture placeholder */}
+                      {option.type === 'frame' && !capturedFrame && (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-100 dark:bg-gray-700">
+                          <ImageIcon className="w-6 h-6 text-gray-400 dark:text-gray-500 mb-1" />
+                          <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Capture</span>
+                        </div>
+                      )}
+                    </button>
                   ))}
                 </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                  Choose a color, upload an image, use logo, or capture a frame from your video
+                </p>
               </div>
 
               {/* Show on Public Portfolio */}
@@ -550,8 +847,9 @@ const VideoEditDrawer: React.FC<VideoEditDrawerProps> = ({
             </div>
 
             {/* Footer */}
-            <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 space-y-3">
-              <div className="flex gap-3">
+            <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+              <div className="flex gap-2">
+                {/* Save Button */}
                 <motion.div
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
@@ -559,34 +857,91 @@ const VideoEditDrawer: React.FC<VideoEditDrawerProps> = ({
                 >
                   <button
                     onClick={handleSave}
-                    disabled={saving || deleting}
-                    className="w-full py-3 bg-gradient-to-r from-indigo-600 to-blue-600 dark:from-indigo-500 dark:to-blue-500 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 relative overflow-hidden group"
+                    disabled={saving || deleting || replacing}
+                    className="w-full py-2.5 bg-gradient-to-r from-indigo-600 to-blue-600 dark:from-indigo-500 dark:to-blue-500 text-white rounded-lg font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 relative overflow-hidden group text-sm"
                   >
-                    <span className="relative z-10 flex items-center gap-2">
-                      {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-                      {saving ? 'Saving...' : 'Save changes'}
+                    <span className="relative z-10 flex items-center gap-1.5">
+                      {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                      <span className="hidden sm:inline">{saving ? 'Saving...' : 'Save'}</span>
+                      <span className="sm:hidden">{saving ? '...' : 'Save'}</span>
                     </span>
                     {!saving && (
                       <span className="absolute top-0 left-[-40px] h-full w-0 bg-gradient-to-r from-blue-700 to-indigo-700 dark:from-blue-600 dark:to-indigo-600 transform skew-x-[45deg] transition-all duration-700 group-hover:w-[160%] -z-0"></span>
                     )}
                   </button>
                 </motion.div>
+
+                {/* Replace Video Button */}
+                <motion.div
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="flex-1"
+                >
+                  <button
+                    onClick={handleReplaceVideo}
+                    disabled={saving || deleting || replacing}
+                    className="w-full py-2.5 border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 text-sm"
+                  >
+                    {replacing ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <span className="hidden sm:inline">Replacing...</span>
+                        <span className="sm:hidden">...</span>
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">Replace</span>
+                      </>
+                    )}
+                  </button>
+                </motion.div>
+
+                {/* Delete Button */}
                 <motion.div
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
                   <button
                     onClick={handleDelete}
-                    disabled={saving || deleting}
-                    className="px-6 py-3 border-2 border-red-300 dark:border-red-600 text-red-700 dark:text-red-400 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    disabled={saving || deleting || replacing}
+                    className="px-4 py-2.5 border-2 border-red-300 dark:border-red-600 text-red-700 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 text-sm"
                   >
-                    {deleting && <Loader2 className="w-4 h-4 animate-spin" />}
-                    {deleting ? 'Deleting...' : 'Delete'}
+                    {deleting ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <span className="hidden sm:inline">Deleting...</span>
+                        <span className="sm:hidden">...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">Delete</span>
+                      </>
+                    )}
                   </button>
                 </motion.div>
               </div>
             </div>
           </motion.div>
+
+          {/* Hidden Thumbnail Upload Input */}
+          <input
+            ref={thumbnailInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleThumbnailUpload}
+            className="hidden"
+          />
+
+          {/* Hidden Replace Video Input */}
+          <input
+            ref={replaceVideoInputRef}
+            type="file"
+            accept="video/*"
+            onChange={handleReplaceVideoFile}
+            className="hidden"
+          />
 
           {/* Publish Confirmation Modal */}
           <AnimatePresence>

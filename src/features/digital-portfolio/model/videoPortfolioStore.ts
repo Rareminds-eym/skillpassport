@@ -44,9 +44,13 @@ interface VideoPortfolioState {
       description?: string;
       tags?: string[];
       thumbnailColor?: string;
+      thumbnailType?: string;
+      thumbnailValue?: string;
       trimStart?: number;
       trimEnd?: number;
       showOnPublic?: boolean;
+      status?: string;
+      approvalStatus?: string;
     }
   ) => Promise<void>;
   deleteVideo: (videoId: string) => Promise<void>;
@@ -85,6 +89,7 @@ export const useVideoPortfolioStore = create<VideoPortfolioState>()(
             loading: false,
           });
         } catch (error) {
+          console.error('Error fetching videos:', error);
           const errorMessage = error instanceof Error ? error.message : 'Failed to fetch videos';
           set({
             error: errorMessage,
@@ -170,8 +175,8 @@ export const useVideoPortfolioStore = create<VideoPortfolioState>()(
           });
 
           // Update local state optimistically
-          set((state) => ({
-            videos: state.videos.map((video) =>
+          set((state) => {
+            const updatedVideos = state.videos.map((video) =>
               video.id === videoId
                 ? {
                   ...video,
@@ -179,10 +184,15 @@ export const useVideoPortfolioStore = create<VideoPortfolioState>()(
                   updatedAt: new Date().toISOString(),
                 }
                 : video
-            ),
-            loading: false,
-          }));
+            );
+
+            return {
+              videos: updatedVideos,
+              loading: false,
+            };
+          });
         } catch (error) {
+          console.error('Error updating video:', error);
           const errorMessage = error instanceof Error ? error.message : 'Failed to update video';
           set({
             error: errorMessage,
