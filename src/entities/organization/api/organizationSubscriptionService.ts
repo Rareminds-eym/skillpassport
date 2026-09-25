@@ -102,7 +102,7 @@ export class OrganizationSubscriptionService {
           amount: Math.round(pricing.finalAmount * 100),
           org_id: request.organizationId,
           seat_count: request.seatCount,
-          plan_id: d.plan_code,
+          plan_id: d.id,
           plan_name: d.name,
           currency: 'INR',
         }),

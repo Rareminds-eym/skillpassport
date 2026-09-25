@@ -144,6 +144,7 @@ export default defineConfig({
       ignored: [
         '**/node_modules/**',
         '**/.git/**',
+        '**/dist/**',
         '**/ai_department/**',   // contains a Python .venv with 100k+ files
         '**/docs/**',
         '**/.venv/**',

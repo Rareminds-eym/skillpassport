@@ -1,3 +1,4 @@
+import { requireSelfServePlan, catalogPlanErrorResponse } from '../lib/salesPlan';
 /**
  * Org Subscriptions Purchase Handler
  *
@@ -59,6 +60,8 @@ export async function handleOrgSubscriptionsPurchase(context: AuthenticatedConte
       return apiError(403, 'FORBIDDEN', 'Not authorized for this organization', context.request);
     }
 
+    const catalogPlan = await requireSelfServePlan(supabase, body);
+
     // Call payment-worker via Service Binding RPC
     const worker = getPaymentWorker(env);
     const order = await worker.createOrder({
@@ -67,8 +70,9 @@ export async function handleOrgSubscriptionsPurchase(context: AuthenticatedConte
       receipt: `orgsub_${body.org_id}_${Date.now()}`.substring(0, 40),
       notes: {
         org_id: body.org_id as string,
-        plan_name: (body.plan_name as string) || '',
-        plan_id: (body.plan_id as string) || '',
+        plan_name: catalogPlan.name,
+        plan_code: catalogPlan.plan_code,
+        plan_id: catalogPlan.id,
         seat_count: String(body.seat_count),
         user_id: user.id,
         type: 'org_subscription',
@@ -85,6 +89,6 @@ export async function handleOrgSubscriptionsPurchase(context: AuthenticatedConte
     return apiSuccess({ ...order, razorpay_key_id: order.key_id }, context.request);
   } catch (error) {
     logger.error('Error creating org subscription order', error);
-    return rpcErrorResponse(error, context.request);
+    return catalogPlanErrorResponse(error, context.request) || rpcErrorResponse(error, context.request);
   }
 }

@@ -1,21 +1,23 @@
-import { createDb, type DbClient } from './db';
-import { mapRolesToOrgMemberRole, LEARNER_SSO_ROLES } from './role-mapper';
-import type { PagesEnv } from './types';
 import { z } from 'zod';
+import { createDb, type DbClient } from './db';
+import { LEARNER_SSO_ROLES, mapRolesToOrgMemberRole } from './role-mapper';
 import {
+  FacultyCreatedSchema,
+  MembershipPayloadSchema,
+  MembershipRemovedSchema,
+  OrganizationCreatedSchema,
+  OrganizationDeletedSchema,
+  OrganizationUpdatedSchema,
+  SubscriptionCancelledSchema,
+  SubscriptionCreatedSchema,
+  SubscriptionUpdatedSchema,
   UserCreatedSchema,
   UserDeletedSchema,
   UserEmailVerifiedSchema,
-  OrganizationCreatedSchema,
-  OrganizationUpdatedSchema,
-  MembershipPayloadSchema,
-  type MembershipPayloadData,
-  MembershipRemovedSchema,
-  SubscriptionCreatedSchema,
-  SubscriptionUpdatedSchema,
-  SubscriptionCancelledSchema,
-  FacultyCreatedSchema,
+  type MembershipPayloadData
 } from './sync-schemas';
+import { syncUserShadow } from './sync-shadow';
+import type { PagesEnv } from './types';
 
 export type SyncResult =
   | { success: true }
@@ -253,6 +255,33 @@ export class SyncService {
       .update(updatePayload)
       .eq('id', parsed.id);
     if (error) return fail('DB_ERROR', error.message, true);
+    return ok();
+  }
+
+  /**
+   * Organization removed on the auth side (soft or hard delete).
+   *
+   * Deliberately never issues a real DELETE on skillpassport's own
+   * `organizations` row: that table has ON DELETE CASCADE from dozens of
+   * academic tables (courses, classes, attendance, learner reports, library
+   * books, etc.) — a real delete here could destroy unrelated institutional
+   * data far beyond what the auth side ever touches. Regardless of whether
+   * the admin chose soft or hard delete upstream, this always just
+   * deactivates the org record and drops its stale subscription_cache rows.
+   */
+  async syncOrgDeleted(data: unknown): Promise<SyncResult> {
+    let parsed: z.infer<typeof OrganizationDeletedSchema>;
+    try { parsed = OrganizationDeletedSchema.parse(data); }
+    catch (err) { return fail('VALIDATION_ERROR', err instanceof Error ? err.message : 'Invalid org deleted data', false); }
+
+    const { error: orgError } = await this.db.from('organizations')
+      .update({ account_status: 'inactive', is_active: false, updated_at: new Date().toISOString() })
+      .eq('id', parsed.id);
+    if (orgError) return fail('DB_ERROR', orgError.message, true);
+
+    // Best-effort — subscription_cache is just a read shadow, not authoritative.
+    await this.db.from('subscription_cache').delete().eq('organization_id', parsed.id);
+
     return ok();
   }
 
@@ -502,6 +531,19 @@ export class SyncService {
     if (existing && parsed.assigned_seats === undefined) {
       subPayload.assigned_seats = existing.assigned_seats;
     }
+
+    // Self-heal: subscription_cache.user_id has an FK -> users_shadow(id).
+    // The generic user.created sync only writes public.users, never
+    // users_shadow (that table is otherwise populated only by the
+    // purchase/payment flows via syncUserShadow). Any subscription-creating
+    // path that doesn't go through a purchase flow (e.g. admin-provisioned
+    // hybrid org creation) would violate that FK without this. Mirrors the
+    // same self-heal already done in heal-user.ts.
+    const { data: existingUser } = await this.db.from('users')
+      .select('email')
+      .eq('id', parsed.user_id)
+      .maybeSingle();
+    await syncUserShadow(this.db, parsed.user_id, existingUser?.email as string | undefined);
 
     const { error } = await this.db.from('subscription_cache').upsert(subPayload, { onConflict: 'id' });
     if (error) return fail('DB_ERROR', error.message, true);

@@ -14,6 +14,7 @@ import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../li
 import { createLogger } from '../../../lib/logger';
 import { getServiceClient } from '../../../lib/supabase';
 import { apiSuccess, apiError } from '../../../lib/response';
+import { requireSelfServePlan, catalogPlanErrorResponse } from '../lib/salesPlan';
 
 const logger = createLogger('payments:create-org-order');
 
@@ -62,6 +63,8 @@ export async function handleCreateOrgOrder(context: AuthenticatedContext): Promi
       return apiError(403, 'FORBIDDEN', 'Not authorized for this organization', context.request);
     }
 
+    const catalogPlan = await requireSelfServePlan(supabase, body);
+
     // Call payment-worker via Service Binding RPC
     const worker = getPaymentWorker(env);
     const order = await worker.createOrder({
@@ -70,9 +73,9 @@ export async function handleCreateOrgOrder(context: AuthenticatedContext): Promi
       receipt: `org_${body.org_id}_${Date.now()}`.substring(0, 40),
       notes: {
         org_id: body.org_id as string,
-        plan_name: body.plan_name as string,
-        plan_id: (body.plan_id as string) || '',
-        plan_code: (body.plan_code as string) || body.plan_name as string,
+        plan_name: catalogPlan.name,
+        plan_id: catalogPlan.id,
+        plan_code: catalogPlan.plan_code,
         billing_cycle: (body.billing_cycle as string) || 'annual',
         seat_count: String(body.seat_count),
         user_id: user.id,
@@ -91,6 +94,6 @@ export async function handleCreateOrgOrder(context: AuthenticatedContext): Promi
     return apiSuccess({ ...order, razorpay_key_id: order.key_id }, context.request);
   } catch (error) {
     logger.error('Error creating org order', error);
-    return rpcErrorResponse(error, context.request);
+    return catalogPlanErrorResponse(error, context.request) || rpcErrorResponse(error, context.request);
   }
 }

@@ -1,3 +1,4 @@
+import { requireSelfServePlan } from './salesPlan';
 import { ssoRecordTransaction, ssoRecordAddonPurchase, ssoRecordBundlePurchase, ssoCreateSubscription, ssoUpdateSubscriptionField, ssoSyncSubscription } from '../../../lib/sso-client';
 import { getServiceClient } from '../../../lib/supabase';
 import { syncUserShadow, syncSubscriptionCache } from '../../../lib/sync-shadow';
@@ -223,6 +224,8 @@ export async function fulfillOrgSubscription(
 ) {
   const ssoEnv = env as any;
   const supabase = getServiceClient(env);
+  const catalogPlan = await requireSelfServePlan(supabase, payload);
+  payload = { ...payload, plan_id: catalogPlan.id, plan_code: catalogPlan.plan_code, plan_name: catalogPlan.name };
   let duplicateCaught = false;
   let subscription: any = null;
 
@@ -393,6 +396,8 @@ export async function fulfillLearnerSubscription(
 ) {
   const ssoEnv = env as any;
   const supabase = getServiceClient(env);
+  const catalogPlan = await requireSelfServePlan(supabase, payload);
+  payload = { ...payload, plan_id: catalogPlan.id, plan_code: catalogPlan.plan_code, plan_name: catalogPlan.name };
   let duplicateCaught = false;
   let subscription: any = null;
   let isUpgrade = false;
