@@ -20,8 +20,6 @@ import {
 import React, { useEffect, useMemo, useState } from "react";
 import toast from 'react-hot-toast';
 import { KPICard } from '@/features/analytics';
-import { Pagination } from '@/shared/ui';
-import { ConfirmationModal } from '@/shared/ui';
 import { formatProgramLabel, getProgramSpecializations } from '@/shared/lib';
 import {
   type Course,

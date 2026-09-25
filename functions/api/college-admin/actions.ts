@@ -509,7 +509,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           supabase.from('departments').select('*').eq('college_id', college_id).eq('status', 'active'),
           supabase.from('programs').select('*, departments!inner(college_id)').eq('departments.college_id', college_id).eq('status', 'active'),
           supabase.from('college_lecturers').select('id, user_id, users!fk_college_lecturers_user(firstName, lastName, email)').eq('collegeId', college_id).eq('accountStatus', 'active'),
-          supabase.from('program_sections').select('*, programs!inner(name, code, departments!inner(name, college_id))').eq('programs.departments.college_id', college_id).order('semester', { ascending: true }).order('section', { ascending: true })
+          supabase.from('program_sections').select('*, programs!inner(name, code, specializations, departments!inner(name, college_id))').eq('programs.departments.college_id', college_id).order('semester', { ascending: true }).order('section', { ascending: true })
         ]);
 
         if (deptRes.error) return apiDbError(deptRes.error, context.request, { startTime });
@@ -597,14 +597,51 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       case 'save-program': {
         const { program_id, data, user_id } = params;
 
-        // Normalize specializations to a trimmed text[]: accepts an array from
-        // the admin UI or a legacy comma-separated string; empty => '{}'.
-        const specializations = Array.isArray(data.specializations)
-          ? data.specializations.map((s: string) => String(s).trim()).filter(Boolean)
-          : String(data.specializations ?? "")
-              .split(",")
-              .map((s) => s.trim())
-              .filter(Boolean);
+        // Normalize specializations to a trimmed, deterministically-sorted text[]:
+        // accepts an array from the admin UI or a legacy comma-separated string.
+        // Sorting keeps array equality stable so (department_id, code, specializations)
+        // uniqueness treats "hr, marketing" and "marketing, hr" as the same set.
+        const normalizeSpecs = (input: unknown): string[] => {
+          const arr = Array.isArray(input)
+            ? input.map((s: unknown) => String(s).trim()).filter(Boolean)
+            : String(input ?? "")
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean);
+          return arr.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+        };
+        const specializations = normalizeSpecs(data.specializations);
+        const specsKey = (specs: unknown): string =>
+          JSON.stringify(normalizeSpecs(specs).map((s) => s.toLowerCase()));
+
+        // Duplicate rule: same department + same code (case-insensitive) is only a
+        // conflict when the specialization set also matches. Same name/code with
+        // DIFFERENT specializations is allowed (e.g. MCA general vs MCA hr,marketing).
+        if (data.department_id && data.code) {
+          let dupQuery = supabase
+            .from("programs")
+            .select("id, specializations")
+            .eq("department_id", data.department_id)
+            .ilike("code", String(data.code).trim());
+          if (program_id) dupQuery = dupQuery.neq("id", program_id);
+          const { data: dupes, error: dupeError } = await dupQuery;
+          if (dupeError) return apiDbError(dupeError, context.request, { startTime });
+          const clash = (dupes ?? []).some(
+            (row: { specializations?: unknown }) => specsKey(row.specializations) === specsKey(specializations)
+          );
+          if (clash) {
+            return apiError(
+              409,
+              "DUPLICATE",
+              "A program with the same code and specializations already exists in this department",
+              context.request,
+              { startTime }
+            );
+          }
+        }
+
+        const duplicateMessage =
+          "A program with the same code and specializations already exists in this department";
 
         if (program_id) {
           const { error } = await supabase
@@ -620,7 +657,12 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
               updated_by: user_id,
             })
             .eq("id", program_id);
-          if (error) return apiDbError(error, context.request, { startTime });
+          if (error) {
+            if ((error as { code?: string }).code === "23505") {
+              return apiError(409, "DUPLICATE", duplicateMessage, context.request, { startTime });
+            }
+            return apiDbError(error, context.request, { startTime });
+          }
         } else {
           const { error } = await supabase
             .from("programs")
@@ -634,7 +676,12 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
               status: data.status || "active",
               created_by: user_id,
             });
-          if (error) return apiDbError(error, context.request, { startTime });
+          if (error) {
+            if ((error as { code?: string }).code === "23505") {
+              return apiError(409, "DUPLICATE", duplicateMessage, context.request, { startTime });
+            }
+            return apiDbError(error, context.request, { startTime });
+          }
         }
         return apiSuccess({ success: true }, context.request, { startTime });
       }
