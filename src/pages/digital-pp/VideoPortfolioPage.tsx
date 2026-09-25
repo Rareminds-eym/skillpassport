@@ -486,6 +486,7 @@ const VideoPortfolioPageContent: React.FC = () => {
                       ref={videoRef}
                       src={videoUrl}
                       controls
+                      controlsList="nodownload"
                       crossOrigin="use-credentials"
                       className="w-full h-full"
                       onError={(e) => {
