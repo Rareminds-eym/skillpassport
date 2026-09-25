@@ -1012,7 +1012,7 @@ const ProfileHeroEdit = ({ onEditClick, learnerData: propLearnerData, loading: p
                       )}
                       {reallearnerData.branch_field && (
                         <span className="inline-flex items-center gap-1 px-2 sm:px-3 py-1 bg-white rounded-full text-xs font-medium text-gray-700 shadow-sm">
-                          <span className="text-gray-500">Program:</span> {reallearnerData.branch_field}
+                          <span className="text-gray-500">Program:</span> {reallearnerData.branch_field}{reallearnerData.specialization ? ` - ${reallearnerData.specialization}` : ''}
                         </span>
                       )}
                       {reallearnerData.section && (

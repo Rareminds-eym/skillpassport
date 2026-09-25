@@ -597,7 +597,45 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       case 'update-enrollment': {
         const { learnerId, enrollmentData } = params;
         if (!learnerId || !enrollmentData) return apiError(400, 'VALIDATION_ERROR', 'Missing learnerId or enrollmentData', context.request, { startTime });
-        const { data, error } = await supabase.from('learners').update({ ...enrollmentData, updated_at: new Date().toISOString() }).eq('id', learnerId).select().single();
+        const payload: Record<string, any> = { ...enrollmentData };
+        // If the enrolled program has specializations, carry them onto the
+        // learner row (varchar free-text, comma-joined like "hr, marketing").
+        // Programs without specializations leave the learner value untouched.
+        if (enrollmentData.program_id) {
+          try {
+            const { data: prog, error: progError } = await supabase
+              .from('programs')
+              .select('specializations')
+              .eq('id', enrollmentData.program_id)
+              .maybeSingle();
+            if (progError) {
+              logger.warn('[update-enrollment] specializations lookup failed; learner specialization left unchanged', {
+                learnerId,
+                program_id: enrollmentData.program_id,
+                message: progError.message,
+              });
+            } else {
+              const specs = Array.isArray((prog as any)?.specializations)
+                ? (prog as any).specializations.map((s: unknown) => String(s).trim()).filter(Boolean)
+                : String((prog as any)?.specializations ?? '')
+                    .split(',')
+                    .map((s: string) => s.trim())
+                    .filter(Boolean);
+              if (specs.length > 0) {
+                payload.specialization = specs.join(', ');
+              }
+              // No specializations on the program: learner row untouched,
+              // manual specialization (if any) is preserved.
+            }
+          } catch (err) {
+            logger.warn('[update-enrollment] specializations lookup threw; learner specialization left unchanged', {
+              learnerId,
+              program_id: enrollmentData.program_id,
+              message: err instanceof Error ? err.message : String(err),
+            });
+          }
+        }
+        const { data, error } = await supabase.from('learners').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', learnerId).select().single();
         if (error) return apiDbError(error, context.request, { startTime });
         return apiSuccess(data, context.request, { startTime });
       }
@@ -937,7 +975,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         let query = supabase.from('learners').select(`
           id, user_id, learner_id, name, email, contact_number, alternate_number, contact_dial_code,
           date_of_birth, age, gender, bloodGroup, district_name, university, university_main,
-          branch_field, college_school_name, course_name, registration_number, enrollmentNumber,
+          branch_field, specialization, college_school_name, course_name, registration_number, enrollmentNumber,
           github_link, linkedin_link, twitter_link, facebook_link, instagram_link, portfolio_link,
           youtube_link, other_social_links, approval_status, trainer_name, bio, address, city,
           state, country, pincode, resumeUrl, profilePicture, contactNumber, dateOfBirth,
@@ -1173,7 +1211,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           { key: 'universities', table: 'organizations', select: 'id, name, city, state, code', filters: { organization_type: 'university', account_status: ['active', 'pending'] }, order: 'name' },
           { key: 'universityColleges', table: 'university_colleges', select: 'id, name, code, university_id', order: 'name' },
           { key: 'departments', table: 'departments', select: 'id, name, code, college_id', order: 'name' },
-          { key: 'programs', table: 'programs', select: 'id, name, code, degree_level, department_id', order: 'name' },
+          { key: 'programs', table: 'programs', select: 'id, name, code, degree_level, department_id, specializations', order: 'name' },
           { key: 'schoolClasses', table: 'school_classes', select: 'id, name, grade, section, school_id', order: ['grade', 'section'] },
           { key: 'programSections', table: 'program_sections', select: 'id, program_id, semester, section', order: ['semester', 'section'] },
         ];

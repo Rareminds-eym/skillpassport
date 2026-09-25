@@ -8,6 +8,9 @@ import { apiDbError, apiError, apiMethodNotAllowed, apiSuccess } from '../../lib
 import { resolveUserOrganization } from '../../lib/resolve-organization';
 import { getServiceClient } from '../../lib/supabase';
 import type { PagesEnv } from '../../lib/types';
+import { createLogger } from '../../lib/logger';
+
+const logger = createLogger('college-admin-faculty');
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const user = getContextUser(context);
@@ -238,6 +241,29 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const { data, error } = await query.order('createdAt', { ascending: false });
         if (error) return apiDbError(error, context.request, { startTime });
         let result = data || [];
+        
+        // Extract metadata fields to top level for backward compatibility
+        result = result.map((r: any) => {
+          let metadata;
+          try {
+            metadata = typeof r.metadata === 'string' ? JSON.parse(r.metadata) : r.metadata;
+          } catch (error) {
+            logger.error('faculty_metadata_parse_failed', error instanceof Error ? error : new Error(String(error)), {
+              lecturerId: r.id,
+              employeeId: r.employeeId,
+              metadataPreview: typeof r.metadata === 'string' ? r.metadata.substring(0, 100) : 'not-string'
+            });
+            metadata = {};
+          }
+          return {
+            ...r,
+            first_name: r.first_name || metadata?.first_name || null,
+            last_name: r.last_name || metadata?.last_name || null,
+            email: r.email || metadata?.email || null,
+            phone: r.phone || metadata?.phone || null,
+          };
+        });
+        
         if (search) {
           const s = search.toLowerCase();
           result = result.filter((r: any) =>

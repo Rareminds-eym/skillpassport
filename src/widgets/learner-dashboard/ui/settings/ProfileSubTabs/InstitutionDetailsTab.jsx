@@ -2,6 +2,7 @@ import React from "react";
 import { Briefcase, Save } from "lucide-react";
 import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/ButtonNew';
+import { formatProgramLabel, getProgramSpecializations } from '@/shared/lib';
 import { isSchoolStudent, isCollegeStudent } from '@/entities/learner/lib/learnerType';
 
 const InstitutionDetailsTab = ({
@@ -45,6 +46,28 @@ const InstitutionDetailsTab = ({
   // Determine learner type using utility functions
   const isSchoolLearner = isSchoolStudent(learnerData);
   const isCollegeLearner = isCollegeStudent(learnerData);
+
+  // Specialization follows the selected program: when the program defines
+  // specializations the value is auto-filled and locked; otherwise the
+  // learner types their own (saved via the existing profile save).
+  const selectedProgram = programs.find((p) => p.id === profileData.programId);
+  const autoSpecialization = getProgramSpecializations(selectedProgram).join(', ');
+  const isSpecializationAuto = autoSpecialization.length > 0;
+
+  const handleProgramChange = (value) => {
+    handleInstitutionChange("programId", value);
+    const nextSpecs = getProgramSpecializations(programs.find((p) => p.id === value));
+    if (nextSpecs.length > 0) {
+      handleInstitutionChange("specialization", nextSpecs.join(", "));
+    } else {
+      const prevAuto = getProgramSpecializations(selectedProgram).join(", ");
+      if (prevAuto.length > 0 && (profileData.specialization || "") === prevAuto) {
+        // Leaving a program whose specialization was auto-filled: clear the
+        // stale auto value so the learner starts from a blank editable field.
+        handleInstitutionChange("specialization", "");
+      }
+    }
+  };
   
   // Debug logging
   console.log('[InstitutionDetailsTab] Learner type detection:', {
@@ -388,7 +411,7 @@ const InstitutionDetailsTab = ({
               <select
                 value={profileData.programId}
                 onChange={(e) =>
-                  handleInstitutionChange("programId", e.target.value)
+                  handleProgramChange(e.target.value)
                 }
                 className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm disabled:bg-gray-50 disabled:cursor-not-allowed"
                 disabled={(!profileData.universityCollegeId && !showCustomCollege && !customCollegeName) || !!profileData.schoolId || showCustomSchool || !!customSchoolName}
@@ -398,7 +421,9 @@ const InstitutionDetailsTab = ({
                 </option>
                 {programs.map((program) => (
                   <option key={program.id} value={program.id}>
-                    {program.name} {program.degree_level && `(${program.degree_level})`}
+                    {getProgramSpecializations(program).length > 0
+                      ? formatProgramLabel(program.name, program)
+                      : <>{program.name} {program.degree_level && `(${program.degree_level})`}</>}
                   </option>
                 ))}
                 {(profileData.universityCollegeId || showCustomCollege || customCollegeName) && !(profileData.schoolId || showCustomSchool || customSchoolName) && (
@@ -492,14 +517,16 @@ const InstitutionDetailsTab = ({
           </label>
           <input
             type="text"
-            value={profileData.specialization || ''}
+            value={isSpecializationAuto ? autoSpecialization : (profileData.specialization || '')}
             onChange={(e) => handleInstitutionChange('specialization', e.target.value)}
             placeholder="Enter specialization (e.g., Artificial Intelligence, Marketing, Cybersecurity)"
             className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm disabled:bg-gray-50 disabled:cursor-not-allowed"
-            disabled={(!profileData.programId && !showCustomProgram && !customProgramName) || !!profileData.schoolId || showCustomSchool || !!customSchoolName}
+            disabled={(!profileData.programId && !showCustomProgram && !customProgramName) || !!profileData.schoolId || showCustomSchool || !!customSchoolName || isSpecializationAuto}
             maxLength={150}
           />
-          {(!profileData.programId && !showCustomProgram && !customProgramName) ? (
+          {isSpecializationAuto ? (
+            <p className="text-xs text-gray-500">Auto-filled from your program and locked.</p>
+          ) : (!profileData.programId && !showCustomProgram && !customProgramName) ? (
             <p className="text-xs text-gray-500">Please select a program first</p>
           ) : (
             <p className="text-xs text-gray-400">Optional — your focus area within the program</p>

@@ -11,12 +11,23 @@
  * 5. character_strengths_descriptions - Learner-friendly descriptions for each character strength
  * 6. explorer_insights - Detailed insights for explored/to_explore worlds (left panel of explorer map)
  * 7. thinking_styles - "Thinking Style Snapshot" showing pattern recognition, problem-solving, visual, decision-making
+ * 8. stage_guidance - Per-Growth-Map-stage guidance content (v2: app-owned section structure — see
+ *    REPORT 8 below for exactly which section KINDS each of the 8 stages requires), plus an optional
+ *    per-stage "sectionIntro" (learner-specific heading + one-sentence description that replaces the
+ *    app's hardcoded stage heading/description when present and valid). Gemini supplies ONLY desc/
+ *    highlights content per section kind — never a title, section list, or section order; those are
+ *    fixed by the application (STAGE_GUIDANCE_SECTIONS in growthStageConfig.ts).
  *
  * WORD LIMITS (Grade 6-8 friendly, optimized for tokens):
  * - capability_insights: 30-40 words per area (insight + next_step)
  * - assessmentReport: 200-250 words
- * - mission_recommendations: 3-5 structured missions (not text)
+ * - mission_recommendations: EXACTLY 3 structured missions (not text)
  * - my_interest_worlds: 5-8 worlds, 15-20 words per evidenceSummary
+ * - stage_guidance: ~12-18 word desc + highlights (8-12 words each) per section, only for the
+ *   section kinds each stage requires (most stages: 3 kinds; whatIHaveNeed: 2 kinds; missions: 1 kind).
+ *   Highlight COUNT is a fixed per-stage number, not a range: Stages 1-6 = exactly 3 per section;
+ *   Stage 7 (whatIHaveNeed) and Stage 8 (missions) = exactly 2 per section.
+ * - stage_guidance.sectionIntro (optional, per stage): heading 2-5 words, description under 20 words
  *
  * Per BRD Section 10: Capability Wheel Areas (8-area model)
  * Per BRD Section 8.1: Interest & Exposure discovery
@@ -102,6 +113,17 @@ USE SIMPLE LANGUAGE:
   const exploredLabels = (growth_map.explorer_map?.explored || []).map((w) => w.label);
   const toExploreLabels = (growth_map.explorer_map?.to_explore || []).map((w) => w.label);
 
+  const stageIds = [
+    'capabilityWheel',
+    'interestWorlds',
+    'characterConstellation',
+    'selfSocial',
+    'explorerMap',
+    'thinkingStyle',
+    'whatIHaveNeed',
+    'missions',
+  ] as const;
+
   const user = `Create 8 short reports for ${learner_name} (Grade ${learner_grade}).
 
 GROWTH MAP DATA:
@@ -142,8 +164,9 @@ RETURN THIS JSON (8 OUTPUTS ONLY - NO markdown, NO extra text):
   },
   "assessmentReport": "[Summary] ${learner_name} shows strengths in... [Next section] Growth areas... [Action items]...[200-250 WORDS]",
   "mission_recommendations": [
-    {"priority": 1, "mission_name": "Teamwork Challenge", "capability_target": "Social / SQ", "why_recommended": "You're already good at this. Let's go deeper!", "difficulty": "Medium", "estimated_duration_days": 7},
-    {"priority": 2, "mission_name": "Tech Basics", "capability_target": "Digital & AI Literacy", "why_recommended": "You're learning this. Build confidence!", "difficulty": "Beginner", "estimated_duration_days": 5}
+    {"priority": 1, "mission_name": "<short mission name>", "capability_target": "<one of the 8 capability areas>", "why_recommended": "<1-2 sentences grounded in this learner's real evidence>", "difficulty": "Beginner|Medium|Advanced", "estimated_duration_days": 5},
+    {"priority": 2, "mission_name": "<short mission name>", "capability_target": "<one of the 8 capability areas>", "why_recommended": "<1-2 sentences grounded in this learner's real evidence>", "difficulty": "Beginner|Medium|Advanced", "estimated_duration_days": 7},
+    {"priority": 3, "mission_name": "<short mission name>", "capability_target": "<one of the 8 capability areas>", "why_recommended": "<1-2 sentences grounded in this learner's real evidence>", "difficulty": "Beginner|Medium|Advanced", "estimated_duration_days": 10}
   ],
   "explorer_insights": {
     "exploredWorlds": [
@@ -155,18 +178,43 @@ RETURN THIS JSON (8 OUTPUTS ONLY - NO markdown, NO extra text):
   },
   "thinking_styles": [
     {"title": "Pattern Recognition", "description": "You're wonderful at spotting connections and patterns! Your mind naturally sees how things link together.", "icon": "BrainCircuit"},
-    {"title": "Problem Solving", "description": "You tackle challenging problems with confidence! You break them down and work through them.", "icon": "Lightbulb"},
-    {"title": "Visual Thinking", "description": "You think in pictures and spaces! You can imagine how things fit together beautifully.", "icon": "Sparkles"},
-    {"title": "Decision Making", "description": "You make thoughtful decisions! You carefully think through your choices.", "icon": "BarChart3"}
+    {"title": "Logical Reasoning", "description": "You're learning to work through logical steps. Each puzzle you try helps you build this skill!", "icon": "Lightbulb"},
+    {"title": "Spatial Reasoning", "description": "You think in pictures and spaces! You can imagine how things fit together beautifully.", "icon": "Sparkles"},
+    {"title": "Numerical Reasoning", "description": "You're building confidence working with numbers. Practice is helping you grow this skill!", "icon": "BarChart3"}
   ],
-  "what_i_have": [
-    {"capability_area": "Social / SQ", "score_out_of_5": 4.5},
-    {"capability_area": "Communication", "score_out_of_5": 4.2}
-  ],
-  "what_i_need": [
-    {"capability_area": "Digital & AI Literacy", "score_out_of_5": 2.5},
-    {"capability_area": "Execution & Independence", "score_out_of_5": 2.8}
-  ]
+  // NOTE: the 4 titles above are only an EXAMPLE — you select the actual 4 (from the 6
+  // legitimate categories) based on THIS learner's own accuracyBySubtag evidence.
+  "stage_guidance": {
+    "version": 2,
+    "capabilityWheel": {
+      "sectionIntro": {"heading": "<2-5 word heading naming the identified capability_wheel evidence>", "description": "<one sentence, under 20 words, summarizing what THIS stage's identified evidence shows>"},
+      "sections": {
+        "parent": {"desc": "<short observation naming the specific capability_wheel evidence, plain language for a parent>", "highlights": ["<home scenario tied to the strongest identified item>", "<home scenario tied to a second identified item>", "<home scenario tied to a third distinct facet of the identified evidence>"]},
+        "teacher": {"desc": "<short observation naming the specific capability_wheel evidence, for a teacher>", "highlights": ["<classroom adjustment tied to the strongest identified item>", "<classroom adjustment tied to a second identified item>", "<classroom adjustment tied to a third distinct facet of the identified evidence>"]},
+        "action": {"desc": "<one short framing sentence naming the identified capability_wheel evidence>", "highlights": ["<concrete task tied to the strongest identified item>", "<concrete task tied to a second identified item>", "<concrete task tied to a third distinct facet of the identified evidence>"]}
+      }
+      // NOTE: this stage (and every Stage 1-6 stage) requires EXACTLY 3 highlights per section — see
+      // the EXACT COUNT RULE in REPORT 8 below. This example shows 3 in every section deliberately.
+    },
+    "whatIHaveNeed": {
+      "sectionIntro": {"heading": "<...>", "description": "<...>"},
+      "sections": {
+        "parent": {"desc": "<observation naming the specific growth_map.what_i_have item(s)>", "highlights": ["<...>", "<...>"]},
+        "action": {"desc": "<observation naming the specific growth_map.what_i_need_next item(s)>", "highlights": ["<concrete step tied to a specific what_i_need_next item>", "<...>"]}
+      }
+      // NOTE: whatIHaveNeed (Stage 7) requires EXACTLY 2 highlights per section — never 3 here.
+    },
+    "missions": {
+      "sectionIntro": {"heading": "<...>", "description": "<...>"},
+      "sections": {
+        "teacher": {"desc": "<observation for a teacher tied to the recommended missions>", "highlights": ["<...>", "<...>"]}
+      }
+      // NOTE: missions (Stage 8) requires EXACTLY 2 highlights — never 3 here.
+    }
+    // ... the remaining 5 stages (interestWorlds, characterConstellation, selfSocial,
+    // explorerMap, thinkingStyle) each also require "parent", "teacher", AND "action",
+    // EACH WITH EXACTLY 3 HIGHLIGHTS — see the exact per-stage section list in REPORT 8 below.
+  }
 }
 
 ---
@@ -257,11 +305,14 @@ Tone: Professional but simple
 ---
 
 REPORT 2: MISSION RECOMMENDATIONS (STRUCTURED)
-3-5 missions, each with:
+⚠️ CRITICAL: You MUST return EXACTLY 3 missions — not 2, not 4, not 5. Exactly 3 objects in the array.
+Each mission must be genuinely personalized, grounded in THIS learner's real capability scores,
+interests, and growth areas from the evidence provided — never copied from any example below.
+Each mission has:
 - priority: 1, 2, 3
-- mission_name: Simple name (e.g., "Teamwork Challenge")
+- mission_name: Simple name (e.g., "Teamwork Challenge") — invent one that fits this learner's real evidence, do not reuse example names verbatim
 - capability_target: One of 8 areas
-- why_recommended: 1-2 sentences explaining why (use friendly language)
+- why_recommended: 1-2 sentences explaining why, grounded in this learner's actual evidence (use friendly language)
 - difficulty: "Beginner", "Medium", or "Advanced"
 - estimated_duration_days: 5-14 days
 
@@ -396,55 +447,56 @@ EXAMPLE (Generate for EVERY world, not just 2-3):
 
 REPORT 5: THINKING STYLE SNAPSHOT
 For: Learner-facing display of actual thinking patterns from Adaptive Aptitude Test
-Source: Use aptitude_scores.accuracyBySubtag, pathClassification, confidenceTag, accuracyByDifficulty
-Format: Array of 4 thinking styles based on actual problem-solving patterns
+Source: Use aptitude_scores.accuracyBySubtag
+Format: Array of EXACTLY 4 thinking styles, SELECTED BY YOU from the 6 legitimate categories below
 
-4 THINKING STYLES (based on Adaptive Aptitude performance):
-1. Pattern Recognition - Score from accuracyBySubtag.pattern_recognition
-2. Problem Solving - Score from accuracyBySubtag.problem_solving
-3. Visual Thinking - Score from accuracyBySubtag.spatial_reasoning + pathClassification
-4. Decision Making - Score from accuracyBySubtag.decision_making + confidenceTag
+THE 6 LEGITIMATE CATEGORIES (this is the ONLY set of titles you may use):
+1. Pattern Recognition - Source: accuracyBySubtag["pattern_recognition"]
+2. Spatial Reasoning - Source: accuracyBySubtag["spatial_reasoning"]
+3. Verbal Reasoning - Source: accuracyBySubtag["verbal_reasoning"]
+4. Logical Reasoning - Source: accuracyBySubtag["logical_reasoning"]
+5. Numerical Reasoning - Source: accuracyBySubtag["numerical_reasoning"]
+6. Data Interpretation - Source: accuracyBySubtag["data_interpretation"]
 
-For each style, generate:
-- title: Exact name from list above
+YOUR TASK: Look at this learner's actual accuracyBySubtag evidence across all 6 categories and SELECT
+THE 4 MOST MEANINGFUL for this specific learner (e.g. their clearest strengths and/or their areas with
+the most room to grow — whichever combination best reflects this learner's real pattern). Do not pick
+the same 4 by default or alphabetically — base the selection on this learner's own evidence.
+
+For each of your 4 SELECTED styles, generate:
+- title: EXACT name from the 6 legitimate categories above (no variations, no new titles)
 - description: How they performed on this thinking style during the Adaptive Aptitude Test (15-25 words, learner-friendly)
 - icon: BrainCircuit, Lightbulb, Sparkles, or BarChart3 (choose appropriate one)
 
-LOGIC FOR EACH STYLE (NO percentages, NO harsh words):
-1. Pattern Recognition
-   - Source: accuracyBySubtag["pattern_recognition"]
-   - If score > 85%: "You're wonderful at spotting connections and patterns. Your mind naturally sees how things link together!"
-   - If score 70-85%: "You're developing great pattern-spotting skills. You can see connections in interesting ways!"
-   - If score < 70%: "You're learning to spot patterns. Each time you look for connections, you get better!"
+LOGIC FOR EACH STYLE (NO percentages, NO harsh words) — apply this same tiered pattern using that
+category's own accuracyBySubtag score, only for the 4 categories you selected:
+- If score > 85%: Warm, confident language celebrating this as a clear strength (e.g. "You're wonderful at spotting connections and patterns. Your mind naturally sees how things link together!")
+- If score 70-85%: Encouraging language noting solid, developing skill (e.g. "You're developing great pattern-spotting skills. You can see connections in interesting ways!")
+- If score < 70%: Growth-focused language framing it as a skill still growing (e.g. "You're learning to spot patterns. Each time you look for connections, you get better!")
+Adapt the wording naturally to each category's own subject matter (e.g. for Verbal Reasoning describe
+performance with words/reading, for Numerical Reasoning describe performance with numbers) while
+keeping the same encouraging tone and structure.
 
-2. Problem Solving
-   - Source: accuracyBySubtag["problem_solving"] + accuracyByDifficulty["hard"]
-   - If both > 80%: "You tackle challenging problems with confidence! You break them down and work through them beautifully!"
-   - If score > 75%: "You're good at working through problems step-by-step. You don't give up!"
-   - If score < 75%: "You're learning to solve problems. With practice, you get more confident!"
-
-3. Visual Thinking
-   - Source: accuracyBySubtag["spatial_reasoning"] + pathClassification
-   - If "visual" in pathClassification AND score > 75%: "You think in pictures and spaces! You can imagine how things fit together beautifully!"
-   - If score > 75%: "You're great at visualizing and imagining. You see the bigger picture!"
-   - If score < 75%: "You're learning to think visually. Imagination is a skill that grows!"
-
-4. Decision Making
-   - Source: accuracyBySubtag["decision_making"] + confidenceTag
-   - If confidenceTag "High" and score > 80%: "You make thoughtful decisions! You carefully think through your choices and feel sure about them."
-   - If score > 75%: "You're good at thinking through choices. You weigh options carefully!"
-   - If score < 75%: "You're developing your decision-making skills. It gets easier with practice!"
-
-EXAMPLE (friendly, no percentages):
-{
-  "title": "Pattern Recognition",
-  "description": "You're wonderful at spotting connections and patterns! Your mind naturally sees how things link together and relate to each other.",
-  "icon": "BrainCircuit"
-}
+EXAMPLE (friendly, no percentages — showing 2 of the 4 you'd return):
+[
+  {
+    "title": "Pattern Recognition",
+    "description": "You're wonderful at spotting connections and patterns! Your mind naturally sees how things link together and relate to each other.",
+    "icon": "BrainCircuit"
+  },
+  {
+    "title": "Logical Reasoning",
+    "description": "You're learning to work through logical steps. Each puzzle you try helps you build this skill!",
+    "icon": "Lightbulb"
+  }
+]
 
 RULES:
-✓ Generate ALL 4 thinking styles based on actual aptitude test performance
-✓ Use scores to judge level (high/medium/low) - do NOT mention percentages
+✓ Return EXACTLY 4 entries — no more, no fewer
+✓ Every title MUST be one of the 6 legitimate category names above, spelled exactly as shown
+✓ All 4 titles MUST be unique — never repeat a category
+✓ YOU choose which 4 based on this learner's actual accuracyBySubtag evidence — do not default to a fixed set
+✓ Use scores to judge level (high/medium/low) - do NOT mention percentages or scores in the description text
 ✓ Use FRIENDLY, ENCOURAGING language suitable for ages 11-14
 ✓ Match strength level to actual performance
 ✓ Use second-person language ("You...")
@@ -455,49 +507,139 @@ RULES:
 
 ---
 
-REPORT 7: WHAT I HAVE / WHAT I NEED (Per BRD FR-33 & PRD Section 18.1)
-For: Learner-facing display showing strengths and growth areas
-Source: Use capability_wheel scores to identify highest and lowest performers
-Format: Two arrays - what_i_have (strengths) and what_i_need (growth areas)
+REPORT 8: STAGE GUIDANCE (v2 — APP-OWNED SECTION STRUCTURE, PER GROWTH MAP STAGE)
+For: The Growth Map stage modal and scroll view — a learner-specific section heading/description for
+each stage's own card, plus 1-3 additional guidance sections per stage (exact count fixed by the app)
+Source: Ground EACH stage's guidance in THAT STAGE's own real data below (do not mix stages' evidence)
+GOAL: Every stage's guidance must read as if it was written from THIS learner's own evidence — never
+as generic advice that could apply to any learner. A reader should be able to tell which real items
+(labels/status) the guidance came from.
 
-LOGIC (Critical - use actual scores):
-- "what_i_have": Top 2-3 capability areas with HIGHEST scores (Confident or Ready for Next Level status, score ≥ 3.0)
-- "what_i_need": Bottom 2-3 capability areas with LOWEST scores (Starting or Practicing status, score < 3.0)
+⚠️ CRITICAL: YOU DO NOT CONTROL WHICH SECTIONS EXIST, THEIR ORDER, OR THEIR TITLES.
+The application decides which section KINDS each stage has (from exactly 3 possible kinds: "parent",
+"teacher", "action") and what UI title/subtitle each one displays. You generate ONLY the real content
+(desc + highlights) for the kinds a stage requires — never a title, never a 4th kind, never a kind a
+stage does not require below. A response containing any section kind outside this table, or missing a
+required one, will be REJECTED.
 
-RULES:
-✓ Select based on actual capability_wheel scores
-✓ what_i_have = highest scores sorted descending
-✓ what_i_need = lowest scores sorted ascending
-✓ Include 2-3 items in each array
-✓ Show scores to 1 decimal place
-✓ Use positive, encouraging language in both sections
-✓ what_i_need should be framed as growth opportunities, not weaknesses
+⚠️ CRITICAL REQUIREMENT (response will be REJECTED if not met):
+stage_guidance MUST be an object with "version": 2 plus EXACTLY these 8 stage keys, each present:
+${stageIds.map((id) => `"${id}"`).join(', ')}
 
-EXAMPLE:
-{
-  "what_i_have": [
-    {"capability_area": "Social / SQ", "score_out_of_5": 4.5},
-    {"capability_area": "Communication", "score_out_of_5": 4.2}
-  ],
-  "what_i_need": [
-    {"capability_area": "Digital & AI Literacy", "score_out_of_5": 2.5},
-    {"capability_area": "Execution & Independence", "score_out_of_5": 2.8}
-  ]
-}
+STAGE → REQUIRED SECTION KINDS → EVIDENCE SOURCE (use ONLY this stage's own data for its guidance):
+1. "capabilityWheel" [parent, teacher, action] → growth_map.capability_wheel (all 8 areas)
+2. "interestWorlds" [parent, teacher, action] → growth_map.interest_worlds
+3. "characterConstellation" [parent, teacher, action] → growth_map.character_strengths
+4. "selfSocial" [parent, teacher, action] → growth_map.self_social (self_eq, social_sq)
+5. "explorerMap" [parent, teacher, action] → growth_map.explorer_map (explored, to_explore)
+6. "thinkingStyle" [parent, teacher, action] → aptitude_scores (if provided) — otherwise use growth_map.capability_wheel's "Thinking & Problem Solving" area as the closest real evidence
+7. "whatIHaveNeed" [parent, action ONLY — NO teacher kind for this stage]:
+   - "parent" section (rendered as "Parent Snapshot") → growth_map.what_i_have ONLY (the learner's
+     real existing strengths — these are DETERMINISTIC, already-calculated values; you are
+     explaining/framing them, never recalculating or inventing a different capability_area or score)
+   - "action" section (rendered as "Skill Bridge Plan") → growth_map.what_i_need_next ONLY (the
+     learner's real growth-target areas — also deterministic). This section's content must respond
+     SPECIFICALLY to whichever capability_area(s) actually appear in growth_map.what_i_need_next for
+     THIS learner — never generic "keep improving" advice that could apply regardless of which areas
+     are listed.
+8. "missions" [teacher ONLY — NO parent or action kind for this stage] (rendered as "Teacher
+   Monitoring Note") → growth_map.capability_wheel + growth_map.what_i_need_next (what the learner
+   could work toward next)
+
+STEP A — IDENTIFY EVIDENCE BEFORE WRITING (do this silently for each stage, before generating its text):
+From that stage's own evidence source above, identify:
+- The 1-2 items with the strongest/highest status (the learner's clearest strength in this stage)
+- The 1-2 items with the most room to grow (lowest status), IF any exist below "Growing" — some
+  learners will have no low items in a stage; that's fine, do not invent one
+- For "characterConstellation" only: if growth_map includes any reflection/qualitative text tied to
+  a character strength, treat it as an identified item too
+Every "desc" and every "highlights" entry in this stage's sections MUST be built from ONE OF THESE
+IDENTIFIED ITEMS. Do not write about the stage in general — write about these specific items.
+
+STEP B — VOCABULARY LOCK (same technique used for the College assessment report):
+- Reuse the EXACT label/capability_area text from growth_map for that stage (e.g. if the data says
+  "Emotional regulation", write "Emotional regulation" — do not paraphrase it into a different skill
+  name like "managing feelings" as a label substitute)
+- You may explain what the label means in plain words, but the real label text itself must appear
+  verbatim at least once somewhere across that stage's sections
+- Do NOT introduce any skill, activity, world, or label that is not one of the items identified in Step A
+
+SECTION INTRO (replaces the app's hardcoded stage heading/description — e.g. "My Capability Wheel" /
+"Your growth across 8 core capabilities..."): for EACH of the 8 stage keys, also generate a
+"sectionIntro" object using the SAME Step-A identified items as that stage's sections:
+- "heading" (string, 2-5 words): a short UI heading — NOT a full sentence, NOT a paragraph. It may
+  reuse the stage's general theme (e.g. still be about "capabilities" for capabilityWheel) but should
+  reflect the identified evidence rather than being interchangeable with every learner's heading.
+- "description" (string, one sentence, under 20 words): what this stage's identified evidence shows
+  for THIS learner specifically. Same throat-clearing ban as "desc" above (no "This shows that...").
+- Follow Step A/B exactly as for the sections: name a real identified item, never invent one.
+- If this stage's evidence is too sparse to say anything specific (e.g. an empty array), it is
+  CORRECT to omit "sectionIntro" entirely for that stage — the app already has a safe static
+  heading/description fallback for this exact case, so do not force a vague one.
+
+FOR EACH STAGE KEY, generate ONLY the section kinds listed for it above, inside a "sections" object.
+Each section is an object with EXACTLY these 2 fields (NO "title", NO "subtitle" — those are app-owned):
+- "desc" (string, 12-18 words): ONE plain sentence stating the specific identified observation. Lead
+  with the observation itself — do NOT open with "This shows that...", "This means...", or similar
+  explanatory throat-clearing.
+- "highlights" (array of strings, 8-12 words each — see EXACT COUNT RULE below, count depends on stage):
+  concrete points, each traceable to a specific identified item from Step A
+
+⚠️ EXACT COUNT RULE FOR "highlights" (this is a FIXED count per stage, NOT a range — you MUST hit the
+exact number below for every section you generate; returning the wrong count will be REJECTED):
+- Stages 1-6 (capabilityWheel, interestWorlds, characterConstellation, selfSocial, explorerMap,
+  thinkingStyle) — EVERY required section (parent, teacher, action) MUST have EXACTLY 3 highlights.
+  2 is NOT acceptable for these stages under any circumstance.
+- Stage 7 (whatIHaveNeed) — EVERY required section (parent, action) MUST have EXACTLY 2 highlights.
+- Stage 8 (missions) — its one required section (teacher) MUST have EXACTLY 2 highlights.
+
+For Stages 1-6's exactly-3 requirement: build the 3 highlights from up to 3 distinct identified items
+from Step A (strongest / second strongest / growth area). If Step A only turned up 1-2 distinct items
+for that stage, use up to 3 different genuine facets of that SAME real evidence (e.g. what it shows /
+why it matters for this audience / how the learner could build on it) to reach 3 — every highlight must
+still be traceable to a real identified item, never invented. Do NOT pad with a generic, non-evidence
+filler sentence just to hit the count — find a real third facet of the real evidence instead.
+
+MAKE EACH STAGE'S VIEWS ANSWER DIFFERENT QUESTIONS ABOUT THE SAME EVIDENCE
+(sectionIntro plus this stage's section kinds must never just restate each other in different words):
+- "sectionIntro": Answers "What does this stage's evidence show, in one line?" A short heading + one
+  summarizing sentence — the FIRST thing a reader sees for this stage, not a repeat of the section content.
+- "parent" kind (where required): Answers "What might a parent actually NOTICE at home because of this
+  specific evidence?" Describe a concrete everyday/home situation tied to the identified item(s) — not
+  a restatement of the pattern, not generic parenting advice that would fit any child. Plain, warm,
+  non-technical language. NO academic terms, NO scores.
+- "teacher" kind (where required): Answers "What should a teacher DO DIFFERENTLY in the classroom
+  because of this specific evidence?" Name one realistic classroom adjustment tied to the identified
+  item(s) — not a generic encouragement that would apply to any student. Professional but simple tone.
+  NO scores, NO comparisons to other students.
+- "action" kind (where required): Answers "What can the learner try, tied directly to this exact
+  evidence?" Written directly to the learner ("You..."). Each highlight should be a concrete, doable
+  task tied to a different identified item where possible — not generic advice.
+
+STRICT EVIDENCE-ONLY GUARDRAILS (apply to ALL sections — this is non-negotiable):
+✓ Every "desc" and "highlights" entry MUST be traceable to a Step-A identified item in growth_map/aptitude_scores for THAT stage — do not invent evidence, achievements, or specifics not present in the data
+✓ NO scores, percentages, rankings, or comparisons to other learners anywhere in stage_guidance
+✓ NO diagnostic language, personality labels (e.g. "introvert", "gifted"), or clinical/medical framing
+✓ NO harsh words: "weak", "poor", "struggling", "behind", "below average"
+✓ If a stage's underlying data is sparse (e.g. very few interest_worlds or empty self_social), keep the guidance SHORT, honest, and use fewer highlights rather than fabricating specifics that aren't in the data — but all 8 stage keys and all of that stage's required section kinds are still REQUIRED
+✓ Follow the exact same "celebrate wins first" and simple-language rules as the rest of this report
+✓ Do NOT calculate, restate as a number, or invent a score/percentage for whatIHaveNeed — growth_map.what_i_have and growth_map.what_i_need_next are already final, deterministic values; your job is only to write guidance ABOUT them
 
 ---
 
 JSON RULES:
-✓ ALL 8 fields present (character_strengths_descriptions, capability_insights, assessmentReport, mission_recommendations, my_interest_worlds, explorer_insights, thinking_styles, what_i_have, what_i_need)
+✓ ALL 8 fields present (character_strengths_descriptions, capability_insights, assessmentReport, mission_recommendations, my_interest_worlds, explorer_insights, thinking_styles, stage_guidance)
+✓ mission_recommendations is an array of EXACTLY 3 objects — never 2, never 4 or more
+✓ stage_guidance has "version": 2 plus EXACTLY 8 stage keys: capabilityWheel, interestWorlds, characterConstellation, selfSocial, explorerMap, thinkingStyle, whatIHaveNeed, missions
+✓ Each stage_guidance[stageId] has a "sections" object containing ONLY the section kinds required for that stage (capabilityWheel/interestWorlds/characterConstellation/selfSocial/explorerMap/thinkingStyle: parent+teacher+action; whatIHaveNeed: parent+action; missions: teacher) — plus an OPTIONAL "sectionIntro" (include it whenever that stage's evidence supports one; omit it entirely for that stage if not, do not include it with vague/empty content)
+✓ Each section inside "sections" has EXACTLY: desc (string), highlights (array of strings) — NO title, NO subtitle field. highlights count is FIXED per stage, not a range: Stages 1-6 (capabilityWheel/interestWorlds/characterConstellation/selfSocial/explorerMap/thinkingStyle) = EXACTLY 3 per section; Stage 7 (whatIHaveNeed) = EXACTLY 2 per section; Stage 8 (missions) = EXACTLY 2
+✓ When present, "sectionIntro" has EXACTLY: heading (string, 2-5 words), description (string, one sentence, under 20 words)
 ✓ character_strengths_descriptions is an array of 6-8 objects with "label", "description", "tag" fields
-✓ thinking_styles is an array of exactly 4 objects with "title", "description", "icon" fields
+✓ thinking_styles is an array of EXACTLY 4 objects with "title", "description", "icon" fields — each "title" is one of the 6 legitimate categories (Pattern Recognition, Spatial Reasoning, Verbal Reasoning, Logical Reasoning, Numerical Reasoning, Data Interpretation), YOU select which 4 based on this learner's evidence, and all 4 titles must be unique
 ✓ explorer_insights has "exploredWorlds" and "toExploreWorlds" arrays
 ✓ exploredWorlds array must match ALL worlds from growth_map.explorer_map.explored (do not limit)
 ✓ toExploreWorlds array must match ALL worlds from growth_map.explorer_map.to_explore (do not limit)
 ✓ Each world in explorer_insights has: icon, worldName, whyThisWorld, evidenceFromGrowth, whatItMeans, nextStep
-✓ what_i_have is an array of 2-3 highest-scoring capabilities (Confident/Ready for Next Level)
-✓ what_i_need is an array of 2-3 lowest-scoring capabilities (Starting/Practicing)
-✓ Each capability item has: capability_area (string), score_out_of_5 (number, 1 decimal)
 ✓ Thinking style icons must be one of: BrainCircuit, Lightbulb, Sparkles, BarChart3
 ✓ Explorer map icons must be one of: briefcase, hammer, palette, users, leaf, laptop, heart, lightbulb
 ✓ Each text field is a single string (NO line breaks, NO markdown)

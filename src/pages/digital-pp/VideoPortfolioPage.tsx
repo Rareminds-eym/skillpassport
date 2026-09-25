@@ -1,54 +1,267 @@
-import { AnimatePresence, motion } from 'framer-motion';
-import { CheckCircle, Download, Trash2, Upload, Video, X } from 'lucide-react';
-import React, { useRef, useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Upload, Video, Edit, Trash2, Settings, Play, Loader2, ArrowRight, X, Share2 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
+import VideoPortfolioLoader from '../../components/VideoPortfolioLoader';
 import { FeatureGate } from '@/features/subscription';
+import VideoEditDrawer from './VideoEditDrawer';
+import {
+  useVideoPortfolioStore,
+  selectVideos,
+  selectLoading,
+  selectError,
+  selectUploadProgress,
+  selectVideoCount,
+  selectMaxAllowed,
+  selectCanUploadMore,
+  type VideoEntry as VideoEntryType
+} from '@/features/digital-portfolio';
+import { useUser } from '@/shared/model/authStore';
+import { useLearnerDataByEmail } from '@/entities/learner/model/useLearnerDataByEmail';
+import { getVideoPortfolioUrl } from '@/shared/api/storageApiService';
+import { ssoClient } from '@/shared/api/ssoClient';
 
-interface VideoFile {
-  id: string;
-  file: File;
-  url: string;
-  title: string;
-  description: string;
-  uploadDate: Date;
+const MAX_VIDEOS = 3;
+
+// Helper function to get thumbnail style based on type
+const getThumbnailStyle = (video: VideoEntryType): React.CSSProperties => {
+  const thumbType = (video as any).thumbnailType || 'color';
+  const thumbValue = (video as any).thumbnailValue || video.thumbnailColor || '#6B7280';
+
+  if (thumbType === 'color') {
+    return { backgroundColor: thumbValue };
+  } else if (thumbType === 'logo') {
+    return {
+      backgroundColor: '#fff',
+      backgroundImage: `url(/RMLogo.webp)`,
+      backgroundSize: 'contain',
+      backgroundPosition: 'center',
+      backgroundRepeat: 'no-repeat',
+    };
+  } else if (thumbType === 'upload' || thumbType === 'frame') {
+    return {
+      backgroundColor: '#000',
+      backgroundImage: `url(${thumbValue})`,
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+    };
+  }
+
+  return { backgroundColor: thumbValue || '#6B7280' };
+};
+
+// Helper function to get video duration
+const getVideoDuration = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement('video');
+    video.preload = 'metadata';
+
+    video.onloadedmetadata = () => {
+      window.URL.revokeObjectURL(video.src);
+      const duration = video.duration;
+      const minutes = Math.floor(duration / 60);
+      const seconds = Math.floor(duration % 60);
+      resolve(`${minutes}:${seconds.toString().padStart(2, '0')}`);
+    };
+
+    video.onerror = () => {
+      window.URL.revokeObjectURL(video.src);
+      reject(new Error('Failed to load video metadata'));
+    };
+
+    video.src = URL.createObjectURL(file);
+  });
+};
+
+// Helper function to get relative time (e.g., "2 hours ago", "3 days ago")
+const getRelativeTime = (date: string | Date): string => {
+  const now = new Date();
+  const past = new Date(date);
+  const diffInMs = now.getTime() - past.getTime();
+  const diffInSeconds = Math.floor(diffInMs / 1000);
+  const diffInMinutes = Math.floor(diffInSeconds / 60);
+  const diffInHours = Math.floor(diffInMinutes / 60);
+  const diffInDays = Math.floor(diffInHours / 24);
+  const diffInWeeks = Math.floor(diffInDays / 7);
+  const diffInMonths = Math.floor(diffInDays / 30);
+  const diffInYears = Math.floor(diffInDays / 365);
+
+  if (diffInSeconds < 60) {
+    return 'just now';
+  } else if (diffInMinutes < 60) {
+    return `${diffInMinutes} ${diffInMinutes === 1 ? 'minute' : 'minutes'} ago`;
+  } else if (diffInHours < 24) {
+    return `${diffInHours} ${diffInHours === 1 ? 'hour' : 'hours'} ago`;
+  } else if (diffInDays < 7) {
+    return `${diffInDays} ${diffInDays === 1 ? 'day' : 'days'} ago`;
+  } else if (diffInWeeks < 4) {
+    return `${diffInWeeks} ${diffInWeeks === 1 ? 'week' : 'weeks'} ago`;
+  } else if (diffInMonths < 12) {
+    return `${diffInMonths} ${diffInMonths === 1 ? 'month' : 'months'} ago`;
+  } else {
+    return `${diffInYears} ${diffInYears === 1 ? 'year' : 'years'} ago`;
+  }
+};
+
+function VideoPortfolioPage() {
+  return (
+    <FeatureGate featureKey="video_portfolio">
+      <VideoPortfolioPageContent />
+    </FeatureGate>
+  );
 }
 
-/**
- * VideoPortfolioPage - Video portfolio management
- * 
- * Wrapped with FeatureGate for video_portfolio add-on access control
- */
 const VideoPortfolioPageContent: React.FC = () => {
-  const navigate = useNavigate();
-  const [videos, setVideos] = useState<VideoFile[]>([]);
-  const [selectedVideo, setSelectedVideo] = useState<VideoFile | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
+  const [selectedVideo, setSelectedVideo] = useState<VideoEntryType | null>(null);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [currentPlayingVideo, setCurrentPlayingVideo] = useState<VideoEntryType | null>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const [showUploadForm, setShowUploadForm] = useState(false);
-  const [newVideoTitle, setNewVideoTitle] = useState('');
-  const [newVideoDescription, setNewVideoDescription] = useState('');
-  const [uploadingFile, setUploadingFile] = useState<File | null>(null);
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [loadingVideo, setLoadingVideo] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const videoPlayerRef = useRef<HTMLVideoElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const navigate = useNavigate();
 
-  const toggleFullscreen = () => {
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen();
-      setIsFullscreen(true);
-    } else {
-      document.exitFullscreen();
-      setIsFullscreen(false);
+  // Get user and learner data
+  const user = useUser();
+  const { learnerData, loading: learnerLoading } = useLearnerDataByEmail(user?.email);
+  const learnerId = learnerData?.id || '';
+  const userName = user?.name || learnerData?.name || 'User';
+
+  // Store state
+  const videos = useVideoPortfolioStore(selectVideos);
+  const loading = useVideoPortfolioStore(selectLoading);
+  const error = useVideoPortfolioStore(selectError);
+  const uploadProgress = useVideoPortfolioStore(selectUploadProgress);
+  const videoCount = useVideoPortfolioStore(selectVideoCount);
+  const maxAllowed = useVideoPortfolioStore(selectMaxAllowed);
+  const canUploadMore = useVideoPortfolioStore(selectCanUploadMore);
+
+  // Store actions
+  const fetchVideos = useVideoPortfolioStore(state => state.fetchVideos);
+  const uploadAndCreateVideo = useVideoPortfolioStore(state => state.uploadAndCreateVideo);
+  const deleteVideo = useVideoPortfolioStore(state => state.deleteVideo);
+  const clearError = useVideoPortfolioStore(state => state.clearError);
+
+  // Fetch videos on mount when learnerId is available
+  useEffect(() => {
+    if (learnerId && !learnerLoading) {
+      fetchVideos(learnerId).catch(err => {
+        console.error('Failed to fetch videos:', err);
+        toast.error(err.message || 'Failed to load videos');
+      });
     }
+  }, [learnerId, learnerLoading, fetchVideos]);
+
+  // Show error toast
+  useEffect(() => {
+    if (error) {
+      toast.error(error);
+      clearError();
+    }
+  }, [error, clearError]);
+
+  // Filter only published videos for display
+  const publishedVideos = videos.filter(v => v.showOnPublic && v.approvalStatus === 'approved');
+
+  // Set first published video as current playing video on mount
+  useEffect(() => {
+    if (publishedVideos.length > 0 && !currentPlayingVideo) {
+      setCurrentPlayingVideo(publishedVideos[0]);
+    }
+  }, [publishedVideos.length]);
+
+  // Load video when current playing video changes
+  useEffect(() => {
+    if (currentPlayingVideo) {
+      loadVideo(currentPlayingVideo);
+    } else {
+      // Clear video URL when no video is playing
+      if (videoUrl && videoUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(videoUrl);
+      }
+      setVideoUrl(null);
+    }
+  }, [currentPlayingVideo?.id]);
+
+  // Cleanup blob URL on unmount
+  useEffect(() => {
+    return () => {
+      if (videoUrl && videoUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(videoUrl);
+      }
+    };
+  }, [videoUrl]);
+
+  // Disable body scroll when drawer is open
+  useEffect(() => {
+    if (isDrawerOpen) {
+      // Prevent scrolling on multiple levels
+      document.body.style.overflow = 'hidden';
+      document.documentElement.style.overflow = 'hidden';
+      // Prevent touch scrolling on mobile
+      document.body.style.position = 'fixed';
+      document.body.style.width = '100%';
+    } else {
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.width = '';
+    }
+
+    // Cleanup on unmount
+    return () => {
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.width = '';
+    };
+  }, [isDrawerOpen]);
+
+  const loadVideo = async (video: VideoEntryType) => {
+    if (!video?.videoUrl) return;
+
+    setLoadingVideo(true);
+    try {
+      const url = getVideoPortfolioUrl(video.videoUrl, 'inline');
+      const response = await ssoClient.fetch(url, {
+        method: 'GET',
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to load video: ${response.status} ${response.statusText}`);
+      }
+
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      setVideoUrl(blobUrl);
+    } catch (error) {
+      console.error('Failed to load video:', error);
+      toast.error('Failed to load video');
+    } finally {
+      setLoadingVideo(false);
+    }
+  };
+
+  const handleVideoClick = (video: VideoEntryType) => {
+    // Revoke old blob URL
+    if (videoUrl && videoUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(videoUrl);
+    }
+    setCurrentPlayingVideo(video);
+  };
+
+  const handleBrowseFiles = () => {
+    fileInputRef.current?.click();
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file && file.type.startsWith('video/')) {
-      setUploadingFile(file);
-      setShowUploadForm(true);
-      setNewVideoTitle(file.name.replace(/\.[^/.]+$/, ''));
+      handleFileUpload(file);
+    } else if (file) {
+      toast.error('Please select a valid video file');
     }
   };
 
@@ -64,187 +277,379 @@ const VideoPortfolioPageContent: React.FC = () => {
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    
+
     const file = e.dataTransfer.files[0];
     if (file && file.type.startsWith('video/')) {
-      setUploadingFile(file);
-      setShowUploadForm(true);
-      setNewVideoTitle(file.name.replace(/\.[^/.]+$/, ''));
+      handleFileUpload(file);
+    } else {
+      toast.error('Please drop a valid video file');
     }
   };
 
-  const handleUploadVideo = () => {
-    if (!uploadingFile) return;
-
-    const newVideo: VideoFile = {
-      id: Date.now().toString(),
-      file: uploadingFile,
-      url: URL.createObjectURL(uploadingFile),
-      title: newVideoTitle || uploadingFile.name,
-      description: newVideoDescription,
-      uploadDate: new Date(),
-    };
-
-    setVideos([...videos, newVideo]);
-    setUploadingFile(null);
-    setNewVideoTitle('');
-    setNewVideoDescription('');
-    setShowUploadForm(false);
-  };
-
-  const handleDeleteVideo = (id: string) => {
-    setVideos(videos.filter(v => v.id !== id));
-    if (selectedVideo?.id === id) {
-      setSelectedVideo(null);
+  const handleFileUpload = async (file: File) => {
+    if (!canUploadMore) {
+      toast.error(`Maximum ${maxAllowed} videos allowed`);
+      return;
     }
-  };
 
-  const togglePlayPause = () => {
-    if (videoPlayerRef.current) {
-      if (isPlaying) {
-        videoPlayerRef.current.pause();
-      } else {
-        videoPlayerRef.current.play();
+    // Validate file size (100MB)
+    const MAX_FILE_SIZE = 100 * 1024 * 1024;
+    if (file.size > MAX_FILE_SIZE) {
+      toast.error('Video file too large. Maximum 100MB allowed.');
+      return;
+    }
+
+    try {
+      // Calculate video duration
+      let duration: string | undefined;
+      try {
+        duration = await getVideoDuration(file);
+        console.log('Video duration calculated:', duration);
+      } catch (err) {
+        console.warn('Failed to calculate video duration:', err);
       }
-      setIsPlaying(!isPlaying);
+
+      const { id } = await uploadAndCreateVideo(
+        file,
+        {
+          learnerId,
+          title: file.name.replace(/\.[^/.]+$/, ''),
+          description: '',
+          tags: [],
+          thumbnailColor: '#6B7280',
+          showOnPublic: false,
+          duration,
+        },
+        userName
+      );
+
+      toast.success('Video uploaded successfully');
+
+      // Find the newly created video and open drawer
+      const newVideo = videos.find(v => v.id === id);
+      if (newVideo) {
+        setSelectedVideo(newVideo);
+        setIsDrawerOpen(true);
+      }
+
+      // Close manage modal after upload
+      setIsManageModalOpen(false);
+    } catch (err: any) {
+      console.error('Upload failed:', err);
     }
   };
 
-  const handleDownloadVideo = (video: VideoFile) => {
-    const a = document.createElement('a');
-    a.href = video.url;
-    a.download = video.title + '.mp4';
-    a.click();
+  const handleEditVideo = (video: VideoEntryType) => {
+    setSelectedVideo(video);
+    setIsDrawerOpen(true);
   };
+
+  const handleDeleteVideo = async (videoId: string) => {
+    if (!window.confirm('Are you sure you want to delete this video? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      await deleteVideo(videoId);
+      toast.success('Video deleted successfully');
+    } catch (err: any) {
+      console.error('Delete failed:', err);
+      toast.error(err.message || 'Failed to delete video');
+    }
+  };
+
+  const handleDrawerClose = () => {
+    setIsDrawerOpen(false);
+    setSelectedVideo(null);
+    // Refresh videos after editing
+    if (learnerId) {
+      fetchVideos(learnerId);
+    }
+  };
+
+  const handleShareVideo = () => {
+    if (!currentPlayingVideo) return;
+
+    const shareUrl = window.location.href;
+    const shareText = `Check out "${currentPlayingVideo.title}" on Video Portfolio`;
+
+    if (navigator.share) {
+      navigator.share({
+        title: currentPlayingVideo.title,
+        text: shareText,
+        url: shareUrl,
+      }).catch((err) => {
+        if (err.name !== 'AbortError') {
+          console.error('Error sharing:', err);
+        }
+      });
+    } else {
+      // Fallback: copy to clipboard
+      navigator.clipboard.writeText(shareUrl).then(() => {
+        toast.success('Link copied to clipboard!');
+      }).catch(() => {
+        toast.error('Failed to copy link');
+      });
+    }
+  };
+
+  // Full-page loader for initial load - Show loader while fetching OR while learner data is loading
+  if ((loading && videos.length === 0) || learnerLoading) {
+    return <VideoPortfolioLoader />;
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-slate-900 dark:to-indigo-950 transition-colors duration-300">
-      {/* Main Content */}
-      <div className="py-8 px-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid lg:grid-cols-3 gap-8">
-            {/* Video Player Section */}
-            <div className="lg:col-span-2">
-              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 transition-colors duration-300">
-                {selectedVideo ? (
-                  <div>
-                    <div className="relative bg-black rounded-lg overflow-hidden mb-4">
-                      <video
-                        ref={videoPlayerRef}
-                        src={selectedVideo.url}
-                        className="w-full aspect-video"
-                        controls
-                        onPlay={() => setIsPlaying(true)}
-                        onPause={() => setIsPlaying(false)}
-                      />
+    <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-indigo-950 dark:to-gray-900">
+      {/* Animated Ripple Background */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <motion.div
+          className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-400/10 dark:bg-indigo-500/10 rounded-full blur-3xl"
+          animate={{
+            scale: [1, 1.2, 1],
+            opacity: [0.3, 0.5, 0.3],
+          }}
+          transition={{
+            duration: 8,
+            repeat: Infinity,
+            ease: "easeInOut",
+          }}
+        />
+      </div>
+
+      <div className="relative z-10 max-w-7xl mx-auto px-6 py-8">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+              Video Portfolio
+            </h1>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              {publishedVideos.length} published {publishedVideos.length === 1 ? 'video' : 'videos'}
+            </p>
+          </div>
+
+          {/* Settings Icon */}
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => navigate('/learner/digital-portfolio/video/manage')}
+            className="p-3 bg-white dark:bg-gray-800 rounded-xl shadow-lg hover:shadow-xl transition-all border border-gray-200 dark:border-gray-700"
+            title="Manage Videos"
+          >
+            <Settings className="w-6 h-6 text-gray-700 dark:text-gray-300" />
+          </motion.button>
+        </div>
+
+        {/* Main Content */}
+        {publishedVideos.length === 0 ? (
+          // Empty State
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-16 text-center shadow-xl">
+            <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900/30 dark:to-purple-900/30 flex items-center justify-center">
+              <Video className="w-10 h-10 text-indigo-600 dark:text-indigo-400" />
+            </div>
+            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
+              Publish Your Portfolio
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-8 max-w-md mx-auto">
+              Upload your first video and publish it to showcase your skills and projects to the world
+            </p>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => navigate('/learner/digital-portfolio/video/manage')}
+              className="inline-flex items-center justify-center px-8 py-4 bg-gradient-to-r from-indigo-600 to-blue-600 dark:from-indigo-500 dark:to-blue-500 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all group relative overflow-hidden"
+            >
+              <span className="relative z-10 flex items-center">
+                Upload Your First Video
+                <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
+              </span>
+              <span className="absolute top-0 left-[-40px] h-full w-0 bg-gradient-to-r from-blue-700 to-indigo-700 dark:from-blue-600 dark:to-indigo-600 transform skew-x-[45deg] transition-all duration-700 group-hover:w-[160%] -z-0"></span>
+            </motion.button>
+          </div>
+        ) : (
+          // Video Display Layout (YouTube-style)
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Left Side - Video Player */}
+            <div className="lg:col-span-2 space-y-4">
+              {/* Video Player */}
+              <div className="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-xl">
+                <div
+                  className="w-full aspect-video bg-black flex items-center justify-center relative"
+                  style={currentPlayingVideo ? getThumbnailStyle(currentPlayingVideo) : { backgroundColor: '#000' }}
+                >
+                  {loadingVideo ? (
+                    <div className="absolute inset-0 flex items-center justify-center bg-gray-900/50">
+                      <Loader2 className="w-12 h-12 text-white animate-spin" />
                     </div>
-                    <div className="space-y-4">
-                      <div>
-                        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                          {selectedVideo.title}
-                        </h2>
-                        <p className="text-gray-600 dark:text-gray-300">
-                          {selectedVideo.description || 'No description provided'}
-                        </p>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                          Uploaded: {selectedVideo.uploadDate.toLocaleDateString()}
-                        </p>
-                        <div className="flex space-x-2">
-                          <button
-                            onClick={() => handleDownloadVideo(selectedVideo)}
-                            className="px-4 py-2 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors flex items-center space-x-2"
-                          >
-                            <Download className="w-4 h-4" />
-                            <span>Download</span>
-                          </button>
-                          <button
-                            onClick={() => handleDeleteVideo(selectedVideo.id)}
-                            className="px-4 py-2 bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 rounded-lg hover:bg-red-200 dark:hover:bg-red-800 transition-colors flex items-center space-x-2"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                            <span>Delete</span>
-                          </button>
+                  ) : videoUrl && currentPlayingVideo ? (
+                    <video
+                      ref={videoRef}
+                      src={videoUrl}
+                      controls
+                      controlsList="nodownload"
+                      crossOrigin="use-credentials"
+                      className="w-full h-full"
+                      onError={(e) => {
+                        console.error('Video loading error:', e);
+                        toast.error('Failed to load video');
+                      }}
+                    >
+                      Your browser does not support video playback.
+                    </video>
+                  ) : (
+                    <div className="flex items-center justify-center">
+                      <Play className="w-16 h-16 text-white opacity-50" />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Video Details */}
+              {currentPlayingVideo && (
+                <div className="space-y-4">
+                  {/* Title with Share Button */}
+                  <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-xl flex items-center justify-between gap-4">
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-white flex-1">
+                      {currentPlayingVideo.title}
+                    </h2>
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={handleShareVideo}
+                      className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white rounded-lg transition-colors font-medium"
+                    >
+                      <Share2 className="w-4 h-4" />
+                      <span className="hidden sm:inline">Share</span>
+                    </motion.button>
+                  </div>
+
+                  {/* Description, User Profile, Tags, and Upload Date */}
+                  <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-xl space-y-4">
+                    {/* User Profile and Upload Date */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-semibold">
+                          {userName.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <h3 className="text-base font-semibold text-gray-900 dark:text-white">
+                            {userName}
+                          </h3>
                         </div>
                       </div>
+
+                      {/* Upload Date */}
+                      {currentPlayingVideo.createdAt && (
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          {getRelativeTime(currentPlayingVideo.createdAt)}
+                        </p>
+                      )}
                     </div>
+
+                    {/* Description */}
+                    {currentPlayingVideo.description && (
+                      <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
+                        {currentPlayingVideo.description}
+                      </p>
+                    )}
+
+                    {/* Tags */}
+                    {currentPlayingVideo.tags && currentPlayingVideo.tags.length > 0 && (
+                      <div className="pt-2">
+                        <div className="flex flex-wrap gap-2">
+                          {currentPlayingVideo.tags.map((tag, idx) => (
+                            <span
+                              key={idx}
+                              className="px-3 py-1.5 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 text-sm font-medium rounded-lg border border-indigo-200 dark:border-indigo-800"
+                            >
+                              #{tag}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center py-20 text-gray-400 dark:text-gray-500">
-                    <Video className="w-24 h-24 mb-4" />
-                    <p className="text-xl font-medium mb-2">No video selected</p>
-                    <p className="text-sm">Upload or select a video to start</p>
-                  </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
 
-            {/* Video List Section */}
-            <div className="lg:col-span-1">
-              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 transition-colors duration-300">
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
-                  Your Videos ({videos.length})
-                </h3>
-                
-                {videos.length === 0 ? (
-                  <div
-                    onDragOver={handleDragOver}
-                    onDragLeave={handleDragLeave}
-                    onDrop={handleDrop}
-                    className={`border-2 border-dashed rounded-lg p-8 text-center transition-all ${
-                      isDragging
-                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                        : 'border-gray-300 dark:border-gray-600'
-                    }`}
+            {/* Right Side - Video List */}
+            <div className="space-y-3">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white px-2">
+                All Videos
+              </h3>
+              <div className="space-y-3 max-h-[calc(100vh-200px)] overflow-y-auto p-2
+               scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent">
+                {publishedVideos.map((video) => (
+                  <motion.button
+                    key={video.id}
+                    onClick={() => handleVideoClick(video)}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className={`w-full bg-white dark:bg-gray-800 rounded-xl p-3 transition-all text-left focus:outline-none ${currentPlayingVideo?.id === video.id
+                      ? 'ring-2 ring-indigo-500 shadow-lg'
+                      : 'hover:shadow-md'
+                      }`}
                   >
-                    <Upload className="w-12 h-12 mx-auto mb-3 text-gray-400 dark:text-gray-500" />
-                    <p className="text-gray-600 dark:text-gray-300 mb-2">
-                      No videos uploaded yet
-                    </p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      Drag & drop or click upload
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-3 max-h-[600px] overflow-y-auto">
-                    {videos.map((video) => (
-                      <motion.div
-                        key={video.id}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className={`p-4 rounded-lg cursor-pointer transition-all ${
-                          selectedVideo?.id === video.id
-                            ? 'bg-blue-100 dark:bg-blue-900/50 border-2 border-blue-500'
-                            : 'bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600'
-                        }`}
-                        onClick={() => setSelectedVideo(video)}
-                      >
-                        <div className="flex items-start space-x-3">
-                          <Video className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-1" />
-                          <div className="flex-1 min-w-0">
-                            <h4 className="font-semibold text-gray-900 dark:text-white truncate">
-                              {video.title}
-                            </h4>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                              {video.description || 'No description'}
-                            </p>
-                            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                              {video.uploadDate.toLocaleDateString()}
-                            </p>
-                          </div>
-                          {selectedVideo?.id === video.id && (
-                            <CheckCircle className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                    <div className="flex gap-3">
+                      {/* Thumbnail */}
+                      <div className="flex-shrink-0">
+                        <div
+                          className="w-40 h-24 rounded-lg flex items-center justify-center relative overflow-hidden"
+                          style={getThumbnailStyle(video)}
+                        >
+                          {/* Only show video icon if it's a color thumbnail */}
+                          {(!(video as any).thumbnailType || (video as any).thumbnailType === 'color') && (
+                            <Video className="w-6 h-6 text-white opacity-80" />
+                          )}
+                          {video.duration && (
+                            <div className="absolute bottom-1 right-1 px-1.5 py-0.5 bg-black/70 rounded text-xs text-white font-medium">
+                              {video.duration}
+                            </div>
+                          )}
+                          {currentPlayingVideo?.id === video.id && (
+                            <div className="absolute inset-0 bg-indigo-500/20 flex items-center justify-center">
+                              <Play className="w-8 h-8 text-white" />
+                            </div>
                           )}
                         </div>
-                      </motion.div>
-                    ))}
-                  </div>
-                )}
+                      </div>
+
+                      {/* Info */}
+                      <div className="flex-1 min-w-0">
+                        <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-1 line-clamp-2">
+                          {video.title}
+                        </h4>
+                        {video.description && (
+                          <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-2 mb-2">
+                            {video.description}
+                          </p>
+                        )}
+                        {video.tags && video.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {video.tags.slice(0, 2).map((tag, idx) => (
+                              <span
+                                key={idx}
+                                className="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-xs text-gray-600 dark:text-gray-400 rounded"
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                            {video.tags.length > 2 && (
+                              <span className="px-2 py-0.5 text-xs text-gray-500 dark:text-gray-500">
+                                +{video.tags.length - 2}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </motion.button>
+                ))}
               </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Hidden File Input */}
@@ -256,151 +661,14 @@ const VideoPortfolioPageContent: React.FC = () => {
         className="hidden"
       />
 
-      {/* Upload Form Modal - Centered */}
-      <AnimatePresence>
-        {showUploadForm && uploadingFile && (
-          <>
-            {/* Backdrop */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => {
-                setShowUploadForm(false);
-                setUploadingFile(null);
-                setNewVideoTitle('');
-                setNewVideoDescription('');
-              }}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center"
-            />
-            
-            {/* Modal */}
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                onClick={(e) => e.stopPropagation()}
-                className="w-full max-w-lg bg-white dark:bg-gray-800 rounded-2xl shadow-2xl pointer-events-auto"
-              >
-                {/* Modal Header */}
-                <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-                  <div className="flex items-center space-x-3">
-                    <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
-                      <Upload className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-                    </div>
-                    <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
-                      Upload Video
-                    </h3>
-                  </div>
-                  <button
-                    onClick={() => {
-                      setShowUploadForm(false);
-                      setUploadingFile(null);
-                      setNewVideoTitle('');
-                      setNewVideoDescription('');
-                    }}
-                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                  >
-                    <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
-                  </button>
-                </div>
-
-                {/* Modal Body */}
-                <div className="p-6 space-y-5">
-                  {/* Video Title */}
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                      Video Title <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={newVideoTitle}
-                      onChange={(e) => setNewVideoTitle(e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-all"
-                      placeholder="Enter video title"
-                      autoFocus
-                    />
-                  </div>
-
-                  {/* Description */}
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                      Description (Optional)
-                    </label>
-                    <textarea
-                      value={newVideoDescription}
-                      onChange={(e) => setNewVideoDescription(e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white resize-none transition-all"
-                      rows={4}
-                      placeholder="Add a description for your video"
-                    />
-                  </div>
-
-                  {/* File Info */}
-                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
-                    <div className="flex items-start space-x-3">
-                      <Video className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-gray-900 dark:text-white mb-1">
-                          Selected File
-                        </p>
-                        <p className="text-sm text-gray-600 dark:text-gray-300 truncate">
-                          {uploadingFile.name}
-                        </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                          Size: {(uploadingFile.size / 1024 / 1024).toFixed(2)} MB
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Modal Footer */}
-                <div className="flex items-center justify-end space-x-3 p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 rounded-b-2xl">
-                  <button
-                    onClick={() => {
-                      setShowUploadForm(false);
-                      setUploadingFile(null);
-                      setNewVideoTitle('');
-                      setNewVideoDescription('');
-                    }}
-                    className="px-6 py-2.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors font-medium"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleUploadVideo}
-                    disabled={!newVideoTitle.trim()}
-                    className={`px-6 py-2.5 rounded-lg font-semibold transition-all ${
-                      newVideoTitle.trim()
-                        ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:shadow-lg hover:scale-105'
-                        : 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed'
-                    }`}
-                  >
-                    <span className="flex items-center space-x-2">
-                      <Upload className="w-4 h-4" />
-                      <span>Upload Video</span>
-                    </span>
-                  </button>
-                </div>
-              </motion.div>
-            </div>
-          </>
-        )}
-      </AnimatePresence>
+      {/* Video Edit Drawer */}
+      <VideoEditDrawer
+        isOpen={isDrawerOpen}
+        video={selectedVideo}
+        onClose={handleDrawerClose}
+      />
     </div>
   );
 };
-
-/**
- * Wrapped VideoPortfolioPage with FeatureGate for video_portfolio add-on
- */
-const VideoPortfolioPage: React.FC = () => (
-  <FeatureGate featureKey="video_portfolio" showUpgradePrompt={true}>
-    <VideoPortfolioPageContent />
-  </FeatureGate>
-);
 
 export default VideoPortfolioPage;

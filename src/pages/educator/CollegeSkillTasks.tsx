@@ -19,6 +19,7 @@ import { getDocumentUrl, uploadMultipleFiles } from '@/shared/api';
 import { deleteFile } from '@/shared/api/storageApiService';
 import { getLogger } from '@/shared/config/logging';
 import { apiPost } from '@/shared/api/apiClient';
+import { formatProgramLabel } from '@/shared/lib';
 
 const logger = getLogger('CollegeSkillTasks');
 
@@ -1431,7 +1432,7 @@ export default function CollegeSkillTasks() {
                                             >
                                                 <option value="">Select Program</option>
                                                 {programs.map(prog => (
-                                                    <option key={prog.id} value={prog.id}>{prog.name}</option>
+                                                    <option key={prog.id} value={prog.id}>{formatProgramLabel(prog.name, prog)}</option>
                                                 ))}
                                             </select>
                                             {!taskForm.department_id && (

@@ -41,6 +41,11 @@ const VerifyEmail = () => {
           isAuthenticated: useAuthStore.getState().isAuthenticated,
         });
 
+        // CRITICAL: Wait for the new token to propagate through auth-client's vault.
+        // Without this delay, subsequent API calls may still use the old token.
+        // The auth-client SDK updates cookies/vault asynchronously after initialize().
+        await new Promise(resolve => setTimeout(resolve, 500));
+
         // Step 2: Only fall back to success_session_lost if the session is
         // genuinely absent (no cookie, different browser).
         if (!refreshOk && !useAuthStore.getState().isAuthenticated) {
