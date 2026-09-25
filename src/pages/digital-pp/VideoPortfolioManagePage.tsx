@@ -137,7 +137,9 @@ const VideoPortfolioManagePage: React.FC = () => {
 
       if (scrollY) {
         const scrollPos = parseInt(scrollY || '0') * -1;
-        window.scrollTo(0, scrollPos);
+        if (!isNaN(scrollPos)) {
+          window.scrollTo(0, scrollPos);
+        }
       }
     }
 

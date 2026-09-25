@@ -185,7 +185,7 @@ export const VIDEO_PORTFOLIO_CONSTANTS = {
   MAX_VIDEOS: 3,
   MAX_TAGS: 5,
   MAX_FILE_SIZE_MB: 50,
-  MAX_FILE_SIZE_BYTES: 100 * 1024 * 1024,
+  MAX_FILE_SIZE_BYTES: 50 * 1024 * 1024,
   SUPPORTED_MIME_TYPES: [
     'video/mp4',
     'video/quicktime',
