@@ -597,7 +597,45 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       case 'update-enrollment': {
         const { learnerId, enrollmentData } = params;
         if (!learnerId || !enrollmentData) return apiError(400, 'VALIDATION_ERROR', 'Missing learnerId or enrollmentData', context.request, { startTime });
-        const { data, error } = await supabase.from('learners').update({ ...enrollmentData, updated_at: new Date().toISOString() }).eq('id', learnerId).select().single();
+        const payload: Record<string, any> = { ...enrollmentData };
+        // If the enrolled program has specializations, carry them onto the
+        // learner row (varchar free-text, comma-joined like "hr, marketing").
+        // Programs without specializations leave the learner value untouched.
+        if (enrollmentData.program_id) {
+          try {
+            const { data: prog, error: progError } = await supabase
+              .from('programs')
+              .select('specializations')
+              .eq('id', enrollmentData.program_id)
+              .maybeSingle();
+            if (progError) {
+              logger.warn('[update-enrollment] specializations lookup failed; learner specialization left unchanged', {
+                learnerId,
+                program_id: enrollmentData.program_id,
+                message: progError.message,
+              });
+            } else {
+              const specs = Array.isArray((prog as any)?.specializations)
+                ? (prog as any).specializations.map((s: unknown) => String(s).trim()).filter(Boolean)
+                : String((prog as any)?.specializations ?? '')
+                    .split(',')
+                    .map((s: string) => s.trim())
+                    .filter(Boolean);
+              if (specs.length > 0) {
+                payload.specialization = specs.join(', ');
+              }
+              // No specializations on the program: learner row untouched,
+              // manual specialization (if any) is preserved.
+            }
+          } catch (err) {
+            logger.warn('[update-enrollment] specializations lookup threw; learner specialization left unchanged', {
+              learnerId,
+              program_id: enrollmentData.program_id,
+              message: err instanceof Error ? err.message : String(err),
+            });
+          }
+        }
+        const { data, error } = await supabase.from('learners').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', learnerId).select().single();
         if (error) return apiDbError(error, context.request, { startTime });
         return apiSuccess(data, context.request, { startTime });
       }
