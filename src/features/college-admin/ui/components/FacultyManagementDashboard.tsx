@@ -2,6 +2,7 @@ import {
   BarChart3,
   Calendar,
   CalendarOff,
+  ClipboardCheck,
   RefreshCw,
   Upload,
   UserPlus,
@@ -14,6 +15,7 @@ import { getLogger } from '@/shared/config/logging';
 import { getFacultyStatistics } from '@/features/college-admin';
 import FacultyLeaveManagement from '@/features/college-admin/ui/FacultyLeaveManagement';
 import CalendarTimetable from './CalendarTimetable';
+import EducatorAttendanceTracking from './EducatorAttendanceTracking';
 import FacultyBulkImport from './FacultyBulkImport';
 import FacultyList from './FacultyList';
 import FacultyOnboarding from './FacultyOnboarding';
@@ -25,7 +27,7 @@ const logger = getLogger('college-admin:FacultyManagementDashboard');
 import { useUser } from '@/shared/model/authStore';
 const FacultyManagementDashboard: React.FC = () => {
   const user = useUser();
-  const [activeTab, setActiveTab] = useState<'list' | 'onboarding' | 'timetable' | 'analytics' | 'leave' | 'import' | 'swaps'>('list');
+  const [activeTab, setActiveTab] = useState<'list' | 'onboarding' | 'timetable' | 'analytics' | 'leave' | 'import' | 'swaps' | 'attendance'>('list');
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [collegeId, setCollegeId] = useState<string | null>(null);
@@ -91,6 +93,7 @@ const FacultyManagementDashboard: React.FC = () => {
     { id: 'onboarding', label: 'Onboarding', icon: UserPlus, description: 'Add new faculty members' },
     { id: 'timetable', label: 'Timetable', icon: Calendar, description: 'Manage class schedules' },
     { id: 'swaps', label: 'Swap Requests', icon: RefreshCw, description: 'Manage class swap requests' },
+    { id: 'attendance', label: 'Attendance', icon: ClipboardCheck, description: 'Track educator attendance' },
     { id: 'analytics', label: 'Analytics', icon: BarChart3, description: 'Faculty performance metrics' },
     { id: 'leave', label: 'Leave', icon: CalendarOff, description: 'Leave & substitution' },
     { id: 'import', label: 'Bulk Import', icon: Upload, description: 'Import multiple faculty' },
@@ -136,7 +139,7 @@ const FacultyManagementDashboard: React.FC = () => {
 
       {/* Navigation Tabs */}
       <div className="bg-white rounded-xl border border-gray-200 p-2">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-2">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             return (
@@ -144,8 +147,8 @@ const FacultyManagementDashboard: React.FC = () => {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
                 className={`flex flex-col items-center justify-center gap-2 p-4 rounded-lg font-medium transition-all ${activeTab === tab.id
-                    ? 'bg-indigo-600 text-white shadow-lg'
-                    : 'text-gray-600 hover:bg-gray-50'
+                  ? 'bg-indigo-600 text-white shadow-lg'
+                  : 'text-gray-600 hover:bg-gray-50'
                   }`}
               >
                 <Icon className="h-6 w-6" />
@@ -167,6 +170,7 @@ const FacultyManagementDashboard: React.FC = () => {
         {activeTab === 'onboarding' && <FacultyOnboarding collegeId={collegeId} />}
         {activeTab === 'timetable' && <CalendarTimetable collegeId={collegeId} />}
         {activeTab === 'swaps' && <SwapRequestsManagement collegeId={collegeId} />}
+        {activeTab === 'attendance' && <EducatorAttendanceTracking />}
         {activeTab === 'analytics' && <FacultyPerformanceAnalytics collegeId={collegeId} />}
         {activeTab === 'leave' && <FacultyLeaveManagement collegeId={collegeId} />}
         {activeTab === 'import' && <FacultyBulkImport collegeId={collegeId} />}
