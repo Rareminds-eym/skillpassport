@@ -275,7 +275,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         return apiSuccess({
           videos: mappedVideos,
           totalCount: count || 0,
-          maxAllowed: 5
+          maxAllowed: 3
         }, context.request, { startTime });
       }
 
@@ -309,8 +309,8 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
         if (countError) return apiDbError(countError, context.request, { startTime });
 
-        if (count !== null && count >= 5) {
-          return apiError(403, 'QUOTA_EXCEEDED', 'Maximum 5 videos allowed per learner', context.request, { startTime });
+        if (count !== null && count >= 3) {
+          return apiError(403, 'QUOTA_EXCEEDED', 'Maximum 3 videos allowed per learner', context.request, { startTime });
         }
 
         // Insert video

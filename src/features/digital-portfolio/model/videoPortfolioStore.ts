@@ -65,7 +65,7 @@ const initialState = {
   error: null,
   uploadProgress: null,
   totalCount: 0,
-  maxAllowed: 5,
+  maxAllowed: 3,
 };
 
 export const useVideoPortfolioStore = create<VideoPortfolioState>()(

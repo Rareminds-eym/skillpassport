@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Play, Tag, Trash2, Loader2, Upload, Image as ImageIcon, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 import {
   useVideoPortfolioStore,
   type VideoEntry,
@@ -69,6 +70,7 @@ const VideoEditDrawer: React.FC<VideoEditDrawerProps> = ({
   const [deleting, setDeleting] = useState(false);
   const [replacing, setReplacing] = useState(false);
   const [showPublishModal, setShowPublishModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [pendingPublishState, setPendingPublishState] = useState(false);
   const tagInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -79,6 +81,7 @@ const VideoEditDrawer: React.FC<VideoEditDrawerProps> = ({
   const updateVideo = useVideoPortfolioStore(state => state.updateVideo);
   const deleteVideo = useVideoPortfolioStore(state => state.deleteVideo);
   const fetchVideos = useVideoPortfolioStore(state => state.fetchVideos);
+  const navigate = useNavigate();
 
   // Get user info
   const user = useUser();
@@ -192,14 +195,30 @@ const VideoEditDrawer: React.FC<VideoEditDrawerProps> = ({
   }, [videoUrl]);
 
   const handleAddTag = () => {
-    if (tagInput.trim() && !tags.includes(tagInput.trim())) {
-      if (tags.length >= 5) {
-        toast.error('Maximum 5 tags allowed');
-        return;
-      }
-      setTags([...tags, tagInput.trim()]);
-      setTagInput('');
+    const trimmedTag = tagInput.trim();
+
+    // Validate: only allow letters, numbers, and spaces (no symbols)
+    const validTagRegex = /^[a-zA-Z0-9\s]+$/;
+
+    if (!trimmedTag) return;
+
+    if (!validTagRegex.test(trimmedTag)) {
+      toast.error('Tags can only contain letters, numbers, and spaces');
+      return;
     }
+
+    if (tags.includes(trimmedTag)) {
+      toast.error('Tag already added');
+      return;
+    }
+
+    if (tags.length >= 5) {
+      toast.error('Maximum 5 tags allowed');
+      return;
+    }
+
+    setTags([...tags, trimmedTag]);
+    setTagInput('');
   };
 
   const handleRemoveTag = (tagToRemove: string) => {
@@ -375,8 +394,13 @@ const VideoEditDrawer: React.FC<VideoEditDrawerProps> = ({
 
       await updateVideo(video.id, updateData as any);
 
-      toast.success('Video updated successfully');
+      toast.success(showOnPublic ? 'Video published successfully' : 'Video updated successfully');
       onClose();
+
+      // Navigate to display page if publishing
+      if (showOnPublic) {
+        navigate('/learner/digital-portfolio/video');
+      }
     } catch (error: any) {
       console.error('Failed to update video:', error);
       toast.error(error.message || 'Failed to update video');
@@ -409,11 +433,14 @@ const VideoEditDrawer: React.FC<VideoEditDrawerProps> = ({
   const handleDelete = async () => {
     if (!video) return;
 
-    // Show confirmation
-    if (!window.confirm('Are you sure you want to delete this video? This action cannot be undone.')) {
-      return;
-    }
+    // Show confirmation modal instead of window.confirm
+    setShowDeleteModal(true);
+  };
 
+  const handleConfirmDelete = async () => {
+    if (!video) return;
+
+    setShowDeleteModal(false);
     setDeleting(true);
     try {
       await deleteVideo(video.id);
@@ -425,6 +452,10 @@ const VideoEditDrawer: React.FC<VideoEditDrawerProps> = ({
     } finally {
       setDeleting(false);
     }
+  };
+
+  const handleCancelDelete = () => {
+    setShowDeleteModal(false);
   };
 
   const handleReplaceVideo = () => {
@@ -525,13 +556,14 @@ const VideoEditDrawer: React.FC<VideoEditDrawerProps> = ({
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* Backdrop */}
+          {/* Backdrop - prevents scrolling and interaction with background */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40"
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 overflow-hidden"
+            style={{ touchAction: 'none' }}
           />
 
           {/* Drawer */}
@@ -862,8 +894,10 @@ const VideoEditDrawer: React.FC<VideoEditDrawerProps> = ({
                   >
                     <span className="relative z-10 flex items-center gap-1.5">
                       {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                      <span className="hidden sm:inline">{saving ? 'Saving...' : 'Save'}</span>
-                      <span className="sm:hidden">{saving ? '...' : 'Save'}</span>
+                      <span className="hidden sm:inline">
+                        {saving ? (showOnPublic ? 'Publishing...' : 'Saving...') : (showOnPublic ? 'Publish' : 'Save')}
+                      </span>
+                      <span className="sm:hidden">{saving ? '...' : (showOnPublic ? 'Publish' : 'Save')}</span>
                     </span>
                     {!saving && (
                       <span className="absolute top-0 left-[-40px] h-full w-0 bg-gradient-to-r from-blue-700 to-indigo-700 dark:from-blue-600 dark:to-indigo-600 transform skew-x-[45deg] transition-all duration-700 group-hover:w-[160%] -z-0"></span>
@@ -986,6 +1020,56 @@ const VideoEditDrawer: React.FC<VideoEditDrawerProps> = ({
                       className="flex-1 px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-blue-600 dark:from-indigo-500 dark:to-blue-500 text-white rounded-xl hover:shadow-lg transition-all font-medium"
                     >
                       Publish
+                    </button>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Delete Confirmation Modal */}
+          <AnimatePresence>
+            {showDeleteModal && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4"
+                onClick={handleCancelDelete}
+              >
+                <motion.div
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.9, opacity: 0 }}
+                  onClick={(e) => e.stopPropagation()}
+                  className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4"
+                >
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center flex-shrink-0">
+                      <Trash2 className="w-6 h-6 text-red-600 dark:text-red-400" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                        Delete this video?
+                      </h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        This action cannot be undone. The video will be permanently removed from your portfolio.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3 pt-2">
+                    <button
+                      onClick={handleCancelDelete}
+                      className="flex-1 px-4 py-2.5 border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors font-medium"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleConfirmDelete}
+                      className="flex-1 px-4 py-2.5 bg-gradient-to-r from-red-600 to-red-700 dark:from-red-500 dark:to-red-600 text-white rounded-xl hover:shadow-lg transition-all font-medium"
+                    >
+                      Delete
                     </button>
                   </div>
                 </motion.div>
