@@ -140,7 +140,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         for (const dept of (departments || [])) {
           const { data: programs } = await supabase
             .from('programs')
-            .select('id, name, code')
+            .select('id, name, code, specializations')
             .eq('department_id', dept.id)
             .eq('status', 'active')
             .order('name');

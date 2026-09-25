@@ -107,6 +107,7 @@ interface LearnerRow {
   university?: string
   university_main?: string
   branch_field?: string
+  specialization?: string
   college_school_name?: string
   course_name?: string
   registration_number?: string
@@ -287,6 +288,7 @@ export interface UICandidate {
   trainer_name?: string
   district_name?: string
   branch_field?: string
+  specialization?: string
   course_name?: string
   contact_number?: string
   alternate_number?: string
@@ -406,6 +408,7 @@ function mapToUICandidate(row: LearnerRow): UICandidate {
     trainer_name: row.trainer_name,
     district_name: row.district_name,
     branch_field: row.branch_field,
+    specialization: (row as any).specialization || null,
     course_name: row.course_name,
     contact_number: row.contactNumber || row.contact_number,
     alternate_number: row.alternate_number,
