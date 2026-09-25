@@ -21,7 +21,7 @@ import type { PagesEnv } from '../../../lib/types';
 // Constants
 // ============================================================================
 
-const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100MB
+const MAX_VIDEO_SIZE = 50 * 1024 * 1024; // 50MB
 const ALLOWED_VIDEO_TYPES = [
   'video/mp4',
   'video/quicktime',

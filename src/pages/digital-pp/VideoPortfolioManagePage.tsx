@@ -114,6 +114,42 @@ const VideoPortfolioManagePage: React.FC = () => {
     }
   }, [error, clearError]);
 
+  // Disable body scroll when drawer is open
+  useEffect(() => {
+    if (isDrawerOpen) {
+      // Prevent scrolling on multiple levels
+      const scrollY = window.scrollY;
+
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = '100%';
+      document.body.style.overflow = 'hidden';
+      document.documentElement.style.overflow = 'hidden';
+    } else {
+      // Restore scroll position
+      const scrollY = document.body.style.top;
+
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.width = '';
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
+
+      if (scrollY) {
+        const scrollPos = parseInt(scrollY || '0') * -1;
+        window.scrollTo(0, scrollPos);
+      }
+    }
+
+    return () => {
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.width = '';
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
+    };
+  }, [isDrawerOpen]);
+
   const handleBrowseFiles = () => {
     fileInputRef.current?.click();
   };
@@ -154,10 +190,10 @@ const VideoPortfolioManagePage: React.FC = () => {
       return;
     }
 
-    // Validate file size (100MB)
-    const MAX_FILE_SIZE = 100 * 1024 * 1024;
+    // Validate file size (50MB)
+    const MAX_FILE_SIZE = 50 * 1024 * 1024;
     if (file.size > MAX_FILE_SIZE) {
-      toast.error('Video file too large. Maximum 100MB allowed.');
+      toast.error('Video file too large. Maximum 50MB allowed.');
       return;
     }
 
@@ -187,8 +223,10 @@ const VideoPortfolioManagePage: React.FC = () => {
 
       toast.success('Video uploaded successfully');
 
-      // Find the newly created video and open drawer
-      const newVideo = videos.find(v => v.id === id);
+      // Get fresh videos from store after upload and open drawer
+      const allVideos = useVideoPortfolioStore.getState().videos;
+      const newVideo = allVideos.find(v => v.id === id);
+
       if (newVideo) {
         setSelectedVideo(newVideo);
         setIsDrawerOpen(true);
@@ -311,7 +349,7 @@ const VideoPortfolioManagePage: React.FC = () => {
                 Drag a file here, or browse from your device
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-500 mb-6">
-                MP4, MOV, AVI, WebM • Max 100 MB
+                MP4, MOV, AVI, WebM • Max 50 MB
               </p>
               <motion.button
                 whileHover={{ scale: 1.05 }}

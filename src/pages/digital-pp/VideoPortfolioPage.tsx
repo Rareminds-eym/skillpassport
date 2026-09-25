@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Upload, Video, Edit, Trash2, Settings, Play, Loader2, ArrowRight, X } from 'lucide-react';
+import { Upload, Video, Edit, Trash2, Settings, Play, Loader2, ArrowRight, X, Share2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import VideoPortfolioLoader from '../../components/VideoPortfolioLoader';
@@ -22,7 +22,7 @@ import { useLearnerDataByEmail } from '@/entities/learner/model/useLearnerDataBy
 import { getVideoPortfolioUrl } from '@/shared/api/storageApiService';
 import { ssoClient } from '@/shared/api/ssoClient';
 
-const MAX_VIDEOS = 5;
+const MAX_VIDEOS = 3;
 
 // Helper function to get thumbnail style based on type
 const getThumbnailStyle = (video: VideoEntryType): React.CSSProperties => {
@@ -194,6 +194,31 @@ const VideoPortfolioPageContent: React.FC = () => {
     };
   }, [videoUrl]);
 
+  // Disable body scroll when drawer is open
+  useEffect(() => {
+    if (isDrawerOpen) {
+      // Prevent scrolling on multiple levels
+      document.body.style.overflow = 'hidden';
+      document.documentElement.style.overflow = 'hidden';
+      // Prevent touch scrolling on mobile
+      document.body.style.position = 'fixed';
+      document.body.style.width = '100%';
+    } else {
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.width = '';
+    }
+
+    // Cleanup on unmount
+    return () => {
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.width = '';
+    };
+  }, [isDrawerOpen]);
+
   const loadVideo = async (video: VideoEntryType) => {
     if (!video?.videoUrl) return;
 
@@ -342,6 +367,32 @@ const VideoPortfolioPageContent: React.FC = () => {
     }
   };
 
+  const handleShareVideo = () => {
+    if (!currentPlayingVideo) return;
+
+    const shareUrl = window.location.href;
+    const shareText = `Check out "${currentPlayingVideo.title}" on Video Portfolio`;
+
+    if (navigator.share) {
+      navigator.share({
+        title: currentPlayingVideo.title,
+        text: shareText,
+        url: shareUrl,
+      }).catch((err) => {
+        if (err.name !== 'AbortError') {
+          console.error('Error sharing:', err);
+        }
+      });
+    } else {
+      // Fallback: copy to clipboard
+      navigator.clipboard.writeText(shareUrl).then(() => {
+        toast.success('Link copied to clipboard!');
+      }).catch(() => {
+        toast.error('Failed to copy link');
+      });
+    }
+  };
+
   // Full-page loader for initial load - Show loader while fetching OR while learner data is loading
   if ((loading && videos.length === 0) || learnerLoading) {
     return <VideoPortfolioLoader />;
@@ -455,11 +506,20 @@ const VideoPortfolioPageContent: React.FC = () => {
               {/* Video Details */}
               {currentPlayingVideo && (
                 <div className="space-y-4">
-                  {/* Title */}
-                  <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-xl">
-                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                  {/* Title with Share Button */}
+                  <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-xl flex items-center justify-between gap-4">
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-white flex-1">
                       {currentPlayingVideo.title}
                     </h2>
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={handleShareVideo}
+                      className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white rounded-lg transition-colors font-medium"
+                    >
+                      <Share2 className="w-4 h-4" />
+                      <span className="hidden sm:inline">Share</span>
+                    </motion.button>
                   </div>
 
                   {/* Description, User Profile, Tags, and Upload Date */}

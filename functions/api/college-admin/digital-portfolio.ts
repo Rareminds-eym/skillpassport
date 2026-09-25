@@ -275,7 +275,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         return apiSuccess({
           videos: mappedVideos,
           totalCount: count || 0,
-          maxAllowed: 5
+          maxAllowed: 3
         }, context.request, { startTime });
       }
 
