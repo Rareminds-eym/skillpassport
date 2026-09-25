@@ -16,6 +16,7 @@ import {
   UserEmailVerifiedSchema,
   type MembershipPayloadData
 } from './sync-schemas';
+import { syncUserShadow } from './sync-shadow';
 import type { PagesEnv } from './types';
 
 export type SyncResult =
@@ -500,6 +501,19 @@ export class SyncService {
       product_id: parsed.product_id ?? null,
       auth_updated_at: parsed.updated_at ?? new Date().toISOString(),
     };
+
+    // Self-heal: subscription_cache.user_id has an FK -> users_shadow(id).
+    // The generic user.created sync only writes public.users, never
+    // users_shadow (that table is otherwise populated only by the
+    // purchase/payment flows via syncUserShadow). Any subscription-creating
+    // path that doesn't go through a purchase flow (e.g. admin-provisioned
+    // hybrid org creation) would violate that FK without this. Mirrors the
+    // same self-heal already done in heal-user.ts.
+    const { data: existingUser } = await this.db.from('users')
+      .select('email')
+      .eq('id', parsed.user_id)
+      .maybeSingle();
+    await syncUserShadow(this.db, parsed.user_id, existingUser?.email as string | undefined);
 
     const { error } = await this.db.from('subscription_cache').upsert(subPayload, { onConflict: 'id' });
     if (error) return fail('DB_ERROR', error.message, true);
