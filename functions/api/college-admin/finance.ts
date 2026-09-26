@@ -2,10 +2,10 @@
  * College Admin - Finance API
  * POST: Action-based dispatch for budgets, fees, and expenditures
  */
-import { withAuth, getContextUser } from '../../lib/auth';
-import { getServiceClient } from '../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import { apiSuccess, apiDbError, apiError, apiMethodNotAllowed } from '../../lib/response';
+import { getContextUser, withAuth } from '../../lib/auth';
+import { apiDbError, apiError, apiMethodNotAllowed, apiSuccess } from '../../lib/response';
+import { getServiceClient } from '../../lib/supabase';
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const user = getContextUser(context);
@@ -169,7 +169,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         return apiSuccess(data, context.request, { startTime });
       }
 
-      case       'get-defaulter-report': {
+      case 'get-defaulter-report': {
         let query = supabase.from('learner_ledgers').select('*, learner:users!learner_id(*), admission:learner_admissions!learner_id(roll_number, program_id)').gt('balance', 0);
         const { data: ledgers, error } = await query;
         if (error) return apiDbError(error, context.request, { startTime });

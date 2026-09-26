@@ -1,7 +1,7 @@
-import { withAuth, getContextUser } from '../../lib/auth';
-import { getServiceClient } from '../../lib/supabase';
-import { apiDbError, apiError, apiMethodNotAllowed, apiSuccess } from '../../lib/response';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import { getContextUser, withAuth } from '../../lib/auth';
+import { apiDbError, apiError, apiMethodNotAllowed, apiSuccess } from '../../lib/response';
+import { getServiceClient } from '../../lib/supabase';
 
 
 async function getUserCollegeId(userId: string, supabase: any): Promise<string | null> {

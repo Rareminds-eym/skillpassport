@@ -2,6 +2,8 @@
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { withAuth, getContextUser } from '../../lib/auth';
 import { apiDbError, apiError, apiMethodNotAllowed, apiSuccess } from '../../lib/response';
+import { getContextUser, withAuth } from '../../lib/auth';
+import { apiDbError, apiMethodNotAllowed, apiSuccess } from '../../lib/response';
 import { getServiceClient } from '../../lib/supabase';
 
 
@@ -401,17 +403,17 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const avgAttendance = sessions.length > 0
           ? (sessions.reduce((acc: number, s: any) => acc + (s.attendance_percentage || 0), 0) / sessions.length).toFixed(1)
           : '0';
-        
+
         // Get unique learner count from attendance records
         const { data: recordsData } = await supabase
           .from('college_attendance_records')
           .select('learner_id')
           .eq('college_id', collegeId)
           .gte('date', last30Days);
-        
+
         const uniqueLearnerIds = new Set((recordsData || []).map((r: any) => r.learner_id));
         const totallearners = uniqueLearnerIds.size;
-        
+
         const totalPresent = sessions.reduce((acc: number, s: any) => acc + (s.present_count || 0), 0);
         const totalAbsent = sessions.reduce((acc: number, s: any) => acc + (s.absent_count || 0), 0);
         const lowAttendanceSessions = sessions.filter((s: any) => (s.attendance_percentage || 0) < 75).length;
@@ -446,15 +448,15 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
         // Group by department and calculate average
         const departmentMap = new Map<string, { total: number; count: number }>();
-        
+
         (data || []).forEach((session: any) => {
           const dept = session.department_name;
           if (!dept) return;
-          
+
           if (!departmentMap.has(dept)) {
             departmentMap.set(dept, { total: 0, count: 0 });
           }
-          
+
           const stats = departmentMap.get(dept)!;
           stats.total += session.attendance_percentage || 0;
           stats.count += 1;
@@ -479,7 +481,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const today = new Date();
         const currentDayOfWeek = today.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
         const mondayOffset = currentDayOfWeek === 0 ? -6 : -(currentDayOfWeek - 1);
-        
+
         const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
         const weekData = weekDays.map((dayName, index) => {
           const date = new Date(today);
@@ -502,14 +504,14 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
         // Group by date and calculate average
         const dateMap = new Map<string, { total: number; count: number }>();
-        
+
         (data || []).forEach((session: any) => {
           if (session.status !== 'completed') return;
-          
+
           if (!dateMap.has(session.date)) {
             dateMap.set(session.date, { total: 0, count: 0 });
           }
-          
+
           const stats = dateMap.get(session.date)!;
           stats.total += session.attendance_percentage || 0;
           stats.count += 1;

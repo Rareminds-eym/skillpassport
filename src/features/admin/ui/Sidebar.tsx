@@ -1,34 +1,35 @@
+import { useAdminNavFeatures, type AdminNavFeature } from '@/features/admin/model/useAdminNavFeatures';
+import { useUser, useUserRole } from '@/shared/model/authStore';
 import {
-    AcademicCapIcon,
-    BanknotesIcon,
-    BellIcon,
-    BookOpenIcon,
-    BriefcaseIcon,
-    BuildingLibraryIcon,
-    BuildingOffice2Icon,
-    CalendarDaysIcon,
-    ChartBarIcon,
-    ChartPieIcon,
-    ChevronDownIcon,
-    ClipboardDocumentListIcon,
-    ClipboardIcon,
-    Cog6ToothIcon,
-    CreditCardIcon,
-    DocumentChartBarIcon,
-    FolderIcon,
-    FolderOpenIcon,
-    HomeIcon,
-    LockClosedIcon,
-    ShieldCheckIcon,
-    SparklesIcon,
-    UserGroupIcon,
-    UserIcon,
-    WrenchScrewdriverIcon,
+  AcademicCapIcon,
+  BanknotesIcon,
+  BellIcon,
+  BookOpenIcon,
+  BriefcaseIcon,
+  BuildingLibraryIcon,
+  BuildingOffice2Icon,
+  CalendarDaysIcon,
+  ChartBarIcon,
+  ChartPieIcon,
+  ChevronDownIcon,
+  ClipboardDocumentListIcon,
+  ClipboardIcon,
+  Cog6ToothIcon,
+  CreditCardIcon,
+  DocumentChartBarIcon,
+  FolderIcon,
+  FolderOpenIcon,
+  HomeIcon,
+  LockClosedIcon,
+  ShieldCheckIcon,
+  SparklesIcon,
+  UserGroupIcon,
+  UserIcon,
+  WrenchScrewdriverIcon,
 } from "@heroicons/react/24/outline";
 import { TrophyIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { useUserRole, useUser } from '@/shared/model/authStore';
 
 
 function classNames(...classes: string[]) {
@@ -47,6 +48,26 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }:
   const location = useLocation();
   const { role } = useUserRole();
   useUser();
+  const effectiveRole = useMemo(() => {
+    if (role && ['college_admin', 'school_admin', 'university_admin'].includes(role)) {
+      return role;
+    }
+    if (location.pathname.startsWith('/college-admin')) return 'college_admin';
+    if (location.pathname.startsWith('/school-admin')) return 'school_admin';
+    if (location.pathname.startsWith('/university-admin')) return 'university_admin';
+    return null;
+  }, [role, location.pathname]);
+  const { navFeatures, isHybrid: isHybridOrg, features, ready } = useAdminNavFeatures(effectiveRole);
+  const grantedFeatureKeys = useMemo(() => new Set(features), [features]);
+  const lockedNavPaths = useMemo(() => {
+    if (!isHybridOrg || !ready) return new Set<string>();
+    return new Set(
+      navFeatures
+        .filter((f: AdminNavFeature) => !grantedFeatureKeys.has(f.key))
+        .map((f: AdminNavFeature) => f.nav_path)
+    );
+  }, [isHybridOrg, ready, navFeatures, grantedFeatureKeys]);
+  const isFeatureLocked = (path: string) => Boolean(isHybridOrg && ready && lockedNavPaths.has(path));
 
   // Initialize all groups as open by default
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
@@ -73,8 +94,9 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }:
   };
 
   // ✅ Role-based Sidebar Menus
+  const currentRole = effectiveRole || role;
   const navGroups = useMemo(() => {
-    if (role === "school_admin") {
+    if (currentRole === "school_admin") {
       return [
         {
           title: "Learner Management",
@@ -237,7 +259,7 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }:
       ];
     }
 
-    if (role === "university_admin") {
+    if (currentRole === "university_admin") {
       return [
         {
           title: "Affiliated College Management",
@@ -547,7 +569,7 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }:
             icon: ClipboardDocumentListIcon,
             disabled: true,
           },
-          
+
           {
             name: "Performance",
             path: "/college-admin/learners/performance",
@@ -571,12 +593,12 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }:
             disabled: true,
           },
           {
-             name: "Verifications",
+            name: "Verifications",
             path: "/college-admin/learners/verifications",
             icon: ChartPieIcon,
           },
           {
-             name: "Communication",
+            name: "Communication",
             path: "/college-admin/learners/communication",
             icon: BellIcon,
           }
@@ -746,19 +768,19 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }:
         ],
       },
     ];
-  }, [role]);
+  }, [currentRole]);
 
   // Get dashboard and settings paths based on role
   const getDashboardPath = () => {
-    if (role === "school_admin") return "/school-admin/dashboard";
-    if (role === "university_admin") return "/university-admin/dashboard";
+    if (currentRole === "school_admin") return "/school-admin/dashboard";
+    if (currentRole === "university_admin") return "/university-admin/dashboard";
     return "/college-admin/dashboard";
   };
 
   const getSettingsPath = () => {
-    if (role === "school_admin") return "/school-admin/settings";
-    if (role === "college_admin") return "/college-admin/settings";
-    if (role === "university_admin") return "/university-admin/settings";
+    if (currentRole === "school_admin") return "/school-admin/settings";
+    if (currentRole === "college_admin") return "/college-admin/settings";
+    if (currentRole === "university_admin") return "/university-admin/settings";
     return "/college-admin/settings";
   };
 
@@ -847,49 +869,67 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }:
                   // Exact path matching with proper handling of nested routes
                   const currentPath = location.pathname;
                   const itemPath = item.path;
-                  
+
                   // Check if this is an exact match or if it's a parent path with no other longer matching paths
                   const isExactMatch = currentPath === itemPath;
                   const isParentMatch = currentPath.startsWith(`${itemPath}/`);
-                  
+
                   // Find if there's a more specific path that matches better
-                  const hasMoreSpecificMatch = group.items.some(otherItem => 
-                    otherItem !== item && 
-                    currentPath.startsWith(otherItem.path) && 
+                  const hasMoreSpecificMatch = group.items.some(otherItem =>
+                    otherItem !== item &&
+                    currentPath.startsWith(otherItem.path) &&
                     otherItem.path.length > itemPath.length
                   );
-                  
+
                   const isActive = isExactMatch || (isParentMatch && !hasMoreSpecificMatch);
-                  
+
+                  const isStaticallyDisabled = !!(item as any).disabled;
+                  const isPlanLocked = !isStaticallyDisabled && isFeatureLocked(item.path);
+
                   return (
                     <button
                       type="button"
                       key={item.name}
-                      onClick={() => !(item as any).disabled && handleNavigation(item.name, item.path)}
-                      disabled={(item as any).disabled}
+                      onClick={() => !isStaticallyDisabled && handleNavigation(item.name, item.path)}
+                      disabled={isStaticallyDisabled}
+                      title={
+                        isPlanLocked
+                          ? (ready ? "Not included in your plan • Click to view module details" : "Unable to verify feature access yet")
+                          : isStaticallyDisabled
+                          ? "Coming Soon"
+                          : undefined
+                      }
                       className={classNames(
-                        (item as any).disabled
+                        isStaticallyDisabled
                           ? "text-gray-400 bg-gray-50 cursor-not-allowed opacity-60"
                           : isActive
-                          ? "bg-indigo-50 text-indigo-600 border-l-2 border-indigo-500"
-                          : "text-gray-600 hover:bg-gray-50 hover:text-indigo-600",
-                        "group w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-all duration-200"
+                            ? "bg-indigo-50 text-indigo-700 border-l-2 border-indigo-500 font-medium"
+                            : isPlanLocked
+                            ? "text-slate-600 hover:bg-slate-50 hover:text-indigo-600"
+                            : "text-gray-600 hover:bg-gray-50 hover:text-indigo-600",
+                        "group w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-all duration-200"
                       )}
                     >
                       <item.icon
                         className={classNames(
-                          (item as any).disabled
+                          isStaticallyDisabled
                             ? "text-gray-400"
                             : isActive
-                            ? "text-indigo-600"
-                            : "text-gray-400 group-hover:text-indigo-500",
+                              ? "text-indigo-600"
+                              : "text-gray-400 group-hover:text-indigo-500",
                           "h-5 w-5 flex-shrink-0"
                         )}
                       />
                       <span className="flex-1 text-left">{item.name}</span>
-                      {(item as any).disabled && (
-                        <LockClosedIcon className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                      )}
+                      {isPlanLocked ? (
+                        <span className="inline-flex items-center text-slate-400 group-hover:text-amber-600 transition-colors" title="Plan upgrade required">
+                          <LockClosedIcon className="h-4 w-4 text-slate-400 group-hover:text-amber-500 transition-colors" />
+                        </span>
+                      ) : isStaticallyDisabled ? (
+                        <span className="text-[10px] uppercase font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
+                          Soon
+                        </span>
+                      ) : null}
                     </button>
                   );
                 })}
@@ -899,7 +939,7 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }:
         ))}
 
         {/* Audit & Reports - Single link for university_admin only */}
-        {role === "university_admin" && (
+        {currentRole === "university_admin" && (
           <div className="pt-3 border-t border-gray-100">
             <button
               type="button"

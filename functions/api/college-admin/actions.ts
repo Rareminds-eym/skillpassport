@@ -1,5 +1,5 @@
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import { withAuth, getContextUser } from '../../lib/auth';
+import { getContextUser, withAuth } from '../../lib/auth';
 import { apiDbError, apiError, apiSuccess } from '../../lib/response';
 import { getServiceClient } from '../../lib/supabase';
 
@@ -605,9 +605,9 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           const arr = Array.isArray(input)
             ? input.map((s: unknown) => String(s).trim()).filter(Boolean)
             : String(input ?? "")
-                .split(",")
-                .map((s) => s.trim())
-                .filter(Boolean);
+              .split(",")
+              .map((s) => s.trim())
+              .filter(Boolean);
           return arr.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
         };
         const specializations = normalizeSpecs(data.specializations);
