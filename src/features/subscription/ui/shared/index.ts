@@ -8,6 +8,7 @@ export { default as SubscriptionBanner } from './SubscriptionBanner';
 export { default as SubscriptionRouteGuard } from './SubscriptionRouteGuard';
 export { FeatureLockOverlay } from './FeatureLockOverlay';
 export { UpgradePrompt } from './UpgradePrompt';
+export { AdminFeatureLockedState } from './AdminFeatureLockedState';
 
 // Signup Form Components
 export { default as DatePicker } from './DatePicker';

@@ -15,9 +15,9 @@
 
 import { createLogger } from '../../lib/logger';
 import { apiError, apiSuccess } from '../../lib/response';
-import { ssoSyncPlans, ssoSyncSubscription } from '../../lib/sso-client';
+import { ssoListFeatureKeys, ssoSyncPlans, ssoSyncSubscription } from '../../lib/sso-client';
 import { getServiceClient } from '../../lib/supabase';
-import { syncAllPlansCache, syncRolesShadow, syncSubscriptionCache } from '../../lib/sync-shadow';
+import { syncAllFeatureKeysCache, syncAllPlansCache, syncRolesShadow, syncSubscriptionCache } from '../../lib/sync-shadow';
 
 const logger = createLogger('reconcile');
 
@@ -51,6 +51,7 @@ export async function onRequestPost(context: { request: Request; env: ReconcileE
     plans_synced: 0,
     roles_synced: 0,
     roles_deleted: 0,
+    feature_keys_synced: 0,
     errors: [] as string[],
   };
 
@@ -81,6 +82,20 @@ export async function onRequestPost(context: { request: Request; env: ReconcileE
       // Defensive: syncRolesShadow is already fail-soft, but never let a roles
       // hiccup abort the subscription reconcile.
       results.errors.push(`Roles sync failed: ${rolesErr.message}`);
+    }
+
+    // 1c. Sync the admin-dashboard feature key catalog (rarely changes,
+    //     always sync alongside plans/roles). Source of truth is the auth
+    //     DB's public.feature_keys — see sso-worker's listFeatureKeys() RPC.
+    try {
+      const featureKeysData = await ssoListFeatureKeys(env);
+      if (!Array.isArray(featureKeysData.featureKeys)) throw new Error('Invalid feature catalog response');
+      {
+        await syncAllFeatureKeysCache(supabase, featureKeysData.featureKeys);
+        results.feature_keys_synced = featureKeysData.featureKeys.length;
+      }
+    } catch (featureKeysErr: any) {
+      results.errors.push(`Feature keys sync failed: ${featureKeysErr.message}`);
     }
 
     // 2. Find stale subscription_cache entries

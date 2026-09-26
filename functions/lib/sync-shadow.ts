@@ -116,6 +116,18 @@ export async function syncAllPlansCache(
   }
 }
 
+/** Replace a complete source snapshot atomically, including retirement of removed keys. */
+export async function syncAllFeatureKeysCache(
+  supabase: SupabaseClient, featureKeys: Record<string, unknown>[],
+): Promise<void> {
+  if (!Array.isArray(featureKeys) || featureKeys.some(row =>
+    !row.id || !row.product_code || !row.key || !row.role || typeof row.is_active !== 'boolean')) {
+    throw new Error('Invalid feature catalog snapshot');
+  }
+  const { error } = await supabase.rpc('refresh_feature_keys_cache', { catalog: featureKeys });
+  if (error) throw new Error(`Feature catalog sync failed: ${error.message}`);
+}
+
 export function isStale(syncedAt: string | null, thresholdMinutes = STALENESS_THRESHOLD_MINUTES): boolean {
   if (!syncedAt) return true;
   const synced = new Date(syncedAt).getTime();

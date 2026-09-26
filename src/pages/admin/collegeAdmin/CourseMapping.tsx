@@ -42,6 +42,7 @@ import {
 } from '@/features/college-admin';
 import { getLogger } from '@/shared/config/logging';
 import { ConfirmationModal, Pagination, SearchBar } from '@/shared/ui';
+import { AdminFeatureLockedState } from '@/features/subscription/ui/shared/AdminFeatureLockedState';
 
 const logger = getLogger('course-mapping');
 
@@ -1350,6 +1351,26 @@ const CourseMapping: React.FC = () => {
     }
 
     if (error) {
+        const isPlanLocked =
+            typeof error === 'string' &&
+            (error.toLowerCase().includes('not included in your plan') ||
+             error.toLowerCase().includes('feature_access_denied') ||
+             error.toLowerCase().includes('not included in plan'));
+
+        if (isPlanLocked) {
+            return (
+                <AdminFeatureLockedState
+                    feature={{
+                        key: 'course_mapping',
+                        nav_label: 'Course Mapping',
+                        nav_path: '/college-admin/departments/mapping',
+                        nav_group: 'Academics',
+                    }}
+                    role="college_admin"
+                />
+            );
+        }
+
         return (
             <div className="min-h-full flex items-center justify-center p-8">
                 <div className="text-center">
