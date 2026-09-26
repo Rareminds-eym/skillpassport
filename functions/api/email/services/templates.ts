@@ -6,7 +6,8 @@ import type {
   InvitationTemplateData, 
   CountdownTemplateData, 
   EventConfirmationTemplateData,
-  OTPTemplateData 
+  OTPTemplateData,
+  SalesEnquiryTemplateData
 } from '../types';
 import { APP_URL } from '../types';
 
@@ -1513,4 +1514,127 @@ If you didn't create an account with SkillPassport, please ignore this email.
 
 export function getEmailVerificationSubject(): string {
   return 'Welcome to SkillPassport - Confirm your email';
+}
+
+// ==================== SALES ENQUIRY TEMPLATES ====================
+
+export function generateSalesEnquiryEmailHtml(data: SalesEnquiryTemplateData): string {
+  const { institution, email, phone, learners, educators, requirements, planName, submittedAt } = data;
+  return `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>New Sales Enquiry</title></head>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif; background-color: #f8fafc; color: #1e293b;">
+  <table style="width: 100%; border-collapse: collapse;">
+    <tr>
+      <td align="center" style="padding: 40px 16px;">
+        <table style="width: 600px; max-width: 100%; background-color: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+          <tr>
+            <td style="padding: 32px; background: linear-gradient(135deg, #0f766e 0%, #0d9488 100%); text-align: left;">
+              <span style="display: inline-block; background: rgba(255, 255, 255, 0.2); color: #ffffff; padding: 4px 12px; border-radius: 9999px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px;">New Lead</span>
+              <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">${planName} Plan Enquiry</h1>
+              <p style="margin: 6px 0 0; color: #ccfbf1; font-size: 14px;">An institution has requested a custom sales proposal</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 32px;">
+              <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
+                <tr>
+                  <td style="padding: 10px 0; border-bottom: 1px solid #f1f5f9; color: #64748b; font-size: 14px; width: 140px;">Institution</td>
+                  <td style="padding: 10px 0; border-bottom: 1px solid #f1f5f9; color: #0f172a; font-size: 15px; font-weight: 600;">${institution}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 10px 0; border-bottom: 1px solid #f1f5f9; color: #64748b; font-size: 14px;">Contact Email</td>
+                  <td style="padding: 10px 0; border-bottom: 1px solid #f1f5f9; color: #0f766e; font-size: 15px; font-weight: 600;"><a href="mailto:${email}" style="color: #0f766e; text-decoration: none;">${email}</a></td>
+                </tr>
+                <tr>
+                  <td style="padding: 10px 0; border-bottom: 1px solid #f1f5f9; color: #64748b; font-size: 14px;">Phone Number</td>
+                  <td style="padding: 10px 0; border-bottom: 1px solid #f1f5f9; color: #0f172a; font-size: 15px; font-weight: 600;"><a href="tel:${phone}" style="color: #0f766e; text-decoration: none;">${phone}</a></td>
+                </tr>
+                <tr>
+                  <td style="padding: 10px 0; border-bottom: 1px solid #f1f5f9; color: #64748b; font-size: 14px;">Estimated Students</td>
+                  <td style="padding: 10px 0; border-bottom: 1px solid #f1f5f9; color: #0f172a; font-size: 14px;">${learners || 'To be discussed'}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 10px 0; border-bottom: 1px solid #f1f5f9; color: #64748b; font-size: 14px;">Estimated Educators</td>
+                  <td style="padding: 10px 0; border-bottom: 1px solid #f1f5f9; color: #0f172a; font-size: 14px;">${educators || 'To be discussed'}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 10px 0; border-bottom: 1px solid #f1f5f9; color: #64748b; font-size: 14px;">Submitted At</td>
+                  <td style="padding: 10px 0; border-bottom: 1px solid #f1f5f9; color: #64748b; font-size: 13px;">${submittedAt}</td>
+                </tr>
+              </table>
+
+              <div style="background-color: #f8fafc; border-radius: 12px; padding: 20px; border-left: 4px solid #0d9488; margin-bottom: 24px;">
+                <h3 style="margin: 0 0 8px; color: #0f172a; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Requirements & Notes</h3>
+                <p style="margin: 0; color: #334155; font-size: 14px; line-height: 1.6; white-space: pre-wrap;">${requirements || 'No specific requirements mentioned; follow up to scope needs.'}</p>
+              </div>
+
+              <div style="text-align: center; margin-top: 32px;">
+                <a href="mailto:${email}?subject=Re:%20${encodeURIComponent(planName)}%20Subscription%20for%20${encodeURIComponent(institution)}" style="display: inline-block; background-color: #0f766e; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-size: 14px; font-weight: 600;">Reply to ${institution} →</a>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 20px 32px; background-color: #f8fafc; border-top: 1px solid #f1f5f9; text-align: center; color: #94a3b8; font-size: 12px;">
+              SkillPassport Enterprise Sales System • This lead was submitted via the subscription plans catalog.
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
+}
+
+export function generateSalesEnquiryConfirmationEmailHtml(data: SalesEnquiryTemplateData): string {
+  const { institution, planName } = data;
+  return `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>We've Received Your Enquiry</title></head>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif; background-color: #f8fafc; color: #1e293b;">
+  <table style="width: 100%; border-collapse: collapse;">
+    <tr>
+      <td align="center" style="padding: 40px 16px;">
+        <table style="width: 600px; max-width: 100%; background-color: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+          <tr>
+            <td style="padding: 32px; background: linear-gradient(135deg, #0f766e 0%, #0d9488 100%); text-align: left;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">Thank You for Your Interest</h1>
+              <p style="margin: 6px 0 0; color: #ccfbf1; font-size: 14px;">We've received your ${planName} plan enquiry</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 32px;">
+              <p style="color: #334155; font-size: 15px; line-height: 1.6; margin: 0 0 16px;">
+                Dear Administrator at <strong>${institution}</strong>,
+              </p>
+              <p style="color: #334155; font-size: 15px; line-height: 1.6; margin: 0 0 20px;">
+                Thank you for reaching out to SkillPassport. We have received your request for a customized <strong>${planName}</strong> subscription.
+              </p>
+              <div style="background-color: #f0fdfa; border-radius: 12px; padding: 20px; border: 1px solid #ccfbf1; margin-bottom: 24px;">
+                <h4 style="margin: 0 0 8px; color: #0f766e; font-size: 14px; font-weight: 700;">Next Steps</h4>
+                <p style="margin: 0; color: #134e4a; font-size: 14px; line-height: 1.5;">
+                  Our enterprise accounts team is reviewing your institution's profile and requirements. A dedicated sales specialist will reach out to you within 1 business day with custom plan details and pricing options.
+                </p>
+              </div>
+              <p style="color: #64748b; font-size: 14px; line-height: 1.5; margin: 0;">
+                If you have immediate questions, feel free to reply directly to this email or reach us at <a href="mailto:marketing@rareminds.in" style="color: #0f766e; text-decoration: underline;">marketing@rareminds.in</a> or <a href="tel:+919902326951" style="color: #0f766e; text-decoration: underline;">+91 9902326951</a>.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 20px 32px; background-color: #f8fafc; border-top: 1px solid #f1f5f9; text-align: center; color: #94a3b8; font-size: 12px;">
+              © ${new Date().getFullYear()} SkillPassport • Transforming Education Through Skills
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
 }

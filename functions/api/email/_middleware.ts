@@ -1,7 +1,7 @@
 import { withAuth } from '../../lib/auth';
 import type { PagesFunction } from '../../lib/types';
 
-const PUBLIC_POST_ROUTES = new Set(['/verification', '/password-reset']);
+const PUBLIC_POST_ROUTES = new Set(['/verification', '/password-reset', '/sales-enquiry']);
 
 export const onRequest: PagesFunction = async (context) => {
   const url = new URL(context.request.url);

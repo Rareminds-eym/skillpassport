@@ -13,19 +13,19 @@
  * 'get-enrollment-overview', 'get-course-options', 'get-academic-status',
  * 'get-directory-tree', and 'get-learner-directory'.
  */
-import { withAuth, getContextUser } from '../../lib/auth';
-import { getServiceClient } from '../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import type { PagesEnv } from '../../lib/types';
-import { apiSuccess, apiDbError, apiError, apiMethodNotAllowed } from '../../lib/response';
+import { getContextUser, withAuth } from '../../lib/auth';
 import {
+  buildAcademicStatusOverview,
   buildCourseAnalyticsKpis,
+  buildCourseFilterOptions,
   buildCoursePerformanceRows,
   buildEnrollmentOverview,
-  buildAcademicStatusOverview,
-  buildCourseFilterOptions,
 } from '../../lib/courseAnalyticsKpis';
 import { buildCollegeStyleDirectoryTree, resolveSectionIdsForYear } from '../../lib/directoryTree';
+import { apiDbError, apiError, apiMethodNotAllowed, apiSuccess } from '../../lib/response';
+import { getServiceClient } from '../../lib/supabase';
+import type { PagesEnv } from '../../lib/types';
 
 /** POST body for this action router, as sent by the frontend's college-admin course-analytics queries (src/entities/course-analytics/api/queries.ts). */
 interface CourseAnalyticsRequestBody {

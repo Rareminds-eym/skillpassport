@@ -51,14 +51,14 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
       case 'get-educator-programs': {
         const { educator_user_id, department_id } = params;
-        let query = supabase.from('program_sections').select('program_id, programs!inner(id, name, code, department_id, status)').eq('faculty_id', educator_user_id).eq('status', 'active').eq('programs.status', 'active');
+        let query = supabase.from('program_sections').select('program_id, programs!inner(id, name, code, department_id, status, specializations)').eq('faculty_id', educator_user_id).eq('status', 'active').eq('programs.status', 'active');
         if (department_id) query = query.eq('programs.department_id', department_id);
         const { data, error } = await query;
         if (error) return apiDbError(error, context.request, { startTime });
         const map = new Map();
         (data || []).forEach((s: any) => {
           const p = Array.isArray(s.programs) ? s.programs[0] : s.programs;
-          if (!map.has(p.id)) map.set(p.id, { id: p.id, name: p.name, code: p.code, department_id: p.department_id });
+          if (!map.has(p.id)) map.set(p.id, { id: p.id, name: p.name, code: p.code, department_id: p.department_id, specializations: p.specializations || [] });
         });
         return apiSuccess(Array.from(map.values()).sort((a: any, b: any) => a.name.localeCompare(b.name)), context.request, { startTime });
       }

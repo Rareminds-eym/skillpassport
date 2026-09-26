@@ -98,6 +98,59 @@ export interface WhatIHaveItem {
 }
 
 /**
+ * The 3 canonical guidance "kinds" every stage's sections are built from —
+ * matches growthStageConfig.ts's GuidanceSectionKind on the frontend. A
+ * stage's approved UI title for a kind lives ONLY in the frontend's
+ * STAGE_GUIDANCE_SECTIONS registry (app-owned display copy) — Gemini and this
+ * validator only ever deal with the kind + generated content, never a title.
+ */
+export type GuidanceSectionKind = 'parent' | 'teacher' | 'action';
+
+/** Real generated content for one guidance section — no title/subtitle here;
+ * those are app-owned and supplied by the frontend registry at render time. */
+export interface GuidanceSectionContent {
+  desc: string; // 12-18 words, one plain sentence naming the specific identified observation
+  highlights: string[]; // 2-3 entries — 3 only when the stage's evidence genuinely supports a 3rd distinct point
+}
+
+/**
+ * Learner-specific inner section heading + one-sentence description for a
+ * Growth Map stage's own display card (e.g. replacing the hardcoded "My
+ * Capability Wheel" / "Your growth across 8 core capabilities..." pair).
+ * Grounded in the SAME Step-A identified evidence as that stage's guidance
+ * sections — never fabricated. Optional: older reports predate this field and
+ * the frontend falls back to its existing static copy when absent or invalid.
+ */
+export interface SectionIntro {
+  heading: string; // short UI heading, not a sentence (e.g. "Your Curiosity in Action")
+  description: string; // one short sentence for directly below the heading
+}
+
+/**
+ * One Growth Map stage's guidance entry (v2 schema): Gemini supplies only
+ * `sections[kind]` content for whichever kinds THIS stage's app-owned
+ * registry actually lists (see STAGE_SECTION_KINDS below) — it never decides
+ * which kinds exist, their order, or their titles.
+ */
+export interface StageGuidanceEntry {
+  sectionIntro?: SectionIntro;
+  sections: Partial<Record<GuidanceSectionKind, GuidanceSectionContent>>;
+}
+
+/** stage_guidance keyed by the 8 Growth Map stage IDs (growthStageConfig.ts StageId). */
+export interface StageGuidance {
+  version: 2;
+  capabilityWheel: StageGuidanceEntry;
+  interestWorlds: StageGuidanceEntry;
+  characterConstellation: StageGuidanceEntry;
+  selfSocial: StageGuidanceEntry;
+  explorerMap: StageGuidanceEntry;
+  thinkingStyle: StageGuidanceEntry;
+  whatIHaveNeed: StageGuidanceEntry;
+  missions: StageGuidanceEntry;
+}
+
+/**
  * Complete report structure returned by LLM (8 outputs per PRD Section 18 + BRD Section 18.1)
  */
 export interface MiddleSchoolReports {
@@ -122,12 +175,21 @@ export interface MiddleSchoolReports {
   thinking_styles: ThinkingStyle[];
   what_i_have?: WhatIHaveItem[]; // BRD FR-33: Strengths with evidence
   what_i_need?: WhatIHaveItem[]; // BRD FR-33: Growth areas stated positively
+  stage_guidance: StageGuidance;
 }
 
 const REPORT_GENERATION_CONFIG = {
   models: ['openai/gpt-4o-mini', 'google/gemini-2.0-flash-001'],
   // 8 reports incl. explorer insights for up to ~15 worlds — 2500 tokens truncated
   // the JSON mid-array and broke parsing, so give the response ample headroom.
+  // Kept at 8000 (not raised for the 9th output, stage_guidance) — measured
+  // estimate for all 9 outputs combined is ~5600 tokens, comfortably under
+  // 8000, so no increase was needed. A live test at 10000 hit OpenRouter's
+  // account credit ceiling (402, account could only afford ~9199 at test
+  // time) even before stage_guidance content was generated — raising this
+  // further trades token headroom for real request failures against a
+  // credit balance that fluctuates, which is a worse trade than keeping the
+  // existing, already-proven-safe 8000 value.
   maxTokens: 8000,
   temperature: 0.1,
 };
@@ -142,6 +204,61 @@ const REQUIRED_CAPABILITIES = [
   'Exposure & Career Awareness',
   'Portfolio & Evidence',
 ] as const;
+
+// Must match StageId in src/features/assessment/ui/growth-map/growthStageConfig.ts
+const REQUIRED_STAGE_IDS = [
+  'capabilityWheel',
+  'interestWorlds',
+  'characterConstellation',
+  'selfSocial',
+  'explorerMap',
+  'thinkingStyle',
+  'whatIHaveNeed',
+  'missions',
+] as const;
+
+/**
+ * App-owned mapping of which guidance section KINDS exist for each stage —
+ * must match STAGE_GUIDANCE_SECTIONS in
+ * src/features/assessment/ui/growth-map/growthStageConfig.ts (kind list only;
+ * titles/subtitles are frontend-only display copy, irrelevant to validation).
+ * This is the backend's enforcement that Gemini can only ever populate a
+ * section kind that this stage's registry actually lists — an unknown kind,
+ * or a kind not listed for this stage, is never accepted into stage_guidance.
+ * Verified against the real Bolt reference (TabbedView.tsx sectionGuidance):
+ * whatIHaveNeed has only parent+action (no teacher/classroom section), and
+ * missions has only teacher (no parent/action section) — every other stage
+ * has all 3 kinds.
+ */
+const STAGE_SECTION_KINDS: Record<(typeof REQUIRED_STAGE_IDS)[number], readonly GuidanceSectionKind[]> = {
+  capabilityWheel: ['parent', 'teacher', 'action'],
+  interestWorlds: ['parent', 'teacher', 'action'],
+  characterConstellation: ['parent', 'teacher', 'action'],
+  selfSocial: ['parent', 'teacher', 'action'],
+  explorerMap: ['parent', 'teacher', 'action'],
+  thinkingStyle: ['parent', 'teacher', 'action'],
+  whatIHaveNeed: ['parent', 'action'],
+  missions: ['teacher'],
+};
+
+/**
+ * App-owned required highlight count per stage — verified against the real
+ * Bolt reference (TabbedView.tsx sectionGuidance): Stages 1-6 always have
+ * exactly 3 highlights per section (parent/teacher/action), while Stage 7
+ * (whatIHaveNeed) and Stage 8 (missions) always have exactly 2. This is a
+ * fixed per-stage count, not a "2-3, either is fine" range — Gemini must
+ * hit the exact number for the stage it's writing, never pad or fall short.
+ */
+const STAGE_HIGHLIGHT_COUNT: Record<(typeof REQUIRED_STAGE_IDS)[number], number> = {
+  capabilityWheel: 3,
+  interestWorlds: 3,
+  characterConstellation: 3,
+  selfSocial: 3,
+  explorerMap: 3,
+  thinkingStyle: 3,
+  whatIHaveNeed: 2,
+  missions: 2,
+};
 
 function isValidCapabilityInsights(insights: any): boolean {
   return (
@@ -162,10 +279,12 @@ function isValidCharacterStrengths(strengths: any): boolean {
   );
 }
 
+const REQUIRED_MISSION_COUNT = 3;
+
 function isValidMissions(missions: any): boolean {
   return (
     Array.isArray(missions) &&
-    missions.length > 0 &&
+    missions.length === REQUIRED_MISSION_COUNT &&
     missions.every((m) =>
       m.priority &&
       typeof m.priority === 'number' &&
@@ -231,6 +350,19 @@ function isValidExplorerInsights(insights: any, explorerMap?: any): boolean {
   return true;
 }
 
+// The only 6 legitimate Thinking Style categories — each corresponds exactly
+// to a real Adaptive Aptitude accuracy_by_subtag key (see the title-to-subtag
+// lookup in analysis-middle-school.ts). Gemini selects 4 of these 6 per
+// learner; the app never invents or substitutes a different title.
+const LEGITIMATE_THINKING_STYLES = [
+  'Pattern Recognition',
+  'Spatial Reasoning',
+  'Verbal Reasoning',
+  'Logical Reasoning',
+  'Numerical Reasoning',
+  'Data Interpretation',
+] as const;
+
 function isValidThinkingStyles(styles: any): boolean {
   const validIcons = ['BrainCircuit', 'Lightbulb', 'Sparkles', 'BarChart3'];
 
@@ -240,23 +372,106 @@ function isValidThinkingStyles(styles: any): boolean {
     styles.every(
       (s) =>
         typeof s.title === 'string' &&
+        (LEGITIMATE_THINKING_STYLES as readonly string[]).includes(s.title) &&
         typeof s.description === 'string' &&
         validIcons.includes(s.icon)
-    )
+    ) &&
+    new Set(styles.map((s) => s.title)).size === 4
   );
 }
 
-function isValidWhatIHaveNeed(items: any): boolean {
+/** Validates one section's generated content only (desc + highlights) — no
+ * title/subtitle field exists in Gemini's output at all in the v2 schema.
+ * `expectedCount` is this stage's fixed required highlight count (see
+ * STAGE_HIGHLIGHT_COUNT) — not a range; the array must match it exactly. */
+function isValidGuidanceSectionContent(content: any, expectedCount: number): boolean {
   return (
-    Array.isArray(items) &&
-    items.length >= 2 &&
-    items.length <= 3 &&
-    items.every(
-      (item) =>
-        typeof item.capability_area === 'string' &&
-        typeof item.score_out_of_5 === 'number'
-    )
+    content &&
+    typeof content === 'object' &&
+    typeof content.desc === 'string' &&
+    content.desc.trim().length > 0 &&
+    Array.isArray(content.highlights) &&
+    content.highlights.length === expectedCount &&
+    content.highlights.every((h: any) => typeof h === 'string' && h.trim().length > 0)
   );
+}
+
+/**
+ * Defensive length caps for sectionIntro (heading/description), independent
+ * of isValidStageGuidance: a stage whose parent/instructional/actionSteps are
+ * all valid must still render those even if sectionIntro alone is malformed
+ * or excessively long, since the frontend falls back to static copy per
+ * stage for this one field rather than losing the whole stage's guidance.
+ * Caps are generous (not word-perfect enforcement of the prompt's guidance)
+ * so minor LLM variance doesn't discard an otherwise-good heading/description.
+ */
+const SECTION_INTRO_MAX_HEADING_LENGTH = 60;
+const SECTION_INTRO_MAX_DESCRIPTION_LENGTH = 220;
+
+function isValidSectionIntro(intro: unknown): intro is SectionIntro {
+  if (!intro || typeof intro !== 'object') return false;
+  const i = intro as Record<string, unknown>;
+  return (
+    typeof i.heading === 'string' &&
+    i.heading.trim().length > 0 &&
+    i.heading.length <= SECTION_INTRO_MAX_HEADING_LENGTH &&
+    typeof i.description === 'string' &&
+    i.description.trim().length > 0 &&
+    i.description.length <= SECTION_INTRO_MAX_DESCRIPTION_LENGTH
+  );
+}
+
+/**
+ * Validates the v2 stage_guidance shape: for each stage, `sections` must be
+ * an object containing valid generated content for EXACTLY the kinds listed
+ * in that stage's STAGE_SECTION_KINDS entry (app-owned) — no more, no fewer.
+ * A stage returning an extra/unknown kind (one this stage's registry doesn't
+ * list) fails validation entirely rather than silently being accepted and
+ * possibly rendered — Gemini cannot introduce a section the app doesn't own.
+ */
+function isValidStageGuidance(guidance: any): boolean {
+  if (!guidance || typeof guidance !== 'object') return false;
+  if (guidance.version !== 2) return false;
+
+  return REQUIRED_STAGE_IDS.every((stageId) => {
+    const entry = guidance[stageId];
+    if (!entry || typeof entry !== 'object' || !entry.sections || typeof entry.sections !== 'object') {
+      return false;
+    }
+
+    const requiredKinds = STAGE_SECTION_KINDS[stageId];
+    const returnedKinds = Object.keys(entry.sections);
+    const expectedCount = STAGE_HIGHLIGHT_COUNT[stageId];
+
+    // Every kind this stage requires must be present and valid, with EXACTLY
+    // this stage's required highlight count — not a 2-3 range.
+    const hasAllRequired = requiredKinds.every((kind) =>
+      isValidGuidanceSectionContent(entry.sections[kind], expectedCount)
+    );
+    // No kind outside this stage's approved set may be present at all.
+    const hasNoExtraKinds = returnedKinds.every((kind) =>
+      (requiredKinds as readonly string[]).includes(kind)
+    );
+
+    return hasAllRequired && hasNoExtraKinds;
+  });
+}
+
+/**
+ * sectionIntro is validated and sanitized per-stage AFTER the required
+ * stage_guidance shape check passes, dropping only the malformed/oversized
+ * entries rather than failing the whole generation — this field is additive
+ * UI copy, not part of the REQUIRED stage_guidance contract.
+ */
+function sanitizeSectionIntros(guidance: unknown): void {
+  if (!guidance || typeof guidance !== 'object') return;
+  const g = guidance as Record<string, { sectionIntro?: unknown } | undefined>;
+  for (const stageId of REQUIRED_STAGE_IDS) {
+    const entry = g[stageId];
+    if (entry && typeof entry === 'object' && !isValidSectionIntro(entry.sectionIntro)) {
+      delete entry.sectionIntro;
+    }
+  }
 }
 
 export async function generateMiddleSchoolReports(
@@ -325,8 +540,7 @@ export async function generateMiddleSchoolReports(
         interestWorlds: isValidInterestWorlds(parsed.my_interest_worlds),
         explorerInsights: isValidExplorerInsights(parsed.explorer_insights, growthMap?.explorer_map),
         thinkingStyles: isValidThinkingStyles(parsed.thinking_styles),
-        whatIHave: !parsed.what_i_have || isValidWhatIHaveNeed(parsed.what_i_have),
-        whatINeed: !parsed.what_i_need || isValidWhatIHaveNeed(parsed.what_i_need),
+        stageGuidance: isValidStageGuidance(parsed.stage_guidance),
       };
 
       const allValid = Object.values(validations).every((v) => v);
@@ -334,6 +548,12 @@ export async function generateMiddleSchoolReports(
         console.error(`[REPORT-GEN-MS] Validation failed (attempt ${attempt}/${MAX_ATTEMPTS}):`, validations);
         continue;
       }
+
+      // stage_guidance itself is valid (required fields above) — now drop any
+      // malformed/oversized sectionIntro per-stage rather than failing the
+      // whole generation over this additive field (frontend falls back to
+      // static copy for a stage whose sectionIntro was stripped here).
+      sanitizeSectionIntros(parsed.stage_guidance);
 
       console.log('[REPORT-GEN-MS] ✓ Generated:', {
         strengths: parsed.character_strengths_descriptions.length,
@@ -343,8 +563,7 @@ export async function generateMiddleSchoolReports(
         exploredWorlds: parsed.explorer_insights.exploredWorlds.length,
         toExploreWorlds: parsed.explorer_insights.toExploreWorlds.length,
         thinkingStyles: parsed.thinking_styles.length,
-        whatIHave: parsed.what_i_have?.length || 0,
-        whatINeed: parsed.what_i_need?.length || 0,
+        stageGuidanceStages: Object.keys(parsed.stage_guidance || {}).length,
       });
 
       return parsed;

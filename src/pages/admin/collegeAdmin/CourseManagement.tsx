@@ -6,6 +6,7 @@ import { Plus, Edit, Trash2, Search, BookOpen } from 'lucide-react';
 
 import { queryKeys } from '@/shared/lib/queryKeys';
 import { apiPost } from '@/shared/api/apiClient';
+import { formatProgramLabel } from '@/shared/lib';
 interface Course {
   id: string;
   course_code: string;
@@ -492,7 +493,7 @@ const CourseFormModal: React.FC<CourseFormModalProps> = ({
               >
                 <option value="">Select Program</option>
                 {programs.map(prog => (
-                  <option key={prog.id} value={prog.id}>{prog.name}</option>
+                  <option key={prog.id} value={prog.id}>{formatProgramLabel(prog.name, prog)}</option>
                 ))}
               </select>
             </div>

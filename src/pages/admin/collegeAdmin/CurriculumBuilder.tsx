@@ -943,7 +943,7 @@ const CollegeCurriculumBuilderContent: React.FC = () => {
         // Configuration data
         courses={courseOptions}
         departments={departments.map(d => ({ id: d.id, name: d.name }))}
-        programs={programs.map(p => ({ id: p.id, name: p.name }))}
+        programs={programs.map(p => ({ id: p.id, name: p.name, code: p.code, specializations: p.specializations }))}
         semesters={semesters.map(s => s.toString())}
         academicYears={academicYears}
         // Current data

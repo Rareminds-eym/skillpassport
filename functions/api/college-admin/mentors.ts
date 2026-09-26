@@ -204,6 +204,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
             id,
             name,
             code,
+            specializations,
             departments:department_id (
               name
             )
@@ -214,6 +215,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           id: program.id,
           name: program.name,
           code: program.code,
+          specializations: program.specializations || [],
           department_name: (Array.isArray(program.departments) ? program.departments[0] : program.departments)?.name || '',
         }));
         return apiSuccess(programs, context.request, { startTime });

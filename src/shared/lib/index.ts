@@ -16,3 +16,4 @@ export * from './utils/formatters';
 export * from './utils/isbn-validator';
 export * from './certificateUtils';
 export * from './utils/environment';
+export * from './programLabel';

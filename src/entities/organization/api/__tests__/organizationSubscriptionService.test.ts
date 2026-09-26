@@ -178,6 +178,8 @@ describe('OrganizationSubscriptionService', () => {
 
       expect(result).toBeDefined();
       expect(result.orderId).toBe('order-123');
+      const purchaseCall = vi.mocked(ssoClient.fetch).mock.calls.find(([url]) => String(url).includes('/org-subscriptions/purchase'));
+      expect(JSON.parse(purchaseCall![1]!.body as string).plan_id).toBe(mockPlan.id);
       expect(result.amount).toBe(531000);
       expect(ssoClient.fetch).toHaveBeenCalled();
     });

@@ -27,6 +27,7 @@ import { handleExtractContent } from './handlers/extract-content';
 import { handleListFiles } from './handlers/list-files';
 import { handleGetAuthenticatedUrl } from './handlers/get-authenticated-url';
 import { handleMediaProxy } from './handlers/media-proxy';
+import { handleVideoPortfolioUpload, handleVideoPortfolioDownload, handleVideoPortfolioDelete } from './handlers/video-portfolio';
 
 // Extended context type with authentication
 export interface AuthenticatedContext {
@@ -86,7 +87,7 @@ export const onRequest: PagesFunction = async (context) => {
     // All other endpoints require JWT authentication
     return withAuth(async (authContext: any) => {
       const user = getContextUser(authContext);
-      
+
       // Create authenticated context with proper typing
       const authenticatedContext: AuthenticatedContext = {
         ...context,
@@ -95,70 +96,86 @@ export const onRequest: PagesFunction = async (context) => {
         supabaseAdmin: createSupabaseAdminClient(env as any),
       };
 
-    // Check for /files/:courseId/:lessonId pattern
-    const filesMatch = path.match(/^\/files\/([^\/]+)\/([^\/]+)$/);
-    if (filesMatch) {
-      const [, courseId, lessonId] = filesMatch;
-      return handleListFiles({
-        ...authenticatedContext,
-        params: { courseId, lessonId },
-      } as Parameters<typeof handleListFiles>[0]);
-    }
+      // Check for /files/:courseId/:lessonId pattern
+      const filesMatch = path.match(/^\/files\/([^\/]+)\/([^\/]+)$/);
+      if (filesMatch) {
+        const [, courseId, lessonId] = filesMatch;
+        return handleListFiles({
+          ...authenticatedContext,
+          params: { courseId, lessonId },
+        } as Parameters<typeof handleListFiles>[0]);
+      }
 
-    // Route to authenticated handlers
-    switch (path) {
-      case '/upload':
-        return handleUpload(authenticatedContext as Parameters<typeof handleUpload>[0]);
+      // Route to authenticated handlers
+      switch (path) {
+        case '/upload':
+          return handleUpload(authenticatedContext as Parameters<typeof handleUpload>[0]);
 
-      case '/delete':
-        return handleDelete(authenticatedContext as Parameters<typeof handleDelete>[0]);
+        case '/delete':
+          return handleDelete(authenticatedContext as Parameters<typeof handleDelete>[0]);
 
-      case '/presigned':
-        return handlePresigned(authenticatedContext as Parameters<typeof handlePresigned>[0]);
+        case '/presigned':
+          return handlePresigned(authenticatedContext as Parameters<typeof handlePresigned>[0]);
 
-      case '/confirm':
-        return handleConfirm(authenticatedContext as Parameters<typeof handleConfirm>[0]);
+        case '/confirm':
+          return handleConfirm(authenticatedContext as Parameters<typeof handleConfirm>[0]);
 
-      case '/get-url':
-      case '/get-file-url':
-        return handleGetFileUrl(authenticatedContext as Parameters<typeof handleGetFileUrl>[0]);
+        case '/get-url':
+        case '/get-file-url':
+          return handleGetFileUrl(authenticatedContext as Parameters<typeof handleGetFileUrl>[0]);
 
-      case '/document-access':
-        return handleDocumentAccess(authenticatedContext as Parameters<typeof handleDocumentAccess>[0]);
+        case '/document-access':
+          return handleDocumentAccess(authenticatedContext as Parameters<typeof handleDocumentAccess>[0]);
 
-      case '/signed-url':
-        return handleSignedUrl(authenticatedContext as Parameters<typeof handleSignedUrl>[0]);
+        case '/signed-url':
+          return handleSignedUrl(authenticatedContext as Parameters<typeof handleSignedUrl>[0]);
 
-      case '/signed-urls':
-        return handleSignedUrls(authenticatedContext as Parameters<typeof handleSignedUrls>[0]);
+        case '/signed-urls':
+          return handleSignedUrls(authenticatedContext as Parameters<typeof handleSignedUrls>[0]);
 
-      case '/upload-payment-receipt':
-        return handleUploadPaymentReceipt(authenticatedContext as Parameters<typeof handleUploadPaymentReceipt>[0]);
+        case '/upload-payment-receipt':
+          return handleUploadPaymentReceipt(authenticatedContext as Parameters<typeof handleUploadPaymentReceipt>[0]);
 
-      case '/payment-receipt/presigned':
-        return handleGetPaymentReceiptPresigned(authenticatedContext as Parameters<typeof handleGetPaymentReceiptPresigned>[0]);
+        case '/payment-receipt/presigned':
+          return handleGetPaymentReceiptPresigned(authenticatedContext as Parameters<typeof handleGetPaymentReceiptPresigned>[0]);
 
-      case '/payment-receipt':
-        return handleGetPaymentReceipt(authenticatedContext as Parameters<typeof handleGetPaymentReceipt>[0]);
+        case '/payment-receipt':
+          return handleGetPaymentReceipt(authenticatedContext as Parameters<typeof handleGetPaymentReceipt>[0]);
 
-      case '/extract-content':
-        return handleExtractContent(authenticatedContext as Parameters<typeof handleExtractContent>[0]);
+        case '/extract-content':
+          return handleExtractContent(authenticatedContext as Parameters<typeof handleExtractContent>[0]);
 
-      case '/get-authenticated-url':
-        return handleGetAuthenticatedUrl(authenticatedContext as Parameters<typeof handleGetAuthenticatedUrl>[0]);
+        case '/get-authenticated-url':
+          return handleGetAuthenticatedUrl(authenticatedContext as Parameters<typeof handleGetAuthenticatedUrl>[0]);
 
-      case '/profile-media-url':
-        return handleProfileMediaUrl(authenticatedContext as Parameters<typeof handleProfileMediaUrl>[0]);
+        case '/profile-media-url':
+          return handleProfileMediaUrl(authenticatedContext as Parameters<typeof handleProfileMediaUrl>[0]);
 
-      default:
-        return jsonResponse(
-          {
-            error: 'Endpoint not found',
-            path,
-          },
-          404
-        );
-    }
+        // Video Portfolio endpoints
+        case '/upload-video-portfolio':
+          if (request.method === 'POST') {
+            return handleVideoPortfolioUpload(request, env, authenticatedContext);
+          }
+          return jsonResponse({ error: 'Method not allowed' }, 405);
+
+        case '/video-portfolio':
+          if (request.method === 'GET') {
+            return handleVideoPortfolioDownload(request, env, authenticatedContext);
+          }
+          if (request.method === 'DELETE') {
+            return handleVideoPortfolioDelete(request, env, authenticatedContext);
+          }
+          return jsonResponse({ error: 'Method not allowed' }, 405);
+
+        default:
+          return jsonResponse(
+            {
+              error: 'Endpoint not found',
+              path,
+            },
+            404
+          );
+      }
     })(context as any);
   } catch (error) {
     logger.error('Storage API Error', error instanceof Error ? error : new Error(String(error)));

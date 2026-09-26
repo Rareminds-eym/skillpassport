@@ -1,7 +1,7 @@
-import { withAuth, getContextUser } from '../../lib/auth';
-import { getServiceClient } from '../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import { apiSuccess, apiDbError, apiError, apiMethodNotAllowed } from '../../lib/response';
+import { getContextUser, withAuth } from '../../lib/auth';
+import { apiDbError, apiError, apiMethodNotAllowed, apiSuccess } from '../../lib/response';
+import { getServiceClient } from '../../lib/supabase';
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const user = getContextUser(context);
@@ -140,7 +140,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         for (const dept of (departments || [])) {
           const { data: programs } = await supabase
             .from('programs')
-            .select('id, name, code')
+            .select('id, name, code, specializations')
             .eq('department_id', dept.id)
             .eq('status', 'active')
             .order('name');

@@ -4,10 +4,13 @@
  */
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getContextUser, withAuth } from '../../lib/auth';
-import { apiDbError, apiError, apiMethodNotAllowed, apiSuccess } from '../../lib/response';
+import { createLogger } from '../../lib/logger';
 import { resolveUserOrganization } from '../../lib/resolve-organization';
+import { apiDbError, apiError, apiMethodNotAllowed, apiSuccess } from '../../lib/response';
 import { getServiceClient } from '../../lib/supabase';
 import type { PagesEnv } from '../../lib/types';
+
+const logger = createLogger('college-admin-faculty');
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const user = getContextUser(context);
@@ -238,6 +241,29 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const { data, error } = await query.order('createdAt', { ascending: false });
         if (error) return apiDbError(error, context.request, { startTime });
         let result = data || [];
+
+        // Extract metadata fields to top level for backward compatibility
+        result = result.map((r: any) => {
+          let metadata;
+          try {
+            metadata = typeof r.metadata === 'string' ? JSON.parse(r.metadata) : r.metadata;
+          } catch (error) {
+            logger.error('faculty_metadata_parse_failed', error instanceof Error ? error : new Error(String(error)), {
+              lecturerId: r.id,
+              employeeId: r.employeeId,
+              metadataPreview: typeof r.metadata === 'string' ? r.metadata.substring(0, 100) : 'not-string'
+            });
+            metadata = {};
+          }
+          return {
+            ...r,
+            first_name: r.first_name || metadata?.first_name || null,
+            last_name: r.last_name || metadata?.last_name || null,
+            email: r.email || metadata?.email || null,
+            phone: r.phone || metadata?.phone || null,
+          };
+        });
+
         if (search) {
           const s = search.toLowerCase();
           result = result.filter((r: any) =>
@@ -931,14 +957,14 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const { organization_type, collegeData, userId } = params;
         if (!collegeData) return apiError(400, 'VALIDATION_ERROR', 'Missing collegeData', context.request, { startTime });
         if (!collegeData.name?.trim()) return apiError(400, 'VALIDATION_ERROR', 'collegeData.name is required', context.request, { startTime });
-        
+
         // Create organization in SSO DB (source of truth).
         // The sync queue will replicate to Skillpassport asynchronously.
         try {
           if (!env.SSO_SERVICE) {
             return apiError(500, 'SSO_ERROR', 'SSO_SERVICE not configured', context.request, { startTime });
           }
-          
+
           const ssoResult = await env.SSO_SERVICE.createOrganization({
             name: collegeData.name.trim(),
             slug: collegeData.slug || collegeData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
@@ -948,21 +974,21 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
               ...collegeData
             }
           });
-          
+
           if (!ssoResult || typeof ssoResult !== 'object' || !('success' in ssoResult)) {
             return apiError(500, 'SSO_ERROR', 'Invalid SSO response', context.request, { startTime });
           }
-          
+
           if (!ssoResult.success) {
             return apiError(500, 'SSO_ERROR', ssoResult.error || 'Failed to create organization', context.request, { startTime });
           }
-          
+
           if (!ssoResult.org_id) {
             return apiError(500, 'SSO_INVALID_RESPONSE', 'SSO did not return organization ID', context.request, { startTime });
           }
-          
+
           console.log(`[college-admin] Created organization ${ssoResult.org_id} in SSO`);
-          
+
           return apiSuccess({
             id: ssoResult.org_id,
             name: collegeData.name,
@@ -1103,9 +1129,9 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
               .maybeSingle();
 
             if (error) return apiDbError(error, context.request, { startTime });
-            return apiSuccess({ 
-              college_id: resolved.organizationId, 
-              college: org || null, 
+            return apiSuccess({
+              college_id: resolved.organizationId,
+              college: org || null,
               source: resolved.source === 'admin' ? 'organization' : resolved.source === 'educator' ? 'lecturer' : resolved.source
             }, context.request, { startTime });
           }

@@ -17,6 +17,7 @@ export interface AttendanceRecord {
   facultyName?: string;
   remarks?: string;
   location?: string;
+  sessionId?: string;
 }
 
 export interface AttendanceSession {

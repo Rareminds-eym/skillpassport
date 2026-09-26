@@ -7,6 +7,9 @@
 
 import { CreditCard, LayoutDashboard, Mail, Settings, Users } from 'lucide-react';
 import { memo, useCallback, useState } from 'react';
+import HybridPlanCard from './HybridPlanCard';
+import { useSubscriptionPlansData } from '../../model/useSubscriptionPlansData';
+import { isHybridPlan } from '../../lib/hybridPlan';
 import BillingDashboard from './BillingDashboard';
 import InvitationManager from './InvitationManager';
 import LicensePoolManager from './LicensePoolManager';
@@ -139,6 +142,8 @@ function OrganizationSubscriptionDashboard(props: OrganizationSubscriptionDashbo
   } = props;
 
   const [activeTab, setActiveTab] = useState<TabId>('overview');
+  const { plans: catalogPlans } = useSubscriptionPlansData({ businessType: 'b2b', entityType: organizationType, roleType: 'admin' });
+  const hybridPlan = catalogPlans?.find(plan => isHybridPlan(plan) && plan.contactSales);
 
   const totalSeats = subscriptions
     .filter((s) => s.status === 'active' || s.status === 'grace_period')
@@ -159,16 +164,19 @@ function OrganizationSubscriptionDashboard(props: OrganizationSubscriptionDashbo
     switch (activeTab) {
       case 'overview':
         return (
-          <SubscriptionOverview
-            subscriptions={subscriptions}
-            organizationDetails={organizationDetails}
-            onAddSeats={onAddSeats}
-            onManage={onManageSubscription}
-            onRenew={onRenewSubscription}
-            onViewDetails={onViewSubscriptionDetails}
-            onBrowsePlans={onBrowsePlans}
-            isLoading={isLoading}
-          />
+          <div className="space-y-6">
+            <SubscriptionOverview
+              subscriptions={subscriptions}
+              organizationDetails={organizationDetails}
+              onAddSeats={onAddSeats}
+              onManage={onManageSubscription}
+              onRenew={onRenewSubscription}
+              onViewDetails={onViewSubscriptionDetails}
+              onBrowsePlans={onBrowsePlans}
+              isLoading={isLoading}
+            />
+            {hybridPlan && <HybridPlanCard plan={hybridPlan} compact organizationName={organizationName} contactEmail={organizationDetails?.email} contactPhone={organizationDetails?.phone} />}
+          </div>
         );
       case 'pools':
         return (

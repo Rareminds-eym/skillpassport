@@ -26,11 +26,11 @@ const HomePage: React.FC = () => {
   // Admins and educators should use public portfolio routes to view learner portfolios
   const roleStr = String(role || '');
   const isViewingAsNonLearner = roleStr.includes('admin') || roleStr === 'educator';
-  
+
   // For admins and educators, use the direct portfolio routes that don't require learner role
   const portfolioPath = isViewingAsNonLearner ? '/portfolio' : '/learner/digital-portfolio/portfolio';
   const passportPath = isViewingAsNonLearner ? '/passport' : '/learner/digital-portfolio/passport';
-  
+
   const handleGoBack = () => {
     // Go back to the previous page
     navigate(-1);
@@ -45,9 +45,9 @@ const HomePage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-slate-900 dark:to-indigo-950 transition-colors duration-300">
-      
+
       {/* Learner Dashboard Header will show from LearnerLayout */}
-      
+
       {/* Back Button - Fixed at top - Only show for admins and educators */}
       {isViewingAsNonLearner && (
         <motion.div
@@ -148,21 +148,21 @@ const HomePage: React.FC = () => {
       <section id="mode-selection-section" className="relative py-20 px-6 bg-white dark:bg-gray-900 transition-colors duration-300 overflow-hidden">
         {/* Transparent gradient overlay at the top to distinguish from hero section */}
         <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-black/30 via-black/10 to-transparent dark:from-black/50 dark:via-black/20 dark:to-transparent pointer-events-none z-[1]"></div>
-        
+
         {/* Background Ripple Effect - Light mode version (soft blue/purple to match gradient) */}
         <div className="block dark:hidden absolute inset-0 pointer-events-auto">
-          <BackgroundRippleEffect 
-            rows={8} 
+          <BackgroundRippleEffect
+            rows={8}
             cols={25}
             borderColor="rgba(99, 102, 241, 0.4)" // much stronger indigo border
             fillColor="rgba(147, 197, 253, 0.25)" // highly prominent blue fill (blue-300)
           />
         </div>
-        
+
         {/* Background Ripple Effect - Dark mode version (indigo theme) */}
         <div className="hidden dark:block absolute inset-0 pointer-events-auto">
-          <BackgroundRippleEffect 
-            rows={8} 
+          <BackgroundRippleEffect
+            rows={8}
             cols={25}
             borderColor="rgba(99, 102, 241, 0.25)" // stronger indigo border for dark
             fillColor="rgba(99, 102, 241, 0.08)" // indigo fill
@@ -181,11 +181,11 @@ const HomePage: React.FC = () => {
               Choose Your Presentation Mode
             </h2>
             <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
-              Two powerful ways to showcase your professional journey. Pick the one that suits your style.
+              Three powerful ways to showcase your professional journey. Pick the one that suits your style.
             </p>
           </motion.div>
 
-          <div className="grid lg:grid-cols-2 gap-8 px-8">
+          <div className="grid lg:grid-cols-3 gap-8 px-8">
             {/* Portfolio Mode Card */}
             <motion.div
               initial={{ opacity: 0, x: -30 }}
@@ -197,7 +197,7 @@ const HomePage: React.FC = () => {
             >
               <div className="bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-950/50 dark:to-purple-950/50 rounded-3xl p-8 h-full border-2 border-indigo-200 dark:border-indigo-800 hover:border-indigo-400 dark:hover:border-indigo-600 transition-all hover:shadow-2xl animate-border-glow dark:animate-none">
                 {/* Badge */}
-                <motion.div 
+                <motion.div
                   whileHover={{ scale: 1.05 }}
                   className="inline-flex items-center space-x-2 bg-indigo-600 dark:bg-indigo-500 text-white px-4 py-2 rounded-full mb-6"
                 >
@@ -210,12 +210,12 @@ const HomePage: React.FC = () => {
                 </h3>
 
                 <p className="text-gray-700 dark:text-gray-300 mb-6 text-lg leading-relaxed">
-                  Create a stunning, interactive portfolio with multiple customizable layouts. 
+                  Create a stunning, interactive portfolio with multiple customizable layouts.
                   Perfect for showcasing your work with modern animations, color themes, and professional designs.
                 </p>
 
                 {/* Features */}
-                <motion.ul 
+                <motion.ul
                   initial="hidden"
                   whileInView="visible"
                   viewport={{ once: true }}
@@ -228,7 +228,7 @@ const HomePage: React.FC = () => {
                   }}
                   className="space-y-3 mb-8"
                 >
-                  <motion.li 
+                  <motion.li
                     variants={{
                       hidden: { opacity: 0, x: -20 },
                       visible: { opacity: 1, x: 0 }
@@ -238,7 +238,7 @@ const HomePage: React.FC = () => {
                     <CheckCircle className="w-5 h-5 text-indigo-600 dark:text-indigo-400 mt-1 flex-shrink-0" />
                     <span className="text-gray-700 dark:text-gray-300">7 unique layout options (Modern, Creative, Split-Screen, AI Persona, etc.)</span>
                   </motion.li>
-                  <motion.li 
+                  <motion.li
                     variants={{
                       hidden: { opacity: 0, x: -20 },
                       visible: { opacity: 1, x: 0 }
@@ -248,7 +248,7 @@ const HomePage: React.FC = () => {
                     <CheckCircle className="w-5 h-5 text-indigo-600 dark:text-indigo-400 mt-1 flex-shrink-0" />
                     <span className="text-gray-700 dark:text-gray-300">Customizable color themes and animations</span>
                   </motion.li>
-                  <motion.li 
+                  <motion.li
                     variants={{
                       hidden: { opacity: 0, x: -20 },
                       visible: { opacity: 1, x: 0 }
@@ -258,7 +258,7 @@ const HomePage: React.FC = () => {
                     <CheckCircle className="w-5 h-5 text-indigo-600 dark:text-indigo-400 mt-1 flex-shrink-0" />
                     <span className="text-gray-700 dark:text-gray-300">Interactive project showcases and skill displays</span>
                   </motion.li>
-                  <motion.li 
+                  <motion.li
                     variants={{
                       hidden: { opacity: 0, x: -20 },
                       visible: { opacity: 1, x: 0 }
@@ -289,12 +289,12 @@ const HomePage: React.FC = () => {
                 </motion.div>
 
                 {/* Decorative Element */}
-                <motion.div 
-                  animate={{ 
+                <motion.div
+                  animate={{
                     scale: [1, 1.2, 1],
                     opacity: [0.5, 0.7, 0.5]
                   }}
-                  transition={{ 
+                  transition={{
                     duration: 4,
                     repeat: Infinity,
                     ease: "easeInOut"
@@ -315,7 +315,7 @@ const HomePage: React.FC = () => {
             >
               <div className="bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-950/50 dark:to-purple-950/50 rounded-3xl p-8 h-full border-2 border-indigo-200 dark:border-indigo-800 hover:border-indigo-400 dark:hover:border-indigo-600 transition-all hover:shadow-2xl animate-border-glow dark:animate-none">
                 {/* Badge */}
-                <motion.div 
+                <motion.div
                   whileHover={{ scale: 1.05 }}
                   className="inline-flex items-center space-x-2 bg-indigo-600 dark:bg-indigo-500 text-white px-4 py-2 rounded-full mb-6"
                 >
@@ -328,12 +328,12 @@ const HomePage: React.FC = () => {
                 </h3>
 
                 <p className="text-gray-700 dark:text-gray-300 mb-6 text-lg leading-relaxed">
-                  Present your credentials in a traditional passport format with page-flip animations. 
+                  Present your credentials in a traditional passport format with page-flip animations.
                   A unique and memorable way to display your professional journey and achievements.
                 </p>
 
                 {/* Features */}
-                <motion.ul 
+                <motion.ul
                   initial="hidden"
                   whileInView="visible"
                   viewport={{ once: true }}
@@ -346,7 +346,7 @@ const HomePage: React.FC = () => {
                   }}
                   className="space-y-3 mb-8"
                 >
-                  <motion.li 
+                  <motion.li
                     variants={{
                       hidden: { opacity: 0, x: -20 },
                       visible: { opacity: 1, x: 0 }
@@ -356,7 +356,7 @@ const HomePage: React.FC = () => {
                     <CheckCircle className="w-5 h-5 text-indigo-600 dark:text-indigo-400 mt-1 flex-shrink-0" />
                     <span className="text-gray-700 dark:text-gray-300">Authentic passport-style design with official look</span>
                   </motion.li>
-                  <motion.li 
+                  <motion.li
                     variants={{
                       hidden: { opacity: 0, x: -20 },
                       visible: { opacity: 1, x: 0 }
@@ -366,7 +366,7 @@ const HomePage: React.FC = () => {
                     <CheckCircle className="w-5 h-5 text-indigo-600 dark:text-indigo-400 mt-1 flex-shrink-0" />
                     <span className="text-gray-700 dark:text-gray-300">Smooth page-flip animations (desktop & mobile)</span>
                   </motion.li>
-                  <motion.li 
+                  <motion.li
                     variants={{
                       hidden: { opacity: 0, x: -20 },
                       visible: { opacity: 1, x: 0 }
@@ -376,7 +376,7 @@ const HomePage: React.FC = () => {
                     <CheckCircle className="w-5 h-5 text-indigo-600 dark:text-indigo-400 mt-1 flex-shrink-0" />
                     <span className="text-gray-700 dark:text-gray-300">Organized sections: Education, Skills, Projects, Certifications</span>
                   </motion.li>
-                  <motion.li 
+                  <motion.li
                     variants={{
                       hidden: { opacity: 0, x: -20 },
                       visible: { opacity: 1, x: 0 }
@@ -407,16 +407,135 @@ const HomePage: React.FC = () => {
                 </motion.div>
 
                 {/* Decorative Element */}
-                <motion.div 
-                  animate={{ 
+                <motion.div
+                  animate={{
                     scale: [1, 1.2, 1],
                     opacity: [0.5, 0.7, 0.5]
                   }}
-                  transition={{ 
+                  transition={{
                     duration: 4,
                     repeat: Infinity,
                     ease: "easeInOut",
                     delay: 0.5
+                  }}
+                  className="absolute -top-4 -right-4 w-24 h-24 bg-indigo-200 dark:bg-indigo-800 rounded-full blur-2xl"
+                />
+              </div>
+            </motion.div>
+
+            {/* Video Portfolio Card */}
+            <motion.div
+              initial={{ opacity: 0, x: 30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              whileHover={{ scale: 1.02, y: -5 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.4 }}
+              className="group relative"
+            >
+              <div className="bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-950/50 dark:to-purple-950/50 rounded-3xl p-8 h-full border-2 border-indigo-200 dark:border-indigo-800 hover:border-indigo-400 dark:hover:border-indigo-600 transition-all hover:shadow-2xl animate-border-glow dark:animate-none">
+                {/* Badge */}
+                <motion.div
+                  whileHover={{ scale: 1.05 }}
+                  className="inline-flex items-center space-x-2 bg-indigo-600 dark:bg-indigo-500 text-white px-4 py-2 rounded-full mb-6"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  <span className="text-sm font-semibold">Video Showcase</span>
+                </motion.div>
+
+                <h3 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+                  Video Portfolio
+                </h3>
+
+                <p className="text-gray-700 dark:text-gray-300 mb-6 text-lg leading-relaxed">
+                  Showcase your skills through engaging videos. Upload project walkthroughs, demos, and presentations
+                  to create a dynamic visual portfolio that stands out.
+                </p>
+
+                {/* Features */}
+                <motion.ul
+                  initial="hidden"
+                  whileInView="visible"
+                  viewport={{ once: true }}
+                  variants={{
+                    visible: {
+                      transition: {
+                        staggerChildren: 0.1
+                      }
+                    }
+                  }}
+                  className="space-y-3 mb-8"
+                >
+                  <motion.li
+                    variants={{
+                      hidden: { opacity: 0, x: -20 },
+                      visible: { opacity: 1, x: 0 }
+                    }}
+                    className="flex items-start space-x-3"
+                  >
+                    <CheckCircle className="w-5 h-5 text-indigo-600 dark:text-indigo-400 mt-1 flex-shrink-0" />
+                    <span className="text-gray-700 dark:text-gray-300">Upload up to 5 professional videos</span>
+                  </motion.li>
+                  <motion.li
+                    variants={{
+                      hidden: { opacity: 0, x: -20 },
+                      visible: { opacity: 1, x: 0 }
+                    }}
+                    className="flex items-start space-x-3"
+                  >
+                    <CheckCircle className="w-5 h-5 text-indigo-600 dark:text-indigo-400 mt-1 flex-shrink-0" />
+                    <span className="text-gray-700 dark:text-gray-300">Video trimming and editing tools</span>
+                  </motion.li>
+                  <motion.li
+                    variants={{
+                      hidden: { opacity: 0, x: -20 },
+                      visible: { opacity: 1, x: 0 }
+                    }}
+                    className="flex items-start space-x-3"
+                  >
+                    <CheckCircle className="w-5 h-5 text-indigo-600 dark:text-indigo-400 mt-1 flex-shrink-0" />
+                    <span className="text-gray-700 dark:text-gray-300">Add titles, descriptions, and skill tags</span>
+                  </motion.li>
+                  <motion.li
+                    variants={{
+                      hidden: { opacity: 0, x: -20 },
+                      visible: { opacity: 1, x: 0 }
+                    }}
+                    className="flex items-start space-x-3"
+                  >
+                    <CheckCircle className="w-5 h-5 text-indigo-600 dark:text-indigo-400 mt-1 flex-shrink-0" />
+                    <span className="text-gray-700 dark:text-gray-300">Accessible video player and gallery</span>
+                  </motion.li>
+                </motion.ul>
+
+                {/* CTA Button */}
+                <motion.div
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="flex justify-center"
+                >
+                  <Link
+                    to="/learner/digital-portfolio/video"
+                    className="inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 dark:from-indigo-500 dark:to-blue-500 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all group relative overflow-hidden"
+                  >
+                    <span className="relative z-10 flex items-center">
+                      Explore Video Portfolio
+                      <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
+                    </span>
+                    <span className="absolute top-0 left-[-40px] h-full w-0 bg-gradient-to-r from-blue-700 to-indigo-700 dark:from-blue-600 dark:to-indigo-600 transform skew-x-[45deg] transition-all duration-700 group-hover:w-[160%] -z-0"></span>
+                  </Link>
+                </motion.div>
+
+                {/* Decorative Element */}
+                <motion.div
+                  animate={{
+                    scale: [1, 1.2, 1],
+                    opacity: [0.5, 0.7, 0.5]
+                  }}
+                  transition={{
+                    duration: 4,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                    delay: 1
                   }}
                   className="absolute -top-4 -right-4 w-24 h-24 bg-indigo-200 dark:bg-indigo-800 rounded-full blur-2xl"
                 />

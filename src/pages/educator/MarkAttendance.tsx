@@ -105,6 +105,7 @@ const MarkAttendance: React.FC = () => {
   const [selectedSubject, setSelectedSubject] = useState<string>("all");
   const [educatorType, setEducatorType] = useState<'school' | 'college' | null>(null);
   const [collegeId, setCollegeId] = useState<string | null>(null);
+  const [facultyName, setFacultyName] = useState<string>('');
 
   // Get current educator info (school or college)
   useEffect(() => {
@@ -119,13 +120,16 @@ const MarkAttendance: React.FC = () => {
         logger.info('Fetching educator info', { userId: user.id });
 
         try {
-          const educatorData = await apiPost<{
+          const response = await apiPost<{
             type: 'school' | 'college' | null;
             schoolEducator?: { id: string; school_id: string; user_id: string };
-            collegeLecturer?: { id: string; collegeId: string; user_id: string };
+            collegeLecturer?: { id: string; collegeId: string; user_id: string; metadata?: any };
           }>('/educator/actions', {
             action: 'get-educator-type-by-user-id'
           });
+
+          // The apiPost wraps the response in { success, data, error }
+          const educatorData = response?.data || response;
 
           if (educatorData?.type === 'school' && educatorData.schoolEducator) {
             logger.info('Found school educator', { schoolEducator: educatorData.schoolEducator });
@@ -148,6 +152,16 @@ const MarkAttendance: React.FC = () => {
             setEducatorUserId(educatorData.collegeLecturer.user_id);
             setCollegeId(educatorData.collegeLecturer.collegeId);
             setEducatorType('college');
+            
+            // Extract faculty name from metadata
+            const metadata = educatorData.collegeLecturer.metadata;
+            if (metadata && typeof metadata === 'object') {
+              const firstName = metadata.first_name || '';
+              const lastName = metadata.last_name || '';
+              setFacultyName(`${firstName} ${lastName}`.trim() || 'Faculty');
+            } else {
+              setFacultyName('Faculty');
+            }
             return;
           }
 
@@ -238,16 +252,8 @@ const MarkAttendance: React.FC = () => {
         selectedDate
       });
 
-      const existingSessions = response?.sessions || [];
-
-      logger.info('College sessions query result', {
-        data: existingSessions,
-        query: {
-          faculty_id: educatorId,
-          date: selectedDate,
-          college_id: collegeId
-        }
-      });
+      // apiPost wraps response in { success, data, error } format
+      const existingSessions = response?.data?.sessions || response?.sessions || [];
 
       // Convert college sessions to TimetableSlot format
       const collegeSlots: TimetableSlot[] = existingSessions.map((session: any, index: number) => ({
@@ -439,12 +445,14 @@ const MarkAttendance: React.FC = () => {
         sessionId: slot.id,
         selectedDate,
         classId: slot.class_id,
-        semester: parseInt(slot.class_grade?.replace(/\D/g, '') || '1')
+        semester: parseInt(slot.class_grade?.replace(/\D/g, '') || '1', 10)
       });
 
-      const existingRecords = response?.existingRecords || [];
-      const isSubmitted = response?.isSubmitted || false;
-      const formattedlearners = response?.learners || [];
+      // Unwrap the response - apiPost wraps it in { success, data, error }
+      const data = response?.data || response;
+      const existingRecords = data?.existingRecords || [];
+      const isSubmitted = data?.isSubmitted || false;
+      const formattedlearners = data?.learners || [];
 
       const recordsMap = new Map<string, AttendanceRecord>();
 
@@ -625,6 +633,14 @@ const MarkAttendance: React.FC = () => {
     if (!activeSession || !educatorUserId || !collegeId) return;
 
     try {
+      // Parse class_id to extract department and program info
+      // Format: "Department-ProgramName-Semester-Section"
+      const classParts = activeSession.slot.class_id.split('-');
+      const section = classParts[classParts.length - 1];
+      const semester = classParts[classParts.length - 2];
+      const programName = classParts.slice(1, classParts.length - 2).join('-');
+      const departmentName = classParts[0];
+
       const recordsToInsert = Array.from(activeSession.records.values()).map((record) => ({
         session_id: activeSession.slot.id,
         learner_id: record.learner_id,
@@ -636,12 +652,38 @@ const MarkAttendance: React.FC = () => {
         time_out: null,
         subject_name: activeSession.slot.subject_name,
         faculty_id: educatorId,
+        faculty_name: facultyName || 'Faculty',
         location: activeSession.slot.room_number,
         remarks: record.remarks || null,
         marked_by: educatorUserId,
         marked_at: new Date().toISOString(),
         college_id: collegeId,
+        department_name: departmentName,
+        program_name: programName,
+        semester: parseInt(semester, 10),
+        section: section,
       }));
+
+      // Calculate attendance statistics
+      const presentCount = recordsToInsert.filter(r => r.status === 'present').length;
+      const absentCount = recordsToInsert.filter(r => r.status === 'absent').length;
+      const lateCount = recordsToInsert.filter(r => r.status === 'late').length;
+      const excusedCount = recordsToInsert.filter(r => r.status === 'excused').length;
+      const totalLearners = activeSession.learners.length;
+      const attendancePercentage = totalLearners > 0 
+        ? ((presentCount + lateCount + excusedCount) / totalLearners) * 100 
+        : 0;
+
+      // Session update data
+      const sessionUpdateData = {
+        total_learners: totalLearners,
+        present_count: presentCount,
+        absent_count: absentCount,
+        late_count: lateCount,
+        excused_count: excusedCount,
+        attendance_percentage: attendancePercentage,
+        status: 'completed',
+      };
 
       await apiPost('/educator/actions', {
         action: 'submit-college-attendance',
@@ -650,6 +692,7 @@ const MarkAttendance: React.FC = () => {
         classId: activeSession.slot.class_id,
         educatorId,
         records: recordsToInsert,
+        sessionUpdateData,
         isResubmit: activeSession.isSubmitted
       });
 
@@ -853,7 +896,6 @@ const ScheduleView: React.FC<ScheduleViewProps> = ({
                 type="date"
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
-                max={new Date().toISOString().split("T")[0]}
                 className="pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white"
               />
             </div>
@@ -901,6 +943,7 @@ const ScheduleView: React.FC<ScheduleViewProps> = ({
             {/* Clear Filters Button */}
             {(selectedClass !== "all" || selectedSubject !== "all" || searchQuery) && (
               <button
+                type = "button"
                 onClick={() => {
                   setSelectedClass("all");
                   setSelectedSubject("all");
@@ -945,6 +988,7 @@ const ScheduleView: React.FC<ScheduleViewProps> = ({
               <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
                 Class: {selectedClass}
                 <button
+                  type = "button"
                   onClick={() => {
                     setSelectedClass("all");
                     setCurrentPage(1);
@@ -959,6 +1003,7 @@ const ScheduleView: React.FC<ScheduleViewProps> = ({
               <span className="inline-flex items-center gap-1 px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium">
                 Subject: {selectedSubject}
                 <button
+                  type = "button"
                   onClick={() => {
                     setSelectedSubject("all");
                     setCurrentPage(1);
@@ -999,6 +1044,7 @@ const ScheduleView: React.FC<ScheduleViewProps> = ({
             </p>
             {searchQuery && (
               <button
+                type = "button"
                 onClick={() => setSearchQuery("")}
                 className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700"
               >
@@ -1031,6 +1077,7 @@ const ScheduleView: React.FC<ScheduleViewProps> = ({
                 </p>
                 <div className="flex gap-2">
                   <button
+                    type = "button"
                     onClick={() => setCurrentPage(currentPage - 1)}
                     disabled={currentPage === 1}
                     className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1040,6 +1087,7 @@ const ScheduleView: React.FC<ScheduleViewProps> = ({
                   <div className="hidden sm:flex gap-1">
                     {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                       <button
+                        type = "button"
                         key={page}
                         onClick={() => setCurrentPage(page)}
                         className={`px-3 py-2 rounded-lg text-sm font-medium ${
@@ -1057,6 +1105,7 @@ const ScheduleView: React.FC<ScheduleViewProps> = ({
                     {currentPage} / {totalPages}
                   </div>
                   <button
+                    type = "button"
                     onClick={() => setCurrentPage(currentPage + 1)}
                     disabled={currentPage === totalPages}
                     className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1196,6 +1245,7 @@ const SlotCard: React.FC<SlotCardProps> = ({ slot, isFuture, onStartSession }) =
 
         {/* Action Button */}
         <button
+          type = "button"
           onClick={() => onStartSession(slot)}
           disabled={isFuture || slot.is_locked}
           className={`w-full py-3 px-4 rounded-lg font-semibold text-sm transition-all flex items-center justify-center gap-2 ${
@@ -1273,6 +1323,7 @@ const MarkingView: React.FC<MarkingViewProps> = ({
       <div className="p-4 sm:p-6 lg:p-8 mb-2">
         {/* Back Button */}
         <button
+          type = "button"
           onClick={onBack}
           className="flex items-center gap-2 text-gray-600 hover:text-gray-900 font-medium transition-colors mb-4"
         >
@@ -1360,6 +1411,7 @@ const MarkingView: React.FC<MarkingViewProps> = ({
           {/* Quick Actions - Always show to allow editing */}
           <div className="flex gap-2">
               <button
+                type = "button"
                 onClick={() => markAllAs("present")}
                 className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700 transition-colors"
               >
@@ -1367,6 +1419,7 @@ const MarkingView: React.FC<MarkingViewProps> = ({
                 All Present
               </button>
               <button
+                type = "button"
                 onClick={() => markAllAs("absent")}
                 className="flex items-center gap-2 px-4 py-2.5 bg-rose-600 text-white rounded-lg text-sm font-semibold hover:bg-rose-700 transition-colors"
               >
@@ -1418,6 +1471,7 @@ const MarkingView: React.FC<MarkingViewProps> = ({
         {/* Submit Button - Always show to allow resubmission */}
         <div className="mt-6 flex justify-end">
             <button
+              type = "button"
               onClick={submitAttendance}
               disabled={submitting}
               className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
@@ -1523,6 +1577,7 @@ const LearnerRow: React.FC<LearnerRowProps> = ({ learner, record, isDisabled, on
                 const Icon = btn.icon;
                 return (
                   <button
+                    type = "button"
                     key={btn.value}
                     onClick={() => {
                       if (!isDisabled) {
@@ -1600,12 +1655,13 @@ const LearnerRow: React.FC<LearnerRowProps> = ({ learner, record, isDisabled, on
 
           {/* Status Buttons */}
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-2">Status</label>
-            <div className="grid grid-cols-3 gap-2">
+            <span id={`status-label-${learner.id}`} className="block text-xs font-medium text-gray-700 mb-2">Status</span>
+            <div role="group" aria-labelledby={`status-label-${learner.id}`} className="grid grid-cols-3 gap-2">
               {statusButtons.map((btn) => {
                 const Icon = btn.icon;
                 return (
                   <button
+                    type = "button"
                     key={btn.value}
                     onClick={() => {
                       if (!isDisabled) {
@@ -1618,7 +1674,7 @@ const LearnerRow: React.FC<LearnerRowProps> = ({ learner, record, isDisabled, on
                       }
                     }}
                     disabled={isDisabled}
-                    className={getButtonClasses(btn.value) + " justify-center"}
+                    className={`${getButtonClasses(btn.value)} justify-center`}
                   >
                     <Icon className="h-4 w-4" />
                     <span>{btn.label}</span>
@@ -1630,8 +1686,11 @@ const LearnerRow: React.FC<LearnerRowProps> = ({ learner, record, isDisabled, on
 
           {/* Time In */}
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-2">Time In</label>
+            <label 
+            htmlFor={`time-in-${learner.id}`}
+            className="block text-xs font-medium text-gray-700 mb-2">Time In</label>
             <input
+              id={`time-in-${learner.id}`}
               type="time"
               value={record?.time_in || ""}
               onChange={(e) => onUpdate(learner.id, "time_in", e.target.value)}
@@ -1642,8 +1701,9 @@ const LearnerRow: React.FC<LearnerRowProps> = ({ learner, record, isDisabled, on
 
           {/* Remarks */}
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-2">Remarks</label>
+            <label htmlFor={`remarks-${learner.id}`} className="block text-xs font-medium text-gray-700 mb-2">Remarks</label>
             <input
+              id={`remarks-${learner.id}`}
               type="text"
               value={record?.remarks || ""}
               onChange={(e) => onUpdate(learner.id, "remarks", e.target.value)}

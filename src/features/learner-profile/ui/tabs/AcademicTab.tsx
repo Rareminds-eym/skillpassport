@@ -106,6 +106,10 @@ const AcademicTab: React.FC<AcademicTabProps> = ({ learner }) => {
                 <span className="text-gray-500 text-xs mb-1">CGPA</span>
                 <span className="font-medium text-gray-900">{learner.profile?.education?.[0]?.cgpa || learner.currentCgpa || 'N/A'}</span>
               </div>
+              <div className="flex flex-col">
+                <span className="text-gray-500 text-xs mb-1">Specialization</span>
+                <span className="font-medium text-gray-900">{learner.specialization || 'N/A'}</span>
+              </div>
               {learner.enrollment_number && (
                 <div className="flex flex-col">
                   <span className="text-gray-500 text-xs mb-1">Enrollment Number</span>
