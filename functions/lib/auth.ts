@@ -125,7 +125,7 @@ export function withAuth(handler: (context: any) => Promise<Response>) {
       }
 
       if (/^\/api\/(college-admin|school-admin|university-admin)(\/|$)/.test(new URL(context.request.url).pathname)) {
-        const featureDenied = await requireAdminRequestFeature(getServiceClient(env as any), context.request, authedContext.user);
+        const featureDenied = await requireAdminRequestFeature(getServiceClient(env as unknown as PagesEnv), context.request, authedContext.user);
         if (featureDenied) return featureDenied;
       }
       return handler(context);

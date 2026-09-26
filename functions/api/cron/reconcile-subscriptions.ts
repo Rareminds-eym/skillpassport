@@ -94,8 +94,9 @@ export async function onRequestPost(context: { request: Request; env: ReconcileE
         await syncAllFeatureKeysCache(supabase, featureKeysData.featureKeys);
         results.feature_keys_synced = featureKeysData.featureKeys.length;
       }
-    } catch (featureKeysErr: any) {
-      results.errors.push(`Feature keys sync failed: ${featureKeysErr.message}`);
+    } catch (featureKeysErr: unknown) {
+      const msg = featureKeysErr instanceof Error ? featureKeysErr.message : String(featureKeysErr);
+      results.errors.push(`Feature keys sync failed: ${msg}`);
     }
 
     // 2. Find stale subscription_cache entries

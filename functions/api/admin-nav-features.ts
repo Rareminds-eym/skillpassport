@@ -5,6 +5,8 @@ import { getHybridOrganizationAccess, type AdminOrganizationType } from '../lib/
 import { apiError, apiSuccess } from '../lib/response';
 import { getServiceClient } from '../lib/supabase';
 
+import type { PagesEnv, PagesFunction } from '../lib/types';
+
 export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   const role = new URL(context.request.url).searchParams.get('role');
   const user = getContextUser(context);
@@ -13,7 +15,7 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   }
   if (!user.roles?.includes(role)) return apiError(403, 'FORBIDDEN', 'Admin role required', context.request);
   try {
-    const supabase = getServiceClient(context.env as any);
+    const supabase = getServiceClient(context.env as unknown as PagesEnv);
     const access = await getHybridOrganizationAccess(supabase, user.id, role.replace('_admin', '') as AdminOrganizationType, user.org_id);
     const { data, error } = await supabase.from('feature_keys_cache')
       .select('key, role, nav_group, nav_label, nav_path, display_order, is_active')

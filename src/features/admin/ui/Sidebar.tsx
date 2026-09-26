@@ -43,6 +43,19 @@ interface SidebarProps {
   onMobileMenuClose?: () => void;
 }
 
+interface NavItem {
+  name: string;
+  path: string;
+  icon: React.ComponentType<{ className?: string }> | React.FC<{ className?: string }>;
+  disabled?: boolean;
+}
+
+interface NavGroup {
+  title: string;
+  key: string;
+  items: NavItem[];
+}
+
 const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }: SidebarProps) => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -95,7 +108,7 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }:
 
   // ✅ Role-based Sidebar Menus
   const currentRole = effectiveRole || role;
-  const navGroups = useMemo(() => {
+  const navGroups: NavGroup[] = useMemo(() => {
     if (currentRole === "school_admin") {
       return [
         {
@@ -883,7 +896,7 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }:
 
                   const isActive = isExactMatch || (isParentMatch && !hasMoreSpecificMatch);
 
-                  const isStaticallyDisabled = !!(item as any).disabled;
+                  const isStaticallyDisabled = !!item.disabled;
                   const isPlanLocked = !isStaticallyDisabled && isFeatureLocked(item.path);
 
                   return (

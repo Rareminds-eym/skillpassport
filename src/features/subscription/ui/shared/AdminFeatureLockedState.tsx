@@ -300,7 +300,7 @@ export const AdminFeatureLockedState: React.FC<AdminFeatureLockedStateProps> = (
   const [urgency, setUrgency] = useState<'immediate' | 'next_term' | 'planning'>('immediate');
   const [notes, setNotes] = useState('');
   const [phone, setPhone] = useState(
-    () => (user as any)?.phone || user?.user_metadata?.phone || user?.user_metadata?.phone_number || ''
+    () => (user as { phone?: string } | null)?.phone || user?.user_metadata?.phone || user?.user_metadata?.phone_number || ''
   );
   const [hasRequested, setHasRequested] = useState(() => {
     if (!feature?.key) return false;
@@ -311,7 +311,7 @@ export const AdminFeatureLockedState: React.FC<AdminFeatureLockedStateProps> = (
     setShowModal(false);
     setNotes('');
     setUrgency('immediate');
-    setPhone((user as any)?.phone || user?.user_metadata?.phone || user?.user_metadata?.phone_number || '');
+    setPhone((user as { phone?: string } | null)?.phone || user?.user_metadata?.phone || user?.user_metadata?.phone_number || '');
     if (!feature?.key) {
       setHasRequested(false);
     } else {
@@ -563,7 +563,7 @@ export const AdminFeatureLockedState: React.FC<AdminFeatureLockedStateProps> = (
                 </label>
                 <select
                   value={urgency}
-                  onChange={(e) => setUrgency(e.target.value as any)}
+                  onChange={(e) => setUrgency(e.target.value as 'immediate' | 'next_term' | 'planning')}
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 text-xs text-gray-800 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                 >
                   <option value="immediate">Immediate (Current academic session)</option>

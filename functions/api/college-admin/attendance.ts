@@ -638,7 +638,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           .select('max_learners')
           .eq('department_name', department)
           .eq('program_name', course)
-          .eq('semester', parseInt(semester))
+          .eq('semester', parseInt(semester, 10))
           .eq('section', section)
           .eq('status', 'active');
 
@@ -744,7 +744,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           .select('id, name, roll_number, program_id, semester, section')
           .eq('is_deleted', false)
           .eq('program_id', programId)
-          .eq('semester', parseInt(semester))
+          .eq('semester', parseInt(semester, 10))
           .eq('section', section)
           .order('roll_number');
 
@@ -834,7 +834,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
             program_name: programName,
             program_code: sessionData.programCode || body.programCode || null,
             program_id: sessionData.programId || body.program_id || body.programId || null,
-            semester: parseInt(sessionData.semester),
+            semester: parseInt(sessionData.semester, 10),
             section: sessionData.section,
             room_number: sessionData.roomNumber,
             remarks: sessionData.remarks,

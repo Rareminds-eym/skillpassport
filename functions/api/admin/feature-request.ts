@@ -11,7 +11,7 @@ import { sendEmailSafe } from '../../lib/email-service';
 import { apiLogger } from '../../lib/logger';
 import { apiError, apiSuccess } from '../../lib/response';
 import { getServiceClient } from '../../lib/supabase';
-import type { PagesFunction } from '../../lib/types';
+import type { PagesEnv, PagesFunction } from '../../lib/types';
 
 export const onRequestPost: PagesFunction = async (context) => {
   let body: any;
@@ -56,7 +56,7 @@ export const onRequestPost: PagesFunction = async (context) => {
   let orgName = 'Institutional Partner';
 
   try {
-    const supabase = getServiceClient(context.env as any);
+    const supabase = getServiceClient(context.env as unknown as PagesEnv);
     if (orgId) {
       const { data: org } = await supabase
         .from('organizations')
@@ -300,7 +300,7 @@ export const onRequestPost: PagesFunction = async (context) => {
   const emailSubject = `${urgencyPrefix} ${cleanLabel} – ${orgName}`;
 
   // Dispatch email notification to sales desk
-  await sendEmailSafe(context.env as any, {
+  await sendEmailSafe(context.env as unknown as PagesEnv, {
     to: 'marketing@rareminds.in',
     subject: emailSubject,
     html: emailHtml,
