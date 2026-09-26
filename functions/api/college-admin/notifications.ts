@@ -2,10 +2,10 @@
  * College Admin - Notifications & Approvals API
  * POST: Action-based dispatch for notifications, training/experience/project approvals
  */
-import { withAuth, getContextUser } from '../../lib/auth';
-import { getServiceClient } from '../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import { apiSuccess, apiDbError, apiError, apiMethodNotAllowed } from '../../lib/response';
+import { getContextUser, withAuth } from '../../lib/auth';
+import { apiDbError, apiError, apiMethodNotAllowed, apiSuccess } from '../../lib/response';
+import { getServiceClient } from '../../lib/supabase';
 
 // ── Local type definitions for certificate and skill DB rows with joined learner ──
 interface LearnerJoin {

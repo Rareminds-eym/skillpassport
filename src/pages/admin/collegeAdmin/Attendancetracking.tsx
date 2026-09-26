@@ -3,6 +3,7 @@ import toast from "react-hot-toast";
 import { Learner as ProfileLearner } from "@/entities/learner";
 import {
   AddAttendanceSessionModal,
+  AttendanceBulkImportModal,
   AttendanceDetailsModal,
   LearnerHistoryModal,
 } from '@/features/admin';
@@ -14,11 +15,13 @@ import {
   SubjectGroup,
 } from '@/features/college-admin';
 import { apiPost } from '@/shared/api/apiClient';
+import { formatProgramLabel } from '@/shared/lib';
 import { getLogger } from "@/shared/config/logging";
 
 const logger = getLogger('college-admin-attendance-tracking');
 import {
     ArrowDownTrayIcon,
+    ArrowUpTrayIcon,
     BellAlertIcon,
     BookOpenIcon,
     CalendarIcon,
@@ -314,6 +317,14 @@ const AttendanceTracking: React.FC = () => {
     to: "",
   });
   const [showAddSessionModal, setShowAddSessionModal] = useState(false);
+  const [showBulkImportModal, setShowBulkImportModal] = useState(false);
+
+  const handleBulkImportSuccess = () => {
+    fetchSubjectGroups();
+    fetchAnalytics();
+    fetchDepartmentStats();
+    fetchWeeklyTrend();
+  };
   const [sessionFormData, setSessionFormData] = useState({
     department: "",
     course: "",
@@ -537,10 +548,20 @@ const AttendanceTracking: React.FC = () => {
     }
   };
 
+  // Semesters come from created program_sections (what actually exists),
+  // NOT from college_course_mappings which stays empty until courses are
+  // mapped for the program on the Course Mapping page.
   const loadSemesters = async (programId: string) => {
     try {
-      const result = await curriculumService.getSemesters(programId);
-      setSemestersData(result || []);
+      const res: any = await apiPost('/college-admin/actions', {
+        action: 'get-available-semesters',
+        program_id: programId,
+      });
+      const rows: Array<{ semester: unknown }> = Array.isArray(res?.data) ? res.data : [];
+      const uniq: number[] = Array.from(
+        new Set(rows.map((r) => Number(r.semester)).filter((n) => Number.isFinite(n))),
+      ).sort((a, b) => a - b);
+      setSemestersData(uniq);
     } catch (error) {
       logger.error('Error loading semesters:', error as Error);
       toast.error('Failed to load semesters');
@@ -712,17 +733,22 @@ const AttendanceTracking: React.FC = () => {
       });
 
       if (!sessionsResponse.data?.sessions) {
-        alert('Error loading session details');
+        toast.error('Error loading session details');
         return;
       }
 
-      // Fetch learners for this subject group
+      // Fetch learners for this subject group — pass the session's exact
+      // program_id so duplicate program names can never misroute the roster.
+      const sessionsForLearners = sessionsResponse.data.sessions || [];
+      const exactProgramId = sessionsForLearners.map((s: any) => s.program_id).find((id: any) => !!id) || null;
       const learnersResponse: any = await apiPost('/college-admin/attendance', {
         action: 'get-subject-learners',
         department: subjectGroup.department,
         course: subjectGroup.course,
         semester: subjectGroup.semester,
         section: subjectGroup.section,
+        program_id: exactProgramId,
+        session_id: sessionsForLearners.length > 0 ? sessionsForLearners[0].id : null,
       });
 
       const updatedSubjectGroup = {
@@ -738,7 +764,7 @@ const AttendanceTracking: React.FC = () => {
       setShowDetailsModal(true);
     } catch (err: any) {
       logger.error('Error in handleViewDetails:', err as Error);
-      alert('Error loading details');
+      toast.error(err?.message || 'Error loading details');
     }
   };
 
@@ -761,10 +787,10 @@ const AttendanceTracking: React.FC = () => {
           },
         });
 
-        alert('Sessions deleted successfully!');
+        toast.success('Sessions deleted successfully!');
         fetchSubjectGroups();
       } catch (err: any) {
-        alert(`Error deleting sessions: ${err.message}`);
+        toast.error(`Error deleting sessions: ${err.message}`);
       }
     }
   };
@@ -880,7 +906,7 @@ const AttendanceTracking: React.FC = () => {
     if (!sessionFormData.department || !sessionFormData.course || !sessionFormData.semester ||
         !sessionFormData.section || !sessionFormData.subject || !sessionFormData.faculty ||
         !sessionFormData.date || !sessionFormData.startTime || !sessionFormData.endTime) {
-      alert("Please fill in all required fields.");
+      toast.error("Please fill in all required fields.");
       return;
     }
 
@@ -891,18 +917,18 @@ const AttendanceTracking: React.FC = () => {
     
     // Check if date is in the past
     if (sessionFormData.date < currentDate) {
-      alert("Cannot schedule attendance for past dates.");
+      toast.error("Cannot schedule attendance for past dates.");
       return;
     }
     
     // Check if time is in the past (for today's date)
     if (sessionFormData.date === currentDate) {
       if (sessionFormData.startTime < currentTime) {
-        alert("Cannot schedule attendance for past time.");
+        toast.error("Cannot schedule attendance for past time.");
         return;
       }
       if (sessionFormData.endTime < currentTime) {
-        alert("End time cannot be in the past.");
+        toast.error("End time cannot be in the past.");
         return;
       }
     }
@@ -912,7 +938,7 @@ const AttendanceTracking: React.FC = () => {
       const start = new Date(`2000-01-01T${sessionFormData.startTime}`);
       const end = new Date(`2000-01-01T${sessionFormData.endTime}`);
       if (end <= start) {
-        alert("End time must be after start time.");
+        toast.error("End time must be after start time.");
         return;
       }
     }
@@ -926,7 +952,7 @@ const AttendanceTracking: React.FC = () => {
 
       const facultyInfo = facultyResponse.data?.faculty;
       if (!facultyInfo) {
-        alert("Unable to find faculty member. Please try again.");
+        toast.error("Unable to find faculty member. Please try again.");
         return;
       }
 
@@ -935,7 +961,8 @@ const AttendanceTracking: React.FC = () => {
 
       // Get the actual names from the selected IDs
       const departmentName = departmentsData.find(d => d.id === sessionFormData.department)?.name || sessionFormData.department;
-      const programName = programsData.find(p => p.id === sessionFormData.course)?.name || sessionFormData.course;
+      const selectedProgram = programsData.find(p => p.id === sessionFormData.course);
+      const programName = selectedProgram?.name || sessionFormData.course;
       const subjectData = coursesData.find(c => c.id === sessionFormData.subject);
       const subjectName = subjectData ? `${subjectData.course_code} - ${subjectData.course_name}` : sessionFormData.subject;
 
@@ -953,13 +980,15 @@ const AttendanceTracking: React.FC = () => {
         sessionData: sessionFormData,
         departmentName,
         programName,
+        program_id: selectedProgram?.id || sessionFormData.course,
+        programCode: selectedProgram?.code || null,
         subjectName,
         facultyName,
         collegeId: facultyCollegeId,
         createdBy: sessionFormData.faculty,
       });
 
-      alert('Session created successfully!');
+      toast.success('Session created successfully!');
 
       fetchSubjectGroups();
       setShowAddSessionModal(false);
@@ -979,7 +1008,7 @@ const AttendanceTracking: React.FC = () => {
         totallearners: 0,
       });
     } catch (err: any) {
-      alert(`Error creating session: ${err.message}`);
+      toast.error(`Error creating session: ${err.message}`);
     }
   };
 
@@ -988,7 +1017,7 @@ const AttendanceTracking: React.FC = () => {
     if (!sessionFormData.department || !sessionFormData.course || !sessionFormData.semester ||
         !sessionFormData.section || !sessionFormData.subject || !sessionFormData.faculty ||
         !sessionFormData.date || !sessionFormData.startTime || !sessionFormData.endTime) {
-      alert("Please fill in all required fields.");
+      toast.error("Please fill in all required fields.");
       return;
     }
 
@@ -999,18 +1028,18 @@ const AttendanceTracking: React.FC = () => {
     
     // Check if date is in the past
     if (sessionFormData.date < currentDate) {
-      alert("Cannot schedule attendance for past dates.");
+      toast.error("Cannot schedule attendance for past dates.");
       return;
     }
     
     // Check if time is in the past (for today's date)
     if (sessionFormData.date === currentDate) {
       if (sessionFormData.startTime < currentTime) {
-        alert("Cannot schedule attendance for past time.");
+        toast.error("Cannot schedule attendance for past time.");
         return;
       }
       if (sessionFormData.endTime < currentTime) {
-        alert("End time cannot be in the past.");
+        toast.error("End time cannot be in the past.");
         return;
       }
     }
@@ -1020,7 +1049,7 @@ const AttendanceTracking: React.FC = () => {
       const start = new Date(`2000-01-01T${sessionFormData.startTime}`);
       const end = new Date(`2000-01-01T${sessionFormData.endTime}`);
       if (end <= start) {
-        alert("End time must be after start time.");
+        toast.error("End time must be after start time.");
         return;
       }
     }
@@ -1030,9 +1059,9 @@ const AttendanceTracking: React.FC = () => {
       await handleCreateSession();
       
       // In a real app, this would navigate to the attendance marking page
-      alert("Session created and attendance marking started!");
+      toast.success("Session created and attendance marking started!");
     } catch (err: any) {
-      alert(`Error: ${err.message}`);
+      toast.error(`Error: ${err.message}`);
     }
   };
 
@@ -1121,6 +1150,14 @@ const AttendanceTracking: React.FC = () => {
             <button type="button" className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
               <ArrowDownTrayIcon className="h-4 w-4" />
               Export
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowBulkImportModal(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-indigo-300 rounded-lg text-sm font-medium text-indigo-700 hover:bg-indigo-50 transition-colors"
+            >
+              <ArrowUpTrayIcon className="h-4 w-4" />
+              Import Attendance
             </button>
             <button
               type="button"
@@ -1671,12 +1708,20 @@ const AttendanceTracking: React.FC = () => {
         formData={sessionFormData}
         onFormChange={handleFormChange}
         departments={departmentsData.map(dept => ({ value: dept.id, label: dept.name }))}
-        courses={programsData.map(prog => ({ value: prog.id, label: prog.name }))}
+        courses={programsData.map(prog => ({ value: prog.id, label: formatProgramLabel(prog.name, prog) }))}
         semesters={semestersData.map(sem => ({ value: sem.toString(), label: `Semester ${sem}` }))}
         sections={sectionOptions}
         subjects={coursesData.map(course => ({ value: course.id, label: `${course.course_code} - ${course.course_name}` }))}
         faculty={filterOptions.faculty}
         learners={[]}
+      />
+
+      {/* Bulk Import Attendance Modal */}
+      <AttendanceBulkImportModal
+        isOpen={showBulkImportModal}
+        onClose={() => setShowBulkImportModal(false)}
+        onSuccess={handleBulkImportSuccess}
+        collegeId={collegeId}
       />
     </div>
   );
