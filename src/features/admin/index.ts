@@ -24,6 +24,7 @@ export { default as LearnerProfileDrawer } from './ui/LearnerProfileDrawer';
 
 // Modals
 export { default as AddAttendanceSessionModal } from './ui/modals/AddAttendanceSessionModal';
+export { default as AttendanceBulkImportModal } from './ui/modals/AttendanceBulkImportModal';
 export { default as AttendanceDetailsModal } from './ui/modals/AttendanceDetailsModal';
 export { default as CompanyStatusModal } from './ui/modals/CompanyStatusModal';
 export { default as CourseDetailModal } from '@/features/courses/ui/CourseDetailModal';
