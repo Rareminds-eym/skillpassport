@@ -103,3 +103,8 @@ supabase/backups/*
 !supabase/backups/README.md
 !supabase/backups/latest/
 !supabase/backups/latest/**
+
+# Video Portfolio Scripts - Sensitive Data
+scripts/batch-unlock-report-*.json
+scripts/emails-to-unlock.txt
+scripts/*-emails*.txt
