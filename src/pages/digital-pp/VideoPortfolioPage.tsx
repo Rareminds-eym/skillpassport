@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Upload, Video, Edit, Trash2, Settings, Play, Loader2, ArrowRight, X, Share2 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import VideoPortfolioLoader from '../../components/VideoPortfolioLoader';
 import { FeatureGate } from '@/features/subscription';
 import VideoEditDrawer from './VideoEditDrawer';
@@ -122,6 +122,7 @@ const VideoPortfolioPageContent: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   // Get user and learner data
   const user = useUser();
@@ -165,12 +166,32 @@ const VideoPortfolioPageContent: React.FC = () => {
   // Filter only published videos for display
   const publishedVideos = videos.filter(v => v.showOnPublic && v.approvalStatus === 'approved');
 
-  // Set first published video as current playing video on mount
+  // Set video based on URL parameter or first published video on mount
   useEffect(() => {
-    if (publishedVideos.length > 0 && !currentPlayingVideo) {
+    if (publishedVideos.length === 0) return;
+
+    // Check if there's a video ID in the URL
+    const videoIdFromUrl = searchParams.get('video');
+
+    if (videoIdFromUrl) {
+      // Find the video with matching ID
+      const videoFromUrl = publishedVideos.find(v => v.id === videoIdFromUrl);
+      if (videoFromUrl) {
+        setCurrentPlayingVideo(videoFromUrl);
+        // Remove the video parameter from URL after loading (optional)
+        // setSearchParams({}, { replace: true });
+        return;
+      } else {
+        // Video ID not found, show toast
+        toast.error('Video not found or not published');
+      }
+    }
+
+    // Default: Set first published video as current playing video
+    if (!currentPlayingVideo) {
       setCurrentPlayingVideo(publishedVideos[0]);
     }
-  }, [publishedVideos.length]);
+  }, [publishedVideos.length, searchParams]);
 
   // Load video when current playing video changes
   useEffect(() => {
@@ -295,7 +316,7 @@ const VideoPortfolioPageContent: React.FC = () => {
     // Validate file size (100MB)
     const MAX_FILE_SIZE = 100 * 1024 * 1024;
     if (file.size > MAX_FILE_SIZE) {
-      toast.error('Video file too large. Maximum 100MB allowed.');
+      toast.error('Video file exceeds maximum size of 100MB. Please use a smaller file.');
       return;
     }
 
@@ -331,9 +352,6 @@ const VideoPortfolioPageContent: React.FC = () => {
         setSelectedVideo(newVideo);
         setIsDrawerOpen(true);
       }
-
-      // Close manage modal after upload
-      setIsManageModalOpen(false);
     } catch (err: any) {
       console.error('Upload failed:', err);
     }
@@ -367,29 +385,33 @@ const VideoPortfolioPageContent: React.FC = () => {
     }
   };
 
-  const handleShareVideo = () => {
+  const handleShareVideo = async () => {
     if (!currentPlayingVideo) return;
 
-    const shareUrl = window.location.href;
-    const shareText = `Check out "${currentPlayingVideo.title}" on Video Portfolio`;
+    try {
+      // Get the public Cloudflare R2 URL for sharing
+      const { getVideoPortfolioPublicUrl } = await import('@/shared/api/storageApiService');
+      const publicUrl = await getVideoPortfolioPublicUrl(currentPlayingVideo.videoUrl);
+      const shareText = `Check out "${currentPlayingVideo.title}"`;
 
-    if (navigator.share) {
-      navigator.share({
-        title: currentPlayingVideo.title,
-        text: shareText,
-        url: shareUrl,
-      }).catch((err) => {
-        if (err.name !== 'AbortError') {
-          console.error('Error sharing:', err);
-        }
-      });
-    } else {
-      // Fallback: copy to clipboard
-      navigator.clipboard.writeText(shareUrl).then(() => {
-        toast.success('Link copied to clipboard!');
-      }).catch(() => {
-        toast.error('Failed to copy link');
-      });
+      if (navigator.share) {
+        await navigator.share({
+          title: currentPlayingVideo.title,
+          text: shareText,
+          url: publicUrl,
+        }).catch((err) => {
+          if (err.name !== 'AbortError') {
+            console.error('Error sharing:', err);
+          }
+        });
+      } else {
+        // Fallback: copy to clipboard
+        await navigator.clipboard.writeText(publicUrl);
+        toast.success('Video link copied to clipboard!');
+      }
+    } catch (error) {
+      console.error('Failed to get shareable link:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to get shareable link');
     }
   };
 
