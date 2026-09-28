@@ -27,7 +27,7 @@ import { handleExtractContent } from './handlers/extract-content';
 import { handleListFiles } from './handlers/list-files';
 import { handleGetAuthenticatedUrl } from './handlers/get-authenticated-url';
 import { handleMediaProxy } from './handlers/media-proxy';
-import { handleVideoPortfolioUpload, handleVideoPortfolioDownload, handleVideoPortfolioDelete } from './handlers/video-portfolio';
+import { handleVideoPortfolioUpload, handleVideoPortfolioDownload, handleVideoPortfolioDelete, handleVideoPortfolioPublicUrl } from './handlers/video-portfolio';
 
 // Extended context type with authentication
 export interface AuthenticatedContext {
@@ -164,6 +164,12 @@ export const onRequest: PagesFunction = async (context) => {
           }
           if (request.method === 'DELETE') {
             return handleVideoPortfolioDelete(request, env, authenticatedContext);
+          }
+          return jsonResponse({ error: 'Method not allowed' }, 405);
+
+        case '/video-portfolio-public-url':
+          if (request.method === 'GET') {
+            return handleVideoPortfolioPublicUrl(request, env, authenticatedContext);
           }
           return jsonResponse({ error: 'Method not allowed' }, 405);
 

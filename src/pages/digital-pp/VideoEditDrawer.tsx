@@ -475,7 +475,7 @@ const VideoEditDrawer: React.FC<VideoEditDrawerProps> = ({
     // Validate file size (100MB)
     const MAX_FILE_SIZE = 100 * 1024 * 1024;
     if (file.size > MAX_FILE_SIZE) {
-      toast.error('Video file too large. Maximum 100MB allowed.');
+      toast.error('Video file exceeds maximum size of 100MB. Please use a smaller file.');
       return;
     }
 
