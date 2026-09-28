@@ -21,7 +21,7 @@ import type { PagesEnv } from '../../../lib/types';
 // Constants
 // ============================================================================
 
-const MAX_VIDEO_SIZE = 50 * 1024 * 1024; // 50MB
+const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100MB
 const ALLOWED_VIDEO_TYPES = [
   'video/mp4',
   'video/quicktime',
@@ -129,6 +129,22 @@ function createVideoPortfolioProxyUrl(
   const baseUrl = `${url.protocol}//${url.host}`;
 
   return `${baseUrl}/api/storage/video-portfolio?key=${encodeURIComponent(fileKey)}&mode=${mode}`;
+}
+
+/**
+ * Create error response
+ */
+function createError(status: number, code: string, message: string): Response {
+  return new Response(
+    JSON.stringify({
+      error: message,
+      code,
+    }),
+    {
+      status,
+      headers: { 'Content-Type': 'application/json' },
+    }
+  );
 }
 
 // ============================================================================
@@ -323,6 +339,98 @@ export async function handleVideoPortfolioDownload(
       500,
       'DOWNLOAD_FAILED',
       error.message || 'Failed to download video'
+    );
+  }
+}
+
+// ============================================================================
+// Get Public URL Handler
+// ============================================================================
+
+/**
+ * GET /api/storage/video-portfolio-public-url?key={fileKey}
+ * 
+ * Gets the public Cloudflare R2 URL for a video (for sharing).
+ * Validates ownership before returning the public URL.
+ * 
+ * Query params:
+ * - key: R2 file key (required)
+ * 
+ * Returns:
+ * - publicUrl: Direct Cloudflare R2 public URL (no authentication required)
+ * 
+ * Authorization:
+ * - Validates user ID prefix in folder name matches authenticated user
+ */
+export async function handleVideoPortfolioPublicUrl(
+  request: Request,
+  env: PagesEnv,
+  context: any
+): Promise<Response> {
+  try {
+    // Get authenticated user
+    const user = getContextUser(context);
+
+    // Parse query params
+    const url = new URL(request.url);
+    const fileKey = url.searchParams.get('key');
+
+    if (!fileKey) {
+      return createError(400, 'KEY_REQUIRED', 'File key is required');
+    }
+
+    // Validate file key format
+    if (!fileKey.startsWith('video_portfolio/')) {
+      return createError(400, 'INVALID_KEY', 'Invalid video portfolio key');
+    }
+
+    // Extract folder name and validate ownership
+    const keyParts = fileKey.split('/');
+    if (keyParts.length !== 3) {
+      return createError(400, 'INVALID_KEY_FORMAT', 'Invalid key format');
+    }
+
+    const folderName = keyParts[1]; // john_doe_9a754938
+    const userIdPrefix = user.id.substring(0, 8);
+
+    if (!folderName.includes(userIdPrefix)) {
+      return createError(
+        403,
+        'FORBIDDEN',
+        'You do not have access to this video'
+      );
+    }
+
+    // Get public URL from R2 client
+    const r2Client = new R2Client(env);
+
+    if (!r2Client.hasPublicUrl()) {
+      return createError(
+        500,
+        'PUBLIC_URL_NOT_CONFIGURED',
+        'Public R2 URL is not configured. Please set CLOUDFLARE_R2_PUBLIC_URL environment variable.'
+      );
+    }
+
+    const publicUrl = r2Client.getPublicUrl(fileKey);
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        publicUrl,
+        fileKey,
+      }),
+      {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
+  } catch (error: any) {
+    console.error('Error getting public video URL:', error);
+    return createError(
+      500,
+      'PUBLIC_URL_FAILED',
+      error.message || 'Failed to get public video URL'
     );
   }
 }

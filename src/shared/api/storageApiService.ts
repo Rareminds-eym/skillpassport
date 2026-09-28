@@ -429,6 +429,7 @@ export default {
   getPaymentReceiptPresignedUrl,
   uploadVideoPortfolio,
   getVideoPortfolioUrl,
+  getVideoPortfolioPublicUrl,
   deleteVideoPortfolio,
 };
 
@@ -489,6 +490,41 @@ export async function uploadVideoPortfolio(
  */
 export function getVideoPortfolioUrl(fileKey: string, mode: 'inline' | 'download' = 'inline'): string {
   return `${API_URL}/video-portfolio?key=${encodeURIComponent(fileKey)}&mode=${mode}`;
+}
+
+/**
+ * Get public R2 URL for video portfolio (for sharing without authentication)
+ */
+export async function getVideoPortfolioPublicUrl(fileKey: string): Promise<string> {
+  try {
+    const response = await ssoClient.fetch(
+      `${API_URL}/video-portfolio-public-url?key=${encodeURIComponent(fileKey)}`,
+      {
+        method: 'GET',
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({})) as { error?: string };
+
+      if (response.status === 401) {
+        throw new Error('Authentication failed. Please log in again.');
+      } else if (response.status === 403) {
+        throw new Error('You do not have permission to share this video.');
+      } else if (response.status === 404) {
+        throw new Error('Video not found.');
+      } else if (response.status === 500 && error.error?.includes('not configured')) {
+        throw new Error('Public video sharing is not configured. Please contact support.');
+      }
+
+      throw new Error(error.error || 'Failed to get public video URL');
+    }
+
+    const result = await response.json() as { success: boolean; publicUrl: string };
+    return result.publicUrl;
+  } catch (error) {
+    throw error;
+  }
 }
 
 /**

@@ -192,10 +192,10 @@ const VideoPortfolioManagePage: React.FC = () => {
       return;
     }
 
-    // Validate file size (50MB)
-    const MAX_FILE_SIZE = 50 * 1024 * 1024;
+    // Validate file size (100MB)
+    const MAX_FILE_SIZE = 100 * 1024 * 1024;
     if (file.size > MAX_FILE_SIZE) {
-      toast.error('Video file too large. Maximum 50MB allowed.');
+      toast.error('Video file exceeds maximum size of 100MB. Please use a smaller file.');
       return;
     }
 
@@ -351,7 +351,7 @@ const VideoPortfolioManagePage: React.FC = () => {
                 Drag a file here, or browse from your device
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-500 mb-6">
-                MP4, MOV, AVI, WebM • Max 50 MB
+                MP4, MOV, AVI, WebM • Max 100 MB
               </p>
               <motion.button
                 whileHover={{ scale: 1.05 }}
