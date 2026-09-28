@@ -1,17 +1,18 @@
-import React, { useState, useEffect, useMemo } from 'react';
 import {
-  ChartBarIcon,
-  ClockIcon,
-  UserGroupIcon,
+  ArrowDownTrayIcon,
   CalendarIcon,
+  ChartBarIcon,
+  EyeIcon,
   FunnelIcon,
   MagnifyingGlassIcon,
-  EyeIcon,
-  ArrowDownTrayIcon,
+  UserGroupIcon,
 } from '@heroicons/react/24/outline';
 import { CheckCircleIcon, ClockIcon as ClockSolidIcon } from '@heroicons/react/24/solid';
-import { apiPost } from '@/shared/api/apiClient';
+import { useEffect, useMemo, useState } from 'react';
 import ReactApexChart from 'react-apexcharts';
+
+import { apiPost } from '@/shared/api/apiClient';
+
 import EducatorHistoryModal from './EducatorHistoryModal';
 
 interface EducatorSession {
@@ -80,6 +81,7 @@ export default function EducatorAttendanceTracking() {
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [selectedFacultyForHistory, setSelectedFacultyForHistory] = useState<Faculty | null>(null);
   const [collegeId, setCollegeId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const itemsPerPage = 10;
   const departments = [...new Set(facultyList.map(f => f.department))].filter(Boolean);
@@ -99,14 +101,22 @@ export default function EducatorAttendanceTracking() {
       const result = await apiPost('/college-admin/attendance', {
         action: 'resolve-college-id',
       });
-      setCollegeId(result.data?.collegeId || null);
-    } catch (error) {
-      console.error('Error fetching college ID:', error);
+      if (result.data?.collegeId) {
+        setCollegeId(result.data.collegeId);
+      } else {
+        setError('No college ID found for the current user.');
+        setLoading(false);
+      }
+    } catch (err) {
+      console.error('Error fetching college ID:', err);
+      setError('Failed to resolve college ID.');
+      setLoading(false);
     }
   };
 
   const fetchData = async () => {
     setLoading(true);
+    setError(null);
     try {
       const filters: any = {};
       if (selectedDepartment) filters.departments = [selectedDepartment];
@@ -150,11 +160,9 @@ export default function EducatorAttendanceTracking() {
       setDepartmentBreakdown(trendResult.data?.departmentBreakdown || []);
       setFacultyList(facultyResult.data?.faculty || []);
       
-      // Debug: Check what data we received
-      console.log('[FRONTEND DEBUG] Weekly trend data:', trendResult.data?.weeklyTrend);
-      console.log('[FRONTEND DEBUG] Department breakdown:', trendResult.data?.departmentBreakdown);
-    } catch (error) {
-      console.error('Error fetching educator attendance data:', error);
+    } catch (err) {
+      console.error('Error fetching educator attendance data:', err);
+      setError('Failed to load educator attendance data. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -309,6 +317,13 @@ export default function EducatorAttendanceTracking() {
 
   return (
     <div className="space-y-6">
+      {/* Error Alert */}
+      {error && (
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 p-3 rounded-lg text-sm">
+          {error}
+        </div>
+      )}
+
       {/* Analytics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
@@ -446,10 +461,11 @@ export default function EducatorAttendanceTracking() {
           <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label htmlFor="department-filter" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Department
                 </label>
                 <select
+                  id="department-filter"
                   value={selectedDepartment}
                   onChange={(e) => {
                     setSelectedDepartment(e.target.value);
@@ -465,10 +481,11 @@ export default function EducatorAttendanceTracking() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label htmlFor="faculty-filter" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Faculty
                 </label>
                 <select
+                  id="faculty-filter"
                   value={selectedFaculty}
                   onChange={(e) => {
                     setSelectedFaculty(e.target.value);
@@ -486,10 +503,11 @@ export default function EducatorAttendanceTracking() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label htmlFor="status-filter" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Status
                 </label>
                 <select
+                  id="status-filter"
                   value={selectedStatus}
                   onChange={(e) => {
                     setSelectedStatus(e.target.value);
@@ -615,7 +633,10 @@ export default function EducatorAttendanceTracking() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <button
                         type="button"
-                        onClick={() => handleViewHistory(facultyList.find(f => f.id === session.facultyId)!)}
+                        onClick={() => {
+                          const faculty = facultyList.find(f => f.id === session.facultyId);
+                          if (faculty) handleViewHistory(faculty);
+                        }}
                         className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
                       >
                         <EyeIcon className="h-5 w-5" />

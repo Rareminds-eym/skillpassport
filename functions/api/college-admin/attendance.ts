@@ -7,6 +7,13 @@ import { createLogger } from '../../lib/logger';
 
 const logger = createLogger('college-admin-attendance');
 
+/**
+ * Escape special characters in SQL LIKE patterns to prevent injection.
+ * Escapes %, _, and \ characters that have special meaning in LIKE queries.
+ */
+function escapeLikePattern(input: string): string {
+  return input.replace(/[%_\\]/g, '\\$&');
+}
 
 const IMPORT_STATUSES = ['present', 'absent', 'late', 'excused'];
 const MAX_IMPORT_ROWS = 2000;
@@ -316,8 +323,9 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           .eq('college_id', collegeId);
 
         if (searchQuery) {
+          const escapedQuery = escapeLikePattern(searchQuery);
           query = query.or(
-            `subject.ilike.%${searchQuery}%,faculty.ilike.%${searchQuery}%,department.ilike.%${searchQuery}%`
+            `subject.ilike.%${escapedQuery}%,faculty.ilike.%${escapedQuery}%,department.ilike.%${escapedQuery}%`
           );
         }
 
@@ -458,7 +466,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
             departmentMap.set(dept, { total: 0, count: 0 });
           }
 
-          const stats = departmentMap.get(dept)!;
+          const stats = departmentMap.get(dept) || { total: 0, count: 0 };
           stats.total += session.attendance_percentage || 0;
           stats.count += 1;
         });
@@ -513,7 +521,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
             dateMap.set(session.date, { total: 0, count: 0 });
           }
 
-          const stats = dateMap.get(session.date)!;
+          const stats = dateMap.get(session.date) || { total: 0, count: 0 };
           stats.total += session.attendance_percentage || 0;
           stats.count += 1;
         });
@@ -991,7 +999,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
         const user = getContextUser(context);
         const { error: rpcError, data: rpcData } = await supabase.rpc('import_college_attendance_records', {
-          p_session_id: result.session!.id,
+          p_session_id: result.session?.id,
           p_records: result.recordsJson,
           p_marked_by: user?.id || null,
         });
@@ -1013,8 +1021,9 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           .not('faculty_id', 'is', null);
 
         if (searchQuery) {
+          const escapedQuery = escapeLikePattern(searchQuery);
           query = query.or(
-            `faculty_name.ilike.%${searchQuery}%,department_name.ilike.%${searchQuery}%`
+            `faculty_name.ilike.%${escapedQuery}%,department_name.ilike.%${escapedQuery}%`
           );
         }
 
@@ -1136,7 +1145,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           if (!departmentMap.has(dept)) {
             departmentMap.set(dept, { total: 0, completed: 0 });
           }
-          const stats = departmentMap.get(dept)!;
+          const stats = departmentMap.get(dept) || { total: 0, completed: 0 };
           stats.total += 1;
           if (session.status === 'completed') stats.completed += 1;
         });

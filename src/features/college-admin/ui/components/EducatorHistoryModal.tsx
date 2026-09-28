@@ -1,6 +1,14 @@
-import React, { useState, useEffect } from 'react';
-import { XMarkIcon, CalendarIcon, ClockIcon } from '@heroicons/react/24/outline';
-import { CheckCircleIcon, ClockIcon as ClockSolidIcon } from '@heroicons/react/24/solid';
+import {
+  CalendarIcon,
+  ClockIcon,
+  XMarkIcon,
+} from '@heroicons/react/24/outline';
+import {
+  CheckCircleIcon,
+  ClockIcon as ClockSolidIcon,
+} from '@heroicons/react/24/solid';
+import { useEffect, useState } from 'react';
+
 import { apiPost } from '@/shared/api/apiClient';
 
 interface Faculty {
@@ -44,6 +52,7 @@ export default function EducatorHistoryModal({
   const [history, setHistory] = useState<HistoryRecord[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState({ from: '', to: '' });
 
   useEffect(() => {
@@ -56,6 +65,7 @@ export default function EducatorHistoryModal({
     if (!faculty) return;
 
     setLoading(true);
+    setError(null);
     try {
       const result = await apiPost('/college-admin/attendance', {
         action: 'get-educator-history',
@@ -65,8 +75,9 @@ export default function EducatorHistoryModal({
 
       setHistory(result.data?.history || []);
       setStats(result.data?.stats || null);
-    } catch (error) {
-      console.error('Error fetching educator history:', error);
+    } catch (err) {
+      console.error('Error fetching educator history:', err);
+      setError('Failed to load educator history. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -104,6 +115,14 @@ export default function EducatorHistoryModal({
         <div 
           className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
           onClick={onClose}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              onClose();
+            }
+          }}
+          role="button"
+          tabIndex={0}
+          aria-label="Close modal"
         ></div>
 
         {/* Modal */}
@@ -121,6 +140,7 @@ export default function EducatorHistoryModal({
             <button
               type="button"
               onClick={onClose}
+              aria-label="Close modal"
               className="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300"
             >
               <XMarkIcon className="h-6 w-6" />
@@ -193,6 +213,13 @@ export default function EducatorHistoryModal({
                 </button>
               )}
             </div>
+
+            {/* Error Alert */}
+            {error && (
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 p-3 rounded-lg text-sm">
+                {error}
+              </div>
+            )}
 
             {/* Loading State */}
             {loading && (
