@@ -404,6 +404,10 @@ export async function handleVideoPortfolioPublicUrl(
     // Get public URL from R2 client
     const r2Client = new R2Client(env);
 
+    // Debug: Check if public URL is configured
+    console.log('[VIDEO-PUBLIC-URL] CLOUDFLARE_R2_PUBLIC_URL:', env.CLOUDFLARE_R2_PUBLIC_URL);
+    console.log('[VIDEO-PUBLIC-URL] hasPublicUrl:', r2Client.hasPublicUrl());
+
     if (!r2Client.hasPublicUrl()) {
       return createError(
         500,
