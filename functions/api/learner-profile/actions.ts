@@ -637,6 +637,63 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         }
         const { data, error } = await supabase.from('learners').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', learnerId).select().single();
         if (error) return apiDbError(error, context.request, { startTime });
+
+        // ALSO insert/update learner_enrollments table if we have program enrollment data
+        if (enrollmentData.program_id && enrollmentData.semester) {
+          let sectionId = null;
+
+          // Find the program_sections row ID if section is provided
+          if (enrollmentData.section) {
+            const { data: sectionData } = await supabase
+              .from('program_sections')
+              .select('id')
+              .eq('program_id', enrollmentData.program_id)
+              .eq('semester', enrollmentData.semester)
+              .eq('section', enrollmentData.section)
+              .maybeSingle();
+            
+            sectionId = sectionData?.id || null;
+          }
+
+          // Get current academic year
+          const currentYear = new Date().getFullYear();
+          const nextYear = (currentYear + 1).toString().slice(-2);
+          const academicYear = `${currentYear}-${nextYear}`;
+
+          // Check if enrollment record exists
+          const { data: existingEnrollment } = await supabase
+            .from('learner_enrollments')
+            .select('id')
+            .eq('learner_id', learnerId)
+            .eq('program_id', enrollmentData.program_id)
+            .eq('semester', enrollmentData.semester)
+            .maybeSingle();
+
+          if (existingEnrollment) {
+            // Update existing enrollment
+            await supabase
+              .from('learner_enrollments')
+              .update({
+                section_id: sectionId,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', existingEnrollment.id);
+          } else {
+            // Insert new enrollment record
+            await supabase
+              .from('learner_enrollments')
+              .insert({
+                learner_id: learnerId,
+                program_id: enrollmentData.program_id,
+                semester: enrollmentData.semester,
+                section_id: sectionId,
+                academic_year: academicYear,
+                enrollment_status: 'active',
+                enrollment_date: enrollmentData.enrollmentDate || new Date().toISOString().split('T')[0]
+              });
+          }
+        }
+
         return apiSuccess(data, context.request, { startTime });
       }
 
@@ -1184,10 +1241,10 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       }
 
       case 'fetch-enrolled-learner-list': {
-        const { collegeId, departmentId, programId, semester, search } = params;
+        const { college_id, department_id, program_id, semester, search } = params;
         let query = supabase.from('learners').select('id, name, roll_number, email, contact_number, college_id, program_id, semester, section, enrollmentDate, created_at, updated_at, programs!learners_program_id_fkey(id, name, code, department_id, departments!programs_department_id_fkey(id, name, code))').eq('is_deleted', false).not('program_id', 'is', null).order('name', { ascending: true });
-        if (collegeId) query = query.eq('college_id', collegeId);
-        if (programId) query = query.eq('program_id', programId);
+        if (college_id) query = query.eq('college_id', college_id);
+        if (program_id) query = query.eq('program_id', program_id);
         if (semester) query = query.eq('semester', semester);
         if (search?.trim()) query = query.or(`name.ilike.%${search}%,roll_number.ilike.%${search}%,email.ilike.%${search}%`);
         const { data, error } = await query;
@@ -1200,7 +1257,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           enrollment_date: l.enrollmentDate || l.created_at, created_at: l.created_at, updated_at: l.updated_at,
         }));
         let filtered = transformed;
-        if (departmentId) filtered = transformed.filter((s: any) => s.department_id === departmentId);
+        if (department_id) filtered = transformed.filter((s: any) => s.department_id === department_id);
         return apiSuccess(filtered, context.request, { startTime });
       }
 

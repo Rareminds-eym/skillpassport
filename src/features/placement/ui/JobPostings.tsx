@@ -5,10 +5,8 @@ import {
   Search,
   Filter,
   Eye,
-  Edit,
   Download,
   X,
-  CheckCircle,
 } from "lucide-react";
 import toast from 'react-hot-toast';
 import { opportunitiesService } from '@/features/opportunities';
@@ -272,47 +270,6 @@ const JobPostings: React.FC = () => {
     }
   };
 
-  const editJob = async (jobId: number | string) => {
-    try {
-      const job = await opportunitiesService.getOpportunityById(jobId);
-      if (job) {
-        setEditingJob(job);
-        // Populate form data
-        setFormData({
-          title: job.title || '',
-          company_name: job.company_name || '',
-          department: job.department || '',
-          employment_type: job.employment_type || '',
-          mode: job.mode || '',
-          location: job.location || '',
-          salary_range_min: job.salary_range_min?.toString() || '',
-          salary_range_max: job.salary_range_max?.toString() || '',
-          experience_required: job.experience_required || '',
-          description: job.description || '',
-          skills_required: opportunitiesService.formatSkills(job.skills_required).join(', '),
-          requirements: Array.isArray(job.requirements) ? job.requirements.join('\n') : (job.requirements || ''),
-          responsibilities: Array.isArray(job.responsibilities) ? job.responsibilities.join('\n') : (job.responsibilities || ''),
-          benefits: Array.isArray(job.benefits) ? job.benefits.join('\n') : (job.benefits || ''),
-          deadline: job.deadline ? new Date(job.deadline).toISOString().split('T')[0] : '',
-          status: job.status || 'draft'
-        });
-        setShowAddJobModal(true);
-      } else {
-        toast.error('Job not found');
-      }
-    } catch (error) {
-      console.error('Failed to load job for editing:', error);
-      toast.error('Failed to load job for editing');
-    }
-  };
-
-  const publishJobPost = (jobId: number | string) => {
-    const job = opportunities.find(j => j.id === jobId);
-    if (job) {
-      toast.success(`Job "${job.title}" published and learners auto-listed successfully!`);
-    }
-  };
-
   // Excel export utility function
   const exportToExcel = (data: any[], filename: string) => {
     if (data.length === 0) return;
@@ -342,28 +299,6 @@ const JobPostings: React.FC = () => {
     a.click();
     document.body.removeChild(a);
     window.URL.revokeObjectURL(url);
-  };
-
-  const exportShortlist = (jobId: number | string) => {
-    const job = opportunities.find(j => j.id === jobId);
-    if (job) {
-      const shortlistData = [{
-        'Job ID': job.id,
-        'Job Title': job.title,
-        'Company': job.company_name,
-        'Department': job.department,
-        'Employment Type': job.employment_type,
-        'Location': job.location,
-        'Applications': job.applications_count,
-        'Views': job.views_count,
-        'Status': job.status,
-        'Created Date': new Date(job.created_at).toLocaleDateString(),
-        'Deadline': job.deadline ? new Date(job.deadline).toLocaleDateString() : 'Not specified'
-      }];
-
-      exportToExcel(shortlistData, `${job.title.replace(/\s+/g, '_')}_shortlist.csv`);
-      toast.success(`Shortlist exported for ${job.title}`);
-    }
   };
 
   const exportJobDetails = (jobId: number | string) => {
@@ -472,16 +407,6 @@ const JobPostings: React.FC = () => {
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-bold text-gray-900">Job Posting & Application Tracking</h2>
-        {/* <button 
-          onClick={() => {
-            toast.info('Job creation feature is currently disabled. You can edit existing jobs.');
-          }}
-          className="flex items-center gap-2 px-4 py-2 bg-gray-400 text-white rounded-lg cursor-not-allowed transition"
-          disabled
-        >
-          <Plus className="h-4 w-4" />
-          Create Job Posting
-        </button> */}
       </div>
       
       <p className="text-gray-600 mb-4">Manage job roles, eligibility rules, rounds scheduling, learner allocation, and application stage updates.</p>
@@ -498,6 +423,7 @@ const JobPostings: React.FC = () => {
           />
         </div>
         <button 
+          type="button"
           onClick={() => setShowJobFilterModal(true)}
           className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
         >
@@ -522,6 +448,7 @@ const JobPostings: React.FC = () => {
               <h3 className="text-lg font-medium text-gray-900 mb-2">Error Loading Opportunities</h3>
               <p className="text-gray-500 mb-4">There was an error loading job opportunities. Please try again.</p>
               <button
+                type="button"
                 onClick={() => loadOpportunities()}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
               >
@@ -609,18 +536,12 @@ const JobPostings: React.FC = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex items-center gap-2">
                           <button 
+                            type="button"
                             onClick={() => viewJobDetails(job.id)}
                             className="text-blue-600 hover:text-blue-900"
                             title="View Details"
                           >
                             <Eye className="h-4 w-4" />
-                          </button>
-                          <button 
-                            onClick={() => editJob(job.id)}
-                            className="text-green-600 hover:text-green-900"
-                            title="Edit Job"
-                          >
-                            <Edit className="h-4 w-4" />
                           </button>
                         </div>
                       </td>
@@ -639,6 +560,7 @@ const JobPostings: React.FC = () => {
                         </p>
                         {!(jobSearchTerm || selectedJobStatus || selectedEmploymentType || selectedJobMode) && (
                           <button 
+                            type="button"
                             onClick={() => {
                               toast.info('Job creation feature is currently disabled. Jobs are managed through the opportunities system.');
                             }}
@@ -688,6 +610,7 @@ const JobPostings: React.FC = () => {
               <div className="flex items-center justify-center">
                 <div className="flex items-center gap-2">
                   <button
+                    type="button"
                     onClick={() => handlePageChange(currentPage - 1)}
                     disabled={currentPage === 1}
                     className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -711,6 +634,7 @@ const JobPostings: React.FC = () => {
                       
                       return (
                         <button
+                          type="button"
                           key={pageNum}
                           onClick={() => handlePageChange(pageNum)}
                           className={`px-3 py-1 text-sm border rounded ${
@@ -726,6 +650,7 @@ const JobPostings: React.FC = () => {
                   </div>
                   
                   <button
+                    type="button"
                     onClick={() => handlePageChange(currentPage + 1)}
                     disabled={currentPage === totalPages}
                     className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -761,8 +686,9 @@ const JobPostings: React.FC = () => {
             
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                <label htmlFor="filter-status" className="block text-sm font-medium text-gray-700 mb-1">Status</label>
                 <select
+                  id="filter-status"
                   value={selectedJobStatus}
                   onChange={(e) => setSelectedJobStatus(e.target.value)}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -776,8 +702,9 @@ const JobPostings: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Employment Type</label>
+                <label htmlFor="filter-employment-type" className="block text-sm font-medium text-gray-700 mb-1">Employment Type</label>
                 <select
+                  id="filter-employment-type"
                   value={selectedEmploymentType}
                   onChange={(e) => setSelectedEmploymentType(e.target.value)}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -791,8 +718,9 @@ const JobPostings: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Work Mode</label>
+                <label htmlFor="filter-work-mode" className="block text-sm font-medium text-gray-700 mb-1">Work Mode</label>
                 <select
+                  id="filter-work-mode"
                   value={selectedJobMode}
                   onChange={(e) => setSelectedJobMode(e.target.value)}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -807,12 +735,14 @@ const JobPostings: React.FC = () => {
 
             <div className="flex gap-2 mt-6">
               <button
+                type="button"
                 onClick={clearJobFilters}
                 className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
               >
                 Clear Filters
               </button>
               <button
+                type="button"
                 onClick={() => setShowJobFilterModal(false)}
                 className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
               >
@@ -967,37 +897,12 @@ const JobPostings: React.FC = () => {
               </div>
               <div className="flex items-center gap-3">
                 <button
-                  onClick={() => {
-                    // Close the details modal first
-                    setShowJobDetailsModal(false);
-                    // Then open edit modal with the currently selected job
-                    editJob(selectedJob.id);
-                  }}
-                  className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
-                >
-                  <Edit className="h-4 w-4" />
-                  Edit Job
-                </button>
-                <button
+                  type="button"
                   onClick={() => exportJobDetails(selectedJob.id)}
                   className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
                 >
                   <Download className="h-4 w-4" />
                   Export Details
-                </button>
-                <button
-                  onClick={() => exportShortlist(selectedJob.id)}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-                >
-                  <Download className="h-4 w-4" />
-                  Export Shortlist
-                </button>
-                <button
-                  onClick={() => publishJobPost(selectedJob.id)}
-                  className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
-                >
-                  <CheckCircle className="h-4 w-4" />
-                  Publish Job & Auto-list Learners
                 </button>
               </div>
             </div>
@@ -1014,6 +919,7 @@ const JobPostings: React.FC = () => {
                 {editingJob ? 'Edit Job Posting' : 'Create Job Posting'}
               </h2>
               <button
+                type="button"
                 onClick={() => {
                   setShowAddJobModal(false);
                   setEditingJob(null);
@@ -1032,8 +938,9 @@ const JobPostings: React.FC = () => {
                   <h3 className="text-lg font-semibold text-gray-900">Basic Information</h3>
                   
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Job Title *</label>
+                    <label htmlFor="job-title" className="block text-sm font-medium text-gray-700 mb-1">Job Title *</label>
                     <input
+                      id="job-title"
                       type="text"
                       value={formData.title}
                       onChange={(e) => handleFormChange('title', e.target.value)}
@@ -1044,8 +951,9 @@ const JobPostings: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Company Name *</label>
+                    <label htmlFor="company-name" className="block text-sm font-medium text-gray-700 mb-1">Company Name *</label>
                     <input
+                      id="company-name"
                       type="text"
                       value={formData.company_name}
                       onChange={(e) => handleFormChange('company_name', e.target.value)}
@@ -1056,8 +964,9 @@ const JobPostings: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Department *</label>
+                    <label htmlFor="job-department" className="block text-sm font-medium text-gray-700 mb-1">Department *</label>
                     <select
+                      id="job-department"
                       value={formData.department}
                       onChange={(e) => handleFormChange('department', e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -1076,8 +985,9 @@ const JobPostings: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Employment Type *</label>
+                    <label htmlFor="employment-type" className="block text-sm font-medium text-gray-700 mb-1">Employment Type *</label>
                     <select
+                      id="employment-type"
                       value={formData.employment_type}
                       onChange={(e) => handleFormChange('employment_type', e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -1092,8 +1002,9 @@ const JobPostings: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Work Mode</label>
+                    <label htmlFor="work-mode" className="block text-sm font-medium text-gray-700 mb-1">Work Mode</label>
                     <select
+                      id="work-mode"
                       value={formData.mode}
                       onChange={(e) => handleFormChange('mode', e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -1106,8 +1017,9 @@ const JobPostings: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
+                    <label htmlFor="job-location" className="block text-sm font-medium text-gray-700 mb-1">Location</label>
                     <input
+                      id="job-location"
                       type="text"
                       value={formData.location}
                       onChange={(e) => handleFormChange('location', e.target.value)}
@@ -1123,8 +1035,9 @@ const JobPostings: React.FC = () => {
                   
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Min Salary (₹)</label>
+                      <label htmlFor="min-salary" className="block text-sm font-medium text-gray-700 mb-1">Min Salary (₹)</label>
                       <input
+                        id="min-salary"
                         type="number"
                         value={formData.salary_range_min}
                         onChange={(e) => handleFormChange('salary_range_min', e.target.value)}
@@ -1133,8 +1046,9 @@ const JobPostings: React.FC = () => {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Max Salary (₹)</label>
+                      <label htmlFor="max-salary" className="block text-sm font-medium text-gray-700 mb-1">Max Salary (₹)</label>
                       <input
+                        id="max-salary"
                         type="number"
                         value={formData.salary_range_max}
                         onChange={(e) => handleFormChange('salary_range_max', e.target.value)}
@@ -1145,8 +1059,9 @@ const JobPostings: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Experience Required</label>
+                    <label htmlFor="experience-required" className="block text-sm font-medium text-gray-700 mb-1">Experience Required</label>
                     <input
+                      id="experience-required"
                       type="text"
                       value={formData.experience_required}
                       onChange={(e) => handleFormChange('experience_required', e.target.value)}
@@ -1156,8 +1071,9 @@ const JobPostings: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Skills Required</label>
+                    <label htmlFor="skills-required" className="block text-sm font-medium text-gray-700 mb-1">Skills Required</label>
                     <input
+                      id="skills-required"
                       type="text"
                       value={formData.skills_required}
                       onChange={(e) => handleFormChange('skills_required', e.target.value)}
@@ -1167,8 +1083,9 @@ const JobPostings: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Application Deadline</label>
+                    <label htmlFor="application-deadline" className="block text-sm font-medium text-gray-700 mb-1">Application Deadline</label>
                     <input
+                      id="application-deadline"
                       type="date"
                       value={formData.deadline}
                       onChange={(e) => handleFormChange('deadline', e.target.value)}
@@ -1177,8 +1094,9 @@ const JobPostings: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                    <label htmlFor="job-status-form" className="block text-sm font-medium text-gray-700 mb-1">Status</label>
                     <select
+                      id="job-status-form"
                       value={formData.status}
                       onChange={(e) => handleFormChange('status', e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -1195,8 +1113,9 @@ const JobPostings: React.FC = () => {
               {/* Description and Details */}
               <div className="mt-6 space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Job Description</label>
+                  <label htmlFor="job-description" className="block text-sm font-medium text-gray-700 mb-1">Job Description</label>
                   <textarea
+                    id="job-description"
                     value={formData.description}
                     onChange={(e) => handleFormChange('description', e.target.value)}
                     rows={4}
@@ -1207,8 +1126,9 @@ const JobPostings: React.FC = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Requirements</label>
+                    <label htmlFor="job-requirements" className="block text-sm font-medium text-gray-700 mb-1">Requirements</label>
                     <textarea
+                      id="job-requirements"
                       value={formData.requirements}
                       onChange={(e) => handleFormChange('requirements', e.target.value)}
                       rows={4}
@@ -1218,8 +1138,9 @@ const JobPostings: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Responsibilities</label>
+                    <label htmlFor="job-responsibilities" className="block text-sm font-medium text-gray-700 mb-1">Responsibilities</label>
                     <textarea
+                      id="job-responsibilities"
                       value={formData.responsibilities}
                       onChange={(e) => handleFormChange('responsibilities', e.target.value)}
                       rows={4}
@@ -1229,8 +1150,9 @@ const JobPostings: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Benefits</label>
+                    <label htmlFor="job-benefits" className="block text-sm font-medium text-gray-700 mb-1">Benefits</label>
                     <textarea
+                      id="job-benefits"
                       value={formData.benefits}
                       onChange={(e) => handleFormChange('benefits', e.target.value)}
                       rows={4}
@@ -1245,6 +1167,7 @@ const JobPostings: React.FC = () => {
             {/* Modal Footer */}
             <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200 bg-gray-50">
               <button
+                type="button"
                 onClick={() => {
                   setShowAddJobModal(false);
                   setEditingJob(null);
@@ -1256,6 +1179,7 @@ const JobPostings: React.FC = () => {
               </button>
               {editingJob && (
                 <button
+                  type="button"
                   onClick={handleSaveJob}
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
                 >
