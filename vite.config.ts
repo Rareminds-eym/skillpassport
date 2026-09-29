@@ -3,9 +3,15 @@ import path from 'path';
 import { defineConfig } from 'vite';
 
 // https://vitejs.dev/config/
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   base: '/',
   plugins: [react()],
+  // Keep warnings/errors available; remove debug logging without dropping
+  // argument side effects (unlike esbuild's drop: ['console']).
+  esbuild: command === 'build' ? {
+    pure: ['console.log', 'console.debug', 'console.info'],
+    drop: ['debugger'],
+  } : undefined,
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
@@ -164,4 +170,4 @@ export default defineConfig({
       },
     },
   },
-});
+}));

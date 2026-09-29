@@ -1,9 +1,9 @@
-import React from "react";
+import { memo } from "react";
 import { Shield, Globe, Briefcase, Lock, Mail, Phone, MapPin, Save } from "lucide-react";
 import { Button } from '@/shared/ui/ButtonNew';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/Card';
 
-const PrivacyTab = ({
+const PrivacyTab = memo(({
   privacySettings,
   handlePrivacyChange,
   handleSavePrivacy,
@@ -305,6 +305,9 @@ const PrivacyTab = ({
       </CardContent>
     </Card>
   );
-};
+});
+
+PrivacyTab.displayName = 'PrivacyTab';
+
 
 export default PrivacyTab;

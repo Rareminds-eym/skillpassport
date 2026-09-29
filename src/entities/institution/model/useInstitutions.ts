@@ -1,49 +1,36 @@
-import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { apiPost } from '@/shared/api/apiClient';
-import { getLogger } from '@/shared/config/logging';
+import { useUser } from '@/shared/model/authStore';
 
-const logger = getLogger('useInstitutions');
+const EMPTY_LIST = [];
 
-export const useInstitutions = () => {
-  const [schools, setSchools] = useState([]);
-  const [colleges, setColleges] = useState([]);
-  const [universities, setUniversities] = useState([]);
-  const [universityColleges, setUniversityColleges] = useState([]);
-  const [departments, setDepartments] = useState([]);
-  const [programs, setPrograms] = useState([]);
-  const [programSections, setProgramSections] = useState([]);
-  const [schoolClasses, setSchoolClasses] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    fetchInstitutions();
-  }, []);
-
-  const fetchInstitutions = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
+// Options are shared across forms, but the cache is scoped to the signed-in user.
+export const useInstitutions = (enabled = true) => {
+  const user = useUser();
+  const query = useQuery({
+    queryKey: ['institutions', user?.id],
+    enabled: enabled && !!user?.id,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    retry: 1,
+    queryFn: async () => {
       const result = await apiPost<any>('/learner-profile/actions', { action: 'get-institutions' });
+      if (!result?.data) throw new Error('Unable to load institutions');
+      return result.data;
+    },
+  });
 
-      if (result?.data) {
-        setSchools(result.data.schools || []);
-        setColleges(result.data.colleges || []);
-        setUniversities(result.data.universities || []);
-        setUniversityColleges(result.data.universityColleges || []);
-        setDepartments(result.data.departments || []);
-        setPrograms(result.data.programs || []);
-        setSchoolClasses(result.data.schoolClasses || []);
-        setProgramSections(result.data.programSections || []);
-      }
-    } catch (err) {
-      logger.error('Error fetching institutions', err as Error);
-      setError(err);
-    } finally {
-      setLoading(false);
-    }
+  return {
+    schools: query.data?.schools || EMPTY_LIST,
+    colleges: query.data?.colleges || EMPTY_LIST,
+    universities: query.data?.universities || EMPTY_LIST,
+    universityColleges: query.data?.universityColleges || EMPTY_LIST,
+    departments: query.data?.departments || EMPTY_LIST,
+    programs: query.data?.programs || EMPTY_LIST,
+    schoolClasses: query.data?.schoolClasses || EMPTY_LIST,
+    programSections: query.data?.programSections || EMPTY_LIST,
+    loading: enabled && query.isPending,
+    error: query.error,
+    refresh: query.refetch,
   };
-
-  return { schools, colleges, universities, universityColleges, departments, programs, schoolClasses, programSections, loading, error };
 };

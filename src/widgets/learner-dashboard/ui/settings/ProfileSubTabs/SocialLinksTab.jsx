@@ -1,26 +1,26 @@
-import React from "react";
+import { memo, useCallback } from "react";
 import { Globe, Save } from "lucide-react";
 import { Button } from '@/shared/ui/ButtonNew';
-import { useFormValidation } from '@/shared/lib/hooks';
+import { useFormValidation } from '@/shared/lib/hooks/useFormValidation';
 import FormField from "../FormField";
 
-const SocialLinksTab = ({ profileData, handleProfileChange, handleSaveProfile, isSaving }) => {
+const SocialLinksTab = memo(({ profileData, handleProfileChange, handleSaveProfile, isSaving }) => {
   const { validateSingleField, touchField, getFieldError } = useFormValidation();
 
-  const handleFieldChange = (field, value) => {
+  const handleFieldChange = useCallback((field, value) => {
     handleProfileChange(field, value);
     // Validate URL fields
     if (['linkedIn', 'github', 'portfolio', 'twitter', 'facebook', 'instagram'].includes(field)) {
       validateSingleField('url', value);
     }
-  };
+  }, [handleProfileChange, validateSingleField]);
 
-  const handleFieldBlur = (field, value) => {
+  const handleFieldBlur = useCallback((field, value) => {
     touchField(field);
     if (['linkedIn', 'github', 'portfolio', 'twitter', 'facebook', 'instagram'].includes(field)) {
       validateSingleField('url', value);
     }
-  };
+  }, [touchField, validateSingleField]);
 
   return (
     <div>
@@ -123,6 +123,8 @@ const SocialLinksTab = ({ profileData, handleProfileChange, handleSaveProfile, i
       </div>
     </div>
   );
-};
+});
+
+SocialLinksTab.displayName = 'SocialLinksTab';
 
 export default SocialLinksTab;
