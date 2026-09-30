@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Download,
   Filter,
@@ -56,7 +56,7 @@ const PlacementAnalytics: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
 
   // Load data from database using the same service as main placement stats
-  const loadData = async (showRefreshLoader = false) => {
+  const loadData = useCallback(async (showRefreshLoader = false) => {
     try {
       if (showRefreshLoader) {
         setRefreshing(true);
@@ -286,12 +286,12 @@ const PlacementAnalytics: React.FC = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, []); // Empty dependency array - loadData doesn't depend on any props or state
 
-  // Load data on component mount and when filters change
+  // Load data on component mount
   useEffect(() => {
     loadData();
-  }, [selectedAnalyticsDepartment, selectedAnalyticsYear, selectedAnalyticsType]);
+  }, [loadData]); // Include loadData in dependencies
 
   // Filter analytics data
   const filteredAnalytics = departmentAnalytics.filter(dept => {
@@ -300,8 +300,6 @@ const PlacementAnalytics: React.FC = () => {
 
   // Calculate overall metrics from real data
   const totalPlacements = placementStats.totalPlacements;
-  const totalInternships = placementStats.totalInternships;
-  const totalFullTime = placementStats.totalFullTime;
   
   // CTC values from real data
   const overallAvgCtc = placementStats.avgCTC;

@@ -55,8 +55,27 @@ CREATE INDEX IF NOT EXISTS "idx_college_placement_companies_status"
 CREATE INDEX IF NOT EXISTS "idx_college_placement_companies_name" 
     ON "public"."college_placement_companies" ("college_id", "name");
 
--- Grant permissions for roles
-GRANT ALL ON TABLE "public"."college_placement_companies" TO "anon";
+-- Enable Row Level Security (RLS)
+ALTER TABLE "public"."college_placement_companies" ENABLE ROW LEVEL SECURITY;
+
+-- Allow service_role full access (Cloudflare Pages backend uses service role key)
+CREATE POLICY "service_role_all_college_placement_companies"
+    ON "public"."college_placement_companies"
+    FOR ALL
+    TO service_role
+    USING (true)
+    WITH CHECK (true);
+
+-- Allow authenticated users access
+CREATE POLICY "authenticated_college_placement_companies"
+    ON "public"."college_placement_companies"
+    FOR ALL
+    TO authenticated
+    USING (true)
+    WITH CHECK (true);
+
+-- Grant permissions for roles (authenticated and service_role ONLY - no anon)
 GRANT ALL ON TABLE "public"."college_placement_companies" TO "authenticated";
 GRANT ALL ON TABLE "public"."college_placement_companies" TO "service_role";
+
 
