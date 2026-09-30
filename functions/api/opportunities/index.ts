@@ -307,11 +307,10 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     case 'get-placement-stats': {
       const { collegeId: explicitCollegeId } = body;
       const authUser = getContextUser(context);
-      let collegeId = explicitCollegeId;
-      if (!collegeId && authUser?.id) {
-        const { data: cl } = await supabase.from('college_lecturers').select('collegeId').eq('user_id', authUser.id).maybeSingle();
-        collegeId = cl?.collegeId;
-      }
+      
+      // Use org_id from JWT (for college admins in organizations table)
+      let collegeId = explicitCollegeId || authUser?.org_id;
+
       let learnersQuery = supabase.from('learners').select('*', { count: 'exact', head: true });
       if (collegeId) learnersQuery = learnersQuery.eq('college_id', collegeId);
       const { count: totallearners, error: totalError } = await learnersQuery;
