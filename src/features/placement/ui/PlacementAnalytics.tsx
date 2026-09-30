@@ -85,9 +85,9 @@ const PlacementAnalytics: React.FC = () => {
 
       logger.debug('API Response:', res);
 
-      if (!res.success) {
-        logger.error('API Error:', res.error);
-        throw new Error(res.error || 'Failed to fetch placement data');
+      if (!res?.success || !res.data) {
+        logger.error('API Error:', res?.error);
+        throw new Error(res?.error || 'Failed to fetch placement data');
       }
 
       const { recentPlacementsData, alllearnersData, allPlacementsData } = res.data;
@@ -280,6 +280,7 @@ const PlacementAnalytics: React.FC = () => {
       });
 
     } catch (error) {
+      logger.error('[loadData] Failed to load placement data', error);
       toast.error('Failed to load placement data');
     } finally {
       setLoading(false);
@@ -301,7 +302,6 @@ const PlacementAnalytics: React.FC = () => {
   const totalPlacements = placementStats.totalPlacements;
   const totalInternships = placementStats.totalInternships;
   const totalFullTime = placementStats.totalFullTime;
-  const internshipToJobRatio = totalFullTime > 0 ? (totalInternships / totalFullTime).toFixed(2) : "0";
   
   // CTC values from real data
   const overallAvgCtc = placementStats.avgCTC;
@@ -332,6 +332,7 @@ const PlacementAnalytics: React.FC = () => {
       
       toast.success("Placement analytics report exported successfully");
     } catch (error) {
+      logger.error('[handleExportReport] Failed to export report', error);
       toast.error("Failed to export report");
     }
   };
@@ -373,6 +374,7 @@ const PlacementAnalytics: React.FC = () => {
       
       toast.success("Recent placements report exported successfully");
     } catch (error) {
+      logger.error('[handleExportRecentPlacements] Failed to export recent placements', error);
       toast.error("Failed to export recent placements");
     }
   };

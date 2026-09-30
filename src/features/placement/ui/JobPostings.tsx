@@ -123,6 +123,7 @@ const JobPostings: React.FC = () => {
       });
       setOpportunities(opportunitiesData);
     } catch (error) {
+      console.error('[loadOpportunities] Failed to load job opportunities:', error);
       setHasError(true);
       toast.error('Failed to load job opportunities');
       setOpportunities([]);
@@ -376,8 +377,8 @@ const JobPostings: React.FC = () => {
         employment_type: formData.employment_type,
         mode: formData.mode,
         location: formData.location,
-        salary_range_min: formData.salary_range_min ? parseInt(formData.salary_range_min) : undefined,
-        salary_range_max: formData.salary_range_max ? parseInt(formData.salary_range_max) : undefined,
+        salary_range_min: formData.salary_range_min ? parseInt(formData.salary_range_min, 10) : undefined,
+        salary_range_max: formData.salary_range_max ? parseInt(formData.salary_range_max, 10) : undefined,
         experience_required: formData.experience_required,
         description: formData.description,
         skills_required: formData.skills_required.split(',').map(s => s.trim()).filter(s => s),
@@ -399,6 +400,7 @@ const JobPostings: React.FC = () => {
       resetForm();
       loadOpportunities();
     } catch (error) {
+      console.error('[handleSaveJob] Failed to update job posting:', error);
       toast.error('Failed to update job posting');
     }
   };

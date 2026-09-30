@@ -644,13 +644,24 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
           // Find the program_sections row ID if section is provided
           if (enrollmentData.section) {
-            const { data: sectionData } = await supabase
+            const { data: sectionData, error: sectionError } = await supabase
               .from('program_sections')
               .select('id')
               .eq('program_id', enrollmentData.program_id)
               .eq('semester', enrollmentData.semester)
               .eq('section', enrollmentData.section)
               .maybeSingle();
+            
+            if (sectionError) {
+              logger.error('[update-enrollment] Failed to query program_sections', {
+                learnerId,
+                programId: enrollmentData.program_id,
+                semester: enrollmentData.semester,
+                section: enrollmentData.section,
+                error: sectionError.message
+              });
+              return apiDbError(sectionError, context.request, { startTime });
+            }
             
             sectionId = sectionData?.id || null;
           }
@@ -661,26 +672,45 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           const academicYear = `${currentYear}-${nextYear}`;
 
           // Check if enrollment record exists
-          const { data: existingEnrollment } = await supabase
+          const { data: existingEnrollment, error: enrollmentCheckError } = await supabase
             .from('learner_enrollments')
             .select('id')
             .eq('learner_id', learnerId)
             .eq('program_id', enrollmentData.program_id)
             .eq('semester', enrollmentData.semester)
             .maybeSingle();
+          
+          if (enrollmentCheckError) {
+            logger.error('[update-enrollment] Failed to check existing learner_enrollments', {
+              learnerId,
+              programId: enrollmentData.program_id,
+              semester: enrollmentData.semester,
+              error: enrollmentCheckError.message
+            });
+            return apiDbError(enrollmentCheckError, context.request, { startTime });
+          }
 
           if (existingEnrollment) {
             // Update existing enrollment
-            await supabase
+            const { error: updateError } = await supabase
               .from('learner_enrollments')
               .update({
                 section_id: sectionId,
                 updated_at: new Date().toISOString()
               })
               .eq('id', existingEnrollment.id);
+            
+            if (updateError) {
+              logger.error('[update-enrollment] Failed to update learner_enrollments', {
+                learnerId,
+                enrollmentId: existingEnrollment.id,
+                error: updateError.message
+              });
+              return apiDbError(updateError, context.request, { startTime });
+            }
           } else {
             // Insert new enrollment record
-            await supabase
+            const { error: insertError } = await supabase
               .from('learner_enrollments')
               .insert({
                 learner_id: learnerId,
@@ -691,6 +721,15 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
                 enrollment_status: 'active',
                 enrollment_date: enrollmentData.enrollmentDate || new Date().toISOString().split('T')[0]
               });
+            
+            if (insertError) {
+              logger.error('[update-enrollment] Failed to insert learner_enrollments', {
+                learnerId,
+                programId: enrollmentData.program_id,
+                error: insertError.message
+              });
+              return apiDbError(insertError, context.request, { startTime });
+            }
           }
         }
 

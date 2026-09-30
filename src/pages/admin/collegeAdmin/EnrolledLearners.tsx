@@ -582,7 +582,7 @@ const EnrolllearnersModal: FC<{
       setAvailableSemesters(semesters);
 
       // Reset semester selection if current selection is not available
-      if (selectedSemester && !semesters.includes(parseInt(selectedSemester))) {
+      if (selectedSemester && !semesters.includes(parseInt(selectedSemester, 10))) {
         setSelectedSemester("");
       }
     } catch (error) {
@@ -597,7 +597,7 @@ const EnrolllearnersModal: FC<{
       const res: any = await apiPost('/college-admin/actions', {
         action: 'get-program-sections-with-counts',
         program_id: selectedProgram,
-        semester: parseInt(selectedSemester)
+        semester: parseInt(selectedSemester, 10)
       });
 
       if (!res.success) throw new Error(res.error);
@@ -644,7 +644,7 @@ const EnrolllearnersModal: FC<{
         learner_id: learnerId,
         program_id: selectedProgram,
         section: selectedSection || undefined,
-        semester: parseInt(selectedSemester),
+        semester: parseInt(selectedSemester, 10),
       }));
 
       const result = await learnerEnrollmentService.bulkEnrollLearners(enrollments);

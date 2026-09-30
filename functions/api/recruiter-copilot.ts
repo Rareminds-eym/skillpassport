@@ -7,6 +7,18 @@ import { getServiceClient } from '../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { apiSuccess, apiDbError, apiError, apiMethodNotAllowed } from '../lib/response';
 
+/**
+ * Helper function to validate and extract college ID from authenticated user
+ * @returns collegeId if valid, or error response if missing
+ */
+function validateCollegeId(user: any, request: any, startTime: number) {
+  const collegeId = user.org_id;
+  if (!collegeId) {
+    return { error: apiError(400, 'VALIDATION_ERROR', 'Missing college organization ID', request, { startTime }) };
+  }
+  return { collegeId };
+}
+
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const user = getContextUser(context);
   const supabase = getServiceClient(context.env as any);
@@ -416,11 +428,9 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
       // ── Companies ──
       case 'companies-get-all': {
-        // Extract college_id from authenticated user's organization
-        const collegeId = user.org_id;
-        if (!collegeId) {
-          return apiError(400, 'VALIDATION_ERROR', 'Missing college organization ID', context.request, { startTime });
-        }
+        const validation = validateCollegeId(user, context.request, startTime);
+        if (validation.error) return validation.error;
+        const collegeId = validation.collegeId!;
         
         const { data, error } = await supabase
           .from('college_placement_companies')
@@ -432,11 +442,9 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       }
 
       case 'companies-get-filtered': {
-        // Extract college_id from authenticated user's organization
-        const collegeId = user.org_id;
-        if (!collegeId) {
-          return apiError(400, 'VALIDATION_ERROR', 'Missing college organization ID', context.request, { startTime });
-        }
+        const validation = validateCollegeId(user, context.request, startTime);
+        if (validation.error) return validation.error;
+        const collegeId = validation.collegeId!;
         
         const { search_term, industry, company_size, account_status } = params;
         let query = supabase.from('college_placement_companies').select('*').eq('college_id', collegeId);
@@ -451,11 +459,9 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       }
 
       case 'companies-add': {
-        // Extract college_id from authenticated user's organization
-        const collegeId = user.org_id;
-        if (!collegeId) {
-          return apiError(400, 'VALIDATION_ERROR', 'Missing college organization ID', context.request, { startTime });
-        }
+        const validation = validateCollegeId(user, context.request, startTime);
+        if (validation.error) return validation.error;
+        const collegeId = validation.collegeId!;
         
         const { name, code, industry, companySize, establishedYear, hqAddress, hqCity, hqState, hqCountry, hqPincode, phone, email, website, contactPersonName, contactPersonDesignation, contactPersonEmail, contactPersonPhone, companyDescription, specialRequirements } = params;
         const newCompany = {
@@ -485,11 +491,9 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       }
 
       case 'companies-update': {
-        // Extract college_id from authenticated user's organization
-        const collegeId = user.org_id;
-        if (!collegeId) {
-          return apiError(400, 'VALIDATION_ERROR', 'Missing college organization ID', context.request, { startTime });
-        }
+        const validation = validateCollegeId(user, context.request, startTime);
+        if (validation.error) return validation.error;
+        const collegeId = validation.collegeId!;
         
         const { id, companyDescription, specialRequirements, ...regularFields } = params;
         if (!id) return apiError(400, 'VALIDATION_ERROR', 'Missing id', context.request, { startTime });
@@ -528,11 +532,9 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       }
 
       case 'companies-update-status': {
-        // Extract college_id from authenticated user's organization
-        const collegeId = user.org_id;
-        if (!collegeId) {
-          return apiError(400, 'VALIDATION_ERROR', 'Missing college organization ID', context.request, { startTime });
-        }
+        const validation = validateCollegeId(user, context.request, startTime);
+        if (validation.error) return validation.error;
+        const collegeId = validation.collegeId!;
         
         const { id, status } = params;
         if (!id || !status) return apiError(400, 'VALIDATION_ERROR', 'Missing id or status', context.request, { startTime });
@@ -554,11 +556,9 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       }
 
       case 'companies-delete': {
-        // Extract college_id from authenticated user's organization
-        const collegeId = user.org_id;
-        if (!collegeId) {
-          return apiError(400, 'VALIDATION_ERROR', 'Missing college organization ID', context.request, { startTime });
-        }
+        const validation = validateCollegeId(user, context.request, startTime);
+        if (validation.error) return validation.error;
+        const collegeId = validation.collegeId!;
         
         const { id } = params;
         if (!id) return apiError(400, 'VALIDATION_ERROR', 'Missing id', context.request, { startTime });
@@ -574,11 +574,9 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       }
 
       case 'companies-get-by-id': {
-        // Extract college_id from authenticated user's organization
-        const collegeId = user.org_id;
-        if (!collegeId) {
-          return apiError(400, 'VALIDATION_ERROR', 'Missing college organization ID', context.request, { startTime });
-        }
+        const validation = validateCollegeId(user, context.request, startTime);
+        if (validation.error) return validation.error;
+        const collegeId = validation.collegeId!;
         
         const { id } = params;
         if (!id) return apiError(400, 'VALIDATION_ERROR', 'Missing id', context.request, { startTime });
@@ -595,11 +593,9 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       }
 
       case 'companies-stats': {
-        // Extract college_id from authenticated user's organization
-        const collegeId = user.org_id;
-        if (!collegeId) {
-          return apiError(400, 'VALIDATION_ERROR', 'Missing college organization ID', context.request, { startTime });
-        }
+        const validation = validateCollegeId(user, context.request, startTime);
+        if (validation.error) return validation.error;
+        const collegeId = validation.collegeId!;
         
         const { data, error } = await supabase
           .from('college_placement_companies')
