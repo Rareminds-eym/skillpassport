@@ -18,7 +18,6 @@ export { default as DigitalPortfolioSideDrawer } from './ui/DigitalPortfolioSide
 export { default as DocumentManager } from './ui/DocumentManager';
 export { default as EmployabilityScoreCard } from './ui/EmployabilityScoreCard';
 export { default as Footer } from './ui/Footer';
-export { generateResumePDF, preparelearnerDataForResume, RESUME_TEMPLATES } from './ui/Generateresumepdf';
 export { default as Header } from './ui/Header';
 export { default as HeroSection } from './ui/HeroSection';
 export { default as IndustrialVisitPreview } from './ui/IndustrialVisitPreview';

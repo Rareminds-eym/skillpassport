@@ -13,10 +13,13 @@
  * Protected by a shared cron secret — not accessible to end users.
  */
 
+import { createLogger } from '../../lib/logger';
 import { apiError, apiSuccess } from '../../lib/response';
-import { ssoSyncPlans, ssoSyncSubscription } from '../../lib/sso-client';
+import { ssoListFeatureKeys, ssoSyncPlans, ssoSyncSubscription } from '../../lib/sso-client';
 import { getServiceClient } from '../../lib/supabase';
-import { syncAllPlansCache, syncRolesShadow, syncSubscriptionCache } from '../../lib/sync-shadow';
+import { syncAllFeatureKeysCache, syncAllPlansCache, syncRolesShadow, syncSubscriptionCache } from '../../lib/sync-shadow';
+
+const logger = createLogger('reconcile');
 
 interface ReconcileEnv {
   SUPABASE_URL: string;
@@ -34,6 +37,13 @@ export async function onRequestPost(context: { request: Request; env: ReconcileE
     return apiError(401, 'UNAUTHORIZED', 'Unauthorized', request);
   }
 
+  // Gated by cron-reconcile-heal flag (Flagship or env HEAL_MODE)
+  const { isHealEnabled } = await import('../../lib/healConfig');
+  if (!await isHealEnabled(env as unknown as Record<string, unknown>, 'cron-reconcile-heal')) {
+    logger.info('heal_metric', { metric: 'reconcile_run', status: 'heal_disabled', flag: 'cron-reconcile-heal' } as any);
+    return apiSuccess({ subscriptions_checked: 0, subscriptions_synced: 0, plans_synced: 0, roles_synced: 0, roles_deleted: 0, errors: ['heal_disabled: cron-reconcile-heal flag is disabled'] }, request);
+  }
+
   const supabase = getServiceClient(env);
   const results = {
     subscriptions_checked: 0,
@@ -41,6 +51,7 @@ export async function onRequestPost(context: { request: Request; env: ReconcileE
     plans_synced: 0,
     roles_synced: 0,
     roles_deleted: 0,
+    feature_keys_synced: 0,
     errors: [] as string[],
   };
 
@@ -73,6 +84,21 @@ export async function onRequestPost(context: { request: Request; env: ReconcileE
       results.errors.push(`Roles sync failed: ${rolesErr.message}`);
     }
 
+    // 1c. Sync the admin-dashboard feature key catalog (rarely changes,
+    //     always sync alongside plans/roles). Source of truth is the auth
+    //     DB's public.feature_keys — see sso-worker's listFeatureKeys() RPC.
+    try {
+      const featureKeysData = await ssoListFeatureKeys(env);
+      if (!Array.isArray(featureKeysData.featureKeys)) throw new Error('Invalid feature catalog response');
+      {
+        await syncAllFeatureKeysCache(supabase, featureKeysData.featureKeys);
+        results.feature_keys_synced = featureKeysData.featureKeys.length;
+      }
+    } catch (featureKeysErr: unknown) {
+      const msg = featureKeysErr instanceof Error ? featureKeysErr.message : String(featureKeysErr);
+      results.errors.push(`Feature keys sync failed: ${msg}`);
+    }
+
     // 2. Find stale subscription_cache entries
     const threshold = new Date(Date.now() - 60 * 60 * 1000).toISOString();
     const { data: staleEntries, error: staleError } = await supabase
@@ -102,11 +128,12 @@ export async function onRequestPost(context: { request: Request; env: ReconcileE
       }
     }
 
-    console.log('[Reconcile] Completed:', JSON.stringify(results));
+    logger.info('Reconcile completed', { results });
+    logger.info('heal_metric', { metric: 'reconcile_run', ...results } as any);
 
     return apiSuccess(results, request);
   } catch (error: any) {
-    console.error('[Reconcile] Fatal error:', error);
+    logger.error('Reconcile fatal error', { error: (error as Error).message });
     return apiError(500, 'INTERNAL_ERROR', error.message, request);
   }
 }

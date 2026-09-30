@@ -1,4 +1,3 @@
-"use client";
 
 import { Calendar, Code, FileText, User, Clock } from "lucide-react";
 import RadialOrbitalTimeline from "./radial-orbital-timeline";

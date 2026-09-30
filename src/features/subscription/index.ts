@@ -38,7 +38,7 @@ export {
   SeatSelector,
   PricingBreakdown,
   MemberSubscriptionView,
-  OrganizationProvidedFeatures,
+  OrganizationLearnerBenefitsCard,
   OrganizationPurchasePanel,
   PersonalAddOns,
   SubscriptionOverview
@@ -52,9 +52,8 @@ export {
   FeatureGate,
   SubscriptionBanner,
   SubscriptionRouteGuard,
-  PaymentSuccess,
-  PaymentFailure,
-  SubscriptionSettingsSection
+  SubscriptionSettingsSection,
+  AdminFeatureLockedState
 } from './ui/shared';
 
 // Lazy-loaded components for better performance
@@ -159,8 +158,6 @@ export {
   getFeatureAccessLevel
 } from './lib/featureGating';
 
-export { default as generatePDFReceipt } from './api/pdfReceiptGenerator';
-
 // Types (re-export from model if needed)
 export type {
   Subscription,
@@ -179,8 +176,6 @@ export {
   validateSignupFields,
   formatPhoneNumber
 } from './lib/signupValidation';
-
-export { default as SignupFormFields, ALL_COUNTRIES, LANGUAGES } from './ui/shared/SignupFormFields';
 
 export { default as addOnCatalogService } from './api/addOnCatalogService';
 

@@ -27,7 +27,7 @@ import {
 } from '@/entities/learner';
 
 import { useNotificationBroadcast } from '@/features/broadcast';
-import { NewCollegeAdminConversationModal } from '@/features/college-admin';
+import NewCollegeAdminConversationModal from '@/features/messaging/ui/modals/NewCollegeAdminConversationModal';
 import { useLearnerMessages } from '@/features/learner-profile';
 import { 
   DeleteConversationModal,

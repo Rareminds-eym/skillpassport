@@ -1,4 +1,3 @@
-"use client";
 import { useState, useEffect, useRef } from "react";
 import { Badge } from "./badge";
 import { Card, CardContent, CardHeader, CardTitle } from "./card";

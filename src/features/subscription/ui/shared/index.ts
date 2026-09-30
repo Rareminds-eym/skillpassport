@@ -8,13 +8,9 @@ export { default as SubscriptionBanner } from './SubscriptionBanner';
 export { default as SubscriptionRouteGuard } from './SubscriptionRouteGuard';
 export { FeatureLockOverlay } from './FeatureLockOverlay';
 export { UpgradePrompt } from './UpgradePrompt';
-
-// Payment Result Pages
-export { default as PaymentSuccess } from './PaymentSuccess';
-export { default as PaymentFailure } from './PaymentFailure';
+export { AdminFeatureLockedState } from './AdminFeatureLockedState';
 
 // Signup Form Components
-export { default as SignupFormFields, ALL_COUNTRIES, LANGUAGES } from './SignupFormFields';
 export { default as DatePicker } from './DatePicker';
 
 // Settings Components

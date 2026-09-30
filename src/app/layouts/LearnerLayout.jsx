@@ -1,15 +1,17 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Outlet, useLocation, Link } from 'react-router-dom';
 import { useUser } from '@/shared/model/authStore';
-import { useLearnerDashboard, LearnerTypeSelectionModal } from '@/features/learner-profile';
-import { Header, ProfileHeroEdit } from '@/widgets/learner-dashboard';
+import { useLearnerDashboard } from '@/features/learner-profile/model';
+import { LearnerTypeSelectionModal } from '@/features/learner-profile/ui/LearnerTypeSelectionModal';
+import Header from '@/widgets/learner-dashboard/ui/Header';
+import ProfileHeroEdit from '@/widgets/learner-dashboard/ui/ProfileHeroEdit';
 import { FloatingAIButton } from '@/features/career-assistant';
 import {
   EducationEditModal,
   TrainingEditModal,
   ExperienceEditModal,
   SkillsEditModal
-} from '@/features/learner-profile';
+} from '@/features/learner-profile/ui/modals';
 
 // Route patterns for page detection
 const ROUTE_PATTERNS = {

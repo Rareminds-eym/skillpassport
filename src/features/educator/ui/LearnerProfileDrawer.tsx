@@ -17,7 +17,6 @@ import {
   CheckCircleIcon
 } from '@heroicons/react/24/outline';
 import { QRCodeSVG } from 'qrcode.react';
-import jsPDF from 'jspdf';
 import { apiPost } from '@/shared/api/apiClient';
 import { File } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -73,8 +72,10 @@ const ExportModal = ({ isOpen, onClose, learner }) => {
     type: 'mini_profile'
   });
 
-  const generatePDF = (learner, settings) => {
+  const generatePDF = async (learner, settings) => {
     const isFullProfile = settings.type === 'full_profile';
+    const jspdfModule = await import('jspdf');
+    const jsPDF = jspdfModule.jsPDF || jspdfModule.default;
     const doc = new jsPDF();
     const pageHeight = doc.internal.pageSize.height;
     const pageWidth = doc.internal.pageSize.width;
@@ -539,14 +540,14 @@ const ExportModal = ({ isOpen, onClose, learner }) => {
     window.URL.revokeObjectURL(url);
   };
 
-  const handleExport = () => {
+  const handleExport = async () => {
     const filename = `${learner.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}`;
 
     if (exportSettings.format === 'csv') {
       const content = generateCSV(learner, exportSettings);
       downloadFile(content, filename + '.csv', 'csv');
     } else {
-      const pdfDoc = generatePDF(learner, exportSettings);
+      const pdfDoc = await generatePDF(learner, exportSettings);
       pdfDoc.save(filename + '.pdf');
     }
 

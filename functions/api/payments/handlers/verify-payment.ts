@@ -1,3 +1,4 @@
+import { isSalesOnlyPlan } from '../lib/salesPlan';
 /**
  * Verify Payment Handler
  *
@@ -195,7 +196,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
     // Step 2.5: Validate plan exists via plans_cache (local shadow of auth DB)
     const { data: validPlan, error: planError } = await supabase
       .from('plans_cache')
-      .select('id, plan_code, name, is_active, pricing_matrix, base_features')
+      .select('id, plan_code, name, is_active, pricing_matrix, base_features, entity_config')
       .eq('id', plan.id)
       .eq('is_active', true)
       .maybeSingle();
@@ -203,6 +204,10 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
     if (planError || !validPlan) {
       logger.error('Invalid or inactive plan', planError instanceof Error ? planError : new Error('Plan not found'));
       return apiError(400, 'VALIDATION_ERROR', 'Selected plan is not valid or inactive', context.request);
+    }
+
+    if (isSalesOnlyPlan(validPlan)) {
+      return apiError(400, 'CONTACT_SALES_REQUIRED', 'This plan requires an agreed sales proposal before activation.', context.request);
     }
 
     // Step 2.5: Validate currency (SECURITY: prevent multi-currency fraud)
@@ -468,6 +473,23 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
         .maybeSingle();
       learnerName = learnerForSubscription?.name;
 
+      let seatCount = typeof body.seat_count === 'number' ? body.seat_count : 1;
+      if (validPlan?.entity_config) {
+        try {
+          const config = typeof validPlan.entity_config === 'string' ? JSON.parse(validPlan.entity_config) : validPlan.entity_config;
+          for (const k in config) {
+            if (config[k]?.max_users) {
+              seatCount = Number(config[k].max_users);
+              break;
+            }
+          }
+        } catch (err) {
+          logger.warn('Error parsing entity_config', {
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+      }
+
       try {
         subscription = await ssoCreateSubscription(env, {
           user_id: user.id,
@@ -483,6 +505,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
           razorpay_payment_id: body.razorpay_payment_id as string,
           is_recruiter_subscription: isRecruiterPlan,
           is_b2b: isRecruiterPlan,
+          seat_count: seatCount,
         });
       } catch (createError: unknown) {
         const createErrorMessage = createError instanceof Error ? createError.message : String(createError);
@@ -672,17 +695,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
       context.waitUntil(receiptPromise);
     }
 
-    // For the email, we'll use a temporary presigned URL (receipt will be in email anyway)
-    let receiptUrl: string | null = null;
-    try {
-      const pagesEnv = env as unknown as PagesEnv;
-      const r2 = new R2Client(pagesEnv);
-      receiptUrl = await r2.generatePresignedGetUrl(receiptKeyForGeneration, 604800);
-      logger.info('Generated temporary presigned URL for email', { receiptKey: receiptKeyForGeneration });
-    } catch (presignErr) {
-      const errorMsg = presignErr instanceof Error ? presignErr.message : String(presignErr);
-      logger.warn('Failed to generate presigned URL for email (non-critical)', { error: errorMsg });
-    }
+    const receiptUrl = `/api/storage/payment-receipt?key=${encodeURIComponent(receiptKeyForGeneration)}&mode=download`;
 
     // Step 5: Send payment confirmation email (unchanged)
     try {

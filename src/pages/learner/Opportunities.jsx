@@ -49,7 +49,7 @@ import { getPageNumbers } from '@/shared/lib/pagination';
 import { useProfileCompletion } from '@/features/learner-profile';
 import { AppliedJobsService, SavedJobsService } from '@/features/opportunities';
 import offerManagementService from '@/features/opportunities/api/offerManagementService';
-import { factoryVisitsService } from '@/features/college-admin';
+import { factoryVisitsService } from '@/features/college-admin/api/factoryVisitsService';
 import { isSchoolLearner, isCollegeLearner, isLearner } from '@/entities/learner/lib/learnerType';
 import { getLogger } from '@/shared/config/logging';
 import { useUser } from '@/shared/model/authStore';

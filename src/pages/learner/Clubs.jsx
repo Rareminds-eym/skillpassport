@@ -8,12 +8,11 @@ import {
     Award,
     Clock,
     MapPin,
-    AlertCircle,
     CheckCircle,
 } from "lucide-react";
 import { apiPost } from '@/shared/api/apiClient';
-import * as clubsService from "@/features/college-admin";
-import * as competitionsService from "@/features/college-admin";
+import * as clubsService from "@/features/college-admin/api/clubsService";
+import * as competitionsService from "@/features/college-admin/api/competitionsService";
 import { getLogger } from '@/shared/config/logging';
 import { useAuthStore } from '@/shared/model/authStore';
 

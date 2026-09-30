@@ -1,5 +1,3 @@
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
 
 /**
  * Professional Resume Generator with Modern Sidebar Layout
@@ -42,6 +40,8 @@ function safeParse(jsonLike) {
  * Creates a polished, professional PDF resume with modern design
  */
 export const generateResumePDF = async (learnerData) => {
+  const jspdfModule = await import('jspdf');
+  const jsPDF = jspdfModule.jsPDF || jspdfModule.default;
   // Helper: safe defaults and parse profile
   learnerData = learnerData || {};
   const parsedProfile = safeParse(learnerData.profile);

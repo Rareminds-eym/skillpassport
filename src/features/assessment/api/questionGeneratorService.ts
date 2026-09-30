@@ -8,7 +8,7 @@ import { STREAM_KNOWLEDGE_PROMPTS, APTITUDE_CATEGORIES } from '../lib/streamProm
 import { normalizeStreamId } from '../lib/streamUtils.js';
 import { validateQuestionBatch } from '../lib/questionValidator.js';
 import { handleAPIError, handleNetworkError } from '../lib/assessmentErrors.js';
-import { getSavedQuestionsForLearner, saveAptitudeQuestions, saveKnowledgeQuestions } from './assessmentRepository';
+import { getSavedQuestionsForLearner } from './assessmentRepository';
 
 type QuestionType = 'aptitude' | 'knowledge';
 type GradeLevel = 'after10' | 'after12' | 'higher_secondary' | 'college' | 'middle' | 'highschool';
@@ -146,11 +146,11 @@ export async function generateStreamKnowledgeQuestions(
     effectiveTopics = streamInfo.topics;
   }
 
-  if (learnerId) {
+  if (learnerId && gradeLevel) {
     // A cache MISS comes back as an empty array (the backend returns `questions: []`
     // with `cached: false`), and `[]` is truthy. Without the length check this returned
     // 0 knowledge questions and skipped AI generation entirely — the college bug.
-    const saved = await getSavedQuestionsForLearner(learnerId, effectiveStreamId, 'knowledge');
+    const saved = await getSavedQuestionsForLearner(learnerId, effectiveStreamId, 'knowledge', gradeLevel);
     if (saved && saved.length > 0) {
       return saved;
     }
@@ -240,10 +240,10 @@ export async function generateStreamKnowledgeQuestions(
       }
       
       
-      if (validQuestions.length > 0 && learnerId && !data.cached) {
-        await saveKnowledgeQuestions(learnerId, effectiveStreamId, attemptId, validQuestions, gradeLevel);
-      }
-      
+      // Canonical persistence already happened inside the backend generation handler
+      // via get_or_create_shared_questions() - this secondary save is no longer
+      // needed (its result was never used) and previously risked creating a
+      // duplicate, learner-scoped row alongside the canonical (learner_id=NULL) one.
       return validQuestions;
     } catch (error) {
       const errorInfo = handleNetworkError(error, attempt, maxRetries);
@@ -270,8 +270,8 @@ export async function generateAptitudeQuestions(
   attemptId: string | null = null,
   gradeLevel: GradeLevel | null = null
 ): Promise<Question[] | null> {
-  if (learnerId) {
-    const saved = await getSavedQuestionsForLearner(learnerId, streamId, 'aptitude');
+  if (learnerId && gradeLevel) {
+    const saved = await getSavedQuestionsForLearner(learnerId, streamId, 'aptitude', gradeLevel);
     if (saved && saved.length > 0) {
       return saved;
     }
@@ -348,10 +348,9 @@ export async function generateAptitudeQuestions(
       if (allValidQuestions.length >= questionCount) {
         const finalQuestions = allValidQuestions.slice(0, questionCount);
         
-        if (finalQuestions.length > 0 && learnerId && !data.cached) {
-          await saveAptitudeQuestions(learnerId, streamId, attemptId, finalQuestions, gradeLevel);
-        }
-        
+        // Canonical persistence already happened inside the backend generation handler
+        // via get_or_create_shared_questions() - see the matching comment in
+        // generateStreamKnowledgeQuestions() above for why this secondary save was removed.
         return finalQuestions;
       }
       
@@ -364,10 +363,8 @@ export async function generateAptitudeQuestions(
       if (allValidQuestions.length >= threshold) {
         console.warn(`⚠️ Only have ${allValidQuestions.length}/${questionCount} questions, but accepting (above 90% threshold)`);
         
-        if (allValidQuestions.length > 0 && learnerId && !data.cached) {
-          await saveAptitudeQuestions(learnerId, streamId, attemptId, allValidQuestions, gradeLevel);
-        }
-        
+        // Canonical persistence already happened inside the backend generation handler
+        // via get_or_create_shared_questions() - see the matching comment above.
         return allValidQuestions;
       }
       

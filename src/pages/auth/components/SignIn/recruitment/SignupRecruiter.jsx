@@ -5,7 +5,7 @@ import { AlertCircle, BarChart3, CheckCircle, Zap } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import loginIllustration from "@/assets/images/auth/Recruiter-illustration.png";
-import { SignupFormFields } from '@/features/subscription';
+import SignupFormFields from '@/features/subscription/ui/shared/SignupFormFields';
 import { capitalizeFirstLetter, formatOtp, formatPhoneNumber, getInitialFormData, validateSignupFields } from "@/features/subscription";
 import { ssoClient } from "@/shared/api/ssoClient";
 import FeatureCard from "@/features/auth/ui/FeatureCard";

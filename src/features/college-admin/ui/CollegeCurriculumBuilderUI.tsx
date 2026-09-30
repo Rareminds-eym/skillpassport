@@ -25,6 +25,7 @@ import { curriculumApprovalService } from '@/features/college-admin';
 import { curriculumChangeRequestService } from '@/features/college-admin';
 import { getWSClient } from '@/shared/api/wsRealtimeClient';
 import { getLogger } from '@/shared/config/logging';
+import { formatProgramLabel } from '@/shared/lib';
 
 const logger = getLogger('college-admin:CollegeCurriculumBuilderUI');
 
@@ -765,7 +766,7 @@ const CloneCurriculumModal = ({
   onClose: () => void;
   onClone: (targetData: any) => void;
   departments: Array<{ id: string; name: string }>;
-  programs: Array<{ id: string; name: string }>;
+  programs: Array<{ id: string; name: string; code?: string; specializations?: unknown }>;
   academicYears: string[];
   semesters: string[];
   currentCurriculumId?: string | null;
@@ -963,7 +964,7 @@ const CloneCurriculumModal = ({
             <option value="">Keep same program</option>
             {programs.map((program) => (
               <option key={program.id} value={program.id}>
-                {program.name}
+                {formatProgramLabel(program.name, program)}
               </option>
             ))}
           </select>
@@ -1052,7 +1053,7 @@ interface CollegeCurriculumBuilderProps {
   // Configuration data
   courses?: Array<{ id: string; value: string; label: string; code: string; name: string; credits?: number; type?: string }>;
   departments?: Array<{ id: string; name: string }>;
-  programs?: Array<{ id: string; name: string }>;
+  programs?: Array<{ id: string; name: string; code?: string; specializations?: unknown }>;
   semesters?: string[];
   academicYears?: string[];
   // Data

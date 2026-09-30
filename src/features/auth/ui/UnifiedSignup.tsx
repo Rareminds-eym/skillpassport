@@ -29,7 +29,7 @@ import { sendOtp, verifyOtp as verifyOtpApi } from '@/features/auth/api/otpServi
 import { DatePicker } from '@/features/subscription';
 import { ssoClient } from '@/shared/api/ssoClient';
 import { PASSWORD_MIN } from '@/shared/constants';
-import { isLocalhost } from '@/shared/lib';
+import { isDevelopment, isLocalhost } from '@/shared/lib';
 import { trackSignup } from '@/shared/lib/analytics';
 import { useAuthStore } from '@/shared/model/authStore';
 import { OtpInput } from '@/shared/ui';
@@ -305,7 +305,7 @@ const UnifiedSignup = () => {
   const [searchParams] = useSearchParams();
 
   // Check if running on localhost using utility function
-  const isDevEnvironment = isLocalhost();
+  const isDevEnvironment = isLocalhost() || isDevelopment();
 
   // Get plan context from location.state (if user selected a plan before signing up)
   const planFromState = (location.state as any)?.plan;

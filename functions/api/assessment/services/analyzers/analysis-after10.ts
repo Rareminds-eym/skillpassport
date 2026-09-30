@@ -188,39 +188,13 @@ export async function analyzeAfter10(
       const fetched = await tryFetchAdaptiveResults(supabase, resolvedSessionId);
 
       if (fetched && !fetched.results) {
-        const { data: completedSession } = await supabase
-          .from('adaptive_aptitude_sessions')
-          .select('id, questions_answered, current_difficulty')
-          .eq('learner_id', learnerId)
-          .eq('status', 'completed')
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        if (completedSession && completedSession.id !== resolvedSessionId) {
-          resolvedSessionId = completedSession.id;
-          const fallback = await tryFetchAdaptiveResults(supabase, resolvedSessionId);
-          if (fallback?.results) {
-            adaptiveData = {
-              questionsAnswered: fallback.session.questions_answered,
-              difficulty: fallback.session.current_difficulty,
-              aptitudeLevel: fallback.results.aptitude_level ?? null,
-              confidenceTag: fallback.results.confidence_tag ?? null,
-              tier: fallback.results.tier ?? null,
-              totalQuestions: fallback.results.total_questions ?? null,
-              totalCorrect: fallback.results.total_correct ?? null,
-              overallAccuracy: fallback.results.overall_accuracy ?? null,
-              accuracyByDifficulty: fallback.results.accuracy_by_difficulty ?? null,
-              accuracyBySubtag: fallback.results.accuracy_by_subtag ?? null,
-              pathClassification: fallback.results.path_classification ?? null,
-              averageResponseTimeMs: fallback.results.average_response_time_ms ?? null,
-            };
-            if (fallback.results.overall_accuracy != null) {
-              aptitudeOverall = parseFloat(fallback.results.overall_accuracy);
-            }
-          }
-        }
-      } else if (fetched?.results) {
+        // FIX: Do NOT swap to another learner session (data corruption — cross-attempt FK hijack).
+        // Session exists but has no results → treat as no adaptive data.
+        // Previous behavior mutated resolvedSessionId to newest completed session; removed per heal audit H9.
+        const { createLogger: _logAssess } = await import('../../../../lib/logger');
+        _logAssess('assessment').warn('Adaptive session has no results, skipping swap (heal disabled)', { attemptId, learnerId, resolvedSessionId });
+      }
+      if (fetched?.results) {
         adaptiveData = {
           questionsAnswered: fetched.session.questions_answered,
           difficulty: fetched.session.current_difficulty,

@@ -6,6 +6,7 @@
  */
 
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import type { RIASECScores, AdaptiveAptitudeData, StudentProfile } from '../../types';
 import { getTopCategories, getTopScores } from '../../lib/analysis-helpers';
 import { generateCollegeCareerClusters } from '../core/career-cluster-generator';
@@ -35,23 +36,77 @@ interface StreamMcqScores {
   knowledgeDetails: any | null;            // { score, correctCount, totalQuestions, byTopic, strongTopics, weakTopics, recommendation }
 }
 
+interface QuestionMetadata {
+  id: string;
+  section_id: string | null;
+  category_mapping: Record<string, unknown> | null;
+  metadata: Record<string, unknown> | null;
+  question_type: string | null;
+  question_text: string | null;
+  correct_answer: unknown;
+}
+
+type QuestionMetadataError = {
+  message?: string;
+  failedChunk?: number;
+  failedQuestionIds?: string[];
+};
+
+async function fetchQuestionMetadataByIds(
+  supabase: SupabaseClient,
+  questionIds: string[],
+  chunkSize = 50
+): Promise<{ questions: QuestionMetadata[]; error: QuestionMetadataError | null }> {
+  const questions: QuestionMetadata[] = [];
+
+  for (let index = 0; index < questionIds.length; index += chunkSize) {
+    const ids = questionIds.slice(index, index + chunkSize);
+    const { data, error } = await supabase
+      .from('personal_assessment_questions')
+      .select('id, section_id, category_mapping, metadata, question_type, question_text, correct_answer')
+      .in('id', ids);
+
+    if (error) {
+      return {
+        questions,
+        error: {
+          ...error,
+          failedChunk: Math.floor(index / chunkSize),
+          failedQuestionIds: ids,
+        },
+      };
+    }
+
+    questions.push(...((data || []) as QuestionMetadata[]));
+  }
+
+  return { questions, error: null };
+}
+
 /**
  * Score the AI-generated stream MCQ answers (aptitude + knowledge). These questions live in
  * career_assessment_ai_questions (questions JSONB array); each has an id/uuid that matches a
  * key in all_responses, and a `correct_answer` (option TEXT) to compare the stored answer to.
+ *
+ * Shared canonical question set: identity is (stream_id, grade_level), not learner_id -
+ * canonical rows are written with learner_id = NULL (see get_or_create_shared_questions()),
+ * so a learner reusing a set they did not personally generate must be looked up by
+ * stream_id + grade_level, or their score would silently compute as 0.
  *
  * Aptitude: overall % + byDifficulty breakdown (difficulty is reliable; category is AI-mislabeled,
  * so it is intentionally NOT bucketed). Knowledge: overall %.
  */
 async function scoreStreamMcq(
   supabase: any,
-  learnerId: string,
+  streamId: string,
+  gradeLevel: string,
   allResponses: Record<string, any>
 ): Promise<StreamMcqScores> {
   const { data: sets } = await supabase
     .from('career_assessment_ai_questions')
     .select('question_type, questions')
-    .eq('learner_id', learnerId)
+    .eq('stream_id', streamId)
+    .eq('grade_level', gradeLevel)
     .eq('is_active', true);
 
   const apt = { correct: 0, total: 0, byDiff: {} as Record<string, { correct: number; total: number }> };
@@ -185,11 +240,9 @@ export async function analyzeCollege(
       return Response.json({ error: 'No responses found in attempt' }, { status: 400 });
     }
 
-    // Step 2: Fetch all question metadata (BATCH QUERY - optimized)
-    const { data: questions, error: questionsError } = await supabase
-      .from('personal_assessment_questions')
-      .select('id, section_id, category_mapping, metadata, question_type, question_text, correct_answer')
-      .in('id', questionUUIDs);
+    // Step 2: Fetch question metadata in chunks. Supabase/PostgREST encodes
+    // .in() filters into the URL, and migrated attempts can have 200+ answers.
+    const { questions, error: questionsError } = await fetchQuestionMetadataByIds(supabase, questionUUIDs);
 
     if (questionsError) {
       return Response.json(
@@ -426,59 +479,29 @@ export async function analyzeCollege(
     if (resolvedSessionId) {
       const fetched = await tryFetchAdaptiveResults(supabase, resolvedSessionId);
 
-      // If linked session has no results, find the latest completed session for this learner
       if (fetched && !fetched.results) {
-        const { data: completedSession } = await supabase
-          .from('adaptive_aptitude_sessions')
-          .select('id, questions_answered, current_difficulty')
-          .eq('learner_id', learnerId)
-          .eq('status', 'completed')
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        if (completedSession && completedSession.id !== resolvedSessionId) {
-          resolvedSessionId = completedSession.id;
-          const fallback = await tryFetchAdaptiveResults(supabase, resolvedSessionId);
-          if (fallback) {
-            adaptiveData = {
-              questionsAnswered: fallback.session.questions_answered,
-              difficulty: fallback.session.current_difficulty,
-              aptitudeLevel: fallback.results?.aptitude_level ?? null,
-              confidenceTag: fallback.results?.confidence_tag ?? null,
-              tier: fallback.results?.tier ?? null,
-              totalQuestions: fallback.results?.total_questions ?? null,
-              totalCorrect: fallback.results?.total_correct ?? null,
-              overallAccuracy: fallback.results?.overall_accuracy ?? null,
-              accuracyByDifficulty: fallback.results?.accuracy_by_difficulty ?? null,
-              accuracyBySubtag: fallback.results?.accuracy_by_subtag ?? null,
-              pathClassification: fallback.results?.path_classification ?? null,
-              averageResponseTimeMs: fallback.results?.average_response_time_ms ?? null,
-            };
-            if (fallback.results?.overall_accuracy != null) {
-              const parsed = parseFloat(String(fallback.results.overall_accuracy));
-              aptitudeOverall = !isNaN(parsed) ? parsed : null;
-            }
-          }
-        }
-      } else if (fetched) {
+        // FIX: Do NOT swap to another learner session (data corruption — cross-attempt FK hijack). Treat as no adaptive data.
+        const { createLogger: _logAssess } = await import('../../../../lib/logger');
+        _logAssess('assessment').warn('Adaptive session has no results, skipping swap', { attemptId, learnerId, resolvedSessionId });
+      }
+      if (fetched?.results) {
         adaptiveData = {
           questionsAnswered: fetched.session.questions_answered,
           difficulty: fetched.session.current_difficulty,
-          aptitudeLevel: fetched.results?.aptitude_level ?? null,
-          confidenceTag: fetched.results?.confidence_tag ?? null,
-          tier: fetched.results?.tier ?? null,
-          totalQuestions: fetched.results?.total_questions ?? null,
-          totalCorrect: fetched.results?.total_correct ?? null,
-          overallAccuracy: fetched.results?.overall_accuracy ?? null,
-          accuracyByDifficulty: fetched.results?.accuracy_by_difficulty ?? null,
-          accuracyBySubtag: fetched.results?.accuracy_by_subtag ?? null,
-          pathClassification: fetched.results?.path_classification ?? null,
-          averageResponseTimeMs: fetched.results?.average_response_time_ms ?? null,
+          aptitudeLevel: fetched.results.aptitude_level ?? null,
+          confidenceTag: fetched.results.confidence_tag ?? null,
+          tier: fetched.results.tier ?? null,
+          totalQuestions: fetched.results.total_questions ?? null,
+          totalCorrect: fetched.results.total_correct ?? null,
+          overallAccuracy: fetched.results.overall_accuracy ?? null,
+          accuracyByDifficulty: fetched.results.accuracy_by_difficulty ?? null,
+          accuracyBySubtag: fetched.results.accuracy_by_subtag ?? null,
+          pathClassification: fetched.results.path_classification ?? null,
+          averageResponseTimeMs: fetched.results.average_response_time_ms ?? null,
         };
-        if (fetched.results?.overall_accuracy != null) {
+        if (fetched.results.overall_accuracy != null) {
           const parsed = parseFloat(String(fetched.results.overall_accuracy));
-          aptitudeOverall = !isNaN(parsed) ? parsed : null;
+          aptitudeOverall = !Number.isNaN(parsed) ? parsed : null;
         }
       }
     }
@@ -486,7 +509,7 @@ export async function analyzeCollege(
     // Step 13b: Score AI-generated stream MCQ (aptitude + knowledge). These are the real
     // stream aptitude/knowledge scores; the section-based aptitude/knowledgePercentage above
     // are ~null for college (those questions are AI-generated, not in the sections table).
-    const streamMcq = await scoreStreamMcq(supabase, learnerId, allResponses);
+    const streamMcq = await scoreStreamMcq(supabase, attempt.stream_id, attempt.grade_level, allResponses);
     const effectiveKnowledgeScore = streamMcq.knowledgeScore ?? knowledgePercentage;
 
     // Step 13b2: Generate aptitude insights from adaptive test (accuracyBySubtag + accuracyByDifficulty).

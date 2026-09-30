@@ -16,14 +16,14 @@ import {
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 import {
-  IconBrandFacebook,
-  IconBrandGithub,
-  IconBrandInstagram,
-  IconBrandLinkedin,
-  IconBrandTwitter,
-  IconBrandYoutube,
-  IconWorld,
-} from "@tabler/icons-react";
+  Facebook as IconBrandFacebook,
+  Github as IconBrandGithub,
+  Instagram as IconBrandInstagram,
+  Linkedin as IconBrandLinkedin,
+  Twitter as IconBrandTwitter,
+  Youtube as IconBrandYoutube,
+  Globe as IconWorld,
+} from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { FileText, Rocket, Sprout, Star, Wrench } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
@@ -31,7 +31,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { apiPost } from '@/shared/api/apiClient';
-import { generateBadges } from "@/features/digital-portfolio";
+import { generateBadges } from "@/features/digital-portfolio/api/badgeService";
 import {
   calculateEmployabilityScore,
   getDefaultEmployabilityScore,
@@ -1012,7 +1012,7 @@ const ProfileHeroEdit = ({ onEditClick, learnerData: propLearnerData, loading: p
                       )}
                       {reallearnerData.branch_field && (
                         <span className="inline-flex items-center gap-1 px-2 sm:px-3 py-1 bg-white rounded-full text-xs font-medium text-gray-700 shadow-sm">
-                          <span className="text-gray-500">Program:</span> {reallearnerData.branch_field}
+                          <span className="text-gray-500">Program:</span> {reallearnerData.branch_field}{reallearnerData.specialization ? ` - ${reallearnerData.specialization}` : ''}
                         </span>
                       )}
                       {reallearnerData.section && (

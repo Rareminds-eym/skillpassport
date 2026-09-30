@@ -29,6 +29,7 @@ import { Pagination } from '@/shared/ui';
 import { FileTextIcon } from "lucide-react";
 import { uploadFile, validateFile, deleteFile, getDocumentUrl } from '@/shared/api/fileUploadService';
 import { getLogger } from '@/shared/config/logging';
+import { formatProgramLabel } from '@/shared/lib';
 
 const logger = getLogger('college-admin:CollegeLessonPlanUI');
 import type { CollegeLessonPlan } from '@/features/college-admin';
@@ -1745,7 +1746,7 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
                   {filterOptions.programs.length > 0 ? (
                     filterOptions.programs.map((program) => (
                       <option key={program.id} value={program.id}>
-                        {program.name}
+                        {formatProgramLabel(program.name, program)}
                       </option>
                     ))
                   ) : (

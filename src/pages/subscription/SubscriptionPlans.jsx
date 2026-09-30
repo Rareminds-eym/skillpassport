@@ -1,3 +1,5 @@
+import HybridPlanCard from '@/features/subscription/ui/organization/HybridPlanCard';
+import { isHybridPlan } from '@/features/subscription/lib/hybridPlan';
 import { useSubscriptionPlansData } from '@/features/subscription/model';
 import { AddOnMarketplace, OrganizationPurchasePanel } from '@/features/subscription/ui';
 import { ssoClient } from '@/shared/api/ssoClient';
@@ -259,6 +261,7 @@ const getFeatureComparison = (plans) => {
 
 // Feature Comparison Table Component
 const FeatureComparisonTable = memo(({ plans }) => {
+  const columnCount = plans.length;
   const [showComparison, setShowComparison] = useState(true);
   const [expandedCategories, setExpandedCategories] = useState({
     'Essentials': true,
@@ -327,9 +330,9 @@ const FeatureComparisonTable = memo(({ plans }) => {
         </button>
       </div>
 
-      <div className="bg-white rounded-3xl border-2 border-slate-200 overflow-hidden shadow-2xl">
+      <div className="bg-white rounded-3xl border-2 border-slate-200 overflow-x-auto shadow-2xl">
         {/* Header */}
-        <div className={`grid bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white relative`} style={{ gridTemplateColumns: `minmax(250px, 1fr) repeat(${plans.length}, minmax(150px, 1fr))` }}>
+        <div className={`grid bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white relative`} style={{ gridTemplateColumns: `minmax(250px, 1fr) repeat(${columnCount}, minmax(150px, 1fr))` }}>
           <div className="absolute inset-0 opacity-[0.03]" style={{
             backgroundImage: `repeating-linear-gradient(45deg, transparent, transparent 35px, rgba(255,255,255,.5) 35px, rgba(255,255,255,.5) 36px)`
           }}></div>
@@ -338,7 +341,7 @@ const FeatureComparisonTable = memo(({ plans }) => {
           <div className="relative p-8 font-normal text-xl" style={{ fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>Features</div>
           {plans.map((plan) => (
             <div key={plan.id} className="relative p-8 text-center border-l border-white/10">
-              <div className="font-semibold text-xl mb-2" style={{ fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>{plan.name}</div>
+              <div className="font-semibold text-xl mb-2 capitalize" style={{ fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>{plan.display_name || plan.name}</div>
               {plan.hidePrice ? (
                 <div className="hidden">
                   ₹{parseInt(plan.price).toLocaleString()}/{plan.duration}
@@ -378,14 +381,14 @@ const FeatureComparisonTable = memo(({ plans }) => {
                   <div
                     key={feature}
                     className={`grid hover:bg-slate-50 transition-colors ${featureIndex % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}`}
-                    style={{ gridTemplateColumns: `minmax(250px, 1fr) repeat(${plans.length}, minmax(150px, 1fr))` }}
+                    style={{ gridTemplateColumns: `minmax(250px, 1fr) repeat(${columnCount}, minmax(150px, 1fr))` }}
                   >
                     <div className="p-6 text-sm text-slate-700 font-medium flex items-center">
                       <span>{feature}</span>
                     </div>
                     {values.slice(0, plans.length).map((value, index) => (
                       <div key={index} className="p-6 text-center flex items-center justify-center border-l border-slate-100">
-                        {renderValue(value)}
+                        {plans[index]?.contactSales ? 'Tailored with sales' : renderValue(value)}
                       </div>
                     ))}
                   </div>
@@ -512,22 +515,22 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
       {/* Badges */}
       {isCurrentPlan && (
         <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
-          <span className="bg-gradient-to-r from-emerald-500 to-emerald-600 text-white px-5 py-2 rounded-full text-sm font-bold flex items-center gap-2 shadow-xl">
-            <Shield className="h-4 w-4" /> Active Plan
+          <span className="bg-gradient-to-r from-emerald-500 to-emerald-600 text-white px-5 py-2 rounded-full text-sm font-bold flex items-center gap-2 shadow-xl whitespace-nowrap">
+            <Shield className="h-4 w-4 flex-shrink-0" /> Active Plan
           </span>
         </div>
       )}
       {!isCurrentPlan && !effectiveDisabled && !hardPromoDisabled && plan.recommended && (
         <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
-          <span className="bg-gradient-to-r from-purple-600 to-purple-700 text-white px-5 py-2 rounded-full text-sm font-bold shadow-xl">
+          <span className="bg-gradient-to-r from-purple-600 to-purple-700 text-white px-5 py-2 rounded-full text-sm font-bold shadow-xl whitespace-nowrap">
             Most Popular
           </span>
         </div>
       )}
       {isOrganizationMode && !isCurrentPlan && (
         <div className="absolute -top-4 right-6 z-10">
-          <span className="bg-gradient-to-r from-purple-600 to-purple-700 text-white px-4 py-2 rounded-full text-xs font-bold flex items-center gap-1.5 shadow-xl">
-            <Building2 className="h-3.5 w-3.5" /> Bulk
+          <span className="bg-gradient-to-r from-purple-600 to-purple-700 text-white px-4 py-2 rounded-full text-xs font-bold flex items-center gap-1.5 shadow-xl whitespace-nowrap">
+            <Building2 className="h-3.5 w-3.5 flex-shrink-0" /> Bulk
           </span>
         </div>
       )}
@@ -679,7 +682,7 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
             </>
           ) : isContactSales ? (
             <a
-              href="mailto:sales@skillpassport.in?subject=Enterprise%20Plan%20Inquiry"
+              href={`mailto:${plan.salesEmail || 'marketing@rareminds.in'}?subject=${encodeURIComponent(`${plan.display_name || plan.name || 'Enterprise'} Plan Inquiry`)}`}
               className="w-full py-4 px-4 rounded-2xl font-semibold bg-black text-white hover:bg-gray-900 transition-all shadow-lg hover:shadow-xl hover:scale-105 flex items-center justify-center gap-2"
             >
               Contact Sales
@@ -843,10 +846,8 @@ function SubscriptionPlans() {
     () => plans.some((plan) => Boolean(plan.hidePrice)),
     [plans]
   );
-  const visiblePlans = useMemo(
-    () => plans,
-    [plans]
-  );
+  const visiblePlans = plans;
+  const showHybrid = visiblePlans.some(plan => isHybridPlan(plan) && plan.contactSales);
   const isPlanDisabled = useCallback(
     (plan) => {
       const planCode = getPlanCode(plan);
@@ -1491,8 +1492,14 @@ function SubscriptionPlans() {
             )}
 
             {/* Plans Grid - responsive columns based on plan count */}
-            <div className={`grid md:grid-cols-2 gap-6 ${visiblePlans.length === 3 ? 'lg:grid-cols-3' : visiblePlans.length >= 4 ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}`}>
-              {visiblePlans.map((plan, index) => (
+            <div className={`grid md:grid-cols-2 gap-6 ${visiblePlans.length >= 4 ? 'xl:grid-cols-4' : 'lg:grid-cols-3'}`}>
+              {visiblePlans.map((plan, index) => isHybridPlan(plan) && plan.contactSales ? (
+                <HybridPlanCard key={plan.id} plan={plan}
+                  organizationName={user?.school_name || user?.college_name || user?.university_name}
+                  contactEmail={user?.email}
+                  contactPhone={user?.phone || user?.phone_number || user?.mobile}
+                />
+              ) : (
                 <PlanCard
                   key={plan.id}
                   plan={plan}
@@ -1513,7 +1520,7 @@ function SubscriptionPlans() {
 
             {/* Trust Indicators */}
             <div className="mt-16 flex flex-wrap items-center justify-center gap-12 text-slate-600">
-              {['Secure Payments', '24/7 Support', 'Cancel Anytime'].map((item) => (
+              {(showHybrid ? ['Secure Payments', 'Agreed Support Options', 'Flexible Plan Choices'] : ['Secure Payments', '24/7 Support', 'Cancel Anytime']).map((item) => (
                 <div key={item} className="flex items-center gap-3 group">
                   <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-blue-500 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
                     <Check className="h-4 w-4 text-white" strokeWidth={3} />

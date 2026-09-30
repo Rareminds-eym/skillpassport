@@ -1,5 +1,6 @@
 import { withAuth, getContextUser } from '../../lib/auth';
 import { getServiceClient } from '../../lib/supabase';
+import { hasFeatureEntitlement } from '../../lib/entitlements';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { apiSuccess, apiDbError, apiError, apiMethodNotAllowed } from '../../lib/response';
 
@@ -7,6 +8,12 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const user = getContextUser(context);
   const env = context.env as Record<string, string>;
   const supabase = getServiceClient(env as any);
+
+  //Feature Gate: Lock Curriculum Changes
+  const isEntitled = await hasFeatureEntitlement(supabase, user.id, 'curriculum_builder');
+  if (!isEntitled) {
+    return apiError(403, 'FEATURE_ACCESS_DENIED', 'Curriculum Builder requires an active plan or Curriculum Builder add-on.', context.request);
+  }
 
   let body: Record<string, any>;
   try {

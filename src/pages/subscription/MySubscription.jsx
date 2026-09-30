@@ -32,6 +32,7 @@ import {
   deactivateSubscription, 
   formatDate, 
   getSubscriptionStatusChecks, 
+  MemberSubscriptionView,
   pauseSubscription, 
   resumeSubscription, 
   SubscriptionDashboard, 
@@ -102,7 +103,6 @@ function getUserTypeFromUrl(pathname) {
   return 'learner'; // fallback
 }
 
-// Removed FALLBACK_PLANS as per requirement to use DB data only
 
 function MySubscription() {
   const navigate = useNavigate();
@@ -121,6 +121,8 @@ function MySubscription() {
   const settingsPath = useMemo(() => getSettingsPathFromUrl(location.pathname), [location.pathname]);
   const dashboardPath = useMemo(() => getDashboardPathFromUrl(location.pathname), [location.pathname]);
   const userType = useMemo(() => getUserTypeFromUrl(location.pathname), [location.pathname]);
+
+  const isOrganizationLearner = Boolean(subscriptionData?.isOrganizationLicense);
 
   // Tab state - 'subscription' or 'addons'
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'subscription');
@@ -329,12 +331,13 @@ function MySubscription() {
       return;
     }
 
-    const isValidPresignedUrl = (url) => {
+    const isValidReceiptDownloadUrl = (url) => {
       if (!url || typeof url !== 'string') return false;
       
       try {
         const parsedUrl = new URL(url);
-        return parsedUrl.protocol === 'https:' && Boolean(parsedUrl.hostname);
+        const isLocalhost = parsedUrl.hostname === 'localhost' || parsedUrl.hostname === '127.0.0.1';
+        return Boolean(parsedUrl.hostname) && (parsedUrl.protocol === 'https:' || (isLocalhost && parsedUrl.protocol === 'http:'));
       } catch {
         return false;
       }
@@ -362,16 +365,16 @@ function MySubscription() {
           : '';
       
       if (receiptUrl) {
-        // receipt_url is the R2 key, not a presigned URL - need to get presigned URL
-        const presignedUrl = await getPaymentReceiptPresignedUrl(receiptUrl, 3600);
+        // receipt_url is the R2 key, so request an authenticated download URL.
+        const receiptDownloadUrl = await getPaymentReceiptPresignedUrl(receiptUrl, 3600);
         
-        if (!isValidPresignedUrl(presignedUrl)) {
+        if (!isValidReceiptDownloadUrl(receiptDownloadUrl)) {
           errorOccurred = true;
           errorMessage = 'Failed to generate download link. Please try again.';
         } else {
           // Use shared download helper with fallback mechanism
           try {
-            await downloadFileFromUrl(presignedUrl, generateReceiptFilename());
+            await downloadFileFromUrl(receiptDownloadUrl, generateReceiptFilename());
             successfulDownload = true;
           } catch (downloadError) {
             logger.error('Download failed', downloadError);
@@ -418,17 +421,17 @@ function MySubscription() {
           // The backend will handle key extraction from payment ID
           const fileIdentifier = `payment_pdf/user_${userPrefix}/${sanitizedPaymentId}`;
           
-          // Get presigned URL for the receipt
-          const presignedUrl = await getPaymentReceiptPresignedUrl(fileIdentifier, 3600);
+          // Get authenticated download URL for the receipt.
+          const receiptDownloadUrl = await getPaymentReceiptPresignedUrl(fileIdentifier, 3600);
           
-          if (!isValidPresignedUrl(presignedUrl)) {
-            logger.error('Invalid presigned URL received', new Error('Invalid URL'));
+          if (!isValidReceiptDownloadUrl(receiptDownloadUrl)) {
+            logger.error('Invalid receipt download URL received', new Error('Invalid URL'));
             errorOccurred = true;
             errorMessage = 'Failed to generate download link. Receipt may not exist.';
           } else {
             // Use shared download helper with fallback mechanism
             try {
-              await downloadFileFromUrl(presignedUrl, generateReceiptFilename());
+              await downloadFileFromUrl(receiptDownloadUrl, generateReceiptFilename());
               successfulDownload = true;
             } catch (downloadError) {
               logger.error('Download failed', downloadError);
@@ -777,6 +780,53 @@ function MySubscription() {
               View Plans
             </button>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isOrganizationLearner) {
+    const orgName = subscriptionData?.organizationName;
+    const orgEmail = subscriptionData?.organizationEmail;
+    const orgPhone = subscriptionData?.organizationPhone;
+    const planTitle = subscriptionData?.planName;
+    const endDate = subscriptionData?.endDate;
+    const startDate = subscriptionData?.startDate;
+
+    return (
+      <div className="min-h-screen bg-slate-50 py-8">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="mb-6 flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">My Subscription</h1>
+              <p className="text-gray-500 mt-1">Your active access{orgName ? ` provided by ${orgName}` : ''}</p>
+            </div>
+            <button
+              onClick={() => navigate(dashboardPath)}
+              className="px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors shadow-sm"
+            >
+              Back to Dashboard
+            </button>
+          </div>
+
+          <MemberSubscriptionView
+            hasOrganizationSubscription={true}
+            learnerName={user?.full_name}
+            organization={{
+              id: subscriptionData?.organizationId,
+              name: orgName,
+              email: orgEmail,
+              phone: orgPhone,
+              type: subscriptionData?.organizationType,
+            }}
+            subscription={{
+              planName: planTitle,
+              startDate: startDate,
+              endDate: endDate,
+              status: subscriptionData?.status || 'active',
+              autoRenew: false,
+            }}
+          />
         </div>
       </div>
     );

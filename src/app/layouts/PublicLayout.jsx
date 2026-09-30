@@ -4,14 +4,14 @@ import PromotionalBanner from '@/shared/ui/marketing/PromotionalBanner';
 import AssessmentPromotionalBanner from '@/shared/ui/marketing/AssessmentPromotionalBanner';
 
 
-import { isActiveOrPaused } from '@/features/subscription';
+import { isActiveOrPaused } from '@/features/subscription/lib/subscriptionHelpers';
 
 // Import role-specific headers
-import { Header as LearnerHeader } from '@/widgets/learner-dashboard';
-import { Header as EducatorHeader } from '@/features/educator';
-import { Header as AdminHeader } from '@/widgets/admin-navigation';
-import { Header as RecruiterHeader } from '@/features/recruiter-pipeline';
-import { SubscriptionPurchaseHeader } from '@/features/subscription';
+import LearnerHeader from '@/widgets/learner-dashboard/ui/Header';
+import EducatorHeader from '@/features/educator/ui/Header';
+import AdminHeader from '@/features/admin/ui/Header';
+import RecruiterHeader from '@/features/recruiter-pipeline/ui/Header';
+import SubscriptionPurchaseHeader from '@/features/subscription/ui/SubscriptionPurchaseHeader';
 import { useState } from 'react';
 
 import { useAssessmentPromotional, useCurrentPromotional } from '@/features/promotional/model/promotionalStore';

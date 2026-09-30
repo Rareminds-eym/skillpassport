@@ -33,11 +33,21 @@ export const OrganizationUpdatedSchema = z.object({
 });
 export type OrganizationUpdatedData = z.infer<typeof OrganizationUpdatedSchema>;
 
+export const OrganizationDeletedSchema = z.object({
+  id: z.string(),
+  hard: z.boolean().optional(),
+  deleted_by: z.string().optional(),
+});
+export type OrganizationDeletedData = z.infer<typeof OrganizationDeletedSchema>;
+
 export const MembershipPayloadSchema = z.object({
   user_id: z.string(),
   organization_id: z.string(),
   roles: z.array(z.string()).optional(),
   status: z.string().optional(),
+  // Learner profile keyed by `learners` column names, sent by SSO bulk
+  // import so the shadow learners row carries every Settings-displayed field.
+  learner_profile: z.record(z.string(), z.unknown()).optional(),
 });
 export type MembershipPayloadData = z.infer<typeof MembershipPayloadSchema>;
 
@@ -54,10 +64,10 @@ export const SubscriptionCreatedSchema = z.object({
   plan_id: z.string().optional(),
   plan_code: z.string(),
   plan_type: z.string().optional(),
-  plan_amount: z.number().optional(),
+  plan_amount: z.coerce.number().optional(),
   billing_cycle: z.string().optional(),
-  seat_count: z.number().optional(),
-  assigned_seats: z.number().optional(),
+  seat_count: z.coerce.number().optional(),
+  assigned_seats: z.coerce.number().optional(),
   features: z.union([z.array(z.unknown()), z.string()]).optional(),
   status: z.string().optional(),
   subscription_start_date: z.string().optional(),
@@ -75,10 +85,10 @@ export const SubscriptionUpdatedSchema = z.object({
   plan_id: z.string().optional(),
   plan_code: z.string().optional(),
   plan_type: z.string().optional(),
-  plan_amount: z.number().optional(),
+  plan_amount: z.coerce.number().optional(),
   billing_cycle: z.string().optional(),
-  seat_count: z.number().optional(),
-  assigned_seats: z.number().optional(),
+  seat_count: z.coerce.number().optional(),
+  assigned_seats: z.coerce.number().optional(),
   features: z.union([z.array(z.unknown()), z.string()]).optional(),
   status: z.string().optional(),
   subscription_start_date: z.string().optional(),

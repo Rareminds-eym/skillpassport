@@ -1,0 +1,49 @@
+{
+  "version": "1.0.0",
+  "backup_id": "backup_20260918_075625",
+  "project_ref": "dpooleduinyyzxgrcwko",
+  "timestamp_utc": "2026-09-18T07:58:09.838487+00:00",
+  "timestamp_local": "2026-09-18T13:28:09.838523",
+  "mode": "all",
+  "total_elapsed_seconds": 104.42,
+  "environment": {
+    "os": "linux",
+    "python_version": "3.13.7",
+    "cli_version": "2.104.0",
+    "git_branch": "perf/vite-build-optimization",
+    "git_commit": "2f727f0cb4fc880dbc48868f778ea25f7e1275f3",
+    "git_author": "gokulrajrz <rajgokul9847161393@gmail.com>"
+  },
+  "artifacts": {
+    "migration_schema.sql": {
+      "filename": "migration_schema.sql",
+      "path": "/mnt/E230EB0F30EAEA0D/Rareminds/skill-echosystem/skillpassport/supabase/backups/backup_20260918_075625/migration_schema.sql",
+      "bytes": 1354672,
+      "human_size": "1.29 MB",
+      "lines": 37895,
+      "sha256": "bf70d6a4c2e7a8e3b9ac52e79b53cf436e12d27e994474d87a5709d4b684ee56",
+      "elapsed_seconds": 51.4,
+      "compressed": null
+    },
+    "roles.sql": {
+      "filename": "roles.sql",
+      "path": "/mnt/E230EB0F30EAEA0D/Rareminds/skill-echosystem/skillpassport/supabase/backups/backup_20260918_075625/roles.sql",
+      "bytes": 297,
+      "human_size": "297.00 B",
+      "lines": 13,
+      "sha256": "25873cec56a2cc6514e204f420231777f85c03da818caa7090cdcdfa89776ecd",
+      "elapsed_seconds": 7.8,
+      "compressed": null
+    },
+    "seed_data.sql": {
+      "filename": "seed_data.sql",
+      "path": "/mnt/E230EB0F30EAEA0D/Rareminds/skill-echosystem/skillpassport/supabase/backups/backup_20260918_075625/seed_data.sql",
+      "bytes": 76634861,
+      "human_size": "73.08 MB",
+      "lines": 29445,
+      "sha256": "989a3458debb82308d304c001a7bd0967313ca21eaba953562d0fb47187c174e",
+      "elapsed_seconds": 44.52,
+      "compressed": null
+    }
+  }
+}

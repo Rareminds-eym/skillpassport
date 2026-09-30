@@ -112,15 +112,15 @@ export class OrganizationMemberService {
       const poolMap = r?.poolMap || {};
       const assignmentMap = new Map<string, any>();
       (r?.assignments || []).forEach((assignment: any) => {
-        if (poolMap[assignment.license_pool_id]) {
-          assignmentMap.set(assignment.user_id, {
-            ...assignment, pool_name: poolMap[assignment.license_pool_id],
-          });
-        }
+        const poolName = (assignment.license_pool_id && poolMap[assignment.license_pool_id]) || 'Organization License';
+        assignmentMap.set(assignment.user_id, {
+          ...assignment,
+          pool_name: poolName,
+        });
       });
 
       members.forEach(member => {
-        const assignment = assignmentMap.get(member.userId);
+        const assignment = assignmentMap.get(member.userId) || assignmentMap.get(member.id);
         if (assignment) {
           member.hasLicense = true;
           member.assignedAt = assignment.assigned_at;

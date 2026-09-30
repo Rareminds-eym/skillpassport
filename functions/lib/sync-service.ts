@@ -1,21 +1,23 @@
-import { createDb, type DbClient } from './db';
-import { mapRolesToOrgMemberRole, LEARNER_SSO_ROLES } from './role-mapper';
-import type { PagesEnv } from './types';
 import { z } from 'zod';
+import { createDb, type DbClient } from './db';
+import { LEARNER_SSO_ROLES, mapRolesToOrgMemberRole } from './role-mapper';
 import {
+  FacultyCreatedSchema,
+  MembershipPayloadSchema,
+  MembershipRemovedSchema,
+  OrganizationCreatedSchema,
+  OrganizationDeletedSchema,
+  OrganizationUpdatedSchema,
+  SubscriptionCancelledSchema,
+  SubscriptionCreatedSchema,
+  SubscriptionUpdatedSchema,
   UserCreatedSchema,
   UserDeletedSchema,
   UserEmailVerifiedSchema,
-  OrganizationCreatedSchema,
-  OrganizationUpdatedSchema,
-  MembershipPayloadSchema,
-  type MembershipPayloadData,
-  MembershipRemovedSchema,
-  SubscriptionCreatedSchema,
-  SubscriptionUpdatedSchema,
-  SubscriptionCancelledSchema,
-  FacultyCreatedSchema,
+  type MembershipPayloadData
 } from './sync-schemas';
+import { syncUserShadow } from './sync-shadow';
+import type { PagesEnv } from './types';
 
 export type SyncResult =
   | { success: true }
@@ -36,6 +38,85 @@ function safeParseJSON(value: string, fallback: unknown[]): unknown[] {
   } catch {
     return fallback;
   }
+}
+
+/** DD-MM-YYYY / DD/MM/YYYY / YYYY-MM-DD → YYYY-MM-DD for date-typed columns. */
+function toISODate(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+  const match = trimmed.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})$/);
+  if (match) {
+    const [, day, month, year] = match;
+    const iso = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    const date = new Date(iso);
+    if (date.getFullYear() === Number(year) && date.getMonth() === Number(month) - 1 && date.getDate() === Number(day)) {
+      return iso;
+    }
+  }
+  return undefined;
+}
+
+function truncate(value: unknown, max: number): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  return trimmed.length > max ? trimmed.substring(0, max) : trimmed;
+}
+
+function isUUID(value: unknown): value is string {
+  return typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+}
+
+/**
+ * Map an SSO `learner_profile` payload to `learners` table columns — the same
+ * column reference the learner Settings page reads/writes
+ * (learnerSettingsService.js `fieldMapping`: phone→contactNumber,
+ * alternatePhone→alternate_number, registrationNumber→registration_number,
+ * enrollmentNumber→enrollmentNumber, rollNumber→roll_number, guardian*→guardian*,
+ * bloodGroup→bloodGroup, dateOfBirth→dateOfBirth, ...). Unknown keys are
+ * dropped; length/date/uuid guards mirror the column definitions so a bad
+ * CSV cell can never fail the sync insert.
+ */
+export function mapLearnerProfileToColumns(profile: Record<string, unknown> | undefined): Record<string, unknown> {
+  if (!profile || typeof profile !== 'object') return {};
+  const columns: Record<string, unknown> = {};
+  const set = (column: string, value: unknown) => {
+    if (value !== undefined && value !== null && value !== '') {
+      columns[column] = value;
+    }
+  };
+  set('contactNumber', truncate(profile.contactNumber, 20));
+  set('alternate_number', truncate(profile.alternate_number, 20));
+  set('dateOfBirth', toISODate(profile.dateOfBirth));
+  set('gender', truncate(profile.gender, 20));
+  set('enrollmentNumber', truncate(profile.enrollmentNumber, 100));
+  set('registration_number', truncate(profile.registration_number, 100));
+  set('roll_number', truncate(profile.roll_number, 50));
+  set('admission_number', truncate(profile.admission_number, 100));
+  set('category', truncate(profile.category, 50));
+  set('quota', truncate(profile.quota, 50));
+  set('admission_academic_year', truncate(profile.admission_academic_year, 10));
+  set('bloodGroup', truncate(profile.bloodGroup, 5));
+  set('district_name', truncate(profile.district_name, 100));
+  set('university', truncate(profile.university, 150));
+  set('profilePicture', truncate(profile.profilePicture, 500));
+  set('guardianName', truncate(profile.guardianName, 200));
+  set('guardianPhone', truncate(profile.guardianPhone, 20));
+  set('guardianEmail', truncate(profile.guardianEmail, 255));
+  set('guardianRelation', truncate(profile.guardianRelation, 50));
+  set('address', truncate(profile.address, 1000));
+  set('city', truncate(profile.city, 100));
+  set('state', truncate(profile.state, 100));
+  set('country', truncate(profile.country, 100));
+  set('pincode', truncate(profile.pincode, 10));
+  if (isUUID(profile.program_id)) {
+    columns.program_id = profile.program_id;
+  }
+  set('grade', truncate(profile.grade, 10));
+  set('section', truncate(profile.section, 10));
+  return columns;
 }
 
 export class SyncService {
@@ -177,6 +258,33 @@ export class SyncService {
     return ok();
   }
 
+  /**
+   * Organization removed on the auth side (soft or hard delete).
+   *
+   * Deliberately never issues a real DELETE on skillpassport's own
+   * `organizations` row: that table has ON DELETE CASCADE from dozens of
+   * academic tables (courses, classes, attendance, learner reports, library
+   * books, etc.) — a real delete here could destroy unrelated institutional
+   * data far beyond what the auth side ever touches. Regardless of whether
+   * the admin chose soft or hard delete upstream, this always just
+   * deactivates the org record and drops its stale subscription_cache rows.
+   */
+  async syncOrgDeleted(data: unknown): Promise<SyncResult> {
+    let parsed: z.infer<typeof OrganizationDeletedSchema>;
+    try { parsed = OrganizationDeletedSchema.parse(data); }
+    catch (err) { return fail('VALIDATION_ERROR', err instanceof Error ? err.message : 'Invalid org deleted data', false); }
+
+    const { error: orgError } = await this.db.from('organizations')
+      .update({ account_status: 'inactive', is_active: false, updated_at: new Date().toISOString() })
+      .eq('id', parsed.id);
+    if (orgError) return fail('DB_ERROR', orgError.message, true);
+
+    // Best-effort — subscription_cache is just a read shadow, not authoritative.
+    await this.db.from('subscription_cache').delete().eq('organization_id', parsed.id);
+
+    return ok();
+  }
+
   async syncMembership(data: unknown): Promise<SyncResult> {
     let parsed: z.infer<typeof MembershipPayloadSchema>;
     try { parsed = MembershipPayloadSchema.parse(data); }
@@ -227,15 +335,9 @@ export class SyncService {
       .eq('id', parsed.user_id);
     const user = users?.[0];
 
-    if (user) {
-      const learnerName = [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email;
-      const { error: learnerError } = await this.db.from('learners').upsert({
-        user_id: parsed.user_id,
-        name: learnerName,
-        email: user.email,
-        approval_status: 'approved',
-      }, { onConflict: 'user_id' });
-      if (learnerError) return fail('DB_ERROR', learnerError.message, true);
+    if (!user) {
+      // FK order: membership arrived before user — retry after user.created
+      return fail('NOT_FOUND', `User ${parsed.user_id} not found for learners`, true);
     }
 
     const { data: orgs } = await this.db.from('organizations')
@@ -243,19 +345,23 @@ export class SyncService {
       .eq('id', parsed.organization_id);
     const orgType = orgs?.[0]?.organization_type;
 
-    const learnerUpdate: Record<string, unknown> = {};
+    const learnerName = [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email;
+    const learnerPayload: Record<string, unknown> = {
+      user_id: parsed.user_id,
+      name: learnerName,
+      email: user.email,
+      approval_status: 'approved',
+      ...mapLearnerProfileToColumns(parsed.learner_profile),
+    };
+
     if (orgType === 'school') {
-      learnerUpdate.school_id = parsed.organization_id;
+      learnerPayload.school_id = parsed.organization_id;
     } else if (orgType === 'college') {
-      learnerUpdate.college_id = parsed.organization_id;
+      learnerPayload.college_id = parsed.organization_id;
     }
 
-    if (Object.keys(learnerUpdate).length > 0) {
-      const { error: updateError } = await this.db.from('learners')
-        .update(learnerUpdate)
-        .eq('user_id', parsed.user_id);
-      if (updateError) return fail('DB_ERROR', updateError.message, true);
-    }
+    const { error: learnerError } = await this.db.from('learners').upsert(learnerPayload, { onConflict: 'user_id' });
+    if (learnerError) return fail('DB_ERROR', learnerError.message, true);
 
     return ok();
   }
@@ -368,10 +474,32 @@ export class SyncService {
     let parsed: z.infer<typeof SubscriptionCreatedSchema>;
     try { parsed = SubscriptionCreatedSchema.parse(data); }
     catch (err) { return fail('VALIDATION_ERROR', err instanceof Error ? err.message : 'Invalid subscription created data', false); }
+
+    const isOrgSub = typeof parsed.is_organization_subscription === 'string'
+      ? parsed.is_organization_subscription === 'true'
+      : (parsed.is_organization_subscription ?? false);
+
+    // New org subs must have explicit capacity; keep 1 only for individual
+    if (isOrgSub && parsed.seat_count === undefined) {
+      return fail('VALIDATION_ERROR', 'seat_count is required for organization subscriptions', false);
+    }
+
+    const { data: existing } = await this.db.from('subscription_cache')
+      .select('seat_count, assigned_seats, auth_updated_at, is_organization_subscription, organization_id')
+      .eq('id', parsed.id)
+      .maybeSingle() as { data: { seat_count: number; assigned_seats: number; auth_updated_at: string | null; is_organization_subscription: boolean; organization_id: string | null } | null };
+
+    // Stale-event guard: reject if incoming is older than existing
+    const incomingTs = parsed.updated_at ? new Date(parsed.updated_at).getTime() : 0;
+    const existingTs = existing?.auth_updated_at ? new Date(existing.auth_updated_at as string).getTime() : 0;
+    if (existing && incomingTs && existingTs && incomingTs < existingTs) {
+      return ok();
+    }
+
     const subPayload: Record<string, unknown> = {
       id: parsed.id,
       user_id: parsed.user_id,
-      organization_id: parsed.organization_id ?? null,
+      organization_id: parsed.organization_id ?? existing?.organization_id ?? null,
       plan_id: parsed.plan_id ?? null,
       plan_code: parsed.plan_code,
       plan_name: parsed.plan_type ?? null,
@@ -386,15 +514,36 @@ export class SyncService {
           : [],
       subscription_start_date: parsed.subscription_start_date ?? null,
       subscription_end_date: parsed.subscription_end_date ?? null,
-      is_organization_subscription:
-        typeof parsed.is_organization_subscription === 'string'
-          ? parsed.is_organization_subscription === 'true'
-          : (parsed.is_organization_subscription ?? false),
-      seat_count: parsed.seat_count ?? 1,
-      assigned_seats: parsed.assigned_seats ?? 0,
+      is_organization_subscription: isOrgSub,
+      seat_count: parsed.seat_count ?? (existing ? (existing.seat_count as number) : (isOrgSub ? undefined as unknown as number : 1)),
+      assigned_seats: parsed.assigned_seats ?? (existing ? (existing.assigned_seats as number) : 0),
       product_id: parsed.product_id ?? null,
       auth_updated_at: parsed.updated_at ?? new Date().toISOString(),
     };
+
+    // Guard for org create with no capacity: already failed above, but double-check
+    if (isOrgSub && subPayload.seat_count === undefined) {
+      return fail('VALIDATION_ERROR', 'seat_count is required for organization subscriptions', false);
+    }
+    if (!isOrgSub && subPayload.seat_count === undefined) subPayload.seat_count = 1;
+
+    // Preserve assigned_seats locally maintained if incoming is stale/missing
+    if (existing && parsed.assigned_seats === undefined) {
+      subPayload.assigned_seats = existing.assigned_seats;
+    }
+
+    // Self-heal: subscription_cache.user_id has an FK -> users_shadow(id).
+    // The generic user.created sync only writes public.users, never
+    // users_shadow (that table is otherwise populated only by the
+    // purchase/payment flows via syncUserShadow). Any subscription-creating
+    // path that doesn't go through a purchase flow (e.g. admin-provisioned
+    // hybrid org creation) would violate that FK without this. Mirrors the
+    // same self-heal already done in heal-user.ts.
+    const { data: existingUser } = await this.db.from('users')
+      .select('email')
+      .eq('id', parsed.user_id)
+      .maybeSingle();
+    await syncUserShadow(this.db, parsed.user_id, existingUser?.email as string | undefined);
 
     const { error } = await this.db.from('subscription_cache').upsert(subPayload, { onConflict: 'id' });
     if (error) return fail('DB_ERROR', error.message, true);
@@ -405,6 +554,19 @@ export class SyncService {
     let parsed: z.infer<typeof SubscriptionUpdatedSchema>;
     try { parsed = SubscriptionUpdatedSchema.parse(data); }
     catch (err) { return fail('VALIDATION_ERROR', err instanceof Error ? err.message : 'Invalid subscription updated data', false); }
+
+    const { data: existing } = await this.db.from('subscription_cache')
+      .select('seat_count, assigned_seats, auth_updated_at')
+      .eq('id', parsed.id)
+      .maybeSingle() as { data: { seat_count: number; assigned_seats: number; auth_updated_at: string | null } | null };
+
+    // Stale-event guard
+    const incomingTs = parsed.updated_at ? new Date(parsed.updated_at).getTime() : 0;
+    const existingTs = existing?.auth_updated_at ? new Date(existing.auth_updated_at as string).getTime() : 0;
+    if (existing && incomingTs && existingTs && incomingTs < existingTs) {
+      return ok();
+    }
+
     const subPayload: Record<string, unknown> = {};
 
     if (parsed.user_id !== undefined) subPayload.user_id = parsed.user_id;
@@ -434,10 +596,22 @@ export class SyncService {
           : parsed.is_organization_subscription;
     }
     if (parsed.seat_count !== undefined) subPayload.seat_count = parsed.seat_count;
+    else if (existing) {
+      // Preserve existing capacity when omitted (do not fallback to 1)
+    }
     if (parsed.assigned_seats !== undefined) subPayload.assigned_seats = parsed.assigned_seats;
+    else if (existing) {
+      // Preserve locally maintained assigned_seats
+    }
     if (parsed.product_id !== undefined) subPayload.product_id = parsed.product_id;
 
     subPayload.auth_updated_at = parsed.updated_at ?? new Date().toISOString();
+
+    // Nothing to update except timestamp and existing values preserved
+    if (Object.keys(subPayload).length === 1 && subPayload.auth_updated_at) {
+      // Still need to check if we should update timestamp when stale
+      return ok();
+    }
 
     const { error } = await this.db.from('subscription_cache')
       .update(subPayload)

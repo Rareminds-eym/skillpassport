@@ -22,6 +22,29 @@ export interface InvitationEmailRequest {
   customMessage?: string;
 }
 
+export interface SalesEnquiryEmailRequest {
+  institution: string;
+  email: string;
+  phone: string;
+  learners?: string | number;
+  educators?: string | number;
+  requirements?: string;
+  planName?: string;
+  planCode?: string;
+  salesEmail?: string;
+}
+
+export interface SalesEnquiryTemplateData {
+  institution: string;
+  email: string;
+  phone: string;
+  learners?: string | number;
+  educators?: string | number;
+  requirements?: string;
+  planName: string;
+  submittedAt: string;
+}
+
 export interface CountdownEmailRequest {
   to: string;
   fullName: string;

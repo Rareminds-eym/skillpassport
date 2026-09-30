@@ -16,6 +16,7 @@ import { createLogger } from '../../../lib/logger';
 import { apiError, apiSuccess } from '../../../lib/response';
 import { ssoGetAddonByFeatureKey } from '../../../lib/sso-client';
 import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../lib/paymentBinding';
+import { safeParseFloat } from '../../../lib/numbers';
 
 const logger = createLogger('payments:create-addon-order');
 

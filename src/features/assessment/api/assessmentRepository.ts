@@ -25,14 +25,17 @@ interface Question {
 }
 
 /**
- * Get saved questions for a learner (for resume functionality)
+ * Get the shared canonical question set for a stream+grade+type combination
+ * (for resume functionality). Identity is (stream_id, grade_level, question_type) -
+ * NOT learner_id - shared canonical sets are reused across learners.
  */
 export async function getSavedQuestionsForLearner(
   learnerId: string,
   streamId: string,
-  questionType: QuestionType
+  questionType: QuestionType,
+  gradeLevel: GradeLevel
 ): Promise<Question[] | null> {
-  if (!learnerId) {
+  if (!learnerId || !gradeLevel) {
     return null;
   }
 
@@ -47,7 +50,7 @@ export async function getSavedQuestionsForLearner(
     }
 
     const response = await ssoClient.fetch(
-      `${API_URL}/questions/saved?learnerId=${learnerId}&streamId=${streamId}&questionType=${questionType}`,
+      `${API_URL}/questions/saved?learnerId=${learnerId}&streamId=${streamId}&questionType=${questionType}&gradeLevel=${gradeLevel}`,
       {
         method: 'GET',
         headers: {

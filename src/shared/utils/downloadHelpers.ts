@@ -9,6 +9,7 @@
  */
 
 import { DEFAULT_TIMEOUT } from '@/shared/api/httpClient';
+import { ssoClient } from '@/shared/api/ssoClient';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('download-helpers');
@@ -45,10 +46,19 @@ export async function downloadFileFromUrl(url: string, filename?: string): Promi
   // Use AbortController with explicit timeout management
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT);
+  const parsedUrl = new URL(url, window.location.origin);
+  const isLocalhost = ['localhost', '127.0.0.1'].includes(parsedUrl.hostname);
+  const isAuthenticatedAppDownload =
+    (parsedUrl.origin === window.location.origin || isLocalhost) &&
+    parsedUrl.pathname.startsWith('/api/storage/');
+  const requestUrl =
+    isAuthenticatedAppDownload && parsedUrl.origin !== window.location.origin
+      ? `${parsedUrl.pathname}${parsedUrl.search}`
+      : url;
 
   try {
     // Primary strategy: fetch + blob for better control
-    const response = await fetch(url, {
+    const response = await (isAuthenticatedAppDownload ? ssoClient.fetch : fetch)(requestUrl, {
       signal: controller.signal,
     });
 
@@ -78,6 +88,12 @@ export async function downloadFileFromUrl(url: string, filename?: string): Promi
       URL.revokeObjectURL(objectUrl);
     }
   } catch (fetchError) {
+    if (isAuthenticatedAppDownload) {
+      const error = fetchError instanceof Error ? fetchError : new Error(String(fetchError));
+      logger.error('Authenticated download failed', error);
+      throw error;
+    }
+
     // Fallback strategy: direct link (for CORS issues, etc.)
     const error = fetchError instanceof Error ? fetchError : new Error(String(fetchError));
     logger.warn('Fetch failed, using direct link fallback', { error: error.message, stack: error.stack || 'No stack trace available' });

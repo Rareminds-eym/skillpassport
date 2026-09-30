@@ -56,6 +56,10 @@ export async function ssoListRoles(env: SsoEnv): Promise<any> {
   return env.SSO_SERVICE.listRoles();
 }
 
+export async function ssoListFeatureKeys(env: SsoEnv): Promise<any> {
+  return env.SSO_SERVICE.listFeatureKeys();
+}
+
 export async function ssoCreateMembership(env: SsoEnv, data: any): Promise<any> {
   return env.SSO_SERVICE.createMembership(data);
 }
@@ -74,6 +78,14 @@ export async function ssoUpdateMembershipStatus(env: SsoEnv, data: any): Promise
 
 export async function ssoGetUserByEmail(env: SsoEnv, email: string): Promise<any> {
   return env.SSO_SERVICE.getUserByEmail(email);
+}
+
+export async function ssoGetUserById(env: SsoEnv, userId: string): Promise<any> {
+  return env.SSO_SERVICE.getUserById(userId);
+}
+
+export async function ssoGetOrganizationById(env: SsoEnv, orgId: string): Promise<any> {
+  return env.SSO_SERVICE.getOrganizationById(orgId);
 }
 
 export async function ssoGetUserMemberships(env: SsoEnv, userId: string): Promise<any> {
@@ -124,14 +136,14 @@ export interface SsoOAuthAuthenticateParams {
 /** Mirrors the worker's SessionIssueRpcOutcome discriminated union. */
 export type SsoOauthAuthenticateOutcome =
   | {
-      kind: "issued";
-      session: {
-        accessToken: string;
-        refreshToken: string;
-        remainingLifetimeSeconds: number;
-        identity: Record<string, unknown>;
-      };
-    }
+    kind: "issued";
+    session: {
+      accessToken: string;
+      refreshToken: string;
+      remainingLifetimeSeconds: number;
+      identity: Record<string, unknown>;
+    };
+  }
   | { kind: "rejected"; code: string }
   | { kind: "rate_limited"; retryAfterSeconds?: number }
   | { kind: "timeout" }

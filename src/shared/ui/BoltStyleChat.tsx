@@ -1,4 +1,3 @@
-'use client'
 
 import { Bolt, CreditCard } from 'lucide-react'
 import { ShinyButton } from './ShinyButton'

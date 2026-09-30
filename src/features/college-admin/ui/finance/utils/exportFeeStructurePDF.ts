@@ -1,5 +1,3 @@
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
 import { FeeStructure } from '@/features/learner-profile/model';
 
 const getYearLabel = (semester: number) => {
@@ -9,7 +7,11 @@ const getYearLabel = (semester: number) => {
   return `${semester}th Year`;
 };
 
-export const exportFeeStructurePDF = (structure: FeeStructure, collegeName?: string) => {
+export const exportFeeStructurePDF = async (structure: FeeStructure, collegeName?: string) => {
+  const jspdfModule = await import('jspdf');
+  const jsPDF = jspdfModule.jsPDF || jspdfModule.default;
+  const autoTableModule = await import('jspdf-autotable');
+  const autoTable = autoTableModule.default || autoTableModule.autoTable;
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   let yPos = 20;

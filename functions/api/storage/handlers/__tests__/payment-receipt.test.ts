@@ -36,10 +36,7 @@ describe('Payment Receipt Handlers', () => {
 
   beforeEach(() => {
     mockEnv = {
-      CLOUDFLARE_ACCOUNT_ID: 'test-account',
-      CLOUDFLARE_R2_ACCESS_KEY_ID: 'test-key',
-      CLOUDFLARE_R2_SECRET_ACCESS_KEY: 'test-secret',
-      CLOUDFLARE_R2_BUCKET_NAME: 'test-bucket',
+      R2_BUCKET: {},
     };
 
     // Reset mocks
@@ -80,10 +77,14 @@ describe('Payment Receipt Handlers', () => {
 
       expect(response.status).toBe(200);
       expect(data.success).toBe(true);
-      expect(data.url).toBeDefined();
-      expect(data.fileKey).toMatch(/^payment_pdf\/john_doe_user-456\/payment-123_\d+\.pdf$/);
-      expect(data.filename).toBe('receipt.pdf');
+      const responseData = data.data as { url: string; fileKey: string; filename: string };
+      expect(responseData.url).toMatch(
+        /^http:\/\/localhost\/api\/storage\/payment-receipt\?key=payment_pdf%2Fjohn_doe_user-456%2Fpayment123_\d+\.pdf&mode=download$/
+      );
+      expect(responseData.fileKey).toMatch(/^payment_pdf\/john_doe_user-456\/payment123_\d+\.pdf$/);
+      expect(responseData.filename).toBe('receipt.pdf');
       expect(mockUpload).toHaveBeenCalled();
+      expect(mockGetPublicUrl).not.toHaveBeenCalled();
     });
 
     it('should upload payment receipt without optional parameters', async () => {

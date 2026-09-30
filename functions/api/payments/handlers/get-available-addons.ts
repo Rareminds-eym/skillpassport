@@ -10,6 +10,7 @@
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { apiError, apiSuccess } from '../../../lib/response';
 import { ssoListAddonCatalog } from '../../../lib/sso-client';
+import { safeParseFloat } from '../../../lib/numbers';
 export async function handleGetAvailableAddons(context: AuthenticatedContext): Promise<Response> {
   const env = context.env as { SSO_SERVICE: Fetcher };
   const url = new URL(context.request.url);

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import Modal from '@/shared/ui/Modal';
 import { AcademicCapIcon, BuildingLibraryIcon, UserIcon } from '@heroicons/react/24/outline';
-import { updateLearner } from '@/entities/learner';
+import { updateLearner } from '@/entities/learner/api/learnerService';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('learner-type-selection-modal');

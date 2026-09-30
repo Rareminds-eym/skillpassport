@@ -89,8 +89,8 @@ export const useAuth = (): UseAuthReturn => {
   const isCollegeAdmin = useCallback(() => rolesList.includes('college_admin'), [rolesList]);
   const isUniversityAdmin = useCallback(() => rolesList.includes('university_admin'), [rolesList]);
 
-  const refresh = useCallback(async () => {
-    await refreshSession();
+  const refresh = useCallback(async (options?: { force?: boolean }) => {
+    await refreshSession(options);
   }, [refreshSession]);
 
   const clearError = useCallback(() => {

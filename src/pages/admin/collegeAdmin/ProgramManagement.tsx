@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useAuthStore } from '@/shared/model/authStore';
-import React, { useState, useEffect } from "react";
+import { useState, useEffect, type FC, type FormEvent } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   PlusCircleIcon,
   XMarkIcon,
@@ -8,7 +9,6 @@ import {
   AcademicCapIcon,
   FunnelIcon,
   MagnifyingGlassIcon,
-  ArrowPathIcon,
   TrashIcon,
 } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
@@ -23,6 +23,7 @@ interface Program {
   degree_level: string;
   department_id: string;
   department_name?: string;
+  specializations?: string[];
   status: "active" | "inactive";
   created_at: string;
   updated_at: string;
@@ -35,8 +36,11 @@ interface Department {
   status: string;
 }
 
-const ProgramManagement: React.FC = () => {
+const ProgramManagement: FC = () => {
   const logger = getLogger('college-admin-programs');
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const returnTo = searchParams.get("returnTo");
   const [collegeId, setCollegeId] = useState<string | null>(null);
   const [programs, setPrograms] = useState<Program[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -79,6 +83,13 @@ const ProgramManagement: React.FC = () => {
     }
   }, [collegeId]);
 
+  useEffect(() => {
+    if (searchParams.get("create") === "program" && departments.length > 0) {
+      setSelectedProgram(null);
+      setIsModalOpen(true);
+    }
+  }, [searchParams, departments.length]);
+
   const loadData = async () => {
     if (!collegeId) return;
     
@@ -104,6 +115,12 @@ const ProgramManagement: React.FC = () => {
         degree_level: p.degree_level,
         department_id: p.department_id,
         department_name: p.departments?.name || "No Department",
+        specializations: Array.isArray(p.specializations)
+          ? p.specializations.map((s: any) => String(s).trim()).filter(Boolean)
+          : String(p.specializations ?? "")
+              .split(",")
+              .map((s) => s.trim())
+              .filter(Boolean),
         status: p.status,
         created_at: p.created_at,
         updated_at: p.updated_at,
@@ -164,7 +181,11 @@ const ProgramManagement: React.FC = () => {
       toast.success(selectedProgram ? "Program updated successfully" : "Program created successfully");
       
       setIsModalOpen(false);
-      loadData();
+      await loadData();
+
+      if (!selectedProgram && returnTo) {
+        navigate(returnTo);
+      }
     } catch (error: any) {
       logger.error("Error saving program:", error as Error);
       toast.error(`Failed to save program: ${error.message}`);
@@ -180,7 +201,8 @@ const ProgramManagement: React.FC = () => {
       return (
         program.name.toLowerCase().includes(search) ||
         program.code.toLowerCase().includes(search) ||
-        program.department_name?.toLowerCase().includes(search)
+        program.department_name?.toLowerCase().includes(search) ||
+        (program.specializations ?? []).join(", ").toLowerCase().includes(search)
       );
     }
     return true;
@@ -397,6 +419,9 @@ const ProgramManagement: React.FC = () => {
                     Degree Level
                   </th>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">
+                    Specializations
+                  </th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">
                     Status
                   </th>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">
@@ -423,6 +448,22 @@ const ProgramManagement: React.FC = () => {
                     </td>
                     <td className="px-4 py-3">
                       {getDegreeLevelBadge(program.degree_level)}
+                    </td>
+                    <td className="px-4 py-3">
+                      {program.specializations && program.specializations.length > 0 ? (
+                        <div className="flex flex-wrap gap-1 max-w-56">
+                          {program.specializations.map((s, i) => (
+                              <span
+                                key={`${s}-${i}`}
+                                className="px-2 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-full text-xs font-medium"
+                              >
+                                {s}
+                              </span>
+                            ))}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-gray-400">—</span>
+                      )}
                     </td>
                     <td className="px-4 py-3">{getStatusBadge(program.status)}</td>
                     <td className="px-4 py-3">
@@ -466,7 +507,7 @@ const ProgramManagement: React.FC = () => {
 };
 
 // Program Form Modal Component
-const ProgramFormModal: React.FC<{
+const ProgramFormModal: FC<{
   isOpen: boolean;
   onClose: () => void;
   onSave: (data: Partial<Program>) => void;
@@ -479,12 +520,19 @@ const ProgramFormModal: React.FC<{
     description: program?.description || "",
     degree_level: program?.degree_level || "Undergraduate",
     department_id: program?.department_id || "",
+    specializations: Array.isArray(program?.specializations)
+      ? program.specializations.join(", ")
+      : "",
     status: program?.status || "active",
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    onSave(formData);
+    const specializations = formData.specializations
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    onSave({ ...formData, specializations });
   };
 
   if (!isOpen) return null;
@@ -492,7 +540,9 @@ const ProgramFormModal: React.FC<{
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex min-h-screen items-center justify-center p-4">
-        <div
+        <button
+          type="button"
+          aria-label="Close program form"
           className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm"
           onClick={onClose}
         />
@@ -502,6 +552,7 @@ const ProgramFormModal: React.FC<{
               {program ? "Edit Program" : "Create New Program"}
             </h2>
             <button
+              type="button"
               onClick={onClose}
               className="p-2 text-gray-400 hover:bg-gray-100 rounded-lg"
             >
@@ -512,10 +563,11 @@ const ProgramFormModal: React.FC<{
           <form onSubmit={handleSubmit} className="p-6 space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="program-name" className="block text-sm font-medium text-gray-700 mb-1">
                   Program Name *
                 </label>
                 <input
+                  id="program-name"
                   type="text"
                   value={formData.name}
                   onChange={(e) =>
@@ -528,10 +580,11 @@ const ProgramFormModal: React.FC<{
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="program-code" className="block text-sm font-medium text-gray-700 mb-1">
                   Program Code *
                 </label>
                 <input
+                  id="program-code"
                   type="text"
                   value={formData.code}
                   onChange={(e) =>
@@ -544,10 +597,11 @@ const ProgramFormModal: React.FC<{
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="program-department" className="block text-sm font-medium text-gray-700 mb-1">
                   Department *
                 </label>
                 <select
+                  id="program-department"
                   value={formData.department_id}
                   onChange={(e) =>
                     setFormData({ ...formData, department_id: e.target.value })
@@ -565,10 +619,11 @@ const ProgramFormModal: React.FC<{
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="program-degree-level" className="block text-sm font-medium text-gray-700 mb-1">
                   Degree Level *
                 </label>
                 <select
+                  id="program-degree-level"
                   value={formData.degree_level}
                   onChange={(e) =>
                     setFormData({ ...formData, degree_level: e.target.value })
@@ -584,10 +639,11 @@ const ProgramFormModal: React.FC<{
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="program-status" className="block text-sm font-medium text-gray-700 mb-1">
                   Status *
                 </label>
                 <select
+                  id="program-status"
                   value={formData.status}
                   onChange={(e) =>
                     setFormData({ ...formData, status: e.target.value as "active" | "inactive" })
@@ -601,10 +657,31 @@ const ProgramFormModal: React.FC<{
               </div>
 
               <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="program-specializations" className="block text-sm font-medium text-gray-700 mb-1">
+                  Specialization(s)
+                </label>
+                <input
+                  id="program-specializations"
+                  type="text"
+                  value={formData.specializations}
+                  onChange={(e) =>
+                    setFormData({ ...formData, specializations: e.target.value })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  placeholder="e.g., Artificial Intelligence, Cybersecurity, Data Science"
+                  aria-describedby="program-specializations-hint"
+                />
+                <p id="program-specializations-hint" className="mt-1 text-xs text-gray-500">
+                  Single or multiple — separate multiple specializations with commas (,).
+                </p>
+              </div>
+
+              <div className="col-span-2">
+                <label htmlFor="program-description" className="block text-sm font-medium text-gray-700 mb-1">
                   Description (Optional)
                 </label>
                 <textarea
+                  id="program-description"
                   value={formData.description}
                   onChange={(e) =>
                     setFormData({ ...formData, description: e.target.value })

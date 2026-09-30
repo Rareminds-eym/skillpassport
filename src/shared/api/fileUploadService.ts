@@ -1,5 +1,4 @@
 import { ssoClient } from '@/shared/api/ssoClient';
-import { useAuthStore } from '@/shared/model/authStore';
 import { getApiUrl } from '@/shared/api/apiUtils';
 /**
  * File Upload Service for Cloudflare R2 Storage
@@ -11,25 +10,6 @@ import { getLogger } from '@/shared/config/logging';
 const logger = getLogger('file-upload');
 
 const STORAGE_API_URL = getApiUrl('storage');
-
-/**
- * Get authentication token from current session
- */
-async function getAuthToken(): Promise<string | null> {
-  try {
-    const user = useAuthStore.getState().user; const error = null;
-
-    if (error) {
-      logger.error('Failed to get session', error instanceof Error ? error : new Error(String(error)));
-      return null;
-    }
-
-    return ssoClient.getAccessToken() || null;
-  } catch (error) {
-    logger.error('Error retrieving auth token', error instanceof Error ? error : new Error(String(error)));
-    return null;
-  }
-}
 
 export interface UploadResult {
   success: boolean;
@@ -53,16 +33,6 @@ export const uploadFile = async (
   onProgress?: (progress: UploadProgress) => void
 ): Promise<UploadResult> => {
   try {
-    // Get authentication token
-    const token = await getAuthToken();
-    
-    if (!token) {
-      return {
-        success: false,
-        error: 'Authentication required. Please log in.',
-      };
-    }
-
     // Generate unique filename
     const timestamp = Date.now();
     const randomString = Math.random().toString(36).substring(2, 15);
@@ -179,14 +149,6 @@ export const getProfileMediaUrl = async (urlOrKey: string): Promise<string | nul
  */
 export const deleteFile = async (fileUrl: string): Promise<boolean> => {
   try {
-    // Get authentication token
-    const token = await getAuthToken();
-
-    if (!token) {
-      logger.error('Authentication required to delete file', new Error('No auth token available'));
-      return false;
-    }
-
     const response = await ssoClient.fetch(`${STORAGE_API_URL}/delete`, {
       method: 'POST',
       headers: {

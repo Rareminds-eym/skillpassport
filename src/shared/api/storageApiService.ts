@@ -15,7 +15,8 @@ const logger = getLogger('storage-api');
 const API_URL = getApiUrl('storage');
 
 /**
- * Get authentication token from current session
+ * Get authentication token from current session.
+ * Kept for legacy non-upload endpoints that still accept explicit auth headers.
  */
 async function getAuthToken(): Promise<string | null> {
   try {
@@ -40,6 +41,9 @@ interface UploadOptions {
   folder?: string;
   filename?: string;
   contentType?: string;
+  context?: string;
+  courseId?: string;
+  lessonId?: string;
 }
 
 /**
@@ -50,23 +54,20 @@ export async function uploadFile(
   options: UploadOptions,
   token?: string
 ): Promise<any> {
-  // Get token automatically if not provided
-  const authToken = token || await getAuthToken();
-  
-  if (!authToken) {
-    throw new Error('Authentication required. Please log in.');
-  }
-
+  void token;
   const formData = new FormData();
   formData.append('file', file);
   if (options.folder) formData.append('folder', options.folder);
   if (options.filename) formData.append('filename', options.filename);
   if (options.contentType) formData.append('contentType', options.contentType);
+  if (options.context) formData.append('context', options.context);
+  if (options.courseId) formData.append('courseId', options.courseId);
+  if (options.lessonId) formData.append('lessonId', options.lessonId);
 
   try {
     const response = await ssoClient.fetch(`${API_URL}/upload`, {
       method: 'POST',
-      headers: getAuthHeaders(authToken, true),
+      headers: getAuthHeaders(undefined, true),
       body: formData,
     });
 
@@ -77,7 +78,7 @@ export async function uploadFile(
       } catch (e) {
         errorDetails = { error: `HTTP ${response.status}: ${response.statusText}` };
       }
-      
+
       if (response.status === 401) {
         throw new Error('Authentication failed. Please refresh the page and log in again.');
       } else if (response.status === 403) {
@@ -103,26 +104,29 @@ export async function uploadFile(
 export async function deleteFile(fileUrl: string, token?: string): Promise<any> {
   // Get token automatically if not provided
   const authToken = token || await getAuthToken();
-  
+
   if (!authToken) {
     throw new Error('Authentication required. Please log in.');
   }
 
+  const value = fileUrl.trim();
+  const payload = /^https?:\/\//i.test(value) ? { url: value } : { key: value };
+
   const response = await ssoClient.fetch(`${API_URL}/delete`, {
     method: 'POST',
     headers: getAuthHeaders(authToken),
-    body: JSON.stringify({ url: fileUrl }),
+    body: JSON.stringify(payload),
   });
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({})) as { error?: string };
-    
+
     if (response.status === 401) {
       throw new Error('Authentication failed. Please refresh the page and log in again.');
     } else if (response.status === 403) {
       throw new Error('Access denied. You may not have permission to delete this file.');
     }
-    
+
     throw new Error(error.error || 'Failed to delete file');
   }
 
@@ -159,7 +163,7 @@ interface PresignedUrlParams {
 }
 
 /**
- * Get presigned URL for large file upload
+ * @deprecated Direct R2 presigned uploads are disabled. Use uploadFile instead.
  */
 export async function getPresignedUrl(
   params: PresignedUrlParams,
@@ -167,30 +171,13 @@ export async function getPresignedUrl(
 ): Promise<any> {
   // Get token automatically if not provided
   const authToken = token || await getAuthToken();
-  
+
   if (!authToken) {
     throw new Error('Authentication required. Please log in.');
   }
 
-  const response = await ssoClient.fetch(`${API_URL}/presigned`, {
-    method: 'POST',
-    headers: getAuthHeaders(authToken),
-    body: JSON.stringify(params),
-  });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({})) as { error?: string };
-    
-    if (response.status === 401) {
-      throw new Error('Authentication failed. Please refresh the page and log in again.');
-    } else if (response.status === 403) {
-      throw new Error('Access denied. You may not have permission to upload files.');
-    }
-    
-    throw new Error(error.error || 'Failed to get presigned URL');
-  }
-
-  return response.json();
+  void params;
+  throw new Error('Direct R2 presigned uploads are disabled. Use uploadFile instead.');
 }
 
 interface ConfirmUploadParams {
@@ -209,7 +196,7 @@ export async function confirmUpload(
 ): Promise<any> {
   // Get token automatically if not provided
   const authToken = token || await getAuthToken();
-  
+
   if (!authToken) {
     throw new Error('Authentication required. Please log in.');
   }
@@ -222,13 +209,13 @@ export async function confirmUpload(
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({})) as { error?: string };
-    
+
     if (response.status === 401) {
       throw new Error('Authentication failed. Please refresh the page and log in again.');
     } else if (response.status === 403) {
       throw new Error('Access denied. You may not have permission to confirm this upload.');
     }
-    
+
     throw new Error(error.error || 'Failed to confirm upload');
   }
 
@@ -241,7 +228,7 @@ export async function confirmUpload(
 export async function getFileUrl(fileKey: string, token?: string): Promise<any> {
   // Get token automatically if not provided
   const authToken = token || await getAuthToken();
-  
+
   if (!authToken) {
     throw new Error('Authentication required. Please log in.');
   }
@@ -254,13 +241,13 @@ export async function getFileUrl(fileKey: string, token?: string): Promise<any> 
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({})) as { error?: string };
-    
+
     if (response.status === 401) {
       throw new Error('Authentication failed. Please refresh the page and log in again.');
     } else if (response.status === 403) {
       throw new Error('Access denied. You may not have permission to access this file.');
     }
-    
+
     throw new Error(error.error || 'Failed to get file URL');
   }
 
@@ -277,7 +264,7 @@ export async function listFiles(
 ): Promise<any> {
   // Get token automatically if not provided
   const authToken = token || await getAuthToken();
-  
+
   if (!authToken) {
     throw new Error('Authentication required. Please log in.');
   }
@@ -289,13 +276,13 @@ export async function listFiles(
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({})) as { error?: string };
-    
+
     if (response.status === 401) {
       throw new Error('Authentication failed. Please refresh the page and log in again.');
     } else if (response.status === 403) {
       throw new Error('Access denied. You may not have permission to list these files.');
     }
-    
+
     throw new Error(error.error || 'Failed to list files');
   }
 
@@ -314,7 +301,7 @@ export async function uploadPaymentReceipt(
 ): Promise<any> {
   // Get token automatically if not provided
   const authToken = token || await getAuthToken();
-  
+
   if (!authToken) {
     throw new Error('Authentication required. Please log in.');
   }
@@ -327,13 +314,13 @@ export async function uploadPaymentReceipt(
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({})) as { error?: string };
-    
+
     if (response.status === 401) {
       throw new Error('Authentication failed. Please refresh the page and log in again.');
     } else if (response.status === 403) {
       throw new Error('Access denied. You may not have permission to upload payment receipts.');
     }
-    
+
     throw new Error(error.error || 'Failed to upload payment receipt');
   }
 
@@ -348,18 +335,12 @@ export function getPaymentReceiptUrl(fileKey: string, mode: 'download' | 'inline
 }
 
 /**
- * Get presigned URL for payment receipt download (temporary access without auth)
+ * Get proxied URL for payment receipt download.
  * @param fileKeyOrUrl - The file key or full URL of the receipt
- * @param expiresIn - Expiration time in seconds (default: 3600 = 1 hour, max: 604800 = 7 days)
- * @returns Presigned URL for direct download
+ * @param expiresIn - Kept for backward compatibility; ignored by binding-only storage.
+ * @returns Authenticated application URL for download
  */
 export async function getPaymentReceiptPresignedUrl(fileKeyOrUrl: string, expiresIn: number = 3600): Promise<string> {
-  const authToken = await getAuthToken();
-  
-  if (!authToken) {
-    throw new Error('Authentication required. Please log in.');
-  }
-  
   // Extract file key from full URL if needed
   let fileKey = fileKeyOrUrl;
   if (fileKeyOrUrl.startsWith('http')) {
@@ -387,21 +368,20 @@ export async function getPaymentReceiptPresignedUrl(fileKeyOrUrl: string, expire
       }
     }
   }
-  
+
   const timeoutSignal = createTimeoutSignal(DEFAULT_TIMEOUT);
-  
+
   const response = await ssoClient.fetch(
     `${API_URL}/payment-receipt/presigned?key=${encodeURIComponent(fileKey)}&expires=${expiresIn}`,
     {
       method: 'GET',
-      headers: getAuthHeaders(authToken),
       signal: timeoutSignal,
     }
   );
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({})) as { error?: string };
-    
+
     if (response.status === 401) {
       throw new Error('Authentication failed. Please log in again.');
     } else if (response.status === 403) {
@@ -409,7 +389,7 @@ export async function getPaymentReceiptPresignedUrl(fileKeyOrUrl: string, expire
     } else if (response.status === 404) {
       throw new Error('Receipt not found.');
     }
-    
+
     throw new Error(error.error || 'Failed to generate receipt download URL');
   }
 
@@ -417,21 +397,23 @@ export async function getPaymentReceiptPresignedUrl(fileKeyOrUrl: string, expire
     success?: boolean;
     data?: {
       presignedUrl?: string;
+      url?: string;
     };
     presignedUrl?: string;
+    url?: string;
   }
 
   const result = await response.json() as PresignedUrlResponse;
-  
-  const presignedUrl = result.success && result.data?.presignedUrl
-    ? result.data.presignedUrl
-    : result.presignedUrl;
 
-  if (!presignedUrl || typeof presignedUrl !== 'string') {
-    throw new Error('Invalid API response: presignedUrl not found or invalid type');
+  const receiptDownloadUrl = result.success
+    ? result.data?.url || result.data?.presignedUrl
+    : result.url || result.presignedUrl;
+
+  if (!receiptDownloadUrl || typeof receiptDownloadUrl !== 'string') {
+    throw new Error('Invalid API response: receipt download URL not found or invalid type');
   }
 
-  return presignedUrl;
+  return receiptDownloadUrl;
 }
 
 export default {
@@ -445,4 +427,136 @@ export default {
   uploadPaymentReceipt,
   getPaymentReceiptUrl,
   getPaymentReceiptPresignedUrl,
+  uploadVideoPortfolio,
+  getVideoPortfolioUrl,
+  getVideoPortfolioPublicUrl,
+  deleteVideoPortfolio,
 };
+
+/**
+ * Upload a video file to R2 storage for video portfolio
+ */
+export async function uploadVideoPortfolio(
+  file: File,
+  videoId: string,
+  userName?: string,
+  token?: string
+): Promise<{ url: string; fileKey: string; filename: string; fileSize: number }> {
+  void token;
+
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('videoId', videoId);
+  if (userName) formData.append('userName', userName);
+
+  try {
+    const response = await ssoClient.fetch(`${API_URL}/upload-video-portfolio`, {
+      method: 'POST',
+      headers: getAuthHeaders(undefined, true),
+      body: formData,
+    });
+
+    if (!response.ok) {
+      let errorDetails: { error?: string } = {};
+      try {
+        errorDetails = await response.json() as { error?: string };
+      } catch (e) {
+        errorDetails = { error: `HTTP ${response.status}: ${response.statusText}` };
+      }
+
+      if (response.status === 401) {
+        throw new Error('Authentication failed. Please refresh the page and log in again.');
+      } else if (response.status === 403) {
+        throw new Error('Quota exceeded. Maximum 5 videos allowed per learner.');
+      } else if (response.status === 413) {
+        throw new Error('Video file too large. Maximum 100MB allowed.');
+      } else if (response.status === 400) {
+        throw new Error(errorDetails.error || 'Invalid video file. Please use MP4, MOV, AVI, or WebM format.');
+      } else if (response.status >= 500) {
+        throw new Error('Server error. Please try again later.');
+      } else {
+        throw new Error(errorDetails.error || `Upload failed with status ${response.status}`);
+      }
+    }
+
+    return response.json();
+  } catch (error) {
+    throw error;
+  }
+}
+
+/**
+ * Get video portfolio streaming/download URL
+ */
+export function getVideoPortfolioUrl(fileKey: string, mode: 'inline' | 'download' = 'inline'): string {
+  return `${API_URL}/video-portfolio?key=${encodeURIComponent(fileKey)}&mode=${mode}`;
+}
+
+/**
+ * Get public R2 URL for video portfolio (for sharing without authentication)
+ */
+export async function getVideoPortfolioPublicUrl(fileKey: string): Promise<string> {
+  try {
+    const response = await ssoClient.fetch(
+      `${API_URL}/video-portfolio-public-url?key=${encodeURIComponent(fileKey)}`,
+      {
+        method: 'GET',
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({})) as { error?: string };
+
+      if (response.status === 401) {
+        throw new Error('Authentication failed. Please log in again.');
+      } else if (response.status === 403) {
+        throw new Error('You do not have permission to share this video.');
+      } else if (response.status === 404) {
+        throw new Error('Video not found.');
+      } else if (response.status === 500 && error.error?.includes('not configured')) {
+        throw new Error('Public video sharing is not configured. Please contact support.');
+      }
+
+      throw new Error(error.error || 'Failed to get public video URL');
+    }
+
+    const result = await response.json() as { success: boolean; publicUrl: string };
+    return result.publicUrl;
+  } catch (error) {
+    throw error;
+  }
+}
+
+/**
+ * Delete a video file from R2 storage
+ */
+export async function deleteVideoPortfolio(fileKey: string, token?: string): Promise<void> {
+  // Get token automatically if not provided
+  const authToken = token || await getAuthToken();
+
+  if (!authToken) {
+    throw new Error('Authentication required. Please log in.');
+  }
+
+  const response = await ssoClient.fetch(
+    `${API_URL}/video-portfolio?key=${encodeURIComponent(fileKey)}`,
+    {
+      method: 'DELETE',
+      headers: getAuthHeaders(authToken),
+    }
+  );
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({})) as { error?: string };
+
+    if (response.status === 401) {
+      throw new Error('Authentication failed. Please refresh the page and log in again.');
+    } else if (response.status === 403) {
+      throw new Error('Access denied. You do not have permission to delete this video.');
+    } else if (response.status === 404) {
+      throw new Error('Video not found.');
+    }
+
+    throw new Error(error.error || 'Failed to delete video');
+  }
+}

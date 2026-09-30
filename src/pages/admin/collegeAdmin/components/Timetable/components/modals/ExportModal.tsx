@@ -1,7 +1,5 @@
 import React, { useState } from "react";
 import { X, Download, FileText, User, Users, Loader2 } from "lucide-react";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
 import { Faculty, CollegeClass, ScheduleSlot, TimePeriod, Break } from "@/features/college-admin/ui/components/Timetable/types";
 import { DAYS } from "@/features/college-admin/ui/components/Timetable/constants";
 import { formatDate, isHoliday, getHolidayName } from "@/features/college-admin/ui/components/Timetable/utils";
@@ -58,6 +56,10 @@ const ExportModal: React.FC<ExportModalProps> = ({
     setExporting(true);
 
     try {
+      const jspdfModule = await import('jspdf');
+      const jsPDF = jspdfModule.jsPDF || jspdfModule.default;
+      const autoTableModule = await import('jspdf-autotable');
+      const autoTable = autoTableModule.default || autoTableModule.autoTable;
       const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
       const pageWidth = doc.internal.pageSize.getWidth();
 

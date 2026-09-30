@@ -4,6 +4,7 @@ import { createAuth } from "@rareminds-eym/auth-core";
 import { createSsoGateway } from "@rareminds-eym/sso-gateway";
 import { APPROVED_ORIGINS } from "./app-origins";
 import { hasAnyFeature } from "./entitlements";
+import { requireAdminRequestFeature } from './admin-feature-request';
 import { ADMIN_ROLES } from "./roleCategories";
 import { getServiceClient } from "./supabase";
 import type { PagesEnv } from "./types";
@@ -86,7 +87,7 @@ function requireVerifiedEmail(user: SSOAuthUser): Response | null {
 
 export function withAuth(handler: (context: any) => Promise<Response>) {
   return async (context: any) => {
-    const env = context.env as Record<string, string | Fetcher>;
+    const env = context.env as Record<string, unknown>;
     const auth = getAuthInstance(env);
 
     const authenticate = auth.authenticate(async (_req: Request, authedContext: VerifiedAuthContext) => {
@@ -96,6 +97,37 @@ export function withAuth(handler: (context: any) => Promise<Response>) {
       const blocked = requireVerifiedEmail(authedContext.user);
       if (blocked) return blocked;
 
+      // Async self-heal (eventual, no block) where SYNC_QUEUE consumer is absent.
+      // Gated by heal-user flag (Flagship binding or env HEAL_MODE). Fail-soft never blocks request.
+      // Heals users/learners/members/subscription when any is missing (full parity).
+      try {
+        const waitUntil = (context as any).waitUntil as ((p: Promise<any>) => void) | undefined;
+        const healPromise = (async () => {
+          const { isHealEnabled } = await import('./healConfig');
+          if (!await isHealEnabled(env as Record<string, unknown>, 'heal-user')) {
+            const { createLogger } = await import('./logger');
+            createLogger('heal-user').info('heal_metric', { metric: 'heal_cache_miss_total', status: 'heal_disabled', flag: 'heal-user', userId: authedContext.user.sub } as any);
+            return;
+          }
+          const { getServiceClient: getSvc } = await import('./supabase');
+          const { ensureAppUserAndLearner } = await import('./heal-user');
+          const svc = getSvc(env as any);
+          const { data: u } = await (svc as any).from('users').select('id').eq('id', authedContext.user.sub).maybeSingle();
+          const { data: subCache } = await (svc as any).from('subscription_cache').select('id').eq('user_id', authedContext.user.sub).limit(1).maybeSingle();
+          if (!u || !subCache) {
+            await ensureAppUserAndLearner(svc as any, env as any, { sub: authedContext.user.sub, email: authedContext.user.email }, crypto.randomUUID());
+          }
+        })().catch(() => {});
+        if (waitUntil) waitUntil(healPromise);
+        else healPromise.catch(() => {});
+      } catch {
+        // fail-soft
+      }
+
+      if (/^\/api\/(college-admin|school-admin|university-admin)(\/|$)/.test(new URL(context.request.url).pathname)) {
+        const featureDenied = await requireAdminRequestFeature(getServiceClient(env as unknown as PagesEnv), context.request, authedContext.user);
+        if (featureDenied) return featureDenied;
+      }
       return handler(context);
     });
 

@@ -22,7 +22,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 
 import { useNotifications } from '@/features/notifications';
 import { navigateToLTE } from '@/features/auth/lib';
-import { useLearnerDataByEmail } from '@/entities/learner';
+import { useLearnerDataByEmail } from '@/entities/learner/model/useLearnerDataByEmail';
 import { isLearner } from '@/entities/learner/lib/learnerType';
 import DigitalPortfolioSideDrawer from "./DigitalPortfolioSideDrawer";
 import NotificationPanel from "./NotificationPanel";

@@ -1,10 +1,27 @@
-import { AttendanceRecord, AttendanceSession } from '@/features/college-admin';
-import { Learner } from '@/entities/learner/model/types';
-import { BuildingOfficeIcon, ChartBarIcon, ChartPieIcon, ClipboardDocumentCheckIcon, DocumentArrowDownIcon, ExclamationCircleIcon, TableCellsIcon, UserGroupIcon, XMarkIcon } from '@heroicons/react/24/outline';
-import { CalendarIcon, CheckCircleIcon, ClockIcon, ShieldCheckIcon, SparklesIcon, XCircleIcon } from 'lucide-react';
+import { 
+    BuildingOfficeIcon, 
+    ChartBarIcon, 
+    ChartPieIcon, 
+    ClipboardDocumentCheckIcon, 
+    DocumentArrowDownIcon, 
+    ExclamationCircleIcon, 
+    TableCellsIcon, 
+    UserGroupIcon, 
+    XMarkIcon 
+} from '@heroicons/react/24/outline';
+import { 
+    CalendarIcon, 
+    CheckCircleIcon, 
+    ClockIcon, 
+    ShieldCheckIcon, 
+    SparklesIcon, 
+    XCircleIcon 
+} from 'lucide-react';
 import React, { useState } from 'react'
 import ReactApexChart from 'react-apexcharts';
 import toast from 'react-hot-toast';
+import { AttendanceRecord, AttendanceSession } from '@/features/college-admin';
+import { Learner } from '@/entities/learner/model/types';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('attendance-details-modal');
@@ -187,7 +204,7 @@ const AttendanceDetailsModal = ({
 
             // Add BOM for proper Excel encoding
             const BOM = '\uFEFF';
-            const csvWithBOM = BOM + csvContent;
+            const csvWithBOM = `${BOM}${csvContent}`;
 
             const blob = new Blob([csvWithBOM], { type: 'text/csv;charset=utf-8;' });
             
@@ -238,7 +255,11 @@ const AttendanceDetailsModal = ({
     );
 
     // Get today's records (for selected session) with full learner list
-    const sessionRecords = allRecords.filter(r => r.date === session.date && r.subject === subjectGroup.subject);
+    const sessionRecords = allRecords.filter(r => {
+        const matches = r.sessionId === selectedSessionId;
+        return matches;
+    });
+
     const todaysRecords = classlearners.map((learner) => {
         const record = sessionRecords.find((r) => r.learnerId === learner.id);
         return record || {
@@ -336,6 +357,7 @@ const AttendanceDetailsModal = ({
                 <div
                     className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity"
                     onClick={onClose}
+                    aria-hidden="true"
                 />
 
                 <div className="relative w-full max-w-7xl transform overflow-hidden rounded-2xl bg-white shadow-2xl transition-all">
@@ -361,7 +383,9 @@ const AttendanceDetailsModal = ({
                             </div>
                         </div>
                         <button
+                            type="button"
                             onClick={onClose}
+                            aria-label="Close"
                             className="ml-4 rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
                         >
                             <XMarkIcon className="h-6 w-6" />
@@ -372,8 +396,9 @@ const AttendanceDetailsModal = ({
                     {subjectGroup.sessions.length > 1 && (
                         <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
                             <div className="flex items-center gap-3">
-                                <label className="text-sm font-medium text-gray-700">Select Session:</label>
+                                <label htmlFor="session-select" className="text-sm font-medium text-gray-700">Select Session:</label>
                                 <select
+                                    id="session-select"
                                     value={selectedSessionId}
                                     onChange={(e) => setSelectedSessionId(e.target.value)}
                                     className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white"
@@ -461,6 +486,7 @@ const AttendanceDetailsModal = ({
                                 const Icon = tab.icon;
                                 return (
                                     <button
+                                        type="button"
                                         key={tab.id}
                                         onClick={() => setActiveTab(tab.id)}
                                         className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${activeTab === tab.id
@@ -533,6 +559,7 @@ const AttendanceDetailsModal = ({
                                                     </td>
                                                     <td className="px-4 py-3 whitespace-nowrap text-sm">
                                                         <button
+                                                            type="button"
                                                             onClick={() => {
                                                                 const learner = classlearners.find(s => s.id === record.learnerId);
                                                                 if (learner) onViewlearnerHistory(learner);
@@ -559,8 +586,9 @@ const AttendanceDetailsModal = ({
                                             Monthly Attendance Overview
                                         </h3>
                                         <div className="flex items-center gap-2">
-                                            <label className="text-sm font-medium text-gray-700">Select Month:</label>
+                                            <label htmlFor="month-select" className="text-sm font-medium text-gray-700">Select Month:</label>
                                             <input
+                                                id="month-select"
                                                 type="month"
                                                 value={selectedMonth}
                                                 onChange={(e) => setSelectedMonth(e.target.value)}
@@ -576,7 +604,7 @@ const AttendanceDetailsModal = ({
                                         <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
                                             <h4 className="text-md font-semibold text-gray-900 mb-4 flex items-center gap-2">
                                                 <ChartBarIcon className="h-5 w-5 text-indigo-600" />
-                                                Class Attendance Trend ({new Date(selectedMonth + '-01').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })})
+                                                Class Attendance Trend ({new Date(`${selectedMonth}-01`).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })})
                                             </h4>
                                             {(() => {
                                                 const monthlyData = getMonthlyData(selectedMonth);
@@ -619,7 +647,7 @@ const AttendanceDetailsModal = ({
                                         <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
                                             <h4 className="text-md font-semibold text-gray-900 mb-4 flex items-center gap-2">
                                                 <ChartPieIcon className="h-5 w-5 text-indigo-600" />
-                                                Monthly Breakdown ({new Date(selectedMonth + '-01').toLocaleDateString('en-US', { month: 'short' })})
+                                                Monthly Breakdown ({new Date(`${selectedMonth}-01`).toLocaleDateString('en-US', { month: 'short' })})
                                             </h4>
                                             {(() => {
                                                 const monthlyData = getMonthlyData(selectedMonth);
@@ -646,7 +674,7 @@ const AttendanceDetailsModal = ({
                                 {/* Learner-wise Monthly Summary */}
                                 <div className="mt-6">
                                     <h4 className="text-md font-semibold text-gray-900 mb-4">
-                                        Learner-wise Monthly Summary ({new Date(selectedMonth + '-01').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })})
+                                        Learner-wise Monthly Summary ({new Date(`${selectedMonth}-01`).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })})
                                     </h4>
                                     <div className="overflow-x-auto">
                                         <table className="min-w-full divide-y divide-gray-200">
@@ -816,6 +844,7 @@ const AttendanceDetailsModal = ({
                         </div>
                         <div className="flex gap-3">
                             <button
+                                type="button"
                                 onClick={onClose}
                                 className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
                             >
@@ -823,6 +852,7 @@ const AttendanceDetailsModal = ({
                             </button>
                             
                             <button
+                                type="button"
                                 onClick={() => {
                                     try {
                                         if (activeTab === "today") {
@@ -869,7 +899,7 @@ const AttendanceDetailsModal = ({
                                                     'Excused': stats.excused,
                                                     'Total Days': stats.total,
                                                     'Attendance Percentage': `${stats.percentage}%`,
-                                                    'Month': new Date(selectedMonth + '-01').toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+                                                    'Month': new Date(`${selectedMonth}-01`).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
                                                 };
                                             });
 

@@ -3,11 +3,11 @@
  * GET: Fetch saved reports
  * POST: Action-based report data retrieval (attendance, performance, placement, etc.)
  */
-import { withAuth, getContextUser } from '../../lib/auth';
-import { getServiceClient } from '../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import { apiSuccess, apiDbError, apiError } from '../../lib/response';
+import { getContextUser, withAuth } from '../../lib/auth';
 import { buildCourseAnalyticsKpis } from '../../lib/courseAnalyticsKpis';
+import { apiDbError, apiError, apiSuccess } from '../../lib/response';
+import { getServiceClient } from '../../lib/supabase';
 
 export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   getContextUser(context);
@@ -46,6 +46,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
   const startTime = Date.now();
   const orgId = user.org_id;
+
 
   try {
     switch (action) {

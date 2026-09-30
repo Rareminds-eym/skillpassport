@@ -5,11 +5,14 @@
  * access to premium features through API manipulation.
  *
  * Reads from subscription_cache and plans_cache shadow tables (app DB)
- * for <1ms feature checks. Self-heals stale cache entries via async refresh.
+ * for fast feature checks. Self-heals stale cache entries via async refresh.
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { createLogger } from '../../lib/logger';
 import { isStale } from '../../lib/sync-shadow';
+
+const logger = createLogger('server-feature-gating');
 
 const PLAN_HIERARCHY = [
   'freemium',
@@ -55,13 +58,13 @@ export async function checkServerFeatureAccess(
   try {
     const { data: cached, error } = await supabase
       .from('subscription_cache')
-      .select('id, status, plan_code, features, synced_at')
+      .select('id, status, plan_code, features, synced_at, is_organization_subscription')
       .eq('user_id', userId)
       .in('status', ['active', 'grace_period'])
       .maybeSingle();
 
     if (error) {
-      console.error('[ServerFeatureGating] Error fetching subscription_cache:', error);
+      logger.error('Error fetching subscription_cache', { error: (error as Error).message, userId });
       return {
         hasAccess: false,
         reason: 'Unable to verify subscription',
@@ -70,16 +73,24 @@ export async function checkServerFeatureAccess(
     }
 
     if (!cached) {
+      const isFreemiumAllowed = FREEMIUM_FEATURES[feature] === true;
       return {
-        hasAccess: false,
-        reason: 'No active subscription',
-        requiresUpgrade: true,
+        hasAccess: isFreemiumAllowed,
+        reason: isFreemiumAllowed ? undefined : 'No active subscription',
+        planCode: 'freemium',
+        requiresUpgrade: !isFreemiumAllowed,
       };
     }
 
-    // Self-healing: if stale, trigger async refresh (non-blocking)
+    // Dead RPC removed: refresh_subscription_cache_for_user has no migration.
+    // Keep stale detection for metrics; cache is healed by cron and get-active-subscription fallback.
     if (isStale(cached.synced_at)) {
-      refreshCacheAsync(supabase, userId).catch(() => {});
+      logger.info('heal_metric', {
+        metric: 'heal_cache_miss_total',
+        status: 'stale_detected',
+        userId,
+        synced_at: cached.synced_at,
+      } as any);
     }
 
     const planCode = cached.plan_code;
@@ -102,8 +113,8 @@ export async function checkServerFeatureAccess(
       };
     }
 
-    const planFeatures: string[] = Array.isArray(cached.features) ? cached.features : [];
-    const hasFeature = planFeatures.includes(feature);
+    const planFeatures = Array.isArray(cached.features) ? cached.features : [];
+    const hasFeature = planFeatures.includes(feature) || cached.is_organization_subscription === true;
 
     return {
       hasAccess: hasFeature,
@@ -112,7 +123,7 @@ export async function checkServerFeatureAccess(
       requiresUpgrade: !hasFeature,
     };
   } catch (error) {
-    console.error('[ServerFeatureGating] Unexpected error:', error);
+    logger.error('Unexpected error', { error: (error as Error).message, userId });
     return {
       hasAccess: false,
       reason: 'Internal error',
@@ -134,13 +145,13 @@ export async function verifyPlanExists(
       .maybeSingle();
 
     if (error) {
-      console.error('[ServerFeatureGating] Error verifying plan:', error);
+      logger.error('Error verifying plan', { error: (error as Error).message, planCode });
       return { exists: false };
     }
 
     return { exists: !!plan, plan };
   } catch (error) {
-    console.error('[ServerFeatureGating] Unexpected error verifying plan:', error);
+    logger.error('Unexpected error verifying plan', { error: (error as Error).message, planCode });
     return { exists: false };
   }
 }
@@ -159,7 +170,7 @@ export async function canUpgradeToPlan(
       .maybeSingle();
 
     if (error) {
-      console.error('[ServerFeatureGating] Error fetching subscription_cache:', error);
+      logger.error('Error fetching subscription_cache', { error: (error as Error).message, userId });
       return { canUpgrade: false, reason: 'Unable to verify current subscription' };
     }
 
@@ -188,7 +199,7 @@ export async function canUpgradeToPlan(
       currentPlanCode,
     };
   } catch (error) {
-    console.error('[ServerFeatureGating] Unexpected error checking upgrade eligibility:', error);
+    logger.error('Unexpected error checking upgrade eligibility', { error: (error as Error).message, userId });
     return { canUpgrade: false, reason: 'Internal error' };
   }
 }
@@ -222,32 +233,11 @@ export function requireFeature(feature: string) {
   };
 }
 
-async function refreshCacheAsync(supabase: SupabaseClient, userId: string): Promise<void> {
-  // Self-healing: when a stale cache entry is detected during a feature check,
-  // attempt to refresh it from the auth DB. Since this module doesn't have
-  // access to the Cloudflare env (SSO_SERVICE binding), we use the supabase
-  // client to call the `refresh_subscription_cache` RPC if it exists,
-  // or fall back to marking the entry for the reconciliation cron to pick up.
-  try {
-    // Attempt direct sync via database function (if deployed)
-    const { error: rpcError } = await supabase.rpc('refresh_subscription_cache_for_user', {
-      target_user_id: userId,
-    });
-
-    if (rpcError) {
-      // RPC not deployed or failed — this is expected pre-migration.
-      // The nightly reconciliation cron will correct the stale data.
-      // Also, the next payment handler call will write-through sync.
-      console.warn(
-        `[ServerFeatureGating] Self-heal RPC unavailable for user ${userId}: ${rpcError.message}. ` +
-        'Reconciliation cron will correct on next cycle.'
-      );
-    } else {
-      console.log(`[ServerFeatureGating] Self-healed stale cache for user ${userId}`);
-    }
-  } catch (err) {
-    // Non-critical — feature gating still uses whatever cache data exists.
-    // The write-through sync on the next mutation will correct this.
-    console.warn('[ServerFeatureGating] Self-heal failed (non-critical):', err);
-  }
+/**
+ * @deprecated Dead code: RPC refresh_subscription_cache_for_user has no migration.
+ * Kept for reference. Do NOT call. Stale is now observed via stale_detected metric and healed by cron + get-active-subscription SSO fallback.
+ */
+async function refreshCacheAsync(_supabase: SupabaseClient, _userId: string): Promise<void> {
+  // No-op: previously called supabase.rpc('refresh_subscription_cache_for_user') which never existed.
+  // Intentionally left empty; call site now emits stale_detected and relies on cron-reconcile-heal.
 }

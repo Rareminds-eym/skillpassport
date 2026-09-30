@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { XMarkIcon, PlusIcon, TrashIcon, ArrowUpIcon, ArrowDownIcon } from '@heroicons/react/24/outline';
 import { BookOpen, Target, CheckSquare, FileText } from 'lucide-react';
 import type { Curriculum, Unit, LearningOutcome, AssessmentMapping } from '@/shared/types/college';
+import { formatProgramLabel } from '@/shared/lib';
 
 interface CurriculumBuilderFormProps {
   isOpen: boolean;
@@ -297,7 +298,7 @@ const CurriculumBuilderForm: React.FC<CurriculumBuilderFormProps> = ({
                   >
                     <option value="">Select Program</option>
                     {filteredPrograms.map(prog => (
-                      <option key={prog.id} value={prog.id}>{prog.name}</option>
+                      <option key={prog.id} value={prog.id}>{formatProgramLabel(prog.name, prog)}</option>
                     ))}
                   </select>
                 </div>

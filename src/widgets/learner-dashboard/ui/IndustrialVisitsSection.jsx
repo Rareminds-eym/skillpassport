@@ -4,7 +4,7 @@ import { Factory, MapPin, Calendar, Tag, Eye, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/Card';
 import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/ButtonNew';
-import { factoryVisitsService } from '@/features/college-admin';
+import { factoryVisitsService } from '@/features/college-admin/api/factoryVisitsService';
 
 const IndustrialVisitsSection = () => {
   const [visits, setVisits] = useState([]);

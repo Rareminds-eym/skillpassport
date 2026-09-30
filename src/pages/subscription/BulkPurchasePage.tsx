@@ -134,6 +134,7 @@ function BulkPurchasePage() {
   const availablePlans = useMemo(() => {
     if (!dbPlans || !Array.isArray(dbPlans)) return [];
     return (dbPlans as any[]).map((plan: any) => ({
+      ...plan,
       id: plan.id,
       name: plan.name,
       price: plan.price ? parseInt(plan.price) : 0,

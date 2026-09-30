@@ -10,6 +10,14 @@ import type { PagesFunction } from '../../../lib/types';
 import { apiSuccess, apiError } from '../../../lib/response';;
 import { R2Client } from '../utils/r2-client';
 
+function createDocumentProxyUrl(request: Request, fileKey: string, mode: 'inline' | 'download' = 'inline'): string {
+  const url = new URL(request.url);
+  return new URL(
+    `/api/storage/document-access?key=${encodeURIComponent(fileKey)}&mode=${mode}`,
+    url.origin
+  ).toString();
+}
+
 /**
  * Example handler showing R2Client usage
  * This demonstrates the pattern that will be used in actual handlers
@@ -34,7 +42,7 @@ export const handleExampleUpload: PagesFunction = async (context) => {
     const arrayBuffer = await file.arrayBuffer();
 
     // Upload to R2
-    const fileUrl = await r2.upload(
+    await r2.upload(
       filename,
       arrayBuffer,
       file.type,
@@ -42,6 +50,9 @@ export const handleExampleUpload: PagesFunction = async (context) => {
         'Content-Disposition': `attachment; filename="${file.name}"`,
       }
     );
+    const fileUrl = r2.hasPublicUrl()
+      ? r2.getPublicUrl(filename)
+      : createDocumentProxyUrl(request, filename);
 
     return apiSuccess({
       url: fileUrl,
@@ -54,45 +65,22 @@ export const handleExampleUpload: PagesFunction = async (context) => {
 };
 
 /**
- * Example handler showing presigned URL generation
+ * Example handler for the deprecated direct R2 presigned upload flow.
  */
 export const handleExamplePresigned: PagesFunction = async (context) => {
-  const { request, env } = context;
+  const { request } = context;
 
   try {
-    const r2 = new R2Client(env);
-
-    const body = await request.json() as {
-      filename: string;
-      contentType: string;
-    };
-
-    const { filename, contentType } = body;
-
-    if (!filename || !contentType) {
-      return apiError(400, 'VALIDATION_ERROR', 'filename and contentType are required', request);
-    }
-
-    // Generate unique file key
-    const timestamp = Date.now();
-    const randomString = crypto.randomUUID().replace(/-/g, '').substring(0, 16);
-    const extension = filename.substring(filename.lastIndexOf('.'));
-    const fileKey = `uploads/${timestamp}-${randomString}${extension}`;
-
-    // Generate presigned URL
-    const { url, headers } = await r2.generatePresignedUrl(
-      fileKey,
-      contentType
+    await request.json().catch(() => undefined);
+    return apiError(
+      410,
+      'PRESIGNED_UPLOAD_DISABLED',
+      'Direct R2 presigned uploads are disabled. Use POST /api/storage/upload.',
+      request
     );
-
-    return apiSuccess({
-      uploadUrl: url,
-      fileKey,
-      headers,
-    }, request);
   } catch (error) {
     console.error('Presigned URL error:', error);
-    return apiError(500, 'INTERNAL_ERROR', (error as Error).message || 'Failed to generate presigned URL', request);
+    return apiError(500, 'INTERNAL_ERROR', (error as Error).message || 'Presigned upload is disabled', request);
   }
 };
 
@@ -147,7 +135,9 @@ export const handleExampleList: PagesFunction = async (context) => {
     // Transform to include public URLs
     const filesWithUrls = files.map(file => ({
       key: file.key,
-      url: r2.getPublicUrl(file.key),
+      url: r2.hasPublicUrl()
+        ? r2.getPublicUrl(file.key)
+        : createDocumentProxyUrl(request, file.key),
       size: file.size,
       lastModified: file.lastModified.toISOString(),
     }));

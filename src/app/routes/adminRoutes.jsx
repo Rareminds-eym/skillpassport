@@ -1,6 +1,6 @@
 import { lazy } from "react";
 import { Navigate, Route } from "react-router-dom";
-import { SubscriptionProtectedRoute } from "@/features/subscription";
+import SubscriptionProtectedRoute from "@/features/subscription/ui/shared/SubscriptionProtectedRoute";
 import { OrganizationGuard } from "@/app/guards";
 import AdminLayout from "../layouts/AdminLayout";
 

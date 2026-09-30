@@ -18,6 +18,14 @@ interface FileInfo {
   lastModified?: string;
 }
 
+function createDocumentProxyUrl(request: Request, fileKey: string, mode: 'inline' | 'download' = 'inline'): string {
+  const url = new URL(request.url);
+  return new URL(
+    `/api/storage/document-access?key=${encodeURIComponent(fileKey)}&mode=${mode}`,
+    url.origin
+  ).toString();
+}
+
 /**
  * List all files in a course lesson
  * Files are stored with prefix: courses/{courseId}/lessons/{lessonId}/
@@ -66,7 +74,9 @@ export const handleListFiles: PagesFunction = async (context: AuthenticatedConte
     // Map R2Objects to FileInfo format
     const files: FileInfo[] = objects.map((obj) => ({
       key: obj.key,
-      url: r2Client.getPublicUrl(obj.key),
+      url: r2Client.hasPublicUrl()
+        ? r2Client.getPublicUrl(obj.key)
+        : createDocumentProxyUrl(request, obj.key),
       size: obj.size.toString(),
       lastModified: obj.lastModified.toISOString(),
     }));

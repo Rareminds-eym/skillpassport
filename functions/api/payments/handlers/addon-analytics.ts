@@ -2,6 +2,7 @@ import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getContextUser } from '../../../lib/auth';
 import { apiError, apiSuccess } from '../../../lib/response';
 import { getServiceClient } from '../../../lib/supabase';
+import { safeParseFloat } from '../../../lib/numbers';
 
 export async function handleAddonAnalytics(context: AuthenticatedContext): Promise<Response> {
   const env = context.env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string };

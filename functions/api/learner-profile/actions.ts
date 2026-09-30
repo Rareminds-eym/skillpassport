@@ -1,8 +1,15 @@
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import { withAuth } from '../../lib/auth';
+
+import { getContextUser, withAuth } from '../../lib/auth';
+import { createLogger } from '../../lib/logger';
 import { notifyRealtime } from '../../lib/realtime';
 import { apiDbError, apiError, apiSuccess } from '../../lib/response';
 import { getServiceClient } from '../../lib/supabase';
+
+const logger = createLogger('learner-profile-actions');
+
+const REPORT_TYPE_SKILL_ASSESSMENT = 'skill_assessment';
+const REPORT_TITLE_CAREER_ASSESSMENT = 'Career Assessment Report';
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const env = context.env as Record<string, string>;
@@ -590,7 +597,45 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       case 'update-enrollment': {
         const { learnerId, enrollmentData } = params;
         if (!learnerId || !enrollmentData) return apiError(400, 'VALIDATION_ERROR', 'Missing learnerId or enrollmentData', context.request, { startTime });
-        const { data, error } = await supabase.from('learners').update({ ...enrollmentData, updated_at: new Date().toISOString() }).eq('id', learnerId).select().single();
+        const payload: Record<string, any> = { ...enrollmentData };
+        // If the enrolled program has specializations, carry them onto the
+        // learner row (varchar free-text, comma-joined like "hr, marketing").
+        // Programs without specializations leave the learner value untouched.
+        if (enrollmentData.program_id) {
+          try {
+            const { data: prog, error: progError } = await supabase
+              .from('programs')
+              .select('specializations')
+              .eq('id', enrollmentData.program_id)
+              .maybeSingle();
+            if (progError) {
+              logger.warn('[update-enrollment] specializations lookup failed; learner specialization left unchanged', {
+                learnerId,
+                program_id: enrollmentData.program_id,
+                message: progError.message,
+              });
+            } else {
+              const specs = Array.isArray((prog as any)?.specializations)
+                ? (prog as any).specializations.map((s: unknown) => String(s).trim()).filter(Boolean)
+                : String((prog as any)?.specializations ?? '')
+                    .split(',')
+                    .map((s: string) => s.trim())
+                    .filter(Boolean);
+              if (specs.length > 0) {
+                payload.specialization = specs.join(', ');
+              }
+              // No specializations on the program: learner row untouched,
+              // manual specialization (if any) is preserved.
+            }
+          } catch (err) {
+            logger.warn('[update-enrollment] specializations lookup threw; learner specialization left unchanged', {
+              learnerId,
+              program_id: enrollmentData.program_id,
+              message: err instanceof Error ? err.message : String(err),
+            });
+          }
+        }
+        const { data, error } = await supabase.from('learners').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', learnerId).select().single();
         if (error) return apiDbError(error, context.request, { startTime });
         return apiSuccess(data, context.request, { startTime });
       }
@@ -814,7 +859,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const { data, error } = await supabase.from('learners').select(`
           id, email, name, age, date_of_birth, dateOfBirth, contact_number, contactNumber, alternate_number,
           district_name, city, state, country, pincode, address, university, branch_field,
-          college_school_name, school_name, registration_number, enrollmentNumber, github_link, linkedin_link,
+          college_school_name, school_name, specialization, registration_number, enrollmentNumber, github_link, linkedin_link,
           twitter_link, facebook_link, instagram_link, portfolio_link, other_social_links,
           resumeUrl, profilePicture, bio, gender, bloodGroup, guardianName, guardianPhone,
           guardianEmail, guardianRelation, currentCgpa, grade, grade_start_date, universityId,
@@ -930,7 +975,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         let query = supabase.from('learners').select(`
           id, user_id, learner_id, name, email, contact_number, alternate_number, contact_dial_code,
           date_of_birth, age, gender, bloodGroup, district_name, university, university_main,
-          branch_field, college_school_name, course_name, registration_number, enrollmentNumber,
+          branch_field, specialization, college_school_name, course_name, registration_number, enrollmentNumber,
           github_link, linkedin_link, twitter_link, facebook_link, instagram_link, portfolio_link,
           youtube_link, other_social_links, approval_status, trainer_name, bio, address, city,
           state, country, pincode, resumeUrl, profilePicture, contactNumber, dateOfBirth,
@@ -1166,7 +1211,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           { key: 'universities', table: 'organizations', select: 'id, name, city, state, code', filters: { organization_type: 'university', account_status: ['active', 'pending'] }, order: 'name' },
           { key: 'universityColleges', table: 'university_colleges', select: 'id, name, code, university_id', order: 'name' },
           { key: 'departments', table: 'departments', select: 'id, name, code, college_id', order: 'name' },
-          { key: 'programs', table: 'programs', select: 'id, name, code, degree_level, department_id', order: 'name' },
+          { key: 'programs', table: 'programs', select: 'id, name, code, degree_level, department_id, specializations', order: 'name' },
           { key: 'schoolClasses', table: 'school_classes', select: 'id, name, grade, section, school_id', order: ['grade', 'section'] },
           { key: 'programSections', table: 'program_sections', select: 'id, program_id, semester, section', order: ['semester', 'section'] },
         ];
@@ -1187,6 +1232,89 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         }
 
         return apiSuccess(results, context.request, { startTime });
+      }
+
+      // ──────────────────────────────────────────────
+      // ASSESSMENT REPORT LOGGING
+      // ──────────────────────────────────────────────
+
+      case 'log-assessment-report': {
+        const authUser = getContextUser(context);
+        // Resolve learners.id from auth user.id
+        const { data: learnerRow } = await supabase
+          .from('learners')
+          .select('id')
+          .eq('user_id', authUser.id)
+          .maybeSingle();
+
+        if (!learnerRow?.id) {
+          return apiSuccess({ logged: false }, context.request, { startTime });
+        }
+
+        const now = new Date();
+        const year = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+        const academicYear = `${year}-${String(year + 1).slice(2)}`;
+
+        const { error: insertError } = await supabase.from('learner_reports').insert({
+          learner_id: learnerRow.id,
+          report_type: REPORT_TYPE_SKILL_ASSESSMENT,
+          title: REPORT_TITLE_CAREER_ASSESSMENT,
+          academic_year: academicYear,
+          data: {},
+          generated_by: authUser.id,
+          generated_date: now.toISOString(),
+        });
+
+        if (insertError) {
+          logger.error('[log-assessment-report] Insert failed:', insertError.message);
+        }
+
+        return apiSuccess({ logged: !insertError }, context.request, { startTime });
+      }
+
+      // ──────────────────────────────────────────────
+      // PROFILE VIEW TRACKING
+      // ──────────────────────────────────────────────
+
+      case 'track-profile-view': {
+        const { learnerId, viewerType = 'learner' } = params;
+        if (!learnerId) return apiError(400, 'VALIDATION_ERROR', 'Missing learnerId', context.request, { startTime });
+
+        const viewerId = getContextUser(context).id; // auth UUID of the logged-in viewer
+
+        // profile_views.learner_id references learners(user_id) — the auth UUID.
+        // learnerId from the URL param is learners.id (internal UUID), so resolve user_id first.
+        const { data: learnerRow } = await supabase
+          .from('learners')
+          .select('user_id')
+          .eq('id', learnerId)
+          .maybeSingle();
+
+        if (!learnerRow?.user_id) {
+          // Learner not found — silently succeed so the page doesn't break
+          return apiSuccess({ tracked: false }, context.request, { startTime });
+        }
+
+        const learnerAuthId = learnerRow.user_id; // auth UUID for profile_views.learner_id
+
+        // Skip self-views — viewer is the profile owner
+        if (viewerId === learnerAuthId) {
+          return apiSuccess({ tracked: false, reason: 'self-view' }, context.request, { startTime });
+        }
+
+        const { error: insertError } = await supabase.from('profile_views').insert({
+          learner_id: learnerAuthId,
+          viewer_id: viewerId,
+          viewer_type: viewerType,
+          viewed_at: new Date().toISOString(),
+        });
+
+        if (insertError) {
+          // Log but don't fail — tracking should never break the profile page
+          logger.error('[track-profile-view] Insert failed:', insertError.message);
+        }
+
+        return apiSuccess({ tracked: !insertError }, context.request, { startTime });
       }
 
       default:

@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
 import { XMarkIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('DiversityExportModal');
@@ -52,7 +50,7 @@ const DiversityExportModal: React.FC<DiversityExportModalProps> = ({
     }));
   };
 
-  const handleExportPDF = () => {
+  const handleExportPDF = async () => {
     // Validate at least one section is selected
     if (!selectedSections.geographic && !selectedSections.colleges) {
       alert('Please select at least one section to export');
@@ -60,6 +58,10 @@ const DiversityExportModal: React.FC<DiversityExportModalProps> = ({
     }
 
     try {
+      const jspdfModule = await import('jspdf');
+      const jsPDF = jspdfModule.jsPDF || jspdfModule.default;
+      const autoTableModule = await import('jspdf-autotable');
+      const autoTable = autoTableModule.default || autoTableModule.autoTable;
       // Create PDF document
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.getWidth();

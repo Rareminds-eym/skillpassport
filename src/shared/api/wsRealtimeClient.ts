@@ -517,6 +517,21 @@ export class WSRealtimeClient {
   // ─── Reconnect ────────────────────────────────────────────────────────
 
   private scheduleReconnect(): void {
+    // Gated by ws-reconnect-heal flag (Vite env VITE_HEAL_MODE / VITE_HEAL_CATEGORIES)
+    const viteFlagDisabled = (() => {
+      try {
+        const mode = (import.meta as unknown as { env: Record<string, string> }).env?.VITE_HEAL_MODE;
+        const catsRaw = (import.meta as unknown as { env: Record<string, string> }).env?.VITE_HEAL_CATEGORIES;
+        if (mode === 'disabled') return catsRaw ? (() => { try { const cats = JSON.parse(catsRaw); return cats['ws-reconnect-heal'] !== 'enabled'; } catch { return true; } })() : true;
+        if (catsRaw) { try { const cats = JSON.parse(catsRaw); if (cats['ws-reconnect-heal'] === 'disabled') return true; } catch {} }
+      } catch {}
+      return false;
+    })();
+    if (viteFlagDisabled) {
+      console.warn('[WS] Reconnect disabled by ws-reconnect-heal flag');
+      this.dispatchEvent({ type: 'error', message: 'Reconnect disabled by flag' });
+      return;
+    }
     if (this.intentionalDisconnect) return;
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
       console.error('[WS] Max reconnect attempts reached');
