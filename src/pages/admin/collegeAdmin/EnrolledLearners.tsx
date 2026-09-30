@@ -14,7 +14,7 @@ import {
 import { learnerEnrollmentService, type EnrolledLearnerView } from "@/features/learner-profile/api";
 
 import toast from "react-hot-toast";
-import { Pagination } from '@/shared/ui';
+import Pagination from '@/features/admin/ui/Pagination';
 import { SearchBar } from '@/shared/ui';
 import { getLogger } from '@/shared/config/logging';
 import { apiPost } from '@/shared/api/apiClient';
@@ -249,6 +249,7 @@ const EnrolledLearners: FC = () => {
             </p>
           </div>
           <button
+            type="button"
             onClick={() => setShowEnrollModal(true)}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
           >
@@ -326,6 +327,7 @@ const EnrolledLearners: FC = () => {
           </div>
           {(departmentFilter || programFilter || semesterFilter || statusFilter || academicYearFilter || searchTerm) && (
             <button
+              type="button"
               onClick={clearFilters}
               className="text-sm text-blue-600 hover:text-blue-700 font-medium"
             >
@@ -389,9 +391,16 @@ const EnrolledLearners: FC = () => {
       {/* Learners Table */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="p-6 border-b border-gray-200">
-          <h2 className="text-xl font-bold text-gray-900">
-            Learners ({learners.length})
-          </h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold text-gray-900">
+              Learners ({learners.length})
+            </h2>
+            {learners.length > 0 && (
+              <p className="text-sm text-gray-600">
+                Showing {Math.min((currentPage - 1) * ITEMS_PER_PAGE + 1, learners.length)}-{Math.min(currentPage * ITEMS_PER_PAGE, learners.length)} of {learners.length}
+              </p>
+            )}
+          </div>
         </div>
 
         {loading ? (
@@ -573,7 +582,7 @@ const EnrolllearnersModal: FC<{
       setAvailableSemesters(semesters);
 
       // Reset semester selection if current selection is not available
-      if (selectedSemester && !semesters.includes(parseInt(selectedSemester))) {
+      if (selectedSemester && !semesters.includes(parseInt(selectedSemester, 10))) {
         setSelectedSemester("");
       }
     } catch (error) {
@@ -588,7 +597,7 @@ const EnrolllearnersModal: FC<{
       const res: any = await apiPost('/college-admin/actions', {
         action: 'get-program-sections-with-counts',
         program_id: selectedProgram,
-        semester: parseInt(selectedSemester)
+        semester: parseInt(selectedSemester, 10)
       });
 
       if (!res.success) throw new Error(res.error);
@@ -635,7 +644,7 @@ const EnrolllearnersModal: FC<{
         learner_id: learnerId,
         program_id: selectedProgram,
         section: selectedSection || undefined,
-        semester: parseInt(selectedSemester),
+        semester: parseInt(selectedSemester, 10),
       }));
 
       const result = await learnerEnrollmentService.bulkEnrollLearners(enrollments);
