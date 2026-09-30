@@ -1,9 +1,9 @@
-import React from "react";
-import { Bell, Save } from "lucide-react";
 import { Button } from '@/shared/ui/ButtonNew';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/Card';
+import { Bell, Save } from "lucide-react";
+import { memo } from "react";
 
-const NotificationsTab = ({
+const NotificationsTab = memo(({
   notificationSettings,
   handleNotificationToggle,
   handleSaveNotifications,
@@ -48,9 +48,8 @@ const NotificationsTab = ({
           ].map((setting) => (
             <div
               key={setting.key}
-              className={`flex items-center justify-between p-4 rounded-xl ${
-                setting.comingSoon ? "bg-slate-100" : "bg-slate-50"
-              }`}
+              className={`flex items-center justify-between p-4 rounded-xl ${setting.comingSoon ? "bg-slate-100" : "bg-slate-50"
+                }`}
             >
               <div className="flex-1">
                 <p className="text-sm font-semibold text-gray-900 flex items-center gap-2">
@@ -70,18 +69,16 @@ const NotificationsTab = ({
                   onClick={() => handleNotificationToggle(setting.key)}
                   aria-label={setting.label}
                   aria-pressed={!!notificationSettings[setting.key]}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-all duration-300 ${
-                    notificationSettings[setting.key]
-                      ? "bg-blue-600"
-                      : "bg-slate-300"
-                  }`}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-all duration-300 ${notificationSettings[setting.key]
+                    ? "bg-blue-600"
+                    : "bg-slate-300"
+                    }`}
                 >
                   <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-300 shadow-sm ${
-                      notificationSettings[setting.key]
-                        ? "translate-x-6"
-                        : "translate-x-1"
-                    }`}
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-300 shadow-sm ${notificationSettings[setting.key]
+                      ? "translate-x-6"
+                      : "translate-x-1"
+                      }`}
                   />
                 </button>
               )}
@@ -112,6 +109,8 @@ const NotificationsTab = ({
       </CardContent>
     </Card>
   );
-};
+});
+
+NotificationsTab.displayName = 'NotificationsTab';
 
 export default NotificationsTab;
