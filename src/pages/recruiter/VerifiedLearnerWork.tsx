@@ -899,11 +899,10 @@ export default function VerifiedLearnerWorkUI() {
                   setTab(t);
                   setPage(1);
                 }}
-                className={`px-3 py-2 rounded-lg text-sm font-medium ${
-                  tab === t
+                className={`px-3 py-2 rounded-lg text-sm font-medium ${tab === t
                     ? "bg-blue-600 text-white"
                     : "bg-transparent border border-gray-300"
-                }`}
+                  }`}
               >
                 {t === "all"
                   ? "All"
@@ -991,9 +990,10 @@ export default function VerifiedLearnerWorkUI() {
 
         {/* No Results */}
         {filtered.length === 0 && (
-          <div className="text-center text-gray-500 mt-10">
-            No results found.
-          </div>
+          <EmptyStateWithQuote
+            page="verified-work"
+            icon={DocumentCheckIcon}
+          />
         )}
 
         {/* Pagination */}

@@ -15,6 +15,7 @@ import React, { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 // @ts-ignore - FeatureGate is a JSX component
 import { FeatureGate } from '@/features/subscription';
+import { EmptyStateWithQuote } from '@/components/EmptyStateWithQuote';
 
 // Import components
 import { ProjectList } from '@/features/recruiter';
@@ -280,16 +281,11 @@ const ProjectHiringWithNavContent = () => {
                 { label: 'Active Contracts', current: true }
               ]}
             />
-            <div className="text-center py-12">
-              <BriefcaseIcon className="h-16 w-16 text-purple-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Active Contracts View</h3>
-              <p className="text-gray-600">
-                Shows all ongoing contracts with milestone tracking, payment status, and progress updates.
-              </p>
-              <p className="text-sm text-gray-500 mt-2">
-                Currently: {activeContracts.length} active contracts
-              </p>
-            </div>
+            <EmptyStateWithQuote
+              page="project-hiring"
+              icon={BriefcaseIcon}
+              iconSize="large"
+            />
           </div>
         );
 
@@ -302,16 +298,11 @@ const ProjectHiringWithNavContent = () => {
                 { label: 'Proposals', current: true }
               ]}
             />
-            <div className="text-center py-12">
-              <DocumentTextIcon className="h-16 w-16 text-blue-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Proposals Dashboard</h3>
-              <p className="text-gray-600">
-                Review, compare, and manage all incoming proposals across your projects.
-              </p>
-              <p className="text-sm text-gray-500 mt-2">
-                Currently: {totalProposals} proposals awaiting review
-              </p>
-            </div>
+            <EmptyStateWithQuote
+              page="project-hiring"
+              icon={DocumentTextIcon}
+              iconSize="large"
+            />
           </div>
         );
 
@@ -324,13 +315,11 @@ const ProjectHiringWithNavContent = () => {
                 { label: 'Milestones', current: true }
               ]}
             />
-            <div className="text-center py-12">
-              <ClockIcon className="h-16 w-16 text-yellow-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Milestone Tracker</h3>
-              <p className="text-gray-600">
-                Track all milestones across active projects, approve deliverables, and release payments.
-              </p>
-            </div>
+            <EmptyStateWithQuote
+              page="project-hiring"
+              icon={ClockIcon}
+              iconSize="large"
+            />
           </div>
         );
 
@@ -343,13 +332,11 @@ const ProjectHiringWithNavContent = () => {
                 { label: 'Analytics', current: true }
               ]}
             />
-            <div className="text-center py-12">
-              <ChartBarIcon className="h-16 w-16 text-green-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Project Analytics</h3>
-              <p className="text-gray-600">
-                Insights into project performance, budget utilization, completion rates, and ROI.
-              </p>
-            </div>
+            <EmptyStateWithQuote
+              page="project-hiring"
+              icon={ChartBarIcon}
+              iconSize="large"
+            />
           </div>
         );
 

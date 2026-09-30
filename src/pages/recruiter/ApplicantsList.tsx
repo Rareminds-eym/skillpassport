@@ -3,10 +3,11 @@ import toast from 'react-hot-toast';
 import { AppliedJobsService } from '@/features/opportunities';
 import { getAllPipelineCandidatesByStage, moveCandidateToStage } from '@/features/opportunities';
 import { apiPost } from '@/shared/api/apiClient';
-import { EyeIcon, ChatBubbleLeftIcon, MagnifyingGlassIcon, ArrowDownTrayIcon, ChevronRightIcon, ChevronDownIcon, ChevronUpIcon, SparklesIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { EyeIcon, ChatBubbleLeftIcon, MagnifyingGlassIcon, ArrowDownTrayIcon, ChevronRightIcon, ChevronDownIcon, ChevronUpIcon, SparklesIcon, XMarkIcon, UsersIcon } from '@heroicons/react/24/outline';
 import { MessageModal } from '@/features/messaging';
 import { useMessageNotifications } from '@/features/messaging';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { EmptyStateWithQuote } from '@/components/EmptyStateWithQuote';
 
 import { recruiterInsights } from '@/features/recruiter-copilot';
 import { getLogger } from '@/shared/config/logging';
@@ -1048,8 +1049,12 @@ const ApplicantsList: React.FC = () => {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {paginatedApplicants.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
-                        No applicants found
+                      <td colSpan={6} className="px-6 py-12">
+                        <EmptyStateWithQuote
+                          page="applicants"
+                          icon={UsersIcon}
+                          className="py-0"
+                        />
                       </td>
                     </tr>
                   ) : (
