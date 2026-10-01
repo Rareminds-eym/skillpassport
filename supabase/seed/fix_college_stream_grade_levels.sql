@@ -2,6 +2,8 @@
 -- These ids match the college fallback metadata in
 -- functions/api/assessment/utils/ensureStreamExists.ts.
 
+BEGIN;
+
 WITH college_streams(id) AS (
   VALUES
     ('college'),
@@ -177,3 +179,5 @@ SET grade_level = 'college',
 FROM college_streams cs
 WHERE caq.stream_id = cs.id
   AND caq.grade_level IS DISTINCT FROM 'college';
+
+COMMIT;
