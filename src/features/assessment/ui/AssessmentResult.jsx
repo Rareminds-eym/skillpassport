@@ -779,20 +779,40 @@ const AssessmentResult = () => {
         );
     }, [gradeLevel, monthsInGrade, results, learnerAcademicData, learnerInfo?.grade, learnerInfo?.stream, loading, retrying]);
 
-    // Calculate stream recommendations for after 10th learners
+    const isGrade10HighSchool = useMemo(() => {
+        if (gradeLevel !== 'highschool') return false;
+
+        const gradeText = String(learnerInfo?.grade || '').toLowerCase();
+        const match = gradeText.match(/\d+/);
+        return match ? parseInt(match[0], 10) === 10 : false;
+    }, [gradeLevel, learnerInfo?.grade]);
+
+    // Calculate stream recommendations for after 10th learners and Grade 10 high-school learners
     const enhancedStreamRecommendation = useMemo(() => {
-        if (gradeLevel !== 'after10') return null;
+        const shouldUseStreamRecommendation = gradeLevel === 'after10' || isGrade10HighSchool;
+        if (!shouldUseStreamRecommendation) return null;
 
         // If AI recommendation is available, use it directly (it now includes all necessary fields)
         // Check both streamRecommendation and recommendedStream (normalizer might use either name)
         const aiRecommendation = results?.streamRecommendation || results?.recommendedStream;
-        
+
         if (aiRecommendation) {
+            const recommendedStream =
+                aiRecommendation.recommendedStream ||
+                aiRecommendation.stream ||
+                aiRecommendation.displayName ||
+                null;
+            const displayName =
+                aiRecommendation.displayName ||
+                aiRecommendation.recommendedStream ||
+                aiRecommendation.stream ||
+                null;
             const enhanced = {
-                isAfter10: true,
-                stream: aiRecommendation.stream,
-                recommendedStream: aiRecommendation.stream, // For backward compatibility
-                displayName: aiRecommendation.displayName,
+                isAfter10: gradeLevel === 'after10',
+                isGrade10: isGrade10HighSchool,
+                stream: aiRecommendation.stream || recommendedStream,
+                recommendedStream,
+                displayName,
                 category: aiRecommendation.category,
                 confidence: aiRecommendation.confidence,
                 streamFit: aiRecommendation.confidence, // Map confidence to streamFit
@@ -819,7 +839,7 @@ const AssessmentResult = () => {
         // Fallback: Use the stream matching engine if AI recommendation is not available
         const streamRec = calculateStreamRecommendations(results, learnerAcademicData);
         return streamRec;
-    }, [gradeLevel, results, learnerAcademicData]);
+    }, [gradeLevel, isGrade10HighSchool, results, learnerAcademicData]);
 
     // Converts relative image paths to base64 so Browserless can render them without needing localhost access
     const inlineImages = async (htmlString) => {
@@ -1136,6 +1156,9 @@ const AssessmentResult = () => {
     }
 
     const { careerFit, skillGap, roadmap, streamRecommendation } = results;
+    const streamRecommendationForDisplay = enhancedStreamRecommendation || streamRecommendation;
+    const hasStreamRecommendationForDisplay = !!streamRecommendationForDisplay?.recommendedStream;
+    const shouldShowStreamRecommendationFlow = gradeLevel === 'after10' || isGrade10HighSchool;
 
     return (
         <>
@@ -1150,7 +1173,7 @@ const AssessmentResult = () => {
                 riasecNames={RIASEC_NAMES}
                 traitNames={TRAIT_NAMES}
                 courseRecommendations={enhancedCourseRecommendations}
-                streamRecommendation={enhancedStreamRecommendation || streamRecommendation}
+                streamRecommendation={streamRecommendationForDisplay}
                 learnerAcademicData={learnerAcademicData}
             />
 
@@ -1381,7 +1404,7 @@ const AssessmentResult = () => {
                     {/* ═══════════════════════════════════════════════════════════════════════════════ */}
                     {/* AFTER 10TH - STEPPER BASED FLOW (Stream → Career Clusters) */}
                     {/* ═══════════════════════════════════════════════════════════════════════════════ */}
-                    {gradeLevel === 'after10' && (
+                    {shouldShowStreamRecommendationFlow && (
                         <div className="mb-8">
                             {/* Stepper Header */}
                             <div className="flex justify-center mb-8">
@@ -1430,9 +1453,9 @@ const AssessmentResult = () => {
                             </div>
 
                             {/* Step 1: Stream Recommendation - Single Card with Purple/Track 3 Theme */}
-                            {after10Step === 1 && (enhancedStreamRecommendation || streamRecommendation) && (enhancedStreamRecommendation?.recommendedStream || streamRecommendation?.recommendedStream) && (
+                            {after10Step === 1 && streamRecommendationForDisplay && hasStreamRecommendationForDisplay && (
                                 (() => {
-                                    const streamRec = enhancedStreamRecommendation || streamRecommendation;
+                                    const streamRec = streamRecommendationForDisplay;
                                     // Purple/Track 3 color config
                                     const purpleConfig = {
                                         bg: '#1e293b',
@@ -1697,7 +1720,7 @@ const AssessmentResult = () => {
                             )}
 
                             {/* Step 1 Fallback - No stream data */}
-                            {after10Step === 1 && !(enhancedStreamRecommendation?.recommendedStream || streamRecommendation?.recommendedStream) && (
+                            {after10Step === 1 && !hasStreamRecommendationForDisplay && (
                                 <div className="bg-slate-900 rounded-xl p-8 text-center border border-slate-700">
                                     <GraduationCap className="w-12 h-12 text-slate-500 mx-auto mb-4" />
                                     <h3 className="text-lg font-semibold text-white mb-2">Stream Recommendation Loading...</h3>
@@ -1733,7 +1756,7 @@ const AssessmentResult = () => {
                                         className="text-center mb-8"
                                     >
                                         <h2 className="text-2xl md:text-3xl font-bold mb-2">
-                                            Career Paths for {(enhancedStreamRecommendation || streamRecommendation)?.recommendedStream || 'Your Stream'}
+                                            Career Paths for {streamRecommendationForDisplay?.recommendedStream || 'Your Stream'}
                                         </h2>
                                         <p className="text-gray-400">
                                             Explore career clusters aligned with your recommended stream
@@ -2360,7 +2383,7 @@ const AssessmentResult = () => {
                     {/* ═══════════════════════════════════════════════════════════════════════════════ */}
                     {/* CAREER RECOMMENDATIONS - For all other grade levels (middle, high school, etc.) */}
                     {/* ═══════════════════════════════════════════════════════════════════════════════ */}
-                    {gradeLevel !== 'after10' && gradeLevel !== 'after12' && careerFit?.clusters?.length > 0 && (
+                    {gradeLevel !== 'after10' && gradeLevel !== 'after12' && !isGrade10HighSchool && careerFit?.clusters?.length > 0 && (
                         <div className="mb-8">
                             <div className="space-y-8" data-tour="career-tracks">
                                 {/* Career Recommendations using CareerCard components with original colorful design */}
