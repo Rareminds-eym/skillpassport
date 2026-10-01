@@ -32,7 +32,7 @@ async function getOrgOpportunityIds(
   // Verify user has access to this organization
   const access = await verifyOrgAccess(supabase, user.sub, orgId, undefined);
   if (!access.allowed) {
-    return { error: access.error! };
+    return { error: access.error || apiError(403, 'FORBIDDEN', 'Access denied to this organization', context.request) };
   }
 
   // Get opportunities belonging to this organization
@@ -93,8 +93,8 @@ const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   const salaryMax = url.searchParams.get('salaryMax');
   const postedWithin = url.searchParams.get('postedWithin');
 
-  if (isNaN(rawLimit) || rawLimit < 1) return apiError(400, 'VALIDATION_ERROR', 'limit must be a positive integer', context.request);
-  if (isNaN(rawOffset) || rawOffset < 0) return apiError(400, 'VALIDATION_ERROR', 'offset must be a non-negative integer', context.request);
+  if (Number.isNaN(rawLimit) || rawLimit < 1) return apiError(400, 'VALIDATION_ERROR', 'limit must be a positive integer', context.request);
+  if (Number.isNaN(rawOffset) || rawOffset < 0) return apiError(400, 'VALIDATION_ERROR', 'offset must be a non-negative integer', context.request);
   const limit = rawLimit;
   const offset = rawOffset;
 
@@ -117,7 +117,7 @@ const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
     // Verify recruiter has access to this organization
     const access = await verifyOrgAccess(supabase, user.sub, orgId, undefined);
     if (!access.allowed) {
-      return access.error!;
+      return access.error || apiError(403, 'FORBIDDEN', 'Access denied to this organization', context.request);
     }
 
     query = query.eq('organization_id', orgId);
@@ -154,18 +154,18 @@ const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
     query = query.or(`title.ilike.%${searchTerm}%,company_name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,department.ilike.%${searchTerm}%`);
   }
   if (salaryMin) {
-    const raw = parseInt(salaryMin);
-    if (isNaN(raw) || raw < 0) return apiError(400, 'VALIDATION_ERROR', 'salaryMin must be a non-negative integer', context.request);
+    const raw = parseInt(salaryMin, 10);
+    if (Number.isNaN(raw) || raw < 0) return apiError(400, 'VALIDATION_ERROR', 'salaryMin must be a non-negative integer', context.request);
     query = query.gte('salary_range_min', raw);
   }
   if (salaryMax) {
-    const raw = parseInt(salaryMax);
-    if (isNaN(raw) || raw < 0) return apiError(400, 'VALIDATION_ERROR', 'salaryMax must be a non-negative integer', context.request);
+    const raw = parseInt(salaryMax, 10);
+    if (Number.isNaN(raw) || raw < 0) return apiError(400, 'VALIDATION_ERROR', 'salaryMax must be a non-negative integer', context.request);
     query = query.lte('salary_range_max', raw);
   }
   if (postedWithin) {
-    const raw = parseInt(postedWithin);
-    if (isNaN(raw) || raw < 1) return apiError(400, 'VALIDATION_ERROR', 'postedWithin must be a positive integer', context.request);
+    const raw = parseInt(postedWithin, 10);
+    if (Number.isNaN(raw) || raw < 1) return apiError(400, 'VALIDATION_ERROR', 'postedWithin must be a positive integer', context.request);
     const dateThreshold = new Date();
     dateThreshold.setDate(dateThreshold.getDate() - raw);
     query = query.gte('created_at', dateThreshold.toISOString());
@@ -309,10 +309,15 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       const authUser = getContextUser(context);
       
       // Use org_id from JWT (for college admins in organizations table)
-      let collegeId = explicitCollegeId || authUser?.org_id;
+      const collegeId = explicitCollegeId || authUser?.org_id;
+
+      // Security check: collegeId must be present to prevent data leakage
+      if (!collegeId) {
+        return apiError(400, 'VALIDATION_ERROR', 'College ID is required', context.request);
+      }
 
       let learnersQuery = supabase.from('learners').select('*', { count: 'exact', head: true });
-      if (collegeId) learnersQuery = learnersQuery.eq('college_id', collegeId);
+      learnersQuery = learnersQuery.eq('college_id', collegeId);
       const { count: totallearners, error: totalError } = await learnersQuery;
       if (totalError) return apiDbError(totalError, context.request);
 
@@ -321,14 +326,14 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         .select(`id, learner_id, opportunities!fk_applied_jobs_opportunity(salary_range_max, salary_range_min, employment_type)`)
         .eq('application_status', 'accepted');
 
-      if (collegeId) {
-        const { data: collegelearners } = await supabase.from('learners').select('id').eq('college_id', collegeId);
-        const learnerIds = collegelearners?.map(s => s.id) || [];
-        if (learnerIds.length === 0) {
-          return apiSuccess({ learnersPlaced: 0, placementRate: 0, totallearners: totallearners || 0, avgCTC: 0, medianCTC: 0, highestCTC: 0 }, context.request);
-        }
-        placementQuery = placementQuery.in('learner_id', learnerIds);
+      const { data: collegelearners } = await supabase.from('learners').select('id').eq('college_id', collegeId);
+      const learnerIds = collegelearners?.map(s => s.id) || [];
+      
+      if (learnerIds.length === 0) {
+        return apiSuccess({ learnersPlaced: 0, placementRate: 0, totallearners: totallearners || 0, avgCTC: 0, medianCTC: 0, highestCTC: 0 }, context.request);
       }
+      
+      placementQuery = placementQuery.in('learner_id', learnerIds);
 
       const { data: placements, error: placementError } = await placementQuery;
       if (placementError) return apiDbError(placementError, context.request);
@@ -408,7 +413,7 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       if (error) return apiDbError(error, context.request);
       const stats = (data || []).reduce((acc, app) => {
         acc.total++;
-        if (acc.hasOwnProperty(app.application_status)) acc[app.application_status]++;
+        if (Object.hasOwn(acc, app.application_status)) acc[app.application_status]++;
         return acc;
       }, { total: 0, applied: 0, viewed: 0, under_review: 0, interview_scheduled: 0, interviewed: 0, offer_received: 0, accepted: 0, rejected: 0, withdrawn: 0 });
       return apiSuccess({ stats }, context.request);
@@ -486,7 +491,7 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         if (date_to) query = query.lte('applied_at', date_to);
         const { data, error } = await query;
         if (error) return apiDbError(error, context.request);
-        const stats = (data || []).reduce((acc, app) => { acc.total++; if (acc.hasOwnProperty(app.application_status)) acc[app.application_status]++; return acc; }, { total: 0, applied: 0, viewed: 0, under_review: 0, interview_scheduled: 0, interviewed: 0, offer_received: 0, accepted: 0, rejected: 0, withdrawn: 0 });
+        const stats = (data || []).reduce((acc, app) => { acc.total++; if (Object.hasOwn(acc, app.application_status)) acc[app.application_status]++; return acc; }, { total: 0, applied: 0, viewed: 0, under_review: 0, interview_scheduled: 0, interviewed: 0, offer_received: 0, accepted: 0, rejected: 0, withdrawn: 0 });
         return apiSuccess({ stats }, context.request);
       }
       let query = supabase.from('applied_jobs').select('application_status');
@@ -495,7 +500,7 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       if (date_to) query = query.lte('applied_at', date_to);
       const { data, error } = await query;
       if (error) return apiDbError(error, context.request);
-      const stats = (data || []).reduce((acc, app) => { acc.total++; if (acc.hasOwnProperty(app.application_status)) acc[app.application_status]++; return acc; }, { total: 0, applied: 0, viewed: 0, under_review: 0, interview_scheduled: 0, interviewed: 0, offer_received: 0, accepted: 0, rejected: 0, withdrawn: 0 });
+      const stats = (data || []).reduce((acc, app) => { acc.total++; if (Object.hasOwn(acc, app.application_status)) acc[app.application_status]++; return acc; }, { total: 0, applied: 0, viewed: 0, under_review: 0, interview_scheduled: 0, interviewed: 0, offer_received: 0, accepted: 0, rejected: 0, withdrawn: 0 });
       return apiSuccess({ stats }, context.request);
     }
 
@@ -611,7 +616,7 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         .in('opportunity_id', orgOpportunityIds);
 
       if (error) return apiDbError(error, context.request);
-      const stats = (data || []).reduce((acc, app) => { acc.total++; if (acc.hasOwnProperty(app.application_status)) acc[app.application_status]++; return acc; }, { total: 0, applied: 0, viewed: 0, under_review: 0, interview_scheduled: 0, interviewed: 0, offer_received: 0, accepted: 0, rejected: 0, withdrawn: 0 });
+      const stats = (data || []).reduce((acc, app) => { acc.total++; if (Object.hasOwn(acc, app.application_status)) acc[app.application_status]++; return acc; }, { total: 0, applied: 0, viewed: 0, under_review: 0, interview_scheduled: 0, interviewed: 0, offer_received: 0, accepted: 0, rejected: 0, withdrawn: 0 });
       return apiSuccess({ stats }, context.request);
     }
 
