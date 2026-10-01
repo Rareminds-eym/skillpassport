@@ -40,7 +40,8 @@ export const onRequest: PagesFunction = async (context) => {
     context.env.SSO_SERVICE &&
     (path.startsWith("/api/auth/") || path.startsWith("/api/v1/auth/")) &&
     path !== "/api/auth/generate-lte-code" &&
-    path !== "/api/v1/auth/generate-lte-code"
+    path !== "/api/v1/auth/generate-lte-code" &&
+    path !== "/api/auth/change-password"
   ) {
     try {
       const gateway = getSsoGatewayInstance(context.env);

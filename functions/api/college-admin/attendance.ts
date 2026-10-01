@@ -3,7 +3,17 @@ import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { withAuth, getContextUser } from '../../lib/auth';
 import { apiDbError, apiError, apiMethodNotAllowed, apiSuccess } from '../../lib/response';
 import { getServiceClient } from '../../lib/supabase';
+import { createLogger } from '../../lib/logger';
 
+const logger = createLogger('college-admin-attendance');
+
+/**
+ * Escape special characters in SQL LIKE patterns to prevent injection.
+ * Escapes %, _, and \ characters that have special meaning in LIKE queries.
+ */
+function escapeLikePattern(input: string): string {
+  return input.replace(/[%_\\]/g, '\\$&');
+}
 
 const IMPORT_STATUSES = ['present', 'absent', 'late', 'excused'];
 const MAX_IMPORT_ROWS = 2000;
@@ -313,8 +323,9 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           .eq('college_id', collegeId);
 
         if (searchQuery) {
+          const escapedQuery = escapeLikePattern(searchQuery);
           query = query.or(
-            `subject.ilike.%${searchQuery}%,faculty.ilike.%${searchQuery}%,department.ilike.%${searchQuery}%`
+            `subject.ilike.%${escapedQuery}%,faculty.ilike.%${escapedQuery}%,department.ilike.%${escapedQuery}%`
           );
         }
 
@@ -455,7 +466,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
             departmentMap.set(dept, { total: 0, count: 0 });
           }
 
-          const stats = departmentMap.get(dept)!;
+          const stats = departmentMap.get(dept) || { total: 0, count: 0 };
           stats.total += session.attendance_percentage || 0;
           stats.count += 1;
         });
@@ -510,7 +521,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
             dateMap.set(session.date, { total: 0, count: 0 });
           }
 
-          const stats = dateMap.get(session.date)!;
+          const stats = dateMap.get(session.date) || { total: 0, count: 0 };
           stats.total += session.attendance_percentage || 0;
           stats.count += 1;
         });
@@ -988,13 +999,375 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
         const user = getContextUser(context);
         const { error: rpcError, data: rpcData } = await supabase.rpc('import_college_attendance_records', {
-          p_session_id: result.session!.id,
+          p_session_id: result.session?.id,
           p_records: result.recordsJson,
           p_marked_by: user?.id || null,
         });
 
         if (rpcError) return apiDbError(rpcError, context.request, { startTime });
         return apiSuccess({ imported: true, ...(rpcData as Record<string, unknown> || {}) }, context.request, { startTime });
+      }
+
+      // ─────────────────────────────────────────────────
+      // Get educator attendance sessions (filter by faculty)
+      // ─────────────────────────────────────────────────
+      case 'get-educator-sessions': {
+        const { collegeId, searchQuery, filters, dateRange, currentPage, itemsPerPage } = body;
+
+        let query = supabase
+          .from('college_attendance_sessions')
+          .select('*', { count: 'exact' })
+          .eq('college_id', collegeId)
+          .not('faculty_id', 'is', null);
+
+        if (searchQuery) {
+          const escapedQuery = escapeLikePattern(searchQuery);
+          query = query.or(
+            `faculty_name.ilike.%${escapedQuery}%,department_name.ilike.%${escapedQuery}%`
+          );
+        }
+
+        if (filters) {
+          if (filters.departments?.length > 0) {
+            query = query.in('department_name', filters.departments);
+          }
+          if (filters.faculty?.length > 0) {
+            query = query.in('faculty_id', filters.faculty);
+          }
+          if (filters.statuses?.length > 0) {
+            query = query.in('status', filters.statuses);
+          }
+        }
+
+        if (dateRange) {
+          if (dateRange.from && dateRange.to) {
+            query = query.gte('date', dateRange.from).lte('date', dateRange.to);
+          } else if (dateRange.from) {
+            query = query.gte('date', dateRange.from);
+          } else if (dateRange.to) {
+            query = query.lte('date', dateRange.to);
+          }
+        }
+
+        query = query.order('date', { ascending: false });
+
+        if (currentPage && itemsPerPage) {
+          const startIndex = (currentPage - 1) * itemsPerPage;
+          query = query.range(startIndex, startIndex + itemsPerPage - 1);
+        }
+
+        const { data, error, count } = await query;
+        if (error) return apiDbError(error, context.request, { startTime });
+
+        const sessions = (data || []).map((session: any) => ({
+          id: session.id,
+          date: session.date,
+          startTime: session.start_time,
+          endTime: session.end_time,
+          facultyId: session.faculty_id,
+          facultyName: session.faculty_name,
+          department: session.department_name,
+          subject: session.subject_name,
+          roomNumber: session.room_number,
+          status: session.status,
+          remarks: session.remarks,
+          createdAt: session.created_at,
+        }));
+
+        return apiSuccess({ sessions, totalCount: count }, context.request, { startTime });
+      }
+
+      // ─────────────────────────────────────────────────
+      // Get educator attendance analytics (with filters)
+      // ─────────────────────────────────────────────────
+      case 'get-educator-analytics': {
+        const { collegeId, filters, dateRange } = body;
+
+        // Default to last 30 days if no date range provided
+        const defaultStartDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+        let query = supabase
+          .from('college_attendance_sessions')
+          .select('id, faculty_id, faculty_name, department_name, date, status')
+          .eq('college_id', collegeId)
+          .not('faculty_id', 'is', null);
+
+        // Apply date range filter
+        if (dateRange) {
+          if (dateRange.from && dateRange.to) {
+            query = query.gte('date', dateRange.from).lte('date', dateRange.to);
+          } else if (dateRange.from) {
+            query = query.gte('date', dateRange.from);
+          } else if (dateRange.to) {
+            query = query.lte('date', dateRange.to);
+          }
+        } else {
+          // No date range provided, default to last 30 days
+          query = query.gte('date', defaultStartDate);
+        }
+
+        // Apply department filter
+        if (filters?.departments?.length > 0) {
+          query = query.in('department_name', filters.departments);
+        }
+
+        // Apply faculty filter
+        if (filters?.faculty?.length > 0) {
+          query = query.in('faculty_id', filters.faculty);
+        }
+
+        // Apply status filter
+        if (filters?.statuses?.length > 0) {
+          query = query.in('status', filters.statuses);
+        }
+
+        const { data: sessions, error: sessionsError } = await query;
+        if (sessionsError) return apiDbError(sessionsError, context.request, { startTime });
+
+        const allSessions = sessions || [];
+        const totalSessions = allSessions.length;
+        const completedSessions = allSessions.filter((s: any) => s.status === 'completed').length;
+        const scheduledSessions = allSessions.filter((s: any) => s.status === 'scheduled').length;
+
+        // Get unique faculty count
+        const uniqueFacultyIds = new Set(allSessions.map((s: any) => s.faculty_id));
+        const totalFaculty = uniqueFacultyIds.size;
+
+        // Calculate attendance rate (completed / total)
+        const attendanceRate = totalSessions > 0
+          ? ((completedSessions / totalSessions) * 100).toFixed(1)
+          : '0';
+
+        // Department-wise breakdown
+        const departmentMap = new Map<string, { total: number; completed: number }>();
+        allSessions.forEach((session: any) => {
+          const dept = session.department_name || 'Unknown';
+          if (!departmentMap.has(dept)) {
+            departmentMap.set(dept, { total: 0, completed: 0 });
+          }
+          const stats = departmentMap.get(dept) || { total: 0, completed: 0 };
+          stats.total += 1;
+          if (session.status === 'completed') stats.completed += 1;
+        });
+
+        const departmentStats = Array.from(departmentMap.entries()).map(([dept, stats]) => ({
+          department: dept,
+          total: stats.total,
+          completed: stats.completed,
+          rate: stats.total > 0 ? ((stats.completed / stats.total) * 100).toFixed(1) : '0',
+        })).sort((a, b) => parseFloat(b.rate) - parseFloat(a.rate));
+
+        return apiSuccess({
+          totalSessions,
+          completedSessions,
+          scheduledSessions,
+          totalFaculty,
+          attendanceRate,
+          departmentStats,
+        }, context.request, { startTime });
+      }
+
+      // ─────────────────────────────────────────────────
+      // Get individual educator attendance history
+      // ─────────────────────────────────────────────────
+      case 'get-educator-history': {
+        const { facultyId, dateRange } = body;
+
+        let query = supabase
+          .from('college_attendance_sessions')
+          .select('*')
+          .eq('faculty_id', facultyId)
+          .order('date', { ascending: false });
+
+        if (dateRange) {
+          if (dateRange.from) query = query.gte('date', dateRange.from);
+          if (dateRange.to) query = query.lte('date', dateRange.to);
+        }
+
+        const { data, error } = await query;
+        if (error) return apiDbError(error, context.request, { startTime });
+
+        const history = (data || []).map((session: any) => ({
+          id: session.id,
+          date: session.date,
+          startTime: session.start_time,
+          endTime: session.end_time,
+          subject: session.subject_name,
+          department: session.department_name,
+          roomNumber: session.room_number,
+          status: session.status,
+          remarks: session.remarks,
+        }));
+
+        // Calculate stats
+        const totalSessions = history.length;
+        const completed = history.filter((h: any) => h.status === 'completed').length;
+        const scheduled = history.filter((h: any) => h.status === 'scheduled').length;
+        const attendanceRate = totalSessions > 0
+          ? ((completed / totalSessions) * 100).toFixed(1)
+          : '0';
+
+        return apiSuccess({
+          history,
+          stats: { totalSessions, completed, scheduled, attendanceRate },
+        }, context.request, { startTime });
+      }
+
+      // ─────────────────────────────────────────────────
+      // Get educator weekly trend (with filters and date range support)
+      // ─────────────────────────────────────────────────
+      case 'get-educator-weekly-trend': {
+        const { collegeId, filters, dateRange } = body;
+
+        let weekStartDate: Date;
+
+        // If date range provided, calculate week from the 'from' date
+        if (dateRange?.from) {
+          const fromDate = new Date(dateRange.from);
+          const dayOfWeek = fromDate.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+          const mondayOffset = dayOfWeek === 0 ? -6 : -(dayOfWeek - 1);
+          
+          weekStartDate = new Date(fromDate);
+          weekStartDate.setDate(fromDate.getDate() + mondayOffset);
+        } else {
+          // Default: current week
+          const today = new Date();
+          const currentDayOfWeek = today.getDay();
+          const mondayOffset = currentDayOfWeek === 0 ? -6 : -(currentDayOfWeek - 1);
+          weekStartDate = new Date(today);
+          weekStartDate.setDate(today.getDate() + mondayOffset);
+        }
+
+        // Calculate the week's dates (Monday to Sunday)
+        const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        const weekData = weekDays.map((dayName, index) => {
+          const date = new Date(weekStartDate);
+          date.setDate(weekStartDate.getDate() + index);
+          return {
+            date: date.toISOString().split('T')[0],
+            dayName,
+          };
+        });
+
+        const dateStrings = weekData.map(d => d.date);
+
+        let query = supabase
+          .from('college_attendance_sessions')
+          .select('date, status, faculty_id, department_name')
+          .eq('college_id', collegeId)
+          .not('faculty_id', 'is', null)
+          .in('date', dateStrings);
+
+        // Apply department filter
+        if (filters?.departments?.length > 0) {
+          query = query.in('department_name', filters.departments);
+        }
+
+        // Apply faculty filter
+        if (filters?.faculty?.length > 0) {
+          query = query.in('faculty_id', filters.faculty);
+        }
+
+        // Apply status filter
+        if (filters?.statuses?.length > 0) {
+          query = query.in('status', filters.statuses);
+        }
+
+        const { data, error } = await query;
+        if (error) return apiDbError(error, context.request, { startTime });
+
+        logger.debug('Weekly trend query results:', {
+          collegeId,
+          weekStart: dateStrings[0],
+          weekEnd: dateStrings[6],
+          dateRange: `${dateStrings[0]} to ${dateStrings[6]}`,
+          totalSessions: data?.length || 0,
+          sessions: data?.map(s => ({ date: s.date, status: s.status })) || [],
+        });
+
+        // Count completed sessions per day
+        const dateMap = new Map<string, number>();
+        
+        // Count sessions per department for the week
+        const departmentMap = new Map<string, number>();
+
+        (data || []).forEach((session: any) => {
+          if (session.status === 'completed') {
+            dateMap.set(session.date, (dateMap.get(session.date) || 0) + 1);
+            
+            const dept = session.department_name || 'Unknown';
+            departmentMap.set(dept, (departmentMap.get(dept) || 0) + 1);
+          }
+        });
+
+        const weeklyTrend = weekData.map(({ date, dayName }) => ({
+          date,
+          dayName,
+          count: dateMap.get(date) || 0,
+        }));
+        
+        // Convert department map to sorted array
+        const departmentBreakdown = Array.from(departmentMap.entries())
+          .map(([department, count]) => ({ department, count }))
+          .sort((a, b) => b.count - a.count);
+
+        logger.debug('Weekly trend result:', {
+          weeklyTrend,
+          totalCompleted: weeklyTrend.reduce((sum, day) => sum + day.count, 0),
+          departmentBreakdown,
+        });
+
+        return apiSuccess({ weeklyTrend, departmentBreakdown }, context.request, { startTime });
+      }
+
+      // ─────────────────────────────────────────────────
+      // Get all faculty for dropdown/filters
+      // ─────────────────────────────────────────────────
+      case 'get-all-faculty': {
+        const { collegeId } = body;
+
+        const { data, error } = await supabase
+          .from('college_lecturers')
+          .select('id, first_name, last_name, email, department, designation, metadata')
+          .eq('collegeId', collegeId)
+          .eq('accountStatus', 'active')
+          .order('first_name');
+
+        if (error) return apiDbError(error, context.request, { startTime });
+
+        const faculty = (data || []).map((f: any) => {
+          // Try to get name from metadata first, then from direct fields
+          const metadata = f.metadata || {};
+          const firstName = metadata.first_name || f.first_name || '';
+          const lastName = metadata.last_name || f.last_name || '';
+          const fullName = `${firstName} ${lastName}`.trim() || f.email;
+          
+          return {
+            id: f.id,
+            name: fullName,
+            email: f.email,
+            department: f.department,
+            designation: f.designation,
+          };
+        });
+
+        return apiSuccess({ faculty }, context.request, { startTime });
+      }
+
+      // ─────────────────────────────────────────────────
+      // Delete educator session
+      // ─────────────────────────────────────────────────
+      case 'delete-educator-session': {
+        const { sessionId } = body;
+
+        const { error } = await supabase
+          .from('college_attendance_sessions')
+          .delete()
+          .eq('id', sessionId);
+
+        if (error) return apiDbError(error, context.request, { startTime });
+
+        return apiSuccess({ deleted: true }, context.request, { startTime });
       }
 
       default:

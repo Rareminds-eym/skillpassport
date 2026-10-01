@@ -4,6 +4,7 @@ import { Upload, Video, Edit, Trash2, Settings, Play, Loader2, ArrowRight, X, Sh
 import toast from 'react-hot-toast';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import VideoPortfolioLoader from '../../components/VideoPortfolioLoader';
+import ShareModal from '../../components/ShareModal';
 import { FeatureGate } from '@/features/subscription';
 import VideoEditDrawer from './VideoEditDrawer';
 import {
@@ -119,6 +120,8 @@ const VideoPortfolioPageContent: React.FC = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [loadingVideo, setLoadingVideo] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [shareUrl, setShareUrl] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const navigate = useNavigate();
@@ -394,20 +397,41 @@ const VideoPortfolioPageContent: React.FC = () => {
       const publicUrl = await getVideoPortfolioPublicUrl(currentPlayingVideo.videoUrl);
       const shareText = `Check out "${currentPlayingVideo.title}"`;
 
+      // 1st attempt: Try native Web Share API first (works on mobile + some desktop browsers)
       if (navigator.share) {
-        await navigator.share({
-          title: currentPlayingVideo.title,
-          text: shareText,
-          url: publicUrl,
-        }).catch((err) => {
-          if (err.name !== 'AbortError') {
-            console.error('Error sharing:', err);
+        try {
+          await navigator.share({
+            title: currentPlayingVideo.title,
+            text: shareText,
+            url: publicUrl,
+          });
+          return; // Success, exit early
+        } catch (err: any) {
+          // User cancelled - don't show fallbacks
+          if (err.name === 'AbortError') {
+            return;
           }
-        });
-      } else {
-        // Fallback: copy to clipboard
-        await navigator.clipboard.writeText(publicUrl);
-        toast.success('Video link copied to clipboard!');
+          // Share failed or not supported, continue to 2nd fallback
+          console.log('Native share failed, falling back to custom modal:', err.message);
+        }
+      }
+
+      // 2nd fallback: Desktop or native share not available - show custom modal
+      try {
+        setShareUrl(publicUrl);
+        setShowShareModal(true);
+      } catch (modalError) {
+        console.error('Modal failed to open:', modalError);
+        // Continue to 3rd fallback
+
+        // 3rd fallback: Copy to clipboard
+        try {
+          await navigator.clipboard.writeText(publicUrl);
+          toast.success('Video link copied to clipboard!');
+        } catch (clipboardError) {
+          console.error('Clipboard write failed:', clipboardError);
+          toast.error('Unable to share. Please copy the link manually.');
+        }
       }
     } catch (error) {
       console.error('Failed to get shareable link:', error);
@@ -688,6 +712,15 @@ const VideoPortfolioPageContent: React.FC = () => {
         isOpen={isDrawerOpen}
         video={selectedVideo}
         onClose={handleDrawerClose}
+      />
+
+      {/* Share Modal */}
+      <ShareModal
+        isOpen={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        shareUrl={shareUrl}
+        title={currentPlayingVideo?.title || 'Video Portfolio'}
+        description={currentPlayingVideo?.description || 'Check out this video from my portfolio'}
       />
     </div>
   );

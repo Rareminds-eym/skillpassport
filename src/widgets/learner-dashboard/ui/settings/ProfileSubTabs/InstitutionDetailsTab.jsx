@@ -1,11 +1,11 @@
-import React from "react";
+import { memo } from "react";
 import { Briefcase, Save } from "lucide-react";
 import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/ButtonNew';
 import { formatProgramLabel, getProgramSpecializations } from '@/shared/lib';
 import { isSchoolStudent, isCollegeStudent } from '@/entities/learner/lib/learnerType';
 
-const InstitutionDetailsTab = ({
+const InstitutionDetailsTab = memo(({
   profileData,
   handleInstitutionChange,
   schools,
@@ -715,6 +715,8 @@ const InstitutionDetailsTab = ({
       </div>
     </div>
   );
-};
+});
+
+InstitutionDetailsTab.displayName = 'InstitutionDetailsTab';
 
 export default InstitutionDetailsTab;

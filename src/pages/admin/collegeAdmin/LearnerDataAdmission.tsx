@@ -47,11 +47,19 @@ const FilterSection = ({ title, children, defaultOpen = false }: any) => {
   );
 };
 
-const CheckboxGroup = ({ options, selectedValues, onChange }: {
+const CheckboxGroup = ({ options, selectedValues, onChange, emptyHint }: {
   options: Array<{ value: string; label: string; count?: number }>;
   selectedValues: string[];
   onChange: (values: string[]) => void;
+  emptyHint?: string;
 }) => {
+  if (options.length === 0) {
+    return (
+      <p className="text-xs text-gray-400 italic">
+        {emptyHint || 'No options — this field is not set for the current learners.'}
+      </p>
+    );
+  }
   return (
     <div className="space-y-2">
       {options.map((option) => (
@@ -227,6 +235,7 @@ const LearnerDataAdmission = () => {
   const [filters, setFilters] = useState({
     degree: [] as string[],
     course: [] as string[],
+    specialization: [] as string[],
     semester: [] as string[],
     academicYear: [] as string[],
     status: [] as string[],
@@ -256,7 +265,7 @@ const LearnerDataAdmission = () => {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, sortBy, filters.degree.length, filters.course.length, filters.semester.length, filters.academicYear.length, filters.status.length, filters.minScore, filters.maxScore]);
+  }, [searchQuery, sortBy, filters.degree.length, filters.course.length, filters.specialization.length, filters.semester.length, filters.academicYear.length, filters.status.length, filters.minScore, filters.maxScore]);
 
   const degreeOptions = useMemo(() => {
     const degreeCounts: any = {};
@@ -293,8 +302,28 @@ const LearnerDataAdmission = () => {
       .slice(0, 15);
   }, [learners]);
 
-  const statusOptions = useMemo(() => {
-    const statusCounts: any = {};
+  const specializationOptions = useMemo(() => {
+    const specializationCounts: any = {};
+    learners.forEach(learner => {
+      const raw = (learner as any).specialization;
+      const parts = Array.isArray(raw) ? raw : typeof raw === 'string' ? raw.split(',') : [];
+      parts.forEach((part: string) => {
+        const normalized = getFilterValue(part);
+        if (normalized) {
+          specializationCounts[normalized] = (specializationCounts[normalized] || 0) + 1;
+        }
+      });
+    });
+    return Object.entries(specializationCounts)
+      .map(([value, count]) => ({
+        value,
+        label: getAcademicDisplayLabel(value),
+        count: count as number
+      }))
+      .sort((a, b) => (b.count as number) - (a.count as number));
+  }, [learners]);
+
+  const statusOptions = useMemo(() => {    const statusCounts: any = {};
     learners.forEach(learner => {
       if (learner.approval_status) {
         const status = learner.approval_status.toLowerCase();
@@ -344,7 +373,7 @@ const LearnerDataAdmission = () => {
       .sort((a, b) => b.label.localeCompare(a.label));
   }, [learners]);
 
-  const activeFilterCount = filters.degree.length + filters.course.length + filters.semester.length + filters.academicYear.length + filters.status.length;
+  const activeFilterCount = filters.degree.length + filters.course.length + filters.specialization.length + filters.semester.length + filters.academicYear.length + filters.status.length;
   const hasActiveFilters = activeFilterCount > 0 || filters.minScore > 0 || filters.maxScore < 100;
 
   const filteredAndSortedlearners = useMemo(() => {
@@ -377,6 +406,17 @@ const LearnerDataAdmission = () => {
       result = result.filter(learner => {
         const course = getFilterValue(learner.course_name);
         return Boolean(course && filters.course.includes(course));
+      });
+    }
+
+    if (filters.specialization.length > 0) {
+      result = result.filter(learner => {
+        const raw = (learner as any).specialization;
+        const parts = Array.isArray(raw) ? raw : typeof raw === 'string' ? raw.split(',') : [];
+        return parts.some((part: string) => {
+          const value = getFilterValue(part);
+          return Boolean(value && filters.specialization.includes(value));
+        });
       });
     }
 
@@ -458,6 +498,7 @@ const LearnerDataAdmission = () => {
     setFilters({
       degree: [],
       course: [],
+      specialization: [],
       semester: [],
       academicYear: [],
       status: [],
@@ -680,8 +721,15 @@ const LearnerDataAdmission = () => {
                   />
                 </FilterSection>
 
-                <FilterSection title="Semester">
+                <FilterSection title="Specialization">
                   <CheckboxGroup
+                    options={specializationOptions}
+                    selectedValues={filters.specialization}
+                    onChange={(values) => setFilters({ ...filters, specialization: values })}
+                  />
+                </FilterSection>
+
+                <FilterSection title="Semester">                  <CheckboxGroup
                     options={semesterOptions}
                     selectedValues={filters.semester}
                     onChange={(values) => setFilters({ ...filters, semester: values })}
