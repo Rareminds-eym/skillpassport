@@ -9,16 +9,23 @@ const REJECTION_HTTP_STATUS: Record<string, number> = {
   not_found: 404,
   expired: 400,
   blocked: 403,
+  rate_limited: 429,
+  upstream_unavailable: 503,
+  timeout: 504,
 };
+
+export class SsoWorkflowError extends Error {
+  readonly httpStatus?: number;
+  constructor(readonly code: string, operation: string) {
+    super(`${operation} failed (${code})`);
+    this.name = "SsoWorkflowError";
+    this.httpStatus = REJECTION_HTTP_STATUS[code];
+  }
+}
 
 function throwOnNonSuccess<T extends { status: string }>(outcome: T, operation: string): asserts outcome is T & { status: "succeeded" } {
   if (outcome.status !== "succeeded") {
-    const code = outcome.status === "rejected" ? (outcome as { code?: string }).code ?? undefined : undefined;
-    const error = new Error(`${operation} failed${code ? ` (${code})` : ""}`);
-    if (code && REJECTION_HTTP_STATUS[code] !== undefined) {
-      (error as Error & { httpStatus?: number }).httpStatus = REJECTION_HTTP_STATUS[code];
-    }
-    throw error;
+    throw new SsoWorkflowError((outcome as { code?: string }).code ?? outcome.status, operation);
   }
 }
 

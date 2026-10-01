@@ -14,7 +14,7 @@ import {
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/shared/lib/queryKeys";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 
 import { useInstitutions } from '@/entities/institution';
 import { useLearnerCertificates, useLearnerDataByEmail, useLearnerEducation, useLearnerExperience, useLearnerMessageNotifications, useLearnerProjects, useLearnerSettings, useLearnerSoftSkills, useLearnerTechnicalSkills, useLearnerUnreadCount } from '@/entities/learner';
@@ -25,7 +25,7 @@ import { SettingsErrorBoundary } from './error-boundaries';
 import { SettingsSkeleton, TabSkeleton } from './skeletons';
 
 import ProfileTab from "./ProfileTab";
-import { useAuthActions, useUser } from '@/shared/model/authStore';
+import { useUser } from '@/shared/model/authStore';
 
 // Keep the initial personal profile eager; defer optional screens and editors.
 const NotificationsTab = lazy(() => import('./NotificationsTab'));
@@ -38,8 +38,6 @@ const UnifiedProfileEditModal = lazy(() => import('@/features/learner-profile/ui
 const MainSettings = () => {
   const user = useUser();
   const location = useLocation();
-  const navigate = useNavigate();
-  const { logout } = useAuthActions();
   const userEmail = user?.email;
   const queryClient = useQueryClient();
   const [institutionsRequested, setInstitutionsRequested] = useState(
@@ -1337,16 +1335,6 @@ const MainSettings = () => {
     );
 
     setIsSaving(false);
-
-    // Backend revokes all sessions (including this one) on password change —
-    // clear local auth state and redirect to login, same as the app's existing logout flow.
-    if (result.success) {
-      try {
-        await logout();
-      } finally {
-        navigate("/login");
-      }
-    }
 
     return result;
   };
