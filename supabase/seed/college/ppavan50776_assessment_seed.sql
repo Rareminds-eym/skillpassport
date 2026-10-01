@@ -13,10 +13,22 @@ BEGIN;
 DO $$
 DECLARE
     v_learner_id uuid;
+    v_session_exists boolean;
 BEGIN
     SELECT id INTO v_learner_id FROM public.learners WHERE lower(email) = lower('ppavan50776@gmail.com') LIMIT 1;
     IF v_learner_id IS NULL THEN
         RAISE EXCEPTION 'Learner not found for email: %', 'ppavan50776@gmail.com';
+    END IF;
+
+    -- Check if this assessment session already exists
+    SELECT EXISTS(
+        SELECT 1 FROM public.adaptive_aptitude_sessions 
+        WHERE id = '6a5cbca6-8faa-46d4-bf38-d9416695024c'::uuid
+    ) INTO v_session_exists;
+
+    IF v_session_exists THEN
+        RAISE NOTICE 'Assessment session already exists for ppavan50776@gmail.com, skipping...';
+        RETURN;
     END IF;
 
     INSERT INTO public.adaptive_aptitude_sessions (
