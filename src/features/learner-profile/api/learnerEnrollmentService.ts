@@ -113,6 +113,42 @@ export const learnerEnrollmentService = {
     }
   },
 
+  async unenrollLearner(learnerId: string): Promise<{ success: boolean; data?: any; error?: any }> {
+    try {
+      const result = await apiPost<any>('/learner-profile/actions', {
+        action: 'unenroll-learner',
+        learnerId,
+      });
+      return { success: true, data: result?.data };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: { code: 'UNENROLL_ERROR', message: error.message || 'Failed to unenroll learner' },
+      };
+    }
+  },
+
+  async bulkUnenrollLearners(learnerIds: string[]): Promise<{ success: boolean; data?: any; error?: any }> {
+    try {
+      const result = await apiPost<any>('/learner-profile/actions', {
+        action: 'bulk-unenroll-learners',
+        learnerIds,
+      });
+      if (result?.data?.failed?.length > 0 && !result?.data?.unenrolled?.length) {
+        return {
+          success: false,
+          error: { code: 'BULK_UNENROLL_ERROR', message: `Failed to unenroll ${result.data.failed.length} learner(s)` },
+        };
+      }
+      return { success: true, data: result?.data };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: { code: 'BULK_UNENROLL_ERROR', message: error.message || 'Failed to unenroll learners' },
+      };
+    }
+  },
+
   async getUnenrolledLearners(): Promise<{ success: boolean; data?: any[]; error?: any }> {
     try {
       const result = await apiPost<any[]>('/learner-profile/actions', { action: 'fetch-unenrolled-learners' });

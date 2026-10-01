@@ -8,6 +8,72 @@ import { getServiceClient } from '../../lib/supabase';
 
 const logger = createLogger('learner-profile-actions');
 
+/**
+ * Clear a learner's program assignment and withdraw their active
+ * program-enrollment history rows. Mirrors `remove-learner-from-program`
+ * (college-admin/academic.ts) but lives here so the Enrolled Learners page
+ * can unenroll through the same `learner-profile/actions` endpoint it
+ * already uses for enroll (`update-enrollment`). Also refreshes the
+ * denormalized `program_sections.current_learners` counter for the
+ * learner's old section so section occupancy stays correct.
+ * Returns the updated learner row. Throws on DB errors (caller maps to
+ * apiDbError) and returns null when the learner does not exist.
+ */
+async function unenrollSingleLearner(supabase: any, learnerId: string) {
+  const { data: learner, error: fetchError } = await supabase
+    .from('learners')
+    .select('id, program_id, semester, section')
+    .eq('id', learnerId)
+    .maybeSingle();
+  if (fetchError) throw fetchError;
+  if (!learner) return null;
+
+  const oldProgramId = (learner as any).program_id as string | null;
+  const oldSemester = (learner as any).semester as number | null;
+  const oldSection = (learner as any).section as string | null;
+
+  const { data, error } = await supabase
+    .from('learners')
+    .update({
+      program_id: null,
+      semester: null,
+      section: null,
+      program_section_id: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', learnerId)
+    .select()
+    .maybeSingle();
+  if (error) throw error;
+
+  if (oldProgramId) {
+    await supabase
+      .from('learner_enrollments')
+      .update({ enrollment_status: 'withdrawn', updated_at: new Date().toISOString() })
+      .eq('learner_id', learnerId)
+      .eq('program_id', oldProgramId)
+      .eq('enrollment_status', 'active');
+
+    if (oldSemester && oldSection) {
+      const { count } = await supabase
+        .from('learners')
+        .select('*', { count: 'exact', head: true })
+        .eq('program_id', oldProgramId)
+        .eq('semester', oldSemester)
+        .eq('section', oldSection)
+        .eq('is_deleted', false);
+      await supabase
+        .from('program_sections')
+        .update({ current_learners: count || 0 })
+        .eq('program_id', oldProgramId)
+        .eq('semester', oldSemester)
+        .eq('section', oldSection);
+    }
+  }
+
+  return data;
+}
+
 const REPORT_TYPE_SKILL_ASSESSMENT = 'skill_assessment';
 const REPORT_TITLE_CAREER_ASSESSMENT = 'Career Assessment Report';
 
@@ -1023,6 +1089,40 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const { data, error } = await supabase.from('learners').update(updates).eq('id', learnerId).select().maybeSingle();
         if (error) return apiDbError(error, context.request, { startTime });
         return apiSuccess(data || null, context.request, { startTime });
+      }
+
+      case 'unenroll-learner': {
+        const { learnerId } = params;
+        if (!learnerId) return apiError(400, 'VALIDATION_ERROR', 'Missing learnerId', context.request, { startTime });
+        try {
+          const data = await unenrollSingleLearner(supabase, learnerId);
+          if (!data) return apiError(404, 'NOT_FOUND', 'Learner not found', context.request, { startTime });
+          return apiSuccess(data, context.request, { startTime });
+        } catch (error: any) {
+          return apiDbError(error, context.request, { startTime });
+        }
+      }
+
+      case 'bulk-unenroll-learners': {
+        const { learnerIds } = params;
+        if (!Array.isArray(learnerIds) || learnerIds.length === 0) return apiError(400, 'VALIDATION_ERROR', 'Missing learnerIds', context.request, { startTime });
+        if (learnerIds.length > 200) return apiError(400, 'VALIDATION_ERROR', 'Too many learners (max 200 per request)', context.request, { startTime });
+        const unenrolled: any[] = [];
+        const failed: string[] = [];
+        for (const learnerId of learnerIds) {
+          try {
+            const data = await unenrollSingleLearner(supabase, learnerId);
+            if (data) unenrolled.push(data);
+            else failed.push(learnerId);
+          } catch {
+            logger.error('[bulk-unenroll-learners] Failed for learner', { learnerId });
+            failed.push(learnerId);
+          }
+        }
+        if (failed.length > 0 && unenrolled.length === 0) {
+          return apiError(500, 'UNENROLL_FAILED', `Failed to unenroll ${failed.length} learner(s)`, context.request, { startTime });
+        }
+        return apiSuccess({ unenrolled, failed, unenrolledCount: unenrolled.length }, context.request, { startTime });
       }
 
       // ──────────────────────────────────────────────

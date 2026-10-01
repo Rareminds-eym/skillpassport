@@ -121,7 +121,6 @@ export const learnerEnrollmentService = {
       return { success: false, error: errorMessage };
     }
   },
-
   async updateEnrollment(
     learnerId: string,
     updates: { section?: string; semester?: number; program_id?: string }

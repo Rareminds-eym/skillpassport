@@ -55,6 +55,11 @@ const EnrolledLearners: FC = () => {
   // Enroll modal
   const [showEnrollModal, setShowEnrollModal] = useState(false);
 
+  // Unenroll selection + confirm
+  const [selectedForUnenroll, setSelectedForUnenroll] = useState<string[]>([]);
+  const [unenrolling, setUnenrolling] = useState(false);
+  const [unenrollTarget, setUnenrollTarget] = useState<string[] | null>(null);
+
   // Pagination for main table
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -223,6 +228,12 @@ const EnrolledLearners: FC = () => {
     setCurrentPage(1);
   };
 
+  const toggleUnenrollSelect = (learnerId: string) => {
+    setSelectedForUnenroll((prev) =>
+      prev.includes(learnerId) ? prev.filter((id) => id !== learnerId) : [...prev, learnerId]
+    );
+  };
+
   // Pagination calculations for main table
   const totalPages = Math.ceil(learners.length / ITEMS_PER_PAGE);
   const paginatedlearners = learners.slice(
@@ -230,10 +241,53 @@ const EnrolledLearners: FC = () => {
     currentPage * ITEMS_PER_PAGE
   );
 
+  const toggleUnenrollSelectAll = () => {
+    const allIds = learners.map((l) => l.learner_id).filter(Boolean);
+    const allSelected = allIds.length > 0 && allIds.every((id) => selectedForUnenroll.includes(id));
+    setSelectedForUnenroll(allSelected ? [] : allIds);
+  };
+
+  const getUnenrollErrorMessage = (error: unknown) => {
+    if (!error) return "Failed to unenroll learners";
+    if (typeof error === "string") return error;
+    if (typeof (error as { message?: unknown }).message === "string") {
+      return (error as { message: string }).message;
+    }
+    return "Failed to unenroll learners";
+  };
+
+  const confirmUnenroll = async () => {
+    if (!unenrollTarget || unenrollTarget.length === 0) return;
+    try {
+      setUnenrolling(true);
+      const result = await learnerEnrollmentService.bulkUnenrollLearners(unenrollTarget);
+      if (result.success) {
+        const failedCount = result.data?.failed?.length || 0;
+        const doneCount = result.data?.unenrolledCount ?? unenrollTarget.length;
+        if (failedCount > 0) {
+          toast.error(`${failedCount} of ${unenrollTarget.length} failed to unenroll — retry them`);
+        } else {
+          toast.success(`Unenrolled ${doneCount} learner(s) — moved back to unenrolled pool`);
+        }
+        setSelectedForUnenroll((prev) => prev.filter((id) => !unenrollTarget.includes(id)));
+        setUnenrollTarget(null);
+        await loadlearners();
+      } else {
+        toast.error(getUnenrollErrorMessage(result.error));
+      }
+    } catch (error) {
+      logger.error("Error unenrolling learners:", error as Error);
+      toast.error("Failed to unenroll learners");
+    } finally {
+      setUnenrolling(false);
+    }
+  };
+
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [departmentFilter, programFilter, semesterFilter, statusFilter, academicYearFilter, searchTerm]);
+    setSelectedForUnenroll([]);
+  }, [departmentFilter, programFilter, semesterFilter, statusFilter, academicYearFilter, searchTerm, collegeId]);
 
   return (
     <div className="space-y-6 p-4 sm:p-6 lg:p-8">
@@ -391,15 +445,37 @@ const EnrolledLearners: FC = () => {
       {/* Learners Table */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="p-6 border-b border-gray-200">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <h2 className="text-xl font-bold text-gray-900">
               Learners ({learners.length})
             </h2>
-            {learners.length > 0 && (
-              <p className="text-sm text-gray-600">
-                Showing {Math.min((currentPage - 1) * ITEMS_PER_PAGE + 1, learners.length)}-{Math.min(currentPage * ITEMS_PER_PAGE, learners.length)} of {learners.length}
-              </p>
-            )}
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              {learners.length > 0 && (
+                <p className="text-sm text-gray-600">
+                  Showing {Math.min((currentPage - 1) * ITEMS_PER_PAGE + 1, learners.length)}-{Math.min(currentPage * ITEMS_PER_PAGE, learners.length)} of {learners.length}
+                </p>
+              )}
+              {selectedForUnenroll.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-600">{selectedForUnenroll.length} of {learners.length} selected</span>
+                  <button
+                    type="button"
+                    onClick={() => setUnenrollTarget([...selectedForUnenroll])}
+                    disabled={unenrolling}
+                    className="px-3 py-1.5 text-sm font-medium text-red-700 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition disabled:opacity-50"
+                  >
+                    Unenroll Selected
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedForUnenroll([])}
+                    className="text-sm text-gray-500 hover:text-gray-700 font-medium"
+                  >
+                    Clear
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -419,6 +495,22 @@ const EnrolledLearners: FC = () => {
               <table className="w-full">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
+                    <th className="px-4 py-3 text-left">
+                      <input
+                        type="checkbox"
+                        aria-label="Select all enrolled learners"
+                        checked={learners.length > 0 && learners.every((l) => selectedForUnenroll.includes(l.learner_id))}
+                        ref={(el) => {
+                          if (el) {
+                            el.indeterminate =
+                              selectedForUnenroll.length > 0 &&
+                              !learners.every((l) => selectedForUnenroll.includes(l.learner_id));
+                          }
+                        }}
+                        onChange={toggleUnenrollSelectAll}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      />
+                    </th>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Learner</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Roll Number</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Department</th>
@@ -426,11 +518,21 @@ const EnrolledLearners: FC = () => {
                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Semester</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Section</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Status</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {paginatedlearners.map((learner, index) => (
                     <tr key={learner.learner_id || index} className="hover:bg-gray-50">
+                      <td className="px-4 py-3">
+                        <input
+                          type="checkbox"
+                          aria-label={`Select ${learner.learner_name}`}
+                          checked={selectedForUnenroll.includes(learner.learner_id)}
+                          onChange={() => toggleUnenrollSelect(learner.learner_id)}
+                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        />
+                      </td>
                       <td className="px-4 py-3">
                         <div>
                           <div className="text-sm font-medium text-gray-900">{learner.learner_name}</div>
@@ -443,6 +545,16 @@ const EnrolledLearners: FC = () => {
                       <td className="px-4 py-3 text-sm text-gray-600">Semester {learner.semester}</td>
                       <td className="px-4 py-3 text-sm text-gray-600">{learner.section ? `Section ${learner.section}` : "Not Assigned"}</td>
                       <td className="px-4 py-3">{getStatusBadge('active')}</td>
+                      <td className="px-4 py-3">
+                        <button
+                          type="button"
+                          onClick={() => setUnenrollTarget([learner.learner_id])}
+                          disabled={unenrolling}
+                          className="text-sm font-medium text-red-600 hover:text-red-700 disabled:opacity-50"
+                        >
+                          Unenroll
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -460,6 +572,49 @@ const EnrolledLearners: FC = () => {
           </>
         )}
       </div>
+
+      {/* Unenroll Confirm */}
+      {unenrollTarget && unenrollTarget.length > 0 && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <button
+            type="button"
+            aria-label="Close unenroll confirm"
+            className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm"
+            onClick={() => !unenrolling && setUnenrollTarget(null)}
+          />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+            <h3 className="text-lg font-semibold text-gray-900">Unenroll learner(s)?</h3>
+            <p className="mt-2 text-sm text-gray-600">
+              {unenrollTarget.length} learner(s) will be removed from their program/semester/section and moved back to the unenrolled pool. This does not delete the learner.
+            </p>
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => setUnenrollTarget(null)}
+                disabled={unenrolling}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmUnenroll}
+                disabled={unenrolling}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {unenrolling ? (
+                  <>
+                    <ArrowPathIcon className="h-4 w-4 animate-spin" />
+                    Unenrolling...
+                  </>
+                ) : (
+                  <>Unenroll ({unenrollTarget.length})</>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Enroll Learners Modal */}
       {showEnrollModal && (
