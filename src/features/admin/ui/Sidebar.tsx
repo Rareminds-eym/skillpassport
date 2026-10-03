@@ -115,6 +115,7 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }:
           title: "Learner Management",
           key: "learners",
           items: [
+            ...(import.meta.env.VITE_HUMAN_REVIEW_ENABLED === "true" ? [{ name: "Artifact Reviews", path: "/school-admin/artifact-reviews", icon: ClipboardDocumentListIcon }] : []),
             {
               name: "Admissions",
               path: "/school-admin/learners/admissions",
@@ -561,6 +562,7 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }:
         title: "Learners",
         key: "learner",
         items: [
+          ...(import.meta.env.VITE_HUMAN_REVIEW_ENABLED === "true" ? [{ name: "Artifact Reviews", path: "/college-admin/artifact-reviews", icon: ClipboardDocumentListIcon }] : []),
           {
             name: "Admissions & Data",
             path: "/college-admin/learners/data-management",

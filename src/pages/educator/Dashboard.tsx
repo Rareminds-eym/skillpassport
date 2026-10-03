@@ -1,3 +1,4 @@
+import { PendingReviewsWidget } from "@/features/artifact-review";
 import { useAuthStore } from '@/shared/model/authStore';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -473,6 +474,7 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-gray-50" data-testid="educator-dashboard">
       <div className="w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {import.meta.env.VITE_HUMAN_REVIEW_ENABLED === "true" && <div className="mb-6"><PendingReviewsWidget /></div>}
         {/* Error Display */}
         {error && (
           <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">

@@ -214,8 +214,15 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           supabase.from('achievements').select('*').eq('learner_id', userId).eq('enabled', true).in('approval_status', ['verified', 'approved']).order('created_at', { ascending: false })
         ]);
 
+        let reviewedArtifactCount = 0;
+        if (env.HUMAN_REVIEW_AVAILABLE === 'true') {
+          const evidence = await supabase.from('lte_review_evidence').select('review_id', { count: 'exact', head: true }).eq('learner_id', userId);
+          if (evidence.error) return apiDbError(evidence.error, context.request, { startTime });
+          reviewedArtifactCount = evidence.count ?? 0;
+        }
         return apiSuccess({
           learner,
+          reviewedArtifactCount,
           skills: skillsResult.data || [],
           trainings: trainingsResult.data || [],
           projects: projectsResult.data || [],
