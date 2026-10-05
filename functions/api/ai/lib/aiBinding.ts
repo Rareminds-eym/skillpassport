@@ -17,7 +17,6 @@ import type {
   ExecutionStatus,
   KeywordsOutput,
   ResumeParseOutput,
-  RoleOverviewOutput,
   SummarizeVideoOutput,
   TutorSuggestionsOutput,
 } from "@rareminds-eym/ai-protocol";
@@ -38,9 +37,6 @@ export interface AiServiceBinding {
   careerTalentStrategist(
     request: Extract<CareerRequest, { feature: "keywords" }>,
   ): Promise<AiResult<KeywordsOutput>>;
-  careerTalentStrategist(
-    request: Extract<CareerRequest, { feature: "role-overview" }>,
-  ): Promise<AiResult<RoleOverviewOutput>>;
   seniorEducator(
     request: Extract<EducatorRequest, { feature: "suggest" }>,
   ): Promise<AiResult<TutorSuggestionsOutput>>;
