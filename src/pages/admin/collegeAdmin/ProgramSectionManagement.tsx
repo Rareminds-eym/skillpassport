@@ -14,6 +14,7 @@ import {
 import toast from "react-hot-toast";
 import { getLogger } from '@/shared/config/logging';
 import { apiPost } from '@/shared/api/apiClient';
+import { formatProgramLabel, getProgramSpecializations } from '@/shared/lib';
 
 interface ProgramSection {
   id: string;
@@ -21,6 +22,8 @@ interface ProgramSection {
   department_name: string;
   program_id: string;
   program_name: string;
+  program_code?: string;
+  specializations?: string[] | string;
   semester: number;
   section: string;
   max_learners: number;
@@ -43,6 +46,7 @@ interface Program {
   code: string;
   department_id: string;
   duration_semesters: number;
+  specializations?: string[] | string;
 }
 
 interface Faculty {
@@ -142,6 +146,13 @@ const ProgramSectionManagement: FC = () => {
           department_name: s.programs?.departments?.name || 'Unknown',
           program_id: s.program_id,
           program_name: s.programs?.name || 'Unknown',
+          program_code: s.programs?.code || '',
+          specializations: Array.isArray(s.programs?.specializations)
+            ? s.programs.specializations
+            : String(s.programs?.specializations ?? '')
+                .split(',')
+                .map((x: string) => x.trim())
+                .filter(Boolean),
           semester: s.semester,
           section: s.section,
           max_learners: s.max_learners,
@@ -207,7 +218,8 @@ const ProgramSectionManagement: FC = () => {
       return (
         section.section.toLowerCase().includes(search) ||
         section.program_name.toLowerCase().includes(search) ||
-        section.department_name.toLowerCase().includes(search)
+        section.department_name.toLowerCase().includes(search) ||
+        getProgramSpecializations(section).join(', ').toLowerCase().includes(search)
       );
     }
     return true;
@@ -361,7 +373,7 @@ const ProgramSectionManagement: FC = () => {
               .filter((p) => !departmentFilter || p.department_id === departmentFilter)
               .map((prog) => (
                 <option key={prog.id} value={prog.id}>
-                  {prog.name}
+                  {formatProgramLabel(prog.name, prog)}
                 </option>
               ))}
           </select>
@@ -426,6 +438,9 @@ const ProgramSectionManagement: FC = () => {
                     Program
                   </th>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">
+                    Specialization
+                  </th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">
                     Semester
                   </th>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">
@@ -452,7 +467,15 @@ const ProgramSectionManagement: FC = () => {
                       {section.department_name}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-900">
-                      {section.program_name}
+                      {section.program_code
+                        ? `${section.program_code} - ${section.program_name}`
+                        : section.program_name}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-600">
+                      {(() => {
+                        const specs = getProgramSpecializations(section);
+                        return specs.length > 0 ? specs.join(', ') : '—';
+                      })()}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-600">
                       Semester {section.semester}
@@ -607,7 +630,7 @@ const SectionFormModal: FC<{
                     .filter((p) => p.department_id === formData.department_id)
                     .map((prog) => (
                       <option key={prog.id} value={prog.id}>
-                        {prog.name}
+                        {formatProgramLabel(prog.name, prog)}
                       </option>
                     ))}
                 </select>

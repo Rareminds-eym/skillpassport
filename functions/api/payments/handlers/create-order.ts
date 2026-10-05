@@ -15,6 +15,7 @@ import { getServiceClient } from '../../../lib/supabase';
 import { ssoCreateFreemiumSubscription, ssoSyncSubscription } from '../../../lib/sso-client';
 import { syncSubscriptionCache, syncUserShadow } from '../../../lib/sync-shadow';
 import { apiSuccess, apiError } from '../../../lib/response';
+import { isSalesOnlyPlan } from '../lib/salesPlan';
 
 const logger = createLogger('payments:create-order');
 const COLLEGE_LEARNER_PROMO_CODE = 'RAREMINDS2026';
@@ -122,6 +123,21 @@ export async function handleCreateOrder(context: AuthenticatedContext): Promise<
       return apiError(400, 'VALIDATION_ERROR', 'amount is required and must be a number', context.request);
     }
 
+
+    // Resolve catalog metadata before the zero-cost branch: quote-only is not free.
+    if (body.planId && body.planId !== 'freemium') {
+      const { data: catalogPlan, error: catalogError } = await getServiceClient(env)
+        .from('plans_cache')
+        .select('entity_config')
+        .eq('id', body.planId)
+        .eq('is_active', true)
+        .maybeSingle();
+      if (catalogError) return apiError(503, 'CATALOG_UNAVAILABLE', 'Unable to verify plan availability.', context.request);
+      if (!catalogPlan) return apiError(404, 'NOT_FOUND', 'Plan not found or inactive', context.request);
+      if (isSalesOnlyPlan(catalogPlan)) {
+        return apiError(400, 'CONTACT_SALES_REQUIRED', 'This plan requires an agreed sales proposal before activation.', context.request);
+      }
+    }
 
     // Check if it's a freemium or zero-cost plan
     const isFreemium = body.amount === 0 || body.planId === 'freemium' || body.planName?.toString().toLowerCase() === 'freemium';

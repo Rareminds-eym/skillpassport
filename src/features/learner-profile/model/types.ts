@@ -23,6 +23,7 @@ export interface Learner {
   college?: string;
   university?: string;
   branch_field?: string;
+  specialization?: string;
   dept?: string;
   enrollment_number?: string;
   registration_number?: string;

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import type { Assessment } from '@/shared/types/college';
+import { formatProgramLabel } from '@/shared/lib';
 
 interface AssessmentFormModalProps {
   isOpen: boolean;
@@ -246,7 +247,7 @@ const AssessmentFormModal: React.FC<AssessmentFormModalProps> = ({
                 <option value="">Select Program</option>
                 {Array.isArray(filteredPrograms) && filteredPrograms.map((prog) => (
                   <option key={prog.id} value={prog.id}>
-                    {prog.name}
+                    {formatProgramLabel(prog.name, prog)}
                   </option>
                 ))}
               </select>

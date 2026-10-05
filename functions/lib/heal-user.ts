@@ -249,32 +249,61 @@ export async function ensureAppUserAndLearner(
       }
     }
 
-    // 4) learners — always upsert (fix C3, I1 university→universityId, I2 program_id validated)
+    // 4) learners — only create for explicitly allowed learner roles
     {
-      const approvalStatus = primary?.status === 'active' ? 'approved' : primary?.status === 'inactive' ? 'pending' : 'approved';
-      // Validate program_id as UUID before FK upsert (M5)
-      const validProgramId = programId && isValidUUID(programId) ? programId : null;
-      const learnerPayload: any = {
-        user_id: userId,
-        email: ssoEmail,
-        name: fullName,
-        approval_status: approvalStatus,
-        enrollmentNumber: enrollmentNumber || null,
-        contact_number: phone,
-        // Only set program_id if valid UUID to avoid 23503
-        ...(validProgramId ? { program_id: validProgramId } : {}),
-        // org-type → FK mapping (university → universityId, not university_college_id FK mismatch M2)
-        ...(orgType === 'school' ? { school_id: orgId } : {}),
-        ...(orgType === 'college' ? { college_id: orgId } : {}),
-        ...((orgType === 'university' || orgType === 'university_college') ? { universityId: orgId } : {}),
-      };
-      // Remove null/undefined keys to avoid overwriting with null on update
-      Object.keys(learnerPayload).forEach((k) => learnerPayload[k] == null && delete learnerPayload[k]);
-      const { error: learnerErr } = await supabase.from('learners').upsert(learnerPayload, { onConflict: 'user_id' });
-      if (learnerErr) {
-        log.warn('heal: learners upsert error', { requestId, error: learnerErr.message, userId });
+      /**
+       * LEARNER_ALLOWED_ROLES - Roles that are permitted to have learner records.
+       * 
+       * Only roles in this explicit list will get learner records created.
+       * This ensures that any new staff roles added to the system will NOT 
+       * automatically create learner records, preventing the recurrence of 
+       * staff appearing in learner lists.
+       * 
+       * - 'learner': Actual students
+       * - 'educator': Generic educator role (for professional development)
+       * 
+       * NOTE: 'college_educator' and 'school_educator' are NOT in this list
+       * as they are staff roles and should not have learner records.
+       */
+      const LEARNER_ALLOWED_ROLES = [
+        'learner',
+        'educator',
+      ];
+      
+      // Check if user has ONLY learner-allowed roles
+      // If user has ANY role not in the allowed list (e.g., admin, college_educator, unknown_role), skip learner creation
+      const hasOnlyLearnerRoles = Array.isArray(allRoles) && allRoles.length > 0 && 
+        allRoles.every(r => LEARNER_ALLOWED_ROLES.includes(r));
+      
+      // Only create learner record if user has ONLY learner-allowed roles
+      if (hasOnlyLearnerRoles) {
+        const approvalStatus = primary?.status === 'active' ? 'approved' : primary?.status === 'inactive' ? 'pending' : 'approved';
+        // Validate program_id as UUID before FK upsert (M5)
+        const validProgramId = programId && isValidUUID(programId) ? programId : null;
+        const learnerPayload: any = {
+          user_id: userId,
+          email: ssoEmail,
+          name: fullName,
+          approval_status: approvalStatus,
+          enrollmentNumber: enrollmentNumber || null,
+          contact_number: phone,
+          // Only set program_id if valid UUID to avoid 23503
+          ...(validProgramId ? { program_id: validProgramId } : {}),
+          // org-type → FK mapping (university → universityId, not university_college_id FK mismatch M2)
+          ...(orgType === 'school' ? { school_id: orgId } : {}),
+          ...(orgType === 'college' ? { college_id: orgId } : {}),
+          ...((orgType === 'university' || orgType === 'university_college') ? { universityId: orgId } : {}),
+        };
+        // Remove null/undefined keys to avoid overwriting with null on update
+        Object.keys(learnerPayload).forEach((k) => learnerPayload[k] == null && delete learnerPayload[k]);
+        const { error: learnerErr } = await supabase.from('learners').upsert(learnerPayload, { onConflict: 'user_id' });
+        if (learnerErr) {
+          log.warn('heal: learners upsert error', { requestId, error: learnerErr.message, userId });
+        } else {
+          log.info('heal: learners upserted', { requestId, userId, orgType, programId, roles: allRoles });
+        }
       } else {
-        log.info('heal: learners upserted', { requestId, userId, orgType, programId });
+        log.info('heal: skipped learners upsert (non-learner role)', { requestId, userId, roles: allRoles });
       }
     }
 

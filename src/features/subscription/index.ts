@@ -52,7 +52,8 @@ export {
   FeatureGate,
   SubscriptionBanner,
   SubscriptionRouteGuard,
-  SubscriptionSettingsSection
+  SubscriptionSettingsSection,
+  AdminFeatureLockedState
 } from './ui/shared';
 
 // Lazy-loaded components for better performance

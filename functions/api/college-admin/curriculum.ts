@@ -801,7 +801,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
         let query = supabase
           .from('programs')
-          .select('id, name, code, department_id')
+          .select('id, name, code, department_id, specializations')
           .eq('status', 'active')
           .order('name');
 

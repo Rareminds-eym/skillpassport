@@ -99,7 +99,11 @@ export async function createCourse(courseData: Omit<Course, 'id' | 'created_at' 
  * Update a course in the master catalog
  */
 export async function updateCourse(courseId: string, updates: Partial<Course>): Promise<Course> {
-  const response = await apiPost('/college-admin/academic', { action: 'update-course', courseId, ...updates });
+  const response = await apiPost('/college-admin/academic', { 
+    action: 'update-course', 
+    course_id: courseId,  // ✅ Fixed: backend expects course_id
+    ...updates 
+  });
   if (!response.success) throw new Error(response.error || 'Failed to update course');
   return response.data;
 }
@@ -117,7 +121,10 @@ export async function getCourseMappingDepartments(): Promise<Department[]> {
  * Get programs for a department
  */
 export async function getCourseMappingPrograms(departmentId?: string): Promise<Program[]> {
-  const response = await apiPost('/college-admin/academic', { action: 'get-mapping-programs', departmentId });
+  const response = await apiPost('/college-admin/academic', { 
+    action: 'get-mapping-programs', 
+    department_id: departmentId  // ✅ Fixed: backend expects department_id
+  });
   if (!response.success) throw new Error(response.error || 'Failed to fetch programs');
   return response.data || [];
 }
@@ -126,7 +133,10 @@ export async function getCourseMappingPrograms(departmentId?: string): Promise<P
  * Get faculty members with workload info (optimized with batch processing)
  */
 export async function getCourseMappingFaculty(departmentId?: string): Promise<Faculty[]> {
-  const response = await apiPost('/college-admin/academic', { action: 'get-faculty', departmentId });
+  const response = await apiPost('/college-admin/academic', { 
+    action: 'get-faculty', 
+    department_id: departmentId  // ✅ Fixed: backend expects department_id
+  });
   if (!response.success) throw new Error(response.error || 'Failed to fetch faculty');
   return response.data || [];
 }
@@ -201,10 +211,10 @@ export async function getCourseMappings(
 
   const response = await apiPost('/college-admin/academic', {
     action: 'get-course-mappings',
-    programId,
+    program_id: programId,  // ✅ Fixed: backend expects program_id not programId
     semester,
     searchQuery,
-    typeFilter
+    type: typeFilter  // ✅ Fixed: backend expects 'type' not 'typeFilter'
   });
   if (!response.success) throw new Error(response.error || 'Failed to fetch course mappings');
   return response.data || [];
@@ -218,9 +228,13 @@ export async function isSemesterLocked(programId: string, semester: number): Pro
     return false;
   }
 
-  const response = await apiPost('/college-admin/academic', { action: 'is-semester-locked', programId, semester });
+  const response = await apiPost('/college-admin/academic', { 
+    action: 'is-semester-locked', 
+    program_id: programId,  // ✅ Fixed: backend expects program_id not programId
+    semester 
+  });
   if (!response.success) return false;
-  return response.data || false;
+  return response.data?.locked || false;
 }
 
 /**
@@ -231,7 +245,11 @@ export async function lockSemester(programId: string, semester: number): Promise
     throw new Error('VALIDATION_ERROR: Program ID and semester are required');
   }
 
-  const response = await apiPost('/college-admin/academic', { action: 'lock-semester', programId, semester });
+  const response = await apiPost('/college-admin/academic', { 
+    action: 'lock-semester', 
+    program_id: programId,  // ✅ Fixed: backend expects program_id
+    semester 
+  });
   if (!response.success) throw new Error(response.error || 'Failed to lock semester');
 }
 
@@ -240,7 +258,11 @@ export async function unlockSemester(programId: string, semester: number): Promi
     throw new Error('VALIDATION_ERROR: Program ID and semester are required');
   }
 
-  const response = await apiPost('/college-admin/academic', { action: 'unlock-semester', programId, semester });
+  const response = await apiPost('/college-admin/academic', { 
+    action: 'unlock-semester', 
+    program_id: programId,  // ✅ Fixed: backend expects program_id
+    semester 
+  });
   if (!response.success) throw new Error(response.error || 'Failed to unlock semester');
 }
 
@@ -259,10 +281,10 @@ export async function cloneSemesterStructure(
 
   const response = await apiPost('/college-admin/academic', {
     action: 'clone-semester-structure',
-    fromProgramId,
-    fromSemester,
-    toProgramId,
-    toSemester
+    from_program_id: fromProgramId,  // ✅ Fixed: backend expects from_program_id
+    from_semester: fromSemester,      // ✅ Fixed: backend expects from_semester
+    to_program_id: toProgramId,      // ✅ Fixed: backend expects to_program_id
+    to_semester: toSemester           // ✅ Fixed: backend expects to_semester
   });
   if (!response.success) throw new Error(response.error || 'Failed to clone semester structure');
 }
@@ -275,7 +297,11 @@ export async function allocateFaculty(mappingId: string, facultyId: string): Pro
     throw new Error('VALIDATION_ERROR: Mapping ID and Faculty ID are required');
   }
 
-  const response = await apiPost('/college-admin/academic', { action: 'allocate-faculty', mappingId, facultyId });
+  const response = await apiPost('/college-admin/academic', { 
+    action: 'allocate-faculty', 
+    mapping_id: mappingId,  // ✅ Fixed: backend expects mapping_id
+    faculty_id: facultyId   // ✅ Fixed: backend expects faculty_id
+  });
   if (!response.success) throw new Error(response.error || 'Failed to allocate faculty');
 }
 
@@ -287,7 +313,10 @@ export async function calculateWorkload(facultyId: string): Promise<WorkloadSumm
     throw new Error('VALIDATION_ERROR: Faculty ID is required');
   }
 
-  const response = await apiPost('/college-admin/academic', { action: 'calculate-workload', facultyId });
+  const response = await apiPost('/college-admin/academic', { 
+    action: 'calculate-workload', 
+    faculty_id: facultyId  // ✅ Fixed: backend expects faculty_id
+  });
   if (!response.success) throw new Error(response.error || 'Failed to calculate workload');
   return response.data;
 }
@@ -316,7 +345,10 @@ export async function checkElectiveCapacity(mappingId: string): Promise<{
     throw new Error('VALIDATION_ERROR: Mapping ID is required');
   }
 
-  const response = await apiPost('/college-admin/academic', { action: 'check-elective-capacity', mappingId });
+  const response = await apiPost('/college-admin/academic', { 
+    action: 'check-elective-capacity', 
+    mapping_id: mappingId  // ✅ Fixed: backend expects mapping_id
+  });
   if (!response.success) throw new Error(response.error || 'Failed to check elective capacity');
   return response.data;
 }

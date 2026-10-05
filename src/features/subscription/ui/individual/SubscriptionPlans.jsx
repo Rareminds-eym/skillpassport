@@ -576,7 +576,7 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
             </>
           ) : isContactSales ? (
             <a
-              href="mailto:sales@skillpassport.in?subject=Enterprise%20Plan%20Inquiry"
+              href={`mailto:${plan.salesEmail || 'marketing@rareminds.in'}?subject=${encodeURIComponent(`${plan.display_name || plan.name || 'Enterprise'} Plan Inquiry`)}`}
               className="w-full py-4 px-4 rounded-2xl font-semibold bg-gradient-to-r from-slate-800 to-slate-900 text-white hover:from-slate-900 hover:to-black transition-all shadow-lg hover:shadow-xl hover:scale-105 flex items-center justify-center gap-2"
             >
               Contact Sales

@@ -1,14 +1,15 @@
+import { memo, useCallback, useMemo } from "react";
 import { Briefcase, GraduationCap, Plus, Edit, Eye, EyeOff, Trash2, CheckCircle, Clock, Save } from "lucide-react";
 import { Button } from '@/shared/ui/ButtonNew';
 import { Badge } from '@/shared/ui/Badge';
-import { useFormValidation } from '@/shared/lib/hooks';
+import { useFormValidation } from '@/shared/lib/hooks/useFormValidation';
 import { isLearner } from '@/entities/learner/lib/learnerType';
 import FormField from "../FormField";
 
-const AcademicDetailsTab = ({ 
-  profileData, 
-  handleProfileChange, 
-  educationData, 
+const AcademicDetailsTab = memo(({
+  profileData,
+  handleProfileChange,
+  educationData,
   setShowEducationModal,
   onToggleEducationEnabled,
   onDeleteEducation,
@@ -19,19 +20,50 @@ const AcademicDetailsTab = ({
   const { validateSingleField, touchField, getFieldError } = useFormValidation();
   const isLearnerUser = isLearner(learnerData);
 
-  const handleFieldChange = (field, value) => {
+  // ✅ PERFORMANCE: Memoize field change handler to prevent recreation on every render
+  const handleFieldChange = useCallback((field, value) => {
     handleProfileChange(field, value);
     if (field === 'currentCgpa') {
       validateSingleField('cgpa', value);
     }
-  };
+  }, [handleProfileChange, validateSingleField]);
 
-  const handleFieldBlur = (field, value) => {
+  // ✅ PERFORMANCE: Memoize field blur handler to prevent recreation on every render
+  const handleFieldBlur = useCallback((field, value) => {
     touchField(field);
     if (field === 'currentCgpa') {
       validateSingleField('cgpa', value);
     }
-  };
+  }, [touchField, validateSingleField]);
+
+  // ✅ PERFORMANCE: Memoize sorted education to prevent recalculation on every render
+  // Filters, applies versioning logic, and sorts by year descending
+  const sortedEducation = useMemo(() => {
+    return educationData
+      .filter(edu => edu.enabled !== false) // Only show enabled education
+      .map((education) => {
+        // VERSIONING: If there's a pending edit, show verified_data in Settings
+        if (education.has_pending_edit && education.verified_data) {
+          return {
+            ...education,
+            degree: education.verified_data.degree,
+            department: education.verified_data.department,
+            university: education.verified_data.university,
+            institution: education.verified_data.university,
+            yearOfPassing: education.verified_data.yearOfPassing || education.verified_data.year_of_passing,
+            cgpa: education.verified_data.cgpa,
+            level: education.verified_data.level,
+            status: education.verified_data.status,
+          };
+        }
+        return education;
+      })
+      .sort((a, b) => {
+        const yearA = parseInt(a.yearOfPassing) || 0;
+        const yearB = parseInt(b.yearOfPassing) || 0;
+        return yearB - yearA; // Descending order
+      });
+  }, [educationData]);
 
   return (
     <div className="space-y-8">
@@ -61,7 +93,7 @@ const AcademicDetailsTab = ({
               Note: Your institution name and class section (like "10-A") are set in the Institution Details tab.
             </p>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {/* Registration Number */}
             <div className="space-y-2">
@@ -179,132 +211,107 @@ const AcademicDetailsTab = ({
           </div>
         ) : (
           <div className="space-y-3">
-            {educationData
-              .filter(edu => edu.enabled !== false) // Only show enabled education
-              .map((education) => {
-                // VERSIONING: If there's a pending edit, show verified_data in Settings
-                let displayData = education;
-                if (education.has_pending_edit && education.verified_data) {
-                  displayData = {
-                    ...education,
-                    degree: education.verified_data.degree,
-                    department: education.verified_data.department,
-                    university: education.verified_data.university,
-                    institution: education.verified_data.university,
-                    yearOfPassing: education.verified_data.yearOfPassing || education.verified_data.year_of_passing,
-                    cgpa: education.verified_data.cgpa,
-                    level: education.verified_data.level,
-                    status: education.verified_data.status,
-                  };
-                }
-                return displayData;
-              })
-              .sort((a, b) => {
-                const yearA = parseInt(a.yearOfPassing) || 0;
-                const yearB = parseInt(b.yearOfPassing) || 0;
-                return yearB - yearA; // Descending order
-              })
-              .map((education, idx) => (
-                <div
-                  key={education.id || `edu-${idx}`}
-                  className="p-5 rounded-xl bg-white border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 group"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2 flex-wrap">
-                        <h4 className="text-base font-semibold text-slate-900">
-                          {education.degree || "N/A"}
-                        </h4>
-                        
-                        {/* Verified Badge */}
-                        {(education.approval_status === "verified" || education.approval_status === "approved") && !education._hasPendingEdit && (
-                          <Badge className="bg-green-50 text-green-700 border-green-200 flex items-center gap-1 text-xs">
-                            <CheckCircle className="w-3 h-3" />
-                            Verified
-                          </Badge>
-                        )}
+            {sortedEducation.map((education, idx) => (
+              <div
+                key={education.id || `edu-${idx}`}
+                className="p-5 rounded-xl bg-white border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 group"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2 flex-wrap">
+                      <h4 className="text-base font-semibold text-slate-900">
+                        {education.degree || "N/A"}
+                      </h4>
 
-                        {/* Pending Verification Badge - Show when has_pending_edit is true */}
-                        {education._hasPendingEdit && (
-                          <Badge className="bg-amber-50 text-amber-700 border-amber-200 flex items-center gap-1 text-xs">
-                            <Clock className="w-3 h-3" />
-                            Pending Verification
-                          </Badge>
-                        )}
-
-                        {/* Pending Verification Badge - Show for new pending records */}
-                        {(!education.approval_status || education.approval_status === 'pending') && !education._hasPendingEdit && (
-                          <Badge className="bg-amber-50 text-amber-700 border-amber-200 flex items-center gap-1 text-xs">
-                            <Clock className="w-3 h-3" />
-                            Pending Verification
-                          </Badge>
-                        )}
-                      </div>
-                      
-                      <p className="text-sm text-slate-600 font-medium mb-1">
-                        {education.university || education.institution || "N/A"}
-                      </p>
-                      
-                      <div className="flex items-center gap-4 text-sm text-slate-500">
-                        {education.yearOfPassing && (
-                          <span>{education.yearOfPassing}</span>
-                        )}
-                        {education.cgpa && (
-                          <>
-                            {education.yearOfPassing && <span>•</span>}
-                            <span className="font-medium">CGPA: {education.cgpa}</span>
-                          </>
-                        )}
-                        {education.status && (
-                          <>
-                            <span>•</span>
-                            <span className="capitalize">{education.status}</span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setShowEducationModal(true)}
-                        className="p-2 h-8 w-8 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      
-                      {/* Eye icon - only show for verified/approved education */}
-                      {(education.approval_status === 'verified' || education.approval_status === 'approved') && !education._hasPendingEdit && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => onToggleEducationEnabled && onToggleEducationEnabled(idx)}
-                          className="p-2 h-8 w-8 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                          title={education.enabled ? "Hide from profile" : "Show on profile"}
-                        >
-                          {education.enabled !== false ? (
-                            <Eye className="w-4 h-4" />
-                          ) : (
-                            <EyeOff className="w-4 h-4" />
-                          )}
-                        </Button>
+                      {/* Verified Badge */}
+                      {(education.approval_status === "verified" || education.approval_status === "approved") && !education._hasPendingEdit && (
+                        <Badge className="bg-green-50 text-green-700 border-green-200 flex items-center gap-1 text-xs">
+                          <CheckCircle className="w-3 h-3" />
+                          Verified
+                        </Badge>
                       )}
-                      
-                      {/* Delete button */}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => onDeleteEducation && onDeleteEducation(idx)}
-                        className="p-2 h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                        title="Delete education"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+
+                      {/* Pending Verification Badge - Show when has_pending_edit is true */}
+                      {education._hasPendingEdit && (
+                        <Badge className="bg-amber-50 text-amber-700 border-amber-200 flex items-center gap-1 text-xs">
+                          <Clock className="w-3 h-3" />
+                          Pending Verification
+                        </Badge>
+                      )}
+
+                      {/* Pending Verification Badge - Show for new pending records */}
+                      {(!education.approval_status || education.approval_status === 'pending') && !education._hasPendingEdit && (
+                        <Badge className="bg-amber-50 text-amber-700 border-amber-200 flex items-center gap-1 text-xs">
+                          <Clock className="w-3 h-3" />
+                          Pending Verification
+                        </Badge>
+                      )}
+                    </div>
+
+                    <p className="text-sm text-slate-600 font-medium mb-1">
+                      {education.university || education.institution || "N/A"}
+                    </p>
+
+                    <div className="flex items-center gap-4 text-sm text-slate-500">
+                      {education.yearOfPassing && (
+                        <span>{education.yearOfPassing}</span>
+                      )}
+                      {education.cgpa && (
+                        <>
+                          {education.yearOfPassing && <span>•</span>}
+                          <span className="font-medium">CGPA: {education.cgpa}</span>
+                        </>
+                      )}
+                      {education.status && (
+                        <>
+                          <span>•</span>
+                          <span className="capitalize">{education.status}</span>
+                        </>
+                      )}
                     </div>
                   </div>
+
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowEducationModal(true)}
+                      className="p-2 h-8 w-8 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                    >
+                      <Edit className="w-4 h-4" />
+                    </Button>
+
+                    {/* Eye icon - only show for verified/approved education */}
+                    {(education.approval_status === 'verified' || education.approval_status === 'approved') && !education._hasPendingEdit && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onToggleEducationEnabled && onToggleEducationEnabled(idx)}
+                        className="p-2 h-8 w-8 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        title={education.enabled ? "Hide from profile" : "Show on profile"}
+                      >
+                        {education.enabled !== false ? (
+                          <Eye className="w-4 h-4" />
+                        ) : (
+                          <EyeOff className="w-4 h-4" />
+                        )}
+                      </Button>
+                    )}
+
+                    {/* Delete button */}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onDeleteEducation && onDeleteEducation(idx)}
+                      className="p-2 h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      title="Delete education"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
-              ))}
+              </div>
+            ))}
           </div>
         )}
       </div>
@@ -322,6 +329,8 @@ const AcademicDetailsTab = ({
       </div>
     </div>
   );
-};
+});
+
+AcademicDetailsTab.displayName = 'AcademicDetailsTab';
 
 export default AcademicDetailsTab;

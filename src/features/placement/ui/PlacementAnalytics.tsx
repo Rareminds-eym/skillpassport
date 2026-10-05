@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Download,
   Filter,
@@ -23,6 +23,7 @@ import {
   PlacementStats 
 } from '..';
 import { getLogger } from '@/shared/config/logging';
+import { useAuthStore } from '@/shared/model/authStore';
 
 const logger = getLogger('placement-analytics');
 
@@ -33,7 +34,6 @@ const PlacementAnalytics: React.FC = () => {
   const [showAnalyticsFilter, setShowAnalyticsFilter] = useState(false);
   
   // State for real data
-  const [placementRecords, setPlacementRecords] = useState<PlacementRecord[]>([]);
   const [departmentAnalytics, setDepartmentAnalytics] = useState<DepartmentAnalytics[]>([]);
   const [placementStats, setPlacementStats] = useState<PlacementStats>({
     totalPlacements: 0,
@@ -56,7 +56,7 @@ const PlacementAnalytics: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
 
   // Load data from database using the same service as main placement stats
-  const loadData = async (showRefreshLoader = false) => {
+  const loadData = useCallback(async (showRefreshLoader = false) => {
     try {
       if (showRefreshLoader) {
         setRefreshing(true);
@@ -64,24 +64,71 @@ const PlacementAnalytics: React.FC = () => {
         setLoading(true);
       }
 
+      // Get college_id from current user
+      const user = useAuthStore.getState().user;
+      const college_id = user?.orgId;
+
+      if (!college_id) {
+        toast.error('College ID not found');
+        setLoading(false);
+        setRefreshing(false);
+        return;
+      }
+
       // Use the same service as main placement stats for consistency
       const stats = await opportunitiesService.getPlacementStats();
       
-      const recentData = await apiPost('/placement/actions', { action: 'get-recent-placements', limit: 10 });
-      const transformedRecentPlacements = recentData?.data || [];
+      const res: any = await apiPost('/college-admin/actions', {
+        action: 'get-placement-analytics-data',
+        college_id
+      });
 
-      const allLearnersData = await apiPost('/placement/actions', { action: 'get-all-learners-analytics' });
-      const alllearnersData = allLearnersData?.data || [];
+      logger.debug('API Response:', res);
 
-      const allPlacementsData = await apiPost('/placement/actions', { action: 'get-all-placements-analytics' });
-      const allPlacementsRawData = allPlacementsData?.data || [];
+      if (!res?.success || !res.data) {
+        logger.error('API Error:', res?.error);
+        throw new Error(res?.error || 'Failed to fetch placement data');
+      }
+
+      const { recentPlacementsData, alllearnersData, allPlacementsData } = res.data;
+
+      // Transform recent placements data
+      const transformedRecentPlacements = (recentPlacementsData || []).map((record: any) => ({
+        id: record.id.toString(),
+        learner_name: record.learners?.name || 'Unknown Learner',
+        learner_id: record.learners?.learner_id || '',
+        company_name: record.opportunities?.company_name || '',
+        job_title: record.opportunities?.title || '',
+        department: record.learners?.branch_field || record.learners?.course_name || '',
+        employment_type: record.opportunities?.employment_type as 'Full-time' | 'Internship',
+        salary_offered: record.opportunities?.salary_range_max || record.opportunities?.salary_range_min || 0,
+        placement_date: record.applied_at,
+        status: record.application_status as any,
+        location: record.opportunities?.location || ''
+      }));
 
       // Calculate department-wise analytics
       const departmentStats: { [key: string]: any } = {};
       
       // Count total learners by department
       (alllearnersData || []).forEach(learner => {
-        const dept = learner.branch_field || learner.course_name || 'Unknown';
+        // Try to get department from learner table first, then fallback to enrollment data
+        let dept = learner.branch_field || learner.course_name;
+        
+        // If still no department, try to get from enrollment data
+        if (!dept && learner.learner_enrollments && learner.learner_enrollments.length > 0) {
+          const enrollment = learner.learner_enrollments[0];
+          // Use program name first, then fallback to department name
+          if (enrollment?.program_sections?.programs?.name) {
+            dept = enrollment.program_sections.programs.name;
+          } else if (enrollment?.program_sections?.programs?.departments?.name) {
+            dept = enrollment.program_sections.programs.departments.name;
+          }
+        }
+        
+        // Final fallback
+        if (!dept) dept = 'Unknown';
+        
         if (!departmentStats[dept]) {
           departmentStats[dept] = {
             department: dept,
@@ -98,8 +145,24 @@ const PlacementAnalytics: React.FC = () => {
       // Count placements by department (count unique learners, not total offers)
       const uniquelearnersByDept: { [key: string]: Set<number> } = {};
       
-      (allPlacementsRawData || []).forEach(placement => {
-        const dept = placement.learners?.branch_field || placement.learners?.course_name || 'Unknown';
+      (allPlacementsData || []).forEach(placement => {
+        // Try to get department from learner table first, then fallback to enrollment data
+        let dept = placement.learners?.branch_field || placement.learners?.course_name;
+        
+        // If still no department, try to get from enrollment data
+        if (!dept && placement.learners?.learner_enrollments && placement.learners.learner_enrollments.length > 0) {
+          const enrollment = placement.learners.learner_enrollments[0];
+          // Use program name first, then fallback to department name
+          if (enrollment?.program_sections?.programs?.name) {
+            dept = enrollment.program_sections.programs.name;
+          } else if (enrollment?.program_sections?.programs?.departments?.name) {
+            dept = enrollment.program_sections.programs.departments.name;
+          }
+        }
+        
+        // Final fallback
+        if (!dept) dept = 'Unknown';
+        
         if (departmentStats[dept]) {
           // Use Set to track unique learner IDs
           if (!uniquelearnersByDept[dept]) {
@@ -110,9 +173,10 @@ const PlacementAnalytics: React.FC = () => {
           // Still track all placements for salary calculations
           departmentStats[dept].placements.push(placement);
           
-          if (placement.opportunities?.employment_type === 'Full-time') {
+          const empType = placement.opportunities?.employment_type?.toLowerCase();
+          if (empType === 'full-time') {
             departmentStats[dept].full_time++;
-          } else if (placement.opportunities?.employment_type === 'Internship') {
+          } else if (empType === 'internship') {
             departmentStats[dept].internships++;
           }
         }
@@ -163,8 +227,8 @@ const PlacementAnalytics: React.FC = () => {
         avgCTC: stats.avgCTC,
         medianCTC: stats.medianCTC,
         highestCTC: stats.highestCTC,
-        totalInternships: (allPlacementsRawData || []).filter((p: any) => p.opportunities?.employment_type === 'Internship').length,
-        totalFullTime: (allPlacementsRawData || []).filter((p: any) => p.opportunities?.employment_type === 'Full-time').length,
+        totalInternships: (allPlacementsData || []).filter((p: any) => p.opportunities?.employment_type?.toLowerCase() === 'internship').length,
+        totalFullTime: (allPlacementsData || []).filter((p: any) => p.opportunities?.employment_type?.toLowerCase() === 'full-time').length,
         placementRate: stats.placementRate
       });
 
@@ -175,9 +239,15 @@ const PlacementAnalytics: React.FC = () => {
       setDepartmentAnalytics(departmentAnalytics);
 
       // Calculate CTC distribution (from full dataset, not just top 10)
-      const allPlacementsForCTC = allPlacementsRawData || [];
-      const fullTimePlacements = allPlacementsForCTC.filter((p: any) => p.opportunities?.employment_type === 'Full-time');
-      const internships = allPlacementsForCTC.filter((p: any) => p.opportunities?.employment_type === 'Internship');
+      const allPlacementsForCTC = allPlacementsData || [];
+      
+      // Case-insensitive comparison for employment type
+      const fullTimePlacements = allPlacementsForCTC.filter((p: any) => 
+        p.opportunities?.employment_type?.toLowerCase() === 'full-time'
+      );
+      const internships = allPlacementsForCTC.filter((p: any) => 
+        p.opportunities?.employment_type?.toLowerCase() === 'internship'
+      );
       const totalPlacements = allPlacementsForCTC.length;
 
       const above10L = fullTimePlacements.filter((p: any) => (p.opportunities?.salary_range_max || p.opportunities?.salary_range_min || 0) >= 1000000).length;
@@ -209,21 +279,19 @@ const PlacementAnalytics: React.FC = () => {
         }
       });
 
-      // Set placement records
-      setPlacementRecords(transformedRecentPlacements);
-
     } catch (error) {
+      logger.error('[loadData] Failed to load placement data', error);
       toast.error('Failed to load placement data');
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, []); // Empty dependency array - loadData doesn't depend on any props or state
 
-  // Load data on component mount and when filters change
+  // Load data on component mount
   useEffect(() => {
     loadData();
-  }, [selectedAnalyticsDepartment, selectedAnalyticsYear, selectedAnalyticsType]);
+  }, [loadData]); // Include loadData in dependencies
 
   // Filter analytics data
   const filteredAnalytics = departmentAnalytics.filter(dept => {
@@ -232,9 +300,6 @@ const PlacementAnalytics: React.FC = () => {
 
   // Calculate overall metrics from real data
   const totalPlacements = placementStats.totalPlacements;
-  const totalInternships = placementStats.totalInternships;
-  const totalFullTime = placementStats.totalFullTime;
-  const internshipToJobRatio = totalFullTime > 0 ? (totalInternships / totalFullTime).toFixed(2) : "0";
   
   // CTC values from real data
   const overallAvgCtc = placementStats.avgCTC;
@@ -265,6 +330,7 @@ const PlacementAnalytics: React.FC = () => {
       
       toast.success("Placement analytics report exported successfully");
     } catch (error) {
+      logger.error('[handleExportReport] Failed to export report', error);
       toast.error("Failed to export report");
     }
   };
@@ -306,6 +372,7 @@ const PlacementAnalytics: React.FC = () => {
       
       toast.success("Recent placements report exported successfully");
     } catch (error) {
+      logger.error('[handleExportRecentPlacements] Failed to export recent placements', error);
       toast.error("Failed to export recent placements");
     }
   };
@@ -340,6 +407,7 @@ const PlacementAnalytics: React.FC = () => {
         <h2 className="text-xl font-bold text-gray-900">Placement Analytics</h2>
         <div className="flex gap-2">
           <button 
+            type="button"
             onClick={handleRefresh}
             disabled={refreshing}
             className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition disabled:opacity-50"
@@ -348,6 +416,7 @@ const PlacementAnalytics: React.FC = () => {
             Refresh
           </button>
           <button 
+            type="button"
             onClick={() => setShowAnalyticsFilter(true)}
             className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
           >
@@ -360,6 +429,7 @@ const PlacementAnalytics: React.FC = () => {
             )}
           </button>
           <button 
+            type="button"
             onClick={handleExportReport}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
           >
@@ -367,6 +437,7 @@ const PlacementAnalytics: React.FC = () => {
             Export Analytics
           </button>
           <button 
+            type="button"
             onClick={handleExportRecentPlacements}
             className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
           >
@@ -568,6 +639,7 @@ const PlacementAnalytics: React.FC = () => {
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-medium text-gray-900">Recent Placements</h3>
             <button 
+              type="button"
               onClick={handleExportRecentPlacements}
               className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
             >
@@ -630,7 +702,7 @@ const PlacementAnalytics: React.FC = () => {
           
           {recentPlacements.length > 5 && (
             <div className="mt-3 text-center">
-              <button className="text-sm text-blue-600 hover:text-blue-800">
+              <button type="button" className="text-sm text-blue-600 hover:text-blue-800">
                 View all {recentPlacements.length} placements →
               </button>
             </div>
@@ -646,8 +718,9 @@ const PlacementAnalytics: React.FC = () => {
             
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
+                <label htmlFor="analytics-department" className="block text-sm font-medium text-gray-700 mb-1">Department</label>
                 <select
+                  id="analytics-department"
                   value={selectedAnalyticsDepartment}
                   onChange={(e) => setSelectedAnalyticsDepartment(e.target.value)}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -662,8 +735,9 @@ const PlacementAnalytics: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Academic Year</label>
+                <label htmlFor="analytics-year" className="block text-sm font-medium text-gray-700 mb-1">Academic Year</label>
                 <select
+                  id="analytics-year"
                   value={selectedAnalyticsYear}
                   onChange={(e) => setSelectedAnalyticsYear(e.target.value)}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -675,8 +749,9 @@ const PlacementAnalytics: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Employment Type</label>
+                <label htmlFor="analytics-employment-type" className="block text-sm font-medium text-gray-700 mb-1">Employment Type</label>
                 <select
+                  id="analytics-employment-type"
                   value={selectedAnalyticsType}
                   onChange={(e) => setSelectedAnalyticsType(e.target.value)}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -690,12 +765,14 @@ const PlacementAnalytics: React.FC = () => {
 
             <div className="flex gap-2 mt-6">
               <button
+                type="button"
                 onClick={clearAnalyticsFilters}
                 className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
               >
                 Clear Filters
               </button>
               <button
+                type="button"
                 onClick={() => setShowAnalyticsFilter(false)}
                 className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
               >

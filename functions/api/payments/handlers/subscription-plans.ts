@@ -12,6 +12,7 @@
 import { getServiceClient } from '../../../lib/supabase';
 import { apiSuccess, apiError } from '../../../lib/response';
 import { getAuthInstance } from '../../../lib/auth';
+import { isSalesOnlyPlan } from '../lib/salesPlan';
 
 const COLLEGE_LEARNER_PROMO_CODE = 'RAREMINDS2026';
 const COLLEGE_LEARNER_ALLOWED_PLAN_CODE = 'skill_starter';
@@ -50,14 +51,15 @@ const getPlanCode = (plan: Record<string, unknown>): string => {
  *   - plan.description (string)
  *   - plan.max_users (number)
  */
-function transformPlan(raw: Record<string, unknown>, entityType: string): Record<string, unknown> {
+export function transformPlan(raw: Record<string, unknown>, entityType: string): Record<string, unknown> {
   const pricingMatrix = (raw.pricing_matrix as Record<string, Record<string, unknown>>) || {};
   const entityConfig = (raw.entity_config as Record<string, Record<string, unknown>>) || {};
 
   // Resolve pricing for the requested entity type, fallback to 'all'
   const pricing = pricingMatrix[entityType] || pricingMatrix['all'] || {};
   // Resolve config for the requested entity type, fallback to 'all'
-  const config = entityConfig[entityType] || entityConfig['all'] || {};
+  const config = { ...entityConfig['all'], ...entityConfig[entityType] };
+  const contactSales = isSalesOnlyPlan(raw);
 
   // Transform base_features from string keys to feature objects
   const baseFeatures = (raw.base_features as string[]) || [];
@@ -73,8 +75,18 @@ function transformPlan(raw: Record<string, unknown>, entityType: string): Record
     business_type: raw.business_type,
     // Flat pricing fields the frontend expects
     // Note: paid plans are yearly-only. monthly = yearly for backward compat.
-    price: pricing.yearly ?? pricing.monthly ?? 0,
-    yearlyPrice: pricing.yearly ?? 0,
+    price: contactSales ? null : pricing.yearly ?? pricing.monthly ?? 0,
+    yearlyPrice: contactSales ? null : pricing.yearly ?? 0,
+    contactSales,
+    salesEmail: (typeof config.sales_email === 'string' && config.sales_email.trim() && config.sales_email.trim() !== 'sales@skillpassport.in')
+      ? config.sales_email.trim()
+      : 'marketing@rareminds.in',
+    salesPhone: (typeof config.sales_phone === 'string' && config.sales_phone.trim())
+      ? config.sales_phone.trim()
+      : '+91 9902326951',
+    salesHighlights: Array.isArray(config.sales_highlights) ? config.sales_highlights.filter(value => typeof value === 'string') : [],
+    priceLabel: typeof config.price_label === 'string' ? config.price_label : '',
+    termsNote: typeof config.terms_note === 'string' ? config.terms_note : '',
     currency: (pricing.currency as string) || 'INR',
     duration: (config.duration as string) ?? 'yearly',
     // Config fields
@@ -82,7 +94,7 @@ function transformPlan(raw: Record<string, unknown>, entityType: string): Record
     recommended: (config.is_recommended as boolean) || false,
     ideal_for: (config.ideal_for as string) || '',
     description: (config.description as string) || '',
-    max_users: (config.max_users as number) ?? 1,
+    max_users: contactSales ? null : (config.max_users as number) ?? 1,
     positioning: (config.positioning as string) || '',
     color: (config.color as string) || '',
     display_name: (config.display_name as string) || raw.name,

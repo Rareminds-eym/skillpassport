@@ -33,6 +33,13 @@ export const OrganizationUpdatedSchema = z.object({
 });
 export type OrganizationUpdatedData = z.infer<typeof OrganizationUpdatedSchema>;
 
+export const OrganizationDeletedSchema = z.object({
+  id: z.string(),
+  hard: z.boolean().optional(),
+  deleted_by: z.string().optional(),
+});
+export type OrganizationDeletedData = z.infer<typeof OrganizationDeletedSchema>;
+
 export const MembershipPayloadSchema = z.object({
   user_id: z.string(),
   organization_id: z.string(),

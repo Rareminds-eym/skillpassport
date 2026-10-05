@@ -1,26 +1,24 @@
-
+import {
+  AcademicCapIcon,
+  BookOpenIcon,
+  ChartBarIcon,
+  ChatBubbleLeftRightIcon,
+  CheckCircleIcon,
+  ChevronDownIcon,
+  ClipboardDocumentCheckIcon,
+  ClipboardDocumentListIcon,
+  Cog6ToothIcon,
+  DocumentChartBarIcon,
+  FolderIcon,
+  HomeIcon,
+  LockClosedIcon,
+  PencilSquareIcon,
+  PhotoIcon,
+  SparklesIcon,
+  UserGroupIcon,
+} from '@heroicons/react/24/outline';
 import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import {
-  HomeIcon,
-  UserGroupIcon,
-  AcademicCapIcon,
-  ClipboardDocumentListIcon,
-  PencilSquareIcon,
-  CheckCircleIcon,
-  ChartBarIcon,
-  DocumentChartBarIcon,
-  Cog6ToothIcon,
-  ChevronDownIcon,
-  PhotoIcon,
-  ChatBubbleLeftRightIcon,
-  FolderIcon,
-  BookOpenIcon,
-    LockClosedIcon,
-  SparklesIcon,
-  ClipboardDocumentCheckIcon
-  // Icons from Heroicons
-} from "@heroicons/react/24/outline";
 import { useEducatorSchool } from '@/features/educator/model/useEducatorSchool';
 
 function classNames(...classes: string[]) {
@@ -77,7 +75,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           : [{ name: "Classes", path: "/educator/classes", icon: AcademicCapIcon }]
         ),
         { name: "TimeTable", path: "/educator/my-timetable", icon: AcademicCapIcon, disabled: true },
-        { name: "Mark Attendance", path: "/educator/mark-attendance", icon: ClipboardDocumentCheckIcon, disabled: true },
+        { name: "Mark Attendance", path: "/educator/mark-attendance", icon: ClipboardDocumentCheckIcon },
         { name: "Assessment Results", path: "/educator/assessment-results", icon: ClipboardDocumentListIcon },
         // { name: "Courses", path: "/educator/courses", icon: BookOpenIcon },
         { name: "Courses", path: "/educator/browse-courses", icon: BookOpenIcon },

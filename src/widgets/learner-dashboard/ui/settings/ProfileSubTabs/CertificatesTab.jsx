@@ -1,21 +1,26 @@
-import React from "react";
-import { Award, Plus, Edit, Calendar, ExternalLink, Shield, Clock, CheckCircle } from "lucide-react";
-import { Button } from '@/shared/ui/ButtonNew';
 import { Badge } from '@/shared/ui/Badge';
+import { Button } from '@/shared/ui/ButtonNew';
+import { Award, Calendar, CheckCircle, Clock, Edit, ExternalLink, Plus, Shield } from "lucide-react";
+import React, { useMemo } from "react";
 
-const CertificatesTab = ({ 
-  certificatesData, 
-  setShowCertificatesModal 
+const CertificatesTab = ({
+  certificatesData,
+  setShowCertificatesModal
 }) => {
 
-  const formatDate = (dateString) => {
-    if (!dateString) return "";
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'short' 
+  // Memoize date formatter to avoid recreation on every render
+  const formatDate = useMemo(() => {
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      year: 'numeric',
+      month: 'short'
     });
-  };
+
+    return (dateString) => {
+      if (!dateString) return "";
+      const date = new Date(dateString);
+      return Number.isNaN(date.getTime()) ? 'Unknown date' : formatter.format(date);
+    };
+  }, []);
 
   const isExpired = (expiryDate) => {
     if (!expiryDate) return false;
@@ -28,13 +33,13 @@ const CertificatesTab = ({
     const now = new Date();
     const threeMonthsFromNow = new Date();
     threeMonthsFromNow.setMonth(now.getMonth() + 3);
-    
+
     return expiry > now && expiry <= threeMonthsFromNow;
   };
 
   const getCertificateStatus = (expiryDate) => {
     if (!expiryDate) return { status: 'valid', color: 'bg-green-100 text-green-700 border-green-200' };
-    
+
     if (isExpired(expiryDate)) {
       return { status: 'expired', color: 'bg-red-100 text-red-700 border-red-200' };
     } else if (isExpiringSoon(expiryDate)) {
@@ -43,6 +48,18 @@ const CertificatesTab = ({
       return { status: 'valid', color: 'bg-green-100 text-green-700 border-green-200' };
     }
   };
+
+  // Memoize sorted certificates to avoid re-sorting on every render
+  const sortedCertificates = useMemo(() => {
+    return (certificatesData || [])
+      .filter(cert => cert.enabled !== false)
+      .sort((a, b) => {
+        // Sort by issue date, most recent first
+        const dateA = new Date(a.issueDate || a.issuedOn || 0).getTime();
+        const dateB = new Date(b.issueDate || b.issuedOn || 0).getTime();
+        return dateB - dateA;
+      });
+  }, [certificatesData]);
 
   return (
     <div>
@@ -72,149 +89,142 @@ const CertificatesTab = ({
         </div>
       ) : (
         <div className="max-h-96 overflow-y-auto space-y-4 pr-2">
-          {(certificatesData || [])
-            .filter(cert => cert.enabled !== false) // Only show enabled certificates
-            .sort((a, b) => {
-              // Sort by issue date, most recent first
-              const dateA = new Date(a.issueDate || a.issuedOn || 0);
-              const dateB = new Date(b.issueDate || b.issuedOn || 0);
-              return dateB - dateA;
-            })
-            .map((certificate, idx) => {
-              // VERSIONING: If there's a pending edit, display verified_data
-              const displayCert = certificate.has_pending_edit && certificate.verified_data
-                ? {
-                    ...certificate,
-                    title: certificate.verified_data.title || certificate.title,
-                    issuer: certificate.verified_data.issuer || certificate.issuer,
-                    issuedOn: certificate.verified_data.issued_on || certificate.issuedOn,
-                    expiryDate: certificate.verified_data.expiry_date || certificate.expiryDate,
-                    level: certificate.verified_data.level || certificate.level,
-                    description: certificate.verified_data.description || certificate.description,
-                    credentialId: certificate.verified_data.credential_id || certificate.credentialId,
-                    link: certificate.verified_data.link || certificate.link,
-                    category: certificate.verified_data.category || certificate.category,
-                  }
-                : certificate;
-              
-              const status = getCertificateStatus(displayCert.expiryDate);
-              
-              return (
-                <div
-                  key={displayCert.id || `cert-${idx}`}
-                  className="p-5 rounded-xl bg-white border-l-4 border-l-blue-500 border border-gray-200 hover:shadow-md transition-all duration-200"
-                >
-                  <div className="flex items-start justify-between gap-3 mb-3">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <h4 className="text-base font-bold text-gray-900">
-                          {displayCert.title || displayCert.name || displayCert.certificateName || displayCert.certificate_name || "Certificate"}
-                        </h4>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setShowCertificatesModal(true)}
-                          className="p-1 h-6 w-6 text-gray-400 hover:text-blue-600 hover:bg-blue-50"
-                        >
-                          <Edit className="w-3 h-3" />
-                        </Button>
-                      </div>
-                      
-                      <div className="flex items-center gap-2 mb-2">
-                        <Shield className="w-4 h-4 text-blue-600" />
-                        <p className="text-sm text-blue-600 font-medium">
-                          {displayCert.issuer || displayCert.organization || displayCert.institution || displayCert.issuedBy || "Organization"}
-                        </p>
-                      </div>
+          {sortedCertificates.map((certificate, idx) => {
+            // VERSIONING: If there's a pending edit, display verified_data
+            const displayCert = certificate.has_pending_edit && certificate.verified_data
+              ? {
+                ...certificate,
+                title: certificate.verified_data.title || certificate.title,
+                issuer: certificate.verified_data.issuer || certificate.issuer,
+                issuedOn: certificate.verified_data.issued_on || certificate.issuedOn,
+                expiryDate: certificate.verified_data.expiry_date || certificate.expiryDate,
+                level: certificate.verified_data.level || certificate.level,
+                description: certificate.verified_data.description || certificate.description,
+                credentialId: certificate.verified_data.credential_id || certificate.credentialId,
+                link: certificate.verified_data.link || certificate.link,
+                category: certificate.verified_data.category || certificate.category,
+              }
+              : certificate;
 
-                      <div className="flex items-center gap-4 text-sm text-gray-600 mb-3">
-                        {displayCert.issuedOn && (
-                          <div className="flex items-center gap-1">
-                            <Calendar className="w-4 h-4" />
-                            <span>Issued: {formatDate(displayCert.issuedOn)}</span>
-                          </div>
-                        )}
-                        
-                        {displayCert.expiryDate && (
-                          <div className="flex items-center gap-1">
-                            <Clock className="w-4 h-4" />
-                            <span>Expires: {formatDate(displayCert.expiryDate)}</span>
-                          </div>
-                        )}
-                      </div>
+            const status = getCertificateStatus(displayCert.expiryDate);
 
-                      <div className="flex items-center gap-3 mb-3">
-                        {/* Approval Status Badge - Show "Verified" for old data when there's a pending edit */}
-                        {((displayCert.approval_status === 'verified' || displayCert.approval_status === 'approved') || 
-                          (certificate.has_pending_edit && certificate.verified_data)) && (
+            return (
+              <div
+                key={displayCert.id || `cert-${idx}`}
+                className="p-5 rounded-xl bg-white border-l-4 border-l-blue-500 border border-gray-200 hover:shadow-md transition-all duration-200"
+              >
+                <div className="flex items-start justify-between gap-3 mb-3">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <h4 className="text-base font-bold text-gray-900">
+                        {displayCert.title || displayCert.name || displayCert.certificateName || displayCert.certificate_name || "Certificate"}
+                      </h4>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowCertificatesModal(true)}
+                        className="p-1 h-6 w-6 text-gray-400 hover:text-blue-600 hover:bg-blue-50"
+                      >
+                        <Edit className="w-3 h-3" />
+                      </Button>
+                    </div>
+
+                    <div className="flex items-center gap-2 mb-2">
+                      <Shield className="w-4 h-4 text-blue-600" />
+                      <p className="text-sm text-blue-600 font-medium">
+                        {displayCert.issuer || displayCert.organization || displayCert.institution || displayCert.issuedBy || "Organization"}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-4 text-sm text-gray-600 mb-3">
+                      {displayCert.issuedOn && (
+                        <div className="flex items-center gap-1">
+                          <Calendar className="w-4 h-4" />
+                          <span>Issued: {formatDate(displayCert.issuedOn)}</span>
+                        </div>
+                      )}
+
+                      {displayCert.expiryDate && (
+                        <div className="flex items-center gap-1">
+                          <Clock className="w-4 h-4" />
+                          <span>Expires: {formatDate(displayCert.expiryDate)}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-3 mb-3">
+                      {/* Approval Status Badge - Show "Verified" for old data when there's a pending edit */}
+                      {((displayCert.approval_status === 'verified' || displayCert.approval_status === 'approved') ||
+                        (certificate.has_pending_edit && certificate.verified_data)) && (
                           <div className="flex items-center gap-2 px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium border border-green-200">
                             <CheckCircle className="w-3 h-3" />
                             <span>Verified</span>
                           </div>
                         )}
-                        
-                        {/* Pending Verification Badge - Only for brand new submissions */}
-                        {displayCert.approval_status === 'pending' && !certificate.verified_data && (
-                          <div className="flex items-center gap-2 px-3 py-1 bg-amber-100 text-amber-700 hover:bg-amber-100 rounded-full text-xs font-medium border border-amber-200">
-                            <Clock className="w-3 h-3" />
-                            <span>Pending Verification</span>
-                          </div>
-                        )}
-                        
-                        {/* Expiry Status Badge */}
-                        {status.status !== 'valid' && (
-                          <Badge className={`px-3 py-1 text-xs font-medium border ${status.color}`}>
-                            {status.status === 'expired' ? 'Expired' : 'Expiring Soon'}
-                          </Badge>
-                        )}
-                        
-                        {displayCert.category && (
-                          <Badge variant="secondary" className="text-xs px-2 py-1">
-                            {displayCert.category}
-                          </Badge>
-                        )}
-                        
-                        {displayCert.level && (
-                          <Badge variant="outline" className="text-xs px-2 py-1">
-                            {displayCert.level}
-                          </Badge>
-                        )}
-                      </div>
 
-                      {displayCert.credentialId && (
-                        <p className="text-xs text-gray-500 mb-2">
-                          <span className="font-medium">Credential ID:</span> {displayCert.credentialId}
-                        </p>
-                      )}
-
-                      {displayCert.description && (
-                        <p className="text-sm text-gray-600 leading-relaxed mb-3">
-                          {displayCert.description}
-                        </p>
-                      )}
-
-                      {displayCert.link && (
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => window.open(displayCert.link, '_blank')}
-                            className="text-xs px-3 py-1 h-7 flex items-center gap-1"
-                          >
-                            <ExternalLink className="w-3 h-3" />
-                            View Credential
-                          </Button>
+                      {/* Pending Verification Badge - Only for brand new submissions */}
+                      {displayCert.approval_status === 'pending' && !certificate.verified_data && (
+                        <div className="flex items-center gap-2 px-3 py-1 bg-amber-100 text-amber-700 hover:bg-amber-100 rounded-full text-xs font-medium border border-amber-200">
+                          <Clock className="w-3 h-3" />
+                          <span>Pending Verification</span>
                         </div>
                       )}
+
+                      {/* Expiry Status Badge */}
+                      {status.status !== 'valid' && (
+                        <Badge className={`px-3 py-1 text-xs font-medium border ${status.color}`}>
+                          {status.status === 'expired' ? 'Expired' : 'Expiring Soon'}
+                        </Badge>
+                      )}
+
+                      {displayCert.category && (
+                        <Badge variant="secondary" className="text-xs px-2 py-1">
+                          {displayCert.category}
+                        </Badge>
+                      )}
+
+                      {displayCert.level && (
+                        <Badge variant="outline" className="text-xs px-2 py-1">
+                          {displayCert.level}
+                        </Badge>
+                      )}
                     </div>
+
+                    {displayCert.credentialId && (
+                      <p className="text-xs text-gray-500 mb-2">
+                        <span className="font-medium">Credential ID:</span> {displayCert.credentialId}
+                      </p>
+                    )}
+
+                    {displayCert.description && (
+                      <p className="text-sm text-gray-600 leading-relaxed mb-3">
+                        {displayCert.description}
+                      </p>
+                    )}
+
+                    {displayCert.link && (
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => window.open(displayCert.link, '_blank')}
+                          className="text-xs px-3 py-1 h-7 flex items-center gap-1"
+                        >
+                          <ExternalLink className="w-3 h-3" />
+                          View Credential
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </div>
-              );
-            })}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
   );
 };
 
-export default CertificatesTab;
+// ✅ PERFORMANCE: Memoize component to prevent re-renders when props haven't changed
+export default React.memo(CertificatesTab);

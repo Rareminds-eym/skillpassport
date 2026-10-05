@@ -1,85 +1,85 @@
-import { useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import { User, MapPin, AlertCircle, Save } from "lucide-react";
 import { Button } from '@/shared/ui/ButtonNew';
 
-const PersonalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile, isSaving }) => {
+const PersonalInfoTab = memo(({ profileData, handleProfileChange, handleSaveProfile, isSaving }) => {
   const [errors, setErrors] = useState({});
 
-  // Validation functions
-  const validatePhone = (phone) => {
+  // ✅ PERFORMANCE: Memoize validation functions to prevent recreation on every render
+  const validatePhone = useMemo(() => (phone) => {
     if (!phone) return null; // Optional field
-    
+
     // Remove all non-digit characters
     const cleanPhone = phone.replace(/\D/g, '');
-    
+
     // Check if it's a valid Indian mobile number (10 digits starting with 6-9)
     if (cleanPhone.length !== 10) {
       return "Phone number must be exactly 10 digits";
     }
-    
+
     if (!/^[6-9]/.test(cleanPhone)) {
       return "Phone number must start with 6, 7, 8, or 9";
     }
-    
-    return null;
-  };
 
-  const validateDateOfBirth = (dateOfBirth) => {
+    return null;
+  }, []);
+
+  const validateDateOfBirth = useMemo(() => (dateOfBirth) => {
     if (!dateOfBirth) return null; // Optional field
-    
+
     const birthDate = new Date(dateOfBirth);
     const today = new Date();
     const monthDiff = today.getMonth() - birthDate.getMonth();
-    
+
     let age = today.getFullYear() - birthDate.getFullYear();
     if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
       age--;
     }
-    
+
     if (birthDate > today) {
       return "Date of birth cannot be in the future";
     }
-    
+
     if (age < 11) {
       return "Age must be at least 11 years";
     }
-    
+
     if (age > 100) {
       return "Please enter a valid date of birth";
     }
-    
-    return null;
-  };
 
-  const validatePincode = (pincode) => {
+    return null;
+  }, []);
+
+  const validatePincode = useMemo(() => (pincode) => {
     if (!pincode) return null; // Optional field
-    
+
     // Remove all non-digit characters
     const cleanPincode = pincode.replace(/\D/g, '');
-    
+
     // Check if it's exactly 6 digits
     if (cleanPincode.length !== 6) {
       return "Pincode must be exactly 6 digits";
     }
-    
-    return null;
-  };
 
-  // Enhanced change handler with validation
-  const handleValidatedChange = (field, value) => {
+    return null;
+  }, []);
+
+  // ✅ PERFORMANCE: Memoize validated change handler to prevent recreation on every render
+  const handleValidatedChange = useCallback((field, value) => {
     let error = null;
-    
+
     // Format phone numbers to remove non-digits
     if (field === 'phone' || field === 'alternatePhone') {
       // Allow only digits and common phone formatting characters during input
       const formattedValue = value.replace(/[^\d]/g, '');
-      
+
       if (field === 'phone') {
         error = validatePhone(formattedValue);
       } else if (field === 'alternatePhone') {
         error = validatePhone(formattedValue);
       }
-      
+
       // Update with formatted value
       handleProfileChange(field, formattedValue);
     } else if (field === 'dateOfBirth') {
@@ -93,13 +93,13 @@ const PersonalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile, 
     } else {
       handleProfileChange(field, value);
     }
-    
+
     // Update errors state
     setErrors(prev => ({
       ...prev,
       [field]: error
     }));
-  };
+  }, [handleProfileChange, validatePhone, validateDateOfBirth, validatePincode]);
 
   return (
     <div className="space-y-8">
@@ -110,7 +110,7 @@ const PersonalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile, 
         </h3>
         <p className="text-sm text-slate-500">Your basic identity and contact details</p>
       </div>
-      
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {/* Name */}
         <div className="space-y-2">
@@ -148,9 +148,8 @@ const PersonalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile, 
             type="tel"
             value={profileData.phone}
             onChange={(e) => handleValidatedChange("phone", e.target.value)}
-            className={`w-full px-4 py-2.5 bg-white border rounded-lg text-slate-900 placeholder-slate-400 transition-all input-focus-ring text-sm ${
-              errors.phone ? 'border-red-400 focus:border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:border-blue-500 focus:ring-blue-500/20'
-            }`}
+            className={`w-full px-4 py-2.5 bg-white border rounded-lg text-slate-900 placeholder-slate-400 transition-all input-focus-ring text-sm ${errors.phone ? 'border-red-400 focus:border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:border-blue-500 focus:ring-blue-500/20'
+              }`}
             placeholder="10-digit number"
             maxLength="10"
           />
@@ -171,9 +170,8 @@ const PersonalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile, 
             type="tel"
             value={profileData.alternatePhone}
             onChange={(e) => handleValidatedChange("alternatePhone", e.target.value)}
-            className={`w-full px-4 py-2.5 bg-white border rounded-lg text-slate-900 placeholder-slate-400 transition-all input-focus-ring text-sm ${
-              errors.alternatePhone ? 'border-red-400 focus:border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:border-blue-500 focus:ring-blue-500/20'
-            }`}
+            className={`w-full px-4 py-2.5 bg-white border rounded-lg text-slate-900 placeholder-slate-400 transition-all input-focus-ring text-sm ${errors.alternatePhone ? 'border-red-400 focus:border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:border-blue-500 focus:ring-blue-500/20'
+              }`}
             placeholder="10-digit number"
             maxLength="10"
           />
@@ -194,9 +192,8 @@ const PersonalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile, 
             type="date"
             value={profileData.dateOfBirth}
             onChange={(e) => handleValidatedChange("dateOfBirth", e.target.value)}
-            className={`w-full px-4 py-2.5 bg-white border rounded-lg text-slate-900 transition-all input-focus-ring text-sm ${
-              errors.dateOfBirth ? 'border-red-400 focus:border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:border-blue-500 focus:ring-blue-500/20'
-            }`}
+            className={`w-full px-4 py-2.5 bg-white border rounded-lg text-slate-900 transition-all input-focus-ring text-sm ${errors.dateOfBirth ? 'border-red-400 focus:border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:border-blue-500 focus:ring-blue-500/20'
+              }`}
             max={new Date().toISOString().split('T')[0]}
           />
           {errors.dateOfBirth && (
@@ -256,7 +253,7 @@ const PersonalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile, 
           </h4>
           <p className="text-sm text-slate-500">Your residential address details</p>
         </div>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {/* Address */}
           <div className="space-y-2 md:col-span-2">
@@ -319,9 +316,8 @@ const PersonalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile, 
               type="text"
               value={profileData.pincode}
               onChange={(e) => handleValidatedChange("pincode", e.target.value)}
-              className={`w-full px-4 py-2.5 bg-white border rounded-lg text-slate-900 placeholder-slate-400 transition-all input-focus-ring text-sm ${
-                errors.pincode ? 'border-red-400 focus:border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:border-blue-500 focus:ring-blue-500/20'
-              }`}
+              className={`w-full px-4 py-2.5 bg-white border rounded-lg text-slate-900 placeholder-slate-400 transition-all input-focus-ring text-sm ${errors.pincode ? 'border-red-400 focus:border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:border-blue-500 focus:ring-blue-500/20'
+                }`}
               placeholder="6-digit pincode"
               maxLength="6"
             />
@@ -348,6 +344,9 @@ const PersonalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile, 
       </div>
     </div>
   );
-};
+});
+
+PersonalInfoTab.displayName = 'PersonalInfoTab';
+
 
 export default PersonalInfoTab;

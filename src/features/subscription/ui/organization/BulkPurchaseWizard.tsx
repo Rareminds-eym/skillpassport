@@ -30,9 +30,11 @@ import { AddLearnerModal } from '@/features/educator';
 import MemberTypeSelector, { MemberType } from './MemberTypeSelector';
 import PricingBreakdown, { PricingBreakdownData } from './PricingBreakdown';
 import SeatSelector from './SeatSelector';
+import HybridPlanCard from './HybridPlanCard';
+import type { HybridCatalogPlan } from '../../lib/hybridPlan';
 
 // Types
-interface Plan {
+interface Plan extends HybridCatalogPlan {
   id: string;
   name: string;
   price: number;
@@ -331,6 +333,7 @@ function BulkPurchaseWizard({
           {currentStep === 1 && (
             <Step1PlanSelection
               plans={availablePlans}
+              organizationName={organizationName}
               selectedPlan={state.selectedPlan}
               memberType={state.memberType}
               billingCycle={state.billingCycle}
@@ -443,6 +446,7 @@ function BulkPurchaseWizard({
 // Step 1: Plan Selection Component
 interface Step1Props {
   plans: Plan[];
+  organizationName: string;
   selectedPlan: Plan | null;
   memberType: MemberType;
   billingCycle: 'monthly' | 'annual';
@@ -453,6 +457,7 @@ interface Step1Props {
 
 function Step1PlanSelection({
   plans,
+  organizationName,
   selectedPlan,
   memberType,
   billingCycle,
@@ -514,8 +519,9 @@ function Step1PlanSelection({
       />
 
       {/* Plan Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         {plans.map((plan) => {
+          if (plan.contactSales) return <HybridPlanCard key={plan.id} plan={plan} compact organizationName={organizationName} />;
           const isSelected = selectedPlan?.id === plan.id;
           const displayPrice = billingCycle === 'annual' 
             ? Math.round(plan.price * 0.83) 

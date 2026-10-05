@@ -1,3 +1,4 @@
+import { isSalesOnlyPlan } from '../lib/salesPlan';
 /**
  * Verify Payment Handler
  *
@@ -195,7 +196,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
     // Step 2.5: Validate plan exists via plans_cache (local shadow of auth DB)
     const { data: validPlan, error: planError } = await supabase
       .from('plans_cache')
-      .select('id, plan_code, name, is_active, pricing_matrix, base_features')
+      .select('id, plan_code, name, is_active, pricing_matrix, base_features, entity_config')
       .eq('id', plan.id)
       .eq('is_active', true)
       .maybeSingle();
@@ -203,6 +204,10 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
     if (planError || !validPlan) {
       logger.error('Invalid or inactive plan', planError instanceof Error ? planError : new Error('Plan not found'));
       return apiError(400, 'VALIDATION_ERROR', 'Selected plan is not valid or inactive', context.request);
+    }
+
+    if (isSalesOnlyPlan(validPlan)) {
+      return apiError(400, 'CONTACT_SALES_REQUIRED', 'This plan requires an agreed sales proposal before activation.', context.request);
     }
 
     // Step 2.5: Validate currency (SECURITY: prevent multi-currency fraud)

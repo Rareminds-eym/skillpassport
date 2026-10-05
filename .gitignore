@@ -71,6 +71,9 @@ AGENTS.md
 mcpopencode.json
 opencode.json
 
+# Local vars (machine-local secrets/config) - DO NOT COMMIT
+/vars/
+
 # Documentation archives (optional - uncomment to exclude from git)
 # docs/archive/
 # tests/archive/

@@ -1,3 +1,4 @@
+import { requireSelfServePlan, catalogPlanErrorResponse } from '../lib/salesPlan';
 /**
  * Verify Org Payment Handler
  *
@@ -68,6 +69,8 @@ export async function handleVerifyOrgPayment(context: AuthenticatedContext): Pro
       return apiError(403, 'FORBIDDEN', 'Not authorized for this organization', context.request);
     }
 
+    const catalogPlan = await requireSelfServePlan(supabase, body);
+
     // Step 1: Verify Razorpay HMAC signature via payment-worker RPC (unchanged)
     const worker = getPaymentWorker(env);
     const verifyResult = await worker.verifyPaymentSignature(
@@ -118,9 +121,9 @@ export async function handleVerifyOrgPayment(context: AuthenticatedContext): Pro
     try {
       subscription = await ssoCreateSubscription(env, {
         user_id: user.id,
-        plan_id: (body.plan_id as string) || '',
-        plan_code: (body.plan_code as string) || body.plan_name as string,
-        plan_type: body.plan_name as string,
+        plan_id: catalogPlan.id,
+        plan_code: catalogPlan.plan_code,
+        plan_type: catalogPlan.name,
         plan_amount: planAmount / 100,
         billing_cycle: billingCycle,
         features: [],
@@ -215,7 +218,7 @@ export async function handleVerifyOrgPayment(context: AuthenticatedContext): Pro
     }, context.request);
   } catch (error) {
     console.error('[VerifyOrgPayment] Error:', error);
-    return rpcErrorResponse(error, context.request);
+    return catalogPlanErrorResponse(error, context.request) || rpcErrorResponse(error, context.request);
   }
 }
 

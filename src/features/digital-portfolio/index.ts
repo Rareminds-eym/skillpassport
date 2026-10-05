@@ -78,6 +78,37 @@ export type { ProfileCompletionErrorBoundary } from './ui/shared/ProfileCompleti
 // Store exports
 export * from './model/portfolioStore';
 
+// Video Portfolio Store
+export { useVideoPortfolioStore, selectVideos, selectLoading, selectError, selectUploadProgress, selectVideoCount, selectMaxAllowed, selectCanUploadMore, selectQuotaPercentage, selectVideosByStatus, selectPublicVideos, selectPendingVideos } from './model/videoPortfolioStore';
+
+// Video Portfolio Service
+export { default as videoPortfolioService } from './api/videoPortfolioService';
+
+// Video Portfolio Types
+export type {
+  VideoEntry,
+  VideoStatus,
+  ApprovalStatus,
+  VideoPortfolioResponse,
+  CreateVideoRequest,
+  UpdateVideoRequest,
+  DeleteVideoRequest,
+  ApproveVideoRequest,
+  RejectVideoRequest,
+  GetPendingVideosRequest,
+  PendingVideoEntry,
+  UploadVideoResponse,
+  UploadVideoRequest,
+} from './types/videoPortfolio';
+
+export {
+  VIDEO_PORTFOLIO_CONSTANTS,
+  isValidVideoStatus,
+  isValidApprovalStatus,
+  formatFileSize,
+  validateVideoEntry,
+} from './types/videoPortfolio';
+
 // Scoped Theme exports - ONLY for Digital Portfolio feature
 export { useScopedTheme, useIsScopedDark, useScopedThemeStore } from './model/scopedThemeStore';
 export { DigitalPortfolioThemeProvider } from './providers/DigitalPortfolioThemeProvider';

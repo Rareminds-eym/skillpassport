@@ -597,8 +597,142 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       case 'update-enrollment': {
         const { learnerId, enrollmentData } = params;
         if (!learnerId || !enrollmentData) return apiError(400, 'VALIDATION_ERROR', 'Missing learnerId or enrollmentData', context.request, { startTime });
-        const { data, error } = await supabase.from('learners').update({ ...enrollmentData, updated_at: new Date().toISOString() }).eq('id', learnerId).select().single();
+        const payload: Record<string, any> = { ...enrollmentData };
+        // If the enrolled program has specializations, carry them onto the
+        // learner row (varchar free-text, comma-joined like "hr, marketing").
+        // Programs without specializations leave the learner value untouched.
+        if (enrollmentData.program_id) {
+          try {
+            const { data: prog, error: progError } = await supabase
+              .from('programs')
+              .select('specializations')
+              .eq('id', enrollmentData.program_id)
+              .maybeSingle();
+            if (progError) {
+              logger.warn('[update-enrollment] specializations lookup failed; learner specialization left unchanged', {
+                learnerId,
+                program_id: enrollmentData.program_id,
+                message: progError.message,
+              });
+            } else {
+              const specs = Array.isArray((prog as any)?.specializations)
+                ? (prog as any).specializations.map((s: unknown) => String(s).trim()).filter(Boolean)
+                : String((prog as any)?.specializations ?? '')
+                    .split(',')
+                    .map((s: string) => s.trim())
+                    .filter(Boolean);
+              if (specs.length > 0) {
+                payload.specialization = specs.join(', ');
+              }
+              // No specializations on the program: learner row untouched,
+              // manual specialization (if any) is preserved.
+            }
+          } catch (err) {
+            logger.warn('[update-enrollment] specializations lookup threw; learner specialization left unchanged', {
+              learnerId,
+              program_id: enrollmentData.program_id,
+              message: err instanceof Error ? err.message : String(err),
+            });
+          }
+        }
+        const { data, error } = await supabase.from('learners').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', learnerId).select().single();
         if (error) return apiDbError(error, context.request, { startTime });
+
+        // ALSO insert/update learner_enrollments table if we have program enrollment data
+        if (enrollmentData.program_id && enrollmentData.semester) {
+          let sectionId = null;
+
+          // Find the program_sections row ID if section is provided
+          if (enrollmentData.section) {
+            const { data: sectionData, error: sectionError } = await supabase
+              .from('program_sections')
+              .select('id')
+              .eq('program_id', enrollmentData.program_id)
+              .eq('semester', enrollmentData.semester)
+              .eq('section', enrollmentData.section)
+              .maybeSingle();
+            
+            if (sectionError) {
+              logger.error('[update-enrollment] Failed to query program_sections', {
+                learnerId,
+                programId: enrollmentData.program_id,
+                semester: enrollmentData.semester,
+                section: enrollmentData.section,
+                error: sectionError.message
+              });
+              return apiDbError(sectionError, context.request, { startTime });
+            }
+            
+            sectionId = sectionData?.id || null;
+          }
+
+          // Get current academic year
+          const currentYear = new Date().getFullYear();
+          const nextYear = (currentYear + 1).toString().slice(-2);
+          const academicYear = `${currentYear}-${nextYear}`;
+
+          // Check if enrollment record exists
+          const { data: existingEnrollment, error: enrollmentCheckError } = await supabase
+            .from('learner_enrollments')
+            .select('id')
+            .eq('learner_id', learnerId)
+            .eq('program_id', enrollmentData.program_id)
+            .eq('semester', enrollmentData.semester)
+            .maybeSingle();
+          
+          if (enrollmentCheckError) {
+            logger.error('[update-enrollment] Failed to check existing learner_enrollments', {
+              learnerId,
+              programId: enrollmentData.program_id,
+              semester: enrollmentData.semester,
+              error: enrollmentCheckError.message
+            });
+            return apiDbError(enrollmentCheckError, context.request, { startTime });
+          }
+
+          if (existingEnrollment) {
+            // Update existing enrollment
+            const { error: updateError } = await supabase
+              .from('learner_enrollments')
+              .update({
+                section_id: sectionId,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', existingEnrollment.id);
+            
+            if (updateError) {
+              logger.error('[update-enrollment] Failed to update learner_enrollments', {
+                learnerId,
+                enrollmentId: existingEnrollment.id,
+                error: updateError.message
+              });
+              return apiDbError(updateError, context.request, { startTime });
+            }
+          } else {
+            // Insert new enrollment record
+            const { error: insertError } = await supabase
+              .from('learner_enrollments')
+              .insert({
+                learner_id: learnerId,
+                program_id: enrollmentData.program_id,
+                semester: enrollmentData.semester,
+                section_id: sectionId,
+                academic_year: academicYear,
+                enrollment_status: 'active',
+                enrollment_date: enrollmentData.enrollmentDate || new Date().toISOString().split('T')[0]
+              });
+            
+            if (insertError) {
+              logger.error('[update-enrollment] Failed to insert learner_enrollments', {
+                learnerId,
+                programId: enrollmentData.program_id,
+                error: insertError.message
+              });
+              return apiDbError(insertError, context.request, { startTime });
+            }
+          }
+        }
+
         return apiSuccess(data, context.request, { startTime });
       }
 
@@ -821,7 +955,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const { data, error } = await supabase.from('learners').select(`
           id, email, name, age, date_of_birth, dateOfBirth, contact_number, contactNumber, alternate_number,
           district_name, city, state, country, pincode, address, university, branch_field,
-          college_school_name, school_name, registration_number, enrollmentNumber, github_link, linkedin_link,
+          college_school_name, school_name, specialization, registration_number, enrollmentNumber, github_link, linkedin_link,
           twitter_link, facebook_link, instagram_link, portfolio_link, other_social_links,
           resumeUrl, profilePicture, bio, gender, bloodGroup, guardianName, guardianPhone,
           guardianEmail, guardianRelation, currentCgpa, grade, grade_start_date, universityId,
@@ -937,7 +1071,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         let query = supabase.from('learners').select(`
           id, user_id, learner_id, name, email, contact_number, alternate_number, contact_dial_code,
           date_of_birth, age, gender, bloodGroup, district_name, university, university_main,
-          branch_field, college_school_name, course_name, registration_number, enrollmentNumber,
+          branch_field, specialization, college_school_name, course_name, registration_number, enrollmentNumber,
           github_link, linkedin_link, twitter_link, facebook_link, instagram_link, portfolio_link,
           youtube_link, other_social_links, approval_status, trainer_name, bio, address, city,
           state, country, pincode, resumeUrl, profilePicture, contactNumber, dateOfBirth,
@@ -1146,10 +1280,10 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       }
 
       case 'fetch-enrolled-learner-list': {
-        const { collegeId, departmentId, programId, semester, search } = params;
+        const { college_id, department_id, program_id, semester, search } = params;
         let query = supabase.from('learners').select('id, name, roll_number, email, contact_number, college_id, program_id, semester, section, enrollmentDate, created_at, updated_at, programs!learners_program_id_fkey(id, name, code, department_id, departments!programs_department_id_fkey(id, name, code))').eq('is_deleted', false).not('program_id', 'is', null).order('name', { ascending: true });
-        if (collegeId) query = query.eq('college_id', collegeId);
-        if (programId) query = query.eq('program_id', programId);
+        if (college_id) query = query.eq('college_id', college_id);
+        if (program_id) query = query.eq('program_id', program_id);
         if (semester) query = query.eq('semester', semester);
         if (search?.trim()) query = query.or(`name.ilike.%${search}%,roll_number.ilike.%${search}%,email.ilike.%${search}%`);
         const { data, error } = await query;
@@ -1162,7 +1296,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           enrollment_date: l.enrollmentDate || l.created_at, created_at: l.created_at, updated_at: l.updated_at,
         }));
         let filtered = transformed;
-        if (departmentId) filtered = transformed.filter((s: any) => s.department_id === departmentId);
+        if (department_id) filtered = transformed.filter((s: any) => s.department_id === department_id);
         return apiSuccess(filtered, context.request, { startTime });
       }
 
@@ -1173,7 +1307,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           { key: 'universities', table: 'organizations', select: 'id, name, city, state, code', filters: { organization_type: 'university', account_status: ['active', 'pending'] }, order: 'name' },
           { key: 'universityColleges', table: 'university_colleges', select: 'id, name, code, university_id', order: 'name' },
           { key: 'departments', table: 'departments', select: 'id, name, code, college_id', order: 'name' },
-          { key: 'programs', table: 'programs', select: 'id, name, code, degree_level, department_id', order: 'name' },
+          { key: 'programs', table: 'programs', select: 'id, name, code, degree_level, department_id, specializations', order: 'name' },
           { key: 'schoolClasses', table: 'school_classes', select: 'id, name, grade, section, school_id', order: ['grade', 'section'] },
           { key: 'programSections', table: 'program_sections', select: 'id, program_id, semester, section', order: ['semester', 'section'] },
         ];

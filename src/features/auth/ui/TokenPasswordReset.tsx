@@ -10,8 +10,8 @@ import {
   Eye, 
   EyeOff
 } from 'lucide-react';
-import { ssoClient } from '@/shared/api/ssoClient';
-import { PASSWORD_MIN } from '@/shared/constants';
+import { ssoClient, SsoWorkflowError } from '@/shared/api/ssoClient';
+import { PASSWORD_MIN, PASSWORD_MAX } from '@/shared/constants';
 import { AuthClientError } from '@rareminds-eym/auth-client';
 
 interface TokenPasswordResetState {
@@ -67,7 +67,8 @@ const TokenPasswordReset = () => {
     // Token looks valid, proceed to reset form
     setState(prev => ({
       ...prev,
-      step: 'reset'
+      step: 'reset',
+      token: tokenFromUrl
     }));
   }, [tokenFromUrl]);
 
@@ -101,19 +102,18 @@ const TokenPasswordReset = () => {
       }));
 
     } catch (error) {
-      if (error instanceof AuthClientError && error.httpStatus === 429) {
+      if ((error instanceof AuthClientError || error instanceof SsoWorkflowError) && error.httpStatus === 429) {
         setState(prev => ({
           ...prev,
           loading: false,
           error: 'Too many requests. Please try again in a few minutes.'
         }));
       } else {
-        // Show success regardless (prevents enumeration)
+        // The server handles account enumeration; request failures need a retry.
         setState(prev => ({
           ...prev,
           loading: false,
-          step: 'success',
-          email: state.email
+          error: 'Unable to request a reset link. Please try again.'
         }));
       }
     }
@@ -129,6 +129,13 @@ const TokenPasswordReset = () => {
 
     if (state.newPassword.length < PASSWORD_MIN) {
       setState(prev => ({ ...prev, error: `Password must be at least ${PASSWORD_MIN} characters long` }));
+      return;
+    }
+
+    const characterTypes = [/[A-Z]/, /[a-z]/, /[0-9]/, /[^a-zA-Z0-9]/]
+      .filter(pattern => pattern.test(state.newPassword)).length;
+    if (state.newPassword.length > PASSWORD_MAX || characterTypes < 3) {
+      setState(prev => ({ ...prev, error: `Use ${PASSWORD_MIN}–${PASSWORD_MAX} characters and at least 3 of: uppercase, lowercase, numbers, special characters.` }));
       return;
     }
 
@@ -153,10 +160,10 @@ const TokenPasswordReset = () => {
 
     } catch (error) {
       let errorMessage = 'An unexpected error occurred. Please try again';
-      if (error instanceof AuthClientError) {
-        if (error.httpStatus === 400) errorMessage = 'This reset link has expired or already been used. Please request a new one.';
+      if (error instanceof AuthClientError || error instanceof SsoWorkflowError) {
+        if (error instanceof SsoWorkflowError && ['expired', 'not_found'].includes(error.code)) errorMessage = 'This reset link has expired or already been used. Please request a new one.';
         else if (error.httpStatus === 429) errorMessage = 'Too many attempts. Please try again later.';
-        else errorMessage = error.message || errorMessage;
+        else if (error.httpStatus === 400) errorMessage = 'Password was rejected. Check the password requirements and try again.';
       }
       setState(prev => ({
         ...prev,
@@ -182,14 +189,14 @@ const TokenPasswordReset = () => {
             {state.step === 'loading' && 'Validating Reset Link'}
             {state.step === 'email-input' && 'Reset Your Password'}
             {state.step === 'reset' && 'Create New Password'}
-            {state.step === 'success' && 'Check Your Email'}
+            {state.step === 'success' && (state.token ? 'Password Updated' : 'Check Your Email')}
             {state.step === 'error' && 'Invalid Reset Link'}
           </h1>
           <p className="text-gray-600">
             {state.step === 'loading' && 'Please wait while we validate your reset link...'}
             {state.step === 'email-input' && 'Enter your email to receive a password reset link'}
             {state.step === 'reset' && 'Enter your new password below'}
-            {state.step === 'success' && 'We\'ve sent you a password reset link'}
+            {state.step === 'success' && (state.token ? 'You can now sign in with your new password' : 'If an account exists, you will receive a password reset link')}
             {state.step === 'error' && 'This reset link is invalid or has expired'}
           </p>
         </div>
@@ -328,6 +335,8 @@ const TokenPasswordReset = () => {
                     disabled={state.loading}
                     className="block w-full pr-10 px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500 transition-colors"
                     placeholder="Enter your new password"
+                    maxLength={PASSWORD_MAX}
+                    aria-describedby="password-requirements"
                   />
                   <button
                     type="button"
@@ -342,6 +351,10 @@ const TokenPasswordReset = () => {
                   </button>
                 </div>
               </div>
+
+              <p id="password-requirements" className="text-sm text-gray-600">
+                Use {PASSWORD_MIN}–{PASSWORD_MAX} characters and at least 3 of: uppercase, lowercase, numbers, special characters.
+              </p>
 
               {/* Confirm Password */}
               <div>

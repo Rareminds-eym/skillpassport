@@ -4,6 +4,7 @@ import { createAuth } from "@rareminds-eym/auth-core";
 import { createSsoGateway } from "@rareminds-eym/sso-gateway";
 import { APPROVED_ORIGINS } from "./app-origins";
 import { hasAnyFeature } from "./entitlements";
+import { requireAdminRequestFeature } from './admin-feature-request';
 import { ADMIN_ROLES } from "./roleCategories";
 import { getServiceClient } from "./supabase";
 import type { PagesEnv } from "./types";
@@ -123,6 +124,10 @@ export function withAuth(handler: (context: any) => Promise<Response>) {
         // fail-soft
       }
 
+      if (/^\/api\/(college-admin|school-admin|university-admin)(\/|$)/.test(new URL(context.request.url).pathname)) {
+        const featureDenied = await requireAdminRequestFeature(getServiceClient(env as unknown as PagesEnv), context.request, authedContext.user);
+        if (featureDenied) return featureDenied;
+      }
       return handler(context);
     });
 

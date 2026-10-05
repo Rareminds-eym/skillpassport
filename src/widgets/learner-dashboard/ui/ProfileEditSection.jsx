@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { lazy, Suspense, useState, useEffect } from 'react';
 import { Edit3, BookOpen, Code, Briefcase, MessageCircle, Award, User, Upload } from 'lucide-react';
 import { Button } from '@/shared/ui/ButtonNew';
 import { Card, CardContent } from '@/shared/ui/Card';
@@ -13,7 +13,7 @@ import {
 import { useLearnerDataByEmail } from '@/entities/learner';
 
 import PersonalInfoSummary from './PersonalInfoSummary';
-import ResumeParser from './ResumeParser';
+const ResumeParser = lazy(() => import('./ResumeParser'));
 import { useUser } from '@/shared/model/authStore';
 import {
   educationData,
@@ -471,6 +471,7 @@ const ProfileEditSection = ({ profileEmail }) => {
 
         {/* Resume Parser Modal */}
         {showResumeParser && (
+          <Suspense fallback={<div role="status" className="fixed inset-0 z-50 grid place-items-center bg-black/30"><div className="rounded-xl bg-white p-6">Loading editor…</div></div>}>
           <ResumeParser
             onDataExtracted={handleResumeDataExtracted}
             onClose={() => setShowResumeParser(false)}
@@ -478,6 +479,7 @@ const ProfileEditSection = ({ profileEmail }) => {
             learnerData={learnerData}
             user={user}
           />
+          </Suspense>
         )}
       </div>
     </div>

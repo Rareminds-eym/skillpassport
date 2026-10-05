@@ -2,7 +2,6 @@
 # Production vars are configured in Cloudflare dashboard.
 # For local dev: wrangler pages dev ./dist
 
-pages_build_output_dir = "dist"
 name = "skill-passport-portal"
 compatibility_date = "2026-09-04"
 compatibility_flags = ["nodejs_compat"]
@@ -76,6 +75,7 @@ LTE_APP_URL = "https://lte.rareminds.in"
 COOKIE_DOMAIN = ".rareminds.in"
 GOOGLE_CLIENT_ID = "775729170329-s95ebosv3kj0b844ol87uhcjsgocq2mk.apps.googleusercontent.com"
 GOOGLE_OAUTH_ENABLED = "true"
+CLOUDFLARE_R2_PUBLIC_URL = "https://storage-sp.rareminds.in"
 # Self-healing toggles — Flagship (env.FLAGS) primary, env fallback when Flagship not provisioned
 # Safe defaults: heal enabled (true). Set to "disabled" to turn off a heal without redeploy (after Flagship) or via dashboard env var.
 HEAL_MODE = "enabled"

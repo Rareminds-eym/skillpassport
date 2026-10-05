@@ -227,14 +227,18 @@ const IllustrationContainer = () => {
  * @returns {JSX.Element} Notebook label component
  */
 const NotebookLabel = ({ learnerInfo, description }) => {
-  // Safe learner info with fallback values
+  // Safe learner info with fallback values + college-aware fallbacks
+  const rawGrade = learnerInfo?.grade?.toString().toLowerCase() || '';
+  const isCollegeCover = rawGrade.includes('college') || rawGrade.includes('ug') || rawGrade.includes('pg') || rawGrade.includes('mca') || rawGrade.includes('mba') || (learnerInfo?.stream && ['mca','mba','bca','btech','mtech'].includes(String(learnerInfo.stream).toLowerCase()));
   const safeInfo = {
     name: learnerInfo?.name && learnerInfo.name.trim() ? learnerInfo.name : '—',
     regNo: learnerInfo?.regNo && learnerInfo.regNo.trim() ? learnerInfo.regNo : '—',
-    college: learnerInfo?.college && learnerInfo.college.trim() ? learnerInfo.college : '—',
-    stream: learnerInfo?.stream && learnerInfo.stream.trim() ? learnerInfo.stream : '—',
-    grade: learnerInfo?.grade && learnerInfo.grade.toString().trim() ? learnerInfo.grade : '—',
-    school: learnerInfo?.school && learnerInfo.school.trim() ? learnerInfo.school : '—'
+    // Prefer college field for both, fallback to school
+    college: (learnerInfo?.college && learnerInfo.college.trim() ? learnerInfo.college : (learnerInfo?.school && learnerInfo.school.trim() ? learnerInfo.school : '—')),
+    stream: (learnerInfo?.stream && learnerInfo.stream.trim() ? learnerInfo.stream : (learnerInfo?.courseName && learnerInfo.courseName.trim() ? learnerInfo.courseName : '—')),
+    grade: learnerInfo?.grade && learnerInfo.grade.toString().trim() ? learnerInfo.grade : (isCollegeCover ? 'College' : '—'),
+    school: (learnerInfo?.school && learnerInfo.school.trim() ? learnerInfo.school : (learnerInfo?.college && learnerInfo.college.trim() ? learnerInfo.college : '—')),
+    _isCollege: isCollegeCover,
   };
   
   // Default description about transforming education
@@ -343,10 +347,10 @@ const NotebookLabel = ({ learnerInfo, description }) => {
             <span style={valueStyle}>{safeInfo.grade}</span>
           </div>
           
-          {/* Row 2, Col 2: School */}
+          {/* Row 2, Col 2: Institution */}
           <div>
-            <span style={labelStyle}>School</span>
-            <span style={valueStyle}>{safeInfo.school}</span>
+            <span style={labelStyle}>{safeInfo._isCollege ? 'College' : 'School'}</span>
+            <span style={valueStyle}>{safeInfo._isCollege ? safeInfo.college : safeInfo.school}</span>
           </div>
           
           {/* Row 2, Col 3: Assessment Date */}
