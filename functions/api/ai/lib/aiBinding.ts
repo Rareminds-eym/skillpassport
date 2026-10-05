@@ -11,21 +11,13 @@
 
 import type {
   AiError,
-  AiJobAccepted,
   AiResult,
-  AnalyzeOutput,
-  AptitudeQuestionsOutput,
   CareerRequest,
-  CourseQuestionsOutput,
   EducatorRequest,
   ExecutionStatus,
-  GrowthPlanOutput,
   KeywordsOutput,
-  KnowledgeQuestionsOutput,
-  ProgramPathsOutput,
   ResumeParseOutput,
   RoleOverviewOutput,
-  StreamingAptitudeOutput,
   SummarizeVideoOutput,
   TutorSuggestionsOutput,
 } from "@rareminds-eym/ai-protocol";
@@ -50,38 +42,17 @@ export interface AiServiceBinding {
     request: Extract<CareerRequest, { feature: "role-overview" }>,
   ): Promise<AiResult<RoleOverviewOutput>>;
   seniorEducator(
-    request: Extract<EducatorRequest, { feature: "growth-plan" }>,
-  ): Promise<AiResult<GrowthPlanOutput>>;
-  seniorEducator(
-    request: Extract<EducatorRequest, { feature: "program-paths" }>,
-  ): Promise<AiResult<ProgramPathsOutput>>;
-  seniorEducator(
     request: Extract<EducatorRequest, { feature: "suggest" }>,
   ): Promise<AiResult<TutorSuggestionsOutput>>;
   seniorEducator(
     request: Extract<EducatorRequest, { feature: "tutor-chat" }>,
   ): Promise<Response>;
   seniorEducator(
-    request: Extract<EducatorRequest, { feature: "generate-course" }>,
-  ): Promise<AiResult<CourseQuestionsOutput>>;
-  seniorEducator(
-    request: Extract<EducatorRequest, { feature: "generate-aptitude" }>,
-  ): Promise<AiResult<AptitudeQuestionsOutput>>;
-  seniorEducator(
-    request: Extract<EducatorRequest, { feature: "generate-knowledge" }>,
-  ): Promise<AiResult<KnowledgeQuestionsOutput>>;
-  seniorEducator(
-    request: Extract<EducatorRequest, { feature: "generate-aptitude-stream" }>,
-  ): Promise<AiResult<StreamingAptitudeOutput>>;
-  seniorEducator(
     request: Extract<EducatorRequest, { feature: "generate-material" }>,
   ): Promise<Response>;
   seniorEducator(
     request: Extract<EducatorRequest, { feature: "summarize-video" }>,
   ): Promise<AiResult<SummarizeVideoOutput>>;
-  seniorEducator(
-    request: Extract<EducatorRequest, { feature: "analyze" }>,
-  ): Promise<AiResult<AnalyzeOutput> | AiJobAccepted>;
   getExecutionStatus(request: {
     contractVersion: "1";
     requestId: string;

@@ -151,9 +151,8 @@ export const transformGeminiAnalysis = (geminiAnalysis) => {
     };
   }
 
-  // Extract overall summary — Fix: for college, must be cluster-generated careerFit.overallSummary, never profileNarrative
-  const overallSummary = geminiAnalysis.careerFit?.overallSummary ||
-                        geminiAnalysis.analysis?.interest_summary || 
+  // Extract overall summary
+  const overallSummary = geminiAnalysis.analysis?.interest_summary || 
                         geminiAnalysis.analysis?.summary ||
                         geminiAnalysis.summary ||
                         null;
