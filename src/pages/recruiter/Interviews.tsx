@@ -25,6 +25,7 @@ import { createInterview, sendReminder } from '@/features/opportunities';
 import { useUser } from '@/shared/model/authStore';
 import { createNotification } from '@/features/notifications'; // ✅ Import notification service
 import { getLogger } from '@/shared/config/logging';
+import { EmptyStateWithQuote } from '@/components/EmptyStateWithQuote';
 
 const logger = getLogger('interviews-page');
 
@@ -205,8 +206,8 @@ const ScorecardModal = ({ interview, isOpen, onClose, onSave }) => {
                         key={rating}
                         onClick={() => setScorecard({ ...scorecard, [criteria.key]: rating })}
                         className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium border-2 ${scorecard[criteria.key] === rating
-                            ? 'bg-primary-600 text-white border-primary-600'
-                            : 'bg-white text-gray-600 border-gray-300 hover:border-primary-300'
+                          ? 'bg-primary-600 text-white border-primary-600'
+                          : 'bg-white text-gray-600 border-gray-300 hover:border-primary-300'
                           }`}
                       >
                         {rating}
@@ -626,7 +627,7 @@ const Interviews = () => {
   const fetchCandidates = async () => {
     // Prevent duplicate fetches
     if (candidatesLoaded || candidatesLoading) return;
-    
+
     try {
       setCandidatesLoading(true);
       const result = await apiPost<any>('/recruiter/actions', { action: 'list-learners' });
@@ -769,8 +770,8 @@ const Interviews = () => {
             <button
               onClick={() => setViewMode('list')}
               className={`px-3 py-1 rounded-md text-sm font-medium ${viewMode === 'list'
-                  ? 'bg-primary-600 text-white'
-                  : 'text-gray-700 hover:bg-gray-100'
+                ? 'bg-primary-600 text-white'
+                : 'text-gray-700 hover:bg-gray-100'
                 }`}
             >
               List
@@ -778,8 +779,8 @@ const Interviews = () => {
             <button
               onClick={() => setViewMode('calendar')}
               className={`px-3 py-1 rounded-md text-sm font-medium ${viewMode === 'calendar'
-                  ? 'bg-primary-600 text-white'
-                  : 'text-gray-700 hover:bg-gray-100'
+                ? 'bg-primary-600 text-white'
+                : 'text-gray-700 hover:bg-gray-100'
                 }`}
             >
               Calendar
@@ -884,6 +885,20 @@ const Interviews = () => {
             </div>
           </div>
         </div>
+      ) : filteredInterviews.length === 0 ? (
+        <EmptyStateWithQuote
+          page="interviews"
+          icon={CalendarDaysIcon}
+          iconSize="large"
+          actionButton={
+            <button
+              onClick={() => setShowScheduleModal(true)}
+              className="mt-4 px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors"
+            >
+              Schedule Interview
+            </button>
+          }
+        />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {interviews.map(interview => (
