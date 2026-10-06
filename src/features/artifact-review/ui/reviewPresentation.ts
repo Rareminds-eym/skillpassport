@@ -121,3 +121,12 @@ export function pageRange(page: number, pageSize: number, shown: number, total: 
   const from = (page - 1) * pageSize + 1;
   return `Showing ${from}–${from + shown - 1} of ${total}`;
 }
+
+/** Named months avoid ambiguous numeric dates; times use the viewer's local timezone. */
+export function formatReviewDate(iso: string | null): string {
+  if (!iso || Number.isNaN(Date.parse(iso))) return "—";
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "numeric", month: "short", year: "numeric",
+    hour: "numeric", minute: "2-digit", hour12: true, timeZoneName: "short",
+  }).format(new Date(iso));
+}

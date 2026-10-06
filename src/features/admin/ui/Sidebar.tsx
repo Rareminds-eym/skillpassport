@@ -1005,7 +1005,7 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }:
       </nav>
 
       <div className="border-t border-gray-100 bg-gray-50 p-3 text-center text-xs text-gray-400">
-        © 2025 SkillPassport
+        © {new Date().getFullYear()} SkillPassport
       </div>
     </aside>
   );

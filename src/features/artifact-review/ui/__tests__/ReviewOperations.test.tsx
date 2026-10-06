@@ -142,7 +142,7 @@ describe("Artifact reviews (administrator)", () => {
 
     it("calls out what needs attention and jumps straight to it", async () => {
       renderPage();
-      expect(await screen.findByText(/need an educator/i, { selector: "p" })).toBeInTheDocument();
+      expect(await screen.findByText(/needs? an educator/i, { selector: "p" })).toBeInTheDocument();
       fireEvent.click(screen.getByRole("button", { name: /show overdue/i }));
       await waitFor(() => expect(where()).toContain("view=overdue"));
     });
@@ -323,12 +323,12 @@ describe("Artifact reviews (administrator)", () => {
     it("says so when there is no other educator to assign", async () => {
       api.fetchAdminReviewDetail.mockResolvedValue({ review: unassigned, assignable: true, timeline: [], candidates: [] });
       const dialog = await open();
-      expect(await within(dialog).findByText(/no other active educators/i)).toBeInTheDocument();
+      expect(await within(dialog).findByText(/no active educators available/i)).toBeInTheDocument();
     });
 
     it("closes with Escape and returns focus to where the administrator was", async () => {
       const dialog = await open();
-      const trigger = screen.getByRole("button", { name: "Assign educator for Amrutha" });
+      const trigger = screen.getByRole("button", { name: "Assign educator for Amrutha", hidden: true });
       fireEvent.keyDown(document, { key: "Escape" });
       await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
       await waitFor(() => expect(trigger).toHaveFocus());
@@ -343,6 +343,20 @@ describe("Artifact reviews (administrator)", () => {
       expect(dialog).toHaveAccessibleName("Amrutha");
       expect(within(dialog).getByText(/Borrower intake · Final artifact · Attempt 1/)).toBeInTheDocument();
       expect(within(dialog).getByRole("status")).toHaveTextContent("Loading review");
+    });
+
+    it("keeps keyboard focus inside the drawer and locks background scrolling", async () => {
+      const dialog = await open();
+      const close = within(dialog).getByRole("button", { name: "Close" });
+      const last = within(dialog).getByRole("button", { name: "Subject expertise" });
+      close.focus();
+      fireEvent.keyDown(close, { key: "Tab", shiftKey: true });
+      expect(last).toHaveFocus();
+      fireEvent.keyDown(last, { key: "Tab" });
+      expect(close).toHaveFocus();
+      expect(document.body).toHaveAttribute("data-scroll-locked");
+      fireEvent.click(close);
+      await waitFor(() => expect(document.body).not.toHaveAttribute("data-scroll-locked"));
     });
 
     it("labels the dialog and moves focus into it", async () => {

@@ -7,6 +7,7 @@ import {
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { fetchReviewOverview, type AdminReview, type ReviewView } from "../api/reviews";
+import ManageEducatorsLink from "./ManageEducatorsLink";
 import ReviewDetailDrawer from "./ReviewDetailDrawer";
 import ReviewStatusBadge from "./ReviewStatusBadge";
 import {
@@ -98,7 +99,7 @@ export default function ReviewsBoard({
           <p className="flex-1">
             {stats.unassigned > 0 && (
               <>
-                <strong>{stats.unassigned}</strong> review{stats.unassigned === 1 ? "" : "s"} need an educator
+                <strong>{stats.unassigned}</strong> review{stats.unassigned === 1 ? " needs" : "s need"} an educator
                 {stats.oldestUnassignedAt && (
                   <> (the oldest has waited {duration(Date.now() - Date.parse(stats.oldestUnassignedAt))})</>
                 )}
@@ -111,7 +112,7 @@ export default function ReviewsBoard({
               </>
             )}
           </p>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             {stats.unassigned > 0 && (
               <button type="button" className="rounded-lg bg-amber-900 px-3 py-1.5 text-xs font-semibold text-white" onClick={() => onQuery({ view: "unassigned", page: 1 })}>
                 Show reviews needing an educator
@@ -126,9 +127,10 @@ export default function ReviewsBoard({
         </div>
       )}
       {data && data.educatorCount === 0 && (
-        <p role="status" className="rounded-xl bg-slate-100 p-4 text-sm text-slate-800">
-          Your organization has no active educators yet. Add educators so reviews can be assigned to them.
-        </p>
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-slate-100 p-4 text-sm text-slate-800">
+          <p role="status">Your organization has no active educators yet. Add educators so reviews can be assigned to them.</p>
+          <ManageEducatorsLink />
+        </div>
       )}
       {data?.truncated && (
         <p role="status" className="rounded-xl bg-slate-100 p-4 text-sm text-slate-800">
@@ -171,7 +173,7 @@ export default function ReviewsBoard({
       </section>
 
       <div className="flex flex-wrap items-end gap-3">
-        <label className="relative block min-w-[16rem] flex-1 text-sm font-medium text-slate-900">
+        <label className="relative block min-w-0 basis-64 flex-1 text-sm font-medium text-slate-900">
           Search learners
           <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-[2.1rem] h-4 w-4 text-slate-400" aria-hidden="true" />
           <input
@@ -261,7 +263,7 @@ export default function ReviewsBoard({
           <p aria-live="polite" className="text-sm text-slate-600">
             {pageRange(data.page, data.pageSize, data.items.length, data.total)}
           </p>
-          <div className={`overflow-hidden rounded-xl border border-slate-200 bg-white ${overview.isFetching ? "opacity-70" : ""}`}>
+          <div className={`overflow-x-auto rounded-xl border border-slate-200 bg-white ${overview.isFetching ? "opacity-70" : ""}`}>
             <table role="table" className="block w-full text-left text-sm md:table">
               <caption className="sr-only">Artifact reviews in your organization, most urgent first</caption>
               <thead role="rowgroup" className="hidden bg-slate-50 text-xs uppercase tracking-wide text-slate-600 md:table-header-group">
