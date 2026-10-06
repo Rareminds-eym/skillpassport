@@ -115,7 +115,6 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }:
           title: "Learner Management",
           key: "learners",
           items: [
-            ...(import.meta.env.VITE_HUMAN_REVIEW_ENABLED === "true" ? [{ name: "Artifact Reviews", path: "/school-admin/artifact-reviews", icon: ClipboardDocumentListIcon }] : []),
             {
               name: "Admissions",
               path: "/school-admin/learners/admissions",
@@ -145,7 +144,8 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }:
               name: "Verifications",
               path: "/school-admin/learners/verifications",
               icon: ChartBarIcon,
-            }
+            },
+            { name: "Artifact Reviews", path: "/school-admin/artifact-reviews", icon: ClipboardDocumentListIcon },
           ],
         },
         {
@@ -562,7 +562,6 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }:
         title: "Learners",
         key: "learner",
         items: [
-          ...(import.meta.env.VITE_HUMAN_REVIEW_ENABLED === "true" ? [{ name: "Artifact Reviews", path: "/college-admin/artifact-reviews", icon: ClipboardDocumentListIcon }] : []),
           {
             name: "Admissions & Data",
             path: "/college-admin/learners/data-management",
@@ -616,7 +615,8 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }:
             name: "Communication",
             path: "/college-admin/learners/communication",
             icon: BellIcon,
-          }
+          },
+          { name: "Artifact Reviews", path: "/college-admin/artifact-reviews", icon: ClipboardDocumentListIcon },
         ],
       },
       {
@@ -911,8 +911,8 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }:
                         isPlanLocked
                           ? (ready ? "Not included in your plan • Click to view module details" : "Unable to verify feature access yet")
                           : isStaticallyDisabled
-                          ? "Coming Soon"
-                          : undefined
+                            ? "Coming Soon"
+                            : undefined
                       }
                       className={classNames(
                         isStaticallyDisabled
@@ -920,8 +920,8 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }:
                           : isActive
                             ? "bg-indigo-50 text-indigo-700 border-l-2 border-indigo-500 font-medium"
                             : isPlanLocked
-                            ? "text-slate-600 hover:bg-slate-50 hover:text-indigo-600"
-                            : "text-gray-600 hover:bg-gray-50 hover:text-indigo-600",
+                              ? "text-slate-600 hover:bg-slate-50 hover:text-indigo-600"
+                              : "text-gray-600 hover:bg-gray-50 hover:text-indigo-600",
                         "group w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-all duration-200"
                       )}
                     >

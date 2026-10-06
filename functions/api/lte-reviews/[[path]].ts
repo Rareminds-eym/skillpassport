@@ -2,7 +2,7 @@ import { withAuth } from "../../lib/auth";
 
 const UUID = "[0-9a-fA-F-]{36}";
 const readRoute = new RegExp(
-  `^(queue|stats|operations|operations/scopes|operations/${UUID}|${UUID}|${UUID}/files/${UUID}/download)$`,
+  `^(queue|stats|operations/overview|operations/${UUID}|${UUID}|${UUID}/files/${UUID}/download)$`,
 );
 const writeRoute = new RegExp(
   `^(${UUID}/(start|complete|return)|operations/${UUID}/reassign)$`,
@@ -10,8 +10,6 @@ const writeRoute = new RegExp(
 
 export const onRequest = withAuth(async (context) => {
   const { request, env } = context;
-  if (env.HUMAN_REVIEW_AVAILABLE !== "true")
-    return new Response("Not found", { status: 404 });
   if (context.data.user.membership_status !== "active")
     return new Response("Forbidden", { status: 403 });
   const source = new URL(request.url);

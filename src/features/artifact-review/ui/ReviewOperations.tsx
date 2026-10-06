@@ -1,210 +1,121 @@
-import { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuthStore } from "@/shared/model/authStore";
-import {
-  fetchAdminScopes,
-  fetchAdminBacklog,
-  fetchReassignment,
-  reassignReview,
-} from "../api/reviews";
+import { useCallback, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
+import { REVIEW_VIEWS, type ReviewView } from "../api/reviews";
+import ReviewSettings from "./ReviewSettings";
+import ReviewsBoard, { type BoardQuery } from "./ReviewsBoard";
 
+const TABS = [
+  { id: "reviews", label: "Reviews" },
+  { id: "settings", label: "Settings" },
+] as const;
+type TabId = (typeof TABS)[number]["id"];
+
+/**
+ * Administrator page for artifact reviews.
+ *
+ * The administrator does not review. They see every review of their
+ * organization, assign educators, and set how work is evaluated. State lives in
+ * the URL (?tab, ?view, ?q, ?page) so a filtered view can be bookmarked or shared.
+ */
 export default function ReviewOperations() {
   const userId = useAuthStore((state) => state.user?.id);
-  const client = useQueryClient();
-  const [scopeId, setScopeId] = useState("");
-  const [page, setPage] = useState(1);
-  const [selected, setSelected] = useState("");
-  const [reviewerId, setReviewerId] = useState("");
-  const [reason, setReason] = useState("");
-  const scopes = useQuery({
-    queryKey: ["review-admin-scopes", userId],
-    queryFn: fetchAdminScopes,
-    enabled: !!userId,
-  });
-  const backlog = useQuery({
-    queryKey: ["review-admin-backlog", userId, scopeId, page],
-    queryFn: () => fetchAdminBacklog(scopeId, page),
-    enabled: !!userId && !!scopeId,
-    refetchInterval: 30_000,
-  });
-  const detail = useQuery({
-    queryKey: ["review-admin-detail", userId, selected],
-    queryFn: () => fetchReassignment(selected),
-    enabled: !!userId && !!selected,
-  });
-  const mutation = useMutation({
-    mutationFn: () =>
-      reassignReview(selected, {
-        expectedVersion: detail.data!.review.version,
-        reviewerId,
-        reason,
+  const [params, setParams] = useSearchParams();
+  const tabRefs = useRef<Record<TabId, HTMLButtonElement | null>>({ reviews: null, settings: null });
+
+  const tab: TabId = params.get("tab") === "settings" ? "settings" : "reviews";
+  const viewParam = params.get("view");
+  const page = Number(params.get("page") ?? 1);
+  const query: BoardQuery = {
+    view: (REVIEW_VIEWS as readonly string[]).includes(viewParam ?? "") ? (viewParam as ReviewView) : "all",
+    q: (params.get("q") ?? "").slice(0, 100),
+    page: Number.isInteger(page) && page >= 1 && page <= 1000 ? page : 1,
+  };
+
+  const update = useCallback(
+    (next: Record<string, string | null>) =>
+      setParams(
+        (current) => {
+          const merged = new URLSearchParams(current);
+          for (const [key, value] of Object.entries(next)) {
+            if (value === null || value === "" || (key === "page" && value === "1") || (key === "view" && value === "all"))
+              merged.delete(key);
+            else merged.set(key, value);
+          }
+          return merged;
+        },
+        { replace: true },
+      ),
+    [setParams],
+  );
+  const onQuery = useCallback(
+    (next: Partial<BoardQuery>) =>
+      update({
+        ...(next.view !== undefined ? { view: next.view } : {}),
+        ...(next.q !== undefined ? { q: next.q } : {}),
+        ...(next.page !== undefined ? { page: String(next.page) } : {}),
       }),
-    onSuccess: async () => {
-      setSelected("");
-      setReason("");
-      setReviewerId("");
-      await client.invalidateQueries({ queryKey: ["review-admin-backlog"] });
-    },
-  });
-  const error = scopes.error || backlog.error || detail.error || mutation.error;
+    [update],
+  );
+
+  const onTabKey = (event: React.KeyboardEvent, index: number) => {
+    const move = event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0;
+    if (!move) return;
+    event.preventDefault();
+    const target = TABS[(index + move + TABS.length) % TABS.length]!;
+    update({ tab: target.id === "reviews" ? null : target.id });
+    tabRefs.current[target.id]?.focus();
+  };
+
   return (
-    <main className="mx-auto max-w-5xl p-6 lg:p-10">
-      <h1 className="text-3xl font-semibold text-slate-900">
-        Artifact review oversight
-      </h1>
-      <p className="mt-3 text-slate-600">
-        Resolve unassigned and overdue work in your institution. Reassignment
-        records your reason and requires the new reviewer to start again.
-      </p>
-      <label className="mt-7 block text-sm font-semibold">
-        Program or class
-        <select
-          className="mt-2 block w-full rounded-lg border p-3"
-          value={scopeId}
-          onChange={(event) => {
-            setScopeId(event.target.value);
-            setPage(1);
-            setSelected("");
-          }}
-        >
-          <option value="">Choose a program or class</option>
-          {scopes.data?.map((scope) => (
-            <option key={scope.scopeId} value={scope.scopeId}>
-              {scope.name}
-            </option>
-          ))}
-        </select>
-      </label>
-      {scopes.isPending && (
-        <p role="status" className="mt-5">
-          Loading your institution…
+    <main className="mx-auto max-w-7xl p-4 sm:p-6 lg:p-8">
+      <header>
+        <h1 className="text-2xl font-semibold text-slate-900 sm:text-3xl">Artifact reviews</h1>
+        <p className="mt-2 max-w-3xl text-sm text-slate-600 sm:text-base">
+          See every artifact review in your organization and assign educators to them. Educators do the
+          reviewing; you keep work moving.
         </p>
-      )}
-      {scopes.data?.length === 0 && (
-        <p className="mt-5">
-          No active college or school administrator scopes are available.
-        </p>
-      )}
-      {error && (
-        <p role="alert" className="mt-5 text-red-700">
-          {error.message}
-        </p>
-      )}
-      {scopeId && backlog.isPending && (
-        <p role="status" className="mt-5">
-          Loading reviews…
-        </p>
-      )}
-      {backlog.data && (
-        <section className="mt-6 space-y-3">
-          <p className="text-sm text-slate-600">{backlog.data.stats.unassigned} unassigned · {backlog.data.stats.overdue} overdue · {backlog.data.stats.pendingEvents} notification events awaiting delivery</p>
-          {!backlog.data.items.length && (
-            <p>No unresolved reviews in this program or class.</p>
-          )}
-          {backlog.data.items.map((review, index) => (
+      </header>
+
+      <div role="tablist" aria-label="Artifact review sections" className="mt-6 flex gap-1 border-b border-slate-200">
+        {TABS.map((item, index) => {
+          const selected = tab === item.id;
+          return (
             <button
-              key={review.id}
-              type="button"
-              onClick={() => {
-                setSelected(review.id);
-                setReason("");
-                setReviewerId("");
-                mutation.reset();
+              key={item.id}
+              ref={(node) => {
+                tabRefs.current[item.id] = node;
               }}
-              className="flex w-full items-center justify-between rounded-lg border bg-white p-5 text-left hover:bg-slate-50"
+              id={`review-tab-${item.id}`}
+              role="tab"
+              type="button"
+              aria-selected={selected}
+              aria-controls={`review-panel-${item.id}`}
+              tabIndex={selected ? 0 : -1}
+              onClick={() => update({ tab: item.id === "reviews" ? null : item.id })}
+              onKeyDown={(event) => onTabKey(event, index)}
+              className={`-mb-px border-b-2 px-4 py-2.5 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-700 ${selected ? "border-indigo-700 text-indigo-800" : "border-transparent text-slate-600 hover:text-slate-900"
+                }`}
             >
-              <span>
-                Review {(page - 1) * 25 + index + 1} ·{" "}
-                {review.status.replace(/_/g, " ")}
-              </span>
-              <span className="text-sm text-slate-600">
-                {review.due_by
-                  ? `${Date.parse(review.due_by) < Date.now() ? "Overdue · " : "Due "}${new Date(review.due_by).toLocaleDateString()}`
-                  : "Awaiting assignment"}
-              </span>
+              {item.label}
             </button>
-          ))}
-          <div className="flex justify-between">
-            <button disabled={page === 1} onClick={() => setPage(page - 1)}>
-              Previous
-            </button>
-            <span>Page {page}</span>
-            <button
-              disabled={!backlog.data.hasMore}
-              onClick={() => setPage(page + 1)}
-            >
-              Next
-            </button>
-          </div>
-        </section>
-      )}
-      {selected && detail.isPending && (
-        <p role="status" className="mt-6">
-          Checking educator eligibility…
-        </p>
-      )}
-      {selected && detail.data && (
-        <form
-          className="mt-8 rounded-xl border bg-white p-6"
-          onSubmit={(event) => {
-            event.preventDefault();
-            mutation.mutate();
-          }}
-        >
-          <h2 className="text-lg font-semibold">Reassign review</h2>
-          <label className="mt-5 block text-sm font-semibold">
-            Eligible educator
-            <select
-              required
-              value={reviewerId}
-              onChange={(event) => setReviewerId(event.target.value)}
-              className="mt-2 block w-full rounded-lg border p-3"
-            >
-              <option value="">Choose educator</option>
-              {detail.data.candidates
-                .filter(
-                  (candidate) =>
-                    candidate.id !== detail.data.review.reviewer_id,
-                )
-                .map((candidate) => (
-                  <option key={candidate.id} value={candidate.id}>
-                    {candidate.label}
-                  </option>
-                ))}
-            </select>
-          </label>
-          {!detail.data.candidates.length && (
-            <p className="mt-3 text-sm">
-              No eligible educators. Update the class or program teaching
-              assignments first.
-            </p>
-          )}
-          <label className="mt-5 block text-sm font-semibold">
-            Reason
-            <textarea
-              required
-              maxLength={2000}
-              value={reason}
-              onChange={(event) => setReason(event.target.value)}
-              rows={3}
-              className="mt-2 block w-full rounded-lg border p-3"
-            />
-          </label>
-          <button
-            disabled={mutation.isPending || !reviewerId}
-            className="mt-5 rounded-lg bg-slate-900 px-5 py-3 text-sm font-semibold text-white disabled:opacity-50"
-          >
-            {mutation.isPending ? "Reassigning…" : "Reassign review"}
-          </button>
-          <button
-            type="button"
-            className="ml-4 text-sm underline"
-            onClick={() => setSelected("")}
-          >
-            Cancel
-          </button>
-        </form>
-      )}
+          );
+        })}
+      </div>
+
+      <div
+        role="tabpanel"
+        id={`review-panel-${tab}`}
+        aria-labelledby={`review-tab-${tab}`}
+        tabIndex={0}
+        className="mt-6 focus:outline-none"
+      >
+        {tab === "reviews" ? (
+          <ReviewsBoard userId={userId} query={query} onQuery={onQuery} />
+        ) : (
+          <ReviewSettings userId={userId} />
+        )}
+      </div>
     </main>
   );
 }

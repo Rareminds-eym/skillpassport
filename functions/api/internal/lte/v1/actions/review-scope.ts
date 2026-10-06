@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { listOrgEducators } from "../review-educators";
 import type { GatewayAction, GatewayContext } from "../types";
 
 const payloadSchema = z.object({}).strict();
@@ -12,7 +13,6 @@ interface Learner {
   school_id: string | null;
 }
 interface Settings {
-  enabled: boolean;
   sla_days: number;
   time_zone: string;
   load_cap: number;
@@ -23,9 +23,9 @@ interface Educator {
   user_id: string;
 }
 
-async function schoolCandidates(
-  ctx: GatewayContext,
-  learner: Learner,
+export async function schoolCandidates(
+  ctx: Pick<GatewayContext, "db">,
+  learner: Pick<Learner, "school_class_id" | "school_id">,
 ): Promise<string[] | null> {
   if (!learner.school_class_id || !learner.school_id) return null;
   const classroom = await ctx.db.queryOne<{
@@ -46,9 +46,9 @@ async function schoolCandidates(
   return educators.map((row) => row.user_id);
 }
 
-async function collegeCandidates(
-  ctx: GatewayContext,
-  learner: Learner,
+export async function collegeCandidates(
+  ctx: Pick<GatewayContext, "db">,
+  learner: Pick<Learner, "program_id" | "college_id" | "college_class_id">,
 ): Promise<string[] | null> {
   if (!learner.program_id) return null;
   const program = await ctx.db.queryOne<{ id: string; department_id: string }>(
@@ -108,25 +108,45 @@ export const handleReviewScope: GatewayAction = async (ctx, payload) => {
   const isSchool = !!learner.school_class_id;
   const scopeId = isSchool ? learner.school_class_id : learner.program_id;
   if (!scopeId) return { ok: true, data: null };
-  const candidates = isSchool
-    ? await schoolCandidates(ctx, learner)
-    : await collegeCandidates(ctx, learner);
+  // LTE calls this on every submission with a short timeout, so the independent
+  // lookups run concurrently.
+  const organizationId = isSchool ? learner.school_id : learner.college_id;
+  const scopeColumn = isSchool ? "school_class_id" : "college_program_id";
+  const [candidates, designated, settings] = await Promise.all([
+    isSchool ? schoolCandidates(ctx, learner) : collegeCandidates(ctx, learner),
+    // Reviewers the institution administrator designated for this scope.
+    organizationId
+      ? ctx.db.query<{ reviewer_user_id: string }>(
+        `lte_review_scope_reviewers?${scopeColumn}=eq.${scopeId}&select=reviewer_user_id&limit=100`,
+      )
+      : Promise.resolve([]),
+    ctx.db.queryOne<Settings>(
+      `lte_review_scope_settings?${scopeColumn}=eq.${scopeId}&select=sla_days,time_zone,load_cap,confidence_threshold`,
+    ),
+  ]);
   if (!candidates) return { ok: true, data: null };
-  const settings = await ctx.db.queryOne<Settings>(
-    `lte_review_scope_settings?${isSchool ? "school_class_id" : "college_program_id"}=eq.${scopeId}&select=enabled,sla_days,time_zone,load_cap,confidence_threshold`,
-  );
+  // Designees count only while they are still active educators of the SAME organisation.
+  const designatedEligible = organizationId
+    ? await listOrgEducators(
+      ctx.db,
+      isSchool ? "school_class" : "college_program",
+      organizationId,
+      designated.map((row) => row.reviewer_user_id),
+    )
+    : [];
   return {
     ok: true,
     data: {
       scopeId,
       organizationId: isSchool ? learner.school_id : learner.college_id,
       scopeType: isSchool ? "school_class" : "college_program",
-      enabled: settings?.enabled ?? false,
       slaDays: settings?.sla_days ?? 3,
       timeZone: settings?.time_zone ?? "Asia/Kolkata",
       loadCap: settings?.load_cap ?? 10,
       threshold: Number(settings?.confidence_threshold ?? 60),
-      reviewerIds: [...new Set(candidates)]
+      reviewerIds: [
+        ...new Set([...candidates, ...designatedEligible.map((e) => e.userId)]),
+      ]
         .filter((id) => id !== ctx.userId)
         .slice(0, 100),
     },

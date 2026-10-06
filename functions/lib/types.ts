@@ -23,7 +23,6 @@ export interface PagesEnv {
   SSO_SERVICE?: SsoWorkerRpc;
   /** LTE app base URL used for cross-app SSO callback redirects. */
   LTE_APP_URL?: string;
-  HUMAN_REVIEW_AVAILABLE?: string;
   /** Shared HMAC secret for the LTE ↔ SkillPassport internal gateway (server-only). */
   LTE_INTERNAL_SECRET?: string;
   SP_DASH_CATALOG_URL?: string;

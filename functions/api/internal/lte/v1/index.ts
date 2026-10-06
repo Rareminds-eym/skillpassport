@@ -29,7 +29,9 @@ import { LteGatewayEnvelopeSchema } from './schemas';
 import { createReadOnlyDb } from './readonly-db';
 import type { GatewayAction, GatewayContext, GatewayResult } from './types';
 import { handleReviewEvent } from './actions/review-event';
-import { handleReviewAdminScopes } from './actions/review-admin-scopes';
+import { handleReviewOrgDirectory } from './actions/review-org-directory';
+import { handleReviewerCheck } from './actions/review-reviewer-check';
+import { handleReviewPolicy } from './actions/review-policy';
 import { handleReviewScope } from './actions/review-scope';
 import { handleCatalogue } from './actions/catalogue';
 import { handlePing } from './actions/ping';
@@ -41,8 +43,10 @@ const logger = createLogger('lte-gateway');
 
 const REGISTRY: Record<string, GatewayAction> = {
   'ping': handlePing,
+  'review:policy': handleReviewPolicy,
   'review:scope': handleReviewScope,
-  'review:admin-scopes': handleReviewAdminScopes,
+  'review:org-directory': handleReviewOrgDirectory,
+  'review:reviewer-check': handleReviewerCheck,
   'review:apply': handleReviewEvent,
   'learning-track:get': handleLearningTrack,
   'catalogue:get': handleCatalogue,

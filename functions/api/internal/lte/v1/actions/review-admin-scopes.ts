@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { GatewayAction } from "../types";
+import type { GatewayAction, GatewayContext } from "../types";
 
 interface MembershipAuthority {
   getUserById(
@@ -15,15 +15,16 @@ interface MembershipAuthority {
   }>;
 }
 
-export const handleReviewAdminScopes: GatewayAction = async (ctx, payload) => {
-  if (!z.object({}).strict().safeParse(payload).success)
-    return {
-      ok: false,
-      error: {
-        code: "VALIDATION_ERROR",
-        message: "Unexpected scope parameters",
-      },
-    };
+/**
+ * The organisations the caller administers, from their ACTIVE college_admin /
+ * school_admin memberships (and a live, verified, unblocked SSO account).
+ */
+export async function resolveAdminOrganizations(
+  ctx: Pick<GatewayContext, "env" | "userId">,
+): Promise<
+  | { ok: true; colleges: string[]; schools: string[] }
+  | { ok: false; error: { code: string; message: string } }
+> {
   const authority = ctx.env.SSO_SERVICE as unknown as MembershipAuthority;
   const [user, result] = await Promise.all([
     authority.getUserById(ctx.userId),
@@ -47,6 +48,21 @@ export const handleReviewAdminScopes: GatewayAction = async (ctx, payload) => {
         m.status === "active" && (m.roles ?? [m.role]).includes("school_admin"),
     )
     .map((m) => m.org_id);
+  return { ok: true, colleges, schools };
+}
+
+export const handleReviewAdminScopes: GatewayAction = async (ctx, payload) => {
+  if (!z.object({}).strict().safeParse(payload).success)
+    return {
+      ok: false,
+      error: {
+        code: "VALIDATION_ERROR",
+        message: "Unexpected scope parameters",
+      },
+    };
+  const resolved = await resolveAdminOrganizations(ctx);
+  if (!resolved.ok) return resolved;
+  const { colleges, schools } = resolved;
   const scopes: Array<{
     scopeId: string;
     scopeType: "college_program" | "school_class";
