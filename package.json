@@ -4,8 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "db:reset:dev": "supabase db reset --sql-paths \"./seed/dev/*.sql\"",
-    "db:reset:prod": "supabase db reset --sql-paths \"./seed/production/*.sql\"",
+    "db:reset:dev": "npx supabase db reset --sql-paths \"./seed/dev/*.sql\"",
+    "db:reset:prod": "npx supabase db reset --sql-paths \"./seed/production/*.sql\"",
     "start": " npm run build:dev && concurrently -n \"workers,pages\" -c \"yellow,magenta\" \"npm run workers:dev\" \"npm run pages:dev\"",
     "dev:local": "vite --mode development --port 8788",
     "dev": "vite --mode development --port 3000",
