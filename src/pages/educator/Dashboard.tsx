@@ -1,37 +1,38 @@
-import { useAuthStore } from '@/shared/model/authStore';
-import { useEffect, useState, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import ReactApexChart from 'react-apexcharts';
+import { PendingReviewsWidget } from "@/features/artifact-review";
 import { getLogger } from '@/shared/config/logging';
+import { useAuthStore } from '@/shared/model/authStore';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import ReactApexChart from 'react-apexcharts';
+import { useNavigate } from 'react-router-dom';
 
 const logger = getLogger('Dashboard');
 
-import {
-  UserGroupIcon,
-  CheckCircleIcon,
-  ClockIcon,
-  ChartBarIcon,
-  ArrowRightIcon,
-  PencilSquareIcon,
-  DocumentChartBarIcon,
-  TrophyIcon,
-  AcademicCapIcon,
-  PaperAirplaneIcon,
-  ExclamationTriangleIcon,
-  CalendarDaysIcon,
-  UserPlusIcon,
-  FireIcon,
-  BookOpenIcon,
-} from '@heroicons/react/24/outline';
 import { KPICard } from '@/features/analytics';
 import {
+  Announcement,
   dashboardApi,
   DashboardKPIs,
   RecentActivity,
-  SkillAnalytics,
-  Announcement
+  SkillAnalytics
 } from '@/features/educator-copilot';
 import { ssoClient } from '@/shared/api/ssoClient';
+import {
+  AcademicCapIcon,
+  ArrowRightIcon,
+  BookOpenIcon,
+  CalendarDaysIcon,
+  ChartBarIcon,
+  CheckCircleIcon,
+  ClockIcon,
+  DocumentChartBarIcon,
+  ExclamationTriangleIcon,
+  FireIcon,
+  PaperAirplaneIcon,
+  PencilSquareIcon,
+  TrophyIcon,
+  UserGroupIcon,
+  UserPlusIcon,
+} from '@heroicons/react/24/outline';
 
 // import './Dashboard.css';
 
@@ -473,6 +474,7 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-gray-50" data-testid="educator-dashboard">
       <div className="w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="mb-6"><PendingReviewsWidget /></div>
         {/* Error Display */}
         {error && (
           <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
