@@ -23,8 +23,8 @@ const envelopeSchema = z
         assignmentVersion: z.number().int().positive(),
         learnerId: z.string().uuid(),
         reviewerId: z.string().uuid(),
-        scopeId: z.string().uuid(),
-        scopeType: z.enum(["college_program", "school_class"]),
+        scopeId: z.string().uuid().nullable(),
+        scopeType: z.enum(["college_program", "school_class"]).nullable(),
         dueBy: z.string().datetime({ offset: true }).optional(),
         decision: z.enum(["pass", "revise_and_resubmit"]).optional(),
         score: z.number().int().min(0).max(100).optional(),
@@ -33,6 +33,8 @@ const envelopeSchema = z
   })
   .strict()
   .superRefine((value, ctx) => {
+    if ((value.event.scopeId === null) !== (value.event.scopeType === null))
+      ctx.addIssue({ code: "custom", message: "Scope ID and type must both be present or null" });
     if (
       [
         "lte.review_assigned",
