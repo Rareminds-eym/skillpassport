@@ -374,6 +374,13 @@ describe("Artifact reviews (administrator)", () => {
       expect(screen.getByText(/at Soundarya College/)).toBeInTheDocument();
     });
 
+    it("marks human review as the default so the administrator can see it was not their choice", async () => {
+      renderPage("/x?tab=settings");
+      const human = await screen.findByRole("radio", { name: /Human review only/ });
+      expect(human.closest("label")).toHaveTextContent("Default");
+      expect(screen.getByRole("radio", { name: /AI first/ }).closest("label")).not.toHaveTextContent("Default");
+    });
+
     it("saves one organization-level choice", async () => {
       api.saveEvaluationMode.mockResolvedValue({});
       renderPage("/x?tab=settings");

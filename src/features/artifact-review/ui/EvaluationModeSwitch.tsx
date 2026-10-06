@@ -14,6 +14,9 @@ const OPTIONS = [
   ],
 ] as const;
 
+/** Mirrors the server default (functions/lib/lte/review-defaults.ts). */
+const DEFAULT_MODE: EvaluationMode = "human_only";
+
 /**
  * One switch for the whole organization (school or college). It applies to every
  * learner, whatever the course, class or program.
@@ -48,7 +51,14 @@ export default function EvaluationModeSwitch({
             onChange={() => save.mutate(mode)}
           />
           <span>
-            <span className="block text-sm font-semibold">{label}</span>
+            <span className="block text-sm font-semibold">
+              {label}
+              {mode === DEFAULT_MODE && (
+                <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">
+                  Default
+                </span>
+              )}
+            </span>
             <span className="block text-sm text-slate-600">{help}</span>
           </span>
         </label>
