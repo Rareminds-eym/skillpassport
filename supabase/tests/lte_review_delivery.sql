@@ -39,6 +39,14 @@ BEGIN
  UPDATE public.lte_review_email_deliveries SET started_at=now()-interval '3 minutes' WHERE event_id=event;
  result:=public.claim_lte_review_email(event);
  ASSERT result->>'status'='uncertain','ambiguous delivery automatically retried';
+ -- Institution-wide reviews retain evidence and notify the administrator without a class/program.
+ review:=gen_random_uuid();event:=gen_random_uuid();
+ payload:=payload||jsonb_build_object('eventId',event,'reviewId',review,'submissionId',gen_random_uuid(),'scopeId',null,'scopeType',null,'decision','pass');
+ PERFORM public.apply_lte_review_event(learner_user,'lte.artifact_reviewed_pass',payload);
+ ASSERT EXISTS(SELECT 1 FROM public.lte_review_evidence WHERE review_id=review AND scope_id IS NULL AND scope_type IS NULL),'null-scope evidence missing';
+ payload:=payload||jsonb_build_object('eventId',gen_random_uuid());
+ PERFORM public.apply_lte_review_event(learner_user,'lte.review_overdue',payload);
+ ASSERT (SELECT count(*) FROM public.notifications WHERE recipient_id=admin_user)=2,'missing null-scope escalation';
  ASSERT NOT has_table_privilege('authenticated','public.lte_review_evidence','INSERT'),'browser evidence write allowed';
  ASSERT NOT has_function_privilege('authenticated','public.apply_lte_review_event(uuid,text,jsonb)','EXECUTE'),'browser effect RPC allowed';
 END $$;
