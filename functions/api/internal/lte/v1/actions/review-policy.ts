@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { DEFAULT_EVALUATION_MODE } from "../../../../../lib/lte/review-defaults";
 import type { GatewayAction } from "../types";
 
 /**
@@ -6,9 +7,12 @@ import type { GatewayAction } from "../types";
  * organisation (school or college): never by course, class or program, so it
  * holds even when the learner's class/program cannot be resolved.
  *
+ * An organisation that has not chosen uses DEFAULT_EVALUATION_MODE (human review).
  * Conservative on ambiguity: a learner tied to several organisations, or to a
- * school and a college, is human-only if ANY of them chose human-only. No
- * learner row / no organisation / no setting means ai_first.
+ * school and a college, is human-only if ANY of them is human-only, so AI is used
+ * only when every one of their organisations explicitly chose it.
+ * A learner with no organisation at all has nobody who could review their work,
+ * so they are evaluated by the AI.
  */
 interface LearnerOrgs {
   school_id: string | null;
@@ -34,13 +38,19 @@ export const handleReviewPolicy: GatewayAction = async (ctx, payload) => {
   ];
   if (!organizationIds.length)
     return { ok: true, data: { evaluationMode: "ai_first", organizationIds: [] } };
-  const settings = await ctx.db.query<{ evaluation_mode: "ai_first" | "human_only" }>(
-    `lte_review_org_settings?organization_id=in.(${organizationIds.join(",")})&select=evaluation_mode`,
+  const settings = await ctx.db.query<{
+    organization_id: string;
+    evaluation_mode: "ai_first" | "human_only";
+  }>(
+    `lte_review_org_settings?organization_id=in.(${organizationIds.join(",")})&select=organization_id,evaluation_mode`,
   );
+  const chosen = new Map(settings.map((row) => [row.organization_id, row.evaluation_mode]));
   return {
     ok: true,
     data: {
-      evaluationMode: settings.some((row) => row.evaluation_mode === "human_only")
+      evaluationMode: organizationIds.some(
+        (id) => (chosen.get(id) ?? DEFAULT_EVALUATION_MODE) === "human_only",
+      )
         ? "human_only"
         : "ai_first",
       organizationIds,

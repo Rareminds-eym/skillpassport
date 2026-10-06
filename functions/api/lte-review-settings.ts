@@ -6,6 +6,7 @@ import {
   adminOrganizationsFor,
   adminScopesFor,
 } from "../lib/lte/review-admin";
+import { DEFAULT_EVALUATION_MODE } from "../lib/lte/review-defaults";
 import { apiError, apiSuccess } from "../lib/response";
 import { createReadOnlyDb } from "./internal/lte/v1/readonly-db";
 import { createWriteDb, WriteDbError } from "./internal/lte/v1/write-db";
@@ -53,7 +54,7 @@ export const onRequestGet = withAuth(async (context) => {
           name: org.name,
           evaluationMode:
             rows.find((r) => r.organization_id === org.organizationId)?.evaluation_mode ??
-            "ai_first",
+            DEFAULT_EVALUATION_MODE,
         })),
         scopes:
           scopes instanceof Response
@@ -93,7 +94,7 @@ export const onRequestPut = withAuth(async (context) => {
     updated_by: user.id,
     updated_at: new Date().toISOString(),
   };
-  let previous: OrgSettingsRow["evaluation_mode"] = "ai_first";
+  let previous: OrgSettingsRow["evaluation_mode"] = DEFAULT_EVALUATION_MODE;
   try {
     const db = createWriteDb(context.env);
     const lookup = () =>
@@ -101,7 +102,7 @@ export const onRequestPut = withAuth(async (context) => {
         `${TABLE}?organization_id=eq.${organization.organizationId}&select=id,organization_id,evaluation_mode`,
       );
     const existing = await lookup();
-    previous = existing?.evaluation_mode ?? "ai_first";
+    previous = existing?.evaluation_mode ?? DEFAULT_EVALUATION_MODE;
     if (existing) await db.update(TABLE, existing.id, patch);
     else {
       try {

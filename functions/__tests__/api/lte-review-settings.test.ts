@@ -65,30 +65,30 @@ describe("lte-review-settings (one choice per organization)", () => {
     db.queryOne.mockResolvedValue(null);
   });
 
-  it("lists the organizations the caller administers, defaulting to AI-first", async () => {
+  it("lists the organizations the caller administers, defaulting to human review", async () => {
     const body = (await (await call(onRequestGet)).json()) as {
       data: { organizations: Array<Record<string, unknown>>; scopes: unknown[] };
     };
     expect(body.data.organizations).toEqual([
-      { organizationId: SCHOOL, orgType: "school", name: "Soundarya School", evaluationMode: "ai_first" },
-      { organizationId: COLLEGE, orgType: "college", name: "Soundarya College", evaluationMode: "ai_first" },
+      { organizationId: SCHOOL, orgType: "school", name: "Soundarya School", evaluationMode: "human_only" },
+      { organizationId: COLLEGE, orgType: "college", name: "Soundarya College", evaluationMode: "human_only" },
     ]);
     // Classes/programs are only listed so reviewers can be chosen per one.
     expect(body.data.scopes).toEqual([{ scopeId: id(5), scopeType: "school_class", name: "5A" }]);
   });
 
-  it("shows a saved human-only choice", async () => {
+  it("shows a saved AI-first choice and leaves the others on the human default", async () => {
     db.query.mockResolvedValue([
-      { id: id(90), organization_id: SCHOOL, evaluation_mode: "human_only" },
+      { id: id(90), organization_id: SCHOOL, evaluation_mode: "ai_first" },
     ]);
     const body = (await (await call(onRequestGet)).json()) as {
       data: { organizations: Array<{ organizationId: string; evaluationMode: string }> };
     };
     expect(body.data.organizations.find((o) => o.organizationId === SCHOOL)?.evaluationMode).toBe(
-      "human_only",
+      "ai_first",
     );
     expect(body.data.organizations.find((o) => o.organizationId === COLLEGE)?.evaluationMode).toBe(
-      "ai_first",
+      "human_only",
     );
   });
 
