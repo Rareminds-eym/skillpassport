@@ -1,8 +1,10 @@
-import OpenAI from 'openai';
+import { ssoClient } from '@/shared/api/ssoClient';
 
 /**
  * Advanced Query Parser for Recruiter AI
- * Uses LLM to extract structured information from natural language queries
+ * Structured extraction runs server-side (Cloudflare Workers AI) via the
+ * authenticated recruiter-ai endpoint. Merging, defaults and fallbacks below
+ * are unchanged.
  * 
  * Extracts:
  * - Skills (required & preferred)
@@ -53,26 +55,13 @@ export interface ParsedRecruiterQuery {
 }
 
 class QueryParserService {
-  private openaiClient: OpenAI | null = null;
+  private endpointPromise: Promise<string> | null = null;
 
-  private getClient(): OpenAI {
-    if (!this.openaiClient) {
-      const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
-      if (!apiKey) {
-        throw new Error('OpenAI API key not configured');
-      }
-      
-      this.openaiClient = new OpenAI({
-        baseURL: "https://openrouter.ai/api/v1",
-        apiKey: apiKey,
-        defaultHeaders: {
-          "HTTP-Referer": typeof window !== 'undefined' ? window.location.origin : '',
-          "X-Title": "SkillPassport Query Parser",
-        },
-        dangerouslyAllowBrowser: true
-      });
+  private async getEndpoint(): Promise<string> {
+    if (!this.endpointPromise) {
+      this.endpointPromise = import('@/shared/api/apiUtils').then(({ getApiUrl }) => getApiUrl('recruiter-ai/chat'));
     }
-    return this.openaiClient;
+    return this.endpointPromise;
   }
 
   /**
@@ -80,26 +69,17 @@ class QueryParserService {
    */
   async parseQuery(query: string): Promise<ParsedRecruiterQuery> {
     try {
-      const prompt = this.buildParsingPrompt(query);
-      const client = this.getClient();
-
-      const response = await client.chat.completions.create({
-        model: 'nvidia/nemotron-nano-12b-v2-vl:free',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are an expert at extracting structured recruitment criteria from natural language. Always respond with valid JSON only.'
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        temperature: 0.2,
-        max_tokens: 800
+      const url = await this.getEndpoint();
+      const response = await ssoClient.fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ op: 'parse', query }),
       });
-
-      const content = response.choices[0]?.message?.content?.trim();
+      if (!response.ok) {
+        return this.getFallbackParsing(query);
+      }
+      const json = (await response.json()) as { success: boolean; data: { text: string } };
+      const content = json.data?.text?.trim();
       if (!content) {
         return this.getFallbackParsing(query);
       }
@@ -136,93 +116,6 @@ class QueryParserService {
       // Error handled
       return this.getFallbackParsing(query);
     }
-  }
-
-  /**
-   * Build comprehensive parsing prompt
-   */
-  private buildParsingPrompt(query: string): string {
-    return `Extract recruitment criteria from this query. Return ONLY valid JSON with these fields:
-
-{
-  "required_skills": ["skill1", "skill2"],  // Must-have technical/professional skills
-  "preferred_skills": ["skill3"],           // Nice-to-have skills
-  "experience_level": "fresher|junior|mid|senior|any",
-  "experience_years_min": 0,                // Number or null
-  "experience_years_max": 5,                // Number or null
-  "education_level": "string or null",      // e.g., "Bachelor's", "Master's"
-  "specific_institutions": ["IIT", "NIT"],  // Specific colleges/universities
-  "locations": ["Bangalore", "Remote"],     // Cities or "Remote"
-  "work_mode": "remote|onsite|hybrid|any",
-  "employment_type": "full-time|part-time|internship|contract|null",
-  "job_role": "Software Engineer",          // Role title if mentioned
-  "department": "Engineering",              // Department if mentioned
-  "min_cgpa": 7.5,                          // Number or null
-  "availability": "immediate|within_month|flexible|null",
-  "has_certifications": true,               // Boolean or null
-  "has_training": true,                     // Boolean or null
-  "has_projects": true,                     // Boolean or null
-  "min_projects": 2,                        // Number or null
-  "intent": "search|match_to_job|analyze_pool|compare|recommend",
-  "urgency": "high|medium|low",
-  "confidence_score": 0.85                  // Your confidence (0-1)
-}
-
-IMPORTANT: This system works for ALL DOMAINS (Tech, Medical, HR, Mechanical, etc.)
-
-EXAMPLE ROLE-TO-SKILLS MAPPINGS:
-
-TECH:
-- "Full Stack Developer" → ["JavaScript", "React", "Node.js", "SQL"]
-- "Data Scientist" → ["Python", "Machine Learning", "SQL"]
-- "DevOps Engineer" → ["Docker", "Kubernetes", "AWS"]
-
-MEDICAL:
-- "Cardiac Surgeon" → ["Cardiac Surgery", "Critical Care", "MBBS", "MS/MCh"]
-- "Radiologist" → ["Radiology", "Medical Imaging", "MBBS", "MD"]
-- "Nurse" → ["Patient Care", "Medical Procedures", "BSc Nursing"]
-
-HR:
-- "HR Manager" → ["Recruitment", "Employee Relations", "HR Management"]
-- "Talent Acquisition" → ["Recruitment", "Sourcing", "Interviewing"]
-
-MECHANICAL:
-- "Mechanical Engineer" → ["AutoCAD", "SolidWorks", "Mechanical Design"]
-- "CAD Designer" → ["AutoCAD", "CATIA", "3D Modeling"]
-
-FINANCE:
-- "Financial Analyst" → ["Financial Modeling", "Excel", "Data Analysis"]
-- "Accountant" → ["Accounting", "Tally", "GST", "Tax Filing"]
-
-CRITICAL EXAMPLES FOR INSTITUTION FILTERING:
-- "top universities" → specific_institutions: ["IIT", "NIT", "IIIT", "BITS"]
-- "tier-1 colleges" → specific_institutions: ["IIT", "NIT", "IIIT", "BITS"]
-- "premier institutions" → specific_institutions: ["IIT", "NIT", "IIIT", "BITS"]
-- "IIT learners" → specific_institutions: ["IIT"]
-- "from NIT" → specific_institutions: ["NIT"]
-- "IIT Delhi, NIT Trichy" → specific_institutions: ["IIT Delhi", "NIT Trichy"]
-
-RULES:
-- If query mentions a ROLE (like "full stack developer"), extract the role AND add relevant skills
-- Extract skills as specific as possible (React, Python, AWS, etc.)
-- For generic roles, add common related skills to improve search results
-- **IMPORTANT: If query says "top universities", "tier-1", "premier", "elite colleges", MUST set specific_institutions to ["IIT", "NIT", "IIIT", "BITS"]**
-- If specific college names mentioned, extract exact names in specific_institutions
-- Infer experience level from context (e.g., "freshers" = "fresher", "5+ years" = "senior")
-- Detect urgency from words like "urgent", "asap", "immediately"
-- Set intent based on query type:
-  * "search" - finding/looking for candidates (when looking for NEW candidates)
-  * "match_to_job" - matching to specific role/opportunity
-  * "analyze_pool" - analytics/insights request
-  * "compare" - comparing candidates
-  * "recommend" - asking for recommendations from APPLICANTS/APPLIED candidates
-- If query mentions "applicants", "who applied", "applications", set intent to "recommend"
-- Use null for missing information, don't guess
-- Confidence score: how confident you are in extraction (0.0 to 1.0)
-
-QUERY: "${query}"
-
-Respond with JSON only:`;
   }
 
   /**

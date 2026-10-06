@@ -9,33 +9,37 @@ import { SupabaseClient } from '@supabase/supabase-js';
 import { EmbeddingError } from '../types';
 import { EMBEDDING_CONFIG, ALLOWED_TABLES, AllowedTable } from '../config/constants';
 
+export type EmbeddingSpace = keyof typeof EMBEDDING_CONFIG.EMBEDDING_SPACES;
+
 /**
- * Validate embedding vector
- * 
+ * Validate embedding vector against a versioned space.
+ *
  * @param embedding - Embedding vector to validate
+ * @param space - Embedding space (defaults to legacy 1536-dim Gemini space)
  * @throws EmbeddingError if validation fails
  */
-function validateEmbeddingVector(embedding: number[]): void {
+function validateEmbeddingVector(embedding: number[], space: EmbeddingSpace = 'legacy'): void {
+  const expectedDimensions = EMBEDDING_CONFIG.EMBEDDING_SPACES[space].dimensions;
   // Check if input is a non-empty array
   if (!Array.isArray(embedding) || embedding.length === 0) {
     throw new EmbeddingError(
       'Invalid embedding: must be a non-empty array',
       'INVALID_RESPONSE',
-      { 
+      {
         actualType: Array.isArray(embedding) ? 'empty array' : typeof embedding,
-        expectedDimensions: EMBEDDING_CONFIG.EXPECTED_DIMENSIONS
+        expectedDimensions
       }
     );
   }
 
-  // Check if length matches expected dimensions
-  if (embedding.length !== EMBEDDING_CONFIG.EXPECTED_DIMENSIONS) {
+  // Check if length matches the space dimensions
+  if (embedding.length !== expectedDimensions) {
     throw new EmbeddingError(
-      `Invalid embedding dimensions: expected ${EMBEDDING_CONFIG.EXPECTED_DIMENSIONS}, got ${embedding.length}`,
+      `Invalid embedding dimensions: expected ${expectedDimensions}, got ${embedding.length}`,
       'INVALID_RESPONSE',
-      { 
+      {
         actualDimensions: embedding.length,
-        expectedDimensions: EMBEDDING_CONFIG.EXPECTED_DIMENSIONS
+        expectedDimensions
       }
     );
   }
@@ -47,11 +51,11 @@ function validateEmbeddingVector(embedding: number[]): void {
       throw new EmbeddingError(
         `Invalid embedding value at index ${i}: must be a finite number`,
         'INVALID_RESPONSE',
-        { 
+        {
           index: i,
           value: value,
           type: typeof value,
-          expectedDimensions: EMBEDDING_CONFIG.EXPECTED_DIMENSIONS
+          expectedDimensions
         }
       );
     }
@@ -60,18 +64,22 @@ function validateEmbeddingVector(embedding: number[]): void {
 
 /**
  * Update embedding in database
- * 
+ *
  * @param supabase - Supabase client (with service role key)
  * @param table - Table name (learners, skills, opportunities, courses)
  * @param id - Record ID
  * @param embedding - Embedding vector
+ * @param space - Embedding space; selects validation dims AND target column
+ *   (legacy → `embedding`, bge_m3 → `embedding_bge_m3`). The bge_m3 column
+ *   must exist (migration, not yet applied) before that space is written.
  * @returns Success status and affected rows
  */
 export async function updateEmbedding(
   supabase: SupabaseClient,
   table: string,
   id: string,
-  embedding: number[]
+  embedding: number[],
+  space: EmbeddingSpace = 'legacy'
 ): Promise<{ success: boolean; rowsAffected: number; error?: string }> {
   try {
     // Validate table name
@@ -86,14 +94,15 @@ export async function updateEmbedding(
       );
     }
 
-    // Validate embedding vector
-    validateEmbeddingVector(embedding);
+    // Validate embedding vector against the target space
+    validateEmbeddingVector(embedding, space);
 
-    console.log(`[DatabaseUpdater] Updating ${table} #${id} with ${embedding.length}D vector`);
+    const column = EMBEDDING_CONFIG.EMBEDDING_SPACES[space].column;
+    console.log(`[DatabaseUpdater] Updating ${table} #${id} ${column} with ${embedding.length}D vector (${space})`);
 
     const { data, error: updateError } = await supabase
       .from(table)
-      .update({ embedding })
+      .update({ [column]: embedding })
       .eq('id', id)
       .select();
 

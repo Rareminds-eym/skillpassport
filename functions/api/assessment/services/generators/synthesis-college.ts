@@ -7,7 +7,7 @@
  *
  * Fully non-fatal: returns null on any failure so analysis + clusters still complete.
  */
-import { callOpenRouterWithRetry, repairAndParseJSON, getAPIKeys } from '../../../shared/ai-config';
+import { callCloudflareWithRetry, getCloudflareConfig, repairAndParseJSON, CLOUDFLARE_MODELS } from '../../../shared/ai-config';
 import type { StudentProfile, ClusterNarrativeContext } from '../../types';
 import { buildCollegeSynthesisPrompt } from '../../prompts/synthesis/college';
 
@@ -26,7 +26,7 @@ export interface CollegeSynthesis {
 }
 
 const SYNTHESIS_CONFIG = {
-  models: ['openai/gpt-4o-mini', 'meta-llama/llama-3.3-70b-instruct'],
+  models: CLOUDFLARE_MODELS,
   maxTokens: 2500,
   temperature: 0.1,
 };
@@ -36,15 +36,15 @@ export async function generateCollegeSynthesis(
   context: ClusterNarrativeContext,
   env: Record<string, string>
 ): Promise<CollegeSynthesis | null> {
-  const apiKeys = getAPIKeys(env);
-  if (!apiKeys.openRouter) {
-    console.error('[COLLEGE-SYNTH] OpenRouter API key not configured — skipping synthesis');
+  const cfConfig = getCloudflareConfig(env);
+  if (!cfConfig) {
+    console.error('[COLLEGE-SYNTH] Cloudflare AI binding not configured — skipping synthesis');
     return null;
   }
 
   try {
     const { system, user } = buildCollegeSynthesisPrompt(student, context);
-    const raw = await callOpenRouterWithRetry(apiKeys.openRouter, [
+    const raw = await callCloudflareWithRetry(env, [
       { role: 'system', content: system },
       { role: 'user', content: user },
     ], {

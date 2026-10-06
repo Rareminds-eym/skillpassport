@@ -1,29 +1,26 @@
-import OpenAI from 'openai';
 import { getLogger } from '@/shared/config/logging';
 import { ssoClient } from '@/shared/api/ssoClient';
 
 const logger = getLogger('ai-career-path');
 
-// Lazy initialization of OpenAI client to avoid errors when API key is not set
-let openaiInstance: OpenAI | null = null;
-
-function getOpenAIClient(): OpenAI {
-  if (!openaiInstance) {
-    const apiKey = import.meta.env.VITE_OPENAI_API_KEY || import.meta.env.OPENROUTER_API_KEY;
-    if (!apiKey) {
-      throw new Error('OpenAI/OpenRouter API key is not configured. Please add VITE_OPENAI_API_KEY or OPENROUTER_API_KEY to your .env file.');
-    }
-    openaiInstance = new OpenAI({
-      apiKey,
-      baseURL: 'https://openrouter.ai/api/v1',
-      dangerouslyAllowBrowser: true,
-      defaultHeaders: {
-        'HTTP-Referer': typeof window !== 'undefined' ? window.location.origin : '',
-        'X-Title': 'Career Path Generator',
-      },
-    });
+// Server-side generation (Cloudflare Workers AI via authenticated Pages endpoint).
+// Parsing, normalization and fallbacks below are unchanged.
+async function postCareerPathOp<T>(op: string, payload: Record<string, unknown>): Promise<T> {
+  const { getApiUrl } = await import('@/shared/api/apiUtils');
+  const url = getApiUrl(`career-path/${op}`);
+  const response = await ssoClient.fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    throw new Error(`Career path request failed (${response.status})`);
   }
-  return openaiInstance;
+  const json = (await response.json()) as { success: boolean; data: T };
+  if (!json.success) {
+    throw new Error('Career path request failed');
+  }
+  return json.data;
 }
 
 export interface LearnerProfile {
@@ -80,94 +77,8 @@ export interface CareerPathResponse {
   };
 }
 
-const CAREER_PATH_SYSTEM_PROMPT = `You are an expert career counsellor and AI career path advisor specializing in learner career development. Your role is to analyze learner profiles and generate comprehensive, personalized career development paths.
-
-Analyze the learner based on:
-1. **Skill-Based Roles**: Match their technical skills to relevant job roles and positions
-2. **Interest Alignment**: Consider their stated interests and career aspirations
-3. **Skill Gap Analysis**: Identify missing skills needed for target roles
-4. **Development Roadmap**: Create a step-by-step skill development plan
-5. **Salary Expectations**: Provide realistic salary ranges for each career stage
-
-Generate career paths that are:
-- Realistic and achievable based on current profile
-- Aligned with industry trends and job market demands (2024-2025)
-- Practical with specific skill gaps and development areas
-- Actionable with concrete next steps and learning resources
-- Include salary expectations for each role level
-- Diversified with alternative career directions
-
-Always format your response as valid JSON. Be specific, encouraging, and data-driven with current market insights.`;
-
-function buildlearnerProfileContext(learner: LearnerProfile): string {
-  let context = `\n=== LEARNER PROFILE ===\n`;
-  context += `Name: ${learner.name}\n`;
-  context += `Email: ${learner.email}\n`;
-  context += `Department/Field: ${learner.dept}\n`;
-  context += `College/University: ${learner.college}\n`;
-  
-  if (learner.currentCgpa) {
-    context += `Current CGPA: ${learner.currentCgpa}/4.0\n`;
-  }
-  
-  if (learner.ai_score_overall !== undefined) {
-    context += `AI Assessment Score: ${learner.ai_score_overall}%\n`;
-  }
-  
-  if (learner.skills && learner.skills.length > 0) {
-    context += `\nSkills:\n`;
-    learner.skills.forEach(skill => {
-      context += `  • ${skill}\n`;
-    });
-  }
-  
-  if (learner.certificates && learner.certificates.length > 0) {
-    context += `\nCertificates & Credentials (${learner.certificates.length} total):\n`;
-    learner.certificates.forEach(cert => {
-      context += `  • ${cert}\n`;
-    });
-  } else {
-    context += `\nCertificates & Credentials: None listed\n`;
-  }
-  
-  if (learner.experience && learner.experience.length > 0) {
-    context += `\nExperience:\n`;
-    learner.experience.forEach(exp => {
-      context += `  • ${exp}\n`;
-    });
-  }
-  
-  if (learner.trainings && learner.trainings.length > 0) {
-    context += `\nTrainings & Courses:\n`;
-    learner.trainings.forEach(training => {
-      context += `  • ${training}\n`;
-    });
-  }
-  
-  if (learner.projects && learner.projects.length > 0) {
-    context += `\nProjects:\n`;
-    learner.projects.forEach(project => {
-      context += `  • ${project}\n`;
-    });
-  }
-  
-  if (learner.education && learner.education.length > 0) {
-    context += `\nEducation:\n`;
-    learner.education.forEach(edu => {
-      context += `  • ${edu}\n`;
-    });
-  }
-  
-  if (learner.interests && learner.interests.length > 0) {
-    context += `\nInterests & Goals:\n`;
-    learner.interests.forEach(interest => {
-      context += `  • ${interest}\n`;
-    });
-  }
-  
-  context += `\n==================\n`;
-  return context;
-}
+// Career-path system prompt + learner-context assembly are server-owned now
+// (functions/api/career-path/lib/). Parsing/normalization below unchanged.
 
 function parseCareerPathResponse(content: string): CareerPathResponse {
   const jsonMatch = content.match(/\{[\s\S]*\}/);
@@ -205,64 +116,12 @@ function parseCareerPathResponse(content: string): CareerPathResponse {
 
 export async function generateCareerPath(learner: LearnerProfile): Promise<CareerPathResponse> {
   try {
-    // Get OpenAI client (will throw if API key not configured)
-    const client = getOpenAIClient();
-
-    const profileContext = buildlearnerProfileContext(learner);
-    
-    const userPrompt = `Based on the following learner profile, generate a comprehensive career development path with focus on:
-1. Skill-based job/role recommendations
-2. Interest-aligned career paths
-3. Detailed skill gap analysis
-4. Skill development roadmap
-5. Realistic salary expectations
-
-${profileContext}
-
-Generate a detailed JSON response with:
-1. **currentRole**: Current assessed role/level based on skills (entry, junior, mid, senior, lead)
-2. **careerGoal**: Primary career goal based on interests and skills
-3. **overallScore**: Career readiness score (0-100) based on skills, experience, and education
-4. **strengths**: Key strengths (4-6 items) - what they're good at
-5. **gaps**: Skill gaps to address (4-6 items) - what they need to learn
-6. **recommendedPath**: Career progression with 3-4 steps, each containing:
-   - roleTitle: Specific job title (e.g., "Junior Full Stack Developer")
-   - level: entry/junior/mid/senior/lead
-   - timeline: Duration (e.g., "1-2 years")
-   - estimatedTimeline: Detailed timeline explanation
-   - description: Role description and what they'll do
-   - skillsNeeded: Skills they already have that match this role (array)
-   - skillsToGain: New skills to develop for this role (array)
-   - learningResources: Specific courses/platforms/certifications (array)
-   - salaryRange: Expected salary in INR/USD (e.g., "₹4-6 LPA" or "$50k-70k")
-   - keyResponsibilities: Main job responsibilities (array, 3-4 items)
-7. **alternativePaths**: 2-3 different career directions they could pursue
-8. **actionItems**: Immediate action items to start (4-5 items)
-9. **nextSteps**: Specific next steps for this month (4-5 items)
-
-Be specific with Indian job market context if the college is in India. Include realistic salary ranges based on 2024-2025 market rates.
-Ensure all arrays are properly formatted and the JSON is valid.`;
-
-    const completion = await client.chat.completions.create({
-      model: 'openai/gpt-4o-mini',
-      messages: [
-        {
-          role: 'system',
-          content: CAREER_PATH_SYSTEM_PROMPT,
-        },
-        {
-          role: 'user',
-          content: userPrompt,
-        },
-      ],
-      max_tokens: 1500,
-      temperature: 0.7,
+    const { content: responseContent } = await postCareerPathOp<{ content: string }>('generate', {
+      learner,
     });
-
-    const responseContent = completion.choices[0]?.message?.content || '';
     
     if (!responseContent) {
-      throw new Error('Empty response from OpenAI');
+      throw new Error('Empty generation response');
     }
 
     const careerPath = parseCareerPathResponse(responseContent);
@@ -282,98 +141,17 @@ Ensure all arrays are properly formatted and the JSON is valid.`;
     return careerPath;
   } catch (error) {
     logger.error('Career path generation failed', error instanceof Error ? error : new Error(String(error)));
-    
-    if (error instanceof OpenAI.APIError) {
-      if (error.status === 402) {
-        throw new Error('Insufficient credits. Please add credits at https://openrouter.ai/settings/credits');
-      }
-      if (error.status === 401) {
-        throw new Error('Invalid API key. Please check your VITE_OPENAI_API_KEY in .env file.');
-      }
-      throw new Error(`API Error: ${error.message}`);
-    }
-    
+
     if (error instanceof TypeError && error.message.includes('fetch')) {
       throw new Error('Network error. Please check your internet connection and try again.');
     }
-    
+
     if (error instanceof SyntaxError) {
       throw new Error('Failed to parse career path response. Please try again.');
     }
-    
+
     throw error;
   }
-}
-
-/**
- * List of common action verbs for job responsibilities
- */
-const ACTION_VERBS = [
-  'Analyze', 'Build', 'Collaborate', 'Create', 'Design', 'Develop', 'Drive',
-  'Evaluate', 'Execute', 'Facilitate', 'Guide', 'Implement', 'Lead', 'Manage',
-  'Monitor', 'Optimize', 'Oversee', 'Plan', 'Research', 'Review', 'Support',
-  'Test', 'Train', 'Transform', 'Write'
-];
-
-/**
- * Check if a string starts with an action verb
- */
-function startsWithActionVerb(text: string): boolean {
-  const firstWord = text.trim().split(/\s+/)[0];
-  return ACTION_VERBS.some(verb => 
-    firstWord.toLowerCase() === verb.toLowerCase() ||
-    firstWord.toLowerCase().startsWith(verb.toLowerCase())
-  );
-}
-
-/**
- * Ensure a responsibility starts with an action verb
- */
-function ensureActionVerb(responsibility: string): string {
-  const trimmed = responsibility.trim();
-  if (startsWithActionVerb(trimmed)) {
-    return trimmed;
-  }
-  // Prepend a generic action verb if missing
-  return `Manage ${trimmed.charAt(0).toLowerCase()}${trimmed.slice(1)}`;
-}
-
-/**
- * Parse AI response to extract exactly 3 responsibilities
- */
-function parseResponsibilitiesResponse(content: string, roleName: string): string[] {
-  // Try to extract JSON array first
-  const jsonMatch = content.match(/\[[\s\S]*?\]/);
-  if (jsonMatch) {
-    try {
-      const parsed = JSON.parse(jsonMatch[0]);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        const responsibilities = parsed
-          .slice(0, 3)
-          .map((item: string) => ensureActionVerb(String(item)));
-        
-        // Pad with fallback if less than 3
-        while (responsibilities.length < 3) {
-          responsibilities.push(getFallbackResponsibilities(roleName)[responsibilities.length]);
-        }
-        return responsibilities;
-      }
-    } catch (e) {
-      // Fall through to line parsing
-    }
-  }
-
-  // Try to parse numbered or bulleted list
-  const lines = content.split('\n')
-    .map(line => line.replace(/^[\d\.\-\*\•]+\s*/, '').trim())
-    .filter(line => line.length > 10 && line.length < 200);
-
-  if (lines.length >= 3) {
-    return lines.slice(0, 3).map(line => ensureActionVerb(line));
-  }
-
-  // Return fallback if parsing fails
-  return getFallbackResponsibilities(roleName);
 }
 
 /**
@@ -390,115 +168,6 @@ export function getFallbackResponsibilities(roleName: string): string[] {
     `[AI UNAVAILABLE] Collaborate with cross-functional teams on projects`,
     `[AI UNAVAILABLE] Research and apply new skills in your field`
   ];
-}
-
-/**
- * Generate AI-powered job responsibilities for a career role
- * @param roleName - The specific job role name
- * @param clusterTitle - The career cluster context
- * @returns Promise<string[]> - Array of 3 responsibility strings
- */
-export async function generateRoleResponsibilities(
-  roleName: string,
-  clusterTitle: string
-): Promise<string[]> {
-  // Validate inputs
-  if (!roleName || roleName.trim() === '') {
-    return getFallbackResponsibilities('professional');
-  }
-
-  try {
-    // Get OpenAI client (will throw if API key not configured)
-    const client = getOpenAIClient();
-
-    const prompt = `Generate exactly 3 key job responsibilities for a ${roleName} role in the ${clusterTitle} career cluster.
-
-Requirements:
-- Each responsibility must start with an action verb (e.g., Design, Develop, Analyze, Lead, Manage)
-- Each responsibility should be concise (10-20 words)
-- Responsibilities should cover different aspects of the role
-- Be specific to the ${roleName} role, not generic
-
-Return ONLY a JSON array of 3 strings, nothing else. Example format:
-["Design and implement...", "Collaborate with...", "Analyze and optimize..."]`;
-
-    const completion = await client.chat.completions.create({
-      model: 'openai/gpt-4o-mini',
-      messages: [
-        {
-          role: 'system',
-          content: 'You are a career advisor that generates concise, action-oriented job responsibilities. Always respond with a valid JSON array of exactly 3 strings.',
-        },
-        {
-          role: 'user',
-          content: prompt,
-        },
-      ],
-      max_tokens: 300,
-      temperature: 0.7,
-    });
-
-    const responseContent = completion.choices[0]?.message?.content || '';
-    
-    if (!responseContent) {
-      return getFallbackResponsibilities(roleName);
-    }
-
-    return parseResponsibilitiesResponse(responseContent, roleName);
-  } catch (error) {
-    logger.error('Role responsibilities generation failed', error instanceof Error ? error : new Error(String(error)), { roleName });
-    return getFallbackResponsibilities(roleName);
-  }
-}
-
-export async function generateCareerPathStreaming(
-  learner: LearnerProfile
-): Promise<AsyncGenerator<string, void, unknown>> {
-  const client = getOpenAIClient();
-  const profileContext = buildlearnerProfileContext(learner);
-  
-  const userPrompt = `Based on the following learner profile, generate a comprehensive career development path. Consider their skills, interests, background, and market demands.
-
-${profileContext}
-
-Generate a detailed JSON response with:
-1. Current assessed role/level (entry, junior, mid, senior, lead)
-2. Career goal based on interests and skills
-3. Overall career readiness score (0-100)
-4. Key strengths (3-5 items)
-5. Skill gaps to address (3-5 items)
-6. Recommended career path with 3-4 progression steps
-7. Alternative career paths (2-3 different directions)
-8. Immediate action items (3-4 items)
-9. Next steps for this month (3-4 items)
-
-Ensure all arrays are properly formatted and the JSON is valid.`;
-
-  const stream = await client.chat.completions.create({
-    model: 'openai/gpt-4o-mini',
-    messages: [
-      {
-        role: 'system',
-        content: CAREER_PATH_SYSTEM_PROMPT,
-      },
-      {
-        role: 'user',
-        content: userPrompt,
-      },
-    ],
-    max_tokens: 1500,
-    temperature: 0.7,
-    stream: true,
-  });
-
-  return (async function* () {
-    for await (const chunk of stream) {
-      const content = chunk.choices[0]?.delta?.content || '';
-      if (content) {
-        yield content;
-      }
-    }
-  })();
 }
 
 /**
@@ -539,110 +208,6 @@ export function getFallbackIndustryDemand(roleName: string): IndustryDemandData 
 /**
  * Parse AI response to extract industry demand data
  */
-function parseIndustryDemandResponse(content: string, roleName: string): IndustryDemandData {
-  try {
-    // Try to extract JSON object
-    const jsonMatch = content.match(/\{[\s\S]*?\}/);
-    if (jsonMatch) {
-      const parsed = JSON.parse(jsonMatch[0]);
-      
-      // Validate and normalize demand level
-      const validLevels = ['Low', 'Medium', 'High', 'Very High'];
-      let demandLevel = parsed.demandLevel || 'Medium';
-      if (!validLevels.includes(demandLevel)) {
-        demandLevel = 'Medium';
-      }
-      
-      // Validate percentage (0-100)
-      let demandPercentage = parseInt(parsed.demandPercentage) || 65;
-      demandPercentage = Math.min(100, Math.max(0, demandPercentage));
-      
-      // Truncate description to max 2 sentences
-      let description = parsed.description || getFallbackIndustryDemand(roleName).description;
-      const sentences = description.match(/[^.!?]+[.!?]+/g) || [description];
-      if (sentences.length > 2) {
-        description = sentences.slice(0, 2).join(' ').trim();
-      }
-      
-      return {
-        description,
-        demandLevel: demandLevel as IndustryDemandData['demandLevel'],
-        demandPercentage
-      };
-    }
-  } catch (e) {
-    // Fall through to fallback
-  }
-  
-  return getFallbackIndustryDemand(roleName);
-}
-
-/**
- * Generate AI-powered industry demand data for a career role
- * @param roleName - The specific job role name
- * @param clusterTitle - The career cluster context
- * @returns Promise<IndustryDemandData> - Industry demand information
- */
-export async function generateIndustryDemand(
-  roleName: string,
-  clusterTitle: string
-): Promise<IndustryDemandData> {
-  // Validate inputs
-  if (!roleName || roleName.trim() === '') {
-    return getFallbackIndustryDemand('professional');
-  }
-
-  try {
-    // Get OpenAI client (will throw if API key not configured)
-    const client = getOpenAIClient();
-
-    const prompt = `Analyze the current job market demand for a ${roleName} role in the ${clusterTitle} career cluster.
-
-IMPORTANT: Be realistic and accurate. Assess based on actual market data.
-
-Provide:
-1. A brief description (2 short sentences, max 25 words total) about market demand
-2. Demand level: "Low", "Medium", "High", or "Very High" based on real market conditions
-3. Demand percentage matching the level: Low=20-40, Medium=41-65, High=66-85, Very High=86-100
-
-Guidelines:
-- AI/ML, Cloud, Cybersecurity roles: typically "High" or "Very High"
-- Software Engineering, Data Science: typically "High"
-- Traditional IT support, basic admin roles: typically "Medium"
-- Declining or oversaturated fields: "Low" or "Medium"
-
-Return ONLY a JSON object with these exact keys:
-{"description": "...", "demandLevel": "...", "demandPercentage": ...}`;
-
-    const completion = await client.chat.completions.create({
-      model: 'openai/gpt-4o-mini',
-      messages: [
-        {
-          role: 'system',
-          content: 'You are a job market analyst providing accurate demand assessments. Base your analysis on real 2024-2025 market trends. Vary your responses - use the full range from Low to Very High based on actual demand.',
-        },
-        {
-          role: 'user',
-          content: prompt,
-        },
-      ],
-      max_tokens: 200,
-      temperature: 0.7,
-    });
-
-    const responseContent = completion.choices[0]?.message?.content || '';
-    
-    if (!responseContent) {
-      return getFallbackIndustryDemand(roleName);
-    }
-
-    return parseIndustryDemandResponse(responseContent, roleName);
-  } catch (error) {
-    logger.error('Industry demand generation failed', error instanceof Error ? error : new Error(String(error)), { roleName });
-    return getFallbackIndustryDemand(roleName);
-  }
-}
-
 /**
  * Career progression stage
  */
@@ -910,169 +475,6 @@ export function getFallbackRoleOverview(roleName: string): RoleOverviewData {
   };
 }
 
-/**
- * Parse combined AI response for role overview
- */
-function parseRoleOverviewResponse(content: string, roleName: string): RoleOverviewData {
-  const colors = ['#22c55e', '#3b82f6', '#a855f7'];
-  
-  try {
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      const parsed = JSON.parse(jsonMatch[0]);
-      
-      // Parse responsibilities
-      let responsibilities: string[] = [];
-      if (Array.isArray(parsed.responsibilities) && parsed.responsibilities.length > 0) {
-        responsibilities = parsed.responsibilities
-          .slice(0, 3)
-          .map((item: string) => ensureActionVerb(String(item)));
-      }
-      while (responsibilities.length < 3) {
-        responsibilities.push(getFallbackResponsibilities(roleName)[responsibilities.length]);
-      }
-      
-      // Parse industry demand
-      const validLevels = ['Low', 'Medium', 'High', 'Very High'];
-      let demandLevel = parsed.demandLevel || 'High';
-      if (!validLevels.includes(demandLevel)) {
-        demandLevel = 'High';
-      }
-      
-      let demandPercentage = parseInt(parsed.demandPercentage) || 75;
-      demandPercentage = Math.min(100, Math.max(0, demandPercentage));
-      
-      let description = parsed.demandDescription || getFallbackIndustryDemand(roleName).description;
-      const sentences = description.match(/[^.!?]+[.!?]+/g) || [description];
-      if (sentences.length > 2) {
-        description = sentences.slice(0, 2).join(' ').trim();
-      }
-      
-      // Parse career progression
-      let careerProgression: CareerStage[] = [];
-      if (Array.isArray(parsed.careerProgression) && parsed.careerProgression.length >= 4) {
-        careerProgression = parsed.careerProgression.slice(0, 4).map((stage: any) => ({
-          title: stage.title || 'Role',
-          yearsExperience: stage.yearsExperience || stage.years || '0+ yrs'
-        }));
-      }
-      if (careerProgression.length < 4) {
-        careerProgression = getFallbackCareerProgression(roleName);
-      }
-      
-      // Parse learning roadmap
-      let learningRoadmap: RoadmapPhase[] = [];
-      if (Array.isArray(parsed.learningRoadmap) && parsed.learningRoadmap.length >= 3) {
-        learningRoadmap = parsed.learningRoadmap.slice(0, 3).map((phase: any, idx: number) => ({
-          month: phase.month || `Month ${idx * 2 + 1}-${idx * 2 + 2}`,
-          title: phase.title || 'Learning Phase',
-          description: phase.description || 'Build skills and knowledge',
-          tasks: Array.isArray(phase.tasks) ? phase.tasks.slice(0, 4) : [],
-          color: colors[idx] || '#3b82f6'
-        }));
-      }
-      if (learningRoadmap.length < 3) {
-        learningRoadmap = getFallbackLearningRoadmap(roleName);
-      }
-      
-      // Parse recommended courses
-      const validCourseLevels = ['Beginner', 'Intermediate', 'Advanced', 'Professional'];
-      let recommendedCourses: RecommendedCourse[] = [];
-      if (Array.isArray(parsed.recommendedCourses) && parsed.recommendedCourses.length >= 4) {
-        recommendedCourses = parsed.recommendedCourses.slice(0, 4).map((course: any) => {
-          let level = course.level || 'Beginner';
-          if (!validCourseLevels.includes(level)) {
-            level = 'Beginner';
-          }
-          return {
-            title: course.title || 'Course',
-            description: course.description || 'Learn essential skills',
-            duration: course.duration || '4 weeks',
-            level: level as RecommendedCourse['level'],
-            skills: Array.isArray(course.skills) ? course.skills.slice(0, 3) : []
-          };
-        });
-      }
-      if (recommendedCourses.length < 4) {
-        recommendedCourses = getFallbackRecommendedCourses(roleName);
-      }
-      
-      // Parse free resources
-      const validResourceTypes = ['YouTube', 'Documentation', 'Certification', 'Community', 'Tool'];
-      let freeResources: FreeResource[] = [];
-      if (Array.isArray(parsed.freeResources) && parsed.freeResources.length >= 3) {
-        freeResources = parsed.freeResources.slice(0, 3).map((resource: any) => {
-          let type = resource.type || 'Documentation';
-          if (!validResourceTypes.includes(type)) {
-            type = 'Documentation';
-          }
-          return {
-            title: resource.title || 'Resource',
-            description: resource.description || 'Helpful learning resource',
-            type: type as FreeResource['type'],
-            url: resource.url || ''
-          };
-        });
-      }
-      if (freeResources.length < 3) {
-        freeResources = getFallbackFreeResources(roleName);
-      }
-      
-      // Parse action items
-      let actionItems: ActionItem[] = [];
-      if (Array.isArray(parsed.actionItems) && parsed.actionItems.length >= 4) {
-        actionItems = parsed.actionItems.slice(0, 4).map((item: any) => ({
-          title: item.title || 'Action',
-          description: item.description || 'Take action to progress'
-        }));
-      }
-      if (actionItems.length < 4) {
-        actionItems = getFallbackActionItems(roleName);
-      }
-      
-      // Parse suggested projects
-      const validDifficulties = ['Beginner', 'Intermediate', 'Advanced'];
-      let suggestedProjects: SuggestedProject[] = [];
-      if (Array.isArray(parsed.suggestedProjects) && parsed.suggestedProjects.length >= 3) {
-        suggestedProjects = parsed.suggestedProjects.slice(0, 3).map((project: any) => {
-          let difficulty = project.difficulty || 'Beginner';
-          if (!validDifficulties.includes(difficulty)) {
-            difficulty = 'Beginner';
-          }
-          return {
-            title: project.title || 'Project',
-            description: project.description || 'Build something amazing',
-            difficulty: difficulty as SuggestedProject['difficulty'],
-            skills: Array.isArray(project.skills) ? project.skills.slice(0, 4) : [],
-            estimatedTime: project.estimatedTime || '1-2 weeks'
-          };
-        });
-      }
-      if (suggestedProjects.length < 3) {
-        suggestedProjects = getFallbackSuggestedProjects(roleName);
-      }
-      
-      return {
-        responsibilities,
-        industryDemand: {
-          description,
-          demandLevel: demandLevel as IndustryDemandData['demandLevel'],
-          demandPercentage
-        },
-        careerProgression,
-        learningRoadmap,
-        recommendedCourses,
-        freeResources,
-        actionItems,
-        suggestedProjects
-      };
-    }
-  } catch (e) {
-    logger.error('Failed to parse role overview response', e instanceof Error ? e : new Error(String(e)), { roleName });
-  }
-  
-  return getFallbackRoleOverview(roleName);
-}
 
 // Worker API URL for role overview
 // Uses local API endpoint via Pages Functions

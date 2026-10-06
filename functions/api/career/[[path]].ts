@@ -28,7 +28,7 @@ import { withAuth, getContextUser } from '../../lib/auth';
 import { getServiceClient } from '../../lib/supabase';
 import { hasFeatureEntitlement } from '../../lib/entitlements';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import { getAPIKeys } from '../shared/ai-config';
+import { getCloudflareConfig } from '../shared/ai-config';
 import { handleCareerChat } from './handlers/chat';
 import { handleRecommendOpportunities } from './handlers/recommend';
 import { handleAnalyzeAssessment } from './handlers/analyze-assessment';
@@ -43,9 +43,11 @@ import { handleSaveReadinessScore, handleSaveProfileHealth, handleGetPeerBenchma
 import { handleListConversations, handleGetConversation, handleDeleteConversation } from './handlers/conversations';
 import { handleUpsertFeedback, handleGetFeedback } from './handlers/feedback';
 
-// Helper to get OpenRouter API key (uses shared utility)
-export const getOpenRouterKey = (env: any): string | undefined => {
-  return getAPIKeys(env).openRouter;
+// Helper to check the Cloudflare AI binding (uses shared utility).
+// Reasoning runs in ai-worker via the AI_SERVICE binding; the Cloudflare
+// binding serves the job-opportunity context path inside chat.
+export const hasCloudflareAi = (env: any): boolean => {
+  return getCloudflareConfig(env) !== null;
 };
 
 export const onRequest: PagesFunction = async (context) => {
@@ -95,7 +97,7 @@ export const onRequest: PagesFunction = async (context) => {
 
     // Route requests
     if (path === '/chat' || path === '/career-ai-chat' || path === '/') {
-      if (!getOpenRouterKey(env)) {
+      if (!(env as any).AI_SERVICE) {
         return apiError(500, 'INTERNAL_ERROR', 'AI service not configured', request);
       }
       return await handleCareerChat(request, env as any, userId);
@@ -106,9 +108,6 @@ export const onRequest: PagesFunction = async (context) => {
     }
 
     if (path === '/analyze-assessment') {
-      if (!getOpenRouterKey(env)) {
-        return apiError(500, 'INTERNAL_ERROR', 'AI service not configured', request);
-      }
       return await handleAnalyzeAssessment(request, env as any, userId);
     }
 

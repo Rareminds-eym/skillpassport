@@ -11,13 +11,13 @@
 import { describe, it, expect } from 'vitest';
 
 // Mock environment for testing
+// AI-powered APIs authenticate via the Cloudflare AI binding (env.AI),
+// not provider API keys — the binding is represented here as AI_BINDING.
 interface TestEnv {
   SUPABASE_URL?: string;
   SUPABASE_ANON_KEY?: string;
   SUPABASE_SERVICE_ROLE_KEY?: string;
-  OPENROUTER_API_KEY?: string;
-  CLAUDE_API_KEY?: string;
-  GEMINI_API_KEY?: string;
+  AI_BINDING?: unknown;
   AWS_ACCESS_KEY_ID?: string;
   AWS_SECRET_ACCESS_KEY?: string;
   AWS_REGION?: string;
@@ -26,19 +26,18 @@ interface TestEnv {
 
 // API-specific environment variable requirements
 const API_ENV_REQUIREMENTS: Record<string, string[]> = {
-  'adaptive-session': ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'SUPABASE_SERVICE_ROLE_KEY', 'OPENROUTER_API_KEY'],
-  'analyze-assessment': ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'OPENROUTER_API_KEY', 'CLAUDE_API_KEY'],
-  'career': ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'OPENROUTER_API_KEY', 'GEMINI_API_KEY'],
+  'adaptive-session': ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'SUPABASE_SERVICE_ROLE_KEY', 'AI_BINDING'],
+  'analyze-assessment': ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'AI_BINDING'],
+  'career': ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'AI_BINDING'],
   'course': ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'R2_BUCKET'],
   'fetch-certificate': ['SUPABASE_URL', 'SUPABASE_ANON_KEY'],
   'otp': ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_REGION'],
   'storage': ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'R2_BUCKET'],
   'streak': ['SUPABASE_URL', 'SUPABASE_ANON_KEY'],
   'user': ['SUPABASE_URL', 'SUPABASE_ANON_KEY'],
-  'adaptive-aptitude': ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'OPENROUTER_API_KEY', 'CLAUDE_API_KEY'],
-  'analyze-assessment': ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'OPENROUTER_API_KEY', 'GEMINI_API_KEY'],
-  'question-generation': ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'OPENROUTER_API_KEY', 'CLAUDE_API_KEY', 'GEMINI_API_KEY'],
-  'role-overview': ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'OPENROUTER_API_KEY', 'GEMINI_API_KEY'],
+  'adaptive-aptitude': ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'AI_BINDING'],
+  'question-generation': ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'AI_BINDING'],
+  'role-overview': ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'AI_BINDING'],
 };
 
 /**
@@ -62,9 +61,7 @@ function createCompleteEnv(): TestEnv {
     SUPABASE_URL: 'https://test.supabase.co',
     SUPABASE_ANON_KEY: 'test-anon-key',
     SUPABASE_SERVICE_ROLE_KEY: 'test-service-role-key',
-    OPENROUTER_API_KEY: 'test-openrouter-key',
-    CLAUDE_API_KEY: 'test-claude-key',
-    GEMINI_API_KEY: 'test-gemini-key',
+    AI_BINDING: {},
     AWS_ACCESS_KEY_ID: 'test-aws-access-key',
     AWS_SECRET_ACCESS_KEY: 'test-aws-secret-key',
     AWS_REGION: 'us-east-1',
@@ -145,12 +142,12 @@ describe('Property 2: Environment Variable Accessibility', () => {
       expect(result.missing).toContain('SUPABASE_URL');
     });
 
-    it('should detect missing AI API keys', () => {
-      const env = createPartialEnv(['OPENROUTER_API_KEY']);
+    it('should detect missing AI binding', () => {
+      const env = createPartialEnv(['AI_BINDING']);
       const result = validateEnvironment('analyze-assessment', env);
-      
+
       expect(result.valid).toBe(false);
-      expect(result.missing).toContain('OPENROUTER_API_KEY');
+      expect(result.missing).toContain('AI_BINDING');
     });
 
     it('should detect missing AWS credentials', () => {
@@ -171,29 +168,27 @@ describe('Property 2: Environment Variable Accessibility', () => {
     });
 
     it('should detect multiple missing variables', () => {
-      const env = createPartialEnv(['SUPABASE_URL', 'OPENROUTER_API_KEY', 'CLAUDE_API_KEY']);
+      const env = createPartialEnv(['SUPABASE_URL', 'AI_BINDING']);
       const result = validateEnvironment('analyze-assessment', env);
-      
+
       expect(result.valid).toBe(false);
-      expect(result.missing).toHaveLength(3);
+      expect(result.missing).toHaveLength(2);
       expect(result.missing).toContain('SUPABASE_URL');
-      expect(result.missing).toContain('OPENROUTER_API_KEY');
-      expect(result.missing).toContain('CLAUDE_API_KEY');
+      expect(result.missing).toContain('AI_BINDING');
     });
   });
 
   describe('API-Specific Requirements', () => {
-    it('should validate analyze-assessment API requires AI keys', () => {
+    it('should validate analyze-assessment API requires the AI binding', () => {
       const required = API_ENV_REQUIREMENTS['analyze-assessment'];
-      
-      expect(required).toContain('OPENROUTER_API_KEY');
-      expect(required).toContain('CLAUDE_API_KEY');
+
+      expect(required).toContain('AI_BINDING');
     });
 
-    it('should validate career API requires Gemini key', () => {
+    it('should validate career API requires the AI binding', () => {
       const required = API_ENV_REQUIREMENTS['career'];
-      
-      expect(required).toContain('GEMINI_API_KEY');
+
+      expect(required).toContain('AI_BINDING');
     });
 
     it('should validate OTP API requires AWS credentials', () => {
@@ -243,7 +238,7 @@ describe('Property 2: Environment Variable Accessibility', () => {
       });
     });
 
-    it('should validate all 11 APIs have defined requirements', () => {
+    it('should validate all 12 APIs have defined requirements', () => {
       const expectedApis = [
         'adaptive-session',
         'analyze-assessment',
@@ -255,7 +250,6 @@ describe('Property 2: Environment Variable Accessibility', () => {
         'streak',
         'user',
         'adaptive-aptitude',
-        'analyze-assessment',
         'question-generation',
         'role-overview'
       ];
@@ -269,16 +263,16 @@ describe('Property 2: Environment Variable Accessibility', () => {
 
   describe('Graceful Error Handling', () => {
     it('should provide clear error messages for missing variables', () => {
-      const env = createPartialEnv(['SUPABASE_URL', 'OPENROUTER_API_KEY']);
+      const env = createPartialEnv(['SUPABASE_URL', 'AI_BINDING']);
       const result = validateEnvironment('analyze-assessment', env);
-      
+
       expect(result.valid).toBe(false);
       expect(result.missing).toHaveLength(2);
-      
+
       // Error message should be constructable from missing array
       const errorMessage = `Missing required environment variables: ${result.missing.join(', ')}`;
       expect(errorMessage).toContain('SUPABASE_URL');
-      expect(errorMessage).toContain('OPENROUTER_API_KEY');
+      expect(errorMessage).toContain('AI_BINDING');
     });
 
     it('should handle undefined API names gracefully', () => {

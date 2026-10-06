@@ -21,7 +21,7 @@ import { handleCorsPreflightRequest } from '../../lib/cors';
 import type { PagesFunction, PagesEnv } from '../../lib/types';
 import { withAuth } from '../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import { callOpenRouterWithRetry, getAPIKeys, MODEL_PROFILES } from '../shared/ai-config';
+import { callCloudflareWithRetry, getCloudflareConfig, CLOUDFLARE_MODELS } from '../shared/ai-config';
 import { createSupabaseAdminClient } from '../../lib/supabase';
 import { handleCourseMatching } from './handlers/course-matching';
 
@@ -245,9 +245,9 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
 
       console.log(`[RoleOverview] Generating overview for: ${body.roleName} in ${body.clusterTitle}`);
 
-      const { openRouter } = getAPIKeys(env);
-      if (!openRouter) {
-        return apiError(500, 'INTERNAL_ERROR', 'OpenRouter API key not configured', request);
+      const cfConfig = getCloudflareConfig(env);
+      if (!cfConfig) {
+        return apiError(500, 'INTERNAL_ERROR', 'Cloudflare AI binding not configured', request);
       }
 
       const prompt = `Generate a comprehensive role overview for a ${body.roleName} position in the ${body.clusterTitle} career cluster.
@@ -332,7 +332,7 @@ Return ONLY a JSON object with this EXACT structure (no markdown, no extra text)
 CRITICAL: All content must be SPECIFIC to ${body.roleName} role. NO generic placeholders.`;
 
       try {
-        const content = await callOpenRouterWithRetry(openRouter, [
+        const content = await callCloudflareWithRetry(env, [
           {
             role: 'system',
             content: 'You are a career advisor generating detailed role overviews. Always return valid JSON with specific, actionable content. No placeholders or generic text.'
@@ -342,8 +342,7 @@ CRITICAL: All content must be SPECIFIC to ${body.roleName} role. NO generic plac
             content: prompt
           }
         ], {
-          models: [MODEL_PROFILES.question_generation.primary, ...MODEL_PROFILES.question_generation.fallbacks],
-          maxRetries: 3,
+          models: CLOUDFLARE_MODELS,
           maxTokens: 2000,
           temperature: 0.7,
         });
@@ -377,7 +376,7 @@ CRITICAL: All content must be SPECIFIC to ${body.roleName} role. NO generic plac
             actionItems: parsed.actionItems || [],
             suggestedProjects: parsed.suggestedProjects || []
           },
-          source: 'openrouter'
+          source: 'cloudflare'
         }, request);
       } catch (error: any) {
         console.error('[RoleOverview] AI generation failed:', error);

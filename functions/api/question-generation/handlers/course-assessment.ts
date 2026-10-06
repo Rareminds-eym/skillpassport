@@ -3,10 +3,10 @@ import { createSupabaseClient } from '../../../lib/supabase';
 import type { PagesEnv } from '../../../lib/types';
 import { SYSTEM_PROMPT } from '../prompts';
 import {
-    callOpenRouterWithRetry,
+    callCloudflareWithRetry,
+    getCloudflareConfig,
     repairAndParseJSON,
-    generateUUID,
-    getAPIKeys
+    generateUUID
 } from '../../shared/ai-config';
 
 // All utility functions are now imported from centralized ai-config.ts
@@ -53,10 +53,10 @@ export async function generateAssessment(
 
     console.log(`📝 Generating new questions for: ${courseName} (${level})`);
 
-    const { openRouter: openRouterKey } = getAPIKeys(env);
+    const cfConfig = getCloudflareConfig(env);
 
-    if (!openRouterKey) {
-        throw new Error('OpenRouter API key not configured');
+    if (!cfConfig) {
+        throw new Error('Cloudflare AI binding not configured');
     }
 
     const prompt = SYSTEM_PROMPT
@@ -70,12 +70,12 @@ export async function generateAssessment(
 
 Before responding, verify you have EXACTLY ${questionCount} questions. Generate ONLY valid JSON with no markdown.`;
 
-    // Use OpenRouter with automatic retry and fallback
+    // Use Cloudflare Workers AI with automatic retry and fallback
     // Scale max_tokens with questionCount so the full set of questions fits without truncation
     const maxTokens = Math.max(1200, questionCount * 180);
-    console.log(`🔑 Using OpenRouter with retry for ${questionCount} questions (maxTokens: ${maxTokens})`);
+    console.log(`🔑 Using Cloudflare AI with retry for ${questionCount} questions (maxTokens: ${maxTokens})`);
 
-    const jsonText = await callOpenRouterWithRetry(openRouterKey, [
+    const jsonText = await callCloudflareWithRetry(env, [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: prompt }
     ], { maxTokens });

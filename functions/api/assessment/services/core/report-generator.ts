@@ -20,7 +20,7 @@
  * Per PRD Section 5: Non-comparative, developmental language
  */
 
-import { callOpenRouterWithRetry, repairAndParseJSON, getAPIKeys } from '../../../shared/ai-config';
+import { callCloudflareWithRetry, getCloudflareConfig, repairAndParseJSON, CLOUDFLARE_MODELS } from '../../../shared/ai-config';
 import { buildMiddleSchoolReportPrompt } from '../../prompts/reports';
 import type { BuildMiddleSchoolReportPromptInput } from '../../prompts/reports';
 
@@ -179,7 +179,7 @@ export interface MiddleSchoolReports {
 }
 
 const REPORT_GENERATION_CONFIG = {
-  models: ['openai/gpt-4o-mini', 'google/gemini-2.0-flash-001'],
+  models: CLOUDFLARE_MODELS,
   // 8 reports incl. explorer insights for up to ~15 worlds — 2500 tokens truncated
   // the JSON mid-array and broke parsing, so give the response ample headroom.
   // Kept at 8000 (not raised for the 9th output, stage_guidance) — measured
@@ -482,10 +482,14 @@ export async function generateMiddleSchoolReports(
   env: Record<string, string>,
   aptitudeScores?: any
 ): Promise<MiddleSchoolReports | null> {
-  const apiKeys = getAPIKeys(env);
+  // Non-fatal by design: the assessment completes without AI reports when the
+  // Cloudflare AI binding is absent. getCloudflareConfig returns null instead
+  // of throwing, so this guard (unlike the old getAPIKeys check) cannot turn
+  // an optional report into a total assessment failure.
+  const cfConfig = getCloudflareConfig(env);
 
-  if (!apiKeys.openRouter) {
-    console.error('[REPORT-GEN-MS] OpenRouter API key not configured (non-fatal)');
+  if (!cfConfig) {
+    console.error('[REPORT-GEN-MS] Cloudflare AI binding not configured (non-fatal)');
     return null;
   }
 
@@ -506,8 +510,8 @@ export async function generateMiddleSchoolReports(
     // validation (e.g. explorer_insights not covering every world).
     const MAX_ATTEMPTS = 2;
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-      const rawResponse = await callOpenRouterWithRetry(
-        apiKeys.openRouter,
+      const rawResponse = await callCloudflareWithRetry(
+        env,
         [
           { role: 'system', content: system },
           { role: 'user', content: user },

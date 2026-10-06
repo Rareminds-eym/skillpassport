@@ -100,6 +100,7 @@ export function rpcErrorToHttpStatus(error: unknown): number {
   if (message.startsWith("DEPENDENCY_UNAVAILABLE:")) return 502;
   if (message.startsWith("DOWNSTREAM_TIMEOUT:")) return 504;
   if (message.startsWith("INVALID_MODEL_OUTPUT:")) return 502;
+  if (message.startsWith("PARTIAL_MODEL_OUTPUT:")) return 502;
   if (message.startsWith("INTERNAL_ERROR:")) return 500;
   if (message.includes("binding is not configured")) return 503;
   return 500;

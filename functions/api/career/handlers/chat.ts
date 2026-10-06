@@ -15,7 +15,6 @@ import { apiError } from '../../../lib/response';
 import { createSupabaseAdminClient } from '../../../lib/supabase';
 import { sanitizeInput, generateConversationTitle } from '../../../lib/validation';
 import { checkRateLimit } from '../utils/rate-limit';
-import { getAPIKeys } from '../../shared/ai-config';
 import type { ChatRequest, StoredMessage, CareerIntent, Opportunity } from '../types';
 import { validateResponse } from '../ai/guardrails';
 import { detectIntent } from '../ai/intent-detection';
@@ -118,13 +117,12 @@ async function defaultAssembleContext(args: {
   let opportunities: Opportunity[] = [];
   const jobRelatedIntents: CareerIntent[] = ['find-jobs', 'skill-gap', 'career-guidance', 'application-status'];
   if (jobRelatedIntents.includes(intentResult.intent)) {
-    const { openRouter: openRouterKey } = getAPIKeys(env);
     opportunities = await fetchSmartOpportunities(db as never, {
       userMessage: message,
       conversationHistory: history,
       learnerProfile,
       intent: intentResult.intent,
-      openRouterKey,
+      env,
     });
   }
 

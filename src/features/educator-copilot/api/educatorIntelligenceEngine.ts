@@ -1,40 +1,36 @@
-import OpenAI from 'openai';
-import { buildEducatorSystemPrompt, buildIntentClassificationPrompt } from '../lib/prompts/intelligentPrompt';
 import { buildEducatorContext } from '@/features/educator-copilot';
 import { EducatorAIResponse, EducatorIntent } from '@/features/learner-profile/model';
 import { educatorInsights } from './educatorInsights';
 import { dataFetcherService } from './dataFetcherService';
 import { educatorAnalyticsService } from './educatorAnalyticsService';
 import { getLogger } from '@/shared/config/logging';
+import { ssoClient } from '@/shared/api/ssoClient';
 
 const logger = getLogger('educator-intelligence-engine');
 
-// Initialize OpenRouter client (same as learner AI)
-let openai: OpenAI | null = null;
+// Server-side LLM ops (Cloudflare Workers AI via authenticated Pages endpoint).
+// Data-first intents keep running locally over Supabase data — unchanged.
+async function getCopilotEndpoint(): Promise<string> {
+  const { getApiUrl } = await import('@/shared/api/apiUtils');
+  return getApiUrl('educator-copilot/chat');
+}
 
-const getOpenAIClient = (): OpenAI => {
-  if (!openai) {
-    const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
-
-    if (!apiKey || apiKey === '') {
-      logger.error('OpenAI API key not configured', new Error('VITE_OPENAI_API_KEY is missing'));
-      throw new Error('OpenAI API key is not configured. Please add VITE_OPENAI_API_KEY to your .env file.');
-    }
-
-    openai = new OpenAI({
-      baseURL: "https://openrouter.ai/api/v1",
-      apiKey: apiKey,
-      defaultHeaders: {
-        "HTTP-Referer": typeof window !== 'undefined' ? window.location.origin : '',
-        "X-Title": "SkillPassport Educator AI",
-      },
-      dangerouslyAllowBrowser: true
-    });
+async function postCopilotOp<T>(op: string, payload: Record<string, unknown>): Promise<T> {
+  const url = await getCopilotEndpoint();
+  const response = await ssoClient.fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ op, ...payload }),
+  });
+  if (!response.ok) {
+    throw new Error(`Educator copilot request failed (${response.status})`);
   }
-  return openai;
-};
-
-const DEFAULT_MODEL = 'nvidia/nemotron-nano-12b-v2-vl:free'; // Fast and cost-effective model
+  const json = (await response.json()) as { success: boolean; data: T; error?: unknown };
+  if (!json.success) {
+    throw new Error('Educator copilot request failed');
+  }
+  return json.data;
+}
 
 /**
  * Educator Intelligence Engine
@@ -87,7 +83,7 @@ class EducatorIntelligenceEngine {
       return {
         success: false,
         error: 'I encountered an error processing your request. Please try again.',
-        message: 'I apologize, but I encountered an error. Please make sure your OpenAI API key is configured correctly.'
+        message: 'I apologize, but I encountered an error. The AI service may be temporarily unavailable.'
       };
     }
   }
@@ -127,7 +123,7 @@ class EducatorIntelligenceEngine {
       return {
         success: false,
         error: 'I encountered an error processing your request. Please try again.',
-        message: 'I apologize, but I encountered an error. Please make sure your OpenAI API key is configured correctly.'
+        message: 'I apologize, but I encountered an error. The AI service may be temporarily unavailable.'
       };
     }
   }
@@ -137,31 +133,8 @@ class EducatorIntelligenceEngine {
    */
   private async classifyIntent(query: string): Promise<EducatorIntent> {
     try {
-      const prompt = buildIntentClassificationPrompt(query);
-      const client = getOpenAIClient();
-
-      const response = await client.chat.completions.create({
-        model: DEFAULT_MODEL,
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.3,
-        max_tokens: 20
-      });
-
-      const intent = response.choices[0]?.message?.content?.trim().toLowerCase() as EducatorIntent;
-
-      // Validate intent
-      const validIntents: EducatorIntent[] = [
-        'learner-insights',
-        'class-analytics',
-        'intervention-needed',
-        'guidance-request',
-        'skill-trends',
-        'career-readiness',
-        'resource-recommendation',
-        'general'
-      ];
-
-      return validIntents.includes(intent) ? intent : 'general';
+      const data = await postCopilotOp<{ intent: EducatorIntent }>('classify', { query });
+      return data.intent;
     } catch (error) {
       logger.error('Intent classification failed', error instanceof Error ? error : new Error(String(error)));
       return 'general';
@@ -328,24 +301,15 @@ class EducatorIntelligenceEngine {
         };
       }
 
-      // Fallback to LLM for other intents or when data is insufficient
-      const systemPrompt = buildEducatorSystemPrompt(educatorContext);
-      const messages: any[] = [
-        { role: 'system', content: systemPrompt }
-      ];
-      const recentHistory = history.slice(-5);
-      recentHistory.forEach(msg => { messages.push({ role: msg.role, content: msg.content }); });
-      messages.push({ role: 'user', content: `[Intent: ${intent}]\n\n${query}` });
-
-      const client = getOpenAIClient();
-      const response = await client.chat.completions.create({
-        model: DEFAULT_MODEL,
-        messages,
-        temperature: 0.7,
-        max_tokens: 1000
+      // Fallback to server-side LLM for other intents or when data is insufficient
+      const data = await postCopilotOp<{ intent: EducatorIntent; message: string }>('respond', {
+        query,
+        intent,
+        context: educatorContext,
+        history,
       });
 
-      const aiMessage = response.choices[0]?.message?.content || 'I apologize, but I could not generate a response.';
+      const aiMessage = data.message || 'I apologize, but I could not generate a response.';
       return {
         success: true,
         message: aiMessage,
@@ -511,31 +475,51 @@ class EducatorIntelligenceEngine {
     onChunk: (chunk: string) => void
   ): Promise<EducatorAIResponse> {
     try {
-      const systemPrompt = buildEducatorSystemPrompt(educatorContext);
-      const client = getOpenAIClient();
-
-      const messages = [
-        { role: 'system', content: systemPrompt },
-        ...history.slice(-6), // Include last 3 exchanges
-        { role: 'user', content: query }
-      ];
-
-      const stream = await client.chat.completions.create({
-        model: DEFAULT_MODEL,
-        messages: messages as any,
-        temperature: 0.7,
-        max_tokens: 800,
-        stream: true
+      const url = await getCopilotEndpoint();
+      const response = await ssoClient.fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          op: 'respond-stream',
+          query,
+          intent,
+          context: educatorContext,
+          history,
+        }),
       });
-
+      if (!response.ok || !response.body) {
+        throw new Error(`Educator copilot stream failed (${response.status})`);
+      }
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
       let fullMessage = '';
-      for await (const chunk of stream) {
-        const content = chunk.choices[0]?.delta?.content || '';
-        if (content) {
-          fullMessage += content;
-          onChunk(content);
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        let idx: number;
+        while ((idx = buffer.indexOf('\n')) >= 0) {
+          const line = buffer.slice(0, idx).trim();
+          buffer = buffer.slice(idx + 1);
+          if (!line.startsWith('data:')) continue;
+          const payload = line.slice(5).trim();
+          if (payload === '[DONE]') continue;
+          let event: { text?: string; error?: string };
+          try {
+            event = JSON.parse(payload) as { text?: string; error?: string };
+          } catch {
+            // Malformed SSE line: skip, keep framing intact.
+            continue;
+          }
+          if (event.error) throw new Error(event.error);
+          if (event.text) {
+            fullMessage += event.text;
+            onChunk(event.text);
+          }
         }
       }
+      reader.releaseLock();
 
       return {
         success: true,

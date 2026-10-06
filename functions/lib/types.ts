@@ -66,11 +66,6 @@ export interface PagesEnv {
   ADMIN_EMAIL?: string;
 
 
-  // AI API keys
-
-  OPENROUTER_API_KEY?: string;
-
-
   // R2 Storage configuration
   CLOUDFLARE_R2_PUBLIC_URL?: string;
   R2_BUCKET?: R2Bucket;

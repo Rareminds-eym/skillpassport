@@ -1,5 +1,4 @@
-import OpenAI from 'openai';
-import { buildRecruiterSystemPrompt, buildIntentClassificationPrompt, buildGeneralResponsePrompt } from '../lib/prompts/intelligentPrompt';
+import { buildGeneralResponsePrompt } from '../lib/prompts/intelligentPrompt';
 import { buildRecruiterContext } from '@/features/recruiter-copilot';
 import { RecruiterAIResponse, RecruiterIntent } from '@/features/learner-profile/model';
 import { recruiterInsights } from './recruiterInsights';
@@ -9,35 +8,72 @@ import { semanticSearch } from './semanticSearch';
 import { dataHealthCheck } from '../lib/dataHealthCheck';
 import { advancedIntentClassifier } from './advancedIntentClassifier';
 import { apiPost } from '@/shared/api/apiClient';
+import { ssoClient } from '@/shared/api/ssoClient';
 
-// Initialize OpenRouter client
-let openai: OpenAI | null = null;
+// Server-side LLM ops (Cloudflare Workers AI via authenticated Pages endpoint).
+// Data fetching, orchestration and enrichment stay local — unchanged.
+async function getRecruiterCopilotEndpoint(): Promise<string> {
+  const { getApiUrl } = await import('@/shared/api/apiUtils');
+  return getApiUrl('recruiter-ai/chat');
+}
 
-const getOpenAIClient = (): OpenAI => {
-  if (!openai) {
-    const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
-    
-    if (!apiKey || apiKey === '') {
-      // API key not configured
-      throw new Error('OpenAI API key is not configured. Please add VITE_OPENAI_API_KEY to your .env file.');
-    }
-    
-    // Client initializing
-    
-    openai = new OpenAI({
-      baseURL: "https://openrouter.ai/api/v1",
-      apiKey: apiKey,
-      defaultHeaders: {
-        "HTTP-Referer": typeof window !== 'undefined' ? window.location.origin : '',
-        "X-Title": "SkillPassport Recruiter AI",
-      },
-      dangerouslyAllowBrowser: true
-    });
+async function postRecruiterOp<T>(op: string, payload: Record<string, unknown>): Promise<T> {
+  const url = await getRecruiterCopilotEndpoint();
+  const response = await ssoClient.fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ op, ...payload }),
+  });
+  if (!response.ok) {
+    throw new Error(`Recruiter copilot request failed (${response.status})`);
   }
-  return openai;
-};
+  const json = (await response.json()) as { success: boolean; data: T };
+  if (!json.success) {
+    throw new Error('Recruiter copilot request failed');
+  }
+  return json.data;
+}
 
-const DEFAULT_MODEL = 'nvidia/nemotron-nano-12b-v2-vl:free'; // Fast and cost-effective model
+async function streamRecruiterOp(
+  op: string,
+  payload: Record<string, unknown>,
+  onChunk: (chunk: string) => void,
+): Promise<void> {
+  const url = await getRecruiterCopilotEndpoint();
+  const response = await ssoClient.fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ op, ...payload }),
+  });
+  if (!response.ok || !response.body) {
+    throw new Error(`Recruiter copilot stream failed (${response.status})`);
+  }
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    let idx: number;
+    while ((idx = buffer.indexOf('\n')) >= 0) {
+      const line = buffer.slice(0, idx).trim();
+      buffer = buffer.slice(idx + 1);
+      if (!line.startsWith('data:')) continue;
+      const data = line.slice(5).trim();
+      if (data === '[DONE]') continue;
+      let event: { text?: string; error?: string };
+      try {
+        event = JSON.parse(data) as { text?: string; error?: string };
+      } catch {
+        continue;
+      }
+      if (event.error) throw new Error(event.error);
+      if (event.text) onChunk(event.text);
+    }
+  }
+  reader.releaseLock();
+}
 
 /**
  * Recruiter Intelligence Engine
@@ -93,7 +129,7 @@ class RecruiterIntelligenceEngine {
       return {
         success: false,
         error: 'I encountered an error processing your request. Please try again.',
-        message: 'I apologize, but I encountered an error. Please make sure your OpenAI API key is configured correctly.'
+        message: 'I apologize, but I encountered an error. The AI service may be temporarily unavailable.'
       };
     }
   }
@@ -162,7 +198,7 @@ class RecruiterIntelligenceEngine {
       return {
         success: false,
         error: 'I encountered an error processing your request. Please try again.',
-        message: 'I apologize, but I encountered an error. Please make sure your OpenAI API key is configured correctly.'
+        message: 'I apologize, but I encountered an error. The AI service may be temporarily unavailable.'
       };
     }
   }
@@ -203,26 +239,13 @@ class RecruiterIntelligenceEngine {
         );
       }
 
-      // For general queries, use streaming AI
+      // For general queries, use streaming AI via the server endpoint
       const prompt = buildGeneralResponsePrompt(query, recruiterContext, history);
-      const client = getOpenAIClient();
-
-      const stream = await client.chat.completions.create({
-        model: DEFAULT_MODEL,
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.7,
-        max_tokens: 800,
-        stream: true
-      });
-
       let fullMessage = '';
-      for await (const chunk of stream) {
-        const content = chunk.choices[0]?.delta?.content || '';
-        if (content) {
-          fullMessage += content;
-          onChunk(content);
-        }
-      }
+      await streamRecruiterOp('respond-stream', { prompt }, (content: string) => {
+        fullMessage += content;
+        onChunk(content);
+      });
 
       return {
         success: true,
@@ -288,8 +311,7 @@ class RecruiterIntelligenceEngine {
           dataQualityWarning = `\n⚠️ **Data Quality Alert:**\n• ${withoutSkills.length} out of ${candidates.length} candidates have NO skills listed\n• ${lowProfile.length} have incomplete profiles (<30%)\n`;
         }
         
-        // Use AI to analyze candidates
-        const client = getOpenAIClient();
+        // Use server-side AI to analyze candidates
         const analysisPrompt = `You are a hiring expert. Analyze these candidates and provide honest assessments.
 
 CANDIDATES (${candidatesToShow.length} total):
@@ -322,14 +344,12 @@ Format:
 ⚠️ Concerns: [list]
 📋 Next Steps: [actions needed]`;
         
-        const aiResponse = await client.chat.completions.create({
-          model: 'nvidia/nemotron-nano-12b-v2-vl:free',
-          messages: [{ role: 'user', content: analysisPrompt }],
-          temperature: 0.7,
-          max_tokens: 1000
+        const { message: recommendationText } = await postRecruiterOp<{ message: string }>('analyze', {
+          kind: 'hiring-recommendations',
+          prompt: analysisPrompt,
         });
-        
-        const recommendation = aiResponse.choices[0]?.message?.content || 'Unable to generate recommendation.';
+
+        const recommendation = recommendationText || 'Unable to generate recommendation.';
         
         return {
           success: true,
@@ -843,8 +863,7 @@ Format:
           skills: skillsByLearner.get(app.learner_id) || []
         }));
         
-        // Use AI to analyze and recommend
-        const client = getOpenAIClient();
+        // Use server-side AI to analyze and recommend
         const analysisPrompt = `You are an expert hiring consultant. Analyze these job applicants and recommend the top 3 candidates to hire.
 
 JOB OPPORTUNITIES:
@@ -874,15 +893,12 @@ Concerns: [if any]
 Next Step: [action]
 
 [Repeat for 2nd and 3rd]`;
-        
-        const aiResponse = await client.chat.completions.create({
-          model: 'nvidia/nemotron-nano-12b-v2-vl:free',
-          messages: [{ role: 'user', content: analysisPrompt }],
-          temperature: 0.7,
-          max_tokens: 1000
+
+        const { message: recommendationText } = await postRecruiterOp<{ message: string }>('analyze', {
+          kind: 'hiring-decision',
+          prompt: analysisPrompt,
         });
-        
-        const recommendation = aiResponse.choices[0]?.message?.content || 'Unable to generate recommendation.';
+        const recommendation = recommendationText || 'Unable to generate recommendation.';
         
         return {
           success: true,
@@ -1268,16 +1284,10 @@ Next Step: [action]
   ): Promise<RecruiterAIResponse> {
     try {
       const prompt = buildGeneralResponsePrompt(query, recruiterContext, history);
-      const client = getOpenAIClient();
 
-      const response = await client.chat.completions.create({
-        model: DEFAULT_MODEL,
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.7,
-        max_tokens: 500
-      });
+      const { message } = await postRecruiterOp<{ message: string }>('respond', { prompt });
 
-      const aiMessage = response.choices[0]?.message?.content || 'I apologize, but I could not generate a response.';
+      const aiMessage = message || 'I apologize, but I could not generate a response.';
 
       return {
         success: true,

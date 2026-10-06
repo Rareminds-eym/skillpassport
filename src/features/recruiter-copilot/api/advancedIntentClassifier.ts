@@ -1,5 +1,5 @@
-import OpenAI from 'openai';
 import { RecruiterIntent } from '@/features/learner-profile/model';
+import { ssoClient } from '@/shared/api/ssoClient';
 
 /**
  * Advanced Intent Classification System
@@ -30,26 +30,13 @@ export interface ClassifiedIntent {
 }
 
 class AdvancedIntentClassifier {
-  private openaiClient: OpenAI | null = null;
+  private endpointPromise: Promise<string> | null = null;
 
-  private getClient(): OpenAI {
-    if (!this.openaiClient) {
-      const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
-      if (!apiKey) {
-        throw new Error('OpenAI API key not configured');
-      }
-      
-      this.openaiClient = new OpenAI({
-        baseURL: "https://openrouter.ai/api/v1",
-        apiKey: apiKey,
-        defaultHeaders: {
-          "HTTP-Referer": typeof window !== 'undefined' ? window.location.origin : '',
-          "X-Title": "SkillPassport Intent Classifier",
-        },
-        dangerouslyAllowBrowser: true
-      });
+  private async getEndpoint(): Promise<string> {
+    if (!this.endpointPromise) {
+      this.endpointPromise = import('@/shared/api/apiUtils').then(({ getApiUrl }) => getApiUrl('recruiter-ai/chat'));
     }
-    return this.openaiClient;
+    return this.endpointPromise;
   }
 
   /**
@@ -276,82 +263,32 @@ class AdvancedIntentClassifier {
     query: string,
     conversationHistory: any[]
   ): Promise<Partial<ClassifiedIntent>> {
-    const client = this.getClient();
-
-    const historyContext = conversationHistory.length > 0
-      ? `\n\nPrevious conversation:\n${conversationHistory.slice(-3).map(h => 
-          `User: ${h.query}\nIntent: ${h.intent}`
-        ).join('\n')}`
-      : '';
-
-    const prompt = `Classify this recruiter query into the most appropriate intent.
-
-Available intents:
-- hiring-decision: Getting AI recommendation on which applicant to hire from current applications
-- opportunity-applications: Viewing candidates who ALREADY applied to recruiter's job opportunities/openings (e.g., "who applied to my jobs?", "show applications")
-- job-matching: Finding/recommending candidates FOR specific job positions/roles (e.g., "candidates for my position", "match to role", "top candidates for my jobs")
-- hiring-recommendations: Getting AI analysis on which candidates are READY TO HIRE NOW (based on profile quality, skills)
-- candidate-search: Finding or searching for NEW candidates based on skills, experience, or other criteria (e.g., "find React developers")
-- talent-pool-analytics: Analytics about the overall talent pool
-- skill-insights: Understanding skill distribution and gaps
-- market-trends: Market intelligence and competitive landscape
-- interview-guidance: Interview tips and assessment strategies
-- candidate-assessment: Evaluating or comparing specific candidates
-- pipeline-review: Reviewing recruitment pipeline status
-- general: General questions or unclear queries
-
-CRITICAL RULES (follow these EXACTLY):
-- If query asks "who should I HIRE FOR [position]" or "hire for [role]" → use "job-matching" (finding candidates FOR a position)
-- If query asks "candidates FOR my positions/jobs/roles" or "top candidates FOR [role]" → use "job-matching" NOT "opportunity-applications"
-- If query asks "who APPLIED to my jobs" or "show applications" → use "opportunity-applications"
-- If query contains "Find [SKILL] developers/engineers" (e.g., "Find React developers") → use "candidate-search"
-- If query asks "ready to hire", "hire now", "who is hire-ready" → use "hiring-recommendations"
-- If query asks "suggest who to hire FROM applicants", "recommend from applied", "which applicant", "best from applied" → use "hiring-decision"
-- "job-matching" = finding/matching candidates FOR a specific position
-- "hiring-decision" = choosing BETWEEN existing applicants
-- "opportunity-applications" = viewing who applied TO positions (backward)
-
-Query: "${query}"${historyContext}
-
-Respond with ONLY a JSON object in this exact format:
-{
-  "primary": "intent-name",
-  "confidence": 0.95,
-  "reasoning": "brief explanation"
-}`;
-
-    const response = await client.chat.completions.create({
-      model: 'nvidia/nemotron-nano-12b-v2-vl:free',
-      messages: [
-        {
-          role: 'system',
-          content: 'You are an expert at understanding recruiter intent. Always respond with valid JSON only.'
-        },
-        {
-          role: 'user',
-          content: prompt
-        }
-      ],
-      temperature: 0.2,
-      max_tokens: 150
+    const url = await this.getEndpoint();
+    const response = await ssoClient.fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        op: 'classify-llm',
+        query,
+        history: conversationHistory.slice(-3).map((h: any) => ({
+          query: typeof h?.query === 'string' ? h.query.slice(0, 500) : '',
+          intent: typeof h?.intent === 'string' ? h.intent : '',
+        })),
+      }),
     });
-
-    const content = response.choices[0]?.message?.content?.trim();
-    if (!content) {
-      throw new Error('Empty response from LLM');
+    if (!response.ok) {
+      throw new Error(`Classification request failed (${response.status})`);
     }
-
-    // Strip markdown code blocks if present (e.g., ```json ... ```)
-    let jsonContent = content;
-    if (content.startsWith('```')) {
-      jsonContent = content.replace(/```json\s*/g, '').replace(/```\s*$/g, '').trim();
+    const json = (await response.json()) as {
+      success: boolean;
+      data: { primary: string; confidence: number; secondaryIntents: [] };
+    };
+    if (!json.success || !json.data?.primary) {
+      throw new Error('Empty classification response');
     }
-
-    const parsed = JSON.parse(jsonContent);
-    
     return {
-      primary: parsed.primary as RecruiterIntent,
-      confidence: parsed.confidence || 0.7,
+      primary: json.data.primary as RecruiterIntent,
+      confidence: json.data.confidence || 0.7,
       secondaryIntents: []
     };
   }

@@ -1,9 +1,10 @@
 /**
  * Job Market Data Service
- * Fetches real-time Indian job market data using AI with web search
+ * Generates Indian job market content using AI model knowledge (not live
+ * verified market data — treat output as indicative guidance, not quotes).
  */
 
-import { callOpenRouterWithRetry, getAPIKeys, AI_MODELS } from '../../shared/ai-config';
+import { callCloudflareWithRetry, getCloudflareConfig, CLOUDFLARE_MODELS } from '../../shared/ai-config';
 import type { PagesEnv } from '../../../lib/types';
 
 export interface JobMarketData {
@@ -34,9 +35,9 @@ export async function fetchJobMarketData(
 ): Promise<Record<string, JobMarketData>> {
   console.log('[JOB MARKET] Fetching real-time data for categories:', categories.join(', '));
 
-  const { openRouter } = getAPIKeys(env);
-  if (!openRouter) {
-    console.warn('[JOB MARKET] OpenRouter API key not found, using fallback data');
+  const cfConfig = getCloudflareConfig(env);
+  if (!cfConfig) {
+    console.warn('[JOB MARKET] Cloudflare AI binding not found, using fallback data');
     return {};
   }
 
@@ -86,12 +87,11 @@ Return ONLY valid JSON in this exact format:
 }`;
 
   try {
-    const content = await callOpenRouterWithRetry(
-      openRouter,
+    const content = await callCloudflareWithRetry(
+      env,
       [{ role: 'user', content: prompt }],
       {
-        models: [AI_MODELS.GPT_4O_MINI], // Fast model for data fetching
-        maxRetries: 2,
+        models: CLOUDFLARE_MODELS,
         maxTokens: 8000,
         temperature: 0.3, // Low temp for factual data
       }

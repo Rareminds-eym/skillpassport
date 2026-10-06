@@ -5,7 +5,7 @@
 
 import { apiSuccess, apiError } from '../../../lib/response';
 import type { PagesEnv } from '../../../lib/types';
-import { callOpenRouterWithRetry, getAPIKeys } from '../../shared/ai-config';
+import { callCloudflareWithRetry, getCloudflareConfig } from '../../shared/ai-config';
 
 interface CareerPath {
   role: string;
@@ -169,19 +169,19 @@ export async function handleGenerateProgramCareerPaths(
 
     console.log(`🎓 Generating career paths for: ${body.programName}`);
 
-    // Get API keys
-    const { openRouter } = getAPIKeys(env);
+// Get Cloudflare AI binding
+const cfConfig = getCloudflareConfig(env);
 
-    if (!openRouter) {
-      return apiError(500, 'INTERNAL_ERROR', 'OpenRouter API key not configured', request);
-    }
+if (!cfConfig) {
+return apiError(500, 'INTERNAL_ERROR', 'Cloudflare AI binding not configured', request);
+}
 
     // Build prompt
     const prompt = buildCareerPathPrompt(body);
 
     // Call AI
-    const content = await callOpenRouterWithRetry(
-      openRouter,
+    const content = await callCloudflareWithRetry(
+      env,
       [
         {
           role: 'system',

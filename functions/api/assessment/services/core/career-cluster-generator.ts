@@ -9,7 +9,7 @@
  * 3. Deterministic scoring: 6-component match scores + fit bands, card reconciliation.
  */
 
-import { callOpenRouterWithRetry, repairAndParseJSON, getAPIKeys } from '../../../shared/ai-config';
+import { callCloudflareWithRetry, getCloudflareConfig, repairAndParseJSON, CLOUDFLARE_MODELS } from '../../../shared/ai-config';
 import type { StudentProfile, GradeLevel } from '../../types';
 import { callEmbeddingWorker } from '../../../embedding/services/embeddingWorkerClient';
 import { EMBEDDING_TASK_TYPES } from '../../../embedding/config/constants';
@@ -30,12 +30,12 @@ export type { ClusterNarrativeContext } from '../../types';
  */
 const CANDIDATE_POOL_SIZE = 50;
 
-/** OpenRouter configuration. */
+/** Cloudflare Workers AI configuration (GLM default, Nemotron fallback). */
 const CLUSTER_GENERATION_CONFIG = {
-  // gpt-4o-mini primary (matches production): strong instruction-following keeps the cluster
-  // narrative + overallSummary concise and rule-compliant; gemini-2.0-flash is a cheap fallback.
+  // GLM primary: strong instruction-following keeps the cluster
+  // narrative + overallSummary concise and rule-compliant; Nemotron fallback.
   // Low temperature (0.1) for consistent, non-verbose output.
-  models: ['openai/gpt-4o-mini', 'google/gemini-2.0-flash-001'],
+  models: CLOUDFLARE_MODELS,
   // Output includes 3-cluster narrative + specificOptions + overallSummary only.
   // MatchScores are computed deterministically from DB occupation assessment profiles, not LLM.
   // Typical completion: ~2-3k tokens. 4000 token limit provides ample headroom.
@@ -143,9 +143,9 @@ async function generateCareerClusters(
   const llmCandidates = candidates.slice(0, 50);
   console.log(`[LLM-INPUT] Sending ${llmCandidates.length} candidates to LLM (top 50 by RAG score, descriptions stripped)`);
 
-  const apiKeys = getAPIKeys(env);
-  if (!apiKeys.openRouter) {
-    console.error('[CLUSTER-GEN] OpenRouter API key not configured — skipping');
+  const cfConfig = getCloudflareConfig(env);
+  if (!cfConfig) {
+    console.error('[CLUSTER-GEN] Cloudflare AI binding not configured — skipping');
     return null;
   }
 
@@ -173,7 +173,7 @@ async function generateCareerClusters(
     { role: 'user', content: user },
   ];
 
-  const raw = await callOpenRouterWithRetry(apiKeys.openRouter, messages, {
+  const raw = await callCloudflareWithRetry(env, messages, {
     models: CLUSTER_GENERATION_CONFIG.models,
     maxTokens: CLUSTER_GENERATION_CONFIG.maxTokens,
     temperature: CLUSTER_GENERATION_CONFIG.temperature,

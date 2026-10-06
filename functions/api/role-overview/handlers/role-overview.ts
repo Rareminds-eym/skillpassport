@@ -4,14 +4,14 @@
  * 
  * Migrated from: cloudflare-workers/role-overview-api/src/handlers/roleOverviewHandler.ts
  * Changes:
- * - Uses callOpenRouterWithRetry from shared/ai-config
+ * - Uses callCloudflareWithRetry from shared/ai-config
  * - Uses shared utilities (apiSuccess, apiError, PagesFunction)
  * - Simplified fallback chain (OpenRouter with model fallback → Static fallback)
  */
 
 import type { PagesFunction } from '../../../lib/types';
 import { apiSuccess, apiError } from '../../../lib/response';
-import { callOpenRouterWithRetry, getAPIKeys } from '../../shared/ai-config';
+import { callCloudflareWithRetry, getCloudflareConfig } from '../../shared/ai-config';
 import { buildRoleOverviewPrompt, SYSTEM_PROMPT } from '../prompts/role-overview';
 import { parseRoleOverviewResponse } from '../utils/parser';
 import { getFallbackRoleOverview } from '../utils/fallback';
@@ -66,7 +66,7 @@ export interface ApiResponse<T> {
   success: boolean;
   data?: T;
   error?: string;
-  source?: 'openrouter' | 'fallback';
+  source?: 'openrouter' | 'cloudflare' | 'fallback';
 }
 
 /**
@@ -100,11 +100,11 @@ export const handleRoleOverview: PagesFunction = async (context) => {
 
   console.log(`[RoleOverview] Request for: ${cleanRoleName} in ${cleanClusterTitle}`);
 
-  // Get API keys
-  const { openRouter } = getAPIKeys(env);
+  // Get Cloudflare AI binding
+  const cfConfig = getCloudflareConfig(env);
 
-  if (!openRouter) {
-    console.warn('[RoleOverview] No OpenRouter API key, using static fallback');
+  if (!cfConfig) {
+    console.warn('[RoleOverview] No Cloudflare AI binding, using static fallback');
     const fallbackData = getFallbackRoleOverview(cleanRoleName);
     return apiSuccess({
       data: fallbackData,
@@ -112,7 +112,7 @@ export const handleRoleOverview: PagesFunction = async (context) => {
     }, request);
   }
 
-  // Try OpenRouter with model fallback
+  // Try Cloudflare Workers AI with model fallback
   try {
     const prompt = buildRoleOverviewPrompt(cleanRoleName, cleanClusterTitle);
     const messages = [
@@ -120,20 +120,20 @@ export const handleRoleOverview: PagesFunction = async (context) => {
       { role: 'user', content: prompt },
     ];
 
-    const response = await callOpenRouterWithRetry(openRouter, messages, {
+    const response = await callCloudflareWithRetry(env, messages, {
       maxTokens: 4000,
       temperature: 0.7,
     });
 
     const data = parseRoleOverviewResponse(response, cleanRoleName);
-    
-    console.log(`[RoleOverview] Success via OpenRouter for: ${cleanRoleName}`);
+
+    console.log(`[RoleOverview] Success via Cloudflare AI for: ${cleanRoleName}`);
     return apiSuccess({
       data,
-      source: 'openrouter',
+      source: 'cloudflare',
     }, request);
   } catch (error: any) {
-    console.error(`[RoleOverview] OpenRouter failed:`, error.message);
+    console.error(`[RoleOverview] Cloudflare AI failed:`, error.message);
 
     // Use static fallback
     console.log(`[RoleOverview] Using static fallback for: ${cleanRoleName}`);

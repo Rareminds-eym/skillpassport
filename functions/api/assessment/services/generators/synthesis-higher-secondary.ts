@@ -3,7 +3,7 @@
  *
  * Focus: College entrance preparation, career specialization, competitive exam guidance.
  */
-import { callOpenRouterWithRetry, repairAndParseJSON, getAPIKeys } from '../../../shared/ai-config';
+import { callCloudflareWithRetry, getCloudflareConfig, repairAndParseJSON, CLOUDFLARE_MODELS } from '../../../shared/ai-config';
 import type { StudentProfile } from '../core/scoring-service';
 import type { ClusterNarrativeContext } from '../../types';
 
@@ -16,7 +16,7 @@ export interface HigherSecondarySynthesis {
 }
 
 const SYNTHESIS_CONFIG = {
-  models: ['meta-llama/llama-3.3-70b-instruct', 'openai/gpt-4o-mini'],
+  models: CLOUDFLARE_MODELS,
   maxTokens: 2200,
   temperature: 0.3,
 };
@@ -26,15 +26,15 @@ export async function generateHigherSecondarySynthesis(
   context: ClusterNarrativeContext,
   env: Record<string, string>
 ): Promise<HigherSecondarySynthesis | null> {
-  const apiKeys = getAPIKeys(env);
-  if (!apiKeys.openRouter) {
-    console.error('[HIGHER-SEC-SYNTH] OpenRouter API key not configured');
+  const cfConfig = getCloudflareConfig(env);
+  if (!cfConfig) {
+    console.error('[HIGHER-SEC-SYNTH] Cloudflare AI binding not configured');
     return null;
   }
 
   try {
     const { system, user } = buildPrompt(student, context);
-    const raw = await callOpenRouterWithRetry(apiKeys.openRouter, [
+    const raw = await callCloudflareWithRetry(env, [
       { role: 'system', content: system },
       { role: 'user', content: user },
     ], {
@@ -104,3 +104,4 @@ Analyze and return JSON.`;
 
   return { system, user };
 }
+

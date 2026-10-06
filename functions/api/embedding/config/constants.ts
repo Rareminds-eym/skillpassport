@@ -13,8 +13,24 @@ export const EMBEDDING_CONFIG = {
   BATCH_DELAY_MS: 2000,
   MAX_CONCURRENT: 5,
   
-  // Embedding dimensions (controlled by worker)
-  EXPECTED_DIMENSIONS: 1536,
+// Embedding dimensions (controlled by worker)
+EXPECTED_DIMENSIONS: 1536,
+
+// Stage F: versioned embedding spaces. Legacy 1536-dim Gemini space stays
+// readable until backfill completes; BGE-M3 1024-dim space is probe-verified.
+// Never mix spaces in one column or query.
+EMBEDDING_SPACES: {
+  legacy: {
+    dimensions: 1536,
+    model: 'google/gemini-embedding-2-preview',
+    column: 'embedding',
+  },
+  bge_m3: {
+    dimensions: 1024,
+    model: '@cf/baai/bge-m3',
+    column: 'embedding_bge_m3',
+  },
+},
   
   // Database limits
   MAX_SKILLS: 15,

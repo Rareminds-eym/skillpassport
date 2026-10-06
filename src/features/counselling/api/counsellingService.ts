@@ -1,109 +1,41 @@
-// AI Counselling Service - OpenAI Integration
+// AI Counselling Service - server-side generation via authenticated Pages endpoint
 
-import OpenAI from 'openai';
 import type {
   CounsellingRequest,
-  LearnerContext,
   CounsellingTopicType,
   MessageRole
 } from '../model/types';
 import { getLogger } from '@/shared/config/logging';
+import { ssoClient } from '@/shared/api/ssoClient';
 
 const logger = getLogger('counselling-service');
 
-// Lazy-load OpenAI client to avoid initialization errors when API key is missing
-let openai: OpenAI | null = null;
-
-function getOpenAIClient(): OpenAI {
-  if (!openai) {
-    const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
-    if (!apiKey) {
-      throw new Error('OpenAI API key is not configured. Please set VITE_OPENAI_API_KEY in your environment variables.');
-    }
-    openai = new OpenAI({
-      apiKey,
-      dangerouslyAllowBrowser: true // Note: For production, use a backend proxy
-    });
-  }
-  return openai;
+// Server-side LLM ops (Cloudflare Workers AI via authenticated Pages endpoint).
+// Topic detection stays local (no provider involved) — unchanged.
+async function getCounsellingEndpoint(): Promise<string> {
+  const { getApiUrl } = await import('@/shared/api/apiUtils');
+  return getApiUrl('counselling/chat');
 }
 
-// System prompts for different counselling topics
-const SYSTEM_PROMPTS: Record<CounsellingTopicType, string> = {
-  academic: `You are an experienced academic counsellor at a university. Your role is to:
-    - Help learners with course selection and academic planning
-    - Provide study strategies and time management advice
-    - Guide learners on academic goals and career pathways
-    - Offer constructive feedback on academic performance
-    - Be supportive, empathetic, and professional
-    Always consider the learner's background, interests, and goals when providing advice.`,
-  
-  career: `You are a professional career counsellor specializing in helping university learners. Your role is to:
-    - Guide learners on career exploration and planning
-    - Provide insights on industry trends and job market
-    - Help with resume building and interview preparation
-    - Suggest skill development and networking opportunities
-    - Connect academic choices with career prospects
-    Be practical, encouraging, and provide actionable advice.`,
-  
-  performance: `You are an academic performance advisor. Your role is to:
-    - Analyze learner performance data and provide insights
-    - Identify strengths and areas for improvement
-    - Suggest personalized learning strategies
-    - Help learners set realistic academic goals
-    - Provide motivational support and accountability
-    Be data-driven, objective, and constructive in your feedback.`,
-  
-  'mental-health': `You are a supportive university counsellor focused on learner wellbeing. Your role is to:
-    - Provide emotional support and stress management strategies
-    - Help with work-life balance and time management
-    - Offer coping mechanisms for academic pressure
-    - Encourage healthy habits and self-care
-    - IMPORTANT: You are NOT a licensed therapist. For serious mental health concerns, always recommend professional help
-    Be compassionate, understanding, and non-judgmental.`,
-  
-  general: `You are a friendly and knowledgeable university counsellor. Your role is to:
-    - Assist learners with various university-related questions
-    - Provide guidance on campus resources and opportunities
-    - Help with general learner life concerns
-    - Offer advice on extracurricular activities and personal development
-    - Be approachable, helpful, and informative
-    Always maintain a supportive and professional tone.`
-};
-
-// Build learner context prompt
-function buildlearnerContextPrompt(context?: LearnerContext): string {
-  if (!context) return '';
-  
-  let prompt = `\n\n=== Learner Information ===\n`;
-  prompt += `Name: ${context.name}\n`;
-  
-  if (context.department) prompt += `Department: ${context.department}\n`;
-  if (context.year) prompt += `Year: ${context.year}\n`;
-  if (context.gpa) prompt += `GPA: ${context.gpa}\n`;
-  
-  if (context.enrolled_courses && context.enrolled_courses.length > 0) {
-    prompt += `Enrolled Courses: ${context.enrolled_courses.join(', ')}\n`;
+async function postCounsellingOp<T>(op: string, payload: Record<string, unknown>): Promise<T> {
+  const url = await getCounsellingEndpoint();
+  const response = await ssoClient.fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ op, ...payload }),
+  });
+  if (!response.ok) {
+    throw new Error(`Counselling request failed (${response.status})`);
   }
-  
-  if (context.interests && context.interests.length > 0) {
-    prompt += `Interests: ${context.interests.join(', ')}\n`;
+  const json = (await response.json()) as { success: boolean; data: T };
+  if (!json.success) {
+    throw new Error('Counselling request failed');
   }
-  
-  if (context.career_goals && context.career_goals.length > 0) {
-    prompt += `Career Goals: ${context.career_goals.join(', ')}\n`;
-  }
-  
-  if (context.recent_performance && context.recent_performance.length > 0) {
-    prompt += `Recent Performance:\n`;
-    context.recent_performance.forEach(perf => {
-      prompt += `  - ${perf.subject}: ${perf.grade}\n`;
-    });
-  }
-  
-  prompt += `========================\n`;
-  return prompt;
+  return json.data;
 }
+
+// System prompts are server-owned now (functions/api/counselling/lib/).
+// detectTopic below stays local (no provider involved) — unchanged.
 
 // Detect topic from user query
 export function detectTopic(query: string): CounsellingTopicType {
@@ -125,54 +57,57 @@ export function detectTopic(query: string): CounsellingTopicType {
   return 'general';
 }
 
-// Stream chat completion
+// Stream chat completion via the server endpoint (SSE translated to chunks)
 export async function* streamResponse(
   request: CounsellingRequest,
   conversationHistory: { role: MessageRole; content: string }[]
 ) {
   try {
-    const systemPrompt = SYSTEM_PROMPTS[request.topic];
-    const contextPrompt = buildlearnerContextPrompt(request.learner_context);
-    
-    // Prepare messages
-    const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
-      {
-        role: 'system',
-        content: systemPrompt + contextPrompt
-      },
-      ...conversationHistory.map(msg => ({
-        role: msg.role as 'user' | 'assistant' | 'system',
-        content: msg.content
-      })),
-      {
-        role: 'user',
-        content: request.message
-      }
-    ];
-
-    // Stream the response
-    const stream = await getOpenAIClient().chat.completions.create({
-      model: 'gpt-4o',
-      messages,
-      max_tokens: 1000,
-      temperature: 0.7,
-      stream: true,
+    const url = await getCounsellingEndpoint();
+    const response = await ssoClient.fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        op: 'chat-stream',
+        topic: request.topic,
+        message: request.message,
+        learner_context: request.learner_context,
+        history: conversationHistory,
+      }),
     });
-
-    for await (const chunk of stream) {
-      const content = chunk.choices[0]?.delta?.content || '';
-      if (content) {
-        yield content;
+    if (!response.ok || !response.body) {
+      throw new Error(`Counselling stream failed (${response.status})`);
+    }
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      let idx: number;
+      while ((idx = buffer.indexOf('\n')) >= 0) {
+        const line = buffer.slice(0, idx).trim();
+        buffer = buffer.slice(idx + 1);
+        if (!line.startsWith('data:')) continue;
+        const payload = line.slice(5).trim();
+        if (payload === '[DONE]') continue;
+        let event: { text?: string; error?: string };
+        try {
+          event = JSON.parse(payload) as { text?: string; error?: string };
+        } catch {
+          continue;
+        }
+        if (event.error) throw new Error(event.error);
+        if (event.text) yield event.text;
       }
     }
+    reader.releaseLock();
   } catch (error) {
     logger.error('Streaming counselling response failed', error instanceof Error ? error : new Error(String(error)), {
       topic: request.topic
     });
-    if (error instanceof OpenAI.APIError) {
-      throw new Error(`OpenAI API Error: ${error.message}`);
-    }
-    throw error;
+    throw error instanceof Error ? error : new Error('Counselling stream failed');
   }
 }
 
@@ -182,40 +117,18 @@ export async function getResponse(
   conversationHistory: { role: MessageRole; content: string }[]
 ): Promise<string> {
   try {
-    const systemPrompt = SYSTEM_PROMPTS[request.topic];
-    const contextPrompt = buildlearnerContextPrompt(request.learner_context);
-    
-    const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
-      {
-        role: 'system',
-        content: systemPrompt + contextPrompt
-      },
-      ...conversationHistory.map(msg => ({
-        role: msg.role as 'user' | 'assistant' | 'system',
-        content: msg.content
-      })),
-      {
-        role: 'user',
-        content: request.message
-      }
-    ];
-
-    const completion = await getOpenAIClient().chat.completions.create({
-      model: 'gpt-4o',
-      messages,
-      max_tokens: 1000,
-      temperature: 0.7,
+    const data = await postCounsellingOp<{ message: string }>('chat', {
+      topic: request.topic,
+      message: request.message,
+      learner_context: request.learner_context,
+      history: conversationHistory,
     });
-
-    return completion.choices[0]?.message?.content || '';
+    return data.message || '';
   } catch (error) {
     logger.error('Counselling response generation failed', error instanceof Error ? error : new Error(String(error)), {
       topic: request.topic
     });
-    if (error instanceof OpenAI.APIError) {
-      throw new Error(`OpenAI API Error: ${error.message}`);
-    }
-    throw error;
+    throw error instanceof Error ? error : new Error('Counselling request failed');
   }
 }
 
@@ -225,28 +138,8 @@ export async function generateSessionSummary(
   topic: CounsellingTopicType
 ): Promise<string> {
   try {
-    const conversation = messages
-      .map(msg => `${msg.role}: ${msg.content}`)
-      .join('\n\n');
-
-    const completion = await getOpenAIClient().chat.completions.create({
-      model: 'gpt-4o',
-      messages: [
-        {
-          role: 'system',
-          content: `You are an assistant that creates concise summaries of counselling sessions. 
-          Create a brief summary (3-4 sentences) highlighting key topics discussed, advice given, and any action items.`
-        },
-        {
-          role: 'user',
-          content: `Summarize this ${topic} counselling session:\n\n${conversation}`
-        }
-      ],
-      max_tokens: 200,
-      temperature: 0.5,
-    });
-
-    return completion.choices[0]?.message?.content || 'No summary available';
+    const data = await postCounsellingOp<{ summary: string }>('summarize', { topic, messages });
+    return data.summary || 'No summary available';
   } catch (error) {
     logger.error('Session summary generation failed', error instanceof Error ? error : new Error(String(error)), {
       topic

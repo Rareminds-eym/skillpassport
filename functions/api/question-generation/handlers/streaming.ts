@@ -10,10 +10,10 @@ import { PagesEnv } from '../../../lib/types';
 import { apiError } from '../../../lib/response';
 import { SCHOOL_SUBJECT_PROMPT, APTITUDE_PROMPT } from '../prompts';
 import {
-    callOpenRouterWithRetry,
+    callCloudflareWithRetry,
     repairAndParseJSON,
     generateUUID,
-    getAPIKeys
+    getCloudflareConfig
 } from '../../shared/ai-config';
 import { STREAM_CONTEXTS } from '../stream-contexts';
 
@@ -88,10 +88,10 @@ export async function handleStreamingAptitude(
         console.log(`ℹ️ gradeLevel reconciled to stream catalog value: requested=${requestedGradeLevel}, effective=${gradeLevel}`);
     }
 
-    const { openRouter: openRouterKey } = getAPIKeys(env);
-    if (!openRouterKey) {
-        return apiError(500, 'INTERNAL_ERROR', 'OpenRouter API key not configured', request);
-    }
+const cfConfig = getCloudflareConfig(env);
+if (!cfConfig) {
+return apiError(500, 'INTERNAL_ERROR', 'Cloudflare AI binding not configured', request);
+}
 
     const supabase = createSupabaseClient(env);
     const isAfter10 = gradeLevel === 'after10';
@@ -192,8 +192,8 @@ export async function handleStreamingAptitude(
                     }
 
                     // Call AI with retry
-                    console.log(`🔑 Batch ${batchNum}: Calling OpenRouter for ${batchTotal} questions`);
-                    const jsonText = await callOpenRouterWithRetry(openRouterKey, [
+                    console.log(`🔑 Batch ${batchNum}: Calling Cloudflare AI for ${batchTotal} questions`);
+                    const jsonText = await callCloudflareWithRetry(env, [
                         { role: 'system', content: systemPrompt },
                         { role: 'user', content: prompt }
                     ]);

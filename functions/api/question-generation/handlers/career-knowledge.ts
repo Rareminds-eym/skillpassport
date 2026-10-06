@@ -2,10 +2,10 @@
 import { createSupabaseAdminClient } from '../../../lib/supabase';
 import { PagesEnv } from '../../../lib/types';
 import {
-    callOpenRouterWithRetry,
+    callCloudflareWithRetry,
     repairAndParseJSON,
     generateUUID,
-    getAPIKeys
+    getCloudflareConfig
 } from '../../shared/ai-config';
 
 // All utility functions are now imported from centralized ai-config.ts
@@ -89,7 +89,7 @@ export async function generateKnowledgeQuestions(
 
     // Canonical-set pre-check: if a shared question set already exists for this
     // (stream_id, grade_level, question_type), return it immediately and skip AI
-    // generation entirely. Without this, every caller regenerates via OpenRouter
+    // generation entirely. Without this, every caller regenerates via Cloudflare AI
     // before get_or_create_shared_questions() is reached at the end of this
     // function, defeating the shared-question requirement for every learner after
     // the first. This is a plain SELECT (no advisory lock needed here - the lock
@@ -114,10 +114,10 @@ export async function generateKnowledgeQuestions(
         }
     }
 
-    const { openRouter: openRouterKey } = getAPIKeys(env);
+    const cfConfig = getCloudflareConfig(env);
 
-    if (!openRouterKey) {
-        throw new Error('OpenRouter API key not configured');
+    if (!cfConfig) {
+        throw new Error('Cloudflare AI binding not configured');
     }
 
     const allQuestions: any[] = [];
@@ -215,12 +215,12 @@ Before responding, verify you have EXACTLY ${totalQuestions} questions. Generate
 
 Before responding, verify you have EXACTLY ${totalQuestions} questions. Generate ONLY valid JSON with no markdown.`;
 
-        // Use OpenRouter with automatic retry and fallback
+        // Use Cloudflare Workers AI with automatic retry and fallback
         // Calculate token limit: ~150 tokens per question + 500 buffer
         const estimatedTokens = totalQuestions * 150 + 500;
-        console.log(`🔑 Batch ${batchNum}/${batchCount}: Using OpenRouter with retry for ${totalQuestions} ${streamName} questions (maxTokens: ${estimatedTokens})`);
+        console.log(`🔑 Batch ${batchNum}/${batchCount}: Using Cloudflare AI with retry for ${totalQuestions} ${streamName} questions (maxTokens: ${estimatedTokens})`);
 
-        const jsonText = await callOpenRouterWithRetry(openRouterKey, [
+        const jsonText = await callCloudflareWithRetry(env, [
             { role: 'system', content: systemPrompt },
             { role: 'user', content: prompt }
         ], {
@@ -468,7 +468,7 @@ Generate ONLY valid JSON with no markdown.`;
         try {
             console.log(`🔄 Generating additional batch with ${requestAmount} questions...`);
             
-            const additionalJsonText = await callOpenRouterWithRetry(openRouterKey, [
+            const additionalJsonText = await callCloudflareWithRetry(env, [
                 { role: 'system', content: additionalSystemPrompt },
                 { role: 'user', content: additionalPrompt }
             ], {

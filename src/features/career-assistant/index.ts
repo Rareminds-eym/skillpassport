@@ -1,11 +1,7 @@
 export { default as CareerAssistant } from './ui/CareerAssistant';
 export { default as FloatingAIButton } from './ui/FloatingAIButton';
 
-export { DEFAULT_MODEL } from './api/openAIClient';
-
 export { formatConversationDate } from './lib/dateUtils';
-
-export { getOpenAIClient } from './api/openAIClient';
 
 export type { EnhancedAIResponse } from './model/interactive';
 

@@ -4,7 +4,7 @@
  * 
  * Migrated from: cloudflare-workers/role-overview-api/src/handlers/courseMatchingHandler.ts
  * Changes:
- * - Uses callOpenRouterWithRetry from shared/ai-config
+ * - Uses callCloudflareWithRetry from shared/ai-config
  * - Uses shared utilities (apiSuccess, apiError, PagesFunction)
  * - Uses repairAndParseJSON for response parsing
  * - Simplified fallback chain (OpenRouter → Empty result)
@@ -12,7 +12,7 @@
 
 import type { PagesFunction } from '../../../lib/types';
 import { apiSuccess, apiError } from '../../../lib/response';
-import { callOpenRouterWithRetry, getAPIKeys, repairAndParseJSON } from '../../shared/ai-config';
+import { callCloudflareWithRetry, getCloudflareConfig, repairAndParseJSON } from '../../shared/ai-config';
 import { buildCourseMatchingPrompt, COURSE_MATCHING_SYSTEM_PROMPT } from '../prompts/role-overview';
 
 export interface CourseInput {
@@ -40,7 +40,7 @@ export interface ApiResponse<T> {
   success: boolean;
   data?: T;
   error?: string;
-  source?: 'openrouter' | 'fallback';
+  source?: 'openrouter' | 'cloudflare' | 'fallback';
 }
 
 /**
@@ -93,11 +93,11 @@ export const handleCourseMatching: PagesFunction = async (context) => {
   // Limit courses to prevent token overflow (max 20 courses)
   const limitedCourses = courses.slice(0, 20);
 
-  // Get API keys
-  const { openRouter } = getAPIKeys(env);
+  // Get Cloudflare AI binding
+  const cfConfig = getCloudflareConfig(env);
 
-  if (!openRouter) {
-    console.warn('[CourseMatching] No OpenRouter API key, returning empty result');
+  if (!cfConfig) {
+    console.warn('[CourseMatching] No Cloudflare AI binding, returning empty result');
     return apiSuccess({
       data: {
         matchedCourseIds: [],
@@ -107,7 +107,7 @@ export const handleCourseMatching: PagesFunction = async (context) => {
     }, request);
   }
 
-  // Try OpenRouter with model fallback
+  // Try Cloudflare Workers AI with model fallback
   try {
     const prompt = buildCourseMatchingPrompt(cleanRoleName, cleanClusterTitle, limitedCourses);
     const messages = [
@@ -115,20 +115,20 @@ export const handleCourseMatching: PagesFunction = async (context) => {
       { role: 'user', content: prompt },
     ];
 
-    const response = await callOpenRouterWithRetry(openRouter, messages, {
+    const response = await callCloudflareWithRetry(env, messages, {
       maxTokens: 500,
       temperature: 0.3, // Lower temperature for more consistent matching
     });
 
     const result = parseMatchingResponse(response);
-    
-    console.log(`[CourseMatching] Success via OpenRouter for: ${cleanRoleName}, matched ${result.matchedCourseIds.length} courses`);
+
+    console.log(`[CourseMatching] Success via Cloudflare AI for: ${cleanRoleName}, matched ${result.matchedCourseIds.length} courses`);
     return apiSuccess({
       data: result,
-      source: 'openrouter',
+      source: 'cloudflare',
     }, request);
   } catch (error: any) {
-    console.error(`[CourseMatching] OpenRouter failed:`, error.message);
+    console.error(`[CourseMatching] Cloudflare AI failed:`, error.message);
 
     // Return empty result (no static fallback for matching)
     console.log(`[CourseMatching] AI services failed for: ${cleanRoleName}`);

@@ -3,7 +3,7 @@
  *
  * Focus: Vocational training, diploma programs, skill-based careers, immediate employment.
  */
-import { callOpenRouterWithRetry, repairAndParseJSON, getAPIKeys } from '../../../shared/ai-config';
+import { callCloudflareWithRetry, getCloudflareConfig, repairAndParseJSON, CLOUDFLARE_MODELS } from '../../../shared/ai-config';
 import type { StudentProfile } from '../core/scoring-service';
 import type { ClusterNarrativeContext } from '../../types';
 
@@ -16,7 +16,7 @@ export interface After10Synthesis {
 }
 
 const SYNTHESIS_CONFIG = {
-  models: ['meta-llama/llama-3.3-70b-instruct', 'openai/gpt-4o-mini'],
+  models: CLOUDFLARE_MODELS,
   maxTokens: 2000,
   temperature: 0.3,
 };
@@ -26,15 +26,15 @@ export async function generateAfter10Synthesis(
   context: ClusterNarrativeContext,
   env: Record<string, string>
 ): Promise<After10Synthesis | null> {
-  const apiKeys = getAPIKeys(env);
-  if (!apiKeys.openRouter) {
-    console.error('[AFTER10-SYNTH] OpenRouter API key not configured');
+  const cfConfig = getCloudflareConfig(env);
+  if (!cfConfig) {
+    console.error('[AFTER10-SYNTH] Cloudflare AI binding not configured');
     return null;
   }
 
   try {
     const { system, user } = buildPrompt(student, context);
-    const raw = await callOpenRouterWithRetry(apiKeys.openRouter, [
+    const raw = await callCloudflareWithRetry(env, [
       { role: 'system', content: system },
       { role: 'user', content: user },
     ], {
@@ -103,3 +103,4 @@ Analyze and return JSON.`;
 
   return { system, user };
 }
+

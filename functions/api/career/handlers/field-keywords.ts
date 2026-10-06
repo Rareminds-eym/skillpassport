@@ -10,7 +10,7 @@
  */
 
 import { apiSuccess, apiError } from '../../../lib/response';
-import { getModelForUseCase } from '../../shared/ai-config';
+import { CLOUDFLARE_MODELS } from '../../shared/ai-config';
 import { checkRateLimit } from '../utils/rate-limit';
 import type { CareerRequest } from '@rareminds-eym/ai-protocol';
 import { getAiWorker, rpcErrorToHttpStatus } from '../../ai/lib/aiBinding';
@@ -80,7 +80,7 @@ export async function handleGenerateFieldKeywords(
         field: fieldTrimmed,
         keywords,
         source: 'ai',
-        model: getModelForUseCase('keyword_generation'),
+        model: CLOUDFLARE_MODELS[0],
       },
       request,
     );

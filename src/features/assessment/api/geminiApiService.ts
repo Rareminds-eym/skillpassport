@@ -88,7 +88,7 @@ export const updateProgress = (stage: ProgressStage, message?: string): void => 
  * Call OpenRouter API via Cloudflare Worker for assessment analysis
  * The worker handles prompt building based on grade level
  */
-export const callOpenRouterAssessment = async (assessmentData: AssessmentData): Promise<AssessmentResults> => {
+export const callAssessmentApi = async (assessmentData: AssessmentData): Promise<AssessmentResults> => {
   logger.info('[FRONTEND] === CALLING ANALYZE-ASSESSMENT API ===');
   logger.info('[FRONTEND] Assessment data:', {
     gradeLevel: assessmentData.gradeLevel,
@@ -280,7 +280,7 @@ export const analyzeAssessmentWithOpenRouter = async (
     );
 
     // Call the Cloudflare Worker (handles prompt building and AI call)
-    const parsedResults = await callOpenRouterAssessment(assessmentData);
+    const parsedResults = await callAssessmentApi(assessmentData);
 
     // Validate the results
     const { isValid, missingFields } = validateResults(parsedResults);

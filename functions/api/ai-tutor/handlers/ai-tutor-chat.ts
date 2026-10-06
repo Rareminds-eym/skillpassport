@@ -14,7 +14,7 @@ import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { apiError } from '../../../lib/response';
 import type { PagesEnv } from '../../../lib/types';
 import { getContextUser, getServiceClient } from '../../../lib/auth';
-import { getAPIKeys, API_CONFIG, AI_MODELS } from '../../shared/ai-config';
+import { callCloudflareWithRetry, getCloudflareConfig } from '../../shared/ai-config';
 import type { WorksheetConfig } from '../types/worksheet';
 import type { LessonPlanConfig } from '../types/lesson-plan';
 import {
@@ -41,19 +41,6 @@ interface StoredMessage {
   role: 'user' | 'assistant';
   content: string;
   timestamp: string;
-}
-interface OpenRouterResponse {
-  choices?: Array<{ message?: { content?: string } }>;
-}
-function isValidOpenRouterResponse(data: unknown): data is OpenRouterResponse {
-  if (!data || typeof data !== 'object') return false;
-  const obj = data as Record<string, unknown>;
-  if (!Array.isArray(obj.choices)) return false;
-  return obj.choices.every(choice =>
-    typeof choice === 'object' &&
-    choice !== null &&
-    (!('message' in choice) || typeof choice.message === 'object')
-  );
 }
 interface AiTutorChatRequest {
   conversationId?: string;
@@ -298,37 +285,14 @@ export const handleAiTutorChat = async (context: TypedContext, ports?: TutorChat
         } else {
           let title = message.slice(0, 50);
           try {
-            const { openRouter: openRouterKey } = getAPIKeys(env);
-            const chatModel = AI_MODELS.GPT_4O_MINI;
-            const endpoint = API_CONFIG.OPENROUTER.endpoint;
-            if (openRouterKey) {
-              const titleAbortController = new AbortController();
-              const titleTimeoutId = setTimeout(() => titleAbortController.abort(), 5000);
-              const titleResponse = await fetch(endpoint, {
-                method: 'POST',
-                headers: {
-                  'Authorization': `Bearer ${openRouterKey}`,
-                  'Content-Type': 'application/json',
-                  'HTTP-Referer': env.SUPABASE_URL ?? '',
-                  'X-Title': 'AI Course Tutor - Title Generation'
-                },
-                body: JSON.stringify({
-                  model: chatModel,
-                  messages: [{ role: 'user', content: `Generate a short title (max 50 chars) for a tutoring conversation about "${courseContext.courseTitle}" starting with: "${message}"` }],
-                  max_tokens: 60,
-                  temperature: 0.5
-                }),
-                signal: titleAbortController.signal
-              });
-              clearTimeout(titleTimeoutId);
-              if (titleResponse.ok) {
-                let titleData: unknown;
-                try { titleData = await titleResponse.json(); } catch { titleData = null; }
-                if (titleData && isValidOpenRouterResponse(titleData)) {
-                  const generatedTitle = (titleData as { choices?: Array<{ message?: { content?: string } }> }).choices?.[0]?.message?.content?.trim();
-                  if (generatedTitle) title = generatedTitle;
-                }
-              }
+            if (getCloudflareConfig(env)) {
+              const generated = await callCloudflareWithRetry(
+                env,
+                [{ role: 'user', content: `Generate a short title (max 50 chars) for a tutoring conversation about "${courseContext.courseTitle}" starting with: "${message}"` }],
+                { maxTokens: 60, temperature: 0.5, timeoutMs: 5000 }
+              );
+              const trimmed = generated.trim();
+              if (trimmed) title = trimmed;
             }
           } catch (error) {
             logger.warn('Title generation failed, using default', { error: error instanceof Error ? error.message : String(error) });
@@ -502,25 +466,14 @@ async function handleEducatorMaterialRpc(args: {
         } else {
           let title = message.slice(0, 50);
           try {
-            const { openRouter: openRouterKey } = getAPIKeys(env);
-            if (openRouterKey) {
-              const titleAbortController = new AbortController();
-              const titleTimeoutId = setTimeout(() => titleAbortController.abort(), 5000);
-              const titleResponse = await fetch(API_CONFIG.OPENROUTER.endpoint, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${openRouterKey}`, 'Content-Type': 'application/json', 'HTTP-Referer': env.SUPABASE_URL ?? '', 'X-Title': 'AI Course Tutor - Title Generation' },
-                body: JSON.stringify({ model: AI_MODELS.GPT_4O_MINI, messages: [{ role: 'user', content: `Generate a short title (max 50 chars) for a tutoring conversation about "${courseContext.courseTitle}" starting with: "${message}"` }], max_tokens: 60, temperature: 0.5 }),
-                signal: titleAbortController.signal
-              });
-              clearTimeout(titleTimeoutId);
-              if (titleResponse.ok) {
-                let titleData: unknown;
-                try { titleData = await titleResponse.json(); } catch { titleData = null; }
-                if (titleData && isValidOpenRouterResponse(titleData)) {
-                  const gen = (titleData as { choices?: Array<{ message?: { content?: string } }> }).choices?.[0]?.message?.content?.trim();
-                  if (gen) title = gen;
-                }
-              }
+            if (getCloudflareConfig(env)) {
+              const generated = await callCloudflareWithRetry(
+                env,
+                [{ role: 'user', content: `Generate a short title (max 50 chars) for a tutoring conversation about "${courseContext.courseTitle}" starting with: "${message}"` }],
+                { maxTokens: 60, temperature: 0.5, timeoutMs: 5000 }
+              );
+              const trimmed = generated.trim();
+              if (trimmed) title = trimmed;
             }
           } catch (error) {
             logger.warn('Title generation failed, using default', { error: error instanceof Error ? error.message : String(error) });

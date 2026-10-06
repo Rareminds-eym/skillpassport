@@ -4,7 +4,7 @@
  * Generates career exploration guidance and skill development roadmap.
  * Focus: Academic stream selection, early career awareness, foundational skills.
  */
-import { callOpenRouterWithRetry, repairAndParseJSON, getAPIKeys } from '../../../shared/ai-config';
+import { callCloudflareWithRetry, getCloudflareConfig, repairAndParseJSON, CLOUDFLARE_MODELS } from '../../../shared/ai-config';
 import type { StudentProfile } from '../core/scoring-service';
 import type { ClusterNarrativeContext } from '../../types';
 
@@ -17,7 +17,7 @@ export interface HighSchoolSynthesis {
 }
 
 const SYNTHESIS_CONFIG = {
-  models: ['meta-llama/llama-3.3-70b-instruct', 'openai/gpt-4o-mini'],
+  models: CLOUDFLARE_MODELS,
   maxTokens: 2000,
   temperature: 0.3,
 };
@@ -27,15 +27,15 @@ export async function generateHighSchoolSynthesis(
   context: ClusterNarrativeContext,
   env: Record<string, string>
 ): Promise<HighSchoolSynthesis | null> {
-  const apiKeys = getAPIKeys(env);
-  if (!apiKeys.openRouter) {
-    console.error('[HIGHSCHOOL-SYNTH] OpenRouter API key not configured — skipping synthesis');
+  const cfConfig = getCloudflareConfig(env);
+  if (!cfConfig) {
+    console.error('[HIGHSCHOOL-SYNTH] Cloudflare AI binding not configured — skipping synthesis');
     return null;
   }
 
   try {
     const { system, user } = buildPrompt(student, context);
-    const raw = await callOpenRouterWithRetry(apiKeys.openRouter, [
+    const raw = await callCloudflareWithRetry(env, [
       { role: 'system', content: system },
       { role: 'user', content: user },
     ], {
@@ -111,3 +111,4 @@ Analyze this high school student and return the JSON exactly as specified.`;
 
   return { system, user };
 }
+

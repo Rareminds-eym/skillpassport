@@ -682,16 +682,9 @@ TEXT-ONLY QUESTION EXAMPLES:
 
 
 // AI Models to try in order of preference
-// These models will be tried sequentially if one fails
+// These models will be tried sequentially if one fails.
+// Currently unimported (no live caller) — kept Cloudflare-only for cutover completeness.
 export const ADAPTIVE_AI_MODELS = [
-  // Primary Models - Reliable and affordable
-  'openai/gpt-3.5-turbo',                  // Reliable and affordable
-  'openai/gpt-4o-mini',                    // Backup OpenAI model
-  // Free Models - Fallback choices
-  'google/gemini-2.0-flash-001',           // Gemini 2.0 Flash stable
-  'meta-llama/llama-3.2-3b-instruct:free', // FREE - Smaller Llama
-  'google/gemini-2.0-flash-001',           // Gemini Flash (paid)
-  // Higher quality paid models (if needed)
-  'anthropic/claude-3-haiku',              // Claude Haiku (cheap, reliable)
-  'anthropic/claude-3.5-sonnet',           // Claude Sonnet (high quality)
+  '@cf/zai-org/glm-4.7-flash',        // Primary: GLM-4.7 Flash default
+  '@cf/nvidia/nemotron-3-120b-a12b',   // Fallback: Nemotron 3 120B larger-context/heavier reasoning
 ] as const;

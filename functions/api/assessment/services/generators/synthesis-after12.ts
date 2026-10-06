@@ -3,7 +3,7 @@
  *
  * Focus: College selection, career entry, gap year planning, immediate employment vs further education.
  */
-import { callOpenRouterWithRetry, repairAndParseJSON, getAPIKeys } from '../../../shared/ai-config';
+import { callCloudflareWithRetry, getCloudflareConfig, repairAndParseJSON, CLOUDFLARE_MODELS } from '../../../shared/ai-config';
 import type { StudentProfile } from '../core/scoring-service';
 import type { ClusterNarrativeContext } from '../../types';
 import { buildAfter12SynthesisPrompt } from '../../prompts/synthesis/after12';
@@ -17,7 +17,7 @@ export interface After12Synthesis {
 }
 
 const SYNTHESIS_CONFIG = {
-  models: ['openai/gpt-4o-mini', 'meta-llama/llama-3.3-70b-instruct'],
+  models: CLOUDFLARE_MODELS,
   maxTokens: 2200,
   temperature: 0.3,
 };
@@ -27,15 +27,15 @@ export async function generateAfter12Synthesis(
   context: ClusterNarrativeContext,
   env: Record<string, string>
 ): Promise<After12Synthesis | null> {
-  const apiKeys = getAPIKeys(env);
-  if (!apiKeys.openRouter) {
-    console.error('[AFTER12-SYNTH] OpenRouter API key not configured');
+  const cfConfig = getCloudflareConfig(env);
+  if (!cfConfig) {
+    console.error('[AFTER12-SYNTH] Cloudflare AI binding not configured');
     return null;
   }
 
   try {
     const { system, user } = buildAfter12SynthesisPrompt(student, context);
-    const raw = await callOpenRouterWithRetry(apiKeys.openRouter, [
+    const raw = await callCloudflareWithRetry(env, [
       { role: 'system', content: system },
       { role: 'user', content: user },
     ], {
@@ -55,3 +55,4 @@ export async function generateAfter12Synthesis(
     return null;
   }
 }
+

@@ -15,12 +15,12 @@ import { buildMiddleSchoolPrompt } from '../prompts/middle-school';
 import { buildHigherSecondaryPrompt } from '../prompts/higher-secondary';
 import { buildAfter10Prompt } from '../prompts/after10';
 import { buildCollegePrompt } from '../prompts/college';
-import { 
-  repairAndParseJSON, 
-  AI_MODELS, 
-  getAPIKeys,
+import {
+  repairAndParseJSON,
+  CLOUDFLARE_MODELS,
+  getCloudflareConfig,
   API_CONFIG,
-  callOpenRouterWithRetry
+  callCloudflareWithRetry
 } from '../../shared/ai-config';
 import { 
   fetchJobMarketData, 
@@ -33,13 +33,10 @@ interface RequestBody {
   assessmentData: AssessmentData;
 }
 
-// AI Models to try (in order of preference) - imported from ai-config
-const ASSESSMENT_MODELS = [
-  AI_MODELS.GPT_4O_MINI,           // Primary: OpenAI GPT-4o-mini
-  AI_MODELS.GPT_4O,                // Fallback 1: OpenAI GPT-4o
-  AI_MODELS.GEMINI_2_FLASH,        // Fallback 2: Google Gemini 2.0 Flash
-  AI_MODELS.LLAMA_3_2_3B,          // Fallback 3: Meta Llama 3.2 3B (free)
-];
+// AI Models to try (in order of preference) - Cloudflare Workers AI.
+// Starting allowance 32000 retained pending the authorized live probe
+// (verify whether the completion budget includes reasoning tokens).
+const ASSESSMENT_MODELS = [...CLOUDFLARE_MODELS];
 
 // Assessment-specific configuration
 const ASSESSMENT_CONFIG = {
@@ -558,12 +555,12 @@ function validateAssessmentStructure(result: any, gradeLevel?: string): { valid:
 }
 
 /**
- * Analyze assessment data using OpenRouter AI with validation-based fallback
- * 
+ * Analyze assessment data using Cloudflare Workers AI with validation-based fallback
+ *
  * This function implements a two-tier fallback strategy:
- * 1. API-level fallback: callOpenRouterWithRetry handles network/API failures
+ * 1. API-level fallback: callCloudflareWithRetry handles network/API failures
  * 2. Validation-level fallback: If a model returns incomplete data, try the next model
- * 
+ *
  * Requirements: 7.4, 7.5
  */
 async function analyzeAssessment(
@@ -659,15 +656,13 @@ async function analyzeAssessment(
   console.log(`[ASSESSMENT] Available models: ${ASSESSMENT_MODELS.length}`);
   console.log(`[ASSESSMENT] Models: ${ASSESSMENT_MODELS.join(', ')}`);
 
-  console.log('[ASSESSMENT] === CHECKING API KEYS ===');
-  const { openRouter } = getAPIKeys(env);
-  if (!openRouter) {
-    console.error('[ASSESSMENT] ❌ CRITICAL: OpenRouter API key not configured');
-    console.error('[ASSESSMENT] ❌ env.OPENROUTER_API_KEY exists:', !!env.OPENROUTER_API_KEY);
-    console.error('[ASSESSMENT] ❌ env.OPENROUTER_API_KEY length:', env.OPENROUTER_API_KEY?.length || 0);
-    throw new Error('OpenRouter API key not configured');
+  console.log('[ASSESSMENT] === CHECKING CLOUDFLARE AI BINDING ===');
+  const cfConfig = getCloudflareConfig(env);
+  if (!cfConfig) {
+    console.error('[ASSESSMENT] ❌ CRITICAL: Cloudflare AI binding not configured');
+    throw new Error('Cloudflare AI binding not configured');
   }
-  console.log('[ASSESSMENT] ✅ OpenRouter API key found, length:', openRouter.length);
+  console.log('[ASSESSMENT] ✅ Cloudflare AI binding found');
 
   // ============================================================================
   // VALIDATION-BASED MODEL FALLBACK (Requirement 7.4)
@@ -684,19 +679,18 @@ async function analyzeAssessment(
     console.log(`[ASSESSMENT] 🎯 Model: ${currentModel}`);
     
     try {
-      console.log(`[ASSESSMENT] 📡 Calling OpenRouter API...`);
+      console.log(`[ASSESSMENT] 📡 Calling Cloudflare Workers AI...`);
       console.log(`[ASSESSMENT] 📡 Temperature: ${ASSESSMENT_CONFIG.temperature}`);
       console.log(`[ASSESSMENT] 📡 Max Tokens: ${ASSESSMENT_CONFIG.maxTokens}`);
       console.log(`[ASSESSMENT] 📡 Max Retries: ${ASSESSMENT_CONFIG.maxRetries}`);
-      
-      // Call OpenRouter with ONLY the current model (no fallback at API level)
+
+      // Call Cloudflare with ONLY the current model (no fallback at API level)
       // This ensures we can control validation-based fallback
-      const content = await callOpenRouterWithRetry(openRouter, [
+      const content = await callCloudflareWithRetry(env, [
         { role: 'system', content: systemMessage },
         { role: 'user', content: basePrompt }
       ], {
         models: [currentModel], // Single model - we handle fallback here
-        maxRetries: ASSESSMENT_CONFIG.maxRetries,
         maxTokens: ASSESSMENT_CONFIG.maxTokens,
         temperature: ASSESSMENT_CONFIG.temperature,
       });
@@ -1107,8 +1101,7 @@ export async function handleAnalyzeAssessment(
 
   // Check environment variables
   console.log('[ASSESSMENT-API] === ENVIRONMENT CHECK ===');
-  console.log('[ASSESSMENT-API] OPENROUTER_API_KEY exists:', !!env.OPENROUTER_API_KEY);
-  console.log('[ASSESSMENT-API] OPENROUTER_API_KEY length:', env.OPENROUTER_API_KEY?.length || 0);
+  console.log('[ASSESSMENT-API] Cloudflare AI binding present:', getCloudflareConfig(env) !== null);
 
   try {
     console.log('[ASSESSMENT-API] === STARTING AI ANALYSIS ===');

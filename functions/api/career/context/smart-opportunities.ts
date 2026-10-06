@@ -2,13 +2,15 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Opportunity, LearnerProfile, StoredMessage } from '../types';
+import { callCloudflareWithRetry } from '../../shared/ai-config';
 
 interface FetchContext {
   userMessage: string;
   conversationHistory: StoredMessage[];
   learnerProfile: LearnerProfile;
   intent: string;
-  openRouterKey: string;
+  /** Pages env (request-scoped) — only the Cloudflare AI binding is read. */
+  env: unknown;
 }
 
 interface OpportunityFilters {
@@ -32,7 +34,7 @@ interface AIFilterResponse {
  * Uses chain-of-thought reasoning for accurate filter extraction
  */
 async function extractFiltersWithAI(context: FetchContext): Promise<OpportunityFilters> {
-  const { userMessage, conversationHistory, learnerProfile, openRouterKey } = context;
+  const { userMessage, conversationHistory, learnerProfile, env } = context;
   
   const recentContext = conversationHistory
     .slice(-5)
@@ -93,31 +95,12 @@ Return ONLY valid JSON:
 JSON:`;
 
   try {
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openRouterKey}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://skillpassport.co',
-        'X-Title': 'SkillPassport Career AI'
-      },
-      body: JSON.stringify({
-        model: 'anthropic/claude-3-haiku', // Faster, cheaper model for extraction
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.1, // Lower for faster, more deterministic responses
-        max_tokens: 400 // Reduced from 600
-      })
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`❌ AI filter extraction failed (${response.status}):`, errorText);
-      throw new Error(`AI service error: ${response.status}`);
-    }
-
-    const data = (await response.json()) as Record<string, unknown>;
-    const message = ((data.choices as Record<string, unknown>[] | undefined)?.[0] as Record<string, unknown> | undefined)?.message as Record<string, unknown> | undefined;
-    const content = (message?.content as string) || '{}';
+    const content = await callCloudflareWithRetry(
+      env,
+      [{ role: 'user', content: prompt }],
+      { maxTokens: 400, temperature: 0.1 }
+    );
+    if (!content) throw new Error('AI service error: empty response');
     
     // Extract JSON from response (handle markdown code blocks and extra text)
     let jsonMatch = content.match(/\{[\s\S]*\}/);

@@ -11,6 +11,7 @@ import type { PagesFunction, PagesEnv } from '../../lib/types';
 import { withAuth, getContextUser } from '../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { handleAnalyzeAssessment } from './handlers/analyze';
+import { getCloudflareConfig } from '../shared/ai-config';
 import { handleGenerateProgramCareerPaths } from './handlers/program-career-paths';
 
 export const onRequest: PagesFunction<PagesEnv> = async (context) => {
@@ -32,9 +33,9 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
         service: 'analyze-assessment-api',
         timestamp: new Date().toISOString(),
         env: {
-          hasSupabaseUrl: !!env.SUPABASE_URL,
-          hasSupabaseKey: !!env.SUPABASE_ANON_KEY,
-          hasOpenRouter: !!env.OPENROUTER_API_KEY
+hasSupabaseUrl: !!env.SUPABASE_URL,
+hasSupabaseKey: !!env.SUPABASE_ANON_KEY,
+hasCloudflareAi: getCloudflareConfig(env) !== null
         }
       }, request);
     }

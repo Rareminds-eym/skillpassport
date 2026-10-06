@@ -13,32 +13,13 @@ import {
   ChatBubbleLeftRightIcon,
 } from '@heroicons/react/24/outline';
 import { CareerPathResponse } from '@/features/counselling';
-import OpenAI from 'openai';
 import { getLogger } from '@/shared/config/logging';
+import { ssoClient } from '@/shared/api/ssoClient';
 
 const logger = getLogger('career-path-drawer');
 
-// Lazy-load OpenAI client to avoid initialization errors when API key is missing
-let openai: OpenAI | null = null;
-
-function getOpenAIClient(): OpenAI {
-  if (!openai) {
-    const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
-    if (!apiKey) {
-      throw new Error('OpenAI API key is not configured. Please set VITE_OPENAI_API_KEY in your environment variables.');
-    }
-    openai = new OpenAI({
-      apiKey,
-      baseURL: 'https://openrouter.ai/api/v1',
-      dangerouslyAllowBrowser: true,
-      defaultHeaders: {
-        'HTTP-Referer': window.location.origin,
-        'X-Title': 'Career Path Chat',
-      },
-    });
-  }
-  return openai;
-}
+// Follow-up chat runs server-side (Cloudflare Workers AI) via the
+// authenticated career-path endpoint. No browser provider credentials.
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -140,12 +121,12 @@ ${step.salaryRange ? `- Salary Range: ${step.salaryRange}` : ''}
 `).join('\n')}
 `;
 
-      const completion = await getOpenAIClient().chat.completions.create({
-        model: 'openai/gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content: `You are a helpful career counselor assistant. You're discussing a career development path with the following context:
+      const { getApiUrl } = await import('@/shared/api/apiUtils');
+      const response = await ssoClient.fetch(getApiUrl('career-path/chat'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          system: `You are a helpful career counselor assistant. You're discussing a career development path with the following context:
 ${careerContext}
 
 IMPORTANT INSTRUCTIONS:
@@ -156,23 +137,22 @@ IMPORTANT INSTRUCTIONS:
 - Answer questions about the career path, provide advice, clarify steps, and help with career planning
 - Be concise but COMPLETE when listing data
 - Reference specific details from the career path when answering`,
-          },
-          ...chatMessages.map(msg => ({
+          history: chatMessages.map(msg => ({
             role: msg.role,
             content: msg.content,
           })),
-          {
-            role: 'user',
-            content: chatInput,
-          },
-        ],
-        max_tokens: 500,
-        temperature: 0.7,
+          input: chatInput,
+        }),
       });
+      if (!response.ok) {
+        throw new Error(`Career path chat failed (${response.status})`);
+      }
+      const json = (await response.json()) as { success: boolean; data: { message: string } };
+      const content = json.data?.message || 'Sorry, I could not generate a response.';
 
       const assistantMessage: ChatMessage = {
         role: 'assistant',
-        content: completion.choices[0]?.message?.content || 'Sorry, I could not generate a response.',
+        content,
         timestamp: new Date(),
       };
 
@@ -180,14 +160,10 @@ IMPORTANT INSTRUCTIONS:
     } catch (err) {
       logger.error('Career path chat failed', err instanceof Error ? err : new Error(String(err)));
       let errorText = 'Sorry, I encountered an error. Please try again.';
-      
+
       if (err instanceof Error) {
         if (err.message.includes('fetch')) {
           errorText = 'Network error. Please check your internet connection.';
-        } else if (err.message.includes('402')) {
-          errorText = 'Insufficient API credits. Please add credits to continue chatting.';
-        } else if (err.message.includes('401')) {
-          errorText = 'API authentication error. Please check your API key configuration.';
         }
       }
       

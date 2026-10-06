@@ -3,10 +3,10 @@ import { createSupabaseAdminClient } from '../../../lib/supabase';
 import { PagesEnv } from '../../../lib/types';
 import { SCHOOL_SUBJECT_PROMPT, APTITUDE_PROMPT } from '../prompts';
 import {
-    callOpenRouterWithRetry,
+    callCloudflareWithRetry,
     repairAndParseJSON,
     generateUUID,
-    getAPIKeys
+    getCloudflareConfig
 } from '../../shared/ai-config';
 import { STREAM_CONTEXTS } from '../stream-contexts';
 
@@ -93,7 +93,7 @@ export async function generateAptitudeQuestions(
 
     // Canonical-set pre-check: if a shared question set already exists for this
     // (stream_id, grade_level, question_type), return it immediately and skip AI
-    // generation entirely. Without this, every caller regenerates via OpenRouter
+    // generation entirely. Without this, every caller regenerates via Cloudflare AI
     // before get_or_create_shared_questions() is reached at the end of this
     // function, defeating the shared-question requirement for every learner after
     // the first. This is a plain SELECT (no advisory lock needed here - the lock
@@ -129,10 +129,10 @@ export async function generateAptitudeQuestions(
     console.log(`📊 Total questions expected: ${totalQuestions}`);
     console.log(`📝 Generating fresh aptitude questions in 2 batches for stream: ${streamId}`);
 
-    const { openRouter: openRouterKey } = getAPIKeys(env);
+    const cfConfig = getCloudflareConfig(env);
 
-    if (!openRouterKey) {
-        throw new Error('OpenRouter API key not configured');
+    if (!cfConfig) {
+        throw new Error('Cloudflare AI binding not configured');
     }
 
     // Determine stream context once for reuse
@@ -214,12 +214,12 @@ Before responding, verify you have EXACTLY ${batchTotal} questions. Generate ONL
 
 Before responding, verify you have EXACTLY ${batchTotal} questions. Generate ONLY valid JSON with no markdown.`;
 
-        // Use OpenRouter with automatic retry and fallback
+        // Use Cloudflare Workers AI with automatic retry and fallback
         // Calculate token limit: ~150 tokens per question + 500 buffer
         const estimatedTokens = batchTotal * 150 + 500;
-        console.log(`🔑 Batch ${batchNum}: Using OpenRouter with retry for ${batchTotal} questions (maxTokens: ${estimatedTokens})`);
+        console.log(`🔑 Batch ${batchNum}: Using Cloudflare AI with retry for ${batchTotal} questions (maxTokens: ${estimatedTokens})`);
 
-        const jsonText = await callOpenRouterWithRetry(openRouterKey, [
+        const jsonText = await callCloudflareWithRetry(env, [
             { role: 'system', content: systemPrompt },
             { role: 'user', content: prompt }
         ], {
@@ -481,7 +481,7 @@ IMPORTANT: Avoid these words that suggest images: "shown below", "shown above", 
             try {
                 console.log(`🔄 Generating additional batch with ${requestAmount} questions...`);
                 
-                const additionalJsonText = await callOpenRouterWithRetry(openRouterKey, [
+                const additionalJsonText = await callCloudflareWithRetry(env, [
                     { role: 'system', content: additionalSystemPrompt },
                     { role: 'user', content: additionalPrompt }
                 ], {

@@ -6,7 +6,7 @@
  */
 
 import { getServiceClient } from '../../../lib/supabase';
-import { callOpenRouterWithRetry, repairAndParseJSON, getAPIKeys } from '../../shared/ai-config';
+import { callCloudflareWithRetry, getCloudflareConfig, repairAndParseJSON, CLOUDFLARE_MODELS } from '../../shared/ai-config';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 
 export async function generateStrengthsGrowthPlanHandler(context: AuthenticatedContext) {
@@ -24,7 +24,10 @@ export async function generateStrengthsGrowthPlanHandler(context: AuthenticatedC
       );
     }
 
-    const { openRouter } = getAPIKeys(env);
+    const cfConfig = getCloudflareConfig(env);
+    if (!cfConfig) {
+      throw new Error('Cloudflare AI binding is not configured');
+    }
 
     // Get role's required capabilities. Multi-domain roles have one occupation
     // row per domain (same name), so fetch all ids — .single() would throw.
@@ -151,11 +154,11 @@ Generate JSON ONLY:
   ]
 }`;
 
-    // Call OpenRouter with 4o-mini
-    const aiResponse = await callOpenRouterWithRetry(openRouter, [
+    // Call Cloudflare Workers AI (GLM default, Nemotron fallback)
+    const aiResponse = await callCloudflareWithRetry(env, [
       { role: 'user', content: prompt }
     ], {
-      models: ['openai/gpt-4o-mini'],
+      models: CLOUDFLARE_MODELS,
       maxTokens: 1024,
       temperature: 0.7
     });

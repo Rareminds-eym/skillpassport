@@ -8,127 +8,26 @@
  * - Model fallback chains organized by use case
  */
 
-import { PagesEnv } from '../../lib/types';
 import { createLogger } from '../../lib/logger';
+import { createCloudflareClient, CF_FALLBACK_MODEL, CF_PRIMARY_MODEL, type CfAiBinding } from './cloudflare-ai.js';
 
 const logger = createLogger('ai-config');
 
 // ============================================================================
-// Types & Interfaces
-// ============================================================================
-
-export interface AIModel {
-    id: string;
-    provider: 'openrouter';
-    endpoint?: string;
-    maxTokens?: number;
-    temperature?: number;
-    description?: string;
-}
-
-export interface ModelProfile {
-    primary: string;
-    fallbacks: string[];
-    maxTokens?: number;
-    temperature?: number;
-}
-
-export type ModelUseCase =
-    | 'question_generation'
-    | 'chat'
-    | 'resume_parsing'
-    | 'keyword_generation'
-    | 'embedding'
-    | 'adaptive_assessment';
-
-// ============================================================================
-// Model Configurations
+// Cloudflare model configuration (Stage G: sole provider)
 // ============================================================================
 
 /**
- * Comprehensive list of available AI models
+ * Default Cloudflare model chain: GLM-4.7 Flash primary, Nemotron-3 bounded
+ * fallback. Pre-cutover OpenRouter chains are recorded in git history.
  */
-export const AI_MODELS = {
-    // OpenAI Models - Primary choices
-    GPT_4O_LATEST: 'openai/chatgpt-4o-latest',
-    GPT_4O: 'openai/gpt-4o',
-    GPT_4O_MINI: 'openai/gpt-4o-mini',
-    
-    // Free Models - Fallback choices
-    GEMINI_2_FLASH: 'google/gemini-2.0-flash-001',
-    GEMINI_FLASH_EXP: 'google/gemini-2.0-flash-exp:free',
-    LLAMA_3_8B: 'meta-llama/llama-3-8b-instruct:free',
-    LLAMA_3_2_3B: 'meta-llama/llama-3.2-3b-instruct:free',
-    // GEMINI_PRO: 'google/gemini-pro',  // DEPRECATED: Invalid model ID
-    GEMINI_FLASH_1_5_8B: 'google/gemini-flash-1.5-8b',
-    // XIAOMI_MIMO: 'xiaomi/mimo-v2-flash:free',  // DEPRECATED: Free period ended
-
-    // Specialized Models
-    EMBEDDING_SMALL: 'openai/text-embedding-3-small',
-} as const;
-
-/**
- * Model profiles organized by use case
- * Using OpenAI ChatGPT-4o-latest as primary model with fallbacks
- */
-
-// Standard model chain - using models that actually exist on OpenRouter
-const STANDARD_MODELS = {
-    primary: 'openai/gpt-3.5-turbo',                 // Reliable and affordable
-    fallbacks: [
-        'openai/gpt-4o-mini',                        // Backup OpenAI model
-        'google/gemini-2.0-flash-001',               // Google fallback
-    ],
-};
-
-export const MODEL_PROFILES: Record<ModelUseCase, ModelProfile> = {
-    question_generation: {
-        ...STANDARD_MODELS,
-        maxTokens: 500,  // Reduced from 2000 to fit within credit limits
-        temperature: 0.7,
-    },
-    chat: {
-        ...STANDARD_MODELS,
-        maxTokens: 500,  // Reduced from 2000 to fit within credit limits
-        temperature: 0.7,
-    },
-    resume_parsing: {
-        ...STANDARD_MODELS,
-        maxTokens: 500,  // Reduced from 2000 to fit within credit limits
-        temperature: 0.1,
-    },
-    keyword_generation: {
-        ...STANDARD_MODELS,
-        maxTokens: 300,  // Reduced from 500 to fit within credit limits
-        temperature: 0.3,
-    },
-    embedding: {
-        primary: AI_MODELS.EMBEDDING_SMALL,
-        fallbacks: [],
-        maxTokens: 8191,
-        temperature: 0,
-    },
-    adaptive_assessment: {
-        ...STANDARD_MODELS,
-        maxTokens: 500,  // Reduced from 1500 to fit within credit limits
-        temperature: 0.7,
-    },
-};
+export { CF_PRIMARY_MODEL, CF_FALLBACK_MODEL };
 
 // ============================================================================
 // API Configuration
 // ============================================================================
 
 export const API_CONFIG = {
-    OPENROUTER: {
-        endpoint: 'https://openrouter.ai/api/v1/chat/completions',
-        embeddingEndpoint: 'https://openrouter.ai/api/v1/embeddings',
-        headers: {
-            'Content-Type': 'application/json',
-            'HTTP-Referer': 'https://skillpassport.pages.dev',
-            'X-Title': 'SkillPassport Assessment',
-        },
-    },
     RETRY: {
         maxRetries: 3,
         baseDelay: 1000, // ms
@@ -408,204 +307,92 @@ export function repairAndParseJSON(text: string, preferObject: boolean = false):
     throw new Error('Failed to parse JSON after all repair attempts');
 }
 
-/**
- * Get API keys from environment with validation
- */
-export function getAPIKeys(env: PagesEnv | Record<string, string>) {
-    const openRouter = env.OPENROUTER_API_KEY;
+// ============================================================================
+// Cloudflare Workers AI path (Stage G: sole provider)
+// ============================================================================
 
-    if (!openRouter) {
-        logger.error('Missing OPENROUTER_API_KEY environment variable - AI services will not work');
-        throw new Error('OPENROUTER_API_KEY is not configured. Set it in your environment variables.');
-    }
+/** Default Cloudflare model chain: GLM primary, Nemotron bounded fallback. */
+export const CLOUDFLARE_MODELS = [CF_PRIMARY_MODEL, CF_FALLBACK_MODEL];
 
-    logger.debug('API keys validated', { hasOpenRouter: !!openRouter });
-
-    return {
-        openRouter,
-    };
+export interface CloudflareEnvConfig {
+    ai: CfAiBinding;
+    gatewayId?: string;
 }
 
-// ============================================================================
-// Core AI API Functions
-// ============================================================================
+/**
+ * Resolve the Cloudflare AI binding from any env shape without touching the
+ * string-only PagesEnv/Record<string,string> signatures. Returns null (never
+ * throws) when the binding is absent so optional-report callers stay
+ * non-fatal. Real secret values are never read or logged here.
+ */
+export function getCloudflareConfig(env: unknown): CloudflareEnvConfig | null {
+    if (typeof env !== 'object' || env === null) return null;
+    const rec = env as Record<string, unknown>;
+    const ai = rec.AI as CfAiBinding | undefined;
+    if (!ai || typeof ai.run !== 'function') {
+        logger.debug('Cloudflare AI binding not configured');
+        return null;
+    }
+    const gatewayId = typeof rec.AI_GATEWAY_ID === 'string' && rec.AI_GATEWAY_ID !== '' ? rec.AI_GATEWAY_ID : undefined;
+    return { ai, gatewayId };
+}
+
+function isCloudflareAdvanceable(error: unknown): boolean {
+    if (!(error instanceof Error)) return false;
+    return (
+        error.message.startsWith('DEPENDENCY_UNAVAILABLE:') ||
+        error.message.startsWith('DOWNSTREAM_TIMEOUT:') ||
+        error.message.startsWith('INVALID_MODEL_OUTPUT:')
+    );
+}
 
 /**
- * Call OpenRouter API with automatic retry and model fallback
+ * Call Cloudflare Workers AI with GLM → Nemotron fallback
+ * (returns raw text, models tried in order, retryable
+ * transport failures advance) minus the API key: auth is the binding.
+ * Throws when the binding is absent — callers decide fatal vs non-fatal.
  */
-export async function callOpenRouterWithRetry(
-    openRouterKey: string,
+export async function callCloudflareWithRetry(
+    env: unknown,
     messages: Array<{ role: string, content: string }>,
     options: {
         models?: string[];
-        maxRetries?: number;
         maxTokens?: number;
         temperature?: number;
+        timeoutMs?: number;
     } = {}
 ): Promise<string> {
+    const config = getCloudflareConfig(env);
+    if (!config) {
+        throw new Error('Cloudflare AI binding is not configured. Bind AI and set AI_GATEWAY_ID.');
+    }
     const {
-        models = [
-            'openai/gpt-3.5-turbo',                  // Reliable and affordable
-            'openai/gpt-4o-mini',                    // Backup OpenAI model
-            'google/gemini-2.0-flash-001',           // Gemini 2.0 Flash stable
-            'meta-llama/llama-3.2-3b-instruct:free', // FREE - Smaller Llama
-        ],
-        maxRetries = API_CONFIG.RETRY.maxRetries,
-        maxTokens = 500,  // Reduced to 500 to fit within credit limits
+        models = CLOUDFLARE_MODELS,
+        maxTokens = 500,
         temperature = 0.7,
+        timeoutMs = 60000,
     } = options;
 
-    logger.info('Starting OpenRouter API call', {
+    logger.info('Starting Cloudflare AI call', {
         modelsCount: models.length,
         maxTokens,
         temperature,
-        maxRetries,
+        timeoutMs,
         messagesCount: messages.length,
     });
 
+    const client = createCloudflareClient({ ai: config.ai, gatewayId: config.gatewayId });
     let lastError: Error | null = null;
-    const startTime = Date.now();
-
-    for (let modelIndex = 0; modelIndex < models.length; modelIndex++) {
-        const model = models[modelIndex];
-        logger.debug('Trying model', {
-            modelIndex: modelIndex + 1,
-            totalModels: models.length,
-            model,
-        });
-
-        for (let attempt = 0; attempt < maxRetries; attempt++) {
-            const attemptStartTime = Date.now();
-            try {
-                logger.debug('Model attempt', {
-                    model,
-                    attempt: attempt + 1,
-                    maxRetries,
-                });
-
-                const requestBody = {
-                    model: model,
-                    max_tokens: maxTokens,
-                    temperature: temperature,
-                    messages: messages,
-                };
-
-                logger.debug('Sending request to OpenRouter');
-
-                const response = await fetch(API_CONFIG.OPENROUTER.endpoint, {
-                    method: 'POST',
-                    headers: {
-                        ...API_CONFIG.OPENROUTER.headers,
-                        'Authorization': `Bearer ${openRouterKey}`,
-                    },
-                    body: JSON.stringify(requestBody),
-                });
-
-                const attemptDuration = Date.now() - attemptStartTime;
-                logger.debug('Request completed', { duration: attemptDuration, status: response.status });
-
-                if (response.status === 429) {
-                    const waitTime = Math.pow(2, attempt) * API_CONFIG.RETRY.rateLimit429Delay;
-                    logger.warn('Rate limited, waiting for retry', { model, waitTime, attempt });
-                    await delay(waitTime);
-                    continue;
-                }
-
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    logger.error('Model request failed', new Error(`${model} failed with status ${response.status}`), {
-                        model,
-                        status: response.status,
-                        errorPreview: errorText.substring(0, 100),
-                    });
-                    lastError = new Error(`${model} failed: ${response.status} - ${errorText.substring(0, 100)}`);
-                    break; // Move to next model
-                }
-
-                const data = await response.json() as any;
-                logger.debug('Response received and parsed');
-
-                const content = data.choices?.[0]?.message?.content;
-                if (content) {
-                    const totalDuration = Date.now() - startTime;
-                    logger.info('Model request succeeded', {
-                        model,
-                        totalDuration,
-                        contentLength: content.length,
-                        promptTokens: data.usage?.prompt_tokens,
-                        completionTokens: data.usage?.completion_tokens,
-                        totalTokens: data.usage?.total_tokens,
-                    });
-
-                    return content;
-                }
-
-                logger.warn('Empty response from model', { model });
-                lastError = new Error(`Empty response from ${model}`);
-                break; // Move to next model
-            } catch (e: any) {
-                const attemptDuration = Date.now() - attemptStartTime;
-                logger.error('Model request error', e, {
-                    model,
-                    attempt: attempt + 1,
-                    maxRetries,
-                    duration: attemptDuration,
-                });
-                lastError = e;
-                if (attempt < maxRetries - 1) {
-                    const retryDelay = API_CONFIG.RETRY.baseDelay * (attempt + 1);
-                    logger.debug('Scheduling retry', { model, retryDelay });
-                    await delay(retryDelay);
-                }
-            }
+    for (const model of models) {
+        try {
+            const out = await client.complete(model, messages, { maxTokens, temperature, timeoutMs });
+            logger.info('Cloudflare model request succeeded', { model, contentLength: out.text.length });
+            return out.text;
+        } catch (error) {
+            lastError = error instanceof Error ? error : new Error(String(error));
+            logger.warn('Cloudflare model attempt failed', { model, error: lastError.message });
+            if (!isCloudflareAdvanceable(error)) throw lastError;
         }
-
-        logger.warn('Model exhausted all attempts', { model, maxRetries });
     }
-
-    const totalDuration = Date.now() - startTime;
-    logger.error('All models failed', lastError || new Error('Unknown error'), {
-        totalDuration,
-        modelsAttempted: models.length,
-        lastErrorMessage: lastError?.message,
-    });
-    
-    throw lastError || new Error('All models failed');
-}
-
-
-/**
- * Call AI with automatic fallback from Claude to OpenRouter
- */
-export async function callAIWithFallback(
-    env: PagesEnv | Record<string, string>,
-    messages: Array<{ role: string, content: string }>,
-    options: {
-        useCase?: ModelUseCase;
-        systemPrompt?: string;
-    } = {}
-): Promise<string> {
-    const { openRouter } = getAPIKeys(env);
-    const { useCase = 'question_generation' } = options;
-
-    const profile = MODEL_PROFILES[useCase];
-    const models = [profile.primary, ...profile.fallbacks];
-
-    // Use OpenRouter with model fallback
-    if (openRouter) {
-        return await callOpenRouterWithRetry(openRouter, messages, {
-            models,
-            maxTokens: profile.maxTokens,
-            temperature: profile.temperature,
-        });
-    }
-
-    throw new Error('No API key configured (OpenRouter)');
-}
-
-/**
- * Get the appropriate model for a specific use case
- */
-export function getModelForUseCase(useCase: ModelUseCase): string {
-    return MODEL_PROFILES[useCase].primary;
+    throw lastError || new Error('All Cloudflare models failed');
 }
