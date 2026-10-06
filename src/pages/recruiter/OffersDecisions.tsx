@@ -25,6 +25,7 @@ import { Offer } from '@/shared/lib/hooks';
 import { useOffers } from '@/features/recruiter/model/useOffers';
 import { OfferAdvancedFilters, OfferFilters, OfferSortOptions, OfferSortButton } from '@/features/recruiter';
 import { getLogger } from '@/shared/config/logging';
+import { EmptyStateWithQuote } from '@/components/EmptyStateWithQuote';
 
 const logger = getLogger('OffersDecisions');
 
@@ -56,7 +57,7 @@ const OfferDetailsDrawer = ({
     if (isExpired() && offer.status === 'pending') {
       return "bg-gray-200 text-gray-800";
     }
-    
+
     switch (offer.status) {
       case "pending":
         return "bg-yellow-100 text-yellow-800";
@@ -200,13 +201,12 @@ const OfferDetailsDrawer = ({
             <div className="flex justify-between text-sm">
               <span className="text-gray-600">Expiry</span>
               <span
-                className={`${
-                  isExpired()
-                    ? "text-red-600 font-medium"
-                    : isExpiring()
+                className={`${isExpired()
+                  ? "text-red-600 font-medium"
+                  : isExpiring()
                     ? "text-yellow-700 font-medium"
                     : "text-gray-900"
-                }`}
+                  }`}
               >
                 {new Date(offer.expiry_date).toLocaleDateString()}
               </span>
@@ -1153,7 +1153,7 @@ const OfferCard = ({
               Expires in {getDaysUntilExpiry()} day(s)
             </span>
           )}
-          
+
         </div>
       </div>
 
@@ -1178,13 +1178,12 @@ const OfferCard = ({
         <div className="flex justify-between text-sm">
           <span className="text-gray-600">Expires:</span>
           <span
-            className={`${
-              isExpired() 
-                ? "text-red-700 font-medium" 
-                : isExpiring() 
-                ? "text-yellow-700 font-medium" 
+            className={`${isExpired()
+              ? "text-red-700 font-medium"
+              : isExpiring()
+                ? "text-yellow-700 font-medium"
                 : "text-gray-900"
-            }`}
+              }`}
           >
             {new Date(offer.expiry_date).toLocaleDateString()}
           </span>
@@ -1290,12 +1289,12 @@ const OffersDecisions = () => {
     const now = new Date();
     return offers.map(offer => {
       const isExpiredNow = new Date(offer.expiry_date) < now;
-      
+
       // If offer is pending but has expired, treat it as expired for display
       if (offer.status === 'pending' && isExpiredNow) {
         return { ...offer, displayStatus: 'expired' as const };
       }
-      
+
       return { ...offer, displayStatus: offer.status };
     });
   }, [offers]);
@@ -1310,12 +1309,12 @@ const OffersDecisions = () => {
   const [selectedOffer, setSelectedOffer] = useState<Offer | null>(null);
 
   // Extract available filter options from offers
-  const availableTemplates = useMemo(() => 
+  const availableTemplates = useMemo(() =>
     [...new Set(offers.map(o => o.template).filter(Boolean))].sort() as string[],
     [offers]
   );
 
-  const availableSentVia = useMemo(() => 
+  const availableSentVia = useMemo(() =>
     [...new Set(offers.map(o => o.sent_via).filter(Boolean))].sort() as string[],
     [offers]
   );
@@ -1618,17 +1617,16 @@ const OffersDecisions = () => {
               <button
                 key={filter.key}
                 onClick={() => setFilterStatus(filter.key)}
-                className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
-                  filterStatus === filter.key
-                    ? 'bg-primary-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
+                className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${filterStatus === filter.key
+                  ? 'bg-primary-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
               >
                 {filter.label}
               </button>
             ))}
           </div>
-          
+
           <div className="flex items-center gap-2">
             <span className="text-sm text-gray-700">Show:</span>
             <select
@@ -1646,20 +1644,36 @@ const OffersDecisions = () => {
       </div>
 
       {/* Offers Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {currentOffers.map(offer => (
-          <OfferCard
-            key={offer.id}
-            offer={offer}
-            onViewDetails={(offer: Offer) => {
-              setSelectedOffer(offer);
-              setShowDetailsDrawer(true);
-            }}
-            onWithdraw={handleWithdrawOffer}
-            onExtend={handleExtendOffer}
-          />
-        ))}
-      </div>
+      {currentOffers.length === 0 ? (
+        <EmptyStateWithQuote
+          page="offers-decisions"
+          icon={DocumentTextIcon}
+          iconSize="large"
+          actionButton={
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="mt-4 px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors"
+            >
+              Create New Offer
+            </button>
+          }
+        />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {currentOffers.map(offer => (
+            <OfferCard
+              key={offer.id}
+              offer={offer}
+              onViewDetails={(offer: Offer) => {
+                setSelectedOffer(offer);
+                setShowDetailsDrawer(true);
+              }}
+              onWithdraw={handleWithdrawOffer}
+              onExtend={handleExtendOffer}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Pagination */}
       {filteredOffers.length > 0 && totalPages > 1 && (
@@ -1704,11 +1718,10 @@ const OffersDecisions = () => {
                   <button
                     key={page}
                     onClick={() => handlePageChange(page)}
-                    className={`min-w-[40px] h-10 rounded-lg text-sm font-medium transition-colors ${
-                      currentPage === page
-                        ? 'bg-primary-600 text-white'
-                        : 'text-gray-700 hover:bg-gray-100 border border-gray-300'
-                    }`}
+                    className={`min-w-[40px] h-10 rounded-lg text-sm font-medium transition-colors ${currentPage === page
+                      ? 'bg-primary-600 text-white'
+                      : 'text-gray-700 hover:bg-gray-100 border border-gray-300'
+                      }`}
                   >
                     {page}
                   </button>

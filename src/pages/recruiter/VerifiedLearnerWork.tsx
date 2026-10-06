@@ -747,7 +747,9 @@
 // }
 
 import React, { useMemo, useState } from "react";
-import { FileText } from "lucide-react";
+import { FileText, CheckCircle, XCircle, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { DocumentCheckIcon } from '@heroicons/react/24/outline';
+import { EmptyStateWithQuote } from '@/components/EmptyStateWithQuote';
 
 export default function VerifiedLearnerWorkUI() {
   const initialData = [

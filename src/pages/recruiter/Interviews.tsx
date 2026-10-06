@@ -885,6 +885,20 @@ const Interviews = () => {
             </div>
           </div>
         </div>
+      ) : filteredInterviews.length === 0 ? (
+        <EmptyStateWithQuote
+          page="interviews"
+          icon={CalendarDaysIcon}
+          iconSize="large"
+          actionButton={
+            <button
+              onClick={() => setShowScheduleModal(true)}
+              className="mt-4 px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors"
+            >
+              Schedule Interview
+            </button>
+          }
+        />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {interviews.map(interview => (
