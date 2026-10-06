@@ -33,7 +33,12 @@ export interface WriteDb {
   update(table: string, id: string, patch: Record<string, unknown>): Promise<boolean>;
 }
 
-export function createWriteDb(env: PagesEnv): WriteDb {
+/** WriteDb plus row deletion by id, for callers that manage their own rows. */
+export interface WriteDbWithDelete extends WriteDb {
+  remove(table: string, id: string): Promise<boolean>;
+}
+
+export function createWriteDb(env: PagesEnv): WriteDbWithDelete {
   const baseUrl = env.SUPABASE_URL;
   const serviceRoleKey = env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -97,6 +102,13 @@ export function createWriteDb(env: PagesEnv): WriteDb {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' },
         body: JSON.stringify(patch),
+      });
+      return true;
+    },
+    remove: async (table: string, id: string): Promise<boolean> => {
+      await request<unknown>(`${table}?id=eq.${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+        headers: { Prefer: 'return=minimal' },
       });
       return true;
     },

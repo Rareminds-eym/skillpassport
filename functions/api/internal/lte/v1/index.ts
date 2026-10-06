@@ -28,6 +28,12 @@ import { GatewayAuthError, getGatewaySecret, verifyServiceToken, verifyUserClaim
 import { LteGatewayEnvelopeSchema } from './schemas';
 import { createReadOnlyDb } from './readonly-db';
 import type { GatewayAction, GatewayContext, GatewayResult } from './types';
+import { handleReviewEvent } from './actions/review-event';
+import { handleReviewOrgDirectory } from './actions/review-org-directory';
+import { handleReviewerCheck } from './actions/review-reviewer-check';
+import { handleReviewPolicy } from './actions/review-policy';
+import { handleReviewScope } from './actions/review-scope';
+import { handleCatalogue } from './actions/catalogue';
 import { handlePing } from './actions/ping';
 import { handleLearningTrack } from './actions/learning-track';
 import { handleLearnerStatus } from './actions/learner-status';
@@ -37,7 +43,13 @@ const logger = createLogger('lte-gateway');
 
 const REGISTRY: Record<string, GatewayAction> = {
   'ping': handlePing,
+  'review:policy': handleReviewPolicy,
+  'review:scope': handleReviewScope,
+  'review:org-directory': handleReviewOrgDirectory,
+  'review:reviewer-check': handleReviewerCheck,
+  'review:apply': handleReviewEvent,
   'learning-track:get': handleLearningTrack,
+  'catalogue:get': handleCatalogue,
   'learner:status': handleLearnerStatus,
   'lte:sync': handleLteSync,
 };

@@ -70,3 +70,7 @@ GOOGLE_CLIENT_ID=your_google_oauth_client_id.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=your_google_client_secret
 # Optional dedicated HMAC key for state cookies; falls back to GOOGLE_CLIENT_SECRET.
 OAUTH_STATE_SECRET=
+
+# Catalogue gateway: authoritative SP-Dash origin and server-only shared secret.
+# SP_DASH_CATALOG_URL=http://localhost:3000
+# LTE_CATALOG_SYNC_SECRET=<same-private-secret-as-SP-Dash-at-least-32-characters>
