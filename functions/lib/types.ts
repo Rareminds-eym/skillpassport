@@ -66,6 +66,8 @@ export interface PagesEnv {
   /** Cloudflare Service Binding to the Email worker */
   EMAIL_SERVICE?: EmailWorkerRpc;
   ADMIN_EMAIL?: string;
+  /** Trusted public frontend URL for email links. */
+  APP_URL?: string;
 
 
   // AI API keys
