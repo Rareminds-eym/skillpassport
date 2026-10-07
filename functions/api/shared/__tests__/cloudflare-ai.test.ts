@@ -33,6 +33,7 @@ describe("pages cloudflare client", () => {
     expect(out.usage).toEqual({ inputTokens: 4, outputTokens: 1 });
     expect(seen[0].inputs).toMatchObject({ max_completion_tokens: 10, stream: false });
     expect(seen[0].inputs).not.toHaveProperty("max_tokens");
+    expect(seen[0].inputs).toMatchObject({ chat_template_kwargs: { enable_thinking: false } });
     expect(seen[0].options).toEqual({ gateway: { id: "gw-1", skipCache: true } });
   });
 

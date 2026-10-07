@@ -69,9 +69,8 @@ function validateEmbeddingVector(embedding: number[], space: EmbeddingSpace = 'l
  * @param table - Table name (learners, skills, opportunities, courses)
  * @param id - Record ID
  * @param embedding - Embedding vector
- * @param space - Embedding space; selects validation dims AND target column
- *   (legacy → `embedding`, bge_m3 → `embedding_bge_m3`). The bge_m3 column
- *   must exist (migration, not yet applied) before that space is written.
+ * @param space - Embedding space (defaults to legacy 1536-dim Gemini space)
+ *   (legacy → `embedding`).
  * @returns Success status and affected rows
  */
 export async function updateEmbedding(

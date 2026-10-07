@@ -59,6 +59,13 @@ binding = "AI_SERVICE"
 service = "ai-api"
 entrypoint = "AiService"
 
+# Workers AI binding for text generation (GLM primary, Nemotron fallback).
+# Local `wrangler pages dev` must also pass `--ai AI` (see package.json
+# pages:dev/pages:start). No local emulation — always proxies to Cloudflare,
+# so `wrangler login` is required or calls fail remote-auth, not "not configured".
+[ai]
+binding = "AI"
+
 [[r2_buckets]]
 binding = "R2_BUCKET"
 bucket_name = "skill-echosystem"

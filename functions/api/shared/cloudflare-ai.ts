@@ -40,6 +40,12 @@ export interface CfModelPolicy {
   maxTokens: number;
   temperature: number;
   timeoutMs: number;
+  /**
+   * Model-internal thinking. Default false (probe-verified: thinking puts
+   * the answer in reasoning_content with content=null while consuming the
+   * completion budget). Enable per-action only with evaluation evidence.
+   */
+  thinking?: boolean;
 }
 
 export interface CfModelUsage {
@@ -173,7 +179,13 @@ export function createCloudflareClient(config: CfAdapterConfig) {
   ): Promise<{ text: string; usage: CfModelUsage | null }> {
     const raw = await run(
       model,
-      { messages, max_completion_tokens: policy.maxTokens, temperature: policy.temperature, stream: false },
+      {
+        messages,
+        max_completion_tokens: policy.maxTokens,
+        temperature: policy.temperature,
+        stream: false,
+        chat_template_kwargs: { enable_thinking: policy.thinking ?? false },
+      },
       policy,
     );
     if (!isRecord(raw)) throw fail("INVALID_MODEL_OUTPUT", "Empty provider response");
@@ -193,7 +205,13 @@ export function createCloudflareClient(config: CfAdapterConfig) {
   ): AsyncIterable<CfStreamChunk> {
     const raw = await run(
       model,
-      { messages, max_completion_tokens: policy.maxTokens, temperature: policy.temperature, stream: true },
+      {
+        messages,
+        max_completion_tokens: policy.maxTokens,
+        temperature: policy.temperature,
+        stream: true,
+        chat_template_kwargs: { enable_thinking: policy.thinking ?? false },
+      },
       policy,
     );
     if (!(raw instanceof ReadableStream)) throw fail("INVALID_MODEL_OUTPUT", "Provider returned no stream");
@@ -221,6 +239,14 @@ export function createCloudflareClient(config: CfAdapterConfig) {
       }
       throw fail(emittedText ? "PARTIAL_MODEL_OUTPUT" : "INVALID_MODEL_OUTPUT", "Stream ended without completion");
     } catch (err) {
+      // Same cancel-then-guarded-release discipline as the worker adapter:
+      // a timed-out read may still be pending, and releaseLock must never
+      // mask the real failure.
+      try {
+        await reader.cancel();
+      } catch {
+        // Cancel is best-effort; the original error still propagates.
+      }
       if (
         emittedText &&
         err instanceof Error &&
@@ -230,7 +256,11 @@ export function createCloudflareClient(config: CfAdapterConfig) {
       }
       throw err;
     } finally {
-      reader.releaseLock();
+      try {
+        reader.releaseLock();
+      } catch {
+        // Lock release must never mask the streamed failure above.
+      }
     }
   }
 
