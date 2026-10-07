@@ -119,6 +119,35 @@ export function mapLearnerProfileToColumns(profile: Record<string, unknown> | un
   return columns;
 }
 
+const COLLEGE_EDUCATOR_ROLE = 'college_educator';
+const SCHOOL_EDUCATOR_ROLE = 'school_educator';
+
+/** Mirrors the DB constraint chk_college_lecturers_email_format. */
+function isLecturerEmail(value: string): boolean {
+  return /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(value);
+}
+
+type EducatorKind = 'college' | 'school' | null;
+
+interface EducatorProfileRow {
+  id: string;
+  orgId: string;
+  status: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  email: string | null;
+}
+
+type EducatorPreflight =
+  | { ok: false; result: SyncResult }
+  | {
+    ok: true;
+    user: { email: string | null; firstName: string | null; lastName: string | null };
+    orgType: string | null;
+    kind: EducatorKind;
+    existing: EducatorProfileRow | null;
+  };
+
 export class SyncService {
   private db: DbClient;
 
@@ -291,6 +320,28 @@ export class SyncService {
     catch (err) { return fail('VALIDATION_ERROR', err instanceof Error ? err.message : 'Invalid membership data', false); }
     const roles = parsed.roles ?? ['member'];
 
+    const inviteEducator = parsed.source === 'invite'
+      && (parsed.status ?? 'active') === 'active'
+      && roles.some(r => r === COLLEGE_EDUCATOR_ROLE || r === SCHOOL_EDUCATOR_ROLE);
+    if (!inviteEducator) return this.syncMembershipBase(parsed, roles);
+
+    // Invite-sourced educator: validate everything before any write.
+    const pre = await this.educatorPreflight(parsed, roles);
+    if (!pre.ok) return pre.result;
+
+    const base = await this.syncMembershipBase(parsed, roles);
+    if (!base.success) {
+      if (base.errorCode === 'NOT_FOUND') return base; // 404, retried by the consumer
+      // handleSyncRequest maps every other failure to 400 (acked, never retried); rethrow retryable ones.
+      if (base.retryable) throw new Error(base.error);
+      return base;
+    }
+    // Outside any try/catch so throws reach handleSyncRequest (500, retried).
+    return this.createEducatorProfile(parsed, roles, pre);
+  }
+
+  /** Existing membership sync, unchanged: organization_members, users.organizationId, learner profile. */
+  private async syncMembershipBase(parsed: MembershipPayloadData, roles: string[]): Promise<SyncResult> {
     try {
       const orgMemberRole = mapRolesToOrgMemberRole(roles);
 
@@ -327,6 +378,138 @@ export class SyncService {
       }
       return fail('INTERNAL_ERROR', message, true);
     }
+  }
+
+  /**
+   * Read-only checks for an invite-sourced educator event. Runs before any write so a
+   * missing user/org (NOT_FOUND, retried) or a profile in another org (PROFILE_CONFLICT)
+   * never leaves a half-provisioned membership behind. Read errors throw (500, retried).
+   */
+  private async educatorPreflight(parsed: MembershipPayloadData, roles: string[]): Promise<EducatorPreflight> {
+    const { data: user, error: userError } = await this.db.from('users')
+      .select('email, firstName, lastName')
+      .eq('id', parsed.user_id)
+      .maybeSingle();
+    if (userError) throw new Error(`[sync] educator preflight users read failed: ${userError.code ?? 'unknown'}`);
+    if (!user) {
+      return { ok: false, result: fail('NOT_FOUND', `User ${parsed.user_id} not found for educators`, true) };
+    }
+
+    const { data: org, error: orgError } = await this.db.from('organizations')
+      .select('organization_type')
+      .eq('id', parsed.organization_id)
+      .maybeSingle();
+    if (orgError) throw new Error(`[sync] educator preflight organizations read failed: ${orgError.code ?? 'unknown'}`);
+    if (!org) {
+      return { ok: false, result: fail('NOT_FOUND', `Organization ${parsed.organization_id} not found`, true) };
+    }
+
+    // Kind comes from the role AND the DB org type, never from the payload.
+    const orgType: string | null = org.organization_type ?? null;
+    let kind: EducatorKind = null;
+    if (orgType === 'college' && roles.includes(COLLEGE_EDUCATOR_ROLE)) kind = 'college';
+    else if (orgType === 'school' && roles.includes(SCHOOL_EDUCATOR_ROLE)) kind = 'school';
+
+    let existing: EducatorProfileRow | null = null;
+    if (kind === 'college') {
+      const { data, error } = await this.db.from('college_lecturers')
+        .select('id, collegeId, accountStatus, first_name, last_name, email')
+        .eq('user_id', parsed.user_id)
+        .maybeSingle();
+      if (error) throw new Error(`[sync] educator preflight college_lecturers read failed: ${error.code ?? 'unknown'}`);
+      if (data) {
+        existing = {
+          id: data.id, orgId: data.collegeId, status: data.accountStatus,
+          first_name: data.first_name, last_name: data.last_name, email: data.email,
+        };
+      }
+    } else if (kind === 'school') {
+      const { data, error } = await this.db.from('school_educators')
+        .select('id, school_id, account_status, first_name, last_name, email')
+        .eq('user_id', parsed.user_id)
+        .maybeSingle();
+      if (error) throw new Error(`[sync] educator preflight school_educators read failed: ${error.code ?? 'unknown'}`);
+      if (data) {
+        existing = {
+          id: data.id, orgId: data.school_id, status: data.account_status,
+          first_name: data.first_name, last_name: data.last_name, email: data.email,
+        };
+      }
+    }
+
+    if (existing && existing.orgId !== parsed.organization_id) {
+      return {
+        ok: false,
+        result: fail('PROFILE_CONFLICT', 'Educator profile belongs to another organization', false),
+      };
+    }
+
+    return { ok: true, user, orgType, kind, existing };
+  }
+
+  /**
+   * Idempotently create (or reactivate) the educator profile row the review picker reads.
+   * Only reactivates `inactive`/`pending` rows of the same org; never touches admin-set states.
+   */
+  private async createEducatorProfile(
+    parsed: MembershipPayloadData,
+    roles: string[],
+    pre: Extract<EducatorPreflight, { ok: true }>,
+  ): Promise<SyncResult> {
+    if (pre.kind === null) {
+      console.error('[sync] educator role/org type mismatch', {
+        user_id: parsed.user_id, organization_id: parsed.organization_id, roles, orgType: pre.orgType,
+      });
+      return ok();
+    }
+
+    const email = typeof pre.user.email === 'string' ? pre.user.email.trim().toLowerCase() : '';
+    if (!isLecturerEmail(email)) {
+      return fail('VALIDATION_ERROR', 'Educator email is not valid', false);
+    }
+    const nameMax = pre.kind === 'college' ? 255 : 100;
+    const firstName = truncate(pre.user.firstName, nameMax) ?? null;
+    const lastName = truncate(pre.user.lastName, nameMax) ?? null;
+    const table = pre.kind === 'college' ? 'college_lecturers' : 'school_educators';
+    const statusColumn = pre.kind === 'college' ? 'accountStatus' : 'account_status';
+
+    if (pre.existing) {
+      const { status } = pre.existing;
+      if (status === 'active' || status === 'inactive' || status === 'pending') {
+        const update: Record<string, unknown> = {};
+        if (status !== 'active') update[statusColumn] = 'active';
+        if (!pre.existing.first_name && firstName) update.first_name = firstName;
+        if (!pre.existing.last_name && lastName) update.last_name = lastName;
+        if (!pre.existing.email) update.email = email;
+        if (Object.keys(update).length === 0) return ok();
+        const { error } = await this.db.from(table).update(update).eq('id', pre.existing.id);
+        return error ? this.classifyProfileError(error, table) : ok();
+      }
+      console.warn('[sync] educator profile left unchanged (non-reactivatable status)', {
+        user_id: parsed.user_id, organization_id: parsed.organization_id, table, status,
+      });
+      return ok();
+    }
+
+    const row = pre.kind === 'college'
+      ? {
+        user_id: parsed.user_id, collegeId: parsed.organization_id, accountStatus: 'active',
+        first_name: firstName, last_name: lastName, email, metadata: { source: 'sso_invite' },
+      }
+      : {
+        user_id: parsed.user_id, school_id: parsed.organization_id, account_status: 'active',
+        first_name: firstName, last_name: lastName, email, role: 'subject_teacher',
+        onboarding_status: 'active', metadata: { source: 'sso_invite' },
+      };
+    const { error } = await this.db.from(table).insert(row);
+    return error ? this.classifyProfileError(error, table) : ok();
+  }
+
+  /** 23514 permanent, 23503 retryable NOT_FOUND; everything else (incl. 23505) throws so it is retried. */
+  private classifyProfileError(error: { code?: string; message?: string }, table: string): SyncResult {
+    if (error.code === '23514') return fail('VALIDATION_ERROR', `Educator profile rejected by ${table} constraint`, false);
+    if (error.code === '23503') return fail('NOT_FOUND', `Educator profile reference missing for ${table}`, true);
+    throw new Error(`[sync] ${table} write failed: ${error.code ?? 'unknown'}`);
   }
 
   private async handleLearnerOrgAssignment(parsed: MembershipPayloadData): Promise<SyncResult> {
@@ -439,7 +622,6 @@ export class SyncService {
         email: parsed.email.toLowerCase(),
         phone: parsed.phone ?? null,
         role: parsed.role ?? 'faculty',
-        temporary_password: parsed.temp_password ?? null,
         created_by: 'bulk_import',
       },
     });
