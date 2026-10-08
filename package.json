@@ -35,7 +35,8 @@
     "db:backup:compress": "python3 scripts/backup_remote_db.py --compress",
     "db:backup:verify": "python3 scripts/backup_remote_db.py --verify latest",
     "pages:start": "wrangler pages dev dist --compatibility-date=2026-06-08 --port=8788 --live-reload=false --r2 R2_BUCKET --service PAYMENT_WORKER=razorpay-api --service SSO_SERVICE=sso-api#SsoWorker --service REALTIME_WORKER=realtime-worker --service EMBEDDING_SERVICE=embedding-api#EmbeddingService --service EMAIL_SERVICE=shared-email-api",
-    "cleanup": "bash scripts/cleanup-ports.sh"
+    "cleanup": "bash scripts/cleanup-ports.sh",
+    "lint:certificates": "eslint src/pages/verify src/__tests__/verify"
   },
   "dependencies": {
     "@casl/ability": "6.8.0",
