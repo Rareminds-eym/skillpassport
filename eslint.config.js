@@ -77,6 +77,13 @@ export default tseslint.config(
       'no-restricted-syntax': 'off',
     },
   },
+  // Playwright E2E code runs in Node, not the browser (uses `process`); interface method
+  // parameter names are not "unused" (typescript-eslint's own unused-vars rule stays on).
+  {
+    files: ['playwright.config.ts', 'e2e/**/*.ts'],
+    languageOptions: { globals: globals.node },
+    rules: { 'no-unused-vars': 'off' },
+  },
   // FSD Architecture compliance rules
   fsdRules
 );

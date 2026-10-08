@@ -23,6 +23,7 @@ export default defineConfig({
     exclude: [
       '**/node_modules/**',
       '**/dist/**',
+      '**/e2e/**', // Playwright specs run with `npm run e2e`, not Vitest
       '**/.migration-backups/**',
       '**/backup-*/**'
     ]

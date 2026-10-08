@@ -1,0 +1,619 @@
+  # Technical Solution Design (TSD): Playwright E2E Testing for SkillPassport
+  # Structure follows Technical_Solution_Design_Template (sections 1-14 + Versioning).
+  # OPEN = decision needed from the team before implementation.
+  # Feature tags: (data) needs data created earlier in the run; (add-on) needs an add-on purchase; (UI-only) page has no backend calls, smoke only.
+
+  tsd:
+    version: "2.1-draft"
+    date: "2026-10-06"
+
+    # ---------------------------------------------------------------------------
+    1_task_information:
+      task_id: "OPEN"
+      title: "Playwright E2E testing: real signup-to-feature journeys for every SkillPassport role"
+      task_type: "Testing infrastructure (new)"
+      priority: "OPEN"
+      estimated_effort: "OPEN"
+
+    # ---------------------------------------------------------------------------
+    2_problem_statement:
+      business_requirement: >-
+        Test SkillPassport end to end in a real browser, the way a user uses it: sign up, verify the email,
+        subscribe, log in, use every feature of the role, log out, log in again.
+      current_behaviour:
+        - "Only Vitest tests exist (132 files, jsdom, mocked dependencies)."
+        - "No test runs the real chain: browser -> Pages Functions -> SSO worker -> Supabase, or reads a real verification email."
+      expected_behaviour:
+        - "`npm run e2e` creates fresh users through the real Signup UI for each role, verifies them with the real verification email, runs the journey below, and deletes everything it created."
+        - "Failures produce a screenshot, a trace and an HTML report."
+
+    # ---------------------------------------------------------------------------
+    3_scope:
+      in_scope:
+        - "Playwright (@playwright/test), Chromium only, against the manually started local stack at http://localhost:8788 (real backend, no mocking)."
+        - "Local Supabase Docker: SSO database and SkillPassport app database."
+        - "Roles that sign up: Learner, School Admin, College Admin, University Admin, Recruiter Admin."
+        - "Roles created through onboarding: School Faculty and College Faculty (by their admin, individually; College Faculty also by CSV bulk import), Learners (created by their School or College Admin, individually or by CSV), Invited Recruiter (by the Recruiter Admin)."
+        - "Every implemented user-facing feature of each role (section 6, feature inventory)."
+        - "Real email flow: the application sends its normal email through the existing email worker and SES; MailSlurp is the external test inbox that receives it (verification email and recruiter invitation)."
+        - "Subscription selection through the real UI; paid plans through the Razorpay test checkout."
+        - "A cleanup helper that deletes the data created by the run (local databases only)."
+        - "Small, separately reviewed testability changes (for example a data-testid) only when a locator problem exists."
+      journey: "Signup -> Verify email -> Subscription/Purchase -> Logout -> Login -> Test all features -> Logout -> Login again -> Verify session -> Cleanup"
+      out_of_scope:
+        - item: "Pre-seeded E2E users or subscriptions"
+          reason: "Every run creates its own users through the real UI."
+        - item: "Bypassing application behaviour"
+          reason: "No tokens, verification records, invitations, users or subscriptions are created directly in the database; no test-only verification API; no changes to the email, SSO or signup flow; no Mailpit."
+        - item: "Shared saved login state (storageState)"
+          reason: "Refresh tokens rotate (section 6); a reused saved login is revoked."
+        - item: "AI and non-deterministic features"
+          reason: "Career AI, AI Tutor, Teaching Intelligence, Recruiter AI, AI counselling, learner assessments (platform, dynamic, adaptive aptitude), AI job matching."
+        - item: "Email flows other than verification and recruiter invitation"
+          reason: "Forgot password and similar."
+        - item: "Multiple browsers, Page Objects, custom Fixtures, webServer auto-start"
+          reason: "Chromium is enough; add the others only if a real need appears; the stack needs several workers started manually."
+        - item: "API-level role/authorization tests in Playwright"
+          reason: "Server authorization is tested outside Playwright (section 10)."
+        - item: "Pages that are disabled or unreachable in the navigation"
+          reason: "Not user-facing; listed in the inventory notes."
+
+    # ---------------------------------------------------------------------------
+    4_current_analysis:
+      files_modules_reviewed:
+        - file: "UnifiedSignup.tsx, CompanySignup.tsx, VerifyEmail.tsx, App.tsx"
+          finding: "Signup creates the SSO user (email unverified) and logs the user in. The app redirects unverified users to /verify-email. The emailed token is stored only as a SHA-256 hash. After verification the user is sent to the plans page for the role."
+        - file: "sso-worker routes/signup.ts, signup-member.ts, lib/email.ts, email-templates.ts; email-worker EmailService.sendEmail, SESProvider"
+          finding: "The SSO builds <origin>/verify-email?token=<uuid> (origin = the browser origin sent as redirect_url), puts it in the HTML button and as plain text, and sends it through the EMAIL_SERVICE binding to the email worker, which sends it through AWS SES."
+        - file: "scripts/check-mailslurp.mjs (manual check, run on 2026-10-06)"
+          finding: "Verified: a MailSlurp inbox receives an email sent through the local email worker and SES, and the client can read it. SES click tracking rewrites every HTML <a href> into an awstrack.me URL that contains the real link URL-encoded; plain URL text in the body is not rewritten. The verification email contains the plain URL; the recruiter invitation email shows its link only as a button (the plain URL is only in the text part), so its link must be decoded from the tracking URL."
+        - file: "SubscriptionPlans.jsx, PaymentCompletion.jsx, razorpayService.ts"
+          finding: "Free plans are created without payment. Paid plans open the Razorpay checkout; local payments use test keys (rzp_test_ on the reviewed machine). The checkout needs internet access."
+        - file: "authenticated.ts (create-teacher, create-college-staff), SSO createMember"
+          finding: "Admin-created faculty get a generated temporary password, returned in the API response and shown in the success message. createMember marks the email verified and creates no subscription."
+        - file: "recruitment/invitations ([[path]].ts, index.ts), emailService.ts, AcceptInvite.tsx"
+          finding: "Inviting stores the invitation with a plain token and sends the email (/invite/accept?token=...). If the email fails the invitation is deleted. Accepting sets the password and calls createMember (email auto-verified)."
+        - file: "session-rotation.ts, rate-limit.ts"
+          finding: "Refresh tokens rotate; reusing an old token after 60 seconds revokes the session. Login: 10 attempts per 60 seconds per IP. Signup: 5 per 60 seconds per IP. Account lockout: 10 failed logins in 15 minutes."
+        - file: "FeatureGate.jsx, featureGating.ts, server-feature-gating.ts, hybrid-features.ts"
+          finding: "The free learner plan locks assessments, projects, analytics, portfolio and more; every other plan code unlocks them. Admin navigation is restricted only for the Hybrid plan. Some features need an add-on: career_ai, ai_job_matching, video_portfolio, educator_ai, curriculum_builder, pipeline_management, project_hiring, recruiter_ai."
+        - file: "Route files, Sidebar.tsx (admin and educator)"
+          finding: "About 220 pages. Many pages (31 of 45 University Admin pages, and parts of College/School Admin and Recruiter) use hard-coded data with no backend calls (UI-only). Some navigation items are disabled or have no route."
+        - file: "supabase/ and ../sso-worker/supabase/"
+          finding: "Reference data (roles, plans, platform organisation, feature keys, sample opportunities) loads from the existing seed files. Two local databases: app (port 54321) and SSO (port 54331). The sync consumer must run with the SSO worker (`npm run dev:stack` in sso-worker)."
+
+    # ---------------------------------------------------------------------------
+    5_proposed_solution:
+      solution_overview: >-
+        One spec file per role. Each spec generates unique credentials, creates a MailSlurp inbox, signs up through
+        the real UI with the inbox address, reads the real verification email from MailSlurp and opens its link,
+        selects and (if paid) buys the plan through the real UI, logs out, logs in, tests the role's features, logs
+        out, logs in again, and cleans up. Faculty and invited recruiter journeys run inside their admin's spec
+        because the admin creates them.
+      decisions:
+        - decision: "Real signup, real email, real login, real backend; no pre-seeded users and nothing created directly in the database."
+          why: "Signup, email verification, subscription and login are the path every user takes. They cross the browser, Pages Functions, the SSO worker, the email worker and SES, both databases and the payment provider, and depend on an emailed token and session cookies. Unit tests mock these boundaries, so only a real end-to-end run shows that they work together."
+        - decision: "MailSlurp as the external test inbox; the existing email flow is unchanged."
+          why: "Verified working with our SES setup; avoids touching the email worker, SSO or signup."
+        - decision: "Real Razorpay test checkout for paid plans, isolated in e2e/helpers/razorpay.ts."
+          why: "The full-access plans are paid; the helper only drives the third-party checkout UI."
+        - decision: "One browser context per journey, no storageState, no copied cookies."
+          why: "Refresh-token rotation (section 6). Every login creates a new session."
+        - decision: "Manual stack startup."
+          why: "The stack needs several workers from sibling folders."
+        - decision: "Local databases only, with a cleanup helper that deletes what the run created."
+          why: "Tests create real data."
+      phases:
+        - version: "v1.0 (Phase 1)"
+          covers: "Playwright setup, helpers (test-data, mailbox, razorpay, cleanup), Learner journey (Career Accelerator, paid)."
+          exit_criteria:
+            - "Stack starts with the documented commands; reference data present; `node scripts/check-mailslurp.mjs` passes."
+            - "Learner spec passes twice in a row and leaves no E2E rows behind (leak check)."
+            - "`npm test`, lint and typecheck unaffected by e2e/."
+        - version: "v1.1 (Phase 2)"
+          covers: "School Admin, School Faculty (documents, temporary password) and an individually created learner (invitation email read from MailSlurp)."
+          exit_criteria:
+            - "School spec passes twice in a row; cleanup leaves no E2E rows."
+        - version: "v1.2 (Phase 3)"
+          covers: "College Admin, College Faculty (individual onboarding and CSV bulk import) and CSV learner import."
+          exit_criteria:
+            - "College spec passes twice in a row; cleanup leaves no E2E rows."
+            - "Both bulk batches complete with 0 failed rows and every imported user's email is read from MailSlurp (confirms the SSO queue consumers run in the local stack)."
+        - version: "v1.3 (Phase 4)"
+          covers: "Recruiter Admin and Invited Recruiter (invitation email read from MailSlurp)."
+          exit_criteria:
+            - "Recruiter spec passes twice in a row; invitation link read from the email; cleanup leaves no E2E rows."
+        - version: "v1.4 (Phase 5)"
+          covers: "University Admin; browser-level access-control checks (learner opening educator, admin and recruiter routes; logged-out visit to a protected route)."
+          exit_criteria:
+            - "Full suite passes on 3 consecutive runs."
+
+    # ---------------------------------------------------------------------------
+    6_technical_design:
+      architecture_diagram: |
+        Playwright (Node) -> Chromium -> http://localhost:8788 (Pages + Functions)
+                |
+        SSO Worker (:8787) -> local SSO database (:54331)   [source of truth]
+                |  auth-sync-consumer
+                v
+        local app database (:54321)                         [mirror]
+
+        Email: SSO / app -> email worker -> AWS SES -> MailSlurp inbox (external)
+        Helpers (Node):
+          mailbox.ts  -> MailSlurp API (create inbox, read email, extract link, delete inbox)
+          razorpay.ts -> Razorpay test checkout in the browser (UI only)
+          cleanup.ts  -> SSO and app databases (delete E2E data; local databases only)
+      database_changes: "No schema changes. Tests create and then delete E2E rows in both local databases."
+      er_diagram: "Not applicable."
+      api_contract: "Not applicable. No API added or changed."
+      test_data:
+        generation: >-
+          playwright.config.ts sets process.env.E2E_RUN_ID (Date.now().toString(36)) and process.env.E2E_PASSWORD
+          (a random value meeting the rules: 10-72 characters, 3 of 4 character types) once per run. helpers/test-data.ts
+          builds { email, password } per user from them. Values live in memory and process.env only; nothing is committed.
+        email_address: >-
+          Users that must receive an email (every signing-up user, the invited recruiter, every learner, and every
+          faculty member created by CSV bulk import) use the address of a MailSlurp inbox created for them, named
+          e2e-<runId>-<user>. Only individually onboarded faculty receive no email and use
+          success+e2e-<runId>-<user>@simulator.amazonses.com. On the free plan MailSlurp assigns random
+          addresses (<uuid>@sandbox.zazamail.link); whether a chosen e2e-<runId>-<user>@... address is possible is OPEN (section 13).
+        names: "First/last name 'E2E<runId>' and the role, so organisations created by signup contain the run id."
+        manifest: "Every email created in a run is recorded in memory and in test-results/e2e-run-<runId>.json, so cleanup can find the run's data."
+      mailbox:
+        file: "e2e/helpers/mailbox.ts (uses the mailslurp-client package)"
+        functions:
+          - "createUserInbox(label): creates a MailSlurp inbox (name e2e-<runId>-<label>, tag e2e) and returns { inboxId, emailAddress }."
+          - "getEmailLink(inboxId, kind): waits (up to about 90 seconds) for the email in that inbox whose subject contains 'Verify your email' (kind verify) or 'invited' (kind invite), and returns the path+query of its link: /verify-email?token=... or /invite/accept?token=... The subject is matched because a signup sends two emails (a welcome email and the verification email), and the admin's inbox also receives an 'invitation accepted' email."
+          - "deleteInbox(inboxId) and deleteRunInboxes(runId): remove the run's inboxes (spec end, global teardown, manual cleanup)."
+        link_extraction: "First match the plain URL in the body; otherwise take each href that contains /L0/, URL-decode the part before /1/ (SES click tracking) and match it. Only the path and query are used; page.goto resolves them against the baseURL."
+        rules: "One inbox per user and only unread mail in that inbox is read, so one test never reads another's email. No tokens are created and nothing is written to a database."
+        external_dependency: "MailSlurp (external service): needs MAILSLURP_API_KEY and internet access. Free plan: 500 incoming emails a month. A signup sends two emails (welcome and verification: 10 for the five signing-up roles), the recruiter invitation adds one and the admin receives one 'invitation accepted' email (2), the bulk faculty import sends 2, one individually created learner 1 and the two bulk learners 2: about 17 per full run, so about 29 full runs a month."
+      subscription:
+        selection: "Real plans page (cards show the plan name and a Get Started button)."
+        plans:
+          - role: "Learner"
+            plan: "Career Accelerator"
+          - role: "School Admin"
+            plan: "School Enterprise (school_enterprise)"
+          - role: "College Admin"
+            plan: "College Enterprise (college_enterprise)"
+          - role: "University Admin"
+            plan: "University Enterprise (university_enterprise)"
+          - role: "Recruiter Admin"
+            plan: "Recruiter Premium (recruiter_premium)"
+          - role: "Faculty and Invited Recruiter"
+            plan: "None: access comes from the organisation's subscription; a license is assigned from the admin's license-pool page if the educator guard requires it."
+        payment: >-
+          All of the plans above are paid. The app creates the order through the payments worker (Razorpay API), opens the
+          Razorpay checkout, verifies the payment on the server, and creates the subscription. e2e/helpers/razorpay.ts only
+          automates the third-party checkout UI (test card, success); it creates no subscription and writes nothing to a database.
+        add_ons: "Features marked (add-on) need the add-on (or bundle) bought from the role's add-ons page, also through the Razorpay test checkout, before they are tested."
+      authentication:
+        approach:
+          - "Journey in one browser context: signup (session created automatically) -> verify email -> plan/purchase -> logout (verifies the explicit login) -> real Login UI -> features -> logout -> real Login UI again (same email and password) -> assert dashboard."
+          - "Faculty and invited recruiter: log in with the temporary password or the password set on the invitation page, then features -> logout -> login again."
+        refresh_token_rotation: "Every refresh issues a new refresh token; reusing an old one after 60 seconds revokes the session. A login must never be copied between contexts."
+        login_budget: "The limit is 10 logins per 60 seconds per IP. Each user created in a run adds two to three logins (login after logout, login again, plus the first login of a created user); the count is recomputed when the faculty, recruiter and learner flows are built (OPEN). Run specs one after another (workers: 1). If a 429 appears, wait about 60 seconds."
+        wrong_password_note: "Use a non-existent email for any failed-login test."
+      onboarding:
+        overview: "Faculty and invited recruiters are created by their admin through the real UI and backend; nothing is created in a database. The two flows work differently: faculty get a password generated by the application and no email, an invited recruiter gets an invitation email and sets their own password."
+        faculty_flow:
+          steps:
+            - "Admin logs in (the admin's own journey, section 6 authentication)."
+            - "Opens Faculty/Teacher Onboarding."
+            - "Fills the required details (generated test data) and uploads the required documents."
+            - "Creates the faculty member (Submit)."
+            - "Verifies the success message and that the faculty member appears in the admin's list."
+            - "Reads the generated temporary password from the success message."
+            - "Logs out."
+            - "Logs in as the new faculty member (email + temporary password) in a new browser context."
+            - "Verifies the faculty dashboard (/educator/dashboard)."
+            - "Tests the implemented faculty features (section 6, feature inventory)."
+            - "Logs out, logs in again to verify the session, then cleanup."
+          school_admin:
+            page: "School Admin -> Teachers -> Onboarding (/school-admin/teachers/onboarding), component TeacherOnboarding.tsx."
+            backend: "POST /user/create-teacher (handleCreateTeacher in functions/api/user/handlers/authenticated.ts): checks the admin's school, generates the temporary password, creates the SSO user with role school_educator in the admin's organisation (SSO createMember), then inserts the app-database users and school_educators rows."
+            list: "Teachers list (Teachers page)."
+          college_admin:
+            page: "College Admin -> Faculty (/college-admin/departments/educators), Onboarding tab, component FacultyOnboarding.tsx."
+            backend: "POST /user/create-college-staff (userApiService.createCollegeStaff, called from FacultyOnboarding.tsx): creates the SSO user in the college organisation (SSO createMember) and the staff record, then the form uploads the documents and updates the record (POST /college-admin/faculty, action update-lecturer)."
+            list: "Faculty list (Faculty page)."
+            unverified: "UNVERIFIED: the college create-college-staff handler body was not read line by line (the school handler was); that a department must exist before the form can be submitted (the form sends department_id), and the exact role value the college educator is created with."
+          common:
+            - "Success message (both forms): 'onboarded successfully ... Temporary password: <password>'. The message also says 'Login credentials sent to <email>', but no email is sent in this flow; the test reads the password from the message and does not look for an email."
+            - "The application generates the temporary password; the test never sets or chooses it."
+            - "No email verification is required: createMember creates the user with the email already verified."
+            - "No MailSlurp inbox is needed. The faculty email is generated by the test (test_data, email_address); no email is sent to it."
+            - "No personal subscription: the faculty member uses the organisation's subscription. Whether a license must first be assigned from the license-pool page is OPEN (section 13)."
+            - "School and college educators see different pages (inventory)."
+            - "Login is the normal Login form with the new email and the temporary password. Whether the faculty member is forced to change the password at first login is UNVERIFIED; if a prompt appears, the test completes it with the generated E2E_PASSWORD."
+        college_faculty_bulk_import:
+          purpose: "Creates several college faculty at once from a CSV. The work is asynchronous: the request is queued in the SSO worker and processed in the background, so the test waits for the batch to finish."
+          steps:
+            - "College Admin logs in."
+            - "Opens Faculty (/college-admin/departments/educators), Import tab (FacultyBulkImport.tsx, 'Bulk Faculty Import')."
+            - "The test writes a 2-row CSV at run time (not committed) with the columns email, firstName, lastName, phone, employeeId, department, specialization, qualification, experienceYears, role. Each email is the address of a MailSlurp inbox created for that faculty member."
+            - "Uploads the file with setInputFiles on the CSV file input. The UI validates the rows (email and name required, 500 rows at most) and shows a preview."
+            - "Starts the import. The UI sends POST /college-admin/faculty (action bulk-upload-faculty-csv); functions/api/college-admin/faculty.ts calls the SSO RPC queueBulkFacultyUpload and returns a batch_id. The UI then polls action bulk-upload-faculty-status every 2 seconds (up to 90 times)."
+            - "Waits until the status is completed and asserts the failed count is 0. If rows failed, the test reads action bulk-upload-faculty-errors and fails with those messages."
+            - "Behind the scenes (SSO queue, not driven by the test): parse-faculty-csv validates the raw CSV again and generates a temporary password per row; create-faculty-batch creates each user (email already verified, role college_educator) and membership, publishes the user.created, membership.created and faculty.created sync events, and sends the faculty invitation email containing the temporary password."
+            - "Playwright reads each faculty member's invitation email from their MailSlurp inbox and takes the temporary password from it (mailbox.ts)."
+            - "Verifies the new faculty appear in the Faculty list."
+            - "Logs out, logs in as a new faculty member (email + temporary password) in a new browser context, verifies /educator/dashboard and runs the college faculty features (one faculty member runs the full feature list; the second only logs in and opens the dashboard)."
+            - "Logs out, logs in again, then cleanup."
+          rules:
+            - "Only the CSV upload goes through the UI; no queue message, user or membership is created by the test."
+            - "No email verification is required (is_email_verified is set by the import). The password is generated by the SSO, not chosen."
+            - "MailSlurp is required: one inbox per CSV row, because the password arrives only in the email."
+            - "Faculty use the organisation's subscription, not a personal one."
+          unverified:
+            - "UNVERIFIED: the SSO queue consumers (learner/faculty admission queue, sync queue, email queue) run in the local `npm run dev:stack`; the first run must confirm this, otherwise the batch never completes."
+            - "UNVERIFIED: the invitation email's subject and how the password appears in it (the template was not read); the helper will match the subject and extract the password once seen."
+            - "UNVERIFIED: which tables the faculty.created event fills in the app database, and what the cleanup must delete for them."
+        learner_creation:
+          purpose: "School Admin, College Admin and Educators create learners from the Add Learner modal (AddLearnerModal). Unlike individual faculty, a learner account always sends an email containing the temporary password."
+          modal: "AddLearnerModal (src/features/college-admin/ui/modals/AddLearnerModal.tsx) is used by School Admin Admissions (LearnerAdmissions.tsx) and College Admin Learner Data (LearnerDataAdmission.tsx). Educators have their own modal (src/features/educator/ui/modals/AddLearnerModal.tsx, LearnersPage.tsx); the Educator modal's required fields are UNVERIFIED and the Educator path is not a separate test (OPEN)."
+          individual:
+            who: "School Admin (Phase 2); the same endpoint is used by College Admin and Educators."
+            steps:
+              - "Admin logs in, opens Admissions, opens Add Learner and switches to manual mode (the modal opens in CSV mode)."
+              - "Fills every required field from generated test data: full name, email (a MailSlurp inbox address), contact number, enrollment number, roll number (3-20 characters: letters, numbers, hyphens), category, quota, date of birth, gender, blood group, guardian name, phone, email and relation, address, city, state, country, pincode, district."
+              - "Adds at least one document (required by the form; a PDF from e2e/fixtures/documents/) and submits."
+              - "Request: POST /user/create-learner (handleCreateLearner, functions/api/user/handlers/authenticated.ts) -> SSO createLearnerUser: creates the learner user (email already verified), membership and learner role, publishes the sync events and puts the invitation email on the email queue. The response contains the temporary password; the modal then uploads the documents."
+              - "Verifies the success state and that the learner appears in the Admissions list."
+              - "Reads the invitation email from the learner's MailSlurp inbox and takes the temporary password and login link."
+              - "Logs out, logs in as the learner (email + temporary password), verifies the learner dashboard and the learner features that apply to school/college learners, logs out, logs in again, then cleanup."
+          bulk_csv:
+            who: "College Admin (Phase 3), CSV mode of the same modal."
+            steps:
+              - "Opens Learner Data, Add Learner (CSV mode is the default), writes a 2-row CSV at run time with the required columns name, email, contactNumber (a template can be downloaded from the modal), and uploads it."
+              - "Request: learnerAdmissionService.queueBulkUpload -> the same SSO queue and batch-status polling as the faculty bulk import (learner adapter: parse-csv, create-learner-batch). The test waits for the batch to complete with 0 failures."
+              - "Each learner receives the invitation email with a temporary password (MailSlurp inbox per row). One learner logs in and opens the dashboard."
+          rules:
+            - "No email verification is required (learners created by an admin are verified); the password is generated by the SSO."
+            - "MailSlurp is required for every learner."
+            - "The test never creates learners in a database."
+          unverified:
+            - "UNVERIFIED: whether the modal shows the temporary password on screen (it is returned in the API response); the test reads it from the email unless the screen shows it."
+            - "UNVERIFIED: whether a learner created by an admin uses the organisation's access or needs a personal plan."
+            - "UNVERIFIED: the learner email goes through EMAIL_QUEUE; if that queue is not bound in the local stack the email is not sent (the SSO then returns a warning). The first run must confirm."
+            - "UNVERIFIED: the exact selectors of the manual form (many fields) and the modal's mode switch."
+        documents:
+          folder: "e2e/fixtures/documents/"
+          files: ["degree-certificate.pdf", "id-proof.pdf", "experience-letter.pdf"]
+          content: "Three small valid PDFs (start with %PDF-), created once, committed, reused every run."
+          required:
+            - "School faculty: degree certificate + ID proof; experience letter only when experience years > 0."
+            - "College faculty: degree certificate + ID proof + at least one experience letter."
+          upload: "setInputFiles on the file inputs; accepted by the upload API (PDF, up to 10 MB)."
+        recruiter_flow:
+          steps:
+            - "Recruiter Admin logs in (the admin's own journey)."
+            - "Opens Recruiter Admin (/recruitment/admin)."
+            - "Invites the recruiter: Invite Employee modal (InviteEmployeeModal.tsx) with the invitee's MailSlurp address, a name and the role Recruiter."
+            - "Verifies the invitation appears as Pending in the Invitations tab."
+            - "MailSlurp receives the real invitation email (subject contains 'invited')."
+            - "Playwright gets the real invitation link (/invite/accept?token=...) from the email."
+            - "Opens the invitation in a new browser context (the invitee is not logged in)."
+            - "The recruiter sets a password on the invitation page (RecruitmentInvitationForm: password, confirm, terms) and accepts."
+            - "Logs in as the recruiter (the accept step logs in automatically; the journey then logs out and uses the real Login form)."
+            - "Verifies the recruiter pages (/recruitment/overview)."
+            - "Tests the implemented recruiter features (invited_recruiter in the feature inventory)."
+            - "Back as the admin: verifies the invitation is Accepted and the recruiter appears in the Employees list."
+            - "Logs out, logs in again to verify the session, then cleanup."
+          backend:
+            - "POST /api/recruitment/invitations (handleCreateInvitation in functions/api/recruitment/invitations/[[path]].ts): requires the MANAGE_TEAM permission, rejects a duplicate pending invitation or an existing member, stores the invitation in organization_invitations (token, 7 days, status pending) and sends the email with sendRecruitmentInvitationEmail. If sending fails the invitation is deleted."
+            - "POST /api/recruitment/invitations/validate checks the token when the page opens (no login needed)."
+            - "POST /api/recruitment/invitations/accept creates the SSO user (createMember; role recruiter maps to the SSO role recruiter) and membership, the app-database users, organization_members and recruiters rows, marks the invitation accepted, and sends an 'invitation accepted' email to the admin."
+          rules:
+            - "The invitation email is sent by the existing flow: SkillPassport backend -> email worker -> AWS SES -> the invitee's MailSlurp inbox."
+            - "MailSlurp is used only so Playwright can read the real invitation email. No invitation, token or user is created or read directly in a database."
+            - "The invitation email has the link only as a button, so the link is decoded from the SES tracking URL (mailbox.ts)."
+            - "The invitee sets the password; it is not generated or emailed. No separate email verification: the accepted member's email is auto-verified."
+            - "The invited recruiter has no personal subscription; access comes through the organisation."
+            - "The admin's MailSlurp inbox also receives the 'invitation accepted' email; mailbox.ts selects emails by subject, so it does not confuse them."
+            - "Cancel and resend of a pending invitation are tested separately from the accept flow (cancel needs its own invitation)."
+          verifies:
+            - "Invitation: Pending before acceptance, Accepted after."
+            - "Employees list shows the recruiter after acceptance."
+            - "Recruiter can open /recruitment/overview and the recruiter pages."
+          unverified: "UNVERIFIED: the Employees list refreshes without a reload after acceptance (the test reloads the page); the accept handler performs several separate writes and ignores some sync errors, so the test waits for the Employees list to show the recruiter and treats a missing row as a failure."
+      cleanup:
+        file: "e2e/helpers/cleanup.ts"
+        identifies: "Only data of the current run: the run manifest (every email created), the E2E<runId> names, and MailSlurp inboxes tagged e2e with the run id. Real users and reference data are never matched."
+        removes:
+          - "E2E users and their sessions, memberships and verification rows."
+          - "Organisations created by the E2E admins (only where every member is an E2E user)."
+          - "Subscriptions, payments and add-on records of E2E users."
+          - "Invitations, faculty and teacher records (school_educators, college_lecturers), learner and other rows linked to E2E users, including users created by the CSV imports (every imported email is added to the run manifest) and their uploaded documents (local R2) and batch records."
+          - "Related app-database records (users, organization_members, subscription_cache and similar)."
+          - "The run's MailSlurp inboxes."
+        when: "After each spec (afterAll) and in global teardown for the run's id."
+        manual: "npm run e2e:cleanup deletes the data of every run found in test-results/e2e-run-*.json and any leftover MailSlurp inboxes tagged e2e, for crashed runs."
+        safety: "Database deletes run only against local databases (other hosts are refused)."
+        leak_check: "Row counts of the relevant tables are compared before and after cleanup in Phase 1; the table list is fixed from that result."
+      files:
+        - "playwright.config.ts: run id, password, reporter, trace/screenshot on failure, workers 1, globalTeardown."
+        - "e2e/helpers/test-data.ts, mailbox.ts, razorpay.ts, cleanup.ts"
+        - "e2e/fixtures/documents/degree-certificate.pdf, id-proof.pdf, experience-letter.pdf"
+        - "e2e/learner.spec.ts, school-admin.spec.ts (includes school faculty), college-admin.spec.ts (includes college faculty), university-admin.spec.ts, recruiter-admin.spec.ts (includes invited recruiter)"
+        - ".env.e2e (local, gitignored; must be added to .gitignore) and .env.e2e.example: MAILSLURP_API_KEY (empty in the example), E2E_BASE_URL, local database URLs and keys."
+        - "package.json: @playwright/test and mailslurp-client devDependencies; scripts e2e, e2e:ui, e2e:cleanup. vitest.config.js: exclude **/e2e/**. .gitignore: .env.e2e, playwright-report/, test-results/."
+        - "Already present: scripts/check-mailslurp.mjs (manual check of the MailSlurp -> email worker -> SES path)."
+      selector_policy:
+        - "Prefer getByRole, getByLabel and getByText; add a data-testid only for a real locator problem (existing ones, such as educator-dashboard, can be reused)."
+      feature_inventory:
+        legend: "Each line is a feature with the main actions tested. (data) items use the sample opportunities and other reference data from the existing seeds, or data created earlier in the same run."
+        note: "Navigation items that are disabled or have no route are not listed (educator: Program Sections, Timetable, My Mentees, Clubs, Badges; college admin: Attendance Policies, Performance, Graduation, Coverage Tracker, Academic Calendar, Grading, Transcripts, Skill Development; school admin: Maintenance; university admin: Course Updates, Content Repository, Company Database, Internship Reports, MoUs, Compliance)."
+        learner:
+          - "Dashboard (profile summary; add/edit/delete education, training, experience, projects, certificates, skills; skill visibility)"
+          - "Profile (tabs, edit, share)"
+          - "My Skills"
+          - "My Learning (search, filter, add/edit/delete training)"
+          - "Courses (search, enroll, start/continue, certificate)"
+          - "Course Player (lessons, complete course)"
+          - "Opportunities (data: tabs, apply, offers, industrial visits)"
+          - "Saved Jobs (data)"
+          - "Browse Jobs (data)"
+          - "Applications (data)"
+          - "Applied Jobs (data)"
+          - "Messages (data)"
+          - "Settings (profile, notifications, privacy, password)"
+          - "Subscription (view, invoice, auto-renew, pause/resume, cancel last)"
+          - "Add-ons (search, cart, discount code, purchase)"
+          - "Analytics"
+          - "Timeline"
+          - "Achievements"
+          - "Clubs"
+          - "Digital Portfolio (portfolio, passport, theme, layout, export, sharing, profile settings)"
+          - "Video Portfolio (add-on)"
+          - "Not tested: Career AI, assessments, My Class (school/college learners only)"
+        school_admin:
+          - "Dashboard"
+          - "Admissions (add learner, profile, notes, message, export, approval)"
+          - "Digital Portfolio"
+          - "Class Management (create/update class)"
+          - "Attendance and Reports (tabs, export, meeting, counsellor)"
+          - "Assessment Results"
+          - "Verifications (data: approve/reject)"
+          - "Teachers (list, documents, status)"
+          - "Teacher Onboarding (create teacher with documents)"
+          - "Timetable (generate, slots, publish)"
+          - "Courses (browse)"
+          - "Curriculum Builder (add-on)"
+          - "Lesson Plans (view, download)"
+          - "Exams and Assessments (create exam, reports)"
+          - "Learner Communication (learners, educators)"
+          - "Fee Setup and Payments (fee structure, payment, ledger)"
+          - "Library and Assets (books: add, issue, return)"
+          - "Clubs and Competitions (view, export)"
+          - "Competition Certificates (results, certificates)"
+          - "Course Analytics"
+          - "Settings (users, roles, classes, academic year, subjects)"
+          - "Subscription (manage, add-ons, license pools, bulk purchase, organisation payment)"
+          - "UI-only (smoke): Parent Portal, Message Center, Parent Communication, Reports, Artifact Reviews"
+        school_faculty:
+          - "Dashboard"
+          - "Learners (add, view, message, edit, delete)"
+          - "Classes (create/update, manage learners, assign task)"
+          - "Courses (browse)"
+          - "Course Analytics"
+          - "Assessment Results"
+          - "Assignments (create, draft, publish, grade)"
+          - "Mentor Notes"
+          - "Verification (verify/reject activities)"
+          - "Mark Attendance"
+          - "Digital Portfolio"
+          - "Communication (learners, admin)"
+          - "Reports and Analytics (export)"
+          - "Settings and Profile"
+          - "Subscription (manage, add-ons)"
+          - "Not tested: Teaching Intelligence (AI)"
+        college_admin:
+          - "Dashboard"
+          - "Admissions and Data (add learner, profile, notes, message, export, approval)"
+          - "Enrolled Learners"
+          - "Attendance (sessions, bulk import, export)"
+          - "Assessment Results"
+          - "Digital Portfolio"
+          - "Verifications (data: approve/reject)"
+          - "Communication (learners, college educators)"
+          - "Departments (add, edit, delete, HOD, faculty)"
+          - "Faculty (list, onboarding with documents, import, leave, substitutions)"
+          - "Courses (browse)"
+          - "Programs"
+          - "Program and Sections"
+          - "Curriculum Builder (add-on)"
+          - "Lesson Plans"
+          - "Exam Management (assessments, schedule, marks, moderation)"
+          - "Mentors (allocation)"
+          - "Library"
+          - "Circulars (create, publish, archive, delete)"
+          - "User Management (add, edit, reset password, deactivate, bulk import)"
+          - "Reports and Analytics (export)"
+          - "Course Analytics"
+          - "Subscription (manage, add-ons, license pools, bulk purchase, organisation payment)"
+          - "UI-only (smoke): Course Master, Course Mapping, Placements, Finance, Events, Settings, Artifact Reviews"
+        college_faculty:
+          - "Dashboard"
+          - "Learners (add, view, message, edit, delete)"
+          - "Courses (browse)"
+          - "Course Analytics"
+          - "Assessment Results"
+          - "College Assignments (create, update, delete, assign)"
+          - "Mentor Notes"
+          - "Verification (verify/reject activities)"
+          - "Mark Attendance"
+          - "Digital Portfolio"
+          - "Messages (learners, college admin)"
+          - "Reports and Analytics (export)"
+          - "Settings and Profile"
+          - "Subscription (manage, add-ons)"
+          - "Not tested: Teaching Intelligence (AI)"
+        university_admin:
+          - "College Registration"
+          - "Courses (list, create/update)"
+          - "Browse Courses"
+          - "Syllabus Approval"
+          - "Enrollment and Profiles (data)"
+          - "Digital Portfolios"
+          - "Assessment Results"
+          - "Library Management (books: add, update, delete, issue, return)"
+          - "Subscription (manage, add-ons, license pools, bulk purchase, organisation payment)"
+          - "UI-only (smoke, no backend): Dashboard, Program Allocation, Performance Monitoring, Faculty Empanelment, Faculty Feedback and Certification, Continuous Assessment, Centralized Results, Certificate Generation, Examination Scheduling, Grade Calculation, Results Publishing, Placement Readiness, Fee Structures, Payment Tracking, Financial Reports, District and College Reports, OBE Tracking, Course Analytics, Library Clearance, Service Requests, Graduation Integration, Faculty Lifecycle, Staff Management, Payroll Processing, Statutory Deductions, Employee Records, Leave Management, Circulars, Training Updates, Settings"
+          - "Not tested: AI Counselling (AI)"
+        recruiter_admin:
+          - "Onboarding wizard (company details, recruitment settings, review)"
+          - "Overview"
+          - "Recruitment Admin (invite employee, change role, activate/deactivate; invitations; company profile, verification, contacts, configuration, email templates, billing)"
+          - "Talent Pool (search, filters, saved search, shortlist, schedule interview)"
+          - "Requisitions (create, edit, delete, import, export, applications)"
+          - "Applicants (review, contact, message, export)"
+          - "Pipelines (add-on)"
+          - "Shortlists (create, edit, share, export)"
+          - "Interviews (schedule, scorecard)"
+          - "Offers and Decisions (create, extend, withdraw)"
+          - "Analytics (export, print)"
+          - "Activities"
+          - "Messages"
+          - "Settings (profile, notifications, password)"
+          - "Subscription (manage, add-ons)"
+          - "Projects (add-on)"
+          - "UI-only (smoke): Verified Work, Profile"
+          - "Not tested: Recruiter AI (AI)"
+        invited_recruiter:
+          - "Accept invitation (open link, set password)"
+          - "Same pages as Recruiter Admin except Recruitment Admin (admin only): Overview, Talent Pool, Requisitions, Applicants, Shortlists, Interviews, Offers, Analytics, Activities, Messages, Settings, Subscription"
+      config_decisions:
+        chromium_only: "Single Chromium project."
+        workers_and_retries: "workers: 1, retries: 0 (a retry would add a login)."
+        timeouts: "Longer than defaults (test 120 s for journeys; expect 15 s)."
+        reports: "HTML report; screenshot and trace on failure only."
+        baseURL: "http://localhost:8788; E2E_BASE_URL overrides host/port."
+
+    # ---------------------------------------------------------------------------
+    7_impact_analysis:
+      affected_components:
+        new: ["playwright.config.ts", "e2e/ (helpers, fixtures, specs)", ".env.e2e.example"]
+        modified: ["package.json", "vitest.config.js", ".gitignore"]
+        unchanged: ["Application behaviour, SSO, email worker and signup/verification flows (apart from any small, separately reviewed data-testid additions)"]
+        external: ["MailSlurp (test inbox)", "Razorpay test checkout and API"]
+
+    # ---------------------------------------------------------------------------
+    8_business_logic:
+      prerequisites:
+        - "Docker running both local Supabase stacks (SSO :54331, app :54321) loaded with the existing reference seeds (roles, plans, platform organisation, feature keys)."
+        - "Local services: SSO worker with sync consumer, email worker, payments worker, realtime worker (`npm run dev:stack` in sso-worker), and the app on :8788. Exact command set OPEN (section 13)."
+        - "Valid AWS SES credentials in the email worker .dev.vars (every signup now sends a real email) and internet access."
+        - "MAILSLURP_API_KEY in .env.e2e (a MailSlurp account; see section 6)."
+        - "Internet access to the Razorpay checkout and API; Razorpay test keys in the payments worker .dev.vars."
+        - "Local R2 for document uploads (the `pages:dev` script already passes --r2)."
+        - "Each developer's .dev.vars points at the local databases; .env.e2e filled in from .env.e2e.example."
+      how_to_run:
+        - "Check the mailbox path first (email worker running): `node scripts/check-mailslurp.mjs`."
+        - "Terminal 1: start the stack. Terminal 2: `npm run e2e` (all), `npx playwright test e2e/learner.spec.ts` (one role), `npm run e2e:ui` (interactive)."
+        - "Crashed run: `npm run e2e:cleanup`."
+        - "Wait about 60 seconds between full runs if a 429 appears."
+      execution_flow:
+        - "Config generates the run id and password; each spec generates its users and MailSlurp inboxes."
+        - "Each spec runs the journey in section 3, in order, in its own browser context."
+        - "afterAll and global teardown run cleanup; failures keep a screenshot and a trace."
+
+    # ---------------------------------------------------------------------------
+    9_edge_cases:
+      - "Signup rejected (duplicate or invalid): fails with the app's error; each user gets a new inbox address."
+      - "Verification or invitation email not received within the timeout: the spec fails with the mailbox and step named (SES rejected the send, or delivery is slow)."
+      - "Link not found in the email: the spec fails; the helper tries the plain URL, then the decoded tracking URL."
+      - "Paid checkout fails: the spec stops; cleanup still runs."
+      - "Documents rejected: only PDFs starting with %PDF- and under 10 MB are used."
+      - "429 after a quick re-run: wait about 60 seconds."
+      - "Stale build: rebuild after pulling code (VITE_* values are set at build time)."
+
+    # ---------------------------------------------------------------------------
+    10_security:
+      authentication: "Real signup and login forms; no auth bypass; no direct user, token, invitation or subscription creation."
+      authorization: >-
+        Browser route guards are not the security boundary. Server authorization is enforced by withAuth / requireRole
+        in the Pages Functions; guard presence is checked by guardPresence.property.test.ts and the role guards' allow/deny
+        decisions are unit-tested (per-endpoint-deny.test.ts and the RBAC deny tests). Playwright covers browser-level role
+        behaviour only.
+      helpers: "razorpay.ts only drives the checkout UI. cleanup.ts writes only to local databases (other hosts are refused) and deletes only the current run's data."
+      secrets_and_reports: "MAILSLURP_API_KEY lives only in .env.e2e (gitignored; the example file holds an empty value) and is never printed or put in a VITE_ variable. Credentials are generated per run and not stored. playwright-report/ and test-results/ (traces can contain tokens) are gitignored. Faculty temporary passwords exist only in the run and in the deleted records."
+      external_data: "Verification and invitation emails (with their tokens) pass through MailSlurp; they belong to throwaway E2E users only."
+
+    # ---------------------------------------------------------------------------
+    11_testing_plan:
+      unit: "Unchanged; Vitest must not pick up e2e/."
+      e2e: "Specs and phases in sections 5 and 6."
+      manual: "Before each phase: one manual run of that role's journey to confirm steps and selectors; `node scripts/check-mailslurp.mjs` passes."
+      verification_of_setup:
+        - "`npm run e2e` passes twice in a row; second run starts from a clean state."
+        - "Leak check: no E2E rows remain after cleanup; no E2E inboxes remain in MailSlurp."
+        - "`npm test`, lint and typecheck pass."
+        - "`git status` shows .env.e2e, playwright-report/ and test-results/ ignored."
+
+    # ---------------------------------------------------------------------------
+    12_risks:
+      - risk: "MailSlurp / SES email delivery"
+        impact: "Signup or invitation specs time out waiting for the email."
+        mitigation: "Verified working on 2026-10-06; `scripts/check-mailslurp.mjs` before runs; clear error naming the step; delivery wait of about 90 seconds."
+      - risk: "MailSlurp free-plan limit (500 incoming emails a month) and external dependency"
+        impact: "Specs stop working when the quota is used up or MailSlurp/internet is unavailable."
+        mitigation: "About 17 emails per full run (about 29 full runs a month); CSV imports use 2 rows; per-role spec runs; upgrade or a team account if usage grows (OPEN)."
+      - risk: "Real emails sent through SES from each developer's configured sender"
+        impact: "Real send volume from the SES account (probably the production sender)."
+        mitigation: "Team decision on using this sender for E2E (OPEN)."
+      - risk: "Razorpay hosted checkout"
+        impact: "Paid-plan steps flaky or blocked offline."
+        mitigation: "Isolated in razorpay.ts; no database workaround; fix the helper if Razorpay's page changes."
+      - risk: "Login and signup rate limits"
+        impact: "429 errors."
+        mitigation: "Specs run one after another; new address per user; wait when needed."
+      - risk: "Refresh-token / session handling"
+        impact: "A reused login is revoked and later steps fail."
+        mitigation: "One context per journey; fresh login after each logout."
+      - risk: "Cleanup misses records"
+        impact: "Leftover data and later failures."
+        mitigation: "Leak check in Phase 1; manual cleanup command; run manifest, tagged inboxes and E2E names."
+      - risk: "UI-only pages and navigation gaps"
+        impact: "Smoke tests pass without proving a feature."
+        mitigation: "Marked UI-only in the inventory; no persistence asserted."
+      - risk: "Local environment and startup"
+        impact: "Tests hit the wrong database or fail to start."
+        mitigation: "Documented commands; .dev.vars check; helpers refuse non-local databases."
+
+    # ---------------------------------------------------------------------------
+    13_open_questions:
+      - "What is the verified command set to start the local stack (npm start also starts workers that dev:stack starts; `npm run build:dev` + `npm run pages:dev` is the likely replacement)?"
+      - "Who owns the MailSlurp account and API key, how is it shared with developers, and is the free plan (500 incoming emails a month) enough?"
+      - "Is a chosen address (e2e-<runId>-<user>@...) available on the MailSlurp plan, or do tests use the random inbox addresses and rely on the run manifest and tags for cleanup?"
+      - "Is sending the E2E emails through the configured SES sender acceptable?"
+      - "Do new faculty need a license assigned from the license-pool page before the educator pages open?"
+      - "Do the SSO queue consumers (admission, sync, email queues) run in the local stack, so the CSV imports complete and learner invitation emails are sent?"
+      - "Does a learner created by an admin use the organisation's access or need a personal plan, and does the Add Learner modal show the temporary password?"
+      - "Are University Admin UI-only pages kept as smoke tests, or excluded until they have a backend?"
+      - "Task ID, priority and effort."
+
+    # ---------------------------------------------------------------------------
+    14_developer_self_review:
+      checklist:
+        - "[ ] Reference data present in both local databases; stack starts with the documented commands; check-mailslurp.mjs passes"
+        - "[ ] Each phase's exit criteria met before the next phase"
+        - "[ ] No fixed users, no storageState, no cookie reuse; nothing created directly in a database; one context per journey"
+        - "[ ] Cleanup deletes only the run's data and local-database only; leak check passes; MailSlurp inboxes deleted"
+        - "[ ] Document PDFs committed; Razorpay handling isolated in razorpay.ts"
+        - "[ ] MAILSLURP_API_KEY only in .env.e2e; .env.e2e in .gitignore; `npm run e2e`, `npm test`, lint and typecheck pass"
+
+    # ---------------------------------------------------------------------------
+    versioning:
+      v1_0_mvp:
+        new: ["playwright.config.ts", "helpers (test-data, mailbox, razorpay, cleanup)", "e2e/learner.spec.ts", ".env.e2e.example", "e2e scripts"]
+        modified: ["package.json", "vitest.config.js", ".gitignore"]
+        unchanged: ["Application behaviour", "Existing Vitest suite"]
+      v1_1_plus:
+        new: ["document fixtures and school-admin.spec.ts (v1.1)", "college-admin.spec.ts (v1.2)", "recruiter-admin.spec.ts (v1.3)", "university-admin.spec.ts and access-control checks (v1.4)"]
+        modified: ["cleanup.ts as table coverage grows"]
+        unchanged: ["Application behaviour"]
+      v2_0:
+        note: "No major release items planned."
+        deprecated: []

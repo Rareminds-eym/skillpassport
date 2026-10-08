@@ -41,6 +41,12 @@ dist-ssr
 !.env.example
 !.env.schema
 
+# Playwright E2E (local settings with the mailbox API key; reports and traces can contain tokens)
+.env.e2e
+!.env.e2e.example
+playwright-report/
+test-results/
+
 # Build files
 /build
 /dist
