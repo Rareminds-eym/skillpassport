@@ -9,6 +9,9 @@ import {
   memberInvitationService,
   OrganizationInvitation,
 } from '@/entities/organization';
+import type { EmailStatus, SsoPendingInvite } from '@/entities/organization/api/memberInvitationService';
+import { SsoWorkflowError } from '@/shared/api/ssoClient';
+import { getLogger } from '@/shared/config/logging';
 import {
   AlertCircle,
   Check,
@@ -23,11 +26,118 @@ import {
   Users,
   X,
 } from 'lucide-react';
-import { memo, useCallback, useEffect, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
-import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('invitation-manager');
+
+const UNIVERSITY_EDUCATOR_MESSAGE = 'Educator invitations are not supported for university organizations.';
+const EDUCATOR_NOTE =
+  'Educator invitations are sent by email through the central sign-in service. They have no subscription or personal message.';
+
+/**
+ * Maps an SSO rejection code to a user-facing message. Raw SSO text is never shown.
+ * Returns null when the call was cancelled (no message).
+ */
+function educatorInviteErrorMessage(err: unknown): string | null {
+  if (err instanceof Error && err.name === 'EducatorInviteUnsupportedError') return UNIVERSITY_EDUCATOR_MESSAGE;
+  if (!(err instanceof SsoWorkflowError)) return 'Could not send the invitation.';
+  switch (err.code) {
+    case 'not_authorized':
+      return 'Only organization administrators can invite educators, and this organization must be your active organization. Switch to it or ask an administrator.';
+    case 'conflict':
+      return 'An invitation is already pending for this email. Use Resend in the Pending invitations list.';
+    case 'invalid_input':
+      return 'Enter a valid email address.';
+    case 'not_authenticated':
+      return 'Your session has ended. Sign in again.';
+    case 'rate_limited':
+      return 'Too many invitations sent. Try again later.';
+    case 'timeout':
+    case 'network_failure':
+    case 'upstream_unavailable':
+      return 'Could not reach the sign-in service. Try again.';
+    case 'cancelled':
+      return null;
+    default:
+      return 'Could not send the invitation.';
+  }
+}
+
+/** Maps a resend failure to a user-facing message. Raw SSO text is never shown; null means stay silent. */
+function resendErrorMessage(err: unknown): string | null {
+  if (!(err instanceof SsoWorkflowError)) return 'Could not resend the invitation.';
+  switch (err.code) {
+    case 'rate_limited':
+      return 'Too many invitations sent. Try again later.';
+    case 'not_authorized':
+      return 'Only organization administrators can resend invitations, and this organization must be your active organization.';
+    case 'conflict':
+      return 'This invitation was already accepted.';
+    case 'not_found':
+      return 'This invitation no longer exists.';
+    case 'not_authenticated':
+      return 'Your session has ended. Sign in again.';
+    case 'timeout':
+    case 'network_failure':
+    case 'upstream_unavailable':
+      return 'Could not reach the sign-in service. Try again.';
+    case 'cancelled':
+      return null;
+    default:
+      return 'Could not resend the invitation.';
+  }
+}
+
+/** Maps a pending-invitations list failure to a message shown inside the card. */
+function listErrorMessage(err: unknown): string {
+  if (err instanceof SsoWorkflowError && err.code === 'not_authorized') {
+    return 'Only organization administrators can view pending invitations.';
+  }
+  return 'Could not load pending invitations.';
+}
+
+const EMAIL_NOTICE_TEXT = {
+  created: {
+    failed: 'Invite created, but the email could not be delivered. Use Resend.',
+    unconfirmed: 'Invitation created. Delivery could not be confirmed. Use Resend if the invitee did not receive it.',
+  },
+  resent: {
+    failed: 'The invitation was renewed, but the email could not be delivered. The previous link no longer works. Use Resend to try again.',
+    unconfirmed: 'Invitation renewed. Delivery could not be confirmed. Use Resend if the invitee did not receive it.',
+  },
+} as const;
+
+type EmailNotice = { kind: 'created' | 'resent'; delivery: 'failed' | 'unconfirmed' };
+
+/** Fixed locale and UTC zone so the output does not depend on the viewer's machine. */
+function formatInviteDate(iso: string | null): string {
+  if (!iso) return '';
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' });
+}
+
+function inviteRoleLabel(roles: readonly string[]): string {
+  if (roles.length === 0) return 'Member';
+  return roles
+    .map((role) => {
+      if (role === 'college_educator' || role === 'school_educator') return 'Educator';
+      const spaced = role.replace(/_/g, ' ');
+      return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+    })
+    .join(', ');
+}
+
+const SSO_INVITES_CAP = 100;
+
+const EMPTY_INVITE_FORM = {
+  email: '',
+  memberType: 'learner' as 'educator' | 'learner',
+  autoAssignSubscription: false,
+  licensePoolId: '',
+  invitationMessage: '',
+};
 
 interface LicensePool {
   id: string;
@@ -54,23 +164,26 @@ function InvitationManager({
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'accepted' | 'expired' | 'cancelled'>('all');
-  
+
   // Invite modal state
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
-  const [inviteForm, setInviteForm] = useState({
-    email: '',
-    memberType: 'learner' as 'educator' | 'learner',
-    autoAssignSubscription: false,
-    licensePoolId: '',
-    invitationMessage: '',
-  });
+  const [inviteForm, setInviteForm] = useState(EMPTY_INVITE_FORM);
   const [isSending, setIsSending] = useState(false);
-  
+
+  // Pending SSO invitations (independent of the legacy list so one failure never hides the other)
+  const [ssoInvites, setSsoInvites] = useState<readonly SsoPendingInvite[]>([]);
+  const [ssoTruncated, setSsoTruncated] = useState(false);
+  const [ssoLoading, setSsoLoading] = useState(true);
+  const [ssoError, setSsoError] = useState<string | null>(null);
+  const [resendingId, setResendingId] = useState<string | null>(null);
+  const [emailNotice, setEmailNotice] = useState<EmailNotice | null>(null);
+  const ssoRequestId = useRef(0);
+
   // Cancel confirmation modal state
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [invitationToCancel, setInvitationToCancel] = useState<OrganizationInvitation | null>(null);
   const [isCancelling, setIsCancelling] = useState(false);
-  
+
   // Stats
   const [stats, setStats] = useState({
     total: 0,
@@ -83,10 +196,10 @@ function InvitationManager({
 
   const fetchInvitations = useCallback(async () => {
     if (!organizationId) return;
-    
+
     setIsLoading(true);
     setError(null);
-    
+
     try {
       const [invitationsData, statsData] = await Promise.all([
         memberInvitationService.getAllInvitations(organizationId, {
@@ -95,7 +208,7 @@ function InvitationManager({
         }),
         memberInvitationService.getInvitationStats(organizationId),
       ]);
-      
+
       setInvitations(invitationsData);
       setStats(statsData);
     } catch (err) {
@@ -110,21 +223,79 @@ function InvitationManager({
     fetchInvitations();
   }, [fetchInvitations]);
 
+  const fetchSsoInvites = useCallback(async () => {
+    if (!organizationId) return;
+    const requestId = ++ssoRequestId.current;
+    setSsoLoading(true);
+    setSsoError(null);
+    try {
+      const result = await memberInvitationService.listSsoInvites(organizationId);
+      if (requestId !== ssoRequestId.current) return;
+      setSsoInvites(result.invites);
+      setSsoTruncated(result.truncated);
+    } catch (err) {
+      if (requestId !== ssoRequestId.current) return;
+      logger.error('Failed to fetch pending SSO invitations', err instanceof Error ? err : new Error(String(err)));
+      if (!(err instanceof SsoWorkflowError && err.code === 'cancelled')) setSsoError(listErrorMessage(err));
+    } finally {
+      if (requestId === ssoRequestId.current) setSsoLoading(false);
+    }
+  }, [organizationId]);
+
+  useEffect(() => {
+    setSsoInvites([]);
+    setSsoTruncated(false);
+    fetchSsoInvites();
+  }, [fetchSsoInvites]);
+
   const handleSendInvitation = useCallback(async () => {
     if (!inviteForm.email.trim()) {
       toast.error('Please enter an email address');
       return;
     }
-    
+
     // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(inviteForm.email)) {
       toast.error('Please enter a valid email address');
       return;
     }
-    
+
+    if (inviteForm.memberType === 'educator') {
+      if (organizationType === 'university') {
+        toast.error(UNIVERSITY_EDUCATOR_MESSAGE);
+        return;
+      }
+      setIsSending(true);
+      try {
+        const created = await memberInvitationService.inviteEducator({
+          organizationId,
+          organizationType,
+          email: inviteForm.email,
+        });
+        const emailStatus: EmailStatus | undefined = created?.emailStatus;
+        if (emailStatus === 'sent') {
+          setEmailNotice(null);
+          toast.success(`Invitation sent to ${inviteForm.email.trim().toLowerCase()}`);
+        } else {
+          // 'failed' or absent: never claim the email was sent.
+          setEmailNotice({ kind: 'created', delivery: emailStatus === 'failed' ? 'failed' : 'unconfirmed' });
+        }
+        setIsInviteModalOpen(false);
+        setInviteForm(EMPTY_INVITE_FORM);
+        await fetchSsoInvites();
+      } catch (err) {
+        logger.error('Failed to send educator invitation', err instanceof Error ? err : new Error(String(err)));
+        const message = educatorInviteErrorMessage(err);
+        if (message) toast.error(message);
+      } finally {
+        setIsSending(false);
+      }
+      return;
+    }
+
     setIsSending(true);
-    
+
     try {
       await memberInvitationService.inviteMember({
         organizationId,
@@ -135,17 +306,11 @@ function InvitationManager({
         licensePoolId: inviteForm.autoAssignSubscription ? inviteForm.licensePoolId : undefined,
         invitationMessage: inviteForm.invitationMessage || undefined,
       });
-      
+
       toast.success(`Invitation sent to ${inviteForm.email}`);
       setIsInviteModalOpen(false);
-      setInviteForm({
-        email: '',
-        memberType: 'learner',
-        autoAssignSubscription: false,
-        licensePoolId: '',
-        invitationMessage: '',
-      });
-      
+      setInviteForm(EMPTY_INVITE_FORM);
+
       await fetchInvitations();
     } catch (err) {
       logger.error('Failed to send invitation', err instanceof Error ? err : new Error(String(err)));
@@ -153,7 +318,7 @@ function InvitationManager({
     } finally {
       setIsSending(false);
     }
-  }, [inviteForm, organizationId, organizationType, fetchInvitations]);
+  }, [inviteForm, organizationId, organizationType, fetchInvitations, fetchSsoInvites]);
 
   const handleResendInvitation = useCallback(async (invitationId: string) => {
     try {
@@ -166,6 +331,31 @@ function InvitationManager({
     }
   }, [fetchInvitations]);
 
+  const handleResendSsoInvite = useCallback(async (invite: SsoPendingInvite) => {
+    setResendingId(invite.inviteId);
+    try {
+      const resent = await memberInvitationService.resendSsoInvite(invite.inviteId);
+      const emailStatus: EmailStatus | undefined = resent?.emailStatus;
+      if (emailStatus === 'sent') {
+        setEmailNotice(null);
+        toast.success(`Invitation resent to ${invite.email}. The previous link no longer works.`);
+      } else {
+        setEmailNotice({ kind: 'resent', delivery: emailStatus === 'failed' ? 'failed' : 'unconfirmed' });
+      }
+      await fetchSsoInvites();
+    } catch (err) {
+      logger.error('Failed to resend SSO invitation', err instanceof Error ? err : new Error(String(err)));
+      const message = resendErrorMessage(err);
+      if (message) toast.error(message);
+      // The invite may have been accepted or removed meanwhile; show current state.
+      if (err instanceof SsoWorkflowError && (err.code === 'conflict' || err.code === 'not_found')) {
+        await fetchSsoInvites();
+      }
+    } finally {
+      setResendingId(null);
+    }
+  }, [fetchSsoInvites]);
+
   const openCancelModal = useCallback((invitation: OrganizationInvitation) => {
     setInvitationToCancel(invitation);
     setCancelModalOpen(true);
@@ -173,7 +363,7 @@ function InvitationManager({
 
   const handleCancelInvitation = useCallback(async () => {
     if (!invitationToCancel) return;
-    
+
     setIsCancelling(true);
     try {
       await memberInvitationService.cancelInvitation(invitationToCancel.id);
@@ -308,7 +498,7 @@ function InvitationManager({
               className="pl-10 pr-4 py-2 border border-gray-200 rounded-lg w-full sm:w-64 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
             />
           </div>
-          
+
           {/* Status Filter */}
           <select
             value={statusFilter}
@@ -332,6 +522,93 @@ function InvitationManager({
         </button>
       </div>
 
+      {emailNotice && (
+        <div
+          role={emailNotice.delivery === 'failed' ? 'alert' : 'status'}
+          data-testid={emailNotice.delivery === 'failed' ? 'email-failed-notice' : 'email-unconfirmed-notice'}
+          className={`flex items-start justify-between gap-3 rounded-lg border px-4 py-3 text-sm ${emailNotice.delivery === 'failed'
+            ? 'bg-red-50 border-red-200 text-red-800'
+            : 'bg-amber-50 border-amber-200 text-amber-800'
+            }`}
+        >
+          <span>{EMAIL_NOTICE_TEXT[emailNotice.kind][emailNotice.delivery]}</span>
+          <button
+            type="button"
+            onClick={() => setEmailNotice(null)}
+            aria-label="Dismiss notice"
+            className="p-1 rounded hover:bg-black/5"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* Pending invitations sent through the central sign-in service */}
+      <div className="bg-white rounded-xl border border-gray-200" data-testid="sso-invites">
+        <div className="px-4 py-3 border-b border-gray-100">
+          <h3 className="font-semibold text-gray-900">Pending invitations</h3>
+        </div>
+        {ssoLoading && ssoInvites.length === 0 && !ssoError ? (
+          <p className="p-4 text-sm text-gray-500">Loading pending invitations...</p>
+        ) : ssoError ? (
+          <div className="p-4 flex items-center justify-between gap-3">
+            <p className="text-sm text-red-600">{ssoError}</p>
+            <button
+              type="button"
+              onClick={fetchSsoInvites}
+              className="px-3 py-1.5 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 inline-flex items-center gap-2"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Retry
+            </button>
+          </div>
+        ) : ssoInvites.length === 0 ? (
+          <p className="p-4 text-sm text-gray-500">No pending invitations.</p>
+        ) : (
+          <>
+            <ul className="divide-y divide-gray-100">
+              {ssoInvites.map((invite) => {
+                const isResending = resendingId === invite.inviteId;
+                const sent = formatInviteDate(invite.createdAt);
+                const expires = formatInviteDate(invite.expiresAt);
+                return (
+                  <li key={invite.inviteId} className="p-4 flex items-center justify-between gap-4 hover:bg-gray-50">
+                    <div>
+                      <div className="font-medium text-gray-900">{invite.email}</div>
+                      <div className="text-sm text-gray-500 flex flex-wrap items-center gap-2">
+                        <span>{inviteRoleLabel(invite.roles)}</span>
+                        {sent && (<><span>•</span><span>Sent {sent}</span></>)}
+                        {expires && (<><span>•</span><span>Expires {expires}</span></>)}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {getStatusBadge(invite.status)}
+                      <button
+                        type="button"
+                        onClick={() => handleResendSsoInvite(invite)}
+                        disabled={isResending}
+                        aria-label={`Resend invitation to ${invite.email}`}
+                        className="px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+                      >
+                        {isResending ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                        Resend
+                      </button>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+            {ssoTruncated && (
+              <p className="px-4 py-3 text-xs text-gray-500 border-t border-gray-100">
+                Showing the {SSO_INVITES_CAP} most recent pending invitations.
+              </p>
+            )}
+          </>
+        )}
+      </div>
+
+      <h3 className="text-sm font-semibold text-gray-700">Earlier invitations</h3>
+
       {/* Invitations List */}
       <div className="bg-white rounded-xl border border-gray-200">
         {filteredInvitations.length > 0 ? (
@@ -339,9 +616,8 @@ function InvitationManager({
             {filteredInvitations.map(invitation => (
               <div key={invitation.id} className="p-4 hover:bg-gray-50 flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                    isEducator(invitation.memberType) ? 'bg-blue-100' : 'bg-green-100'
-                  }`}>
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isEducator(invitation.memberType) ? 'bg-blue-100' : 'bg-green-100'
+                    }`}>
                     {isEducator(invitation.memberType) ? (
                       <Users className="w-5 h-5 text-blue-600" />
                     ) : (
@@ -352,6 +628,14 @@ function InvitationManager({
                     <div className="font-medium text-gray-900">{invitation.email}</div>
                     <div className="text-sm text-gray-500 flex items-center gap-2">
                       <span>{getMemberTypeDisplay(invitation.memberType)}</span>
+                      {isEducator(invitation.memberType) && (
+                        <span
+                          className="px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-700"
+                          aria-label="Legacy educator invitation"
+                        >
+                          Legacy
+                        </span>
+                      )}
                       <span>•</span>
                       <span>Sent {formatDate(invitation.createdAt)}</span>
                       {invitation.autoAssignSubscription && (
@@ -363,19 +647,22 @@ function InvitationManager({
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center gap-3">
                   {getStatusBadge(invitation.status)}
-                  
+
                   {invitation.status === 'pending' && (
                     <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => handleResendInvitation(invitation.id)}
-                        className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                        title="Resend Invitation"
-                      >
-                        <Send className="w-4 h-4" />
-                      </button>
+                      {/* Legacy educator invitations are retired server-side; Resend could only fail. */}
+                      {!isEducator(invitation.memberType) && (
+                        <button
+                          onClick={() => handleResendInvitation(invitation.id)}
+                          className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          title="Resend Invitation"
+                        >
+                          <Send className="w-4 h-4" />
+                        </button>
+                      )}
                       <button
                         onClick={() => openCancelModal(invitation)}
                         className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
@@ -415,7 +702,7 @@ function InvitationManager({
       {isInviteModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setIsInviteModalOpen(false)} />
-          
+
           <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
             {/* Header */}
             <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-gradient-to-r from-blue-600 to-blue-700">
@@ -458,46 +745,53 @@ function InvitationManager({
                   <button
                     type="button"
                     onClick={() => setInviteForm(prev => ({ ...prev, memberType: 'learner', licensePoolId: '' }))}
-                    className={`p-3 rounded-xl border-2 transition-all ${
-                      inviteForm.memberType === 'learner'
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
+                    className={`p-3 rounded-xl border-2 transition-all ${inviteForm.memberType === 'learner'
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                      }`}
                   >
-                    <UserPlus className={`w-5 h-5 mx-auto mb-1 ${
-                      inviteForm.memberType === 'learner' ? 'text-blue-600' : 'text-gray-400'
-                    }`} />
-                    <span className={`text-sm font-medium ${
-                      inviteForm.memberType === 'learner' ? 'text-blue-700' : 'text-gray-600'
-                    }`}>Learner</span>
+                    <UserPlus className={`w-5 h-5 mx-auto mb-1 ${inviteForm.memberType === 'learner' ? 'text-blue-600' : 'text-gray-400'
+                      }`} />
+                    <span className={`text-sm font-medium ${inviteForm.memberType === 'learner' ? 'text-blue-700' : 'text-gray-600'
+                      }`}>Learner</span>
                   </button>
                   <button
                     type="button"
-                    onClick={() => setInviteForm(prev => ({ ...prev, memberType: 'educator', licensePoolId: '' }))}
-                    className={`p-3 rounded-xl border-2 transition-all ${
-                      inviteForm.memberType === 'educator'
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
+                    disabled={organizationType === 'university'}
+                    aria-describedby={organizationType === 'university' ? 'educator-university-note' : undefined}
+                    onClick={() => setInviteForm(prev => ({ ...prev, memberType: 'educator', autoAssignSubscription: false, licensePoolId: '', invitationMessage: '' }))}
+                    className={`p-3 rounded-xl border-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${inviteForm.memberType === 'educator'
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                      }`}
                   >
-                    <Users className={`w-5 h-5 mx-auto mb-1 ${
-                      inviteForm.memberType === 'educator' ? 'text-blue-600' : 'text-gray-400'
-                    }`} />
-                    <span className={`text-sm font-medium ${
-                      inviteForm.memberType === 'educator' ? 'text-blue-700' : 'text-gray-600'
-                    }`}>Educator</span>
+                    <Users className={`w-5 h-5 mx-auto mb-1 ${inviteForm.memberType === 'educator' ? 'text-blue-600' : 'text-gray-400'
+                      }`} />
+                    <span className={`text-sm font-medium ${inviteForm.memberType === 'educator' ? 'text-blue-700' : 'text-gray-600'
+                      }`}>Educator</span>
                   </button>
                 </div>
               </div>
 
-              {/* Auto-assign Subscription */}
+              {organizationType === 'university' && (
+                <p id="educator-university-note" className="text-sm text-amber-700">
+                  {UNIVERSITY_EDUCATOR_MESSAGE}
+                </p>
+              )}
+
+              {inviteForm.memberType === 'educator' && (
+                <p className="text-sm text-gray-600 bg-blue-50 rounded-xl p-4">{EDUCATOR_NOTE}</p>
+              )}
+
+              {/* Auto-assign Subscription (learners only; SSO educator invites carry no license pool) */}
+              {inviteForm.memberType === 'learner' && (
               <div className="bg-gray-50 rounded-xl p-4">
                 <label className="flex items-start gap-3 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={inviteForm.autoAssignSubscription}
-                    onChange={(e) => setInviteForm(prev => ({ 
-                      ...prev, 
+                    onChange={(e) => setInviteForm(prev => ({
+                      ...prev,
                       autoAssignSubscription: e.target.checked,
                       licensePoolId: e.target.checked ? prev.licensePoolId : ''
                     }))}
@@ -540,7 +834,10 @@ function InvitationManager({
                 )}
               </div>
 
-              {/* Custom Message */}
+              )}
+
+              {/* Custom Message (learners only) */}
+              {inviteForm.memberType === 'learner' && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
                   Personal Message (Optional)
@@ -553,6 +850,7 @@ function InvitationManager({
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
                 />
               </div>
+              )}
             </div>
 
             {/* Footer */}
@@ -590,7 +888,7 @@ function InvitationManager({
       {cancelModalOpen && invitationToCancel && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => !isCancelling && setCancelModalOpen(false)} />
-          
+
           <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
             {/* Header */}
             <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-gradient-to-r from-red-500 to-red-600">
@@ -602,8 +900,8 @@ function InvitationManager({
                   <h2 className="text-lg font-semibold text-white">Cancel Invitation</h2>
                 </div>
               </div>
-              <button 
-                onClick={() => !isCancelling && setCancelModalOpen(false)} 
+              <button
+                onClick={() => !isCancelling && setCancelModalOpen(false)}
                 disabled={isCancelling}
                 className="p-2 hover:bg-white/10 rounded-lg disabled:opacity-50"
               >

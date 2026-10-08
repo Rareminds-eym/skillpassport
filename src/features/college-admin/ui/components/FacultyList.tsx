@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from "react";
+import * as Dialog from "@radix-ui/react-dialog";
+import React, { useState, useEffect, useRef } from "react";
 import { Search, Eye, CheckCircle, Clock, XCircle, FileText } from "lucide-react";
 import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 
 import { FacultyDocumentViewerModal } from '@/features/college-admin';
 
-import { useUser } from '@/shared/model/authStore';
 
 const logger = getLogger('college-admin:FacultyList');
 interface Faculty {
@@ -31,8 +31,8 @@ interface Faculty {
   gender?: string;
   designation?: string;
   subject_expertise?: any[];
-  temporary_password?: string;
-  password_created_at?: string;
+  credentials_email_status?: 'not_sent' | 'sending' | 'sent' | 'failed';
+  credentials_email_attempted_at?: string;
   created_by?: string;
   verification_status?: string;
   verified_by?: string;
@@ -46,28 +46,51 @@ interface Faculty {
   };
 }
 
+const credentialEligible = (member: Faculty) => {
+  const roles = [member.metadata?.role, ...(Array.isArray(member.metadata?.roles) ? member.metadata.roles : []), member.designation];
+  return !roles.some(role => typeof role === 'string' && ['college_admin', 'college admin'].includes(role.toLowerCase()));
+};
+
 interface FacultyListProps {
   collegeId: string | null;
+  revision?: number;
+  onChanged?: () => void;
+  onAdd?: () => void;
 }
 
-const FacultyList: React.FC<FacultyListProps> = ({ collegeId }) => {
-  const user = useUser();
+const FacultyList: React.FC<FacultyListProps> = ({ collegeId, revision, onChanged, onAdd }) => {
+  const opener = useRef<HTMLButtonElement | null>(null);
   const [faculty, setFaculty] = useState<Faculty[]>([]);
   const [filteredFaculty, setFilteredFaculty] = useState<Faculty[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [statusError, setStatusError] = useState("");
+  const [clockNow, setClockNow] = useState(Date.now);
+  const [localRetryAt, setLocalRetryAt] = useState<Record<string, number>>({});
+  const [adminRetryAt, setAdminRetryAt] = useState(0);
+  const [credentialsSending, setCredentialsSending] = useState(false);
+  const [confirmCredentials, setConfirmCredentials] = useState(false);
+  const [credentialsNotice, setCredentialsNotice] = useState("");
+  const [credentialsError, setCredentialsError] = useState("");
+  const [notice, setNotice] = useState("");
   const [selectedFaculty, setSelectedFaculty] = useState<Faculty | null>(null);
-  
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setClockNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+  const cooldown = (member: Faculty) => Math.max(0, Math.ceil((Math.max(adminRetryAt, localRetryAt[member.id] ?? 0, (Date.parse(member.credentials_email_attempted_at ?? '') || 0) + 60_000) - clockNow) / 1000));
+
   // Document viewer modal state
   const [showDocumentModal, setShowDocumentModal] = useState(false);
   const [selectedFacultyForDocs, setSelectedFacultyForDocs] = useState<Faculty | null>(null);
 
   useEffect(() => {
-    if (collegeId) {
-      loadFaculty();
-    }
-  }, [collegeId]);
+    void loadFaculty();
+  }, [collegeId, revision]);
 
   useEffect(() => {
     filterFaculty();
@@ -80,17 +103,18 @@ const FacultyList: React.FC<FacultyListProps> = ({ collegeId }) => {
     }
 
     setLoading(true);
+    setError("");
     try {
-      const result = await apiPost('/college-admin/faculty', {
+      const result = await apiPost<{ data: Faculty[] }>('/college-admin/faculty', {
         action: 'get-lecturers',
         college_id: collegeId,
       });
 
-      if (result.data) {
-        setFaculty(result.data);
-      }
+      if (!Array.isArray(result.data)) throw new Error("Invalid faculty response");
+      setFaculty(result.data);
     } catch (error) {
       logger.error('Error in loadFaculty', error as Error);
+      setError('Could not load faculty. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -99,14 +123,15 @@ const FacultyList: React.FC<FacultyListProps> = ({ collegeId }) => {
   const filterFaculty = () => {
     let filtered = faculty;
 
-    if (searchTerm) {
+    const query = searchTerm.trim().toLowerCase();
+    if (query) {
       filtered = filtered.filter(
         (f) =>
-          f.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          f.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          f.employeeId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          f.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          f.department?.toLowerCase().includes(searchTerm.toLowerCase())
+          `${f.first_name ?? ""} ${f.last_name ?? ""}`.toLowerCase().includes(query) ||
+          f.last_name?.toLowerCase().includes(query) ||
+          f.employeeId?.toLowerCase().includes(query) ||
+          f.email?.toLowerCase().includes(query) ||
+          f.department?.toLowerCase().includes(query)
       );
     }
 
@@ -157,17 +182,50 @@ const FacultyList: React.FC<FacultyListProps> = ({ collegeId }) => {
   };
 
   const updateFacultyStatus = async (facultyId: string, newStatus: string) => {
+    if (saving) return;
+    setSaving(true);
+    setStatusError("");
     try {
       await apiPost('/college-admin/faculty', {
         action: 'update-faculty-status',
         id: facultyId,
         account_status: newStatus,
       });
-      loadFaculty();
+      await loadFaculty();
+      onChanged?.();
+      setNotice("Faculty status updated.");
       setSelectedFaculty(null);
     } catch (err) {
       logger.error('Error updating faculty status', err as Error);
+      setStatusError('Could not update the status. Please try again.');
+    } finally {
+      setSaving(false);
     }
+  };
+
+  const resendCredentials = async () => {
+    if (!selectedFaculty || credentialsSending || cooldown(selectedFaculty) > 0 || !credentialEligible(selectedFaculty)) return;
+    setCredentialsSending(true);
+    setLocalRetryAt(current => ({ ...current, [selectedFaculty.id]: Date.now() + 60_000 }));
+    setCredentialsError('');
+    setCredentialsNotice('');
+    try {
+      const result = await apiPost<{ data: { emailStatus: 'sent' | 'failed'; email: string; attemptedAt?: string; statusSaved?: boolean } }>('/college-admin/faculty-credentials', { facultyId: selectedFaculty.id });
+      setSelectedFaculty(current => current ? { ...current, credentials_email_status: result.data.emailStatus, credentials_email_attempted_at: result.data.attemptedAt ?? new Date().toISOString() } : null);
+      setConfirmCredentials(false);
+      if (result.data.emailStatus === 'sent') setCredentialsNotice(`New credentials emailed to ${result.data.email}. The previous password no longer works.`);
+      else setCredentialsError('The password was changed, but email delivery could not be confirmed. Wait one minute, then resend credentials.');
+      if (result.data.statusSaved === false) setCredentialsNotice(current => `${current} Email status could not be saved; the displayed delivery result is current.`.trim());
+      void loadFaculty();
+    } catch (error) {
+      const failure = error as { status?: number; code?: string };
+      if (failure.status === 429) {
+        setLocalRetryAt(current => ({ ...current, [selectedFaculty.id]: Date.now() + 60_000 }));
+        if (failure.code === 'RESET_RATE_LIMITED') setAdminRetryAt(Date.now() + 300_000);
+        setSelectedFaculty(current => current ? { ...current, credentials_email_attempted_at: new Date().toISOString() } : null);
+      }
+      setCredentialsError(error instanceof Error ? error.message : 'Could not send credentials. Please try again.');
+    } finally { setCredentialsSending(false); }
   };
 
   const handleViewDocuments = (faculty: Faculty) => {
@@ -181,30 +239,33 @@ const FacultyList: React.FC<FacultyListProps> = ({ collegeId }) => {
   };
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="min-w-0 space-y-6 p-4 sm:p-6">
+      {notice && <p role="status" className="rounded-lg bg-green-50 p-3 text-green-800">{notice}</p>}
       {/* Header Section */}
       <div className="bg-gray-50 rounded-lg p-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-1">Faculty</h1>
+        <h2 className="text-2xl font-bold text-gray-900 mb-1">Faculty</h2>
         <p className="text-gray-600 text-sm">View and manage all faculty in your college</p>
       </div>
 
       {/* Faculty List Section */}
       <div className="bg-white rounded-lg border border-gray-200">
         <div className="p-6 border-b border-gray-200">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between mb-6">
             <h2 className="text-lg font-semibold text-gray-900">Faculty List</h2>
-            <div className="flex gap-3">
-              <div className="relative">
+            <div className="flex min-w-0 flex-col gap-3 sm:flex-row">
+              <div className="relative min-w-0">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="Search faculty..."
+                  aria-label="Search faculty by name, email, ID or department"
+                  placeholder="Name, email, ID or department"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 w-64"
+                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 w-full sm:w-64"
                 />
               </div>
               <select
+                aria-label="Filter faculty by status"
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
                 className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
@@ -219,7 +280,7 @@ const FacultyList: React.FC<FacultyListProps> = ({ collegeId }) => {
           </div>
 
           {/* Statistics Cards */}
-          <div className="grid grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
             <div className="bg-white border border-gray-200 rounded-lg p-4">
               <p className="text-sm text-gray-600 mb-1">All</p>
               <p className="text-2xl font-bold text-gray-900">{faculty.length}</p>
@@ -252,7 +313,7 @@ const FacultyList: React.FC<FacultyListProps> = ({ collegeId }) => {
         </div>
 
         {/* Table */}
-        {loading ? (
+        {error ? (<div role="alert" className="p-6 text-red-800">{error} <button type="button" onClick={() => void loadFaculty()} className="font-semibold underline">Try again</button></div>) : loading ? (
           <div className="text-center py-12">
             <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
             <p className="mt-2 text-gray-600 text-sm">Loading faculty...</p>
@@ -266,7 +327,9 @@ const FacultyList: React.FC<FacultyListProps> = ({ collegeId }) => {
           </div>
         ) : filteredFaculty.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-gray-500 text-sm">No faculty found</p>
+            <p className="font-semibold text-gray-900">{searchTerm.trim() || statusFilter !== 'all' ? 'No faculty match your filters' : 'No faculty yet'}</p>
+            <p className="mt-2 text-sm text-gray-600">{searchTerm.trim() || statusFilter !== 'all' ? 'Try a different name or clear your filters.' : 'Add your first faculty member to get started.'}</p>
+            {searchTerm.trim() || statusFilter !== 'all' ? <button type="button" className="mt-3 rounded-lg bg-indigo-600 px-4 py-2 text-white" onClick={() => {setSearchTerm(''); setStatusFilter('all');}}>Clear filters</button> : onAdd && <button type="button" className="mt-3 rounded-lg bg-indigo-600 px-4 py-2 text-white" onClick={onAdd}>Add faculty</button>}
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -352,7 +415,7 @@ const FacultyList: React.FC<FacultyListProps> = ({ collegeId }) => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <div className="flex items-center gap-2">
-                        <button 
+                        <button
                           onClick={() => handleViewDocuments(member)}
                           className="text-blue-600 hover:text-blue-900 flex items-center gap-1 px-2 py-1 rounded hover:bg-blue-50 transition-colors"
                           title="View Documents"
@@ -360,14 +423,20 @@ const FacultyList: React.FC<FacultyListProps> = ({ collegeId }) => {
                           <FileText className="h-4 w-4" />
                           Docs
                         </button>
-                        <button 
-                          onClick={() => setSelectedFaculty(member)}
+                        <button
+                          onClick={event => { opener.current = event.currentTarget; setStatusError(""); setConfirmCredentials(false); setCredentialsNotice(""); setCredentialsError(""); setSelectedFaculty(member); }}
                           className="text-indigo-600 hover:text-indigo-900 flex items-center gap-1 px-2 py-1 rounded hover:bg-indigo-50 transition-colors"
                           title="View Details"
                         >
                           <Eye className="h-4 w-4" />
                           View
                         </button>
+                        {credentialEligible(member) && <button type="button" disabled={member.accountStatus !== 'active' || cooldown(member) > 0}
+                          onClick={event => { opener.current = event.currentTarget; setStatusError(''); setCredentialsError(''); setCredentialsNotice(''); setConfirmCredentials(true); setSelectedFaculty(member); }}
+                          className="rounded px-2 py-1 text-left text-indigo-700 hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-50"
+                          aria-label={`Resend credentials to ${member.first_name ?? ''} ${member.last_name ?? ''}`}>
+                          {cooldown(member) > 0 ? `Resend in ${cooldown(member)}s` : 'Resend credentials'}
+                        </button>}
                       </div>
                     </td>
                   </tr>
@@ -380,19 +449,23 @@ const FacultyList: React.FC<FacultyListProps> = ({ collegeId }) => {
 
       {/* Faculty Detail Modal */}
       {selectedFaculty && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-gray-200">
+        <Dialog.Root open onOpenChange={open => { if (!open && !saving && !credentialsSending) setSelectedFaculty(null); }}>
+          <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 z-[100] bg-black/50" />
+          <Dialog.Content onCloseAutoFocus={event => { event.preventDefault(); opener.current?.focus(); }} aria-modal="true" aria-describedby={undefined} className="fixed left-1/2 top-1/2 z-[101] max-h-[90dvh] w-[calc(100%-2rem)] max-w-2xl -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl bg-white">
+            <div className="sticky top-0 z-10 border-b border-gray-200 bg-white p-6">
               <div className="flex justify-between items-start">
                 <div>
-                  <h3 className="text-xl font-bold text-gray-900">
+                  <Dialog.Title className="break-words text-xl font-bold text-gray-900">
                     {selectedFaculty.first_name || ''} {selectedFaculty.last_name || ''}
-                  </h3>
+                  </Dialog.Title>
                   <p className="text-sm text-gray-600">
                     {selectedFaculty.employeeId || <span className="text-gray-400 italic">ID not assigned</span>}
                   </p>
                 </div>
                 <button
+                  aria-label="Close faculty details"
+                  disabled={saving || credentialsSending}
                   onClick={() => setSelectedFaculty(null)}
                   className="text-gray-400 hover:text-gray-600"
                 >
@@ -401,7 +474,7 @@ const FacultyList: React.FC<FacultyListProps> = ({ collegeId }) => {
               </div>
             </div>
 
-            <div className="p-6 space-y-6">
+            <div className="break-words p-4 sm:p-6 space-y-6">
               {/* Contact Info */}
               <div>
                 <h4 className="font-semibold text-gray-900 mb-3">Contact Information</h4>
@@ -447,31 +520,20 @@ const FacultyList: React.FC<FacultyListProps> = ({ collegeId }) => {
                 </div>
               </div>
 
-              {/* Login Credentials */}
-              {selectedFaculty.temporary_password && (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                  <h4 className="font-semibold text-yellow-900 mb-3 flex items-center gap-2">
-                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                    </svg>
-                    Login Credentials
-                  </h4>
-                  <div className="space-y-2 text-sm">
-                    <p>
-                      <span className="text-yellow-700 font-medium">Temporary Password:</span>{" "}
-                      <code className="bg-yellow-100 px-2 py-1 rounded text-yellow-900 font-mono">
-                        {selectedFaculty.temporary_password}
-                      </code>
-                    </p>
-                    <p className="text-yellow-600 text-xs">
-                      Created: {selectedFaculty.password_created_at ? new Date(selectedFaculty.password_created_at).toLocaleString() : 'N/A'}
-                    </p>
-                    <p className="text-yellow-600 text-xs mt-2">
-                      ⚠️ Please share this password securely with the faculty member. They should change it after first login.
-                    </p>
+              <section aria-label="Credential email" className="rounded-lg border border-indigo-100 bg-indigo-50 p-4">
+                <h4 className="mb-2 font-semibold text-gray-900">Login credentials</h4>
+                <p className="text-sm text-gray-700">{selectedFaculty.credentials_email_status === 'sent' ? 'The latest credential email was sent.' : selectedFaculty.credentials_email_status === 'failed' ? 'The last credential delivery attempt failed.' : selectedFaculty.credentials_email_status === 'sending' ? 'A recent credential email attempt is in progress. Refresh the list for its latest status.' : 'No credential email has been recorded.'}</p>
+                {credentialsNotice && <p role="status" className="mt-3 text-sm text-green-800">{credentialsNotice}</p>}
+                {credentialsError && <p role="alert" className="mt-3 text-sm text-red-800">{credentialsError}</p>}
+                {!credentialEligible(selectedFaculty) ? <p className="mt-3 text-sm text-gray-600">Credential resets here are available for educators. College administrators can use Forgot password on the sign-in page.</p> : confirmCredentials ? <div className="mt-3 space-y-3">
+                  <p className="text-sm text-gray-800">This replaces the educator’s password and signs them out of all sessions. New credentials will be sent to their account email. Continue?</p>
+                  <div className="flex flex-wrap gap-2">
+                    <button type="button" disabled={credentialsSending || saving || cooldown(selectedFaculty) > 0} onClick={() => void resendCredentials()} className="rounded-lg bg-indigo-700 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">{credentialsSending ? 'Sending…' : 'Reset password and email credentials'}</button>
+                    <button type="button" disabled={credentialsSending} onClick={() => setConfirmCredentials(false)} className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm">Cancel</button>
                   </div>
-                </div>
-              )}
+                </div> : <button type="button" disabled={selectedFaculty.accountStatus !== 'active' || saving || cooldown(selectedFaculty) > 0} onClick={() => setConfirmCredentials(true)} className="mt-3 rounded-lg bg-indigo-700 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">{cooldown(selectedFaculty) > 0 ? `Resend in ${cooldown(selectedFaculty)}s` : 'Resend credentials'}</button>}
+                {credentialEligible(selectedFaculty) && cooldown(selectedFaculty) > 0 && <p className="mt-2 text-sm text-gray-600">You can resend credentials in {cooldown(selectedFaculty)} seconds.</p>}
+              </section>
 
               {/* Subject Expertise */}
               {selectedFaculty.subject_expertise && selectedFaculty.subject_expertise.length > 0 && (
@@ -501,10 +563,14 @@ const FacultyList: React.FC<FacultyListProps> = ({ collegeId }) => {
               {/* Status Update */}
               <div>
                 <h4 className="font-semibold text-gray-900 mb-3">Update Status</h4>
-                <div className="flex gap-2">
+                {statusError && <p role="alert" className="mb-3 text-red-700">{statusError}</p>}
+                {saving && <p role="status">Saving status…</p>}
+                <div className="flex flex-wrap gap-2">
                   {["active", "deactivated", "pending", "suspended"].map((status) => (
                     <button
                       key={status}
+                      disabled={saving || credentialsSending || selectedFaculty.accountStatus === status}
+                      aria-pressed={selectedFaculty.accountStatus === status}
                       onClick={() => updateFacultyStatus(selectedFaculty.id, status)}
                       className={`px-4 py-2 rounded-lg font-medium transition ${
                         selectedFaculty.accountStatus === status
@@ -518,10 +584,11 @@ const FacultyList: React.FC<FacultyListProps> = ({ collegeId }) => {
                 </div>
               </div>
             </div>
-          </div>
-        </div>
+          </Dialog.Content>
+          </Dialog.Portal>
+        </Dialog.Root>
       )}
-      
+
       {/* Faculty Document Viewer Modal */}
       <FacultyDocumentViewerModal
         isOpen={showDocumentModal}

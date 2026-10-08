@@ -6,6 +6,7 @@
  * - Update learner documents
  */
 
+import { FacultyCredentialsError, facultyLoginUrl, generateFacultyPassword, recordCredentialStatus, requireFacultyAdmin, sendFacultyCredentials } from '../../../lib/faculty-credentials';
 import { apiError, apiSuccess } from '../../../lib/response';
 import { resolveUserOrganization } from '../../../lib/resolve-organization';
 import { ssoCreateMember } from '../../../lib/sso-client';
@@ -511,38 +512,38 @@ export async function handleCreateCollegeStaff(request: Request, env: PagesEnv, 
   // ── Resolve the APP-DB college id (organizations row) ──
   // This is the FK target for college_lecturers.collegeId. It is distinct from
   // the SSO org id used for membership below.
-  const resolvedCollege = await resolveUserOrganization(supabaseAdmin, {
-    knownOrgId: requestCollegeId,
-    userId: user.id,
-    email: user.email,
-    orgType: 'college',
-  });
-
-  const collegeId = resolvedCollege?.organizationId || null;
-
-  if (!collegeId) {
-    return apiError(400, 'VALIDATION_ERROR', 'College ID not found. Please ensure you are logged in as a college admin.', request);
+  let collegeId: string;
+  let ssoOrgId: string;
+  try {
+    const scope = await requireFacultyAdmin(env, supabaseAdmin, user);
+    collegeId = scope.collegeId;
+    ssoOrgId = scope.ssoOrgId;
+    if (requestCollegeId && requestCollegeId !== collegeId)
+      return apiError(403, 'FORBIDDEN', 'You can only add faculty to your college.', request);
+  } catch (error) {
+    return apiError(error instanceof FacultyCredentialsError ? error.status : 503, 'FORBIDDEN', 'Active college administrator access is required.', request);
   }
-
-  // The new staff member must join the admin's organization in the SSO DB.
-  const ssoOrgId = user.org_id;
-  if (!ssoOrgId) {
-    return apiError(400, 'VALIDATION_ERROR', 'Admin organization not found in session', request);
-  }
+  if (!env.EMAIL_SERVICE)
+    return apiError(503, 'EMAIL_UNAVAILABLE', 'Email delivery is not configured. No account was created.', request);
 
   // Pre-check for an existing staff profile in the app DB (fast, friendly error).
   // The SSO worker is the source of truth for the auth user and rejects
   // duplicate emails too.
-  const { data: existingLecturer } = await supabaseAdmin
+  const { data: existingLecturer, error: existingLecturerError } = await supabaseAdmin
     .from('college_lecturers')
     .select('id')
     .eq('metadata->>email', staff.email.toLowerCase())
     .maybeSingle();
+  if (existingLecturerError) return apiError(503, 'PROFILE_LOOKUP_FAILED', 'Could not check existing faculty. Please retry.', request);
   if (existingLecturer) {
     return apiError(400, 'VALIDATION_ERROR', `Staff member with email ${staff.email} already exists`, request);
   }
 
-  const staffPassword = generatePassword();
+  let loginUrl: string;
+  try { loginUrl = facultyLoginUrl(env, request.url); } catch {
+    return apiError(503, 'EMAIL_UNAVAILABLE', 'The application email URL is not configured correctly. No account was created.', request);
+  }
+  const staffPassword = generateFacultyPassword();
   const { firstName, lastName } = splitName(staff.name);
 
   // Map the selected UI role to the app-DB internal role string.
@@ -565,15 +566,27 @@ export async function handleCreateCollegeStaff(request: Request, env: PagesEnv, 
   // Makes the staff a real, active SSO member of the college's org. Access is
   // granted through the organization's subscription/seats — no personal sub.
   let ssoUserId: string;
+  let recovering = false;
   try {
-    const ssoMember = await ssoCreateMember(env as unknown as { SSO_SERVICE: Fetcher }, {
-      email: staff.email.toLowerCase(),
-      password: staffPassword,
-      role: ssoRole,
-      org_id: ssoOrgId,
-    });
-    if (!ssoMember?.user_id) throw new Error('SSO member creation returned invalid user_id');
-    ssoUserId = ssoMember.user_id;
+    const existing = await env.SSO_SERVICE!.getUserByEmail(staff.email.toLowerCase());
+    if (existing) {
+      const [target, memberships, profile] = await Promise.all([
+        env.SSO_SERVICE!.getUserById(existing.id),
+        env.SSO_SERVICE!.getUserMemberships(existing.id),
+        supabaseAdmin.from('college_lecturers').select('id').eq('user_id', existing.id).maybeSingle(),
+      ]);
+      const matching = memberships.memberships?.some(m => m.org_id === ssoOrgId && m.status === 'active' && (m.roles ?? [m.role]).includes(ssoRole));
+      if (profile.error || profile.data || !matching || !target || target.is_blocked || !target.is_email_verified || existing.id === user.id)
+        return apiError(409, 'VALIDATION_ERROR', 'This email already belongs to an account that cannot be recovered through faculty onboarding.', request);
+      ssoUserId = existing.id;
+      recovering = true;
+    } else {
+      const ssoMember = await ssoCreateMember(env as unknown as { SSO_SERVICE: Fetcher }, {
+        email: staff.email.toLowerCase(), password: staffPassword, role: ssoRole, org_id: ssoOrgId,
+      });
+      if (!ssoMember?.user_id) throw new Error('SSO member creation returned invalid user_id');
+      ssoUserId = ssoMember.user_id;
+    }
   } catch (ssoErr) {
     return apiError(400, 'VALIDATION_ERROR', (ssoErr as Error).message || 'Failed to create staff account', request);
   }
@@ -583,7 +596,9 @@ export async function handleCreateCollegeStaff(request: Request, env: PagesEnv, 
     // this is a profile shadow, not an auth record. users.role is the
     // user_role enum (college_admin | college_educator); the fine-grained staff
     // role (faculty/hod/lecturer/...) is preserved in metadata.
-    const { error: userInsertError } = await supabaseAdmin.from('users').insert({
+    const { data: shadow, error: shadowError } = await supabaseAdmin.from('users').select('id,organizationId').eq('id', ssoUserId).maybeSingle();
+    if (shadowError || (shadow?.organizationId && shadow.organizationId !== collegeId)) throw new Error('Could not safely recover the faculty profile.');
+    const { error: userInsertError } = shadow ? { error: null } : await supabaseAdmin.from('users').insert({
       id: ssoUserId,
       email: staff.email.toLowerCase(),
       firstName,
@@ -619,6 +634,12 @@ export async function handleCreateCollegeStaff(request: Request, env: PagesEnv, 
         qualification: staff.qualification || null,
         experienceYears: staff.experience_years || null,
         accountStatus: 'active',
+        first_name: firstName,
+        last_name: lastName,
+        email: staff.email.toLowerCase(),
+        phone: staff.phone || null,
+        credentials_email_status: 'sending',
+        credentials_email_attempted_at: new Date().toISOString(),
         metadata: {
           first_name: firstName,
           last_name: lastName,
@@ -626,8 +647,6 @@ export async function handleCreateCollegeStaff(request: Request, env: PagesEnv, 
           phone: staff.phone || null,
           role: primaryRole,
           roles: staff.roles,
-          temporary_password: staffPassword,
-          password_created_at: new Date().toISOString(),
           created_by: user.email,
         },
       })
@@ -638,8 +657,16 @@ export async function handleCreateCollegeStaff(request: Request, env: PagesEnv, 
       throw new Error(`Failed to create staff profile: ${staffError.message}`);
     }
 
-    // Flat shape (matches handleCreateTeacher) so the frontend can read
-    // result.data.authUserId / staffId / password directly.
+    let canSend = true;
+    if (recovering) {
+      try {
+        const reset = await env.SSO_SERVICE!.adminResetPassword({ admin_user_id: user.id, admin_roles: ['college_admin'], admin_org_id: ssoOrgId, target_user_id: ssoUserId, new_password: staffPassword });
+        canSend = reset?.success === true;
+      } catch { canSend = false; }
+    }
+    const emailStatus = canSend ? await sendFacultyCredentials(env, staff.email.toLowerCase(), staff.name, staffPassword, loginUrl) : 'failed';
+    const statusSaved = await recordCredentialStatus(supabaseAdmin, staffRecord.id, emailStatus);
+    // Never return the password to the browser.
     return apiSuccess({
       message: `Staff member ${staff.name} created successfully`,
       authUserId: ssoUserId,
@@ -647,15 +674,12 @@ export async function handleCreateCollegeStaff(request: Request, env: PagesEnv, 
       email: staff.email,
       name: staff.name,
       roles: staff.roles,
-      password: staffPassword,
+      emailStatus,
+      statusSaved,
       collegeId,
     }, request);
   } catch (error) {
-    // Best-effort rollback of the app-DB profile row. The SSO user already
-    // exists; it is reused on a corrected retry (duplicate email is rejected).
-    if (ssoUserId) {
-      await supabaseAdmin.from('users').delete().eq('id', ssoUserId);
-    }
-    return apiError(400, 'VALIDATION_ERROR', (error as Error).message, request);
+    // Preserve the SSO identity and any saved shadow profile so a retry can finish.
+    return apiError(503, 'PROFILE_SAVE_FAILED', 'The account could not be fully saved. Retry onboarding with the same email to finish creating the faculty profile.', request);
   }
 }

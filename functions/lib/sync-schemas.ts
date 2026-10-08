@@ -45,6 +45,9 @@ export const MembershipPayloadSchema = z.object({
   organization_id: z.string(),
   roles: z.array(z.string()).optional(),
   status: z.string().optional(),
+  // Producer marker. Only SSO acceptInvite sends 'invite'; it is compared to that
+  // literal and otherwise ignored, so a plain string keeps unknown values parseable.
+  source: z.string().max(32).optional(),
   // Learner profile keyed by `learners` column names, sent by SSO bulk
   // import so the shadow learners row carries every Settings-displayed field.
   learner_profile: z.record(z.string(), z.unknown()).optional(),
