@@ -25,6 +25,9 @@ describe("aiBinding", () => {
       ["FEATURE_ACCESS_DENIED: x", 403],
       ["RATE_LIMIT_EXCEEDED: x", 429],
       ["BUDGET_EXCEEDED: x", 429],
+      ["AI_CREDITS_EXHAUSTED: x", 429],
+      ["AI_REQUEST_IN_PROGRESS: x", 429],
+      ["AI_CREDITS_PENDING: x", 429],
       ["IDEMPOTENCY_CONFLICT: x", 409],
       ["DEPENDENCY_UNAVAILABLE: x", 502],
       ["DOWNSTREAM_TIMEOUT: x", 504],
@@ -39,6 +42,8 @@ describe("aiBinding", () => {
     expect(mapped.status).toBe(429);
     expect(mapped.body.error.code).toBe("BUDGET_EXCEEDED");
     expect(mapped.body.error.retryable).toBe(true);
+    expect(toAiHttpError(new Error("AI_CREDITS_EXHAUSTED: x")).body.error.retryable).toBe(false);
+    expect(toAiHttpError(new Error("AI_CREDITS_PENDING: x")).body.error.retryable).toBe(true);
     expect(toAiHttpError(new Error("INTERNAL_ERROR: x")).body.error.retryable).toBe(false);
   });
 });
@@ -63,8 +68,30 @@ describe("issueExecutionAssertion", () => {
     expect(other).not.toBe(a);
   });
 
-  it("rejects short secrets before minting", async () => {
-    await expect(
+  it("carries credit binding claims when provided", async () => {
+    const token = await issueExecutionAssertion(
+      secret,
+      {
+        issuer: "skillpassport",
+        action: "careerTalentStrategist.chat",
+        userId: "u-1",
+        product: "skillpassport",
+        entitlements: ["career_ai"],
+        sessionId: "123e4567-e89b-12d3-a456-426614174000",
+        operationId: "turn-1",
+        workerInputHash: "b".repeat(64),
+      },
+      1000,
+    );
+    const payload = JSON.parse(
+      Buffer.from(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8"),
+    );
+    expect(payload.sessionId).toBe("123e4567-e89b-12d3-a456-426614174000");
+    expect(payload.operationId).toBe("turn-1");
+    expect(payload.workerInputHash).toBe("b".repeat(64));
+  });
+
+  it("rejects short secrets before minting", async () => {    await expect(
       issueExecutionAssertion("short", {
         issuer: "skillpassport",
         action: "x",

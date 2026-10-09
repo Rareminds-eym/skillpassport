@@ -14,6 +14,12 @@ export interface SsoWorkerRpc {
   syncSubscription(userId: string): Promise<{ subscription: Record<string, unknown> | null; plan: Record<string, unknown> | null }>;
   syncPlans(): Promise<{ plans: Record<string, unknown>[] }>;
   listRoles(): Promise<{ roles: { id: string; name: string; description: string | null }[] }>;
+  // Career AI credit wallet (SSO-canonical; amounts are decimal strings)
+  getCareerCredits(userId: string): Promise<{
+    ok: boolean; error?: string; account_id?: string;
+    granted_credits?: string; spent_credits?: string; remaining_credits?: string;
+    revision?: number; active_operation_id?: string | null; has_pending_cost?: boolean;
+  }>;
   // Generic fallback for other RPCs
   [key: string]: (...args: any[]) => Promise<any>;
 }

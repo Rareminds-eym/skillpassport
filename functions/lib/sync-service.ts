@@ -121,9 +121,11 @@ export function mapLearnerProfileToColumns(profile: Record<string, unknown> | un
 
 export class SyncService {
   private db: DbClient;
+  private env: PagesEnv;
 
   constructor(env: PagesEnv) {
     this.db = createDb(env);
+    this.env = env;
   }
 
   async syncUser(data: unknown): Promise<SyncResult> {
@@ -628,6 +630,59 @@ export class SyncService {
     const { error } = await this.db.from('subscription_cache')
       .update({ status, auth_updated_at: new Date().toISOString() })
       .eq('id', parsed.id);
+    if (error) return fail('DB_ERROR', error.message, true);
+    return ok();
+  }
+
+  /**
+   * Career AI credit balance projection (30-credit plan). Applies an SSO
+   * balance snapshot to the display-only cache. Server-validates the
+   * snapshot's product/scope against the configured canonical product UUID
+   * (never trusts the sender's product), and applies only newer revisions
+   * (stale or reordered deliveries are acknowledged, not applied). Missing
+   * local user shadow fails retryable — user sync precedes balance sync.
+   */
+  async syncCreditBalance(data: unknown): Promise<SyncResult> {
+    const body = data as { account?: Record<string, unknown> } | null;
+    const account = body?.account;
+    if (!account || typeof account !== 'object') {
+      return fail('VALIDATION_ERROR', 'Missing account snapshot', false);
+    }
+    const productId = (this.env as PagesEnv).CREDIT_PRODUCT_UUID;
+    if (!productId) return fail('CONFIG_ERROR', 'Credit product is not configured', false);
+    const id = account['id'];
+    const userId = account['user_id'];
+    const snapshotProduct = account['product_id'];
+    const scope = account['scope'];
+    const granted = account['granted_credits'];
+    const spent = account['spent_credits'];
+    const revision = account['revision'];
+    if (typeof id !== 'string' || typeof userId !== 'string' || typeof granted !== 'string'
+      || typeof spent !== 'string' || typeof revision !== 'number') {
+      return fail('VALIDATION_ERROR', 'Malformed account snapshot', false);
+    }
+    if (snapshotProduct !== productId || scope !== 'career_ai') {
+      return fail('VALIDATION_ERROR', 'Snapshot product/scope mismatch', false);
+    }
+    const { data: owner, error: ownerError } = await this.db.from('users').select('id').eq('id', userId).maybeSingle();
+    if (ownerError) return fail('DB_ERROR', ownerError.message, true);
+    if (!owner) return fail('NO_USER_SHADOW', 'Local user shadow missing; user sync must precede', true);
+    const { data: existing, error: readError } = await this.db
+      .from('user_ai_credit_accounts_cache')
+      .select('revision')
+      .eq('id', id)
+      .maybeSingle();
+    if (readError) return fail('DB_ERROR', readError.message, true);
+    const existingRevision = (existing as unknown as { revision?: number } | null)?.revision ?? 0;
+    if (revision <= existingRevision) return ok();
+    const { error } = await this.db.from('user_ai_credit_accounts_cache').upsert(
+      {
+        id, user_id: userId, product_id: productId, scope: 'career_ai',
+        granted_credits: granted, spent_credits: spent, revision,
+        updated_at: new Date().toISOString(), synced_at: new Date().toISOString(),
+      },
+      { onConflict: 'id' },
+    );
     if (error) return fail('DB_ERROR', error.message, true);
     return ok();
   }

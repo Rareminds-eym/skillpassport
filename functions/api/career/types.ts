@@ -6,6 +6,12 @@ export interface ChatRequest {
   conversationId?: string;
   message: string;
   selectedChips?: string[];
+  /**
+   * Stable client turn UUID (30-credit plan). Created once per send and
+   * reused across transport retries so replays reuse the session and frozen
+   * input instead of rebilling. Absent → server mints single-use (degraded).
+   */
+  turnId?: string;
 }
 
 export interface StoredMessage {

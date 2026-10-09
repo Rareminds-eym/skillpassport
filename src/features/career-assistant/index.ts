@@ -19,4 +19,4 @@ export type { ActionButton } from './model/interactive';
 
 export { getConversationGroup } from './lib/dateUtils';
 
-export { streamCareerChat } from './api/careerWorkerService';
+export { streamCareerChat, fetchCareerCredits } from './api/careerWorkerService';

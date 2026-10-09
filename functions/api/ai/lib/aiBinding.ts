@@ -96,6 +96,9 @@ export function rpcErrorToHttpStatus(error: unknown): number {
   if (message.startsWith("FEATURE_ACCESS_DENIED:")) return 403;
   if (message.startsWith("RATE_LIMIT_EXCEEDED:")) return 429;
   if (message.startsWith("BUDGET_EXCEEDED:")) return 429;
+  if (message.startsWith("AI_CREDITS_EXHAUSTED:")) return 429;
+  if (message.startsWith("AI_REQUEST_IN_PROGRESS:")) return 429;
+  if (message.startsWith("AI_CREDITS_PENDING:")) return 429;
   if (message.startsWith("IDEMPOTENCY_CONFLICT:")) return 409;
   if (message.startsWith("DEPENDENCY_UNAVAILABLE:")) return 502;
   if (message.startsWith("DOWNSTREAM_TIMEOUT:")) return 504;
@@ -120,7 +123,8 @@ export function toAiHttpError(
         code: code as AiError["code"],
         message: message.slice(0, 500),
         requestId: "pages",
-        retryable: status === 429 || status === 504,
+        // Exhaustion never resolves by retrying; busy/pending might.
+        retryable: (status === 429 || status === 504) && code !== "AI_CREDITS_EXHAUSTED",
       },
     },
   };

@@ -19,6 +19,23 @@ interface CareerChatParams {
   conversationId?: string;
   message: string;
   selectedChips?: string[];
+  /**
+   * Stable client turn UUID (30-credit plan). Created once per send and
+   * reused across transport retries so the backend dedupes instead of
+   * rebilling. Omitted only by legacy callers (server mints single-use).
+   */
+  turnId?: string;
+}
+
+export interface CareerCreditBalance {
+  granted_credits: string;
+  spent_credits: string;
+  remaining_credits: string;
+  revision: number;
+  active_operation_id?: string | null;
+  has_pending_cost?: boolean;
+  synced_at?: string;
+  fresh?: boolean;
 }
 
 interface RecommendationsParams {
@@ -37,7 +54,7 @@ interface GenerateEmbeddingParams {
  * Send message to Career AI chat (streaming)
  */
 export async function sendCareerChatMessage(
-  { conversationId, message, selectedChips = [] }: CareerChatParams,
+  { conversationId, message, selectedChips = [], turnId }: CareerChatParams,
   onToken?: (content: string) => void,
   onDone?: (data: unknown) => void,
   onError?: (error: Error) => void,
@@ -47,7 +64,7 @@ export async function sendCareerChatMessage(
     // Use interceptor to handle token validation and refresh
     const response = await getInterceptor().request(`${API_URL}/chat`, {
       method: 'POST',
-      body: JSON.stringify({ conversationId, message, selectedChips }),
+      body: JSON.stringify({ conversationId, message, selectedChips, turnId }),
       signal: abortSignal,
     });
 
@@ -117,6 +134,31 @@ export async function sendCareerChatMessage(
 }
 
 /**
+ * Career AI credit balance (30-credit plan). Display-only; the SSO wallet
+ * stays canonical. `refresh` pulls the authoritative balance and updates
+ * the server cache; otherwise the last-known snapshot is returned.
+ */
+export async function getCareerCredits(refresh = false): Promise<CareerCreditBalance> {
+  const response = await getInterceptor().request(`${API_URL}/credits${refresh ? '?refresh=1' : ''}`, {
+    method: 'GET',
+  });
+
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as {
+      error?: { code?: string; message?: string } | string;
+      message?: string;
+    };
+    const errorDetail = body?.error;
+    const errorCode = typeof errorDetail === 'object' ? errorDetail?.code : null;
+    const errorMsg = typeof errorDetail === 'string' ? errorDetail : errorDetail?.message || body?.message || 'Failed to load credit balance';
+    throw new Error(errorCode ? `${errorCode}: ${errorMsg}` : errorMsg);
+  }
+
+  const body = (await response.json()) as { data?: CareerCreditBalance };
+  return (body?.data ?? body) as CareerCreditBalance;
+}
+
+/**
  * Get job recommendations for a learner
  */
 export async function getRecommendations(
@@ -182,6 +224,7 @@ export async function generateEmbedding({
 
 export default {
   sendCareerChatMessage,
+  getCareerCredits,
   getRecommendations,
   generateEmbedding,
   healthCheck,

@@ -58,6 +58,12 @@ AI_ASSERT_SECRET=your_ai_assert_secret_here_min_32_chars
 # Must belong to the worker's account. Local/dev value lives in .dev.vars.
 AI_GATEWAY_ID=your_ai_gateway_id_here
 
+# ==================== CAREER AI CREDITS (30-credit plan) ====================
+# Canonical SSO product UUID for SkillPassport (products.code = skillpassport).
+# Balance snapshots for any other product_id are rejected. Fail-closed when
+# unset. Mirror to the dashboard vars for deployed environments.
+CREDIT_PRODUCT_UUID=912d5049-e195-46e9-a319-49e3502bf7e7
+
 
 
 

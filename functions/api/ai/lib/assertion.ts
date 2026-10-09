@@ -17,6 +17,16 @@ export interface AssertionClaimsInput {
   entitlements: string[];
   /** Lifetime in ms. Short: 60s recommended. */
   ttlMs?: number;
+  /**
+   * Credit-system turn binding (30-credit plan). Session = owned Career
+   * conversation id; operation = stable client turn id; workerInputHash =
+   * sha256 hex of the frozen canonical turn input. The timestamp/signature
+   * are excluded from the hashed identity. Worker admission cross-checks
+   * these against the envelope/input (Phase 3); issuance only carries them.
+   */
+  sessionId?: string;
+  operationId?: string;
+  workerInputHash?: string;
 }
 
 function b64urlEncode(bytes: Uint8Array): string {
@@ -69,6 +79,9 @@ export async function issueExecutionAssertion(
     ...(claims.tenantId ? { tenantId: claims.tenantId } : {}),
     product: claims.product,
     entitlements: claims.entitlements,
+    ...(claims.sessionId ? { sessionId: claims.sessionId } : {}),
+    ...(claims.operationId ? { operationId: claims.operationId } : {}),
+    ...(claims.workerInputHash ? { workerInputHash: claims.workerInputHash } : {}),
     issuedAt: nowMs,
     expiresAt: nowMs + ttl,
   };

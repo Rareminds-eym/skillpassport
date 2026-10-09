@@ -42,6 +42,7 @@ import { handleGetSkillsDemand } from './handlers/skills-demand';
 import { handleSaveReadinessScore, handleSaveProfileHealth, handleGetPeerBenchmarks } from './handlers/analytics';
 import { handleListConversations, handleGetConversation, handleDeleteConversation } from './handlers/conversations';
 import { handleUpsertFeedback, handleGetFeedback } from './handlers/feedback';
+import { handleGetCareerCredits } from './handlers/credits';
 
 // Helper to check the Cloudflare AI binding (uses shared utility).
 // Reasoning runs in ai-worker via the AI_SERVICE binding; the Cloudflare
@@ -86,7 +87,7 @@ export const onRequest: PagesFunction = async (context) => {
       const userId = user.id;
 
       // Feature Gate: Lock Career AI endpoints
-      const AI_PATHS = ['/chat', '/career-ai-chat', '/', '/analyze-assessment', '/generate-field-keywords', '/parse-resume'];
+      const AI_PATHS = ['/chat', '/career-ai-chat', '/', '/analyze-assessment', '/generate-field-keywords', '/parse-resume', '/credits'];
       if (AI_PATHS.includes(path)) {
         const supabase = getServiceClient(env as any);
         const isEntitled = await hasFeatureEntitlement(supabase, userId, 'career_ai');
@@ -168,6 +169,10 @@ export const onRequest: PagesFunction = async (context) => {
         return await handleGetFeedback(env as any, userId, request);
       }
       return await handleUpsertFeedback(env as any, userId, request);
+    }
+
+    if (path === '/credits') {
+      return await handleGetCareerCredits(request, env as any, userId);
     }
 
     return apiError(404, 'NOT_FOUND', 'Not found', request);

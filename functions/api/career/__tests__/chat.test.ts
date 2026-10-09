@@ -24,8 +24,11 @@ function workerSse(texts: string[]): Response {
 function basePorts(overrides: Record<string, unknown> = {}) {
   return {
     checkRateLimit: async () => true,
+    claimTurnIntent: async () => ({ created: true, sessionId: null as string | null, state: 'preparing' }),
+    resolveTurnSession: async () => ({ sessionId: 'sess-1' }),
+    freezeTurnIntent: async () => ({ ok: true }),
+    completeTurnIntent: async () => undefined,
     loadConversation: async () => ({ messages: [] as StoredMessage[], updated_at: "t" }),
-    countUserMessages: async () => 0,
     assembleContext: async () => ({
       conversationPhase: "exploring",
       intent: "general",
@@ -72,13 +75,12 @@ describe("career chat via worker", () => {
 
     const persisted = saved as {
       learnerId: string;
-      conversationId: null;
+      conversationId: string | null;
       title: string;
       messages: StoredMessage[];
     };
     expect(persisted.learnerId).toBe(USER);
-    expect(persisted.conversationId).toBeNull();
-    expect(persisted.title.length).toBeGreaterThan(0);
+    expect(persisted.conversationId).toBe("sess-1");
     expect(persisted.messages.map((m) => m.role)).toEqual(["user", "assistant"]);
     expect(persisted.messages[0]?.content).toBe("hi");
     expect(persisted.messages[1]?.content).toBe("Hello");
@@ -87,25 +89,10 @@ describe("career chat via worker", () => {
 });
 
 describe("career chat guards", () => {
-  it("blocks on quota before spending (worker never called)", async () => {
-    let calls = 0;
-    const ports = basePorts({
-      countUserMessages: async () => 2,
-      callWorker: async () => {
-        calls += 1;
-        return workerSse(["x"]);
-      },
-    });
-    const res = await handleCareerChat(post({ message: "hi" }), {} as never, USER, ports as never);
-    expect(res.status).toBe(403);
-    expect(await res.text()).toContain("QUOTA_EXCEEDED");
-    expect(calls).toBe(0);
-  });
-
   it("denies unknown conversations before spending", async () => {
     let calls = 0;
     const ports = basePorts({
-      loadConversation: async () => null,
+      resolveTurnSession: async () => ({ error: "Conversation not found or access denied", status: 403 }),
       callWorker: async () => {
         calls += 1;
         return workerSse(["x"]);
@@ -150,5 +137,91 @@ describe("career chat guards", () => {
     expect(get.status).toBe(405);
     const empty = await handleCareerChat(post({ message: "" }), {} as never, USER, ports as never);
     expect(empty.status).toBe(400);
+  });
+
+  it("rejects malformed turn ids", async () => {
+    const res = await handleCareerChat(
+      post({ message: "hi", turnId: "not-a-uuid" }), {} as never, USER, basePorts() as never,
+    );
+    expect(res.status).toBe(400);
+  });
+});
+
+describe("stable turns", () => {
+  const TURN = "123e4567-e89b-12d3-a456-426614174000";
+
+  it("returns 409 on turn payload conflict without calling the worker", async () => {
+    let calls = 0;
+    const ports = basePorts({
+      claimTurnIntent: async () => ({ error: "TURN_PAYLOAD_CONFLICT" }),
+      callWorker: async () => {
+        calls += 1;
+        return workerSse(["x"]);
+      },
+    });
+    const res = await handleCareerChat(post({ message: "hi", turnId: TURN }), {} as never, USER, ports as never);
+    expect(res.status).toBe(409);
+    expect(await res.text()).toContain("TURN_PAYLOAD_CONFLICT");
+    expect(calls).toBe(0);
+  });
+
+  it("maps worker credit denials to typed 429s", async () => {
+    for (const [code, body] of [
+      ["AI_CREDITS_EXHAUSTED", "AI_CREDITS_EXHAUSTED"],
+      ["AI_REQUEST_IN_PROGRESS", "AI_REQUEST_IN_PROGRESS"],
+      ["AI_CREDITS_PENDING", "AI_CREDITS_PENDING"],
+    ] as const) {
+      const ports = basePorts({
+        callWorker: async () => { throw new Error(`${code}: denied`); },
+      });
+      const res = await handleCareerChat(post({ message: "hi", turnId: TURN }), {} as never, USER, ports as never);
+      expect(res.status).toBe(429);
+      expect(await res.text()).toContain(body);
+    }
+  });
+
+  it("replays the saved answer when the worker dedupes", async () => {
+    const ports = basePorts({
+      claimTurnIntent: async () => ({
+        created: false, sessionId: "sess-1", state: "terminal",
+        workerInput: { conversationId: "sess-1", message: "hi" }, workerInputHash: "h",
+        responseText: "saved answer", assistantMessageId: TURN,
+      }),
+      callWorker: async () => ({ duplicate: true as const, executionId: "exec-1" }),
+    });
+    const res = await handleCareerChat(post({ message: "hi", turnId: TURN }), {} as never, USER, ports as never);
+    expect(res.status).toBe(200);
+    const text = await res.text();
+    expect(text).toContain("saved answer");
+    expect(text).toContain('"replayed":true');
+  });
+
+  it("recovers from the transcript when the intent is open but the answer exists", async () => {
+    const stored: StoredMessage[] = [
+      { id: TURN, role: "user", content: "hi", timestamp: "t" },
+      { id: TURN, role: "assistant", content: "recovered", timestamp: "t" },
+    ];
+    let completed = 0;
+    const ports = basePorts({
+      claimTurnIntent: async () => ({ created: false, sessionId: "sess-1", state: "dispatched" }),
+      loadConversation: async () => ({ messages: stored, updated_at: "t" }),
+      completeTurnIntent: async () => { completed += 1; },
+      callWorker: async () => ({ duplicate: true as const }),
+    });
+    const res = await handleCareerChat(post({ message: "hi", turnId: TURN }), {} as never, USER, ports as never);
+    expect(res.status).toBe(200);
+    expect(await res.text()).toContain("recovered");
+    expect(completed).toBe(1);
+  });
+
+  it("fails closed with 409 when a duplicate has no recoverable answer", async () => {
+    const ports = basePorts({
+      claimTurnIntent: async () => ({ created: false, sessionId: "sess-1", state: "dispatched" }),
+      loadConversation: async () => ({ messages: [] as StoredMessage[], updated_at: "t" }),
+      callWorker: async () => ({ duplicate: true as const }),
+    });
+    const res = await handleCareerChat(post({ message: "hi", turnId: TURN }), {} as never, USER, ports as never);
+    expect(res.status).toBe(409);
+    expect(await res.text()).toContain("TURN_STATE_UNKNOWN");
   });
 });
