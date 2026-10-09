@@ -6,6 +6,7 @@
 
 import type { AssessmentSection, AssessmentQuestion, ResponseScale } from '../types';
 import { createLogger } from '../../../lib/logger';
+import { requireResponseScale } from './response-scale';
 
 const logger = createLogger('QuestionLoader');
 
@@ -110,10 +111,13 @@ export async function loadSectionsWithQuestions(
   const sectionsWithQuestions = allSections.map((section: any) => {
     const sectionQuestions = (allQuestions || []).filter((q: any) => q.section_id === section.id);
     const filteredQuestions = filterQuestionsByGrade(sectionQuestions, gradeLevel);
-    const responseScale = parseResponseScale(section.response_scale);
+    const hasRatingQuestions = filteredQuestions.some((q: any) => q.question_type === 'rating');
+    const responseScale = gradeLevel === 'middle' && hasRatingQuestions
+      ? requireResponseScale(section.response_scale, section.name)
+      : parseResponseScale(section.response_scale);
 
     // Generate default response scale if needed
-    const finalResponseScale = responseScale.length === 0 && filteredQuestions.some((q: any) => q.question_type === 'rating')
+    const finalResponseScale = gradeLevel !== 'middle' && responseScale.length === 0 && hasRatingQuestions
       ? getDefaultResponseScale()
       : responseScale;
 
