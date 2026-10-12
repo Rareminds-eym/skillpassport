@@ -65,13 +65,8 @@ export interface PagesEnv {
   EMAIL_SERVICE?: EmailWorkerRpc;
   ADMIN_EMAIL?: string;
 
-  // Career AI credit wallet (30-credit plan)
-  /**
-   * Canonical SSO product UUID for SkillPassport, resolved server-side.
-   * Balance snapshots for any other product_id are rejected. Fail-closed
-   * when unset. Non-secret (mirrors the seeded SSO products.code row).
-   */
-  CREDIT_PRODUCT_UUID?: string;
+  // Career AI credit wallet (30-credit plan): product_id is SSO-canonical
+  // (RPC/sync payloads), never local configuration. Scope career_ai pins rows.
 
   // R2 Storage configuration
   CLOUDFLARE_R2_PUBLIC_URL?: string;

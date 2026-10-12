@@ -875,9 +875,13 @@ async function callChatWorker(
   // Duplicate replays arrive as JSON, billed turns as event-stream SSE.
   const contentType = result.headers.get('content-type') ?? '';
   if (contentType.includes('application/json')) {
-    const payload = (await result.json()) as {
-      success?: boolean; data?: { duplicate?: boolean; executionId?: string };
-    };
+      const payload = (await result.json()) as {
+        success?: boolean; data?: { duplicate?: boolean; executionId?: string };
+        error?: { code?: string; message?: string };
+      };
+      if (!result.ok && payload.error?.code) {
+        throw new Error(`${payload.error.code}: ${payload.error.message ?? 'Career request unavailable'}`);
+      }
     if (payload?.data?.duplicate) {
       return { duplicate: true, executionId: payload.data.executionId };
     }

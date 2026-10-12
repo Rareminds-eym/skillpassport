@@ -31,8 +31,7 @@ import {
   Square,
   PanelLeftClose,
   PanelLeft,
-  AlertCircle,
-  RefreshCw
+  AlertCircle
 } from 'lucide-react';
 import { streamCareerChat, fetchCareerCredits } from '@/features/career-assistant';
 
@@ -46,6 +45,7 @@ import { Card } from '@/shared/ui';
 // Import optimized hooks
 import { useOptimizedMessages, Message } from '@/features/career-assistant/hooks/useOptimizedMessages';
 import { useSmartScroll } from '@/features/career-assistant/hooks/useSmartScroll';
+import { useCreditSettlementRefresh } from '../hooks/useCreditSettlementRefresh';
 import { useConversationSwitcher } from '@/features/career-assistant/hooks/useConversationSwitcher';
 import { VirtualMessage } from '@/features/career-assistant/hooks/useVirtualMessage';
 
@@ -221,6 +221,8 @@ const CareerAssistantContainer: React.FC = () => {
   useEffect(() => {
     void refreshCredits(false);
   }, [refreshCredits]);
+
+  useCreditSettlementRefresh(creditPending, refreshCredits);
   
   /**
    * Stop AI response generation
@@ -256,7 +258,7 @@ const CareerAssistantContainer: React.FC = () => {
   const handleSend = useCallback(async () => {
     if (!input.trim() || loading) return;
     // Credit gate (display-side; the server enforces authoritatively).
-    if (creditExhausted || creditPending) return;
+    if (creditExhausted) return;
 
     // Rate limiting check
     const now = Date.now();
@@ -358,7 +360,10 @@ const CareerAssistantContainer: React.FC = () => {
         }
         if (code === 'AI_CREDITS_PENDING') {
           setCreditPending(true);
-          toast('Usage is still settling — try again in a moment.', { icon: '⏳' });
+          setMessages(prev => prev.filter(m => m.id !== userMsgIdRef.current));
+          userMsgIdRef.current = null;
+          setInput(userInput);
+          toast.error('Your previous request is still processing. Please try again shortly.');
           return;
         }
         if (code === 'AI_REQUEST_IN_PROGRESS') {
@@ -380,7 +385,8 @@ const CareerAssistantContainer: React.FC = () => {
         fetchConversations();
       }
 
-      // Usage settled after the answer: refresh the canonical balance.
+      // Accounting refresh is silent; the backend owns admission.
+      setCreditPending(true);
       void refreshCredits(true);
 
       // Update message with backend's messageId, interactive content and metadata
@@ -423,7 +429,7 @@ const CareerAssistantContainer: React.FC = () => {
       }
       abortControllerRef.current = null;
     }
-  }, [input, loading, creditExhausted, creditPending, refreshCredits, user?.id, currentConversationId, selectedChips, setMessages, setUserScrolledUp, messagesEndRef, setCurrentConversationId, fetchConversations]);
+  }, [input, loading, creditExhausted, refreshCredits, user?.id, currentConversationId, selectedChips, setMessages, setUserScrolledUp, messagesEndRef, setCurrentConversationId, fetchConversations]);
 
   /**
    * Auto-send query if set from navigation
@@ -491,9 +497,7 @@ const CareerAssistantContainer: React.FC = () => {
     <CareerAssistantUI
       showWelcome={showWelcome}
       creditExhausted={creditExhausted}
-      creditPending={creditPending}
       creditBalance={creditBalance}
-      onRefreshCredits={() => refreshCredits(true)}
       selectedChips={selectedChips}
       setSelectedChips={setSelectedChips}
       sidebarCollapsed={sidebarCollapsed}
@@ -533,9 +537,7 @@ const CareerAssistantContainer: React.FC = () => {
 interface CareerAssistantUIProps {
   showWelcome: boolean;
   creditExhausted: boolean;
-  creditPending: boolean;
   creditBalance: { remaining: string; granted: string } | null;
-  onRefreshCredits: () => void;
   selectedChips: string[];
   setSelectedChips: React.Dispatch<React.SetStateAction<string[]>>;
   sidebarCollapsed: boolean;
@@ -574,9 +576,7 @@ interface CareerAssistantUIProps {
 const CareerAssistantUI: React.FC<CareerAssistantUIProps> = ({
   showWelcome,
   creditExhausted,
-  creditPending,
   creditBalance,
-  onRefreshCredits,
   selectedChips,
   setSelectedChips,
   sidebarCollapsed,
@@ -766,36 +766,7 @@ const CareerAssistantUI: React.FC<CareerAssistantUIProps> = ({
             </motion.div>
           )}
 
-          {creditPending && !creditExhausted && (
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, ease: 'easeOut' }}
-              className="mx-auto max-w-4xl mt-4"
-            >
-              <Card variant="orange" className="p-4">
-                <div className="flex items-start gap-3">
-                  <AlertCircle className="w-5 h-5 text-amber-500 mt-0.5 shrink-0" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-amber-900">
-                      Updating usage…
-                    </p>
-                    <p className="text-sm text-amber-700 mt-0.5">
-                      Your last answer is settling. Sending is paused until the balance refreshes.
-                    </p>
-                  </div>
-                  <button
-                    onClick={onRefreshCredits}
-                    className="shrink-0 inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-amber-900 bg-amber-100 hover:bg-amber-200 rounded-lg transition-colors"
-                    title="Refresh credit balance"
-                  >
-                    <RefreshCw className="w-3.5 h-3.5" />
-                    Refresh
-                  </button>
-                </div>
-              </Card>
-            </motion.div>
-          )}
+
         </div>
 
 
@@ -891,8 +862,8 @@ const CareerAssistantUI: React.FC<CareerAssistantUIProps> = ({
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && onSendMessage()}
-                placeholder={creditExhausted ? "Free credit limit reached" : creditPending ? "Updating usage…" : (showWelcome ? "Ask me anything about your career..." : "Type your message...")}
-                disabled={loading || isTyping || creditExhausted || creditPending}
+                placeholder={creditExhausted ? "Free credit limit reached" : (showWelcome ? "Ask me anything about your career..." : "Type your message...")}
+                disabled={loading || isTyping || creditExhausted}
                 className="w-full px-5 py-4 pr-32 text-gray-900 placeholder-gray-500 bg-gray-50 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed transition-all"
               />
               
@@ -905,7 +876,7 @@ const CareerAssistantUI: React.FC<CareerAssistantUIProps> = ({
                 </button>
                 <button
                   onClick={onSendMessage}
-                  disabled={loading || isTyping || !input.trim() || creditExhausted || creditPending}
+                  disabled={loading || isTyping || !input.trim() || creditExhausted}
                   className="p-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 disabled:bg-gray-300 disabled:cursor-not-allowed transition-all"
                   title="Send message"
                 >
@@ -919,14 +890,9 @@ const CareerAssistantUI: React.FC<CareerAssistantUIProps> = ({
                 Career AI may generate inaccurate information. Please verify important details.
               </p>
               {creditBalance && (
-                <button
-                  onClick={onRefreshCredits}
-                  className="shrink-0 inline-flex items-center gap-1 text-xs text-gray-500 hover:text-gray-800 transition-colors"
-                  title="Refresh credit balance"
-                >
-                  <RefreshCw className="w-3 h-3" />
+                <span className="shrink-0 text-xs text-gray-500">
                   {formatCredits(creditBalance.remaining)} free credits left
-                </button>
+                </span>
               )}
             </div>
           </div>

@@ -17,6 +17,7 @@ import {
   type MembershipPayloadData
 } from './sync-schemas';
 import { syncUserShadow } from './sync-shadow';
+import { isValidUUID } from './validation';
 import type { PagesEnv } from './types';
 
 export type SyncResult =
@@ -636,11 +637,13 @@ export class SyncService {
 
   /**
    * Career AI credit balance projection (30-credit plan). Applies an SSO
-   * balance snapshot to the display-only cache. Server-validates the
-   * snapshot's product/scope against the configured canonical product UUID
-   * (never trusts the sender's product), and applies only newer revisions
-   * (stale or reordered deliveries are acknowledged, not applied). Missing
-   * local user shadow fails retryable — user sync precedes balance sync.
+   * balance snapshot to the display-only cache. The snapshot's product_id
+   * is SSO-canonical (this endpoint is bearer-authenticated, and SSO mints
+   * the account rows) — it is shape-validated and stored as-is, never
+   * compared against local configuration. Scope is pinned to career_ai,
+   * and only newer revisions apply (stale or reordered deliveries are
+   * acknowledged, not applied). Missing local user shadow fails retryable
+   * — user sync precedes balance sync.
    */
   async syncCreditBalance(data: unknown): Promise<SyncResult> {
     const body = data as { account?: Record<string, unknown> } | null;
@@ -648,8 +651,6 @@ export class SyncService {
     if (!account || typeof account !== 'object') {
       return fail('VALIDATION_ERROR', 'Missing account snapshot', false);
     }
-    const productId = (this.env as PagesEnv).CREDIT_PRODUCT_UUID;
-    if (!productId) return fail('CONFIG_ERROR', 'Credit product is not configured', false);
     const id = account['id'];
     const userId = account['user_id'];
     const snapshotProduct = account['product_id'];
@@ -661,8 +662,19 @@ export class SyncService {
       || typeof spent !== 'string' || typeof revision !== 'number') {
       return fail('VALIDATION_ERROR', 'Malformed account snapshot', false);
     }
-    if (snapshotProduct !== productId || scope !== 'career_ai') {
+    if (typeof snapshotProduct !== 'string' || !isValidUUID(snapshotProduct) || scope !== 'career_ai') {
       return fail('VALIDATION_ERROR', 'Snapshot product/scope mismatch', false);
+    }
+    const sso = this.env.SSO_SERVICE;
+    if (!sso || typeof sso.getCareerCredits !== 'function') return fail('UNAVAILABLE', 'Canonical credit identity unavailable', true);
+    let canonical;
+    try { canonical = await sso.getCareerCredits(userId); }
+    catch { return fail('UNAVAILABLE', 'Canonical credit identity unavailable', true); }
+    if (!canonical?.ok || !canonical.account_id || !canonical.product_id) {
+      return fail('UNAVAILABLE', 'Canonical credit identity unavailable', true);
+    }
+    if (canonical.account_id !== id || canonical.product_id !== snapshotProduct) {
+      return fail('VALIDATION_ERROR', 'Snapshot does not match canonical Career account', false);
     }
     const { data: owner, error: ownerError } = await this.db.from('users').select('id').eq('id', userId).maybeSingle();
     if (ownerError) return fail('DB_ERROR', ownerError.message, true);
@@ -677,7 +689,7 @@ export class SyncService {
     if (revision <= existingRevision) return ok();
     const { error } = await this.db.from('user_ai_credit_accounts_cache').upsert(
       {
-        id, user_id: userId, product_id: productId, scope: 'career_ai',
+        id, user_id: userId, product_id: snapshotProduct, scope: 'career_ai',
         granted_credits: granted, spent_credits: spent, revision,
         updated_at: new Date().toISOString(), synced_at: new Date().toISOString(),
       },
