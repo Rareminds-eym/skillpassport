@@ -9,16 +9,23 @@ const REJECTION_HTTP_STATUS: Record<string, number> = {
   not_found: 404,
   expired: 400,
   blocked: 403,
+  rate_limited: 429,
+  upstream_unavailable: 503,
+  timeout: 504,
 };
+
+export class SsoWorkflowError extends Error {
+  readonly httpStatus?: number;
+  constructor(readonly code: string, operation: string) {
+    super(`${operation} failed (${code})`);
+    this.name = "SsoWorkflowError";
+    this.httpStatus = REJECTION_HTTP_STATUS[code];
+  }
+}
 
 function throwOnNonSuccess<T extends { status: string }>(outcome: T, operation: string): asserts outcome is T & { status: "succeeded" } {
   if (outcome.status !== "succeeded") {
-    const code = outcome.status === "rejected" ? (outcome as { code?: string }).code ?? undefined : undefined;
-    const error = new Error(`${operation} failed${code ? ` (${code})` : ""}`);
-    if (code && REJECTION_HTTP_STATUS[code] !== undefined) {
-      (error as Error & { httpStatus?: number }).httpStatus = REJECTION_HTTP_STATUS[code];
-    }
-    throw error;
+    throw new SsoWorkflowError((outcome as { code?: string }).code ?? outcome.status, operation);
   }
 }
 
@@ -174,6 +181,28 @@ export const ssoClient = {
   acceptInvite: async (input: { token: string; password?: string }) => {
     const outcome = await authClient.acceptInvite({ invitationToken: input.token, password: input.password });
     throwOnNonSuccess(outcome, "Invite acceptance");
+  },
+  // redirectUrl is intentionally not exposed: SSO builds the accept link from its own configured app URL.
+  createInvite: async (input: { email: string; organizationId: string; roles: readonly string[] }) => {
+    const outcome = await authClient.createInvite({
+      email: input.email,
+      organizationId: input.organizationId,
+      roles: input.roles,
+    });
+    throwOnNonSuccess(outcome, "Invite creation");
+    return outcome.data;
+  },
+  // Read-only, org-scoped, admin-gated SSO list. Never carries the invite token or its hash.
+  listInvites: async (input: { organizationId: string }) => {
+    const outcome = await authClient.listInvites({ organizationId: input.organizationId });
+    throwOnNonSuccess(outcome, "Invite list");
+    return outcome.data;
+  },
+  // redirectUrl is intentionally not exposed (same reason as createInvite).
+  resendInvite: async (input: { inviteId: string }) => {
+    const outcome = await authClient.resendInvite({ inviteId: input.inviteId });
+    throwOnNonSuccess(outcome, "Invite resend");
+    return outcome.data;
   },
   forgotPassword: async (input: { email: string; redirect_url?: string }) => {
     const outcome = await authClient.forgotPassword({ email: input.email, redirectUrl: input.redirect_url });

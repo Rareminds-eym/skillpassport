@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { memo, useState } from "react";
 import { CheckCircle, Heart, Code } from "lucide-react";
 import { Button } from '@/shared/ui/ButtonNew';
 
@@ -6,7 +6,7 @@ import { Button } from '@/shared/ui/ButtonNew';
 import SoftSkillsTab from "./SoftSkillsTab";
 import TechnicalSkillsTab from "./TechnicalSkillsTab";
 
-const SkillsTab = ({ 
+const SkillsTab = memo(({ 
   // Soft Skills props
   softSkillsData, 
   setShowSoftSkillsModal,
@@ -104,6 +104,8 @@ const SkillsTab = ({
       </div>
     </div>
   );
-};
+});
+
+SkillsTab.displayName = 'SkillsTab';
 
 export default SkillsTab;

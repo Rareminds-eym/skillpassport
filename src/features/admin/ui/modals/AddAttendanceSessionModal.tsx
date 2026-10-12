@@ -33,45 +33,10 @@ const AddAttendanceSessionModal = ({
   faculty: any[];
   learners: Learner[];
 }) => {
-  // Get current date and time for validation
-  const getCurrentDateTime = () => {
-    const now = new Date();
-    return {
-      date: now.toISOString().split('T')[0], // YYYY-MM-DD format
-      time: now.toTimeString().slice(0, 5), // HH:MM format
-    };
-  };
-
-  const { date: currentDate, time: currentTime } = getCurrentDateTime();
-
-  // Validation functions
-  const isDateInPast = (selectedDate: string) => {
-    if (!selectedDate) return false;
-    return selectedDate < currentDate;
-  };
-
-  const isTimeInPast = (selectedDate: string, selectedTime: string) => {
-    if (!selectedDate || !selectedTime) return false;
-    if (selectedDate > currentDate) return false; // Future date is always valid
-    if (selectedDate < currentDate) return true; // Past date is always invalid
-    // Same date - check time
-    return selectedTime < currentTime;
-  };
-
+  // Validation: only end-after-start is enforced — sessions may be
+  // created for any past or future date/time (backfill supported).
   const validateDateTime = () => {
     const errors = [];
-    
-    if (isDateInPast(formData.date)) {
-      errors.push("Cannot schedule attendance for past dates");
-    }
-    
-    if (isTimeInPast(formData.date, formData.startTime)) {
-      errors.push("Cannot schedule attendance for past time");
-    }
-    
-    if (isTimeInPast(formData.date, formData.endTime)) {
-      errors.push("End time cannot be in the past");
-    }
 
     if (formData.startTime && formData.endTime) {
       const start = new Date(`2000-01-01T${formData.startTime}`);
@@ -281,19 +246,9 @@ const AddAttendanceSessionModal = ({
                     <input
                       type="date"
                       value={formData.date}
-                      min={currentDate} // Prevent selecting past dates
                       onChange={(e) => onFormChange("date", e.target.value)}
-                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${
-                        isDateInPast(formData.date) 
-                          ? 'border-red-300 bg-red-50' 
-                          : 'border-gray-300'
-                      }`}
+                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 border-gray-300"
                     />
-                    {isDateInPast(formData.date) && (
-                      <p className="mt-1 text-sm text-red-600">
-                        Cannot schedule attendance for past dates
-                      </p>
-                    )}
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
@@ -305,17 +260,8 @@ const AddAttendanceSessionModal = ({
                         type="time"
                         value={formData.startTime}
                         onChange={(e) => onFormChange("startTime", e.target.value)}
-                        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${
-                          isTimeInPast(formData.date, formData.startTime) 
-                            ? 'border-red-300 bg-red-50' 
-                            : 'border-gray-300'
-                        }`}
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 border-gray-300"
                       />
-                      {isTimeInPast(formData.date, formData.startTime) && (
-                        <p className="mt-1 text-sm text-red-600">
-                          Cannot schedule for past time
-                        </p>
-                      )}
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -326,17 +272,11 @@ const AddAttendanceSessionModal = ({
                         value={formData.endTime}
                         onChange={(e) => onFormChange("endTime", e.target.value)}
                         className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${
-                          isTimeInPast(formData.date, formData.endTime) || 
                           (formData.startTime && formData.endTime && formData.endTime <= formData.startTime)
                             ? 'border-red-300 bg-red-50' 
                             : 'border-gray-300'
                         }`}
                       />
-                      {isTimeInPast(formData.date, formData.endTime) && (
-                        <p className="mt-1 text-sm text-red-600">
-                          End time cannot be in the past
-                        </p>
-                      )}
                       {formData.startTime && formData.endTime && formData.endTime <= formData.startTime && (
                         <p className="mt-1 text-sm text-red-600">
                           End time must be after start time

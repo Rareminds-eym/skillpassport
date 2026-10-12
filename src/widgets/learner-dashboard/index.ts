@@ -39,7 +39,6 @@ export { default as ProfileHeroEdit } from './ui/ProfileHeroEdit';
 export { ProfileSection } from './ui/ProfileSection';
 export { default as RecentUpdatesCard } from './ui/RecentUpdatesCard';
 export { default as RecommendedJobs } from './ui/RecommendedJobs';
-export { default as ResumeParser } from './ui/ResumeParser';
 export { default as SelectCourseModal } from './ui/SelectCourseModal';
 export { default as SkillsDashboard } from './ui/SkillsDashboard';
 export { default as SkillTrackerExpanded } from './ui/SkillTrackerExpanded';
@@ -53,13 +52,9 @@ export { default as TrainingRecommendations } from './ui/TrainingRecommendations
 // Use public API barrel export instead of internal path
 export { LearnerPublicViewer } from '@/features/learner-profile';
 
-// Settings Components
-export { default as FormField } from './ui/settings/FormField';
+// Settings entry point; internal tabs are intentionally not re-exported.
+// Static re-exports would defeat their lazy imports.
 export { default as MainSettings } from './ui/settings/MainSettings';
-export { default as NotificationsTab } from './ui/settings/NotificationsTab';
-export { default as PrivacyTab } from './ui/settings/PrivacyTab';
-export { default as ProfileTab } from './ui/settings/ProfileTab';
-export { default as SecurityTab } from './ui/settings/SecurityTab';
 
 // Types
 export type { LearnerDashboardWidgetProps } from './model/types';

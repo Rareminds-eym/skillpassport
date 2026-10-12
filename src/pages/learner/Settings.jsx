@@ -1,4 +1,4 @@
-import { MainSettings } from '@/widgets/learner-dashboard';
+import { MainSettings } from '@/widgets/learner-dashboard/settings';
 
 const Settings = () => {
   return <MainSettings />;

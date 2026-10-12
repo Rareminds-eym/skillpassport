@@ -1,12 +1,15 @@
 /**
  * Middle School Report Generation Service
  *
- * Generates 5 outputs from growth_map data via OpenRouter:
+ * Generates 8 outputs from growth_map data via OpenRouter:
  * 1. capability_insights - Personalized feedback per 8-area capability wheel
  * 2. assessmentReport - Educator-facing narrative (PRD 18.3)
  * 3. mission_recommendations - Structured for future LTE RAG lookup
  * 4. my_interest_worlds - Learner discovery display of explored career/interest worlds (BRD 8.1)
  * 5. character_strengths_descriptions - Learner-friendly descriptions for each character strength
+ * 6. explorer_insights - Evidence and next steps for each exposure world
+ * 7. thinking_styles - Four evidence-grounded thinking categories
+ * 8. stage_guidance - Audience-specific guidance for all eight stages
  *
  * Mission recommendations are structured for future LTE mission matching via RAG.
  * Interest worlds show discovered career areas based on evidence (journeys, workshops, artifacts).
@@ -23,6 +26,7 @@
 import { callOpenRouterWithRetry, repairAndParseJSON, getAPIKeys } from '../../../shared/ai-config';
 import { buildMiddleSchoolReportPrompt } from '../../prompts/reports';
 import type { BuildMiddleSchoolReportPromptInput } from '../../prompts/reports';
+import { MIDDLE_SCHOOL_CAPABILITIES, MIDDLE_SCHOOL_STAGE_CONTRACT, MIDDLE_SCHOOL_THINKING_STYLES } from '../../prompts/reports/middle-school-contract';
 
 /**
  * Capability area insight (for each of 8 areas)
@@ -110,7 +114,7 @@ export type GuidanceSectionKind = 'parent' | 'teacher' | 'action';
  * those are app-owned and supplied by the frontend registry at render time. */
 export interface GuidanceSectionContent {
   desc: string; // 12-18 words, one plain sentence naming the specific identified observation
-  highlights: string[]; // 2-3 entries — 3 only when the stage's evidence genuinely supports a 3rd distinct point
+  highlights: string[]; // Exact count is defined by the shared stage contract.
 }
 
 /**
@@ -180,85 +184,15 @@ export interface MiddleSchoolReports {
 
 const REPORT_GENERATION_CONFIG = {
   models: ['openai/gpt-4o-mini', 'google/gemini-2.0-flash-001'],
-  // 8 reports incl. explorer insights for up to ~15 worlds — 2500 tokens truncated
-  // the JSON mid-array and broke parsing, so give the response ample headroom.
-  // Kept at 8000 (not raised for the 9th output, stage_guidance) — measured
-  // estimate for all 9 outputs combined is ~5600 tokens, comfortably under
-  // 8000, so no increase was needed. A live test at 10000 hit OpenRouter's
-  // account credit ceiling (402, account could only afford ~9199 at test
-  // time) even before stage_guidance content was generated — raising this
-  // further trades token headroom for real request failures against a
-  // credit balance that fluctuates, which is a worse trade than keeping the
-  // existing, already-proven-safe 8000 value.
-  maxTokens: 8000,
+  // Allow room for the complete report, explorer insights, and all eight stages of guidance.
+  maxTokens: 12000,
   temperature: 0.1,
 };
 
-const REQUIRED_CAPABILITIES = [
-  'Self / EQ',
-  'Social / SQ',
-  'Thinking & Problem Solving',
-  'Communication',
-  'Digital & AI Literacy',
-  'Execution & Independence',
-  'Exposure & Career Awareness',
-  'Portfolio & Evidence',
-] as const;
-
-// Must match StageId in src/features/assessment/ui/growth-map/growthStageConfig.ts
-const REQUIRED_STAGE_IDS = [
-  'capabilityWheel',
-  'interestWorlds',
-  'characterConstellation',
-  'selfSocial',
-  'explorerMap',
-  'thinkingStyle',
-  'whatIHaveNeed',
-  'missions',
-] as const;
-
-/**
- * App-owned mapping of which guidance section KINDS exist for each stage —
- * must match STAGE_GUIDANCE_SECTIONS in
- * src/features/assessment/ui/growth-map/growthStageConfig.ts (kind list only;
- * titles/subtitles are frontend-only display copy, irrelevant to validation).
- * This is the backend's enforcement that Gemini can only ever populate a
- * section kind that this stage's registry actually lists — an unknown kind,
- * or a kind not listed for this stage, is never accepted into stage_guidance.
- * Verified against the real Bolt reference (TabbedView.tsx sectionGuidance):
- * whatIHaveNeed has only parent+action (no teacher/classroom section), and
- * missions has only teacher (no parent/action section) — every other stage
- * has all 3 kinds.
- */
-const STAGE_SECTION_KINDS: Record<(typeof REQUIRED_STAGE_IDS)[number], readonly GuidanceSectionKind[]> = {
-  capabilityWheel: ['parent', 'teacher', 'action'],
-  interestWorlds: ['parent', 'teacher', 'action'],
-  characterConstellation: ['parent', 'teacher', 'action'],
-  selfSocial: ['parent', 'teacher', 'action'],
-  explorerMap: ['parent', 'teacher', 'action'],
-  thinkingStyle: ['parent', 'teacher', 'action'],
-  whatIHaveNeed: ['parent', 'action'],
-  missions: ['teacher'],
-};
-
-/**
- * App-owned required highlight count per stage — verified against the real
- * Bolt reference (TabbedView.tsx sectionGuidance): Stages 1-6 always have
- * exactly 3 highlights per section (parent/teacher/action), while Stage 7
- * (whatIHaveNeed) and Stage 8 (missions) always have exactly 2. This is a
- * fixed per-stage count, not a "2-3, either is fine" range — Gemini must
- * hit the exact number for the stage it's writing, never pad or fall short.
- */
-const STAGE_HIGHLIGHT_COUNT: Record<(typeof REQUIRED_STAGE_IDS)[number], number> = {
-  capabilityWheel: 3,
-  interestWorlds: 3,
-  characterConstellation: 3,
-  selfSocial: 3,
-  explorerMap: 3,
-  thinkingStyle: 3,
-  whatIHaveNeed: 2,
-  missions: 2,
-};
+const REQUIRED_CAPABILITIES = MIDDLE_SCHOOL_CAPABILITIES;
+const REQUIRED_STAGE_IDS = Object.keys(MIDDLE_SCHOOL_STAGE_CONTRACT) as Array<keyof typeof MIDDLE_SCHOOL_STAGE_CONTRACT>;
+const STAGE_SECTION_KINDS = Object.fromEntries(REQUIRED_STAGE_IDS.map(id => [id, MIDDLE_SCHOOL_STAGE_CONTRACT[id].kinds])) as Record<(typeof REQUIRED_STAGE_IDS)[number], readonly GuidanceSectionKind[]>;
+const STAGE_HIGHLIGHT_COUNT = Object.fromEntries(REQUIRED_STAGE_IDS.map(id => [id, MIDDLE_SCHOOL_STAGE_CONTRACT[id].highlights])) as Record<(typeof REQUIRED_STAGE_IDS)[number], number>;
 
 function isValidCapabilityInsights(insights: any): boolean {
   return (
@@ -305,7 +239,7 @@ function isValidInterestWorlds(worlds: any): boolean {
   );
 }
 
-function isValidExplorerInsights(insights: any, explorerMap?: any): boolean {
+export function isValidExplorerInsights(insights: any, explorerMap?: any): boolean {
   const validIcons = ['briefcase', 'hammer', 'palette', 'users', 'leaf', 'laptop', 'heart', 'lightbulb'];
 
   const validateWorld = (w: any) =>
@@ -321,29 +255,22 @@ function isValidExplorerInsights(insights: any, explorerMap?: any): boolean {
     typeof insights === 'object' &&
     Array.isArray(insights.exploredWorlds) &&
     Array.isArray(insights.toExploreWorlds) &&
-    insights.exploredWorlds.length > 0 &&
     insights.exploredWorlds.every(validateWorld) &&
     insights.toExploreWorlds.every(validateWorld);
 
   if (!shapeValid) return false;
 
-  // Coverage check: every world in explorer_map must have an insight (case-insensitive match).
-  // Without this, the LLM can silently skip worlds and the left panel loses its details.
+  // Match each source group exactly; combined coverage would accept swapped groups,
+  // duplicates, and invented worlds. Empty source groups are valid empty arrays.
   if (explorerMap) {
-    const insightNames = new Set(
-      [...insights.exploredWorlds, ...insights.toExploreWorlds].map((w: any) =>
-        String(w.worldName).trim().toLowerCase()
-      )
-    );
-    const requiredLabels: string[] = [
-      ...(explorerMap.explored || []),
-      ...(explorerMap.to_explore || []),
-    ].map((w: any) => String(w.label).trim().toLowerCase());
-
-    const missing = requiredLabels.filter((label) => !insightNames.has(label));
-    if (missing.length > 0) {
-      console.error('[REPORT-GEN-MS] explorer_insights missing worlds:', missing.join(', '));
-      return false;
+    for (const [outputKey, sourceKey] of [['exploredWorlds', 'explored'], ['toExploreWorlds', 'to_explore']] as const) {
+      const expected = (explorerMap[sourceKey] || []).map((world: { label: string }) => world.label);
+      const actual = insights[outputKey].map((world: { worldName: string }) => world.worldName);
+      if (actual.length !== expected.length || new Set(actual).size !== actual.length ||
+          expected.some((label: string) => !actual.includes(label))) {
+        console.error(`[REPORT-GEN-MS] explorer_insights.${outputKey} must match source labels exactly`);
+        return false;
+      }
     }
   }
 
@@ -354,14 +281,7 @@ function isValidExplorerInsights(insights: any, explorerMap?: any): boolean {
 // to a real Adaptive Aptitude accuracy_by_subtag key (see the title-to-subtag
 // lookup in analysis-middle-school.ts). Gemini selects 4 of these 6 per
 // learner; the app never invents or substitutes a different title.
-const LEGITIMATE_THINKING_STYLES = [
-  'Pattern Recognition',
-  'Spatial Reasoning',
-  'Verbal Reasoning',
-  'Logical Reasoning',
-  'Numerical Reasoning',
-  'Data Interpretation',
-] as const;
+const LEGITIMATE_THINKING_STYLES = Object.keys(MIDDLE_SCHOOL_THINKING_STYLES);
 
 function isValidThinkingStyles(styles: any): boolean {
   const validIcons = ['BrainCircuit', 'Lightbulb', 'Sparkles', 'BarChart3'];
@@ -398,7 +318,7 @@ function isValidGuidanceSectionContent(content: any, expectedCount: number): boo
 
 /**
  * Defensive length caps for sectionIntro (heading/description), independent
- * of isValidStageGuidance: a stage whose parent/instructional/actionSteps are
+ * of required stage-guidance validation: a stage whose parent/instructional/actionSteps are
  * all valid must still render those even if sectionIntro alone is malformed
  * or excessively long, since the frontend falls back to static copy per
  * stage for this one field rather than losing the whole stage's guidance.
@@ -429,32 +349,41 @@ function isValidSectionIntro(intro: unknown): intro is SectionIntro {
  * list) fails validation entirely rather than silently being accepted and
  * possibly rendered — Gemini cannot introduce a section the app doesn't own.
  */
-function isValidStageGuidance(guidance: any): boolean {
-  if (!guidance || typeof guidance !== 'object') return false;
-  if (guidance.version !== 2) return false;
-
-  return REQUIRED_STAGE_IDS.every((stageId) => {
-    const entry = guidance[stageId];
-    if (!entry || typeof entry !== 'object' || !entry.sections || typeof entry.sections !== 'object') {
-      return false;
+export function getStageGuidanceValidationErrors(guidance: unknown): string[] {
+  if (!guidance || typeof guidance !== 'object' || Array.isArray(guidance)) {
+    return ['stage_guidance must be an object'];
+  }
+  const data = guidance as Record<string, unknown>;
+  const errors: string[] = [];
+  if (data.version !== 2) errors.push('stage_guidance.version must be 2');
+  for (const key of Object.keys(data)) {
+    if (key !== 'version' && !REQUIRED_STAGE_IDS.includes(key as (typeof REQUIRED_STAGE_IDS)[number])) {
+      errors.push(`stage_guidance.${key} is not allowed`);
     }
+  }
 
-    const requiredKinds = STAGE_SECTION_KINDS[stageId];
-    const returnedKinds = Object.keys(entry.sections);
-    const expectedCount = STAGE_HIGHLIGHT_COUNT[stageId];
-
-    // Every kind this stage requires must be present and valid, with EXACTLY
-    // this stage's required highlight count — not a 2-3 range.
-    const hasAllRequired = requiredKinds.every((kind) =>
-      isValidGuidanceSectionContent(entry.sections[kind], expectedCount)
-    );
-    // No kind outside this stage's approved set may be present at all.
-    const hasNoExtraKinds = returnedKinds.every((kind) =>
-      (requiredKinds as readonly string[]).includes(kind)
-    );
-
-    return hasAllRequired && hasNoExtraKinds;
-  });
+  for (const stageId of REQUIRED_STAGE_IDS) {
+    const path = `stage_guidance.${stageId}.sections`;
+    const entry = data[stageId];
+    const sections = entry && typeof entry === 'object' && !Array.isArray(entry)
+      ? (entry as Record<string, unknown>).sections : null;
+    if (!sections || typeof sections !== 'object' || Array.isArray(sections)) {
+      errors.push(`${path} must be an object containing ${STAGE_SECTION_KINDS[stageId].join(', ')}`);
+      continue;
+    }
+    const content = sections as Record<string, unknown>;
+    const kinds = STAGE_SECTION_KINDS[stageId];
+    const count = STAGE_HIGHLIGHT_COUNT[stageId];
+    for (const kind of kinds) {
+      if (!isValidGuidanceSectionContent(content[kind], count)) {
+        errors.push(`${path}.${kind} requires a non-empty desc and exactly ${count} non-empty string highlights`);
+      }
+    }
+    for (const kind of Object.keys(content)) {
+      if (!(kinds as readonly string[]).includes(kind)) errors.push(`${path}.${kind} is not allowed`);
+    }
+  }
+  return errors;
 }
 
 /**
@@ -505,13 +434,14 @@ export async function generateMiddleSchoolReports(
     // Up to 2 generation attempts: a second try when the LLM output fails
     // validation (e.g. explorer_insights not covering every world).
     const MAX_ATTEMPTS = 2;
+    const messages: Array<{ role: string; content: string }> = [
+      { role: 'system', content: system },
+      { role: 'user', content: user },
+    ];
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
       const rawResponse = await callOpenRouterWithRetry(
         apiKeys.openRouter,
-        [
-          { role: 'system', content: system },
-          { role: 'user', content: user },
-        ],
+        [...messages],
         REPORT_GENERATION_CONFIG
       );
 
@@ -523,6 +453,8 @@ export async function generateMiddleSchoolReports(
           `[REPORT-GEN-MS] JSON parse failed (attempt ${attempt}/${MAX_ATTEMPTS}):`,
           parseError instanceof Error ? parseError.message : parseError
         );
+        messages.push({ role: 'assistant', content: rawResponse });
+        messages.push({ role: 'user', content: 'Your previous response was not parseable JSON. Return the complete report as one valid JSON object matching the supplied template. No comments, markdown fences, or text outside the JSON.' });
         continue;
       }
 
@@ -530,6 +462,8 @@ export async function generateMiddleSchoolReports(
         console.error(`[REPORT-GEN-MS] Invalid JSON response (attempt ${attempt}/${MAX_ATTEMPTS})`);
         continue;
       }
+
+      const guidanceErrors = getStageGuidanceValidationErrors(parsed.stage_guidance);
 
       // Validate all required outputs (8 outputs per BRD FR-33 and PRD Section 18.1)
       const validations = {
@@ -540,12 +474,16 @@ export async function generateMiddleSchoolReports(
         interestWorlds: isValidInterestWorlds(parsed.my_interest_worlds),
         explorerInsights: isValidExplorerInsights(parsed.explorer_insights, growthMap?.explorer_map),
         thinkingStyles: isValidThinkingStyles(parsed.thinking_styles),
-        stageGuidance: isValidStageGuidance(parsed.stage_guidance),
+        stageGuidance: guidanceErrors.length === 0,
       };
 
       const allValid = Object.values(validations).every((v) => v);
       if (!allValid) {
         console.error(`[REPORT-GEN-MS] Validation failed (attempt ${attempt}/${MAX_ATTEMPTS}):`, validations);
+        const failedOutputs = Object.entries(validations).filter(([, valid]) => !valid).map(([name]) => name);
+        console.error('[REPORT-GEN-MS] Stage guidance validation details:', guidanceErrors);
+        messages.push({ role: 'assistant', content: rawResponse });
+        messages.push({ role: 'user', content: `\n\nYour previous response failed validation for: ${failedOutputs.join(', ')}.\n${guidanceErrors.join('\n')}\nReturn the complete report JSON again, correcting these errors. Preserve all required stages, section kinds, and exact highlight counts. Preserve previously valid evidence-based outputs; change only what is needed to correct the failures. Do not invent evidence.` });
         continue;
       }
 

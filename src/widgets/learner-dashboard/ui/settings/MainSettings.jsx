@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
 import { apiPost } from '@/shared/api/apiClient';
+import { Button } from '@/shared/ui/ButtonNew';
+import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/Card';
 import {
   AlertCircle,
   Bell,
@@ -11,48 +11,51 @@ import {
   Shield,
   User
 } from "lucide-react";
-import { Button } from '@/shared/ui/ButtonNew';
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/Card';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/shared/lib/queryKeys";
+import { useLocation } from "react-router-dom";
 
-import { PASSWORD_MIN } from '@/shared/constants';
-import { useLearnerSettings } from '@/entities/learner';
-import { useLearnerDataByEmail } from '@/entities/learner';
-import { useLearnerCertificates } from '@/entities/learner';
-import { useLearnerProjects } from '@/entities/learner';
-import { useLearnerExperience } from '@/entities/learner';
-import { useLearnerEducation } from '@/entities/learner';
-import { useLearnerTechnicalSkills, useLearnerSoftSkills } from '@/entities/learner';
 import { useInstitutions } from '@/entities/institution';
-import SubscriptionSettingsSection from '@/features/subscription/ui/shared/SubscriptionSettingsSection';
-import { 
-  EducationEditModal, 
-  SoftSkillsEditModal, 
-  SkillsEditModal, 
-  ExperienceEditModal, 
-  CertificatesEditModal, 
-  ProjectsEditModal 
-} from '@/features/learner-profile';
-import toast from 'react-hot-toast';
-import { useLearnerMessageNotifications } from '@/entities/learner';
-import { useLearnerUnreadCount } from "@/entities/learner";
-import { useLearnerRealtimeActivities } from '@/entities/learner/model/useLearnerRealtimeActivities';
-import ResumeParser from "../ResumeParser";
+import { useLearnerCertificates, useLearnerDataByEmail, useLearnerEducation, useLearnerExperience, useLearnerMessageNotifications, useLearnerProjects, useLearnerSettings, useLearnerSoftSkills, useLearnerTechnicalSkills, useLearnerUnreadCount } from '@/entities/learner';
+import { PASSWORD_MIN } from '@/shared/constants';
 import { safeSave } from '@/shared/lib/settingsErrorHandler';
+import toast from 'react-hot-toast';
+import { SettingsErrorBoundary } from './error-boundaries';
+import { SettingsSkeleton, TabSkeleton } from './skeletons';
 
-// Import tab components
 import ProfileTab from "./ProfileTab";
-import SecurityTab from "./SecurityTab";
-import NotificationsTab from "./NotificationsTab";
-import PrivacyTab from "./PrivacyTab";
+import { useUser } from '@/shared/model/authStore';
 
-import { useUser, useAuthActions } from '@/shared/model/authStore';
+// Keep the initial personal profile eager; defer optional screens and editors.
+const NotificationsTab = lazy(() => import('./NotificationsTab'));
+const PrivacyTab = lazy(() => import('./PrivacyTab'));
+const SecurityTab = lazy(() => import('./SecurityTab'));
+const SubscriptionSettingsSection = lazy(() => import('@/features/subscription/ui/shared/SubscriptionSettingsSection'));
+const ResumeParser = lazy(() => import('../ResumeParser'));
+const UnifiedProfileEditModal = lazy(() => import('@/features/learner-profile/ui/modals/UnifiedProfileEditModal'));
 
 const MainSettings = () => {
   const user = useUser();
   const location = useLocation();
-  const navigate = useNavigate();
-  const { logout } = useAuthActions();
   const userEmail = user?.email;
+  const queryClient = useQueryClient();
+  const [institutionsRequested, setInstitutionsRequested] = useState(
+    location.state?.activeSubTab === 'institution'
+  );
+  const handleProfileTabChange = useCallback((tab) => {
+    if (tab === 'institution') setInstitutionsRequested(true);
+  }, []);
+
+  // Settings does not render activities. Mark the cached feed stale instead of
+  // fetching it and maintaining six WebSocket subscriptions on this page.
+  const refreshRecentUpdates = useCallback(() => queryClient.invalidateQueries({
+    queryKey: queryKeys.learner.activities.all,
+    refetchType: 'active',
+  }), [queryClient]);
+  const handleMessageReceived = useCallback(() => {
+    refreshRecentUpdates().catch(error => console.warn('Could not refresh recent updates:', error));
+  }, [refreshRecentUpdates]);
 
   const {
     learnerData,
@@ -81,36 +84,42 @@ const MainSettings = () => {
   // Fetch certificates from dedicated table
   const {
     certificates: tableCertificates,
+    loading: certificatesLoading,
     refresh: refreshCertificates
   } = useLearnerCertificates(learnerId, !!learnerId);
 
   // Fetch projects from dedicated table
   const {
     projects: tableProjects,
+    loading: projectsLoading,
     refresh: refreshProjects
   } = useLearnerProjects(learnerId, !!learnerId);
 
   // Fetch experience from dedicated table
   const {
     experience: tableExperience,
+    loading: experienceLoading,
     refresh: refreshExperience
   } = useLearnerExperience(learnerId, !!learnerId);
 
   // Fetch education from dedicated table
   const {
     education: tableEducation,
+    loading: tableEducationLoading,
     refresh: refreshEducation
   } = useLearnerEducation(learnerId, !!learnerId);
 
   // Fetch technical skills from dedicated table
   const {
     skills: tableTechnicalSkills,
+    loading: technicalSkillsLoading,
     refresh: refreshTechnicalSkills
   } = useLearnerTechnicalSkills(learnerId, !!learnerId);
 
   // Fetch soft skills from dedicated table
   const {
     skills: tableSoftSkills,
+    loading: softSkillsLoading,
     refresh: refreshSoftSkills
   } = useLearnerSoftSkills(learnerId, !!learnerId);
 
@@ -119,31 +128,23 @@ const MainSettings = () => {
     learnerId,
     enabled: !!learnerId,
     playSound: true,
-    onMessageReceived: () => {
-      // Refresh Recent Updates to show new message activity
-      setTimeout(() => {
-        try {
-          if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
-            refreshRecentUpdates();
-          }
-        } catch (error) {
-          console.warn('Could not refresh recent updates:', error);
-        }
-      }, 1000);
-    },
+    onMessageReceived: handleMessageReceived,
   });
 
   // Get unread message count with realtime updates
   useLearnerUnreadCount(learnerId, !!learnerId);
 
-  // Fetch recent updates data from recruitment tables (learner-specific)
-  const {
-    refetch: refreshRecentUpdates,
-  } = useLearnerRealtimeActivities(userEmail, 10);
-
-  const [activeTab, setActiveTab] = useState("profile");
+  const [activeTab, setActiveTab] = useState(location.state?.activeTab || "profile");
   const [isSaving, setIsSaving] = useState(false);
   const savingRef = useRef(false);
+  const savingTimeoutRef = useRef(null);
+
+  // Cleanup all timers on unmount
+  useEffect(() => {
+    return () => {
+      clearTimeout(savingTimeoutRef.current);
+    };
+  }, []);
 
   // Handle navigation state to set active tab
   useEffect(() => {
@@ -153,38 +154,38 @@ const MainSettings = () => {
   }, [location.state]);
 
   // Education management state - now using real data from dedicated table
-  const educationData = Array.isArray(tableEducation) && tableEducation.length > 0 
-    ? tableEducation 
+  const educationData = Array.isArray(tableEducation) && tableEducation.length > 0
+    ? tableEducation
     : learnerDataWithEducation?.education || [];
-  
+
   const [showEducationModal, setShowEducationModal] = useState(false);
 
   // Profile sections data - now using real data from learnerDataWithEducation
-  const softSkillsData = Array.isArray(tableSoftSkills) && tableSoftSkills.length > 0 
-    ? tableSoftSkills 
+  const softSkillsData = Array.isArray(tableSoftSkills) && tableSoftSkills.length > 0
+    ? tableSoftSkills
     : learnerDataWithEducation?.softSkills || [];
   const [showSoftSkillsModal, setShowSoftSkillsModal] = useState(false);
-  
-  const technicalSkillsData = Array.isArray(tableTechnicalSkills) && tableTechnicalSkills.length > 0 
-    ? tableTechnicalSkills 
+
+  const technicalSkillsData = Array.isArray(tableTechnicalSkills) && tableTechnicalSkills.length > 0
+    ? tableTechnicalSkills
     : learnerDataWithEducation?.technicalSkills || [];
   const [showTechnicalSkillsModal, setShowTechnicalSkillsModal] = useState(false);
-  
+
   // Use experience from dedicated table, fallback to profile data
-  const experienceData = Array.isArray(tableExperience) && tableExperience.length > 0 
-    ? tableExperience 
+  const experienceData = Array.isArray(tableExperience) && tableExperience.length > 0
+    ? tableExperience
     : learnerDataWithEducation?.experience || [];
   const [showExperienceModal, setShowExperienceModal] = useState(false);
-  
+
   // Use certificates from dedicated table, fallback to profile data
-  const certificatesData = Array.isArray(tableCertificates) && tableCertificates.length > 0 
-    ? tableCertificates 
+  const certificatesData = Array.isArray(tableCertificates) && tableCertificates.length > 0
+    ? tableCertificates
     : learnerDataWithEducation?.certificates || [];
   const [showCertificatesModal, setShowCertificatesModal] = useState(false);
-  
+
   // Use projects from dedicated table, fallback to profile data
-  const projectsData = Array.isArray(tableProjects) && tableProjects.length > 0 
-    ? tableProjects 
+  const projectsData = Array.isArray(tableProjects) && tableProjects.length > 0
+    ? tableProjects
     : learnerDataWithEducation?.projects || [];
   const [showProjectsModal, setShowProjectsModal] = useState(false);
 
@@ -215,7 +216,10 @@ const MainSettings = () => {
     programs,
     programSections,
     schoolClasses,
-  } = useInstitutions();
+    loading: institutionsLoading,
+    error: institutionsError,
+    refresh: refreshInstitutions,
+  } = useInstitutions(institutionsRequested);
 
   // Profile settings state
   const [profileData, setProfileData] = useState({
@@ -371,13 +375,13 @@ const MainSettings = () => {
       const userRole = learnerData?.userRole;
       const isSchoolLearner = userRole === 'learner';
       const isCollegeLearner = userRole === 'learner';
-      
+
       // Check if it's a school path (has schoolId or schoolClassId) vs university path
       // For role-based detection, also consider the role itself
       const hasSchoolData = learnerData.schoolId || learnerData.schoolClassId || learnerData.school_name;
       const hasUniversityData = learnerData.universityId || learnerData.universityCollegeId || learnerData.programId || learnerData.university || learnerData.college;
       const isUniversityPath = hasUniversityData || (isCollegeLearner && !hasSchoolData);
-      
+
       // Custom school name (for school learners, stored in schoolName field)
       if (isSchoolLearner && learnerData.school_name && (!learnerData.schoolId || learnerData.schoolId === '')) {
         setShowCustomSchool(true);
@@ -394,7 +398,7 @@ const MainSettings = () => {
           setCustomSchoolClassName(gradeMatch[1]); // Just the number, e.g., "10"
         }
       }
-      
+
       // Custom university name
       console.log('🔍 Checking university:', {
         university: learnerData.university,
@@ -406,7 +410,7 @@ const MainSettings = () => {
         setCustomUniversityName(learnerData.university);
         console.log('✅ Set custom university:', learnerData.university);
       }
-      
+
       // Custom college name (for college learners, stored in college field)
       // Check after university to ensure university path is established
       console.log('🔍 Checking college:', {
@@ -419,7 +423,7 @@ const MainSettings = () => {
         setShowCustomCollege(true);
         setCustomCollegeName(learnerData.college);
         console.log('✅ Set custom college:', learnerData.college);
-        
+
         // IMPORTANT: If there's a custom college but no university, enable custom university input
         // This allows B2C college learners to enter both custom college and custom university
         if (!learnerData.university && !learnerData.universityId) {
@@ -427,13 +431,13 @@ const MainSettings = () => {
           setShowCustomUniversity(true);
         }
       }
-      
+
       // Custom program name
       if (learnerData.branch && (!learnerData.programId || learnerData.programId === '')) {
         setShowCustomProgram(true);
         setCustomProgramName(learnerData.branch);
       }
-      
+
       // Custom semester (only for university path)
       if (learnerData.section && (!learnerData.programSectionId || learnerData.programSectionId === '') && isUniversityPath) {
         setShowCustomSemester(true);
@@ -458,19 +462,19 @@ const MainSettings = () => {
   // Education data is now automatically available from learnerDataWithEducation
   // No separate useEffect needed
 
-  const handleProfileChange = (field, value) => {
+  const handleProfileChange = useCallback((field, value) => {
     setProfileData((prev) => ({ ...prev, [field]: value }));
-  };
+  }, []);
 
-  const handlePasswordChange = (field, value) => {
+  const handlePasswordChange = useCallback((field, value) => {
     setPasswordData((prev) => ({ ...prev, [field]: value }));
-  };
+  }, []);
 
-  const handleNotificationToggle = (setting) => {
+  const handleNotificationToggle = useCallback((setting) => {
     setNotificationSettings((prev) => ({ ...prev, [setting]: !prev[setting] }));
-  };
+  }, []);
 
-  const handlePrivacyChange = (setting, value) => {
+  const handlePrivacyChange = useCallback((setting, value) => {
     // If profile visibility is being changed to 'private', automatically disable contact info visibility
     if (setting === 'profileVisibility' && value === 'private') {
       setPrivacySettings((prev) => ({
@@ -485,7 +489,7 @@ const MainSettings = () => {
       setPrivacySettings((prev) => ({ ...prev, [setting]: value }));
       toast.success('Privacy settings updated');
     }
-  };
+  }, []);
 
   // Handle "Add New" selection for institutions
   const handleInstitutionChange = (field, value) => {
@@ -499,7 +503,7 @@ const MainSettings = () => {
         programSectionId: 'Semester/Section',
         schoolClassId: 'Class',
       };
-      
+
       // Show custom input for B2C learners
       if (field === 'schoolId') {
         setShowCustomSchool(true);
@@ -520,7 +524,7 @@ const MainSettings = () => {
         setShowCustomSemester(true);
         return;
       }
-      
+
       toast.success(`Please contact your administrator to add a new ${typeMap[field].toLowerCase()}.`);
       return;
     }
@@ -529,7 +533,7 @@ const MainSettings = () => {
       // Always handle the state updates, even if clearing the field
       setShowCustomSchool(false);
       setCustomSchoolName('');
-      
+
       // Only clear dependent fields if a valid schoolId is being set
       if (value && value !== '' && value !== 'add_new') {
         setShowCustomSchoolClass(false);
@@ -557,7 +561,7 @@ const MainSettings = () => {
           schoolId: value,
         }));
       }
-      
+
       // Don't return early - allow handleProfileChange to be called for proper sync
       handleProfileChange(field, value);
       return;
@@ -567,12 +571,12 @@ const MainSettings = () => {
     else if (field === 'schoolClassId' && value) {
       // Check if this is a school learner (not university path)
       const isUniversityPath = profileData.universityId || profileData.universityCollegeId || profileData.programId;
-      
+
       if (!isUniversityPath) {
-        const selectedClass = Array.isArray(schoolClasses) 
-          ? schoolClasses.find(sc => sc.id === value) 
+        const selectedClass = Array.isArray(schoolClasses)
+          ? schoolClasses.find(sc => sc.id === value)
           : null;
-        
+
         // Use optional chaining for safe property access
         if (selectedClass?.grade) {
           // Map school class grade to Academic Details grade format
@@ -599,7 +603,7 @@ const MainSettings = () => {
         }
       }
     }
-    
+
     // Handle cascading logic and field updates
     handleProfileChange(field, value);
   };
@@ -608,13 +612,13 @@ const MainSettings = () => {
   const handleEducationSave = async (educationList) => {
     try {
       setIsSaving(true);
-      
+
       console.log('💾 MainSettings: Saving education list:', educationList);
-      
+
       const result = await updateEducation(educationList);
-      
+
       console.log('✅ MainSettings: Education save result:', result);
-      
+
       if (result.success) {
         // Refresh education data from table to get updated versioning fields
         if (refreshEducation && typeof refreshEducation === 'function') {
@@ -622,14 +626,14 @@ const MainSettings = () => {
           await refreshEducation();
           console.log('✅ MainSettings: Education data refreshed');
         }
-        
+
         setShowEducationModal(false);
-        
+
         toast.success("Education updated successfully");
-        
+
         try {
           if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
-            refreshRecentUpdates().catch(err => 
+            refreshRecentUpdates().catch(err =>
               console.warn('Could not refresh recent updates:', err)
             );
           }
@@ -652,17 +656,17 @@ const MainSettings = () => {
   const handleSoftSkillsSave = async (skillsList) => {
     try {
       setIsSaving(true);
-      
+
       const result = await updateSoftSkills(skillsList);
-      
+
       if (result.success) {
         setShowSoftSkillsModal(false);
-        
+
         // Refresh soft skills data from table to get updated versioning fields
         if (refreshSoftSkills && typeof refreshSoftSkills === 'function') {
           await refreshSoftSkills();
         }
-        
+
         toast.success("Soft skills updated successfully");
       } else {
         throw new Error(result.error || 'Failed to update soft skills');
@@ -680,26 +684,26 @@ const MainSettings = () => {
   const handleTechnicalSkillsSave = async (skillsList) => {
     try {
       setIsSaving(true);
-      
+
       // Ensure all skills have type: "technical" when coming from Technical Skills (matching Dashboard)
       const skillsWithType = skillsList.map(skill => ({
         ...skill,
         type: "technical" // Force technical type for skills from Technical Skills
       }));
-      
+
       console.log('🔧 Settings: Technical skills data being saved:', skillsWithType);
-      
+
       // Use updateSkills (same as Dashboard) instead of updateTechnicalSkills
       const result = await updateSkills(skillsWithType);
-      
+
       if (result.success) {
         setShowTechnicalSkillsModal(false);
-        
+
         // Refresh technical skills data from table to get updated versioning fields
         if (refreshTechnicalSkills && typeof refreshTechnicalSkills === 'function') {
           await refreshTechnicalSkills();
         }
-        
+
         toast.success("Technical skills updated successfully");
       } else {
         throw new Error(result.error || 'Failed to update technical skills');
@@ -717,13 +721,13 @@ const MainSettings = () => {
   const handleExperienceSave = async (experienceList) => {
     try {
       setIsSaving(true);
-      
+
       console.log('💾 MainSettings: Saving experience list:', experienceList);
-      
+
       const result = await updateExperience(experienceList);
-      
+
       console.log('✅ MainSettings: Experience save result:', result);
-      
+
       if (result.success) {
         // Refresh experience from table
         if (refreshExperience) {
@@ -731,9 +735,9 @@ const MainSettings = () => {
           await refreshExperience();
           console.log('✅ MainSettings: Experience data refreshed');
         }
-        
+
         setShowExperienceModal(false);
-        
+
         toast.success("Experience updated successfully");
       } else {
         throw new Error(result.error || 'Failed to update experience');
@@ -775,17 +779,17 @@ const MainSettings = () => {
   const handleProjectsSave = async (projectsList) => {
     try {
       setIsSaving(true);
-      
+
       const result = await updateProjects(projectsList);
-      
+
       if (result.success) {
         setShowProjectsModal(false);
-        
+
         // Refresh projects from table
         if (refreshProjects) {
           refreshProjects();
         }
-        
+
         toast.success("Projects updated successfully");
       } else {
         throw new Error(result.error || 'Failed to update projects');
@@ -803,15 +807,15 @@ const MainSettings = () => {
   const handleToggleTechnicalSkillEnabled = async (index) => {
     const skill = tableTechnicalSkills[index];
     if (!skill) return;
-    
+
     const newState = !skill.enabled;
-    
+
     // Don't allow hiding/showing items that are pending verification or approval
     if (skill.approval_status === 'pending' || skill._hasPendingEdit) {
       toast.error("You cannot hide or show skills that are pending verification or approval.", { duration: 4000 });
       return;
     }
-    
+
     try {
       await apiPost('/learners/profile', {
         action: 'toggle-skill-visibility',
@@ -864,11 +868,11 @@ const MainSettings = () => {
   };
 
   // Tab-specific save handlers - only save relevant fields for each tab
-  
+
   // Personal Info Tab - save basic personal information
   const handleSavePersonalInfo = async () => {
     setIsSaving(true);
-    
+
     const personalInfoFields = {
       name: profileData.name,
       phone: profileData.phone,
@@ -896,9 +900,9 @@ const MainSettings = () => {
           window.dispatchEvent(new CustomEvent('learner_settings_updated', {
             detail: { type: 'profile_updated', data: personalInfoFields }
           }));
-          
+
           if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
-            refreshRecentUpdates().catch(err => 
+            refreshRecentUpdates().catch(err =>
               console.warn('Could not refresh recent updates:', err)
             );
           }
@@ -913,7 +917,7 @@ const MainSettings = () => {
   // Additional Info Tab - save additional fields including Aadhar
   const handleSaveAdditionalInfo = async () => {
     setIsSaving(true);
-    
+
     // Only send fields relevant to Additional Info tab
     const additionalInfoFields = {
       aadharNumber: profileData.aadharNumber,
@@ -940,9 +944,9 @@ const MainSettings = () => {
           window.dispatchEvent(new CustomEvent('learner_settings_updated', {
             detail: { type: 'profile_updated', data: additionalInfoFields }
           }));
-          
+
           if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
-            refreshRecentUpdates().catch(err => 
+            refreshRecentUpdates().catch(err =>
               console.warn('Could not refresh recent updates:', err)
             );
           }
@@ -957,17 +961,17 @@ const MainSettings = () => {
   // Institution Details Tab - save institution information
   const handleSaveInstitutionDetails = async () => {
     setIsSaving(true);
-    
+
     try {
       const dataToSave = { ...profileData };
-      
+
       // Determine which path the learner is on
       const isUniversityPath = dataToSave.universityId || showCustomUniversity || customUniversityName ||
-                               dataToSave.universityCollegeId || showCustomCollege || customCollegeName ||
-                               dataToSave.programId || showCustomProgram || customProgramName;
+        dataToSave.universityCollegeId || showCustomCollege || customCollegeName ||
+        dataToSave.programId || showCustomProgram || customProgramName;
       const isSchoolPath = dataToSave.schoolId || showCustomSchool || customSchoolName ||
-                           dataToSave.schoolClassId || showCustomSchoolClass || customSchoolClassName;
-      
+        dataToSave.schoolClassId || showCustomSchoolClass || customSchoolClassName;
+
       // Clear school fields if on university path
       if (isUniversityPath) {
         dataToSave.schoolId = null;
@@ -975,7 +979,7 @@ const MainSettings = () => {
         dataToSave.school_name = null; // Clear custom school name when switching to university
         // Don't clear college field as it's used for university college name
       }
-      
+
       // Clear university fields if on school path
       if (isSchoolPath && !isUniversityPath) {
         dataToSave.universityId = null;
@@ -987,7 +991,7 @@ const MainSettings = () => {
         dataToSave.specialization = null;
         // Note: school_name is handled separately in custom school logic below
         // Don't clear it here as it may contain valid custom school name
-        
+
         // IMPORTANT: Clear section field for school learners
         // Section should only be used for university learners (semester/section)
         // For school learners, class info comes from schoolClassId or grade
@@ -1015,24 +1019,24 @@ const MainSettings = () => {
       if (dataToSave.collegeId === '') dataToSave.collegeId = null;
       if (dataToSave.universityId === '') dataToSave.universityId = null;
       if (dataToSave.programSectionId === '') dataToSave.programSectionId = null;
-      
+
       // Convert empty course_name to null
       if (dataToSave.courseName === '' || dataToSave.courseName === undefined) {
         dataToSave.courseName = null;
       }
-      
+
       // Custom program name → branch field (for assessment tests)
       if (showCustomProgram && customProgramName) {
         dataToSave.branch = customProgramName;
         dataToSave.programId = null;
       }
-      
+
       // Custom college name → college field (for college learners)
       if (showCustomCollege && customCollegeName) {
         dataToSave.college = customCollegeName;
         dataToSave.universityCollegeId = null;
       }
-      
+
       // Custom university name → university field
       if (showCustomUniversity && customUniversityName) {
         dataToSave.university = customUniversityName;
@@ -1046,23 +1050,23 @@ const MainSettings = () => {
       } else if (dataToSave.schoolId) {
         dataToSave.school_name = null;
       }
-      
+
       // Custom semester → section field AND sync grade for university learners
       if (showCustomSemester && customSemesterName) {
         dataToSave.section = customSemesterName;
         dataToSave.programSectionId = null;
-        
+
         // Auto-detect year from semester and update grade for university learners
         const lowerSemester = customSemesterName.toLowerCase();
         let yearNumber = null;
         let semesterNumber = null;
         let validationError = null;
-        
+
         // Check for patterns like "1st year", "2nd year", "3rd year", "4th year"
         const yearMatch = lowerSemester.match(/(\d+)(?:st|nd|rd|th)?\s*year/);
         if (yearMatch) {
           yearNumber = parseInt(yearMatch[1], 10);
-          
+
           // Validate year based on program type
           if (dataToSave.grade?.includes('UG') && yearNumber > 5) {
             validationError = 'UG programs typically have max 5 years (10 semesters)';
@@ -1074,7 +1078,7 @@ const MainSettings = () => {
           const semMatch = lowerSemester.match(/(?:semester|sem)?\s*(\d+)/);
           if (semMatch) {
             semesterNumber = parseInt(semMatch[1], 10);
-            
+
             // Validate semester based on program type
             if (dataToSave.grade?.includes('UG') && semesterNumber > 10) {
               validationError = 'UG programs typically have max 10 semesters';
@@ -1083,17 +1087,17 @@ const MainSettings = () => {
             } else if (dataToSave.grade?.includes('Diploma') && semesterNumber > 6) {
               validationError = 'Diploma programs typically have max 6 semesters';
             }
-            
+
             yearNumber = Math.ceil(semesterNumber / 2);
           }
         }
-        
+
         // Show validation error if semester/year is invalid
         if (validationError) {
           toast.error(validationError);
           return; // Don't save if validation fails
         }
-        
+
         // Update grade based on detected year and current program type (only if no validation error)
         if (yearNumber && dataToSave.grade) {
           let newGrade = '';
@@ -1102,17 +1106,17 @@ const MainSettings = () => {
           } else if (dataToSave.grade.includes('PG')) {
             newGrade = `PG Year ${yearNumber}`;
           }
-          
+
           // Validate grade length (database limit is 10 characters)
           if (newGrade && newGrade.length > 10) {
             toast.error("Grade value is too long. Please use shorter format (max 10 characters).");
             return;
           }
-          
+
           dataToSave.grade = newGrade;
         }
       }
-      
+
       // Custom school class → sync to grade ONLY (ONLY for school learners)
       // NOTE: We do NOT store custom class in section field - section should remain independent
       if (showCustomSchoolClass && customSchoolClassName) {
@@ -1132,10 +1136,10 @@ const MainSettings = () => {
 
       // If schoolClassId is selected from dropdown, persist its display section too.
       if (dataToSave.schoolClassId && dataToSave.schoolClassId !== null) {
-        const selectedClass = Array.isArray(schoolClasses) 
-          ? schoolClasses.find(sc => sc.id === dataToSave.schoolClassId) 
+        const selectedClass = Array.isArray(schoolClasses)
+          ? schoolClasses.find(sc => sc.id === dataToSave.schoolClassId)
           : null;
-        
+
         // Use optional chaining and handle section properly
         if (selectedClass?.section) {
           dataToSave.section = selectedClass.section;
@@ -1144,14 +1148,14 @@ const MainSettings = () => {
           dataToSave.section = dataToSave.section || null;
         }
       }
-      
+
       await updateProfile(dataToSave);
       toast.success("Institution details updated successfully");
-      
+
       window.dispatchEvent(new CustomEvent('learner_settings_updated', {
         detail: { type: 'profile_updated', data: dataToSave }
       }));
-      
+
       try {
         if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
           await refreshRecentUpdates();
@@ -1178,14 +1182,14 @@ const MainSettings = () => {
         grade: profileData.grade,
         gradeStartDate: profileData.gradeStartDate,
       };
-      
+
       await updateProfile(academicFields);
       toast.success("Academic details updated successfully");
-      
+
       window.dispatchEvent(new CustomEvent('learner_settings_updated', {
         detail: { type: 'profile_updated', data: academicFields }
       }));
-      
+
       try {
         if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
           await refreshRecentUpdates();
@@ -1204,7 +1208,7 @@ const MainSettings = () => {
   // Guardian Info Tab - save guardian information
   const handleSaveGuardianInfo = async () => {
     setIsSaving(true);
-    
+
     const guardianFields = {
       guardianName: profileData.guardianName,
       guardianPhone: profileData.guardianPhone,
@@ -1224,9 +1228,9 @@ const MainSettings = () => {
           window.dispatchEvent(new CustomEvent('learner_settings_updated', {
             detail: { type: 'profile_updated', data: guardianFields }
           }));
-          
+
           if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
-            refreshRecentUpdates().catch(err => 
+            refreshRecentUpdates().catch(err =>
               console.warn('Could not refresh recent updates:', err)
             );
           }
@@ -1241,7 +1245,7 @@ const MainSettings = () => {
   // Social Links Tab - save social media and bio
   const handleSaveSocialLinks = async () => {
     setIsSaving(true);
-    
+
     const socialFields = {
       bio: profileData.bio,
       linkedIn: profileData.linkedIn,
@@ -1264,9 +1268,9 @@ const MainSettings = () => {
           window.dispatchEvent(new CustomEvent('learner_settings_updated', {
             detail: { type: 'profile_updated', data: socialFields }
           }));
-          
+
           if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
-            refreshRecentUpdates().catch(err => 
+            refreshRecentUpdates().catch(err =>
               console.warn('Could not refresh recent updates:', err)
             );
           }
@@ -1332,21 +1336,12 @@ const MainSettings = () => {
 
     setIsSaving(false);
 
-    // Backend revokes all sessions (including this one) on password change —
-    // clear local auth state and redirect to login, same as the app's existing logout flow.
-    if (result.success) {
-      try {
-        await logout();
-      } finally {
-        navigate("/login");
-      }
-    }
-
     return result;
   };
 
   const handleSaveNotifications = async () => {
     setIsSaving(true);
+    clearTimeout(savingTimeoutRef.current);
     savingRef.current = true;
 
     const currentSettings = { ...notificationSettings };
@@ -1360,9 +1355,9 @@ const MainSettings = () => {
         toast,
         onSuccess: () => {
           setNotificationSettings(currentSettings);
-          
+
           if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
-            refreshRecentUpdates().catch(err => 
+            refreshRecentUpdates().catch(err =>
               console.warn('Could not refresh recent updates:', err)
             );
           }
@@ -1371,15 +1366,17 @@ const MainSettings = () => {
     );
 
     setIsSaving(false);
-    setTimeout(() => {
+    clearTimeout(savingTimeoutRef.current);
+    savingTimeoutRef.current = setTimeout(() => {
       savingRef.current = false;
     }, 1000);
-    
+
     return result;
   };
 
   const handleSavePrivacy = async () => {
     setIsSaving(true);
+    clearTimeout(savingTimeoutRef.current);
     savingRef.current = true;
 
     const currentSettings = { ...privacySettings };
@@ -1393,9 +1390,9 @@ const MainSettings = () => {
         toast,
         onSuccess: () => {
           setPrivacySettings(currentSettings);
-          
+
           if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
-            refreshRecentUpdates().catch(err => 
+            refreshRecentUpdates().catch(err =>
               console.warn('Could not refresh recent updates:', err)
             );
           }
@@ -1404,10 +1401,11 @@ const MainSettings = () => {
     );
 
     setIsSaving(false);
-    setTimeout(() => {
+    clearTimeout(savingTimeoutRef.current);
+    savingTimeoutRef.current = setTimeout(() => {
       savingRef.current = false;
     }, 1000);
-    
+
     return result;
   };
 
@@ -1468,13 +1466,13 @@ const MainSettings = () => {
     { id: "subscription", label: "Subscription", icon: CreditCard },
   ];
 
-  // Show loading state
-  if (learnerLoading || educationLoading) {
+  // Show loading state with skeleton
+  if (learnerLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 py-8 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
-          <div className="flex justify-center items-center py-20">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
+            <SettingsSkeleton />
           </div>
         </div>
       </div>
@@ -1517,7 +1515,7 @@ const MainSettings = () => {
           }
         `
       }} />
-      
+
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-6 lg:mb-10">
@@ -1553,47 +1551,42 @@ const MainSettings = () => {
                           key={tab.id}
                           type="button"
                           onClick={() => setActiveTab(tab.id)}
-                          className={`w-full rounded-xl transition-all duration-300 group relative ${
-                            isActive
-                              ? "bg-gradient-to-r from-blue-50/70 to-indigo-50/60 border-l-4 border-blue-500"
-                              : "hover:bg-gray-50/70 border-l-4 border-transparent hover:border-gray-200 hover:shadow-[0_1px_6px_rgba(0,0,0,0.03)]"
-                          }`}
+                          className={`w-full rounded-xl transition-all duration-300 group relative ${isActive
+                            ? "bg-gradient-to-r from-blue-50/70 to-indigo-50/60 border-l-4 border-blue-500"
+                            : "hover:bg-gray-50/70 border-l-4 border-transparent hover:border-gray-200 hover:shadow-[0_1px_6px_rgba(0,0,0,0.03)]"
+                            }`}
                         >
                           <div className="flex items-center justify-between px-3 py-3">
                             <div className="flex items-center gap-3">
                               <div
-                                className={`p-2 rounded-lg transition-all duration-300 ${
-                                  isActive
-                                    ? "bg-blue-500"
-                                    : "bg-gray-100 group-hover:bg-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.05)]"
-                                }`}
+                                className={`p-2 rounded-lg transition-all duration-300 ${isActive
+                                  ? "bg-blue-500"
+                                  : "bg-gray-100 group-hover:bg-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.05)]"
+                                  }`}
                               >
                                 <Icon
-                                  className={`w-4 h-4 transition-colors ${
-                                    isActive
-                                      ? "text-white"
-                                      : "text-gray-600 group-hover:text-gray-800"
-                                  }`}
+                                  className={`w-4 h-4 transition-colors ${isActive
+                                    ? "text-white"
+                                    : "text-gray-600 group-hover:text-gray-800"
+                                    }`}
                                 />
                               </div>
                               <div className="text-left">
                                 <p
-                                  className={`font-medium text-[0.9rem] transition-colors leading-tight ${
-                                    isActive
-                                      ? "text-gray-900"
-                                      : "text-gray-700 group-hover:text-gray-900"
-                                  }`}
+                                  className={`font-medium text-[0.9rem] transition-colors leading-tight ${isActive
+                                    ? "text-gray-900"
+                                    : "text-gray-700 group-hover:text-gray-900"
+                                    }`}
                                 >
                                   {tab.label}
                                 </p>
                               </div>
                             </div>
                             <ChevronRight
-                              className={`w-4 h-4 transition-all duration-300 ${
-                                isActive
-                                  ? "text-blue-500 translate-x-1"
-                                  : "text-gray-400 group-hover:text-gray-600 group-hover:translate-x-1"
-                              }`}
+                              className={`w-4 h-4 transition-all duration-300 ${isActive
+                                ? "text-blue-500 translate-x-1"
+                                : "text-gray-400 group-hover:text-gray-600 group-hover:translate-x-1"
+                                }`}
                             />
                           </div>
                         </button>
@@ -1607,115 +1600,138 @@ const MainSettings = () => {
 
           {/* RIGHT CONTENT AREA */}
           <div className="lg:col-span-3 order-2 lg:order-2">
-              {/* Profile Settings */}
-              {activeTab === "profile" && (
-              <ProfileTab
-                profileData={profileData}
-                handleProfileChange={handleProfileChange}
-                handleInstitutionChange={handleInstitutionChange}
-                isSaving={isSaving}
-                initialActiveSubTab={location.state?.activeSubTab}
-                // Tab-specific save handlers
-                handleSavePersonalInfo={handleSavePersonalInfo}
-                handleSaveAdditionalInfo={handleSaveAdditionalInfo}
-                handleSaveInstitutionDetails={handleSaveInstitutionDetails}
-                handleSaveAcademicDetails={handleSaveAcademicDetails}
-                handleSaveGuardianInfo={handleSaveGuardianInfo}
-                handleSaveSocialLinks={handleSaveSocialLinks}
-                setShowResumeParser={setShowResumeParser}
-                schools={schools}
-                colleges={colleges}
-                universities={universities}
-                universityColleges={universityColleges}
-                departments={departments}
-                programs={programs}
-                programSections={programSections}
-                schoolClasses={schoolClasses}
-                showCustomSchool={showCustomSchool}
-                setShowCustomSchool={setShowCustomSchool}
-                showCustomUniversity={showCustomUniversity}
-                setShowCustomUniversity={setShowCustomUniversity}
-                showCustomCollege={showCustomCollege}
-                setShowCustomCollege={setShowCustomCollege}
-                showCustomSchoolClass={showCustomSchoolClass}
-                setShowCustomSchoolClass={setShowCustomSchoolClass}
-                showCustomProgram={showCustomProgram}
-                setShowCustomProgram={setShowCustomProgram}
-                showCustomSemester={showCustomSemester}
-                setShowCustomSemester={setShowCustomSemester}
-                customSchoolName={customSchoolName}
-                setCustomSchoolName={setCustomSchoolName}
-                customUniversityName={customUniversityName}
-                setCustomUniversityName={setCustomUniversityName}
-                customCollegeName={customCollegeName}
-                setCustomCollegeName={setCustomCollegeName}
-                customSchoolClassName={customSchoolClassName}
-                setCustomSchoolClassName={setCustomSchoolClassName}
-                customProgramName={customProgramName}
-                setCustomProgramName={setCustomProgramName}
-                customSemesterName={customSemesterName}
-                setCustomSemesterName={setCustomSemesterName}
-                educationData={educationData}
-                setShowEducationModal={setShowEducationModal}
-                // New profile section props - now using real data
-                softSkillsData={softSkillsData}
-                setShowSoftSkillsModal={setShowSoftSkillsModal}
-                technicalSkillsData={technicalSkillsData}
-                setShowTechnicalSkillsModal={setShowTechnicalSkillsModal}
-                experienceData={experienceData}
-                setShowExperienceModal={setShowExperienceModal}
-                certificatesData={certificatesData}
-                setShowCertificatesModal={setShowCertificatesModal}
-                projectsData={projectsData}
-                setShowProjectsModal={setShowProjectsModal}
-                learnerData={learnerData}
-                // Toggle handlers for skills
-                onToggleTechnicalSkillEnabled={handleToggleTechnicalSkillEnabled}
-                onToggleSoftSkillEnabled={handleToggleSoftSkillEnabled}
-              />
+            <Suspense fallback={<TabSkeleton />} >
+            {/* Profile Settings */}
+            {activeTab === "profile" && (
+              <SettingsErrorBoundary section="Profile" variant="compact">
+                <ProfileTab
+                  profileData={profileData}
+                  handleProfileChange={handleProfileChange}
+                  handleInstitutionChange={handleInstitutionChange}
+                  isSaving={isSaving}
+                  initialActiveSubTab={location.state?.activeSubTab}
+                  onActiveSubTabChange={handleProfileTabChange}
+                  sectionsLoading={{
+                    academic: educationLoading || tableEducationLoading,
+                    skills: educationLoading || technicalSkillsLoading || softSkillsLoading,
+                    experience: educationLoading || experienceLoading,
+                    certificates: educationLoading || certificatesLoading,
+                    projects: educationLoading || projectsLoading,
+                  }}
+                  institutionsLoading={!institutionsRequested || institutionsLoading}
+                  institutionsError={institutionsError}
+                  refreshInstitutions={refreshInstitutions}
+                  // Tab-specific save handlers
+                  handleSavePersonalInfo={handleSavePersonalInfo}
+                  handleSaveAdditionalInfo={handleSaveAdditionalInfo}
+                  handleSaveInstitutionDetails={handleSaveInstitutionDetails}
+                  handleSaveAcademicDetails={handleSaveAcademicDetails}
+                  handleSaveGuardianInfo={handleSaveGuardianInfo}
+                  handleSaveSocialLinks={handleSaveSocialLinks}
+                  setShowResumeParser={setShowResumeParser}
+                  schools={schools}
+                  colleges={colleges}
+                  universities={universities}
+                  universityColleges={universityColleges}
+                  departments={departments}
+                  programs={programs}
+                  programSections={programSections}
+                  schoolClasses={schoolClasses}
+                  showCustomSchool={showCustomSchool}
+                  setShowCustomSchool={setShowCustomSchool}
+                  showCustomUniversity={showCustomUniversity}
+                  setShowCustomUniversity={setShowCustomUniversity}
+                  showCustomCollege={showCustomCollege}
+                  setShowCustomCollege={setShowCustomCollege}
+                  showCustomSchoolClass={showCustomSchoolClass}
+                  setShowCustomSchoolClass={setShowCustomSchoolClass}
+                  showCustomProgram={showCustomProgram}
+                  setShowCustomProgram={setShowCustomProgram}
+                  showCustomSemester={showCustomSemester}
+                  setShowCustomSemester={setShowCustomSemester}
+                  customSchoolName={customSchoolName}
+                  setCustomSchoolName={setCustomSchoolName}
+                  customUniversityName={customUniversityName}
+                  setCustomUniversityName={setCustomUniversityName}
+                  customCollegeName={customCollegeName}
+                  setCustomCollegeName={setCustomCollegeName}
+                  customSchoolClassName={customSchoolClassName}
+                  setCustomSchoolClassName={setCustomSchoolClassName}
+                  customProgramName={customProgramName}
+                  setCustomProgramName={setCustomProgramName}
+                  customSemesterName={customSemesterName}
+                  setCustomSemesterName={setCustomSemesterName}
+                  educationData={educationData}
+                  setShowEducationModal={setShowEducationModal}
+                  // New profile section props - now using real data
+                  softSkillsData={softSkillsData}
+                  setShowSoftSkillsModal={setShowSoftSkillsModal}
+                  technicalSkillsData={technicalSkillsData}
+                  setShowTechnicalSkillsModal={setShowTechnicalSkillsModal}
+                  experienceData={experienceData}
+                  setShowExperienceModal={setShowExperienceModal}
+                  certificatesData={certificatesData}
+                  setShowCertificatesModal={setShowCertificatesModal}
+                  projectsData={projectsData}
+                  setShowProjectsModal={setShowProjectsModal}
+                  learnerData={learnerData}
+                  // Toggle handlers for skills
+                  onToggleTechnicalSkillEnabled={handleToggleTechnicalSkillEnabled}
+                  onToggleSoftSkillEnabled={handleToggleSoftSkillEnabled}
+                />
+              </SettingsErrorBoundary>
             )}
 
             {/* Security Settings */}
             {activeTab === "security" && (
-              <SecurityTab
-                passwordData={passwordData}
-                handlePasswordChange={handlePasswordChange}
-                handleSavePassword={handleSavePassword}
-                isSaving={isSaving}
-                userEmail={userEmail}
-              />
+              <SettingsErrorBoundary section="Security" variant="compact">
+                <SecurityTab passwordData={passwordData}
+                  handlePasswordChange={handlePasswordChange}
+                  handleSavePassword={handleSavePassword}
+                  isSaving={isSaving}
+                  userEmail={userEmail}
+                />
+              </SettingsErrorBoundary>
             )}
 
             {/* Notification Settings */}
             {activeTab === "notifications" && (
-              <NotificationsTab
-                notificationSettings={notificationSettings}
-                handleNotificationToggle={handleNotificationToggle}
-                handleSaveNotifications={handleSaveNotifications}
-                isSaving={isSaving}
-              />
+              <SettingsErrorBoundary section="Notifications" variant="compact">
+                <NotificationsTab notificationSettings={notificationSettings}
+                  handleNotificationToggle={handleNotificationToggle}
+                  handleSaveNotifications={handleSaveNotifications}
+                  isSaving={isSaving}
+                />
+              </SettingsErrorBoundary>
             )}
 
             {/* Privacy Settings */}
             {activeTab === "privacy" && (
-              <PrivacyTab
-                privacySettings={privacySettings}
-                handlePrivacyChange={handlePrivacyChange}
-                handleSavePrivacy={handleSavePrivacy}
-                isSaving={isSaving}
-              />
+              <SettingsErrorBoundary section="Privacy" variant="compact">
+                <PrivacyTab privacySettings={privacySettings}
+                  handlePrivacyChange={handlePrivacyChange}
+                  handleSavePrivacy={handleSavePrivacy}
+                  isSaving={isSaving}
+                />
+              </SettingsErrorBoundary>
             )}
 
             {/* Subscription Settings */}
             {activeTab === "subscription" && (
-              <SubscriptionSettingsSection />
+              <SettingsErrorBoundary section="Subscription">
+                <SubscriptionSettingsSection />
+              </SettingsErrorBoundary>
             )}
+            </Suspense>
           </div>
         </div>
 
+        <SettingsErrorBoundary section="Profile editor">
+        <Suspense fallback={<div role="status" className="fixed inset-0 z-50 grid place-items-center bg-black/30"><div className="rounded-xl bg-white p-6">Loading editor…</div></div>}>
         {/* Education Edit Modal */}
         {showEducationModal && (
-          <EducationEditModal
+          <UnifiedProfileEditModal
+            type="education"
             isOpen={showEducationModal}
             onClose={() => setShowEducationModal(false)}
             data={educationData}
@@ -1725,7 +1741,8 @@ const MainSettings = () => {
 
         {/* Soft Skills Edit Modal */}
         {showSoftSkillsModal && (
-          <SoftSkillsEditModal
+          <UnifiedProfileEditModal
+            type="softSkills"
             isOpen={showSoftSkillsModal}
             onClose={() => setShowSoftSkillsModal(false)}
             data={softSkillsData}
@@ -1735,7 +1752,8 @@ const MainSettings = () => {
 
         {/* Technical Skills Edit Modal - Using same modal type as Dashboard */}
         {showTechnicalSkillsModal && (
-          <SkillsEditModal
+          <UnifiedProfileEditModal
+            type="skills"
             isOpen={showTechnicalSkillsModal}
             onClose={() => setShowTechnicalSkillsModal(false)}
             data={technicalSkillsData || []}
@@ -1746,7 +1764,8 @@ const MainSettings = () => {
 
         {/* Experience Edit Modal */}
         {showExperienceModal && (
-          <ExperienceEditModal
+          <UnifiedProfileEditModal
+            type="experience"
             isOpen={showExperienceModal}
             onClose={() => setShowExperienceModal(false)}
             data={experienceData}
@@ -1756,7 +1775,8 @@ const MainSettings = () => {
 
         {/* Certificates Edit Modal */}
         {showCertificatesModal && (
-          <CertificatesEditModal
+          <UnifiedProfileEditModal
+            type="certificates"
             isOpen={showCertificatesModal}
             onClose={() => setShowCertificatesModal(false)}
             data={certificatesData}
@@ -1766,7 +1786,8 @@ const MainSettings = () => {
 
         {/* Projects Edit Modal */}
         {showProjectsModal && (
-          <ProjectsEditModal
+          <UnifiedProfileEditModal
+            type="projects"
             isOpen={showProjectsModal}
             onClose={() => setShowProjectsModal(false)}
             data={projectsData}
@@ -1784,6 +1805,8 @@ const MainSettings = () => {
             user={user}
           />
         )}
+        </Suspense>
+        </SettingsErrorBoundary>
       </div>
     </div>
   );

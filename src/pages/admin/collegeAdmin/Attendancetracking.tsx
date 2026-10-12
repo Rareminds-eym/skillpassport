@@ -910,29 +910,8 @@ const AttendanceTracking: React.FC = () => {
       return;
     }
 
-    // Date and time validation
-    const now = new Date();
-    const currentDate = now.toISOString().split('T')[0];
-    const currentTime = now.toTimeString().slice(0, 5);
-    
-    // Check if date is in the past
-    if (sessionFormData.date < currentDate) {
-      toast.error("Cannot schedule attendance for past dates.");
-      return;
-    }
-    
-    // Check if time is in the past (for today's date)
-    if (sessionFormData.date === currentDate) {
-      if (sessionFormData.startTime < currentTime) {
-        toast.error("Cannot schedule attendance for past time.");
-        return;
-      }
-      if (sessionFormData.endTime < currentTime) {
-        toast.error("End time cannot be in the past.");
-        return;
-      }
-    }
-    
+    // Date and time validation: any date/time allowed (backfill supported).
+    // Only end-after-start is enforced below.
     // Check if end time is after start time
     if (sessionFormData.startTime && sessionFormData.endTime) {
       const start = new Date(`2000-01-01T${sessionFormData.startTime}`);
@@ -1021,29 +1000,8 @@ const AttendanceTracking: React.FC = () => {
       return;
     }
 
-    // Date and time validation
-    const now = new Date();
-    const currentDate = now.toISOString().split('T')[0];
-    const currentTime = now.toTimeString().slice(0, 5);
-    
-    // Check if date is in the past
-    if (sessionFormData.date < currentDate) {
-      toast.error("Cannot schedule attendance for past dates.");
-      return;
-    }
-    
-    // Check if time is in the past (for today's date)
-    if (sessionFormData.date === currentDate) {
-      if (sessionFormData.startTime < currentTime) {
-        toast.error("Cannot schedule attendance for past time.");
-        return;
-      }
-      if (sessionFormData.endTime < currentTime) {
-        toast.error("End time cannot be in the past.");
-        return;
-      }
-    }
-    
+    // Date and time validation: any date/time allowed (backfill supported).
+    // Only end-after-start is enforced below.
     // Check if end time is after start time
     if (sessionFormData.startTime && sessionFormData.endTime) {
       const start = new Date(`2000-01-01T${sessionFormData.startTime}`);

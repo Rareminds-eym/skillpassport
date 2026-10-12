@@ -1,13 +1,13 @@
-import React from "react";
+import { memo, useState } from "react";
 import { Shield, Save } from "lucide-react";
 import { Button } from '@/shared/ui/ButtonNew';
-import { useFormValidation } from '@/shared/lib/hooks';
+import { useFormValidation } from '@/shared/lib/hooks/useFormValidation';
 import FormField from "../FormField";
 
-const GuardianInfoTab = ({ profileData, handleProfileChange, handleSaveProfile, isSaving }) => {
+const GuardianInfoTab = memo(({ profileData, handleProfileChange, handleSaveProfile, isSaving }) => {
   const { validateSingleField, touchField, getFieldError } = useFormValidation();
-  const [phoneError, setPhoneError] = React.useState('');
-  const [emailError, setEmailError] = React.useState('');
+  const [phoneError, setPhoneError] = useState('');
+  const [emailError, setEmailError] = useState('');
 
   const validatePhone = (phone) => {
     if (!phone) {
@@ -183,6 +183,8 @@ const GuardianInfoTab = ({ profileData, handleProfileChange, handleSaveProfile, 
       </div>
     </div>
   );
-};
+});
+
+GuardianInfoTab.displayName = 'GuardianInfoTab';
 
 export default GuardianInfoTab;

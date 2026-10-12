@@ -208,7 +208,9 @@ describe('Invitation Flow Integration Tests', () => {
       };
       invitations.set(token, invitation);
 
-      const acceptInvitation = async (invToken: string, userId: string) => {
+      // The accepting user is the authenticated session user; the caller never passes it.
+      const sessionUserId = 'user-123';
+      const acceptInvitation = async (invToken: string) => {
         const inv = invitations.get(invToken);
         if (!inv) {
           throw new Error('Invalid invitation token');
@@ -223,12 +225,12 @@ describe('Invitation Flow Integration Tests', () => {
 
         inv.status = 'accepted';
         inv.accepted_at = new Date().toISOString();
-        inv.accepted_by = userId;
+        inv.accepted_by = sessionUserId;
 
         return { invitation: inv, assignedLicense: null };
       };
 
-      const result = await acceptInvitation(token, 'user-123');
+      const result = await acceptInvitation(token);
 
       expect(result.invitation.status).toBe('accepted');
       expect(result.invitation.accepted_by).toBe('user-123');
@@ -285,21 +287,23 @@ describe('Invitation Flow Integration Tests', () => {
       };
       invitations.set(token, invitation);
 
-      const acceptInvitation = async (invToken: string, userId: string) => {
+      // The accepting user is the authenticated session user; the caller never passes it.
+      const sessionUserId = 'user-123';
+      const acceptInvitation = async (invToken: string) => {
         const inv = invitations.get(invToken);
         if (!inv) throw new Error('Invalid invitation token');
 
         inv.status = 'accepted';
         inv.accepted_at = new Date().toISOString();
-        inv.accepted_by = userId;
+        inv.accepted_by = sessionUserId;
 
         let assignedLicense = null;
         if (inv.auto_assign_subscription && inv.target_license_pool_id) {
           // Auto-assign license
           assignedLicense = {
-            id: `assign-${userId}`,
+            id: `assign-${sessionUserId}`,
             license_pool_id: inv.target_license_pool_id,
-            user_id: userId,
+            user_id: sessionUserId,
             member_type: inv.member_type,
             status: 'active',
             assigned_at: new Date().toISOString()
@@ -309,7 +313,7 @@ describe('Invitation Flow Integration Tests', () => {
         return { invitation: inv, assignedLicense };
       };
 
-      const result = await acceptInvitation(token, 'user-123');
+      const result = await acceptInvitation(token);
 
       expect(result.invitation.status).toBe('accepted');
       expect(result.assignedLicense).not.toBeNull();

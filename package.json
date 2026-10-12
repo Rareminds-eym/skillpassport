@@ -4,6 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "db:reset:dev": "npx supabase db reset --sql-paths \"./seed/dev/*.sql\"",
+    "db:reset:prod": "npx supabase db reset --sql-paths \"./seed/production/*.sql\"",
     "start": " npm run build:dev && concurrently -n \"workers,pages\" -c \"yellow,magenta\" \"npm run workers:dev\" \"npm run pages:dev\"",
     "dev:local": "vite --mode development --port 8788",
     "dev": "vite --mode development --port 3000",
@@ -11,6 +13,7 @@
     "build": "node --max-old-space-size=4096 ./node_modules/vite/bin/vite.js build",
     "build:dev": "node --max-old-space-size=4096 ./node_modules/vite/bin/vite.js build --mode development",
     "lint": "eslint .",
+    "lint:database": "node scripts/checks/validate-database.js",
     "preview": "vite preview",
     "test": "vitest",
     "test:property": "vitest --run src/__tests__/property/",
@@ -32,7 +35,8 @@
     "db:backup:compress": "python3 scripts/backup_remote_db.py --compress",
     "db:backup:verify": "python3 scripts/backup_remote_db.py --verify latest",
     "pages:start": "wrangler pages dev dist --compatibility-date=2026-06-08 --port=8788 --live-reload=false --r2 R2_BUCKET --service PAYMENT_WORKER=razorpay-api --service SSO_SERVICE=sso-api#SsoWorker --service REALTIME_WORKER=realtime-worker --service EMBEDDING_SERVICE=embedding-api#EmbeddingService --service EMAIL_SERVICE=shared-email-api",
-    "cleanup": "bash scripts/cleanup-ports.sh"
+    "cleanup": "bash scripts/cleanup-ports.sh",
+    "lint:certificates": "eslint src/pages/verify src/__tests__/verify"
   },
   "dependencies": {
     "@casl/ability": "6.8.0",
@@ -70,11 +74,11 @@
     "@radix-ui/react-toggle": "1.1.10",
     "@radix-ui/react-toggle-group": "1.1.11",
     "@radix-ui/react-tooltip": "1.2.8",
-    "@rareminds-eym/auth-client": "2.1.0",
-    "@rareminds-eym/auth-core": "3.0.0",
+    "@rareminds-eym/auth-client": "2.2.0",
+    "@rareminds-eym/auth-core": "3.1.0",
     "@rareminds-eym/entitlements": "1.0.0",
     "@rareminds-eym/identity-client": "1.0.0",
-    "@rareminds-eym/sso-gateway": "1.0.0",
+    "@rareminds-eym/sso-gateway": "1.1.0",
     "@supabase/supabase-js": "2.57.4",
     "@tanstack/react-query": "5.90.3",
     "@tsparticles/react": "3.0.0",

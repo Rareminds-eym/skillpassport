@@ -1,7 +1,7 @@
 import { useState, FormEvent, ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mail, AlertCircle, CheckCircle, Loader2, ArrowLeft, Info } from 'lucide-react';
-import { ssoClient } from '@/shared/api/ssoClient';
+import { ssoClient, SsoWorkflowError } from '@/shared/api/ssoClient';
 import { AuthClientError } from '@rareminds-eym/auth-client';
 
 interface ForgotPasswordState {
@@ -50,20 +50,19 @@ const UnifiedForgotPassword = () => {
       }));
 
     } catch (error) {
-      // Even on error, show success to prevent email enumeration
-      // Only show actual error for rate limiting or server issues
-      if (error instanceof AuthClientError && error.httpStatus === 429) {
+      // The server already returns the same success for unknown accounts.
+      if ((error instanceof AuthClientError || error instanceof SsoWorkflowError) && error.httpStatus === 429) {
         setState(prev => ({
           ...prev,
           loading: false,
           error: 'Too many requests. Please try again in a few minutes.'
         }));
       } else {
-        // Show success regardless (prevents enumeration)
+        // Delivery was not accepted; allow the user to retry.
         setState(prev => ({
           ...prev,
           loading: false,
-          success: true
+          error: 'Unable to request a reset link. Please try again.'
         }));
       }
     }

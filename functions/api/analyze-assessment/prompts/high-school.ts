@@ -176,6 +176,14 @@ YOU MUST FOLLOW THESE MANDATORY RULES FOR GRADE 10:
    - whyThisStream field explaining WHY that stream is needed for these careers
    - Frame as "You should choose [stream] because..." (more directive than grade 9)
 
+1A. **RECOMMENDED STREAM MUST BE EVIDENCE-BASED AND TRACK-ALIGNED**:
+   - Do NOT randomly choose Science/Commerce/Arts.
+   - First decide the top career cluster (Track 1) from the learner's high-school interest explorer responses/category-mapped interest profile, aptitude/adaptive scores, self-assessment, strengths, and learning style.
+   - Then set recommendedStream to the 11th/12th stream that best supports Track 1.
+   - recommendedStream MUST be consistent with careerFit.clusters[0].streamRequired and careerFit.clusters[0].whyThisStream.
+   - If Track 1 could work through multiple streams, choose the stream with the strongest combined evidence and mention the tradeoff in reasoning.
+   - The alternativeStream should be the second-best stream, usually aligned to Track 2 or the strongest backup evidence.
+
 2. **SIMPLIFIED SALARY INFORMATION ALLOWED FOR GRADE 10**:
    - ✅ You MAY include ONE simple salary range per career cluster
    - Format: "Starting ₹4-8 lakhs, growing to ₹15-30 lakhs with experience"
@@ -488,6 +496,31 @@ ${JSON.stringify(assessmentData.knowledgeAnswers, null, 2)}
     "overallReadiness": "Their current career readiness level"
   },
   "knowledge": { "score": 70, "correctCount": 7, "totalQuestions": 10 },
+${isGrade10 ? `  "recommendedStream": {
+    "stream": "MUST be exactly one of: Science PCM, Science PCB, Science PCMB, Commerce with Maths, Commerce without Maths, Arts/Humanities. Choose by thinking from the learner evidence and Track 1, not by defaulting to a category.",
+    "recommendedStream": "Same value as stream",
+    "displayName": "Same value as stream",
+    "category": "Science, Commerce, or Arts",
+    "confidence": "High, Medium, or Low",
+    "matchScore": 0,
+    "reasoning": {
+      "interests": "Why the learner's high-school interest explorer responses/category-mapped interest profile support this stream and Track 1",
+      "aptitude": "How aptitude/adaptive scores support this stream and Track 1, including skill gaps if any",
+      "personality": "How character strengths and learning style support this stream and Track 1",
+      "trackAlignment": "Explicitly name careerFit.clusters[0].title and explain why this stream is the best route for that track"
+    },
+    "subjects": {
+      "core": ["Subjects to focus on in 11th/12th for this stream"]
+    },
+    "careerPaths": ["Career paths this stream can lead to after 12th"],
+    "entranceExams": ["General entrance exam areas only; avoid specific exam names"],
+    "alternativeStream": {
+      "stream": "Second-best stream from the same allowed list",
+      "reason": "Why this is a good alternative, ideally connected to Track 2 or backup evidence"
+    },
+    "preparationAdvice": "Short advice for preparing for this stream before 11th grade"
+  },
+` : ''}
   "careerFit": {
     "clusters": [
       {
@@ -956,6 +989,10 @@ If learner is in grade 10, also verify:
 - ✅ Match scores are labeled as "Interest Alignment %" not "Career Match %"
 - ✅ SIMPLIFIED salary information IS included (one range per cluster, brief format)
 - ✅ Stream information is GUIDANCE-BASED: "You may consider [stream] to explore these careers"
+- ✅ recommendedStream is NOT random/default; it is derived from high-school interest explorer responses/category-mapped interests + aptitude/adaptive scores + strengths + learning style
+- ✅ recommendedStream matches careerFit.clusters[0].streamRequired and careerFit.clusters[0].whyThisStream
+- ✅ recommendedStream.reasoning.trackAlignment explicitly names Track 1 and explains why this stream supports it
+- ✅ alternativeStream is the second-best evidence-based option, not a random fallback
 - ✅ Interest and aptitude are CLEARLY SEPARATED with honest assessment
 - ✅ If aptitude is low (<30%), MUST include skill improvement statement: "These careers are achievable but will require significant improvement in [skills] over the next 2-3 years"
 - ✅ NO backend metadata fields (_timestamp, _corrected, _metadata, _scoreBackup, etc.)

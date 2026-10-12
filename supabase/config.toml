@@ -68,15 +68,8 @@ enabled = true
 schema_paths = []
 
 [db.seed]
-# If enabled, seeds the database after migrations during a db reset.
-enabled = true
-# Specifies an ordered list of seed files to load during db reset.
-# Supports glob patterns relative to supabase directory: "./seeds/*.sql"
-sql_paths = [
- "./seed/*.sql",
- "./seed/college/*.sql",
- "./seed/assessment_result/*.sql"
-]
+  # Choose environment seeds explicitly with db:reset:dev or db:reset:prod.
+enabled = false
 
 [db.network_restrictions]
 # Enable management of network restrictions.
@@ -122,10 +115,13 @@ port = 54324
 # sender_name = "Admin"
 
 [storage]
-enabled = true
+enabled = false
 
 # The maximum file size allowed (e.g. "5MB", "500KB").
 file_size_limit = "50MiB"
+
+[storage.image_transformation]
+enabled = false
 
 [auth]
 enabled = true

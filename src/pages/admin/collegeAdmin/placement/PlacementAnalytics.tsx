@@ -653,8 +653,9 @@ const PlacementAnalytics: React.FC = () => {
             
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
+                <label htmlFor="page-analytics-department" className="block text-sm font-medium text-gray-700 mb-1">Department</label>
                 <select
+                  id="page-analytics-department"
                   value={selectedAnalyticsDepartment}
                   onChange={(e) => setSelectedAnalyticsDepartment(e.target.value)}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -669,8 +670,9 @@ const PlacementAnalytics: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Academic Year</label>
+                <label htmlFor="page-analytics-year" className="block text-sm font-medium text-gray-700 mb-1">Academic Year</label>
                 <select
+                  id="page-analytics-year"
                   value={selectedAnalyticsYear}
                   onChange={(e) => setSelectedAnalyticsYear(e.target.value)}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -682,8 +684,9 @@ const PlacementAnalytics: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Employment Type</label>
+                <label htmlFor="page-analytics-employment-type" className="block text-sm font-medium text-gray-700 mb-1">Employment Type</label>
                 <select
+                  id="page-analytics-employment-type"
                   value={selectedAnalyticsType}
                   onChange={(e) => setSelectedAnalyticsType(e.target.value)}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"

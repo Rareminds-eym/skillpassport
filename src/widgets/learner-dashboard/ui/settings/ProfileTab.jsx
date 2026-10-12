@@ -1,27 +1,35 @@
-import React, { useState, useRef, useEffect, useMemo } from "react";
-import { User, FileText, Briefcase, Shield, Globe, Upload, Save, CheckCircle, Award, FolderGit2 } from "lucide-react";
+import { isCollegeStudent, isSchoolStudent } from '@/entities/learner/lib/learnerType';
 import { Button } from '@/shared/ui/ButtonNew';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/Card';
-import { isLearner, isSchoolStudent, isCollegeStudent } from '@/entities/learner/lib/learnerType';
+import { Award, Briefcase, CheckCircle, FileText, FolderGit2, Globe, Shield, Upload, User } from "lucide-react";
+import { lazy, memo, Suspense, useEffect, useMemo, useRef, useState } from "react";
 
-// Import sub-components
+import { TabSkeleton } from './skeletons';
+
 import PersonalInfoTab from "./ProfileSubTabs/PersonalInfoTab";
-import AdditionalInfoTab from "./ProfileSubTabs/AdditionalInfoTab";
-import InstitutionDetailsTab from "./ProfileSubTabs/InstitutionDetailsTab";
-import AcademicDetailsTab from "./ProfileSubTabs/AcademicDetailsTab";
-import GuardianInfoTab from "./ProfileSubTabs/GuardianInfoTab";
-import SocialLinksTab from "./ProfileSubTabs/SocialLinksTab";
-import SkillsTab from "./ProfileSubTabs/SkillsTab";
-import ExperienceTab from "./ProfileSubTabs/ExperienceTab";
-import CertificatesTab from "./ProfileSubTabs/CertificatesTab";
-import ProjectsTab from "./ProfileSubTabs/ProjectsTab";
 
-const ProfileTab = ({
+// Load optional sections when the learner opens them.
+const AcademicDetailsTab = lazy(() => import("./ProfileSubTabs/AcademicDetailsTab"));
+const AdditionalInfoTab = lazy(() => import("./ProfileSubTabs/AdditionalInfoTab"));
+const CertificatesTab = lazy(() => import("./ProfileSubTabs/CertificatesTab"));
+const ExperienceTab = lazy(() => import("./ProfileSubTabs/ExperienceTab"));
+const GuardianInfoTab = lazy(() => import("./ProfileSubTabs/GuardianInfoTab"));
+const InstitutionDetailsTab = lazy(() => import("./ProfileSubTabs/InstitutionDetailsTab"));
+const ProjectsTab = lazy(() => import("./ProfileSubTabs/ProjectsTab"));
+const SkillsTab = lazy(() => import("./ProfileSubTabs/SkillsTab"));
+const SocialLinksTab = lazy(() => import("./ProfileSubTabs/SocialLinksTab"));
+
+const ProfileTab = memo(({
   profileData,
   handleProfileChange,
   handleInstitutionChange,
   isSaving,
   initialActiveSubTab,
+  onActiveSubTabChange,
+  institutionsLoading,
+  sectionsLoading,
+  institutionsError,
+  refreshInstitutions,
   // Tab-specific save handlers
   handleSavePersonalInfo,
   handleSaveAdditionalInfo,
@@ -88,6 +96,20 @@ const ProfileTab = ({
   const [showLeftIndicator, setShowLeftIndicator] = useState(false);
   const [showRightIndicator, setShowRightIndicator] = useState(true);
   const scrollContainerRef = useRef(null);
+  const scrollTimeoutRef = useRef(null);
+
+  // Cleanup scroll timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    onActiveSubTabChange?.(profileActiveTab);
+  }, [profileActiveTab, onActiveSubTabChange]);
 
   // Update active tab when initialActiveSubTab changes
   useEffect(() => {
@@ -110,8 +132,11 @@ const ProfileTab = ({
     const currentIndex = profileTabs.findIndex(tab => tab.id === profileActiveTab);
     if (currentIndex < profileTabs.length - 1) {
       setProfileActiveTab(profileTabs[currentIndex + 1].id);
-      // Scroll the tab into view
-      setTimeout(() => {
+      // Scroll the tab into view with cleanup
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+      scrollTimeoutRef.current = setTimeout(() => {
         const tabButtons = scrollContainerRef.current?.querySelectorAll('button');
         if (tabButtons && tabButtons[currentIndex + 1]) {
           tabButtons[currentIndex + 1].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
@@ -124,8 +149,11 @@ const ProfileTab = ({
     const currentIndex = profileTabs.findIndex(tab => tab.id === profileActiveTab);
     if (currentIndex > 0) {
       setProfileActiveTab(profileTabs[currentIndex - 1].id);
-      // Scroll the tab into view
-      setTimeout(() => {
+      // Scroll the tab into view with cleanup
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+      scrollTimeoutRef.current = setTimeout(() => {
         const tabButtons = scrollContainerRef.current?.querySelectorAll('button');
         if (tabButtons && tabButtons[currentIndex - 1]) {
           tabButtons[currentIndex - 1].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
@@ -136,11 +164,6 @@ const ProfileTab = ({
 
   useEffect(() => {
     checkScrollPosition();
-    const scrollContainer = scrollContainerRef.current;
-    if (scrollContainer) {
-      scrollContainer.addEventListener('scroll', checkScrollPosition);
-      return () => scrollContainer.removeEventListener('scroll', checkScrollPosition);
-    }
   }, []);
 
   const profileTabs = useMemo(() => {
@@ -160,7 +183,7 @@ const ProfileTab = ({
     // Only show Institution Details tab for school_student or college_student
     // Hide it for independent learners and other types
     const showInstitutionTab = isSchoolStudent(learnerData) || isCollegeStudent(learnerData);
-    
+
     if (!showInstitutionTab) {
       return allTabs.filter(tab => tab.id !== "institution");
     }
@@ -169,6 +192,7 @@ const ProfileTab = ({
   }, [learnerData]);
 
   const renderActiveTab = () => {
+    if (sectionsLoading?.[profileActiveTab]) return <TabSkeleton />;
     switch (profileActiveTab) {
       case "personal":
         return (
@@ -189,6 +213,13 @@ const ProfileTab = ({
           />
         );
       case "institution":
+        if (institutionsLoading) return <TabSkeleton />;
+        if (institutionsError) return (
+          <div role="alert" className="space-y-3">
+            <p>Unable to load institutions. Please try again.</p>
+            <Button onClick={refreshInstitutions}>Retry</Button>
+          </div>
+        );
         return (
           <InstitutionDetailsTab
             profileData={profileData}
@@ -326,7 +357,7 @@ const ProfileTab = ({
           <div className="relative">
             {/* Left scroll indicator */}
             {showLeftIndicator && (
-              <div 
+              <div
                 onClick={scrollToPreviousTab}
                 className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-white to-transparent z-10 flex items-center justify-start cursor-pointer hover:opacity-80 transition-opacity"
               >
@@ -340,7 +371,7 @@ const ProfileTab = ({
 
             {/* Right scroll indicator */}
             {showRightIndicator && (
-              <div 
+              <div
                 onClick={scrollToNextTab}
                 className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-white to-transparent z-10 flex items-center justify-end cursor-pointer hover:opacity-80 transition-opacity"
               >
@@ -352,7 +383,7 @@ const ProfileTab = ({
               </div>
             )}
 
-            <div 
+            <div
               ref={scrollContainerRef}
               className="flex gap-1 overflow-x-auto border-b border-gray-200 scrollbar-hide"
               onScroll={checkScrollPosition}
@@ -365,11 +396,10 @@ const ProfileTab = ({
                     key={tab.id}
                     type="button"
                     onClick={() => setProfileActiveTab(tab.id)}
-                    className={`flex items-center gap-2 px-3 sm:px-4 py-3 font-medium text-xs sm:text-sm whitespace-nowrap border-b-2 transition-colors min-w-fit ${
-                      isActive
-                        ? "text-blue-600 border-blue-600 bg-blue-50"
-                        : "text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300"
-                    }`}
+                    className={`flex items-center gap-2 px-3 sm:px-4 py-3 font-medium text-xs sm:text-sm whitespace-nowrap border-b-2 transition-colors min-w-fit ${isActive
+                      ? "text-blue-600 border-blue-600 bg-blue-50"
+                      : "text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300"
+                      }`}
                   >
                     <Icon className="h-4 w-4 flex-shrink-0" />
                     <span className="hidden sm:inline">{tab.label}</span>
@@ -384,10 +414,15 @@ const ProfileTab = ({
 
       <CardContent className="pt-6 p-6 space-y-8">
         {/* Render Active Tab Content */}
-        {renderActiveTab()}
+        <Suspense fallback={<TabSkeleton />}>
+          {renderActiveTab()}
+        </Suspense>
       </CardContent>
     </Card>
   );
-};
+});
+
+ProfileTab.displayName = 'ProfileTab';
+
 
 export default ProfileTab;

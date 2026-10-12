@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
+import { memo, useState, useEffect, useCallback } from "react";
 import { FileText, Save, AlertCircle, Plus, X } from "lucide-react";
 import { Button } from '@/shared/ui/ButtonNew';
-import { useFormValidation } from '@/shared/lib/hooks';
+import { useFormValidation } from '@/shared/lib/hooks/useFormValidation';
 import FormField from "../FormField";
 import { isLearner } from '@/entities/learner/lib/learnerType';
 
@@ -80,7 +80,7 @@ const parseJsonField = (field) => {
   }
 };
 
-const AdditionalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile, isSaving }) => {
+const AdditionalInfoTab = memo(({ profileData, handleProfileChange, handleSaveProfile, isSaving }) => {
   const {
     validateSingleField,
     touchField,
@@ -499,6 +499,8 @@ const AdditionalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile
       </div>
     </div>
   );
-};
+});
+
+AdditionalInfoTab.displayName = 'AdditionalInfoTab';
 
 export default AdditionalInfoTab;

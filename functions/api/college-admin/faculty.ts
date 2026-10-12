@@ -251,12 +251,16 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
             logger.error('faculty_metadata_parse_failed', error instanceof Error ? error : new Error(String(error)), {
               lecturerId: r.id,
               employeeId: r.employeeId,
-              metadataPreview: typeof r.metadata === 'string' ? r.metadata.substring(0, 100) : 'not-string'
             });
             metadata = {};
           }
+          const safeMetadata = { ...metadata };
+          delete safeMetadata.temporary_password;
+          delete safeMetadata.password_created_at;
           return {
             ...r,
+            temporary_password: null,
+            metadata: safeMetadata,
             first_name: r.first_name || metadata?.first_name || null,
             last_name: r.last_name || metadata?.last_name || null,
             email: r.email || metadata?.email || null,

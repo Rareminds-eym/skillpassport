@@ -1,10 +1,10 @@
-import React, { useState } from "react";
+import { memo, useState } from "react";
 import { Lock, Mail, Eye, EyeOff } from "lucide-react";
 import { Button } from '@/shared/ui/ButtonNew';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/Card';
 import { PASSWORD_MIN } from '@/shared/constants';
 
-const SecurityTab = ({
+const SecurityTab = memo(({
   passwordData,
   handlePasswordChange,
   handleSavePassword,
@@ -171,6 +171,9 @@ const SecurityTab = ({
       </CardContent>
     </Card>
   );
-};
+});
+
+SecurityTab.displayName = 'SecurityTab';
+
 
 export default SecurityTab;

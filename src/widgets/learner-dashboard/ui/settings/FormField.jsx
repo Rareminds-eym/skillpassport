@@ -1,10 +1,14 @@
-import React from 'react';
 import { AlertCircle } from 'lucide-react';
+import { memo, useCallback } from 'react';
+
+const EMPTY_OPTIONS = [];
 
 /**
  * Reusable form field component with built-in validation and error display
+ * Optimized with React.memo to prevent unnecessary re-renders
+ * Controlled values must update synchronously so typing and saving agree.
  */
-const FormField = ({
+const FormField = memo(({
   label,
   name,
   type = 'text',
@@ -19,29 +23,26 @@ const FormField = ({
   inputClassName = '',
   as = 'input',
   rows = 3,
-  options = [],
+  options = EMPTY_OPTIONS,
   helpText = null,
   maxLength = null,
 }) => {
   const hasError = error && error.trim() !== '';
-  
-  const baseInputClasses = `w-full px-4 py-2.5 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 ${
-    hasError
-      ? 'border-red-300 focus:border-red-500 focus:ring-red-200 bg-red-50/50'
-      : 'border-gray-300 focus:border-blue-500 focus:ring-blue-200 bg-white'
-  } ${disabled ? 'bg-gray-100 cursor-not-allowed' : ''} ${inputClassName}`;
 
-  const handleChange = (e) => {
-    if (onChange) {
-      onChange(name, e.target.value);
-    }
-  };
+  const baseInputClasses = `w-full px-4 py-2.5 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 ${hasError
+    ? 'border-red-300 focus:border-red-500 focus:ring-red-200 bg-red-50/50'
+    : 'border-gray-300 focus:border-blue-500 focus:ring-blue-200 bg-white'
+    } ${disabled ? 'bg-gray-100 cursor-not-allowed' : ''} ${inputClassName}`;
 
-  const handleBlur = (e) => {
+  const handleChange = useCallback((e) => {
+    onChange?.(name, e.target.value);
+  }, [name, onChange]);
+
+  const handleBlur = useCallback((e) => {
     if (onBlur) {
       onBlur(name, e.target.value);
     }
-  };
+  }, [name, onBlur]);
 
   const renderInput = () => {
     if (as === 'textarea') {
@@ -115,10 +116,10 @@ const FormField = ({
           {required && <span className="text-red-500 ml-1">*</span>}
         </label>
       )}
-      
+
       <div className="relative">
         {renderInput()}
-        
+
         {hasError && (
           <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
             <AlertCircle className="w-5 h-5 text-red-500" />
@@ -148,6 +149,8 @@ const FormField = ({
       )}
     </div>
   );
-};
+});
+
+FormField.displayName = 'FormField';
 
 export default FormField;

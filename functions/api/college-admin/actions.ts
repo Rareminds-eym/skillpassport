@@ -442,17 +442,22 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       }
 
       case 'get-placement-analytics-data': {
+        const { college_id } = params;
+        
+        if (!college_id) return apiError(400, 'VALIDATION_ERROR', 'Missing college_id', context.request, { startTime });
+
         const { data: recentPlacementsData, error: recentError } = await supabase
           .from('applied_jobs')
           .select(`
             id,
             application_status,
             applied_at,
-            learners!fk_applied_jobs_learner (
+            learners!inner (
               name,
               learner_id,
               branch_field,
-              course_name
+              course_name,
+              college_id
             ),
             opportunities!fk_applied_jobs_opportunity (
               title,
@@ -464,14 +469,31 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
             )
           `)
           .eq('application_status', 'accepted')
+          .eq('learners.college_id', college_id)
           .order('applied_at', { ascending: false })
           .limit(10);
-
+        
         if (recentError) return apiDbError(recentError, context.request, { startTime });
 
         const { data: alllearnersData, error: learnersError } = await supabase
           .from('learners')
-          .select('branch_field, course_name, id');
+          .select(`
+            branch_field, 
+            course_name, 
+            id, 
+            college_id,
+            learner_enrollments (
+              program_sections (
+                programs (
+                  name,
+                  departments (
+                    name
+                  )
+                )
+              )
+            )
+          `)
+          .eq('college_id', college_id);
 
         if (learnersError) return apiDbError(learnersError, context.request, { startTime });
 
@@ -480,9 +502,20 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           .select(`
             id,
             learner_id,
-            learners!fk_applied_jobs_learner (
+            learners!inner (
               branch_field,
-              course_name
+              course_name,
+              college_id,
+              learner_enrollments (
+                program_sections (
+                  programs (
+                    name,
+                    departments (
+                      name
+                    )
+                  )
+                )
+              )
             ),
             opportunities!fk_applied_jobs_opportunity (
               employment_type,
@@ -490,7 +523,8 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
               salary_range_max
             )
           `)
-          .eq('application_status', 'accepted');
+          .eq('application_status', 'accepted')
+          .eq('learners.college_id', college_id);
 
         if (placementsError) return apiDbError(placementsError, context.request, { startTime });
 

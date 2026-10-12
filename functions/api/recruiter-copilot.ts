@@ -7,6 +7,18 @@ import { getServiceClient } from '../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { apiSuccess, apiDbError, apiError, apiMethodNotAllowed } from '../lib/response';
 
+/**
+ * Helper function to validate and extract college ID from authenticated user
+ * @returns collegeId if valid, or error response if missing
+ */
+function validateCollegeId(user: any, request: any, startTime: number) {
+  const collegeId = user.org_id;
+  if (!collegeId) {
+    return { error: apiError(400, 'VALIDATION_ERROR', 'Missing college organization ID', request, { startTime }) };
+  }
+  return { collegeId };
+}
+
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const user = getContextUser(context);
   const supabase = getServiceClient(context.env as any);
@@ -416,17 +428,26 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
       // ── Companies ──
       case 'companies-get-all': {
+        const validation = validateCollegeId(user, context.request, startTime);
+        if (validation.error) return validation.error;
+        const collegeId = validation.collegeId!;
+        
         const { data, error } = await supabase
-          .from('companies')
+          .from('college_placement_companies')
           .select('*')
+          .eq('college_id', collegeId)
           .order('createdAt', { ascending: false });
         if (error) return apiDbError(error, context.request, { startTime });
         return apiSuccess(data || [], context.request, { startTime });
       }
 
       case 'companies-get-filtered': {
+        const validation = validateCollegeId(user, context.request, startTime);
+        if (validation.error) return validation.error;
+        const collegeId = validation.collegeId!;
+        
         const { search_term, industry, company_size, account_status } = params;
-        let query = supabase.from('companies').select('*');
+        let query = supabase.from('college_placement_companies').select('*').eq('college_id', collegeId);
         if (search_term) query = query.or(`name.ilike.%${search_term}%,code.ilike.%${search_term}%,industry.ilike.%${search_term}%`);
         if (industry) query = query.eq('industry', industry);
         if (company_size) query = query.eq('companySize', company_size);
@@ -438,8 +459,14 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       }
 
       case 'companies-add': {
+        const validation = validateCollegeId(user, context.request, startTime);
+        if (validation.error) return validation.error;
+        const collegeId = validation.collegeId!;
+        
         const { name, code, industry, companySize, establishedYear, hqAddress, hqCity, hqState, hqCountry, hqPincode, phone, email, website, contactPersonName, contactPersonDesignation, contactPersonEmail, contactPersonPhone, companyDescription, specialRequirements } = params;
         const newCompany = {
+          college_id: collegeId,
+          created_by: user.id,
           name,
           code,
           industry,
@@ -452,28 +479,38 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           approvalStatus: 'pending',
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
-          totalBranches: 0,
-          totalRecruiters: 0,
-          hqRecruiters: 0,
-          branchRecruiters: 0,
           metadata: {
             companyDescription: companyDescription || '',
             specialRequirements: specialRequirements || '',
             registrationDate: new Date().toISOString(),
           },
         };
-        const { data, error } = await supabase.from('companies').insert([newCompany]).select().single();
+        const { data, error } = await supabase.from('college_placement_companies').insert([newCompany]).select().single();
         if (error) return apiDbError(error, context.request, { startTime });
         return apiSuccess(data, context.request, { startTime });
       }
 
       case 'companies-update': {
+        const validation = validateCollegeId(user, context.request, startTime);
+        if (validation.error) return validation.error;
+        const collegeId = validation.collegeId!;
+        
         const { id, companyDescription, specialRequirements, ...regularFields } = params;
         if (!id) return apiError(400, 'VALIDATION_ERROR', 'Missing id', context.request, { startTime });
-        const updateData: any = { ...regularFields, updatedAt: new Date().toISOString() };
+        
+        const updateData: any = { 
+          ...regularFields, 
+          updated_by: user.id,
+          updatedAt: new Date().toISOString() 
+        };
         if (regularFields.establishedYear) updateData.establishedYear = parseInt(regularFields.establishedYear);
         if (companyDescription !== undefined || specialRequirements !== undefined) {
-          const { data: current } = await supabase.from('companies').select('metadata').eq('id', id).single();
+          const { data: current } = await supabase
+            .from('college_placement_companies')
+            .select('metadata')
+            .eq('id', id)
+            .eq('college_id', collegeId)
+            .single();
           const currentMetadata = current?.metadata || {};
           updateData.metadata = {
             ...currentMetadata,
@@ -481,37 +518,89 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
             ...(specialRequirements !== undefined && { specialRequirements }),
           };
         }
-        const { data, error } = await supabase.from('companies').update(updateData).eq('id', id).select().single();
+        
+        // IDOR protection: Update only if belongs to this college
+        const { data, error } = await supabase
+          .from('college_placement_companies')
+          .update(updateData)
+          .eq('id', id)
+          .eq('college_id', collegeId)
+          .select()
+          .single();
         if (error) return apiDbError(error, context.request, { startTime });
         return apiSuccess(data, context.request, { startTime });
       }
 
       case 'companies-update-status': {
+        const validation = validateCollegeId(user, context.request, startTime);
+        if (validation.error) return validation.error;
+        const collegeId = validation.collegeId!;
+        
         const { id, status } = params;
         if (!id || !status) return apiError(400, 'VALIDATION_ERROR', 'Missing id or status', context.request, { startTime });
-        const { data, error } = await supabase.from('companies').update({ accountStatus: status, updatedAt: new Date().toISOString() }).eq('id', id).select().single();
+        
+        // IDOR protection: Update only if belongs to this college
+        const { data, error } = await supabase
+          .from('college_placement_companies')
+          .update({ 
+            accountStatus: status, 
+            updated_by: user.id,
+            updatedAt: new Date().toISOString() 
+          })
+          .eq('id', id)
+          .eq('college_id', collegeId)
+          .select()
+          .single();
         if (error) return apiDbError(error, context.request, { startTime });
         return apiSuccess(data, context.request, { startTime });
       }
 
       case 'companies-delete': {
+        const validation = validateCollegeId(user, context.request, startTime);
+        if (validation.error) return validation.error;
+        const collegeId = validation.collegeId!;
+        
         const { id } = params;
         if (!id) return apiError(400, 'VALIDATION_ERROR', 'Missing id', context.request, { startTime });
-        const { error } = await supabase.from('companies').delete().eq('id', id);
+        
+        // IDOR protection: Delete only if belongs to this college
+        const { error } = await supabase
+          .from('college_placement_companies')
+          .delete()
+          .eq('id', id)
+          .eq('college_id', collegeId);
         if (error) return apiDbError(error, context.request, { startTime });
         return apiSuccess({ deleted: true }, context.request, { startTime });
       }
 
       case 'companies-get-by-id': {
+        const validation = validateCollegeId(user, context.request, startTime);
+        if (validation.error) return validation.error;
+        const collegeId = validation.collegeId!;
+        
         const { id } = params;
         if (!id) return apiError(400, 'VALIDATION_ERROR', 'Missing id', context.request, { startTime });
-        const { data, error } = await supabase.from('companies').select('*').eq('id', id).single();
+        
+        // IDOR protection: Get only if belongs to this college
+        const { data, error } = await supabase
+          .from('college_placement_companies')
+          .select('*')
+          .eq('id', id)
+          .eq('college_id', collegeId)
+          .single();
         if (error) return apiDbError(error, context.request, { startTime });
         return apiSuccess(data, context.request, { startTime });
       }
 
       case 'companies-stats': {
-        const { data, error } = await supabase.from('companies').select('accountStatus');
+        const validation = validateCollegeId(user, context.request, startTime);
+        if (validation.error) return validation.error;
+        const collegeId = validation.collegeId!;
+        
+        const { data, error } = await supabase
+          .from('college_placement_companies')
+          .select('accountStatus')
+          .eq('college_id', collegeId);
         if (error) return apiDbError(error, context.request, { startTime });
         return apiSuccess(data || [], context.request, { startTime });
       }

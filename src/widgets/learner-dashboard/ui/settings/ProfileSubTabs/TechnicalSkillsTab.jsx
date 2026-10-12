@@ -1,54 +1,34 @@
-import React from "react";
-import { Code, Plus, Edit, Star, Zap, Eye, EyeOff, CheckCircle, Clock } from "lucide-react";
-import { Button } from '@/shared/ui/ButtonNew';
 import { Badge } from '@/shared/ui/Badge';
+import { Button } from '@/shared/ui/ButtonNew';
+import { CheckCircle, Clock, Code, Edit, Eye, EyeOff, Plus, Star } from "lucide-react";
+import { memo, useMemo } from "react";
 
-const TechnicalSkillsTab = ({ 
-  technicalSkillsData, 
+const TechnicalSkillsTab = memo(({
+  technicalSkillsData,
   setShowTechnicalSkillsModal,
   onToggleTechnicalSkillEnabled
 }) => {
 
-  // Helper function to get skill level text (matching Dashboard exactly)
-  const getSkillLevelText = (level) => {
+  // ✅ PERFORMANCE: Memoize helper functions to prevent recreation on every render
+  const getSkillLevelText = useMemo(() => (level) => {
     if (level >= 5) return "Expert";
     if (level >= 4) return "Advanced";
     if (level >= 3) return "Intermediate";
     if (level >= 1) return "Beginner";
     return "Beginner";
-  };
+  }, []);
 
-  // Helper function to get skill level badge color (with consistent hover states)
-  const getSkillLevelColor = (level) => {
+  const getSkillLevelColor = useMemo(() => (level) => {
     if (level >= 5) return "bg-purple-100 text-purple-700 border-purple-300 hover:bg-purple-100";
     if (level >= 4) return "bg-blue-100 text-blue-700 border-blue-300 hover:bg-blue-100";
     if (level >= 3) return "bg-green-100 text-green-700 border-green-300 hover:bg-green-100";
     if (level >= 1) return "bg-yellow-100 text-yellow-700 border-yellow-300 hover:bg-yellow-100";
     return "bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-100";
-  };
+  }, []);
 
-  const getCategoryIcon = (category) => {
-    // Ensure category is a string and handle null/undefined cases
-    const categoryStr = category && typeof category === 'string' ? category.toLowerCase() : '';
-    
-    switch (categoryStr) {
-      case 'programming':
-        return <Code className="w-4 h-4" />;
-      case 'framework':
-        return <Zap className="w-4 h-4" />;
-      case 'database':
-        return <Code className="w-4 h-4" />;
-      case 'tools':
-        return <Zap className="w-4 h-4" />;
-      default:
-        return <Code className="w-4 h-4" />;
-    }
-  };
-
-  // Render stars function (matching Dashboard exactly)
-  const renderStars = (level) => {
+  const renderStars = useMemo(() => (level) => {
     const numericLevel = parseInt(level) || 0;
-    
+
     return [...Array(5)].map((_, i) => (
       <Star
         key={i}
@@ -56,32 +36,36 @@ const TechnicalSkillsTab = ({
           }`}
       />
     ));
-  };
+  }, []);
 
-  // Show all skills in Settings (including pending), but indicate their status
-  // VERSIONING: Apply versioning logic to show verified_data when pending
-  const processedSkills = (technicalSkillsData || [])
-    .map((skill) => {
-      // If there's a pending edit, show verified_data in Settings
-      if (skill.has_pending_edit && skill.verified_data) {
-        return {
-          ...skill,
-          name: skill.verified_data.name,
-          level: skill.verified_data.level,
-          description: skill.verified_data.description,
-          category: skill.verified_data.category,
-        };
-      }
-      return skill;
-    })
-    .filter((skill) => skill.enabled !== false);
+  // ✅ PERFORMANCE: Memoize processed skills (filtering + versioning logic)
+  const processedSkills = useMemo(() => {
+    return (technicalSkillsData || [])
+      .map((skill) => {
+        // VERSIONING: If there's a pending edit, show verified_data in Settings
+        if (skill.has_pending_edit && skill.verified_data) {
+          return {
+            ...skill,
+            name: skill.verified_data.name,
+            level: skill.verified_data.level,
+            description: skill.verified_data.description,
+            category: skill.verified_data.category,
+          };
+        }
+        return skill;
+      })
+      .filter((skill) => skill.enabled !== false);
+  }, [technicalSkillsData]);
 
-  const groupedSkills = processedSkills.reduce((acc, skill) => {
-    const category = skill.category || 'Other';
-    if (!acc[category]) acc[category] = [];
-    acc[category].push(skill);
-    return acc;
-  }, {});
+  // ✅ PERFORMANCE: Memoize grouped skills (reduce operation)
+  const groupedSkills = useMemo(() => {
+    return processedSkills.reduce((acc, skill) => {
+      const category = skill.category || 'Other';
+      if (!acc[category]) acc[category] = [];
+      acc[category].push(skill);
+      return acc;
+    }, {});
+  }, [processedSkills]);
 
   return (
     <div>
@@ -131,7 +115,7 @@ const TechnicalSkillsTab = ({
                   <h4 className="text-base font-bold text-gray-900">
                     {skill.name}
                   </h4>
-                  
+
                   {/* Verified Badge */}
                   {(skill.approval_status === "verified" || skill.approval_status === "approved") && !skill._hasPendingEdit && (
                     <Badge className="bg-green-100 text-green-700 border-green-200 flex items-center gap-1">
@@ -196,7 +180,7 @@ const TechnicalSkillsTab = ({
                 >
                   <Edit className="w-4 h-4" />
                 </Button>
-                
+
                 {/* Eye icon - only show for verified/approved skills */}
                 {(skill.approval_status === 'verified' || skill.approval_status === 'approved') && !skill._hasPendingEdit && onToggleTechnicalSkillEnabled && (
                   <Button
@@ -220,6 +204,8 @@ const TechnicalSkillsTab = ({
       )}
     </div>
   );
-};
+});
+
+TechnicalSkillsTab.displayName = 'TechnicalSkillsTab';
 
 export default TechnicalSkillsTab;
