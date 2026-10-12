@@ -3,7 +3,6 @@
 // UI Components
 export { default as AddLessonModal } from './ui/AddLessonModal';
 export { default as AssignEducatorModal } from '@/features/courses/ui/AssignEducatorModal';
-export { default as AssignmentFileUpload } from './ui/AssignmentFileUpload';
 export { default as AssignTaskModal } from './ui/AssignTaskModal';
 export { default as CourseDetailDrawer } from './ui/CourseDetailDrawer';
 export { default as CourseFilters } from './ui/CourseFilters';

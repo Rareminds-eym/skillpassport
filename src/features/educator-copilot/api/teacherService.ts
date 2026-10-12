@@ -1,13 +1,5 @@
 import { apiPost } from '@/shared/api/apiClient';
 
-async function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => { const result = reader.result as string; resolve(result.split(',')[1] || result); };
-    reader.onerror = () => reject(new Error('Failed to read file'));
-    reader.readAsDataURL(file);
-  });
-}
 
 export interface Teacher {
   id: string;
@@ -84,22 +76,6 @@ export const bulkImportTeachers = async (teachers: Partial<Teacher>[]) => {
 export const getTeacherPerformance = async (teacherId: string): Promise<TeacherPerformance> => {
   const result: any = await apiPost('/educator-copilot/actions', { action: 'getTeacherPerformance', teacherId });
   return result?.data;
-};
-
-export const uploadTeacherDocument = async (file: File, path: string): Promise<string> => {
-  const fileExt = file.name.split('.').pop();
-  const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
-  const filePath = `${path}/${fileName}`;
-
-  const base64 = await fileToBase64(file);
-  const result: any = await apiPost('/college-admin/storage', {
-    action: 'upload', bucket: 'teacher-documents', path: filePath, file_base64: base64, content_type: file.type || 'application/octet-stream',
-  });
-
-  const publicUrl = result?.data?.publicUrl;
-  if (!publicUrl) throw new Error('Failed to upload teacher document');
-
-  return publicUrl;
 };
 
 export const getTeacherWorkload = async (teacherId: string) => {

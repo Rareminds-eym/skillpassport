@@ -225,7 +225,7 @@ describe('Enforcement: requireRole role-subset guard', () => {
 
 // ── Shared ADMIN_ROLES group (backs the in-handler admin-bypass endpoints) ────
 // Endpoints whose admin check is an in-handler ownership/scope bypass rather than
-// a blanket guard — storage/upload-url, storage/download-url, resume/save,
+// a blanket guard — resume/save,
 // learners/{trainings,management,by-email,dashboard,data}, educator/dashboard,
 // ai-tutor/{get-learner-type,get-generation-usage}, streak/reset-daily — all
 // decide via `user.roles.some(r => ADMIN_ROLES.includes(r))`. Their correctness

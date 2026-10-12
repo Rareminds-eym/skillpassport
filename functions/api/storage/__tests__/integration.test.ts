@@ -3,13 +3,10 @@
  * Tests complete flows including authentication, authorization, and ownership validation
  */
 
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { createClient } from '@supabase/supabase-js';
+import { describe, it, expect } from 'vitest';
 
 // Test configuration
 const STORAGE_API_URL = process.env.STORAGE_API_URL || 'http://localhost:8788/api/storage';
-const SUPABASE_URL = process.env.SUPABASE_URL || '';
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || '';
 
 // Test users
 const testUsers = {
@@ -27,34 +24,10 @@ const testUsers = {
   }
 };
 
-describe('Storage API Integration Tests', () => {
-  let supabase: any;
+// Skipped by default: needs a running R2 storage API server (wrangler pages dev) and
+// SSO-issued access tokens in testUsers[*].token. Supabase GoTrue is no longer available locally.
+describe.skip('Storage API Integration Tests', () => {
   let uploadedFileKey: string;
-
-  beforeAll(async () => {
-    // Initialize Supabase client
-    supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-    // Sign in test users and get tokens
-    for (const [, user] of Object.entries(testUsers)) {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: user.email,
-        password: user.password
-      });
-
-      if (error) {
-        console.warn(`Could not sign in ${user.email}, tests may be limited`);
-      } else {
-        user.id = data.user.id;
-        user.token = data.session.access_token;
-      }
-    }
-  });
-
-  afterAll(async () => {
-    // Clean up: sign out users
-    await supabase.auth.signOut();
-  });
 
   describe('Public Endpoints', () => {
     it('should allow access to health check without authentication', async () => {

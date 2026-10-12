@@ -2,7 +2,6 @@
  * Utility handlers for User API
  * - Get schools/colleges/universities/companies lists
  * - Check code uniqueness
- * - Check email availability
  * 
  * Uses unified 'organizations' table for schools, colleges, universities
  * 
@@ -14,7 +13,6 @@
 import { createSupabaseAdminClient } from '../../../lib/supabase';
 import { apiSuccess, apiError } from '../../../lib/response';
 import type { PagesEnv } from '../../../lib/types';
-import { validateEmail, checkEmailExists } from '../utils/helpers';
 
 // ==================== TYPES ====================
 
@@ -22,9 +20,6 @@ interface CheckCodeRequest {
   code: string;
 }
 
-interface CheckEmailRequest {
-  email: string;
-}
 
 interface CacheEntry {
   data: any;
@@ -69,8 +64,6 @@ export function clearCache(): void {
 // ==================== HELPERS ====================
 
 // Helper functions imported from ../utils/helpers.ts
-// - validateEmail
-// - checkEmailExists
 
 // ==================== GET LISTS ====================
 
@@ -347,38 +340,5 @@ export async function handleCheckCompanyCode(request: Request, env: PagesEnv): P
   } catch (error) {
     console.error('Check company code error:', error);
     return apiError(500, 'INTERNAL_ERROR', 'Failed to check company code', request);
-  }
-}
-
-// ==================== CHECK EMAIL ====================
-
-/**
- * Check if email already exists
- */
-export async function handleCheckEmail(request: Request, env: PagesEnv): Promise<Response> {
-  const supabaseAdmin = createSupabaseAdminClient(env);
-
-  try {
-    const body = (await request.json()) as CheckEmailRequest;
-
-    if (!body.email) {
-      return apiError(400, 'VALIDATION_ERROR', 'Email is required', request);
-    }
-
-    if (!validateEmail(body.email)) {
-      return apiError(400, 'VALIDATION_ERROR', 'Invalid email format', request);
-    }
-
-    const emailExists = await checkEmailExists(supabaseAdmin, body.email);
-
-    return apiSuccess({
-      exists: emailExists,
-      message: emailExists
-        ? 'An account with this email already exists'
-        : 'Email is available',
-    }, request);
-  } catch (error) {
-    console.error('Check email error:', error);
-    return apiError(500, 'INTERNAL_ERROR', 'Failed to check email', request);
   }
 }

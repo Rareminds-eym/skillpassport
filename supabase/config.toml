@@ -103,7 +103,7 @@ api_url = "http://127.0.0.1"
 # OpenAI API Key to use for Supabase AI in the Supabase Studio.
 openai_api_key = "env(OPENAI_API_KEY)"
 
-[inbucket]
+[local_smtp]
 enabled = false
 
 # Port to use for the email testing server web interface.
@@ -124,7 +124,14 @@ file_size_limit = "50MiB"
 enabled = false
 
 [auth]
-enabled = true
+# GoTrue / Supabase Auth is disabled locally: credentials are owned by the custom SSO worker, so
+# no auth container (not even the short-lived migration one) is started by `supabase start` or
+# `supabase db reset`.
+# `supabase/roles.sql` (local only) provides the one object the baseline policies need that the
+# Postgres image does not ship, `auth.jwt()`, because `postgres` cannot create it (no CREATE on
+# schema auth). The image itself provides auth.uid()/role()/email(), a minimal auth.users and
+# auth.refresh_tokens_id_seq. The [auth.*] subsections below are parsed but unused.
+enabled = false
 
 site_url = "http://127.0.0.1:8788"
 

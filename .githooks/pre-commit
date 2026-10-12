@@ -13,8 +13,10 @@
 # DB availability: this hook uses `check:roles:precommit`, which SKIPS-WITH-WARNING
 # when the local app DB is unreachable (so devs without `supabase start` are not
 # blocked by a confusing failure). A real drift (DB reachable, file stale) still
-# blocks the commit. CI (.github/workflows/roles-drift.yml) runs the same check
-# against a live DB with NO skip, so drift can never reach main unnoticed.
+# blocks the commit. NOTE: the CI workflow that used to run the same check
+# (roles-drift.yml) was removed, so this hook (and `npm run check:roles` against
+# a local stack from `npm run supabase:start`, a plain `supabase start`; GoTrue is
+# disabled locally) is the only drift guard.
 #
 # Fast path: only runs when files that can introduce role drift are staged
 # (the generated module, the generator, or role migrations/seeds).

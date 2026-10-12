@@ -920,65 +920,6 @@ The SkillPassport Team
   `.trim();
 }
 
-// ==================== PASSWORD RESET TEMPLATE ====================
-
-export interface PasswordResetData {
-  otp: string;
-}
-
-export function generatePasswordResetEmailHtml(data: PasswordResetData): string {
-  const { otp } = data;
-  
-  return `
-<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><title>Password Reset</title></head>
-<body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f9fafb;">
-  <table style="width:100%;border-collapse:collapse;">
-    <tr>
-      <td align="center" style="padding:48px 24px;">
-        <table style="width:100%;max-width:480px;background:#ffffff;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,0.1);overflow:hidden;">
-          <tr>
-            <td style="padding:48px 40px;text-align:center;background:linear-gradient(135deg,#1e40af 0%,#3b82f6 100%);">
-              <h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:600;">Password Reset Request</h1>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:40px;">
-              <p style="color:#374151;font-size:15px;margin:0 0 24px;line-height:1.6;">Hello,</p>
-              <p style="color:#374151;font-size:15px;margin:0 0 24px;line-height:1.6;">We received a request to reset your password. Use the OTP code below to complete the process:</p>
-              
-              <div style="background:linear-gradient(135deg,#eff6ff 0%,#dbeafe 100%);border-radius:12px;padding:24px;text-align:center;border:2px dashed #3b82f6;margin:24px 0;">
-                <p style="margin:0 0 8px;color:#6b7280;font-size:12px;text-transform:uppercase;letter-spacing:1px;">Your OTP Code</p>
-                <div style="font-size:36px;font-weight:700;color:#1e40af;letter-spacing:8px;font-family:monospace;margin:8px 0;">${otp}</div>
-                <p style="margin:8px 0 0;color:#6b7280;font-size:13px;">Valid for 10 minutes</p>
-              </div>
-              
-              <div style="background:#FEF3C7;border-left:4px solid #F59E0B;padding:16px;margin:24px 0;border-radius:4px;">
-                <p style="margin:0;color:#92400E;font-size:14px;"><strong>⚠️ Security Notice:</strong></p>
-                <p style="margin:8px 0 0;color:#92400E;font-size:14px;">If you didn't request this password reset, please ignore this email. Your password will remain unchanged.</p>
-              </div>
-              
-              <p style="color:#6b7280;font-size:14px;margin-top:24px;text-align:center;">For security reasons, this OTP will expire in 10 minutes.</p>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:24px 40px;text-align:center;border-top:1px solid #e5e7eb;">
-              <p style="margin:0;color:#9ca3af;font-size:12px;">© ${new Date().getFullYear()} SkillPassport. All rights reserved.</p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>`;
-}
-
-export function getPasswordResetSubject(): string {
-  return 'Password Reset - SkillPassport';
-}
-
 // ==================== PASSWORD RESET WITH LINK TEMPLATE (for SSO) ====================
 
 export interface PasswordResetLinkData {
