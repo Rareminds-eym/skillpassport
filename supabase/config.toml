@@ -124,7 +124,7 @@ file_size_limit = "50MiB"
 enabled = false
 
 [auth]
-enabled = false
+enabled = true
 
 site_url = "http://127.0.0.1:8788"
 
