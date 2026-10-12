@@ -15,7 +15,7 @@ import { EmployeeList } from '@/features/org-recruitment/ui/EmployeeList';
 import { InvitationsList } from '@/features/org-recruitment/ui/InvitationsList';
 import { InviteEmployeeModal } from '@/features/org-recruitment/ui/InviteEmployeeModal';
 import { OrgSettings } from '@/features/org-recruitment/ui/OrgSettings';
-import { TeamAnalytics } from '@/features/org-recruitment/ui/TeamAnalytics';
+import { AnalyticsDashboard } from '@/features/org-recruitment/ui/analytics/AnalyticsDashboard';
 import { useOrgContext } from '@/entities/recruitment/model/useOrgContext';
 import { useRecruitmentMembers } from '@/entities/recruitment/model/useRecruitmentMembers';
 import { useRecruitmentInvitations } from '@/entities/recruitment/model/useRecruitmentInvitations';
@@ -148,7 +148,11 @@ export const AdminDashboard = () => {
 
                 {activeTab === 'settings' && <OrgSettings />}
 
-                {activeTab === 'analytics' && <TeamAnalytics />}
+                {activeTab === 'analytics' && (
+                    <div className="-mx-4 sm:-mx-6 lg:-mx-8 -my-8">
+                        <AnalyticsDashboard embedded={true} />
+                    </div>
+                )}
             </div>
 
             {/* Invite Modal */}

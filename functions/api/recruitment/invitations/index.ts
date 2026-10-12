@@ -252,9 +252,30 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
             console.log('[invitations] ✓ Invitation email sent successfully');
 
+            // Transform invitation data to match frontend expectations
+            const transformedInvitation = {
+                id: invitation.id,
+                organizationId: invitation.organization_id,
+                organizationName: orgData?.name || '',
+                invitedBy: invitation.invited_by,
+                invitedByEmail: user.email || '',
+                invitedByName: user.name || user.email || '',
+                inviteeEmail: invitation.invitee_email,
+                inviteeName: invitation.invitee_name,
+                inviteeRole: invitation.invitee_role,
+                token: invitation.invitation_token,
+                status: invitation.status,
+                expiresAt: invitation.expires_at,
+                acceptedAt: invitation.accepted_at,
+                acceptedByUserId: invitation.accepted_by_user_id,
+                invitationMessage: invitation.invitation_message,
+                createdAt: invitation.created_at,
+                updatedAt: invitation.updated_at,
+            };
+
             return Response.json({
                 data: {
-                    invitation,
+                    invitation: transformedInvitation,
                     invitationUrl,
                     message: 'Invitation created successfully',
                 }

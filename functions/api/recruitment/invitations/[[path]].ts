@@ -40,6 +40,9 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
     }
 
     try {
+        console.log('[invitations-GET] Fetching invitations for org:', orgId);
+        
+        // First, try a simple query without joins
         const { data, error } = await supabase
             .from('organization_invitations')
             .select('*')
@@ -47,17 +50,53 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
             .order('created_at', { ascending: false });
 
         if (error) {
-            return Response.json({ error: error.message }, { status: 500 });
+            console.error('[invitations-GET] Supabase error:', error);
+            return Response.json({ error: error.message, details: error }, { status: 500 });
+        }
+
+        console.log('[invitations-GET] Raw data count:', data?.length || 0);
+
+        // Transform data to match frontend expectations (camelCase)
+        const invitations = (data || []).map((inv: any) => {
+            try {
+                return {
+                    id: inv.id,
+                    organizationId: inv.organization_id,
+                    organizationName: '', // Will be empty without join
+                    invitedBy: inv.invited_by,
+                    invitedByEmail: '', // Will be empty without join
+                    invitedByName: '', // Will be empty without join
+                    inviteeEmail: inv.invitee_email,
+                    inviteeName: inv.invitee_name,
+                    inviteeRole: inv.invitee_role,
+                    token: inv.invitation_token,
+                    status: inv.status,
+                    expiresAt: inv.expires_at,
+                    acceptedAt: inv.accepted_at,
+                    acceptedByUserId: inv.accepted_by_user_id,
+                    invitationMessage: inv.invitation_message,
+                    createdAt: inv.created_at,
+                    updatedAt: inv.updated_at,
+                };
+            } catch (mapError: any) {
+                console.error('[invitations-GET] Error mapping invitation:', mapError, inv);
+                throw mapError;
+            }
+        });
+
+        console.log('[invitations-GET] Transformed count:', invitations.length);
+        if (invitations.length > 0) {
+            console.log('[invitations-GET] First invitation:', invitations[0]);
         }
 
         return Response.json({
-            data: data || [],
-            total: data?.length || 0
+            data: invitations,
+            total: invitations.length
         });
     } catch (error: any) {
-        console.error('Error fetching invitations:', error);
+        console.error('[invitations-GET] Catch block error:', error);
         return Response.json(
-            { error: 'Failed to fetch invitations', details: error.message },
+            { error: 'Failed to fetch invitations', details: error.message, stack: error.stack },
             { status: 500 }
         );
     }

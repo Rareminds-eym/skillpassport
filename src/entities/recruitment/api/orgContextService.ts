@@ -41,9 +41,16 @@ const transformToOrgContext = (
     });
 
     const isActive = row.membership_status === 'active';
-    const isAdmin = row.recruitment_role === 'company_admin';
-    const isRecruiter = row.recruitment_role === 'recruiter';
-    const hasRecruitmentAccess = row.recruitment_enabled && row.recruitment_role !== null;
+    
+    // Fix: If recruitment_role is null but sso_role_name is 'owner', set recruitment_role to 'company_admin'
+    // This handles the case where organization owners don't have a recruitment_role set
+    const effectiveRecruitmentRole = row.recruitment_role || (row.sso_role_name === 'owner' ? 'company_admin' : null);
+    
+    const isAdmin = effectiveRecruitmentRole === 'company_admin';
+    const isRecruiter = effectiveRecruitmentRole === 'recruiter';
+    
+    // Fix: hasRecruitmentAccess should be true if recruitment_enabled is true AND user has any valid role
+    const hasRecruitmentAccess = row.recruitment_enabled && (effectiveRecruitmentRole !== null || row.sso_role_name === 'owner');
 
     const context = {
         orgId: row.org_id,
@@ -51,7 +58,7 @@ const transformToOrgContext = (
         orgSlug: row.org_slug,
         membershipStatus: row.membership_status,
         ssoRoleName: row.sso_role_name,
-        recruitmentRole: row.recruitment_role,
+        recruitmentRole: effectiveRecruitmentRole,
         recruitmentEnabled: row.recruitment_enabled,
         userId,
         userEmail,
