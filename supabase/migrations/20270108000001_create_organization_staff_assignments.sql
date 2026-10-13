@@ -44,6 +44,10 @@ CREATE TABLE IF NOT EXISTS "public"."organization_staff_assignments" (
     "created_at" timestamptz DEFAULT now(),
     "updated_at" timestamptz DEFAULT now(),
     "metadata" jsonb DEFAULT '{}'::jsonb, -- Additional flexible data
+    "assignment_version" integer NOT NULL DEFAULT 1,
+    "supersedes_assignment_id" uuid REFERENCES public.organization_staff_assignments(id),
+    "ended_by" uuid REFERENCES public.users(id),
+    "ended_reason" text,
     
     -- Constraints
     CONSTRAINT "organization_staff_assignments_pkey" PRIMARY KEY ("id"),
@@ -104,7 +108,7 @@ CREATE INDEX IF NOT EXISTS "idx_organization_staff_assignments_dept_program"
 
 -- Unique constraint: one active assignment per staff-college-department-program combination
 CREATE UNIQUE INDEX IF NOT EXISTS "idx_organization_staff_assignments_unique_active" 
-    ON "public"."organization_staff_assignments" ("staff_id", "college_id", "department_id", "program_id") 
+    ON "public"."organization_staff_assignments" ("staff_id", "college_id", "department_id", "program_id", "section_id")
     WHERE "is_active" = true;
 
 -- ============================================================================

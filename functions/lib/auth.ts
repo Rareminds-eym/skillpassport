@@ -8,6 +8,7 @@ import { requireAdminRequestFeature } from './admin-feature-request';
 import { ADMIN_ROLES } from "./roleCategories";
 import { getServiceClient } from "./supabase";
 import type { PagesEnv } from "./types";
+import { guardExternalTeachingRequest } from './external-teaching-access';
 
 // NOTE: Do NOT cache the auth instance across requests.
 // env.SSO_SERVICE is a request-scoped service binding — caching it in a
@@ -96,6 +97,12 @@ export function withAuth(handler: (context: any) => Promise<Response>) {
 
       const blocked = requireVerifiedEmail(authedContext.user);
       if (blocked) return blocked;
+      if (authedContext.user.user_metadata?.must_change_password === true) {
+        return Response.json({ error: 'Change your temporary password before accessing teaching data',
+          code: 'PASSWORD_CHANGE_REQUIRED' }, { status: 403 });
+      }
+      const teachingDenied=await guardExternalTeachingRequest(authedContext.user,env,context.request);
+      if(teachingDenied)return teachingDenied;
 
       // Async self-heal (eventual, no block) where SYNC_QUEUE consumer is absent.
       // Gated by heal-user flag (Flagship binding or env HEAL_MODE). Fail-soft never blocks request.

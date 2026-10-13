@@ -2,7 +2,9 @@
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { withAuth, getContextUser } from '../../lib/auth';
 import { apiDbError, apiError, apiMethodNotAllowed, apiSuccess } from '../../lib/response';
-import { getServiceClient } from '../../lib/supabase';
+import { getServiceClient as getUnscopedServiceClient } from '../../lib/supabase';
+import { legacyTeachingClient } from '../../lib/legacy-teaching-client';
+const getServiceClient=(env:Parameters<typeof getUnscopedServiceClient>[0])=>legacyTeachingClient(getUnscopedServiceClient(env));
 import { createLogger } from '../../lib/logger';
 
 const logger = createLogger('college-admin-attendance');
@@ -830,7 +832,12 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       // Create a new attendance session
       // ─────────────────────────────────────────────────
       case 'create-session': {
-        const { sessionData, departmentName, programName, subjectName, facultyName, collegeId, createdBy } = body;
+        const { sessionData, departmentName, programName, subjectName, facultyName, collegeId } = body;
+        const actor=getContextUser(context);
+        const authority=await supabase.rpc('external_teaching_college_admin',{p_actor:actor.id,p_college:collegeId});
+        if(authority.error||authority.data!==true)return apiError(403,'FORBIDDEN','College administration required',context.request,{startTime});
+        const faculty=await supabase.from('college_lecturers').select('id').eq('id',sessionData?.faculty).eq('collegeId',collegeId).maybeSingle();
+        if(faculty.error||!faculty.data)return apiError(400,'VALIDATION_ERROR','Faculty must belong to the selected college',context.request,{startTime});
 
         const { error } = await supabase
           .from('college_attendance_sessions')
@@ -851,7 +858,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
             remarks: sessionData.remarks,
             status: 'scheduled',
             college_id: collegeId,
-            created_by: createdBy,
+            created_by: actor.id,
           })
           .select()
           .single();

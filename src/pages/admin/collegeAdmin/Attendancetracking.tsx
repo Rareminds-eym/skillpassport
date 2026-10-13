@@ -1,3 +1,5 @@
+import { teaching } from '@/features/external-teaching/api/teachingApi';
+import CollegeTrainingAttendance from '@/features/external-teaching/ui/CollegeTrainingAttendance';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import toast from "react-hot-toast";
 import { Learner as ProfileLearner } from "@/entities/learner";
@@ -43,7 +45,7 @@ import {
     XCircleIcon,
     XMarkIcon,
 } from "@heroicons/react/24/outline";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import ReactApexChart from "react-apexcharts";
 import { KPICard } from '@/features/analytics';
 import { Pagination } from '@/shared/ui';
@@ -234,7 +236,7 @@ const EnhancedSubjectCard = ({ subjectGroup, onView }: any) => {
           <div className="flex items-center gap-1.5 text-gray-600">
             <CalendarIcon className="h-4 w-4" />
             <span className="text-xs">
-              {subjectGroup.totalSessions === 1 
+              {subjectGroup.totalSessions === 1
                 ? formatDate(subjectGroup.dateRange.first)
                 : `${formatDate(subjectGroup.dateRange.first)} - ${formatDate(subjectGroup.dateRange.last)}`
               }
@@ -340,6 +342,26 @@ const AttendanceTracking: React.FC = () => {
     totallearners: 0,
   });
 
+  const [trainingSections,setTrainingSections]=useState<any[]>([]);
+  const [trainingSectionId,setTrainingSectionId]=useState('');
+  const [trainingCourses,setTrainingCourses]=useState<any[]>([]);
+  const [trainingError,setTrainingError]=useState('');
+  const [trainingSessionId,setTrainingSessionId]=useState('');
+  const sessionRequestId=useRef(crypto.randomUUID());
+  const [savingSession,setSavingSession]=useState(false);
+  useEffect(()=>{let alive=true;setTrainingSections([]);setTrainingSectionId('');setTrainingCourses([]);
+    if(collegeId&&sessionFormData.course&&sessionFormData.semester)
+      teaching('class_sections',{collegeId,programId:sessionFormData.course,semester:Number(sessionFormData.semester)}).then(rows=>{if(alive)setTrainingSections(rows);}).catch(e=>{if(alive)setTrainingError(e.message);});
+    return()=>{alive=false;};
+  },[collegeId,sessionFormData.course,sessionFormData.semester]);
+  useEffect(()=>{const matching=trainingSections.filter(x=>x.section===sessionFormData.section);setTrainingSectionId(matching.length===1?matching[0].id:'');},[trainingSections,sessionFormData.section]);
+  useEffect(()=>{let alive=true;setTrainingCourses([]);setTrainingError('');
+    if(collegeId&&trainingSectionId&&sessionFormData.date)teaching('mapped_courses',{collegeId,sectionId:trainingSectionId,date:sessionFormData.date}).then(rows=>{if(alive)setTrainingCourses(rows);}).catch(e=>{if(alive)setTrainingError(e.message);});
+    return()=>{alive=false;};
+  },[collegeId,trainingSectionId,sessionFormData.date]);
+  const trainingCandidates=trainingCourses.filter(x=>`training:${x.course_id}`===sessionFormData.subject);
+  useEffect(()=>{if(sessionFormData.subject.startsWith('training:'))setSessionFormData(prev=>({...prev,faculty:trainingCandidates.length===1?trainingCandidates[0].mapping_id:''}));},[trainingCourses,sessionFormData.subject]);
+
   // Dynamic data states
   const [subjectGroups, setSubjectGroups] = useState<SubjectGroup[]>([]);
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
@@ -385,7 +407,7 @@ const AttendanceTracking: React.FC = () => {
 
   const fetchSubjectGroups = async () => {
     if (!collegeId) return;
-    
+
     try {
       setLoading(true);
 
@@ -428,7 +450,7 @@ const AttendanceTracking: React.FC = () => {
 
   const fetchAnalytics = async () => {
     if (!collegeId) return;
-    
+
     try {
       const response: any = await apiPost('/college-admin/attendance', {
         action: 'get-analytics',
@@ -443,7 +465,7 @@ const AttendanceTracking: React.FC = () => {
 
   const fetchDepartmentStats = async () => {
     if (!collegeId) return;
-    
+
     try {
       const response: any = await apiPost('/college-admin/attendance', {
         action: 'get-department-stats',
@@ -458,7 +480,7 @@ const AttendanceTracking: React.FC = () => {
 
   const fetchWeeklyTrend = async () => {
     if (!collegeId) return;
-    
+
     try {
       const response: any = await apiPost('/college-admin/attendance', {
         action: 'get-weekly-trend',
@@ -758,9 +780,9 @@ const AttendanceTracking: React.FC = () => {
 
       setSelectedSubjectGroup(updatedSubjectGroup);
       setLearners(learnersResponse.data?.learners || []);
-      
+
       await fetchAttendanceRecords(subjectGroup.subject);
-      
+
       setShowDetailsModal(true);
     } catch (err: any) {
       logger.error('Error in handleViewDetails:', err as Error);
@@ -882,6 +904,7 @@ const AttendanceTracking: React.FC = () => {
     setSessionFormData(prev => ({
       ...prev,
       [field]: value,
+      ...(["department","course","semester","section","date"].includes(field)?{subject:"",faculty:""}:field==="subject"?{faculty:""}:{}),
     }));
 
     // Auto-update total learners when class details change
@@ -901,7 +924,8 @@ const AttendanceTracking: React.FC = () => {
     }
   };
 
-  const handleCreateSession = async () => {
+  const handleCreateSession = async (startAttendance=false) => {
+    if(savingSession)return;
     // Basic validation
     if (!sessionFormData.department || !sessionFormData.course || !sessionFormData.semester ||
         !sessionFormData.section || !sessionFormData.subject || !sessionFormData.faculty ||
@@ -922,7 +946,15 @@ const AttendanceTracking: React.FC = () => {
       }
     }
 
+    setSavingSession(true);
     try {
+      if(sessionFormData.subject.startsWith('training:')){
+        const candidate=trainingCandidates.find(x=>x.mapping_id===sessionFormData.faculty);
+        if(!candidate)throw new Error('Refresh the class/date selection and choose a mapped trainer.');
+        const created=await teaching('create_session',{mappingId:candidate.mapping_id,mappingVersion:candidate.assignment_version,courseId:candidate.course_id,date:sessionFormData.date,startTime:sessionFormData.startTime,endTime:sessionFormData.endTime,requestId:sessionRequestId.current,room:sessionFormData.roomNumber,remarks:sessionFormData.remarks});
+        sessionRequestId.current=crypto.randomUUID();setTrainingSessionId(created.id);setShowAddSessionModal(false);fetchSubjectGroups();
+        toast.success(startAttendance?'Session created. Mark learner attendance below.':'Training session created.');return;
+      }
       // Look up faculty member via backend
       const facultyResponse: any = await apiPost('/college-admin/attendance', {
         action: 'get-faculty',
@@ -964,7 +996,7 @@ const AttendanceTracking: React.FC = () => {
         subjectName,
         facultyName,
         collegeId: facultyCollegeId,
-        createdBy: sessionFormData.faculty,
+
       });
 
       toast.success('Session created successfully!');
@@ -988,39 +1020,11 @@ const AttendanceTracking: React.FC = () => {
       });
     } catch (err: any) {
       toast.error(`Error creating session: ${err.message}`);
-    }
+    } finally { setSavingSession(false); }
   };
 
   const handleCreateAndStart = async () => {
-    // Same validation as create session
-    if (!sessionFormData.department || !sessionFormData.course || !sessionFormData.semester ||
-        !sessionFormData.section || !sessionFormData.subject || !sessionFormData.faculty ||
-        !sessionFormData.date || !sessionFormData.startTime || !sessionFormData.endTime) {
-      toast.error("Please fill in all required fields.");
-      return;
-    }
-
-    // Date and time validation: any date/time allowed (backfill supported).
-    // Only end-after-start is enforced below.
-    // Check if end time is after start time
-    if (sessionFormData.startTime && sessionFormData.endTime) {
-      const start = new Date(`2000-01-01T${sessionFormData.startTime}`);
-      const end = new Date(`2000-01-01T${sessionFormData.endTime}`);
-      if (end <= start) {
-        toast.error("End time must be after start time.");
-        return;
-      }
-    }
-
-    try {
-      // Create session first
-      await handleCreateSession();
-      
-      // In a real app, this would navigate to the attendance marking page
-      toast.success("Session created and attendance marking started!");
-    } catch (err: any) {
-      toast.error(`Error: ${err.message}`);
-    }
+    await handleCreateSession(true);
   };
 
   // Chart data - Uses real data from DB, backend guarantees Mon-Sun sequential order
@@ -1056,7 +1060,7 @@ const AttendanceTracking: React.FC = () => {
   const departmentComparisonData = useMemo(() => {
     const departments = departmentStats.map(d => d.department);
     const attendanceValues = departmentStats.map(d => d.avgAttendance);
-    
+
     return {
       series: [
         {
@@ -1470,7 +1474,7 @@ const AttendanceTracking: React.FC = () => {
               <div className="text-center py-12">
                 <div className="text-red-600 mb-2">Error loading data</div>
                 <p className="text-gray-500">{error}</p>
-                <button 
+                <button
                   type="button"
                   onClick={() => fetchSubjectGroups()}
                   className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
@@ -1541,7 +1545,7 @@ const AttendanceTracking: React.FC = () => {
                             {subjectGroup.totalSessions}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-center text-xs text-gray-600">
-                            {subjectGroup.totalSessions === 1 
+                            {subjectGroup.totalSessions === 1
                               ? formatDate(subjectGroup.dateRange.first)
                               : `${formatDate(subjectGroup.dateRange.first)} - ${formatDate(subjectGroup.dateRange.last)}`
                             }
@@ -1657,20 +1661,28 @@ const AttendanceTracking: React.FC = () => {
         onExportHistory={handleExportlearnerHistory}
       />
 
+      {collegeId&&<CollegeTrainingAttendance collegeId={collegeId} initialSessionId={trainingSessionId}/>}
+
       {/* Add Attendance Session Modal */}
       <AddAttendanceSessionModal
         isOpen={showAddSessionModal}
         onClose={() => setShowAddSessionModal(false)}
-        onCreateSession={handleCreateSession}
+        onCreateSession={()=>handleCreateSession()}
         onCreateAndStart={handleCreateAndStart}
         formData={sessionFormData}
         onFormChange={handleFormChange}
         departments={departmentsData.map(dept => ({ value: dept.id, label: dept.name }))}
         courses={programsData.map(prog => ({ value: prog.id, label: formatProgramLabel(prog.name, prog) }))}
         semesters={semestersData.map(sem => ({ value: sem.toString(), label: `Semester ${sem}` }))}
-        sections={sectionOptions}
+        sections={Array.from(new Map([...sectionOptions,...trainingSections.map(x=>({value:x.section,label:`Section ${x.section}`,count:0}))].map(x=>[x.value,x])).values())}
+        trainingSections={trainingSections.filter(x=>x.section===sessionFormData.section)}
+        trainingSectionId={trainingSectionId}
+        onTrainingSectionChange={setTrainingSectionId}
+        trainingError={trainingError}
+        saving={savingSession}
+        trainingSubjects={Array.from(new Map(trainingCourses.map(x=>[x.course_id,{value:`training:${x.course_id}`,label:x.title}])).values())}
         subjects={coursesData.map(course => ({ value: course.id, label: `${course.course_code} - ${course.course_name}` }))}
-        faculty={filterOptions.faculty}
+        faculty={sessionFormData.subject.startsWith("training:")?trainingCandidates.map(x=>({value:x.mapping_id,label:x.staff_name})):filterOptions.faculty}
         learners={[]}
       />
 

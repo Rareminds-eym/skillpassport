@@ -17,7 +17,7 @@ const AddAttendanceSessionModal = ({
   sections,
   subjects,
   faculty,
-  learners,
+  learners, trainingSubjects=[],trainingSections=[],trainingSectionId="",onTrainingSectionChange,trainingError="",saving=false,
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -32,6 +32,7 @@ const AddAttendanceSessionModal = ({
   subjects: any[];
   faculty: any[];
   learners: Learner[];
+  trainingSubjects?: any[]; trainingSections?:any[]; trainingSectionId?:string; onTrainingSectionChange?:(id:string)=>void; trainingError?:string; saving?:boolean;
 }) => {
   // Validation: only end-after-start is enforced — sessions may be
   // created for any past or future date/time (backfill supported).
@@ -45,7 +46,7 @@ const AddAttendanceSessionModal = ({
         errors.push("End time must be after start time");
       }
     }
-    
+
     return errors;
   };
 
@@ -194,6 +195,8 @@ const AddAttendanceSessionModal = ({
                     </select>
                   </div>
 
+                  {trainingSections.length>1&&<label className="block text-sm">Training academic year *<select value={trainingSectionId} onChange={e=>onTrainingSectionChange?.(e.target.value)} className="w-full rounded border p-2"><option value="">Select exact class year</option>{trainingSections.map(x=><option key={x.id} value={x.id}>{x.academic_year} ? {x.section}</option>)}</select></label>}
+                  {trainingError&&<p role="alert" className="text-sm text-red-700">{trainingError}</p>}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Subject *
@@ -205,12 +208,14 @@ const AddAttendanceSessionModal = ({
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       <option value="">Select Subject</option>
-                      {subjects.map((subj) => (
+                      <optgroup label="Academic Subjects">{subjects.map((subj) => (
                         <option key={subj.value} value={subj.value}>
                           {subj.label}
                         </option>
-                      ))}
+                      ))}</optgroup>
+                      <optgroup label="Training Courses">{trainingSubjects.map(subj=><option key={subj.value} value={subj.value}>{subj.label}</option>)}</optgroup>
                     </select>
+                    <p className="mt-1 text-xs text-gray-500">Choose a date and exact class to list mapped training courses.</p>
                   </div>
 
                   <div>
@@ -273,7 +278,7 @@ const AddAttendanceSessionModal = ({
                         onChange={(e) => onFormChange("endTime", e.target.value)}
                         className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${
                           (formData.startTime && formData.endTime && formData.endTime <= formData.startTime)
-                            ? 'border-red-300 bg-red-50' 
+                            ? 'border-red-300 bg-red-50'
                             : 'border-gray-300'
                         }`}
                       />
@@ -287,8 +292,8 @@ const AddAttendanceSessionModal = ({
 
                   {formData.startTime && formData.endTime && (
                     <div className={`p-3 rounded-lg border ${
-                      validationErrors.length > 0 
-                        ? 'bg-red-50 border-red-200' 
+                      validationErrors.length > 0
+                        ? 'bg-red-50 border-red-200'
                         : 'bg-indigo-50 border-indigo-200'
                     }`}>
                       <p className={`text-sm ${
@@ -378,12 +383,12 @@ const AddAttendanceSessionModal = ({
               {/* Summary Text */}
               <div className="text-sm text-gray-600 break-words">
                 <strong>Summary:</strong>{' '}
-                {subjects.find(s => s.value === formData.subject)?.label || formData.subject} - {' '}
+                {[...subjects,...trainingSubjects].find(s => s.value === formData.subject)?.label || formData.subject} - {' '}
                 {faculty.find(f => f.value === formData.faculty)?.label || formData.faculty} • {' '}
                 {courses.find(c => c.value === formData.course)?.label || formData.course} Sem {formData.semester} ({formData.section}) • {' '}
                 {calculateDuration()}
               </div>
-              
+
               {/* Action Buttons */}
               <div className="flex gap-3 justify-end">
                 <button
@@ -394,7 +399,7 @@ const AddAttendanceSessionModal = ({
                 </button>
                 <button
                   onClick={onCreateSession}
-                  disabled={validationErrors.length > 0}
+                  disabled={saving || validationErrors.length > 0}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                     validationErrors.length > 0
                       ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
@@ -405,7 +410,7 @@ const AddAttendanceSessionModal = ({
                 </button>
                 <button
                   onClick={onCreateAndStart}
-                  disabled={validationErrors.length > 0}
+                  disabled={saving || validationErrors.length > 0}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
                     validationErrors.length > 0
                       ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
