@@ -369,7 +369,6 @@ const AssignmentCard: React.FC<AssignmentCardProps> = ({
                   >
                     <option value="todo">To Do</option>
                     <option value="in-progress">In Progress</option>
-                    {canSubmitAssignment(assignment) && <option value="submitted">Submitted</option>}
                   </select>
                 </div>
               </div>

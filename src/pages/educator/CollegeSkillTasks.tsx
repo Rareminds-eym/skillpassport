@@ -1,20 +1,21 @@
 import { useAuthStore } from '@/shared/model/authStore';
 import { useState, useMemo, useEffect } from "react";
-import { 
-  Search, Users, Calendar, Trophy, Plus, X, 
-  Edit, UserPlus, 
-  Clock, Star, Activity, 
-  Eye, CheckCircle, Download,
-  Paperclip as PaperClipIcon,
-  Tag as TagIcon,
-  BookOpen as BookOpenIcon,
-  GraduationCap as AcademicCapIcon,
-  MoreVertical,
-  Trash2
+import {
+    Search, Users, Calendar, Trophy, Plus, X,
+    Edit, UserPlus,
+    Clock, Star, Activity,
+    Eye, CheckCircle, Download,
+    Paperclip as PaperClipIcon,
+    Tag as TagIcon,
+    BookOpen as BookOpenIcon,
+    GraduationCap as AcademicCapIcon,
+    MoreVertical,
+    Trash2
 } from "lucide-react";
 import { useEducatorSchool } from '@/features/educator/model/useEducatorSchool';
 import toast from "react-hot-toast";
 import * as collegeAssignmentService from "@/features/college-admin";
+import { CollegeGradingModal } from "@/features/college-admin";
 import { getDocumentUrl, uploadMultipleFiles } from '@/shared/api';
 import { deleteFile } from '@/shared/api/storageApiService';
 import { getLogger } from '@/shared/config/logging';
@@ -108,7 +109,7 @@ const assignmentTypes = [
 ];
 
 const defaultSkills = [
-    "Communication", "AI", "Design Thinking", "Problem Solving", 
+    "Communication", "AI", "Design Thinking", "Problem Solving",
     "Research", "Entrepreneurship", "Data Structures", "Programming",
     "Critical Thinking", "Leadership", "Teamwork", "Innovation"
 ];
@@ -129,7 +130,7 @@ export default function CollegeSkillTasks() {
         pendingReviews: 0,
         averageScore: 0
     });
-    
+
     // Modal states
     const [createTaskModal, setCreateTaskModal] = useState(false);
     const [assignlearnersModal, setAssignlearnersModal] = useState(false);
@@ -138,12 +139,20 @@ export default function CollegeSkillTasks() {
     const [viewDetailsModal, setViewDetailsModal] = useState(false);
     const [editTaskModal, setEditTaskModal] = useState(false);
     const [deleteConfirmModal, setDeleteConfirmModal] = useState(false);
-    
+    const [gradingModalOpen, setGradingModalOpen] = useState(false);
+    const [gradingAssignment, setGradingAssignment] = useState<TaskAssignment | null>(null);
+
+    const handleOpenGradingModal = (assignment: TaskAssignment) => {
+        setGradingAssignment(assignment);
+        setGradingModalOpen(true);
+        setOpenMenuId(null);
+    };
+
     // Form mode and attachment states
     const [formMode, setFormMode] = useState<'create' | 'edit'>('create');
     const [removeExistingFile, setRemoveExistingFile] = useState(false);
     const [confirmRemoveFileModal, setConfirmRemoveFileModal] = useState(false);
-    
+
     // Form states
     const [taskForm, setTaskForm] = useState({
         title: "",
@@ -163,21 +172,21 @@ export default function CollegeSkillTasks() {
         document_pdf: "",
         instruction_files: [] as File[]
     });
-    
+
     // Filter states
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedDepartment, setSelectedDepartment] = useState("all");
     const [selectedProgram, setSelectedProgram] = useState("all");
     const [selectedStatus, setSelectedStatus] = useState("all");
-    
+
     // Learner selection states
     const [selectedLearnerIds, setSelectedLearnerIds] = useState<string[]>([]);
     const [assignedLearnerIds, setAssignedLearnerIds] = useState<string[]>([]);
     const [learnerSearchQuery, setlearnerSearchQuery] = useState("");
-    
+
     // Get educator information
     const { college: educatorCollege, educatorType, loading: schoolLoading } = useEducatorSchool();
-    
+
     // Extract college ID to prevent infinite loop from object reference changes
     const educatorCollegeId = educatorCollege?.id;
 
@@ -225,7 +234,7 @@ export default function CollegeSkillTasks() {
     const fetchInitialData = async () => {
         try {
             setLoading(true);
-            
+
             // Get current user
             const { data: { user } } = { data: { user: useAuthStore.getState().user } };
             if (!user) {
@@ -251,11 +260,11 @@ export default function CollegeSkillTasks() {
 
     const fetchDepartments = async () => {
         if (!educatorCollege?.id) return;
-        
+
         // Get current user
         const { data: { user } } = { data: { user: useAuthStore.getState().user } };
         if (!user) return;
-        
+
         const { data, error } = await collegeAssignmentService.fetchEducatorDepartments(user.id);
         if (error) {
             logger.error('Error fetching departments', error);
@@ -267,11 +276,11 @@ export default function CollegeSkillTasks() {
 
     const fetchPrograms = async () => {
         if (!educatorCollege?.id) return;
-        
+
         // Get current user
         const { data: { user } } = { data: { user: useAuthStore.getState().user } };
         if (!user) return;
-        
+
         const { data, error } = await collegeAssignmentService.fetchEducatorPrograms(
             user.id,
             taskForm.department_id || undefined
@@ -314,7 +323,7 @@ export default function CollegeSkillTasks() {
     };
 
     const fetchStatistics = async (userId: string) => {
-        const { data, error} = await collegeAssignmentService.getAssignmentStatistics(userId);
+        const { data, error } = await collegeAssignmentService.getAssignmentStatistics(userId);
         if (error) {
             logger.error('Error fetching statistics', error);
         } else {
@@ -338,7 +347,10 @@ export default function CollegeSkillTasks() {
         } else {
             logger.info('Received learners', { count: data?.length || 0 });
             logger.info('Learner data', { data });
-            setlearners(data || []);
+            // Ensure we always set an array
+            const learnersArray = Array.isArray(data) ? data : [];
+            logger.info('Setting learners state', { isArray: Array.isArray(learnersArray), count: learnersArray.length });
+            setlearners(learnersArray);
         }
     };
 
@@ -349,11 +361,11 @@ export default function CollegeSkillTasks() {
             selectedDepartment,
             selectedProgram: taskForm.program_id
         });
-        
+
         const filtered = programSections.filter(section => {
             const deptMatch = selectedDepartment === "all" || section.department_id === selectedDepartment;
             const progMatch = selectedProgram === "all" || section.program_id === selectedProgram;
-            
+
             logger.info('Section filter check', {
                 sectionId: section.id,
                 program: section.program?.name,
@@ -365,10 +377,10 @@ export default function CollegeSkillTasks() {
                 progMatch,
                 included: deptMatch && progMatch
             });
-            
+
             return deptMatch && progMatch;
         });
-        
+
         logger.info('Filtered sections result', {
             count: filtered.length,
             sections: filtered.map(s => ({
@@ -378,9 +390,10 @@ export default function CollegeSkillTasks() {
                 section: s.section
             }))
         });
-        
+
         return filtered;
     }, [programSections, selectedDepartment, selectedProgram]);
+
 
     // Sections for dropdown (filtered by form program_id)
     const sectionsForDropdown = useMemo(() => {
@@ -389,7 +402,7 @@ export default function CollegeSkillTasks() {
             totalProgramSections: programSections.length,
             filteredSectionsAvailable: filteredSections.length
         });
-        
+
         logger.info('All program sections', {
             sections: programSections.map((s, i) => ({
                 index: i + 1,
@@ -400,7 +413,7 @@ export default function CollegeSkillTasks() {
                 academicYear: s.academic_year
             }))
         });
-        
+
         logger.info('Filtered sections (after dept/prog filter)', {
             sections: filteredSections.map((s, i) => ({
                 index: i + 1,
@@ -411,12 +424,12 @@ export default function CollegeSkillTasks() {
                 matchesFormProgram: s.program_id === taskForm.program_id
             }))
         });
-        
+
         if (!taskForm.program_id) {
             logger.warn('No program selected - returning empty array');
             return [];
         }
-        
+
         const sections = filteredSections.filter(section => {
             const matches = section.program_id === taskForm.program_id;
             logger.info('Checking section', {
@@ -427,7 +440,7 @@ export default function CollegeSkillTasks() {
             });
             return matches;
         });
-        
+
         logger.info('Final sections for dropdown', {
             count: sections.length,
             sections: sections.map((s, i) => ({
@@ -435,7 +448,7 @@ export default function CollegeSkillTasks() {
                 display: `Sem ${s.semester} - ${s.section} (${s.academic_year})`
             }))
         });
-        
+
         if (sections.length === 0 && taskForm.program_id) {
             logger.warn('No sections match the selected program', {
                 possibleReasons: [
@@ -457,8 +470,13 @@ export default function CollegeSkillTasks() {
     }, [assignments, searchQuery, selectedStatus]);
 
     const filteredlearners = useMemo(() => {
+        // Ensure learners is always an array
+        if (!Array.isArray(learners)) {
+            logger.warn('learners is not an array', { learners });
+            return [];
+        }
         return learners.filter(learner => {
-            if (learnerSearchQuery && !learner.name.toLowerCase().includes(learnerSearchQuery.toLowerCase()) && 
+            if (learnerSearchQuery && !learner.name.toLowerCase().includes(learnerSearchQuery.toLowerCase()) &&
                 !learner.email.toLowerCase().includes(learnerSearchQuery.toLowerCase())) return false;
             return true;
         });
@@ -474,7 +492,7 @@ export default function CollegeSkillTasks() {
 
     const handleDepartmentChange = async (departmentId: string) => {
         logger.info('Department changed', { departmentId });
-        
+
         setTaskForm(prev => ({
             ...prev,
             department_id: departmentId,
@@ -483,13 +501,13 @@ export default function CollegeSkillTasks() {
             course_name: "",
             course_code: ""
         }));
-        
+
         // Clear dependent data (but NOT programSections - they're filtered client-side!)
         setPrograms([]);
         // setProgramSections([]); // ❌ DON'T clear sections!
         setCourses([]);
         setlearners([]);
-        
+
         // Fetch programs for this department
         if (departmentId) {
             logger.info('Fetching programs for department', { departmentId });
@@ -515,7 +533,7 @@ export default function CollegeSkillTasks() {
             selectedProgramId: programId,
             previousProgramId: taskForm.program_id
         });
-        
+
         setTaskForm(prev => {
             logger.info('Updating form state', {
                 oldProgramId: prev.program_id,
@@ -529,11 +547,11 @@ export default function CollegeSkillTasks() {
                 course_code: ""
             };
         });
-        
+
         // Clear dependent data
         setCourses([]);
         setlearners([]);
-        
+
         // Fetch courses for this program
         if (programId) {
             logger.info('Fetching courses for program', { programId });
@@ -545,13 +563,30 @@ export default function CollegeSkillTasks() {
                     logger.error('Error fetching courses', error);
                     toast.error('Failed to load courses');
                     setCourses([]);
+                    setTaskForm(prev => ({ ...prev, course_name: "", course_code: "" }));
                 } else {
                     logger.info('Loaded courses', { count: data?.length || 0, courses: data });
-                    setCourses(data || []);
+                    const fetchedCourses = data || [];
+                    setCourses(fetchedCourses);
+                    // Automatically pre-fill the course if available
+                    if (fetchedCourses.length > 0) {
+                        setTaskForm(prev => ({
+                            ...prev,
+                            course_name: fetchedCourses[0].course_name,
+                            course_code: fetchedCourses[0].course_code || ""
+                        }));
+                    } else {
+                        setTaskForm(prev => ({
+                            ...prev,
+                            course_name: "",
+                            course_code: ""
+                        }));
+                    }
                 }
             }
         } else {
             logger.warn('No program selected, clearing courses');
+            setTaskForm(prev => ({ ...prev, course_name: "", course_code: "" }));
         }
     };
 
@@ -587,7 +622,7 @@ export default function CollegeSkillTasks() {
             setTaskForm(prev => ({
                 ...prev,
                 course_name: course.course_name,
-                course_code: course.course_code
+                course_code: course.course_code || ""
             }));
         }
     };
@@ -598,7 +633,25 @@ export default function CollegeSkillTasks() {
             ...prev,
             section_id: sectionId
         }));
-        
+
+        // If courses are loaded, match by section or semester if available
+        if (courses.length > 0 && sectionId) {
+            const sec = programSections.find(s => s.id === sectionId);
+            if (sec) {
+                const matched = courses.find((c: any) =>
+                    (c.semester && sec.semester && Number(c.semester) === Number(sec.semester)) ||
+                    (c.section && sec.section && c.section.toLowerCase() === sec.section.toLowerCase())
+                );
+                if (matched) {
+                    setTaskForm(prev => ({
+                        ...prev,
+                        course_name: matched.course_name,
+                        course_code: matched.course_code || ""
+                    }));
+                }
+            }
+        }
+
         // Fetch learners for this section
         if (sectionId) {
             logger.info('Fetching learners for section', { sectionId });
@@ -611,6 +664,13 @@ export default function CollegeSkillTasks() {
 
     const handleCreateTask = async () => {
         try {
+            logger.info('handleCreateTask started', {
+                hasTitle: !!taskForm.title,
+                hasDueDate: !!taskForm.due_date,
+                hasSectionId: !!taskForm.section_id,
+                taskForm
+            });
+
             if (!taskForm.title.trim()) {
                 toast.error("Task title is required");
                 return;
@@ -653,12 +713,26 @@ export default function CollegeSkillTasks() {
                 document_pdf: taskForm.document_pdf
             };
 
+            logger.info('Assignment data prepared', {
+                assignmentData,
+                skillOutcomesType: typeof assignmentData.skill_outcomes,
+                skillOutcomesIsArray: Array.isArray(assignmentData.skill_outcomes)
+            });
+
             // Pass instruction files to the service
             const { data: assignment, error } = await collegeAssignmentService.createCollegeAssignment(
                 assignmentData,
                 user.id,
                 taskForm.instruction_files  // Pass files here
             );
+
+            logger.info('Assignment creation response', {
+                success: !error,
+                error,
+                assignment,
+                assignmentType: typeof assignment,
+                assignmentKeys: assignment ? Object.keys(assignment) : null
+            });
 
             if (error) {
                 toast.error(error);
@@ -667,13 +741,27 @@ export default function CollegeSkillTasks() {
 
             toast.success("Task created successfully");
             setCreateTaskModal(false);
+
+            logger.info('Setting selected assignment', {
+                assignment,
+                assignmentSkillOutcomes: assignment?.skill_outcomes,
+                assignmentSkillOutcomesType: typeof assignment?.skill_outcomes,
+                assignmentSkillOutcomesIsArray: Array.isArray(assignment?.skill_outcomes)
+            });
+
             setSelectedAssignment(assignment);
             setSelectedLearnerIds([]); // Clear previous selections
-            
+            setAssignedLearnerIds([]);
+
             // Fetch learners for the section
+            logger.info('About to fetch learners for section', { sectionId: taskForm.section_id });
             await fetchlearnersForSection(taskForm.section_id);
+
+            logger.info('Learners fetched, opening assign learners modal');
+
+            logger.info('Opening assign learners modal');
             setAssignlearnersModal(true);
-            
+
             // Reset form
             setTaskForm({
                 title: "",
@@ -705,22 +793,33 @@ export default function CollegeSkillTasks() {
 
     const handleAssignTolearners = async () => {
         try {
+            console.log('=== handleAssignTolearners START ===');
+            console.log('selectedAssignment:', selectedAssignment);
+            console.log('selectedLearnerIds:', selectedLearnerIds);
+            console.log('learners state:', learners);
+            console.log('filteredlearners:', filteredlearners);
+
             if (!selectedAssignment || selectedLearnerIds.length === 0) {
                 toast.error("Please select learners to assign the task");
                 return;
             }
 
-            logger.info('Starting assignment process', {
-                selectedLearnerIds,
-                filteredlearnersCount: filteredlearners.length
-            });
+            // Defensive check: ensure filteredlearners is an array
+            if (!Array.isArray(filteredlearners)) {
+                console.error('filteredlearners is NOT an array!', filteredlearners);
+                console.error('learners state is:', learners);
+                toast.error('Error: Learner data is invalid. Please try again.');
+                return;
+            }
+
+            console.log('filteredlearners is valid array, length:', filteredlearners.length);
 
             // Get selected learners
-            const selectedlearners = filteredlearners.filter(learner => 
+            const selectedlearners = filteredlearners.filter(learner =>
                 selectedLearnerIds.includes(learner.id)
             );
 
-            logger.info('Selected learners', { selectedlearners });
+            console.log('selectedlearners:', selectedlearners);
 
             if (selectedlearners.length === 0) {
                 toast.error("No learners selected");
@@ -740,33 +839,50 @@ export default function CollegeSkillTasks() {
             }
 
             // Query learners table to get user IDs by email via API
-            const learners = await apiPost<Array<{ id: string; user_id: string; email: string }>>('/educator/actions', {
-                action: 'get-learners-by-emails',
-                emails: selectedEmails
-            });
-
-            logger.info('Learners query result', { learners });
-
-            if (!learners || learners.length === 0) {
-                toast.error("No matching learner accounts found for selected learners");
-                return;
+            let fetchedLearners: Array<{ id: string; user_id?: string | null; email?: string }> = [];
+            try {
+                const learnersRes = await apiPost<any>('/educator/actions', {
+                    action: 'get-learners-by-emails',
+                    emails: selectedEmails
+                });
+                fetchedLearners = Array.isArray(learnersRes) ? learnersRes : (learnersRes?.data || []);
+            } catch (err) {
+                logger.warn('Failed to fetch learners by email, falling back to selected learners data', err);
             }
 
-            // Filter learners who have user_id (required for foreign key constraint)
-            const learnersWithUserId = learners.filter(learner => learner.user_id !== null);
-            
-            if (learnersWithUserId.length === 0) {
+            logger.info('Learners query result', { fetchedLearners });
+
+            // Create email to user_id mapping
+            const emailToUserId = new Map<string, string>();
+            fetchedLearners.forEach(l => {
+                if (l.email && l.user_id) {
+                    emailToUserId.set(l.email.toLowerCase().trim(), l.user_id);
+                }
+            });
+
+            // Map each selected learner to their user_id (via API result or existing learner.user_id)
+            const userIds: string[] = [];
+            let skipped = 0;
+
+            for (const learner of selectedlearners) {
+                const uid = (learner.email && emailToUserId.get(learner.email.toLowerCase().trim())) || learner.user_id;
+                if (uid) {
+                    userIds.push(uid);
+                } else {
+                    skipped++;
+                }
+            }
+
+            if (userIds.length === 0) {
                 toast.error("Selected learners don't have user accounts. Please ensure learners are registered.");
                 return;
             }
 
-            const userIds = learnersWithUserId.map(learner => learner.user_id);
-            logger.info('User IDs to assign', { userIds });
-
-            if (learnersWithUserId.length < selectedlearners.length) {
-                const skipped = selectedlearners.length - learnersWithUserId.length;
-                toast(`Warning: ${skipped} learner(s) skipped (no user account). Assigning to ${learnersWithUserId.length} learners.`);
+            if (skipped > 0) {
+                toast(`Warning: ${skipped} learner(s) skipped (no user account). Assigning to ${userIds.length} learners.`);
             }
+
+            logger.info('User IDs to assign', { userIds });
 
             const { error } = await collegeAssignmentService.assignTaskTolearners(
                 selectedAssignment.assignment_id,
@@ -779,14 +895,16 @@ export default function CollegeSkillTasks() {
                 return;
             }
 
-            toast.success(`Task assigned to ${userIds.length} learners`);
+            toast.success(`Task assigned to ${userIds.length} learner${userIds.length !== 1 ? 's' : ''}`);
             setAssignlearnersModal(false);
             setSelectedLearnerIds([]);
+            setAssignedLearnerIds([]);
             setSelectedAssignment(null);
-            
-            // Refresh statistics
+
+            // Refresh assignments and statistics
             const { data: { user } } = { data: { user: useAuthStore.getState().user } };
             if (user) {
+                await fetchAssignments(user.id);
                 await fetchStatistics(user.id);
             }
         } catch (error) {
@@ -871,6 +989,12 @@ export default function CollegeSkillTasks() {
         };
     };
 
+    const handleViewDetails = (assignment: TaskAssignment) => {
+        setSelectedAssignment(assignment);
+        setViewDetailsModal(true);
+        setOpenMenuId(null);
+    };
+
     const handleEditTask = (assignment: TaskAssignment) => {
         setSelectedAssignment(assignment);
         setFormMode('edit');
@@ -881,7 +1005,7 @@ export default function CollegeSkillTasks() {
     const handleUpdateTask = async () => {
         try {
             if (!selectedAssignment) return;
-            
+
             if (!taskForm.title.trim()) {
                 toast.error("Task title is required");
                 return;
@@ -970,7 +1094,7 @@ export default function CollegeSkillTasks() {
             setSelectedAssignment(null);
             setRemoveExistingFile(false);
             setConfirmRemoveFileModal(false);
-            
+
             // Reset form
             setTaskForm({
                 title: "",
@@ -990,7 +1114,7 @@ export default function CollegeSkillTasks() {
                 document_pdf: "",
                 instruction_files: []
             });
-            
+
             // Refresh assignments
             const { data: { user } } = { data: { user: useAuthStore.getState().user } };
             if (user) {
@@ -1015,7 +1139,7 @@ export default function CollegeSkillTasks() {
             toast.success('Task deleted successfully');
             setDeleteConfirmModal(false);
             setSelectedAssignment(null);
-            
+
             // Refresh assignments
             const { data: { user } } = { data: { user: useAuthStore.getState().user } };
             if (user) {
@@ -1081,7 +1205,7 @@ export default function CollegeSkillTasks() {
                                 />
                             </div>
                         </div>
-                        
+
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">Department</label>
                             <select
@@ -1095,7 +1219,7 @@ export default function CollegeSkillTasks() {
                                 ))}
                             </select>
                         </div>
-                        
+
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">Program</label>
                             <select
@@ -1111,7 +1235,7 @@ export default function CollegeSkillTasks() {
                                     ))}
                             </select>
                         </div>
-                        
+
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
                             <select
@@ -1141,7 +1265,7 @@ export default function CollegeSkillTasks() {
                             </div>
                         </div>
                     </div>
-                    
+
                     <div className="bg-white rounded-xl shadow-sm p-6">
                         <div className="flex items-center justify-between">
                             <div>
@@ -1153,7 +1277,7 @@ export default function CollegeSkillTasks() {
                             </div>
                         </div>
                     </div>
-                    
+
                     <div className="bg-white rounded-xl shadow-sm p-6">
                         <div className="flex items-center justify-between">
                             <div>
@@ -1165,7 +1289,7 @@ export default function CollegeSkillTasks() {
                             </div>
                         </div>
                     </div>
-                    
+
                     <div className="bg-white rounded-xl shadow-sm p-6">
                         <div className="flex items-center justify-between">
                             <div>
@@ -1184,7 +1308,7 @@ export default function CollegeSkillTasks() {
                     <div className="p-6 border-b border-gray-200">
                         <h2 className="text-lg font-semibold text-gray-900">Recent Tasks</h2>
                     </div>
-                    
+
                     <div className="p-6">
                         {filteredAssignments.length === 0 ? (
                             <div className="text-center py-12">
@@ -1216,7 +1340,7 @@ export default function CollegeSkillTasks() {
                                             >
                                                 <MoreVertical size={20} className="text-gray-600" />
                                             </button>
-                                            
+
                                             {openMenuId === assignment.assignment_id && (
                                                 <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
                                                     <button
@@ -1225,6 +1349,13 @@ export default function CollegeSkillTasks() {
                                                     >
                                                         <Eye size={16} />
                                                         View Details
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleOpenGradingModal(assignment)}
+                                                        className="w-full flex items-center gap-2 px-4 py-2 text-sm text-emerald-700 hover:bg-emerald-50"
+                                                    >
+                                                        <CheckCircle size={16} />
+                                                        Submissions & Grade
                                                     </button>
                                                     <button
                                                         onClick={() => handleEditTask(assignment)}
@@ -1248,7 +1379,7 @@ export default function CollegeSkillTasks() {
                                         <div className="p-5 pr-12 flex-grow flex flex-col">
                                             <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2">{assignment.title}</h3>
                                             <p className="text-sm text-gray-600 mb-4 line-clamp-2">{assignment.description}</p>
-                                            
+
                                             <div className="space-y-2 mb-4">
                                                 <div className="flex items-center gap-2 text-sm text-gray-600">
                                                     <Calendar className="w-4 h-4 text-gray-400 flex-shrink-0" />
@@ -1283,7 +1414,7 @@ export default function CollegeSkillTasks() {
                                                     </div>
                                                 )}
                                             </div>
-                                            
+
                                             {assignment.skill_outcomes && assignment.skill_outcomes.length > 0 && (
                                                 <div className="flex flex-wrap gap-1 mb-4">
                                                     {assignment.skill_outcomes.slice(0, 3).map((skill, index) => (
@@ -1298,34 +1429,35 @@ export default function CollegeSkillTasks() {
                                                     )}
                                                 </div>
                                             )}
-                                            
+
                                             {/* Spacer to push button to bottom */}
                                             <div className="flex-grow"></div>
-                                            
-                                            <button
-                                                onClick={async () => {
+
+                                            <div className="flex items-center gap-2 mt-4">
+                                                <button
+                                                    onClick={async () => {
                                                     logger.info('Assign button clicked', {
                                                         assignmentId: assignment.assignment_id,
                                                         programSectionId: assignment.program_section_id
                                                     });
-                                                    
+
                                                     setSelectedAssignment(assignment);
                                                     setSelectedLearnerIds([]); // Clear previous selections
-                                                    
+
                                                     if (assignment.program_section_id) {
                                                         logger.info('Fetching learners for section', {
                                                             sectionId: assignment.program_section_id
                                                         });
                                                         await fetchlearnersForSection(assignment.program_section_id);
-                                                        
+
                                                         // Fetch already assigned learners
                                                         try {
-                                                            const assignedIds = await apiPost<string[]>('/educator/actions', {
+                                                            const assignedIdsRes = await apiPost<any>('/educator/actions', {
                                                                 action: 'get-assigned-learners',
                                                                 assignmentId: assignment.assignment_id
                                                             });
-                                                            
-                                                            setAssignedLearnerIds(assignedIds || []);
+                                                            const assignedIds = Array.isArray(assignedIdsRes) ? assignedIdsRes : (assignedIdsRes?.data || []);
+                                                            setAssignedLearnerIds(assignedIds);
                                                         } catch (error) {
                                                             logger.error('Error fetching assigned learners', error);
                                                             setAssignedLearnerIds([]);
@@ -1334,14 +1466,23 @@ export default function CollegeSkillTasks() {
                                                         logger.error('No program_section_id found in assignment');
                                                         toast.error('Assignment is missing section information');
                                                     }
-                                                    
+
                                                     setAssignlearnersModal(true);
                                                 }}
-                                                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm mt-4"
+                                                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
                                             >
                                                 <UserPlus size={16} />
-                                                Assign to Section
+                                                Assign
                                             </button>
+                                            <button
+                                                onClick={() => handleOpenGradingModal(assignment)}
+                                                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-sm font-semibold bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors shadow-sm"
+                                                title="View learner submissions and grade"
+                                            >
+                                                <CheckCircle size={16} />
+                                                Submissions
+                                            </button>
+                                        </div>
                                         </div>
                                     </div>
                                 ))}
@@ -1379,7 +1520,7 @@ export default function CollegeSkillTasks() {
                                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                             />
                                         </div>
-                                        
+
                                         <div className="md:col-span-2">
                                             <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
                                             <textarea
@@ -1390,7 +1531,7 @@ export default function CollegeSkillTasks() {
                                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                             />
                                         </div>
-                                        
+
                                         <div className="md:col-span-2">
                                             <label className="block text-sm font-medium text-gray-700 mb-1">Instructions</label>
                                             <textarea
@@ -1421,7 +1562,7 @@ export default function CollegeSkillTasks() {
                                                 ))}
                                             </select>
                                         </div>
-                                        
+
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">Program *</label>
                                             <select
@@ -1439,7 +1580,7 @@ export default function CollegeSkillTasks() {
                                                 <p className="text-xs text-gray-500 mt-1">Select a department first</p>
                                             )}
                                         </div>
-                                        
+
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">Section *</label>
                                             <select
@@ -1469,32 +1610,61 @@ export default function CollegeSkillTasks() {
                                                 <p className="text-xs text-red-500 mt-1">No sections found for this program</p>
                                             )}
                                         </div>
-                                        
+
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">Course *</label>
-                                            <select
-                                                onChange={(e) => handleCourseChange(e.target.value)}
-                                                disabled={!taskForm.program_id}
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
-                                            >
-                                                <option value="">Select Course</option>
-                                                {courses.map(course => (
-                                                    <option key={course.id} value={course.id}>{course.course_name} ({course.course_code})</option>
-                                                ))}
-                                            </select>
-                                            {!taskForm.program_id && (
+                                            {courses.length > 1 ? (
+                                                <select
+                                                    value={courses.find(c => c.course_name === taskForm.course_name)?.id || ""}
+                                                    onChange={(e) => handleCourseChange(e.target.value)}
+                                                    disabled={!taskForm.program_id}
+                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-800 font-medium focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+                                                >
+                                                    <option value="">Select Assigned Course</option>
+                                                    {courses.map(course => (
+                                                        <option key={course.id} value={course.id}>
+                                                            {course.course_name} {course.course_code ? `(${course.course_code})` : ""}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            ) : (
+                                                <div className="relative">
+                                                    <input
+                                                        type="text"
+                                                        readOnly
+                                                        value={taskForm.course_name || ""}
+                                                        disabled={!taskForm.program_id}
+                                                        placeholder={!taskForm.program_id ? "Select a program first" : (courses.length === 0 ? "No assigned course found" : "Assigned Course")}
+                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-800 cursor-not-allowed select-none font-medium focus:outline-none disabled:bg-gray-100 disabled:text-gray-400"
+                                                    />
+                                                    {taskForm.course_name && (
+                                                        <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs bg-green-100 text-green-700 font-semibold px-2 py-0.5 rounded">
+                                                            Assigned
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            )}
+                                            {!taskForm.program_id ? (
                                                 <p className="text-xs text-gray-500 mt-1">Select a program first</p>
+                                            ) : courses.length === 0 ? (
+                                                <p className="text-xs text-amber-600 mt-1">No assigned courses found for this program</p>
+                                            ) : (
+                                                <p className="text-xs text-green-600 mt-1 flex items-center gap-1 font-medium">
+                                                    <CheckCircle className="w-3.5 h-3.5 inline" />
+                                                    <span>Course assigned from timetable/attendance</span>
+                                                </p>
                                             )}
                                         </div>
-                                        
+
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">Course Code</label>
                                             <input
                                                 type="text"
-                                                value={taskForm.course_code}
-                                                onChange={(e) => handleTaskFormChange('course_code', e.target.value)}
-                                                placeholder="e.g., CS301"
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                readOnly
+                                                value={taskForm.course_code || ""}
+                                                disabled={!taskForm.program_id}
+                                                placeholder={taskForm.course_name ? "—" : "Auto-filled from assigned course"}
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-700 cursor-not-allowed select-none font-medium focus:outline-none disabled:bg-gray-100 disabled:text-gray-400"
                                             />
                                         </div>
                                     </div>
@@ -1516,7 +1686,7 @@ export default function CollegeSkillTasks() {
                                                 ))}
                                             </select>
                                         </div>
-                                        
+
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">Total Points *</label>
                                             <input
@@ -1527,7 +1697,7 @@ export default function CollegeSkillTasks() {
                                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                             />
                                         </div>
-                                        
+
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">Due Date *</label>
                                             <input
@@ -1537,7 +1707,7 @@ export default function CollegeSkillTasks() {
                                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                             />
                                         </div>
-                                        
+
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">Available From</label>
                                             <input
@@ -1547,7 +1717,7 @@ export default function CollegeSkillTasks() {
                                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                             />
                                         </div>
-                                        
+
                                         <div className="md:col-span-2">
                                             <label className="block text-sm font-medium text-gray-700 mb-1">Reference Document URL</label>
                                             <input
@@ -1559,7 +1729,7 @@ export default function CollegeSkillTasks() {
                                             />
                                         </div>
                                     </div>
-                                    
+
                                     <div className="mt-4">
                                         <label className="flex items-center">
                                             <input
@@ -1582,11 +1752,10 @@ export default function CollegeSkillTasks() {
                                                 key={skill}
                                                 type="button"
                                                 onClick={() => toggleSkill(skill)}
-                                                className={`inline-flex items-center justify-center px-3 py-2 rounded-md border text-sm font-medium transition-colors ${
-                                                    taskForm.skill_outcomes.includes(skill)
+                                                className={`inline-flex items-center justify-center px-3 py-2 rounded-md border text-sm font-medium transition-colors ${taskForm.skill_outcomes.includes(skill)
                                                         ? "border-blue-600 bg-blue-50 text-blue-700"
                                                         : "border-gray-200 bg-white text-gray-600 hover:border-blue-200"
-                                                }`}
+                                                    }`}
                                             >
                                                 <TagIcon className="h-4 w-4 mr-2" />
                                                 {skill}
@@ -1621,7 +1790,7 @@ export default function CollegeSkillTasks() {
                                                 </div>
                                             </label>
                                         </div>
-                                        
+
                                         {taskForm.instruction_files.length > 0 && (
                                             <div className="space-y-2">
                                                 <h4 className="text-sm font-medium text-gray-700">Uploaded Files:</h4>
@@ -1723,7 +1892,7 @@ export default function CollegeSkillTasks() {
                             </div>
 
                             <div className="max-h-96 overflow-y-auto border border-gray-200 rounded-lg">
-                                {filteredlearners.length === 0 ? (
+                                {!Array.isArray(filteredlearners) || filteredlearners.length === 0 ? (
                                     <div className="p-8 text-center">
                                         <Users className="mx-auto h-12 w-12 text-gray-400" />
                                         <h3 className="mt-2 text-sm font-medium text-gray-900">No learners found</h3>
@@ -1734,38 +1903,38 @@ export default function CollegeSkillTasks() {
                                         {filteredlearners.map((learner) => {
                                             const isAssigned = assignedLearnerIds.includes(learner.user_id);
                                             return (
-                                            <label key={learner.id} className={`flex items-center p-4 ${isAssigned ? 'bg-gray-50 cursor-not-allowed' : 'hover:bg-gray-50 cursor-pointer'}`}>
-                                                <input
-                                                    type="checkbox"
-                                                    checked={selectedLearnerIds.includes(learner.id)}
-                                                    disabled={isAssigned}
-                                                    onChange={(e) => {
-                                                        if (e.target.checked) {
-                                                            setSelectedLearnerIds(prev => [...prev, learner.id]);
-                                                        } else {
-                                                            setSelectedLearnerIds(prev => prev.filter(id => id !== learner.id));
-                                                        }
-                                                    }}
-                                                    className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                                                />
-                                                <div className="ml-3 flex-1">
-                                                    <div className="flex items-center justify-between">
-                                                        <div>
-                                                            <p className="text-sm font-medium text-gray-900">{learner.name}</p>
-                                                            <p className="text-sm text-gray-500">{learner.email}</p>
-                                                        </div>
-                                                        <div className="text-right">
-                                                            <p className="text-sm text-gray-500">Roll: {learner.roll_number}</p>
-                                                            <p className="text-sm text-gray-500">Sem {learner.semester} - {learner.section}</p>
-                                                            {isAssigned && (
-                                                                <span className="inline-block mt-1 text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">
-                                                                    Assigned
-                                                                </span>
-                                                            )}
+                                                <label key={learner.id} className={`flex items-center p-4 ${isAssigned ? 'bg-gray-50 cursor-not-allowed' : 'hover:bg-gray-50 cursor-pointer'}`}>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={selectedLearnerIds.includes(learner.id)}
+                                                        disabled={isAssigned}
+                                                        onChange={(e) => {
+                                                            if (e.target.checked) {
+                                                                setSelectedLearnerIds(prev => [...prev, learner.id]);
+                                                            } else {
+                                                                setSelectedLearnerIds(prev => prev.filter(id => id !== learner.id));
+                                                            }
+                                                        }}
+                                                        className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    />
+                                                    <div className="ml-3 flex-1">
+                                                        <div className="flex items-center justify-between">
+                                                            <div>
+                                                                <p className="text-sm font-medium text-gray-900">{learner.name}</p>
+                                                                <p className="text-sm text-gray-500">{learner.email}</p>
+                                                            </div>
+                                                            <div className="text-right">
+                                                                <p className="text-sm text-gray-500">Roll: {learner.roll_number}</p>
+                                                                <p className="text-sm text-gray-500">Sem {learner.semester} - {learner.section}</p>
+                                                                {isAssigned && (
+                                                                    <span className="inline-block mt-1 text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">
+                                                                        Assigned
+                                                                    </span>
+                                                                )}
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                </div>
-                                            </label>
+                                                </label>
                                             );
                                         })}
                                     </div>
@@ -1797,15 +1966,15 @@ export default function CollegeSkillTasks() {
                 <div className="fixed inset-0 z-50 overflow-y-auto">
                     <div className="flex items-center justify-center min-h-screen px-4 py-8">
                         <div className="fixed inset-0 bg-gray-900 bg-opacity-50 transition-opacity" onClick={() => setViewDetailsModal(false)} />
-                        <div 
+                        <div
                             className="relative w-full max-w-3xl bg-white rounded-lg px-4 pt-5 pb-4 text-left shadow-xl transform transition-all max-h-[90vh] flex flex-col"
                             onClick={(e) => e.stopPropagation()}
                         >
                             <div className="flex items-center justify-between mb-6 flex-shrink-0 p-6 pb-0">
                                 <h2 className="text-xl font-semibold text-gray-900">Task Details</h2>
-                                <button 
+                                <button
                                     type="button"
-                                    onClick={() => setViewDetailsModal(false)} 
+                                    onClick={() => setViewDetailsModal(false)}
                                     className="text-gray-400 hover:text-gray-600"
                                 >
                                     <X size={24} />
@@ -1879,7 +2048,7 @@ export default function CollegeSkillTasks() {
                                             {selectedAssignment.instruction_files.map((file: { name: string; url: string; size: number; type: string }, idx: number) => {
                                                 // Use document-access API for secure file access
                                                 const accessUrl = getDocumentUrl(file.url, 'inline');
-                                                
+
                                                 return (
                                                     <button
                                                         key={idx}
@@ -1934,7 +2103,7 @@ export default function CollegeSkillTasks() {
                                     <Trash2 className="w-6 h-6 text-red-600" />
                                 </div>
                             </div>
-                            
+
                             <div className="text-center mb-6">
                                 <h3 className="text-lg font-semibold text-gray-900 mb-2">Delete Task</h3>
                                 <p className="text-sm text-gray-600">
@@ -1997,7 +2166,7 @@ export default function CollegeSkillTasks() {
                                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                             />
                                         </div>
-                                        
+
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
                                             <textarea
@@ -2008,7 +2177,7 @@ export default function CollegeSkillTasks() {
                                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                             />
                                         </div>
-                                        
+
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">Instructions</label>
                                             <textarea
@@ -2038,7 +2207,7 @@ export default function CollegeSkillTasks() {
                                                 ))}
                                             </select>
                                         </div>
-                                        
+
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">Total Points *</label>
                                             <input
@@ -2049,7 +2218,7 @@ export default function CollegeSkillTasks() {
                                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                             />
                                         </div>
-                                        
+
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">Due Date *</label>
                                             <input
@@ -2059,70 +2228,70 @@ export default function CollegeSkillTasks() {
                                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                             />
                                         </div>
-                                        
+
                                         <div className="md:col-span-3">
                                             <label className="block text-sm font-medium text-gray-700 mb-1">Instruction Files</label>
-                                            
+
                                             {/* Show existing attachment if present and not marked for removal */}
-                                            {selectedAssignment?.instruction_files && 
-                                             selectedAssignment.instruction_files.length > 0 && 
-                                             !removeExistingFile && (
-                                                <div className="mb-4">
-                                                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                                                        <div className="flex items-center justify-between">
-                                                            <div className="flex items-center gap-3">
-                                                                <PaperClipIcon className="w-5 h-5 text-blue-600" />
-                                                                <div>
-                                                                    <p className="text-sm font-medium text-blue-900">
-                                                                        Current attachment: {selectedAssignment.instruction_files[0].name}
-                                                                    </p>
-                                                                    <p className="text-xs text-blue-700">
-                                                                        {(selectedAssignment.instruction_files[0].size / 1024).toFixed(0)} KB
-                                                                    </p>
+                                            {selectedAssignment?.instruction_files &&
+                                                selectedAssignment.instruction_files.length > 0 &&
+                                                !removeExistingFile && (
+                                                    <div className="mb-4">
+                                                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                                            <div className="flex items-center justify-between">
+                                                                <div className="flex items-center gap-3">
+                                                                    <PaperClipIcon className="w-5 h-5 text-blue-600" />
+                                                                    <div>
+                                                                        <p className="text-sm font-medium text-blue-900">
+                                                                            Current attachment: {selectedAssignment.instruction_files[0].name}
+                                                                        </p>
+                                                                        <p className="text-xs text-blue-700">
+                                                                            {(selectedAssignment.instruction_files[0].size / 1024).toFixed(0)} KB
+                                                                        </p>
+                                                                    </div>
                                                                 </div>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setConfirmRemoveFileModal(true)}
+                                                                    className="flex items-center gap-1 px-3 py-1 text-sm text-red-600 hover:text-red-800 hover:bg-red-50 rounded-md transition-colors"
+                                                                >
+                                                                    <X size={16} />
+                                                                    Remove
+                                                                </button>
                                                             </div>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => setConfirmRemoveFileModal(true)}
-                                                                className="flex items-center gap-1 px-3 py-1 text-sm text-red-600 hover:text-red-800 hover:bg-red-50 rounded-md transition-colors"
-                                                            >
-                                                                <X size={16} />
-                                                                Remove
-                                                            </button>
                                                         </div>
                                                     </div>
-                                                </div>
-                                            )}
-                                            
+                                                )}
+
                                             {/* Show file upload input if no existing file or marked for removal */}
-                                            {(!selectedAssignment?.instruction_files || 
-                                              selectedAssignment.instruction_files.length === 0 || 
-                                              removeExistingFile) && (
-                                                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 transition-colors">
-                                                    <input
-                                                        type="file"
-                                                        accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png"
-                                                        onChange={(e) => handleFileUpload(e.target.files)}
-                                                        className="hidden"
-                                                        id="edit-instruction-files"
-                                                    />
-                                                    <label htmlFor="edit-instruction-files" className="cursor-pointer">
-                                                        <PaperClipIcon className="mx-auto h-8 w-8 text-gray-400" />
-                                                        <div className="mt-2">
-                                                            <p className="text-sm font-medium text-gray-900">
-                                                                {removeExistingFile ? 'Upload new file' : 'Upload instruction file'}
-                                                            </p>
-                                                            <p className="text-xs text-gray-500 mt-1">
-                                                                Click to browse files
-                                                            </p>
-                                                            <p className="text-xs text-gray-400 mt-1">
-                                                                Supports: PDF, DOC, DOCX, TXT, JPG, PNG (Max 5MB)
-                                                            </p>
-                                                        </div>
-                                                    </label>
-                                                </div>
-                                            )}
-                                            
+                                            {(!selectedAssignment?.instruction_files ||
+                                                selectedAssignment.instruction_files.length === 0 ||
+                                                removeExistingFile) && (
+                                                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 transition-colors">
+                                                        <input
+                                                            type="file"
+                                                            accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png"
+                                                            onChange={(e) => handleFileUpload(e.target.files)}
+                                                            className="hidden"
+                                                            id="edit-instruction-files"
+                                                        />
+                                                        <label htmlFor="edit-instruction-files" className="cursor-pointer">
+                                                            <PaperClipIcon className="mx-auto h-8 w-8 text-gray-400" />
+                                                            <div className="mt-2">
+                                                                <p className="text-sm font-medium text-gray-900">
+                                                                    {removeExistingFile ? 'Upload new file' : 'Upload instruction file'}
+                                                                </p>
+                                                                <p className="text-xs text-gray-500 mt-1">
+                                                                    Click to browse files
+                                                                </p>
+                                                                <p className="text-xs text-gray-400 mt-1">
+                                                                    Supports: PDF, DOC, DOCX, TXT, JPG, PNG (Max 5MB)
+                                                                </p>
+                                                            </div>
+                                                        </label>
+                                                    </div>
+                                                )}
+
                                             {/* Show newly selected files */}
                                             {taskForm.instruction_files.length > 0 && (
                                                 <div className="mt-4 space-y-2">
@@ -2151,7 +2320,7 @@ export default function CollegeSkillTasks() {
                                             )}
                                         </div>
                                     </div>
-                                    
+
                                     <div className="mt-4">
                                         <label className="flex items-center">
                                             <input
@@ -2174,11 +2343,10 @@ export default function CollegeSkillTasks() {
                                                 key={skill}
                                                 type="button"
                                                 onClick={() => toggleSkill(skill)}
-                                                className={`inline-flex items-center justify-center px-3 py-2 rounded-md border text-sm font-medium transition-colors ${
-                                                    taskForm.skill_outcomes.includes(skill)
+                                                className={`inline-flex items-center justify-center px-3 py-2 rounded-md border text-sm font-medium transition-colors ${taskForm.skill_outcomes.includes(skill)
                                                         ? "border-blue-600 bg-blue-50 text-blue-700"
                                                         : "border-gray-200 bg-white text-gray-600 hover:border-blue-200"
-                                                }`}
+                                                    }`}
                                             >
                                                 <TagIcon className="h-4 w-4 mr-2" />
                                                 {skill}
@@ -2222,7 +2390,7 @@ export default function CollegeSkillTasks() {
                                     <X className="w-6 h-6 text-red-600" />
                                 </div>
                             </div>
-                            
+
                             <div className="text-center mb-6">
                                 <h3 className="text-lg font-semibold text-gray-900 mb-2">Remove Attachment</h3>
                                 <p className="text-sm text-gray-600">
@@ -2256,6 +2424,23 @@ export default function CollegeSkillTasks() {
                     </div>
                 </div>
             )}
+
+            {/* College Grading & Submissions Modal */}
+            <CollegeGradingModal
+                isOpen={gradingModalOpen}
+                onClose={() => {
+                    setGradingModalOpen(false);
+                    setGradingAssignment(null);
+                }}
+                assignment={gradingAssignment as any}
+                onGradeUpdated={() => {
+                    const user = useAuthStore.getState().user;
+                    if (user?.id) {
+                        fetchStatistics(user.id);
+                        fetchAssignments(user.id);
+                    }
+                }}
+            />
         </div>
     );
 }
