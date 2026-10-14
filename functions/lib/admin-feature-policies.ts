@@ -537,6 +537,8 @@ export const ADMIN_FEATURE_POLICIES: Record<string, Record<string, readonly stri
     "fetch-learner-assignments": ["program_sections"],
     "get-learner-assignment-stats": ["program_sections"],
     "update-learner-assignment-status": ["program_sections"],
+    "get-college-assignment-submissions": ["program_sections"],
+    "grade-college-assignment": ["program_sections"],
     "get-learner-class-info": ["program_sections"],
     "get-learner-type-info": ["program_sections"],
     "is-college-learner": ["program_sections"],

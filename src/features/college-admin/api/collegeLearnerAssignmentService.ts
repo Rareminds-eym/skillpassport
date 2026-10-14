@@ -94,3 +94,48 @@ export const submitCollegeAssignment = async (
         return { data: null, error: message };
     }
 };
+
+export const fetchCollegeAssignmentSubmissions = async (
+    assignmentId: string
+): Promise<ServiceResponse<any[]>> => {
+    try {
+        const result = await apiPost('/college-admin/classes', {
+            action: 'get-college-assignment-submissions',
+            assignment_id: assignmentId,
+        });
+
+        if (!result.success) {
+            return { data: null, error: result.error || 'Failed to fetch submissions' };
+        }
+        return { data: result.data || [], error: null };
+    } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Failed to fetch submissions';
+        return { data: null, error: message };
+    }
+};
+
+export const gradeCollegeAssignment = async (
+    learnerAssignmentId: string,
+    gradingData: {
+        grade_received: number;
+        total_points?: number;
+        instructor_feedback?: string;
+        educator_id?: string;
+    }
+): Promise<ServiceResponse<any>> => {
+    try {
+        const result = await apiPost('/college-admin/classes', {
+            action: 'grade-college-assignment',
+            learnerAssignmentId,
+            ...gradingData,
+        });
+
+        if (!result.success) {
+            return { data: null, error: result.error || 'Failed to grade assignment' };
+        }
+        return { data: result.data, error: null };
+    } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Failed to grade assignment';
+        return { data: null, error: message };
+    }
+};

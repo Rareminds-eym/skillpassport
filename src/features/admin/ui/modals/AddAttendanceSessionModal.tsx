@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Learner } from '@/features/college-admin';
-import { XMarkIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { BookOpenIcon, CalendarIcon, ClockIcon } from 'lucide-react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 
 // Add Attendance Session Modal
 const AddAttendanceSessionModal = ({
@@ -17,7 +18,15 @@ const AddAttendanceSessionModal = ({
   sections,
   subjects,
   faculty,
-  learners, trainingSubjects=[],trainingSections=[],trainingSectionId="",onTrainingSectionChange,trainingError="",creationError="",saving=false,subjectsLoading=false,
+  learners,
+  trainingSubjects = [],
+  trainingSections = [],
+  trainingSectionId = "",
+  onTrainingSectionChange,
+  trainingError = "",
+  creationError = "",
+  saving = false,
+  subjectsLoading = false,
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -32,10 +41,58 @@ const AddAttendanceSessionModal = ({
   subjects: any[];
   faculty: any[];
   learners: Learner[];
-  trainingSubjects?: any[]; trainingSections?:any[]; trainingSectionId?:string; onTrainingSectionChange?:(id:string)=>void; trainingError?:string; saving?:boolean;
-  subjectsLoading?:boolean;
-  creationError?:string;
+  trainingSubjects?: any[];
+  trainingSections?: any[];
+  trainingSectionId?: string;
+  onTrainingSectionChange?: (id: string) => void;
+  trainingError?: string;
+  saving?: boolean;
+  subjectsLoading?: boolean;
+  creationError?: string;
 }) => {
+  const [subjectSearch, setSubjectSearch] = useState('');
+  const [showSubjectDropdown, setShowSubjectDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowSubjectDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Filter subjects based on search
+  const filteredAcademicSubjects = useMemo(() => {
+    if (!subjectSearch) return subjects;
+    const search = subjectSearch.toLowerCase();
+    return subjects.filter(subj =>
+      subj.label?.toLowerCase().includes(search) ||
+      subj.value?.toLowerCase().includes(search)
+    );
+  }, [subjects, subjectSearch]);
+
+  const filteredTrainingSubjects = useMemo(() => {
+    if (!subjectSearch) return trainingSubjects;
+    const search = subjectSearch.toLowerCase();
+    return trainingSubjects.filter(subj =>
+      subj.label?.toLowerCase().includes(search) ||
+      subj.value?.toLowerCase().includes(search)
+    );
+  }, [trainingSubjects, subjectSearch]);
+
+  const totalFilteredCount = filteredAcademicSubjects.length + filteredTrainingSubjects.length;
+
+  const selectedSubjectLabel = useMemo(() => {
+    if (!formData.subject) return '';
+    const all = [...subjects, ...trainingSubjects];
+    const found = all.find(s => s.value === formData.subject);
+    return found ? found.label : formData.subject;
+  }, [formData.subject, subjects, trainingSubjects]);
+
   // Validation: only end-after-start is enforced — sessions may be
   // created for any past or future date/time (backfill supported).
   const validateDateTime = () => {
@@ -208,29 +265,199 @@ const AddAttendanceSessionModal = ({
                     </select>
                   </div>
 
-                  {trainingSections.length>1&&<label className="block text-sm">Training academic year *<select value={trainingSectionId} onChange={e=>onTrainingSectionChange?.(e.target.value)} className="w-full rounded border p-2"><option value="">Select exact class year</option>{trainingSections.map(x=><option key={x.id} value={x.id}>{x.academic_year} ? {x.section}</option>)}</select></label>}
-                  {trainingError&&<p role="alert" className="text-sm text-red-700">{trainingError}</p>}
-                  <div>
+                  {trainingSections.length > 1 && (
+                    <label className="block text-sm">
+                      Training academic year *
+                      <select
+                        value={trainingSectionId}
+                        onChange={(e) => onTrainingSectionChange?.(e.target.value)}
+                        className="w-full rounded border p-2"
+                      >
+                        <option value="">Select exact class year</option>
+                        {trainingSections.map((x) => (
+                          <option key={x.id} value={x.id}>
+                            {x.academic_year} – {x.section}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
+                  {trainingError && (
+                    <p role="alert" className="text-sm text-red-700">
+                      {trainingError}
+                    </p>
+                  )}
+
+                  <div className="relative" ref={dropdownRef}>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Subject *
                     </label>
+
+                    {/* Searchable input */}
+                    <div className="relative">
+                      <div className="relative">
+                        <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
+                        <input
+                          type="text"
+                          value={formData.subject ? selectedSubjectLabel : subjectSearch}
+                          onChange={(e) => {
+                            setSubjectSearch(e.target.value);
+                            setShowSubjectDropdown(true);
+                            if (!e.target.value) {
+                              onFormChange("subject", "");
+                            }
+                          }}
+                          onFocus={() => {
+                            if (!formData.subject) {
+                              setShowSubjectDropdown(true);
+                            }
+                          }}
+                          placeholder={
+                            subjectsLoading
+                              ? 'Loading subjects...'
+                              : subjects.length === 0 && trainingSubjects.length === 0
+                              ? 'No subjects available'
+                              : 'Search subjects...'
+                          }
+                          disabled={!formData.semester || subjectsLoading || (subjects.length === 0 && trainingSubjects.length === 0)}
+                          className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60"
+                        />
+                      </div>
+
+                      {/* Custom searchable dropdown */}
+                      {showSubjectDropdown && !formData.subject && totalFilteredCount > 0 && formData.semester && !subjectsLoading && (
+                        <div className="absolute z-20 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-xl max-h-60 overflow-y-auto divide-y divide-gray-100">
+                          {filteredAcademicSubjects.length > 0 && (
+                            <div>
+                              <div className="px-3 py-1.5 text-xs font-semibold text-gray-500 bg-gray-50 uppercase tracking-wider sticky top-0">
+                                Academic Subjects
+                              </div>
+                              {filteredAcademicSubjects.map((subj) => (
+                                <button
+                                  key={subj.value}
+                                  type="button"
+                                  onClick={() => {
+                                    onFormChange("subject", subj.value);
+                                    setSubjectSearch('');
+                                    setShowSubjectDropdown(false);
+                                  }}
+                                  className="w-full text-left px-3 py-2.5 hover:bg-indigo-50 focus:bg-indigo-50 focus:outline-none transition-colors border-b border-gray-50 last:border-0"
+                                >
+                                  <div className="font-medium text-gray-900">{subj.label}</div>
+                                  {subj.value !== subj.label && (
+                                    <div className="text-xs text-gray-500">{subj.value}</div>
+                                  )}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+
+                          {filteredTrainingSubjects.length > 0 && (
+                            <div>
+                              <div className="px-3 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 uppercase tracking-wider sticky top-0">
+                                Training Courses
+                              </div>
+                              {filteredTrainingSubjects.map((subj) => (
+                                <button
+                                  key={subj.value}
+                                  type="button"
+                                  onClick={() => {
+                                    onFormChange("subject", subj.value);
+                                    setSubjectSearch('');
+                                    setShowSubjectDropdown(false);
+                                  }}
+                                  className="w-full text-left px-3 py-2.5 hover:bg-indigo-50 focus:bg-indigo-50 focus:outline-none transition-colors border-b border-gray-50 last:border-0"
+                                >
+                                  <div className="font-medium text-gray-900">{subj.label}</div>
+                                  {subj.value !== subj.label && (
+                                    <div className="text-xs text-gray-500">{subj.value}</div>
+                                  )}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Clear selection button */}
+                      {formData.subject && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onFormChange("subject", "");
+                            setSubjectSearch('');
+                          }}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100"
+                          title="Clear selection"
+                        >
+                          <XMarkIcon className="h-5 w-5" />
+                        </button>
+                      )}
+                    </div>
+
+                    {subjectSearch && totalFilteredCount === 0 && (
+                      <p className="mt-1 text-sm text-gray-500">No subjects found matching "{subjectSearch}"</p>
+                    )}
+
+                    {/* Accessible and test-compatible hidden select */}
                     <select
                       aria-label="Subject"
                       value={formData.subject}
                       onChange={(e) => onFormChange("subject", e.target.value)}
-                      disabled={!formData.semester || subjectsLoading || (subjects.length===0 && trainingSubjects.length===0)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60"
+                      disabled={!formData.semester || subjectsLoading || (subjects.length === 0 && trainingSubjects.length === 0)}
+                      className="sr-only"
+                      tabIndex={-1}
+                      aria-hidden="true"
                     >
-                      <option value="">{subjectsLoading?'Loading subjects...':subjects.length===0&&trainingSubjects.length===0?'No subjects available':'Select Subject'}</option>
-                      {subjects.length>0&&<optgroup label="Academic Subjects">{subjects.map((subj) => (
-                        <option key={subj.value} value={subj.value}>
-                          {subj.label}
-                        </option>
-                      ))}</optgroup>}
-                      {trainingSubjects.length>0&&<optgroup label="Training Courses">{trainingSubjects.map(subj=><option key={subj.value} value={subj.value}>{subj.label}</option>)}</optgroup>}
+                      <option value="">
+                        {subjectsLoading
+                          ? 'Loading subjects...'
+                          : subjects.length === 0 && trainingSubjects.length === 0
+                          ? 'No subjects available'
+                          : 'Select Subject'}
+                      </option>
+                      {subjects.length > 0 && (
+                        <optgroup label="Academic Subjects">
+                          {subjects.map((subj) => (
+                            <option key={subj.value} value={subj.value}>
+                              {subj.label}
+                            </option>
+                          ))}
+                        </optgroup>
+                      )}
+                      {trainingSubjects.length > 0 && (
+                        <optgroup label="Training Courses">
+                          {trainingSubjects.map((subj) => (
+                            <option key={subj.value} value={subj.value}>
+                              {subj.label}
+                            </option>
+                          ))}
+                        </optgroup>
+                      )}
                     </select>
-                    <p className="mt-1 text-xs text-gray-500">{subjectsLoading?'Loading courses for the selected class and date...':!formData.semester?'Select a program and semester to list subjects.':!formData.section?'Select a section to list mapped training courses.':!formData.date?'Choose a session date to list mapped training courses.':!trainingSectionId?(trainingSections.length>1?'Select the exact class academic year to list training courses.':'No active class matches the selected program, semester and section.'):trainingSubjects.length===0?'No training courses are mapped to this class for the selected date.':'Selecting a training course fills its assigned faculty automatically.'}</p>
-                    {!subjectsLoading&&formData.semester&&subjects.length===0&&<p role="note" className="mt-2 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-3">No academic subjects are mapped to {selectedCourseLabel}{selectedSemesterLabel ? `, ${selectedSemesterLabel}` : ''} yet — map subjects under Curriculum first, or pick a Training Course from the list above.</p>}
+
+                    <p className="mt-1 text-xs text-gray-500">
+                      {subjectsLoading
+                        ? 'Loading courses for the selected class and date...'
+                        : !formData.semester
+                        ? 'Select a program and semester to list subjects.'
+                        : !formData.section
+                        ? 'Select a section to list mapped training courses.'
+                        : !formData.date
+                        ? 'Choose a session date to list mapped training courses.'
+                        : !trainingSectionId
+                        ? trainingSections.length > 1
+                          ? 'Select the exact class academic year to list training courses.'
+                          : 'No active class matches the selected program, semester and section.'
+                        : trainingSubjects.length === 0
+                        ? 'No training courses are mapped to this class for the selected date.'
+                        : 'Selecting a training course fills its assigned faculty automatically.'}
+                    </p>
+                    {!subjectsLoading && formData.semester && subjects.length === 0 && (
+                      <p role="note" className="mt-2 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                        No academic subjects are mapped to {selectedCourseLabel}{selectedSemesterLabel ? `, ${selectedSemesterLabel}` : ''} yet — map subjects under Curriculum first, or pick a Training Course from the list above.
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -402,13 +629,18 @@ const AddAttendanceSessionModal = ({
               {/* Summary Text */}
               <div className="text-sm text-gray-600 break-words">
                 <strong>Summary:</strong>{' '}
-                {[...subjects,...trainingSubjects].find(s => s.value === formData.subject)?.label || formData.subject} - {' '}
+                {[...subjects, ...trainingSubjects].find(s => s.value === formData.subject)?.label || formData.subject} - {' '}
                 {faculty.find(f => f.value === formData.faculty)?.label || formData.faculty} • {' '}
                 {courses.find(c => c.value === formData.course)?.label || formData.course} Sem {formData.semester} ({formData.section}) • {' '}
                 {calculateDuration()}
               </div>
 
-              {creationError && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{creationError}</p>}
+              {creationError && (
+                <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                  {creationError}
+                </p>
+              )}
+
               {/* Action Buttons */}
               <div className="flex gap-3 justify-end">
                 <button
@@ -448,4 +680,4 @@ const AddAttendanceSessionModal = ({
   );
 };
 
-export default AddAttendanceSessionModal
+export default AddAttendanceSessionModal;
