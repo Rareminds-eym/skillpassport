@@ -806,6 +806,7 @@ async function generateAndUploadReceipt(params: {
     phone?: string;
   };
 }): Promise<void> {
+  if (params.paymentId) { logger.info('TEMP-EXPERIMENT: receipt generation disabled'); return; } // TEMP-EXPERIMENT
   const {
     env,
     supabase,
