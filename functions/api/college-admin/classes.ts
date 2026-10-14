@@ -220,6 +220,7 @@ async function getCollegeClassById(supabase: ReturnType<typeof getServiceClient>
 }
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
+  const startTime = Date.now();
   const user = getContextUser(context);
   const env = context.env as Record<string, string>;
   const supabase = getServiceClient(env as any);
@@ -232,9 +233,8 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   }
 
   const { action, ...params } = body;
+  console.log('[classes.ts] POST request received - action:', action, 'params:', JSON.stringify(params));
   if (!action) return apiError(400, 'VALIDATION_ERROR', 'Missing action parameter', context.request);
-
-  const startTime = Date.now();
 
   try {
     switch (action) {
@@ -1190,84 +1190,351 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         if (!learnerAssignmentId) {
           return apiError(400, 'VALIDATION_ERROR', 'Missing learnerAssignmentId', context.request, { startTime });
         }
+
+        const now = new Date().toISOString();
+        const submissionFiles = submissionData.submission_files || null;
+        const submissionUrl = submissionData.submission_url || null;
+        const submissionContent = submissionData.submission_content || null;
+
+        let submissionType = submissionData.submission_type;
+        if (!submissionType) {
+          if (submissionFiles && Array.isArray(submissionFiles) && submissionFiles.length > 0) {
+            submissionType = 'file';
+          } else if (submissionUrl) {
+            submissionType = 'url';
+          } else if (submissionContent) {
+            submissionType = 'text';
+          } else {
+            submissionType = 'other';
+          }
+        }
+
+        // Fetch assignment due_date if available to check is_late
+        let isLate = false;
+        try {
+          const { data: existingRow } = await supabase
+            .from('college_learner_assignments')
+            .select('assignment_id, college_assignments(due_date)')
+            .eq('learner_assignment_id', learnerAssignmentId)
+            .maybeSingle();
+
+          const dueDate = (existingRow as any)?.college_assignments?.due_date;
+          if (dueDate) {
+            isLate = new Date() > new Date(dueDate);
+          }
+        } catch (e) {
+          console.warn('[submit-assignment] Could not determine due date:', e);
+        }
+
+        const updatePayload: Record<string, any> = {
+          status: 'submitted',
+          completed_date: now,
+          submission_date: now,
+          updated_date: now,
+          submission_type: submissionType,
+          submission_content: submissionContent,
+          submission_url: submissionUrl,
+          submission_files: submissionFiles,
+          is_late: isLate,
+        };
+
+        console.log('[submit-assignment] Updating college_learner_assignments:', learnerAssignmentId, updatePayload);
+
         const { data, error } = await supabase
           .from('college_learner_assignments')
-          .update({
-            status: 'submitted',
-            submission_content: submissionData.submission_content || null,
-            submission_url: submissionData.submission_url || null,
-            submission_files: submissionData.submission_files || null,
-            submission_date: new Date().toISOString(),
-          })
+          .update(updatePayload)
           .eq('learner_assignment_id', learnerAssignmentId)
           .select('*')
           .single();
+
+        if (error) {
+          console.error('[submit-assignment] DB error:', error);
+          return apiDbError(error, context.request, { startTime });
+        }
+
+        console.log('[submit-assignment] Success:', data?.learner_assignment_id);
+        return apiSuccess(data, context.request, { startTime });
+      }
+
+      case 'get-college-assignment-submissions': {
+        const assignmentId = params.assignment_id || params.assignmentId;
+        if (!assignmentId) {
+          return apiError(400, 'VALIDATION_ERROR', 'Missing assignment_id', context.request, { startTime });
+        }
+
+        const { data: rows, error } = await supabase
+          .from('college_learner_assignments')
+          .select('*')
+          .eq('assignment_id', assignmentId)
+          .eq('is_deleted', false)
+          .order('submission_date', { ascending: false, nullsFirst: false });
+
         if (error) return apiDbError(error, context.request, { startTime });
+
+        const learnerIds = Array.from(new Set((rows || []).map((r: any) => r.learner_id).filter(Boolean)));
+        let learnersMap = new Map<string, any>();
+        if (learnerIds.length > 0) {
+          const { data: learnersData } = await supabase
+            .from('learners')
+            .select('id, user_id, name, email, roll_number, registration_number, enrollmentNumber, branch_field, college_school_name, semester, section')
+            .or(`id.in.(${learnerIds.join(',')}),user_id.in.(${learnerIds.join(',')})`);
+
+          (learnersData || []).forEach((l: any) => {
+            if (l.id) learnersMap.set(l.id, l);
+            if (l.user_id) learnersMap.set(l.user_id, l);
+          });
+        }
+
+        const mapped = (rows || []).map((row: any) => {
+          const learner = learnersMap.get(row.learner_id) || {};
+          return {
+            learner_assignment_id: row.learner_assignment_id,
+            assignment_id: row.assignment_id,
+            learner_id: row.learner_id,
+            status: row.status,
+            priority: row.priority,
+            grade_received: row.grade_received,
+            grade_percentage: row.grade_percentage,
+            instructor_feedback: row.instructor_feedback,
+            feedback_date: row.feedback_date,
+            graded_by: row.graded_by,
+            graded_date: row.graded_date,
+            submission_date: row.submission_date,
+            submission_type: row.submission_type,
+            submission_content: row.submission_content,
+            submission_url: row.submission_url,
+            submission_files: row.submission_files || [],
+            is_late: row.is_late ?? false,
+            assigned_date: row.assigned_date,
+            completed_date: row.completed_date,
+            learner: {
+              id: learner.id || row.learner_id,
+              name: learner.name || 'Learner',
+              email: learner.email || '',
+              roll_number: learner.roll_number || learner.registration_number || learner.enrollmentNumber || '',
+              branch_field: learner.branch_field || '',
+              college_school_name: learner.college_school_name || '',
+              semester: learner.semester,
+              section: learner.section,
+            }
+          };
+        });
+
+        return apiSuccess(mapped, context.request, { startTime });
+      }
+
+      case 'grade-college-assignment': {
+        const { learnerAssignmentId, grade_received, total_points, instructor_feedback } = params;
+        if (!learnerAssignmentId || grade_received === undefined || grade_received === null) {
+          return apiError(400, 'VALIDATION_ERROR', 'Missing learnerAssignmentId or grade_received', context.request, { startTime });
+        }
+
+        let educatorId = params.educator_id || params.graded_by;
+        if (!educatorId) {
+          try {
+            const authUser = getContextUser(context);
+            educatorId = authUser?.id;
+          } catch {
+            // ignore
+          }
+        }
+
+        const numericGrade = parseFloat(grade_received);
+        const total = total_points ? parseFloat(total_points) : 100;
+        const gradePercentage = total > 0 ? Math.round(((numericGrade / total) * 100) * 100) / 100 : 0;
+        const now = new Date().toISOString();
+
+        const updatePayload: Record<string, any> = {
+          grade_received: numericGrade,
+          grade_percentage: gradePercentage,
+          instructor_feedback: instructor_feedback || null,
+          graded_by: educatorId || null,
+          graded_date: now,
+          feedback_date: now,
+          status: 'graded',
+          completed_date: now,
+          updated_date: now,
+        };
+
+        const { data, error } = await supabase
+          .from('college_learner_assignments')
+          .update(updatePayload)
+          .eq('learner_assignment_id', learnerAssignmentId)
+          .select()
+          .single();
+
+        if (error) {
+          console.error('[grade-college-assignment] DB error:', error);
+          return apiDbError(error, context.request, { startTime });
+        }
+
         return apiSuccess(data, context.request, { startTime });
       }
 
       case 'fetch-learner-assignments': {
         const { learnerId } = params;
+        console.log('[fetch-learner-assignments] Starting - learnerId:', learnerId);
         if (!learnerId) return apiError(400, 'VALIDATION_ERROR', 'Missing learnerId', context.request, { startTime });
+        
+        // Resolve candidate IDs (both learners.id and learners.user_id)
+        const candidateIds = new Set<string>();
+        candidateIds.add(learnerId);
+
+        try {
+          const authUser = getContextUser(context);
+          if (authUser?.id) candidateIds.add(authUser.id);
+        } catch {
+          // ignore
+        }
+
+        const { data: learnerRecord } = await supabase
+          .from('learners')
+          .select('id, user_id')
+          .or(`id.eq.${learnerId},user_id.eq.${learnerId}`)
+          .maybeSingle();
+
+        if (learnerRecord) {
+          if (learnerRecord.id) candidateIds.add(learnerRecord.id);
+          if (learnerRecord.user_id) candidateIds.add(learnerRecord.user_id);
+        }
+
+        const candidateIdList = Array.from(candidateIds);
+        console.log('[fetch-learner-assignments] Candidate IDs:', candidateIdList);
+
         const { data, error } = await supabase
           .from('college_learner_assignments')
           .select(`*,
             college_assignments!inner(
-              assignment_id, title, description, course_name,
-              assignment_type, skill_outcomes, due_date,
-              total_points, educator_name, document_pdf,
+              assignment_id, title, description, instructions, course_name, course_code,
+              assignment_type, skill_outcomes, due_date, available_from, allow_late_submission,
+              total_points, educator_name, document_pdf, instruction_files,
               created_date, is_deleted
             )`)
-          .eq('learner_id', learnerId)
-          .order('created_date', { ascending: false });
+          .in('learner_id', candidateIdList)
+          .eq('is_deleted', false)
+          .order('assigned_date', { ascending: false });
+
+        console.log('[fetch-learner-assignments] Query result - error:', error);
+        console.log('[fetch-learner-assignments] Query result - rows count:', data?.length || 0);
+
         if (error) return apiDbError(error, context.request, { startTime });
-        const mapped = (data || []).map((row: any) => {
-          const a = row.college_assignments || {};
-          return {
-            learnerAssignmentId: row.learner_assignment_id,
-            assignmentId: a.assignment_id,
-            learnerId: row.learner_id,
-            title: a.title, description: a.description || '',
-            courseName: a.course_name,
-            assignmentType: a.assignment_type,
-            skillOutcomes: a.skill_outcomes || [],
-            totalPoints: a.total_points,
-            educatorName: a.educator_name,
-            dueDate: a.due_date, documentPdf: a.document_pdf,
-            status: row.status, priority: row.priority || 'normal',
-            gradeReceived: row.grade_received,
-            gradePercentage: row.grade_percentage,
-            instructorFeedback: row.instructor_feedback,
-            submissionDate: row.submission_date,
-            submissionContent: row.submission_content,
-            submissionUrl: row.submission_url,
-            submissionFiles: row.submission_files,
-            isLate: row.is_late, createdDate: row.created_date,
-          };
-        });
+        const mapped = (data || [])
+          .filter((row: any) => !row.college_assignments?.is_deleted)
+          .map((row: any) => {
+            const a = row.college_assignments || {};
+            return {
+              // snake_case (matching CollegeLearnerAssignment interface)
+              learner_assignment_id: row.learner_assignment_id,
+              assignment_id: a.assignment_id,
+              learner_id: row.learner_id,
+              title: a.title,
+              description: a.description || '',
+              instructions: a.instructions || '',
+              course_name: a.course_name,
+              course_code: a.course_code || '',
+              assignment_type: a.assignment_type,
+              skill_outcomes: a.skill_outcomes || [],
+              total_points: a.total_points,
+              educator_name: a.educator_name,
+              due_date: a.due_date,
+              available_from: a.available_from,
+              allow_late_submission: a.allow_late_submission ?? true,
+              document_pdf: a.document_pdf,
+              instruction_files: a.instruction_files || [],
+              status: row.status,
+              priority: row.priority || 'medium',
+              grade_received: row.grade_received,
+              grade_percentage: row.grade_percentage,
+              instructor_feedback: row.instructor_feedback,
+              submission_date: row.submission_date,
+              submission_content: row.submission_content,
+              submission_url: row.submission_url,
+              submission_files: row.submission_files,
+              is_late: row.is_late ?? false,
+              created_date: row.assigned_date || row.created_date,
+
+              // camelCase (for backward compatibility)
+              learnerAssignmentId: row.learner_assignment_id,
+              assignmentId: a.assignment_id,
+              learnerId: row.learner_id,
+              courseName: a.course_name,
+              courseCode: a.course_code || '',
+              assignmentType: a.assignment_type,
+              skillOutcomes: a.skill_outcomes || [],
+              totalPoints: a.total_points,
+              educatorName: a.educator_name,
+              dueDate: a.due_date,
+              availableFrom: a.available_from,
+              allowLateSubmission: a.allow_late_submission ?? true,
+              documentPdf: a.document_pdf,
+              instructionFiles: a.instruction_files || [],
+              gradeReceived: row.grade_received,
+              gradePercentage: row.grade_percentage,
+              instructorFeedback: row.instructor_feedback,
+              submissionDate: row.submission_date,
+              submissionContent: row.submission_content,
+              submissionUrl: row.submission_url,
+              submissionFiles: row.submission_files,
+              isLate: row.is_late ?? false,
+              createdDate: row.assigned_date || row.created_date,
+            };
+          });
+
+        console.log('[fetch-learner-assignments] Mapped assignments count:', mapped.length);
         return apiSuccess(mapped, context.request, { startTime });
       }
 
       case 'get-learner-assignment-stats': {
         const { learnerId } = params;
+        console.log('[get-learner-assignment-stats] Starting - learnerId:', learnerId);
         if (!learnerId) return apiError(400, 'VALIDATION_ERROR', 'Missing learnerId', context.request, { startTime });
+
+        // Resolve candidate IDs (both learners.id and learners.user_id)
+        const candidateIds = new Set<string>();
+        candidateIds.add(learnerId);
+
+        try {
+          const authUser = getContextUser(context);
+          if (authUser?.id) candidateIds.add(authUser.id);
+        } catch {
+          // ignore
+        }
+
+        const { data: learnerRecord } = await supabase
+          .from('learners')
+          .select('id, user_id')
+          .or(`id.eq.${learnerId},user_id.eq.${learnerId}`)
+          .maybeSingle();
+
+        if (learnerRecord) {
+          if (learnerRecord.id) candidateIds.add(learnerRecord.id);
+          if (learnerRecord.user_id) candidateIds.add(learnerRecord.user_id);
+        }
+
+        const candidateIdList = Array.from(candidateIds);
+
         const { data, error } = await supabase
           .from('college_learner_assignments')
-          .select('status, grade_percentage, priority, due_date')
-          .eq('learner_id', learnerId);
+          .select(`status, grade_percentage, priority, 
+            college_assignments!inner(due_date, is_deleted)`)
+          .in('learner_id', candidateIdList)
+          .eq('is_deleted', false);
+
         if (error) return apiDbError(error, context.request, { startTime });
-        const list = data || [];
-        return apiSuccess({
+        const list = (data || []).filter((r: any) => !r.college_assignments?.is_deleted);
+        const stats = {
           total: list.length,
           completed: list.filter((r: any) => r.status === 'submitted' || r.status === 'graded').length,
-          pending: list.filter((r: any) => r.status === 'todo' || r.status === 'in_progress').length,
-          overdue: list.filter((r: any) => r.due_date && new Date(r.due_date) < new Date() && r.status !== 'submitted' && r.status !== 'graded').length,
+          pending: list.filter((r: any) => r.status === 'todo' || r.status === 'in_progress' || r.status === 'in-progress').length,
+          overdue: list.filter((r: any) => r.college_assignments?.due_date && new Date(r.college_assignments.due_date) < new Date() && r.status !== 'submitted' && r.status !== 'graded').length,
           graded: list.filter((r: any) => r.status === 'graded').length,
           averageGrade: (() => {
             const graded = list.filter((r: any) => r.grade_percentage != null);
             return graded.length > 0 ? Math.round(graded.reduce((s: number, r: any) => s + r.grade_percentage, 0) / graded.length) : 0;
           })(),
-        }, context.request, { startTime });
+        };
+        console.log('[get-learner-assignment-stats] Calculated stats:', JSON.stringify(stats, null, 2));
+        return apiSuccess(stats, context.request, { startTime });
       }
 
       case 'update-learner-assignment-status': {
@@ -1275,13 +1542,33 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         if (!learnerAssignmentId || !newStatus) {
           return apiError(400, 'VALIDATION_ERROR', 'Missing learnerAssignmentId or newStatus', context.request, { startTime });
         }
+        const now = new Date().toISOString();
+        const updatePayload: Record<string, any> = {
+          status: newStatus,
+          updated_date: now,
+        };
+        if (newStatus === 'submitted') {
+          updatePayload.completed_date = now;
+          updatePayload.submission_date = now;
+          updatePayload.submission_type = 'other';
+        } else if (newStatus === 'todo') {
+          updatePayload.completed_date = null;
+        } else if (newStatus === 'in-progress' || newStatus === 'in_progress') {
+          updatePayload.status = 'in-progress';
+          updatePayload.started_date = now;
+          updatePayload.completed_date = null;
+        }
+
         const { data, error } = await supabase
           .from('college_learner_assignments')
-          .update({ status: newStatus, updated_at: new Date().toISOString() })
+          .update(updatePayload)
           .eq('learner_assignment_id', learnerAssignmentId)
           .select()
           .single();
-        if (error) return apiDbError(error, context.request, { startTime });
+        if (error) {
+          console.error('[update-learner-assignment-status] DB error:', error);
+          return apiDbError(error, context.request, { startTime });
+        }
         return apiSuccess(data, context.request, { startTime });
       }
 

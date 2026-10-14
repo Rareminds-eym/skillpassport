@@ -3,6 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { Users, Target, FileText, Loader2, AlertCircle, X, Upload, Paperclip } from 'lucide-react';
 
 import { useLearnerDataByEmail } from '@/entities/learner/model/useLearnerDataByEmail';
+import { ssoClient } from '@/shared/api/ssoClient';
+import { getApiUrl } from '@/shared/api/apiUtils';
 
 // Import shared components
 import { CollegeClassHeader } from '@/features/myclass';
@@ -49,6 +51,7 @@ const CollegeMyClass: React.FC = () => {
   const userEmail = (useAuthStore.getState().user?.email || localStorage.getItem("userEmail")) || user?.email;
   const { learnerData, loading: authLoading } = useLearnerDataByEmail(userEmail);
   const learnerId = learnerData?.id;
+  const effectiveLearnerId = (user?.id || (learnerData as any)?.rawData?.user_id || (learnerData as any)?.user_id || learnerId) as string;
 
   // State management
   const [activeTab, setActiveTab] = useState<CollegeTabType>('overview');
@@ -87,6 +90,46 @@ const CollegeMyClass: React.FC = () => {
   const [showNotification, setShowNotification] = useState(false);
   const [notification, setNotification] = useState({ type: 'info' as 'info' | 'success' | 'error' | 'warning', title: '', message: '' });
 
+  // Helper function to download/view file with authentication
+  const handleFileAccess = async (fileUrl: string, fileName: string, mode: 'view' | 'download' = 'view') => {
+    try {
+      const STORAGE_API_URL = getApiUrl('storage');
+      const encodedUrl = encodeURIComponent(fileUrl);
+      const accessUrl = `${STORAGE_API_URL}/document-access?url=${encodedUrl}&mode=inline`;
+
+      // Fetch with authentication using ssoClient
+      const response = await ssoClient.fetch(accessUrl);
+
+      if (!response.ok) {
+        throw new Error(`Failed to access file: ${response.status}`);
+      }
+
+      // Get the blob
+      const blob = await response.blob();
+      
+      // Create object URL
+      const blobUrl = URL.createObjectURL(blob);
+      
+      // Open in new tab or download
+      if (mode === 'view') {
+        window.open(blobUrl, '_blank');
+      } else {
+        // Trigger download
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+      
+      // Clean up blob URL after a delay
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
+    } catch (error: any) {
+      showNotificationModal('error', 'File Access Error', error?.message || 'Failed to access file. Please try again.');
+    }
+  };
+
   // Fetch all data
   useEffect(() => {
     const fetchData = async () => {
@@ -103,10 +146,11 @@ const CollegeMyClass: React.FC = () => {
         const classData = await getCollegeLearnerClassInfo(learnerId);
         setClassInfo(classData);
 
-        // Fetch assignments and stats
+        // Fetch assignments and stats (using effectiveLearnerId or learnerId)
+        const targetId = effectiveLearnerId || learnerId;
         const [assignmentsResult, statsResult] = await Promise.all([
-          fetchCollegeLearnerAssignments(learnerId),
-          getCollegeLearnerAssignmentStats(learnerId)
+          fetchCollegeLearnerAssignments(targetId),
+          getCollegeLearnerAssignmentStats(targetId)
         ]);
 
         if (assignmentsResult.data) {
@@ -142,22 +186,27 @@ const CollegeMyClass: React.FC = () => {
     try {
       const result = await updateCollegeLearnerAssignmentStatus(learnerAssignmentId, newStatus);
 
+      if (result.error) {
+        showNotificationModal('error', 'Update Failed', result.error);
+        return;
+      }
+
       if (result.data) {
         // Update local state
         setAssignments(prev => prev.map(assignment =>
-          assignment.learner_assignment_id === learnerAssignmentId
+          assignment.learner_assignment_id === learnerAssignmentId || (assignment as any).learnerAssignmentId === learnerAssignmentId
             ? { ...assignment, status: newStatus }
             : assignment
         ));
 
         // Refresh stats
-        const statsResult = await getCollegeLearnerAssignmentStats(learnerId!);
+        const statsResult = await getCollegeLearnerAssignmentStats(effectiveLearnerId || learnerId!);
         if (statsResult.data) {
           setAssignmentStats(statsResult.data);
         }
       }
-    } catch (error) {
-      // Silent fail - error will be handled by UI state
+    } catch (error: any) {
+      showNotificationModal('error', 'Update Failed', error?.message || 'Failed to update status');
     }
   };
 
@@ -209,27 +258,28 @@ const CollegeMyClass: React.FC = () => {
     setUploadProgress(0);
 
     try {
-      // Get user token from Supabase session
-      const user = useAuthStore.getState().user;
-    const sessionError = null;
-
-      
       // Simulate initial progress
       setUploadProgress(10);
 
+      const fileNames = stagedFiles.map(f => f.name).join(', ');
+
       // Submit assignment with files using college service
-      await submitCollegeAssignment(
+      const submitRes = await submitCollegeAssignment(
         selectedAssignment.learner_assignment_id,
-        { submission_content: 'File submission' },
+        { submission_content: fileNames || 'File submission' },
         stagedFiles
       );
+
+      if (submitRes.error) {
+        throw new Error(submitRes.error);
+      }
 
       setUploadProgress(100);
 
       // Update local state
       setAssignments(prev => prev.map(a =>
         a.assignment_id === selectedAssignment.assignment_id
-          ? { ...a, status: 'submitted', submission_date: new Date().toISOString() }
+          ? { ...a, status: 'submitted', submission_date: new Date().toISOString(), submission_content: fileNames || 'File submission' }
           : a
       ));
 
@@ -389,7 +439,23 @@ const CollegeMyClass: React.FC = () => {
     }));
 
   // Convert college assignments to Assignment interface for AssignmentsTab
+  // Filter by available_from date - only show assignments that are available now
   const convertedAssignments: Assignment[] = assignments
+    .filter(assignment => {
+      // If no available_from date, show the assignment
+      if (!assignment.available_from) return true;
+      
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      // Parse available_from as local time
+      const availableFromStr = assignment.available_from.replace('Z', '').replace('+00:00', '').replace('T', ' ');
+      const availableDate = new Date(availableFromStr);
+      availableDate.setHours(0, 0, 0, 0);
+      
+      // Only show if available_from date has passed
+      return availableDate <= today;
+    })
     .sort((a, b) => new Date(b.due_date).getTime() - new Date(a.due_date).getTime()) // Latest due date first
     .map(assignment => ({
       assignment_id: assignment.assignment_id,
@@ -712,7 +778,7 @@ const CollegeMyClass: React.FC = () => {
                               </div>
                             </div>
                             <button
-                              onClick={() => window.open(file.url, '_blank')}
+                              onClick={() => handleFileAccess(file.url, file.name, 'view')}
                               className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
                             >
                               Download
@@ -725,54 +791,77 @@ const CollegeMyClass: React.FC = () => {
 
                   {/* Submission Info */}
                   {assignmentDetails.status === 'submitted' || assignmentDetails.status === 'graded' ? (
-                    <div>
-                      <h4 className="text-lg font-semibold text-gray-900 mb-3">Submission</h4>
-                      <div className="bg-green-50 rounded-lg p-4 border border-green-200">
-                        <p className="text-green-800 mb-2">
-                          <strong>Submitted on:</strong> {assignmentDetails.submission_date && new Date(assignmentDetails.submission_date).toLocaleDateString()}
-                        </p>
-                        {assignmentDetails.grade_received && (
+                    <>
+                      <div>
+                        <h4 className="text-lg font-semibold text-gray-900 mb-3">Submission</h4>
+                        <div className="bg-green-50 rounded-lg p-4 border border-green-200">
                           <p className="text-green-800 mb-2">
-                            <strong>Grade:</strong> {assignmentDetails.grade_received}/{assignmentDetails.total_points} ({assignmentDetails.grade_percentage}%)
+                            <strong>Submitted on:</strong> {assignmentDetails.submission_date && new Date(assignmentDetails.submission_date).toLocaleDateString()}
                           </p>
-                        )}
 
-                        {/* Submitted Files */}
-                        {assignmentDetails.submission_files && assignmentDetails.submission_files.length > 0 && (
-                          <div className="mt-3">
-                            <p className="text-green-800 font-medium mb-2">Submitted Files:</p>
-                            <div className="space-y-2">
-                              {assignmentDetails.submission_files.map((file: any, index: number) => (
-                                <div key={index} className="flex items-center justify-between p-3 bg-white rounded-lg border border-green-200">
-                                  <div className="flex items-center gap-3">
-                                    <Paperclip className="w-4 h-4 text-green-600" />
-                                    <div>
-                                      <p className="font-medium text-green-900" title={file.name}>
-                                        {file.name.length > 40 ? `${file.name.substring(0, 40)}...` : file.name}
-                                      </p>
-                                      <p className="text-sm text-green-600">{(file.size / 1024).toFixed(1)} KB • {file.type}</p>
+                          {/* Submitted Files */}
+                          {assignmentDetails.submission_files && assignmentDetails.submission_files.length > 0 && (
+                            <div className="mt-3">
+                              <p className="text-green-800 font-medium mb-2">Submitted Files:</p>
+                              <div className="space-y-2">
+                                {assignmentDetails.submission_files.map((file: any, index: number) => (
+                                  <div key={index} className="flex items-center justify-between p-3 bg-white rounded-lg border border-green-200">
+                                    <div className="flex items-center gap-3">
+                                      <Paperclip className="w-4 h-4 text-green-600" />
+                                      <div>
+                                        <p className="font-medium text-green-900" title={file.name}>
+                                          {file.name.length > 40 ? `${file.name.substring(0, 40)}...` : file.name}
+                                        </p>
+                                        <p className="text-sm text-green-600">{(file.size / 1024).toFixed(1)} KB • {file.type}</p>
+                                      </div>
                                     </div>
+                                    <button
+                                      onClick={() => handleFileAccess(file.url, file.name, 'view')}
+                                      className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+                                    >
+                                      Download
+                                    </button>
                                   </div>
-                                  <button
-                                    onClick={() => window.open(file.url, '_blank')}
-                                    className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
-                                  >
-                                    Download
-                                  </button>
-                                </div>
-                              ))}
+                                ))}
+                              </div>
                             </div>
-                          </div>
-                        )}
-
-                        {assignmentDetails.instructor_feedback && (
-                          <div className="mt-3">
-                            <p className="text-green-800 font-medium mb-1">Instructor Feedback:</p>
-                            <p className="text-green-700">{assignmentDetails.instructor_feedback}</p>
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </div>
-                    </div>
+
+                      {/* Assessment & Grading - Show if grade or feedback exists */}
+                      {(assignmentDetails.grade_received !== null && assignmentDetails.grade_received !== undefined) || assignmentDetails.instructor_feedback ? (
+                        <div>
+                          <h4 className="text-lg font-semibold text-gray-900 mb-3">Assessment & Grading</h4>
+                          <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
+                            {(assignmentDetails.grade_received !== null && assignmentDetails.grade_received !== undefined) && (
+                              <div className="mb-3">
+                                <p className="text-sm text-purple-600 font-medium mb-1">Grade / Score (out of {assignmentDetails.total_points})</p>
+                                <div className="flex items-baseline gap-2">
+                                  <p className="text-2xl font-bold text-purple-900">
+                                    {assignmentDetails.grade_received}/{assignmentDetails.total_points}
+                                  </p>
+                                  {assignmentDetails.grade_percentage !== null && assignmentDetails.grade_percentage !== undefined && (
+                                    <p className="text-lg font-semibold text-purple-700">
+                                      ({assignmentDetails.grade_percentage}%)
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+
+                            {assignmentDetails.instructor_feedback && (
+                              <div className={assignmentDetails.grade_received !== null && assignmentDetails.grade_received !== undefined ? '' : ''}>
+                                <p className="text-sm text-purple-600 font-medium mb-2">Educator Feedback</p>
+                                <div className="bg-white rounded-lg p-3 border border-purple-200">
+                                  <p className="text-gray-800 whitespace-pre-wrap">{assignmentDetails.instructor_feedback}</p>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ) : null}
+                    </>
                   ) : (
                     <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200">
                       <div>
