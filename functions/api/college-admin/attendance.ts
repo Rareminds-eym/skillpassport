@@ -681,6 +681,8 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
         const sessions = (data || []).map((session: any) => ({
           id: session.id,
+          instructorSource: session.instructor_source,
+          program_id: session.program_id,
           date: session.date,
           startTime: session.start_time,
           endTime: session.end_time,

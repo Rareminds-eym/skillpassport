@@ -1,5 +1,4 @@
 import { teaching } from '@/features/external-teaching/api/teachingApi';
-import CollegeTrainingAttendance from '@/features/external-teaching/ui/CollegeTrainingAttendance';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import toast from "react-hot-toast";
 import { Learner as ProfileLearner } from "@/entities/learner";
@@ -346,12 +345,12 @@ const AttendanceTracking: React.FC = () => {
   const [trainingSectionId,setTrainingSectionId]=useState('');
   const [trainingCourses,setTrainingCourses]=useState<any[]>([]);
   const [trainingError,setTrainingError]=useState('');
-  const [trainingSessionId,setTrainingSessionId]=useState('');
   const [trainingSectionsLoading,setTrainingSectionsLoading]=useState(false);
   const [trainingCoursesLoading,setTrainingCoursesLoading]=useState(false);
   const [academicSubjectsLoading,setAcademicSubjectsLoading]=useState(false);
   const sessionRequestId=useRef(crypto.randomUUID());
   const [savingSession,setSavingSession]=useState(false);
+  const [sessionCreationError,setSessionCreationError]=useState('');
   useEffect(()=>{let alive=true;setTrainingSections([]);setTrainingSectionId('');setTrainingCourses([]);setTrainingError('');setTrainingSectionsLoading(false);
     if(collegeId&&sessionFormData.course&&sessionFormData.semester){
       setTrainingSectionsLoading(true);
@@ -759,20 +758,30 @@ const AttendanceTracking: React.FC = () => {
         toast.error('Error loading session details');
         return;
       }
+      if (sessionsResponse.data.sessions.length === 0) {
+        toast.error('No sessions found for this subject group.');
+        return;
+      }
 
       // Fetch learners for this subject group — pass the session's exact
       // program_id so duplicate program names can never misroute the roster.
+      // With no sessions there is nothing to resolve: skip the lookup so a
+      // name-only fallback (and its ambiguity error) can never fire.
       const sessionsForLearners = sessionsResponse.data.sessions || [];
-      const exactProgramId = sessionsForLearners.map((s: any) => s.program_id).find((id: any) => !!id) || null;
-      const learnersResponse: any = await apiPost('/college-admin/attendance', {
-        action: 'get-subject-learners',
-        department: subjectGroup.department,
-        course: subjectGroup.course,
-        semester: subjectGroup.semester,
-        section: subjectGroup.section,
-        program_id: exactProgramId,
-        session_id: sessionsForLearners.length > 0 ? sessionsForLearners[0].id : null,
-      });
+      let learnersForGroup: any[] = [];
+      if (sessionsForLearners.length > 0) {
+        const exactProgramId = sessionsForLearners.map((s: any) => s.program_id).find((id: any) => !!id) || null;
+        const learnersResponse: any = await apiPost('/college-admin/attendance', {
+          action: 'get-subject-learners',
+          department: subjectGroup.department,
+          course: subjectGroup.course,
+          semester: subjectGroup.semester,
+          section: subjectGroup.section,
+          program_id: exactProgramId,
+          session_id: sessionsForLearners[0].id,
+        });
+        learnersForGroup = learnersResponse.data?.learners || [];
+      }
 
       const updatedSubjectGroup = {
         ...subjectGroup,
@@ -780,7 +789,7 @@ const AttendanceTracking: React.FC = () => {
       };
 
       setSelectedSubjectGroup(updatedSubjectGroup);
-      setLearners(learnersResponse.data?.learners || []);
+      setLearners(learnersForGroup);
 
       await fetchAttendanceRecords(subjectGroup.subject);
 
@@ -948,14 +957,27 @@ const AttendanceTracking: React.FC = () => {
       }
     }
 
+    setSessionCreationError('');
     setSavingSession(true);
     try {
+      // The dev worker can stall under load with no response at all — cap
+      // the wait so a hung request can never wedge the Create buttons again.
+      const withCreateTimeout = <T,>(promise: Promise<T>): Promise<T> =>
+        Promise.race([
+          promise,
+          new Promise<T>((_, reject) =>
+            setTimeout(() => reject(new Error('The server took too long to respond — please retry.')), 30000)
+          ),
+        ]);
       if(sessionFormData.subject.startsWith('training:')){
         const candidate=trainingCandidates.find(x=>x.mapping_id===sessionFormData.faculty);
         if(!candidate)throw new Error('Refresh the class/date selection and choose a mapped trainer.');
-        const created=await teaching('create_session',{mappingId:candidate.mapping_id,mappingVersion:candidate.assignment_version,courseId:candidate.course_id,date:sessionFormData.date,startTime:sessionFormData.startTime,endTime:sessionFormData.endTime,requestId:sessionRequestId.current,room:sessionFormData.roomNumber,remarks:sessionFormData.remarks});
-        sessionRequestId.current=crypto.randomUUID();setTrainingSessionId(created.id);setShowAddSessionModal(false);fetchSubjectGroups();
-        toast.success(startAttendance?'Session created. Mark learner attendance below.':'Training session created.');return;
+        const scheduled = await withCreateTimeout(teaching('college_sessions', { collegeId }));
+        const conflict = scheduled.find((item: any) => item.organization_staff_id === candidate.staff_id && item.date === sessionFormData.date && item.status !== 'cancelled' && item.start_time.slice(0,5) < sessionFormData.endTime && item.end_time.slice(0,5) > sessionFormData.startTime);
+        if (conflict) throw new Error(`${candidate.staff_name} is already booked for ${conflict.subject_name} from ${conflict.start_time.slice(0,5)} to ${conflict.end_time.slice(0,5)} on ${conflict.date}. Choose another time or trainer.`);
+        const created=await withCreateTimeout(teaching('create_session',{mappingId:candidate.mapping_id,mappingVersion:candidate.assignment_version,courseId:candidate.course_id,date:sessionFormData.date,startTime:sessionFormData.startTime,endTime:sessionFormData.endTime,requestId:sessionRequestId.current,room:sessionFormData.roomNumber,remarks:sessionFormData.remarks}));
+        sessionRequestId.current=crypto.randomUUID();setShowAddSessionModal(false);fetchSubjectGroups();
+        toast.success(startAttendance?'Session created. Mark learner attendance from its subject card.':'Training session created.');return;
       }
       // Look up faculty member via backend
       const facultyResponse: any = await apiPost('/college-admin/attendance', {
@@ -1021,6 +1043,7 @@ const AttendanceTracking: React.FC = () => {
         totallearners: 0,
       });
     } catch (err: any) {
+      setSessionCreationError(err.message);
       toast.error(`Error creating session: ${err.message}`);
     } finally { setSavingSession(false); }
   };
@@ -1668,8 +1691,6 @@ const AttendanceTracking: React.FC = () => {
         onExportHistory={handleExportlearnerHistory}
       />
 
-      {collegeId&&<CollegeTrainingAttendance collegeId={collegeId} initialSessionId={trainingSessionId}/>}
-
       {/* Add Attendance Session Modal */}
       <AddAttendanceSessionModal
         isOpen={showAddSessionModal}
@@ -1686,6 +1707,7 @@ const AttendanceTracking: React.FC = () => {
         trainingSectionId={trainingSectionId}
         onTrainingSectionChange={id=>{setTrainingSectionId(id);setSessionFormData(prev=>({...prev,subject:'',faculty:''}));}}
         trainingError={trainingError}
+        creationError={sessionCreationError}
         saving={savingSession}
         subjectsLoading={academicSubjectsLoading||trainingSectionsLoading||trainingCoursesLoading}
         trainingSubjects={Array.from(new Map(trainingCourses.map(x=>[x.course_id,{value:`training:${x.course_id}`,label:x.title}])).values())}

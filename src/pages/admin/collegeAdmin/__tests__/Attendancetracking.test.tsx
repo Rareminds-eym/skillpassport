@@ -16,7 +16,7 @@ beforeEach(()=>{
  cleanup();vi.clearAllMocks();
  f.courses.mockResolvedValue([]);
  f.api.mockImplementation(async(_path,params)=>({data:params.action==='resolve-college-id'?{collegeId:'college'}:params.action==='get-available-semesters'?[{semester:4}]:params.action==='get-filter-options'?{departments:[],courses:[],semesters:[],sections:['A'],faculty:[{value:'faculty',label:'College faculty'}],subjects:[]}:params.action==='get-analytics'?{totalSessions:0,completedSessions:0,avgAttendance:'0',totallearners:0,totalPresent:0,totalAbsent:0,lowAttendanceSessions:0}:{}}));
- f.teaching.mockImplementation(async(action,payload)=>action==='class_sections'?[{id:'class',section:'A',academic_year:'2026-2027'}]:action==='mapped_courses'?[{course_id:'course',title:'AI Tools for Teachers',mapping_id:'mapping',staff_name:'Hari',assignment_version:1}]:[]);
+ f.teaching.mockImplementation(async(action,payload)=>action==='class_sections'?[{id:'class',section:'A',academic_year:'2026-2027'}]:action==='mapped_courses'?[{course_id:'course',title:'AI Tools for Teachers',mapping_id:'mapping',staff_name:'Hari',staff_id:'staff',assignment_version:1}]:[]);
 });
 async function selectClass(){
  render(<AttendanceTracking/>);
@@ -65,4 +65,21 @@ it('shows the class lookup failure instead of silently clearing it and displayin
  expect(await screen.findByRole('alert')).toHaveTextContent('Class lookup unavailable');
  expect(screen.getByLabelText('Subject')).toBeDisabled();
  expect(screen.queryByRole('group',{name:'Training Courses'})).not.toBeInTheDocument();
+});
+
+it('shows the conflicting booking in the modal and re-enables creation without clearing the form',async()=>{
+ await selectClass();
+ await screen.findByRole('option',{name:'AI Tools for Teachers'});
+ await change('Subject','training:course');
+ await waitFor(()=>expect(screen.getByLabelText('Faculty')).toHaveValue('mapping'));
+ const selectedDate=(screen.getByLabelText('Session date') as HTMLInputElement).value;
+ await change('Start Time','16:00');
+ await change('End Time','17:00');
+ const original=f.teaching.getMockImplementation()!;
+ f.teaching.mockImplementation(async(action,payload)=>action==='college_sessions'?[{organization_staff_id:'staff',date:selectedDate,status:'scheduled',subject_name:'Existing Training',start_time:'14:00:00',end_time:'17:11:00'}]:original(action,payload));
+ fireEvent.click(screen.getByRole('button',{name:'Create Session',exact:true}));
+ expect(await screen.findByRole('alert')).toHaveTextContent('Hari is already booked for Existing Training from 14:00 to 17:11');
+ expect(screen.getByRole('button',{name:'Create Session',exact:true})).toBeEnabled();
+ expect(screen.getByLabelText('Subject')).toHaveValue('training:course');
+ expect(f.teaching.mock.calls.some(([action])=>action==='create_session')).toBe(false);
 });

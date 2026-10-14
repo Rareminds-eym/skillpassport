@@ -1,5 +1,5 @@
 import {useAssignedTeaching} from '@/features/external-teaching/model/teachingContext';
-import CollegeTrainingAttendance from '@/features/external-teaching/ui/CollegeTrainingAttendance';
+import { teaching } from '@/features/external-teaching/api/teachingApi';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useAuthStore } from '@/shared/model/authStore';
 import {
@@ -39,6 +39,9 @@ interface TimetableSlot {
   total_learners: number;
   attendance_marked?: boolean;
   is_locked?: boolean;
+  // Assigned-training (platform) sessions carry revisions for mark_learners.
+  version?: number;
+  attendanceRevision?: number;
 }
 
 interface Learner {
@@ -194,6 +197,9 @@ const MarkAttendance: React.FC = () => {
     if (educatorId && (schoolId || collegeId) && educatorType) {
       logger.info('All conditions met, loading schedule');
       loadTodaySchedule();
+    } else if (assignedTeaching) {
+      logger.info('Assigned teaching educator, loading assigned sessions');
+      loadAssignedSchedule();
     } else {
       logger.info('Conditions not met for loading schedule', {
         hasEducatorId: !!educatorId,
@@ -201,7 +207,43 @@ const MarkAttendance: React.FC = () => {
         hasEducatorType: !!educatorType
       });
     }
-  }, [educatorId, schoolId, collegeId, selectedDate, educatorType]);
+  }, [educatorId, schoolId, collegeId, selectedDate, educatorType, assignedTeaching]);
+
+  // Assigned-training educators have no school/college record — their
+  // schedule is their assigned platform sessions for the selected date,
+  // rendered in the same ScheduleView as every other educator.
+  const loadAssignedSchedule = async () => {
+    setLoading(true);
+    try {
+      const rows: any[] = await teaching('sessions');
+      const slots: TimetableSlot[] = (rows || [])
+        .filter((session: any) => session.date === selectedDate && session.status !== 'cancelled')
+        .map((session: any, index: number) => ({
+          id: session.id,
+          day_of_week: new Date(selectedDate).getDay(),
+          period_number: index + 1,
+          start_time: session.start_time,
+          end_time: session.end_time,
+          subject_name: session.subject_name,
+          room_number: session.room_number || '',
+          class_id: `${session.department_name}-${session.program_name}-${session.semester}-${session.section}`,
+          class_name: `${session.program_name} - Sem ${session.semester} ${session.section}`,
+          class_grade: `Semester ${session.semester}`,
+          class_section: session.section,
+          total_learners: session.total_learners || 0,
+          attendance_marked: session.status === 'completed',
+          is_locked: isSlotLocked(selectedDate),
+          version: session.version,
+          attendanceRevision: session.attendance_revision,
+        }));
+      setTodaySlots(slots);
+    } catch (error) {
+      logger.error('Error loading assigned schedule', error);
+      setTodaySlots([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const loadTodaySchedule = async () => {
     if (!educatorId || (!schoolId && !collegeId) || !educatorType) return;
@@ -361,10 +403,12 @@ const MarkAttendance: React.FC = () => {
       alert("Error: Invalid slot information. Please refresh the page and try again.");
       return;
     }
-    
+
     setLoading(true);
     try {
-      if (educatorType === 'school') {
+      if (assignedTeaching) {
+        await startAssignedAttendanceSession(slot);
+      } else if (educatorType === 'school') {
         await startSchoolAttendanceSession(slot);
       } else if (educatorType === 'college') {
         await startCollegeAttendanceSession(slot);
@@ -373,6 +417,45 @@ const MarkAttendance: React.FC = () => {
       alert("Failed to load learners. Please try again.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Same MarkingView as other educators, backed by the assigned session roster.
+  const startAssignedAttendanceSession = async (slot: TimetableSlot) => {
+    try {
+      const roster: any = await teaching('session_roster', { sessionId: slot.id });
+      const session = roster?.session;
+      if (!session) throw new Error('Session roster unavailable');
+      const formattedlearners: Learner[] = (roster.learners || []).map((s: any) => ({
+        id: s.learner_id,
+        name: s.learner_name,
+        roll_number: s.roll_number || "N/A",
+        grade: String(s.semester ?? slot.class_grade),
+        section: s.section || slot.class_section,
+      }));
+      const recordsMap = new Map<string, AttendanceRecord>();
+      const submitted = session.status === 'completed';
+      formattedlearners.forEach((learner) => {
+        const existing = (roster.learners || []).find((s: any) => s.learner_id === learner.id);
+        const status = submitted && existing?.status ? existing.status : "present";
+        recordsMap.set(learner.id, {
+          learner_id: learner.id,
+          status,
+          time_in: undefined,
+          remarks: "",
+        });
+      });
+      setActiveSession({
+        slot: { ...slot, version: session.version, attendanceRevision: session.attendance_revision },
+        learners: formattedlearners,
+        records: recordsMap,
+        isSubmitted: submitted,
+        submittedAt: submitted ? undefined : undefined,
+      });
+      setViewMode("marking");
+    } catch (error) {
+      logger.error('Error starting assigned attendance session', error);
+      alert("Failed to load learners. Please try again.");
     }
   };
 
@@ -558,7 +641,11 @@ const MarkAttendance: React.FC = () => {
   };
 
   const submitAttendance = async () => {
-    if (!activeSession || !educatorUserId || (!schoolId && !collegeId)) return;
+    if (!activeSession || !educatorUserId || (!schoolId && !collegeId)) {
+      // Assigned-training educators authenticate via the teaching context,
+      // not a school/college record — route them to the teaching API.
+      if (!activeSession || !assignedTeaching) return;
+    }
 
     if (!activeSession.slot.id) {
       alert("Error: Invalid slot information. Please refresh and try again.");
@@ -568,7 +655,7 @@ const MarkAttendance: React.FC = () => {
     // Validate that all learners have attendance marked
     const totallearners = activeSession.learners.length;
     const markedlearners = activeSession.records.size;
-    
+
     if (markedlearners < totallearners) {
       const unmarkedCount = totallearners - markedlearners;
       alert(`Please mark attendance for all learners. ${unmarkedCount} learner${unmarkedCount > 1 ? 's' : ''} still need${unmarkedCount === 1 ? 's' : ''} attendance marked.`);
@@ -579,7 +666,9 @@ const MarkAttendance: React.FC = () => {
 
     setSubmitting(true);
     try {
-      if (educatorType === 'school') {
+      if (assignedTeaching) {
+        await submitAssignedAttendance();
+      } else if (educatorType === 'school') {
         await submitSchoolAttendance();
       } else if (educatorType === 'college') {
         await submitCollegeAttendance();
@@ -590,6 +679,36 @@ const MarkAttendance: React.FC = () => {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const submitAssignedAttendance = async () => {
+    if (!activeSession) return;
+    const version = activeSession.slot.version;
+    const attendanceRevision = activeSession.slot.attendanceRevision;
+    if (!version && version !== 0) {
+      alert("Session data is stale. Please go back and reopen the class.");
+      return;
+    }
+    const records = Array.from(activeSession.records.values())
+      .filter((record) => record.status)
+      .map((record) => ({ learnerId: record.learner_id, status: record.status }));
+    if (records.length === 0) {
+      alert("Select at least one learner attendance status.");
+      return;
+    }
+    await teaching('mark_learners', {
+      sessionId: activeSession.slot.id,
+      version,
+      attendanceRevision,
+      records,
+    });
+    setActiveSession({
+      ...activeSession,
+      isSubmitted: true,
+      submittedAt: new Date().toISOString(),
+    });
+    setViewMode("schedule");
+    loadAssignedSchedule();
   };
 
   const submitSchoolAttendance = async () => {
@@ -743,8 +862,6 @@ const MarkAttendance: React.FC = () => {
     slotDate.setHours(hours, minutes, 0, 0);
     return slotDate > now;
   };
-
-  if(assignedTeaching)return <div className="min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8"><h1 className="text-2xl font-bold text-gray-900">Mark Attendance</h1><p className="mt-2 text-gray-600">Mark learner attendance for your college-created classes.</p><CollegeTrainingAttendance educator/></div>;
 
   return (
     <div className="min-h-screen bg-gray-50">

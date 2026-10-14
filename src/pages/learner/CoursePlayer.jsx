@@ -24,6 +24,8 @@ import CertificateNameModal from '@/shared/ui/CertificateNameModal';
 import { useUser } from '@/features/auth';
 import { useSessionRestore } from '@/features/courses/model/useSessionRestore';
 import { apiPost } from '@/shared/api/apiClient';
+import { useAssignedTeaching } from '@/features/external-teaching/model/teachingContext';
+import { loadPlayerCourse } from '@/features/courses/api/loadPlayerCourse';
 import { downloadCertificate } from '@/shared/lib/certificateUtils';
 import { enrollmentService as courseEnrollmentService } from '@/features/courses/api';
 import { courseProgressService } from '@/features/courses';
@@ -37,9 +39,11 @@ const CoursePlayer = () => {
   const { courseId } = useParams();
   const navigate = useNavigate();
   const user = useUser();
+  const assignedTeaching = useAssignedTeaching();
 
   // Get the correct back navigation path based on user role
   const getBackPath = () => {
+    if (assignedTeaching) return '/educator/browse-courses';
     switch (user?.role) {
       case 'educator':
         return '/educator/browse-courses';
@@ -813,7 +817,7 @@ const CoursePlayer = () => {
   // Fetch course data
   useEffect(() => {
     fetchCourse();
-  }, [courseId]);
+  }, [courseId, !!assignedTeaching]);
 
   // Fetch video and resources when lesson changes
   useEffect(() => {
@@ -1000,12 +1004,7 @@ const CoursePlayer = () => {
     try {
       setLoading(true);
 
-      const fullRes = await apiPost('/learner-pages/actions', {
-        action: 'fetch-course-full',
-        courseId,
-      });
-
-      const courseData = fullRes?.data;
+      const courseData = await loadPlayerCourse(courseId, !!assignedTeaching);
       if (!courseData) {
         navigate(getBackPath(), { replace: true });
         return;

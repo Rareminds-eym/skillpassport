@@ -18,6 +18,10 @@ export default function ExternalEducatorGate({children}:{children:ReactNode}){
   if(!result.context.external)return <>{children}</>;
   if(!result.context.delegatedAccess)return <div className="p-6"><h1 className="text-xl font-semibold">Teaching access pending</h1><p>Ask your Rareminds administrator to enable your assigned teaching access.</p></div>;
   const segment=location.pathname.split('/')[2]||'dashboard';
+  const parts=location.pathname.split('/');
+  // Assigned educators open assigned course content through the course
+  // player, exactly like other roles — only the course list itself redirects.
+  if(segment==='courses'&&parts[4]==='learn')return <AssignedTeachingContext.Provider value={result.context}><EducatorLayout/></AssignedTeachingContext.Provider>;
   if(!externalEducatorPaths.has(segment))return <Navigate to="/educator/dashboard" replace/>;
   if(segment==='courses')return <Navigate to="/educator/browse-courses" replace/>;
   return <AssignedTeachingContext.Provider value={result.context}><EducatorLayout/></AssignedTeachingContext.Provider>;

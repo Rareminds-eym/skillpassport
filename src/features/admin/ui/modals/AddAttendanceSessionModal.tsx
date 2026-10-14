@@ -17,7 +17,7 @@ const AddAttendanceSessionModal = ({
   sections,
   subjects,
   faculty,
-  learners, trainingSubjects=[],trainingSections=[],trainingSectionId="",onTrainingSectionChange,trainingError="",saving=false,subjectsLoading=false,
+  learners, trainingSubjects=[],trainingSections=[],trainingSectionId="",onTrainingSectionChange,trainingError="",creationError="",saving=false,subjectsLoading=false,
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -34,6 +34,7 @@ const AddAttendanceSessionModal = ({
   learners: Learner[];
   trainingSubjects?: any[]; trainingSections?:any[]; trainingSectionId?:string; onTrainingSectionChange?:(id:string)=>void; trainingError?:string; saving?:boolean;
   subjectsLoading?:boolean;
+  creationError?:string;
 }) => {
   // Validation: only end-after-start is enforced — sessions may be
   // created for any past or future date/time (backfill supported).
@@ -52,6 +53,13 @@ const AddAttendanceSessionModal = ({
   };
 
   const validationErrors = validateDateTime();
+
+  // Human-readable context for the empty academic-subjects warning.
+  const selectedCourseLabel =
+    courses.find((c) => String(c.value) === String(formData.course))?.label || 'this program';
+  const selectedSemesterLabel =
+    semesters.find((s) => String(s.value) === String(formData.semester))?.label ||
+    (formData.semester ? `Semester ${formData.semester}` : '');
 
   const calculateDuration = () => {
     if (formData.startTime && formData.endTime) {
@@ -222,7 +230,7 @@ const AddAttendanceSessionModal = ({
                       {trainingSubjects.length>0&&<optgroup label="Training Courses">{trainingSubjects.map(subj=><option key={subj.value} value={subj.value}>{subj.label}</option>)}</optgroup>}
                     </select>
                     <p className="mt-1 text-xs text-gray-500">{subjectsLoading?'Loading courses for the selected class and date...':!formData.semester?'Select a program and semester to list subjects.':!formData.section?'Select a section to list mapped training courses.':!formData.date?'Choose a session date to list mapped training courses.':!trainingSectionId?(trainingSections.length>1?'Select the exact class academic year to list training courses.':'No active class matches the selected program, semester and section.'):trainingSubjects.length===0?'No training courses are mapped to this class for the selected date.':'Selecting a training course fills its assigned faculty automatically.'}</p>
-                    {!subjectsLoading&&formData.semester&&subjects.length===0&&<p className="mt-1 text-xs text-gray-500">No academic subjects are mapped to this program and semester.</p>}
+                    {!subjectsLoading&&formData.semester&&subjects.length===0&&<p role="note" className="mt-2 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-3">No academic subjects are mapped to {selectedCourseLabel}{selectedSemesterLabel ? `, ${selectedSemesterLabel}` : ''} yet — map subjects under Curriculum first, or pick a Training Course from the list above.</p>}
                   </div>
 
                   <div>
@@ -272,6 +280,7 @@ const AddAttendanceSessionModal = ({
                       </label>
                       <input
                         type="time"
+                        aria-label="Start Time"
                         value={formData.startTime}
                         onChange={(e) => onFormChange("startTime", e.target.value)}
                         className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 border-gray-300"
@@ -283,6 +292,7 @@ const AddAttendanceSessionModal = ({
                       </label>
                       <input
                         type="time"
+                        aria-label="End Time"
                         value={formData.endTime}
                         onChange={(e) => onFormChange("endTime", e.target.value)}
                         className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${
@@ -398,6 +408,7 @@ const AddAttendanceSessionModal = ({
                 {calculateDuration()}
               </div>
 
+              {creationError && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{creationError}</p>}
               {/* Action Buttons */}
               <div className="flex gap-3 justify-end">
                 <button
@@ -410,23 +421,23 @@ const AddAttendanceSessionModal = ({
                   onClick={onCreateSession}
                   disabled={saving || validationErrors.length > 0}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    validationErrors.length > 0
+                    saving || validationErrors.length > 0
                       ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                       : 'bg-indigo-600 text-white hover:bg-indigo-700'
                   }`}
                 >
-                  Create Session
+                  {saving ? 'Creating…' : 'Create Session'}
                 </button>
                 <button
                   onClick={onCreateAndStart}
                   disabled={saving || validationErrors.length > 0}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
-                    validationErrors.length > 0
+                    saving || validationErrors.length > 0
                       ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                       : 'bg-green-600 text-white hover:bg-green-700'
                   }`}
                 >
-                  Create Session & Start Attendance
+                  {saving ? 'Creating…' : 'Create Session & Start Attendance'}
                 </button>
               </div>
             </div>

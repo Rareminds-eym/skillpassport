@@ -32,7 +32,20 @@ const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentP
 
   // Determine button text and icon
   const getButtonContent = () => {
-    if(readOnly)return {text:'Assigned teaching course',icon:BookOpen,disabled:true};
+    // Assigned teaching content is free to view — readOnly only blocks
+    // enrollment/purchase actions, never opening the course player.
+    if (readOnly) {
+      if (course.status !== 'Active') {
+        return { text: 'Coming Soon', icon: Play, disabled: true };
+      }
+      if (isCompleted) {
+        return { text: 'Review Course', icon: RotateCcw, disabled: false };
+      }
+      if (isInProgress) {
+        return { text: `Continue Learning (${progress.progress}%)`, icon: Play, disabled: false };
+      }
+      return { text: 'Start Learning', icon: Play, disabled: false };
+    }
     if (course.status !== 'Active') {
       return { text: 'Coming Soon', icon: Play, disabled: true };
     }
@@ -50,7 +63,11 @@ const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentP
 
   // Handle start course with plan-based access control
   const handleStartCourse = () => {
-    if(readOnly)return;
+    // Assigned teaching content bypasses the purchase/plan gate.
+    if (readOnly) {
+      onStartCourse(course);
+      return;
+    }
     if (!hasAccess) {
       setShowUpgradePrompt(true);
       return;
@@ -327,7 +344,7 @@ const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentP
                 <button
                   type="button"
                   onClick={handleStartCourse}
-                  disabled={readOnly || buttonContent.disabled || isRecordingInterest}
+                  disabled={buttonContent.disabled || isRecordingInterest}
                   className={`px-6 py-2.5 rounded-lg font-medium transition-colors flex items-center gap-2 ${buttonContent.disabled
                     ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                     : isCompleted
