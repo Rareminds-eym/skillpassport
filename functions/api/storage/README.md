@@ -65,3 +65,19 @@ Local Wrangler development uses Miniflare local R2 storage by default unless rem
 - Deletes use `R2_BUCKET.delete`.
 - File lists use `R2_BUCKET.list`.
 - Course resource downloads validate lesson access before streaming private course files.
+
+## Integration tests
+
+The storage integration suite runs by default with the real router and auth-core JWT verification. It uses an ephemeral SSO signing key, a JWKS service-binding fixture, and memory R2, so it needs no GoTrue or live database:
+
+```sh
+npm test -- --run functions/api/storage/__tests__/integration.test.ts
+```
+
+To run the same suite against a Pages development server with its SSO and R2 bindings, set `STORAGE_TEST_USER_1_TOKEN` and `STORAGE_TEST_USER_2_TOKEN` to unexpired SSO access tokens for two distinct, email-verified test users, then run:
+
+```sh
+npm run test:storage:live
+```
+
+`STORAGE_API_URL` defaults to `http://localhost:8788/api/storage`. Live mode fails when credentials are missing or invalid. It uploads test files and cleans up only the keys returned by those uploads. Presigned upload tests expect `410 PRESIGNED_UPLOAD_DISABLED`; file uploads use `/upload`.

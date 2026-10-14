@@ -6,8 +6,8 @@
  *
  * Source of truth: the app-DB shadow `public.roles` table (synced from the
  * sso-worker) and the app-owned `public.role_categories` table. The generator
- * reads both (READ-ONLY) and emits this file. A CI / pre-commit drift check
- * (task 18.2) re-runs the generator and fails if this file is stale.
+ * reads both (READ-ONLY) and emits this file. The local pre-commit drift check
+ * re-runs the generator and fails if this file is stale.
  *
  * Ordering is alphabetical for determinism (stable diffs for drift detection);
  * no runtime code depends on the order. Runtime authorization is enforced in

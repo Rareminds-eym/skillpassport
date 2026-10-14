@@ -103,164 +103,18 @@ api_url = "http://127.0.0.1"
 # OpenAI API Key to use for Supabase AI in the Supabase Studio.
 openai_api_key = "env(OPENAI_API_KEY)"
 
+# Authentication and email are owned by the SSO and email workers.
 [local_smtp]
 enabled = false
 
-# Port to use for the email testing server web interface.
-port = 54324
-
-# smtp_port = 54325
-# pop3_port = 54326
-# admin_email = "admin@email.com"
-# sender_name = "Admin"
-
+# Files are stored through the Cloudflare R2 binding.
 [storage]
 enabled = false
 
-# The maximum file size allowed (e.g. "5MB", "500KB").
-file_size_limit = "50MiB"
-
-[storage.image_transformation]
-enabled = false
-
+# Explicitly disable the service; omitting this table enables CLI defaults.
+# roles.sql supplies only the SQL compatibility helper needed by old migrations.
 [auth]
-# GoTrue / Supabase Auth is disabled locally: credentials are owned by the custom SSO worker, so
-# no auth container (not even the short-lived migration one) is started by `supabase start` or
-# `supabase db reset`.
-# `supabase/roles.sql` (local only) provides the one object the baseline policies need that the
-# Postgres image does not ship, `auth.jwt()`, because `postgres` cannot create it (no CREATE on
-# schema auth). The image itself provides auth.uid()/role()/email(), a minimal auth.users and
-# auth.refresh_tokens_id_seq. The [auth.*] subsections below are parsed but unused.
 enabled = false
-
-site_url = "http://127.0.0.1:8788"
-
-additional_redirect_urls = ["http://127.0.0.1:8788/**", "http://127.0.0.1:3000/**", "http://localhost:3000/**", "http://localhost:8788/**"]
-
-jwt_expiry = 3600
-
-# jwt_issuer = ""
-# signing_keys_path = "./signing_keys.json"
-
-enable_refresh_token_rotation = true
-refresh_token_reuse_interval = 10
-
-enable_signup = true
-enable_anonymous_sign_ins = false
-enable_manual_linking = false
-
-minimum_password_length = 6
-password_requirements = ""
-
-[auth.rate_limit]
-email_sent = 2
-sms_sent = 30
-anonymous_users = 30
-token_refresh = 150
-sign_in_sign_ups = 30
-token_verifications = 30
-web3 = 30
-
-# [auth.captcha]
-# enabled = true
-# provider = "hcaptcha"
-# secret = ""
-
-[auth.email]
-enable_signup = true
-double_confirm_changes = true
-enable_confirmations = false
-secure_password_change = false
-
-max_frequency = "1s"
-otp_length = 6
-otp_expiry = 3600
-
-# [auth.email.smtp]
-# enabled = true
-# host = "smtp.sendgrid.net"
-# port = 587
-# user = "apikey"
-# pass = "env(SENDGRID_API_KEY)"
-# admin_email = "admin@email.com"
-# sender_name = "Admin"
-
-# [auth.email.template.invite]
-# subject = "You have been invited"
-# content_path = "./supabase/templates/invite.html"
-
-# [auth.email.notification.password_changed]
-# enabled = true
-# subject = "Your password has been changed"
-# content_path = "./templates/password_changed_notification.html"
-
-[auth.sms]
-enable_signup = false
-enable_confirmations = false
-
-template = "Your code is {{ .Code }}"
-max_frequency = "5s"
-
-[auth.sms.twilio]
-enabled = false
-account_sid = ""
-message_service_sid = ""
-auth_token = "env(SUPABASE_AUTH_SMS_TWILIO_AUTH_TOKEN)"
-
-[auth.mfa]
-max_enrolled_factors = 10
-
-[auth.mfa.totp]
-enroll_enabled = false
-verify_enabled = false
-
-[auth.mfa.phone]
-enroll_enabled = false
-verify_enabled = false
-
-otp_length = 6
-template = "Your code is {{ .Code }}"
-max_frequency = "5s"
-
-# [auth.mfa.web_authn]
-# enroll_enabled = true
-# verify_enabled = true
-
-[auth.external.apple]
-enabled = false
-
-client_id = ""
-secret = "env(SUPABASE_AUTH_EXTERNAL_APPLE_SECRET)"
-redirect_uri = ""
-url = ""
-skip_nonce_check = false
-
-[auth.web3.solana]
-enabled = false
-
-[auth.third_party.firebase]
-enabled = false
-# project_id = "my-firebase-project"
-
-[auth.third_party.auth0]
-enabled = false
-# tenant = "my-auth0-tenant"
-# tenant_region = "us"
-
-[auth.third_party.aws_cognito]
-enabled = false
-# user_pool_id = "my-user-pool-id"
-# user_pool_region = "us-east-1"
-
-[auth.third_party.clerk]
-enabled = false
-# domain = "example.clerk.accounts.dev"
-
-[auth.oauth_server]
-enabled = false
-
-authorization_url_path = "/oauth/consent"
-allow_dynamic_registration = false
 
 [edge_runtime]
 enabled = false
@@ -286,9 +140,3 @@ backend = "postgres"
 [experimental]
 # OrioleDB is experimental and hosted-only.
 orioledb_version = ""
-
-# S3 settings for experimental features.
-s3_host = "env(S3_HOST)"
-s3_region = "env(S3_REGION)"
-s3_access_key = "env(S3_ACCESS_KEY)"
-s3_secret_key = "env(S3_SECRET_KEY)"
