@@ -4,7 +4,7 @@ import {act,cleanup,render,screen,fireEvent,waitFor} from '@testing-library/reac
 const f=vi.hoisted(()=>({teaching:vi.fn(),api:vi.fn(),courses:vi.fn()}));
 vi.mock('@/features/external-teaching/api/teachingApi',()=>({teaching:f.teaching}));
 vi.mock('@/features/external-teaching/ui/CollegeTrainingAttendance',()=>({default:()=>null}));
-vi.mock('@/features/admin',async()=>({AddAttendanceSessionModal:(await import('@/features/admin/ui/modals/AddAttendanceSessionModal')).default,AttendanceBulkImportModal:()=>null,AttendanceDetailsModal:()=>null,LearnerHistoryModal:()=>null}));
+vi.mock('@/features/admin',async()=>({AddAttendanceSessionModal:(await import('@/features/admin/ui/modals/AddAttendanceSessionModal')).default,AttendanceBulkImportModal:()=>null,AttendanceDetailsModal:({isOpen}:any)=>isOpen?<div>Existing attendance details</div>:null,LearnerHistoryModal:()=>null}));
 vi.mock('@/features/college-admin',()=>({curriculumService:{getDepartments:async()=>[{id:'department',name:'Business'}],getPrograms:async()=>[{id:'program',name:'MBA'}],getCourses:f.courses}}));
 vi.mock('@/shared/api/apiClient',()=>({apiPost:f.api}));
 vi.mock('@/shared/lib',()=>({formatProgramLabel:(name:string)=>name}));
@@ -82,4 +82,15 @@ it('shows the conflicting booking in the modal and re-enables creation without c
  expect(screen.getByRole('button',{name:'Create Session',exact:true})).toBeEnabled();
  expect(screen.getByLabelText('Subject')).toHaveValue('training:course');
  expect(f.teaching.mock.calls.some(([action])=>action==='create_session')).toBe(false);
+});
+
+it('opens training card sessions through their scoped roster when the legacy API excludes them',async()=>{
+ const original=f.api.getMockImplementation()!;
+ f.api.mockImplementation(async(path,params)=>params.action==='get-subject-groups'?{data:{groups:[{subject:'Training',faculty:'Hari',department:'Business',course:'MBA',semester:4,section:'A',sessions:[],totalSessions:1,totallearners:1,avgAttendancePercentage:0,totalPresentCount:0,totalAbsentCount:0,totalLateCount:0,totalExcusedCount:0,dateRange:{first:'2026-10-14',last:'2026-10-14'},latestStatus:'scheduled'}],total:1}}:params.action==='get-sessions'?{data:{sessions:[]}}:original(path,params));
+ f.teaching.mockImplementation(async action=>action==='college_sessions'?[{id:'session',subject_name:'Training',faculty_name:'Hari',department_name:'Business',program_name:'MBA',semester:4,section:'A',date:'2026-10-14',start_time:'09:00',end_time:'10:00',status:'scheduled'}]:action==='session_roster'?{session:{id:'session'},learners:[{learner_id:'learner',learner_name:'Anu',roll_number:'1',status:null}]}:[]);
+ render(<AttendanceTracking/>);
+ fireEvent.click(await screen.findByText('Training'));
+ expect(await screen.findByText('Existing attendance details')).toBeInTheDocument();
+ expect(f.teaching).toHaveBeenCalledWith('session_roster',{sessionId:'session'});
+ expect(f.api.mock.calls.some(([,params])=>params.action==='get-subject-learners')).toBe(false);
 });

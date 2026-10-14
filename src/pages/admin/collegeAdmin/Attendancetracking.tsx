@@ -754,12 +754,44 @@ const AttendanceTracking: React.FC = () => {
         },
       });
 
+      const trainingRows = (await teaching('college_sessions', { collegeId })).filter((row: any) =>
+        row.subject_name === subjectGroup.subject && row.department_name === subjectGroup.department &&
+        row.program_name === subjectGroup.course && Number(row.semester) === Number(subjectGroup.semester) && row.section === subjectGroup.section);
+      if (trainingRows.length) {
+        const rosters = await Promise.all(trainingRows.map((row: any) => teaching('session_roster', { sessionId: row.id })));
+        const trainingSessions = trainingRows.map((row: any) => ({
+          id: row.id, date: row.date, startTime: row.start_time, endTime: row.end_time,
+          subject: row.subject_name, faculty: row.faculty_name, department: row.department_name,
+          course: row.program_name, program_id: row.program_id, semester: row.semester, section: row.section,
+          totallearners: row.total_learners, presentCount: row.present_count, absentCount: row.absent_count,
+          lateCount: row.late_count, excusedCount: row.excused_count, attendancePercentage: row.attendance_percentage,
+          status: row.status, instructorSource: 'platform_staff',
+        }));
+        const scopedLearners = rosters.flatMap((roster: any, index: number) => roster.learners.map((learner: any) => ({
+          id: learner.learner_id, name: learner.learner_name, rollNumber: learner.roll_number,
+          department: trainingRows[index].department_name, course: trainingRows[index].program_name,
+          semester: trainingRows[index].semester, section: trainingRows[index].section,
+        })));
+        const scopedRecords = rosters.flatMap((roster: any, index: number) => roster.learners.filter((learner: any) => learner.status).map((learner: any) => ({
+          id: `${trainingRows[index].id}-${learner.learner_id}`, sessionId: trainingRows[index].id,
+          learnerId: learner.learner_id, learnerName: learner.learner_name, rollNumber: learner.roll_number,
+          department: trainingRows[index].department_name, course: trainingRows[index].program_name,
+          semester: trainingRows[index].semester, section: trainingRows[index].section, date: trainingRows[index].date,
+          status: learner.status, subject: trainingRows[index].subject_name, facultyId: '', facultyName: trainingRows[index].faculty_name,
+        })));
+        setSelectedSubjectGroup({ ...subjectGroup, sessions: [...trainingSessions, ...(sessionsResponse.data?.sessions || [])], totalSessions: trainingSessions.length + (sessionsResponse.data?.sessions?.length || 0) });
+        setLearners(Array.from(new Map(scopedLearners.map((learner: any) => [learner.id, learner])).values()) as any[]);
+        setAttendanceRecords(scopedRecords);
+        setShowDetailsModal(true);
+        return;
+      }
       if (!sessionsResponse.data?.sessions) {
         toast.error('Error loading session details');
         return;
       }
       if (sessionsResponse.data.sessions.length === 0) {
-        toast.error('No sessions found for this subject group.');
+        await fetchSubjectGroups();
+        toast.error('This attendance session was removed. The subject list has been refreshed.');
         return;
       }
 
