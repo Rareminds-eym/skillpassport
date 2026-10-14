@@ -17,7 +17,7 @@ const AddAttendanceSessionModal = ({
   sections,
   subjects,
   faculty,
-  learners, trainingSubjects=[],trainingSections=[],trainingSectionId="",onTrainingSectionChange,trainingError="",saving=false,
+  learners, trainingSubjects=[],trainingSections=[],trainingSectionId="",onTrainingSectionChange,trainingError="",saving=false,subjectsLoading=false,
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -33,6 +33,7 @@ const AddAttendanceSessionModal = ({
   faculty: any[];
   learners: Learner[];
   trainingSubjects?: any[]; trainingSections?:any[]; trainingSectionId?:string; onTrainingSectionChange?:(id:string)=>void; trainingError?:string; saving?:boolean;
+  subjectsLoading?:boolean;
 }) => {
   // Validation: only end-after-start is enforced — sessions may be
   // created for any past or future date/time (backfill supported).
@@ -126,6 +127,7 @@ const AddAttendanceSessionModal = ({
                       Department *
                     </label>
                     <select
+                      aria-label="Department"
                       value={formData.department}
                       onChange={(e) => onFormChange("department", e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
@@ -144,6 +146,7 @@ const AddAttendanceSessionModal = ({
                       Course *
                     </label>
                     <select
+                      aria-label="Course"
                       value={formData.course}
                       onChange={(e) => onFormChange("course", e.target.value)}
                       disabled={!formData.department}
@@ -163,6 +166,7 @@ const AddAttendanceSessionModal = ({
                       Semester *
                     </label>
                     <select
+                      aria-label="Semester"
                       value={formData.semester}
                       onChange={(e) => onFormChange("semester", e.target.value)}
                       disabled={!formData.course}
@@ -182,6 +186,7 @@ const AddAttendanceSessionModal = ({
                       Section *
                     </label>
                     <select
+                      aria-label="Section"
                       value={formData.section}
                       onChange={(e) => onFormChange("section", e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
@@ -202,20 +207,22 @@ const AddAttendanceSessionModal = ({
                       Subject *
                     </label>
                     <select
+                      aria-label="Subject"
                       value={formData.subject}
                       onChange={(e) => onFormChange("subject", e.target.value)}
-                      disabled={!formData.semester}
+                      disabled={!formData.semester || subjectsLoading || (subjects.length===0 && trainingSubjects.length===0)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                      <option value="">Select Subject</option>
-                      <optgroup label="Academic Subjects">{subjects.map((subj) => (
+                      <option value="">{subjectsLoading?'Loading subjects...':subjects.length===0&&trainingSubjects.length===0?'No subjects available':'Select Subject'}</option>
+                      {subjects.length>0&&<optgroup label="Academic Subjects">{subjects.map((subj) => (
                         <option key={subj.value} value={subj.value}>
                           {subj.label}
                         </option>
-                      ))}</optgroup>
-                      <optgroup label="Training Courses">{trainingSubjects.map(subj=><option key={subj.value} value={subj.value}>{subj.label}</option>)}</optgroup>
+                      ))}</optgroup>}
+                      {trainingSubjects.length>0&&<optgroup label="Training Courses">{trainingSubjects.map(subj=><option key={subj.value} value={subj.value}>{subj.label}</option>)}</optgroup>}
                     </select>
-                    <p className="mt-1 text-xs text-gray-500">Choose a date and exact class to list mapped training courses.</p>
+                    <p className="mt-1 text-xs text-gray-500">{subjectsLoading?'Loading courses for the selected class and date...':!formData.semester?'Select a program and semester to list subjects.':!formData.section?'Select a section to list mapped training courses.':!formData.date?'Choose a session date to list mapped training courses.':!trainingSectionId?(trainingSections.length>1?'Select the exact class academic year to list training courses.':'No active class matches the selected program, semester and section.'):trainingSubjects.length===0?'No training courses are mapped to this class for the selected date.':'Selecting a training course fills its assigned faculty automatically.'}</p>
+                    {!subjectsLoading&&formData.semester&&subjects.length===0&&<p className="mt-1 text-xs text-gray-500">No academic subjects are mapped to this program and semester.</p>}
                   </div>
 
                   <div>
@@ -223,6 +230,7 @@ const AddAttendanceSessionModal = ({
                       Faculty *
                     </label>
                     <select
+                      aria-label="Faculty"
                       value={formData.faculty}
                       onChange={(e) => onFormChange("faculty", e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
@@ -249,6 +257,7 @@ const AddAttendanceSessionModal = ({
                       Date *
                     </label>
                     <input
+                      aria-label="Session date"
                       type="date"
                       value={formData.date}
                       onChange={(e) => onFormChange("date", e.target.value)}

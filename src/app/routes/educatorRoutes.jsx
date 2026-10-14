@@ -2,7 +2,6 @@ import { lazy } from "react";
 import { Navigate, Route } from "react-router-dom";
 import SubscriptionProtectedRoute from "@/features/subscription/ui/shared/SubscriptionProtectedRoute";
 import EducatorLayout from "../layouts/EducatorLayout";
-import FirstLoginPasswordGate from '@/features/auth/ui/FirstLoginPasswordGate';
 import ExternalEducatorGate from '@/features/external-teaching/ui/ExternalEducatorGate';
 
 const EDUCATOR_ROLES = ["educator", "school_educator", "college_educator"];
@@ -62,7 +61,6 @@ export const educatorRoutes = (
     key="educator-routes"
     path="/educator/*"
     element={
-      <FirstLoginPasswordGate>
       <ExternalEducatorGate>
       <SubscriptionProtectedRoute
         allowedRoles={EDUCATOR_ROLES}
@@ -72,7 +70,6 @@ export const educatorRoutes = (
         <EducatorLayout />
       </SubscriptionProtectedRoute>
       </ExternalEducatorGate>
-      </FirstLoginPasswordGate>
     }
   >
     <Route path="reviews" element={<ArtifactReviews />} />

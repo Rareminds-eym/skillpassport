@@ -347,16 +347,21 @@ const AttendanceTracking: React.FC = () => {
   const [trainingCourses,setTrainingCourses]=useState<any[]>([]);
   const [trainingError,setTrainingError]=useState('');
   const [trainingSessionId,setTrainingSessionId]=useState('');
+  const [trainingSectionsLoading,setTrainingSectionsLoading]=useState(false);
+  const [trainingCoursesLoading,setTrainingCoursesLoading]=useState(false);
+  const [academicSubjectsLoading,setAcademicSubjectsLoading]=useState(false);
   const sessionRequestId=useRef(crypto.randomUUID());
   const [savingSession,setSavingSession]=useState(false);
-  useEffect(()=>{let alive=true;setTrainingSections([]);setTrainingSectionId('');setTrainingCourses([]);
-    if(collegeId&&sessionFormData.course&&sessionFormData.semester)
-      teaching('class_sections',{collegeId,programId:sessionFormData.course,semester:Number(sessionFormData.semester)}).then(rows=>{if(alive)setTrainingSections(rows);}).catch(e=>{if(alive)setTrainingError(e.message);});
+  useEffect(()=>{let alive=true;setTrainingSections([]);setTrainingSectionId('');setTrainingCourses([]);setTrainingError('');setTrainingSectionsLoading(false);
+    if(collegeId&&sessionFormData.course&&sessionFormData.semester){
+      setTrainingSectionsLoading(true);
+      teaching('class_sections',{collegeId,programId:sessionFormData.course,semester:Number(sessionFormData.semester)}).then(rows=>{if(alive)setTrainingSections(rows);}).catch(e=>{if(alive)setTrainingError(e.message);}).finally(()=>{if(alive)setTrainingSectionsLoading(false);});
+    }
     return()=>{alive=false;};
   },[collegeId,sessionFormData.course,sessionFormData.semester]);
   useEffect(()=>{const matching=trainingSections.filter(x=>x.section===sessionFormData.section);setTrainingSectionId(matching.length===1?matching[0].id:'');},[trainingSections,sessionFormData.section]);
-  useEffect(()=>{let alive=true;setTrainingCourses([]);setTrainingError('');
-    if(collegeId&&trainingSectionId&&sessionFormData.date)teaching('mapped_courses',{collegeId,sectionId:trainingSectionId,date:sessionFormData.date}).then(rows=>{if(alive)setTrainingCourses(rows);}).catch(e=>{if(alive)setTrainingError(e.message);});
+  useEffect(()=>{let alive=true;setTrainingCourses([]);setTrainingCoursesLoading(false);
+    if(collegeId&&trainingSectionId&&sessionFormData.date){setTrainingError('');setTrainingCoursesLoading(true);teaching('mapped_courses',{collegeId,sectionId:trainingSectionId,date:sessionFormData.date}).then(rows=>{if(alive)setTrainingCourses(rows);}).catch(e=>{if(alive)setTrainingError(e.message);}).finally(()=>{if(alive)setTrainingCoursesLoading(false);});}
     return()=>{alive=false;};
   },[collegeId,trainingSectionId,sessionFormData.date]);
   const trainingCandidates=trainingCourses.filter(x=>`training:${x.course_id}`===sessionFormData.subject);
@@ -591,17 +596,6 @@ const AttendanceTracking: React.FC = () => {
     }
   };
 
-  const loadCourses = async (programId: string, semester: number) => {
-    try {
-      const result = await curriculumService.getCourses(programId, semester);
-      setCoursesData(result || []);
-    } catch (error) {
-      logger.error('Error loading courses:', error as Error);
-      toast.error('Failed to load courses');
-      setCoursesData([]);
-    }
-  };
-
   // useEffect hooks
   useEffect(() => {
     const fetchCollegeId = async () => {
@@ -657,12 +651,19 @@ const AttendanceTracking: React.FC = () => {
   }, [sessionFormData.course]);
 
   useEffect(() => {
+    let alive=true;
+    setCoursesData([]);setAcademicSubjectsLoading(false);
     if (sessionFormData.course && sessionFormData.semester) {
-      loadCourses(sessionFormData.course, parseInt(sessionFormData.semester, 10));
+      setAcademicSubjectsLoading(true);
+      curriculumService.getCourses(sessionFormData.course,parseInt(sessionFormData.semester,10))
+        .then(rows=>{if(alive)setCoursesData(rows||[]);})
+        .catch(error=>{if(alive){logger.error('Error loading courses:',error as Error);toast.error('Failed to load academic subjects');}})
+        .finally(()=>{if(alive)setAcademicSubjectsLoading(false);});
     } else {
       setCoursesData([]);
       setSessionFormData(prev => ({ ...prev, subject: '' }));
     }
+    return()=>{alive=false;};
   }, [sessionFormData.course, sessionFormData.semester]);
 
   // Transform filter options for component use
@@ -904,6 +905,7 @@ const AttendanceTracking: React.FC = () => {
     setSessionFormData(prev => ({
       ...prev,
       [field]: value,
+      ...(field==='department'?{course:'',semester:'',section:''}:field==='course'?{semester:'',section:''}:field==='semester'?{section:''}:{}),
       ...(["department","course","semester","section","date"].includes(field)?{subject:"",faculty:""}:field==="subject"?{faculty:""}:{}),
     }));
 
@@ -1123,7 +1125,12 @@ const AttendanceTracking: React.FC = () => {
             </button>
             <button
               type="button"
-              onClick={() => setShowAddSessionModal(true)}
+              onClick={() => {
+                const today=new Date();
+                const date=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+                setSessionFormData(prev=>({...prev,date:prev.date||date}));
+                setShowAddSessionModal(true);
+              }}
               className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors"
             >
               <PlusCircleIcon className="h-5 w-5" />
@@ -1677,9 +1684,10 @@ const AttendanceTracking: React.FC = () => {
         sections={Array.from(new Map([...sectionOptions,...trainingSections.map(x=>({value:x.section,label:`Section ${x.section}`,count:0}))].map(x=>[x.value,x])).values())}
         trainingSections={trainingSections.filter(x=>x.section===sessionFormData.section)}
         trainingSectionId={trainingSectionId}
-        onTrainingSectionChange={setTrainingSectionId}
+        onTrainingSectionChange={id=>{setTrainingSectionId(id);setSessionFormData(prev=>({...prev,subject:'',faculty:''}));}}
         trainingError={trainingError}
         saving={savingSession}
+        subjectsLoading={academicSubjectsLoading||trainingSectionsLoading||trainingCoursesLoading}
         trainingSubjects={Array.from(new Map(trainingCourses.map(x=>[x.course_id,{value:`training:${x.course_id}`,label:x.title}])).values())}
         subjects={coursesData.map(course => ({ value: course.id, label: `${course.course_code} - ${course.course_name}` }))}
         faculty={sessionFormData.subject.startsWith("training:")?trainingCandidates.map(x=>({value:x.mapping_id,label:x.staff_name})):filterOptions.faculty}

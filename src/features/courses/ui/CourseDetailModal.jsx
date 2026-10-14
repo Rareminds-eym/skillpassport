@@ -6,11 +6,11 @@ import { useUser } from '@/shared/model/authStore';
 import { useSubscriptionQuery } from '@/features/subscription/model/useSubscriptionQuery';
 import { PLAN_IDS, PLAN_HIERARCHY_LEVELS } from '@/shared/config/subscriptionPlans';
 
-const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentProgress, isRecordingInterest = false }) => {
+const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentProgress, isRecordingInterest = false, readOnly=false }) => {
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
   const navigate = useNavigate();
   const user = useUser();
-  const { subscriptionData } = useSubscriptionQuery();
+  const { subscriptionData } = useSubscriptionQuery({enabled:!readOnly});
   const userPlan = subscriptionData?.plan || PLAN_IDS.FREEMIUM;
 
   if (!isOpen || !course) return null;
@@ -32,6 +32,7 @@ const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentP
 
   // Determine button text and icon
   const getButtonContent = () => {
+    if(readOnly)return {text:'Assigned teaching course',icon:BookOpen,disabled:true};
     if (course.status !== 'Active') {
       return { text: 'Coming Soon', icon: Play, disabled: true };
     }
@@ -49,6 +50,7 @@ const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentP
 
   // Handle start course with plan-based access control
   const handleStartCourse = () => {
+    if(readOnly)return;
     if (!hasAccess) {
       setShowUpgradePrompt(true);
       return;
@@ -325,7 +327,7 @@ const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentP
                 <button
                   type="button"
                   onClick={handleStartCourse}
-                  disabled={buttonContent.disabled || isRecordingInterest}
+                  disabled={readOnly || buttonContent.disabled || isRecordingInterest}
                   className={`px-6 py-2.5 rounded-lg font-medium transition-colors flex items-center gap-2 ${buttonContent.disabled
                     ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                     : isCompleted

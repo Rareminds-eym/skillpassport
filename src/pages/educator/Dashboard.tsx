@@ -1,3 +1,5 @@
+import {useAssignedTeaching} from '@/features/external-teaching/model/teachingContext';
+import {teaching} from '@/features/external-teaching/api/teachingApi';
 import { PendingReviewsWidget } from "@/features/artifact-review";
 import { getLogger } from '@/shared/config/logging';
 import { useAuthStore } from '@/shared/model/authStore';
@@ -37,6 +39,7 @@ import {
 // import './Dashboard.css';
 
 const Dashboard = () => {
+  const assignedTeaching=useAssignedTeaching();
   const navigate = useNavigate();
   const [kpis, setKpis] = useState<DashboardKPIs | null>(null);
   const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([]);
@@ -127,6 +130,11 @@ const Dashboard = () => {
       setLoading(true);
       setError(null);
 
+      if(assignedTeaching){
+        const [learners,courses,sessions]=await Promise.all([teaching('learners'),teaching('courses'),teaching('sessions')]);
+        setKpis({totallearners:learners.length,pendingActivities:courses.length,verifiedActivities:sessions.filter((x:any)=>['scheduled','ongoing'].includes(x.status)).length,verificationRate:sessions.filter((x:any)=>x.status==='completed').length} as DashboardKPIs);
+        setRecentActivities([]);setSkillAnalytics(null);setAnnouncements([]);return;
+      }
       logger.info('Starting data load');
 
       const [kpisData, activitiesData, analyticsData, announcementsData] = await Promise.all([
@@ -474,7 +482,7 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-gray-50" data-testid="educator-dashboard">
       <div className="w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="mb-6"><PendingReviewsWidget /></div>
+        <div className="mb-6">{!assignedTeaching&&<PendingReviewsWidget />}</div>
         {/* Error Display */}
         {error && (
           <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
@@ -545,28 +553,29 @@ const Dashboard = () => {
             loading={loading}
           />
           <KPICard
-            title="Pending Reviews"
+            title={assignedTeaching?"Assigned Courses":"Pending Reviews"}
             value={kpis?.pendingActivities || 0}
             icon={<ClockIcon className="h-6 w-6" />}
             color="yellow"
             loading={loading}
           />
           <KPICard
-            title="Verified Activities"
+            title={assignedTeaching?"Scheduled Classes":"Verified Activities"}
             value={kpis?.verifiedActivities || 0}
             icon={<CheckCircleIcon className="h-6 w-6" />}
             color="green"
             loading={loading}
           />
           <KPICard
-            title="Verification Rate"
-            value={`${kpis?.verificationRate || 0}%`}
+            title={assignedTeaching?"Completed Classes":"Verification Rate"}
+            value={assignedTeaching?(kpis?.verificationRate||0):`${kpis?.verificationRate || 0}%`}
             icon={<ChartBarIcon className="h-6 w-6" />}
             color="purple"
             loading={loading}
           />
         </div>
 
+        {!assignedTeaching&&<>
         {/* Quick Actions Section */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           {/* Mentor Notes Module */}
@@ -981,6 +990,7 @@ const Dashboard = () => {
           </div>
         </div>
 
+        </>}
       </div>
     </div>
   );

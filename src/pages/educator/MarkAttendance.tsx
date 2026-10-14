@@ -1,3 +1,5 @@
+import {useAssignedTeaching} from '@/features/external-teaching/model/teachingContext';
+import CollegeTrainingAttendance from '@/features/external-teaching/ui/CollegeTrainingAttendance';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useAuthStore } from '@/shared/model/authStore';
 import {
@@ -87,6 +89,7 @@ const isSlotLocked = (slotDate: string): boolean => {
 
 // ==================== MAIN COMPONENT ====================
 const MarkAttendance: React.FC = () => {
+  const assignedTeaching=useAssignedTeaching();
   const [selectedDate, setSelectedDate] = useState<string>(
     new Date().toISOString().split("T")[0]
   );
@@ -110,6 +113,7 @@ const MarkAttendance: React.FC = () => {
   // Get current educator info (school or college)
   useEffect(() => {
     const fetchEducatorInfo = async () => {
+      if(assignedTeaching){setLoading(false);return;}
       try {
         const { data: { user } } = { data: { user: useAuthStore.getState().user } };
         if (!user) {
@@ -739,6 +743,8 @@ const MarkAttendance: React.FC = () => {
     slotDate.setHours(hours, minutes, 0, 0);
     return slotDate > now;
   };
+
+  if(assignedTeaching)return <div className="min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8"><h1 className="text-2xl font-bold text-gray-900">Mark Attendance</h1><p className="mt-2 text-gray-600">Mark learner attendance for your college-created classes.</p><CollegeTrainingAttendance educator/></div>;
 
   return (
     <div className="min-h-screen bg-gray-50">

@@ -2,11 +2,11 @@ import { useEffect, useState } from 'react';
 import { teaching } from '../api/teachingApi';
 import { toast } from '@/shared/ui';
 
-export default function CollegeTrainingAttendance({collegeId,initialSessionId}:{collegeId:string;initialSessionId?:string}) {
+export default function CollegeTrainingAttendance({collegeId,initialSessionId,educator=false}:{collegeId?:string;initialSessionId?:string;educator?:boolean}) {
   const [sessions,setSessions]=useState<any[]>([]),[sessionId,setSessionId]=useState(initialSessionId||'');
   const [roster,setRoster]=useState<any>(null),[marks,setMarks]=useState<Record<string,string>>({});
   const [error,setError]=useState(''),[busy,setBusy]=useState(false);
-  useEffect(()=>{let alive=true;teaching('college_sessions',{collegeId}).then(rows=>{if(alive)setSessions(rows);}).catch(e=>{if(alive)setError(e.message);});return()=>{alive=false;};},[collegeId,initialSessionId]);
+  useEffect(()=>{let alive=true;teaching(educator?'sessions':'college_sessions',educator?{}:{collegeId}).then(rows=>{if(alive)setSessions(rows);}).catch(e=>{if(alive)setError(e.message);});return()=>{alive=false;};},[collegeId,initialSessionId,educator]);
   useEffect(()=>{if(initialSessionId)setSessionId(initialSessionId);},[initialSessionId]);
   useEffect(()=>{let alive=true;setRoster(null);setMarks({});if(sessionId)teaching('session_roster',{sessionId}).then(data=>{if(alive){setRoster(data);setMarks(Object.fromEntries(data.learners.map((l:any)=>[l.learner_id,l.status||''])));setError('');}}).catch(e=>{if(alive)setError(e.message);});return()=>{alive=false;};},[sessionId]);
   async function save(){if(!roster)return;setBusy(true);try{

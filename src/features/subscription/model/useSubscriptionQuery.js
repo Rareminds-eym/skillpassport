@@ -159,7 +159,7 @@ const fetchSubscription = async (userId) => {
  * Main hook for subscription data with React Query
  * @returns {Object} Subscription query result
  */
-export const useSubscriptionQuery = () => {
+export const useSubscriptionQuery = (options = {}) => {
   const user = useUser();
   const queryClient = useQueryClient();
 
@@ -170,7 +170,7 @@ export const useSubscriptionQuery = () => {
   const query = useQuery({
     queryKey,
     queryFn: () => fetchSubscription(user?.id),
-    enabled: isQueryEnabled,
+    enabled: isQueryEnabled && options.enabled !== false,
     staleTime: STALE_TIME,
     gcTime: CACHE_TIME,
     refetchOnWindowFocus: false,
