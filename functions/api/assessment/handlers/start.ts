@@ -47,13 +47,14 @@ function buildLearnerContext(
       learner?.grade
     );
 
-  if (!programName && !streamId && !learner?.grade) return null;
+  if (!programName && !streamId && !learner?.grade && !learner?.specialization) return null;
 
   return {
     rawGrade: learner?.grade || null,
     programName: programName || null,
     programCode,
     degreeLevel,
+    specialization: learner?.specialization || null,
     selectedStream: streamId || null,
   };
 }
@@ -71,16 +72,31 @@ export async function startHandler(context: AuthenticatedContext) {
       return Response.json({ error: validation.message }, { status: 400 });
     }
 
-    const { streamId } = body;
+    const { streamId, specialization: requestedSpecialization } = body;
     let gradeLevel = body.gradeLevel;
 
     logger.info('Starting assessment', {
       userId: user.sub,
       gradeLevel,
       streamId,
+      hasRequestedSpecialization: !!requestedSpecialization,
       hasEnv: !!env,
       hasQuestionGenUrl: !!env?.QUESTION_GENERATION_API_URL
     });
+
+    // Atomic specialization handling: if client passes specialization in start payload,
+    // update learners row server-side before building learner_context (avoids race of
+    // separate client supabase.update() + start). Trimmed, validated length already.
+    const normalizedSpecialization = typeof requestedSpecialization === 'string' ? requestedSpecialization.trim() : null;
+    if (normalizedSpecialization) {
+      const { error: specUpdateError } = await supabase
+        .from('learners')
+        .update({ specialization: normalizedSpecialization, updated_at: new Date().toISOString() })
+        .or(`user_id.eq.${user.sub},id.eq.${user.sub}`);
+      if (specUpdateError) {
+        logger.warn('Failed to persist specialization on start (non-fatal)', { error: specUpdateError.message });
+      }
+    }
 
     const { data: learnerData, error: learnerError } = await supabase
       .from('learners')
@@ -89,6 +105,7 @@ export async function startHandler(context: AuthenticatedContext) {
         grade,
         course_name,
         branch_field,
+        specialization,
         program_id,
         programs ( name, code, degree_level )
       `)

@@ -17,6 +17,7 @@ const API_BASE = '/api/assessment';
 export interface StartAssessmentRequest {
   gradeLevel: string;
   streamId?: string | null;
+  specialization?: string | null;
 }
 
 export interface StartAssessmentResponse {
