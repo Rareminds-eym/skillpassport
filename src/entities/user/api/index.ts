@@ -22,12 +22,10 @@ export {
   deleteUser,
   changeUserRole,
   updateUserProfile,
-  uploadDocument,
   verifyDocument,
   logActivity,
   resetUserPassword,
   updatePassword,
-  bulkImportUsers,
 } from './mutations';
 
 // Services

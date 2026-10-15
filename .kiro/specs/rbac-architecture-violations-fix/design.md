@@ -150,12 +150,12 @@ export type { UserRole } from '@/shared/types/generated/roles';
 ### Type generation script
 
 ```
-scripts/generate-role-types.ts   (run in CI + pre-commit; reads the app-DB shadow roles + role_categories)
+scripts/generate-role-types.ts   (run locally + pre-commit; reads the app-DB shadow roles + role_categories)
 ```
 
 - Reads `roles` and `role_categories` from the app DB (already synced from SSO).
 - Emits `src/shared/types/generated/roles.ts`.
-- A CI check fails if the generated file is stale (drift detection), satisfying property FC-7.
+- A local check fails if the generated file is stale (drift detection), satisfying property FC-7.
 
 ### Functions Enforcement Layer
 
@@ -386,7 +386,7 @@ The fix is sequenced into six phases (P0–P5), each independently shippable, or
 ### Phase P3 — App-DB role infra + type generation
 - Create shadow `roles`, `role_categories`, `school_internal_roles` (Expand DDL).
 - Implement `syncRolesShadow()` over the SSO RPC; seed `role_categories`/`school_internal_roles` (DML in seed files).
-- Add `scripts/generate-role-types.ts` + CI drift check.
+- Add `scripts/generate-role-types.ts` + local drift check.
 - Gate: shadow matches the canonical 16 roles; generated types stable. (FC-7, FC-8.)
 
 ### Phase P4 — Contract (destructive, REQUIRES APPROVAL)
@@ -458,7 +458,7 @@ Per steering: 80%+ coverage, deny-path tests for every guard, behavior-preservat
 
 ### Tooling
 - Vitest for unit/integration; run with `--run` (no watch).
-- Type-gen drift check in CI.
+- Type-gen drift check via local npm scripts and the pre-commit hook.
 
 ## Correctness Properties
 
@@ -479,7 +479,7 @@ Every role literal ∈ `SSO_ROLES` ∪ `SchoolInternalRole` ∪ `RecruitmentRole
 **Validates: Requirements 2.2, 2.3, 2.4**
 
 ### Property 4: Type generation
-The generator exists and CI fails on drift between the DB and the generated file. (FC-7)
+The generator exists and the local check fails on drift between the DB and the generated file. (FC-7)
 **Validates: Requirements 5.1**
 
 ### Property 5: Schema present

@@ -92,14 +92,12 @@ This document outlines the comprehensive plan for adding integration tests to al
 - `POST /check-college-code` - Validate college code
 - `POST /check-university-code` - Validate university code
 - `POST /check-company-code` - Validate company code
-- `POST /check-email` - Check email availability
 - `POST /create-learner` - Create learner (authenticated)
 - `POST /create-teacher` - Create teacher (authenticated)
 - `POST /create-college-staff` - Create college staff (authenticated)
 - `POST /update-learner-documents` - Update learner documents
 - `POST /create-event-user` - Create event user
 - `POST /send-interview-reminder` - Send interview reminder
-- `POST /reset-password` - Reset password
 
 **Dependencies**: Supabase
 

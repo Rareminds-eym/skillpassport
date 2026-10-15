@@ -5,14 +5,6 @@ import type { QualificationData, ImportError, UserRoleHistoryRecord } from '@/ty
 
 const { unifiedSignup } = userApiService;
 
-async function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => { const result = reader.result as string; resolve(result.split(',')[1] || result); };
-    reader.onerror = () => reject(new Error('Failed to read file'));
-    reader.readAsDataURL(file);
-  });
-}
 
 export interface UserProfile {
   id: string;
@@ -262,34 +254,6 @@ class UserManagementService {
     return response?.data?.documents ?? [];
   }
 
-  async uploadDocument(
-    userId: string,
-    file: File,
-    documentType: string
-  ): Promise<UserDocument> {
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${userId}/${documentType}/${Date.now()}.${fileExt}`;
-
-    const base64 = await fileToBase64(file);
-    const uploadResult: any = await apiPost('/college-admin/storage', {
-      action: 'upload', bucket: 'user-documents', path: fileName, file_base64: base64, content_type: file.type || 'application/octet-stream',
-    });
-    const publicUrl = uploadResult?.data?.publicUrl;
-
-    const response: any = await apiPost('/user/update', {
-      id: userId,
-      documents: {
-        user_id: userId,
-        document_type: documentType,
-        document_name: file.name,
-        document_url: publicUrl,
-        file_size: file.size,
-        file_type: file.type,
-      },
-    });
-    return response?.data;
-  }
-
   async verifyDocument(
     documentId: string,
     status: 'verified' | 'rejected',
@@ -328,26 +292,6 @@ class UserManagementService {
       description: description || '',
       metadata: metadata || {},
     });
-  }
-
-  async bulkImportUsers(file: File): Promise<BulkImportResult> {
-    const currentUser = (await import('@/shared/model/authStore')).useAuthStore.getState().user;
-    if (!currentUser.user) throw new Error('Not authenticated');
-
-    const fileName = `bulk-imports/${Date.now()}_${file.name}`;
-    const base64 = await fileToBase64(file);
-    const uploadResult: any = await apiPost('/college-admin/storage', {
-      action: 'upload', bucket: 'user-documents', path: fileName, file_base64: base64, content_type: file.type || 'application/octet-stream',
-    });
-    const publicUrl = uploadResult?.data?.publicUrl;
-
-    const response: any = await apiPost('/user/actions', {
-      action: 'create-bulk-import',
-      imported_by: currentUser.user.id,
-      file_name: file.name,
-      file_url: publicUrl,
-    });
-    return response?.data;
   }
 
   async getBulkImportStatus(importId: string): Promise<BulkImportResult> {

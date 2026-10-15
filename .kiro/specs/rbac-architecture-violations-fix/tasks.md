@@ -118,9 +118,9 @@ Phased migration (P0–P5) that makes the sso-worker the single source of truth 
   - [x] 17.3 Verify the shadow `roles` table equals the canonical 16 after sync
   - _Requirements: 5.2, 5.3_
 
-- [x] 18. Add the type generation script + CI drift check
+- [x] 18. Add the type generation script + local drift check
   - [x] 18.1 Implement `scripts/generate-role-types.ts` reading `roles` + `role_categories`, emitting `src/shared/types/generated/roles.ts`
-  - [x] 18.2 Add a CI step + pre-commit hook that regenerates and fails on drift
+  - [x] 18.2 Add local scripts + pre-commit hook that regenerate and fail on drift
   - _Requirements: 5.1_
 
 - [x] 19. Resolve the user → school-internal-role mapping

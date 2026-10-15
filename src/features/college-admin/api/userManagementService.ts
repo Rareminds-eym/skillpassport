@@ -14,7 +14,7 @@ export const userManagementService = {
   /**
    * Create a new user using Worker API with proper rollback
    * Property 1: User uniqueness enforcement
-   * Creates user via Edge Function: auth.users → users → college_lecturers
+   * Creates the SSO identity and application user/lecturer records via the User API
    */
   async createUser(userData: Partial<User>): Promise<ApiResponse<User>> {
     try {
