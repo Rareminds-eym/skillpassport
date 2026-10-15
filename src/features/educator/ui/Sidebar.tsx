@@ -72,7 +72,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       {name:"Courses",path:"/educator/browse-courses",icon:BookOpenIcon},
     ]},
     {title:"Learning & Evaluation",key:"learning",items:[
-      {name:"Assignments",path:"/educator/assignments",icon:AcademicCapIcon,disabled:true},
+      {name:"Assignments",path:"/educator/college-assignments",icon:AcademicCapIcon},
       {name:"Mentor Notes",path:"/educator/mentor-notes",icon:PencilSquareIcon,disabled:true},
       {name:"My Mentees",path:"/educator/my-mentees",icon:UserGroupIcon,disabled:true},
       {name:"Verification",path:"/educator/activities",icon:CheckCircleIcon,disabled:true},

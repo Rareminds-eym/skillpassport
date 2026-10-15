@@ -1339,22 +1339,46 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           }
         }
 
+        if (!educatorId) {
+          return apiError(400, 'VALIDATION_ERROR', 'Missing educator_id', context.request, { startTime });
+        }
+
+        // Detect educator type: check if they're a college lecturer or external educator
+        const { data: lecturerCheck } = await supabase
+          .from('college_lecturers')
+          .select('user_id')
+          .eq('user_id', educatorId)
+          .maybeSingle();
+
+        const isCollegeLecturer = !!lecturerCheck;
+
         const numericGrade = parseFloat(grade_received);
         const total = total_points ? parseFloat(total_points) : 100;
         const gradePercentage = total > 0 ? Math.round(((numericGrade / total) * 100) * 100) / 100 : 0;
         const now = new Date().toISOString();
 
+        // Build update payload based on educator type
         const updatePayload: Record<string, any> = {
           grade_received: numericGrade,
           grade_percentage: gradePercentage,
           instructor_feedback: instructor_feedback || null,
-          graded_by: educatorId || null,
           graded_date: now,
           feedback_date: now,
           status: 'graded',
           completed_date: now,
           updated_date: now,
         };
+
+        // Set appropriate grading column based on educator type
+        if (isCollegeLecturer) {
+          // Internal college lecturer - use graded_by column
+          updatePayload.graded_by = educatorId;
+          updatePayload.external_educator_graded_by = null; // Ensure mutual exclusivity
+        } else {
+          // External educator (organization_staff) - use external_educator_graded_by column
+          updatePayload.graded_by = null; // Ensure mutual exclusivity
+          updatePayload.external_educator_graded_by = educatorId;
+        }
 
         const { data, error } = await supabase
           .from('college_learner_assignments')
