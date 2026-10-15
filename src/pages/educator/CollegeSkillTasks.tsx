@@ -13,6 +13,7 @@ import {
     Trash2
 } from "lucide-react";
 import { useEducatorSchool } from '@/features/educator/model/useEducatorSchool';
+import { useAssignedTeaching } from '@/features/external-teaching/model/teachingContext';
 import toast from "react-hot-toast";
 import * as collegeAssignmentService from "@/features/college-admin";
 import { CollegeGradingModal } from "@/features/college-admin";
@@ -188,7 +189,9 @@ export default function CollegeSkillTasks() {
     const { college: educatorCollege, educatorType, loading: schoolLoading } = useEducatorSchool();
 
     // Extract college ID to prevent infinite loop from object reference changes
+    const assignedTeaching = useAssignedTeaching();
     const educatorCollegeId = educatorCollege?.id;
+    const activeCollegeId = educatorCollegeId || assignedTeaching?.mappings?.[0]?.college_id;
 
     // Form reset effect based on modal mode
     useEffect(() => {
@@ -226,10 +229,109 @@ export default function CollegeSkillTasks() {
 
     // Fetch initial data
     useEffect(() => {
-        if (!schoolLoading && educatorCollegeId && educatorType === 'college') {
+        if (assignedTeaching) {
+            setupTrainerInitialData();
+        } else if (!schoolLoading && educatorCollegeId && educatorType === 'college') {
             fetchInitialData();
         }
-    }, [educatorCollegeId, educatorType, schoolLoading]);
+    }, [educatorCollegeId, educatorType, schoolLoading, assignedTeaching]);
+
+    const setupTrainerInitialData = async () => {
+        try {
+            setLoading(true);
+            const { data: { user } } = { data: { user: useAuthStore.getState().user } };
+            if (!user) return;
+
+            const mappings = assignedTeaching?.mappings || [];
+            const departmentIds = Array.from(new Set(mappings.map(m => m.department_id).filter(Boolean)));
+            const programIds = Array.from(new Set(mappings.map(m => m.program_id).filter(Boolean)));
+
+            // Fetch actual department names and program specializations
+            const [deptRes, progRes] = await Promise.all([
+                collegeAssignmentService.fetchEducatorDepartments(user.id, departmentIds),
+                collegeAssignmentService.fetchEducatorPrograms(user.id, undefined, programIds)
+            ]);
+
+            const deptMap = new Map<string, string>();
+            (deptRes.data || []).forEach((d: any) => {
+                if (d.id && d.name) deptMap.set(d.id, d.name);
+            });
+
+            const progMap = new Map<string, any>();
+            (progRes.data || []).forEach((p: any) => {
+                if (p.id) progMap.set(p.id, p);
+            });
+
+            const depts: Department[] = [];
+            const progs: Program[] = [];
+            const sections: ProgramSection[] = [];
+            const crses: Course[] = [];
+
+            mappings.forEach(m => {
+                const resolvedDeptName = deptMap.get(m.department_id) || (m as any).department_name || 'Academic Department';
+                if (m.department_id && !depts.some(d => d.id === m.department_id)) {
+                    depts.push({
+                        id: m.department_id,
+                        name: resolvedDeptName,
+                        code: ''
+                    });
+                }
+                if (m.program_id && !progs.some(p => p.id === m.program_id)) {
+                    const dbProg = progMap.get(m.program_id);
+                    const assignedSpecs = (m as any).metadata?.specializations || (m as any).specializations || [];
+                    const specs = (Array.isArray(assignedSpecs) && assignedSpecs.length > 0)
+                        ? assignedSpecs
+                        : (dbProg?.specializations || []);
+
+                    progs.push({
+                        id: m.program_id,
+                        name: m.program_name,
+                        code: '',
+                        department_id: m.department_id,
+                        specializations: specs
+                    });
+                }
+                if (m.section_id && !sections.some(s => s.id === m.section_id)) {
+                    sections.push({
+                        id: m.section_id,
+                        department_id: m.department_id,
+                        program_id: m.program_id,
+                        semester: m.semester,
+                        section: m.section,
+                        academic_year: 'Current',
+                        max_learners: 60,
+                        current_learners: 0,
+                        faculty_id: user.id,
+                        status: 'active',
+                        program: { id: m.program_id, name: m.program_name, code: '', department_id: m.department_id },
+                        department: { id: m.department_id, name: resolvedDeptName, code: '' }
+                    });
+                }
+                if (m.course_id && !crses.some(c => c.id === m.course_id)) {
+                    crses.push({
+                        id: m.course_id,
+                        course_name: m.course_title,
+                        course_code: ''
+                    });
+                }
+            });
+
+            setDepartments(depts);
+            setPrograms(progs);
+            setProgramSections(sections);
+            setCourses(crses);
+
+            await Promise.all([
+                fetchAssignments(user.id),
+                fetchStatistics(user.id)
+            ]);
+        } catch (error) {
+            logger.error('Error setting up trainer assignment data', error);
+            toast.error('Failed to load assignments');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const fetchInitialData = async () => {
         try {
@@ -509,6 +611,28 @@ export default function CollegeSkillTasks() {
         setlearners([]);
 
         // Fetch programs for this department
+        if (assignedTeaching) {
+            const mappings = assignedTeaching.mappings || [];
+            const filteredProgs = mappings
+                .filter(m => !departmentId || m.department_id === departmentId)
+                .reduce((acc: Program[], m) => {
+                    if (!acc.some(p => p.id === m.program_id)) {
+                        const existingProg = programs.find(p => p.id === m.program_id);
+                        const assignedSpecs = (m as any).metadata?.specializations || (m as any).specializations || existingProg?.specializations || [];
+                        acc.push({
+                            id: m.program_id,
+                            name: m.program_name,
+                            code: '',
+                            department_id: m.department_id,
+                            specializations: assignedSpecs
+                        });
+                    }
+                    return acc;
+                }, []);
+            setPrograms(filteredProgs);
+            return;
+        }
+
         if (departmentId) {
             logger.info('Fetching programs for department', { departmentId });
             const { data: { user } } = { data: { user: useAuthStore.getState().user } };
@@ -553,6 +677,27 @@ export default function CollegeSkillTasks() {
         setlearners([]);
 
         // Fetch courses for this program
+        if (assignedTeaching) {
+            const mappings = assignedTeaching.mappings || [];
+            const filteredCourses = mappings
+                .filter(m => !programId || m.program_id === programId)
+                .reduce((acc: Course[], m) => {
+                    if (!acc.some(c => c.id === m.course_id)) {
+                        acc.push({ id: m.course_id, course_name: m.course_title, course_code: '' });
+                    }
+                    return acc;
+                }, []);
+            setCourses(filteredCourses);
+            if (filteredCourses.length > 0) {
+                setTaskForm(prev => ({
+                    ...prev,
+                    course_name: filteredCourses[0].course_name,
+                    course_code: filteredCourses[0].course_code || ""
+                }));
+            }
+            return;
+        }
+
         if (programId) {
             logger.info('Fetching courses for program', { programId });
             const { data: { user } } = { data: { user: useAuthStore.getState().user } };
@@ -683,7 +828,7 @@ export default function CollegeSkillTasks() {
                 toast.error("Please select a program section");
                 return;
             }
-            if (!educatorCollege?.id) {
+            if (!activeCollegeId) {
                 toast.error("College information not found");
                 return;
             }
@@ -700,7 +845,7 @@ export default function CollegeSkillTasks() {
                 instructions: taskForm.instructions,
                 course_name: taskForm.course_name,
                 course_code: taskForm.course_code,
-                college_id: educatorCollege.id,
+                college_id: activeCollegeId,
                 program_section_id: taskForm.section_id,
                 department_id: taskForm.department_id,
                 program_id: taskForm.program_id,
@@ -1083,11 +1228,17 @@ export default function CollegeSkillTasks() {
 
             logger.info('Updating assignment with data', { updateData });
 
-            await apiPost('/educator/actions', {
-                action: 'update-college-assignment',
-                assignmentId: selectedAssignment.assignment_id,
+            const { error: updateErr } = await collegeAssignmentService.updateAssignment(
+                selectedAssignment.assignment_id,
                 updateData
-            });
+            );
+            if (updateErr) {
+                await apiPost('/educator/actions', {
+                    action: 'update-college-assignment',
+                    assignmentId: selectedAssignment.assignment_id,
+                    updateData
+                });
+            }
 
             toast.success('Task updated successfully');
             setEditTaskModal(false);
@@ -1131,10 +1282,15 @@ export default function CollegeSkillTasks() {
         try {
             if (!selectedAssignment) return;
 
-            await apiPost('/educator/actions', {
-                action: 'delete-college-assignment',
-                assignmentId: selectedAssignment.assignment_id
-            });
+            const { error: deleteErr } = await collegeAssignmentService.deleteAssignment(
+                selectedAssignment.assignment_id
+            );
+            if (deleteErr) {
+                await apiPost('/educator/actions', {
+                    action: 'delete-college-assignment',
+                    assignmentId: selectedAssignment.assignment_id
+                });
+            }
 
             toast.success('Task deleted successfully');
             setDeleteConfirmModal(false);
@@ -1452,9 +1608,9 @@ export default function CollegeSkillTasks() {
 
                                                         // Fetch already assigned learners
                                                         try {
-                                                            const assignedIdsRes = await apiPost<any>('/educator/actions', {
+                                                            const assignedIdsRes = await apiPost<any>('/college-admin/assignments', {
                                                                 action: 'get-assigned-learners',
-                                                                assignmentId: assignment.assignment_id
+                                                                assignment_id: assignment.assignment_id
                                                             });
                                                             const assignedIds = Array.isArray(assignedIdsRes) ? assignedIdsRes : (assignedIdsRes?.data || []);
                                                             setAssignedLearnerIds(assignedIds);
@@ -1872,10 +2028,16 @@ export default function CollegeSkillTasks() {
                                 <label className="flex items-center">
                                     <input
                                         type="checkbox"
-                                        checked={selectedLearnerIds.length === filteredlearners.length && filteredlearners.length > 0}
+                                        checked={
+                                            filteredlearners.filter(s => !(s.user_id && assignedLearnerIds.includes(s.user_id)) && !assignedLearnerIds.includes(s.id)).length > 0 &&
+                                            selectedLearnerIds.length === filteredlearners.filter(s => !(s.user_id && assignedLearnerIds.includes(s.user_id)) && !assignedLearnerIds.includes(s.id)).length
+                                        }
                                         onChange={(e) => {
                                             if (e.target.checked) {
-                                                setSelectedLearnerIds(filteredlearners.map(s => s.id));
+                                                const unassigned = filteredlearners
+                                                    .filter(s => !(s.user_id && assignedLearnerIds.includes(s.user_id)) && !assignedLearnerIds.includes(s.id))
+                                                    .map(s => s.id);
+                                                setSelectedLearnerIds(unassigned);
                                             } else {
                                                 setSelectedLearnerIds([]);
                                             }
@@ -1883,7 +2045,7 @@ export default function CollegeSkillTasks() {
                                         className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
                                     />
                                     <span className="ml-2 text-sm font-medium text-gray-700">
-                                        Select All ({filteredlearners.length} learners found)
+                                        Select All ({filteredlearners.filter(s => !(s.user_id && assignedLearnerIds.includes(s.user_id)) && !assignedLearnerIds.includes(s.id)).length} unassigned of {filteredlearners.length})
                                     </span>
                                 </label>
                                 {selectedLearnerIds.length > 0 && (
@@ -1901,7 +2063,7 @@ export default function CollegeSkillTasks() {
                                 ) : (
                                     <div className="divide-y divide-gray-200">
                                         {filteredlearners.map((learner) => {
-                                            const isAssigned = assignedLearnerIds.includes(learner.user_id);
+                                            const isAssigned = (learner.user_id && assignedLearnerIds.includes(learner.user_id)) || assignedLearnerIds.includes(learner.id);
                                             return (
                                                 <label key={learner.id} className={`flex items-center p-4 ${isAssigned ? 'bg-gray-50 cursor-not-allowed' : 'hover:bg-gray-50 cursor-pointer'}`}>
                                                     <input

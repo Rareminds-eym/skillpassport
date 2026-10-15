@@ -5,7 +5,7 @@ import { teaching } from '../api/teachingApi';
 import PageLoader from './PageLoader';
 import EducatorLayout from '@/app/layouts/EducatorLayout';
 import {AssignedTeachingContext} from '../model/teachingContext';
-export const externalEducatorPaths=new Set(['dashboard','learners','courses','browse-courses','mark-attendance','account','settings']);
+export const externalEducatorPaths=new Set(['dashboard','learners','courses','browse-courses','mark-attendance','account','settings','college-assignments']);
 export default function ExternalEducatorGate({children}:{children:ReactNode}){
   const user=useUser();const location=useLocation();const candidate=['educator','rm_trainer','trainer'].includes(user?.role||'')||user?.roles?.some(role=>['educator','rm_trainer','trainer'].includes(role))||user?.user_metadata?.portal_mode==='assigned_trainer';
   const [result,setResult]=useState<{actor:string;context:any}|null>(null);const [error,setError]=useState('');const [attempt,setAttempt]=useState(0);

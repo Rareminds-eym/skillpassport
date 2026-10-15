@@ -27,32 +27,78 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   try {
     switch (action) {
       case 'create-assignment': {
-        const { data: educator } = await supabase.from('college_lecturers').select('first_name, last_name').eq('user_id', params.educator_user_id).single();
-        const educatorName = educator ? `${educator.first_name || ''} ${educator.last_name || ''}`.trim() : 'Unknown Educator';
+        const { data: educator } = await supabase.from('college_lecturers').select('first_name, last_name').eq('user_id', params.educator_user_id).maybeSingle();
+        let educatorName = educator ? `${educator.first_name || ''} ${educator.last_name || ''}`.trim() : '';
+        let isExternalEducator = false;
+        
+        if (!educatorName) {
+          const { data: staff } = await supabase.from('organization_staff').select('first_name, last_name').eq('user_id', params.educator_user_id).maybeSingle();
+          if (staff) {
+            educatorName = `${staff.first_name || ''} ${staff.last_name || ''}`.trim();
+            isExternalEducator = true;
+          }
+        }
+        if (!educatorName) educatorName = 'Unknown Educator';
+        
         // Remove educator_user_id from params before inserting (not a valid column in college_assignments)
         const { educator_user_id, ...paramsWithoutEducatorUserId } = params;
-        const insertData = { ...paramsWithoutEducatorUserId, college_educator_id: educator_user_id, educator_name: educatorName, available_from: params.available_from || new Date().toISOString(), instruction_files: [] };
+        
+        // Store educator ID in appropriate column based on type:
+        // - Internal faculty (college_lecturers): college_educator_id
+        // - External educators (organization_staff): external_educator_id
+        const insertData = { 
+          ...paramsWithoutEducatorUserId, 
+          college_educator_id: isExternalEducator ? null : educator_user_id,
+          external_educator_id: isExternalEducator ? educator_user_id : null,
+          educator_name: educatorName, 
+          available_from: params.available_from || new Date().toISOString(), 
+          instruction_files: [] 
+        };
+        
         const { data, error } = await supabase.from('college_assignments').insert([insertData]).select('*, programs!college_assignments_program_id_fkey(name), departments!college_assignments_department_id_fkey(name)').single();
         if (error) return apiDbError(error, context.request, { startTime });
         return apiSuccess({ ...data, program_name: data.programs?.name, department_name: data.departments?.name, status: 'active' }, context.request, { startTime });
       }
 
       case 'get-educator-departments': {
-        const { educator_user_id } = params;
-        const { data: lecturer, error: lecError } = await supabase.from('college_lecturers').select('id').eq('user_id', educator_user_id).single();
-        if (lecError) return apiDbError(lecError, context.request, { startTime });
-        if (!lecturer) return apiSuccess([], context.request, { startTime });
-        const { data, error } = await supabase.from('department_faculty_assignments').select('department_id, departments!inner(id, name, code, college_id, status)').eq('lecturer_id', lecturer.id).eq('is_active', true).eq('departments.status', 'active').order('departments(name)');
-        if (error) return apiDbError(error, context.request, { startTime });
-        const departments = (data || []).map((a: any) => {
-          const d = Array.isArray(a.departments) ? a.departments[0] : a.departments;
-          return { id: d.id, name: d.name, code: d.code, college_id: d.college_id };
-        });
-        return apiSuccess(departments, context.request, { startTime });
+        const { educator_user_id, department_ids } = params;
+        if (Array.isArray(department_ids) && department_ids.length > 0) {
+          const { data, error } = await supabase.from('departments').select('id, name, code, college_id').in('id', department_ids);
+          if (!error && data && data.length > 0) return apiSuccess(data, context.request, { startTime });
+        }
+        const { data: lecturer } = await supabase.from('college_lecturers').select('id').eq('user_id', educator_user_id).maybeSingle();
+        if (lecturer) {
+          const { data, error } = await supabase.from('department_faculty_assignments').select('department_id, departments!inner(id, name, code, college_id, status)').eq('lecturer_id', lecturer.id).eq('is_active', true).eq('departments.status', 'active').order('departments(name)');
+          if (error) return apiDbError(error, context.request, { startTime });
+          const departments = (data || []).map((a: any) => {
+            const d = Array.isArray(a.departments) ? a.departments[0] : a.departments;
+            return { id: d.id, name: d.name, code: d.code, college_id: d.college_id };
+          });
+          return apiSuccess(departments, context.request, { startTime });
+        }
+        // Fallback for external educator (organization_staff)
+        const { data: staff } = await supabase.from('organization_staff').select('id').eq('user_id', educator_user_id).maybeSingle();
+        if (staff) {
+          const { data, error } = await supabase.from('organization_staff_assignments').select('department_id, departments!inner(id, name, code, college_id, status)').eq('staff_id', staff.id).eq('is_active', true);
+          if (error) return apiDbError(error, context.request, { startTime });
+          const map = new Map();
+          (data || []).forEach((a: any) => {
+            const d = Array.isArray(a.departments) ? a.departments[0] : a.departments;
+            if (d && !map.has(d.id)) map.set(d.id, { id: d.id, name: d.name, code: d.code, college_id: d.college_id });
+          });
+          return apiSuccess(Array.from(map.values()), context.request, { startTime });
+        }
+        return apiSuccess([], context.request, { startTime });
       }
 
       case 'get-educator-programs': {
-        const { educator_user_id, department_id } = params;
+        const { educator_user_id, department_id, program_ids } = params;
+        if (Array.isArray(program_ids) && program_ids.length > 0) {
+          let query = supabase.from('programs').select('id, name, code, department_id, status, specializations').in('id', program_ids);
+          if (department_id) query = query.eq('department_id', department_id);
+          const { data, error } = await query;
+          if (!error && data && data.length > 0) return apiSuccess(data, context.request, { startTime });
+        }
         let query = supabase.from('program_sections').select('program_id, programs!inner(id, name, code, department_id, status, specializations)').eq('faculty_id', educator_user_id).eq('status', 'active').eq('programs.status', 'active');
         if (department_id) query = query.eq('programs.department_id', department_id);
         const { data, error } = await query;
@@ -62,7 +108,26 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           const p = Array.isArray(s.programs) ? s.programs[0] : s.programs;
           if (!map.has(p.id)) map.set(p.id, { id: p.id, name: p.name, code: p.code, department_id: p.department_id, specializations: p.specializations || [] });
         });
-        return apiSuccess(Array.from(map.values()).sort((a: any, b: any) => a.name.localeCompare(b.name)), context.request, { startTime });
+        if (map.size > 0) {
+          return apiSuccess(Array.from(map.values()).sort((a: any, b: any) => a.name.localeCompare(b.name)), context.request, { startTime });
+        }
+        // Fallback for external educator (organization_staff)
+        const { data: staff } = await supabase.from('organization_staff').select('id').eq('user_id', educator_user_id).maybeSingle();
+        if (staff) {
+          let staffQuery = supabase.from('organization_staff_assignments').select('program_id, metadata, programs!inner(id, name, code, department_id, status, specializations)').eq('staff_id', staff.id).eq('is_active', true);
+          if (department_id) staffQuery = staffQuery.eq('department_id', department_id);
+          const { data: staffData } = await staffQuery;
+          (staffData || []).forEach((a: any) => {
+            const p = Array.isArray(a.programs) ? a.programs[0] : a.programs;
+            if (p && !map.has(p.id)) {
+              const assignedSpecs = a.metadata?.specializations || [];
+              const specs = assignedSpecs.length > 0 ? assignedSpecs : (p.specializations || []);
+              map.set(p.id, { id: p.id, name: p.name, code: p.code, department_id: p.department_id, specializations: specs });
+            }
+          });
+          return apiSuccess(Array.from(map.values()).sort((a: any, b: any) => a.name.localeCompare(b.name)), context.request, { startTime });
+        }
+        return apiSuccess([], context.request, { startTime });
       }
 
       case 'get-educator-sections': {
@@ -221,8 +286,15 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
       case 'get-educator-assignments': {
         const { educator_user_id } = params;
-        // Direct query using correct column name 'college_educator_id'
-        const { data, error } = await supabase.from('college_assignments').select('assignment_id, title, description, instructions, course_name, course_code, due_date, total_points, assignment_type, skill_outcomes, created_date, program_section_id, instruction_files, college_id, educator_name, college_educator_id, department_id, program_id, available_from, allow_late_submission, document_pdf, program_sections!college_assignments_program_section_id_fkey(semester, section, academic_year), programs!college_assignments_program_id_fkey(name), departments!college_assignments_department_id_fkey(name)').eq('college_educator_id', educator_user_id).eq('is_deleted', false).order('created_date', { ascending: false });
+        // Query for assignments created by this educator (internal or external)
+        // Check both college_educator_id (internal faculty) and external_educator_id (org staff)
+        const { data, error } = await supabase
+          .from('college_assignments')
+          .select('assignment_id, title, description, instructions, course_name, course_code, due_date, total_points, assignment_type, skill_outcomes, created_date, program_section_id, instruction_files, college_id, educator_name, college_educator_id, external_educator_id, department_id, program_id, available_from, allow_late_submission, document_pdf, program_sections!college_assignments_program_section_id_fkey(semester, section, academic_year), programs!college_assignments_program_id_fkey(name), departments!college_assignments_department_id_fkey(name)')
+          .or(`college_educator_id.eq.${educator_user_id},external_educator_id.eq.${educator_user_id}`)
+          .eq('is_deleted', false)
+          .order('created_date', { ascending: false });
+        
         if (error) return apiDbError(error, context.request, { startTime });
         const assignments = (data || []).map((row: any) => ({
           ...row,
@@ -245,9 +317,27 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         return apiSuccess(true, context.request, { startTime });
       }
 
+      case 'get-assigned-learners': {
+        const assignmentId = params.assignment_id || params.assignmentId;
+        if (!assignmentId) return apiError(400, 'VALIDATION_ERROR', 'Missing assignment_id', context.request, { startTime });
+        const { data, error } = await supabase
+          .from('college_learner_assignments')
+          .select('learner_id')
+          .eq('assignment_id', assignmentId)
+          .eq('is_deleted', false);
+        if (error) return apiDbError(error, context.request, { startTime });
+        return apiSuccess((data || []).map((a: any) => a.learner_id), context.request, { startTime });
+      }
+
       case 'get-assignment-stats': {
         const { educator_user_id } = params;
-        const { data: assignments } = await supabase.from('college_assignments').select('assignment_id, due_date').eq('college_educator_id', educator_user_id).eq('is_deleted', false);
+        // Get stats for assignments from both internal and external educators
+        const { data: assignments } = await supabase
+          .from('college_assignments')
+          .select('assignment_id, due_date')
+          .or(`college_educator_id.eq.${educator_user_id},external_educator_id.eq.${educator_user_id}`)
+          .eq('is_deleted', false);
+        
         const totalAssignments = assignments?.length || 0;
         const activeAssignments = assignments?.filter((a: any) => new Date(a.due_date) > new Date()).length || 0;
         const assignmentIds = assignments?.map((a: any) => a.assignment_id) || [];

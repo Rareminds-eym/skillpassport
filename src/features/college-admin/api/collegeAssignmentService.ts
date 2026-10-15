@@ -13,18 +13,22 @@ import type {
 
 export * from './collegeAssignmentTypes';
 
-export const fetchEducatorDepartments = async (educatorUserId: string): Promise<ServiceResponse<Department[]>> => {
+export const fetchEducatorDepartments = async (educatorUserId: string, departmentIds?: string[]): Promise<ServiceResponse<Department[]>> => {
   try {
-    const result: any = await apiPost('/college-admin/assignments', { action: 'get-educator-departments', educator_user_id: educatorUserId });
+    const payload: any = { action: 'get-educator-departments', educator_user_id: educatorUserId };
+    if (departmentIds && departmentIds.length > 0) payload.department_ids = departmentIds;
+    const result: any = await apiPost('/college-admin/assignments', payload);
     return { data: result.data || [], error: null };
   } catch (err: any) {
     return { data: null, error: err.message || 'Failed to fetch departments' };
   }
 };
 
-export const fetchEducatorPrograms = async (educatorUserId: string, departmentId?: string): Promise<ServiceResponse<Program[]>> => {
+export const fetchEducatorPrograms = async (educatorUserId: string, departmentId?: string, programIds?: string[]): Promise<ServiceResponse<Program[]>> => {
   try {
-    const result: any = await apiPost('/college-admin/assignments', { action: 'get-educator-programs', educator_user_id: educatorUserId, department_id: departmentId });
+    const payload: any = { action: 'get-educator-programs', educator_user_id: educatorUserId, department_id: departmentId };
+    if (programIds && programIds.length > 0) payload.program_ids = programIds;
+    const result: any = await apiPost('/college-admin/assignments', payload);
     return { data: result.data || [], error: null };
   } catch (err: any) {
     return { data: null, error: err.message || 'Failed to fetch programs' };
