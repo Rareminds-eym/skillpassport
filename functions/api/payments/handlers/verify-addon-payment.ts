@@ -18,7 +18,7 @@ import { getContextUser } from '../../../lib/auth';
 import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../lib/paymentBinding';
 import { getServiceClient } from '../../../lib/supabase';
 import { ssoRecordTransaction, ssoRecordAddonPurchase } from '../../../lib/sso-client';
-import { apiSuccess, apiError } from '../../../lib/response';
+import { apiSuccess, apiError, apiDbError } from '../../../lib/response';
 
 export async function handleVerifyAddonPayment(context: AuthenticatedContext): Promise<Response> {
   const user = getContextUser(context);
@@ -110,6 +110,42 @@ export async function handleVerifyAddonPayment(context: AuthenticatedContext): P
     if (entError) {
       console.error('[VerifyAddonPayment] Failed to create user entitlement:', entError);
       return apiError(500, 'DATABASE_ERROR', 'Failed to create user entitlement', context.request);
+    }
+
+    // Top up credit_ledger for metered add-on packs (e.g. contact_unlocks_100, job_boost_10)
+    try {
+      const { allocateAddonCredits } = await import('../../../shared/lib/entitlement-service');
+      let orgId = (user as any)?.org_id || (body.org_id as string);
+      if (!orgId) {
+        const { data: mem, error: memErr } = await supabase
+          .from('organization_members')
+          .select('organization_id')
+          .eq('user_id', user.id)
+          .limit(1)
+          .maybeSingle();
+
+        if (memErr) {
+          console.error('[VerifyAddonPayment] Failed to query organization membership:', memErr);
+          return apiDbError(memErr, context.request);
+        }
+        orgId = mem?.organization_id;
+      }
+
+      const allocRes = await allocateAddonCredits(
+        supabase,
+        orgId || user.id,
+        body.feature_key as string,
+        !!orgId,
+        `Add-on pack purchase: ${body.feature_key}`
+      );
+
+      if (!allocRes.success) {
+        console.error('[VerifyAddonPayment] Credit allocation failed:', allocRes.error);
+        return apiError(500, 'ALLOCATION_ERROR', `Credit allocation failed: ${allocRes.error}`, context.request);
+      }
+    } catch (creditErr: any) {
+      console.error('[VerifyAddonPayment] Credit allocation exception:', creditErr);
+      return apiError(500, 'ALLOCATION_ERROR', `Credit allocation failed: ${creditErr?.message || String(creditErr)}`, context.request);
     }
 
     // Record transaction in auth DB (non-blocking)

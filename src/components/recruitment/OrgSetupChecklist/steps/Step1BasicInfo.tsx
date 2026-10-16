@@ -23,15 +23,12 @@ export const Step1BasicInfo: React.FC<Step1BasicInfoProps> = ({
     const [orgAlreadyExists, setOrgAlreadyExists] = useState(false);
     const [checkingOrg, setCheckingOrg] = useState(true);
 
-    // Check if org already exists on mount
+    // Check if org already exists on mount (only if authenticated)
     useEffect(() => {
         const checkExistingOrg = async () => {
+            if (!ssoClient.getAccessToken()) return;
             try {
-                const response = await fetch('/api/recruitment/setup/progress', {
-                    headers: {
-                        Authorization: `Bearer ${ssoClient.getAccessToken()}`,
-                    },
-                });
+                const response = await ssoClient.fetch('/api/recruitment/setup/progress');
 
                 if (response.ok) {
                     const data = await response.json();

@@ -3,6 +3,7 @@ import { getServiceClient } from '../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { apiSuccess, apiError, apiDbError, apiMethodNotAllowed } from '../../lib/response';
 import { notifyLearnersOfNewOpportunity } from '../../lib/newOpportunityNotifications';
+import { enforceAndConsumeCredits } from '../../shared/lib/credit-middleware';
 
 export const onRequest = async (context: any) => {
   if (context.request.method === 'POST') return onRequestPost(context);
@@ -24,6 +25,165 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const { action } = body;
 
   try {
+
+    // ── Candidate Contact Unlocks (Spec Sections 6 & 9) ──
+    if (action === 'check-candidate-unlocked') {
+      const { candidateId } = body;
+      if (!candidateId) return apiError(400, 'VALIDATION_ERROR', 'candidateId required', context.request);
+
+      let orgId = (user as any)?.org_id || body.organizationId;
+      if (!orgId) {
+        const { data: mem } = await supabase
+          .from('organization_members')
+          .select('organization_id')
+          .eq('user_id', user.id)
+          .limit(1)
+          .maybeSingle();
+        orgId = mem?.organization_id;
+      }
+      if (!orgId) return apiError(400, 'VALIDATION_ERROR', 'organizationId required', context.request);
+
+      const { data, error } = await supabase
+        .from('candidate_contact_unlocks')
+        .select('id, created_at')
+        .eq('organization_id', orgId)
+        .eq('candidate_id', String(candidateId))
+        .maybeSingle();
+
+      if (error && error.code !== 'PGRST116') {
+        return apiDbError(error, context.request);
+      }
+
+      if (data) {
+        let { data: candidate, error: candErr } = await supabase
+          .from('learners')
+          .select('id, name, email, contact_number')
+          .eq('id', candidateId)
+          .maybeSingle();
+
+        if (candErr && candErr.code !== 'PGRST116') {
+          console.error('[actions] Error querying learner by id:', candErr);
+          return apiDbError(candErr, context.request);
+        }
+
+        if (!candidate) {
+          const { data: candByUserId, error: candUserErr } = await supabase
+            .from('learners')
+            .select('id, name, email, contact_number')
+            .eq('user_id', candidateId)
+            .maybeSingle();
+
+          if (candUserErr && candUserErr.code !== 'PGRST116') {
+            console.error('[actions] Error querying learner by user_id:', candUserErr);
+            return apiDbError(candUserErr, context.request);
+          }
+          candidate = candByUserId;
+        }
+
+        return apiSuccess({
+          isUnlocked: true,
+          unlockedAt: data.created_at,
+          candidate: candidate ? {
+            id: candidate.id,
+            name: candidate.name,
+            email: candidate.email,
+            phone: candidate.contact_number,
+          } : null,
+        }, context.request);
+      }
+
+      return apiSuccess({ isUnlocked: false, unlockedAt: null }, context.request);
+    }
+
+    if (action === 'unlock-candidate-contact') {
+      const { candidateId } = body;
+      if (!candidateId) return apiError(400, 'VALIDATION_ERROR', 'candidateId required', context.request);
+
+      let orgId = (user as any)?.org_id || body.organizationId;
+      if (!orgId) {
+        const { data: mem } = await supabase
+          .from('organization_members')
+          .select('organization_id')
+          .eq('user_id', user.id)
+          .limit(1)
+          .maybeSingle();
+        orgId = mem?.organization_id;
+      }
+      if (!orgId) return apiError(400, 'VALIDATION_ERROR', 'organizationId required', context.request);
+
+      // Check if already unlocked
+      const { data: existingUnlock, error: unlockCheckErr } = await supabase
+        .from('candidate_contact_unlocks')
+        .select('id')
+        .eq('organization_id', orgId)
+        .eq('candidate_id', String(candidateId))
+        .maybeSingle();
+
+      if (unlockCheckErr && unlockCheckErr.code !== 'PGRST116') {
+        console.error('[actions] Error checking candidate_contact_unlocks:', unlockCheckErr);
+        return apiDbError(unlockCheckErr, context.request);
+      }
+
+      if (!existingUnlock) {
+        // Enforce credit consumption via atomic credit ledger
+        const creditResult = await enforceAndConsumeCredits(
+          supabase,
+          orgId,
+          'contact_unlocks',
+          1,
+          String(candidateId),
+          JSON.stringify({ unlocked_by: user.id })
+        );
+
+        if (!creditResult.allowed || !creditResult.success) {
+          return creditResult.errorResponse || creditResult.response || apiError(402, 'INSUFFICIENT_CREDITS', 'Credit deduction failed', context.request);
+        }
+
+        // Record unlock in candidate_contact_unlocks
+        const { error: insErr } = await supabase
+          .from('candidate_contact_unlocks')
+          .insert({
+            organization_id: orgId,
+            candidate_id: String(candidateId),
+            unlocked_by: user.id,
+            credits_consumed: 1,
+          });
+
+        if (insErr && insErr.code !== '23505') {
+          console.error('[actions] candidate_contact_unlocks insert error:', insErr);
+          return apiDbError(insErr, context.request);
+        }
+      }
+
+      // Fetch candidate unmasked contact info from learners table
+      let { data: candidate, error: candErr } = await supabase
+        .from('learners')
+        .select('id, name, email, contact_number')
+        .eq('id', candidateId)
+        .maybeSingle();
+
+      if (!candidate) {
+        const { data: candByUserId } = await supabase
+          .from('learners')
+          .select('id, name, email, contact_number')
+          .eq('user_id', candidateId)
+          .maybeSingle();
+        candidate = candByUserId;
+      }
+
+      if (candErr) return apiDbError(candErr, context.request);
+      if (!candidate) return apiError(404, 'NOT_FOUND', 'Candidate not found', context.request);
+
+      return apiSuccess({
+        unlocked: true,
+        candidate: {
+          id: candidate.id,
+          name: candidate.name,
+          email: candidate.email,
+          phone: candidate.contact_number,
+        }
+      }, context.request);
+    }
 
     // ── Org Context & Permissions ──
     if (action === 'get-user-org-context') {
@@ -367,9 +527,41 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     }
 
     if (action === 'create-opportunity') {
+      let orgId = (user as any)?.org_id || body.data?.organization_id;
+      if (!orgId) {
+        const { data: mem } = await supabase
+          .from('organization_members')
+          .select('organization_id')
+          .eq('user_id', user.id)
+          .limit(1)
+          .maybeSingle();
+        orgId = mem?.organization_id;
+      }
+
+      if (orgId) {
+        const { checkEntitlement } = await import('../../shared/lib/entitlement-service');
+        const entitlement = await checkEntitlement(supabase, orgId, 'active_job_posts');
+        if (entitlement && typeof entitlement.limit === 'number') {
+          const { count, error: countErr } = await supabase
+            .from('opportunities')
+            .select('id', { count: 'exact', head: true })
+            .eq('organization_id', orgId)
+            .or('is_active.eq.true,status.eq.open');
+
+          if (!countErr && typeof count === 'number' && count >= entitlement.limit) {
+            return apiError(
+              402,
+              'QUOTA_EXCEEDED',
+              `Your current plan allows up to ${entitlement.limit} active job posts. You currently have ${count} active posts. Please upgrade your recruiter plan to publish more opportunities.`,
+              context.request
+            );
+          }
+        }
+      }
+
       const { data, error } = await supabase
         .from('opportunities')
-        .insert({ ...body.data, created_by: user.id, posted_date: new Date().toISOString() })
+        .insert({ ...body.data, organization_id: orgId || body.data?.organization_id, created_by: user.id, posted_date: new Date().toISOString() })
         .select()
         .single();
       if (error) return apiDbError(error, context.request);

@@ -12,7 +12,7 @@ import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../lib/paymentBinding';
 import { createLogger } from '../../../lib/logger';
 import { getServiceClient } from '../../../lib/supabase';
-import { ssoCreateFreemiumSubscription, ssoSyncSubscription } from '../../../lib/sso-client';
+import { ssoCreateFreemiumSubscription, ssoCreateSubscription, ssoSyncSubscription } from '../../../lib/sso-client';
 import { syncSubscriptionCache, syncUserShadow } from '../../../lib/sync-shadow';
 import { apiSuccess, apiError } from '../../../lib/response';
 import { isSalesOnlyPlan } from '../lib/salesPlan';
@@ -125,25 +125,31 @@ export async function handleCreateOrder(context: AuthenticatedContext): Promise<
 
 
     // Resolve catalog metadata before the zero-cost branch: quote-only is not free.
+    let catalogPlan: any = null;
     if (body.planId && body.planId !== 'freemium') {
-      const { data: catalogPlan, error: catalogError } = await getServiceClient(env)
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(body.planId));
+      const query = getServiceClient(env)
         .from('plans_cache')
-        .select('entity_config')
-        .eq('id', body.planId)
+        .select('id, plan_code, name, base_features, entity_config');
+
+      const { data: cp, error: catalogError } = await (isUuid 
+        ? query.eq('id', body.planId) 
+        : query.eq('plan_code', body.planId))
         .eq('is_active', true)
         .maybeSingle();
       if (catalogError) return apiError(503, 'CATALOG_UNAVAILABLE', 'Unable to verify plan availability.', context.request);
-      if (!catalogPlan) return apiError(404, 'NOT_FOUND', 'Plan not found or inactive', context.request);
-      if (isSalesOnlyPlan(catalogPlan)) {
+      if (!cp) return apiError(404, 'NOT_FOUND', 'Plan not found or inactive', context.request);
+      if (isSalesOnlyPlan(cp)) {
         return apiError(400, 'CONTACT_SALES_REQUIRED', 'This plan requires an agreed sales proposal before activation.', context.request);
       }
+      catalogPlan = cp;
     }
 
     // Check if it's a freemium or zero-cost plan
-    const isFreemium = body.amount === 0 || body.planId === 'freemium' || body.planName?.toString().toLowerCase() === 'freemium';
+    const isZeroCost = body.amount === 0 || body.planId === 'freemium' || body.planName?.toString().toLowerCase() === 'freemium';
 
-    if (isFreemium) {
-      // Direct freemium subscription creation logic
+    if (isZeroCost) {
+      // Direct zero-cost subscription creation logic
       const supabase = getServiceClient(env);
 
       // Ensure user exists in shadow table
@@ -152,11 +158,28 @@ export async function handleCreateOrder(context: AuthenticatedContext): Promise<
       // Create subscription in auth DB via SSO worker RPC
       let subscription: Record<string, unknown>;
       try {
-        subscription = await ssoCreateFreemiumSubscription(env, {
-          user_id: user.id,
-          email: (body.userEmail as string) || user.email,
-          full_name: (body.userName as string) || (user as any).name || 'Freemium User',
-        });
+        if (catalogPlan && catalogPlan.plan_code !== 'freemium') {
+          // B2B zero-cost plans (e.g. recruiter_free)
+          subscription = await ssoCreateSubscription(env, {
+            user_id: user.id,
+            plan_id: catalogPlan.id,
+            plan_code: catalogPlan.plan_code,
+            plan_type: catalogPlan.name,
+            plan_amount: 0,
+            billing_cycle: 'yearly',
+            features: catalogPlan.base_features || [],
+            full_name: (body.userName as string) || (user as any).name || 'Recruiter User',
+            email: (body.userEmail as string) || user.email,
+            organization_id: user.org_id || null,
+          });
+        } else {
+          // Learner B2C freemium
+          subscription = await ssoCreateFreemiumSubscription(env, {
+            user_id: user.id,
+            email: (body.userEmail as string) || user.email,
+            full_name: (body.userName as string) || (user as any).name || 'Freemium User',
+          });
+        }
       } catch (ssoError: any) {
         // Handle missing SSO_SERVICE binding (local dev or misconfiguration)
         if (ssoError.message?.includes('SSO_SERVICE binding is not configured')) {
@@ -179,15 +202,38 @@ export async function handleCreateOrder(context: AuthenticatedContext): Promise<
         console.error('[CreateOrder] Shadow sync failed:', syncError);
       }
 
-      // Return simulated success response structure expected by frontend for freemium
+      // Seed initial metered credit allocation into credit_ledger
+      try {
+        const tenantId = user.org_id || user.id;
+        const targetPlanId = (subscription.plan_id as string) || catalogPlan?.id;
+        if (targetPlanId) {
+          const { allocateInitialPlanCredits } = await import('../../../shared/lib/entitlement-service');
+          const allocRes = await allocateInitialPlanCredits(
+            supabase,
+            tenantId,
+            targetPlanId,
+            !!user.org_id,
+            `Initial plan credit allocation for ${(subscription.plan_code as string) || catalogPlan?.plan_code}`
+          );
+          if (!allocRes.success) {
+            console.error('[CreateOrder] Credit allocation failed:', allocRes.error);
+            return apiError(500, 'ALLOCATION_ERROR', `Credit allocation failed: ${allocRes.error}`, context.request);
+          }
+        }
+      } catch (creditAllocError: any) {
+        console.error('[CreateOrder] Credit allocation exception:', creditAllocError);
+        return apiError(500, 'ALLOCATION_ERROR', `Credit allocation failed: ${creditAllocError?.message || String(creditAllocError)}`, context.request);
+      }
+
+      // Return simulated success response structure expected by frontend
       return apiSuccess({
-        isFreemium: true,
+        isFreemium: isZeroCost,
         data: {
           id: subscription.id,
           userId: subscription.user_id,
           planId: subscription.plan_id,
-          planCode: subscription.plan_code || 'freemium',
-          planName: 'Freemium',
+          planCode: subscription.plan_code || catalogPlan?.plan_code || 'freemium',
+          planName: (subscription.plan_name as string) || (subscription.plan_type as string) || catalogPlan?.name || 'Freemium',
           status: subscription.status,
           startDate: subscription.subscription_start_date,
           endDate: subscription.subscription_end_date,

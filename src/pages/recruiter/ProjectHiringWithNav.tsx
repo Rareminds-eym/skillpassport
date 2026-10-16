@@ -13,8 +13,6 @@ import {
 import { RocketLaunchIcon } from '@heroicons/react/24/solid';
 import React, { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-// @ts-ignore - FeatureGate is a JSX component
-import { FeatureGate } from '@/features/subscription';
 import { EmptyStateWithQuote } from '@/components/EmptyStateWithQuote';
 
 // Import components
@@ -397,13 +395,8 @@ const ProjectHiringWithNavContent = () => {
   );
 };
 
-/**
- * Wrapped ProjectHiringWithNav with FeatureGate for project_hiring add-on
- */
 const ProjectHiringWithNav = () => (
-  <FeatureGate featureKey="project_hiring" showUpgradePrompt={true}>
-    <ProjectHiringWithNavContent />
-  </FeatureGate>
+  <ProjectHiringWithNavContent />
 );
 
 export default ProjectHiringWithNav;

@@ -48,15 +48,29 @@ export async function handleOrgSubscriptionsPurchase(context: AuthenticatedConte
     const supabase = getServiceClient(env as unknown as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string });
 
     // Guard: Verify user is an admin or owner of the organization
-    const { data: membership } = await supabase
-      .from('license_assignments')
+    const { data: orgMember } = await supabase
+      .from('organization_members')
       .select('id, role')
       .eq('user_id', user.id)
       .eq('organization_id', body.org_id as string)
       .limit(1)
       .maybeSingle();
 
-    if (!membership || (membership.role !== 'admin' && membership.role !== 'owner')) {
+    let membership = (orgMember && (orgMember.role === 'admin' || orgMember.role === 'owner')) ? orgMember : null;
+    if (!membership) {
+      const { data: legacyAssignment } = await supabase
+        .from('license_assignments')
+        .select('id, role')
+        .eq('user_id', user.id)
+        .eq('organization_id', body.org_id as string)
+        .limit(1)
+        .maybeSingle();
+      if (legacyAssignment && (legacyAssignment.role === 'admin' || legacyAssignment.role === 'owner')) {
+        membership = legacyAssignment;
+      }
+    }
+
+    if (!membership) {
       return apiError(403, 'FORBIDDEN', 'Not authorized for this organization', context.request);
     }
 

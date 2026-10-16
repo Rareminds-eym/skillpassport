@@ -105,9 +105,9 @@ export function checkFeatureAccess(
       });
     }
 
-    // Graceful degradation: fail open for paid plans, fail closed for freemium
+    // Graceful degradation: fail open for paid plans, fail closed for freemium and recruiter free tier
     // This prevents legitimate users from being locked out due to transient errors
-    const shouldFailOpen = userPlan !== PLAN_IDS.FREEMIUM;
+    const shouldFailOpen = userPlan !== PLAN_IDS.FREEMIUM && userPlan !== PLAN_IDS.RECRUITER_FREE;
 
     return {
       hasAccess: shouldFailOpen,
@@ -158,9 +158,8 @@ function checkFreemiumAccess(feature: string): FeatureAccessResult {
   if (featureConfig === undefined) {
     return {
       hasAccess: false,
-      reason: 'This feature requires a paid plan',
+      reason: 'This feature requires an active paid subscription plan',
       upgradeRequired: true,
-      availableInPlans: ['basic', 'professional', 'premium', 'enterprise'],
     };
   }
 
@@ -174,7 +173,6 @@ function checkFreemiumAccess(feature: string): FeatureAccessResult {
     hasAccess: false,
     reason: 'Upgrade to a paid plan to unlock this feature',
     upgradeRequired: true,
-    availableInPlans: ['basic', 'professional', 'premium', 'enterprise'],
   };
 }
 

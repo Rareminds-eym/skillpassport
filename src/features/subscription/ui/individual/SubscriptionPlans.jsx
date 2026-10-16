@@ -706,11 +706,15 @@ function SubscriptionPlans() {
   const entityTypeParam = useMemo(() => getEntityTypeParam(entity), [entity]);
   const roleTypeParam = useMemo(() => getRoleTypeParam(pageRole), [pageRole]);
 
+  const isRecruiterContext = useMemo(() => {
+    return entity === 'recruitment' || pageRole === 'recruiter' || type === 'recruiter';
+  }, [entity, pageRole, type]);
+
   // Determine business type based on user role
-  // B2C for individual learners, B2B for organization admins
+  // B2C for individual learners, B2B for organization admins and recruiters
   const businessType = useMemo(() => {
-    return pageRole === 'admin' ? 'b2b' : 'b2c';
-  }, [pageRole]);
+    return (pageRole === 'admin' || isRecruiterContext) ? 'b2b' : 'b2c';
+  }, [pageRole, isRecruiterContext]);
 
   // Fetch plans EXCLUSIVELY from the Cloudflare Worker API.
   // plans = null while loading, [] or [...] after.
@@ -726,9 +730,13 @@ function SubscriptionPlans() {
   });
 
   // Plans exclusively from DB — zero hardcoded fallback
-  // Add Freemium plan to plans array (fetch from DB or add fallback)
+  // For recruiters, dbPlans already contains the 6 recruiter tiers.
   const plans = useMemo(() => {
     if (!dbPlans || dbPlans.length === 0) return [];
+
+    if (isRecruiterContext) {
+      return dbPlans;
+    }
 
     // Check if Freemium plan exists in DB
     const hasFreemium = dbPlans.some(p => p.plan_code === PLAN_IDS.FREEMIUM);
@@ -762,7 +770,7 @@ function SubscriptionPlans() {
     };
 
     return [freemiumPlan, ...dbPlans];
-  }, [dbPlans]);
+  }, [dbPlans, isRecruiterContext]);
 
   // UI-only content (titles, subtitles, CTA text). No pricing here.
   const { title, subtitle, heroMessage, ctaText } = useMemo(

@@ -1,24 +1,19 @@
-import React, { useState } from 'react';
-import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '@/features/auth/model';
+import * as React from 'react';
+import { useEffect, useState } from 'react';
+import { Link, Outlet, useLocation } from 'react-router-dom';
 
 import Header from '@/features/recruiter-pipeline/ui/Header';
 import Sidebar from '@/features/recruiter-pipeline/ui/Sidebar';
 import MobileTabBar from '@/features/recruiter-pipeline/ui/MobileTabBar';
-import FloatingRecruiterAIButton from '@/shared/ui/FloatingRecruiterAIButton';
 const CandidateProfileDrawer = React.lazy(() => import('@/features/recruiter-pipeline/ui/CandidateProfileDrawer'));
-import { useResponsive } from '@/shared/lib/hooks';
 import { Candidate } from '@/entities/recruiter';
 import { useUnreadMessagesCount } from '@/features/messaging';
 
 import { useUser } from '@/shared/model/authStore';
 const RecruiterLayout: React.FC = () => {
-  const navigate = useNavigate();
   const location = useLocation();
   const user = useUser();
-  const { isMobile } = useResponsive();
   const [showMobileMenu, setShowMobileMenu] = useState(false);
-  const [showMobileMoreMenu, setShowMobileMoreMenu] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
   const [showCandidateDrawer, setShowCandidateDrawer] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
@@ -27,12 +22,21 @@ const RecruiterLayout: React.FC = () => {
   const { unreadCount } = useUnreadMessagesCount(user?.id);
 
   const handleMenuToggle = () => {
-    setShowMobileMenu(!showMobileMenu);
+    setShowMobileMenu(open => !open);
   };
 
   const handleMoreMenuToggle = () => {
-    setShowMobileMoreMenu(!showMobileMoreMenu);
+    setShowMobileMenu(open => !open);
   };
+
+  useEffect(() => { setShowMobileMenu(false); }, [location.pathname, location.search]);
+
+  // The marketing support widget overlaps the workspace's mobile navigation.
+  useEffect(() => {
+    const alreadyHidden = document.body.classList.contains('hide-zoho-widget');
+    document.body.classList.add('hide-zoho-widget');
+    return () => { if (!alreadyHidden) document.body.classList.remove('hide-zoho-widget'); };
+  }, []);
 
   const handleViewProfile = (candidate: Candidate) => {
     setSelectedCandidate(candidate);
@@ -46,49 +50,48 @@ const RecruiterLayout: React.FC = () => {
 
   return (
       <div className="min-h-screen bg-gray-50">
+        <a href="#recruiter-main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-2 focus:z-[100] focus:rounded-lg focus:bg-primary-700 focus:px-4 focus:py-2 focus:text-white">Skip to content</a>
         {/* Header */}
         <Header
         onMenuToggle={handleMenuToggle} 
         showMobileMenu={showMobileMenu}
       />
 
-      <div className="flex h-screen pt-0">
+      <div className="flex min-h-[calc(100dvh-4rem)]">
         {/* Sidebar */}
         <Sidebar 
           activeTab={activeTab}
           setActiveTab={setActiveTab}
           showMobileMenu={showMobileMenu}
           unreadMessagesCount={unreadCount}
+          onClose={() => setShowMobileMenu(false)}
         />
 
         {/* Main Content */}
-        <div className={`flex-1 overflow-auto flex flex-col ${isMobile ? 'pb-20' : 'md:ml-64'}`}>
-          <div className="flex-1">
+        <div className="flex min-w-0 flex-1 flex-col pb-[calc(5rem+env(safe-area-inset-bottom))] md:ml-64 md:pb-0">
+          <main id="recruiter-main" tabIndex={-1} className="min-w-0 flex-1 focus:outline-none">
             <Outlet context={{ onViewProfile: handleViewProfile }} />
-          </div>
-          {!isMobile && (
-            <footer className="bg-white border-t border-gray-200 py-4 px-6">
-              <div className="flex items-center justify-between text-sm text-gray-500">
+          </main>
+            <footer className="hidden border-t border-gray-200 bg-white px-6 py-4 md:block">
+              <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-gray-500">
                 <span>© {new Date().getFullYear()} Recruiter Portal. All rights reserved.</span>
                 <div className="flex items-center gap-4">
-                  <a href="#" className="hover:text-gray-700 transition-colors">Privacy Policy</a>
-                  <a href="#" className="hover:text-gray-700 transition-colors">Terms of Service</a>
-                  <a href="#" className="hover:text-gray-700 transition-colors">Help</a>
+                  <Link to="/privacy-policy" className="rounded py-2 hover:text-gray-700 focus-visible:ring-2 focus-visible:ring-primary-500">Privacy Policy</Link>
+                  <Link to="/terms" className="rounded py-2 hover:text-gray-700 focus-visible:ring-2 focus-visible:ring-primary-500">Terms of Service</Link>
+                  <Link to="/contact" className="rounded py-2 hover:text-gray-700 focus-visible:ring-2 focus-visible:ring-primary-500">Help</Link>
                 </div>
               </div>
             </footer>
-          )}
         </div>
       </div>
 
       {/* Mobile Tab Bar */}
-      {isMobile && (
         <MobileTabBar
           activeTab={activeTab}
           setActiveTab={setActiveTab}
           onMoreMenuToggle={handleMoreMenuToggle}
+          showMoreMenu={showMobileMenu}
         />
-      )}
 
       {/* Candidate Profile Drawer */}
       <React.Suspense fallback={null}>
@@ -99,16 +102,6 @@ const RecruiterLayout: React.FC = () => {
         />
       </React.Suspense>
 
-      {/* Mobile menu overlay */}
-      {showMobileMenu && (
-        <div 
-          className="fixed inset-0 bg-gray-600 bg-opacity-75 z-30 md:hidden"
-          onClick={() => setShowMobileMenu(false)}
-        ></div>
-      )}
-      
-      {/* Floating AI Button */}
-      <FloatingRecruiterAIButton />
       </div>
   );
 };

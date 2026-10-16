@@ -1,31 +1,36 @@
 /**
  * subscriptionPlans.js
  *
- * IMPORTANT: This file no longer contains any pricing data.
  * All subscription plan data (prices, features, names, limits) comes
  * exclusively from the Cloudflare Worker API → Supabase database.
  *
- * This file only exports constants needed for plan hierarchy ordering,
- * used by access-control logic (SubscriptionGate).
- * These IDs must match the plan_code values in the subscription_plans DB table.
+ * This file exports plan identifiers and hierarchy helpers for both
+ * learner (B2C) and recruiter (B2B) plan families.
  */
 
 /**
- * Plan code identifiers — must match plan_code values in Supabase subscription_plans table.
+ * Plan code identifiers — matches plan_code values in Supabase plans_cache table.
  */
 export const PLAN_IDS = {
+  // Learner plans
   FREEMIUM: 'freemium',
   BASIC: 'basic',
   PROFESSIONAL: 'professional',
   PREMIUM: 'premium',
   ENTERPRISE: 'enterprise',
   ECOSYSTEM: 'enterprise_ecosystem',
+
+  // Recruiter plans (Spec v2: 6 tiers)
+  RECRUITER_FREE: 'recruiter_free',
+  RECRUITER_LITE: 'recruiter_lite',
+  RECRUITER_STARTER: 'recruiter_starter',
+  RECRUITER_GROWTH: 'recruiter_growth',
+  RECRUITER_PRO: 'recruiter_pro',
+  RECRUITER_ENTERPRISE: 'recruiter_enterprise',
 };
 
 /**
- * Ordered hierarchy of plan codes from lowest to highest tier.
- * Used only for access-control comparisons (e.g. "does user have at least Professional?").
- * NOT used for pricing — prices always come from the database.
+ * Ordered hierarchy of learner plan codes from lowest to highest tier.
  */
 export const PLAN_HIERARCHY = [
   PLAN_IDS.FREEMIUM,
@@ -37,22 +42,65 @@ export const PLAN_HIERARCHY = [
 ];
 
 /**
+ * Ordered hierarchy of recruiter plan codes from lowest to highest tier.
+ */
+export const RECRUITER_PLAN_HIERARCHY = [
+  PLAN_IDS.RECRUITER_FREE,
+  PLAN_IDS.RECRUITER_LITE,
+  PLAN_IDS.RECRUITER_STARTER,
+  PLAN_IDS.RECRUITER_GROWTH,
+  PLAN_IDS.RECRUITER_PRO,
+  PLAN_IDS.RECRUITER_ENTERPRISE,
+];
+
+/**
  * Plan hierarchy levels for access control
  * Maps plan codes to numeric levels for comparison
  */
 export const PLAN_HIERARCHY_LEVELS = {
+  // Learner plans
   'freemium': 0,
   'basic': 1,
   'professional': 2,
   'premium': 3,
   'enterprise': 4,
   'ecosystem': 4,
-  'enterprise_ecosystem': 4
+  'enterprise_ecosystem': 4,
+
+  // Recruiter plans
+  'recruiter_free': 0,
+  'recruiter_lite': 1,
+  'recruiter_starter': 2,
+  'recruiter_growth': 3,
+  'recruiter_pro': 4,
+  'recruiter_enterprise': 5,
+
+  // Institutional plans
+  'school_freemium': 0,
+  'school_starter': 1,
+  'school_professional': 2,
+  'school_enterprise': 3,
+  'college_starter': 1,
+  'college_professional': 2,
+  'college_enterprise': 3,
+  'university_starter': 1,
+  'university_professional': 2,
+  'university_enterprise': 3,
+  'hybrid': 4,
 };
 
 /**
+ * Helper to get numeric hierarchy level of any plan code (learner or recruiter)
+ */
+export function getPlanHierarchyLevel(planCode) {
+  if (!planCode) return 0;
+  const normalized = String(planCode).trim().toLowerCase();
+  return PLAN_HIERARCHY_LEVELS[normalized] ?? 0;
+}
+
+/**
  * Freemium plan feature configuration
- * Only these features are accessible on Freemium tier (freemium)
+ * Used as fallback for unauthenticated learner view
  */
 export const FREEMIUM_FEATURES = {
   // Free features
@@ -60,11 +108,11 @@ export const FREEMIUM_FEATURES = {
   profile_creation: true,
   marketplace_access: true,
   view_pricing: true,
-  opportunities_listing_access: true, // Can VIEW opportunities
-  courses_listing_access: true, // Can VIEW courses
+  opportunities_listing_access: true,
+  courses_listing_access: true,
 
   // Locked features (require upgrade)
-  opportunities_access: false, // Cannot APPLY to opportunities
+  opportunities_access: false,
   assessments: false,
   projects: false,
   storage: false,
@@ -80,17 +128,25 @@ export const FREEMIUM_FEATURES = {
 
 /**
  * Check if a user's plan meets the minimum required plan tier.
- * Pure order comparison — no pricing involved.
+ * Supports both learner and recruiter plan families.
  *
  * @param {string} userPlanId   - The user's current plan_code
  * @param {string} requiredPlanId - The minimum required plan_code
  * @returns {boolean}
  */
 export function meetsMinimumPlan(userPlanId, requiredPlanId) {
-  const userIndex = PLAN_HIERARCHY.indexOf(userPlanId?.toLowerCase());
-  const requiredIndex = PLAN_HIERARCHY.indexOf(requiredPlanId?.toLowerCase());
-  if (userIndex === -1 || requiredIndex === -1) return false;
-  return userIndex >= requiredIndex;
+  if (!userPlanId || !requiredPlanId) return false;
+  const userLevel = getPlanHierarchyLevel(userPlanId);
+  const requiredLevel = getPlanHierarchyLevel(requiredPlanId);
+  return userLevel >= requiredLevel;
 }
 
-export default { PLAN_IDS, PLAN_HIERARCHY, PLAN_HIERARCHY_LEVELS, FREEMIUM_FEATURES, meetsMinimumPlan };
+export default {
+  PLAN_IDS,
+  PLAN_HIERARCHY,
+  RECRUITER_PLAN_HIERARCHY,
+  PLAN_HIERARCHY_LEVELS,
+  FREEMIUM_FEATURES,
+  getPlanHierarchyLevel,
+  meetsMinimumPlan,
+};

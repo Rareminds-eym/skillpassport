@@ -8,6 +8,7 @@ import { verifyOrgAccess } from '../../lib/permissions';
 import { apiDbError, apiError, apiMethodNotAllowed, apiSuccess } from '../../lib/response';
 import { getServiceClient } from '../../lib/supabase';
 import { eligibleJobs, isEligibleJob, stringSkills } from '../../lib/job-recommendations';
+import { checkEntitlement } from '../../shared/lib/entitlement-service';
 
 export const onRequest = async (context: any) => {
   if (context.request.method === 'GET') return onRequestGet(context);
@@ -257,6 +258,45 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       if (opportunity.skills_required != null && (!Array.isArray(opportunity.skills_required) || opportunity.skills_required.some((skill: unknown) => typeof skill !== 'string'))) {
         return apiError(400, 'VALIDATION_ERROR', 'skills_required must be an array of strings', context.request);
       }
+
+      // 🔒 Quota check: Enforce active_job_posts plan entitlement
+      const user = getContextUser(context);
+      let organizationId = opportunity.organization_id || (user as any)?.org_id;
+      if (!organizationId && user?.id) {
+        const { data: mem } = await supabase
+          .from('organization_members')
+          .select('organization_id')
+          .eq('user_id', user.id)
+          .limit(1)
+          .maybeSingle();
+        organizationId = mem?.organization_id;
+      }
+
+      if (organizationId) {
+        const entitlement = await checkEntitlement(supabase, organizationId, 'active_job_posts');
+        if (entitlement && typeof entitlement.limit === 'number') {
+          const { count, error: countErr } = await supabase
+            .from('opportunities')
+            .select('id', { count: 'exact', head: true })
+            .eq('organization_id', organizationId)
+            .or('is_active.eq.true,status.eq.open');
+
+          if (countErr) {
+            console.error('[Opportunities] Failed to count active job posts:', countErr);
+            return apiDbError(countErr, context.request);
+          }
+
+          if (typeof count === 'number' && count >= entitlement.limit) {
+            return apiError(
+              402,
+              'QUOTA_EXCEEDED',
+              `Your current plan allows up to ${entitlement.limit} active job posts. You currently have ${count} active posts. Please upgrade your recruiter plan to publish more opportunities.`,
+              context.request
+            );
+          }
+        }
+      }
+
       const { data, error } = await supabase.from('opportunities').insert([opportunity]).select().single();
       if (error) return apiDbError(error, context.request);
       await notifyLearnersOfNewOpportunity(supabase, data);

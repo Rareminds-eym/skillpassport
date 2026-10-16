@@ -98,6 +98,14 @@ export async function syncPlanCache(
       display_order: plan.display_order,
       is_active: plan.is_active,
       product_id: plan.product_id || null,
+      plan_family: (plan.plan_family as string) || (
+        Array.isArray(plan.applicable_entities) && plan.applicable_entities.includes('recruitment')
+          ? 'recruiter'
+          : (Array.isArray(plan.applicable_entities) && plan.applicable_entities.some((e: string) => ['school', 'college', 'university', 'institution'].includes(e))
+              ? 'institution'
+              : 'individual')
+      ),
+      hierarchy_order: (plan.hierarchy_order as number) ?? (plan.display_order as number) ?? 0,
       synced_at: new Date().toISOString(),
       auth_updated_at: plan.updated_at,
     }, { onConflict: 'id' });

@@ -56,9 +56,9 @@ export async function checkServerFeatureAccess(
   feature: string
 ): Promise<FeatureAccessResult> {
   try {
-    const { data: cached, error } = await supabase
+    let { data: cached, error } = await supabase
       .from('subscription_cache')
-      .select('id, status, plan_code, features, synced_at, is_organization_subscription, subscription_end_date')
+      .select('id, user_id, organization_id, status, plan_code, features, synced_at, is_organization_subscription, subscription_end_date')
       .eq('user_id', userId)
       .in('status', ['active', 'grace_period', 'cancelled'])
       .maybeSingle();
@@ -70,6 +70,69 @@ export async function checkServerFeatureAccess(
         reason: 'Unable to verify subscription',
         requiresUpgrade: false,
       };
+    }
+
+    // Check if user belongs to an organization if they have no personal active paid plan
+    let orgId: string | null = null;
+    if (!cached || cached.plan_code === 'freemium') {
+      try {
+        const { data: mem } = await supabase
+          .from('organization_members')
+          .select('organization_id')
+          .eq('user_id', userId)
+          .eq('status', 'active')
+          .limit(1)
+          .maybeSingle();
+        if (mem?.organization_id) {
+          orgId = mem.organization_id;
+        } else {
+          const { data: u } = await supabase
+            .from('users')
+            .select('"organizationId"')
+            .eq('id', userId)
+            .maybeSingle();
+          if (u?.organizationId) orgId = u.organizationId;
+        }
+
+        if (orgId) {
+          const { data: orgSub } = await supabase
+            .from('subscription_cache')
+            .select('id, user_id, organization_id, status, plan_code, features, synced_at, is_organization_subscription, subscription_end_date')
+            .eq('organization_id', orgId)
+            .in('status', ['active', 'grace_period', 'cancelled'])
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          if (orgSub) {
+            cached = orgSub;
+          }
+        }
+      } catch (e) {
+        logger.warn('Error resolving organization subscription for user', { error: (e as Error).message, userId });
+      }
+    }
+
+    // Check dynamic Entitlement Engine (Database single source of truth)
+    const effectiveTenantId = orgId || cached?.organization_id || userId;
+    try {
+      const { checkEntitlement } = await import('./entitlement-service');
+      const ent = await checkEntitlement(supabase, effectiveTenantId, feature);
+      if (ent && ent.allowed) {
+        return {
+          hasAccess: true,
+          planCode: cached?.plan_code || 'active',
+          requiresUpgrade: false,
+        };
+      } else if (ent && ent.reason && !ent.reason.includes('not recognized')) {
+        return {
+          hasAccess: false,
+          reason: ent.reason,
+          planCode: cached?.plan_code || 'free',
+          requiresUpgrade: true,
+        };
+      }
+    } catch {
+      // Feature not in new entitlement catalog or mock environment, proceed to plan features check
     }
 
     if (!cached) {
@@ -124,7 +187,7 @@ export async function checkServerFeatureAccess(
     }
 
     const planFeatures = Array.isArray(cached.features) ? cached.features : [];
-    const hasFeature = planFeatures.includes(feature) || cached.is_organization_subscription === true;
+    const hasFeature = planFeatures.includes(feature);
 
     return {
       hasAccess: hasFeature,
@@ -194,18 +257,22 @@ export async function canUpgradeToPlan(
       return { canUpgrade: true };
     }
 
-    const currentIndex = PLAN_HIERARCHY.indexOf(currentPlanCode);
-    const targetIndex = PLAN_HIERARCHY.indexOf(targetPlanCode);
+    const { comparePlanTiers } = await import('./entitlement-service');
+    const comparison = await comparePlanTiers(supabase, currentPlanCode, targetPlanCode);
 
-    if (currentIndex === -1 || targetIndex === -1) {
-      return { canUpgrade: false, reason: 'Invalid plan code', currentPlanCode };
+    if (comparison === 'equal') {
+      return {
+        canUpgrade: false,
+        reason: 'Current plan is already at this tier',
+        currentPlanCode,
+      };
     }
 
-    const canUpgrade = targetIndex > currentIndex;
+    const canUpgrade = comparison === 'lower'; // current is lower than target => can upgrade
 
     return {
       canUpgrade,
-      reason: canUpgrade ? undefined : 'Cannot downgrade or make lateral moves to the same tier',
+      reason: canUpgrade ? undefined : 'Cannot downgrade or make lateral moves to a lower tier',
       currentPlanCode,
     };
   } catch (error) {

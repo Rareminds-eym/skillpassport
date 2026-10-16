@@ -6,6 +6,8 @@ export { default as useSubscriptionPlansData } from './useSubscriptionPlansData'
 export { useFeatureGate, clearFeatureAccessCache } from './useFeatureGate';
 export { useAddOnCatalog } from './useAddOnCatalog';
 export { useOptimisticSubscription } from './useOptimisticSubscription';
+export { useEntitlementManifest } from './useEntitlementManifest';
+export { useFeatureEntitlement } from './useFeatureEntitlement';
 
 // Zustand store hooks (entitlements + purchase actions only)
 // NOTE: useSubscription is a combined hook that wraps useSubscriptionQuery + entitlements

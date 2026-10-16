@@ -30,6 +30,7 @@ export { default as SubscriptionOverview } from './SubscriptionOverview';
 
 export { default as BillingDashboard } from './BillingDashboard';
 export { default as InvitationManager } from './InvitationManager';
+export { default as RecruiterCreditDashboard } from './RecruiterCreditDashboard';
 
 // Modals
 export { default as CreatePoolModal } from './CreatePoolModal';

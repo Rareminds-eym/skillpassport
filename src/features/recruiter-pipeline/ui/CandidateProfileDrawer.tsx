@@ -18,15 +18,33 @@ import {
   TrophyIcon,
   BriefcaseIcon,
   BeakerIcon,
-  DevicePhoneMobileIcon
+  DevicePhoneMobileIcon,
+  LockClosedIcon
 } from '@heroicons/react/24/outline';
 import AddToShortlistModal from './modals/AddToShortlistModal';
 import ScheduleInterviewModal from './modals/ScheduleInterviewModal';
 import { QRCodeSVG } from 'qrcode.react';
 import { File } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('CandidateProfileDrawer');
+
+function maskEmail(email?: string): string {
+  if (!email || !email.includes('@')) return '••••••••@••••.com';
+  const [local, domain] = email.split('@');
+  if (local.length <= 2) return `${local[0]}***@${domain}`;
+  return `${local[0]}${'*'.repeat(Math.min(local.length - 2, 5))}${local[local.length - 1]}@${domain}`;
+}
+
+function maskPhone(phone?: string): string {
+  if (!phone) return '••••••••••';
+  const clean = phone.trim();
+  if (clean.length <= 4) return '••••••••';
+  const end = clean.slice(-3);
+  const start = clean.slice(0, 3);
+  return `${start}••••${end}`;
+}
 
 const Badge = ({ type }) => {
   const badgeConfig = {
@@ -588,6 +606,67 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
   const [assessments, setAssessments] = useState([]);
   const [loadingAssessments, setLoadingAssessments] = useState(false);
 
+  // Recruiter Contact Unlock State (Spec Sections 6 & 9)
+  const [isContactUnlocked, setIsContactUnlocked] = useState(false);
+  const [unlockedEmail, setUnlockedEmail] = useState<string | null>(null);
+  const [unlockedPhone, setUnlockedPhone] = useState<string | null>(null);
+  const [isUnlocking, setIsUnlocking] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen || !candidate) return;
+    const cid = candidate.id || candidate.candidate_id || candidate.learner_id;
+    if (!cid) return;
+
+    apiPost('/recruiter/actions', { action: 'check-candidate-unlocked', candidateId: cid })
+      .then((res: any) => {
+        if (res?.data?.isUnlocked) {
+          setIsContactUnlocked(true);
+          if (res.data.candidate) {
+            setUnlockedEmail(res.data.candidate.email);
+            setUnlockedPhone(res.data.candidate.phone);
+          }
+        } else {
+          setIsContactUnlocked(false);
+          setUnlockedEmail(null);
+          setUnlockedPhone(null);
+        }
+      })
+      .catch((err) => {
+        console.error('[CandidateProfileDrawer] Failed to check candidate unlock status:', err);
+        setIsContactUnlocked(false);
+      });
+  }, [isOpen, candidate?.id, candidate?.candidate_id, candidate?.learner_id]);
+
+  const handleUnlockContact = async () => {
+    const cid = candidate.id || candidate.candidate_id || candidate.learner_id;
+    if (!cid) return;
+
+    setIsUnlocking(true);
+    try {
+      const res: any = await apiPost('/recruiter/actions', {
+        action: 'unlock-candidate-contact',
+        candidateId: cid,
+      });
+
+      if (res?.success && (res?.data?.candidate || res?.candidate)) {
+        const candidateData = res?.data?.candidate || res?.candidate;
+        setIsContactUnlocked(true);
+        setUnlockedEmail(candidateData.email);
+        setUnlockedPhone(candidateData.phone);
+        toast.success('Candidate contact details unlocked! (1 credit consumed)');
+      } else {
+        const msg = res?.error?.message || res?.message || 'Failed to unlock contact. Check your credit balance.';
+        console.error('[CandidateProfileDrawer] Unlock contact failed:', msg, res);
+        toast.error(msg);
+      }
+    } catch (err: any) {
+      console.error('[CandidateProfileDrawer] Unlock contact error:', err);
+      toast.error(err?.message || 'Failed to unlock contact. Check your credit balance.');
+    } finally {
+      setIsUnlocking(false);
+    }
+  };
+
   // router navigation for View Portfolio button
   const navigate = useNavigate();
 
@@ -829,17 +908,42 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                 </div>
               </div>
 
-              {/* Contact Info */}
+              {/* Contact Info (Masked until unlocked with credits per Spec Sections 6 & 9) */}
               <div className="px-6 py-3 bg-gray-50 border-b border-gray-200">
-                <div className="flex items-center space-x-4 text-sm">
-                  <div className="flex items-center text-gray-600">
-                    <PhoneIcon className="h-4 w-4 mr-1" />
-                    <span>{profileData.contact_number || candidate.phone || 'Not provided'}</span>
+                <div className="flex items-center justify-between flex-wrap gap-2 text-sm">
+                  <div className="flex items-center space-x-4 text-gray-600">
+                    <div className="flex items-center">
+                      <PhoneIcon className="h-4 w-4 mr-1 text-gray-400" />
+                      <span className={!isContactUnlocked ? 'font-mono text-gray-500' : 'text-gray-900 font-medium'}>
+                        {isContactUnlocked
+                          ? (unlockedPhone || profileData.contact_number || candidate.phone || 'Not provided')
+                          : maskPhone(profileData.contact_number || candidate.phone)}
+                      </span>
+                    </div>
+                    <div className="flex items-center">
+                      <EnvelopeIcon className="h-4 w-4 mr-1 text-gray-400" />
+                      <span className={!isContactUnlocked ? 'font-mono text-gray-500' : 'text-gray-900 font-medium'}>
+                        {isContactUnlocked
+                          ? (unlockedEmail || profileData.email || candidate.email || 'Not provided')
+                          : maskEmail(profileData.email || candidate.email)}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex items-center text-gray-600">
-                    <EnvelopeIcon className="h-4 w-4 mr-1" />
-                    <span>{profileData.email || candidate.email}</span>
-                  </div>
+
+                  {isContactUnlocked ? (
+                    <span className="inline-flex items-center text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                      ✓ Unlocked
+                    </span>
+                  ) : (
+                    <button
+                      onClick={handleUnlockContact}
+                      disabled={isUnlocking}
+                      className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-semibold shadow-sm transition-all disabled:opacity-50"
+                    >
+                      <LockClosedIcon className="w-3.5 h-3.5" />
+                      {isUnlocking ? 'Unlocking...' : 'Unlock Contact (1 Credit)'}
+                    </button>
+                  )}
                 </div>
               </div>
 

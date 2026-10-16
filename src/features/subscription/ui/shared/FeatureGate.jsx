@@ -188,6 +188,7 @@ function LockedCard({ featureKey, addOn, upgradePrice, showUpgradePrompt, onUpgr
     video_portfolio: ['Professional video showcase', 'Easy hosting & sharing', 'Portfolio builder'],
     educator_ai: ['AI teaching assistant', 'Content generation', 'Student insights'],
     recruiter_ai: ['AI candidate matching', 'Smart screening', 'Talent insights'],
+    ai_candidate_recommendations: ['AI candidate matching', 'Smart screening', 'Talent insights'],
     kpi_dashboard: ['Real-time metrics', 'Custom reports', 'Performance tracking'],
     curriculum_builder: ['Drag & drop builder', 'Template library', 'Standards alignment'],
     mentor_notes: ['Private student notes', 'Progress tracking', 'Intervention alerts'],
