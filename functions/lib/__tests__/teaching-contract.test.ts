@@ -19,5 +19,21 @@ describe('teaching contracts', () => {
     expect(teachingFailure({code:'40001'}).status).toBe(409);
     expect(teachingFailure({code:'PGRST202'}).status).toBe(503);
   });
-  it('rejects all removed Phase 6 operations',()=>{for(const action of ['assignments','my_assignments','create_assignment','publish_assignment','assignment_recipients','assignment_files','grade','submit','return_submission','handover'])expect(()=>parseTeachingRequest({action,payload:{}})).toThrow('Unknown teaching action');});
+  it('rejects all removed Phase 6 operations',()=>{for(const action of ['assignments','my_assignments','create_assignment','publish_assignment','assignment_files','grade','submit','return_submission','handover'])expect(()=>parseTeachingRequest({action,payload:{}})).toThrow('Unknown teaching action');});
+  it('accepts time slots and defaults to none',()=>{
+    const base={staffId:id,collegeId:id,sectionId:id,courseIds:[id],startDate:'2026-10-13'};
+    const parsed=parseTeachingRequest({action:'map',payload:{...base,time_slots:[
+      {start_time:'09:00',end_time:'11:00'},
+      {start_time:'14:00',end_time:'16:00'},
+    ]}});
+    expect(parsed.payload.time_slots).toHaveLength(2);
+    const plain=parseTeachingRequest({action:'map',payload:base});
+    expect(plain.payload.time_slots).toEqual([]);
+  });
+  it('rejects malformed time slots',()=>{
+    const base={staffId:id,collegeId:id,sectionId:id,courseIds:[id],startDate:'2026-10-13'};
+    expect(()=>parseTeachingRequest({action:'map',payload:{...base,time_slots:[{start_time:'09:00'}]}})).toThrow();
+    expect(()=>parseTeachingRequest({action:'map',payload:{...base,time_slots:[{start_time:'25:00',end_time:'26:00'}]}})).toThrow();
+    expect(()=>parseTeachingRequest({action:'map',payload:{...base,time_slots:[{start_time:900,end_time:'11:00'}]}})).toThrow();
+  });
 });

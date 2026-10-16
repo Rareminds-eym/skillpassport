@@ -815,6 +815,28 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       case 'delete-sessions': {
         const { subjectGroup } = body;
 
+        // Educator attendance history is retained separately: refusing here
+        // beats a raw FK violation from ON DELETE RESTRICT.
+        const { data: doomed, error: lookupError } = await supabase
+          .from('college_attendance_sessions')
+          .select('id')
+          .eq('subject_name', subjectGroup.subject)
+          .eq('department_name', subjectGroup.department)
+          .eq('program_name', subjectGroup.course)
+          .eq('semester', subjectGroup.semester)
+          .eq('section', subjectGroup.section);
+        if (lookupError) return apiDbError(lookupError, context.request, { startTime });
+        if ((doomed || []).length > 0) {
+          const { count: guarded, error: guardError } = await supabase
+            .from('organization_staff_attendence')
+            .select('id', { count: 'exact', head: true })
+            .in('session_id', doomed.map((s: any) => s.id));
+          if (guardError) return apiDbError(guardError, context.request, { startTime });
+          if ((guarded || 0) > 0) {
+            return apiError(409, 'CONFLICT', 'These sessions have recorded educator attendance which is retained for history — cancel the sessions instead of deleting them', context.request, { startTime });
+          }
+        }
+
         const { error } = await supabase
           .from('college_attendance_sessions')
           .delete()

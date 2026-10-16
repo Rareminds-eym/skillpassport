@@ -1,13 +1,15 @@
 -- Isolated disposable database fixture. Never apply to an application/linked database.
+-- Match Supabase browser SELECT grants; RLS still controls visibility.
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO authenticated;
 CREATE TABLE public.users(id uuid PRIMARY KEY,email text,"organizationId" uuid,"isActive" boolean DEFAULT true,role text,metadata jsonb DEFAULT '{}');
 CREATE TABLE public.organizations(id uuid PRIMARY KEY,name text,organization_type text,admin_id uuid);
-CREATE TABLE public.departments(id uuid PRIMARY KEY,college_id uuid,name text);
-CREATE TABLE public.programs(id uuid PRIMARY KEY,department_id uuid,name text,code text,specializations text[] DEFAULT '{}');
+CREATE TABLE public.departments(id uuid PRIMARY KEY,college_id uuid,name text,code text);
+CREATE TABLE public.programs(id uuid PRIMARY KEY,department_id uuid,name text,code text,specializations text[] DEFAULT '{}',degree_level text);
 CREATE TABLE public.program_sections(id uuid PRIMARY KEY,department_id uuid,program_id uuid,semester integer,section text,academic_year text,status text DEFAULT 'active');
 CREATE TABLE public.courses(course_id uuid PRIMARY KEY,title text,code text,description text,duration text,status text,deleted_at timestamptz);
-CREATE TABLE public.organization_staff(id uuid PRIMARY KEY,user_id uuid,organization_id uuid,role text,account_status text,first_name text,last_name text,phone text,qualification text,metadata jsonb DEFAULT '{}',updated_at timestamptz DEFAULT now());
+CREATE TABLE public.organization_staff(id uuid PRIMARY KEY,user_id uuid,organization_id uuid,role text,account_status text,first_name text,last_name text,phone text,qualification text,metadata jsonb DEFAULT '{}',updated_at timestamptz DEFAULT now(),organization_type text,employee_id text);
 CREATE TABLE public.organization_staff_assignments(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),staff_id uuid,college_id uuid,department_id uuid,program_id uuid,section_id uuid,assigned_courses jsonb DEFAULT '[]',start_date date,end_date date,is_active boolean DEFAULT true,assigned_by uuid,notes text,metadata jsonb DEFAULT '{}',created_at timestamptz DEFAULT now());
-CREATE TABLE public.learners(id uuid PRIMARY KEY,user_id uuid,name text,roll_number text,college_id uuid,program_id uuid,semester integer,section text,specialization text,is_deleted boolean DEFAULT false);
+CREATE TABLE public.learners(id uuid PRIMARY KEY,user_id uuid,name text,roll_number text,college_id uuid,program_id uuid,semester integer,section text,specialization text,is_deleted boolean DEFAULT false,email text);
 CREATE TABLE "public"."college_attendance_sessions" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "date" "date" NOT NULL,

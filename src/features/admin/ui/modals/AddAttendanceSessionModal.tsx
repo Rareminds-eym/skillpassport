@@ -27,7 +27,9 @@ const AddAttendanceSessionModal = ({
   creationError = "",
   saving = false,
   subjectsLoading = false,
+  schedule = { slots: [] },
 }: {
+  schedule?: { fixedDate?: string; minDate?: string; maxDate?: string; slots: { start_time: string; end_time: string }[] };
   isOpen: boolean;
   onClose: () => void;
   onCreateSession: () => void;
@@ -492,6 +494,9 @@ const AddAttendanceSessionModal = ({
                       Date *
                     </label>
                     <input
+                      disabled={!!schedule.fixedDate}
+                      min={schedule.minDate || undefined}
+                      max={schedule.maxDate || undefined}
                       aria-label="Session date"
                       type="date"
                       value={formData.date}
@@ -500,6 +505,23 @@ const AddAttendanceSessionModal = ({
                     />
                   </div>
 
+                  {schedule.slots.length > 1 && (
+                    <label className="block text-sm font-medium text-gray-700">
+                      Assigned time slot
+                      <select aria-label="Assigned time slot" className="mt-1 w-full rounded-lg border p-2"
+                        value={schedule.slots.findIndex(slot => slot.start_time.slice(0, 5) === formData.startTime && slot.end_time.slice(0, 5) === formData.endTime)}
+                        onChange={event => {
+                          const slot = schedule.slots[Number(event.target.value)];
+                          if (slot) {
+                            onFormChange('startTime', slot.start_time.slice(0, 5));
+                            onFormChange('endTime', slot.end_time.slice(0, 5));
+                          }
+                        }}>
+                        <option value={-1}>Select assigned time slot</option>
+                        {schedule.slots.map((slot, index) => <option key={index} value={index}>{slot.start_time.slice(0, 5)} ? {slot.end_time.slice(0, 5)}</option>)}
+                      </select>
+                    </label>
+                  )}
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -507,6 +529,7 @@ const AddAttendanceSessionModal = ({
                       </label>
                       <input
                         type="time"
+                        disabled={schedule.slots.length > 0}
                         aria-label="Start Time"
                         value={formData.startTime}
                         onChange={(e) => onFormChange("startTime", e.target.value)}
@@ -519,6 +542,7 @@ const AddAttendanceSessionModal = ({
                       </label>
                       <input
                         type="time"
+                        disabled={schedule.slots.length > 0}
                         aria-label="End Time"
                         value={formData.endTime}
                         onChange={(e) => onFormChange("endTime", e.target.value)}

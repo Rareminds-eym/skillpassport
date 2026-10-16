@@ -366,6 +366,24 @@ const AttendanceTracking: React.FC = () => {
   const trainingCandidates=trainingCourses.filter(x=>`training:${x.course_id}`===sessionFormData.subject);
   useEffect(()=>{if(sessionFormData.subject.startsWith('training:'))setSessionFormData(prev=>({...prev,faculty:trainingCandidates.length===1?trainingCandidates[0].mapping_id:''}));},[trainingCourses,sessionFormData.subject]);
 
+  const selectedTrainingMapping = trainingCandidates.find(x => x.mapping_id === sessionFormData.faculty);
+  const mappedTimeSlots = selectedTrainingMapping?.time_slots ?? [];
+  const fixedTrainingDate = selectedTrainingMapping?.start_date && selectedTrainingMapping.start_date === selectedTrainingMapping.end_date
+    ? selectedTrainingMapping.start_date : '';
+  useEffect(() => {
+    if (!selectedTrainingMapping) return;
+    setSessionFormData(prev => ({
+      ...prev,
+      ...(fixedTrainingDate ? { date: fixedTrainingDate } : selectedTrainingMapping.start_date && prev.date < selectedTrainingMapping.start_date
+        ? { date: selectedTrainingMapping.start_date } : selectedTrainingMapping.end_date && prev.date > selectedTrainingMapping.end_date
+        ? { date: selectedTrainingMapping.end_date } : {}),
+      ...(mappedTimeSlots.length === 1 ? {
+        startTime: mappedTimeSlots[0].start_time.slice(0, 5),
+        endTime: mappedTimeSlots[0].end_time.slice(0, 5),
+      } : {}),
+    }));
+  }, [selectedTrainingMapping]);
+
   // Dynamic data states
   const [subjectGroups, setSubjectGroups] = useState<SubjectGroup[]>([]);
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
@@ -947,7 +965,7 @@ const AttendanceTracking: React.FC = () => {
       ...prev,
       [field]: value,
       ...(field==='department'?{course:'',semester:'',section:''}:field==='course'?{semester:'',section:''}:field==='semester'?{section:''}:{}),
-      ...(["department","course","semester","section","date"].includes(field)?{subject:"",faculty:""}:field==="subject"?{faculty:""}:{}),
+      ...(["department","course","semester","section","date"].includes(field)?{subject:"",faculty:""}:field==="subject"?{faculty:"",startTime:"",endTime:""}:field==="faculty"?{startTime:"",endTime:""}:{}),
     }));
 
     // Auto-update total learners when class details change
@@ -1730,6 +1748,8 @@ const AttendanceTracking: React.FC = () => {
         onCreateSession={()=>handleCreateSession()}
         onCreateAndStart={handleCreateAndStart}
         formData={sessionFormData}
+        schedule={{ fixedDate: fixedTrainingDate, minDate: selectedTrainingMapping?.start_date,
+          maxDate: selectedTrainingMapping?.end_date, slots: mappedTimeSlots }}
         onFormChange={handleFormChange}
         departments={departmentsData.map(dept => ({ value: dept.id, label: dept.name }))}
         courses={programsData.map(prog => ({ value: prog.id, label: formatProgramLabel(prog.name, prog) }))}
