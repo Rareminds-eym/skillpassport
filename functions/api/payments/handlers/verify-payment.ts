@@ -887,7 +887,7 @@ async function generateAndUploadReceipt(params: {
           '231, 2nd stage, 13th Cross Road\nHoysala Nagar, Indiranagar\nBengaluru, Karnataka 560001',
         phone: '+91 9902326951',
         email: 'marketing@rareminds.in',
-        taxId: 'GSTIN: 29ABCDE1234F1Z5',
+        taxId: 'GSTIN: 29AAJCR7343H1ZY',
       },
       generatedAt: new Date().toLocaleString('en-IN'),
       logoBytes,
