@@ -58,9 +58,9 @@ export async function checkServerFeatureAccess(
   try {
     const { data: cached, error } = await supabase
       .from('subscription_cache')
-      .select('id, status, plan_code, features, synced_at, is_organization_subscription')
+      .select('id, status, plan_code, features, synced_at, is_organization_subscription, subscription_end_date')
       .eq('user_id', userId)
-      .in('status', ['active', 'grace_period'])
+      .in('status', ['active', 'grace_period', 'cancelled'])
       .maybeSingle();
 
     if (error) {
@@ -94,6 +94,16 @@ export async function checkServerFeatureAccess(
     }
 
     const planCode = cached.plan_code;
+
+    // Preserve already-paid time after cancellation, as required by the
+    // existing entitlement contract/tests. Missing or invalid expiry denies.
+    if (cached.status === 'cancelled' &&
+        (!cached.subscription_end_date || !Number.isFinite(Date.parse(cached.subscription_end_date)) ||
+         Date.parse(cached.subscription_end_date) <= Date.now())) {
+      const baseline = FREEMIUM_FEATURES[feature] === true;
+      return {hasAccess: baseline, planCode: 'freemium', requiresUpgrade: !baseline,
+        reason: baseline ? undefined : 'Subscription has expired'};
+    }
 
     if (!planCode) {
       return {

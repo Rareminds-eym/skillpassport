@@ -21,7 +21,7 @@ import { getApiUrl } from '@/shared/api/apiUtils';
  * @param {boolean} forceRefresh - Force recomputation even if cache is valid
  * @returns {Promise<Array>} Top N matched jobs with scores and reasons
  */
-export async function matchJobsWithAI(learnerProfile, topN = 3, forceRefresh = false) {
+export async function matchJobsWithAI(learnerProfile: any, topN = 3, forceRefresh = false) {
   if (!learnerProfile) {
     throw new Error('Learner profile is required');
   }
@@ -52,12 +52,17 @@ export async function matchJobsWithAI(learnerProfile, topN = 3, forceRefresh = f
   });
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.error || `Server error: ${response.status}`);
+    const errorData: any = await response.json().catch(() => ({}));
+    const detail = errorData.error;
+    const message = typeof detail === 'string' ? detail : detail?.message;
+    throw Object.assign(new Error(message || `Job matching unavailable (${response.status})`), {
+      code: detail?.code || errorData.code, status: response.status,
+    });
   }
 
-  const result = await response.json();
-  const recommendations = result.data?.recommendations || [];
+  const result: any = await response.json();
+  if (!result || result.success === false || !Array.isArray(result.data?.recommendations)) throw new Error('Invalid recommendation response');
+  const recommendations: any[] = result.data.recommendations;
 
   if (recommendations.length === 0) {
     // Return empty array instead of throwing - no matches is valid
@@ -65,26 +70,38 @@ export async function matchJobsWithAI(learnerProfile, topN = 3, forceRefresh = f
   }
   
   // Transform matches - opportunity data comes from API response
-  return recommendations.map(rec => ({
+  const fallback = result.data?.fallback === true;
+  const provenance = fallback ? 'generic' : result.data?.provenance || 'unknown';
+  return recommendations.map(rec => {
+    const overall = Number.isFinite(rec.match_percentage) ? rec.match_percentage : null;
+    const similarity = Number.isFinite(rec.similarity) ? Math.round(rec.similarity * 100) : null;
+    const personalized = provenance === 'embedding' || provenance === 'rules';
+    const score = personalized ? overall ?? similarity : null;
+    return ({
     job_id: rec.id,
     job_title: rec.job_title || rec.title,
     company_name: rec.company_name || rec.company,
-    match_score: Math.round((rec.similarity || 0.5) * 100),
-    match_reason: `This opportunity matches your profile with ${Math.round((rec.similarity || 0.5) * 100)}% similarity.`,
+    match_score: score,
+    similarity_score: similarity,
+    score_label: score === null ? null : overall !== null ? 'Match index' : 'Profile similarity',
+    match_reason: fallback ? 'Recent opportunity; not a personalized match.' : score === null ? 'Review this opportunity.' : 'Ranked against your profile; this is not a hiring probability.',
+    fallback, provenance, reason: result.data?.reason,
+    freshness: result.data?.freshness || 'unknown',
     key_matching_skills: [],
     skills_gap: [],
     recommendation: 'Review the job requirements and apply if interested.',
     opportunity: rec, // Full opportunity data from API
     cached: result.data?.cached || false,
     computed_at: result.data?.computed_at
-  }));
+  });
+  });
 }
 
 /**
  * Force refresh job matches - bypasses cache and recomputes
  * Use this when you know the learner data has changed but triggers haven't fired yet
  */
-export async function refreshJobMatches(learnerProfile, topN = 3) {
+export async function refreshJobMatches(learnerProfile: any, topN = 3) {
   return matchJobsWithAI(learnerProfile, topN, true);
 }
 

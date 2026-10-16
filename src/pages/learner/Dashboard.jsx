@@ -130,8 +130,8 @@ const OpportunitiesCardContent = ({ opportunities, learnerData, navigate, matche
           posted_date: match.posted_date || match.created_at,
           sector: match.sector || match.department,
           // Use match_percentage which is already calculated
-          matchScore: match.match_percentage || (match.final_score ? Math.round(match.final_score * 100) : null),
-          isAIRecommended: true
+          matchScore: match.match_percentage ?? (Number.isFinite(match.final_score) ? Math.round(match.final_score * 100) : null),
+          isAIRecommended: match.isAIRecommended === true
         };
       })
     : [];
@@ -149,8 +149,8 @@ const OpportunitiesCardContent = ({ opportunities, learnerData, navigate, matche
           location: match.location,
           posted_date: match.posted_date || match.created_at,
           sector: match.sector || match.department,
-          matchScore: match.match_percentage || (match.final_score ? Math.round(match.final_score * 100) : null),
-          isAIRecommended: true
+          matchScore: match.match_percentage ?? (Number.isFinite(match.final_score) ? Math.round(match.final_score * 100) : null),
+          isAIRecommended: match.isAIRecommended === true
         };
       })
     : opportunities.filter(opp => opp.employment_type !== 'factory_visit');
@@ -243,7 +243,7 @@ const OpportunitiesCardContent = ({ opportunities, learnerData, navigate, matche
         <div className="flex items-start justify-between mb-2">
           <h4 className="text-base font-bold text-gray-900 flex-1">{opp.company_name}</h4>
           <div className="flex items-center gap-2">
-            {isAIRecommended && matchScore && (
+            {isAIRecommended && Number.isFinite(matchScore) && (
               <Badge className="text-xs !bg-purple-100 !text-purple-700 font-semibold">
                 {Math.round(matchScore)}% Match
               </Badge>
@@ -327,7 +327,7 @@ const OpportunitiesCardContent = ({ opportunities, learnerData, navigate, matche
                   </h2>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  {isAIRecommended && matchScore && (
+                  {isAIRecommended && Number.isFinite(matchScore) && (
                     <Badge className="text-xs !bg-purple-100 !text-purple-700 font-semibold">
                       {Math.round(matchScore)}% Match
                     </Badge>

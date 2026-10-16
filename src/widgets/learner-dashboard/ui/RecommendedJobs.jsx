@@ -37,6 +37,7 @@ const RecommendedJobsContent = ({
 }) => {
   const [showAnimation, setShowAnimation] = useState(true);
   const [isDismissed, setIsDismissed] = useState(false);
+  const dismissalKey = `recommendations_dismissed:${learnerProfile?.id || learnerProfile?.learner_id || 'none'}`;
 
   // Use the industrial-grade caching hook
   const {
@@ -49,11 +50,8 @@ const RecommendedJobsContent = ({
 
   // Check localStorage for dismiss preference
   useEffect(() => {
-    const dismissed = localStorage.getItem('recommendations_dismissed');
-    if (dismissed === 'true') {
-      setIsDismissed(true);
-    }
-  }, []);
+    setIsDismissed(localStorage.getItem(dismissalKey) === 'true');
+  }, [dismissalKey]);
 
   // Handle animation timing - show for minimum 3 seconds on cache miss, 1 second on cache hit
   useEffect(() => {
@@ -72,7 +70,7 @@ const RecommendedJobsContent = ({
   const handleDismiss = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    localStorage.setItem('recommendations_dismissed', 'true');
+    localStorage.setItem(dismissalKey, 'true');
     setIsDismissed(true);
   };
 
@@ -101,7 +99,7 @@ const RecommendedJobsContent = ({
       <div className="mb-6">
         <button
           onClick={() => {
-            localStorage.removeItem('recommendations_dismissed');
+            localStorage.removeItem(dismissalKey);
             setIsDismissed(false);
             setShowAnimation(true);
           }}
@@ -249,15 +247,10 @@ const RecommendedJobsContent = ({
                 Unable to Load AI Recommendations
               </h3>
               <p className="text-amber-800 mb-4">
-                We're having trouble connecting to our AI matching service. This could be due to:
+                {error}
               </p>
-              <ul className="list-disc list-inside text-sm text-amber-700 space-y-1 mb-4">
-                <li>Temporary service unavailability</li>
-                <li>Network connectivity issues</li>
-                <li>API rate limits</li>
-              </ul>
               <p className="text-sm text-amber-700">
-                Don't worry! You can still browse all available opportunities below. Please try refreshing the page in a few moments for AI-powered recommendations.
+                You can still browse available opportunities below. Resolve any access or profile requirement shown above before retrying.
               </p>
             </div>
           </div>
@@ -300,7 +293,7 @@ const RecommendedJobsContent = ({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-xl font-bold text-gray-900">AI Recommended For You</h2>
+                <h2 className="text-xl font-bold text-gray-900">{recommendations.every(job => job.fallback) ? 'Recent Opportunities' : 'Recommended For You'}</h2>
                 {cacheInfo?.cached && (
                   <span className="flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded-full">
                     <Clock className="w-3 h-3" />
@@ -341,11 +334,11 @@ const RecommendedJobsContent = ({
               // Get job details - handle both structures
               const jobTitle = currentJob.job_title || opportunity.job_title || opportunity.title;
               const companyName = currentJob.company_name || opportunity.company_name;
-              const matchScore = currentJob.match_score || Math.round((opportunity.similarity || opportunity.final_score || 0.5) * 100);
+              const matchScore = Number.isFinite(currentJob.match_score) ? currentJob.match_score : null;
               const location = opportunity.location;
               const employmentType = opportunity.employment_type;
-              const skillsRequired = opportunity.skills_required || [];
-              const matchReason = currentJob.match_reason || `This opportunity matches your profile with ${matchScore}% similarity.`;
+              const skillsRequired = Array.isArray(opportunity.skills_required) ? opportunity.skills_required.filter(skill => typeof skill === 'string') : [];
+              const matchReason = currentJob.match_reason || 'Review the current job requirements.';
               const jobId = currentJob.job_id || opportunity.id;
 
               return (
@@ -364,7 +357,7 @@ const RecommendedJobsContent = ({
                           {jobTitle}
                         </h3>
                         <span className={`px-2 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap ml-2 ${getMatchColor(matchScore)}`}>
-                          {matchScore}%
+                          {matchScore === null ? 'Opportunity' : `${matchScore}% ${currentJob.score_label || 'Match index'}`}
                         </span>
                       </div>
                       <p className="text-sm text-gray-700 font-medium line-clamp-1">{companyName}</p>

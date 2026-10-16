@@ -464,6 +464,7 @@ import { MapPin, Briefcase, X, ExternalLink, Star, Bookmark, Clock, Users, Trend
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/Card';
 import { Button } from '@/shared/ui/ButtonNew';
 import { Badge } from '@/shared/ui/Badge';
+import { openExternalApplication } from '@/features/opportunities/lib/externalApplication';
 
 // Application Confirmation Modal Component
 const ApplicationConfirmationModal = ({
@@ -577,8 +578,9 @@ const ApplicationConfirmationModal = ({
               <div>
                 <h5 className="font-semibold text-gray-900 mb-1">Ready to Apply</h5>
                 <p className="text-sm text-gray-600 leading-relaxed">
-                  Your application will be submitted using your saved profile information.
-                  Make sure your profile is up to date for the best results.
+                  {opportunity.application_link
+                    ? 'We will record this application for tracking. Complete and submit it on the employer website.'
+                    : 'Your application will be submitted using your saved profile information. Make sure your profile is up to date for the best results.'}
                 </p>
               </div>
             </div>
@@ -594,8 +596,8 @@ const ApplicationConfirmationModal = ({
                 <div>
                   <h4 className="font-semibold text-gray-900 mb-1">External Application</h4>
                   <p className="text-sm text-gray-600 leading-relaxed">
-                    This will also open an external application page. We'll save your application
-                    to your profile for tracking.
+                    This will open the employer application page. Recording it here does not
+                    submit it to the employer. Use the link in Details to retry if needed.
                   </p>
                 </div>
               </div>
@@ -613,7 +615,16 @@ const ApplicationConfirmationModal = ({
             <button
               onClick={async () => {
                 setApplicationStatus('applying');
-                await onConfirm();
+                let acknowledged = false;
+                try {
+                  acknowledged = await onConfirm();
+                } catch {
+                  // A failed action must never become a success message.
+                }
+                if (acknowledged !== true) {
+                  setApplicationStatus('confirm');
+                  return;
+                }
                 setApplicationStatus('success');
                 // Auto-close after 2 seconds
                 setTimeout(() => {
@@ -631,7 +642,7 @@ const ApplicationConfirmationModal = ({
               {applicationStatus === 'success' ? (
                 <>
                   <CheckCircle2 className="w-4 h-4" />
-                  Application Submitted!
+                  {opportunity.application_link ? 'Application Recorded!' : 'Application Submitted!'}
                 </>
               ) : applicationStatus === 'applying' ? (
                 <>
@@ -641,7 +652,7 @@ const ApplicationConfirmationModal = ({
               ) : (
                 <>
                   <Send className="w-4 h-4" />
-                  Confirm & Apply
+                  {opportunity.application_link ? 'Record & Open Employer Site' : 'Confirm & Apply'}
                 </>
               )}
             </button>
@@ -650,7 +661,9 @@ const ApplicationConfirmationModal = ({
           {/* Footer Note */}
           <p className="text-xs text-gray-500 text-center mt-4">
             {applicationStatus === 'success'
-              ? '✅ Application submitted successfully! Check Applications tab to track progress.'
+              ? (opportunity.application_link
+                ? 'Application recorded for tracking. Complete submission on the employer website; opening a page does not confirm submission.'
+                : '✅ Application submitted successfully! Check Applications tab to track progress.')
               : '💡 You can track your application status in the Applications tab'
             }
           </p>
@@ -685,6 +698,7 @@ const OpportunityPreview = ({
   const [showDetailsModal, setShowDetailsModal] = React.useState(false);
   const [showApplicationModal, setShowApplicationModal] = React.useState(false);
   const [showProfileCompletionModal, setShowProfileCompletionModal] = React.useState(false);
+  const [externalNavigationError, setExternalNavigationError] = React.useState('');
 
   // Check if learner has current backlogs
   const currentBacklogsValue = learnerData?.currentBacklogs || 0;
@@ -698,6 +712,7 @@ const OpportunityPreview = ({
     setShowAllSkills(false);
     setShowDetailsModal(false);
     setShowApplicationModal(false);
+    setExternalNavigationError('');
   }, [opportunity?.id]);
 
   if (!opportunity) {
@@ -1428,7 +1443,7 @@ const OpportunityPreview = ({
                     {isApplied ? (
                       <>
                         <CheckCircle2 className="w-5 h-5" />
-                        Application Submitted
+                        {opportunity.application_link ? 'Application Recorded' : 'Application Submitted'}
                       </>
                     ) : isApplying ? (
                       <>
@@ -1457,9 +1472,16 @@ const OpportunityPreview = ({
                 {/* External Link Button */}
                 {opportunity.application_link && (
                   <button
-                    onClick={() => window.open(opportunity.application_link, '_blank')}
+                    onClick={() => {
+                      try {
+                        openExternalApplication(opportunity.application_link);
+                        setExternalNavigationError('');
+                      } catch {
+                        setExternalNavigationError('The employer application link is invalid or unavailable. Please contact support.');
+                      }
+                    }}
                     className="w-12 h-12 border-2 border-gray-300 hover:border-blue-600 hover:bg-blue-50 rounded-xl transition-all flex items-center justify-center group"
-                    title="Open external link"
+                    title="Open employer application page"
                   >
                     <ExternalLink className="w-5 h-5 text-gray-600 group-hover:text-blue-600 transition-colors" />
                   </button>
@@ -1483,13 +1505,20 @@ const OpportunityPreview = ({
               {/* Additional Info */}
               <p className="text-xs text-gray-500 text-center mt-3">
                 {isApplied
-                  ? '✓ Track your application in the Applications tab'
+                  ? (opportunity.application_link
+                    ? 'Recorded for tracking only. Complete submission on the employer website; use the employer link to retry.'
+                    : '✓ Track your application in the Applications tab')
                   : hasCurrentBacklogs
                     ? '❌ Clear your current backlogs to become eligible for job applications'
                     : needsProfileCompletion
                       ? '⚠️ Complete your profile to apply for jobs'
-                      : '💡 One-click application with your saved profile'}
+                      : opportunity.application_link
+                        ? 'Record for tracking, then complete submission on the employer website.'
+                        : '💡 One-click application with your saved profile'}
               </p>
+              {externalNavigationError && (
+                <p role="alert" className="text-xs text-red-600 text-center mt-3">{externalNavigationError}</p>
+              )}
             </div>
           </div>
         </div>,
@@ -1501,12 +1530,7 @@ const OpportunityPreview = ({
         opportunity={opportunity}
         isOpen={showApplicationModal}
         onClose={() => setShowApplicationModal(false)}
-        onConfirm={() => {
-          if (onApply) {
-            onApply(opportunity);
-            setShowDetailsModal(false);
-          }
-        }}
+        onConfirm={() => onApply ? onApply(opportunity) : false}
         isApplying={isApplying}
       />
 

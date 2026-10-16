@@ -1,12 +1,13 @@
 /**
  * Opportunities API — list with filters (ORG-SCOPED)
  */
-import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+type AuthenticatedContext = Parameters<PagesFunction>[0];
 import { getContextUser, withAuth } from '../../lib/auth';
 import { notifyLearnersOfNewOpportunity } from '../../lib/newOpportunityNotifications';
 import { verifyOrgAccess } from '../../lib/permissions';
 import { apiDbError, apiError, apiMethodNotAllowed, apiSuccess } from '../../lib/response';
 import { getServiceClient } from '../../lib/supabase';
+import { eligibleJobs, isEligibleJob, stringSkills } from '../../lib/job-recommendations';
 
 export const onRequest = async (context: any) => {
   if (context.request.method === 'GET') return onRequestGet(context);
@@ -67,16 +68,18 @@ async function findOpportunityById(supabase: any, id: number | string, select = 
 
 const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   const user = getContextUser(context);
-  const env = context.env as Record<string, string>;
+  const env = context.env as unknown as Record<string, string>;
   const supabase = getServiceClient(env as any);
 
   const url = new URL(context.request.url);
 
   const id = url.searchParams.get('id');
+  const learnerFeed = user.roles?.includes('learner') === true;
   if (id) {
     const { data, error } = await findOpportunityById(supabase, id);
     if (error) return apiDbError(error, context.request);
     if (!data) return apiError(404, 'NOT_FOUND', 'Opportunity not found', context.request);
+    if (learnerFeed && !isEligibleJob(data)) return apiError(404, 'NOT_FOUND', 'Opportunity is no longer available', context.request);
     return apiSuccess({ opportunity: data }, context.request);
   }
 
@@ -129,6 +132,7 @@ const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   }
 
   if (activeOnly) query = query.eq('is_active', true);
+  if (learnerFeed) query = eligibleJobs(query);
 
   if (employmentType) {
     const vals = employmentType.split(',');
@@ -180,7 +184,7 @@ const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
 });
 
 const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
-  const env = context.env as Record<string, string>;
+  const env = context.env as unknown as Record<string, string>;
   const supabase = getServiceClient(env as any);
   const body: any = await context.request.json().catch(() => ({}));
   const { action } = body;
@@ -249,6 +253,10 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     case 'create-opportunity': {
       const opportunity = body.opportunity;
       if (!opportunity) return apiError(400, 'VALIDATION_ERROR', 'opportunity data required', context.request);
+      if (typeof opportunity.skills_required === 'string') opportunity.skills_required = stringSkills(opportunity.skills_required);
+      if (opportunity.skills_required != null && (!Array.isArray(opportunity.skills_required) || opportunity.skills_required.some((skill: unknown) => typeof skill !== 'string'))) {
+        return apiError(400, 'VALIDATION_ERROR', 'skills_required must be an array of strings', context.request);
+      }
       const { data, error } = await supabase.from('opportunities').insert([opportunity]).select().single();
       if (error) return apiDbError(error, context.request);
       await notifyLearnersOfNewOpportunity(supabase, data);
@@ -259,6 +267,10 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       const { action: _action, id, updates: nestedUpdates, ...flatUpdates } = body;
       const updates = nestedUpdates || flatUpdates;
       if (!id) return apiError(400, 'VALIDATION_ERROR', 'id required', context.request);
+      if (typeof updates.skills_required === 'string') updates.skills_required = stringSkills(updates.skills_required);
+      if (updates.skills_required != null && (!Array.isArray(updates.skills_required) || updates.skills_required.some((skill: unknown) => typeof skill !== 'string'))) {
+        return apiError(400, 'VALIDATION_ERROR', 'skills_required must be an array of strings', context.request);
+      }
       const existing = await findOpportunityById(supabase, id, 'id');
       if (existing.error) return apiDbError(existing.error, context.request);
       if (!existing.data) return apiError(404, 'NOT_FOUND', 'Opportunity not found', context.request);
@@ -365,8 +377,15 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
     // ── applied_jobs / application actions ──
     case 'apply-to-job': {
+      const user = getContextUser(context);
       const { learner_id, opportunity_id } = body;
       if (!learner_id || !opportunity_id) return apiError(400, 'VALIDATION_ERROR', 'learner_id and opportunity_id required', context.request);
+      const { data: owner, error: ownerError } = await supabase.from('learners').select('id').eq('id', learner_id).eq('user_id', user.id).maybeSingle();
+      if (ownerError) return apiError(503, 'PROFILE_UNAVAILABLE', 'Learner profile is temporarily unavailable', context.request);
+      if (!owner) return apiError(403, 'FORBIDDEN', 'Only your own applications may be submitted', context.request);
+      const available = await findOpportunityById(supabase, opportunity_id, 'id,status,is_active,deadline');
+      if (available.error) return apiError(503, 'OPPORTUNITY_UNAVAILABLE', 'Opportunity could not be verified', context.request);
+      if (!isEligibleJob(available.data)) return apiError(409, 'OPPORTUNITY_CLOSED', 'Opportunity is no longer available', context.request);
 
       const { data: existing } = await supabase.from('applied_jobs').select('id').eq('learner_id', learner_id).eq('opportunity_id', opportunity_id).maybeSingle();
       if (existing) return apiSuccess({ success: false, message: 'You have already applied to this job', data: existing }, context.request);

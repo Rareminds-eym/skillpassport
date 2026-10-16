@@ -7,7 +7,6 @@ import { useAuthStore } from '@/shared/model/authStore';
 
 import { apiGet, apiPut, apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
-import { apiGet, apiPost } from '@/shared/api/apiClient';
 import {
   ServiceResponse,
   UserCreateData,
@@ -18,6 +17,30 @@ import {
 
 
 const logger = getLogger('learner-service');
+
+function recommendationsChanged(learnerId: string) {
+  if (typeof window !== 'undefined' && learnerId) window.dispatchEvent(new CustomEvent('learner-profile-updated', { detail: { learnerId } }));
+}
+
+export type LearnerMutationResponse = ServiceResponse & {
+  committed?: boolean;
+  refreshError?: string;
+  partial?: boolean;
+};
+
+// The write acknowledgement, not a later read, is the invalidation boundary.
+// A failed refresh must not make callers retry an already committed save.
+async function refreshAfterMutation(email: string): Promise<LearnerMutationResponse> {
+  try {
+    const result = await getlearnerByEmail(email);
+    if (result.success) return { ...result, committed: true };
+    return { success: true, data: null, error: null, committed: true,
+      refreshError: result.error || 'Unable to refresh the saved learner profile' };
+  } catch {
+    return { success: true, data: null, error: null, committed: true,
+      refreshError: 'Unable to refresh the saved learner profile' };
+  }
+}
 
 // ==================== UTILITY FUNCTIONS ====================
 
@@ -80,6 +103,7 @@ export const updateLearner = async (learnerId: string, updates: LearnerUpdateDat
     };
     const response: any = await apiPost('/learners', body);
     const data = response?.data?.learner ?? response?.learner;
+    recommendationsChanged(learnerId);
     return { success: true, data: data ?? body, error: null };
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
@@ -680,7 +704,7 @@ export async function findlearnerByEmail(email: string): Promise<ServiceResponse
 /**
  * Update learner by email
  */
-export async function updatelearnerByEmail(email: string, updates: LearnerUpdateData): Promise<ServiceResponse> {
+export async function updatelearnerByEmail(email: string, updates: LearnerUpdateData): Promise<LearnerMutationResponse> {
   try {
     const findResult = await findlearnerByEmail(email);
     if (!findResult.success) {
@@ -807,12 +831,15 @@ export async function updatelearnerByEmail(email: string, updates: LearnerUpdate
       return { success: false, data: null, error: err.message || 'Update failed' };
     }
 
-    const updatedResult = await getlearnerByEmail(email);
+    recommendationsChanged(columnUpdates.id);
+    const updatedResult = await refreshAfterMutation(email);
 
     return {
       success: true,
-      data: updatedResult.success ? updatedResult.data : (updateResult?.data?.learner ?? updateResult?.learner),
-      error: null
+      data: updatedResult.data ?? updateResult?.data?.learner ?? updateResult?.learner ?? null,
+      error: null,
+      committed: true,
+      ...(updatedResult.refreshError ? { refreshError: updatedResult.refreshError } : {}),
     };
 
   } catch (err: unknown) {
@@ -826,7 +853,8 @@ export async function updatelearnerByEmail(email: string, updates: LearnerUpdate
 /**
  * Update training by email
  */
-export async function updateTrainingByEmail(email: string, trainingData: TrainingUpdateDataFull[] = []): Promise<ServiceResponse> {
+export async function updateTrainingByEmail(email: string, trainingData: TrainingUpdateDataFull[] = []): Promise<LearnerMutationResponse> {
+  let committed = false;
   try {
     const findResult = await findlearnerByEmail(email);
     if (!findResult.success) return findResult;
@@ -933,6 +961,8 @@ export async function updateTrainingByEmail(email: string, trainingData: Trainin
       .map((existing) => existing.id);
 
     await apiPut(`/learners/data/${learnerId}/trainings`, { deleteIds: toDelete, records: formatted });
+    committed = true;
+    recommendationsChanged(learnerId);
 
     // Fetch all existing skills for skills management
     const skillsResponse: any = await apiGet(`/learners/data/${learnerId}/skills`);
@@ -1003,21 +1033,24 @@ export async function updateTrainingByEmail(email: string, trainingData: Trainin
 
       if (allSkillDeleteIds.length > 0 || allSkillRecords.length > 0) {
         await apiPut(`/learners/data/${learnerId}/skills`, { deleteIds: allSkillDeleteIds, records: allSkillRecords });
+        recommendationsChanged(learnerId);
       }
     }
 
-    return await getlearnerByEmail(email);
+    return await refreshAfterMutation(email);
   } catch (err: unknown) {
     const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
     logger.error('Exception in updateTrainingByEmail', err instanceof Error ? err : new Error(String(err)));
-    return { success: false, data: null, error: errorMessage };
+    return { success: false, data: null,
+      error: committed ? `Training changes were saved, but the remaining update failed: ${errorMessage}` : errorMessage,
+      committed, ...(committed ? { partial: true } : {}) };
   }
 }
 
 /**
  * Update technical skills by email
  */
-export async function updateTechnicalSkillsByEmail(email: string, skillsData: SkillUpdateData[] = []): Promise<ServiceResponse> {
+export async function updateTechnicalSkillsByEmail(email: string, skillsData: SkillUpdateData[] = []): Promise<LearnerMutationResponse> {
   try {
     const findResult = await findlearnerByEmail(email);
     if (!findResult.success) return findResult;
@@ -1062,8 +1095,9 @@ export async function updateTechnicalSkillsByEmail(email: string, skillsData: Sk
       .map((existing) => existing.id);
 
     await apiPut(`/learners/data/${learnerId}/skills`, { deleteIds: toDelete, records: formatted });
+    recommendationsChanged(learnerId);
 
-    return await getlearnerByEmail(email);
+    return await refreshAfterMutation(email);
   } catch (err: unknown) {
     const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
     logger.error('Exception in updateTechnicalSkillsByEmail', err instanceof Error ? err : new Error(String(err)));
@@ -1074,7 +1108,7 @@ export async function updateTechnicalSkillsByEmail(email: string, skillsData: Sk
 /**
  * Update soft skills by email
  */
-export async function updateSoftSkillsByEmail(email: string, skillsData: SkillUpdateData[] = []): Promise<ServiceResponse> {
+export async function updateSoftSkillsByEmail(email: string, skillsData: SkillUpdateData[] = []): Promise<LearnerMutationResponse> {
   try {
     const findResult = await findlearnerByEmail(email);
     if (!findResult.success) return findResult;
@@ -1119,8 +1153,9 @@ export async function updateSoftSkillsByEmail(email: string, skillsData: SkillUp
       .map((existing) => existing.id);
 
     await apiPut(`/learners/data/${learnerId}/skills`, { deleteIds: toDelete, records: formatted });
+    recommendationsChanged(learnerId);
 
-    return await getlearnerByEmail(email);
+    return await refreshAfterMutation(email);
   } catch (err: unknown) {
     const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
     logger.error('Exception in updateSoftSkillsByEmail', err instanceof Error ? err : new Error(String(err)));
@@ -1131,7 +1166,7 @@ export async function updateSoftSkillsByEmail(email: string, skillsData: SkillUp
 /**
  * Update experience by email
  */
-export async function updateExperienceByEmail(email: string, experienceData: ExperienceUpdateData[] = []): Promise<ServiceResponse> {
+export async function updateExperienceByEmail(email: string, experienceData: ExperienceUpdateData[] = []): Promise<LearnerMutationResponse> {
   try {
     const findResult = await findlearnerByEmail(email);
     if (!findResult.success) return findResult;
@@ -1177,8 +1212,9 @@ export async function updateExperienceByEmail(email: string, experienceData: Exp
       .map((existing) => existing.id);
 
     await apiPut(`/learners/data/${learnerId}/experience`, { deleteIds: toDelete, records: formatted });
+    recommendationsChanged(learnerId);
 
-    return await getlearnerByEmail(email);
+    return await refreshAfterMutation(email);
   } catch (err: unknown) {
     const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
     logger.error('Exception in updateExperienceByEmail', err instanceof Error ? err : new Error(String(err)));
@@ -1189,7 +1225,7 @@ export async function updateExperienceByEmail(email: string, experienceData: Exp
 /**
  * Update education by email
  */
-export async function updateEducationByEmail(email: string, educationData: EducationUpdateData[] = []): Promise<ServiceResponse> {
+export async function updateEducationByEmail(email: string, educationData: EducationUpdateData[] = []): Promise<LearnerMutationResponse> {
   try {
     const findResult = await findlearnerByEmail(email);
     if (!findResult.success) return findResult;
@@ -1239,8 +1275,9 @@ export async function updateEducationByEmail(email: string, educationData: Educa
       .map((existing) => existing.id);
 
     await apiPut(`/learners/data/${learnerId}/education`, { deleteIds: toDelete, records: formatted });
+    recommendationsChanged(learnerId);
 
-    return await getlearnerByEmail(email);
+    return await refreshAfterMutation(email);
   } catch (err: unknown) {
     const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
     logger.error('Exception in updateEducationByEmail', err instanceof Error ? err : new Error(String(err)));
@@ -1251,7 +1288,7 @@ export async function updateEducationByEmail(email: string, educationData: Educa
 /**
  * Update certificates by email
  */
-export async function updateCertificatesByEmail(email: string, certificatesData: CertificateUpdateData[] = []): Promise<ServiceResponse> {
+export async function updateCertificatesByEmail(email: string, certificatesData: CertificateUpdateData[] = []): Promise<LearnerMutationResponse> {
   try {
     const findResult = await findlearnerByEmail(email);
     if (!findResult.success) return findResult;
@@ -1302,8 +1339,9 @@ export async function updateCertificatesByEmail(email: string, certificatesData:
       .map((existing) => existing.id);
 
     await apiPut(`/learners/data/${learnerId}/certificates`, { deleteIds: toDelete, records: formatted });
+    recommendationsChanged(learnerId);
 
-    return await getlearnerByEmail(email);
+    return await refreshAfterMutation(email);
   } catch (err: unknown) {
     const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
     logger.error('Exception in updateCertificatesByEmail', err instanceof Error ? err : new Error(String(err)));
@@ -1314,7 +1352,8 @@ export async function updateCertificatesByEmail(email: string, certificatesData:
 /**
  * Update skills by email - handles both technical and soft skills
  */
-export async function updateSkillsByEmail(email: string, skillsData: SkillUpdateData[] = []): Promise<ServiceResponse> {
+export async function updateSkillsByEmail(email: string, skillsData: SkillUpdateData[] = []): Promise<LearnerMutationResponse> {
+  let lastResult: LearnerMutationResponse | undefined;
   try {
     // Separate skills by type
     const technicalSkills = skillsData.filter(skill => skill.type === 'technical');
@@ -1326,17 +1365,21 @@ export async function updateSkillsByEmail(email: string, skillsData: SkillUpdate
       if (!techResult.success) {
         return techResult;
       }
+      lastResult = techResult;
     }
 
     // Update soft skills if any
     if (softSkills.length > 0) {
       const softResult = await updateSoftSkillsByEmail(email, softSkills);
       if (!softResult.success) {
-        return softResult;
+        return lastResult?.committed ? { ...softResult, committed: true, partial: true,
+          error: `Technical skills were saved, but soft skills could not be saved: ${softResult.error}` } : softResult;
       }
+      lastResult = softResult;
     }
 
-    return await getlearnerByEmail(email);
+    // Each child already refreshed and invalidated its acknowledged write.
+    return lastResult ?? await getlearnerByEmail(email);
   } catch (err: unknown) {
     const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
     logger.error('Exception in updateSkillsByEmail', err instanceof Error ? err : new Error(String(err)));
@@ -1347,7 +1390,7 @@ export async function updateSkillsByEmail(email: string, skillsData: SkillUpdate
 /**
  * Update projects by email
  */
-export async function updateProjectsByEmail(email: string, projectsData: ProjectUpdateData[] = []): Promise<ServiceResponse> {
+export async function updateProjectsByEmail(email: string, projectsData: ProjectUpdateData[] = []): Promise<LearnerMutationResponse> {
   try {
     const findResult = await findlearnerByEmail(email);
     if (!findResult.success) return findResult;
@@ -1400,8 +1443,9 @@ export async function updateProjectsByEmail(email: string, projectsData: Project
       .map((existing) => existing.id);
 
     await apiPut(`/learners/data/${learnerId}/projects`, { deleteIds: toDelete, records: formatted });
+    recommendationsChanged(learnerId);
 
-    return await getlearnerByEmail(email);
+    return await refreshAfterMutation(email);
   } catch (err: unknown) {
     const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
     logger.error('Exception in updateProjectsByEmail', err instanceof Error ? err : new Error(String(err)));
@@ -1440,6 +1484,8 @@ export async function updateSingleTrainingById(trainingId: string, updateData: T
     if (!updatedTraining) {
       return { success: false, data: null, error: 'Failed to update training' };
     }
+
+    recommendationsChanged(updatedTraining.learner_id);
 
     return { success: true, data: updatedTraining, error: null };
   } catch (err: unknown) {

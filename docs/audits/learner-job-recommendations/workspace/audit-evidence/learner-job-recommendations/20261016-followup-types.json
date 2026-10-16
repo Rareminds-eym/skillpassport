@@ -1,0 +1,35 @@
+{
+  "generatedAt": "2026-10-16T04:00:14.408Z",
+  "typescript": "5.5.3",
+  "scope": "Syntax and semantic diagnostics for the ten listed files using repository compiler options and existing test setup. Imports resolve normally. Does not check all imported files, global/project diagnostics, or certify a full-project typecheck.",
+  "wholeRepositoryTypecheckPassed": false,
+  "diagnosticCount": 0,
+  "results": [
+    {
+      "group": "functions",
+      "config": "tsconfig.functions.json",
+      "checkedFiles": [
+        "functions/api/career/handlers/recommend.ts",
+        "functions/api/career/utils/recommendation-state.ts",
+        "functions/api/career/utils/recommendation-versions.ts",
+        "functions/__tests__/api/career-recommend-ownership.test.ts"
+      ],
+      "setup": [],
+      "diagnostics": []
+    },
+    {
+      "group": "frontend",
+      "config": "tsconfig.app.json",
+      "checkedFiles": [
+        "src/features/opportunities/lib/externalApplication.ts",
+        "src/features/opportunities/lib/__tests__/externalApplication.test.tsx",
+        "src/features/opportunities/model/__tests__/saved-job-application.test.tsx",
+        "src/features/opportunities/model/useSavedJobs.ts",
+        "src/entities/learner/model/useLearnerDataByEmail.ts",
+        "src/entities/learner/api/__tests__/mutation-invalidation.test.tsx"
+      ],
+      "setup": ["src/test/setup.js"],
+      "diagnostics": []
+    }
+  ]
+}
