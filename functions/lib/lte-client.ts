@@ -104,7 +104,12 @@ export async function fetchLteRoleCapabilities(
     if (body?.success !== true || !Array.isArray(body.capabilities)) {
       return { ok: false, reason: 'LTE returned an unexpected payload' };
     }
-    return { ok: true, capabilities: body.capabilities as LteCapability[] };
+    // Drop malformed entries so callers can rely on `id` and `name` being strings.
+    const capabilities = body.capabilities.filter(
+      (cap): cap is LteCapability =>
+        !!cap && typeof cap === 'object' && typeof (cap as LteCapability).id === 'string' && typeof (cap as LteCapability).name === 'string',
+    );
+    return { ok: true, capabilities };
   } catch (error) {
     return { ok: false, reason: error instanceof Error ? error.message : String(error) };
   } finally {
