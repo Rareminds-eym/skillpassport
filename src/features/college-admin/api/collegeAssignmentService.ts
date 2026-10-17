@@ -175,3 +175,75 @@ export const updateAssignment = async (assignmentId: string, updateData: Partial
     return { data: null, error: err.message || 'Failed to update assignment' };
   }
 };
+
+export interface CollegeAssignmentsFilterParams {
+  college_id: string;
+  educator_type?: 'all' | 'internal' | 'external';
+  department_id?: string;
+  program_id?: string;
+  program_section_id?: string;
+}
+
+export interface CollegeAssignmentsMetrics {
+  totalAssignments: number;
+  totalAssigned?: number;
+  internalAssignmentsCount: number;
+  externalAssignmentsCount: number;
+  totalSubmissions: number;
+  totalGraded: number;
+  pendingReviews: number;
+}
+
+export interface CollegeLearnerEvaluation {
+  id: string;
+  learner_id: string;
+  learner_name: string;
+  learner_email: string;
+  roll_number: string;
+  status: 'todo' | 'in-progress' | 'submitted' | 'graded';
+  grade_received?: number | null;
+  grade_percentage?: number | null;
+  instructor_feedback?: string | null;
+  feedback_date?: string | null;
+  graded_date?: string | null;
+  submission_date?: string | null;
+  submission_files?: Array<{ name?: string; url?: string; size?: number; type?: string }>;
+  submission_url?: string | null;
+  submission_content?: string | null;
+  is_late?: boolean;
+}
+
+export interface CollegeAssignmentItem extends CollegeAssignment {
+  educator_type: 'internal' | 'external';
+  educator_role_label: string;
+  educator_name: string;
+  educator_email?: string;
+  educator_user_id?: string;
+  department_code?: string;
+  program_code?: string;
+  stats: {
+    totalAssigned: number;
+    submittedCount: number;
+    gradedCount: number;
+    pendingCount: number;
+  };
+  learners?: CollegeLearnerEvaluation[];
+}
+
+export const fetchCollegeAllAssignments = async (
+  params: CollegeAssignmentsFilterParams
+): Promise<ServiceResponse<{
+  assignments: CollegeAssignmentItem[];
+  metrics: CollegeAssignmentsMetrics;
+}>> => {
+  try {
+    const result: any = await apiPost('/college-admin/assignments', {
+      action: 'get-college-all-assignments',
+      ...params,
+    });
+    return { data: result.data || { assignments: [], metrics: {} }, error: null };
+  } catch (err: any) {
+    return { data: null, error: err.message || 'Failed to fetch college assignments' };
+  }
+};
+
