@@ -24,6 +24,6 @@ export async function guardExternalTeachingRequest(user: VerifiedAuthUser, env: 
     }
     return null;
   }
-  if (path === '/api/auth/change-password' || path === '/api/college-admin/assignments' || path === '/api/college-admin/classes') return null;
+  if (path === '/api/auth/change-password' || path === '/api/college-admin/assignments' || path === '/api/college-admin/classes' || path === '/api/storage/upload') return null;
   return Response.json({ error: 'This module is not included in assigned teaching access', code: 'TEACHING_MODULE_DENIED' }, { status: 403 });
 }

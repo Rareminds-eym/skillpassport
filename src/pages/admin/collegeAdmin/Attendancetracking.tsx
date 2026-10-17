@@ -1763,7 +1763,11 @@ const AttendanceTracking: React.FC = () => {
         saving={savingSession}
         subjectsLoading={academicSubjectsLoading||trainingSectionsLoading||trainingCoursesLoading}
         trainingSubjects={Array.from(new Map(trainingCourses.map(x=>[x.course_id,{value:`training:${x.course_id}`,label:x.title}])).values())}
-        subjects={coursesData.map(course => ({ value: course.id, label: `${course.course_code} - ${course.course_name}` }))}
+        subjects={coursesData.map(course => ({
+          value: course.id,
+          label: course.course_code ? `${course.course_code} - ${course.course_name}` : course.course_name,
+          source: course.source || 'college_course',
+        }))}
         faculty={sessionFormData.subject.startsWith("training:")?trainingCandidates.map(x=>({value:x.mapping_id,label:x.staff_name})):filterOptions.faculty}
         learners={[]}
       />

@@ -67,26 +67,44 @@ const AddAttendanceSessionModal = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Filter subjects based on search
+  // Split subjects by source: academic curriculum vs generic platform catalog
+  const academicSubjectsList = useMemo(() => {
+    return subjects.filter(s => s.source !== 'generic_course');
+  }, [subjects]);
+
+  const genericSubjectsList = useMemo(() => {
+    return subjects.filter(s => s.source === 'generic_course');
+  }, [subjects]);
+
+  // Filter subjects based on search (by title/label only, hiding IDs)
   const filteredAcademicSubjects = useMemo(() => {
-    if (!subjectSearch) return subjects;
+    if (!subjectSearch) return academicSubjectsList;
     const search = subjectSearch.toLowerCase();
-    return subjects.filter(subj =>
-      subj.label?.toLowerCase().includes(search) ||
-      subj.value?.toLowerCase().includes(search)
+    return academicSubjectsList.filter(subj =>
+      subj.label?.toLowerCase().includes(search)
     );
-  }, [subjects, subjectSearch]);
+  }, [academicSubjectsList, subjectSearch]);
 
   const filteredTrainingSubjects = useMemo(() => {
     if (!subjectSearch) return trainingSubjects;
     const search = subjectSearch.toLowerCase();
     return trainingSubjects.filter(subj =>
-      subj.label?.toLowerCase().includes(search) ||
-      subj.value?.toLowerCase().includes(search)
+      subj.label?.toLowerCase().includes(search)
     );
   }, [trainingSubjects, subjectSearch]);
 
-  const totalFilteredCount = filteredAcademicSubjects.length + filteredTrainingSubjects.length;
+  const filteredGenericSubjects = useMemo(() => {
+    if (!subjectSearch) return genericSubjectsList;
+    const search = subjectSearch.toLowerCase();
+    return genericSubjectsList.filter(subj =>
+      subj.label?.toLowerCase().includes(search)
+    );
+  }, [genericSubjectsList, subjectSearch]);
+
+  const totalFilteredCount =
+    filteredAcademicSubjects.length +
+    filteredTrainingSubjects.length +
+    filteredGenericSubjects.length;
 
   const selectedSubjectLabel = useMemo(() => {
     if (!formData.subject) return '';
@@ -329,10 +347,11 @@ const AddAttendanceSessionModal = ({
                       {/* Custom searchable dropdown */}
                       {showSubjectDropdown && !formData.subject && totalFilteredCount > 0 && formData.semester && !subjectsLoading && (
                         <div className="absolute z-20 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-xl max-h-60 overflow-y-auto divide-y divide-gray-100">
+                          {/* 1. Academic Courses */}
                           {filteredAcademicSubjects.length > 0 && (
                             <div>
-                              <div className="px-3 py-1.5 text-xs font-semibold text-gray-500 bg-gray-50 uppercase tracking-wider sticky top-0">
-                                Academic Subjects
+                              <div className="px-3 py-1.5 text-xs font-semibold text-gray-600 bg-gray-50 uppercase tracking-wider sticky top-0">
+                                Academic Courses
                               </div>
                               {filteredAcademicSubjects.map((subj) => (
                                 <button
@@ -346,18 +365,16 @@ const AddAttendanceSessionModal = ({
                                   className="w-full text-left px-3 py-2.5 hover:bg-indigo-50 focus:bg-indigo-50 focus:outline-none transition-colors border-b border-gray-50 last:border-0"
                                 >
                                   <div className="font-medium text-gray-900">{subj.label}</div>
-                                  {subj.value !== subj.label && (
-                                    <div className="text-xs text-gray-500">{subj.value}</div>
-                                  )}
                                 </button>
                               ))}
                             </div>
                           )}
 
+                          {/* 2. Trainer Assigned Courses */}
                           {filteredTrainingSubjects.length > 0 && (
                             <div>
                               <div className="px-3 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 uppercase tracking-wider sticky top-0">
-                                Training Courses
+                                Trainer Assigned Courses
                               </div>
                               {filteredTrainingSubjects.map((subj) => (
                                 <button
@@ -371,9 +388,29 @@ const AddAttendanceSessionModal = ({
                                   className="w-full text-left px-3 py-2.5 hover:bg-indigo-50 focus:bg-indigo-50 focus:outline-none transition-colors border-b border-gray-50 last:border-0"
                                 >
                                   <div className="font-medium text-gray-900">{subj.label}</div>
-                                  {subj.value !== subj.label && (
-                                    <div className="text-xs text-gray-500">{subj.value}</div>
-                                  )}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* 3. All Courses */}
+                          {filteredGenericSubjects.length > 0 && (
+                            <div>
+                              <div className="px-3 py-1.5 text-xs font-semibold text-gray-600 bg-gray-50 uppercase tracking-wider sticky top-0">
+                                All Courses
+                              </div>
+                              {filteredGenericSubjects.map((subj) => (
+                                <button
+                                  key={subj.value}
+                                  type="button"
+                                  onClick={() => {
+                                    onFormChange("subject", subj.value);
+                                    setSubjectSearch('');
+                                    setShowSubjectDropdown(false);
+                                  }}
+                                  className="w-full text-left px-3 py-2.5 hover:bg-indigo-50 focus:bg-indigo-50 focus:outline-none transition-colors border-b border-gray-50 last:border-0"
+                                >
+                                  <div className="font-medium text-gray-900">{subj.label}</div>
                                 </button>
                               ))}
                             </div>
@@ -418,9 +455,9 @@ const AddAttendanceSessionModal = ({
                           ? 'No subjects available'
                           : 'Select Subject'}
                       </option>
-                      {subjects.length > 0 && (
+                      {academicSubjectsList.length > 0 && (
                         <optgroup label="Academic Subjects">
-                          {subjects.map((subj) => (
+                          {academicSubjectsList.map((subj) => (
                             <option key={subj.value} value={subj.value}>
                               {subj.label}
                             </option>
@@ -430,6 +467,15 @@ const AddAttendanceSessionModal = ({
                       {trainingSubjects.length > 0 && (
                         <optgroup label="Training Courses">
                           {trainingSubjects.map((subj) => (
+                            <option key={subj.value} value={subj.value}>
+                              {subj.label}
+                            </option>
+                          ))}
+                        </optgroup>
+                      )}
+                      {genericSubjectsList.length > 0 && (
+                        <optgroup label="All Courses">
+                          {genericSubjectsList.map((subj) => (
                             <option key={subj.value} value={subj.value}>
                               {subj.label}
                             </option>

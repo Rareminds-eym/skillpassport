@@ -52,7 +52,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           external_educator_id: isExternalEducator ? educator_user_id : null,
           educator_name: educatorName, 
           available_from: params.available_from || new Date().toISOString(), 
-          instruction_files: [] 
+          instruction_files: params.instruction_files || [] 
         };
         
         const { data, error } = await supabase.from('college_assignments').insert([insertData]).select('*, programs!college_assignments_program_id_fkey(name), departments!college_assignments_department_id_fkey(name)').single();
@@ -307,6 +307,244 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           learner_count: 0,
         }));
         return apiSuccess(assignments, context.request, { startTime });
+      }
+
+      case 'get-college-all-assignments': {
+        const { college_id, educator_type, department_id, program_id, program_section_id } = params;
+        if (!college_id) {
+          return apiError(400, 'VALIDATION_ERROR', 'Missing college_id', context.request, { startTime });
+        }
+
+        let query = supabase
+          .from('college_assignments')
+          .select('assignment_id, title, description, instructions, course_name, course_code, due_date, total_points, assignment_type, skill_outcomes, created_date, program_section_id, instruction_files, college_id, educator_name, college_educator_id, external_educator_id, department_id, program_id, available_from, allow_late_submission, document_pdf, program_sections!college_assignments_program_section_id_fkey(semester, section, academic_year), programs!college_assignments_program_id_fkey(name, code), departments!college_assignments_department_id_fkey(name, code)')
+          .eq('college_id', college_id)
+          .eq('is_deleted', false);
+
+        if (department_id) {
+          query = query.eq('department_id', department_id);
+        }
+        if (program_id) {
+          query = query.eq('program_id', program_id);
+        }
+        if (program_section_id) {
+          query = query.eq('program_section_id', program_section_id);
+        }
+        if (educator_type === 'internal') {
+          query = query.not('college_educator_id', 'is', null);
+        } else if (educator_type === 'external') {
+          query = query.not('external_educator_id', 'is', null);
+        }
+
+        const { data: assignments, error } = await query.order('created_date', { ascending: false });
+        if (error) return apiDbError(error, context.request, { startTime });
+
+        const assignmentIds = (assignments || []).map((a: any) => a.assignment_id);
+
+        const externalUserIds = Array.from(new Set((assignments || []).map((a: any) => a.external_educator_id).filter(Boolean)));
+        const internalUserIds = Array.from(new Set((assignments || []).map((a: any) => a.college_educator_id).filter(Boolean)));
+
+        let externalStaffMap = new Map<string, any>();
+        if (externalUserIds.length > 0) {
+          const { data: staffList } = await supabase
+            .from('organization_staff')
+            .select('user_id, first_name, last_name, email, employee_id')
+            .in('user_id', externalUserIds);
+          (staffList || []).forEach((s: any) => {
+            if (s.user_id) externalStaffMap.set(s.user_id, s);
+          });
+        }
+
+        let internalLecturerMap = new Map<string, any>();
+        if (internalUserIds.length > 0) {
+          const { data: lecturers } = await supabase
+            .from('college_lecturers')
+            .select('id, user_id, first_name, last_name, email, employee_id')
+            .or(`user_id.in.(${internalUserIds.join(',')}),id.in.(${internalUserIds.join(',')})`);
+          (lecturers || []).forEach((l: any) => {
+            if (l.user_id) internalLecturerMap.set(l.user_id, l);
+            if (l.id) internalLecturerMap.set(l.id, l);
+          });
+        }
+
+        let statsByAssignment = new Map<string, { totalAssigned: number; submittedCount: number; gradedCount: number; pendingCount: number }>();
+        let submissionsByAssignment = new Map<string, any[]>();
+        let learnersMap = new Map<string, any>();
+
+        if (assignmentIds.length > 0) {
+          const { data: subRows } = await supabase
+            .from('college_learner_assignments')
+            .select(`
+              learner_assignment_id,
+              assignment_id,
+              learner_id,
+              status,
+              priority,
+              grade_received,
+              grade_percentage,
+              instructor_feedback,
+              feedback_date,
+              graded_date,
+              submission_date,
+              submission_files,
+              submission_url,
+              submission_content,
+              is_late
+            `)
+            .in('assignment_id', assignmentIds)
+            .eq('is_deleted', false);
+
+          const learnerIds = Array.from(new Set((subRows || []).map((s: any) => s.learner_id).filter(Boolean)));
+          if (learnerIds.length > 0) {
+            const { data: learnerRows } = await supabase
+              .from('learners')
+              .select('id, user_id, name, email, roll_number')
+              .or(`id.in.(${learnerIds.join(',')}),user_id.in.(${learnerIds.join(',')})`);
+
+            (learnerRows || []).forEach((l: any) => {
+              if (l.id) learnersMap.set(l.id, l);
+              if (l.user_id) learnersMap.set(l.user_id, l);
+            });
+          }
+
+          (subRows || []).forEach((sub: any) => {
+            if (!statsByAssignment.has(sub.assignment_id)) {
+              statsByAssignment.set(sub.assignment_id, {
+                totalAssigned: 0,
+                submittedCount: 0,
+                gradedCount: 0,
+                pendingCount: 0,
+              });
+            }
+            if (!submissionsByAssignment.has(sub.assignment_id)) {
+              submissionsByAssignment.set(sub.assignment_id, []);
+            }
+
+            const st = statsByAssignment.get(sub.assignment_id)!;
+            st.totalAssigned += 1;
+            if (sub.status === 'submitted' || sub.status === 'graded') {
+              st.submittedCount += 1;
+            }
+            if (sub.status === 'graded' || (sub.grade_percentage !== null && sub.grade_percentage !== undefined)) {
+              st.gradedCount += 1;
+            }
+            if (sub.status === 'submitted') {
+              st.pendingCount += 1;
+            }
+
+            const learnerInfo = learnersMap.get(sub.learner_id) || {};
+            submissionsByAssignment.get(sub.assignment_id)!.push({
+              id: sub.learner_assignment_id,
+              learner_id: sub.learner_id,
+              learner_name: learnerInfo.name || 'Unknown Learner',
+              learner_email: learnerInfo.email || '',
+              roll_number: learnerInfo.roll_number || '',
+              status: sub.status,
+              grade_received: sub.grade_received,
+              grade_percentage: sub.grade_percentage,
+              instructor_feedback: sub.instructor_feedback,
+              feedback_date: sub.feedback_date,
+              graded_date: sub.graded_date,
+              submission_date: sub.submission_date,
+              submission_files: sub.submission_files || [],
+              submission_url: sub.submission_url,
+              submission_content: sub.submission_content,
+              is_late: sub.is_late ?? false,
+            });
+          });
+        }
+
+        const now = new Date();
+        let totalAssignedSum = 0;
+        let totalSubmissionsSum = 0;
+        let totalGradedSum = 0;
+        let totalPendingSum = 0;
+        let internalCount = 0;
+        let externalCount = 0;
+
+        const resultAssignments = (assignments || []).map((row: any) => {
+          const isExternal = Boolean(row.external_educator_id);
+          const staffInfo = isExternal ? externalStaffMap.get(row.external_educator_id) : null;
+          const lecturerInfo = !isExternal && row.college_educator_id ? internalLecturerMap.get(row.college_educator_id) : null;
+
+          let resolvedEducatorName = row.educator_name || 'Unknown Educator';
+          let educatorEmail = '';
+
+          if (isExternal) {
+            externalCount++;
+            if (staffInfo) {
+              resolvedEducatorName = `${staffInfo.first_name || ''} ${staffInfo.last_name || ''}`.trim() || resolvedEducatorName;
+              educatorEmail = staffInfo.email || '';
+            }
+          } else {
+            internalCount++;
+            if (lecturerInfo) {
+              resolvedEducatorName = `${lecturerInfo.first_name || ''} ${lecturerInfo.last_name || ''}`.trim() || resolvedEducatorName;
+              educatorEmail = lecturerInfo.email || '';
+            }
+          }
+
+          const st = statsByAssignment.get(row.assignment_id) || {
+            totalAssigned: 0,
+            submittedCount: 0,
+            gradedCount: 0,
+            pendingCount: 0,
+          };
+
+          totalAssignedSum += st.totalAssigned;
+          totalSubmissionsSum += st.submittedCount;
+          totalGradedSum += st.gradedCount;
+          totalPendingSum += st.pendingCount;
+
+          const isPastDue = row.due_date && new Date(row.due_date) < now;
+
+          return {
+            assignment_id: row.assignment_id,
+            title: row.title,
+            description: row.description,
+            instructions: row.instructions,
+            course_name: row.course_name,
+            course_code: row.course_code,
+            due_date: row.due_date,
+            total_points: row.total_points,
+            assignment_type: row.assignment_type || 'task',
+            skill_outcomes: row.skill_outcomes || [],
+            created_date: row.created_date,
+            college_id: row.college_id,
+            department_id: row.department_id,
+            department_name: row.departments?.name || '',
+            department_code: row.departments?.code || '',
+            program_id: row.program_id,
+            program_name: row.programs?.name || '',
+            program_code: row.programs?.code || '',
+            program_section_id: row.program_section_id,
+            semester: row.program_sections?.semester || null,
+            section: row.program_sections?.section || '',
+            academic_year: row.program_sections?.academic_year || '',
+            educator_type: isExternal ? 'external' : 'internal',
+            educator_role_label: isExternal ? 'RareMinds Trainer' : 'Internal Faculty',
+            educator_name: resolvedEducatorName,
+            educator_email: educatorEmail,
+            educator_user_id: row.external_educator_id || row.college_educator_id,
+            status: isPastDue ? 'completed' : 'active',
+            instruction_files: row.instruction_files || [],
+            stats: st,
+            learners: submissionsByAssignment.get(row.assignment_id) || [],
+          };
+        });
+
+        return apiSuccess({
+          assignments: resultAssignments,
+          metrics: {
+            totalAssignments: resultAssignments.length,
+            totalAssigned: totalAssignedSum,
+            internalAssignmentsCount: internalCount,
+            externalAssignmentsCount: externalCount,
+            totalSubmissions: totalSubmissionsSum,
+            totalGraded: totalGradedSum,
+            pendingReviews: totalPendingSum,
+          }
+        }, context.request, { startTime });
       }
 
       case 'assign-task-to-learners': {

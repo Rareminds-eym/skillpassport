@@ -675,6 +675,11 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }:
             icon: ClipboardDocumentListIcon,
           },
           {
+            name: "Tasks & Assignments",
+            path: "/college-admin/academics/assignments",
+            icon: ClipboardDocumentListIcon,
+          },
+          {
             name: "Coverage Tracker",
             path: "/college-admin/academics/coverage-tracker",
             icon: ChartBarIcon,
