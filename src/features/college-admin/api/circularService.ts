@@ -1,17 +1,6 @@
 import { apiPost } from '@/shared/api/apiClient';
 import { useAuthStore } from '@/shared/model/authStore';
 
-async function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      resolve(result.split(',')[1] || result);
-    };
-    reader.onerror = () => reject(new Error('Failed to read file'));
-    reader.readAsDataURL(file);
-  });
-}
 
 export interface Circular {
   id: string;
@@ -110,20 +99,6 @@ class CircularService {
   async getCircularStats(circularId: string): Promise<{ total_recipients: number; read_count: number; unread_count: number; read_percentage: number }> {
     const result: any = await apiPost('/college-admin/circulars', { action: 'get-stats', circular_id: circularId });
     return result.data;
-  }
-
-  async uploadAttachment(file: File, circularId: string): Promise<string> {
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${circularId}/${Date.now()}.${fileExt}`;
-    const base64 = await fileToBase64(file);
-    const result: any = await apiPost('/college-admin/storage', {
-      action: 'upload',
-      bucket: 'circular-attachments',
-      path: fileName,
-      file_base64: base64,
-      content_type: file.type || 'application/octet-stream',
-    });
-    return result?.data?.publicUrl;
   }
 
   async autoExpireCirculars(): Promise<void> {

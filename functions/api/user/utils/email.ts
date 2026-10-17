@@ -7,13 +7,10 @@ import type { PagesEnv } from '../../../lib/types';
 import { sendEmail, sendEmailSafe, validateEmailEnv } from '../../../lib/email-service';
 import {
   generateWelcomeEmailHtml,
-  generatePasswordResetEmailHtml,
   generateInterviewReminderHtml,
   getWelcomeSubject,
-  getPasswordResetSubject,
   getInterviewReminderSubject,
   type WelcomeEmailData,
-  type PasswordResetData,
   type InterviewReminderData,
 } from '../../email/services/templates';
 
@@ -48,29 +45,6 @@ export async function sendWelcomeEmail(
     to: email, 
     subject, 
     html,
-    text,
-  });
-}
-
-/**
- * Send password reset email with OTP
- */
-export async function sendPasswordResetEmail(
-  env: PagesEnv,
-  email: string,
-  otp: string
-): Promise<boolean> {
-  const resetData: PasswordResetData = { otp };
-  
-  const html = generatePasswordResetEmailHtml(resetData);
-  const subject = getPasswordResetSubject();
-  
-  const text = `Password Reset - SkillPassport\n\nWe received a request to reset your password.\n\nYour OTP Code: ${otp}\n\nThis code is valid for 10 minutes.\n\nIf you didn't request this, please ignore this email.`;
-
-  return await sendEmailSafe(env, { 
-    to: email, 
-    subject, 
-    html, 
     text,
   });
 }

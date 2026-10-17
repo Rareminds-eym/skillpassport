@@ -251,7 +251,7 @@ function PaymentCompletion() {
 
       // CRITICAL: Verify user actually exists in database (not just localStorage)
       try {
-        // First check if user exists in auth.users via session
+        // First check the authenticated SSO session
         const user = useAuthStore.getState().user; const sessionError = null;
 
         if (sessionError || !user) {

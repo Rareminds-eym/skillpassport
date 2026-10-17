@@ -70,12 +70,10 @@ export {
   deleteUser,
   changeUserRole,
   updateUserProfile,
-  uploadDocument,
   verifyDocument,
   logActivity,
   resetUserPassword,
   updatePassword,
-  bulkImportUsers,
 } from './api';
 
 // UI exports

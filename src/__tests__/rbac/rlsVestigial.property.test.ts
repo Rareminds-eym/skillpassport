@@ -87,7 +87,9 @@ import fc from 'fast-check';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { createSupabaseAdminClient, getServiceClient } from '../../../functions/lib/supabase';
+import type { PagesEnv } from '../../../functions/lib/types';
 
 // src/__tests__/rbac/<thisFile> -> project root (skillpassport/) is three levels up.
 const __filename = fileURLToPath(import.meta.url);
@@ -253,30 +255,32 @@ describe('RBAC FC-12: vestigial-RLS-removal invariant (P4 / backs 21.2 + 2026060
     // PREMISE 1 — server side bypasses RLS (service_role basis).
     // ──────────────────────────────────────────────────────────────────────────
     describe('Premise 1: Functions use service_role (RLS bypassed)', () => {
-        it('getServiceClient is built with SUPABASE_SERVICE_ROLE_KEY (the RLS-bypass basis)', () => {
-            expect(exists(SERVICE_CLIENT_REL), `${SERVICE_CLIENT_REL} must exist`).toBe(true);
-            const src = read(SERVICE_CLIENT_REL);
-            expect(
-                /export\s+function\s+getServiceClient\b/.test(src),
-                `${SERVICE_CLIENT_REL} must export getServiceClient (the server-side service_role client).`,
-            ).toBe(true);
-            // getServiceClient's body must construct the client with the service-role key.
-            const body = src.slice(src.indexOf('getServiceClient'));
-            expect(
-                /createClient\([^)]*SUPABASE_SERVICE_ROLE_KEY/.test(body),
-                'getServiceClient must build the client with SUPABASE_SERVICE_ROLE_KEY — this is the basis for ' +
-                '"server side bypasses RLS". If it switched to the anon key, the dropped policies would no longer ' +
-                'be vestigial on the server.',
-            ).toBe(true);
-        });
-
-        it('createSupabaseAdminClient (privileged client) also uses SUPABASE_SERVICE_ROLE_KEY', () => {
-            const src = read(SERVICE_CLIENT_REL);
-            expect(
-                /createSupabaseAdminClient[\s\S]*?createClient\([^)]*SUPABASE_SERVICE_ROLE_KEY/.test(src),
-                'createSupabaseAdminClient must build with SUPABASE_SERVICE_ROLE_KEY (privileged, RLS-bypassing).',
-            ).toBe(true);
-        });
+        for (const [name, factory] of [
+            ['getServiceClient', getServiceClient],
+            ['createSupabaseAdminClient', createSupabaseAdminClient],
+        ] as const) {
+            it(`${name} sends the service-role key to PostgREST (the RLS-bypass basis)`, async () => {
+                expect(exists(SERVICE_CLIENT_REL), `${SERVICE_CLIENT_REL} must exist`).toBe(true);
+                const env = {
+                    SUPABASE_URL: 'https://database.example.test',
+                    SUPABASE_ANON_KEY: 'test-anon-key',
+                    SUPABASE_SERVICE_ROLE_KEY: 'test-service-role-key',
+                } as PagesEnv;
+                const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('[]', {
+                    headers: { 'Content-Type': 'application/json' },
+                }));
+                try {
+                    const { error } = await factory(env).from('role_categories').select('role_name');
+                    expect(error).toBeNull();
+                    expect(fetchSpy).toHaveBeenCalledOnce();
+                    const headers = new Headers(fetchSpy.mock.calls[0][1]?.headers);
+                    expect(headers.get('Authorization')).toBe(`Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`);
+                    expect(headers.get('apikey')).toBe(env.SUPABASE_SERVICE_ROLE_KEY);
+                } finally {
+                    fetchSpy.mockRestore();
+                }
+            });
+        }
     });
 
     // ──────────────────────────────────────────────────────────────────────────
