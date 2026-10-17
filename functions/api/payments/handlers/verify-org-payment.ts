@@ -18,6 +18,7 @@ import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../li
 import { getServiceClient } from '../../../lib/supabase';
 import {
   ssoCreateSubscription,
+  ssoGetSubscriptionByPayment,
   ssoRecordTransaction,
   ssoSyncSubscription,
 } from '../../../lib/sso-client';
@@ -105,6 +106,32 @@ export async function handleVerifyOrgPayment(context: AuthenticatedContext): Pro
     }
     if (payment.notes?.seat_count && payment.notes.seat_count !== String(body.seat_count || 1)) {
       return apiError(400, 'VALIDATION_ERROR', 'Seat count mismatch with original order', context.request);
+    }
+
+    // Replay guard (C3 subscription variant): the same captured payment must
+    // never create a second org subscription + second plan allocation. The
+    // worker path historically had no duplicate check at all, so re-POSTing a
+    // verified payload minted unlimited credits. Non-fatal lookup: even if
+    // this pre-read is raced or fails, the ledger rows are keyed by payment id
+    // (see Step 4 allocation), which independently blocks credit stacking.
+    let existingSubscription: Record<string, unknown> | null = null;
+    try {
+      existingSubscription = await ssoGetSubscriptionByPayment(env, body.razorpay_payment_id as string);
+    } catch (lookupError) {
+      console.warn('[VerifyOrgPayment] Payment-id subscription lookup failed (continuing):', lookupError);
+    }
+    if (existingSubscription) {
+      console.log(`[VerifyOrgPayment] Replay detected for payment ${body.razorpay_payment_id} — subscription already exists.`);
+      try {
+        await syncUserShadow(supabase, user.id, user.email);
+        const syncData = await ssoSyncSubscription(env, user.id);
+        if (syncData.subscription) {
+          await syncSubscriptionCache(supabase, syncData.subscription, syncData.plan);
+        }
+      } catch (syncError) {
+        console.error('[VerifyOrgPayment] Shadow sync failed during replay handling:', syncError);
+      }
+      return apiSuccess({ ...verifyResult, subscription_created: true, already_fulfilled: true }, context.request);
     }
 
     // Step 2: Signature valid — create org subscription in auth DB
@@ -221,7 +248,9 @@ export async function handleVerifyOrgPayment(context: AuthenticatedContext): Pro
           body.org_id as string,
           catalogPlan.id,
           true,
-          `Initial plan allocation on org subscription purchase (${catalogPlan.plan_code})`
+          `Initial plan allocation on org subscription purchase (${catalogPlan.plan_code})`,
+          // Ledger-level idempotency: replays hit uq_credit_ledger_alloc_ref
+          body.razorpay_payment_id as string
         );
       }
     } catch (syncError) {

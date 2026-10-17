@@ -255,8 +255,13 @@ const OpportunityListItem = ({
 
       {/* Job Title and Company */}
       <div className="flex-1 min-w-0">
-        <h3 className="font-bold text-gray-900 text-base sm:text-xl mb-1">
+        <h3 className="font-bold text-gray-900 text-base sm:text-xl mb-1 flex items-center gap-2">
           {opportunity.job_title || opportunity.title}
+          {opportunity.featuredEmployer && (
+            <span className="bg-amber-400 text-amber-900 text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full shadow-sm shrink-0">
+              ★ Featured Employer
+            </span>
+          )}
         </h3>
         <p className="text-sm sm:text-base text-gray-600 mb-2">
           {opportunity.company_name}

@@ -56,12 +56,34 @@ export async function checkServerFeatureAccess(
   feature: string
 ): Promise<FeatureAccessResult> {
   try {
+    // H5: `.maybeSingle()` errors when two rows match (cancelled history row + fresh
+    // resubscription resolve to >1 matches). Fetch newest-active first, then fall back
+    // to cancelled/grace_period so the cancelled-preserved-time contract still applies.
+    const selectColumns = 'id, user_id, organization_id, status, plan_code, features, synced_at, is_organization_subscription, subscription_end_date';
     let { data: cached, error } = await supabase
       .from('subscription_cache')
-      .select('id, user_id, organization_id, status, plan_code, features, synced_at, is_organization_subscription, subscription_end_date')
+      .select(selectColumns)
       .eq('user_id', userId)
-      .in('status', ['active', 'grace_period', 'cancelled'])
+      .in('status', ['active'])
+      .order('created_at', { ascending: false })
+      .limit(1)
       .maybeSingle();
+
+    if (!cached && !error) {
+      const { data: prior, error: priorErr } = await supabase
+        .from('subscription_cache')
+        .select(selectColumns)
+        .eq('user_id', userId)
+        .in('status', ['grace_period', 'cancelled'])
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (priorErr) {
+        error = priorErr;
+      } else {
+        cached = prior;
+      }
+    }
 
     if (error) {
       logger.error('Error fetching subscription_cache', { error: (error as Error).message, userId });
@@ -112,7 +134,12 @@ export async function checkServerFeatureAccess(
       }
     }
 
-    // Check dynamic Entitlement Engine (Database single source of truth)
+    // Check dynamic Entitlement Engine (Database single source of truth).
+    // H6: the engine only reads status='active' (entitlement-service.ts), so consulting
+    // it for grace_period/cancelled rows resolved the default free plan and denied
+    // every catalog feature pre-emptively. For non-active rows fall straight through
+    // to the paid-time-preserving legacy path below.
+    if (cached?.status === 'active') {
     const effectiveTenantId = orgId || cached?.organization_id || userId;
     try {
       const { checkEntitlement } = await import('./entitlement-service');
@@ -133,6 +160,7 @@ export async function checkServerFeatureAccess(
       }
     } catch {
       // Feature not in new entitlement catalog or mock environment, proceed to plan features check
+    }
     }
 
     if (!cached) {
@@ -235,11 +263,16 @@ export async function canUpgradeToPlan(
   targetPlanCode: string
 ): Promise<{ canUpgrade: boolean; reason?: string; currentPlanCode?: string }> {
   try {
+    // Newest-first + limit(1) (H5 class fix): with cancelled-history + resub
+    // rows this query can match multiple rows and .maybeSingle() would error
+    // PGRST116 — the same failure mode removed from the gating engine query.
     const { data: cached, error } = await supabase
       .from('subscription_cache')
       .select('id, status, plan_code')
       .eq('user_id', userId)
       .in('status', ['active', 'grace_period'])
+      .order('created_at', { ascending: false })
+      .limit(1)
       .maybeSingle();
 
     if (error) {

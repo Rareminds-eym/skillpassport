@@ -19,6 +19,48 @@ function validateCollegeId(user: any, request: any, startTime: number) {
   return { collegeId };
 }
 
+/**
+ * C4 completion: candidate discovery surfaces must not expose contact details
+ * for locked candidates. Rows are matched to the caller's unlock ledger by
+ * canonical learners.id (or the user_id alias, resolved server-side); contact
+ * fields return null unless that org has physically unlocked the candidate.
+ * Everything is masked when no org context or no ids are available (fail-closed).
+ */
+async function maskLockedContacts(supabase: any, orgId: string | null | undefined, rows: any[]): Promise<any[]> {
+  const safe = rows || [];
+  if (!orgId || safe.length === 0) {
+    return safe.map((r) => ({ ...r, email: null, contact_number: null, phone: null }));
+  }
+
+  const directIds = [...new Set(safe.map((r: any) => r?.id).filter(Boolean))];
+  const userIds = [...new Set(safe.filter((r: any) => !r?.id && r?.user_id).map((r: any) => r.user_id))];
+  let aliasIdByUserId = new Map<string, string>();
+  if (userIds.length) {
+    const { data: aliasRows } = await supabase
+      .from('learners')
+      .select('id, user_id')
+      .in('user_id', userIds);
+    aliasIdByUserId = new Map((aliasRows || []).map((r: any) => [r.user_id, r.id]));
+    directIds.push(...(aliasRows || []).map((r: any) => r.id));
+  }
+
+  const unlockedIds = new Set<string>();
+  if (directIds.length) {
+    const { data: unlockedRows, error } = await supabase
+      .from('candidate_contact_unlocks')
+      .select('candidate_id')
+      .eq('organization_id', orgId)
+      .in('candidate_id', directIds);
+    if (!error) for (const r of (unlockedRows || [])) unlockedIds.add(r.candidate_id);
+  }
+
+  return safe.map((r: any) => {
+    const canonical = r?.id || (r?.user_id ? aliasIdByUserId.get(r.user_id) : null);
+    if (canonical && unlockedIds.has(canonical)) return r;
+    return { ...r, email: null, contact_number: null, phone: null };
+  });
+}
+
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const user = getContextUser(context);
   const supabase = getServiceClient(context.env as any);
@@ -46,17 +88,30 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           match_count,
         });
         if (error) return apiDbError(error, context.request, { startTime });
-        return apiSuccess(data || [], context.request, { startTime });
+
+        // C4: the RPC's returned columns are not repo-guaranteed — mask any
+        // contact fields before they reach the browser.
+        const masked = await maskLockedContacts(supabase, user.org_id, data || []);
+        return apiSuccess(masked, context.request, { startTime });
       }
 
       case 'semantic-find-for-opportunity': {
         const { opportunity_id, match_count = 20, min_similarity = 0.65 } = params;
+        if (!user.org_id) {
+          return apiError(400, 'VALIDATION_ERROR', 'Missing college organization ID', context.request, { startTime });
+        }
+
+        // Ownership: a shortlist can only be generated for the caller's own opening
         const { data: opp, error: oppError } = await supabase
           .from('opportunities')
-          .select('embedding')
+          .select('embedding, title')
           .eq('id', opportunity_id)
-          .single();
+          .eq('organization_id', user.org_id)
+          .maybeSingle();
         if (oppError) return apiDbError(oppError, context.request, { startTime });
+        if (!opp) {
+          return apiError(404, 'NOT_FOUND', 'Opportunity not found', context.request, { startTime });
+        }
         if (!opp?.embedding) return apiSuccess([], context.request, { startTime });
         const { data, error } = await supabase.rpc('match_candidates_to_opportunity', {
           opportunity_embedding: opp.embedding,
@@ -64,7 +119,35 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           min_similarity,
         });
         if (error) return apiDbError(error, context.request, { startTime });
-        return apiSuccess(data || [], context.request, { startTime });
+        if (!data || data.length === 0) return apiSuccess([], context.request, { startTime });
+
+        // AI shortlist is a metered credit (spec §6): 1 ai_credits per generated
+        // shortlist. Charged only after a successful match — an RPC failure must not
+        // burn a credit. Free/Lite tenants (0 balance) get 402; included plans pay
+        // from their plan allocation; add-on packs top the same pool.
+        const { enforceAndConsumeCredits } = await import('../shared/lib/credit-middleware');
+        const credit = await enforceAndConsumeCredits(
+          supabase,
+          user.org_id,
+          'ai_credits',
+          1,
+          String(opportunity_id),
+          JSON.stringify({ generated_by: user.id, role: opp.title || null }),
+          context.request
+        );
+        if (!credit.allowed || !credit.success) {
+          return credit.errorResponse || credit.response || apiError(
+            402,
+            'INSUFFICIENT_CREDITS',
+            'Insufficient AI shortlist credits. Upgrade your plan or purchase the AI shortlist pack.',
+            context.request
+          );
+        }
+
+        // C4: mask contact fields on shortlist rows for candidates this org
+        // has not unlocked (the shortlist still conveys the match ranking).
+        const masked = await maskLockedContacts(supabase, user.org_id, data);
+        return apiSuccess(masked, context.request, { startTime });
       }
 
       // ── Learners ──
@@ -76,20 +159,25 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         query = query.not('name', 'is', null).limit(limit);
         const { data, error } = await query;
         if (error) return apiDbError(error, context.request, { startTime });
-        return apiSuccess(data || [], context.request, { startTime });
+
+        // C4: discovery surface — contact details only for unlocked candidates
+        const masked = await maskLockedContacts(supabase, user.org_id, data || []);
+        return apiSuccess(masked, context.request, { startTime });
       }
 
       case 'fetch-learners-basic': {
         const { learner_ids, name_filter, limit = 50 } = params;
         let query = supabase
           .from('learners')
-          .select('user_id, name, email, university, branch_field, city, state, currentCgpa, expectedGraduationDate, updated_at, resumeUrl');
+          .select('id, user_id, name, email, university, branch_field, city, state, currentCgpa, expectedGraduationDate, updated_at, resumeUrl');
         if (learner_ids) query = query.in('user_id', learner_ids);
         if (name_filter) query = query.ilike('name', `%${name_filter}%`);
         query = query.not('name', 'is', null).limit(limit);
         const { data, error } = await query;
         if (error) return apiDbError(error, context.request, { startTime });
-        return apiSuccess(data || [], context.request, { startTime });
+
+        const masked = await maskLockedContacts(supabase, user.org_id, data || []);
+        return apiSuccess(masked, context.request, { startTime });
       }
 
       case 'fetch-learners-with-location': {
@@ -123,7 +211,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const { data, error } = await supabase
           .from('learners')
           .select(`
-            user_id, name, email, phone, university, branch_field,
+            id, user_id, name, email, university, branch_field,
             currentCgpa, expectedGraduationDate, city, state, country,
             resumeUrl, githubUrl, linkedinUrl, portfolioUrl,
             created_at, updated_at
@@ -132,7 +220,9 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           .order('updated_at', { ascending: false })
           .limit(limit);
         if (error) return apiDbError(error, context.request, { startTime });
-        return apiSuccess(data || [], context.request, { startTime });
+
+        const masked = await maskLockedContacts(supabase, user.org_id, data || []);
+        return apiSuccess(masked, context.request, { startTime });
       }
 
       case 'count-learners': {

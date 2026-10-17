@@ -626,7 +626,9 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
           orgId || user.id,
           validPlan.id,
           !!orgId,
-          `Initial plan allocation on subscription purchase (${validPlan.plan_code})`
+          `Initial plan allocation on subscription purchase (${validPlan.plan_code})`,
+          // Blocks credit-stacking when the upgrade path is double-verified
+          razorpayPaymentId
         );
       }
     } catch (syncError) {

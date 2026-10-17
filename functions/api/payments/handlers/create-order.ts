@@ -122,15 +122,19 @@ export async function handleCreateOrder(context: AuthenticatedContext): Promise<
     if (body.amount === undefined || typeof body.amount !== 'number') {
       return apiError(400, 'VALIDATION_ERROR', 'amount is required and must be a number', context.request);
     }
-
+    if (!body.planId) {
+      // Without a plan reference the server cannot price-check; zero-value orders
+      // must never be creatable by omission.
+      return apiError(400, 'VALIDATION_ERROR', 'planId is required', context.request);
+    }
 
     // Resolve catalog metadata before the zero-cost branch: quote-only is not free.
     let catalogPlan: any = null;
-    if (body.planId && body.planId !== 'freemium') {
+    if (body.planId !== 'freemium') {
       const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(body.planId));
       const query = getServiceClient(env)
         .from('plans_cache')
-        .select('id, plan_code, name, base_features, entity_config');
+        .select('id, plan_code, name, base_features, entity_config, pricing_matrix');
 
       const { data: cp, error: catalogError } = await (isUuid 
         ? query.eq('id', body.planId) 
@@ -145,8 +149,19 @@ export async function handleCreateOrder(context: AuthenticatedContext): Promise<
       catalogPlan = cp;
     }
 
-    // Check if it's a freemium or zero-cost plan
-    const isZeroCost = body.amount === 0 || body.planId === 'freemium' || body.planName?.toString().toLowerCase() === 'freemium';
+    // C2: zero-cost is decided from the SERVER catalog, never from the client's
+    // amount. Otherwise { amount: 0, planId: 'recruiter_pro' } activates a paid plan free.
+    const minCatalogPrice = (() => {
+      if (!catalogPlan) return null;
+      const pm = (catalogPlan.pricing_matrix as Record<string, any>) || {};
+      const prices = Object.values(pm)
+        .map((v: any) => (typeof v?.yearly === 'number' ? v.yearly : null))
+        .filter((v): v is number => v !== null);
+      return prices.length ? Math.min(...prices) : null;
+    })();
+    const isZeroCost =
+      body.planId === 'freemium' ||
+      (catalogPlan != null && (catalogPlan.plan_code === 'freemium' || minCatalogPrice === 0));
 
     if (isZeroCost) {
       // Direct zero-cost subscription creation logic
@@ -213,7 +228,10 @@ export async function handleCreateOrder(context: AuthenticatedContext): Promise<
             tenantId,
             targetPlanId,
             !!user.org_id,
-            `Initial plan credit allocation for ${(subscription.plan_code as string) || catalogPlan?.plan_code}`
+            `Initial plan credit allocation for ${(subscription.plan_code as string) || catalogPlan?.plan_code}`,
+            // Zero-cost orders have no Razorpay payment; key on the new
+            // subscription id so a replayed create cannot re-allocate.
+            String(subscription?.id || '')
           );
           if (!allocRes.success) {
             console.error('[CreateOrder] Credit allocation failed:', allocRes.error);
@@ -252,10 +270,14 @@ export async function handleCreateOrder(context: AuthenticatedContext): Promise<
         return apiError(403, 'PLAN_NOT_AVAILABLE', 'This plan is not available for this referral code.', context.request);
       }
 
+      // The catalog stage above already resolved planId by id OR plan_code —
+      // reuse that resolution here instead of re-querying by id only, which
+      // 404'd for code-addressed paid plans.
+      const paidPathPlanId = catalogPlan?.id || body.planId;
       const { data: dbPlan } = await supabase
         .from('plans_cache')
         .select('plan_code, name, business_type, pricing_matrix')
-        .eq('id', body.planId)
+        .eq('id', paidPathPlanId)
         .eq('is_active', true)
         .maybeSingle();
 

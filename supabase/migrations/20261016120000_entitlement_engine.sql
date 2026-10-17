@@ -93,33 +93,32 @@ COMMENT ON TABLE public.tenant_entitlement_overrides IS 'Tenant-level overrides 
 
 CREATE INDEX IF NOT EXISTS idx_tenant_overrides_tenant ON public.tenant_entitlement_overrides(tenant_id);
 
--- 5. Enable RLS
-ALTER TABLE public.features ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.plan_entitlements ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.tenant_entitlement_overrides ENABLE ROW LEVEL SECURITY;
+-- 5. Access model (project convention): no RLS; explicit grants; authorization happens in
+-- the backend (Pages Functions) using the service_role key. Tables are never exposed to
+-- the anon key via PostgREST.
+ALTER TABLE public.features DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.plan_entitlements DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.tenant_entitlement_overrides DISABLE ROW LEVEL SECURITY;
 
--- Read policies for authenticated users
-CREATE POLICY "Allow public read on features" 
-  ON public.features FOR SELECT 
-  TO authenticated, anon 
-  USING (true);
+DO $access$
+DECLARE
+  r RECORD;
+  tbl TEXT;
+BEGIN
+  FOR r IN
+    SELECT tablename, policyname FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename IN ('features', 'plan_entitlements', 'tenant_entitlement_overrides')
+  LOOP
+    EXECUTE format('DROP POLICY %I ON public.%I', r.policyname, r.tablename);
+  END LOOP;
 
-CREATE POLICY "Allow public read on plan_entitlements" 
-  ON public.plan_entitlements FOR SELECT 
-  TO authenticated, anon 
-  USING (true);
-
-CREATE POLICY "Allow read on tenant overrides" 
-  ON public.tenant_entitlement_overrides FOR SELECT 
-  TO authenticated 
-  USING (true);
-
-GRANT ALL ON TABLE public.features TO service_role;
-GRANT ALL ON TABLE public.plan_entitlements TO service_role;
-GRANT ALL ON TABLE public.tenant_entitlement_overrides TO service_role;
-
-GRANT SELECT ON TABLE public.features TO authenticated, anon;
-GRANT SELECT ON TABLE public.plan_entitlements TO authenticated, anon;
-GRANT SELECT ON TABLE public.tenant_entitlement_overrides TO authenticated;
+  FOREACH tbl IN ARRAY ARRAY['features', 'plan_entitlements', 'tenant_entitlement_overrides']
+  LOOP
+    EXECUTE format('REVOKE ALL ON TABLE public.%I FROM PUBLIC, anon, authenticated', tbl);
+    EXECUTE format('GRANT ALL ON TABLE public.%I TO service_role', tbl);
+  END LOOP;
+END
+$access$;
 
 COMMIT;

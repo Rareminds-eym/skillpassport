@@ -38,7 +38,7 @@ RETURNS TABLE (
 ) 
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = pg_catalog, public
 AS $$
 DECLARE
   v_allocated INTEGER := 0;
@@ -72,7 +72,7 @@ CREATE OR REPLACE FUNCTION public.consume_credits(
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = pg_catalog, public
 AS $$
 DECLARE
   v_current_remaining INTEGER;
@@ -130,24 +130,46 @@ BEGIN
 END;
 $$;
 
--- RLS
-ALTER TABLE public.credit_ledger ENABLE ROW LEVEL SECURITY;
+-- Access model (project convention): no RLS; explicit grants; authorization happens in the
+-- backend (Pages Functions) which uses the service_role key. The ledger is never writable by
+-- the public key — otherwise anon could mint credits directly against PostgREST.
+ALTER TABLE public.credit_ledger DISABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Tenants can view their own credit ledger"
-  ON public.credit_ledger FOR SELECT
-  TO authenticated
-  USING (
-    tenant_id IN (
-      SELECT organization_id FROM public.organization_members WHERE user_id = auth.uid()
-      UNION
-      SELECT auth.uid()
-    )
-  );
+DO $access$
+DECLARE
+  r RECORD;
+BEGIN
+  -- Remove any RLS policies (deny-all RLS is a redundant belt alongside REVOKE-all);
+  -- keep enabling state harmless since no client role holds table privileges.
+  FOR r IN
+    SELECT policyname FROM pg_policies
+    WHERE schemaname = 'public' AND tablename = 'credit_ledger'
+  LOOP
+    EXECUTE format('DROP POLICY %I ON public.credit_ledger', r.policyname);
+  END LOOP;
 
-GRANT ALL ON TABLE public.credit_ledger TO service_role;
-GRANT SELECT ON TABLE public.credit_ledger TO authenticated;
+  REVOKE ALL ON TABLE public.credit_ledger FROM PUBLIC, anon, authenticated;
+  GRANT ALL ON TABLE public.credit_ledger TO service_role;
+END
+$access$;
 
-GRANT EXECUTE ON FUNCTION public.get_credit_balance TO authenticated, service_role;
-GRANT EXECUTE ON FUNCTION public.consume_credits TO authenticated, service_role;
+-- SECURITY DEFINER functions must not be reachable by the public key:
+-- Postgres grants EXECUTE to PUBLIC on functions by default, so an explicit
+-- REVOKE FROM PUBLIC is required even when only authenticated/service_role
+-- grants appear in the original file.
+REVOKE ALL ON FUNCTION public.get_credit_balance(UUID, VARCHAR) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.get_credit_balance(UUID, VARCHAR) TO service_role;
+
+REVOKE ALL ON FUNCTION public.consume_credits(UUID, VARCHAR, INTEGER, VARCHAR, TEXT) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.consume_credits(UUID, VARCHAR, INTEGER, VARCHAR, TEXT) TO service_role;
+
+-- Idempotency: one credit allocation per payment/plan reference. Prevents a replayed
+-- payment verification from stacking additional ledger rows (C3).
+CREATE UNIQUE INDEX IF NOT EXISTS uq_credit_ledger_alloc_ref
+  ON public.credit_ledger (tenant_id, feature_key, reference_id)
+  WHERE reference_id IS NOT NULL AND amount > 0
+    AND transaction_type IN ('plan_allocation', 'topup_purchase', 'rollover');
+    -- 'refund' deliberately excluded: partial refunds of the same payment share a
+    -- reference id and must be allowed to coexist as separate rows.
 
 COMMIT;

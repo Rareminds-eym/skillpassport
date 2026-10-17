@@ -61,7 +61,12 @@ export async function syncSubscriptionCache(
       plan_amount: subscription.plan_amount,
       billing_cycle: subscription.billing_cycle,
       status: subscription.status,
-      features: subscription.features || (plan as Record<string, unknown>)?.base_features || [],
+      // H8: an empty subscription.features array (`[]` on self-serve org purchases) is
+      // truthy and previously shadowed base_features, wiping every feature at sync time.
+      // Only accept a NON-EMPTY array; otherwise fall back to the plan's base_features.
+      features: (Array.isArray(subscription.features) && subscription.features.length > 0)
+        ? subscription.features
+        : ((plan as Record<string, unknown>)?.base_features || []),
       subscription_start_date: subscription.subscription_start_date,
       subscription_end_date: subscription.subscription_end_date,
       is_organization_subscription: isOrg,

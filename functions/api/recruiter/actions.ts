@@ -3,7 +3,7 @@ import { getServiceClient } from '../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { apiSuccess, apiError, apiDbError, apiMethodNotAllowed } from '../../lib/response';
 import { notifyLearnersOfNewOpportunity } from '../../lib/newOpportunityNotifications';
-import { enforceAndConsumeCredits } from '../../shared/lib/credit-middleware';
+import { verifyOrgAccess } from '../../lib/permissions';
 
 export const onRequest = async (context: any) => {
   if (context.request.method === 'POST') return onRequestPost(context);
@@ -24,30 +24,60 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
   const { action } = body;
 
-  try {
+  // Auth-derived tenant resolution (H1): the client-supplied organizationId must NOT be
+  // trusted — the JWT org claim (or the user's active membership row) decides the tenant.
+  const resolveOrgId = async (): Promise<string | null> => {
+    if (user?.org_id) return user.org_id;
+    const { data: mem, error: memErr } = await supabase
+      .from('organization_members')
+      .select('organization_id')
+      .eq('user_id', user.id)
+      .limit(1)
+      .maybeSingle();
+    if (memErr) {
+      console.error('[actions] Failed to resolve organization membership:', memErr);
+      return null;
+    }
+    return mem?.organization_id ?? null;
+  };
 
+  // Candidates may be referenced by learners.id OR users.id; resolve to the canonical
+  // learners.id so unlock ledger rows stay unique per candidate (H2 alias double-charge).
+  const resolveCanonicalCandidate = async (candidateId: string) => {
+    let { data, error } = await supabase
+      .from('learners')
+      .select('id, name, email, contact_number')
+      .eq('id', candidateId)
+      .maybeSingle();
+    if (!error && !data) {
+      const res = await supabase
+        .from('learners')
+        .select('id, name, email, contact_number')
+        .eq('user_id', candidateId)
+        .maybeSingle();
+      data = res.data;
+      error = res.error;
+    }
+    return { data, error };
+  };
+
+  try {
     // ── Candidate Contact Unlocks (Spec Sections 6 & 9) ──
     if (action === 'check-candidate-unlocked') {
       const { candidateId } = body;
       if (!candidateId) return apiError(400, 'VALIDATION_ERROR', 'candidateId required', context.request);
 
-      let orgId = (user as any)?.org_id || body.organizationId;
-      if (!orgId) {
-        const { data: mem } = await supabase
-          .from('organization_members')
-          .select('organization_id')
-          .eq('user_id', user.id)
-          .limit(1)
-          .maybeSingle();
-        orgId = mem?.organization_id;
-      }
+      const orgId = await resolveOrgId();
       if (!orgId) return apiError(400, 'VALIDATION_ERROR', 'organizationId required', context.request);
+
+      const { data: canonical } = await resolveCanonicalCandidate(String(candidateId));
+      if (!canonical) return apiSuccess({ isUnlocked: false, unlockedAt: null }, context.request);
 
       const { data, error } = await supabase
         .from('candidate_contact_unlocks')
         .select('id, created_at')
         .eq('organization_id', orgId)
-        .eq('candidate_id', String(candidateId))
+        .eq('candidate_id', canonical.id)
         .maybeSingle();
 
       if (error && error.code !== 'PGRST116') {
@@ -55,40 +85,15 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       }
 
       if (data) {
-        let { data: candidate, error: candErr } = await supabase
-          .from('learners')
-          .select('id, name, email, contact_number')
-          .eq('id', candidateId)
-          .maybeSingle();
-
-        if (candErr && candErr.code !== 'PGRST116') {
-          console.error('[actions] Error querying learner by id:', candErr);
-          return apiDbError(candErr, context.request);
-        }
-
-        if (!candidate) {
-          const { data: candByUserId, error: candUserErr } = await supabase
-            .from('learners')
-            .select('id, name, email, contact_number')
-            .eq('user_id', candidateId)
-            .maybeSingle();
-
-          if (candUserErr && candUserErr.code !== 'PGRST116') {
-            console.error('[actions] Error querying learner by user_id:', candUserErr);
-            return apiDbError(candUserErr, context.request);
-          }
-          candidate = candByUserId;
-        }
-
         return apiSuccess({
           isUnlocked: true,
           unlockedAt: data.created_at,
-          candidate: candidate ? {
-            id: candidate.id,
-            name: candidate.name,
-            email: candidate.email,
-            phone: candidate.contact_number,
-          } : null,
+          candidate: {
+            id: canonical.id,
+            name: canonical.name,
+            email: canonical.email,
+            phone: canonical.contact_number,
+          },
         }, context.request);
       }
 
@@ -99,89 +104,47 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       const { candidateId } = body;
       if (!candidateId) return apiError(400, 'VALIDATION_ERROR', 'candidateId required', context.request);
 
-      let orgId = (user as any)?.org_id || body.organizationId;
-      if (!orgId) {
-        const { data: mem } = await supabase
-          .from('organization_members')
-          .select('organization_id')
-          .eq('user_id', user.id)
-          .limit(1)
-          .maybeSingle();
-        orgId = mem?.organization_id;
-      }
+      const orgId = await resolveOrgId();
       if (!orgId) return apiError(400, 'VALIDATION_ERROR', 'organizationId required', context.request);
 
-      // Check if already unlocked
-      const { data: existingUnlock, error: unlockCheckErr } = await supabase
-        .from('candidate_contact_unlocks')
-        .select('id')
-        .eq('organization_id', orgId)
-        .eq('candidate_id', String(candidateId))
-        .maybeSingle();
-
-      if (unlockCheckErr && unlockCheckErr.code !== 'PGRST116') {
-        console.error('[actions] Error checking candidate_contact_unlocks:', unlockCheckErr);
-        return apiDbError(unlockCheckErr, context.request);
-      }
-
-      if (!existingUnlock) {
-        // Enforce credit consumption via atomic credit ledger
-        const creditResult = await enforceAndConsumeCredits(
-          supabase,
-          orgId,
-          'contact_unlocks',
-          1,
-          String(candidateId),
-          JSON.stringify({ unlocked_by: user.id })
-        );
-
-        if (!creditResult.allowed || !creditResult.success) {
-          return creditResult.errorResponse || creditResult.response || apiError(402, 'INSUFFICIENT_CREDITS', 'Credit deduction failed', context.request);
-        }
-
-        // Record unlock in candidate_contact_unlocks
-        const { error: insErr } = await supabase
-          .from('candidate_contact_unlocks')
-          .insert({
-            organization_id: orgId,
-            candidate_id: String(candidateId),
-            unlocked_by: user.id,
-            credits_consumed: 1,
-          });
-
-        if (insErr && insErr.code !== '23505') {
-          console.error('[actions] candidate_contact_unlocks insert error:', insErr);
-          return apiDbError(insErr, context.request);
-        }
-      }
-
-      // Fetch candidate unmasked contact info from learners table
-      let { data: candidate, error: candErr } = await supabase
-        .from('learners')
-        .select('id, name, email, contact_number')
-        .eq('id', candidateId)
-        .maybeSingle();
-
-      if (!candidate) {
-        const { data: candByUserId } = await supabase
-          .from('learners')
-          .select('id, name, email, contact_number')
-          .eq('user_id', candidateId)
-          .maybeSingle();
-        candidate = candByUserId;
-      }
-
+      // Resolve and 404 BEFORE any charge so nonexistent candidates cannot consume credits
+      const { data: canonical, error: candErr } = await resolveCanonicalCandidate(String(candidateId));
       if (candErr) return apiDbError(candErr, context.request);
-      if (!candidate) return apiError(404, 'NOT_FOUND', 'Candidate not found', context.request);
+      if (!canonical) return apiError(404, 'NOT_FOUND', 'Candidate not found', context.request);
 
+      // Atomic claim-then-charge via SECURITY DEFINER RPC (H2):
+      // the unlock row insert and the credit debit commit or roll back together.
+      const { data: result, error: rpcError } = await supabase.rpc('unlock_candidate_contact', {
+        p_organization_id: orgId,
+        p_candidate_id: canonical.id,
+        p_unlocked_by: user.id,
+      });
+
+      if (rpcError) {
+        console.error('[actions] unlock_candidate_contact failed:', rpcError);
+        if (String(rpcError.message).includes('INSUFFICIENT_CREDITS')) {
+          return apiError(402, 'INSUFFICIENT_CREDITS', 'Insufficient contact unlock credits. Please upgrade your plan or purchase a credit top-up.', context.request);
+        }
+        return apiDbError(rpcError, context.request);
+      }
+
+      const parsed = result as { success?: boolean; error?: string; candidate?: Record<string, unknown> } | null;
+      if (!parsed?.success) {
+        if (parsed?.error === 'CANDIDATE_NOT_FOUND') {
+          return apiError(404, 'NOT_FOUND', 'Candidate not found', context.request);
+        }
+        return apiError(500, 'UNLOCK_FAILED', parsed?.error || 'Failed to unlock candidate', context.request);
+      }
+
+      const c = parsed.candidate || {};
       return apiSuccess({
         unlocked: true,
         candidate: {
-          id: candidate.id,
-          name: candidate.name,
-          email: candidate.email,
-          phone: candidate.contact_number,
-        }
+          id: c.id || canonical.id,
+          name: c.name || canonical.name,
+          email: c.email || canonical.email,
+          phone: c.contact_number || canonical.contact_number,
+        },
       }, context.request);
     }
 
@@ -219,26 +182,31 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     }
 
     if (action === 'get-org-email-templates') {
-      const { organization_id } = body;
-      if (!organization_id) return apiError(400, 'VALIDATION_ERROR', 'Missing organization_id', context.request);
+      // 🔒 Org templates are org-private: resolve from the JWT, ignore the body value
+      const orgId = await resolveOrgId();
+      if (!orgId) return apiError(400, 'VALIDATION_ERROR', 'organizationId required', context.request);
 
       const { data, error } = await supabase
         .from('organization_email_templates')
         .select('*')
-        .eq('organization_id', organization_id);
+        .eq('organization_id', orgId);
 
       if (error && error.code !== 'PGRST116') return apiDbError(error, context.request);
       return apiSuccess(data || [], context.request);
     }
 
     if (action === 'upsert-org-email-template') {
-      const { organization_id, template_type, name, subject, body: emailBody } = body;
-      if (!organization_id || !template_type) return apiError(400, 'VALIDATION_ERROR', 'Missing required fields', context.request);
+      const { template_type, name, subject, body: emailBody } = body;
+      if (!template_type) return apiError(400, 'VALIDATION_ERROR', 'Missing required fields', context.request);
+
+      // 🔒 Same scoping: templates may only be created/edited for the caller's org
+      const orgId = await resolveOrgId();
+      if (!orgId) return apiError(400, 'VALIDATION_ERROR', 'organizationId required', context.request);
 
       const { error } = await supabase
         .from('organization_email_templates')
         .upsert({
-          organization_id,
+          organization_id: orgId,
           template_type,
           name,
           subject,
@@ -285,10 +253,24 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
     if (action === 'update-interview') {
       const { id, ...updates } = body;
+
+      // 🔒 Ownership: only the creator may edit an interview record
+      const { data: existing, error: exErr } = await supabase
+        .from('interviews')
+        .select('id, created_by')
+        .eq('id', id)
+        .maybeSingle();
+      if (exErr) return apiDbError(exErr, context.request);
+      if (!existing) return apiError(404, 'NOT_FOUND', 'Interview not found', context.request);
+      if (existing.created_by && existing.created_by !== user.id) {
+        return apiError(403, 'FORBIDDEN', 'You do not have access to this interview', context.request);
+      }
+
+      delete updates.created_by; // never allow re-authoring via the payload
       const { data, error } = await supabase
         .from('interviews')
-        .update(updates)
-        .eq('id', id)
+        .update({ ...updates, updated_at: new Date().toISOString() })
+        .eq('id', existing.id)
         .select()
         .single();
       if (error) return apiDbError(error, context.request);
@@ -298,18 +280,60 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     if (action === 'list-learners') {
       const { data, error } = await supabase.from('learners').select('*');
       if (error) return apiDbError(error, context.request);
-      return apiSuccess(data, context.request);
+
+      // Spec §6/§9: contact details are unlocked, not included by default (C4 — the
+      // unlock must gate the PII server-side, since list-learners hands rows to the UI).
+      const orgId = await resolveOrgId();
+      let unlocked = new Set<string>();
+      if (orgId) {
+        const { data: unlockedRows, error: unlockErr } = await supabase
+          .from('candidate_contact_unlocks')
+          .select('candidate_id')
+          .eq('organization_id', orgId);
+        if (unlockErr && unlockErr.code !== 'PGRST116') {
+          console.error('[actions] Error querying unlocks for list-learners masking:', unlockErr);
+          return apiDbError(unlockErr, context.request);
+        }
+        unlocked = new Set((unlockedRows || []).map((u: any) => String(u.candidate_id)));
+      }
+
+      const masked = (data || []).map((l: any) => {
+        if (unlocked.has(String(l.id))) return l;
+        const { email, contact_number, ...rest } = l;
+        return { ...rest, email: null, contact_number: null };
+      });
+
+      return apiSuccess(masked, context.request);
     }
 
     if (action === 'get-learner') {
       const { learnerId } = body;
+      const orgId = await resolveOrgId();
+
+      // Whole row minus the gated contact fields; only surfaced for unlocked candidates
       const { data, error } = await supabase
         .from('learners')
-        .select('name, email, contact_number')
+        .select('*')
         .eq('id', learnerId)
         .single();
       if (error) return apiDbError(error, context.request);
-      return apiSuccess(data, context.request);
+
+      if (orgId) {
+        const { data: unlock, error: unlockErr } = await supabase
+          .from('candidate_contact_unlocks')
+          .select('id')
+          .eq('organization_id', orgId)
+          .eq('candidate_id', String(learnerId))
+          .maybeSingle();
+        if (unlockErr && unlockErr.code !== 'PGRST116') {
+          console.error('[actions] Error checking unlock for get-learner:', unlockErr);
+          return apiDbError(unlockErr, context.request);
+        }
+        if (unlock) return apiSuccess(data, context.request);
+      }
+
+      const { email, contact_number, ...rest } = data;
+      return apiSuccess({ ...rest, email: null, contact_number: null }, context.request);
     }
 
     // ── Requisitions (opportunities) ──
@@ -538,6 +562,21 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         orgId = mem?.organization_id;
       }
 
+      // 🔒 Fail-closed (E2): a JWT-org-empty caller with no membership can no
+      // longer attribute a posting to a foreign organization from the body.
+      if (!orgId) {
+        return apiError(400, 'VALIDATION_ERROR', 'organizationId is required', context.request);
+      }
+
+      // 🔒 Authority check: a non-JWT organization (client-named or resolved
+      // from membership) requires verified access before use
+      if ((user as any)?.org_id !== orgId) {
+        const access = await verifyOrgAccess(supabase, user.sub, orgId, undefined);
+        if (!access.allowed) {
+          return access.error || apiError(403, 'FORBIDDEN', 'Access denied to this organization', context.request);
+        }
+      }
+
       if (orgId) {
         const { checkEntitlement } = await import('../../shared/lib/entitlement-service');
         const entitlement = await checkEntitlement(supabase, orgId, 'active_job_posts');
@@ -561,7 +600,7 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
       const { data, error } = await supabase
         .from('opportunities')
-        .insert({ ...body.data, organization_id: orgId || body.data?.organization_id, created_by: user.id, posted_date: new Date().toISOString() })
+        .insert({ ...body.data, organization_id: orgId, created_by: user.id, posted_date: new Date().toISOString() })
         .select()
         .single();
       if (error) return apiDbError(error, context.request);
@@ -570,10 +609,49 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
     if (action === 'update-opportunity') {
       const { id, ...updates } = body;
+
+      // 🔒 Ownership + authority check (H4): only the owning organization may modify a
+      // posting; otherwise any authenticated user could edit or publish past the quota.
+      const { data: existing, error: exErr } = await supabase
+        .from('opportunities')
+        .select('id, organization_id, created_by, status, is_active')
+        .eq('id', id)
+        .maybeSingle();
+      if (exErr) return apiDbError(exErr, context.request);
+      if (!existing) return apiError(404, 'NOT_FOUND', 'Opportunity not found', context.request);
+
+      const orgId = await resolveOrgId();
+      const owns = existing.organization_id ? existing.organization_id === orgId : existing.created_by === user.id;
+      if (!owns) return apiError(403, 'FORBIDDEN', 'You do not have access to this opportunity', context.request);
+
+      // Publishing a draft must respect the active_job_posts plan quota (H4 bypass fix)
+      const currentlyVisible = existing.status === 'open' || existing.is_active === true;
+      const becomesVisible = !currentlyVisible && (updates.status === 'open' || updates.is_active === true);
+      if (becomesVisible && existing.organization_id) {
+        const { checkEntitlement } = await import('../../shared/lib/entitlement-service');
+        const entitlement = await checkEntitlement(supabase, existing.organization_id, 'active_job_posts');
+        if (entitlement && typeof entitlement.limit === 'number') {
+          const { count, error: countErr } = await supabase
+            .from('opportunities')
+            .select('id', { count: 'exact', head: true })
+            .eq('organization_id', existing.organization_id)
+            .neq('id', existing.id)
+            .or('is_active.eq.true,status.eq.open');
+          if (!countErr && typeof count === 'number' && count >= entitlement.limit) {
+            return apiError(
+              402,
+              'QUOTA_EXCEEDED',
+              `Your current plan allows up to ${entitlement.limit} active job posts. You currently have ${count} active posts. Please upgrade your recruiter plan to publish more opportunities.`,
+              context.request
+            );
+          }
+        }
+      }
+
       const { data, error } = await supabase
         .from('opportunities')
         .update({ ...updates, updated_at: new Date().toISOString() })
-        .eq('id', id)
+        .eq('id', existing.id)
         .select()
         .single();
       if (error) return apiDbError(error, context.request);
@@ -582,13 +660,42 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
     if (action === 'delete-opportunity') {
       const { id } = body;
-      const { error } = await supabase.from('opportunities').delete().eq('id', id);
+
+      // 🔒 Ownership check: only the owning organization (or author) may delete
+      const { data: existing, error: exErr } = await supabase
+        .from('opportunities')
+        .select('id, organization_id, created_by')
+        .eq('id', id)
+        .maybeSingle();
+      if (exErr) return apiDbError(exErr, context.request);
+      if (!existing) return apiError(404, 'NOT_FOUND', 'Opportunity not found', context.request);
+
+      const orgId = await resolveOrgId();
+      const owns = existing.organization_id ? existing.organization_id === orgId : existing.created_by === user.id;
+      if (!owns) return apiError(403, 'FORBIDDEN', 'You do not have access to this opportunity', context.request);
+
+      const { error } = await supabase.from('opportunities').delete().eq('id', existing.id);
       if (error) return apiDbError(error, context.request);
       return apiSuccess({ deleted: true }, context.request);
     }
 
     if (action === 'list-applications') {
       const { opportunityId } = body;
+      if (!opportunityId) return apiError(400, 'VALIDATION_ERROR', 'Missing opportunityId', context.request);
+
+      // 🔒 IDOR fix: applications (and the learner PII they carry) may only be
+      // listed for opportunities owned by the caller's organization.
+      const { data: opp, error: oppErr } = await supabase
+        .from('opportunities')
+        .select('id, organization_id, created_by')
+        .eq('id', opportunityId)
+        .maybeSingle();
+      if (oppErr) return apiDbError(oppErr, context.request);
+      if (!opp) return apiError(404, 'NOT_FOUND', 'Opportunity not found', context.request);
+      const orgId = await resolveOrgId();
+      const owns = opp.organization_id ? opp.organization_id === orgId : opp.created_by === user.id;
+      if (!owns) return apiError(403, 'FORBIDDEN', 'You do not have access to this opportunity', context.request);
+
       const { data, error } = await supabase
         .from('applied_jobs')
         .select(`
@@ -677,11 +784,36 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         }
       }
 
+      // 🔒 Quota (L fix): imported requisitions can open job posts too, so the
+      // active_job_posts limit applies. Count the current visible posts once,
+      // then stop granting visibility once the plan limit is reached — rows
+      // beyond it are recorded as failures instead of silently exceeding.
+      const { checkEntitlement } = await import('../../shared/lib/entitlement-service');
+      const entitlement = await checkEntitlement(supabase, organizationId, 'active_job_posts');
+      let openInserted = 0;
+      let quotaLimit: number | null = null;
+      if (entitlement && typeof entitlement.limit === 'number') {
+        const { count, error: countErr } = await supabase
+          .from('opportunities')
+          .select('id', { count: 'exact', head: true })
+          .eq('organization_id', organizationId)
+          .or('is_active.eq.true,status.eq.open');
+        if (!countErr && typeof count === 'number') {
+          quotaLimit = entitlement.limit;
+        }
+      }
+
       let success = 0;
       let failed = 0;
       const errors: Array<{ row: number; error: string }> = [];
       for (let i = 0; i < (rows || []).length; i++) {
         const row = rows[i];
+        const rowOpens = row.status === 'open';
+        if (rowOpens && quotaLimit !== null && openInserted + 1 > quotaLimit) {
+          failed++;
+          errors.push({ row: i, error: 'QUOTA_EXCEEDED: active job post limit reached' });
+          continue;
+        }
         try {
           const { error: insError } = await supabase.from('opportunities').insert({
             title: row.job_title || row.title,
@@ -716,6 +848,7 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
             failed++;
             errors.push({ row: i, error: insError.message });
           } else {
+            if (rowOpens) openInserted++;
             success++;
           }
         } catch (e: any) {
@@ -743,14 +876,29 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       const { learnerId } = body;
       if (!learnerId) return apiError(400, 'VALIDATION_ERROR', 'Missing learnerId', context.request);
 
-      const { data, error } = await supabase
-        .from('learners')
-        .select('name, email, contact_number')
-        .eq('id', learnerId)
-        .single();
+      const orgId = await resolveOrgId();
+      if (!orgId) return apiError(400, 'VALIDATION_ERROR', 'organizationId required', context.request);
 
-      if (error && error.code !== 'PGRST116') return apiDbError(error, context.request);
-      return apiSuccess(data || null, context.request);
+      // C4: alias-resolution + unlock gate — this endpoint returned raw
+      // email/contact for ANY learnerId, defeating the list-learners masking
+      // one HTTP call away. Contact details require an unlock row.
+      const { data: canonical, error: candErr } = await resolveCanonicalCandidate(String(learnerId));
+      if (candErr) return apiDbError(candErr, context.request);
+      if (!canonical) return apiSuccess(null, context.request);
+
+      const { data: unlocked, error: unlockErr } = await supabase
+        .from('candidate_contact_unlocks')
+        .select('id')
+        .eq('organization_id', orgId)
+        .eq('candidate_id', canonical.id)
+        .maybeSingle();
+      if (unlockErr && unlockErr.code !== 'PGRST116') return apiDbError(unlockErr, context.request);
+
+      if (unlocked) {
+        return apiSuccess({ id: canonical.id, name: canonical.name, email: canonical.email, contact_number: canonical.contact_number, unlocked: true }, context.request);
+      }
+      // Contact withheld until unlocked; name/presence still resolvable.
+      return apiSuccess({ id: canonical.id, name: canonical.name, email: null, contact_number: null, unlocked: false }, context.request);
     }
 
     if (action === 'create-requisition') {
@@ -766,6 +914,29 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           userOrgId: user?.org_id
         });
         return apiError(400, 'VALIDATION_ERROR', 'Organization ID is required', context.request);
+      }
+
+      // 🔒 Publishing via create-requisition must respect active_job_posts
+      // quota (parity with create-opportunity; this was a bypass alias).
+      const becomesVisible = requisitionData.status === 'open' || requisitionData.is_active === true;
+      if (becomesVisible) {
+        const { checkEntitlement } = await import('../../shared/lib/entitlement-service');
+        const entitlement = await checkEntitlement(supabase, organizationId, 'active_job_posts');
+        if (entitlement && typeof entitlement.limit === 'number') {
+          const { count, error: countErr } = await supabase
+            .from('opportunities')
+            .select('id', { count: 'exact', head: true })
+            .eq('organization_id', organizationId)
+            .or('is_active.eq.true,status.eq.open');
+          if (!countErr && typeof count === 'number' && count >= entitlement.limit) {
+            return apiError(
+              402,
+              'QUOTA_EXCEEDED',
+              `Your current plan allows up to ${entitlement.limit} active job posts. You currently have ${count} active posts. Please upgrade your recruiter plan to publish more opportunities.`,
+              context.request
+            );
+          }
+        }
       }
 
       const { data, error } = await supabase
@@ -786,21 +957,57 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     }
 
     if (action === 'update-requisition') {
-      const { id, updates } = body;
-      if (!id || !updates) return apiError(400, 'VALIDATION_ERROR', 'Missing id or updates', context.request);
+      const { id, ...updates } = body;
+      if (!id || !updates || typeof updates !== 'object') return apiError(400, 'VALIDATION_ERROR', 'Missing id or updates', context.request);
 
-      // 🔒 SECURITY: Use organization_id from middleware context
-      const organizationId = (context.data as any).organizationId;
+      // 🔒 Never allow the update payload to re-own or re-author the row
+      delete updates.organization_id;
+      delete updates.created_by;
+      delete updates.id;
+      delete updates.created_at;
 
-      // 🔒 SECURITY: Only update if the requisition belongs to user's organization
+      // 🔒 Ownership check via JWT-resolved org. (context.data.organizationId was
+      // never populated by withAuth, so the old eq.undefined filter always failed.)
+      const { data: existing, error: exErr } = await supabase
+        .from('opportunities')
+        .select('id, organization_id, created_by, status, is_active')
+        .eq('id', id)
+        .maybeSingle();
+      if (exErr) return apiDbError(exErr, context.request);
+      if (!existing) return apiError(404, 'NOT_FOUND', 'Requisition not found', context.request);
+
+      const orgId = await resolveOrgId();
+      const owns = existing.organization_id ? existing.organization_id === orgId : existing.created_by === user.id;
+      if (!owns) return apiError(403, 'FORBIDDEN', 'You do not have access to this requisition', context.request);
+
+      // Publishing a draft must respect the active_job_posts plan quota (parity with update-opportunity)
+      const currentlyVisible = existing.status === 'open' || existing.is_active === true;
+      const becomesVisible = !currentlyVisible && (updates.status === 'open' || updates.is_active === true);
+      if (becomesVisible && existing.organization_id) {
+        const { checkEntitlement } = await import('../../shared/lib/entitlement-service');
+        const entitlement = await checkEntitlement(supabase, existing.organization_id, 'active_job_posts');
+        if (entitlement && typeof entitlement.limit === 'number') {
+          const { count, error: countErr } = await supabase
+            .from('opportunities')
+            .select('id', { count: 'exact', head: true })
+            .eq('organization_id', existing.organization_id)
+            .neq('id', existing.id)
+            .or('is_active.eq.true,status.eq.open');
+          if (!countErr && typeof count === 'number' && count >= entitlement.limit) {
+            return apiError(
+              402,
+              'QUOTA_EXCEEDED',
+              `Your current plan allows up to ${entitlement.limit} active job posts. You currently have ${count} active posts. Please upgrade your recruiter plan to publish more opportunities.`,
+              context.request
+            );
+          }
+        }
+      }
+
       const { data, error } = await supabase
         .from('opportunities')
-        .update({
-          ...updates,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', id)
-        .eq('organization_id', organizationId) // 🔒 Verify ownership
+        .update({ ...updates, updated_at: new Date().toISOString() })
+        .eq('id', existing.id)
         .select()
         .single();
 
@@ -813,15 +1020,23 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       const { id } = body;
       if (!id) return apiError(400, 'VALIDATION_ERROR', 'Missing id', context.request);
 
-      // 🔒 SECURITY: Use organization_id from middleware context
-      const organizationId = (context.data as any).organizationId;
+      // 🔒 Ownership check: only the owning organization (or author) may delete
+      const { data: existing, error: exErr } = await supabase
+        .from('opportunities')
+        .select('id, organization_id, created_by')
+        .eq('id', id)
+        .maybeSingle();
+      if (exErr) return apiDbError(exErr, context.request);
+      if (!existing) return apiError(404, 'NOT_FOUND', 'Requisition not found', context.request);
 
-      // 🔒 SECURITY: Only delete if the requisition belongs to user's organization
+      const orgId = await resolveOrgId();
+      const owns = existing.organization_id ? existing.organization_id === orgId : existing.created_by === user.id;
+      if (!owns) return apiError(403, 'FORBIDDEN', 'You do not have access to this requisition', context.request);
+
       const { error } = await supabase
         .from('opportunities')
         .delete()
-        .eq('id', id)
-        .eq('organization_id', organizationId); // 🔒 Verify ownership
+        .eq('id', existing.id);
 
       if (error) return apiDbError(error, context.request);
       return apiSuccess({ success: true }, context.request);
@@ -830,6 +1045,19 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     if (action === 'get-applications-by-opportunity') {
       const { opportunityId } = body;
       if (!opportunityId) return apiError(400, 'VALIDATION_ERROR', 'Missing opportunityId', context.request);
+
+      // 🔒 IDOR fix (same as list-applications): ownership required before
+      // returning applicant PII.
+      const { data: opp, error: oppErr } = await supabase
+        .from('opportunities')
+        .select('id, organization_id, created_by')
+        .eq('id', opportunityId)
+        .maybeSingle();
+      if (oppErr) return apiDbError(oppErr, context.request);
+      if (!opp) return apiError(404, 'NOT_FOUND', 'Opportunity not found', context.request);
+      const orgId = await resolveOrgId();
+      const owns = opp.organization_id ? opp.organization_id === orgId : opp.created_by === user.id;
+      if (!owns) return apiError(403, 'FORBIDDEN', 'You do not have access to this opportunity', context.request);
 
       const { data, error } = await supabase
         .from('applied_jobs')

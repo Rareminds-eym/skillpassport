@@ -84,6 +84,12 @@ const OpportunityCard = ({
           ✓ Applied
         </div>
       )}
+      {/* Featured Employer (spec §6 add-on — employer branding surface) */}
+      {opportunity.featuredEmployer && !isApplied && (
+        <div className="absolute top-11 left-2 z-10 bg-amber-400 text-amber-900 text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full shadow-sm">
+          ★ Featured Employer
+        </div>
+      )}
       <div className="flex flex-col items-center text-center space-y-2.5 sm:space-y-4">
         {/* Company Logo */}
         <div 

@@ -12,6 +12,9 @@ INSERT INTO public.features (feature_key, display_name, feature_type, category, 
   ('recruiter_seats', 'Recruiter Seats', 'numeric_limit', 'team', 'Number of team members with recruiter dashboard access.'),
   ('contact_unlocks', 'Contact Unlocks', 'metered', 'credits', 'Direct candidate contact access (email, phone, direct messaging).'),
   ('candidate_invites', 'Candidate Invites', 'metered', 'credits', 'Outreach invitations sent directly to matching talent.'),
+  ('job_boost_credits', 'Job Boost Credits', 'metered', 'credits', 'Each credit boosts job visibility in the learner feed for a limited period (spec section 6).'),
+  ('ai_credits', 'AI Shortlist Credits', 'metered', 'credits', 'Credits for generating AI role-specific candidate shortlists (spec section 6).'),
+  ('featured_employer', 'Featured Employer', 'boolean', 'branding', 'Enhanced employer branding across candidate search and job listings (add-on grant).'),
   ('employer_profile', 'Employer Profile & Branding', 'boolean', 'branding', 'Company profile with logo, description, and website.'),
   ('candidate_search', 'Candidate Search & Discovery', 'boolean', 'sourcing', 'Search verified candidate database with basic filters.'),
   ('advanced_skill_filters', 'Advanced Skill & Portfolio Filters', 'boolean', 'sourcing', 'Filter by verified skill credentials, portfolio proof, and experience depth.'),
@@ -128,14 +131,14 @@ INSERT INTO public.plans_cache (
   'b2b',
   ARRAY['recruitment'],
   '{"recruitment": {"yearly": 7500, "currency": "INR"}}'::jsonb,
-  '["active_job_posts_7", "contact_unlocks_60", "candidate_search_plus", "readiness_score_view", "candidate_invites_250", "shortlist_folder_with_tags"]'::jsonb,
+  '["active_job_posts_7", "contact_unlocks_75", "candidate_search_plus", "readiness_score_view", "candidate_invites_300", "shortlist_folder_with_tags", "job_boost_credits_5"]'::jsonb,
   '{
     "recruitment": {
       "tagline": "Affordable paid plan with useful sourcing limits.",
       "duration": "yearly",
       "ideal_for": "Small companies hiring a few roles annually",
       "max_users": 1,
-      "description": "7 job posts and 60 candidate unlocks for growing small businesses.",
+      "description": "7 job posts and 75 candidate unlocks for growing small businesses.",
       "display_name": "Starter",
       "purchase_mode": "self_serve",
       "is_recommended": false,
@@ -144,8 +147,8 @@ INSERT INTO public.plans_cache (
       "capacity": {
         "recruiters": 1,
         "job_postings": 7,
-        "candidate_invites": 250,
-        "contact_unlocks": 60
+        "candidate_invites": 300,
+        "contact_unlocks": 75
       }
     }
   }'::jsonb,
@@ -164,7 +167,7 @@ INSERT INTO public.plans_cache (
   'b2b',
   ARRAY['recruitment'],
   '{"recruitment": {"yearly": 15000, "currency": "INR"}}'::jsonb,
-  '["active_job_posts_15", "recruiter_seats_3", "contact_unlocks_200", "advanced_skill_filters", "ai_candidate_recommendations", "role_wise_hiring_reports", "candidate_invites_1000"]'::jsonb,
+  '["active_job_posts_15", "recruiter_seats_3", "contact_unlocks_200", "advanced_skill_filters", "ai_candidate_recommendations", "role_wise_hiring_reports", "candidate_invites_1000", "job_boost_credits_20", "ai_credits_10"]'::jsonb,
   '{
     "recruitment": {
       "tagline": "For regular hiring teams.",
@@ -200,7 +203,7 @@ INSERT INTO public.plans_cache (
   'b2b',
   ARRAY['recruitment'],
   '{"recruitment": {"yearly": 35000, "currency": "INR"}}'::jsonb,
-  '["active_job_posts_40", "recruiter_seats_5", "contact_unlocks_500", "full_assessment_insights", "bulk_shortlist_and_invite", "advanced_hiring_analytics", "candidate_invites_2500"]'::jsonb,
+  '["active_job_posts_40", "recruiter_seats_5", "contact_unlocks_500", "full_assessment_insights", "bulk_shortlist_and_invite", "advanced_hiring_analytics", "candidate_invites_3000", "job_boost_credits_75", "ai_credits_100"]'::jsonb,
   '{
     "recruitment": {
       "tagline": "For high-volume hiring.",
@@ -215,7 +218,7 @@ INSERT INTO public.plans_cache (
       "capacity": {
         "recruiters": 5,
         "job_postings": 40,
-        "candidate_invites": 2500,
+        "candidate_invites": 3000,
         "contact_unlocks": 500
       }
     }
@@ -235,7 +238,7 @@ INSERT INTO public.plans_cache (
   'b2b',
   ARRAY['recruitment'],
   '{"recruitment": {"yearly": 75000, "currency": "INR"}}'::jsonb,
-  '["custom_seats", "custom_hiring_volume", "campus_talent_access", "ats_api_integration", "dedicated_campaigns", "dedicated_account_manager"]'::jsonb,
+  '["custom_seats", "custom_hiring_volume", "campus_talent_access", "ats_api_integration", "dedicated_campaigns", "dedicated_account_manager", "custom_job_boost_credits", "custom_ai_credits"]'::jsonb,
   '{
     "recruitment": {
       "tagline": "For campus, bulk and strategic hiring.",
@@ -324,7 +327,7 @@ BEGIN
   INSERT INTO public.plan_entitlements (plan_id, feature_id, is_enabled, value_numeric) VALUES
     (v_plan_free, v_feat.id, false, 0),
     (v_plan_lite, v_feat.id, true, 25),
-    (v_plan_starter, v_feat.id, true, 60),
+    (v_plan_starter, v_feat.id, true, 75),
     (v_plan_growth, v_feat.id, true, 200),
     (v_plan_pro, v_feat.id, true, 500),
     (v_plan_enterprise, v_feat.id, true, 2000)
@@ -335,11 +338,34 @@ BEGIN
   INSERT INTO public.plan_entitlements (plan_id, feature_id, is_enabled, value_numeric) VALUES
     (v_plan_free, v_feat.id, true, 25),
     (v_plan_lite, v_feat.id, true, 100),
-    (v_plan_starter, v_feat.id, true, 250),
+    (v_plan_starter, v_feat.id, true, 300),
     (v_plan_growth, v_feat.id, true, 1000),
-    (v_plan_pro, v_feat.id, true, 2500),
+    (v_plan_pro, v_feat.id, true, 3000),
     (v_plan_enterprise, v_feat.id, true, 10000)
   ON CONFLICT (plan_id, feature_id) DO UPDATE SET value_numeric = EXCLUDED.value_numeric, is_enabled = true;
+
+  -- 4a. Job Boost Credits (metered; spec §5: Starter 5, Growth 20, Pro 75; Enterprise custom placeholder)
+  SELECT id INTO v_feat FROM public.features WHERE feature_key = 'job_boost_credits';
+  INSERT INTO public.plan_entitlements (plan_id, feature_id, is_enabled, value_numeric) VALUES
+    (v_plan_free, v_feat.id, false, 0),
+    (v_plan_lite, v_feat.id, false, 0),
+    (v_plan_starter, v_feat.id, true, 5),
+    (v_plan_growth, v_feat.id, true, 20),
+    (v_plan_pro, v_feat.id, true, 75),
+    (v_plan_enterprise, v_feat.id, true, 100)
+  ON CONFLICT (plan_id, feature_id) DO UPDATE SET value_numeric = EXCLUDED.value_numeric, is_enabled = EXCLUDED.is_enabled;
+
+  -- 4b. AI Shortlist Credits (metered; spec §5: Free/Lite no; Starter add-on-only; Growth 10 limited;
+  -- Pro 100 included; Enterprise custom placeholder)
+  SELECT id INTO v_feat FROM public.features WHERE feature_key = 'ai_credits';
+  INSERT INTO public.plan_entitlements (plan_id, feature_id, is_enabled, value_numeric) VALUES
+    (v_plan_free, v_feat.id, false, 0),
+    (v_plan_lite, v_feat.id, false, 0),
+    (v_plan_starter, v_feat.id, false, 0),
+    (v_plan_growth, v_feat.id, true, 10),
+    (v_plan_pro, v_feat.id, true, 100),
+    (v_plan_enterprise, v_feat.id, true, 200)
+  ON CONFLICT (plan_id, feature_id) DO UPDATE SET value_numeric = EXCLUDED.value_numeric, is_enabled = EXCLUDED.is_enabled;
 
   -- 5. Employer Profile
   SELECT id INTO v_feat FROM public.features WHERE feature_key = 'employer_profile';

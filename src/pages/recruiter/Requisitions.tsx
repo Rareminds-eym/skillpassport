@@ -15,6 +15,8 @@ import {
   MapPinIcon,
   PencilIcon,
   PlusIcon,
+  RocketLaunchIcon,
+  SparklesIcon,
   TrashIcon,
   UsersIcon,
   XCircleIcon
@@ -23,8 +25,10 @@ import { BriefcaseIcon as BriefcaseSolidIcon } from '@heroicons/react/24/solid';
 import React, { useEffect, useState } from 'react';
 import { AdvancedRequisitionFilters } from '@/features/recruiter';
 import { RequisitionImport } from '@/features/recruiter';
+import { AddToShortlistModal } from '@/features/recruiter-pipeline';
 
-import { apiPost } from '@/shared/api/apiClient';
+import { apiPost, ApiError } from '@/shared/api/apiClient';
+import toast from 'react-hot-toast';
 import { RequisitionFilters } from '@/shared/types/recruiter';
 import { getLogger } from '@/shared/config/logging';
 import { EmptyStateWithQuote } from '@/components/EmptyStateWithQuote';
@@ -117,6 +121,9 @@ const Requisitions = () => {
   const [showApplicationsModal, setShowApplicationsModal] = useState(false);
   const [showMessagesModal, setShowMessagesModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  // AI shortlist results (spec §6): opportunity + matched candidates
+  const [shortlistModal, setShortlistModal] = useState<{ opportunity: Opportunity; candidates: any[] } | null>(null);
+  const [shortlistCandidate, setShortlistCandidate] = useState<any>(null);
   const [selectedRequisition, setSelectedRequisition] = useState<Opportunity | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [recruiters, setRecruiters] = useState<Recruiter[]>([]);
@@ -341,6 +348,58 @@ const Requisitions = () => {
     } catch (error) {
       logger.error('Error updating status', error);
       alert('Error updating status');
+    }
+  };
+
+  // ── Job boost & AI shortlist fulfilment (spec §6) ──
+  const handleBoost = async (requisition: Opportunity) => {
+    try {
+      const res: any = await apiPost('/opportunities', {
+        action: 'boost-opportunity',
+        id: requisition.id,
+      });
+      const until = res?.data?.opportunity?.boosted_until
+        ? new Date(res.data.opportunity.boosted_until).toLocaleDateString()
+        : '7 days';
+      toast.success(`Job boosted until ${until} (${res?.data?.credits_remaining ?? '?'} boost credits left)`);
+      loadRequisitions();
+    } catch (error: any) {
+      if (error instanceof ApiError && (error.status === 402 || error.code === 'INSUFFICIENT_CREDITS')) {
+        toast.error('No job boost credits left. Upgrade your plan or buy a boost pack in Add-ons.');
+      } else {
+        logger.error('Error boosting job', error);
+        toast.error('Failed to boost this job. Try again.');
+      }
+    }
+  };
+
+  const handleGenerateShortlist = async (requisition: Opportunity) => {
+    try {
+      const res: any = await apiPost('/recruiter-copilot', {
+        action: 'semantic-find-for-opportunity',
+        opportunity_id: requisition.id,
+        match_count: 20,
+        min_similarity: 0.65,
+      });
+      const candidates = (res?.data ?? []).map((c: any) => ({
+        ...c,
+        // AddToShortlistModal and the backend both key on a canonical candidate id;
+        // pgvector RPCs may only return user_id — normalize here.
+        id: c.id ?? c.learner_id ?? c.user_id,
+      }));
+      setShortlistModal({ opportunity: requisition, candidates });
+      if (candidates.length > 0) {
+        toast.success(`AI shortlist ready — ${candidates.length} matched candidates (1 AI credit consumed)`);
+      } else {
+        toast('No candidates matched above the similarity threshold — no credit charged');
+      }
+    } catch (error: any) {
+      if (error instanceof ApiError && (error.status === 402 || error.code === 'INSUFFICIENT_CREDITS')) {
+        toast.error('No AI shortlist credits left. Upgrade your plan or buy the AI shortlist pack in Add-ons.');
+      } else {
+        logger.error('Error generating AI shortlist', error);
+        toast.error('Failed to generate the AI shortlist. Try again.');
+      }
     }
   };
 
@@ -569,6 +628,8 @@ const Requisitions = () => {
                 }}
                 onDelete={handleDelete}
                 onStatusChange={handleStatusChange}
+                onBoost={handleBoost}
+                onGenerateShortlist={handleGenerateShortlist}
                 onViewApplications={(r) => {
                   setSelectedRequisition(r);
                   setShowApplicationsModal(true);
@@ -902,12 +963,89 @@ const Requisitions = () => {
           }}
         />
       )}
+
+      {/* AI Shortlist results (spec §6 — 1 ai_credits per generation) */}
+      {shortlistModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-xl max-h-[80vh] flex flex-col">
+            <div className="px-5 py-4 border-b border-gray-200 flex items-start justify-between">
+              <div>
+                <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
+                  <SparklesIcon className="h-5 w-5 text-indigo-500" />
+                  AI Shortlist — {shortlistModal.opportunity.job_title}
+                </h3>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {shortlistModal.candidates.length} matched candidates · 1 AI credit consumed
+                </p>
+              </div>
+              <button
+                onClick={() => setShortlistModal(null)}
+                className="text-gray-400 hover:text-gray-600 text-xl leading-none"
+              >
+                ×
+              </button>
+            </div>
+            <div className="overflow-y-auto divide-y divide-gray-100">
+              {shortlistModal.candidates.length === 0 ? (
+                <p className="px-5 py-8 text-sm text-gray-500 text-center">
+                  No candidates matched this opening above the similarity threshold.
+                </p>
+              ) : (
+                shortlistModal.candidates.map((c: any, idx: number) => {
+                  const score = Math.round((c.similarity ?? c.similarity_score ?? 0) * 100);
+                  return (
+                    <div key={c.user_id || c.id || idx} className="px-5 py-3 flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">{c.name || c.learner_name || 'Candidate'}</p>
+                        <p className="text-xs text-gray-500 truncate">
+                          {[c.university, c.branch_field, c.city].filter(Boolean).join(' · ') || '—'}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0">
+                        <span
+                          className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                            score >= 85 ? 'bg-emerald-100 text-emerald-700' : score >= 70 ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'
+                          }`}
+                        >
+                          {score}% match
+                        </span>
+                        <button
+                          onClick={() => setShortlistCandidate(c)}
+                          className="text-xs font-medium text-indigo-600 hover:text-indigo-800"
+                        >
+                          Add to shortlist
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+            <div className="px-5 py-3 border-t border-gray-200 text-right">
+              <button
+                onClick={() => setShortlistModal(null)}
+                className="text-sm font-medium text-gray-700 hover:text-gray-900"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {shortlistCandidate && (
+        <AddToShortlistModal
+          isOpen={true}
+          onClose={() => setShortlistCandidate(null)}
+          candidate={shortlistCandidate}
+        />
+      )}
     </div>
   );
 };
 
 // Requisition Card Component (unchanged)
-const RequisitionCard = ({ requisition, onView, onEdit, onDelete, onStatusChange, onViewApplications, onViewMessages, getStatusBadge, getStatusIcon }: any) => {
+const RequisitionCard = ({ requisition, onView, onEdit, onDelete, onStatusChange, onViewApplications, onViewMessages, onBoost, onGenerateShortlist, getStatusBadge, getStatusIcon }: any) => {
   const [showMenu, setShowMenu] = useState(false);
 
   return (
@@ -983,6 +1121,24 @@ const RequisitionCard = ({ requisition, onView, onEdit, onDelete, onStatusChange
                     <PencilIcon className="h-4 w-4 inline mr-2" />
                     Edit
                   </button>
+                  {requisition.status === 'open' && onBoost && (
+                    <button
+                      onClick={() => { onBoost(requisition); setShowMenu(false); }}
+                      className="block w-full text-left px-4 py-2 text-sm text-orange-600 hover:bg-orange-50"
+                    >
+                      <RocketLaunchIcon className="h-4 w-4 inline mr-2" />
+                      Boost job (1 credit)
+                    </button>
+                  )}
+                  {onGenerateShortlist && (
+                    <button
+                      onClick={() => { onGenerateShortlist(requisition); setShowMenu(false); }}
+                      className="block w-full text-left px-4 py-2 text-sm text-indigo-600 hover:bg-indigo-50"
+                    >
+                      <SparklesIcon className="h-4 w-4 inline mr-2" />
+                      Generate AI Shortlist
+                    </button>
+                  )}
                   <button
                     onClick={() => { onDelete(requisition.id); setShowMenu(false); }}
                     className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
@@ -997,11 +1153,24 @@ const RequisitionCard = ({ requisition, onView, onEdit, onDelete, onStatusChange
         </div>
 
         {/* Status Badge */}
-        <div className="mb-4">
+        <div className="mb-4 flex items-center gap-2 flex-wrap">
           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusBadge(requisition.status)}`}>
             {getStatusIcon(requisition.status)}
             <span className="ml-1 capitalize">{requisition.status?.replace('_', ' ') || 'Unknown'}</span>
           </span>
+          {/* Boost/featured placement windows (spec §6) */}
+          {requisition.boosted_until && new Date(requisition.boosted_until) > new Date() && (
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-700 border border-orange-200">
+              <RocketLaunchIcon className="h-3 w-3 mr-1" />
+              Boosted
+            </span>
+          )}
+          {requisition.featured_until && new Date(requisition.featured_until) > new Date() && (
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700 border border-amber-200">
+              <SparklesIcon className="h-3 w-3 mr-1" />
+              Featured
+            </span>
+          )}
         </div>
 
         {/* Details */}

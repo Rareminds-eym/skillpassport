@@ -177,12 +177,62 @@ const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   }
 
   const ascending = sortBy === 'oldest';
-  query = query.order('created_at', { ascending }).range(offset, offset + limit - 1);
+  if (!ascending) {
+    // Boost/featured fulfilment (spec §6): boosted and featured posts surface above
+    // regular feed positions while their window is active; otherwise created_at wins.
+    query = query
+      .order('boosted_until', { ascending: false, nullsFirst: false })
+      .order('featured_until', { ascending: false, nullsFirst: false })
+      .order('created_at', { ascending: false });
+  } else {
+    query = query.order('created_at', { ascending });
+  }
+  query = query.range(offset, offset + limit - 1);
 
   const { data, error, count } = await query;
   if (error) return apiDbError(error, context.request);
-  return apiSuccess({ opportunities: data, total: count }, context.request);
+
+  // Featured-employer surface (spec §6): annotate rows whose organizations hold an
+  // active featured_employer add-on override so the learner UI can badge them.
+  const featuredEmployerByOrg = await resolveFeaturedEmployerOrgs(supabase, data || []);
+  const annotated = (data || []).map((o: any) => ({
+    ...o,
+    featuredEmployer: featuredEmployerByOrg.has(String(o.organization_id)),
+  }));
+
+  return apiSuccess({ opportunities: annotated, total: count }, context.request);
 });
+
+/**
+ * One batched lookup of active featured_employer overrides for the organizations
+ * present on the current page. Returns org ids that are currently featured.
+ */
+async function resolveFeaturedEmployerOrgs(supabase: any, rows: any[]): Promise<Set<string>> {
+  const orgIds = [...new Set(rows.map((o: any) => o?.organization_id).filter(Boolean))];
+  if (orgIds.length === 0) return new Set();
+
+  const { data: feature, error: featErr } = await supabase
+    .from('features')
+    .select('id')
+    .eq('feature_key', 'featured_employer')
+    .maybeSingle();
+  if (featErr || !feature) return new Set();
+
+  const { data: overrides, error: ovErr } = await supabase
+    .from('tenant_entitlement_overrides')
+    .select('tenant_id, expires_at')
+    .eq('feature_id', feature.id)
+    .eq('is_enabled', true)
+    .in('tenant_id', orgIds);
+  if (ovErr) return new Set();
+
+  const now = Date.now();
+  return new Set(
+    (overrides || [])
+      .filter((ov: any) => !ov.expires_at || new Date(ov.expires_at).getTime() > now)
+      .map((ov: any) => String(ov.tenant_id))
+  );
+}
 
 const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const env = context.env as unknown as Record<string, string>;
@@ -209,6 +259,79 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       const { error } = await supabase.rpc('increment_search_usage', { search_id });
       if (error) return apiDbError(error, context.request);
       return apiSuccess({ incremented: true }, context.request);
+    }
+
+    // Job boost fulfilment (spec §6): 1 job_boost_credits credit per boost event.
+    // Boosted posts surface above regular feed positions while the window is active.
+    case 'boost-opportunity': {
+      const user = getContextUser(context);
+      const { id } = body;
+      if (!id) return apiError(400, 'VALIDATION_ERROR', 'id required', context.request);
+      if (!user.org_id) return apiError(400, 'VALIDATION_ERROR', 'Organization ID is required', context.request);
+
+      const access = await verifyOrgAccess(supabase, user.sub, user.org_id, undefined);
+      if (!access.allowed) {
+        return access.error || apiError(403, 'FORBIDDEN', 'Access denied to this organization', context.request);
+      }
+
+      // The post must belong to the calling organization and be eligible
+      const { data: existing, error: exErr } = await supabase
+        .from('opportunities')
+        .select('id, status, is_active')
+        .eq('id', String(id))
+        .eq('organization_id', user.org_id)
+        .maybeSingle();
+      if (exErr) return apiDbError(exErr, context.request);
+      const visible = existing && (existing.status === 'open' || existing.is_active === true);
+      if (!visible) return apiError(404, 'NOT_FOUND', 'Active opportunity not found in this organization', context.request);
+
+      // Pre-check the balance so we don't charge a credit whose downstream
+      // update then fails (charge compensation below covers the race window).
+      const { enforceAndConsumeCredits } = await import('../../shared/lib/credit-middleware');
+      const credit = await enforceAndConsumeCredits(
+        supabase,
+        user.org_id,
+        'job_boost_credits',
+        1,
+        String(existing.id),
+        JSON.stringify({ boosted_by: user.id }),
+        context.request
+      );
+      if (!credit.allowed || !credit.success) {
+        return credit.errorResponse || credit.response || apiError(402, 'INSUFFICIENT_CREDITS', 'Credit deduction failed', context.request);
+      }
+
+      // 7-day visibility window (spec: "Improve job visibility for a defined period")
+      const boostedUntil = new Date();
+      boostedUntil.setDate(boostedUntil.getDate() + 7);
+      const { data: updated, error: upErr } = await supabase
+        .from('opportunities')
+        .update({
+          boosted_until: boostedUntil.toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', existing.id)
+        .select('id, boosted_until, featured_until')
+        .single();
+      if (upErr) {
+        // The charge already succeeded — refund it so a failed update never
+        // burns a credit silently (best-effort; reference ties both rows).
+        try {
+          await supabase.from('credit_ledger').insert({
+            tenant_id: user.org_id,
+            feature_key: 'job_boost_credits',
+            transaction_type: 'refund',
+            amount: 1,
+            reference_id: String(existing.id),
+            notes: JSON.stringify({ reason: 'boost_update_failed', boosted_by: user.id }),
+          });
+        } catch (refundErr) {
+          console.error('[boost-opportunity] Failed to refund credit after failed update:', refundErr);
+        }
+        return apiDbError(upErr, context.request);
+      }
+
+      return apiSuccess({ boosted: true, opportunity: updated, credits_remaining: credit.remaining }, context.request);
     }
 
     case 'recruiter-saved-searches': {
@@ -272,6 +395,21 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         organizationId = mem?.organization_id;
       }
 
+      // 🔒 Fail-closed + authority: a client-named organization different from
+      // the JWT org requires verified membership; unresolvable orgs cannot
+      // create postings at all (fixes the verifyOrgAccess-less corner).
+      if (!organizationId) {
+        return apiError(400, 'VALIDATION_ERROR', 'organizationId is required', context.request);
+      }
+      if ((user as any)?.org_id && (user as any)?.org_id !== organizationId) {
+        const access = await verifyOrgAccess(supabase, user.sub, organizationId, undefined);
+        if (!access.allowed) {
+          return access.error || apiError(403, 'FORBIDDEN', 'Access denied to this organization', context.request);
+        }
+      }
+      // 🔒 The row is always owned by the verified organization, never the raw body value
+      opportunity.organization_id = organizationId;
+
       if (organizationId) {
         const entitlement = await checkEntitlement(supabase, organizationId, 'active_job_posts');
         if (entitlement && typeof entitlement.limit === 'number') {
@@ -311,9 +449,19 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       if (updates.skills_required != null && (!Array.isArray(updates.skills_required) || updates.skills_required.some((skill: unknown) => typeof skill !== 'string'))) {
         return apiError(400, 'VALIDATION_ERROR', 'skills_required must be an array of strings', context.request);
       }
-      const existing = await findOpportunityById(supabase, id, 'id');
+      const existing = await findOpportunityById(supabase, id, 'id, organization_id, created_by');
       if (existing.error) return apiDbError(existing.error, context.request);
       if (!existing.data) return apiError(404, 'NOT_FOUND', 'Opportunity not found', context.request);
+
+      // 🔒 Ownership (§6.3 completion): only the owning organization/author may update
+      const user = getContextUser(context);
+      const orgId = (user as any)?.org_id || null;
+      const owns = existing.data.organization_id ? existing.data.organization_id === orgId : existing.data.created_by === user.id;
+      if (!owns) return apiError(403, 'FORBIDDEN', 'You do not have access to this opportunity', context.request);
+
+      delete updates.organization_id; // never allow re-owning the row
+      delete updates.created_by;
+
       const { data, error } = await supabase.from('opportunities').update(updates).eq('id', existing.data.id).select().single();
       if (error) return apiDbError(error, context.request);
       return apiSuccess({ opportunity: data }, context.request);
@@ -322,9 +470,16 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     case 'delete-opportunity': {
       const { id } = body;
       if (!id) return apiError(400, 'VALIDATION_ERROR', 'id required', context.request);
-      const existing = await findOpportunityById(supabase, id, 'id');
+      const existing = await findOpportunityById(supabase, id, 'id, organization_id, created_by');
       if (existing.error) return apiDbError(existing.error, context.request);
       if (!existing.data) return apiError(404, 'NOT_FOUND', 'Opportunity not found', context.request);
+
+      // 🔒 Ownership (§6.3 completion): only the owning organization/author may delete
+      const user = getContextUser(context);
+      const orgId = (user as any)?.org_id || null;
+      const owns = existing.data.organization_id ? existing.data.organization_id === orgId : existing.data.created_by === user.id;
+      if (!owns) return apiError(403, 'FORBIDDEN', 'You do not have access to this opportunity', context.request);
+
       const { error } = await supabase.from('opportunities').delete().eq('id', existing.data.id);
       if (error) return apiDbError(error, context.request);
       return apiSuccess({ deleted: true }, context.request);

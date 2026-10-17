@@ -67,9 +67,13 @@ describe('Entitlement Engine — Unit Test Suite', () => {
               select: vi.fn().mockReturnValue({
                 eq: vi.fn().mockReturnValue({
                   in: vi.fn().mockReturnValue({
-                    maybeSingle: vi.fn().mockResolvedValue({
-                      data: { id: 'sub-1', status: 'active', plan_code: 'recruiter_lite' },
-                      error: null,
+                    order: vi.fn().mockReturnValue({
+                      limit: vi.fn().mockReturnValue({
+                        maybeSingle: vi.fn().mockResolvedValue({
+                          data: { id: 'sub-1', status: 'active', plan_code: 'recruiter_lite' },
+                          error: null,
+                        }),
+                      }),
                     }),
                   }),
                 }),
@@ -105,9 +109,13 @@ describe('Entitlement Engine — Unit Test Suite', () => {
               select: vi.fn().mockReturnValue({
                 eq: vi.fn().mockReturnValue({
                   in: vi.fn().mockReturnValue({
-                    maybeSingle: vi.fn().mockResolvedValue({
-                      data: { id: 'sub-1', status: 'active', plan_code: 'recruiter_growth' },
-                      error: null,
+                    order: vi.fn().mockReturnValue({
+                      limit: vi.fn().mockReturnValue({
+                        maybeSingle: vi.fn().mockResolvedValue({
+                          data: { id: 'sub-1', status: 'active', plan_code: 'recruiter_growth' },
+                          error: null,
+                        }),
+                      }),
                     }),
                   }),
                 }),

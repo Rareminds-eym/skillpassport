@@ -28,11 +28,14 @@ export const onRequest = withAuth(async (context: AuthenticatedContext) => {
   const supabase = getServiceClient(env as any);
 
   try {
-    // Fetch user's organization from organization_members table
+    // Fetch user's organization from organization_members table.
+    // Only an active membership counts (M18 adjunct) — suspended membership
+    // must not grant org-scoped access.
     const { data: memberData, error } = await supabase
       .from('organization_members')
-      .select('organization_id')
+      .select('organization_id, status')
       .eq('user_id', user.id)
+      .eq('status', 'active')
       .maybeSingle();
 
     if (error || !memberData?.organization_id) {

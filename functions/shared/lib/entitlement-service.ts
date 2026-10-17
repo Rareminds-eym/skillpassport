@@ -55,6 +55,16 @@ export async function getTenantEntitlements(
   tenantId: string,
   preferredFamily?: 'recruiter' | 'individual' | 'institution'
 ): Promise<EntitlementManifest> {
+  {
+    // M8 hardening: tenantId is interpolated into a PostgREST or() filter below.
+    // Restrict to identifier-safe characters so or-taxonomy payloads (dots, commas,
+    // parentheses) can never extend the filter with foreign clauses like
+    // `organization_id.not.is.null`.
+    if (!/^[A-Za-z0-9_-]+$/.test(String(tenantId))) {
+      throw new Error(`INVALID_TENANT_ID: rejected unsafe tenant id`);
+    }
+  }
+
   // 1. Find active subscription from subscription_cache
   const { data: sub, error: subErr } = await supabase
     .from('subscription_cache')
@@ -227,7 +237,10 @@ export async function getTenantEntitlements(
     };
 
     if (fType === 'numeric_limit') {
-      item.limit = ent?.value_numeric ? Number(ent.value_numeric) : null;
+      // H4: fail closed. No plan entitlement row for a known numeric-limit feature
+      // means the plan does not grant it (limit 0); only an explicit row with a
+      // NULL value means "no enforced limit" (Enterprise custom style).
+      item.limit = ent && ent.value_numeric != null ? Number(ent.value_numeric) : (ent ? null : 0);
       // Get live usage if known resource
       if (featDef.feature_key === 'active_job_posts') {
         const { count } = await supabase
@@ -409,7 +422,8 @@ export async function allocateInitialPlanCredits(
   tenantId: string,
   planId: string,
   isOrg: boolean = true,
-  notes?: string
+  notes?: string,
+  referenceId?: string
 ): Promise<{ success: boolean; allocated: number; error?: string }> {
   const { data: meteredEntitlements, error: fetchErr } = await supabase
     .from('plan_entitlements')
@@ -427,14 +441,22 @@ export async function allocateInitialPlanCredits(
     const featKey = (me as any).features?.feature_key;
     const quota = Number(me.value_numeric) || 0;
     if (featKey && quota > 0) {
+      // referenceId (e.g. razorpay_payment_id / subscription id) feeds
+      // uq_credit_ledger_alloc_ref so a replayed payment verification can never
+      // stack a second plan allocation. 23505 therefore means "already
+      // allocated" — treat as success, not as a failure of the whole purchase.
       const { error: insErr } = await supabase.from('credit_ledger').insert({
         tenant_id: tenantId,
         feature_key: featKey,
         transaction_type: 'plan_allocation',
         amount: quota,
+        reference_id: referenceId || null,
         notes: notes || 'Initial plan allocation on subscription activation',
       });
       if (insErr) {
+        if ((insErr as any).code === '23505' || /duplicate key/i.test(insErr.message || '')) {
+          continue;
+        }
         console.error(`[allocateInitialPlanCredits] Failed to insert credit allocation for ${featKey}:`, insErr);
         return { success: false, allocated: allocatedCount, error: insErr.message };
       }
@@ -446,42 +468,264 @@ export async function allocateInitialPlanCredits(
 }
 
 /**
+ * Resolves the canonical credit pool and quantity for a purchased add-on pack
+ * (spec §6). Add-on catalog keys are pack ids; credit_ledger uses pool keys.
+ * AI credits and job-boost credits are deliberately separate pools.
+ */
+export const ADDON_CREDIT_PACKS: Record<string, { pool: string; amount: number }> = {
+  'contact_unlocks_25': { pool: 'contact_unlocks', amount: 25 },
+  'contact_unlocks_100': { pool: 'contact_unlocks', amount: 100 },
+  'contact_unlocks_500': { pool: 'contact_unlocks', amount: 500 },
+  'job_boost_1': { pool: 'job_boost_credits', amount: 1 },
+  'job_boost_10': { pool: 'job_boost_credits', amount: 10 },
+  'ai_shortlist_role': { pool: 'ai_credits', amount: 1 },
+};
+
+/**
  * Provisions credit top-up pack into credit_ledger upon add-on purchase.
+ * Idempotent: the payment id is stored as reference_id and a partial UNIQUE index
+ * on credit_ledger (tenant, feature_key, reference_id) makes replays no-ops.
+ * Non-credit add-ons (featured_*, seats) return { noop: true } and are fulfilled
+ * separately by grantAddonFulfilment.
  */
 export async function allocateAddonCredits(
   supabase: SupabaseClient,
   tenantId: string,
   featureKey: string,
   _isOrg: boolean = true,
-  notes?: string
-): Promise<{ success: boolean; amount: number; error?: string }> {
-  let targetFeatureKey: string | null = null;
-  let amount = 0;
-
-  if (featureKey.startsWith('contact_unlocks_')) {
-    targetFeatureKey = 'contact_unlocks';
-    const numStr = featureKey.replace('contact_unlocks_', '');
-    amount = parseInt(numStr, 10) || 0;
-  } else if (featureKey.startsWith('job_boost_')) {
-    targetFeatureKey = 'job_boost';
-    const numStr = featureKey.replace('job_boost_', '');
-    amount = parseInt(numStr, 10) || 0;
+  notes?: string,
+  referenceId?: string
+): Promise<{ success: boolean; amount: number; noop?: boolean; error?: string }> {
+  const pack = ADDON_CREDIT_PACKS[featureKey];
+  if (!pack) {
+    // Non-credit add-ons (featured_job_7d, featured_employer_30d,
+    // additional_recruiter_seat) do not consume the credit ledger.
+    return { success: true, amount: 0, noop: true };
   }
 
-  if (targetFeatureKey && amount > 0) {
-    const { error: insErr } = await supabase.from('credit_ledger').insert({
-      tenant_id: tenantId,
-      feature_key: targetFeatureKey,
-      transaction_type: 'topup_purchase',
-      amount: amount,
-      notes: notes || `Top-up purchase: ${featureKey}`,
-    });
+  const { error: insErr } = await supabase.from('credit_ledger').insert({
+    tenant_id: tenantId,
+    feature_key: pack.pool,
+    transaction_type: 'topup_purchase',
+    amount: pack.amount,
+    reference_id: referenceId || null,
+    notes: notes || `Top-up purchase: ${featureKey}`,
+  });
 
-    if (insErr) {
-      console.error(`[allocateAddonCredits] Failed to insert credit ledger entry for ${featureKey}:`, insErr);
-      return { success: false, amount: 0, error: insErr.message };
+  if (insErr) {
+    // 23505 (uq_credit_ledger_alloc_ref): this payment already allocated credits —
+    // treat as already processed instead of failing the verification flow.
+    if ((insErr as any).code === '23505') {
+      console.warn(`[allocateAddonCredits] Duplicate allocation ignored for ${featureKey} (ref: ${referenceId})`);
+      return { success: true, amount: pack.amount, noop: true };
     }
+    console.error(`[allocateAddonCredits] Failed to insert credit ledger entry for ${featureKey}:`, insErr);
+    return { success: false, amount: 0, error: insErr.message };
   }
 
-  return { success: true, amount };
+  return { success: true, amount: pack.amount };
+}
+
+/**
+ * Effective numeric entitlement value for a tenant/plan (plan base + any override).
+ */
+async function getEffectiveNumericEntitlement(
+  supabase: SupabaseClient,
+  tenantId: string,
+  featureKey: string
+): Promise<number | null> {
+  const { data: feature, error: featErr } = await supabase
+    .from('features')
+    .select('id')
+    .eq('feature_key', featureKey)
+    .maybeSingle();
+  if (featErr || !feature) {
+    console.error(`[getEffectiveNumericEntitlement] Feature ${featureKey} not found:`, featErr);
+    return null;
+  }
+
+  // Plan base value via the active subscription's plan
+  let baseValue: number | null = null;
+  // Same charset guard as getTenantEntitlements (M8 defense-in-depth): tenantId
+  // is server-resolved today, but never interpolate it unvalidated.
+  if (!/^[\w-]+$/.test(tenantId)) {
+    console.error('[getEffectiveNumericEntitlement] Invalid tenant id charset');
+    return null;
+  }
+  const { data: sub } = await supabase
+    .from('subscription_cache')
+    .select('plan_id')
+    .eq('status', 'active')
+    .or(`organization_id.eq.${tenantId},user_id.eq.${tenantId}`)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (sub?.plan_id) {
+    const { data: ent } = await supabase
+      .from('plan_entitlements')
+      .select('value_numeric')
+      .eq('plan_id', sub.plan_id)
+      .eq('feature_id', feature.id)
+      .maybeSingle();
+    baseValue = ent?.value_numeric != null ? Number(ent.value_numeric) : null;
+  }
+
+  // Override (add-on grant) value, if any
+  const { data: override } = await supabase
+    .from('tenant_entitlement_overrides')
+    .select('value_numeric')
+    .eq('tenant_id', tenantId)
+    .eq('feature_id', feature.id)
+    .maybeSingle();
+  const overrideValue = override?.value_numeric != null ? Number(override.value_numeric) : null;
+
+  // Override replaces the plan value wholesale (see resolvedFeatureEntitlements set)
+  if (overrideValue != null) return overrideValue;
+  return baseValue;
+}
+
+/**
+ * Fulfilment for the additional_recruiter_seat add-on: raises the tenant's
+ * recruiter_seats limit by one via tenant_entitlement_overrides.
+ */
+export async function fulfilAdditionalSeat(
+  supabase: SupabaseClient,
+  tenantId: string,
+  notes?: string
+): Promise<{ success: boolean; seats?: number; error?: string }> {
+  const effective = await getEffectiveNumericEntitlement(supabase, tenantId, 'recruiter_seats');
+  if (effective == null) {
+    return { success: false, error: 'recruiter_seats entitlement could not be resolved' };
+  }
+
+  const { data: feature, error: featErr } = await supabase
+    .from('features')
+    .select('id')
+    .eq('feature_key', 'recruiter_seats')
+    .maybeSingle();
+  if (featErr || !feature) return { success: false, error: featErr?.message || 'recruiter_seats feature missing' };
+
+  const newSeats = effective + 1;
+  const { error } = await supabase
+    .from('tenant_entitlement_overrides')
+    .upsert(
+      {
+        tenant_id: tenantId,
+        feature_id: feature.id,
+        is_enabled: true,
+        value_numeric: newSeats,
+        notes: notes || `Additional recruiter seat add-on`,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'tenant_id,feature_id' }
+    );
+  if (error) return { success: false, error: error.message };
+  return { success: true, seats: newSeats };
+}
+
+/**
+ * Fulfilment for the featured_job_7d add-on: sets the featured window on the
+ * purchaser's opportunity so the learner feed ranks it above regular positions.
+ */
+export async function fulfilFeaturedJob(
+  supabase: SupabaseClient,
+  tenantId: string,
+  opportunityId: string,
+  days: number = 7,
+  notes?: string
+): Promise<{ success: boolean; error?: string }> {
+  const featuredUntil = new Date();
+  featuredUntil.setDate(featuredUntil.getDate() + days);
+
+  const { data: updated, error } = await supabase
+    .from('opportunities')
+    .update({ featured_until: featuredUntil.toISOString(), updated_at: new Date().toISOString() })
+    .eq('id', String(opportunityId))
+    .eq('organization_id', tenantId)
+    .neq('status', 'closed')
+    .select('id')
+    .limit(1);
+
+  if (error) return { success: false, error: error.message };
+  if (!updated || updated.length === 0) {
+    return { success: false, error: 'Opportunity not found in this organization or not eligible for featuring' };
+  }
+  void notes;
+  return { success: true };
+}
+
+/**
+ * Fulfilment for the featured_employer_30d add-on: grants a time-boxed
+ * featured_employer override on the tenant.
+ */
+export async function fulfilFeaturedEmployer(
+  supabase: SupabaseClient,
+  tenantId: string,
+  days: number = 30,
+  notes?: string
+): Promise<{ success: boolean; error?: string }> {
+  const { data: feature, error: featErr } = await supabase
+    .from('features')
+    .select('id')
+    .eq('feature_key', 'featured_employer')
+    .maybeSingle();
+  if (featErr || !feature) return { success: false, error: featErr?.message || 'featured_employer feature missing' };
+
+  const expiresAt = new Date();
+  expiresAt.setDate(expiresAt.getDate() + days);
+
+  const { error } = await supabase
+    .from('tenant_entitlement_overrides')
+    .upsert(
+      {
+        tenant_id: tenantId,
+        feature_id: feature.id,
+        is_enabled: true,
+        value_numeric: 1,
+        expires_at: expiresAt.toISOString(),
+        notes: notes || `Featured employer add-on (${days} days)`,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'tenant_id,feature_id' }
+    );
+  if (error) return { success: false, error: error.message };
+  return { success: true };
+}
+
+/**
+ * Runs the correct fulfilment path for a named add-on at payment verification time.
+ * Credit packs go through allocateAddonCredits; the rest map to their product grant.
+ */
+export async function grantAddonFulfilment(
+  supabase: SupabaseClient,
+  tenantId: string,
+  featureKey: string,
+  referenceId?: string,
+  options?: { opportunityId?: string; notes?: string }
+): Promise<{ success: boolean; error?: string; noop?: boolean }> {
+  const pack = ADDON_CREDIT_PACKS[featureKey];
+  if (pack) {
+    const res = await allocateAddonCredits(
+      supabase, tenantId, featureKey, true, options?.notes, referenceId
+    );
+    return { success: res.success, error: res.error, noop: res.noop };
+  }
+
+  switch (featureKey) {
+    case 'additional_recruiter_seat': {
+      const res = await fulfilAdditionalSeat(supabase, tenantId, options?.notes);
+      return { success: res.success, error: res.error };
+    }
+    case 'featured_job_7d': {
+      if (!options?.opportunityId) {
+        return { success: false, error: 'opportunity_id is required to feature a specific job' };
+      }
+      return await fulfilFeaturedJob(supabase, tenantId, options.opportunityId, 7, options?.notes);
+    }
+    case 'featured_employer_30d': {
+      return await fulfilFeaturedEmployer(supabase, tenantId, 30, options?.notes);
+    }
+    default:
+      return { success: false, error: `Unknown add-on feature key: ${featureKey}` };
+  }
 }

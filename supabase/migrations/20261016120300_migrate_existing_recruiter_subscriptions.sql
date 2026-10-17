@@ -92,14 +92,18 @@ BEGIN
                     VALUES 
                         (v_tenant_id, 'contact_unlocks', 'plan_allocation', 200, 'Migration initial allocation'),
                         (v_tenant_id, 'candidate_invites', 'plan_allocation', 1000, 'Migration initial allocation'),
-                        (v_tenant_id, 'job_boost_credits', 'plan_allocation', 20, 'Migration initial allocation');
+                        (v_tenant_id, 'job_boost_credits', 'plan_allocation', 20, 'Migration initial allocation'),
+                        (v_tenant_id, 'ai_credits', 'plan_allocation', 10, 'Migration initial allocation');
                 ELSIF r.current_plan = 'recruiter_pro' THEN
                     INSERT INTO public.credit_ledger (tenant_id, feature_key, transaction_type, amount, notes)
                     VALUES 
                         (v_tenant_id, 'contact_unlocks', 'plan_allocation', 500, 'Migration initial allocation'),
                         (v_tenant_id, 'candidate_invites', 'plan_allocation', 3000, 'Migration initial allocation'),
-                        (v_tenant_id, 'job_boost_credits', 'plan_allocation', 75, 'Migration initial allocation');
+                        (v_tenant_id, 'job_boost_credits', 'plan_allocation', 75, 'Migration initial allocation'),
+                        (v_tenant_id, 'ai_credits', 'plan_allocation', 100, 'Migration initial allocation');
                 END IF;
+                -- Note: recruiter_enterprise is sales-led (spec §3); credits are granted via
+                -- tenant_entitlement_overrides / admin allocation, not this backfill.
             END IF;
         END LOOP;
     END IF;

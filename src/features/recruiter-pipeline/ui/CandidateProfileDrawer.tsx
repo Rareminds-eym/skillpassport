@@ -617,8 +617,16 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
     const cid = candidate.id || candidate.candidate_id || candidate.learner_id;
     if (!cid) return;
 
+    // H3: clear the previous candidate's unlock state synchronously and guard against
+    // late responses — never show candidate A's contacts while B's lookup is in flight.
+    setIsContactUnlocked(false);
+    setUnlockedEmail(null);
+    setUnlockedPhone(null);
+
+    let cancelled = false;
     apiPost('/recruiter/actions', { action: 'check-candidate-unlocked', candidateId: cid })
       .then((res: any) => {
+        if (cancelled) return;
         if (res?.data?.isUnlocked) {
           setIsContactUnlocked(true);
           if (res.data.candidate) {
@@ -632,9 +640,14 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
         }
       })
       .catch((err) => {
+        if (cancelled) return;
         console.error('[CandidateProfileDrawer] Failed to check candidate unlock status:', err);
         setIsContactUnlocked(false);
       });
+
+    return () => {
+      cancelled = true;
+    };
   }, [isOpen, candidate?.id, candidate?.candidate_id, candidate?.learner_id]);
 
   const handleUnlockContact = async () => {

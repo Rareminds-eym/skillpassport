@@ -33,7 +33,8 @@ export async function enforceAndConsumeCredits(
   featureKey: string,
   cost: number,
   referenceId?: string,
-  notes?: string
+  notes?: string,
+  request?: Request
 ): Promise<CreditEnforceResult> {
   // 1. Query current balance
   const { data: balanceData, error: balanceError } = await supabase
@@ -44,7 +45,7 @@ export async function enforceAndConsumeCredits(
 
   if (balanceError) {
     console.error(`[CreditMiddleware] Failed to retrieve credit balance for tenant ${tenantId}, feature ${featureKey}:`, balanceError);
-    const errRes = apiError(500, 'LEDGER_ERROR', `Failed to retrieve credit balance: ${balanceError.message}`);
+    const errRes = apiError(500, 'LEDGER_ERROR', `Failed to retrieve credit balance: ${balanceError.message}`, request);
     return {
       allowed: false,
       success: false,
@@ -60,7 +61,8 @@ export async function enforceAndConsumeCredits(
     const errRes = apiError(
       402,
       'INSUFFICIENT_CREDITS',
-      `Insufficient '${featureKey}' credits. Required: ${cost}, Remaining: ${currentBalance}. Please upgrade your plan or purchase a credit top-up.`
+      `Insufficient '${featureKey}' credits. Required: ${cost}, Remaining: ${currentBalance}. Please upgrade your plan or purchase a credit top-up.`,
+      request
     );
     return {
       allowed: false,
@@ -86,7 +88,8 @@ export async function enforceAndConsumeCredits(
     const errRes = apiError(
       402,
       'CREDIT_DEDUCTION_FAILED',
-      consumptionResult.error || 'Failed to deduce credits from ledger'
+      consumptionResult.error || 'Failed to deduce credits from ledger',
+      request
     );
     return {
       allowed: false,
