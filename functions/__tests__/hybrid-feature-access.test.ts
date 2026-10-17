@@ -6,10 +6,14 @@ import { syncAllFeatureKeysCache } from '../lib/sync-shadow';
 
 function database(options: { type?: string; status?: string; features?: string[]; rows?: any[]; errorTable?: string; catalog?: any[]; memberships?: any[] } = {}) {
   const type = options.type || 'college';
-  const rows = options.rows || [{ id: 'sub-new', organization_id: 'org-1', is_organization_subscription: true,
+  const rows = (options.rows || [{ id: 'sub-new', organization_id: 'org-1', is_organization_subscription: true,
     plan_code: 'hybrid', status: options.status || 'active', features: options.features || [],
-    subscription_start_date: '2026-01-01', synced_at: '2026-09-01' }];
+    subscription_start_date: '2026-01-01', synced_at: '2026-09-01' }]).map(row => ({
+      user_id: 'owner', plan_id: 'plan-hybrid', subscription_end_date: '2099-01-01', ...row,
+    }));
   const tables: Record<string, any[]> = {
+    users: [{ id: 'member-admin', metadata: {} }, { id: 'owner', metadata: {} }],
+    plans_cache: [{ id: 'plan-hybrid', name: 'Hybrid', plan_code: 'hybrid', business_type: 'b2b', is_active: true, applicable_entities: [type] }],
     organizations: [{ id: 'org-1', organization_type: type, admin_id: 'owner' }],
     organization_members: options.memberships || [{ user_id: 'member-admin', organization_id: 'org-1', status: 'active' }],
     subscription_cache: rows,
@@ -92,6 +96,12 @@ describe('Hybrid organization grants', () => {
 });
 
 describe('request boundary', () => {
+  it('still gates shared college handlers called by school administrators', async () => {
+    const user = { ...admin, roles: ['school_admin'] };
+    expect((await requireAdminRequestFeature(database({ type: 'school' }), request('college-admin/college-circulars', 'get-circulars'), user))?.status).toBe(403);
+    expect(await requireAdminRequestFeature(database({ type: 'school', features: ['parent_communication'],
+      catalog: [{ key: 'parent_communication', role: 'school_admin', product_code: 'skillpassport', is_active: true }] }), request('college-admin/college-circulars', 'get-circulars'), user)).toBeNull();
+  });
   it.each(['get-circulars', 'get-circular-by-id', 'create-circular', 'update-circular', 'delete-circular', 'toggle-circular-status'])('protects %s before dispatch', async action => {
     const denied = await requireAdminRequestFeature(database(), request('college-admin/college-circulars', action), admin);
     expect(denied?.status).toBe(403);

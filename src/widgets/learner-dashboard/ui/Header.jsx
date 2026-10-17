@@ -33,6 +33,7 @@ import { useUser, useAuthActions } from '@/shared/model/authStore';
 import { useSubscriptionQuery } from '@/features/subscription/model/useSubscriptionQuery';
 import { checkFeatureAccess } from '@/features/subscription/lib/featureGating';
 import { PLAN_IDS } from '@/shared/config/subscriptionPlans';
+import { isFreemiumPlan } from '@/shared/lib/isFreemiumPlan';
 const ICON_MAP = {
   BookmarkIcon,
   Cog6ToothIcon,
@@ -68,7 +69,7 @@ const Header = ({ activeTab }) => {
   // Get subscription data for feature gating
   const { subscriptionData } = useSubscriptionQuery();
   const userPlan = subscriptionData?.plan || PLAN_IDS.FREEMIUM;
-  const isFreemium = userPlan === PLAN_IDS.FREEMIUM;
+  const isFreemium = isFreemiumPlan(userPlan);
 
   // Map navigation items to feature keys
   const featureKeyMap = {

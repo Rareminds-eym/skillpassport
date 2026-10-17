@@ -12,10 +12,11 @@ import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../lib/paymentBinding';
 import { createLogger } from '../../../lib/logger';
 import { getServiceClient } from '../../../lib/supabase';
-import { ssoCreateFreemiumSubscription, ssoSyncSubscription } from '../../../lib/sso-client';
+import { ssoCreateSubscription, ssoUpdateSubscriptionField } from '../../../lib/sso-client';
 import { syncSubscriptionCache, syncUserShadow } from '../../../lib/sync-shadow';
 import { apiSuccess, apiError } from '../../../lib/response';
-import { isSalesOnlyPlan } from '../lib/salesPlan';
+import { requireSelfServePlan, assertPlanPurchaseScope, catalogPlanErrorResponse } from '../lib/salesPlan';
+import { completePlanSelection, isSubscriptionCurrent } from '../../../shared/lib/org-subscription';
 
 const logger = createLogger('payments:create-order');
 const COLLEGE_LEARNER_PROMO_CODE = 'RAREMINDS2026';
@@ -124,80 +125,62 @@ export async function handleCreateOrder(context: AuthenticatedContext): Promise<
     }
 
 
-    // Resolve catalog metadata before the zero-cost branch: quote-only is not free.
-    if (body.planId && body.planId !== 'freemium') {
-      const { data: catalogPlan, error: catalogError } = await getServiceClient(env)
-        .from('plans_cache')
-        .select('entity_config')
-        .eq('id', body.planId)
-        .eq('is_active', true)
-        .maybeSingle();
-      if (catalogError) return apiError(503, 'CATALOG_UNAVAILABLE', 'Unable to verify plan availability.', context.request);
-      if (!catalogPlan) return apiError(404, 'NOT_FOUND', 'Plan not found or inactive', context.request);
-      if (isSalesOnlyPlan(catalogPlan)) {
-        return apiError(400, 'CONTACT_SALES_REQUIRED', 'This plan requires an agreed sales proposal before activation.', context.request);
+    const supabase = getServiceClient(env);
+    const catalogPlan = await requireSelfServePlan(supabase, { plan_id: body.planId });
+    const scope = await assertPlanPurchaseScope(supabase, catalogPlan, user);
+    if (body.amount === 0) {
+      const config = catalogPlan.entity_config?.[scope.organizationType || 'all'] || catalogPlan.entity_config?.all || {};
+      const pricing = catalogPlan.pricing_matrix?.[scope.organizationType || 'all'] || catalogPlan.pricing_matrix?.all;
+      const billingCycle = config.duration || 'yearly';
+      const price = billingCycle === 'monthly' ? pricing?.monthly : pricing?.yearly;
+      if (price !== 0) return apiError(400, 'PRICE_MISMATCH', 'The selected plan is not free.', context.request);
+      const isOrganization = catalogPlan.business_type === 'b2b';
+      let existingQuery = supabase.from('subscription_cache').select('*')
+        .eq('user_id', user.id).eq('is_organization_subscription', isOrganization)
+        .in('status', ['active', 'pending', 'paused', 'grace_period']);
+      if (scope.organizationId) existingQuery = existingQuery.eq('organization_id', scope.organizationId);
+      const { data: subscriptions, error: existingError } = await existingQuery;
+      if (existingError) return apiError(503, 'SUBSCRIPTION_UNAVAILABLE', 'Unable to verify your subscription.', context.request);
+      const { data: profile, error: profileError } = await supabase.from('users').select('metadata').eq('id', user.id).maybeSingle();
+      if (profileError || !profile) return apiError(503, 'SUBSCRIPTION_UNAVAILABLE', 'Unable to verify your plan selection. Please retry.', context.request);
+      const rows = subscriptions || [];
+      const expired = (sub: typeof rows[number]) => sub.status !== 'pending' && Boolean(sub.subscription_end_date)
+        && Number.isFinite(Date.parse(sub.subscription_end_date))
+        && !isSubscriptionCurrent(sub) && Date.parse(sub.subscription_end_date) <= Date.now();
+      const replaceableDefault = (sub: typeof rows[number]) => !isOrganization
+        && profile.metadata?.subscription_selection_required === true
+        && sub.status === 'active' && sub.plan_amount != null && Number(sub.plan_amount) === 0;
+      const existing = rows.find(sub => sub.plan_id === catalogPlan.id && sub.status === 'active' && isSubscriptionCurrent(sub));
+      const conflict = rows.find(sub => sub.id !== existing?.id && !expired(sub) && !replaceableDefault(sub));
+      if (conflict) {
+        const planName = conflict.plan_name || conflict.plan_type || 'another plan';
+        const message = conflict.status === 'pending'
+          ? `Your subscription to ${planName} is still being activated. Please retry shortly before selecting another plan.`
+          : `You already have a ${conflict.status} subscription to ${planName}. Open My Subscription to manage it before switching to ${catalogPlan.name}.`;
+        return apiError(409, 'SUBSCRIPTION_CONFLICT', message, context.request);
       }
+      // Retire only expired contracts or unselected zero-cost defaults. Paid coverage is preserved.
+      for (const sub of rows.filter(sub => sub.id !== existing?.id && (expired(sub) || replaceableDefault(sub)))) {
+        const retired = await ssoUpdateSubscriptionField(env, sub.id, { status: 'expired' });
+        await syncSubscriptionCache(supabase, retired);
+      }
+      const subscription = existing || await ssoCreateSubscription(env, {
+        user_id: user.id, email: user.email, full_name: typeof body.userName === 'string' ? body.userName : '',
+        plan_id: catalogPlan.id, plan_code: catalogPlan.plan_code, plan_type: catalogPlan.name,
+        plan_amount: 0, billing_cycle: billingCycle, features: catalogPlan.base_features || [],
+        organization_id: scope.organizationId, organization_type: scope.organizationType,
+        is_organization_subscription: isOrganization,
+      });
+      await syncUserShadow(supabase, user.id, user.email);
+      await syncSubscriptionCache(supabase, subscription, catalogPlan);
+      await completePlanSelection(supabase, user.id, catalogPlan.id);
+      return apiSuccess({ isFreemium: true, data: {
+        id: subscription.id, userId: user.id, planId: catalogPlan.id,
+        planCode: catalogPlan.plan_code, planName: catalogPlan.name, status: subscription.status,
+        startDate: subscription.subscription_start_date, endDate: subscription.subscription_end_date,
+        autoRenew: subscription.auto_renew,
+      } }, context.request);
     }
-
-    // Check if it's a freemium or zero-cost plan
-    const isFreemium = body.amount === 0 || body.planId === 'freemium' || body.planName?.toString().toLowerCase() === 'freemium';
-
-    if (isFreemium) {
-      // Direct freemium subscription creation logic
-      const supabase = getServiceClient(env);
-
-      // Ensure user exists in shadow table
-      await syncUserShadow(supabase, user.id, (body.userEmail as string) || user.email);
-
-      // Create subscription in auth DB via SSO worker RPC
-      let subscription: Record<string, unknown>;
-      try {
-        subscription = await ssoCreateFreemiumSubscription(env, {
-          user_id: user.id,
-          email: (body.userEmail as string) || user.email,
-          full_name: (body.userName as string) || (user as any).name || 'Freemium User',
-        });
-      } catch (ssoError: any) {
-        // Handle missing SSO_SERVICE binding (local dev or misconfiguration)
-        if (ssoError.message?.includes('SSO_SERVICE binding is not configured')) {
-          logger.error('SSO_SERVICE binding not available:', ssoError.message);
-          return apiError(503, 'ERROR', 'Subscription service is temporarily unavailable. Please try again later.', context.request);
-        }
-        if (ssoError.message?.includes('23505') || ssoError.message?.includes('duplicate')) {
-           return apiError(409, 'CONFLICT', 'User already has an active subscription', context.request);
-        }
-        throw ssoError;
-      }
-
-      // Sync shadow table
-      try {
-        const syncData = await ssoSyncSubscription(env, user.id);
-        if (syncData.subscription) {
-          await syncSubscriptionCache(supabase, syncData.subscription, syncData.plan);
-        }
-      } catch (syncError) {
-        console.error('[CreateOrder] Shadow sync failed:', syncError);
-      }
-
-      // Return simulated success response structure expected by frontend for freemium
-      return apiSuccess({
-        isFreemium: true,
-        data: {
-          id: subscription.id,
-          userId: subscription.user_id,
-          planId: subscription.plan_id,
-          planCode: subscription.plan_code || 'freemium',
-          planName: 'Freemium',
-          status: subscription.status,
-          startDate: subscription.subscription_start_date,
-          endDate: subscription.subscription_end_date,
-          autoRenew: subscription.auto_renew,
-        }
-      }, context.request);
-    }
-
-   
-
 
     // Validate amount against DB plan price (industrial-grade: never trust client)
     if (body.planId) {
@@ -253,9 +236,10 @@ export async function handleCreateOrder(context: AuthenticatedContext): Promise<
         ...(body.notes as Record<string, string> || {}),
         user_id: user.id,
         user_email: user.email || '',
-        org_id: user.org_id || '',
+        org_id: scope.organizationId || '',
+        organization_type: scope.organizationType || '',
         plan_id: (body.planId as string) || '',
-        plan_name: (body.planName as string) || '',
+        plan_name: catalogPlan.name,
         referral_code: (body.referralCode as string) || '',
         type: 'subscription',
       },
@@ -272,6 +256,10 @@ export async function handleCreateOrder(context: AuthenticatedContext): Promise<
     return apiSuccess({ ...order, razorpay_key_id: order.key_id }, context.request);
   } catch (error) {
     logger.error('Error creating order', error);
-    return rpcErrorResponse(error, context.request);
+    if (error instanceof Error && (/duplicate key|23505/i.test(error.message)
+      || ('status' in error && error.status === 409))) {
+      return apiError(409, 'SUBSCRIPTION_CONFLICT', 'Your subscription changed while selecting this plan. Refresh the page to check its status before trying again.', context.request);
+    }
+    return catalogPlanErrorResponse(error, context.request) || rpcErrorResponse(error, context.request);
   }
 }

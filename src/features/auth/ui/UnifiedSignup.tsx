@@ -39,11 +39,11 @@ import type { UserRole } from '@/shared/types/generated/roles';
 
 /**
  * UI-ONLY redirect label (DEPRECATED - kept for reference).
- * 
+ *
  * Previously used to distinguish between recruitment admin (creates company)
  * and recruiter (invitation-based). This distinction is now handled on Page 3
  * via recruiter sub-role selection, so this constant is no longer used.
- * 
+ *
  * Left here temporarily to avoid breaking any references during migration.
  */
 // const RECRUITMENT_ADMIN_REDIRECT = 'recruitment_admin' as const;
@@ -51,7 +51,7 @@ import type { UserRole } from '@/shared/types/generated/roles';
 /**
  * The set of options the signup dropdown can offer: a curated subset of real
  * SSO `UserRole`s, plus UI-only redirect labels.
- * 
+ *
  * 'recruiter_admin' is a UI-only label that triggers admin recruiter signup flow
  * (creates org with owner role). It's not an actual SSO role.
  */
@@ -303,6 +303,8 @@ const UnifiedSignup = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
+  // Keep control until the destination route commits, including concurrent navigation.
+  useEffect(() => () => { useAuthStore.setState({ signupInProgress: false }); }, []);
 
   // Check if running on localhost using utility function
   const isDevEnvironment = isLocalhost() || isDevelopment();
@@ -694,8 +696,9 @@ const UnifiedSignup = () => {
 
     setState(prev => ({ ...prev, loading: true, error: '' }));
 
+    useAuthStore.setState({ signupInProgress: true });
     try {
-      // UPDATED FLOW: 
+      // UPDATED FLOW:
       // - recruiter_admin role = creates org during signup (admin type)
       // - recruiter role (via invitation) = joins existing org (invited type)
       // - institution admins = create org with proper role
@@ -980,6 +983,14 @@ const UnifiedSignup = () => {
         });
       } else {
         // Redirect to subscription plans page to choose a plan
+        const { getActiveSubscription } = await import('@/features/subscription/api/subscriptionService');
+        const coverage = await getActiveSubscription();
+        // On verification failure the protected route shows Retry; never delete a completed account.
+        if (!coverage.success || coverage.data) {
+          const { getRouteForRole } = await import('@/features/auth/lib/roleBasedRouter');
+          navigate(getRouteForRole(state.selectedRole === 'recruiter_admin' ? 'recruiter' : state.selectedRole!), { replace: true });
+          return;
+        }
         const subscriptionPlansPath = normalizedReferralCode
           ? `/subscription/plans/${entityType}/purchase?referralCode=${encodeURIComponent(normalizedReferralCode)}`
           : `/subscription/plans/${entityType}/purchase`;
@@ -1019,6 +1030,7 @@ const UnifiedSignup = () => {
       trackSignup.failed(errorMessage, state.selectedRole || undefined);
 
       setState(prev => ({ ...prev, loading: false, error: errorMessage }));
+      useAuthStore.setState({ signupInProgress: false });
     }
   };
   const [countdown, setCountdown] = useState(getTimeUntilFullRegOpens());

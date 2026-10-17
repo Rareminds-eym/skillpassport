@@ -84,45 +84,21 @@ function notFound(request: Request): Response {
   return apiError(404, 'NOT_FOUND', 'Not found', request);
 }
 
-/**
- * Optional auth handler — tries to authenticate, returns fallback on failure.
- *
- * For endpoints like get-active-subscription and get-user-entitlements that
- * need user identity but should NOT return 401 during the login transition
- * (when the old token is invalid but new tokens haven't been set yet).
- *
- * If auth succeeds → runs the handler normally.
- * If auth fails → returns apiSuccess(fallbackData) so the frontend can
- * retry once the tokens are ready.
- */
-async function handleOptionalAuthRequest(
+/** Subscription decisions require authenticated identity; failures are never empty success. */
+async function handleSubscriptionAuthRequest(
   context: { request: Request; env: Record<string, unknown>; data?: any },
   handler: (ctx: AuthenticatedContext) => Promise<Response>,
-  fallbackData: unknown
 ): Promise<Response> {
-  const ssoRpcRaw = context.env.SSO_SERVICE;
-  if (!ssoRpcRaw || typeof ssoRpcRaw !== 'object') {
-    console.warn('[Payments:OptionalAuth] SSO_SERVICE not configured, returning fallback');
-    return apiSuccess(fallbackData, context.request);
-  }
-
   try {
     const auth = getAuthInstance(context.env);
-    let result: Response | null = null;
-    const authenticate = auth.authenticate(async (_req, authedContext) => {
+    return await auth.authenticate(async (_req, authedContext) => {
       context.data = context.data ?? {};
       context.data.user = authedContext.user;
-      result = await handler(context as AuthenticatedContext);
-      return result;
-    });
-
-    const res = await authenticate(context.request);
-    if (res.status === 401 || res.status === 403) {
-      return apiSuccess(fallbackData, context.request);
-    }
-    return res;
-  } catch {
-    return apiSuccess(fallbackData, context.request);
+      return handler(context as AuthenticatedContext);
+    })(context.request);
+  } catch (error) {
+    console.error('[Payments:SubscriptionAuth] Verification unavailable', error);
+    return apiError(503, 'SUBSCRIPTION_UNAVAILABLE', 'Unable to verify your session. Please retry.', context.request);
   }
 }
 
@@ -131,7 +107,7 @@ async function handleOptionalAuthRequest(
  *
  * Public (no auth): health, create-registration-order, update-registration-payment-status,
  *   subscription-plans (catalog data).
- * Optional auth (returns fallback on failure): get-active-subscription, get-user-entitlements.
+ * Authenticated subscription reads: get-active-subscription, get-user-entitlements.
  * Required auth (all other endpoints): via withAuth SSO middleware.
  */
 export async function onRequest(context: { request: Request; env: Record<string, unknown>; data?: any }) {
@@ -173,14 +149,14 @@ export async function onRequest(context: { request: Request; env: Record<string,
   // This prevents 401 race conditions during login when tokens aren't ready yet
   if (path === '/get-active-subscription') {
     if (method !== 'GET') return methodNotAllowed(context.request);
-    return handleOptionalAuthRequest(context, handleGetActiveSubscription, null);
+    return handleSubscriptionAuthRequest(context, handleGetActiveSubscription);
   }
 
   // Get user entitlements — optional auth (returns [] if not authenticated)
   // This prevents 401 race conditions during login when tokens aren't ready yet
   if (path === '/get-user-entitlements') {
     if (method !== 'GET') return methodNotAllowed(context.request);
-    return handleOptionalAuthRequest(context, handleGetUserEntitlements, []);
+    return handleSubscriptionAuthRequest(context, handleGetUserEntitlements);
   }
 
   // All other endpoints require SSO authentication

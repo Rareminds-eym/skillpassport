@@ -62,11 +62,17 @@ export async function handleUnifiedSignup(request: Request, env: PagesEnv, authe
     // Check if profile already exists by SSO user ID (idempotency)
     const { data: existingUser } = await supabaseAdmin
       .from('users')
-      .select('id, role')
+      .select('id, role, metadata')
       .eq('id', userId)
       .maybeSingle();
 
     if (existingUser) {
+      if (body.role === 'learner' && existingUser.metadata?.subscription_selection_required === undefined) {
+        const { error } = await supabaseAdmin.from('users').update({
+          metadata: { ...existingUser.metadata, subscription_selection_required: true },
+        }).eq('id', userId);
+        if (error) throw new Error('Unable to initialize plan selection');
+      }
       if (body.referralCode) {
         const { data: existingMetadataRow } = await supabaseAdmin
           .from('users')
@@ -192,6 +198,7 @@ export async function handleUnifiedSignup(request: Request, env: PagesEnv, authe
           referralCode: body.referralCode,
           registrationDate: new Date().toISOString(),
           source: 'sso_signup',
+          ...(body.role === 'learner' ? { subscription_selection_required: true } : {}),
         },
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),

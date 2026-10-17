@@ -1,4 +1,5 @@
-import { isSalesOnlyPlan } from '../lib/salesPlan';
+import { isSalesOnlyPlan, assertPlanPurchaseScope, subscriptionForUpgrade, catalogPlanErrorResponse } from '../lib/salesPlan';
+import { completePlanSelection } from '../../../shared/lib/org-subscription';
 /**
  * Verify Payment Handler
  *
@@ -177,7 +178,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
         razorpayPaymentId, 
         razorpayOrderId 
       });
-      return apiSuccess(verifyResult, context.request);
+      return apiError(400, 'VALIDATION_ERROR', 'A complete catalogue plan is required to activate the subscription.', context.request);
     }
     if (!plan.id || !plan.name || !plan.price || !plan.duration) {
       logger.warn('Signature verified but incomplete plan data', { 
@@ -188,7 +189,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
         hasPlanPrice: !!plan.price,
         hasPlanDuration: !!plan.duration
       });
-      return apiSuccess(verifyResult, context.request);
+      return apiError(400, 'VALIDATION_ERROR', 'A complete catalogue plan is required to activate the subscription.', context.request);
     }
 
     const supabase = getServiceClient(env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string });
@@ -196,7 +197,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
     // Step 2.5: Validate plan exists via plans_cache (local shadow of auth DB)
     const { data: validPlan, error: planError } = await supabase
       .from('plans_cache')
-      .select('id, plan_code, name, is_active, pricing_matrix, base_features, entity_config')
+      .select('id, plan_code, name, is_active, pricing_matrix, base_features, entity_config, business_type, applicable_entities')
       .eq('id', plan.id)
       .eq('is_active', true)
       .maybeSingle();
@@ -209,6 +210,8 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
     if (isSalesOnlyPlan(validPlan)) {
       return apiError(400, 'CONTACT_SALES_REQUIRED', 'This plan requires an agreed sales proposal before activation.', context.request);
     }
+
+    const purchaseScope = await assertPlanPurchaseScope(supabase, validPlan, user);
 
     // Step 2.5: Validate currency (SECURITY: prevent multi-currency fraud)
     if (payment.currency !== 'INR') {
@@ -306,12 +309,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
     endDate.setMonth(endDate.getMonth() + durationMonths);
 
     // Check for existing active subscription via shadow table
-    const { data: existingCache } = await supabase
-      .from('subscription_cache')
-      .select('id, status, plan_id, plan_code, plan_amount')
-      .eq('user_id', user.id)
-      .in('status', ['active', 'pending', 'grace_period'])
-      .maybeSingle();
+    const existingCache = await subscriptionForUpgrade(supabase, user.id, validPlan, purchaseScope.organizationId);
 
     let subscription: Record<string, unknown>;
     let isUpgrade = false;
@@ -400,8 +398,9 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
             logger.error('Shadow sync failed during upgrade duplicate handling', syncError instanceof Error ? syncError : new Error(String(syncError)));
           }
 
-          return apiSuccess({
-            payment_verified: true,
+    await completePlanSelection(supabase, user.id, validPlan.id);
+    return apiSuccess({
+      payment_verified: true,
             subscription_upgraded: true,
             already_fulfilled: true,
             ...verifyResult,
@@ -439,15 +438,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
           logger.error('Failed to log upgrade failure', logError instanceof Error ? logError : new Error(String(logError)));
         }
 
-        return apiSuccess({
-          payment_verified: true,
-          subscription_upgraded: false,
-          ...verifyResult,
-          error: {
-            code: 'UPGRADE_FAILED',
-            message: 'Payment verified but upgrade failed. Support will contact you within 24 hours.',
-          },
-        }, context.request, 207);
+        return apiError(503, 'UPGRADE_FAILED', 'Payment was captured, but activation is pending. Please retry or contact support.', context.request);
       }
     } else {
       // New subscription — create in auth DB
@@ -493,11 +484,14 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
       try {
         subscription = await ssoCreateSubscription(env, {
           user_id: user.id,
+          organization_id: purchaseScope.organizationId,
+          organization_type: purchaseScope.organizationType,
+          is_organization_subscription: validPlan.business_type === 'b2b',
           plan_id: plan.id as string,
           plan_code: validPlan.plan_code,
           plan_type: plan.name as string,
           plan_amount: planPrice,
-          billing_cycle: plan.duration as string,
+          billing_cycle: detectedBillingCycle,
           features: validPlan.base_features || [],
           full_name: learnerForSubscription?.name || user.email || '',
           email: user.email || '',
@@ -533,6 +527,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
             logger.error('Shadow sync failed during duplicate handling', syncError instanceof Error ? syncError : new Error(String(syncError)));
           }
 
+          await completePlanSelection(supabase, user.id, validPlan.id);
           return apiSuccess({
             payment_verified: true,
             subscription_created: true,
@@ -548,16 +543,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
           razorpayOrderId
         });
 
-        return apiSuccess({
-          payment_verified: true,
-          subscription_created: false,
-          ...verifyResult,
-          error: {
-            code: 'SUBSCRIPTION_CREATE_FAILED',
-            message: 'Payment verified but subscription creation failed. Please contact support.',
-            details: createErrorMessage,
-          },
-        }, context.request, 207);
+        return apiError(503, 'SUBSCRIPTION_CREATE_FAILED', 'Payment was captured, but activation is pending. Please retry or contact support.', context.request);
       }
     }
 
@@ -717,6 +703,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
       });
     }
 
+    await completePlanSelection(supabase, user.id, validPlan.id);
     return apiSuccess({
       ...verifyResult,
       subscription_created: true,
@@ -732,7 +719,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
     }, context.request);
   } catch (error) {
     logger.error('Payment verification failed', error instanceof Error ? error : new Error(String(error)));
-    return rpcErrorResponse(error, context.request);
+    return catalogPlanErrorResponse(error, context.request) || rpcErrorResponse(error, context.request);
   }
 }
 
