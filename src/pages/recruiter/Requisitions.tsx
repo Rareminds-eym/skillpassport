@@ -22,7 +22,8 @@ import {
   XCircleIcon
 } from '@heroicons/react/24/outline';
 import { BriefcaseIcon as BriefcaseSolidIcon } from '@heroicons/react/24/solid';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { AdvancedRequisitionFilters } from '@/features/recruiter';
 import { RequisitionImport } from '@/features/recruiter';
 import { AddToShortlistModal } from '@/features/recruiter-pipeline';
@@ -32,9 +33,54 @@ import toast from 'react-hot-toast';
 import { RequisitionFilters } from '@/shared/types/recruiter';
 import { getLogger } from '@/shared/config/logging';
 import { EmptyStateWithQuote } from '@/components/EmptyStateWithQuote';
+import { useEscapeToClose } from '@/shared/hooks/useEscapeToClose';
 
 import { useUser } from '@/shared/model/authStore';
 const logger = getLogger('Requisitions');
+
+// Work-mode select values are lowercase ('on-site' | 'remote' | 'hybrid');
+// DB rows may carry legacy capitalized values — normalize both directions.
+const normalizeWorkMode = (m: unknown): 'on-site' | 'remote' | 'hybrid' => {
+  const v = String(m ?? '').trim().toLowerCase();
+  if (v === 'remote' || v === 'hybrid') return v;
+  return 'on-site';
+};
+
+// Idempotency key for credit-consuming actions: ONE id per explicit user
+// intent, reused across automatic retries of that same intent so retrying
+// never double-charges credits. A new explicit click generates a new id.
+const createRequestId = (): string => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `req_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+};
+
+// Wrap a credit-consuming post with an idempotent auto-retry: transient
+// failures (5xx / network) are retried with exponential backoff reusing the
+// SAME requestId; deterministic failures (402 quota, 4xx) abort immediately.
+const withIdempotentRetry = async <T,>(
+  op: (requestId: string) => Promise<T>,
+  maxRetries = 2,
+): Promise<T> => {
+  const requestId = createRequestId();
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await op(requestId);
+    } catch (error) {
+      lastError = error;
+      if (error instanceof ApiError && error.status < 500) throw error;
+      if (attempt < maxRetries) {
+        await new Promise(resolve => setTimeout(resolve, 400 * Math.pow(2, attempt)));
+      }
+    }
+  }
+  throw lastError;
+};
+
+// Normalize ANY supplied error into an Error instance for structured logging.
+const toError = (error: unknown): Error => (error instanceof Error ? error : new Error(String(error)));
 
 interface Opportunity {
   id: string;
@@ -66,6 +112,10 @@ interface Opportunity {
   updated_at: string;
   is_active?: boolean;
   recruiter_id?: string;
+  // Boost / featured placement windows (spec §6) — ISO timestamps set by
+  // boost-opportunity; absent on plain rows.
+  boosted_until?: string;
+  featured_until?: string;
 }
 
 interface Recruiter {
@@ -85,13 +135,15 @@ interface RequisitionModalProps extends ModalProps {
 interface CreateRequisitionModalProps extends ModalProps {
   recruiters: Recruiter[];
   currentRecruiterId: string | null;
-  onSuccess: () => void;
+  // The raw form payload; the parent unwraps the API envelope and applies it.
+  onSuccess: (formData: any) => Promise<void> | void;
 }
 
 interface EditRequisitionModalProps extends ModalProps {
   requisition: Opportunity;
   recruiters: Recruiter[];
-  onSuccess: () => void;
+  // The raw form payload; the parent unwraps the API envelope and applies it.
+  onSuccess: (formData: any) => Promise<void> | void;
 }
 
 interface LearnerProfile {
@@ -100,6 +152,10 @@ interface LearnerProfile {
   email?: string;
   phone_number?: string;
   alternate_number?: string;
+  // The applied_jobs.learners.profile jsonb carries flexible DB columns the FE
+  // renders directly (nm_id, registration_number, date_of_birth, age, course,
+  // branch_field, skill) — index signature keeps the detail modal honest.
+  [key: string]: unknown;
 }
 
 interface Application {
@@ -107,20 +163,49 @@ interface Application {
   application_status: string;
   applied_at: string;
   profile: LearnerProfile;
+  learners?: {
+    id: string;
+    email?: string;
+    profile?: LearnerProfile;
+  };
 }
+
+// Quota widget payload: POST /api/recruiter/actions { action: 'get-quota-usage' }
+// → envelope.data = { used_active_posts, limit_active_posts (number | null),
+//   credits: { [featureKey]: { allocated, consumed, remaining } } }
+interface QuotaUsageData {
+  used_active_posts?: number;
+  limit_active_posts?: number | null;
+  credits?: Partial<
+    Record<'contact_unlocks' | 'job_boost_credits' | 'ai_credits' | 'candidate_invites', {
+      allocated: number;
+      consumed: number;
+      remaining: number;
+    }>
+  >;
+}
+
+// Render an unknown-shaped profile column as display text (LearnerProfile's
+// index signature returns `unknown` for the flexible jsonb keys).
+const asDetailText = (v: unknown): string => (v === null || v === undefined || v === '' ? 'N/A' : String(v));
 
 const Requisitions = () => {
   const user = useUser();
   const [requisitions, setRequisitions] = useState<Opportunity[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  // Debounced mirror of the search input — the API call reads this, not the
+  // raw keystroke value (350ms debounce).
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [showApplicationsModal, setShowApplicationsModal] = useState(false);
-  const [showMessagesModal, setShowMessagesModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  // Quota/credit visibility (contract: refresh after every successful mutation)
+  const [quotaUsage, setQuotaUsage] = useState<QuotaUsageData | null>(null);
   // AI shortlist results (spec §6): opportunity + matched candidates
   const [shortlistModal, setShortlistModal] = useState<{ opportunity: Opportunity; candidates: any[] } | null>(null);
   const [shortlistCandidate, setShortlistCandidate] = useState<any>(null);
@@ -149,37 +234,55 @@ const Requisitions = () => {
   });
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(8);
+  const [itemsPerPage] = useState(8);
   const [totalCount, setTotalCount] = useState(0);
 
-  // Load recruiters and current recruiter
+  // Refs for fetch hygiene: a monotonically increasing sequence lets late
+  // responses be detected and dropped so an older response can never clobber
+  // the results of a newer filter state.
+  const requestSeqRef = useRef(0);
+  // Tracks the last filter key seen by the fetch effect so a filter change can
+  // reset pagination inside the SAME effect (single source of state) instead
+  // of a separate reset effect that used to double-fetch.
+  const lastFilterKeyRef = useRef<string | null>(null);
+
+  // Debounce the search input (350ms) before it reaches the fetch effect.
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 350);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Quota / credit visibility strip (contract fix #2): load once and refresh
+  // after every successful mutation (create/update/delete/status/import).
+  const refreshQuota = async () => {
+    try {
+      const result: any = await apiPost('/recruiter/actions', { action: 'get-quota-usage' });
+      const data = result?.data;
+      // Render defensively: only keep a well-shaped payload, otherwise hide.
+      if (data && typeof data === 'object' && 'used_active_posts' in data) {
+        setQuotaUsage(data);
+      } else {
+        setQuotaUsage(null);
+      }
+    } catch (error) {
+      logger.error('Error loading quota usage', toError(error));
+      setQuotaUsage(null); // hide the widget quietly on failure
+    }
+  };
+
   useEffect(() => {
     loadRecruiters();
     loadCurrentRecruiter();
+    refreshQuota();
   }, [user]);
-
-  // Load requisitions from Supabase
-  // useEffect(() => {
-  //   loadRequisitions();
-  // }, [searchQuery, statusFilter, advancedFilters, sortField, sortDirection]);
-  // Load requisitions when pagination changes
-  useEffect(() => {
-    loadRequisitions();
-  }, [searchQuery, statusFilter, advancedFilters, sortField, sortDirection, currentPage, itemsPerPage]);
-
-  // Reset to page 1 when filters change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchQuery, statusFilter, advancedFilters, sortField, sortDirection]);
 
   const loadRecruiters = async () => {
     try {
-      const result = await apiPost<any>('/recruiter/actions', { action: 'list-recruiters' });
-      console.log('[Requisitions] Recruiters loaded:', result.data);
-      setRecruiters(result.data || []);
+      const result: any = await apiPost('/recruiter/actions', { action: 'list-recruiters' });
+      const rows = result?.data;
+      setRecruiters(Array.isArray(rows) ? rows : []);
     } catch (error) {
-      logger.error('Error loading recruiters', error);
-      console.error('[Requisitions] Failed to load recruiters:', error);
+      logger.error('Error loading recruiters', toError(error));
     }
   };
 
@@ -188,32 +291,55 @@ const Requisitions = () => {
 
     try {
       const result = await apiPost<any>('/recruiter/actions', { action: 'get-current-recruiter', email: user.email });
-      if (result.data) {
+      if (result?.data) {
         setCurrentRecruiterId(result.data.id);
       }
     } catch (error) {
-      logger.error('Error loading current recruiter', error);
+      logger.error('Error loading current recruiter', toError(error));
     }
   };
 
+  // The 'end' date must be sent as end-of-day so the final selected day is
+  // not excluded by the backend's lte('posted_date', endDate) filter. Wall
+  // clock (local) time is preserved on purpose — no UTC re-basing.
+  const normalizeEndDate = (date: string) =>
+    /^\d{4}-\d{2}-\d{2}$/.test(date) ? `${date}T23:59:59.999` : date;
+
   const loadRequisitions = async () => {
+    const seq = ++requestSeqRef.current;
     setLoading(true);
     try {
-      const result = await apiPost<any>('/recruiter/actions', {
+      const advancedFiltersForQuery: RequisitionFilters = {
+        ...advancedFilters,
+        dateRange: advancedFilters.dateRange?.endDate
+          ? { ...advancedFilters.dateRange, endDate: normalizeEndDate(advancedFilters.dateRange.endDate) }
+          : advancedFilters.dateRange,
+      };
+
+      const result: any = await apiPost('/recruiter/actions', {
         action: 'list-opportunities',
-        searchQuery,
+        searchQuery: debouncedSearch,
         statusFilter,
-        advancedFilters,
+        advancedFilters: advancedFiltersForQuery,
         sortField,
         sortDirection,
         currentPage,
         itemsPerPage,
       });
 
-      logger.info("Fetched cards from DB", { count: result.data?.data?.length, total: result.data?.total });
-      setTotalCount(result.data?.total || 0);
+      // A newer request has been started meanwhile — drop this stale response.
+      if (seq !== requestSeqRef.current) return;
 
-      const transformedData: Opportunity[] = (result.data?.data || []).map((opp: any) => ({
+      // apiPost returns the { success, data, error, meta } envelope: list
+      // payloads live in result.data = { data: rows, total }.
+      const payload = result?.data ?? {};
+      const rows: Opportunity[] = Array.isArray(payload?.data) ? payload.data : [];
+
+      logger.info('Fetched cards from DB', { count: rows.length, total: payload?.total });
+      setTotalCount(Number(payload?.total) || 0);
+      setLoadFailed(false);
+
+      const transformedData: Opportunity[] = rows.map((opp: any) => ({
         ...opp,
         job_title: opp.title || opp.job_title || '',
         requirements: opp.requirements || [],
@@ -229,14 +355,38 @@ const Requisitions = () => {
 
       setRequisitions(transformedData);
     } catch (error) {
-      logger.error('Error loading requisitions', error);
+      if (seq !== requestSeqRef.current) return;
+      setLoadFailed(true);
+      logger.error('Error loading requisitions', toError(error));
+      toast.error(error instanceof ApiError ? error.message : 'Failed to load requisitions');
     } finally {
-      setLoading(false);
+      // Only the newest request may flip the loading flag off — a superseded
+      // response must not resolve the newer request's spinner early.
+      if (seq === requestSeqRef.current) {
+        setLoading(false);
+      }
     }
   };
 
+  // Single fetch effect (fix F): debounce-aware search + filters + pagination.
+  useEffect(() => {
+    const filterKey = JSON.stringify([debouncedSearch, statusFilter, advancedFilters, sortField, sortDirection]);
+    if (lastFilterKeyRef.current !== null && lastFilterKeyRef.current !== filterKey) {
+      // Filters changed — reset to page 1 here (same effect, no double fetch).
+      // The state change re-runs this effect, which then fetches once.
+      lastFilterKeyRef.current = filterKey;
+      if (currentPage !== 1) {
+        setCurrentPage(1);
+        return;
+      }
+    } else if (lastFilterKeyRef.current === null) {
+      lastFilterKeyRef.current = filterKey;
+    }
+    loadRequisitions();
+  }, [debouncedSearch, statusFilter, advancedFilters, sortField, sortDirection, currentPage, itemsPerPage]);
+
   const createRequisition = async (requisitionData: any): Promise<Opportunity> => {
-    const data = await apiPost<Opportunity>('/recruiter/actions', {
+    const result: any = await apiPost('/recruiter/actions', {
       action: 'create-requisition',
       requisitionData: {
         title: requisitionData.job_title,
@@ -258,30 +408,44 @@ const Requisitions = () => {
         description: requisitionData.description,
         requirements: requisitionData.requirements,
         responsibilities: requisitionData.responsibilities,
-        applications_count: requisitionData.applications_count || 0,
         created_by: user?.id,
         recruiter_id: requisitionData.recruiter_id
       }
     });
 
-    if (!data) throw new Error('Failed to create requisition');
-    return data;
+    // apiPost returns the { success, data, error, meta } envelope; the created
+    // row itself lives in result.data (server-forced applications_count = 0).
+    const row = result?.data;
+    if (!row) throw new Error('Failed to create requisition');
+    return row;
   };
 
-  const updateRequisition = async (id: string, updates: any): Promise<Opportunity> => {
-    const data = await apiPost<Opportunity>('/recruiter/actions', {
+  const updateRequisition = async (id: string, updates: Record<string, any>): Promise<Opportunity> => {
+    // Build the update payload from the keys the caller actually provided.
+    // In particular `deadline` must only be present when the caller supplied
+    // it — a status-only change (publish/close/reopen) must never send
+    // `deadline: null`, which would wipe the existing deadline on the row.
+    const payload: Record<string, any> = {};
+    for (const [key, value] of Object.entries(updates)) {
+      if (value !== undefined) payload[key] = value;
+    }
+    if (updates.job_title != null) payload.title = updates.job_title;
+    if ('deadline' in updates && updates.deadline !== undefined) {
+      payload.deadline = updates.deadline ? new Date(updates.deadline).toISOString() : null;
+    }
+    payload.is_active = updates.status === 'open';
+
+    const result: any = await apiPost('/recruiter/actions', {
       action: 'update-requisition',
       id,
-      updates: {
-        ...updates,
-        title: updates.job_title,
-        deadline: updates.deadline ? new Date(updates.deadline).toISOString() : null,
-        is_active: updates.status === 'open'
-      }
+      updates: payload
     });
 
-    if (!data) throw new Error('Failed to update requisition');
-    return data;
+    // apiPost returns the { success, data, error, meta } envelope; the updated
+    // row itself lives in result.data.
+    const row = result?.data;
+    if (!row) throw new Error('Failed to update requisition');
+    return row;
   };
 
   const deleteRequisition = async (id: string) => {
@@ -332,9 +496,14 @@ const Requisitions = () => {
       try {
         await deleteRequisition(id);
         setRequisitions(prev => prev.filter(r => r.id !== id));
+        // Keep the header counter in sync with the deleted row (single source
+        // of truth is totalCount — the list refetch also reconciles it).
+        setTotalCount(prev => Math.max(0, prev - 1));
+        toast.success('Requisition deleted');
+        refreshQuota();
       } catch (error) {
-        logger.error('Error deleting requisition', error);
-        alert('Error deleting requisition');
+        logger.error('Error deleting requisition', toError(error));
+        toast.error(error instanceof ApiError ? error.message : 'Error deleting requisition');
       }
     }
   };
@@ -345,29 +514,36 @@ const Requisitions = () => {
       setRequisitions(prev => prev.map(r =>
         r.id === id ? { ...r, ...updated } : r
       ));
+      toast.success(`Requisition marked as ${newStatus.replace('_', ' ')}`);
+      refreshQuota();
     } catch (error) {
-      logger.error('Error updating status', error);
-      alert('Error updating status');
+      logger.error('Error updating status', toError(error));
+      toast.error(error instanceof ApiError ? error.message : 'Error updating status');
     }
   };
 
   // ── Job boost & AI shortlist fulfilment (spec §6) ──
   const handleBoost = async (requisition: Opportunity) => {
     try {
-      const res: any = await apiPost('/opportunities', {
+      // Credit-consuming action: the SAME requestId is reused across automatic
+      // retries so a flaky network can never double-charge a boost credit.
+      const res: any = await withIdempotentRetry((requestId) => apiPost('/opportunities', {
         action: 'boost-opportunity',
         id: requisition.id,
-      });
+        requestId,
+      }));
       const until = res?.data?.opportunity?.boosted_until
         ? new Date(res.data.opportunity.boosted_until).toLocaleDateString()
         : '7 days';
       toast.success(`Job boosted until ${until} (${res?.data?.credits_remaining ?? '?'} boost credits left)`);
+      refreshQuota();
       loadRequisitions();
-    } catch (error: any) {
-      if (error instanceof ApiError && (error.status === 402 || error.code === 'INSUFFICIENT_CREDITS')) {
-        toast.error('No job boost credits left. Upgrade your plan or buy a boost pack in Add-ons.');
-      } else {
+    } catch (error: unknown) {
+      if (error instanceof ApiError && (error.status === 402 || error.code === 'QUOTA_EXCEEDED' || error.code === 'INSUFFICIENT_CREDITS')) {
         logger.error('Error boosting job', error);
+        toast.error(error.message || 'No job boost credits left. Upgrade your plan or buy a boost pack in Add-ons.');
+      } else {
+        logger.error('Error boosting job', toError(error));
         toast.error('Failed to boost this job. Try again.');
       }
     }
@@ -375,12 +551,15 @@ const Requisitions = () => {
 
   const handleGenerateShortlist = async (requisition: Opportunity) => {
     try {
-      const res: any = await apiPost('/recruiter-copilot', {
+      // Credit-consuming action: the SAME requestId is reused across automatic
+      // retries so a flaky network can never double-charge an AI credit.
+      const res: any = await withIdempotentRetry((requestId) => apiPost('/recruiter-copilot', {
         action: 'semantic-find-for-opportunity',
         opportunity_id: requisition.id,
         match_count: 20,
         min_similarity: 0.65,
-      });
+        requestId,
+      }));
       const candidates = (res?.data ?? []).map((c: any) => ({
         ...c,
         // AddToShortlistModal and the backend both key on a canonical candidate id;
@@ -393,11 +572,13 @@ const Requisitions = () => {
       } else {
         toast('No candidates matched above the similarity threshold — no credit charged');
       }
-    } catch (error: any) {
-      if (error instanceof ApiError && (error.status === 402 || error.code === 'INSUFFICIENT_CREDITS')) {
-        toast.error('No AI shortlist credits left. Upgrade your plan or buy the AI shortlist pack in Add-ons.');
-      } else {
+      refreshQuota();
+    } catch (error: unknown) {
+      if (error instanceof ApiError && (error.status === 402 || error.code === 'QUOTA_EXCEEDED' || error.code === 'INSUFFICIENT_CREDITS')) {
         logger.error('Error generating AI shortlist', error);
+        toast.error(error.message || 'No AI shortlist credits left. Upgrade your plan or buy the AI shortlist pack in Add-ons.');
+      } else {
+        logger.error('Error generating AI shortlist', toError(error));
         toast.error('Failed to generate the AI shortlist. Try again.');
       }
     }
@@ -414,6 +595,36 @@ const Requisitions = () => {
     }
   };
 
+  // Fix G: the empty-state check must treat advancedFilters as filters too —
+  // previously only statusFilter/searchQuery were considered, so a filtered
+  // zero-row response could misrender "Create your first requisition".
+  const hasActiveFilters = useMemo(() => {
+    const f = advancedFilters;
+    return Boolean(
+      debouncedSearch ||
+      statusFilter !== 'all' ||
+      (f.status?.length ?? 0) > 0 ||
+      (f.departments?.length ?? 0) > 0 ||
+      (f.locations?.length ?? 0) > 0 ||
+      (f.workModes?.length ?? 0) > 0 ||
+      (f.experienceRequired?.length ?? 0) > 0 ||
+      (f.titles?.length ?? 0) > 0 ||
+      (f.employmentTypes?.length ?? 0) > 0 ||
+      (f.experienceLevels?.length ?? 0) > 0 ||
+      f.salaryRange?.min != null ||
+      f.salaryRange?.max != null ||
+      (Boolean(f.applicationCountRange) && f.applicationCountRange !== 'all') ||
+      Boolean(f.dateRange?.startDate) ||
+      Boolean(f.dateRange?.endDate)
+    );
+  }, [debouncedSearch, statusFilter, advancedFilters]);
+
+  // Escape-to-close for the inline AI-shortlist modal (hook-based pattern).
+  useEscapeToClose({
+    enabled: shortlistModal != null,
+    onEscape: () => setShortlistModal(null),
+  });
+
   const getSortIcon = (field: string) => {
     if (sortField !== field) {
       return <ArrowsUpDownIcon className="h-4 w-4 text-gray-400" />;
@@ -423,7 +634,19 @@ const Requisitions = () => {
       : <ChevronDownIcon className="h-4 w-4 text-primary-600" />;
   };
 
-  // 🆕🆕🆕 ADD THESE LINES HERE 🆕🆕🆕
+  // Sort dropdown helpers (fix C): every dropdown option maps to a real
+  // column; header-sorted fields not present in the dropdown (like 'status')
+  // show the placeholder. Values use '<field>|<direction>'.
+  const SORT_OPTION_VALUES = new Set([
+    'created_at|desc', 'created_at|asc', 'posted_date|desc', 'posted_date|asc',
+    'applications_count|desc', 'applications_count|asc',
+    'job_title|asc', 'job_title|desc',
+    'department|asc', 'department|desc',
+    'location|asc', 'location|desc',
+    'salary_range_min|desc', 'salary_range_min|asc',
+  ]);
+  const showSortPlaceholder = !SORT_OPTION_VALUES.has(`${sortField}|${sortDirection}`);
+
   const totalPages = Math.ceil(totalCount / itemsPerPage);
   const startItem = (currentPage - 1) * itemsPerPage + 1;
   const endItem = Math.min(currentPage * itemsPerPage, totalCount);
@@ -438,8 +661,9 @@ const Requisitions = () => {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Job Requisitions</h1>
+            {/* Fix G: single totalCount source (was duplicated with requisitions.length) */}
             <p className="text-sm text-gray-500 mt-1">
-              {requisitions.length} requisition{requisitions.length !== 1 ? 's' : ''}
+              {totalCount} requisition{totalCount !== 1 ? 's' : ''}
             </p>
           </div>
           <div className="flex gap-3">
@@ -459,6 +683,35 @@ const Requisitions = () => {
             </button>
           </div>
         </div>
+
+        {/* Quota / credit visibility strip (contract fix #2). Renders only when
+            the get-quota-usage payload resolves; hidden defensively otherwise. */}
+        {quotaUsage && quotaUsage.used_active_posts != null && (
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded-md px-3 py-1.5">
+            <span className="font-medium text-gray-700">
+              {quotaUsage.used_active_posts}{quotaUsage.limit_active_posts != null ? ` / ${quotaUsage.limit_active_posts}` : ''} active posts
+            </span>
+            <span aria-hidden="true">·</span>
+            <span>
+              Boost: {quotaUsage.credits?.job_boost_credits?.remaining ?? '—'}
+            </span>
+            <span aria-hidden="true">·</span>
+            <span>
+              AI: {quotaUsage.credits?.ai_credits?.remaining ?? '—'}
+            </span>
+            {quotaUsage.limit_active_posts != null &&
+              Math.max(0, quotaUsage.limit_active_posts - quotaUsage.used_active_posts) <= 1 && (
+              <Link
+                to="/subscription/plans?type=recruiter"
+                className="ml-1 font-medium text-primary-600 hover:text-primary-700 underline"
+                title="Upgrade your plan to publish more job posts"
+              >
+                Upgrade
+                {quotaUsage.limit_active_posts - quotaUsage.used_active_posts <= 0 ? ' (limit reached)' : ' (1 left)'}
+              </Link>
+            )}
+          </div>
+        )}
 
         {/* Search and Filters */}
         <div className="mt-4 flex flex-col sm:flex-row gap-3">
@@ -518,40 +771,51 @@ const Requisitions = () => {
             onFiltersChange={setAdvancedFilters}
             onReset={handleResetFilters}
             onApply={loadRequisitions}
+            onHeaderStatusReset={() => setStatusFilter('all')}
           />
 
           {/* Sorting Dropdown */}
           <div className="relative">
             <select
-              value={`${sortField}-${sortDirection}`}
+              value={SORT_OPTION_VALUES.has(`${sortField}|${sortDirection}`) ? `${sortField}|${sortDirection}` : ''}
               onChange={(e) => {
-                const [field, direction] = e.target.value.split('-');
+                // Composite "<field>|<direction>" values; pipe-safe separator
+                // since field names (e.g. on_hold/status) never contain '|'.
+                const [field, direction] = e.target.value.split('|');
+                if (!field || !direction) return; // placeholder selection
                 setSortField(field);
                 setSortDirection(direction as 'asc' | 'desc');
               }}
               className="pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none bg-white text-sm"
             >
+              {/* Placeholder shown only when the current sort (e.g. a header
+                  table sort on 'status') has no matching dropdown option. */}
+              {showSortPlaceholder && (
+                <option value="" disabled hidden>
+                  Sorted by header…
+                </option>
+              )}
               <optgroup label="Date">
-                <option value="created_at-desc">Newest First</option>
-                <option value="created_at-asc">Oldest First</option>
-                <option value="posted_date-desc">Recently Posted</option>
-                <option value="posted_date-asc">Oldest Posted</option>
+                <option value="created_at|desc">Newest First</option>
+                <option value="created_at|asc">Oldest First</option>
+                <option value="posted_date|desc">Recently Posted</option>
+                <option value="posted_date|asc">Oldest Posted</option>
               </optgroup>
               <optgroup label="Applications">
-                <option value="applications_count-desc">Most Applications</option>
-                <option value="applications_count-asc">Least Applications</option>
+                <option value="applications_count|desc">Most Applications</option>
+                <option value="applications_count|asc">Least Applications</option>
               </optgroup>
               <optgroup label="Alphabetical">
-                <option value="job_title-asc">Job Title (A-Z)</option>
-                <option value="job_title-desc">Job Title (Z-A)</option>
-                <option value="department-asc">Department (A-Z)</option>
-                <option value="department-desc">Department (Z-A)</option>
-                <option value="location-asc">Location (A-Z)</option>
-                <option value="location-desc">Location (Z-A)</option>
+                <option value="job_title|asc">Job Title (A-Z)</option>
+                <option value="job_title|desc">Job Title (Z-A)</option>
+                <option value="department|asc">Department (A-Z)</option>
+                <option value="department|desc">Department (Z-A)</option>
+                <option value="location|asc">Location (A-Z)</option>
+                <option value="location|desc">Location (Z-A)</option>
               </optgroup>
               <optgroup label="Salary">
-                <option value="salary_range_min-desc">Highest Salary</option>
-                <option value="salary_range_min-asc">Lowest Salary</option>
+                <option value="salary_range_min|desc">Highest Salary</option>
+                <option value="salary_range_min|asc">Lowest Salary</option>
               </optgroup>
             </select>
             <ArrowsUpDownIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
@@ -586,9 +850,25 @@ const Requisitions = () => {
           <div className="flex items-center justify-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
           </div>
+        ) : loadFailed ? (
+          // Fix F: a failed load must not masquerade as «no requisitions yet» —
+          // show a visible inline error state with an explicit Retry action.
+          <div className="text-center py-12">
+            <XCircleIcon className="mx-auto h-12 w-12 text-red-400" />
+            <h3 className="mt-2 text-sm font-medium text-gray-900">Something went wrong</h3>
+            <p className="mt-1 text-sm text-gray-500">
+              We couldn&apos;t load your requisitions right now.
+            </p>
+            <button
+              onClick={loadRequisitions}
+              className="mt-4 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700"
+            >
+              Retry
+            </button>
+          </div>
         ) : requisitions.length === 0 ? (
           <div className="text-center py-12">
-            {searchQuery || statusFilter !== 'all' ? (
+            {hasActiveFilters ? (
               <>
                 <BriefcaseSolidIcon className="mx-auto h-12 w-12 text-gray-400" />
                 <h3 className="mt-2 text-sm font-medium text-gray-900">No requisitions found</h3>
@@ -597,6 +877,8 @@ const Requisitions = () => {
                 </p>
               </>
             ) : (
+              // «Create your first requisition» only for a clean zero-row,
+              // filter-free response (fix F).
               <EmptyStateWithQuote
                 page="requisitions"
                 icon={BriefcaseSolidIcon}
@@ -633,10 +915,6 @@ const Requisitions = () => {
                 onViewApplications={(r) => {
                   setSelectedRequisition(r);
                   setShowApplicationsModal(true);
-                }}
-                onViewMessages={(r) => {
-                  setSelectedRequisition(r);
-                  setShowMessagesModal(true);
                 }}
                 getStatusBadge={getStatusBadge}
                 getStatusIcon={getStatusIcon}
@@ -735,26 +1013,15 @@ const Requisitions = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-3">
-                        <button
-                          onClick={() => {
-                            setSelectedRequisition(req);
-                            setShowApplicationsModal(true);
-                          }}
-                          className="text-sm text-primary-600 hover:text-primary-900"
-                        >
-                          {req.applications_count} apps
-                        </button>
-                        <button
-                          onClick={() => {
-                            setSelectedRequisition(req);
-                            setShowMessagesModal(true);
-                          }}
-                          className="text-sm text-gray-600 hover:text-gray-900"
-                        >
-                          {req.messages_count} msgs
-                        </button>
-                      </div>
+                      <button
+                        onClick={() => {
+                          setSelectedRequisition(req);
+                          setShowApplicationsModal(true);
+                        }}
+                        className="text-sm text-primary-600 hover:text-primary-900"
+                      >
+                        {req.applications_count} apps
+                      </button>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {new Date(req.posted_date).toLocaleDateString()}
@@ -796,7 +1063,7 @@ const Requisitions = () => {
             </table>
           </div>
         )}
-        {/* 🆕🆕🆕 PAGINATION UI STARTS HERE 🆕🆕🆕 */}
+        {/* Pagination */}
         {totalPages > 1 && (
           <div className="mt-6 flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3 sm:px-6 rounded-lg shadow-sm">
             {/* Mobile pagination */}
@@ -891,12 +1158,18 @@ const Requisitions = () => {
           onClose={() => setShowCreateModal(false)}
           onSuccess={async (newReqData) => {
             try {
+              // createRequisition already unwraps the envelope row.
               const newReq = await createRequisition(newReqData);
               setRequisitions(prev => [newReq, ...prev]);
+              setTotalCount(prev => prev + 1);
               setShowCreateModal(false);
+              toast.success('Requisition created');
+              refreshQuota();
             } catch (error) {
-              logger.error('Error creating requisition', error);
-              alert('Error creating requisition');
+              logger.error('Error creating requisition', toError(error));
+              // Surface the backend message verbatim (e.g. 402
+              // QUOTA_EXCEEDED plan-upgrade guidance).
+              toast.error(error instanceof ApiError ? error.message : 'Error creating requisition');
             }
           }}
         />
@@ -912,13 +1185,18 @@ const Requisitions = () => {
           }}
           onSuccess={async (updatedData) => {
             try {
+              // updateRequisition already unwraps the envelope row: replace by id.
               const updated = await updateRequisition(selectedRequisition.id, updatedData);
               setRequisitions(prev => prev.map(r => r.id === updated.id ? updated : r));
               setShowEditModal(false);
               setSelectedRequisition(null);
+              toast.success('Requisition updated');
+              refreshQuota();
             } catch (error) {
-              logger.error('Error updating requisition', error);
-              alert('Error updating requisition');
+              logger.error('Error updating requisition', toError(error));
+              // Surface the backend message verbatim (e.g. 402
+              // QUOTA_EXCEEDED plan-upgrade guidance).
+              toast.error(error instanceof ApiError ? error.message : 'Error updating requisition');
             }
           }}
         />
@@ -944,22 +1222,13 @@ const Requisitions = () => {
         />
       )}
 
-      {showMessagesModal && selectedRequisition && (
-        <MessagesModal
-          requisition={selectedRequisition}
-          onClose={() => {
-            setShowMessagesModal(false);
-            setSelectedRequisition(null);
-          }}
-        />
-      )}
-
       {showImportModal && (
         <RequisitionImport
           isOpen={showImportModal}
           onClose={() => setShowImportModal(false)}
           onImportComplete={() => {
             loadRequisitions();
+            refreshQuota();
           }}
         />
       )}
@@ -1044,8 +1313,33 @@ const Requisitions = () => {
   );
 };
 
-// Requisition Card Component (unchanged)
-const RequisitionCard = ({ requisition, onView, onEdit, onDelete, onStatusChange, onViewApplications, onViewMessages, onBoost, onGenerateShortlist, getStatusBadge, getStatusIcon }: any) => {
+// Requisition Card Component
+// Minimal typing for the props actually destructured below (fix M — was `any`).
+interface RequisitionCardProps {
+  requisition: Opportunity;
+  onView: (r: Opportunity) => void;
+  onEdit: (r: Opportunity) => void;
+  onDelete: (id: string) => void;
+  onStatusChange: (id: string, newStatus: string) => void | Promise<void>;
+  onViewApplications: (r: Opportunity) => void;
+  onBoost: (r: Opportunity) => void;
+  onGenerateShortlist: (r: Opportunity) => void;
+  getStatusBadge: (status: string) => string;
+  getStatusIcon: (status: string) => React.ReactNode;
+}
+
+const RequisitionCard = ({
+  requisition,
+  onView,
+  onEdit,
+  onDelete,
+  onStatusChange,
+  onViewApplications,
+  onBoost,
+  onGenerateShortlist,
+  getStatusBadge,
+  getStatusIcon
+}: RequisitionCardProps) => {
   const [showMenu, setShowMenu] = useState(false);
 
   return (
@@ -1121,6 +1415,36 @@ const RequisitionCard = ({ requisition, onView, onEdit, onDelete, onStatusChange
                     <PencilIcon className="h-4 w-4 inline mr-2" />
                     Edit
                   </button>
+                  {/* Status transitions (fix D) — respect the ALLOWED set
+                      [draft, open, closed, on_hold] and only offer the
+                      legal forward moves; wired to the live handleStatusChange. */}
+                  {requisition.status === 'draft' && onStatusChange && (
+                    <button
+                      onClick={() => { onStatusChange(requisition.id, 'open'); setShowMenu(false); }}
+                      className="block w-full text-left px-4 py-2 text-sm text-green-700 hover:bg-green-50"
+                    >
+                      <CheckCircleIcon className="h-4 w-4 inline mr-2" />
+                      Publish opening
+                    </button>
+                  )}
+                  {requisition.status === 'open' && onStatusChange && (
+                    <button
+                      onClick={() => { onStatusChange(requisition.id, 'closed'); setShowMenu(false); }}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      <XCircleIcon className="h-4 w-4 inline mr-2" />
+                      Close opening
+                    </button>
+                  )}
+                  {requisition.status === 'closed' && onStatusChange && (
+                    <button
+                      onClick={() => { onStatusChange(requisition.id, 'open'); setShowMenu(false); }}
+                      className="block w-full text-left px-4 py-2 text-sm text-green-700 hover:bg-green-50"
+                    >
+                      <CheckCircleIcon className="h-4 w-4 inline mr-2" />
+                      Reopen opening
+                    </button>
+                  )}
                   {requisition.status === 'open' && onBoost && (
                     <button
                       onClick={() => { onBoost(requisition); setShowMenu(false); }}
@@ -1191,21 +1515,14 @@ const RequisitionCard = ({ requisition, onView, onEdit, onDelete, onStatusChange
           </div>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-4 pt-4 border-t border-gray-200">
+        {/* Stats — Applications + Views (fix M: fake Messages stub removed) */}
+        <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-200">
           <button
             onClick={() => onViewApplications(requisition)}
             className="text-center hover:bg-gray-50 rounded p-2"
           >
             <div className="text-2xl font-semibold text-primary-600">{requisition.applications_count}</div>
             <div className="text-xs text-gray-600">Applications</div>
-          </button>
-          <button
-            onClick={() => onViewMessages(requisition)}
-            className="text-center hover:bg-gray-50 rounded p-2"
-          >
-            <div className="text-2xl font-semibold text-gray-900">{requisition.messages_count}</div>
-            <div className="text-xs text-gray-600">Messages</div>
           </button>
           <div className="text-center p-2">
             <div className="text-2xl font-semibold text-gray-900">{requisition.views_count}</div>
@@ -1217,7 +1534,7 @@ const RequisitionCard = ({ requisition, onView, onEdit, onDelete, onStatusChange
   );
 };
 
-// Modal Components (unchanged - they already work with the interface)
+// Modal Components
 const CreateRequisitionModal = ({ recruiters, currentRecruiterId, onClose, onSuccess }: CreateRequisitionModalProps) => {
   const [formData, setFormData] = useState({
     job_title: '',
@@ -1225,7 +1542,7 @@ const CreateRequisitionModal = ({ recruiters, currentRecruiterId, onClose, onSuc
     company_logo: '',
     department: '',
     location: '',
-    mode: 'On-site',
+    mode: 'on-site',
     employment_type: 'Full-time',
     experience_level: 'Mid',
     experience_required: '',
@@ -1238,23 +1555,31 @@ const CreateRequisitionModal = ({ recruiters, currentRecruiterId, onClose, onSuc
     requirements: '',
     responsibilities: '',
     status: 'draft',
-    recruiter_id: currentRecruiterId || '',
-    applications_count: ''
+    recruiter_id: currentRecruiterId || ''
   });
+  const [submitting, setSubmitting] = useState(false);
+
+  useEscapeToClose({ enabled: true, onEscape: onClose });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitting) return; // guard against double-submit / double-click
+    setSubmitting(true);
     try {
       await onSuccess({
         ...formData,
+        // Normalize to the select's option values (previously the state default
+        // 'On-site' did not match the lowercase option values).
+        mode: normalizeWorkMode(formData.mode),
         salary_range_min: formData.salary_range_min ? parseInt(formData.salary_range_min) : undefined,
         salary_range_max: formData.salary_range_max ? parseInt(formData.salary_range_max) : undefined,
-        applications_count: formData.applications_count ? parseInt(formData.applications_count) : 0,
         requirements: formData.requirements.split('\n').filter(r => r.trim()),
         responsibilities: formData.responsibilities.split('\n').filter(r => r.trim()),
       });
     } catch (error) {
-      logger.error('Error in form submission', error);
+      logger.error('Error in form submission', toError(error));
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -1264,10 +1589,7 @@ const CreateRequisitionModal = ({ recruiters, currentRecruiterId, onClose, onSuc
         <div
           className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
           onClick={onClose}
-          onKeyDown={(e) => e.key === 'Escape' && onClose()}
-          role="button"
-          tabIndex={0}
-          aria-label="Close modal"
+          aria-hidden="true"
         ></div>
 
         <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full sm:p-6">
@@ -1486,20 +1808,6 @@ const CreateRequisitionModal = ({ recruiters, currentRecruiterId, onClose, onSuc
                   placeholder="e.g., 2500000"
                 />
               </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Applications Count
-                </label>
-                <input
-                  type="number"
-                  value={formData.applications_count}
-                  onChange={(e) => setFormData({ ...formData, applications_count: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  placeholder="e.g., 0"
-                  min="0"
-                />
-              </div>
             </div>
 
             <div className="col-span-2">
@@ -1573,15 +1881,17 @@ const CreateRequisitionModal = ({ recruiters, currentRecruiterId, onClose, onSuc
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                disabled={submitting}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md hover:bg-primary-700"
+                disabled={submitting}
+                className="px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Create Requisition
+                {submitting ? 'Creating...' : 'Create Requisition'}
               </button>
             </div>
           </form>
@@ -1599,8 +1909,10 @@ const EditRequisitionModal = ({ requisition, recruiters, onClose, onSuccess }: E
     department: requisition.department,
     location: requisition.location,
     mode: requisition.mode || 'on-site',  // ADD THIS with default
-    employment_type: requisition.employment_type,
-    experience_level: requisition.experience_level,
+    // Widen DB literal unions ('Full-time' | …) to plain strings so the
+    // select-controlled state accepts user input without type friction.
+    employment_type: String(requisition.employment_type ?? ''),
+    experience_level: String(requisition.experience_level ?? ''),
     experience_required: requisition.experience_required || '',
     skills_required: Array.isArray(requisition.skills_required) ? requisition.skills_required.join(', ') : (typeof requisition.skills_required === 'string' ? requisition.skills_required : ''),
     deadline: requisition.deadline || '',
@@ -1610,19 +1922,25 @@ const EditRequisitionModal = ({ requisition, recruiters, onClose, onSuccess }: E
     description: requisition.description,
     requirements: Array.isArray(requisition.requirements) ? requisition.requirements.join('\n') : (typeof requisition.requirements === 'string' ? requisition.requirements : ''),
     responsibilities: Array.isArray(requisition.responsibilities) ? requisition.responsibilities.join('\n') : (typeof requisition.responsibilities === 'string' ? requisition.responsibilities : ''),
-    status: requisition.status,
-    recruiter_id: requisition.recruiter_id || '',
-    applications_count: requisition.applications_count?.toString() || '0'
+    status: String(requisition.status ?? 'draft'),
+    recruiter_id: requisition.recruiter_id || ''
   });
+
+  const [submitting, setSubmitting] = useState(false);
+
+  useEscapeToClose({ enabled: true, onEscape: onClose });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitting) return; // guard against double-submit / double-click
+    setSubmitting(true);
     try {
       await onSuccess({
         ...formData,
         company_name: formData.company_name,
         company_logo: formData.company_logo || null,
-        mode: formData.mode || 'on-site',
+        // Normalize to the select's option values.
+        mode: normalizeWorkMode(formData.mode || 'on-site'),
         experience_required: formData.experience_required || null,
         skills_required: formData.skills_required
           ? formData.skills_required.split(',').map(s => s.trim()).filter(s => s)
@@ -1631,12 +1949,13 @@ const EditRequisitionModal = ({ requisition, recruiters, onClose, onSuccess }: E
         benefits: formData.benefits.split('\n').filter(b => b.trim()),
         salary_range_min: formData.salary_range_min ? parseInt(formData.salary_range_min) : undefined,
         salary_range_max: formData.salary_range_max ? parseInt(formData.salary_range_max) : undefined,
-        applications_count: formData.applications_count ? parseInt(formData.applications_count) : 0,
         requirements: formData.requirements.split('\n').filter(r => r.trim()),
         responsibilities: formData.responsibilities.split('\n').filter(r => r.trim()),
       });
     } catch (error) {
-      logger.error('Error in form submission', error);
+      logger.error('Error in form submission', toError(error));
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -1646,10 +1965,7 @@ const EditRequisitionModal = ({ requisition, recruiters, onClose, onSuccess }: E
         <div
           className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
           onClick={onClose}
-          onKeyDown={(e) => e.key === 'Escape' && onClose()}
-          role="button"
-          tabIndex={0}
-          aria-label="Close modal"
+          aria-hidden="true"
         ></div>
 
         <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full sm:p-6">
@@ -1800,20 +2116,6 @@ const EditRequisitionModal = ({ requisition, recruiters, onClose, onSuccess }: E
                   placeholder="e.g., 2500000"
                 />
               </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Applications Count
-                </label>
-                <input
-                  type="number"
-                  value={formData.applications_count}
-                  onChange={(e) => setFormData({ ...formData, applications_count: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  placeholder="e.g., 0"
-                  min="0"
-                />
-              </div>
             </div>
 
             <div>
@@ -1860,15 +2162,17 @@ const EditRequisitionModal = ({ requisition, recruiters, onClose, onSuccess }: E
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                disabled={submitting}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md hover:bg-primary-700"
+                disabled={submitting}
+                className="px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Update Requisition
+                {submitting ? 'Updating...' : 'Update Requisition'}
               </button>
             </div>
           </form>
@@ -1879,16 +2183,15 @@ const EditRequisitionModal = ({ requisition, recruiters, onClose, onSuccess }: E
 };
 
 const ViewRequisitionModal = ({ requisition, onClose }: RequisitionModalProps) => {
+  useEscapeToClose({ enabled: true, onEscape: onClose });
+
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20">
         <div
           className="fixed inset-0 bg-gray-500 bg-opacity-75"
           onClick={onClose}
-          onKeyDown={(e) => e.key === 'Escape' && onClose()}
-          role="button"
-          tabIndex={0}
-          aria-label="Close modal"
+          aria-hidden="true"
         ></div>
         <div className="relative bg-white rounded-lg max-w-4xl w-full p-6">
           <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
@@ -1923,10 +2226,115 @@ const ViewRequisitionModal = ({ requisition, onClose }: RequisitionModalProps) =
   );
 };
 
+// Nested candidate detail overlay for ApplicationsModal. Extracted into its
+// own component so it gets its own keydown listener for Escape; the parent
+// ApplicationsModal pauses its own Escape handler while this is open.
+const LearnerDetailOverlay = ({
+  learner,
+  onClose,
+  getStatusColor
+}: {
+  learner: Application;
+  onClose: () => void;
+  getStatusColor: (status: string) => string;
+}) => {
+  useEscapeToClose({ enabled: true, onEscape: onClose });
+  const profile = learner.profile;
+
+  return (
+    <div
+      className="fixed inset-0 z-[60] overflow-y-auto"
+      onClick={onClose}
+      aria-hidden="true"
+    >
+      <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20">
+        <div className="fixed inset-0 bg-gray-900 bg-opacity-75"></div>
+        <div className="relative bg-white rounded-lg max-w-3xl w-full p-6" onClick={(e) => e.stopPropagation()}>
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+          >
+            <XCircleIcon className="h-6 w-6" />
+          </button>
+          <h3 className="text-2xl font-bold mb-6">{profile.name || 'Candidate Details'}</h3>
+
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-500">Passport ID</label>
+                <p className="mt-1 text-gray-900">{asDetailText(profile.passport_id)}</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-500">Registration Number</label>
+                <p className="mt-1 text-gray-900">{asDetailText(profile.registration_number)}</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-500">Date of Birth</label>
+                <p className="mt-1 text-gray-900">{asDetailText(profile.date_of_birth)}</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-500">Age</label>
+                <p className="mt-1 text-gray-900">{asDetailText(profile.age)}</p>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-500">Course</label>
+              <p className="mt-1 text-gray-900">{asDetailText(profile.course)}</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-500">Branch/Field</label>
+              <p className="mt-1 text-gray-900">{asDetailText(profile.branch_field)}</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-500">Skills</label>
+              <p className="mt-1 text-gray-900">{asDetailText(profile.skill)}</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-500">Alternate Contact</label>
+              <p className="mt-1 text-gray-900">{asDetailText(profile.alternate_number)}</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-500">Application Status</label>
+              <span className={`inline-block mt-1 px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(learner.application_status)}`}>
+                {learner.application_status?.replace('_', ' ').toUpperCase() || 'UNKNOWN'}
+              </span>
+            </div>
+
+            <div className="pt-4 border-t flex space-x-3">
+              <button
+                onClick={() => window.open(`mailto:${profile.email}`, '_blank')}
+                className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors"
+              >
+                Send Email
+              </button>
+              <button
+                onClick={onClose}
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const ApplicationsModal = ({ requisition, onClose }: RequisitionModalProps) => {
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedLearner, setSelectedLearner] = useState<Application | null>(null);
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
+
+  // Escape closes this modal — but only when the nested learner-detail
+  // overlay is not open (that overlay handles its own Escape).
+  useEscapeToClose({ enabled: !selectedLearner, onEscape: onClose });
 
   useEffect(() => {
     loadApplications();
@@ -1935,16 +2343,41 @@ const ApplicationsModal = ({ requisition, onClose }: RequisitionModalProps) => {
   const loadApplications = async () => {
     setLoading(true);
     try {
-      const data = await apiPost<any[]>('/recruiter/actions', {
+      const result: any = await apiPost('/recruiter/actions', {
         action: 'get-applications-by-opportunity',
         opportunityId: requisition.id
       });
 
-      setApplications(data || []);
+      // apiPost returns the { success, data, error, meta } envelope; the
+      // backend action returns the row array directly in result.data.
+      const rows = result?.data;
+      setApplications(Array.isArray(rows) ? rows : []);
     } catch (error) {
-      logger.error('Error loading applications', error);
+      logger.error('Error loading applications', toError(error));
+      toast.error('Failed to load applications. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Wire the previously dead Reject button: backend endpoint is
+  // POST /api/opportunities { action: 'update-application-status', id, status }.
+  const handleRejectApplication = async (app: Application) => {
+    if (rejectingId) return; // one in-flight rejection at a time
+    setRejectingId(app.id);
+    try {
+      await apiPost('/opportunities', {
+        action: 'update-application-status',
+        id: app.id,
+        status: 'rejected'
+      });
+      setApplications(prev => prev.map(a => (a.id === app.id ? { ...a, application_status: 'rejected' } : a)));
+      toast.success('Application marked as rejected');
+    } catch (error) {
+      logger.error('Error rejecting application', toError(error));
+      toast.error(error instanceof ApiError ? error.message : 'Failed to reject application');
+    } finally {
+      setRejectingId(null);
     }
   };
 
@@ -1995,10 +2428,7 @@ const ApplicationsModal = ({ requisition, onClose }: RequisitionModalProps) => {
         <div
           className="fixed inset-0 bg-gray-500 bg-opacity-75"
           onClick={onClose}
-          onKeyDown={(e) => e.key === 'Escape' && onClose()}
-          role="button"
-          tabIndex={0}
-          aria-label="Close modal"
+          aria-hidden="true"
         ></div>
         <div className="relative bg-white rounded-lg max-w-6xl w-full p-6 max-h-[90vh] overflow-y-auto">
           <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
@@ -2038,16 +2468,14 @@ const ApplicationsModal = ({ requisition, onClose }: RequisitionModalProps) => {
                       Experience
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Rating
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {applications.map((app) => {
-                    const profile = app.learners?.profile || {};
+                    // Typed fallback avoids the `LearnerProfile | {}` union leak.
+                    const profile = (app.learners?.profile || {}) as LearnerProfile;
                     const relativeTime = formatRelativeTime(app.applied_at);
 
                     return (
@@ -2076,7 +2504,7 @@ const ApplicationsModal = ({ requisition, onClose }: RequisitionModalProps) => {
                         {/* Position */}
                         <td className="px-4 py-4">
                           <div className="text-sm text-gray-900 font-medium">
-                            {profile.branch_field || profile.course || 'N/A'}
+                            {asDetailText(profile.branch_field || profile.course)}
                           </div>
                         </td>
 
@@ -2095,24 +2523,7 @@ const ApplicationsModal = ({ requisition, onClose }: RequisitionModalProps) => {
 
                         {/* Experience */}
                         <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {profile.course || 'N/A'}
-                        </td>
-
-                        {/* Rating */}
-                        <td className="px-4 py-4 whitespace-nowrap">
-                          <div className="flex items-center space-x-1">
-                            {[1, 2, 3, 4, 5].map((star) => (
-                              <svg
-                                key={star}
-                                className={`h-5 w-5 ${star <= 4 ? 'text-yellow-400' : 'text-gray-300'
-                                  }`}
-                                fill="currentColor"
-                                viewBox="0 0 20 20"
-                              >
-                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                              </svg>
-                            ))}
-                          </div>
+                          {asDetailText(profile.course)}
                         </td>
 
                         {/* Actions */}
@@ -2126,8 +2537,10 @@ const ApplicationsModal = ({ requisition, onClose }: RequisitionModalProps) => {
                               <EyeIcon className="h-4 w-4" />
                             </button>
                             <button
-                              className="p-2 text-red-600 hover:bg-red-50 rounded-md border border-red-600 transition-colors"
-                              title="Reject"
+                              onClick={() => handleRejectApplication(app)}
+                              disabled={rejectingId !== null || app.application_status === 'rejected'}
+                              className="p-2 text-red-600 hover:bg-red-50 rounded-md border border-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                              title={app.application_status === 'rejected' ? 'Already rejected' : 'Reject'}
                             >
                               <XCircleIcon className="h-4 w-4" />
                             </button>
@@ -2143,118 +2556,12 @@ const ApplicationsModal = ({ requisition, onClose }: RequisitionModalProps) => {
 
           {/* Learner Detail Modal */}
           {selectedLearner && (
-            <div
-              className="fixed inset-0 z-60 overflow-y-auto"
-              onClick={() => setSelectedLearner(null)}
-              onKeyDown={(e) => e.key === 'Escape' && setSelectedLearner(null)}
-              role="button"
-              tabIndex={0}
-              aria-label="Close learner details modal"
-            >
-              <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20">
-                <div className="fixed inset-0 bg-gray-900 bg-opacity-75"></div>
-                <div className="relative bg-white rounded-lg max-w-3xl w-full p-6" onClick={(e) => e.stopPropagation()}>
-                  <button
-                    onClick={() => setSelectedLearner(null)}
-                    className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
-                  >
-                    <XCircleIcon className="h-6 w-6" />
-                  </button>
-                  <h3 className="text-2xl font-bold mb-6">{selectedLearner.profile.name || 'Candidate Details'}</h3>
-
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-500">Passport ID</label>
-                        <p className="mt-1 text-gray-900">{selectedLearner.profile.nm_id || 'N/A'}</p>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-500">Registration Number</label>
-                        <p className="mt-1 text-gray-900">{selectedLearner.profile.registration_number || 'N/A'}</p>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-500">Date of Birth</label>
-                        <p className="mt-1 text-gray-900">{selectedLearner.profile.date_of_birth || 'N/A'}</p>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-500">Age</label>
-                        <p className="mt-1 text-gray-900">{selectedLearner.profile.age || 'N/A'}</p>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-500">Course</label>
-                      <p className="mt-1 text-gray-900">{selectedLearner.profile.course || 'N/A'}</p>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-500">Branch/Field</label>
-                      <p className="mt-1 text-gray-900">{selectedLearner.profile.branch_field || 'N/A'}</p>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-500">Skills</label>
-                      <p className="mt-1 text-gray-900">{selectedLearner.profile.skill || 'N/A'}</p>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-500">Alternate Contact</label>
-                      <p className="mt-1 text-gray-900">{selectedLearner.profile.alternate_number || 'N/A'}</p>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-500">Application Status</label>
-                      <span className={`inline-block mt-1 px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(selectedLearner.application_status)}`}>
-                        {selectedLearner.application_status?.replace('_', ' ').toUpperCase() || 'UNKNOWN'}
-                      </span>
-                    </div>
-
-                    <div className="pt-4 border-t flex space-x-3">
-                      <button
-                        onClick={() => window.open(`mailto:${selectedLearner.profile.email}`, '_blank')}
-                        className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors"
-                      >
-                        Send Email
-                      </button>
-                      <button
-                        onClick={() => setSelectedLearner(null)}
-                        className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
-                      >
-                        Close
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <LearnerDetailOverlay
+              learner={selectedLearner}
+              onClose={() => setSelectedLearner(null)}
+              getStatusColor={getStatusColor}
+            />
           )}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const MessagesModal = ({ requisition, onClose }: RequisitionModalProps) => {
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20">
-        <div
-          className="fixed inset-0 bg-gray-500 bg-opacity-75"
-          onClick={onClose}
-          onKeyDown={(e) => e.key === 'Escape' && onClose()}
-          role="button"
-          tabIndex={0}
-          aria-label="Close modal"
-        ></div>
-        <div className="relative bg-white rounded-lg max-w-4xl w-full p-6">
-          <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
-            <XCircleIcon className="h-6 w-6" />
-          </button>
-          <h2 className="text-2xl font-bold mb-4">Messages for {requisition.job_title}</h2>
-          <p className="text-gray-600 mb-4">{requisition.messages_count} messages</p>
-          <div className="text-center py-12 text-gray-500">
-            Messages will be displayed here
-          </div>
         </div>
       </div>
     </div>

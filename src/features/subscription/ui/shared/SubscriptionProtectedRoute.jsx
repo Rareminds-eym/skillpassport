@@ -23,6 +23,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
+import { ExclamationTriangleIcon } from '@heroicons/react/24/outline';
+import toast from 'react-hot-toast';
 import Loader from '@/shared/ui/Loader';
 import SubscriptionBanner from './SubscriptionBanner';
 
@@ -45,6 +47,20 @@ const GUARD_STATES = {
   ACCESS_GRANTED: 'access_granted',
   ACCESS_DENIED: 'access_denied',
   ERROR: 'error',
+  SUBSCRIPTION_UNAVAILABLE: 'subscription_unavailable',
+};
+
+/**
+ * Subscription error phases (graded error policy).
+ *
+ * - RETRYING:      one automatic retry is pending -> keep verifying (loader)
+ * - FAIL_OPEN:     recoverable (5xx/network)      -> allow access with banner + one scheduled re-verification
+ * - FAIL_CLOSED:   fatal 4xx (auth/forbidden)   -> block access behind an explicit Retry screen
+ */
+const ERROR_PHASES = {
+  RETRYING: 'retrying',
+  FAIL_OPEN: 'failure_recoverable',
+  FAIL_CLOSED: 'failure_fatal',
 };
 
 /** Configuration */
@@ -53,6 +69,8 @@ const CONFIG = {
   POST_PAYMENT_RETRY_DELAY_MS: 1000,
   POST_PAYMENT_TIMEOUT_MS: 10000,
   SUBSCRIPTION_CHECK_TIMEOUT_MS: 15000,
+  SUBSCRIPTION_ERROR_AUTO_RETRY_DELAY_MS: 2000, // single automatic retry shortly after first failure
+  SUBSCRIPTION_ERROR_REVERIFY_DELAY_MS: 60000, // single silent re-verification while page stays open (fail-open branch)
 };
 
 /** User type mapping from URL path */
@@ -89,6 +107,38 @@ function getUserTypeFromPath(pathname) {
     }
   }
   return 'learner'; // fallback
+}
+
+/**
+ * Classify a subscription error into a graded ERROR_PHASES.FAIL_* bucket.
+ *
+ * NOTE: subscriptionService.getActiveSubscription() flattens API/network errors
+ * (including ApiError instances that carry HTTP status) into plain
+ * `Error(result.error)` messages, so the HTTP status is usually lost by the
+ * time we see the error. We therefore prefer an explicit numeric `status`
+ * when present and fall back to message heuristics for auth-style failures;
+ * everything else (network "Failed to fetch", timeouts, unknown shapes) is
+ * treated as a recoverable (5xx/network-style) failure that may fail open.
+ */
+function classifySubscriptionError(error) {
+  if (!error) return null;
+
+  // Explicit status wins (present when ApiError survives the fetch layer).
+  const status = typeof error.status === 'number' ? error.status : undefined;
+  if (status != null) {
+    return status >= 500 ? ERROR_PHASES.FAIL_OPEN : ERROR_PHASES.FAIL_CLOSED;
+  }
+
+  const message = String(error.message || '');
+  if (
+    /\b(40[0-9])\b/i.test(message) ||
+    /unauthorized|forbidden|not[ _-]?authenticated|unauthenticated|permission[ _-]?denied|invalid[ _-]?(api[ _-]?key|token)/i.test(message)
+  ) {
+    return ERROR_PHASES.FAIL_CLOSED;
+  }
+
+  // Network errors, timeouts, 5xx-style messages and unknown shapes -> recoverable
+  return ERROR_PHASES.FAIL_OPEN;
 }
 
 /**
@@ -240,6 +290,7 @@ function useGuardState({
   hasAccess,
   isRefetching,
   subscriptionError,
+  subscriptionErrorPhase,
   isPostPayment,
   postPaymentSync,
 }) {
@@ -291,9 +342,19 @@ function useGuardState({
       return GUARD_STATES.CHECKING_SUBSCRIPTION;
     }
 
-    // Step 7: Subscription error (allow with warning)
+    // Step 7: Subscription error — graded policy (see useSubscriptionFailureRecovery):
+    // while an automatic retry is pending we keep verifying; 4xx failures close
+    // the route; recoverable (5xx/network) failures fail open with a banner.
     if (subscriptionError) {
-      log.info('Step 7: subscriptionError → ERROR');
+      if (subscriptionErrorPhase === ERROR_PHASES.RETRYING) {
+        log.info('Step 7: subscriptionError, auto-retry pending → CHECKING_SUBSCRIPTION');
+        return GUARD_STATES.CHECKING_SUBSCRIPTION;
+      }
+      if (subscriptionErrorPhase === ERROR_PHASES.FAIL_CLOSED) {
+        log.warn('Step 7: subscriptionError is a 4xx failure → SUBSCRIPTION_UNAVAILABLE (fail-closed)');
+        return GUARD_STATES.SUBSCRIPTION_UNAVAILABLE;
+      }
+      log.warn('Step 7: subscriptionError is recoverable (5xx/network) → ERROR (fail-open with banner)');
       return GUARD_STATES.ERROR;
     }
 
@@ -325,6 +386,7 @@ function useGuardState({
     hasAccess,
     isRefetching,
     subscriptionError,
+    subscriptionErrorPhase,
     isPostPayment,
     postPaymentSync,
   ]);
@@ -344,6 +406,152 @@ function useGuardState({
   }, [computedState, hasAccess, isPostPayment, postPaymentSync]);
 
   return state;
+}
+
+// ============================================================================
+// CUSTOM HOOK: useSubscriptionFailureRecovery
+// ============================================================================
+
+/**
+ * Hook implementing the graded subscription-error policy:
+ *
+ * 1. On the first subscription error, ONE automatic retry is scheduled after
+ *    SUBSCRIPTION_ERROR_AUTO_RETRY_DELAY_MS (2s) — while pending the guard
+ *    stays in CHECKING_SUBSCRIPTION (loader).
+ * 2. If the error persists:
+ *    - FAIL_OPEN (5xx/network): the route guard will allow access with the
+ *      existing error banner AND one silent automatic re-verification is
+ *      scheduled after SUBSCRIPTION_ERROR_REVERIFY_DELAY_MS (60s). If that
+ *      verification succeeds, the error clears and access is granted normally.
+ *    - FAIL_CLOSED (4xx: auth/forbidden/etc): the guard fails CLOSED — an
+ *      explicit Retry screen is shown and there is NO dashboard passthrough.
+ *
+ * A successful verification resets the entire cycle (the automatic retry and
+ * re-verification flags included), and `manualRetry` restarts the full graded
+ * cycle for explicit user retries.
+ *
+ * Returns { phase, manualRetry } where phase is one of ERROR_PHASES or null.
+ */
+function useSubscriptionFailureRecovery(subscriptionError, refreshSubscription) {
+  // Latest fetcher / error kept in refs so the scheduling effects below are
+  // not re-armed (or cancelled) by unstable callback/error identities.
+  const refreshRef = useRef(refreshSubscription);
+  const errorRef = useRef(subscriptionError);
+
+  const [retrying, setRetrying] = useState(false);
+  const [retryNonce, setRetryNonce] = useState(0); // bumped by manual retry to restart the cycle
+  const autoRetryRanRef = useRef(false);
+  const reverifyRanRef = useRef(false);
+  const retryTimerRef = useRef(null);
+  const reverifyTimerRef = useRef(null);
+  const mountedRef = useRef(true);
+
+  const clearTimers = useCallback(() => {
+    if (retryTimerRef.current) {
+      clearTimeout(retryTimerRef.current);
+      retryTimerRef.current = null;
+    }
+    if (reverifyTimerRef.current) {
+      clearTimeout(reverifyTimerRef.current);
+      reverifyTimerRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      clearTimers();
+    };
+  }, [clearTimers]);
+
+  // Keep refs in sync BEFORE any effect/callback reads them.
+  useEffect(() => {
+    refreshRef.current = refreshSubscription;
+    errorRef.current = subscriptionError;
+  }, [subscriptionError, refreshSubscription]);
+
+  // A successful verification resets the whole failure cycle.
+  useEffect(() => {
+    if (subscriptionError) return;
+    clearTimers();
+    autoRetryRanRef.current = false;
+    reverifyRanRef.current = false;
+    setRetrying(false);
+  }, [subscriptionError, clearTimers]);
+
+  // 1) Single automatic retry shortly after the first failure.
+  useEffect(() => {
+    if (!subscriptionError || autoRetryRanRef.current) return undefined;
+    autoRetryRanRef.current = true;
+    setRetrying(true);
+    log.warn(
+      'Subscription check failed; retrying once after',
+      CONFIG.SUBSCRIPTION_ERROR_AUTO_RETRY_DELAY_MS,
+      'ms:',
+      subscriptionError
+    );
+    retryTimerRef.current = setTimeout(() => {
+      // Skip when unmounted or already recovered while the timer was pending.
+      if (!mountedRef.current || !errorRef.current) return;
+      setRetrying(false);
+      refreshRef.current();
+    }, CONFIG.SUBSCRIPTION_ERROR_AUTO_RETRY_DELAY_MS);
+    // No cleanup here: a new error object while pending must not cancel the
+    // in-flight retry; unmount handles cancellation.
+    return undefined;
+  }, [subscriptionError, retryNonce]);
+
+  // 2) Persistent-error branches: schedule the single re-verification for
+  //    recoverable (5xx/network) errors and alert on fatal 4xx ones.
+  useEffect(() => {
+    if (!subscriptionError || retrying) return undefined;
+
+    const grade = classifySubscriptionError(subscriptionError);
+    if (grade === ERROR_PHASES.FAIL_OPEN) {
+      if (reverifyRanRef.current) return undefined;
+      reverifyRanRef.current = true;
+      log.warn(
+        'Recoverable subscription error; scheduling one re-verification after',
+        CONFIG.SUBSCRIPTION_ERROR_REVERIFY_DELAY_MS,
+        'ms'
+      );
+      toast.error(
+        'Unable to verify subscription status. Some features may be limited. We will re-check automatically.',
+        { duration: 8000 }
+      );
+      reverifyTimerRef.current = setTimeout(() => {
+        if (!mountedRef.current || !errorRef.current) return; // unmounted or recovered meanwhile
+        refreshRef.current();
+      }, CONFIG.SUBSCRIPTION_ERROR_REVERIFY_DELAY_MS);
+      return undefined;
+    }
+
+    if (grade === ERROR_PHASES.FAIL_CLOSED) {
+      // Deduplicated: never spam toasts while the Retry screen is up.
+      toast.error('Subscription verification failed. Please retry.', { id: 'subscription-fail-closed' });
+    }
+    return undefined;
+  }, [subscriptionError, retrying]);
+
+  // Manual retry restarts the full graded cycle (single retry -> re-grade).
+  const manualRetry = useCallback(() => {
+    if (!errorRef.current) return;
+    log.info('Manual subscription retry requested');
+    clearTimers();
+    autoRetryRanRef.current = false;
+    reverifyRanRef.current = false;
+    setRetrying(true);
+    setRetryNonce((n) => n + 1);
+  }, [clearTimers]);
+
+  const phase = useMemo(() => {
+    if (!subscriptionError) return null;
+    if (retrying) return ERROR_PHASES.RETRYING;
+    return classifySubscriptionError(subscriptionError);
+  }, [subscriptionError, retrying]);
+
+  return { phase, manualRetry };
 }
 
 // ============================================================================
@@ -396,6 +604,12 @@ const SubscriptionProtectedRoute = ({
   // Post-payment synchronization
   const postPaymentSync = usePostPaymentSync(isPostPayment, hasAccess, refreshSubscription);
 
+  // Graded subscription-error policy:
+  // retry once automatically -> fail-open (5xx/network, banner + re-verification)
+  //                          -> fail-closed (4xx, explicit Retry screen)
+  const { phase: subscriptionErrorPhase, manualRetry: manualSubscriptionRetry } =
+    useSubscriptionFailureRecovery(subscriptionError, refreshSubscription);
+
   // Guard state machine
   const guardState = useGuardState({
     authLoading,
@@ -407,6 +621,7 @@ const SubscriptionProtectedRoute = ({
     hasAccess,
     isRefetching,
     subscriptionError,
+    subscriptionErrorPhase,
     isPostPayment,
     postPaymentSync,
   });
@@ -445,14 +660,43 @@ const SubscriptionProtectedRoute = ({
     return <Loader />;
   }
 
-  // Error state - allow access with warning
+  // Subscription unavailable (4xx client error) - fail CLOSED:
+  // explicit Retry screen, NO dashboard passthrough and no redirect loops.
+  if (guardState === GUARD_STATES.SUBSCRIPTION_UNAVAILABLE) {
+    log.error('Subscription check failed with a client error, blocking access:', subscriptionError);
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+        <div className="bg-white border border-red-200 rounded-2xl p-8 text-center max-w-md shadow-sm">
+          <ExclamationTriangleIcon className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <h2 className="text-lg font-semibold text-gray-900 mb-2">
+            Subscription unavailable
+          </h2>
+          <p className="text-sm text-gray-600 mb-6">
+            We could not verify your subscription. Your session may have expired, or you
+            may not have permission to this area. Please retry or sign in again.
+          </p>
+          <button
+            type="button"
+            onClick={manualSubscriptionRetry}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state - fail-open for recoverable (5xx/network) errors only:
+  // keep the existing prominent banner + children; ONE automatic
+  // re-verification is scheduled by useSubscriptionFailureRecovery.
   if (guardState === GUARD_STATES.ERROR) {
-    log.error('Subscription check error, allowing access with warning:', subscriptionError);
+    log.error('Subscription check error (recoverable), allowing access with warning:', subscriptionError);
     return (
       <>
         <SubscriptionBanner
           type="error"
-          message="Unable to verify subscription status. Some features may be limited."
+          message="Unable to verify subscription status. Some features may be limited. We will re-check automatically shortly."
         />
         {children}
       </>

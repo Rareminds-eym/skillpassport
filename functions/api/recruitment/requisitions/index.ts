@@ -6,6 +6,7 @@
 import { withAuth } from '../../../lib/auth';
 import { getServiceClient } from '../../../lib/supabase';
 import { verifyOrgAccess, PERMISSIONS } from '../../../lib/permissions';
+import { getActiveOrgId } from '../../../lib/org-ownership';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 
 /**
@@ -18,15 +19,17 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
     const supabase = getServiceClient(env as any);
 
     const url = new URL(context.request.url);
-    const orgId = url.searchParams.get('org_id') || user.org_id;
+    // 🔒 Legacy path: the org is resolved from the caller (JWT org claim or
+    // active membership) — the ?org_id query parameter is never trusted, and a
+    // caller without a resolvable org is rejected (403, fail-closed).
+    const orgId = await getActiveOrgId(supabase, user as any);
+    if (!orgId) {
+        return Response.json({ error: 'User is not associated with an organization' }, { status: 403 });
+    }
     const status = url.searchParams.get('status');
     const department = url.searchParams.get('department');
     const limit = parseInt(url.searchParams.get('limit') || '50', 10);
     const offset = parseInt(url.searchParams.get('offset') || '0', 10);
-
-    if (!orgId) {
-        return Response.json({ error: 'Organization ID is required' }, { status: 400 });
-    }
 
     // Verify user has access to view candidates
     const access = await verifyOrgAccess(supabase, user.sub, orgId, PERMISSIONS.VIEW_CANDIDATES);
@@ -83,10 +86,13 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
     }
 
-    const orgId = body.organization_id || user.org_id;
+    // 🔒 Legacy path: body.organization_id is ignored — inserts are forced into
+    // the caller's active organization; a caller without a resolvable org is
+    // rejected (403, fail-closed).
+    const orgId = await getActiveOrgId(supabase, user as any);
 
     if (!orgId) {
-        return Response.json({ error: 'Organization ID is required' }, { status: 400 });
+        return Response.json({ error: 'User is not associated with an organization' }, { status: 403 });
     }
 
     // Verify user has permission to create jobs
@@ -96,10 +102,13 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     }
 
     try {
-        // Set org-scoped fields
+        // Set org-scoped fields (server-owned)
         body.organization_id = orgId;
         body.created_by_uuid = user.sub;
         body.approval_status = body.approval_status || 'pending';
+        // 🔒 Strip client-controlled identity fields before insert
+        delete body.id;
+        delete body.created_at;
 
         const { data, error } = await supabase
             .from('requisitions')

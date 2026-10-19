@@ -30,12 +30,16 @@ export const onRequest = withAuth(async (context: AuthenticatedContext) => {
   try {
     // Fetch user's organization from organization_members table.
     // Only an active membership counts (M18 adjunct) — suspended membership
-    // must not grant org-scoped access.
+    // must not grant org-scoped access. limit(1) + newest-first ordering so
+    // .maybeSingle() can never synthesize PGRST116 when the user holds
+    // multiple memberships.
     const { data: memberData, error } = await supabase
       .from('organization_members')
       .select('organization_id, status')
       .eq('user_id', user.id)
       .eq('status', 'active')
+      .order('created_at', { ascending: false })
+      .limit(1)
       .maybeSingle();
 
     if (error || !memberData?.organization_id) {
@@ -56,9 +60,9 @@ export const onRequest = withAuth(async (context: AuthenticatedContext) => {
     // Inject organizationId into context for all downstream handlers
     (context.data as any).organizationId = memberData.organization_id;
 
+    // 🔒 Logging hygiene: no member emails in logs
     console.log('[recruiter-middleware] Organization context injected:', {
       userId: user.id,
-      email: user.email,
       organizationId: memberData.organization_id
     });
 

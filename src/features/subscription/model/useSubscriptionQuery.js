@@ -143,7 +143,13 @@ const fetchSubscription = async (userId) => {
   const result = await getActiveSubscription();
 
   if (!result.success) {
-    throw new Error(result.error || 'Failed to fetch subscription');
+    // Carry the HTTP status / error code on the thrown error so the graded
+    // fail-open/fail-closed classification in SubscriptionProtectedRoute can
+    // distinguish 4xx (auth — fail closed) from 5xx/network (fail open).
+    const fetchError = new Error(result.error || 'Failed to fetch subscription');
+    if (result.status != null) fetchError.status = result.status;
+    if (result.code != null) fetchError.code = result.code;
+    throw fetchError;
   }
 
   if (result.data) {
@@ -173,8 +179,11 @@ export const useSubscriptionQuery = () => {
     enabled: isQueryEnabled,
     staleTime: STALE_TIME,
     gcTime: CACHE_TIME,
-    refetchOnWindowFocus: false,
-    refetchOnMount: false, // ponytail: Only fetch once per session, not on every component mount
+    // Re-verify on window focus / mount so an open page notices subscription
+    // upgrades (e.g. after payment) silently in the background. Bounded by
+    // staleTime (2 min) — no more than one background re-check per 2 minutes.
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
     retry: (failureCount, error) => {
       // ponytail: Only retry if no data exists (initial sync after login)
       // If we have data, don't retry - it's cached and fresh
@@ -260,9 +269,10 @@ export const useSubscriptionQuery = () => {
     // loading is true if:
     // 1. The query is loading (initial fetch)
     // 2. The query is pending (not yet enabled - waiting for user)
-    // 3. Query is fetching/retrying (covers queue sync delay after login)
-    // This prevents premature redirects when subscription is still syncing
-    loading: query.isLoading || query.isPending || !isQueryEnabled || query.isFetching,
+    // 3. Query is fetching/retrying without any cached data (covers queue sync delay after login)
+    // Background refetches with cached data (window focus / mount) stay silent so an
+    // open page is never blocked by a full-screen loader while re-checking quota.
+    loading: query.isLoading || query.isPending || !isQueryEnabled || (query.isFetching && !query.data),
     error: query.error,
     isRefetching: query.isRefetching,
     hasActiveSubscription,

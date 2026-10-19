@@ -1,8 +1,19 @@
 import { withAuth, getContextUser } from '../../lib/auth';
 import { getServiceClient } from '../../lib/supabase';
-import { verifyOrgAccess } from '../../lib/permissions';
+import { getActiveOrgId, getOrgOwnedOpportunityIds } from '../../lib/org-ownership';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { apiSuccess, apiError, apiDbError, apiMethodNotAllowed } from '../../lib/response';
+import type { SupabaseClient } from '@supabase/supabase-js';
+
+/**
+ * Offers API — offers are the recruiter surface's offer letters.
+ *
+ * 🔒 DB-verified schema note: `offers` has NO organization_id / created_by
+ * columns. Ownership is enforced transitively through `job_id`: an offer is
+ * accessible iff its job_id references one of the caller's org-owned
+ * opportunities (getOrgOwnedOpportunityIds). This is fail-closed — an offer
+ * with an unknown/foreign job_id is simply never returned or deletable.
+ */
 
 export const onRequest = async (context: any) => {
   if (context.request.method === 'GET') return onRequestGet(context);
@@ -10,6 +21,30 @@ export const onRequest = async (context: any) => {
   if (context.request.method === 'DELETE') return onRequestDelete(context);
   return apiMethodNotAllowed();
 };
+
+/** Whitelisted offers columns (DB-verified) that a client may supply on create. */
+const OFFER_FIELDS = [
+  'candidate_id', 'candidate_name', 'job_id', 'job_title', 'template',
+  'ctc_band', 'offered_ctc', 'offer_date', 'expiry_date', 'status',
+  'sent_via', 'benefits', 'notes', 'response_deadline',
+] as const;
+
+/**
+ * Sort-field whitelist (PostgREST `order` accepts column names — never pass
+ * raw client values into it).
+ */
+const OFFER_SORT_FIELDS = ['inserted_at', 'updated_at', 'offer_date', 'expiry_date', 'status'] as const;
+
+/** Resolve the caller's org + the set of org-owned opportunity ids (job_id scope). */
+async function resolveOrgJobScope(
+  supabase: SupabaseClient,
+  user: { id: string; org_id?: string | null }
+): Promise<string[] | null> {
+  const orgId = await getActiveOrgId(supabase, user as any);
+  if (!orgId) return null;
+  const jobIds = await getOrgOwnedOpportunityIds(supabase, orgId);
+  return jobIds;
+}
 
 const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   const user = getContextUser(context);
@@ -19,23 +54,23 @@ const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   const url = new URL(context.request.url);
   const limit = parseInt(url.searchParams.get('limit') || '100', 10);
   const offset = parseInt(url.searchParams.get('offset') || '0', 10);
-  
+
   if (isNaN(limit) || limit < 1) return apiError(400, 'VALIDATION_ERROR', 'limit must be a positive integer', context.request);
   if (isNaN(offset) || offset < 0) return apiError(400, 'VALIDATION_ERROR', 'offset must be a non-negative integer', context.request);
 
-  const orgId = url.searchParams.get('org_id') || user.org_id;
-
-  // Verify user has access to at least one organization
-  if (orgId) {
-    const access = await verifyOrgAccess(supabase, user.sub, orgId, undefined);
-    if (!access.allowed) {
-      return access.error!;
-    }
+  // 🔒 Org is ALWAYS the caller's server-resolved org — body/query org params
+  // are ignored (a client-supplied org id is never an authority).
+  const jobIds = await resolveOrgJobScope(supabase, user);
+  if (!jobIds || jobIds.length === 0) {
+    // Fail-closed: no resolvable org or no owned jobs ⇒ empty list, never an
+    // all-org dump.
+    return apiSuccess({ offers: [], total: 0 }, context.request);
   }
 
   let query = supabase
     .from('offers')
-    .select('*', { count: 'exact' });
+    .select('*', { count: 'exact' })
+    .in('job_id', jobIds); // ownership via job_id → org-owned opportunities
 
   const status = url.searchParams.get('status');
   if (status) {
@@ -60,7 +95,9 @@ const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   const expiryDateTo = url.searchParams.get('expiryDateTo');
   if (expiryDateTo) query = query.lte('expiry_date', expiryDateTo);
 
-  const sortField = url.searchParams.get('sortField') || 'inserted_at';
+  // 🔒 Sort field whitelist — never pass raw client values into `order`.
+  const sortFieldRaw = url.searchParams.get('sortField') || 'inserted_at';
+  const sortField = (OFFER_SORT_FIELDS as readonly string[]).includes(sortFieldRaw) ? sortFieldRaw : 'inserted_at';
   const sortDir = url.searchParams.get('sortDir') || 'desc';
   query = query.order(sortField as any, { ascending: sortDir === 'asc' });
 
@@ -83,9 +120,41 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON body', context.request);
   }
 
+  // 🔒 Org ALWAYS server-resolved from the caller.
+  const jobIds = await resolveOrgJobScope(supabase, user);
+  if (!jobIds) {
+    return apiError(400, 'VALIDATION_ERROR', 'Organization ID is required', context.request);
+  }
+
+  // 🔒 Field whitelist (no mass-assignment, OWASP API5). id and
+  // inserted_at/updated_at are never client-settable here.
+  const canonical: Record<string, unknown> = {};
+  OFFER_FIELDS.forEach((field) => {
+    if (body[field] !== undefined) canonical[field] = body[field];
+  });
+
+  // Required NOT NULL columns (DB-verified): candidate_name, job_title, expiry_date.
+  const missing = ['candidate_name', 'job_title', 'expiry_date'].filter((f) => !canonical[f]);
+  if (missing.length > 0) {
+    return apiError(400, 'VALIDATION_ERROR', `Missing required offer field(s): ${missing.join(', ')}`, context.request);
+  }
+
+  // 🔒 Object-level authz on create: the offer must attach to one of the
+  // caller's org-owned opportunities (fail-closed on unknown/foreign job_id).
+  const jobId = String(canonical.job_id ?? '');
+  if (!jobId || !jobIds.includes(jobId)) {
+    return apiError(403, 'FORBIDDEN', 'Offer must reference a job posted by your organization', context.request);
+  }
+
+  // status enum is constrained in DB (pending|accepted|rejected|expired|withdrawn);
+  // reject unknown values with a clear 400 instead of a cryptic DB error.
+  if (canonical.status != null && !['pending', 'accepted', 'rejected', 'expired', 'withdrawn'].includes(String(canonical.status))) {
+    return apiError(400, 'VALIDATION_ERROR', 'Invalid offer status', context.request);
+  }
+
   const { data, error } = await supabase
     .from('offers')
-    .upsert(body)
+    .insert(canonical)
     .select()
     .single();
 
@@ -102,7 +171,23 @@ const onRequestDelete = withAuth(async (context: AuthenticatedContext) => {
   const id = url.searchParams.get('id');
   if (!id) return apiError(400, 'VALIDATION_ERROR', 'id query param required', context.request);
 
-  const { error } = await supabase.from('offers').delete().eq('id', id);
+  // 🔒 Object-level authz (OWASP API1): fetch the row, resolve its job_id and
+  // verify it belongs to one of the caller's org-owned opportunities BEFORE
+  // deleting. Caller without an org scope is denied (fail-closed).
+  const jobIds = await resolveOrgJobScope(supabase, user);
+  const { data: row, error: fetchError } = await supabase
+    .from('offers')
+    .select('id, job_id')
+    .eq('id', id)
+    .limit(1)
+    .maybeSingle();
+  if (fetchError) return apiDbError(fetchError, context.request);
+  if (!row) return apiError(404, 'NOT_FOUND', 'Offer not found', context.request);
+  if (!jobIds || !jobIds.includes(String(row.job_id ?? ''))) {
+    return apiError(403, 'FORBIDDEN', 'You do not have access to this offer', context.request);
+  }
+
+  const { error } = await supabase.from('offers').delete().eq('id', row.id);
   if (error) return apiDbError(error, context.request);
   return apiSuccess({ deleted: true }, context.request);
 });

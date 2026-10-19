@@ -729,3 +729,80 @@ export async function grantAddonFulfilment(
       return { success: false, error: `Unknown add-on feature key: ${featureKey}` };
   }
 }
+
+/**
+ * Lightweight numeric-limit resolver for hot paths.
+ *
+ * getTenantEntitlements() loads the full manifest (features catalog, parent
+ * plans, all credit balances, all usage counts) — correct for dashboards, too
+ * heavy for single-check quota gates that re-count usage themselves.
+ * getNumericLimit() resolves ONE feature's numeric_limit in a bounded number
+ * of queries and honors tenant overrides first.
+ *
+ * Returns null when the tenant has no resolvable plan. Callers decide their
+ * own fail-default (quota gates in this codebase are fail-closed).
+ */
+export interface NumericLimitResult {
+  limit: number | null;
+  enabled: boolean;
+}
+
+export async function getNumericLimit(
+  supabase: SupabaseClient,
+  tenantId: string,
+  featureKey: string
+): Promise<NumericLimitResult | null> {
+  if (!/^[A-Za-z0-9_-]+$/.test(String(tenantId))) return null;
+  if (!/^[A-Za-z0-9_]+$/.test(String(featureKey))) return null;
+
+  // The entitlement tables key on feature_id (uuid → features.id), not feature_key.
+  const { data: featDef } = await supabase
+    .from('features')
+    .select('id')
+    .eq('feature_key', featureKey)
+    .maybeSingle();
+  if (!featDef?.id) return null;
+
+  // Tenant override outranks the plan (deterministic, newest first)
+  const { data: override } = await supabase
+    .from('tenant_entitlement_overrides')
+    .select('value_numeric, is_enabled')
+    .eq('tenant_id', tenantId)
+    .eq('feature_id', featDef.id)
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (override && (override.is_enabled ?? true)) {
+    return { limit: override.value_numeric ?? null, enabled: true };
+  }
+
+  const { data: sub } = await supabase
+    .from('subscription_cache')
+    .select('plan_id, plan_code')
+    .or(`organization_id.eq.${tenantId},user_id.eq.${tenantId}`)
+    .eq('status', 'active')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  let planId: string | null = sub?.plan_id ?? null;
+  if (!planId && sub?.plan_code) {
+    const { data: p } = await supabase
+      .from('plans_cache')
+      .select('id')
+      .eq('plan_code', sub.plan_code)
+      .maybeSingle();
+    planId = p?.id ?? null;
+  }
+  if (!planId) return null;
+
+  const { data: ent } = await supabase
+    .from('plan_entitlements')
+    .select('value_numeric, is_enabled')
+    .eq('plan_id', planId)
+    .eq('feature_id', featDef.id)
+    .maybeSingle();
+
+  if (!ent) return null;
+  return { limit: ent.value_numeric ?? null, enabled: ent.is_enabled ?? false };
+}

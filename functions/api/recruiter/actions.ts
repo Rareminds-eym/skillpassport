@@ -4,6 +4,14 @@ import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { apiSuccess, apiError, apiDbError, apiMethodNotAllowed } from '../../lib/response';
 import { notifyLearnersOfNewOpportunity } from '../../lib/newOpportunityNotifications';
 import { verifyOrgAccess } from '../../lib/permissions';
+import {
+  getActiveOrgId,
+  getOrgMemberUserIds,
+  getOrgOwnedOpportunityIds,
+  assertInterviewAccess,
+  getInterviewRow,
+  ALLOWED_REQUISITION_STATUSES,
+} from '../../lib/org-ownership';
 
 export const onRequest = async (context: any) => {
   if (context.request.method === 'POST') return onRequestPost(context);
@@ -25,21 +33,10 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const { action } = body;
 
   // Auth-derived tenant resolution (H1): the client-supplied organizationId must NOT be
-  // trusted — the JWT org claim (or the user's active membership row) decides the tenant.
-  const resolveOrgId = async (): Promise<string | null> => {
-    if (user?.org_id) return user.org_id;
-    const { data: mem, error: memErr } = await supabase
-      .from('organization_members')
-      .select('organization_id')
-      .eq('user_id', user.id)
-      .limit(1)
-      .maybeSingle();
-    if (memErr) {
-      console.error('[actions] Failed to resolve organization membership:', memErr);
-      return null;
-    }
-    return mem?.organization_id ?? null;
-  };
+  // trusted — the JWT org claim (or the user's ACTIVE membership row) decides the tenant.
+  // Delegates to the shared org-ownership helper: active-status filter + ordered
+  // limit(1) so .maybeSingle() can never synthesize PGRST116 on multi-memberships.
+  const resolveOrgId = async (): Promise<string | null> => getActiveOrgId(supabase, user as any);
 
   // Candidates may be referenced by learners.id OR users.id; resolve to the canonical
   // learners.id so unlock ledger rows stay unique per candidate (H2 alias double-charge).
@@ -59,6 +56,32 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       error = res.error;
     }
     return { data, error };
+  };
+
+  // Emails the caller may look recruiters up by: their own email or the email
+  // of an active member of their organization. Returns null on lookup failure
+  // (fail-closed — the caller then gets a 500, never a broad result set).
+  const resolveAllowedEmails = async (): Promise<Set<string> | null> => {
+    const allowed = new Set<string>();
+    if (user?.email) allowed.add(String(user.email).trim().toLowerCase());
+    const orgId = await resolveOrgId();
+    if (orgId) {
+      const memberIds = await getOrgMemberUserIds(supabase, orgId);
+      if (memberIds.length) {
+        const { data: memberUsers, error } = await supabase
+          .from('users')
+          .select('email')
+          .in('id', memberIds);
+        if (error) {
+          console.error('[actions] Failed to resolve member emails for access gate:', error.code);
+          return null;
+        }
+        for (const u of (memberUsers || [])) {
+          if ((u as any)?.email) allowed.add(String((u as any).email).trim().toLowerCase());
+        }
+      }
+    }
+    return allowed;
   };
 
   try {
@@ -168,13 +191,28 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     }
 
     if (action === 'has-recruitment-permission') {
-      const { p_user_id, p_org_id, p_required_permission } = body;
+      const { p_user_id, p_org_id, p_permission } = body;
+      // 🔒 IDOR fix: the caller may only probe their OWN permission set.
+      // (Previously any authenticated user could query any user/org pair.)
       const targetUserId = p_user_id || user.id;
+      if (targetUserId !== user.id) {
+        return apiError(403, 'FORBIDDEN', 'user_id must match the authenticated user', context.request);
+      }
+      // 🔒 p_org_id must be the caller's own org (or one they hold verified access to)
+      if (p_org_id) {
+        const ownOrgId = await resolveOrgId();
+        if (p_org_id !== ownOrgId) {
+          const access = await verifyOrgAccess(supabase, user.sub, String(p_org_id), undefined);
+          if (!access.allowed) {
+            return apiError(403, 'FORBIDDEN', 'Access denied to this organization', context.request);
+          }
+        }
+      }
 
       const { data, error } = await supabase.rpc('has_recruitment_permission', {
         p_user_id: targetUserId,
         p_org_id,
-        p_required_permission,
+        p_permission,
       });
 
       if (error) return apiDbError(error, context.request);
@@ -233,36 +271,100 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
     if (action === 'get-recruiter-profile') {
       const { email } = body;
+      const requested = String(email || '').trim().toLowerCase();
+      if (!requested) return apiError(400, 'VALIDATION_ERROR', 'email required', context.request);
+
+      // 🔒 IDOR fix: a caller may only resolve profiles for their own email or
+      // the email of an active member of their organization (prevents
+      // recruiter-row enumeration across organizations).
+      const allowed = await resolveAllowedEmails();
+      if (!allowed) {
+        return apiError(500, 'INTERNAL_ERROR', 'Failed to validate access scope', context.request);
+      }
+      if (!allowed.has(requested)) {
+        return apiError(403, 'FORBIDDEN', 'You can only look up profiles within your organization', context.request);
+      }
+
       const { data, error } = await supabase
         .from('recruiters')
         .select('*')
-        .eq('email', email)
+        .eq('email', requested)
         .maybeSingle();
       if (error) return apiDbError(error, context.request);
       return apiSuccess(data, context.request);
     }
 
     if (action === 'list-interviews') {
-      const { data, error } = await supabase
+      // 🔒 IDOR fix: interviews carry candidate PII and previously leaked ALL
+      // rows to any authenticated caller. Gated scope (merged in code —
+      // PostgREST or() over embedded ids is too limited to express this):
+      //   A) interviews whose learner applied to one of THIS org's opportunities
+      //   B) interviews the caller created
+      const orgId = await resolveOrgId();
+
+      const opportunityIds = orgId ? await getOrgOwnedOpportunityIds(supabase, orgId) : [];
+      // ⚠ DB id-space (psql-verified): interviews.learner_id FK → learners(user_id)
+      // (USER space); applied_jobs.learner_id matches learners.id (learner-PK
+      // space). Remap the applied set through learners.id → learners.user_id
+      // before comparing interview.learner_id.
+      let appliedLearnerUserIds: string[] = [];
+      if (opportunityIds.length) {
+        const { data: apps, error: appsErr } = await supabase
+          .from('applied_jobs')
+          .select('learner_id')
+          .in('opportunity_id', opportunityIds);
+        if (appsErr) return apiDbError(appsErr, context.request);
+        const appliedLearnerIds = [...new Set((apps || []).map((a: any) => String(a.learner_id)))].filter(Boolean);
+        if (appliedLearnerIds.length) {
+          const { data: learnerRows, error: learnerErr } = await supabase
+            .from('learners')
+            .select('user_id')
+            .in('id', appliedLearnerIds);
+          if (learnerErr) return apiDbError(learnerErr, context.request);
+          appliedLearnerUserIds = (learnerRows || []).map((l: any) => l.user_id).filter(Boolean);
+        }
+      }
+
+      // Branch A: interviews tied to org-scoped applicants
+      let rowsA: any[] = [];
+      if (appliedLearnerUserIds.length) {
+        const { data, error } = await supabase
+          .from('interviews')
+          .select('*')
+          .in('learner_id', appliedLearnerUserIds);
+        if (error) return apiDbError(error, context.request);
+        rowsA = data || [];
+      }
+
+      // Branch B: interviews created by the caller
+      const { data: rowsB, error: ownErr } = await supabase
         .from('interviews')
         .select('*')
-        .order('date', { ascending: true });
-      if (error) return apiDbError(error, context.request);
-      return apiSuccess(data, context.request);
+        .eq('created_by', user.id);
+      if (ownErr) return apiDbError(ownErr, context.request);
+
+      const seen = new Set<string>();
+      const merged = [...rowsA, ...(rowsB || [])].filter((r: any) => {
+        if (seen.has(String(r.id))) return false;
+        seen.add(String(r.id));
+        return true;
+      });
+      merged.sort((a: any, b: any) => String(a.date ?? '').localeCompare(String(b.date ?? '')));
+      return apiSuccess(merged, context.request);
     }
 
     if (action === 'update-interview') {
       const { id, ...updates } = body;
+      if (!id) return apiError(400, 'VALIDATION_ERROR', 'Missing interview id', context.request);
 
-      // 🔒 Ownership: only the creator may edit an interview record
-      const { data: existing, error: exErr } = await supabase
-        .from('interviews')
-        .select('id, created_by')
-        .eq('id', id)
-        .maybeSingle();
-      if (exErr) return apiDbError(exErr, context.request);
-      if (!existing) return apiError(404, 'NOT_FOUND', 'Interview not found', context.request);
-      if (existing.created_by && existing.created_by !== user.id) {
+      // 🔒 Ownership: creator OR a learner scoped to the caller's org. This
+      // closes the NULL-created_by bypass — previously any authenticated user
+      // could edit rows whose created_by was never populated.
+      const interview = await getInterviewRow(supabase, String(id));
+      if (!interview) return apiError(404, 'NOT_FOUND', 'Interview not found', context.request);
+      const iOrgId = await resolveOrgId();
+      const allowed = await assertInterviewAccess(supabase, user as any, iOrgId, interview);
+      if (!allowed) {
         return apiError(403, 'FORBIDDEN', 'You do not have access to this interview', context.request);
       }
 
@@ -270,7 +372,7 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       const { data, error } = await supabase
         .from('interviews')
         .update({ ...updates, updated_at: new Date().toISOString() })
-        .eq('id', existing.id)
+        .eq('id', String(id))
         .select()
         .single();
       if (error) return apiDbError(error, context.request);
@@ -341,18 +443,15 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       // 🔒 SECURITY: Get organization_id from authenticated user
       const organizationId = user?.org_id;
 
+      // 🔒 Logging hygiene: no member/recruiter emails or identity lists in
+      // logs — only concise first-arg operational context.
       console.log('[recruiter/actions] list-recruiters called:', {
         userId: user.id,
-        userEmail: user.email,
         organizationId,
-        hasOrgId: !!organizationId
       });
 
       if (!organizationId) {
-        console.error('[recruiter/actions] list-recruiters: organizationId not found', {
-          userId: user.id,
-          userOrgId: user?.org_id
-        });
+        console.error('[recruiter/actions] list-recruiters: organizationId not found', { userId: user.id });
         return apiError(400, 'VALIDATION_ERROR', 'Organization ID is required', context.request);
       }
 
@@ -364,27 +463,12 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         .order('name');
 
       if (recruitersError) {
-        console.error('[recruiter/actions] ❌ Error fetching recruiters:', {
-          error: recruitersError,
-          code: recruitersError.code,
-          message: recruitersError.message
-        });
+        console.error('[recruiter/actions] Error fetching recruiters:', recruitersError.message);
         return apiDbError(recruitersError, context.request);
       }
 
-      console.log('[recruiter/actions] ✓ Fetched all recruiters from DB:', {
-        count: allRecruiters?.length || 0,
-        recruiters: allRecruiters?.map(r => ({
-          id: r.id,
-          name: r.name,
-          email: r.email,
-          user_id: r.user_id
-        }))
-      });
-
       // If no recruiters at all, return empty
       if (!allRecruiters || allRecruiters.length === 0) {
-        console.log('[recruiter/actions] No recruiters found in database');
         return apiSuccess([], context.request);
       }
 
@@ -401,55 +485,18 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         .eq('status', 'active');
 
       if (membersError) {
-        console.error('[recruiter/actions] ❌ Error fetching organization members:', {
-          error: membersError,
-          code: membersError.code,
-          message: membersError.message,
-          organizationId
-        });
+        console.error('[recruiter/actions] Error fetching organization members:', membersError.message);
         return apiDbError(membersError, context.request);
       }
 
-      console.log('[recruiter/actions] ✓ Organization members found:', {
-        count: orgMembers?.length || 0,
-        members: orgMembers?.map((m: any) => ({
-          userId: m.user_id,
-          email: m.users?.email,
-          role: m.role,
-          status: m.status
-        }))
-      });
-
-      // Step 3: Create a set of user_ids that belong to this organization
+      // Steps 3 & 4: filter recruiters to those whose user_id belongs to this
+      // organization's active members (member identity data is never logged).
       const orgUserIds = new Set((orgMembers || []).map((m: any) => m.user_id));
+      const filteredRecruiters = (allRecruiters || []).filter(r => !!r.user_id && orgUserIds.has(r.user_id));
 
-      console.log('[recruiter/actions] Organization user IDs:', {
-        userIds: Array.from(orgUserIds),
-        count: orgUserIds.size
-      });
-
-      // Step 4: Filter recruiters - match by user_id (direct match)
-      const filteredRecruiters = (allRecruiters || []).filter(r => {
-        const matches = r.user_id && orgUserIds.has(r.user_id);
-        console.log('[recruiter/actions] Checking recruiter:', {
-          recruiterId: r.id,
-          recruiterUserId: r.user_id,
-          recruiterEmail: r.email,
-          inOrg: matches
-        });
-        return matches;
-      });
-
-      console.log('[recruiter/actions] ✅ Final filtered recruiters:', {
-        totalRecruiters: allRecruiters?.length || 0,
-        orgMembers: orgUserIds.size,
+      console.log('[recruiter/actions] list-recruiters filtered:', {
+        totalRecruiters: allRecruiters.length,
         filteredCount: filteredRecruiters.length,
-        filteredRecruiters: filteredRecruiters.map(r => ({
-          id: r.id,
-          name: r.name,
-          email: r.email,
-          user_id: r.user_id
-        }))
       });
 
       return apiSuccess(filteredRecruiters, context.request);
@@ -457,10 +504,22 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
     if (action === 'get-current-recruiter') {
       const { email } = body;
+      const requested = String(email || user?.email || '').trim().toLowerCase();
+      if (!requested) return apiError(400, 'VALIDATION_ERROR', 'email required', context.request);
+
+      // 🔒 Same org-scoped email gate as get-recruiter-profile
+      const allowed = await resolveAllowedEmails();
+      if (!allowed) {
+        return apiError(500, 'INTERNAL_ERROR', 'Failed to validate access scope', context.request);
+      }
+      if (!allowed.has(requested)) {
+        return apiError(403, 'FORBIDDEN', 'You can only look up profiles within your organization', context.request);
+      }
+
       const { data, error } = await supabase
         .from('recruiters')
         .select('id')
-        .eq('email', email)
+        .eq('email', requested)
         .maybeSingle();
       if (error) return apiDbError(error, context.request);
       return apiSuccess(data, context.request);
@@ -471,11 +530,27 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         searchQuery,
         statusFilter,
         advancedFilters = {},
-        sortField = 'created_at',
-        sortDirection = 'desc',
         currentPage = 1,
         itemsPerPage = 8,
       } = body;
+
+      // 🔒 Query-injection hardening: the search term is embedded raw into a
+      // PostgREST or() filter — strip or()-metacharacters and cap its length.
+      const sanitizedSearch = String(searchQuery || '')
+        .replace(/[\\(),%"']/g, '')
+        .trim()
+        .slice(0, 100);
+
+      // 🔒 Order-injection hardening: only whitelisted sort fields/directions
+      // reach the .order() call (unknown values fall back to safe defaults).
+      const SORTABLE_FIELDS = [
+        'title', 'job_title', 'department', 'location', 'posted_date',
+        'applications_count', 'salary_range_min', 'salary_range_max', 'created_at', 'status',
+      ];
+      const rawSortField = String(body.sortField || '');
+      const sortField = SORTABLE_FIELDS.includes(rawSortField) ? rawSortField : 'posted_date';
+      const rawSortDirection = String(body.sortDirection || '');
+      const sortDirection = rawSortDirection === 'asc' ? 'asc' : 'desc';
 
       // 🔒 SECURITY: Get organization_id from authenticated user
       const organizationId = user?.org_id;
@@ -489,8 +564,8 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         .select('*', { count: 'exact' })
         .eq('organization_id', organizationId); // 🔒 Filter by user's organization
 
-      if (searchQuery) {
-        query = query.or(`title.ilike.%${searchQuery}%,department.ilike.%${searchQuery}%,location.ilike.%${searchQuery}%`);
+      if (sanitizedSearch) {
+        query = query.or(`title.ilike.%${sanitizedSearch}%,department.ilike.%${sanitizedSearch}%,location.ilike.%${sanitizedSearch}%`);
       }
 
       if (statusFilter !== 'all') {
@@ -578,23 +653,31 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       }
 
       if (orgId) {
-        const { checkEntitlement } = await import('../../shared/lib/entitlement-service');
-        const entitlement = await checkEntitlement(supabase, orgId, 'active_job_posts');
-        if (entitlement && typeof entitlement.limit === 'number') {
-          const { count, error: countErr } = await supabase
-            .from('opportunities')
-            .select('id', { count: 'exact', head: true })
-            .eq('organization_id', orgId)
-            .or('is_active.eq.true,status.eq.open');
+        // 🔒 Fail-closed quota gate via the lightweight numeric-limit resolver:
+        // an unresolvable plan or a disabled feature blocks publishing, and a
+        // counting DB error is a 500 — never a silent over-quota insert.
+        const { getNumericLimit } = await import('../../shared/lib/entitlement-service');
+        const quota = await getNumericLimit(supabase, orgId, 'active_job_posts');
+        if (!quota) {
+          return apiError(402, 'QUOTA_EXCEEDED', 'Active job post limit is not configured for your plan. Please contact support.', context.request);
+        }
+        if (!quota.enabled) {
+          return apiError(402, 'QUOTA_EXCEEDED', 'Active job posts are not included in your current plan. Please upgrade your plan to publish opportunities.', context.request);
+        }
+        const { count, error: countErr } = await supabase
+          .from('opportunities')
+          .select('id', { count: 'exact', head: true })
+          .eq('organization_id', orgId)
+          .or('is_active.eq.true,status.eq.open');
 
-          if (!countErr && typeof count === 'number' && count >= entitlement.limit) {
-            return apiError(
-              402,
-              'QUOTA_EXCEEDED',
-              `Your current plan allows up to ${entitlement.limit} active job posts. You currently have ${count} active posts. Please upgrade your recruiter plan to publish more opportunities.`,
-              context.request
-            );
-          }
+        if (countErr) return apiDbError(countErr, context.request);
+        if (typeof quota.limit === 'number' && (count ?? 0) >= quota.limit) {
+          return apiError(
+            402,
+            'QUOTA_EXCEEDED',
+            `Your current plan allows up to ${quota.limit} active job posts. You currently have ${count} active posts. Please upgrade your recruiter plan to publish more opportunities.`,
+            context.request
+          );
         }
       }
 
@@ -760,62 +843,71 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     if (action === 'import-requisitions') {
       const { rows } = body;
 
-      // 🔒 SECURITY: Get organization_id from authenticated user
+      // 🔒 SECURITY: organization_id resolved from the authenticated user
       const organizationId = user?.org_id;
 
       if (!organizationId) {
-        console.error('[recruiter/actions] import-requisitions: organizationId not found', {
-          userId: user.id,
-          userOrgId: user?.org_id
-        });
+        console.error('[recruiter/actions] import-requisitions: organizationId not found', { userId: user.id });
         return apiError(400, 'VALIDATION_ERROR', 'Organization ID is required', context.request);
       }
 
-      const recruiterEmails = [...new Set((rows || []).map((r: any) => r.recruiter_email).filter(Boolean))];
+      // 🔒 recruiter_email → recruiter_id mapping is scoped to THIS org's
+      // members (previously a global email match could attribute imports to
+      // recruiters of a foreign organization).
+      const recruiterEmails = [...new Set(((rows || []) as any[]).map((r) => r.recruiter_email).filter(Boolean))];
       let recruiterMap: Record<string, string> = {};
       if (recruiterEmails.length) {
-        const { data: recruiters, error: recError } = await supabase
-          .from('recruiters')
-          .select('id, email')
-          .in('email', recruiterEmails);
-        if (recError) return apiDbError(recError, context.request);
-        for (const r of (recruiters || [])) {
-          recruiterMap[r.email] = r.id;
+        const memberUserIds = await getOrgMemberUserIds(supabase, organizationId);
+        if (memberUserIds.length) {
+          const { data: recruiters, error: recError } = await supabase
+            .from('recruiters')
+            .select('id, email')
+            .in('user_id', memberUserIds)
+            .in('email', recruiterEmails);
+          if (recError) return apiDbError(recError, context.request);
+          for (const r of (recruiters || [])) {
+            recruiterMap[r.email] = r.id;
+          }
         }
       }
 
-      // 🔒 Quota (L fix): imported requisitions can open job posts too, so the
-      // active_job_posts limit applies. Count the current visible posts once,
-      // then stop granting visibility once the plan limit is reached — rows
-      // beyond it are recorded as failures instead of silently exceeding.
-      const { checkEntitlement } = await import('../../shared/lib/entitlement-service');
-      const entitlement = await checkEntitlement(supabase, organizationId, 'active_job_posts');
-      let openInserted = 0;
-      let quotaLimit: number | null = null;
-      if (entitlement && typeof entitlement.limit === 'number') {
-        const { count, error: countErr } = await supabase
-          .from('opportunities')
-          .select('id', { count: 'exact', head: true })
-          .eq('organization_id', organizationId)
-          .or('is_active.eq.true,status.eq.open');
-        if (!countErr && typeof count === 'number') {
-          quotaLimit = entitlement.limit;
-        }
-      }
+      // 🔒 Quota (L fix, fail-closed): imported requisitions can open job posts
+      // too, so the active_job_posts limit applies. The pre-existing visible
+      // count is fetched ONCE — a counting DB error aborts the whole import
+      // (it must never silently exceed the plan). Remaining open slots shrink
+      // with every inserted open row; rows beyond the budget are recorded as
+      // failures instead of silently exceeding.
+      const { getNumericLimit } = await import('../../shared/lib/entitlement-service');
+      const quota = await getNumericLimit(supabase, organizationId, 'active_job_posts');
+      const { count: preExistingOpen, error: quotaCountErr } = await supabase
+        .from('opportunities')
+        .select('id', { count: 'exact', head: true })
+        .eq('organization_id', organizationId)
+        .or('is_active.eq.true,status.eq.open');
+      if (quotaCountErr) return apiDbError(quotaCountErr, context.request);
+
+      let openBudget = quota && quota.enabled && typeof quota.limit === 'number'
+        ? Math.max(0, quota.limit - (preExistingOpen ?? 0))
+        : 0; // fail-closed when unresolvable/disabled
 
       let success = 0;
       let failed = 0;
+      const openInsertedRows: any[] = [];
       const errors: Array<{ row: number; error: string }> = [];
       for (let i = 0; i < (rows || []).length; i++) {
         const row = rows[i];
-        const rowOpens = row.status === 'open';
-        if (rowOpens && quotaLimit !== null && openInserted + 1 > quotaLimit) {
+        const normalizedStatus = String(row.status || '').trim().toLowerCase();
+        const rowOpens = normalizedStatus === 'open';
+        const safeStatus = (ALLOWED_REQUISITION_STATUSES as readonly string[]).includes(normalizedStatus)
+          ? normalizedStatus
+          : 'draft';
+        if (rowOpens && openBudget <= 0) {
           failed++;
           errors.push({ row: i, error: 'QUOTA_EXCEEDED: active job post limit reached' });
           continue;
         }
         try {
-          const { error: insError } = await supabase.from('opportunities').insert({
+          const { data: inserted, error: insError } = await supabase.from('opportunities').insert({
             title: row.job_title || row.title,
             job_title: row.job_title,
             company_name: row.company_name || 'Not Specified',
@@ -834,28 +926,44 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
             skills_required: row.skills_required || null,
             benefits: row.benefits || null,
             deadline: row.deadline ? new Date(row.deadline).toISOString() : null,
-            applications_count: row.applications_count ? Number(row.applications_count) : 0,
+            // 🔒 Server-owned counters: never trust an imported count value
+            applications_count: 0,
             messages_count: 0,
             views_count: 0,
             posted_date: row.posted_date || new Date().toISOString(),
-            status: row.status,
+            status: safeStatus,
             organization_id: organizationId, // 🔒 Set organization_id from context
-            created_by: user.id,
-            is_active: row.status === 'open',
+            created_by: user.id, // 🔒 Force server-side authorship
+            is_active: rowOpens,
             recruiter_id: row.recruiter_email ? recruiterMap[row.recruiter_email] : null,
-          });
+          })
+            .select('id, title, job_title, company_name, location, salary_range_min, salary_range_max, is_active');
+          // 🔒 Error masking: no raw PG/PostgREST text reaches the client
           if (insError) {
+            console.error('[recruiter/actions] import-requisitions row insert failed:', { code: insError.code });
             failed++;
-            errors.push({ row: i, error: insError.message });
-          } else {
-            if (rowOpens) openInserted++;
+            errors.push({ row: i, error: `Row ${i + 1}: invalid data` });
+          } else if (inserted && inserted.length > 0) {
+            if (rowOpens && openBudget > 0) openBudget--;
+            if (rowOpens) openInsertedRows.push(inserted[0]);
             success++;
+          } else {
+            failed++;
+            errors.push({ row: i, error: `Row ${i + 1}: invalid data` });
           }
         } catch (e: any) {
           failed++;
-          errors.push({ row: i, error: e.message });
+          errors.push({ row: i, error: `Row ${i + 1}: invalid data` });
         }
       }
+
+      // Notify learners about the freshly OPENED rows (fail-soft by design —
+      // the helper never throws, and each notification runs after its row
+      // insert already succeeded).
+      for (const insertedRow of openInsertedRows) {
+        await notifyLearnersOfNewOpportunity(supabase, insertedRow);
+      }
+
       return apiSuccess({ success, failed, errors }, context.request);
     }
 
@@ -909,33 +1017,47 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       const organizationId = user?.org_id;
 
       if (!organizationId) {
-        console.error('[recruiter/actions] create-requisition: organizationId not found', {
-          userId: user.id,
-          userOrgId: user?.org_id
-        });
+        console.error('[recruiter/actions] create-requisition: organizationId not found', { userId: user.id });
         return apiError(400, 'VALIDATION_ERROR', 'Organization ID is required', context.request);
       }
 
-      // 🔒 Publishing via create-requisition must respect active_job_posts
-      // quota (parity with create-opportunity; this was a bypass alias).
-      const becomesVisible = requisitionData.status === 'open' || requisitionData.is_active === true;
-      if (becomesVisible) {
-        const { checkEntitlement } = await import('../../shared/lib/entitlement-service');
-        const entitlement = await checkEntitlement(supabase, organizationId, 'active_job_posts');
-        if (entitlement && typeof entitlement.limit === 'number') {
-          const { count, error: countErr } = await supabase
-            .from('opportunities')
-            .select('id', { count: 'exact', head: true })
-            .eq('organization_id', organizationId)
-            .or('is_active.eq.true,status.eq.open');
-          if (!countErr && typeof count === 'number' && count >= entitlement.limit) {
-            return apiError(
-              402,
-              'QUOTA_EXCEEDED',
-              `Your current plan allows up to ${entitlement.limit} active job posts. You currently have ${count} active posts. Please upgrade your recruiter plan to publish more opportunities.`,
-              context.request
-            );
-          }
+      // 🔒 Status whitelist (server-enforced, superset of the live DB enum)
+      const requestedStatus = String(requisitionData.status || 'draft').trim().toLowerCase();
+      if (!(ALLOWED_REQUISITION_STATUSES as readonly string[]).includes(requestedStatus)) {
+        return apiError(
+          400,
+          'VALIDATION_ERROR',
+          `Invalid status '${requisitionData.status}'. Allowed values: ${ALLOWED_REQUISITION_STATUSES.join(', ')}`,
+          context.request
+        );
+      }
+
+      // 🔒 Fail-closed quota gate (parity with create-opportunity; this was a
+      // bypass alias). Publishing an active post must respect active_job_posts:
+      // unresolvable/disabled entitlements are 402, a counting DB error is a
+      // 500 and NEVER proceeds.
+      if (requestedStatus === 'open') {
+        const { getNumericLimit } = await import('../../shared/lib/entitlement-service');
+        const quota = await getNumericLimit(supabase, organizationId, 'active_job_posts');
+        if (!quota) {
+          return apiError(402, 'QUOTA_EXCEEDED', 'Active job post limit is not configured for your plan. Please contact support.', context.request);
+        }
+        if (!quota.enabled) {
+          return apiError(402, 'QUOTA_EXCEEDED', 'Active job posts are not included in your current plan. Please upgrade your plan to publish opportunities.', context.request);
+        }
+        const { count, error: countErr } = await supabase
+          .from('opportunities')
+          .select('id', { count: 'exact', head: true })
+          .eq('organization_id', organizationId)
+          .or('is_active.eq.true,status.eq.open');
+        if (countErr) return apiDbError(countErr, context.request);
+        if (typeof quota.limit === 'number' && (count ?? 0) >= quota.limit) {
+          return apiError(
+            402,
+            'QUOTA_EXCEEDED',
+            `Your current plan allows up to ${quota.limit} active job posts. You currently have ${count} active posts. Please upgrade your recruiter plan to publish more opportunities.`,
+            context.request
+          );
         }
       }
 
@@ -943,9 +1065,15 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         .from('opportunities')
         .insert({
           ...requisitionData,
-          organization_id: organizationId, // 🔒 Set organization_id from context
+          status: requestedStatus,
+          // 🔒 Server-forced fields: visibility mirrors the status (never a
+          // client-supplied is_active), authorship and counters are server-owned
+          is_active: requestedStatus === 'open',
+          created_by: user.id,
+          applications_count: 0,
           messages_count: 0,
           views_count: 0,
+          organization_id: organizationId, // 🔒 Set organization_id from context
           posted_date: new Date().toISOString()
         })
         .select()
@@ -957,14 +1085,58 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     }
 
     if (action === 'update-requisition') {
-      const { id, ...updates } = body;
+      // Shape contract: the request body is { action, id, updates:{...} }.
+      // (The old destructure `const { id, ...updates } = body` nested the real
+      // update keys under a top-level `updates` key, so EVERY edit failed
+      // downstream with PGRST204.)
+      const { id, updates } = body;
       if (!id || !updates || typeof updates !== 'object') return apiError(400, 'VALIDATION_ERROR', 'Missing id or updates', context.request);
 
+      const rawUpdates = updates as Record<string, any>;
+
+      // 🔒 Explicit field whitelist (mass-assignment hardening): unknown keys
+      // are dropped silently (logged once), never 400'd and never forwarded
+      // to the table. The legacy last-write strips below stay as a second line
+      // of defense for any dataset mutating keys.
+      const ALLOWED_UPDATE_FIELDS = new Set([
+        'title', 'job_title', 'company_name', 'company_logo', 'department', 'location', 'mode',
+        'employment_type', 'experience_level', 'experience_required', 'skills_required',
+        'requirements', 'responsibilities', 'benefits', 'salary_range_min', 'salary_range_max',
+        'deadline', 'status', 'is_active', 'description',
+      ]);
+      const sanitizedUpdates: Record<string, any> = {};
+      for (const [key, value] of Object.entries(rawUpdates)) {
+        if (ALLOWED_UPDATE_FIELDS.has(key)) sanitizedUpdates[key] = value;
+      }
+      const droppedKeys = Object.keys(rawUpdates).filter((key) => !ALLOWED_UPDATE_FIELDS.has(key));
+      if (droppedKeys.length) {
+        console.log('[recruiter/actions] update-requisition dropped non-whitelisted fields:', {
+          fields: droppedKeys.length,
+        });
+      }
+      if (Object.keys(sanitizedUpdates).length === 0) {
+        return apiError(400, 'VALIDATION_ERROR', 'No updatable fields provided', context.request);
+      }
+
+      // 🔒 Status whitelist
+      if (sanitizedUpdates.status !== undefined) {
+        const nextStatus = String(sanitizedUpdates.status).trim().toLowerCase();
+        if (!(ALLOWED_REQUISITION_STATUSES as readonly string[]).includes(nextStatus)) {
+          return apiError(
+            400,
+            'VALIDATION_ERROR',
+            `Invalid status '${sanitizedUpdates.status}'. Allowed values: ${ALLOWED_REQUISITION_STATUSES.join(', ')}`,
+            context.request
+          );
+        }
+        sanitizedUpdates.status = nextStatus;
+      }
+
       // 🔒 Never allow the update payload to re-own or re-author the row
-      delete updates.organization_id;
-      delete updates.created_by;
-      delete updates.id;
-      delete updates.created_at;
+      delete sanitizedUpdates.organization_id;
+      delete sanitizedUpdates.created_by;
+      delete sanitizedUpdates.id;
+      delete sanitizedUpdates.created_at;
 
       // 🔒 Ownership check via JWT-resolved org. (context.data.organizationId was
       // never populated by withAuth, so the old eq.undefined filter always failed.)
@@ -980,33 +1152,41 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       const owns = existing.organization_id ? existing.organization_id === orgId : existing.created_by === user.id;
       if (!owns) return apiError(403, 'FORBIDDEN', 'You do not have access to this requisition', context.request);
 
-      // Publishing a draft must respect the active_job_posts plan quota (parity with update-opportunity)
+      // 🔒 Publishing a draft must respect the active_job_posts plan quota
+      // (parity with update-opportunity) — fail-CLOSED via the lightweight
+      // resolver: unresolvable/disabled entitlements are 402, a counting DB
+      // error is a 500 and never proceeds to the update.
       const currentlyVisible = existing.status === 'open' || existing.is_active === true;
-      const becomesVisible = !currentlyVisible && (updates.status === 'open' || updates.is_active === true);
+      const becomesVisible = !currentlyVisible && (sanitizedUpdates.status === 'open' || sanitizedUpdates.is_active === true);
       if (becomesVisible && existing.organization_id) {
-        const { checkEntitlement } = await import('../../shared/lib/entitlement-service');
-        const entitlement = await checkEntitlement(supabase, existing.organization_id, 'active_job_posts');
-        if (entitlement && typeof entitlement.limit === 'number') {
-          const { count, error: countErr } = await supabase
-            .from('opportunities')
-            .select('id', { count: 'exact', head: true })
-            .eq('organization_id', existing.organization_id)
-            .neq('id', existing.id)
-            .or('is_active.eq.true,status.eq.open');
-          if (!countErr && typeof count === 'number' && count >= entitlement.limit) {
-            return apiError(
-              402,
-              'QUOTA_EXCEEDED',
-              `Your current plan allows up to ${entitlement.limit} active job posts. You currently have ${count} active posts. Please upgrade your recruiter plan to publish more opportunities.`,
-              context.request
-            );
-          }
+        const { getNumericLimit } = await import('../../shared/lib/entitlement-service');
+        const quota = await getNumericLimit(supabase, existing.organization_id, 'active_job_posts');
+        if (!quota) {
+          return apiError(402, 'QUOTA_EXCEEDED', 'Active job post limit is not configured for your plan. Please contact support.', context.request);
+        }
+        if (!quota.enabled) {
+          return apiError(402, 'QUOTA_EXCEEDED', 'Active job posts are not included in your current plan. Please upgrade your plan to publish opportunities.', context.request);
+        }
+        const { count, error: countErr } = await supabase
+          .from('opportunities')
+          .select('id', { count: 'exact', head: true })
+          .eq('organization_id', existing.organization_id)
+          .neq('id', existing.id)
+          .or('is_active.eq.true,status.eq.open');
+        if (countErr) return apiDbError(countErr, context.request);
+        if (typeof quota.limit === 'number' && (count ?? 0) >= quota.limit) {
+          return apiError(
+            402,
+            'QUOTA_EXCEEDED',
+            `Your current plan allows up to ${quota.limit} active job posts. You currently have ${count} active posts. Please upgrade your recruiter plan to publish more opportunities.`,
+            context.request
+          );
         }
       }
 
       const { data, error } = await supabase
         .from('opportunities')
-        .update({ ...updates, updated_at: new Date().toISOString() })
+        .update({ ...sanitizedUpdates, updated_at: new Date().toISOString() })
         .eq('id', existing.id)
         .select()
         .single();
@@ -1079,6 +1259,72 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
       if (error) return apiDbError(error, context.request);
       return apiSuccess(data || [], context.request);
+    }
+
+    if (action === 'get-quota-usage') {
+      // Quota snapshot contract:
+      //   { used_active_posts: number,
+      //     limit_active_posts: number | null,
+      //     credits: { [featureKey]: { allocated, consumed, remaining } } }
+      // featureKeys: contact_unlocks, job_boost_credits, ai_credits, candidate_invites
+      const CREDIT_FEATURE_KEYS = ['contact_unlocks', 'job_boost_credits', 'ai_credits', 'candidate_invites'] as const;
+
+      const orgId = await resolveOrgId();
+      if (!orgId) return apiError(400, 'VALIDATION_ERROR', 'organizationId required', context.request);
+
+      // Live active-post count (single cheap head-count, fail-closed on error)
+      const { count, error: countErr } = await supabase
+        .from('opportunities')
+        .select('id', { count: 'exact', head: true })
+        .eq('organization_id', orgId)
+        .or('is_active.eq.true,status.eq.open');
+      if (countErr) return apiDbError(countErr, context.request);
+
+      // active_job_posts numeric limit from the entitlement manifest
+      const { getTenantEntitlements } = await import('../../shared/lib/entitlement-service');
+      const manifest = await getTenantEntitlements(supabase, orgId).catch((err: any) => {
+        console.error('[actions] get-quota-usage: entitlement manifest failed:', err?.message || err);
+        return null;
+      });
+      if (!manifest) {
+        return apiError(500, 'INTERNAL_ERROR', 'Failed to resolve plan entitlements', context.request);
+      }
+      const limit_active_posts = manifest.features?.['active_job_posts']?.limit ?? null;
+
+      // Metered credit balances (all scoped to the caller's org)
+      const credits: Record<string, { allocated: number; consumed: number; remaining: number }> = {};
+      for (const featureKey of CREDIT_FEATURE_KEYS) {
+        const mapped = manifest.features?.[featureKey];
+        if (mapped && mapped.feature_type === 'metered') {
+          credits[featureKey] = {
+            allocated: Number(mapped.allocated ?? 0),
+            consumed: Number(mapped.consumed ?? 0),
+            remaining: Number(mapped.remaining ?? 0),
+          };
+          continue;
+        }
+        // Feature absent from the manifest catalog: query the ledger RPC directly
+        const { data: bal, error: balErr } = await supabase.rpc('get_credit_balance', {
+          p_tenant_id: orgId,
+          p_feature_key: featureKey,
+        });
+        if (balErr) {
+          console.error('[actions] get-quota-usage: credit balance query failed:', { featureKey });
+          credits[featureKey] = { allocated: 0, consumed: 0, remaining: 0 };
+          continue;
+        }
+        const row = (Array.isArray(bal) ? bal[0] : bal) as { allocated?: number; consumed?: number; remaining?: number } | undefined;
+        credits[featureKey] = {
+          allocated: Number(row?.allocated ?? 0),
+          consumed: Number(row?.consumed ?? 0),
+          remaining: Number(row?.remaining ?? 0),
+        };
+      }
+
+      return apiSuccess(
+        { used_active_posts: count ?? 0, limit_active_posts, credits },
+        context.request
+      );
     }
 
     return apiError(400, 'BAD_REQUEST', `Unknown action: ${action}`, context.request);
