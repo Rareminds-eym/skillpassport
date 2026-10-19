@@ -16,6 +16,7 @@ import {
   assertInterviewAccess,
   getInterviewRow,
   assertLearnerOwnership,
+  ALLOWED_REQUISITION_STATUSES,
 } from '../../lib/org-ownership';
 
 /**
@@ -775,6 +776,32 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
       delete updates.organization_id; // never allow re-owning the row
       delete updates.created_by;
+      // 🔒 Server-owned counters: client updates must never inflate activity
+      // metrics that the quota/usage surfaces read back.
+      delete updates.applications_count;
+      delete updates.messages_count;
+      delete updates.views_count;
+      delete updates.posted_date;
+
+      // 🔒 Status whitelist + server-owned visibility (parity with
+      // update-requisition / the hardened legacy alias in recruiter/actions.ts):
+      // the update payload may no longer set is_active directly and status
+      // transitions validate against the same server-side whitelist the
+      // requisition actions use — visibility always mirrors the enforced
+      // status.
+      if (updates.status !== undefined) {
+        const nextStatus = String(updates.status).trim().toLowerCase();
+        if (!(ALLOWED_REQUISITION_STATUSES as readonly string[]).includes(nextStatus)) {
+          return apiError(
+            400,
+            'VALIDATION_ERROR',
+            `Invalid status '${updates.status}'. Allowed values: ${ALLOWED_REQUISITION_STATUSES.join(', ')}`,
+            context.request
+          );
+        }
+        updates.status = nextStatus;
+        updates.is_active = nextStatus === 'open';
+      }
 
       // 🔒 Publishing a draft must respect the active_job_posts plan quota
       // (H4 bypass fix — mirrors recruiter/actions.ts update-opportunity):
@@ -1795,6 +1822,10 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       const { shortlist_id, learner_id, notes } = body;
       if (!shortlist_id || !learner_id) return apiError(400, 'VALIDATION_ERROR', 'shortlist_id and learner_id required', context.request);
       const user = getContextUser(context);
+      const orgId = await getActiveOrgId(supabase, user);
+      if (!orgId) return apiError(403, 'FORBIDDEN', 'No active organization', context.request);
+      const access = await verifyOrgAccess(supabase, user.id, orgId, 'manage_candidates');
+      if (!access.allowed) return apiError(403, 'FORBIDDEN', 'You do not have permission to manage candidates', context.request);
       // 🔒 Verify parent shortlist ownership BEFORE touching the junction rows,
       // and force added_by to the server-side user id (client value ignored).
       const gated = await loadGatedShortlist(supabase, user, context, shortlist_id);

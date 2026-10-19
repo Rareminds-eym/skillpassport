@@ -18,14 +18,13 @@ import {
   RocketLaunchIcon,
   SparklesIcon,
   TrashIcon,
-  UsersIcon,
   XCircleIcon
 } from '@heroicons/react/24/outline';
 import { BriefcaseIcon as BriefcaseSolidIcon } from '@heroicons/react/24/solid';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import * as React from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AdvancedRequisitionFilters } from '@/features/recruiter';
-import { RequisitionImport } from '@/features/recruiter';
+import { AdvancedRequisitionFilters, RequisitionImport } from '@/features/recruiter';
 import { AddToShortlistModal } from '@/features/recruiter-pipeline';
 
 import { apiPost, ApiError } from '@/shared/api/apiClient';
@@ -35,16 +34,10 @@ import { getLogger } from '@/shared/config/logging';
 import { EmptyStateWithQuote } from '@/components/EmptyStateWithQuote';
 import { useEscapeToClose } from '@/shared/hooks/useEscapeToClose';
 
+import { ApplicationsDialog } from './components/ApplicationsDialog';
+import { RequisitionForm, RequisitionDetails, DeleteRequisitionDialog, formatSalary } from './components/RequisitionDialogs';
 import { useUser } from '@/shared/model/authStore';
 const logger = getLogger('Requisitions');
-
-// Work-mode select values are lowercase ('on-site' | 'remote' | 'hybrid');
-// DB rows may carry legacy capitalized values — normalize both directions.
-const normalizeWorkMode = (m: unknown): 'on-site' | 'remote' | 'hybrid' => {
-  const v = String(m ?? '').trim().toLowerCase();
-  if (v === 'remote' || v === 'hybrid') return v;
-  return 'on-site';
-};
 
 // Idempotency key for credit-consuming actions: ONE id per explicit user
 // intent, reused across automatic retries of that same intent so retrying
@@ -82,7 +75,7 @@ const withIdempotentRetry = async <T,>(
 // Normalize ANY supplied error into an Error instance for structured logging.
 const toError = (error: unknown): Error => (error instanceof Error ? error : new Error(String(error)));
 
-interface Opportunity {
+export interface Opportunity {
   id: string;
   job_title: string;
   title: string;
@@ -118,56 +111,10 @@ interface Opportunity {
   featured_until?: string;
 }
 
-interface Recruiter {
+export interface Recruiter {
   id: string;
   name?: string;
   email: string;
-}
-
-interface ModalProps {
-  onClose: () => void;
-}
-
-interface RequisitionModalProps extends ModalProps {
-  requisition: Opportunity;
-}
-
-interface CreateRequisitionModalProps extends ModalProps {
-  recruiters: Recruiter[];
-  currentRecruiterId: string | null;
-  // The raw form payload; the parent unwraps the API envelope and applies it.
-  onSuccess: (formData: any) => Promise<void> | void;
-}
-
-interface EditRequisitionModalProps extends ModalProps {
-  requisition: Opportunity;
-  recruiters: Recruiter[];
-  // The raw form payload; the parent unwraps the API envelope and applies it.
-  onSuccess: (formData: any) => Promise<void> | void;
-}
-
-interface LearnerProfile {
-  passport_id: string;
-  name?: string;
-  email?: string;
-  phone_number?: string;
-  alternate_number?: string;
-  // The applied_jobs.learners.profile jsonb carries flexible DB columns the FE
-  // renders directly (nm_id, registration_number, date_of_birth, age, course,
-  // branch_field, skill) — index signature keeps the detail modal honest.
-  [key: string]: unknown;
-}
-
-interface Application {
-  id: string;
-  application_status: string;
-  applied_at: string;
-  profile: LearnerProfile;
-  learners?: {
-    id: string;
-    email?: string;
-    profile?: LearnerProfile;
-  };
 }
 
 // Quota widget payload: POST /api/recruiter/actions { action: 'get-quota-usage' }
@@ -185,15 +132,12 @@ interface QuotaUsageData {
   >;
 }
 
-// Render an unknown-shaped profile column as display text (LearnerProfile's
-// index signature returns `unknown` for the flexible jsonb keys).
-const asDetailText = (v: unknown): string => (v === null || v === undefined || v === '' ? 'N/A' : String(v));
-
 const Requisitions = () => {
   const user = useUser();
   const [requisitions, setRequisitions] = useState<Opportunity[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
+  const [permissions, setPermissions] = useState({ create: false, edit: false, delete: false, manageCandidates: false });
   const [searchQuery, setSearchQuery] = useState('');
   // Debounced mirror of the search input — the API call reads this, not the
   // raw keystroke value (350ms debounce).
@@ -204,6 +148,11 @@ const Requisitions = () => {
   const [showViewModal, setShowViewModal] = useState(false);
   const [showApplicationsModal, setShowApplicationsModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Opportunity | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+  const mutationLock = useRef(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
   // Quota/credit visibility (contract: refresh after every successful mutation)
   const [quotaUsage, setQuotaUsage] = useState<QuotaUsageData | null>(null);
   // AI shortlist results (spec §6): opportunity + matched candidates
@@ -236,6 +185,7 @@ const Requisitions = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(8);
   const [totalCount, setTotalCount] = useState(0);
+  const [refreshVersion, setRefreshVersion] = useState(0);
 
   // Refs for fetch hygiene: a monotonically increasing sequence lets late
   // responses be detected and dropped so an older response can never clobber
@@ -271,6 +221,10 @@ const Requisitions = () => {
   };
 
   useEffect(() => {
+    setPermissions({ create: false, edit: false, delete: false, manageCandidates: false });
+    apiPost<{ data: { create: boolean; edit: boolean; delete: boolean; manageCandidates: boolean } }>('/recruiter/actions', { action: 'get-requisition-permissions' })
+      .then(result => setPermissions({ create: result.data?.create === true, edit: result.data?.edit === true, delete: result.data?.delete === true, manageCandidates: result.data?.manageCandidates === true }))
+      .catch(error => logger.error('Error loading requisition permissions', toError(error)));
     loadRecruiters();
     loadCurrentRecruiter();
     refreshQuota();
@@ -336,7 +290,13 @@ const Requisitions = () => {
       const rows: Opportunity[] = Array.isArray(payload?.data) ? payload.data : [];
 
       logger.info('Fetched cards from DB', { count: rows.length, total: payload?.total });
-      setTotalCount(Number(payload?.total) || 0);
+      const total = Number(payload?.total) || 0;
+      const lastPage = Math.max(1, Math.ceil(total / itemsPerPage));
+      if (currentPage > lastPage) {
+        setCurrentPage(lastPage);
+        return;
+      }
+      setTotalCount(total);
       setLoadFailed(false);
 
       const transformedData: Opportunity[] = rows.map((opp: any) => ({
@@ -383,7 +343,7 @@ const Requisitions = () => {
       lastFilterKeyRef.current = filterKey;
     }
     loadRequisitions();
-  }, [debouncedSearch, statusFilter, advancedFilters, sortField, sortDirection, currentPage, itemsPerPage]);
+  }, [debouncedSearch, statusFilter, advancedFilters, sortField, sortDirection, currentPage, itemsPerPage, refreshVersion]);
 
   const createRequisition = async (requisitionData: any): Promise<Opportunity> => {
     const result: any = await apiPost('/recruiter/actions', {
@@ -433,7 +393,6 @@ const Requisitions = () => {
     if ('deadline' in updates && updates.deadline !== undefined) {
       payload.deadline = updates.deadline ? new Date(updates.deadline).toISOString() : null;
     }
-    payload.is_active = updates.status === 'open';
 
     const result: any = await apiPost('/recruiter/actions', {
       action: 'update-requisition',
@@ -491,34 +450,48 @@ const Requisitions = () => {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (confirm('Are you sure you want to delete this requisition?')) {
-      try {
-        await deleteRequisition(id);
-        setRequisitions(prev => prev.filter(r => r.id !== id));
-        // Keep the header counter in sync with the deleted row (single source
-        // of truth is totalCount — the list refetch also reconciles it).
-        setTotalCount(prev => Math.max(0, prev - 1));
-        toast.success('Requisition deleted');
-        refreshQuota();
-      } catch (error) {
-        logger.error('Error deleting requisition', toError(error));
-        toast.error(error instanceof ApiError ? error.message : 'Error deleting requisition');
-      }
+  const handleDelete = (id: string) => {
+    const target = requisitions.find(r => r.id === id);
+    if (!target || mutationLock.current) return;
+    setDeleteError('');
+    setDeleteTarget(target);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget || mutationLock.current) return;
+    mutationLock.current = true;
+    setDeleting(true);
+    setDeleteError('');
+    try {
+      await deleteRequisition(deleteTarget.id);
+      setDeleteTarget(null);
+      toast.success('Requisition deleted');
+      setRefreshVersion(version => version + 1);
+      void refreshQuota();
+    } catch (error) {
+      logger.error('Error deleting requisition', toError(error));
+      setDeleteError(error instanceof ApiError ? error.message : 'Unable to delete this requisition. Please try again.');
+    } finally {
+      mutationLock.current = false;
+      setDeleting(false);
     }
   };
 
   const handleStatusChange = async (id: string, newStatus: string) => {
+    if (mutationLock.current) return;
+    mutationLock.current = true;
+    setBusyId(id);
     try {
-      const updated = await updateRequisition(id, { status: newStatus });
-      setRequisitions(prev => prev.map(r =>
-        r.id === id ? { ...r, ...updated } : r
-      ));
+      await updateRequisition(id, { status: newStatus });
       toast.success(`Requisition marked as ${newStatus.replace('_', ' ')}`);
-      refreshQuota();
+      setRefreshVersion(version => version + 1);
+      void refreshQuota();
     } catch (error) {
       logger.error('Error updating status', toError(error));
       toast.error(error instanceof ApiError ? error.message : 'Error updating status');
+    } finally {
+      mutationLock.current = false;
+      setBusyId(null);
     }
   };
 
@@ -658,7 +631,7 @@ const Requisitions = () => {
     <div className="h-screen flex flex-col bg-gray-50">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Job Requisitions</h1>
             {/* Fix G: single totalCount source (was duplicated with requisitions.length) */}
@@ -668,14 +641,14 @@ const Requisitions = () => {
           </div>
           <div className="flex gap-3">
             <button
-              onClick={() => setShowImportModal(true)}
+              onClick={() => setShowImportModal(true)} disabled={!permissions.create}
               className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
             >
               <ArrowUpTrayIcon className="h-5 w-5 mr-2" />
               Import
             </button>
             <button
-              onClick={() => setShowCreateModal(true)}
+              onClick={() => setShowCreateModal(true)} disabled={!permissions.create} title={!permissions.create ? "Creating requisitions requires permission from your organization" : undefined}
               className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700"
             >
               <PlusIcon className="h-5 w-5 mr-2" />
@@ -714,11 +687,12 @@ const Requisitions = () => {
         )}
 
         {/* Search and Filters */}
-        <div className="mt-4 flex flex-col sm:flex-row gap-3">
+        <div className="mt-4 flex flex-col flex-wrap sm:flex-row gap-3">
           <div className="flex-1 relative">
             <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
             <input
               type="text"
+              aria-label="Search requisitions"
               placeholder="Search by job title, department, or location..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -755,6 +729,7 @@ const Requisitions = () => {
           )}
 
           <select
+            aria-label="Filter by status"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
             className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -777,6 +752,7 @@ const Requisitions = () => {
           {/* Sorting Dropdown */}
           <div className="relative">
             <select
+              aria-label="Sort requisitions"
               value={SORT_OPTION_VALUES.has(`${sortField}|${sortDirection}`) ? `${sortField}|${sortDirection}` : ''}
               onChange={(e) => {
                 // Composite "<field>|<direction>" values; pipe-safe separator
@@ -823,6 +799,7 @@ const Requisitions = () => {
 
           <div className="flex gap-2">
             <button
+              aria-pressed={viewMode === 'grid'}
               onClick={() => setViewMode('grid')}
               className={`px-3 py-2 border rounded-md ${viewMode === 'grid'
                 ? 'bg-primary-50 border-primary-300 text-primary-700'
@@ -832,6 +809,7 @@ const Requisitions = () => {
               Grid
             </button>
             <button
+              aria-pressed={viewMode === 'list'}
               onClick={() => setViewMode('list')}
               className={`px-3 py-2 border rounded-md ${viewMode === 'list'
                 ? 'bg-primary-50 border-primary-300 text-primary-700'
@@ -884,7 +862,7 @@ const Requisitions = () => {
                 icon={BriefcaseSolidIcon}
                 actionButton={
                   <button
-                    onClick={() => setShowCreateModal(true)}
+                    onClick={() => setShowCreateModal(true)} disabled={!permissions.create} title={!permissions.create ? "Creating requisitions requires permission from your organization" : undefined}
                     className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700"
                   >
                     <PlusIcon className="h-5 w-5 mr-2" />
@@ -899,6 +877,8 @@ const Requisitions = () => {
             {requisitions.map((req) => (
               <RequisitionCard
                 key={req.id}
+                busy={busyId === req.id}
+                permissions={permissions}
                 requisition={req}
                 onView={(r) => {
                   setSelectedRequisition(r);
@@ -1034,7 +1014,7 @@ const Requisitions = () => {
                             setShowViewModal(true);
                           }}
                           className="text-gray-600 hover:text-gray-900"
-                          title="View"
+                          title="View" aria-label={`View ${req.job_title}`}
                         >
                           <EyeIcon className="h-5 w-5" />
                         </button>
@@ -1044,14 +1024,14 @@ const Requisitions = () => {
                             setShowEditModal(true);
                           }}
                           className="text-primary-600 hover:text-primary-900"
-                          title="Edit"
+                          title="Edit" aria-label={`Edit ${req.job_title}`} disabled={busyId === req.id || !permissions.edit}
                         >
                           <PencilIcon className="h-5 w-5" />
                         </button>
                         <button
                           onClick={() => handleDelete(req.id)}
                           className="text-red-600 hover:text-red-900"
-                          title="Delete"
+                          title={permissions.delete ? "Delete" : "Deleting requisitions requires an organization administrator"} aria-label={`Delete ${req.job_title}`} disabled={busyId === req.id || !permissions.delete}
                         >
                           <TrashIcon className="h-5 w-5" />
                         </button>
@@ -1151,32 +1131,34 @@ const Requisitions = () => {
       </div>
 
       {/* Modals */}
+      {deleteTarget && <DeleteRequisitionDialog requisition={deleteTarget} busy={deleting} error={deleteError}
+        onClose={() => { if (!mutationLock.current) setDeleteTarget(null); }} onConfirm={confirmDelete} />}
+
       {showCreateModal && (
-        <CreateRequisitionModal
+        <RequisitionForm
           recruiters={recruiters}
           currentRecruiterId={currentRecruiterId}
           onClose={() => setShowCreateModal(false)}
           onSuccess={async (newReqData) => {
             try {
               // createRequisition already unwraps the envelope row.
-              const newReq = await createRequisition(newReqData);
-              setRequisitions(prev => [newReq, ...prev]);
-              setTotalCount(prev => prev + 1);
+              await createRequisition(newReqData);
               setShowCreateModal(false);
               toast.success('Requisition created');
-              refreshQuota();
+              setRefreshVersion(version => version + 1);
+              void refreshQuota();
             } catch (error) {
               logger.error('Error creating requisition', toError(error));
               // Surface the backend message verbatim (e.g. 402
               // QUOTA_EXCEEDED plan-upgrade guidance).
-              toast.error(error instanceof ApiError ? error.message : 'Error creating requisition');
+              throw error;
             }
           }}
         />
       )}
 
       {showEditModal && selectedRequisition && (
-        <EditRequisitionModal
+        <RequisitionForm
           requisition={selectedRequisition}
           recruiters={recruiters}
           onClose={() => {
@@ -1186,25 +1168,31 @@ const Requisitions = () => {
           onSuccess={async (updatedData) => {
             try {
               // updateRequisition already unwraps the envelope row: replace by id.
-              const updated = await updateRequisition(selectedRequisition.id, updatedData);
-              setRequisitions(prev => prev.map(r => r.id === updated.id ? updated : r));
+              await updateRequisition(selectedRequisition.id, updatedData);
               setShowEditModal(false);
               setSelectedRequisition(null);
               toast.success('Requisition updated');
-              refreshQuota();
+              setRefreshVersion(version => version + 1);
+              void refreshQuota();
             } catch (error) {
               logger.error('Error updating requisition', toError(error));
               // Surface the backend message verbatim (e.g. 402
               // QUOTA_EXCEEDED plan-upgrade guidance).
-              toast.error(error instanceof ApiError ? error.message : 'Error updating requisition');
+              throw error;
             }
           }}
         />
       )}
 
       {showViewModal && selectedRequisition && (
-        <ViewRequisitionModal
+        <RequisitionDetails
           requisition={selectedRequisition}
+          recruiters={recruiters}
+          canEdit={permissions.edit}
+          canDelete={permissions.delete}
+          onEdit={() => { setShowViewModal(false); setShowEditModal(true); }}
+          onDelete={() => { setShowViewModal(false); handleDelete(selectedRequisition.id); }}
+          onViewApplications={() => { setShowViewModal(false); setShowApplicationsModal(true); }}
           onClose={() => {
             setShowViewModal(false);
             setSelectedRequisition(null);
@@ -1213,7 +1201,8 @@ const Requisitions = () => {
       )}
 
       {showApplicationsModal && selectedRequisition && (
-        <ApplicationsModal
+        <ApplicationsDialog
+          canManage={permissions.manageCandidates}
           requisition={selectedRequisition}
           onClose={() => {
             setShowApplicationsModal(false);
@@ -1317,6 +1306,8 @@ const Requisitions = () => {
 // Minimal typing for the props actually destructured below (fix M — was `any`).
 interface RequisitionCardProps {
   requisition: Opportunity;
+  busy: boolean;
+  permissions: { create: boolean; edit: boolean; delete: boolean };
   onView: (r: Opportunity) => void;
   onEdit: (r: Opportunity) => void;
   onDelete: (id: string) => void;
@@ -1330,6 +1321,8 @@ interface RequisitionCardProps {
 
 const RequisitionCard = ({
   requisition,
+  busy,
+  permissions,
   onView,
   onEdit,
   onDelete,
@@ -1341,6 +1334,16 @@ const RequisitionCard = ({
   getStatusIcon
 }: RequisitionCardProps) => {
   const [showMenu, setShowMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  useEscapeToClose({ enabled: showMenu, onEscape: () => setShowMenu(false) });
+  useEffect(() => {
+    if (!showMenu) return;
+    const dismiss = (event: PointerEvent) => {
+      if (!menuRef.current?.contains(event.target as Node)) setShowMenu(false);
+    };
+    document.addEventListener('pointerdown', dismiss);
+    return () => document.removeEventListener('pointerdown', dismiss);
+  }, [showMenu]);
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
@@ -1390,8 +1393,11 @@ const RequisitionCard = ({
             </div>
           </div>
 
-          <div className="relative">
+          <div className="relative" ref={menuRef}>
             <button
+              aria-label={`More actions for ${requisition.job_title}`}
+              aria-expanded={showMenu}
+              disabled={busy}
               onClick={() => setShowMenu(!showMenu)}
               className="p-1 rounded-full hover:bg-gray-100"
             >
@@ -1409,7 +1415,7 @@ const RequisitionCard = ({
                     View Details
                   </button>
                   <button
-                    onClick={() => { onEdit(requisition); setShowMenu(false); }}
+                    disabled={!permissions.edit} onClick={() => { onEdit(requisition); setShowMenu(false); }}
                     className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                   >
                     <PencilIcon className="h-4 w-4 inline mr-2" />
@@ -1420,7 +1426,7 @@ const RequisitionCard = ({
                       legal forward moves; wired to the live handleStatusChange. */}
                   {requisition.status === 'draft' && onStatusChange && (
                     <button
-                      onClick={() => { onStatusChange(requisition.id, 'open'); setShowMenu(false); }}
+                      disabled={!permissions.edit} onClick={() => { onStatusChange(requisition.id, 'open'); setShowMenu(false); }}
                       className="block w-full text-left px-4 py-2 text-sm text-green-700 hover:bg-green-50"
                     >
                       <CheckCircleIcon className="h-4 w-4 inline mr-2" />
@@ -1429,20 +1435,26 @@ const RequisitionCard = ({
                   )}
                   {requisition.status === 'open' && onStatusChange && (
                     <button
-                      onClick={() => { onStatusChange(requisition.id, 'closed'); setShowMenu(false); }}
+                      disabled={!permissions.edit} onClick={() => { onStatusChange(requisition.id, 'closed'); setShowMenu(false); }}
                       className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                     >
                       <XCircleIcon className="h-4 w-4 inline mr-2" />
                       Close opening
                     </button>
                   )}
-                  {requisition.status === 'closed' && onStatusChange && (
+                  {(requisition.status === 'closed' || requisition.status === 'on_hold') && onStatusChange && (
                     <button
-                      onClick={() => { onStatusChange(requisition.id, 'open'); setShowMenu(false); }}
+                      disabled={!permissions.edit} onClick={() => { onStatusChange(requisition.id, 'open'); setShowMenu(false); }}
                       className="block w-full text-left px-4 py-2 text-sm text-green-700 hover:bg-green-50"
                     >
                       <CheckCircleIcon className="h-4 w-4 inline mr-2" />
-                      Reopen opening
+                      {requisition.status === 'on_hold' ? 'Resume opening' : 'Reopen opening'}
+                    </button>
+                  )}
+                  {requisition.status === 'open' && (
+                    <button disabled={!permissions.edit} onClick={() => { onStatusChange(requisition.id, 'on_hold'); setShowMenu(false); }}
+                      className="block w-full text-left px-4 py-2 text-sm text-amber-700 hover:bg-amber-50">
+                      <ClockIcon className="h-4 w-4 inline mr-2" />Put on hold
                     </button>
                   )}
                   {requisition.status === 'open' && onBoost && (
@@ -1464,7 +1476,7 @@ const RequisitionCard = ({
                     </button>
                   )}
                   <button
-                    onClick={() => { onDelete(requisition.id); setShowMenu(false); }}
+                    title={!permissions.delete ? "Deleting requisitions requires an organization administrator" : undefined} disabled={!permissions.delete} onClick={() => { onDelete(requisition.id); setShowMenu(false); }}
                     className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
                   >
                     <TrashIcon className="h-4 w-4 inline mr-2" />
@@ -1503,18 +1515,21 @@ const RequisitionCard = ({
             <ClockIcon className="h-4 w-4 mr-2" />
             <span>{requisition.employment_type} • {requisition.experience_level} Level</span>
           </div>
-          {requisition.salary_range_min && (
-            <div className="flex items-center text-sm text-gray-600">
-              <CurrencyDollarIcon className="h-4 w-4 mr-2" />
-              <span>₹{(requisition.salary_range_min / 100000).toFixed(1)}L - ₹{(requisition.salary_range_max! / 100000).toFixed(1)}L</span>
-            </div>
-          )}
+          <div className="flex items-center text-sm text-gray-600">
+            <CurrencyDollarIcon className="h-4 w-4 mr-2" />
+            <span>{formatSalary(requisition)}</span>
+          </div>
           <div className="flex items-center text-sm text-gray-600">
             <CalendarIcon className="h-4 w-4 mr-2" />
             <span>Posted {new Date(requisition.posted_date).toLocaleDateString()}</span>
           </div>
         </div>
 
+        <div className="flex flex-wrap items-center gap-2 mb-4" aria-busy={busy}>
+          <button onClick={() => onView(requisition)} className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 px-3 py-2 text-sm font-medium hover:bg-gray-50"><EyeIcon className="h-4 w-4" />View details</button>
+          <button disabled={busy || !permissions.edit} onClick={() => onEdit(requisition)} className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 px-3 py-2 text-sm font-medium hover:bg-gray-50 disabled:opacity-50"><PencilIcon className="h-4 w-4" />Edit</button>
+          <button disabled={busy || !permissions.delete} onClick={() => onDelete(requisition.id)} aria-label={`Delete ${requisition.job_title}`} title={!permissions.delete ? "Deleting requisitions requires an organization administrator" : "Delete requisition"} className="ml-auto rounded-md p-2 text-red-600 hover:bg-red-50 disabled:opacity-50"><TrashIcon className="h-5 w-5" /></button>
+        </div>
         {/* Stats — Applications + Views (fix M: fake Messages stub removed) */}
         <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-200">
           <button
@@ -1528,1040 +1543,6 @@ const RequisitionCard = ({
             <div className="text-2xl font-semibold text-gray-900">{requisition.views_count}</div>
             <div className="text-xs text-gray-600">Views</div>
           </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// Modal Components
-const CreateRequisitionModal = ({ recruiters, currentRecruiterId, onClose, onSuccess }: CreateRequisitionModalProps) => {
-  const [formData, setFormData] = useState({
-    job_title: '',
-    company_name: '',
-    company_logo: '',
-    department: '',
-    location: '',
-    mode: 'on-site',
-    employment_type: 'Full-time',
-    experience_level: 'Mid',
-    experience_required: '',
-    skills_required: '',
-    deadline: '',
-    benefits: '',
-    salary_range_min: '',
-    salary_range_max: '',
-    description: '',
-    requirements: '',
-    responsibilities: '',
-    status: 'draft',
-    recruiter_id: currentRecruiterId || ''
-  });
-  const [submitting, setSubmitting] = useState(false);
-
-  useEscapeToClose({ enabled: true, onEscape: onClose });
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (submitting) return; // guard against double-submit / double-click
-    setSubmitting(true);
-    try {
-      await onSuccess({
-        ...formData,
-        // Normalize to the select's option values (previously the state default
-        // 'On-site' did not match the lowercase option values).
-        mode: normalizeWorkMode(formData.mode),
-        salary_range_min: formData.salary_range_min ? parseInt(formData.salary_range_min) : undefined,
-        salary_range_max: formData.salary_range_max ? parseInt(formData.salary_range_max) : undefined,
-        requirements: formData.requirements.split('\n').filter(r => r.trim()),
-        responsibilities: formData.responsibilities.split('\n').filter(r => r.trim()),
-      });
-    } catch (error) {
-      logger.error('Error in form submission', toError(error));
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div
-          className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
-          onClick={onClose}
-          aria-hidden="true"
-        ></div>
-
-        <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full sm:p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-2xl font-semibold text-gray-900">Create Job Requisition</h3>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-              <XCircleIcon className="h-6 w-6" />
-            </button>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Job Title <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formData.job_title}
-                  onChange={(e) => setFormData({ ...formData, job_title: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  placeholder="e.g., Senior Full Stack Developer"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Department <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formData.department}
-                  onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  placeholder="e.g., Engineering"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Company Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formData.company_name}
-                  onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  placeholder="e.g., Tech Corp Inc."
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Company Logo URL
-                </label>
-                <input
-                  type="url"
-                  value={formData.company_logo}
-                  onChange={(e) => setFormData({ ...formData, company_logo: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  placeholder="https://example.com/logo.png"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Work Mode <span className="text-red-500">*</span>
-                </label>
-                <select
-                  required
-                  value={formData.mode}
-                  onChange={(e) => setFormData({ ...formData, mode: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                >
-                  <option value="on-site">On-site</option>
-                  <option value="remote">Remote</option>
-                  <option value="hybrid">Hybrid</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Status
-                </label>
-                <select
-                  value={formData.status}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                >
-                  <option value="draft">Draft</option>
-                  <option value="open">Open</option>
-                  <option value="on_hold">On Hold</option>
-                  <option value="closed">Closed</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Application Deadline
-                </label>
-                <input
-                  type="date"
-                  value={formData.deadline}
-                  onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Location <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formData.location}
-                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  placeholder="e.g., Bangalore, Remote"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Employment Type <span className="text-red-500">*</span>
-                </label>
-                <select
-                  required
-                  value={formData.employment_type}
-                  onChange={(e) => setFormData({ ...formData, employment_type: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                >
-                  <option value="Full-time">Full-time</option>
-                  <option value="Part-time">Part-time</option>
-                  <option value="Contract">Contract</option>
-                  <option value="Internship">Internship</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Experience Level <span className="text-red-500">*</span>
-                </label>
-                <select
-                  required
-                  value={formData.experience_level}
-                  onChange={(e) => setFormData({ ...formData, experience_level: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                >
-                  <option value="Entry">Entry Level</option>
-                  <option value="Mid">Mid Level</option>
-                  <option value="Senior">Senior Level</option>
-                  <option value="Lead">Lead/Principal</option>
-                </select>
-              </div>
-
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Experience Required
-                </label>
-                <input
-                  type="text"
-                  value={formData.experience_required}
-                  onChange={(e) => setFormData({ ...formData, experience_required: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  placeholder="e.g., 3-5 years"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Recruiter <span className="text-red-500">*</span>
-                </label>
-                <select
-                  required
-                  value={formData.recruiter_id}
-                  onChange={(e) => setFormData({ ...formData, recruiter_id: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                >
-                  <option value="">Select a recruiter</option>
-                  {recruiters.map((recruiter: any) => (
-                    <option key={recruiter.id} value={recruiter.id}>
-                      {recruiter.name} ({recruiter.email})
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Salary Range Min (₹)
-                </label>
-                <input
-                  type="number"
-                  value={formData.salary_range_min}
-                  onChange={(e) => setFormData({ ...formData, salary_range_min: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  placeholder="e.g., 1500000"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Salary Range Max (₹)
-                </label>
-                <input
-                  type="number"
-                  value={formData.salary_range_max}
-                  onChange={(e) => setFormData({ ...formData, salary_range_max: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  placeholder="e.g., 2500000"
-                />
-              </div>
-            </div>
-
-            <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Skills Required <span className="text-xs text-gray-500">(comma-separated)</span>
-              </label>
-              <input
-                type="text"
-                value={formData.skills_required}
-                onChange={(e) => setFormData({ ...formData, skills_required: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                placeholder="e.g., React, Node.js, TypeScript, SQL"
-              />
-            </div>
-
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Benefits <span className="text-xs text-gray-500">(one per line)</span>
-              </label>
-              <textarea
-                rows={4}
-                value={formData.benefits}
-                onChange={(e) => setFormData({ ...formData, benefits: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                placeholder="Health insurance&#10;Remote work&#10;Learning budget"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Job Description <span className="text-red-500">*</span>
-              </label>
-              <textarea
-                required
-                rows={4}
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                placeholder="Describe the role and responsibilities..."
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Requirements <span className="text-xs text-gray-500">(one per line)</span>
-              </label>
-              <textarea
-                rows={4}
-                value={formData.requirements}
-                onChange={(e) => setFormData({ ...formData, requirements: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                placeholder="5+ years experience&#10;React, Node.js expertise&#10;Team leadership"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Responsibilities <span className="text-xs text-gray-500">(one per line)</span>
-              </label>
-              <textarea
-                rows={4}
-                value={formData.responsibilities}
-                onChange={(e) => setFormData({ ...formData, responsibilities: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                placeholder="Design and implement features&#10;Code reviews&#10;Mentor team members"
-              />
-            </div>
-
-            <div className="flex items-center justify-end space-x-3 pt-6 border-t">
-              <button
-                type="button"
-                onClick={onClose}
-                disabled={submitting}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={submitting}
-                className="px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {submitting ? 'Creating...' : 'Create Requisition'}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const EditRequisitionModal = ({ requisition, recruiters, onClose, onSuccess }: EditRequisitionModalProps) => {
-  const [formData, setFormData] = useState({
-    job_title: requisition.job_title,
-    company_name: requisition.company_name,  // ADD THIS
-    company_logo: requisition.company_logo,
-    department: requisition.department,
-    location: requisition.location,
-    mode: requisition.mode || 'on-site',  // ADD THIS with default
-    // Widen DB literal unions ('Full-time' | …) to plain strings so the
-    // select-controlled state accepts user input without type friction.
-    employment_type: String(requisition.employment_type ?? ''),
-    experience_level: String(requisition.experience_level ?? ''),
-    experience_required: requisition.experience_required || '',
-    skills_required: Array.isArray(requisition.skills_required) ? requisition.skills_required.join(', ') : (typeof requisition.skills_required === 'string' ? requisition.skills_required : ''),
-    deadline: requisition.deadline || '',
-    benefits: Array.isArray(requisition.benefits) ? requisition.benefits.join('\n') : (typeof requisition.benefits === 'string' ? requisition.benefits : ''),
-    salary_range_min: requisition.salary_range_min?.toString() || '',
-    salary_range_max: requisition.salary_range_max?.toString() || '',
-    description: requisition.description,
-    requirements: Array.isArray(requisition.requirements) ? requisition.requirements.join('\n') : (typeof requisition.requirements === 'string' ? requisition.requirements : ''),
-    responsibilities: Array.isArray(requisition.responsibilities) ? requisition.responsibilities.join('\n') : (typeof requisition.responsibilities === 'string' ? requisition.responsibilities : ''),
-    status: String(requisition.status ?? 'draft'),
-    recruiter_id: requisition.recruiter_id || ''
-  });
-
-  const [submitting, setSubmitting] = useState(false);
-
-  useEscapeToClose({ enabled: true, onEscape: onClose });
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (submitting) return; // guard against double-submit / double-click
-    setSubmitting(true);
-    try {
-      await onSuccess({
-        ...formData,
-        company_name: formData.company_name,
-        company_logo: formData.company_logo || null,
-        // Normalize to the select's option values.
-        mode: normalizeWorkMode(formData.mode || 'on-site'),
-        experience_required: formData.experience_required || null,
-        skills_required: formData.skills_required
-          ? formData.skills_required.split(',').map(s => s.trim()).filter(s => s)
-          : [],
-        deadline: formData.deadline ? new Date(formData.deadline).toISOString() : null,
-        benefits: formData.benefits.split('\n').filter(b => b.trim()),
-        salary_range_min: formData.salary_range_min ? parseInt(formData.salary_range_min) : undefined,
-        salary_range_max: formData.salary_range_max ? parseInt(formData.salary_range_max) : undefined,
-        requirements: formData.requirements.split('\n').filter(r => r.trim()),
-        responsibilities: formData.responsibilities.split('\n').filter(r => r.trim()),
-      });
-    } catch (error) {
-      logger.error('Error in form submission', toError(error));
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div
-          className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
-          onClick={onClose}
-          aria-hidden="true"
-        ></div>
-
-        <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full sm:p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-2xl font-semibold text-gray-900">Edit Job Requisition</h3>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-              <XCircleIcon className="h-6 w-6" />
-            </button>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Job Title <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formData.job_title}
-                  onChange={(e) => setFormData({ ...formData, job_title: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  placeholder="e.g., Senior Full Stack Developer"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Department <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formData.department}
-                  onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  placeholder="e.g., Engineering"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Location <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formData.location}
-                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  placeholder="e.g., Bangalore, Remote"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Employment Type <span className="text-red-500">*</span>
-                </label>
-                <select
-                  required
-                  value={formData.employment_type}
-                  onChange={(e) => setFormData({ ...formData, employment_type: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                >
-                  <option value="Full-time">Full-time</option>
-                  <option value="Part-time">Part-time</option>
-                  <option value="Contract">Contract</option>
-                  <option value="Internship">Internship</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Experience Level <span className="text-red-500">*</span>
-                </label>
-                <select
-                  required
-                  value={formData.experience_level}
-                  onChange={(e) => setFormData({ ...formData, experience_level: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                >
-                  <option value="Entry">Entry Level</option>
-                  <option value="Mid">Mid Level</option>
-                  <option value="Senior">Senior Level</option>
-                  <option value="Lead">Lead/Principal</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Status
-                </label>
-                <select
-                  value={formData.status}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                >
-                  <option value="draft">Draft</option>
-                  <option value="open">Open</option>
-                  <option value="on_hold">On Hold</option>
-                  <option value="closed">Closed</option>
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Recruiter <span className="text-red-500">*</span>
-              </label>
-              <select
-                required
-                value={formData.recruiter_id}
-                onChange={(e) => setFormData({ ...formData, recruiter_id: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-              >
-                <option value="">Select a recruiter</option>
-                {recruiters.map((recruiter: any) => (
-                  <option key={recruiter.id} value={recruiter.id}>
-                    {recruiter.name} ({recruiter.email})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="grid grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Salary Range Min (₹)
-                </label>
-                <input
-                  type="number"
-                  value={formData.salary_range_min}
-                  onChange={(e) => setFormData({ ...formData, salary_range_min: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  placeholder="e.g., 1500000"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Salary Range Max (₹)
-                </label>
-                <input
-                  type="number"
-                  value={formData.salary_range_max}
-                  onChange={(e) => setFormData({ ...formData, salary_range_max: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  placeholder="e.g., 2500000"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Job Description <span className="text-red-500">*</span>
-              </label>
-              <textarea
-                required
-                rows={4}
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                placeholder="Describe the role and responsibilities..."
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Requirements <span className="text-xs text-gray-500">(one per line)</span>
-              </label>
-              <textarea
-                rows={4}
-                value={formData.requirements}
-                onChange={(e) => setFormData({ ...formData, requirements: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                placeholder="5+ years experience&#10;React, Node.js expertise&#10;Team leadership"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Responsibilities <span className="text-xs text-gray-500">(one per line)</span>
-              </label>
-              <textarea
-                rows={4}
-                value={formData.responsibilities}
-                onChange={(e) => setFormData({ ...formData, responsibilities: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                placeholder="Design and implement features&#10;Code reviews&#10;Mentor team members"
-              />
-            </div>
-
-            <div className="flex items-center justify-end space-x-3 pt-6 border-t">
-              <button
-                type="button"
-                onClick={onClose}
-                disabled={submitting}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={submitting}
-                className="px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {submitting ? 'Updating...' : 'Update Requisition'}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const ViewRequisitionModal = ({ requisition, onClose }: RequisitionModalProps) => {
-  useEscapeToClose({ enabled: true, onEscape: onClose });
-
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20">
-        <div
-          className="fixed inset-0 bg-gray-500 bg-opacity-75"
-          onClick={onClose}
-          aria-hidden="true"
-        ></div>
-        <div className="relative bg-white rounded-lg max-w-4xl w-full p-6">
-          <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
-            <XCircleIcon className="h-6 w-6" />
-          </button>
-          <h2 className="text-2xl font-bold mb-4">{requisition.job_title}</h2>
-          <div className="space-y-4">
-            <div>
-              <h3 className="font-semibold mb-2">Description</h3>
-              <p className="text-gray-700">{requisition.description}</p>
-            </div>
-            <div>
-              <h3 className="font-semibold mb-2">Requirements</h3>
-              <ul className="list-disc list-inside space-y-1">
-                {requisition.requirements?.map((req: string, idx: number) => (
-                  <li key={idx} className="text-gray-700">{req}</li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <h3 className="font-semibold mb-2">Responsibilities</h3>
-              <ul className="list-disc list-inside space-y-1">
-                {requisition.responsibilities?.map((resp: string, idx: number) => (
-                  <li key={idx} className="text-gray-700">{resp}</li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// Nested candidate detail overlay for ApplicationsModal. Extracted into its
-// own component so it gets its own keydown listener for Escape; the parent
-// ApplicationsModal pauses its own Escape handler while this is open.
-const LearnerDetailOverlay = ({
-  learner,
-  onClose,
-  getStatusColor
-}: {
-  learner: Application;
-  onClose: () => void;
-  getStatusColor: (status: string) => string;
-}) => {
-  useEscapeToClose({ enabled: true, onEscape: onClose });
-  const profile = learner.profile;
-
-  return (
-    <div
-      className="fixed inset-0 z-[60] overflow-y-auto"
-      onClick={onClose}
-      aria-hidden="true"
-    >
-      <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20">
-        <div className="fixed inset-0 bg-gray-900 bg-opacity-75"></div>
-        <div className="relative bg-white rounded-lg max-w-3xl w-full p-6" onClick={(e) => e.stopPropagation()}>
-          <button
-            onClick={onClose}
-            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
-          >
-            <XCircleIcon className="h-6 w-6" />
-          </button>
-          <h3 className="text-2xl font-bold mb-6">{profile.name || 'Candidate Details'}</h3>
-
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-500">Passport ID</label>
-                <p className="mt-1 text-gray-900">{asDetailText(profile.passport_id)}</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-500">Registration Number</label>
-                <p className="mt-1 text-gray-900">{asDetailText(profile.registration_number)}</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-500">Date of Birth</label>
-                <p className="mt-1 text-gray-900">{asDetailText(profile.date_of_birth)}</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-500">Age</label>
-                <p className="mt-1 text-gray-900">{asDetailText(profile.age)}</p>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-500">Course</label>
-              <p className="mt-1 text-gray-900">{asDetailText(profile.course)}</p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-500">Branch/Field</label>
-              <p className="mt-1 text-gray-900">{asDetailText(profile.branch_field)}</p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-500">Skills</label>
-              <p className="mt-1 text-gray-900">{asDetailText(profile.skill)}</p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-500">Alternate Contact</label>
-              <p className="mt-1 text-gray-900">{asDetailText(profile.alternate_number)}</p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-500">Application Status</label>
-              <span className={`inline-block mt-1 px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(learner.application_status)}`}>
-                {learner.application_status?.replace('_', ' ').toUpperCase() || 'UNKNOWN'}
-              </span>
-            </div>
-
-            <div className="pt-4 border-t flex space-x-3">
-              <button
-                onClick={() => window.open(`mailto:${profile.email}`, '_blank')}
-                className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors"
-              >
-                Send Email
-              </button>
-              <button
-                onClick={onClose}
-                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const ApplicationsModal = ({ requisition, onClose }: RequisitionModalProps) => {
-  const [applications, setApplications] = useState<Application[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedLearner, setSelectedLearner] = useState<Application | null>(null);
-  const [rejectingId, setRejectingId] = useState<string | null>(null);
-
-  // Escape closes this modal — but only when the nested learner-detail
-  // overlay is not open (that overlay handles its own Escape).
-  useEscapeToClose({ enabled: !selectedLearner, onEscape: onClose });
-
-  useEffect(() => {
-    loadApplications();
-  }, [requisition.id]);
-
-  const loadApplications = async () => {
-    setLoading(true);
-    try {
-      const result: any = await apiPost('/recruiter/actions', {
-        action: 'get-applications-by-opportunity',
-        opportunityId: requisition.id
-      });
-
-      // apiPost returns the { success, data, error, meta } envelope; the
-      // backend action returns the row array directly in result.data.
-      const rows = result?.data;
-      setApplications(Array.isArray(rows) ? rows : []);
-    } catch (error) {
-      logger.error('Error loading applications', toError(error));
-      toast.error('Failed to load applications. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Wire the previously dead Reject button: backend endpoint is
-  // POST /api/opportunities { action: 'update-application-status', id, status }.
-  const handleRejectApplication = async (app: Application) => {
-    if (rejectingId) return; // one in-flight rejection at a time
-    setRejectingId(app.id);
-    try {
-      await apiPost('/opportunities', {
-        action: 'update-application-status',
-        id: app.id,
-        status: 'rejected'
-      });
-      setApplications(prev => prev.map(a => (a.id === app.id ? { ...a, application_status: 'rejected' } : a)));
-      toast.success('Application marked as rejected');
-    } catch (error) {
-      logger.error('Error rejecting application', toError(error));
-      toast.error(error instanceof ApiError ? error.message : 'Failed to reject application');
-    } finally {
-      setRejectingId(null);
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    const colors: Record<string, string> = {
-      applied: 'bg-blue-100 text-blue-800',
-      viewed: 'bg-gray-100 text-gray-800',
-      under_review: 'bg-yellow-100 text-yellow-800',
-      interview_scheduled: 'bg-purple-100 text-purple-800',
-      interviewed: 'bg-indigo-100 text-indigo-800',
-      offer_received: 'bg-green-100 text-green-800',
-      accepted: 'bg-green-200 text-green-900',
-      rejected: 'bg-red-100 text-red-800',
-      withdrawn: 'bg-gray-200 text-gray-600'
-    };
-    return colors[status] || 'bg-gray-100 text-gray-800';
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
-  };
-
-  const formatRelativeTime = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInMs = now.getTime() - date.getTime();
-    const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
-    const diffInDays = Math.floor(diffInHours / 24);
-
-    if (diffInHours < 24) {
-      return 'Today';
-    } else if (diffInDays === 1) {
-      return 'Yesterday';
-    } else if (diffInDays < 7) {
-      return `${diffInDays} days ago`;
-    } else {
-      return formatDate(dateString);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20">
-        <div
-          className="fixed inset-0 bg-gray-500 bg-opacity-75"
-          onClick={onClose}
-          aria-hidden="true"
-        ></div>
-        <div className="relative bg-white rounded-lg max-w-6xl w-full p-6 max-h-[90vh] overflow-y-auto">
-          <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
-            <XCircleIcon className="h-6 w-6" />
-          </button>
-          <h2 className="text-2xl font-bold mb-2">Applications for {requisition.job_title}</h2>
-          <p className="text-gray-600 mb-6">{applications.length} applications received</p>
-
-          {loading ? (
-            <div className="text-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
-              <p className="mt-4 text-gray-600">Loading applications...</p>
-            </div>
-          ) : applications.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
-              <UsersIcon className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-              <p>No applications received yet</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Candidate
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Position
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Applied
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Experience
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {applications.map((app) => {
-                    // Typed fallback avoids the `LearnerProfile | {}` union leak.
-                    const profile = (app.learners?.profile || {}) as LearnerProfile;
-                    const relativeTime = formatRelativeTime(app.applied_at);
-
-                    return (
-                      <tr key={app.id} className="hover:bg-gray-50 transition-colors">
-                        {/* Candidate */}
-                        <td className="px-4 py-4 whitespace-nowrap">
-                          <div className="flex items-center space-x-3">
-                            <div className="flex-shrink-0">
-                              <div className="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center">
-                                <span className="text-primary-600 font-semibold text-sm">
-                                  {(profile.name || 'N/A').charAt(0).toUpperCase()}
-                                </span>
-                              </div>
-                            </div>
-                            <div>
-                              <div className="text-sm font-medium text-gray-900">
-                                {profile.name || 'Unknown Candidate'}
-                              </div>
-                              <div className="text-sm text-gray-500">
-                                {profile.email || app.learners?.email || 'N/A'}
-                              </div>
-                            </div>
-                          </div>
-                        </td>
-
-                        {/* Position */}
-                        <td className="px-4 py-4">
-                          <div className="text-sm text-gray-900 font-medium">
-                            {asDetailText(profile.branch_field || profile.course)}
-                          </div>
-                        </td>
-
-                        {/* Status */}
-                        <td className="px-4 py-4 whitespace-nowrap">
-                          <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(app.application_status)}`}>
-                            <ClockIcon className="h-3 w-3 mr-1" />
-                            {app.application_status?.replace('_', ' ') || 'Unknown'}
-                          </span>
-                        </td>
-
-                        {/* Applied */}
-                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {relativeTime}
-                        </td>
-
-                        {/* Experience */}
-                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {asDetailText(profile.course)}
-                        </td>
-
-                        {/* Actions */}
-                        <td className="px-4 py-4 whitespace-nowrap text-sm">
-                          <div className="flex items-center space-x-2">
-                            <button
-                              onClick={() => setSelectedLearner({ ...app, profile })}
-                              className="p-2 text-blue-600 hover:bg-blue-50 rounded-md border border-blue-600 transition-colors"
-                              title="View Details"
-                            >
-                              <EyeIcon className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => handleRejectApplication(app)}
-                              disabled={rejectingId !== null || app.application_status === 'rejected'}
-                              className="p-2 text-red-600 hover:bg-red-50 rounded-md border border-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                              title={app.application_status === 'rejected' ? 'Already rejected' : 'Reject'}
-                            >
-                              <XCircleIcon className="h-4 w-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {/* Learner Detail Modal */}
-          {selectedLearner && (
-            <LearnerDetailOverlay
-              learner={selectedLearner}
-              onClose={() => setSelectedLearner(null)}
-              getStatusColor={getStatusColor}
-            />
-          )}
         </div>
       </div>
     </div>

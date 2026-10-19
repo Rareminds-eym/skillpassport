@@ -3,7 +3,9 @@ import { getServiceClient } from '../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { apiSuccess, apiError, apiDbError, apiMethodNotAllowed } from '../../lib/response';
 import { notifyLearnersOfNewOpportunity } from '../../lib/newOpportunityNotifications';
-import { verifyOrgAccess } from '../../lib/permissions';
+import { verifyOrgAccess, PERMISSIONS, getUserRecruitmentRoles } from '../../lib/permissions';
+import { reviewApplicationSchema } from '../../../src/shared/schemas/applicationReview';
+import { createRequisitionSchema, updateRequisitionSchema, validSalaryRange } from '../../lib/requisitionValidation';
 import {
   getActiveOrgId,
   getOrgMemberUserIds,
@@ -76,6 +78,14 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   // Delegates to the shared org-ownership helper: active-status filter + ordered
   // limit(1) so .maybeSingle() can never synthesize PGRST116 on multi-memberships.
   const resolveOrgId = async (): Promise<string | null> => getActiveOrgId(supabase, user as any);
+
+  const validateAssignee = async (recruiterId: string, orgId: string): Promise<true | Response> => {
+    const { data: recruiter, error } = await supabase.from('recruiters').select('user_id').eq('id', recruiterId).eq('isactive', true).maybeSingle();
+    if (error) return apiDbError(error, context.request);
+    const members = await getOrgMemberUserIds(supabase, orgId);
+    if (!recruiter?.user_id || !members.includes(recruiter.user_id)) return apiError(400, 'VALIDATION_ERROR', 'Choose an active recruiter from your organization', context.request);
+    return true;
+  };
 
   // Candidates may be referenced by learners.id OR users.id; resolve to the canonical
   // learners.id so unlock ledger rows stay unique per candidate (H2 alias double-charge).
@@ -480,7 +490,7 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     // ── Requisitions (opportunities) ──
     if (action === 'list-recruiters') {
       // 🔒 SECURITY: Get organization_id from authenticated user
-      const organizationId = user?.org_id;
+      const organizationId = await resolveOrgId();
 
       // 🔒 Logging hygiene: no member/recruiter emails or identity lists in
       // logs — only concise first-arg operational context.
@@ -592,7 +602,7 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       const sortDirection = rawSortDirection === 'asc' ? 'asc' : 'desc';
 
       // 🔒 SECURITY: Get organization_id from authenticated user
-      const organizationId = user?.org_id;
+      const organizationId = await resolveOrgId();
 
       if (!organizationId) {
         return apiError(400, 'VALIDATION_ERROR', 'Organization ID is required', context.request);
@@ -746,33 +756,76 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       const owns = existing.organization_id ? existing.organization_id === orgId : existing.created_by === user.id;
       if (!owns) return apiError(403, 'FORBIDDEN', 'You do not have access to this opportunity', context.request);
 
-      // Publishing a draft must respect the active_job_posts plan quota (H4 bypass fix)
+      // 🔒 Mass-assignment hardening (r2 audit residual found in this legacy
+      // alias): the unhardened spread previously let an authenticated caller
+      // re-own a row to a foreign organization_id, fake authorship and spoof
+      // counters, and bypass the quota via a fail-open entitlement check.
+      // Whitelisted fields only; ownership keys and server-owned counters are
+      // always dropped; visibility mirrors status exactly like
+      // update-requisition/create-requisition do.
+      const ALLOWED_OPPORTUNITY_UPDATE_FIELDS = new Set([
+        'title', 'job_title', 'company_name', 'company_logo', 'department', 'location', 'mode',
+        'employment_type', 'experience_level', 'experience_required', 'skills_required',
+        'requirements', 'responsibilities', 'benefits', 'salary_range_min', 'salary_range_max',
+        'deadline', 'status', 'stipend_or_salary', 'application_link', 'description', 'sector',
+        'exposure_type', 'total_hours', 'duration_weeks', 'duration_days', 'schedule_note',
+        'what_youll_learn', 'what_youll_do',
+      ]);
+      const sanitizedUpdates: Record<string, any> = {};
+      for (const [key, value] of Object.entries(updates as Record<string, any>)) {
+        if (ALLOWED_OPPORTUNITY_UPDATE_FIELDS.has(key)) sanitizedUpdates[key] = value;
+      }
+      if (sanitizedUpdates.status !== undefined) {
+        const nextStatus = String(sanitizedUpdates.status).trim().toLowerCase();
+        if (!(ALLOWED_REQUISITION_STATUSES as readonly string[]).includes(nextStatus)) {
+          return apiError(
+            400,
+            'VALIDATION_ERROR',
+            `Invalid status '${sanitizedUpdates.status}'. Allowed values: ${ALLOWED_REQUISITION_STATUSES.join(', ')}`,
+            context.request
+          );
+        }
+        sanitizedUpdates.status = nextStatus;
+        // 🔒 Server-owned visibility: mirrors the enforced status transition.
+        sanitizedUpdates.is_active = sanitizedUpdates.status === 'open';
+      }
+
+      // 🔒 Publishing a draft must respect the active_job_posts plan quota
+      // (fail-CLOSED parity with update-requisition above: the old
+      // checkEntitlement-based branch silently continued on entitlement or
+      // counting errors — an unresolvable plan could not be distinguished from
+      // "allowed",which is a quota bypass).
       const currentlyVisible = existing.status === 'open' || existing.is_active === true;
-      const becomesVisible = !currentlyVisible && (updates.status === 'open' || updates.is_active === true);
+      const becomesVisible = !currentlyVisible && (sanitizedUpdates.status === 'open' || sanitizedUpdates.is_active === true);
       if (becomesVisible && existing.organization_id) {
-        const { checkEntitlement } = await import('../../shared/lib/entitlement-service');
-        const entitlement = await checkEntitlement(supabase, existing.organization_id, 'active_job_posts');
-        if (entitlement && typeof entitlement.limit === 'number') {
-          const { count, error: countErr } = await supabase
-            .from('opportunities')
-            .select('id', { count: 'exact', head: true })
-            .eq('organization_id', existing.organization_id)
-            .neq('id', existing.id)
-            .or('is_active.eq.true,status.eq.open');
-          if (!countErr && typeof count === 'number' && count >= entitlement.limit) {
-            return apiError(
-              402,
-              'QUOTA_EXCEEDED',
-              `Your current plan allows up to ${entitlement.limit} active job posts. You currently have ${count} active posts. Please upgrade your recruiter plan to publish more opportunities.`,
-              context.request
-            );
-          }
+        const { getNumericLimit } = await import('../../shared/lib/entitlement-service');
+        const quota = await getNumericLimit(supabase, existing.organization_id, 'active_job_posts');
+        if (!quota) {
+          return apiError(402, 'QUOTA_EXCEEDED', 'Active job post limit is not configured for your plan. Please contact support.', context.request);
+        }
+        if (!quota.enabled) {
+          return apiError(402, 'QUOTA_EXCEEDED', 'Active job posts are not included in your current plan. Please upgrade your plan to publish opportunities.', context.request);
+        }
+        const { count, error: countErr } = await supabase
+          .from('opportunities')
+          .select('id', { count: 'exact', head: true })
+          .eq('organization_id', existing.organization_id)
+          .neq('id', existing.id)
+          .or('is_active.eq.true,status.eq.open');
+        if (countErr) return apiDbError(countErr, context.request);
+        if (typeof quota.limit === 'number' && (count ?? 0) >= quota.limit) {
+          return apiError(
+            402,
+            'QUOTA_EXCEEDED',
+            `Your current plan allows up to ${quota.limit} active job posts. You currently have ${count} active posts. Please upgrade your recruiter plan to publish more opportunities.`,
+            context.request
+          );
         }
       }
 
       const { data, error } = await supabase
         .from('opportunities')
-        .update({ ...updates, updated_at: new Date().toISOString() })
+        .update({ ...sanitizedUpdates, updated_at: new Date().toISOString() })
         .eq('id', existing.id)
         .select()
         .single();
@@ -883,7 +936,7 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       const { rows } = body;
 
       // 🔒 SECURITY: organization_id resolved from the authenticated user
-      const organizationId = user?.org_id;
+      const organizationId = await resolveOrgId();
 
       if (!organizationId) {
         console.error('[recruiter/actions] import-requisitions: organizationId not found', { userId: user.id });
@@ -1048,16 +1101,37 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       return apiSuccess({ id: canonical.id, name: canonical.name, email: null, contact_number: null, unlocked: false }, context.request);
     }
 
+    if (action === 'get-requisition-permissions') {
+      const orgId = await resolveOrgId();
+      if (!orgId) return apiError(403, 'FORBIDDEN', 'No active organization', context.request);
+      const roles = await getUserRecruitmentRoles(supabase, user.id, orgId);
+      return apiSuccess({
+        create: roles.some(role => role.can_create_jobs),
+        edit: roles.some(role => role.can_edit_jobs),
+        delete: roles.some(role => role.can_delete_jobs),
+        manageCandidates: roles.some(role => role.can_manage_candidates),
+      }, context.request);
+    }
+
     if (action === 'create-requisition') {
-      const { requisitionData } = body;
-      if (!requisitionData) return apiError(400, 'VALIDATION_ERROR', 'Missing requisitionData', context.request);
+      const parsed = createRequisitionSchema.safeParse(body.requisitionData);
+      if (!parsed.success) return apiError(400, 'VALIDATION_ERROR', parsed.error.issues.map(issue => `${issue.path.join('.')}: ${issue.message}`).join('; '), context.request);
+      const requisitionData = parsed.data;
+      if (!validSalaryRange(requisitionData)) return apiError(400, 'VALIDATION_ERROR', 'Maximum salary must be greater than or equal to minimum salary', context.request);
 
       // 🔒 SECURITY: Get organization_id from authenticated user
-      const organizationId = user?.org_id;
+      const organizationId = await resolveOrgId();
 
       if (!organizationId) {
         console.error('[recruiter/actions] create-requisition: organizationId not found', { userId: user.id });
         return apiError(400, 'VALIDATION_ERROR', 'Organization ID is required', context.request);
+      }
+
+      const access = await verifyOrgAccess(supabase, user.id, organizationId, PERMISSIONS.CREATE_JOBS);
+      if (!access.allowed) return apiError(403, 'FORBIDDEN', 'You do not have permission to create requisitions', context.request);
+      if (requisitionData.recruiter_id) {
+        const valid = await validateAssignee(requisitionData.recruiter_id, organizationId);
+        if (valid !== true) return valid;
       }
 
       // 🔒 Status whitelist (server-enforced, superset of the live DB enum)
@@ -1104,6 +1178,7 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         .from('opportunities')
         .insert({
           ...requisitionData,
+          title: requisitionData.job_title,
           status: requestedStatus,
           // 🔒 Server-forced fields: visibility mirrors the status (never a
           // client-supplied is_active), authorship and counters are server-owned
@@ -1131,28 +1206,10 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       const { id, updates } = body;
       if (!id || !updates || typeof updates !== 'object') return apiError(400, 'VALIDATION_ERROR', 'Missing id or updates', context.request);
 
-      const rawUpdates = updates as Record<string, any>;
-
-      // 🔒 Explicit field whitelist (mass-assignment hardening): unknown keys
-      // are dropped silently (logged once), never 400'd and never forwarded
-      // to the table. The legacy last-write strips below stay as a second line
-      // of defense for any dataset mutating keys.
-      const ALLOWED_UPDATE_FIELDS = new Set([
-        'title', 'job_title', 'company_name', 'company_logo', 'department', 'location', 'mode',
-        'employment_type', 'experience_level', 'experience_required', 'skills_required',
-        'requirements', 'responsibilities', 'benefits', 'salary_range_min', 'salary_range_max',
-        'deadline', 'status', 'is_active', 'description',
-      ]);
-      const sanitizedUpdates: Record<string, any> = {};
-      for (const [key, value] of Object.entries(rawUpdates)) {
-        if (ALLOWED_UPDATE_FIELDS.has(key)) sanitizedUpdates[key] = value;
-      }
-      const droppedKeys = Object.keys(rawUpdates).filter((key) => !ALLOWED_UPDATE_FIELDS.has(key));
-      if (droppedKeys.length) {
-        console.log('[recruiter/actions] update-requisition dropped non-whitelisted fields:', {
-          fields: droppedKeys.length,
-        });
-      }
+      const parsed = updateRequisitionSchema.safeParse(updates);
+      if (!parsed.success) return apiError(400, 'VALIDATION_ERROR', parsed.error.issues.map(issue => `${issue.path.join('.')}: ${issue.message}`).join('; '), context.request);
+      const sanitizedUpdates: Record<string, any> = parsed.data;
+      if (sanitizedUpdates.job_title !== undefined) sanitizedUpdates.title = sanitizedUpdates.job_title;
       if (Object.keys(sanitizedUpdates).length === 0) {
         return apiError(400, 'VALIDATION_ERROR', 'No updatable fields provided', context.request);
       }
@@ -1169,6 +1226,13 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           );
         }
         sanitizedUpdates.status = nextStatus;
+        // 🔒 Server-owned visibility (E2 parity with create-requisition):
+        // is_active always mirrors the enforced status transition —
+        // `is_active` was removed from the whitelist above so visibility has a
+        // single authoritative source. This closes a consistency hole where a
+        // raw API consumer could publish status='open' while the row stayed
+        // hidden (status was quota-gated, is_active wasn't).
+        sanitizedUpdates.is_active = sanitizedUpdates.status === 'open';
       }
 
       // 🔒 Never allow the update payload to re-own or re-author the row
@@ -1181,7 +1245,7 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       // never populated by withAuth, so the old eq.undefined filter always failed.)
       const { data: existing, error: exErr } = await supabase
         .from('opportunities')
-        .select('id, organization_id, created_by, status, is_active')
+        .select('id, organization_id, created_by, status, is_active, salary_range_min, salary_range_max, recruiter_id')
         .eq('id', id)
         .maybeSingle();
       if (exErr) return apiDbError(exErr, context.request);
@@ -1190,6 +1254,17 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       const orgId = await resolveOrgId();
       const owns = existing.organization_id ? existing.organization_id === orgId : existing.created_by === user.id;
       if (!owns) return apiError(403, 'FORBIDDEN', 'You do not have access to this requisition', context.request);
+
+      if (existing.organization_id) {
+        const access = await verifyOrgAccess(supabase, user.id, existing.organization_id, PERMISSIONS.EDIT_JOBS);
+        if (!access.allowed) return apiError(403, 'FORBIDDEN', 'You do not have permission to edit requisitions', context.request);
+      }
+      if (!validSalaryRange({ ...existing, ...sanitizedUpdates })) return apiError(400, 'VALIDATION_ERROR', 'Maximum salary must be greater than or equal to minimum salary', context.request);
+      if (sanitizedUpdates.recruiter_id && sanitizedUpdates.recruiter_id !== existing.recruiter_id) {
+        if (!orgId) return apiError(403, 'FORBIDDEN', 'No active organization for recruiter assignment', context.request);
+        const valid = await validateAssignee(sanitizedUpdates.recruiter_id, orgId);
+        if (valid !== true) return valid;
+      }
 
       // 🔒 Publishing a draft must respect the active_job_posts plan quota
       // (parity with update-opportunity) — fail-CLOSED via the lightweight
@@ -1252,13 +1327,48 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       const owns = existing.organization_id ? existing.organization_id === orgId : existing.created_by === user.id;
       if (!owns) return apiError(403, 'FORBIDDEN', 'You do not have access to this requisition', context.request);
 
+      if (existing.organization_id) {
+        const access = await verifyOrgAccess(supabase, user.id, existing.organization_id, PERMISSIONS.DELETE_JOBS);
+        if (!access.allowed) return apiError(403, 'FORBIDDEN', 'You do not have permission to delete requisitions', context.request);
+      }
+
       const { error } = await supabase
         .from('opportunities')
         .delete()
         .eq('id', existing.id);
 
+      if (error?.code === '23503') return apiError(409, 'REQUISITION_IN_USE', 'This requisition has linked applications or hiring records. Close the opening instead to preserve its history.', context.request);
       if (error) return apiDbError(error, context.request);
       return apiSuccess({ success: true }, context.request);
+    }
+
+    if (action === 'review-application') {
+      const parsed = reviewApplicationSchema.safeParse(body);
+      if (!parsed.success) return apiError(400, 'VALIDATION_ERROR', parsed.error.issues.map(issue => issue.message).join('; '), context.request);
+      const input = parsed.data;
+      const orgId = await resolveOrgId();
+      if (!orgId) return apiError(403, 'FORBIDDEN', 'No active organization', context.request);
+      const access = await verifyOrgAccess(supabase, user.id, orgId, PERMISSIONS.MANAGE_CANDIDATES);
+      if (!access.allowed) return apiError(403, 'FORBIDDEN', 'You do not have permission to manage applications', context.request);
+      const { data: opportunity, error: opportunityError } = await supabase.from('opportunities').select('id').eq('id', input.opportunityId).eq('organization_id', orgId).maybeSingle();
+      if (opportunityError) return apiDbError(opportunityError, context.request);
+      if (!opportunity) return apiError(404, 'NOT_FOUND', 'Requisition not found', context.request);
+      const { data: application, error: fetchError } = await supabase.from('applied_jobs').select('id, application_status, updated_at, notes, viewed_at').eq('id', input.id).eq('opportunity_id', opportunity.id).maybeSingle();
+      if (fetchError) return apiDbError(fetchError, context.request);
+      if (!application) return apiError(404, 'NOT_FOUND', 'Application not found', context.request);
+      if (application.application_status !== input.expectedStatus || application.updated_at !== input.expectedUpdatedAt) return apiError(409, 'APPLICATION_CHANGED', 'This application changed. Close the status editor and refresh applications before retrying.', context.request);
+      const now = new Date().toISOString();
+      const entry = `[${now}] ${input.expectedStatus} → ${input.status} by ${user.email || user.id}${input.note ? ': ' + input.note : ''}`;
+      const updates = {
+        application_status: input.status,
+        updated_at: now,
+        notes: [application.notes, entry].filter(Boolean).join('\n'),
+        ...(input.status === 'viewed' && !application.viewed_at ? { viewed_at: now } : {}),
+      };
+      const { data, error } = await supabase.from('applied_jobs').update(updates).eq('id', application.id).eq('opportunity_id', opportunity.id).eq('application_status', input.expectedStatus).eq('updated_at', application.updated_at).select('id, application_status, updated_at, notes, viewed_at').maybeSingle();
+      if (error) return apiDbError(error, context.request);
+      if (!data) return apiError(409, 'APPLICATION_CHANGED', 'This application changed. Close the status editor and refresh applications before retrying.', context.request);
+      return apiSuccess(data, context.request);
     }
 
     if (action === 'get-applications-by-opportunity') {
@@ -1278,10 +1388,16 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       const owns = opp.organization_id ? opp.organization_id === orgId : opp.created_by === user.id;
       if (!owns) return apiError(403, 'FORBIDDEN', 'You do not have access to this opportunity', context.request);
 
+      if (opp.organization_id) {
+        const access = await verifyOrgAccess(supabase, user.id, opp.organization_id, PERMISSIONS.VIEW_CANDIDATES);
+        if (!access.allowed) return apiError(403, 'FORBIDDEN', 'You do not have permission to view applications', context.request);
+      }
       const { data, error } = await supabase
         .from('applied_jobs')
         .select(`
         id,
+        learner_id,
+        notes,
         application_status,
         applied_at,
         viewed_at,
