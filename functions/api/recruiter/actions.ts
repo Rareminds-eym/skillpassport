@@ -13,6 +13,45 @@ import {
   ALLOWED_REQUISITION_STATUSES,
 } from '../../lib/org-ownership';
 
+/** Flat learner columns that ALWAYS exist (schema.sql) — supplementary to the
+ * legacy `learners.profile` jsonb, whose presence differs between prod (has it,
+ * populated) and pre-drift local builds (absent until migration
+ * 20261019130000 is applied). */
+const LEARNER_DIRECT_COLS =
+  'id, name, email, contact_number, alternate_number, branch_field, college_school_name, university, registration_number, date_of_birth, age, profile' as string;
+
+/**
+ * Compose the learner `profile` object the FE contract expects:
+ *   base = authoritative flat columns, overridden by the jsonb `profile`
+ *   (when populated — prod). Guarantees `learners.profile` is a usable object
+ *   even when the column is missing/null on a drifted database.
+ */
+function composeLearnerProfile(l: any): Record<string, unknown> {
+  if (!l) return {};
+  const base: Record<string, unknown> = {
+    name: l.name,
+    email: l.email,
+    contact_number: l.contact_number,
+    phone_number: l.contact_number,
+    alternate_number: l.alternate_number,
+    branch_field: l.branch_field,
+    university: l.university || l.college_school_name,
+    college_school_name: l.college_school_name,
+    registration_number: l.registration_number,
+    date_of_birth: l.date_of_birth,
+    age: l.age,
+  };
+  const stored = l.profile && typeof l.profile === 'object' && !Array.isArray(l.profile) ? l.profile : {};
+  return { ...base, ...stored };
+}
+
+/** Post-process applied_jobs rows so `learners.profile` is always composed. */
+function injectComposedProfiles(rows: any[]): any[] {
+  return (rows || []).map((r: any) =>
+    r?.learners ? { ...r, learners: { ...r.learners, profile: composeLearnerProfile(r.learners) } } : r
+  );
+}
+
 export const onRequest = async (context: any) => {
   if (context.request.method === 'POST') return onRequestPost(context);
   return apiMethodNotAllowed();
@@ -789,15 +828,15 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         interview_scheduled_at,
         updated_at,
         learners (
-          id,
-          email,
-          profile
+          ${LEARNER_DIRECT_COLS}
         )
       `)
         .eq('opportunity_id', opportunityId)
         .order('applied_at', { ascending: false });
       if (error) return apiDbError(error, context.request);
-      return apiSuccess(data, context.request);
+      // `learners.profile` may not exist on drifted local DBs — compose it from
+      // the verified flat columns so the FE contract holds either way.
+      return apiSuccess(injectComposedProfiles(data || []), context.request);
     }
 
     if (action === 'fetch-shortlist-tags') {
@@ -1249,16 +1288,16 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         interview_scheduled_at,
         updated_at,
         learners (
-          id,
-          email,
-          profile
+          ${LEARNER_DIRECT_COLS}
         )
       `)
         .eq('opportunity_id', opportunityId)
         .order('applied_at', { ascending: false });
 
       if (error) return apiDbError(error, context.request);
-      return apiSuccess(data || [], context.request);
+      // `learners.profile` may not exist on drifted local DBs — compose it from
+      // the verified flat columns so the FE contract holds either way.
+      return apiSuccess(injectComposedProfiles(data || []), context.request);
     }
 
     if (action === 'get-quota-usage') {

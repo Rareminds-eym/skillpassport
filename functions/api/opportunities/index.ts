@@ -1750,11 +1750,33 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       // owner-consent design) — this endpoint is now only reachable through the
       // ownership-scoped parent shortlist above.
       const learnerIds = data.map(d => d.learner_id);
-      const { data: learners } = await supabase.from('learners').select('id, profile').in('id', learnerIds);
+      // profile (jsonb) may be absent on drifted/local DBs — select the flat
+      // authoritative columns too and compose the object server-side so the
+      // FE contract holds regardless of schema drift state.
+      const { data: learners, error: learnersErr } = await supabase.from('learners').select('id, name, email, contact_number, alternate_number, branch_field, college_school_name, university, registration_number, date_of_birth, age, profile').in('id', learnerIds);
+      if (learnersErr) return apiDbError(learnersErr, context.request);
+      const composeProfile = (l: any): Record<string, unknown> => {
+        if (!l) return {};
+        const base: Record<string, unknown> = {
+          name: l.name,
+          email: l.email,
+          contact_number: l.contact_number,
+          phone_number: l.contact_number,
+          alternate_number: l.alternate_number,
+          branch_field: l.branch_field,
+          university: l.university || l.college_school_name,
+          college_school_name: l.college_school_name,
+          registration_number: l.registration_number,
+          date_of_birth: l.date_of_birth,
+          age: l.age,
+        };
+        const stored = l.profile && typeof l.profile === 'object' && !Array.isArray(l.profile) ? l.profile : {};
+        return { ...base, ...stored };
+      };
       const candidates = data.map(item => {
         const learner = (learners || []).find(l => l.id === item.learner_id);
         if (!learner) return null;
-        let profile = typeof learner.profile === 'string' ? (() => { try { return JSON.parse(learner.profile); } catch { return {}; } })() : (learner.profile || {});
+        const profile = composeProfile(learner);
         const educationArray = profile.education || [];
         const education = educationArray.find((e: any) => e.status === 'ongoing') || educationArray[0] || {};
         let cgpa = education.cgpa || profile.cgpa || 'N/A';
