@@ -458,13 +458,10 @@
 // export default OpportunityPreview;
 
 
+import { openExternalApplication } from '@/features/opportunities/lib/externalApplication';
+import { AlertCircle, Award, Bookmark, Briefcase, Calendar, CheckCircle2, Clock, ExternalLink, MapPin, Send, Star, TrendingUp, Users, X } from 'lucide-react';
 import React from 'react';
 import ReactDOM from 'react-dom';
-import { MapPin, Briefcase, X, ExternalLink, Star, Bookmark, Clock, Users, TrendingUp, Award, CheckCircle2, Calendar, AlertCircle, Send } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/Card';
-import { Button } from '@/shared/ui/ButtonNew';
-import { Badge } from '@/shared/ui/Badge';
-import { openExternalApplication } from '@/features/opportunities/lib/externalApplication';
 
 // Application Confirmation Modal Component
 const ApplicationConfirmationModal = ({
@@ -783,7 +780,7 @@ const OpportunityPreview = ({
     (opportunity.what_youll_learn || opportunity.sector || opportunity.exposure_type);
 
   // Determine if this is a regular job/internship
-  const isRegularOpportunity = opportunity.employment_type === 'FullTime' ||
+  const isRegularOpportunity = ['FullTime', 'Full-time'].includes(opportunity.employment_type) ||
     (opportunity.employment_type === 'Internship' && !isLearningInternship);
 
   return (
@@ -970,8 +967,8 @@ const OpportunityPreview = ({
           </div>
         )}
 
-        {/* View More Button - Show for all opportunity types with additional details */}
-        {(isLearningInternship || isRegularOpportunity || skills.length > 0 || requirements.length > 0 || responsibilities.length > 0 || benefits.length > 0) && (
+        {/* View More Button - Always shown: the details modal is the only way to view full info and apply */}
+        {(
           <div className="flex justify-center">
             <button
               onClick={() => {
