@@ -15,7 +15,7 @@ import { getServiceClient } from '../../../lib/supabase';
 import { ssoCreateSubscription, ssoUpdateSubscriptionField } from '../../../lib/sso-client';
 import { syncSubscriptionCache, syncUserShadow } from '../../../lib/sync-shadow';
 import { apiSuccess, apiError } from '../../../lib/response';
-import { requireSelfServePlan, assertPlanPurchaseScope, catalogPlanErrorResponse } from '../lib/salesPlan';
+import { requireSelfServePlan, assertPlanPurchaseScope, subscriptionForUpgrade, catalogPlanErrorResponse } from '../lib/salesPlan';
 import { completePlanSelection, isSubscriptionCurrent } from '../../../shared/lib/org-subscription';
 
 const logger = createLogger('payments:create-order');
@@ -180,6 +180,16 @@ export async function handleCreateOrder(context: AuthenticatedContext): Promise<
         startDate: subscription.subscription_start_date, endDate: subscription.subscription_end_date,
         autoRenew: subscription.auto_renew,
       } }, context.request);
+    }
+
+    // Reject incompatible active coverage before creating another payable order.
+    const current = await subscriptionForUpgrade(supabase, user.id, catalogPlan, scope.organizationId);
+    if (current && (current.status === 'pending' || isSubscriptionCurrent(current))) {
+      if (current.status === 'pending') return apiError(409, 'SUBSCRIPTION_PENDING', 'Your existing subscription is still activating. Please retry; do not pay again.', context.request);
+      const selectedPrice = Number(body.amount) / 100;
+      if (current.plan_id === catalogPlan.id || (current.plan_amount != null && selectedPrice <= Number(current.plan_amount))) {
+        return apiError(409, 'SUBSCRIPTION_CONFLICT', 'You already have this plan or a higher-priced active plan. Open My Subscription to manage it; no new payment is required.', context.request);
+      }
     }
 
     // Validate amount against DB plan price (industrial-grade: never trust client)

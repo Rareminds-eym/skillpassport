@@ -142,3 +142,18 @@ describe('Explicit catalogue checkout', () => {
     expect((await checkout(free.id)).status).toBe(200);
   });
 });
+
+it('blocks a second paid checkout for the same active plan before contacting Razorpay', async () => {
+  tables.plans_cache = [{ ...free, pricing_matrix: { all: { yearly: 749 } } }];
+  tables.subscription_cache = [{ id: 'current', user_id: 'u', plan_id: free.id, plan_amount: 749,
+    is_organization_subscription: false, status: 'active', billing_cycle: 'yearly', subscription_end_date: '2098-01-01' }];
+  const response = await checkout(free.id, 74900);
+  expect(response.status).toBe(409); expect(await response.text()).toContain('no new payment is required');
+  expect(mocks.worker).not.toHaveBeenCalled();
+});
+it('blocks another paid order while the same-audience subscription is pending', async () => {
+  tables.plans_cache = [{ ...free, pricing_matrix: { all: { yearly: 749 } } }];
+  tables.subscription_cache = [{ id: 'current', user_id: 'u', plan_id: free.id,
+    is_organization_subscription: false, status: 'pending' }];
+  expect((await checkout(free.id, 74900)).status).toBe(409); expect(mocks.worker).not.toHaveBeenCalled();
+});

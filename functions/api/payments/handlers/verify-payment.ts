@@ -333,12 +333,12 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
         .single();
 
       if (currentPlan) {
-        if (typeof currentPrice !== 'number' || typeof planPrice !== 'number') {
+        if (currentPrice == null || !Number.isFinite(Number(currentPrice)) || typeof planPrice !== 'number') {
           logger.warn('Cannot compare plan pricing', { currentPrice, planPrice });
           return apiError(400, 'VALIDATION_ERROR', 'Cannot determine plan pricing. Please contact support.', context.request);
         }
 
-        if (planPrice <= currentPrice) {
+        if (planPrice <= Number(currentPrice)) {
           logger.warn('Downgrade blocked', {
             currentPlan: currentPlan.plan_code,
             currentPrice,
