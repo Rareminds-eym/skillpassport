@@ -30,7 +30,4 @@ ALTER TABLE public.learners
   ADD COLUMN IF NOT EXISTS profile jsonb DEFAULT '{}'::jsonb;
 
 COMMENT ON COLUMN public.learners.profile IS
-  'Per-learner profile JSON (name/email/phone/passport/education/etc.). '
-  || 'Missing from stale schema dumps; application code treats flat learners '
-  || 'columns as authoritative and this jsonb as enrichment. Added for '
-  || 'prod/local parity — see migration header.';
+  'Per-learner profile JSON (name/email/phone/passport/education/etc). Missing from stale schema dumps; application code treats flat learners columns as authoritative and this jsonb as enrichment. Added for prod/local parity — see migration header.';
