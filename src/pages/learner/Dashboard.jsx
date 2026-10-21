@@ -88,6 +88,7 @@ import { isSchoolLearner, isCollegeLearner, isLearner } from '@/entities/learner
 import { useUserRole } from '@/shared/model/authStore';
 import { useSubscriptionQuery } from '@/features/subscription/model';
 import { PLAN_IDS } from '@/shared/config/subscriptionPlans';
+import { isFreemiumPlan } from '@/shared/lib/isFreemiumPlan';
 import { checkFeatureAccess } from '@/features/subscription/lib/featureGating';
 import { apiPost } from '@/shared/api/apiClient';
 import { getWSClient } from '@/shared/api/wsRealtimeClient';
@@ -660,7 +661,7 @@ const LearnerDashboard = () => {
   const { subscriptionData, loading: subscriptionLoading } = useSubscriptionQuery();
 
   // Check if user is on Freemium plan
-  const isFreemium = subscriptionData?.plan === PLAN_IDS.FREEMIUM;
+  const isFreemium = isFreemiumPlan(subscriptionData?.plan);
   const userPlan = subscriptionData?.plan || PLAN_IDS.FREEMIUM;
 
   // State for upgrade prompt

@@ -52,7 +52,7 @@ export const PLAN_HIERARCHY_LEVELS = {
 
 /**
  * Freemium plan feature configuration
- * Only these features are accessible on Freemium tier (freemium)
+ * Existing free-tier locks, shared by the freemium and discover catalogue codes.
  */
 export const FREEMIUM_FEATURES = {
   // Free features

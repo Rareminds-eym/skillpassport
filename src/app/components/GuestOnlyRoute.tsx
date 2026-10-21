@@ -1,5 +1,5 @@
 import { getRouteForRole } from '@/features/auth/lib/roleBasedRouter';
-import { useAuthLoading, useIsAuthenticated, useUserRole } from '@/shared/model/authStore';
+import { useAuthLoading, useAuthStore, useIsAuthenticated, useUserRole } from '@/shared/model/authStore';
 import Loader from '@/shared/ui/Loader';
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
@@ -13,6 +13,9 @@ const GuestOnlyRoute: React.FC<GuestOnlyRouteProps> = ({ children }) => {
   const authLoading = useAuthLoading();
   const { role } = useUserRole();
   const location = useLocation();
+  const signupInProgress = useAuthStore(state => state.signupInProgress);
+
+  if (signupInProgress && location.pathname === '/signup') return <>{children}</>;
 
   // Show a loader while authentication state is being initialized
   if (authLoading) {

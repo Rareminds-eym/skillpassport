@@ -165,6 +165,13 @@ export class SyncService {
     const userMetadata = parsed.user_metadata ?? {};
 
     const updatePayload: Record<string, unknown> = { id: parsed.id };
+    if (userMetadata.subscription_selection_required === true) {
+      const { data: existing, error } = await this.db.from('users').select('metadata').eq('id', parsed.id).maybeSingle();
+      if (error) return fail('DB_ERROR', error.message, true);
+      if (existing?.metadata?.subscription_selection_required === undefined) {
+        updatePayload.metadata = { ...existing?.metadata, subscription_selection_required: true };
+      }
+    }
     if (parsed.email !== undefined) updatePayload.email = parsed.email;
 
     if (userMetadata.firstName != null) {
@@ -207,18 +214,21 @@ export class SyncService {
     let parsed: z.infer<typeof UserEmailVerifiedSchema>;
     try { parsed = UserEmailVerifiedSchema.parse(data); }
     catch (err) { return fail('VALIDATION_ERROR', err instanceof Error ? err.message : 'Invalid verify email data', false); }
-    const { data: existing } = await this.db.from('users')
+    const { data: existing, error: readError } = await this.db.from('users')
       .select('metadata')
       .eq('id', parsed.user_id)
-      .single();
+      .maybeSingle();
+    if (readError) return fail('DB_ERROR', readError.message, true);
+    if (!existing) return fail('NOT_FOUND', 'User profile is still being synchronized', true);
 
     const existingMetadata = (typeof existing?.metadata === 'object' && existing?.metadata !== null && !Array.isArray(existing.metadata)
       ? existing.metadata as Record<string, unknown>
       : {});
-    const { error } = await this.db.from('users')
+    const { data: updated, error } = await this.db.from('users')
       .update({ metadata: { ...existingMetadata, is_email_verified: true } })
-      .eq('id', parsed.user_id);
+      .eq('id', parsed.user_id).select('id').maybeSingle();
     if (error) return fail('DB_ERROR', error.message, true);
+    if (!updated) return fail('NOT_FOUND', 'User profile is still being synchronized', true);
     return ok();
   }
 

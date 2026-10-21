@@ -143,6 +143,8 @@ export const onRequestPost: PagesFunction<PagesEnv> = async (context) => {
 
         const result = await fulfillLearnerSubscription(fulfillmentEnv, {
           user_id: userId,
+          org_id: notes.org_id || undefined,
+          organization_type: notes.organization_type || undefined,
           plan_id: planId,
           plan_name: planName || validPlan.name,
           plan_code: validPlan.plan_code,
