@@ -1,3 +1,4 @@
+import {verifyOrgAccess,PERMISSIONS} from '../../lib/permissions';
 import { withAuth, getContextUser } from '../../lib/auth';
 import { getServiceClient } from '../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
@@ -49,12 +50,17 @@ export const onRequest = async (context: any) => {
 async function handleAction(context: AuthenticatedContext, supabase: any, params: Record<string, any>): Promise<Response> {
   const { action } = params;
 
+  if(MUTATING_ACTIONS.has(action)){const user=getContextUser(context);const orgId=await getActiveOrgId(supabase,user);if(!orgId||!(await verifyOrgAccess(supabase,user.id,orgId,PERMISSIONS.MANAGE_CANDIDATES)).allowed)return apiError(403,'FORBIDDEN','Candidate management permission is required',context.request);}
   switch (action) {
 
     case 'get-requisitions': {
+      const user = getContextUser(context);
+      const orgId = await getActiveOrgId(supabase, user);
+      if (!orgId) return apiError(403, 'FORBIDDEN', 'An active organization is required', context.request);
       const { data, error } = await supabase
         .from('requisitions')
         .select('*')
+        .eq('organization_id', orgId)
         .order('created_date', { ascending: false });
       if (error) return apiDbError(error, context.request);
       return apiSuccess({ requisitions: data || [] }, context.request);
@@ -63,9 +69,13 @@ async function handleAction(context: AuthenticatedContext, supabase: any, params
     case 'get-requisition-by-id': {
       const id = params.id;
       if (!id) return apiError(400, 'VALIDATION_ERROR', 'id required', context.request);
+      const user = getContextUser(context);
+      const orgId = await getActiveOrgId(supabase, user);
+      if (!orgId) return apiError(403, 'FORBIDDEN', 'An active organization is required', context.request);
       const { data, error } = await supabase
         .from('requisitions')
         .select('*')
+        .eq('organization_id', orgId)
         .eq('id', id)
         .single();
       if (error) return apiDbError(error, context.request);
@@ -91,9 +101,13 @@ async function handleAction(context: AuthenticatedContext, supabase: any, params
     }
 
     case 'get-requisitions-with-stats': {
+      const user = getContextUser(context);
+      const orgId = await getActiveOrgId(supabase, user);
+      if (!orgId) return apiError(403, 'FORBIDDEN', 'An active organization is required', context.request);
       const { data, error } = await supabase
-        .from('requisitions_with_pipeline_stats')
+        .from('requisitions')
         .select('*')
+        .eq('organization_id', orgId)
         .order('created_date', { ascending: false });
       if (error) return apiDbError(error, context.request);
       return apiSuccess({ requisitions: data || [] }, context.request);
@@ -316,7 +330,7 @@ async function handleAction(context: AuthenticatedContext, supabase: any, params
       const { data, error } = await supabase
         .from('pipeline_activities')
         .select('*')
-        .eq('pipeline_candidate_id', candidate.id)
+        .eq('candidate_uuid', candidate.id)
         .order('created_at', { ascending: false });
       if (error) return apiDbError(error, context.request);
       return apiSuccess({ activities: data || [] }, context.request);
@@ -629,7 +643,7 @@ async function handleAction(context: AuthenticatedContext, supabase: any, params
           await supabase
             .from('pipeline_activities')
             .insert([{
-              pipeline_candidate_id: data.id,
+              candidate_uuid: data.id,
               activity_type: 'stage_change',
               from_stage: null,
               to_stage: data.stage,
@@ -669,7 +683,7 @@ async function handleAction(context: AuthenticatedContext, supabase: any, params
           .select('applications_count, status, job_title, company_name')
           .eq('id', currentData.opportunity_id)
           .single();
-        if (opportunityData && (opportunityData.applications_count === 0 || opportunityData.status === 'filled')) {
+        if (opportunityData && (opportunityData.status === 'closed' || opportunityData.status === 'filled')) {
           return apiError(400, 'VALIDATION_ERROR',
             `Cannot move candidate: All openings for ${opportunityData.job_title} at ${opportunityData.company_name} have been filled.`,
             context.request);
@@ -710,7 +724,7 @@ async function handleAction(context: AuthenticatedContext, supabase: any, params
         await supabase
           .from('pipeline_activities')
           .insert([{
-            pipeline_candidate_id: candidateIdStr,
+            candidate_uuid: candidateIdStr,
             activity_type: 'stage_change',
             from_stage: previousStage,
             to_stage: newStage,
@@ -806,7 +820,7 @@ async function handleAction(context: AuthenticatedContext, supabase: any, params
         await supabase
           .from('pipeline_activities')
           .insert([{
-            pipeline_candidate_id: candidateIdStr,
+            candidate_uuid: candidateIdStr,
             activity_type: 'stage_change',
             from_stage: currentData?.previous_stage || undefined,
             to_stage: 'rejected',
@@ -888,7 +902,7 @@ async function handleAction(context: AuthenticatedContext, supabase: any, params
         await supabase
           .from('pipeline_activities')
           .insert([{
-            pipeline_candidate_id: candidateIdStr,
+            candidate_uuid: candidateIdStr,
             activity_type: 'note_added',
             activity_details: { assigned_to },
             performed_by: user.id, // 🔒 server-forced actor
@@ -1030,47 +1044,11 @@ async function handleAction(context: AuthenticatedContext, supabase: any, params
     }
 
     case 'bulk-reject-candidates': {
-      const { candidate_ids, rejection_reason } = params;
-      if (!candidate_ids || !Array.isArray(candidate_ids) || candidate_ids.length === 0) {
-        return apiError(400, 'VALIDATION_ERROR', 'candidate_ids array required', context.request);
-      }
-      // 🔒 ORG SCOPING, all-or-nothing: verify EVERY candidate belongs to the
-      // caller's org BEFORE applying any rejection.
-      const user = getContextUser(context);
-      const orgId = await getActiveOrgId(supabase, user);
-      if (!orgId) return apiError(400, 'VALIDATION_ERROR', 'Organization ID is required', context.request);
-      const { data: orgRows, error: scopeErr } = await supabase
-        .from('pipeline_candidates')
-        .select('id')
-        .in('id', candidate_ids.map((id: any) => String(id)))
-        .eq('organization_id', orgId);
-      if (scopeErr) return apiDbError(scopeErr, context.request);
-      const foundIds = new Set((orgRows || []).map((r: any) => r.id));
-      const missing = candidate_ids.filter((id: any) => !foundIds.has(String(id)));
-      if (missing.length > 0) {
-        return apiError(403, 'FORBIDDEN', 'One or more candidates do not belong to your organization', context.request);
-      }
-      const results: any[] = [];
-      const errors: any[] = [];
-      for (const scoped of orgRows || []) {
-        try {
-          const candidateIdStr = String(scoped.id);
-          const { data: updated, error: updateError } = await supabase
-            .from('pipeline_candidates')
-            .update({ status: 'rejected', stage: 'rejected', rejection_reason: rejection_reason || null, rejection_date: new Date().toISOString() })
-            .eq('id', candidateIdStr)
-            .select()
-            .single();
-          if (updateError) errors.push(updateError);
-          else results.push(updated);
-        } catch (e) {
-          errors.push(e);
-        }
-      }
-      if (errors.length > 0) {
-        return apiSuccess({ candidates: results, errors }, context.request);
-      }
-      return apiSuccess({ candidates: results }, context.request);
+      const ids=[...new Set((params.candidate_ids||[]).map(String))];
+      if(!ids.length||ids.length>100||!ids.every(id=>/^[0-9a-f-]{36}$/i.test(String(id)))||!params.rejection_reason?.trim())return apiError(400,'VALIDATION_ERROR','Select 1–100 candidates and provide a rejection reason',context.request);
+      const user=getContextUser(context),orgId=await getActiveOrgId(supabase,user);
+      const {data,error}=await supabase.rpc('recruitment_pipeline_operation',{p_org:orgId,p_actor:user.id,p_ids:ids,p_action:'reject',p_reason:params.rejection_reason,p_assignee:null});
+      if(error)return apiDbError(error,context.request);if(data?.error)return apiError(409,'CONFLICT',data.error,context.request);return apiSuccess(data,context.request);
     }
 
     default:

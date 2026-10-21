@@ -1,3 +1,4 @@
+import { verifyOrgAccess, PERMISSIONS } from '../../lib/permissions';
 import { withAuth, getContextUser } from '../../lib/auth';
 import { getServiceClient } from '../../lib/supabase';
 import { getActiveOrgId, getOrgOwnedOpportunityIds } from '../../lib/org-ownership';
@@ -101,6 +102,8 @@ const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   const sortDir = url.searchParams.get('sortDir') || 'desc';
   query = query.order(sortField as any, { ascending: sortDir === 'asc' });
 
+  const id = url.searchParams.get('id');
+  if (id) query = query.eq('id', id);
   query = query.range(offset, offset + limit - 1);
 
   const { data, error, count } = await query;
@@ -126,6 +129,26 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     return apiError(400, 'VALIDATION_ERROR', 'Organization ID is required', context.request);
   }
 
+  const orgId = await getActiveOrgId(supabase, user);
+  const permission = orgId && await verifyOrgAccess(supabase, user.id, orgId, PERMISSIONS.MANAGE_CANDIDATES);
+  if (!permission || !permission.allowed) return apiError(403, 'FORBIDDEN', 'You cannot manage offers', context.request);
+  if (body.id) {
+    const { data: existing, error: lookupError } = await supabase.from('offers').select('*').eq('id', String(body.id)).maybeSingle();
+    if (lookupError) return apiDbError(lookupError, context.request);
+    if (!existing || !jobIds.includes(String(existing.job_id))) return apiError(404, 'NOT_FOUND', 'Offer not found', context.request);
+    if (body.expectedUpdatedAt && body.expectedUpdatedAt !== existing.updated_at) return apiError(409, 'OFFER_CHANGED', 'This offer changed. Refresh before editing it.', context.request);
+    const updates: Record<string, unknown> = {};
+    for (const key of ['status','expiry_date','response_deadline','response_date','notes','benefits','template','offered_ctc','ctc_band','acceptance_notes']) if (body[key] !== undefined) updates[key] = body[key];
+    if (!Object.keys(updates).length) return apiError(400, 'VALIDATION_ERROR', 'No supported offer changes supplied', context.request);
+    if (updates.status && (!['accepted','rejected','expired','withdrawn'].includes(String(updates.status)) || existing.status !== 'pending')) return apiError(409, 'INVALID_TRANSITION', 'Only pending offers can receive a final decision', context.request);
+    for (const key of ['expiry_date','response_deadline']) if (updates[key] && (!Number.isFinite(Date.parse(String(updates[key]))) || Date.parse(String(updates[key])) <= Date.now())) return apiError(400, 'VALIDATION_ERROR', 'Offer deadlines must be in the future', context.request);
+    updates.updated_at = new Date().toISOString();
+    const { data, error } = await supabase.from('offers').update(updates).eq('id', existing.id).eq('updated_at', existing.updated_at).select().maybeSingle();
+    if (error) return apiDbError(error, context.request);
+    if (!data) return apiError(409, 'OFFER_CHANGED', 'This offer changed. Refresh before retrying.', context.request);
+    return apiSuccess({ offer: data }, context.request);
+  }
+
   // 🔒 Field whitelist (no mass-assignment, OWASP API5). id and
   // inserted_at/updated_at are never client-settable here.
   const canonical: Record<string, unknown> = {};
@@ -146,6 +169,8 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     return apiError(403, 'FORBIDDEN', 'Offer must reference a job posted by your organization', context.request);
   }
 
+  if (!Number.isFinite(Date.parse(String(canonical.expiry_date))) || Date.parse(String(canonical.expiry_date)) <= Date.now()) return apiError(400, 'VALIDATION_ERROR', 'Choose a future offer expiry', context.request);
+  canonical.status = 'pending';
   // status enum is constrained in DB (pending|accepted|rejected|expired|withdrawn);
   // reject unknown values with a clear 400 instead of a cryptic DB error.
   if (canonical.status != null && !['pending', 'accepted', 'rejected', 'expired', 'withdrawn'].includes(String(canonical.status))) {
@@ -187,6 +212,9 @@ const onRequestDelete = withAuth(async (context: AuthenticatedContext) => {
     return apiError(403, 'FORBIDDEN', 'You do not have access to this offer', context.request);
   }
 
+  const orgId = await getActiveOrgId(supabase, user);
+  const permission = orgId && await verifyOrgAccess(supabase, user.id, orgId, PERMISSIONS.MANAGE_CANDIDATES);
+  if (!permission || !permission.allowed) return apiError(403, 'FORBIDDEN', 'You cannot delete offers', context.request);
   const { error } = await supabase.from('offers').delete().eq('id', row.id);
   if (error) return apiDbError(error, context.request);
   return apiSuccess({ deleted: true }, context.request);

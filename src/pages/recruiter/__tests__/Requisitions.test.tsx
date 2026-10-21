@@ -1,4 +1,5 @@
 import '@testing-library/jest-dom/vitest';
+import userEvent from '@testing-library/user-event';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -19,6 +20,8 @@ let allow = true;
 let failDelete = false;
 let failUpdate = false;
 beforeEach(() => {
+  // Radix positions its menu/tooltip with this browser API, absent in jsdom.
+  vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} });
   jobs = [{ ...fixture }]; count = 1; allow = true; failDelete = false; failUpdate = false;
   apiPost.mockReset();
   apiPost.mockImplementation(async (_path, body) => {
@@ -31,7 +34,7 @@ beforeEach(() => {
     }
   });
 });
-afterEach(cleanup);
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 async function mount() { render(<MemoryRouter><Requisitions /></MemoryRouter>); await screen.findByText('Platform Engineer'); await waitFor(() => expect(apiPost).toHaveBeenCalledWith('/recruiter/actions', { action: 'get-requisition-permissions' })); }
 
 describe('Requisition page workflows', () => {
@@ -57,7 +60,7 @@ describe('Requisition page workflows', () => {
     expect(screen.getByText('1 requisition')).toBeInTheDocument();
   });
   it('makes every field editable from the detail view and shows save failures', async () => {
-    await mount(); fireEvent.click(screen.getByRole('button', { name: 'View details' }));
+    await mount(); fireEvent.click(screen.getByRole('button', { name: 'View Platform Engineer' }));
     expect(screen.getByRole('dialog')).toHaveTextContent('Example');
     fireEvent.click(screen.getByRole('button', { name: 'Edit requisition' }));
     fireEvent.change(screen.getByLabelText('Job title', { exact: false }), { target: { value: 'Renamed Engineer' } });
@@ -87,7 +90,7 @@ describe('Requisition page workflows', () => {
   it('disables mutations for viewers in grid and list modes', async () => {
     allow = false; await mount();
     expect(screen.getByRole('button', { name: 'Create Requisition' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Edit' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Edit Platform Engineer' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Delete Platform Engineer' })).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: 'List' }));
     expect(screen.getByRole('button', { name: 'Edit Platform Engineer' })).toBeDisabled();
@@ -103,8 +106,8 @@ describe('Requisition page workflows', () => {
       return base(path, body);
     });
     await mount();
-    fireEvent.click(screen.getByRole('button', { name: 'More actions for Platform Engineer' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Put on hold' }));
+    await userEvent.click(screen.getByRole('button', { name: 'More actions for Platform Engineer' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Put on hold' }));
     fireEvent.change(screen.getByLabelText('Filter by status'), { target: { value: 'on_hold' } });
     await screen.findByText('No requisitions found');
     finish();
@@ -114,11 +117,11 @@ describe('Requisition page workflows', () => {
   });
   it('offers hold and resume actions appropriate to the current status', async () => {
     jobs = [{ ...fixture, status: 'open' }]; await mount();
-    fireEvent.click(screen.getByRole('button', { name: 'More actions for Platform Engineer' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Put on hold' }));
+    await userEvent.click(screen.getByRole('button', { name: 'More actions for Platform Engineer' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Put on hold' }));
     await waitFor(() => expect(apiPost.mock.calls.some(([, body]) => body.action === 'update-requisition' && body.updates.status === 'on_hold')).toBe(true));
     await screen.findByText('on hold');
-    fireEvent.click(screen.getByRole('button', { name: 'More actions for Platform Engineer' }));
-    expect(screen.getByRole('button', { name: 'Resume opening' })).toBeEnabled();
+    await userEvent.click(screen.getByRole('button', { name: 'More actions for Platform Engineer' }));
+    expect(screen.getByRole('menuitem', { name: 'Resume opening' })).toBeEnabled();
   });
 });

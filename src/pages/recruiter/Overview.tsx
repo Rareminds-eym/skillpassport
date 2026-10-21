@@ -30,7 +30,7 @@ import { ssoClient } from '@/shared/api/ssoClient';
 type SavedSearch = { id?: string; name: string; search_criteria?: { query?: string; skills?: string[]; location?: string; experience?: string } };
 type DashboardAlert = { id: string; source?: string; type?: string; title: string; message: string; time?: string; urgent?: boolean };
 type DashboardData = {
-  kpis?: Record<string, number>;
+  kpis?: Record<string, number | null>;
   alerts?: DashboardAlert[];
   shortlists?: { id: string; name: string; candidates?: unknown[]; candidate_count?: number; created_date?: string }[];
   savedSearches?: (SavedSearch | string)[];
@@ -117,7 +117,7 @@ const Overview = () => {
   const [orgData, setOrgData] = useState<React.ComponentProps<typeof OrgSetupModal>['orgData'] | null>(null);
 
   // Real-time activities hook
-  const { activities: realtimeActivities, isLoading: activitiesLoading, refetch: refreshActivities } = useRealtimeActivities(15);
+  const { activities: realtimeActivities, isLoading: activitiesLoading, isError: activityError, refetch: refreshActivities } = useRealtimeActivities(15);
 
   // Show only 4 activities by default, all when expanded
   const displayedActivities = isActivityExpanded ? realtimeActivities : realtimeActivities.slice(0, 4);
@@ -411,7 +411,7 @@ const Overview = () => {
             <h2 id="overview-activity" className="text-base font-semibold text-gray-900">Recent activity</h2>
             <Link to="/recruitment/activities" className={actionClass}>View all <ArrowRightIcon className="h-4 w-4" aria-hidden="true" /></Link>
           </div>
-          <div className="p-5"><ActivityFeed activities={displayedActivities} loading={activitiesLoading} /></div>
+          <div className="p-5">{activityError?<div role="alert" className="text-sm text-red-800">Activity could not be loaded. <button type="button" onClick={()=>refreshActivities()} className="underline">Try again</button></div>:<ActivityFeed activities={displayedActivities} loading={activitiesLoading} />}</div>
           {realtimeActivities.length > 4 && <div className="border-t border-gray-100 px-5 py-2"><button type="button" aria-expanded={isActivityExpanded} onClick={() => setIsActivityExpanded(expanded => !expanded)} className={`${actionClass} w-full`}>{isActivityExpanded ? 'Show less' : 'Show more activity'}{isActivityExpanded ? <ChevronUpIcon className="h-4 w-4" aria-hidden="true" /> : <ChevronDownIcon className="h-4 w-4" aria-hidden="true" />}</button></div>}
         </section>
       </div>

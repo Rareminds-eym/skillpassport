@@ -489,7 +489,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       // ── Certificates ──
       case 'fetch-certificates': {
         const { learner_ids } = params;
-        let query = supabase.from('certificates').select('learner_id, certificateName, issuedBy, issuedDate, title, issuer, level, enabled');
+        let query = supabase.from('certificates').select('learner_id, title, issuer, issued_on, level, enabled');
         if (learner_ids) query = query.in('learner_id', learner_ids);
         const { data, error } = await query;
         if (error) return apiDbError(error, context.request, { startTime });

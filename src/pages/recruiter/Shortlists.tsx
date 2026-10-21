@@ -1,3 +1,4 @@
+import { AccessibleModal } from './shared/RecruitmentControls';
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
@@ -103,7 +104,7 @@ const ViewCandidatesModal = ({ shortlist, candidates, isOpen, onClose }) => {
   if (!isOpen || !shortlist) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+    <AccessibleModal title="Recruitment dialog" onClose={onClose}><div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
         <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
 
@@ -124,7 +125,7 @@ const ViewCandidatesModal = ({ shortlist, candidates, isOpen, onClose }) => {
                 </span>
               </div>
             </div>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <button aria-label="Close dialog" onClick={onClose} className="text-gray-400 hover:text-gray-600">
               <XMarkIcon className="h-6 w-6" />
             </button>
           </div>
@@ -268,7 +269,7 @@ const ViewCandidatesModal = ({ shortlist, candidates, isOpen, onClose }) => {
           </div>
         </div>
       </div>
-    </div>
+    </div></AccessibleModal>
   );
 };
 
@@ -287,34 +288,10 @@ const ShareModal = ({ shortlist, isOpen, onClose, onShare }) => {
 
     try {
       setIsGenerating(true);
-      const shareToken = Math.random().toString(36).substr(2, 9);
-      const generatedLink = `https://recruiterhub.com/shared/${shortlist.id}?token=${shareToken}`;
-      const expiryDate = new Date();
-      expiryDate.setDate(expiryDate.getDate() + shareSettings.expiry_days);
-
-      // Update the shortlist in Supabase using the service function
-      const { error } = await updateShortlist(shortlist.id, {
-        shared: true,
-        share_link: generatedLink,
-        share_expiry: expiryDate.toISOString(),
-        watermark: shareSettings.watermark,
-        include_pii: shareSettings.include_pii,
-        notify_on_access: shareSettings.notify_on_access
-      });
-
-      if (error) throw error;
-
-      // Call the onShare callback with updated data
-      onShare({
-        ...shortlist,
-        shared: true,
-        share_link: generatedLink,
-        share_expiry: expiryDate.toISOString(),
-        watermark: shareSettings.watermark,
-        include_pii: shareSettings.include_pii,
-        notify_on_access: shareSettings.notify_on_access
-      });
-
+      const response = await apiPost<any>('/recruiter/shortlist-sharing', { action:'generate', id:shortlist.id, expiryDays:shareSettings.expiry_days });
+      if(!response.success)throw new Error(response.error?.message||'Sharing failed');
+      const generatedLink=response.data.link;
+      onShare({...shortlist, shared:true, share_expiry:response.data.expiry});
       setShareLink(generatedLink);
       return generatedLink;
     } catch (error) {
@@ -399,14 +376,14 @@ const ShareModal = ({ shortlist, isOpen, onClose, onShare }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+    <AccessibleModal title="Share Shortlist" onClose={onClose} busy={isGenerating}><div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
         <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
 
         <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-medium text-gray-900">Share Shortlist</h3>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <button aria-label="Close dialog" onClick={onClose} className="text-gray-400 hover:text-gray-600">
               <XMarkIcon className="h-6 w-6" />
             </button>
           </div>
@@ -419,6 +396,9 @@ const ShareModal = ({ shortlist, isOpen, onClose, onShare }) => {
 
           {/* Share Options */}
           <div className="mt-6">
+            <p className="mb-3 text-sm text-gray-600">Links exclude contact details and internal notes. Generating a new link revokes the previous link.</p>
+            <label className="block mb-4 text-sm font-medium text-gray-700">Expires in days<input aria-label="Share expiry in days" type="number" min="1" max="90" value={shareSettings.expiry_days} onChange={e=>{setShareLink(null);setShareSettings({...shareSettings,expiry_days:Number(e.target.value)})}} className="ml-3 w-20 rounded border border-gray-300 p-2"/></label>
+            {shortlist.shared&&<button type="button" disabled={isGenerating} className="mb-4 text-red-700 underline" onClick={async()=>{setIsGenerating(true);try{const response=await apiPost<any>('/recruiter/shortlist-sharing',{action:'revoke',id:shortlist.id});if(!response.success)throw new Error(response.error?.message);setShareLink(null);onShare({...shortlist,shared:false});onClose()}catch(error){alert(error.message||'Could not revoke link')}finally{setIsGenerating(false)}}}>Revoke shared link</button>}
             <p className="text-sm font-medium text-gray-700 mb-3">Share via:</p>
             <div className="grid grid-cols-2 gap-3">
               {/* Copy Link Button */}
@@ -435,7 +415,7 @@ const ShareModal = ({ shortlist, isOpen, onClose, onShare }) => {
                 ) : (
                   <LinkIcon className="h-4 w-4 mr-2" />
                 )}
-                Copy Link
+                Manage link
               </button>
 
               {/* Email Button */}
@@ -509,7 +489,7 @@ const ShareModal = ({ shortlist, isOpen, onClose, onShare }) => {
           </div>
         </div>
       </div>
-    </div>
+    </div></AccessibleModal>
   );
 };
 
@@ -782,14 +762,14 @@ const ExportModal = ({ shortlist, isOpen, onClose, onExport }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+    <AccessibleModal title="Export Shortlist" onClose={onClose}><div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
         <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
 
         <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-medium text-gray-900">Export Shortlist</h3>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <button aria-label="Close dialog" onClick={onClose} className="text-gray-400 hover:text-gray-600">
               <XMarkIcon className="h-6 w-6" />
             </button>
           </div>
@@ -875,7 +855,7 @@ const ExportModal = ({ shortlist, isOpen, onClose, onExport }) => {
           </div>
         </div>
       </div>
-    </div>
+    </div></AccessibleModal>
   );
 };
 
@@ -921,14 +901,14 @@ const EditShortlistModal = ({ shortlist, isOpen, onClose, onUpdate }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+    <AccessibleModal title="Edit Shortlist" onClose={onClose}><div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
         <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
 
         <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-medium text-gray-900">Edit Shortlist</h3>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <button aria-label="Close dialog" onClick={onClose} className="text-gray-400 hover:text-gray-600">
               <XMarkIcon className="h-6 w-6" />
             </button>
           </div>
@@ -936,7 +916,7 @@ const EditShortlistModal = ({ shortlist, isOpen, onClose, onUpdate }) => {
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Shortlist Name</label>
-              <input
+              <input aria-label="Shortlist Name"
                 type="text"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -947,7 +927,7 @@ const EditShortlistModal = ({ shortlist, isOpen, onClose, onUpdate }) => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
-              <textarea
+              <textarea aria-label="Description"
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 rows={3}
@@ -958,7 +938,7 @@ const EditShortlistModal = ({ shortlist, isOpen, onClose, onUpdate }) => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Tags (comma-separated)</label>
-              <input
+              <input aria-label="Tags (comma-separated)"
                 type="text"
                 value={formData.tags}
                 onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
@@ -985,7 +965,7 @@ const EditShortlistModal = ({ shortlist, isOpen, onClose, onUpdate }) => {
           </div>
         </div>
       </div>
-    </div>
+    </div></AccessibleModal>
   );
 };
 
@@ -1022,14 +1002,14 @@ const CreateShortlistModal = ({ isOpen, onClose, onCreate }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+    <AccessibleModal title="Create New Shortlist" onClose={onClose}><div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
         <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
 
         <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-medium text-gray-900">Create New Shortlist</h3>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <button aria-label="Close dialog" onClick={onClose} className="text-gray-400 hover:text-gray-600">
               <XMarkIcon className="h-6 w-6" />
             </button>
           </div>
@@ -1037,7 +1017,7 @@ const CreateShortlistModal = ({ isOpen, onClose, onCreate }) => {
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Shortlist Name</label>
-              <input
+              <input aria-label="Shortlist Name"
                 type="text"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -1048,7 +1028,7 @@ const CreateShortlistModal = ({ isOpen, onClose, onCreate }) => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
-              <textarea
+              <textarea aria-label="Description"
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 rows={3}
@@ -1059,7 +1039,7 @@ const CreateShortlistModal = ({ isOpen, onClose, onCreate }) => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Tags (comma-separated)</label>
-              <input
+              <input aria-label="Tags (comma-separated)"
                 type="text"
                 value={formData.tags}
                 onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
@@ -1086,7 +1066,7 @@ const CreateShortlistModal = ({ isOpen, onClose, onCreate }) => {
           </div>
         </div>
       </div>
-    </div>
+    </div></AccessibleModal>
   );
 };
 
@@ -1146,10 +1126,10 @@ const ShortlistCard = ({ shortlist, onShare, onExport, onView, onEdit, onDelete 
             </div>
             {!isExpired && (
               <button
-                onClick={() => navigator.clipboard.writeText(shortlist.share_link)}
+                onClick={() => onShare(shortlist)}
                 className="text-sm text-green-700 hover:text-green-800 font-medium"
               >
-                Copy Link
+                Manage link
               </button>
             )}
           </div>
@@ -1199,13 +1179,13 @@ const ShortlistCard = ({ shortlist, onShare, onExport, onView, onEdit, onDelete 
           </button>
         </div>
         <div className="flex space-x-1">
-          <button
+          <button aria-label="Pencil"
             onClick={() => onEdit(shortlist)}
             className="p-1 text-gray-400 hover:text-gray-600"
           >
             <PencilIcon className="h-4 w-4" />
           </button>
-          <button
+          <button aria-label="Trash"
             onClick={() => onDelete(shortlist.id)}
             className="p-1 text-gray-400 hover:text-red-600"
           >
@@ -1271,23 +1251,7 @@ const Shortlists = () => {
     fetchShortlists();
   }, [searchQuery, advancedFilters, sortField, sortDirection]);
 
-  const handleShare = async (updatedShortlist: Shortlist) => {
-    try {
-      // Refresh the shortlists to get the latest data
-      await fetchShortlists();
-
-      // Find the updated shortlist to get the share link
-      const freshShortlist = shortlists.find(sl => sl.id === updatedShortlist.id);
-
-      if (freshShortlist?.share_link) {
-        await navigator.clipboard.writeText(freshShortlist.share_link);
-        alert('Share link copied to clipboard!');
-      }
-    } catch (error) {
-      logger.error('Error handling share', error);
-      alert('Share link generated but failed to copy to clipboard.');
-    }
-  };
+  const handleShare = async (_updatedShortlist: Shortlist) => { await fetchShortlists(); };
 
   const handleExport = async (shortlist: Shortlist, settings: any) => {
     try {
@@ -1386,7 +1350,7 @@ const Shortlists = () => {
             />
             {/* Sorting Dropdown */}
             <div className="relative">
-              <select
+              <select aria-label="`$sort Field $sort Direction`"
                 value={`${sortField}-${sortDirection}`}
                 onChange={(e) => {
                   const [field, direction] = e.target.value.split('-');
@@ -1464,7 +1428,7 @@ const Shortlists = () => {
               onApply={fetchShortlists}
             />
             <div className="relative">
-              <select
+              <select aria-label="`$sort Field $sort Direction`"
                 value={`${sortField}-${sortDirection}`}
                 onChange={(e) => {
                   const [field, direction] = e.target.value.split('-');

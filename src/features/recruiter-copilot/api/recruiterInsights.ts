@@ -1,13 +1,20 @@
 import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
-import { CandidateSummary, CandidateMatchResult } from '@/features/learner-profile/model';
+import type { CandidateSummary, CandidateMatchResult } from '../model';
 
 const logger = getLogger('recruiter-insights');
+
+// apiClient returns the HTTP envelope. Unwrap once at this service boundary
+// so recommendation inputs remain arrays, numbers and opportunity records.
+async function copilotPost<T>(path: string, body: unknown): Promise<T> {
+  const response = await apiPost<{ data: T }>(path, body);
+  return response.data;
+}
 
 class RecruiterInsightsService {
   async getTopCandidates(limit: number = 20): Promise<CandidateSummary[]> {
     try {
-      const learners = await apiPost<any[]>('/recruiter-copilot', {
+      const learners = await copilotPost<any[]>('/recruiter-copilot', {
         action: 'fetch-learners-basic',
         limit: limit * 2,
       });
@@ -19,17 +26,17 @@ class RecruiterInsightsService {
 
       const candidates: CandidateSummary[] = await Promise.all(
         learners.map(async (learner: any) => {
-          const skills = await apiPost<any[]>('/recruiter-copilot', {
+          const skills = await copilotPost<any[]>('/recruiter-copilot', {
             action: 'fetch-skills',
             learner_ids: [learner.user_id],
           });
 
-          const trainingCount = await apiPost<number>('/recruiter-copilot', {
+          const trainingCount = await copilotPost<number>('/recruiter-copilot', {
             action: 'count-trainings',
             learner_id: learner.user_id,
           });
 
-          const certCount = await apiPost<number>('/recruiter-copilot', {
+          const certCount = await copilotPost<number>('/recruiter-copilot', {
             action: 'count-certificates',
             learner_id: learner.user_id,
           });
@@ -78,7 +85,7 @@ class RecruiterInsightsService {
 
   async findCandidatesBySkills(skillNames: string[], limit: number = 20): Promise<CandidateSummary[]> {
     try {
-      const matchingSkills = await apiPost<any[]>('/recruiter-copilot', {
+      const matchingSkills = await copilotPost<any[]>('/recruiter-copilot', {
         action: 'fetch-skills',
       });
 
@@ -122,7 +129,7 @@ class RecruiterInsightsService {
     limit: number = 15
   ): Promise<CandidateMatchResult[]> {
     try {
-      const opp = await apiPost<any>('/recruiter-copilot', {
+      const opp = await copilotPost<any>('/recruiter-copilot', {
         action: 'fetch-opportunity-by-id',
         id: opportunityId,
       });
@@ -200,7 +207,7 @@ class RecruiterInsightsService {
 
   private async getCandidatesByIds(userIds: string[]): Promise<CandidateSummary[]> {
     try {
-      const learners = await apiPost<any[]>('/recruiter-copilot', {
+      const learners = await copilotPost<any[]>('/recruiter-copilot', {
         action: 'fetch-learners-basic',
         learner_ids: userIds,
       });
@@ -209,17 +216,17 @@ class RecruiterInsightsService {
 
       return Promise.all(
         learners.map(async (learner: any) => {
-          const skills = await apiPost<any[]>('/recruiter-copilot', {
+          const skills = await copilotPost<any[]>('/recruiter-copilot', {
             action: 'fetch-skills',
             learner_ids: [learner.user_id],
           });
 
-          const trainingCount = await apiPost<number>('/recruiter-copilot', {
+          const trainingCount = await copilotPost<number>('/recruiter-copilot', {
             action: 'count-trainings',
             learner_id: learner.user_id,
           });
 
-          const certCount = await apiPost<number>('/recruiter-copilot', {
+          const certCount = await copilotPost<number>('/recruiter-copilot', {
             action: 'count-certificates',
             learner_id: learner.user_id,
           });
@@ -393,17 +400,17 @@ class RecruiterInsightsService {
       const recommendations = await Promise.all(
         applicants.map(async (applicant) => {
           try {
-            const skills = await apiPost<any[]>('/recruiter-copilot', {
+            const skills = await copilotPost<any[]>('/recruiter-copilot', {
               action: 'fetch-skills',
               learner_ids: [applicant.learner_id],
             });
 
-            const trainingCount = await apiPost<number>('/recruiter-copilot', {
+            const trainingCount = await copilotPost<number>('/recruiter-copilot', {
               action: 'count-trainings',
               learner_id: applicant.learner_id,
             });
 
-            const certificates = await apiPost<any[]>('/recruiter-copilot', {
+            const certificates = await copilotPost<any[]>('/recruiter-copilot', {
               action: 'fetch-certificates',
               learner_ids: [applicant.learner_id],
             });

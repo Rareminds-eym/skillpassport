@@ -2,26 +2,21 @@ import {
   ArrowsUpDownIcon,
   ArrowUpTrayIcon,
   BriefcaseIcon,
-  CalendarIcon,
   CheckCircleIcon,
   ChevronDownIcon,
   ChevronUpIcon,
   ClockIcon,
-  CurrencyDollarIcon,
   DocumentTextIcon,
-  EllipsisVerticalIcon,
   EyeIcon,
   MagnifyingGlassIcon,
   MapPinIcon,
   PencilIcon,
   PlusIcon,
-  RocketLaunchIcon,
   SparklesIcon,
   TrashIcon,
   XCircleIcon
 } from '@heroicons/react/24/outline';
 import { BriefcaseIcon as BriefcaseSolidIcon } from '@heroicons/react/24/solid';
-import * as React from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AdvancedRequisitionFilters, RequisitionImport } from '@/features/recruiter';
@@ -35,7 +30,8 @@ import { EmptyStateWithQuote } from '@/components/EmptyStateWithQuote';
 import { useEscapeToClose } from '@/shared/hooks/useEscapeToClose';
 
 import { ApplicationsDialog } from './components/ApplicationsDialog';
-import { RequisitionForm, RequisitionDetails, DeleteRequisitionDialog, formatSalary } from './components/RequisitionDialogs';
+import { RequisitionCard } from './components/RequisitionCard';
+import { RequisitionForm, RequisitionDetails, DeleteRequisitionDialog } from './components/RequisitionDialogs';
 import { useUser } from '@/shared/model/authStore';
 const logger = getLogger('Requisitions');
 
@@ -873,7 +869,7 @@ const Requisitions = () => {
             )}
           </div>
         ) : viewMode === 'grid' ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 min-[1800px]:grid-cols-4 items-stretch gap-4">
             {requisitions.map((req) => (
               <RequisitionCard
                 key={req.id}
@@ -1298,253 +1294,6 @@ const Requisitions = () => {
           candidate={shortlistCandidate}
         />
       )}
-    </div>
-  );
-};
-
-// Requisition Card Component
-// Minimal typing for the props actually destructured below (fix M — was `any`).
-interface RequisitionCardProps {
-  requisition: Opportunity;
-  busy: boolean;
-  permissions: { create: boolean; edit: boolean; delete: boolean };
-  onView: (r: Opportunity) => void;
-  onEdit: (r: Opportunity) => void;
-  onDelete: (id: string) => void;
-  onStatusChange: (id: string, newStatus: string) => void | Promise<void>;
-  onViewApplications: (r: Opportunity) => void;
-  onBoost: (r: Opportunity) => void;
-  onGenerateShortlist: (r: Opportunity) => void;
-  getStatusBadge: (status: string) => string;
-  getStatusIcon: (status: string) => React.ReactNode;
-}
-
-const RequisitionCard = ({
-  requisition,
-  busy,
-  permissions,
-  onView,
-  onEdit,
-  onDelete,
-  onStatusChange,
-  onViewApplications,
-  onBoost,
-  onGenerateShortlist,
-  getStatusBadge,
-  getStatusIcon
-}: RequisitionCardProps) => {
-  const [showMenu, setShowMenu] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-  useEscapeToClose({ enabled: showMenu, onEscape: () => setShowMenu(false) });
-  useEffect(() => {
-    if (!showMenu) return;
-    const dismiss = (event: PointerEvent) => {
-      if (!menuRef.current?.contains(event.target as Node)) setShowMenu(false);
-    };
-    document.addEventListener('pointerdown', dismiss);
-    return () => document.removeEventListener('pointerdown', dismiss);
-  }, [showMenu]);
-
-  return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
-      <div className="p-6">
-        {/* Header */}
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex items-start space-x-3 flex-1">
-            {/* ADD COMPANY LOGO */}
-            {requisition.company_logo && (
-              <img
-                src={requisition.company_logo}
-                alt={requisition.company_name}
-                className="h-12 w-12 rounded-lg object-contain border border-gray-200"
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none';
-                }}
-              />
-            )}
-
-            <div className="flex-1 min-w-0">
-              <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                {requisition.job_title}
-              </h3>
-              <p className="text-sm text-gray-600 font-medium mb-2 truncate">
-                {requisition.company_name}
-              </p>
-              <div className="flex flex-wrap items-center gap-2 text-sm text-gray-600">
-                <span className="inline-flex items-center">
-                  <BriefcaseIcon className="h-4 w-4 mr-1" />
-                  {requisition.department}
-                </span>
-                <span>•</span>
-                <span className="inline-flex items-center">
-                  <MapPinIcon className="h-4 w-4 mr-1" />
-                  {requisition.location}
-                </span>
-                {/* ADD MODE BADGE */}
-                {requisition.mode && (
-                  <>
-                    <span>•</span>
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                      {requisition.mode.charAt(0).toUpperCase() + requisition.mode.slice(1)}
-                    </span>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="relative" ref={menuRef}>
-            <button
-              aria-label={`More actions for ${requisition.job_title}`}
-              aria-expanded={showMenu}
-              disabled={busy}
-              onClick={() => setShowMenu(!showMenu)}
-              className="p-1 rounded-full hover:bg-gray-100"
-            >
-              <EllipsisVerticalIcon className="h-5 w-5 text-gray-400" />
-            </button>
-
-            {showMenu && (
-              <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border border-gray-200">
-                <div className="py-1">
-                  <button
-                    onClick={() => { onView(requisition); setShowMenu(false); }}
-                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                  >
-                    <EyeIcon className="h-4 w-4 inline mr-2" />
-                    View Details
-                  </button>
-                  <button
-                    disabled={!permissions.edit} onClick={() => { onEdit(requisition); setShowMenu(false); }}
-                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                  >
-                    <PencilIcon className="h-4 w-4 inline mr-2" />
-                    Edit
-                  </button>
-                  {/* Status transitions (fix D) — respect the ALLOWED set
-                      [draft, open, closed, on_hold] and only offer the
-                      legal forward moves; wired to the live handleStatusChange. */}
-                  {requisition.status === 'draft' && onStatusChange && (
-                    <button
-                      disabled={!permissions.edit} onClick={() => { onStatusChange(requisition.id, 'open'); setShowMenu(false); }}
-                      className="block w-full text-left px-4 py-2 text-sm text-green-700 hover:bg-green-50"
-                    >
-                      <CheckCircleIcon className="h-4 w-4 inline mr-2" />
-                      Publish opening
-                    </button>
-                  )}
-                  {requisition.status === 'open' && onStatusChange && (
-                    <button
-                      disabled={!permissions.edit} onClick={() => { onStatusChange(requisition.id, 'closed'); setShowMenu(false); }}
-                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                    >
-                      <XCircleIcon className="h-4 w-4 inline mr-2" />
-                      Close opening
-                    </button>
-                  )}
-                  {(requisition.status === 'closed' || requisition.status === 'on_hold') && onStatusChange && (
-                    <button
-                      disabled={!permissions.edit} onClick={() => { onStatusChange(requisition.id, 'open'); setShowMenu(false); }}
-                      className="block w-full text-left px-4 py-2 text-sm text-green-700 hover:bg-green-50"
-                    >
-                      <CheckCircleIcon className="h-4 w-4 inline mr-2" />
-                      {requisition.status === 'on_hold' ? 'Resume opening' : 'Reopen opening'}
-                    </button>
-                  )}
-                  {requisition.status === 'open' && (
-                    <button disabled={!permissions.edit} onClick={() => { onStatusChange(requisition.id, 'on_hold'); setShowMenu(false); }}
-                      className="block w-full text-left px-4 py-2 text-sm text-amber-700 hover:bg-amber-50">
-                      <ClockIcon className="h-4 w-4 inline mr-2" />Put on hold
-                    </button>
-                  )}
-                  {requisition.status === 'open' && onBoost && (
-                    <button
-                      onClick={() => { onBoost(requisition); setShowMenu(false); }}
-                      className="block w-full text-left px-4 py-2 text-sm text-orange-600 hover:bg-orange-50"
-                    >
-                      <RocketLaunchIcon className="h-4 w-4 inline mr-2" />
-                      Boost job (1 credit)
-                    </button>
-                  )}
-                  {onGenerateShortlist && (
-                    <button
-                      onClick={() => { onGenerateShortlist(requisition); setShowMenu(false); }}
-                      className="block w-full text-left px-4 py-2 text-sm text-indigo-600 hover:bg-indigo-50"
-                    >
-                      <SparklesIcon className="h-4 w-4 inline mr-2" />
-                      Generate AI Shortlist
-                    </button>
-                  )}
-                  <button
-                    title={!permissions.delete ? "Deleting requisitions requires an organization administrator" : undefined} disabled={!permissions.delete} onClick={() => { onDelete(requisition.id); setShowMenu(false); }}
-                    className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-                  >
-                    <TrashIcon className="h-4 w-4 inline mr-2" />
-                    Delete
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Status Badge */}
-        <div className="mb-4 flex items-center gap-2 flex-wrap">
-          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusBadge(requisition.status)}`}>
-            {getStatusIcon(requisition.status)}
-            <span className="ml-1 capitalize">{requisition.status?.replace('_', ' ') || 'Unknown'}</span>
-          </span>
-          {/* Boost/featured placement windows (spec §6) */}
-          {requisition.boosted_until && new Date(requisition.boosted_until) > new Date() && (
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-700 border border-orange-200">
-              <RocketLaunchIcon className="h-3 w-3 mr-1" />
-              Boosted
-            </span>
-          )}
-          {requisition.featured_until && new Date(requisition.featured_until) > new Date() && (
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700 border border-amber-200">
-              <SparklesIcon className="h-3 w-3 mr-1" />
-              Featured
-            </span>
-          )}
-        </div>
-
-        {/* Details */}
-        <div className="space-y-2 mb-4">
-          <div className="flex items-center text-sm text-gray-600">
-            <ClockIcon className="h-4 w-4 mr-2" />
-            <span>{requisition.employment_type} • {requisition.experience_level} Level</span>
-          </div>
-          <div className="flex items-center text-sm text-gray-600">
-            <CurrencyDollarIcon className="h-4 w-4 mr-2" />
-            <span>{formatSalary(requisition)}</span>
-          </div>
-          <div className="flex items-center text-sm text-gray-600">
-            <CalendarIcon className="h-4 w-4 mr-2" />
-            <span>Posted {new Date(requisition.posted_date).toLocaleDateString()}</span>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2 mb-4" aria-busy={busy}>
-          <button onClick={() => onView(requisition)} className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 px-3 py-2 text-sm font-medium hover:bg-gray-50"><EyeIcon className="h-4 w-4" />View details</button>
-          <button disabled={busy || !permissions.edit} onClick={() => onEdit(requisition)} className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 px-3 py-2 text-sm font-medium hover:bg-gray-50 disabled:opacity-50"><PencilIcon className="h-4 w-4" />Edit</button>
-          <button disabled={busy || !permissions.delete} onClick={() => onDelete(requisition.id)} aria-label={`Delete ${requisition.job_title}`} title={!permissions.delete ? "Deleting requisitions requires an organization administrator" : "Delete requisition"} className="ml-auto rounded-md p-2 text-red-600 hover:bg-red-50 disabled:opacity-50"><TrashIcon className="h-5 w-5" /></button>
-        </div>
-        {/* Stats — Applications + Views (fix M: fake Messages stub removed) */}
-        <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-200">
-          <button
-            onClick={() => onViewApplications(requisition)}
-            className="text-center hover:bg-gray-50 rounded p-2"
-          >
-            <div className="text-2xl font-semibold text-primary-600">{requisition.applications_count}</div>
-            <div className="text-xs text-gray-600">Applications</div>
-          </button>
-          <div className="text-center p-2">
-            <div className="text-2xl font-semibold text-gray-900">{requisition.views_count}</div>
-            <div className="text-xs text-gray-600">Views</div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };

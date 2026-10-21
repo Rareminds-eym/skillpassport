@@ -532,9 +532,9 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
         <div className="flex-1 mb-6">
           <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4">What's Included</h4>
 
-          <div className="space-y-1">
+          <ul className="space-y-1">
             {plan.features?.slice(0, showAllFeatures ? undefined : 6).map((feature, idx) => renderFeature(feature, idx))}
-          </div>
+          </ul>
 
           {hasMoreFeatures && (
             <button

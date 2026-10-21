@@ -3,7 +3,7 @@
  * Manages company verification documents and status
  */
 
-import { withAuth } from '../../../lib/auth';
+import { withAuth, getContextUser } from '../../../lib/auth';
 import { getServiceClient } from '../../../lib/supabase';
 import { verifyOrgAccess, PERMISSIONS } from '../../../lib/permissions';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
@@ -13,7 +13,7 @@ import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
  * Fetch company verification details
  */
 export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
-    const user = context.data.user;
+    const user = getContextUser(context);
     const env = context.env as Record<string, string>;
     const supabase = getServiceClient(env as any);
 
@@ -27,7 +27,7 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
     }
 
     // Verify user has access
-    const access = await verifyOrgAccess(supabase, user.sub, orgId, undefined);
+    const access = await verifyOrgAccess(supabase, user.id, orgId, undefined);
     if (!access.allowed) {
         return access.error!;
     }
@@ -84,7 +84,7 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
  * Update company verification details
  */
 export const onRequestPut = withAuth(async (context: AuthenticatedContext) => {
-    const user = context.data.user;
+    const user = getContextUser(context);
     const env = context.env as Record<string, string>;
     const supabase = getServiceClient(env as any);
 
@@ -106,7 +106,7 @@ export const onRequestPut = withAuth(async (context: AuthenticatedContext) => {
     }
 
     // Verify user has admin access
-    const access = await verifyOrgAccess(supabase, user.sub, org_id, PERMISSIONS.MANAGE_ORG_SETTINGS);
+    const access = await verifyOrgAccess(supabase, user.id, org_id, PERMISSIONS.MANAGE_TEAM);
     if (!access.allowed) {
         return access.error!;
     }
@@ -189,7 +189,7 @@ export const onRequestPut = withAuth(async (context: AuthenticatedContext) => {
  * Submit verification for review
  */
 export const onRequest_submit = withAuth(async (context: AuthenticatedContext) => {
-    const user = context.data.user;
+    const user = getContextUser(context);
     const env = context.env as Record<string, string>;
     const supabase = getServiceClient(env as any);
 
@@ -211,7 +211,7 @@ export const onRequest_submit = withAuth(async (context: AuthenticatedContext) =
     }
 
     // Verify user has admin access
-    const access = await verifyOrgAccess(supabase, user.sub, org_id, PERMISSIONS.MANAGE_ORG_SETTINGS);
+    const access = await verifyOrgAccess(supabase, user.id, org_id, PERMISSIONS.MANAGE_TEAM);
     if (!access.allowed) {
         return access.error!;
     }
@@ -277,7 +277,7 @@ export const onRequest_submit = withAuth(async (context: AuthenticatedContext) =
  * Verify domain ownership
  */
 export const onRequest_verifyDomain = withAuth(async (context: AuthenticatedContext) => {
-    const user = context.data.user;
+    const user = getContextUser(context);
     const env = context.env as Record<string, string>;
     const supabase = getServiceClient(env as any);
 
@@ -299,7 +299,7 @@ export const onRequest_verifyDomain = withAuth(async (context: AuthenticatedCont
     }
 
     // Verify user has admin access
-    const access = await verifyOrgAccess(supabase, user.sub, org_id, PERMISSIONS.MANAGE_ORG_SETTINGS);
+    const access = await verifyOrgAccess(supabase, user.id, org_id, PERMISSIONS.MANAGE_TEAM);
     if (!access.allowed) {
         return access.error!;
     }

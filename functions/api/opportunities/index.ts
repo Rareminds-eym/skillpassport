@@ -4,7 +4,7 @@
 type AuthenticatedContext = Parameters<PagesFunction>[0];
 import { getContextUser, withAuth } from '../../lib/auth';
 import { notifyLearnersOfNewOpportunity } from '../../lib/newOpportunityNotifications';
-import { verifyOrgAccess } from '../../lib/permissions';
+import { verifyOrgAccess, PERMISSIONS } from '../../lib/permissions';
 import { apiDbError, apiError, apiMethodNotAllowed, apiSuccess } from '../../lib/response';
 import { getServiceClient } from '../../lib/supabase';
 import { eligibleJobs, isEligibleJob, stringSkills } from '../../lib/job-recommendations';
@@ -214,18 +214,11 @@ async function getInterviewLearnerUserIds(supabase: any, user: any): Promise<str
  */
 async function canAccessInterview(supabase: any, user: any, interview: { learner_id?: string | null; created_by?: string | null } | null): Promise<boolean> {
   if (!interview) return false;
-  if (interview.created_by && interview.created_by === user.id) return true;
+  if (!(interview as any).organization_id && interview.created_by && interview.created_by === user.id) return true;
   // Self (learner): interviews.learner_id stores learners.user_id (= users.id).
   if (interview.learner_id && interview.learner_id === user.id) return true;
   const orgId = await getActiveOrgId(supabase, user);
-  if (await assertInterviewAccess(supabase, user, orgId, interview)) return true;
-  // Org member checking an interview whose learner applied to one of the org's
-  // opportunities (user-space compare).
-  if (orgId && interview.learner_id) {
-    const learnerUserIds = await getInterviewLearnerUserIds(supabase, user);
-    if (learnerUserIds && learnerUserIds.includes(interview.learner_id)) return true;
-  }
-  return false;
+  return assertInterviewAccess(supabase, user, orgId, interview);
 }
 
 /**
@@ -255,7 +248,7 @@ async function loadGatedInterview(
 }
 
 // ── Shortlist ownership gate ─────────────────────────────────────────────────
-// shortlists has NO organization_id: ownership derives from created_by being an
+// Shortlists are organization-owned; unattributed legacy rows remain private to an
 // active member of the caller's org (or the caller themself). Rows are fetched
 // BEFORE any mutation (deny-by-default).
 const SL_ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
@@ -272,7 +265,7 @@ async function loadGatedShortlist(
   }
   const { data: row, error } = await supabase
     .from('shortlists')
-    .select('id, created_by')
+    .select('id, created_by,organization_id')
     .eq('id', rawId)
     .limit(1)
     .maybeSingle();
@@ -281,7 +274,7 @@ async function loadGatedShortlist(
   const orgId = await getActiveOrgId(supabase, user);
   const memberIds = orgId ? await getOrgMemberUserIds(supabase, orgId) : [];
   const createdBy = String(row.created_by ?? '');
-  if (!createdBy || (createdBy !== user.id && !memberIds.includes(createdBy))) {
+  if (!orgId||!memberIds.includes(user.id)||!(await verifyOrgAccess(supabase,user.id,orgId,PERMISSIONS.VIEW_CANDIDATES)).allowed|| (row.organization_id ? row.organization_id!==orgId : createdBy!==user.id)) {
     return { id: rawId, row: null, error: apiError(403, 'FORBIDDEN', 'You do not have access to this shortlist', context.request) };
   }
   return { id: rawId, row, error: null };
@@ -459,6 +452,7 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const supabase = getServiceClient(env as any);
   const body: any = await context.request.json().catch(() => ({}));
   const { action } = body;
+  if(['create-shortlist','update-shortlist','delete-shortlist','add-candidate-to-shortlist','remove-candidate-from-shortlist','update-shortlist-candidate-notes','update-interview','delete-interview','update-scorecard','update-interview-status','update-application-status','bulk-update-applications'].includes(action)){const user=getContextUser(context);const orgId=await getActiveOrgId(supabase,user);if(!orgId||!(await verifyOrgAccess(supabase,user.id,orgId,PERMISSIONS.MANAGE_CANDIDATES)).allowed)return apiError(403,'FORBIDDEN','Candidate management permission is required',context.request);}
 
   if (!action) return apiError(400, 'VALIDATION_ERROR', 'action is required', context.request);
 
@@ -1138,7 +1132,7 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       if (!(await canMutateApplication(supabase, user, scope, appRow))) {
         return apiError(403, 'FORBIDDEN', 'You do not have access to this application', context.request);
       }
-      const updateData: any = { application_status: newStatus, updated_at: new Date().toISOString() };
+      const updateData: any = { application_status: newStatus, updated_by: user.id, updated_at: new Date().toISOString() };
       if (notes) updateData.notes = notes;
       if (newStatus === 'viewed') updateData.viewed_at = new Date().toISOString();
       else if (newStatus === 'interview_scheduled') updateData.interview_scheduled_at = new Date().toISOString();
@@ -1174,7 +1168,7 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           return apiError(403, 'FORBIDDEN', 'You do not have access to one or more of the selected applications', context.request);
         }
       }
-      const updateData: any = { application_status: newStatus, updated_at: new Date().toISOString() };
+      const updateData: any = { application_status: newStatus, updated_by: user.id, updated_at: new Date().toISOString() };
       if (notes) updateData.notes = notes;
       if (newStatus === 'viewed') updateData.viewed_at = new Date().toISOString();
       else if (newStatus === 'interview_scheduled') updateData.interview_scheduled_at = new Date().toISOString();
@@ -1374,19 +1368,18 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     // Merge approach: two scoped queries + dedupe (matches actions.ts style).
     case 'get-interviews': {
       const user = getContextUser(context);
-      const learnerUserIds = await getInterviewLearnerUserIds(supabase, user);
-      const [byLearnerRes, byCreatorRes] = await Promise.all([
-        learnerUserIds && learnerUserIds.length > 0
-          ? supabase.from('interviews').select('*').in('learner_id', learnerUserIds).order('date', { ascending: true })
-          : Promise.resolve({ data: [], error: null }),
-        supabase.from('interviews').select('*').eq('created_by', user.id).order('date', { ascending: true }),
-      ]);
-      if (byLearnerRes.error) return apiDbError(byLearnerRes.error, context.request);
-      if (byCreatorRes.error) return apiDbError(byCreatorRes.error, context.request);
-      const mergedById = new Map<string, any>();
-      [...(byLearnerRes.data || []), ...(byCreatorRes.data || [])].forEach((i: any) => mergedById.set(i.id, i));
-      const interviews = [...mergedById.values()].sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
-      return apiSuccess({ interviews }, context.request);
+      const orgId = await getActiveOrgId(supabase, user);
+      let query = supabase.from('interviews').select('*');
+      if (user.roles?.includes('learner')) query = query.eq('learner_id', user.id);
+      else {
+        if (!orgId) return apiError(403, 'FORBIDDEN', 'An active organization is required', context.request);
+        const access = await verifyOrgAccess(supabase, user.id, orgId, PERMISSIONS.VIEW_CANDIDATES);
+        if (!access.allowed) return apiError(403, 'FORBIDDEN', 'You cannot view interviews', context.request);
+        query = query.eq('organization_id', orgId);
+      }
+      const { data, error } = await query.order('date');
+      if (error) return apiDbError(error, context.request);
+      return apiSuccess({ interviews: data || [] }, context.request);
     }
     case 'get-interview-by-id': {
       const user = getContextUser(context);
@@ -1423,38 +1416,36 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       return apiSuccess({ interviews: data }, context.request);
     }
     case 'get-upcoming-interviews': {
-      // 🔒 Same org-scope merge as get-interviews (upcoming_interviews is a view
-      // over interviews and carries created_by).
       const user = getContextUser(context);
-      const learnerUserIds = await getInterviewLearnerUserIds(supabase, user);
-      const [byLearnerRes, byCreatorRes] = await Promise.all([
-        learnerUserIds && learnerUserIds.length > 0
-          ? supabase.from('upcoming_interviews').select('*').in('learner_id', learnerUserIds)
-          : Promise.resolve({ data: [], error: null }),
-        supabase.from('upcoming_interviews').select('*').eq('created_by', user.id),
-      ]);
-      if (byLearnerRes.error) return apiDbError(byLearnerRes.error, context.request);
-      if (byCreatorRes.error) return apiDbError(byCreatorRes.error, context.request);
-      const mergedById = new Map<string, any>();
-      [...(byLearnerRes.data || []), ...(byCreatorRes.data || [])].forEach((i: any) => mergedById.set(i.id, i));
-      return apiSuccess({ interviews: [...mergedById.values()] }, context.request);
+      const orgId = await getActiveOrgId(supabase, user);
+      let query = supabase.from('interviews').select('*');
+      if (user.roles?.includes('learner')) query = query.eq('learner_id', user.id);
+      else {
+        if (!orgId) return apiError(403, 'FORBIDDEN', 'An active organization is required', context.request);
+        const access = await verifyOrgAccess(supabase, user.id, orgId, PERMISSIONS.VIEW_CANDIDATES);
+        if (!access.allowed) return apiError(403, 'FORBIDDEN', 'You cannot view interviews', context.request);
+        query = query.eq('organization_id', orgId);
+      }
+      query = query.gt('date', new Date().toISOString()).not('status', 'in', '(completed,cancelled)');
+      const { data, error } = await query.order('date');
+      if (error) return apiDbError(error, context.request);
+      return apiSuccess({ interviews: data || [] }, context.request);
     }
     case 'get-pending-scorecards': {
-      // 🔒 Same org-scope merge as get-interviews (pending_scorecards is a view
-      // over interviews and carries created_by).
       const user = getContextUser(context);
-      const learnerUserIds = await getInterviewLearnerUserIds(supabase, user);
-      const [byLearnerRes, byCreatorRes] = await Promise.all([
-        learnerUserIds && learnerUserIds.length > 0
-          ? supabase.from('pending_scorecards').select('*').in('learner_id', learnerUserIds)
-          : Promise.resolve({ data: [], error: null }),
-        supabase.from('pending_scorecards').select('*').eq('created_by', user.id),
-      ]);
-      if (byLearnerRes.error) return apiDbError(byLearnerRes.error, context.request);
-      if (byCreatorRes.error) return apiDbError(byCreatorRes.error, context.request);
-      const mergedById = new Map<string, any>();
-      [...(byLearnerRes.data || []), ...(byCreatorRes.data || [])].forEach((i: any) => mergedById.set(i.id, i));
-      return apiSuccess({ scorecards: [...mergedById.values()] }, context.request);
+      const orgId = await getActiveOrgId(supabase, user);
+      let query = supabase.from('interviews').select('*');
+      if (user.roles?.includes('learner')) query = query.eq('learner_id', user.id);
+      else {
+        if (!orgId) return apiError(403, 'FORBIDDEN', 'An active organization is required', context.request);
+        const access = await verifyOrgAccess(supabase, user.id, orgId, PERMISSIONS.VIEW_CANDIDATES);
+        if (!access.allowed) return apiError(403, 'FORBIDDEN', 'You cannot view interviews', context.request);
+        query = query.eq('organization_id', orgId);
+      }
+      query = query.eq('status', 'completed').is('scorecard', null);
+      const { data, error } = await query.order('date');
+      if (error) return apiDbError(error, context.request);
+      return apiSuccess({ scorecards: data || [] }, context.request);
     }
     case 'create-interview': {
       const user = getContextUser(context);
@@ -1477,7 +1468,15 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       }
       // 🔒 Authorship is forced server-side — never trusted from the client, and
       // any client-supplied created_by is stripped by the whitelist.
+      const orgId = await getActiveOrgId(supabase, user);
+      if (!orgId) return apiError(403, 'FORBIDDEN', 'An active organization is required', context.request);
+      const permission = await verifyOrgAccess(supabase, user.id, orgId, PERMISSIONS.MANAGE_CANDIDATES);
+      if (!permission.allowed) return apiError(403, 'FORBIDDEN', 'You cannot schedule interviews', context.request);
+      if (!canonical.candidate_name || !Number.isFinite(Date.parse(canonical.date)) || Date.parse(canonical.date) <= Date.now()) return apiError(400, 'VALIDATION_ERROR', 'Choose a candidate and a future interview time', context.request);
+      if (canonical.duration != null && (!Number.isInteger(canonical.duration) || canonical.duration < 5 || canonical.duration > 480)) return apiError(400, 'VALIDATION_ERROR', 'Interview duration must be 5–480 minutes', context.request);
+      canonical.organization_id = orgId;
       canonical.created_by = user.id;
+      canonical.organization_id = await getActiveOrgId(supabase,user);
       // interviews.id is a text PRIMARY KEY with NO default (DB-verified), so the
       // row needs an explicit id. Accept the client's id only when it is a safe
       // literal (charset/length-controlled — never a foreign-key-style injection
@@ -1688,8 +1687,7 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     }
 
     // ── Shortlist actions ──
-    // 🔒 ORG SCOPING: shortlists carry created_by, not organization_id — visible
-    // rows are those created by an active member of the caller's org.
+    // Organization ownership is persisted independently of changing memberships.
     case 'get-shortlists': {
       const user = getContextUser(context);
       const orgId = await getActiveOrgId(supabase, user);
@@ -1698,7 +1696,7 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       const { data, error } = await supabase
         .from('shortlists')
         .select('*, shortlist_candidates(count)')
-        .in('created_by', memberIds)
+        .eq('organization_id',orgId)
         .order('created_date', { ascending: false });
       if (error) return apiDbError(error, context.request);
       const formatted = (data || []).map(item => ({ ...item, candidate_count: item.shortlist_candidates?.[0]?.count || 0 }));
@@ -1717,8 +1715,7 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       const { shortlist } = body;
       if (!shortlist) return apiError(400, 'VALIDATION_ERROR', 'shortlist data required', context.request);
       // 🔒 Field whitelist (no mass-assignment): name/description/status/shared
-      // only. `tags` is NOT a shortlists column (psql-verified) and is dropped —
-      // its presence previously made the whole insert fail with PGRST204.
+      // and tags. Sharing tokens are generated only by the dedicated server endpoint.
       if (!shortlist.name) {
         return apiError(400, 'VALIDATION_ERROR', 'shortlist name is required', context.request);
       }
@@ -1726,7 +1723,8 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         name: shortlist.name,
         description: shortlist.description,
         status: shortlist.status || 'active',
-        shared: shortlist.shared === true,
+        shared: false,
+        tags: Array.isArray(shortlist.tags) ? [...new Set(shortlist.tags.filter((x: unknown) => typeof x === 'string').map((x: string) => x.trim()).filter(Boolean))].slice(0, 30) : [],
       };
       if (shortlist.id !== undefined && shortlist.id !== null) {
         if (!SL_ID_RE.test(String(shortlist.id))) {
@@ -1736,6 +1734,7 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       }
       // 🔒 Authorship forced server-side; client created_by ignored
       canonical.created_by = user.id;
+      canonical.organization_id = await getActiveOrgId(supabase,user);
       const { data, error } = await supabase.from('shortlists').insert([canonical]).select().single();
       if (error) return apiDbError(error, context.request);
       return apiSuccess({ shortlist: data }, context.request);
@@ -1745,10 +1744,9 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       const gated = await loadGatedShortlist(supabase, user, context, body.id);
       if (gated.error) return gated.error;
       // 🔒 Field whitelist (no mass-assignment) restricted to actual shortlists
-      // columns (psql-verified). include_pii/notify_on_access/tags are not
-      // columns and get dropped (they previously broke the update with PGRST204).
+      // columns. Sharing-token changes use the dedicated authenticated endpoint.
       const updates: Record<string, unknown> = {};
-      for (const field of ['name', 'description', 'status', 'shared', 'share_link', 'share_expiry', 'watermark']) {
+      for (const field of ['name', 'description', 'status', 'watermark', 'include_pii', 'notify_on_access', 'tags']) {
         if (body[field] !== undefined) updates[field] = body[field];
       }
       const { data, error } = await supabase.from('shortlists').update(updates).eq('id', gated.id).select().single();

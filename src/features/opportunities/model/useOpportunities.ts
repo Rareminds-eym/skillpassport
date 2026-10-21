@@ -30,7 +30,7 @@ export const useOpportunities = (options = {}) => {
     includeFactoryVisits = false
   } = options;
 
-  const [opportunities, setOpportunities] = useState([]);
+  const [opportunities, setOpportunities] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [totalCount, setTotalCount] = useState(0);

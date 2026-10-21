@@ -1,3 +1,7 @@
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
+import {ActionButton} from './shared/RecruitmentControls';
+import { Frame } from './components/RequisitionDialogs';
+import { useWorkspaceKey } from './shared/RecruitmentControls';
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 import { AppliedJobsService } from '@/features/opportunities';
@@ -11,7 +15,6 @@ import { EmptyStateWithQuote } from '@/components/EmptyStateWithQuote';
 
 import { recruiterInsights } from '@/features/recruiter-copilot';
 import { getLogger } from '@/shared/config/logging';
-import { queryKeys } from '@/shared/lib/queryKeys';
 
 import { useUser } from '@/shared/model/authStore';
 const logger = getLogger('ApplicantsList');
@@ -67,6 +70,8 @@ interface PipelineStage {
 
 const ApplicantsList: React.FC = () => {
   const user = useUser();
+  const applicantsKey = useWorkspaceKey('applicants');
+  const [viewingApplicant, setViewingApplicant] = useState<Applicant | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [entriesPerPage, setEntriesPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
@@ -124,7 +129,7 @@ const ApplicantsList: React.FC = () => {
 
   // Function to refresh applicants list
   const fetchApplicants = async () => {
-    await queryClient.invalidateQueries({ queryKey: queryKeys.recruiter.applicants() });
+    await queryClient.invalidateQueries({ queryKey: applicantsKey });
   };
 
   // Enable real-time message notifications
@@ -139,7 +144,7 @@ const ApplicantsList: React.FC = () => {
 
   // Fetch applicants using React Query
   const { data: applicants = [], isLoading: loading } = useQuery({
-    queryKey: queryKeys.recruiter.applicants(),
+    queryKey: applicantsKey,
     queryFn: async () => {
       try {
         // Fetch all applicants from applied_jobs table with pipeline data
@@ -151,14 +156,8 @@ const ApplicantsList: React.FC = () => {
         });
 
         // Get unique opportunity IDs for the dropdown
-        const uniqueOpportunities = [...new Set(
-          applicantsData
-            ?.filter((app: any) => app.opportunity_id)
-            .map((app: any) => ({
-              id: app.opportunity_id,
-              title: app.opportunity?.job_title || app.opportunity?.title
-            }))
-        )];
+        const uniqueOpportunities = [...new Map((applicantsData || []).filter((app: any) => app.opportunity_id).map((app: any) => [app.opportunity_id, { id: app.opportunity_id, title: app.opportunity?.job_title || app.opportunity?.title }])).values()] as { id: string; title: string }[];
+        const pipelineByJob = new Map(await Promise.all(uniqueOpportunities.map(async job => [job.id, await getAllPipelineCandidatesByStage(job.id)] as const)));
         setAvailableRequisitions(uniqueOpportunities);
 
         // Fetch pipeline data for each opportunity
@@ -167,7 +166,7 @@ const ApplicantsList: React.FC = () => {
             if (applicant.opportunity_id) {
               try {
                 // Get pipeline data for this opportunity
-                const { data: pipelineData } = await getAllPipelineCandidatesByStage(applicant.opportunity_id);
+                const { data: pipelineData } = pipelineByJob.get(applicant.opportunity_id) || { data: null };
 
                 // Find this learner in the pipeline data
                 let pipelineStage = null;
@@ -175,7 +174,7 @@ const ApplicantsList: React.FC = () => {
 
                 if (pipelineData) {
                   for (const [stage, candidates] of Object.entries(pipelineData)) {
-                    const found = (candidates as any[]).find(c => c.learner_id === applicant.learner_id);
+                    const found = (candidates as any[]).find(c => c.learner_id === applicant.learner_id && c.status!=='rejected');
                     if (found) {
                       pipelineStage = stage;
                       pipelineCandidateId = found.id;
@@ -327,11 +326,12 @@ const ApplicantsList: React.FC = () => {
     if (!applicant.pipeline_candidate_id && (applicant.application_status === 'applied' || applicant.application_status === 'viewed')) {
       try {
         // Add candidate to pipeline first using the API
-        const learner = await apiPost<any>('/recruiter/actions', {
+        const learnerResponse = await apiPost<any>('/recruiter/actions', {
           action: 'get-learner-info',
           learnerId: applicant.learner_id
         });
 
+        const learner = learnerResponse.data;
         if (!learner) {
           toast.error('Learner information not found');
           return;
@@ -354,7 +354,7 @@ const ApplicantsList: React.FC = () => {
         if (result.error) {
           const errorCode = (result.error as any).code;
           if (errorCode === 'DUPLICATE_CANDIDATE' || errorCode === '23505') {
-            toast.info('This candidate is already in the pipeline. Refreshing...');
+            toast('This candidate is already in the pipeline. Refreshing...');
             await fetchApplicants(); // Refresh to show current state
             return;
           }
@@ -372,7 +372,7 @@ const ApplicantsList: React.FC = () => {
       }
     } else if (!applicant.pipeline_candidate_id) {
       logger.info('[ApplicantsList] Candidate not in pipeline and not in applied/viewed status');
-      toast.info('This applicant is not in the pipeline system yet');
+      toast('This applicant is not in the pipeline system yet');
       return;
     } else {
       // Use existing pipeline movement function
@@ -428,22 +428,10 @@ const ApplicantsList: React.FC = () => {
   };
 
   const handleViewApplicant = async (applicant: Applicant) => {
-    try {
-      // Update status to 'viewed' if it's currently 'applied'
-      if (applicant.application_status === 'applied') {
-        await AppliedJobsService.updateApplicationStatus(applicant.id, 'viewed');
-        // Update local state to reflect the change
-        setApplicants(prevApplicants =>
-          prevApplicants.map(app =>
-            app.id === applicant.id
-              ? { ...app, application_status: 'viewed', viewed_at: new Date().toISOString() }
-              : app
-          )
-        );
-      }
-      // TODO: Add navigation to applicant details page or open modal
-    } catch (error) {
-      logger.error('Error updating application status', error);
+    setViewingApplicant(applicant);
+    if (applicant.application_status === 'applied') {
+      try { await AppliedJobsService.updateApplicationStatus(applicant.id, 'viewed'); await fetchApplicants(); }
+      catch (error) { toast.error(error instanceof Error ? error.message : 'Could not record the application view'); }
     }
   };
 
@@ -632,7 +620,7 @@ const ApplicantsList: React.FC = () => {
             </div>
             <button
               onClick={exportToCSV}
-              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700"
+              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-700 hover:bg-green-700"
             >
               <ArrowDownTrayIcon className="h-5 w-5 mr-2" />
               Export As CSV
@@ -672,8 +660,8 @@ const ApplicantsList: React.FC = () => {
           {/* Search and Filters */}
           <div className="mt-6 flex flex-col sm:flex-row gap-3">
             <div className="flex-1 relative">
-              <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-              <input
+              <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-600" />
+              <input aria-label="Search Term"
                 type="text"
                 placeholder="Search by name, email, or position..."
                 value={searchTerm}
@@ -697,7 +685,7 @@ const ApplicantsList: React.FC = () => {
               </div>
             )}
 
-            <select
+            <select aria-label="Status Filter"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
               className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
@@ -724,7 +712,7 @@ const ApplicantsList: React.FC = () => {
               </optgroup>
             </select>
 
-            <select
+            <select aria-label="Selected Requisition"
               value={selectedRequisition}
               onChange={(e) => setSelectedRequisition(e.target.value)}
               className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
@@ -737,7 +725,7 @@ const ApplicantsList: React.FC = () => {
               ))}
             </select>
 
-            <select
+            <select aria-label="Sort By"
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as 'name' | 'date' | 'rating')}
               className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
@@ -747,7 +735,7 @@ const ApplicantsList: React.FC = () => {
               <option value="rating">Highest Rating</option>
             </select>
 
-            <select
+            <select aria-label="Entries Per Page"
               value={entriesPerPage}
               onChange={(e) => {
                 setEntriesPerPage(Number(e.target.value));
@@ -770,7 +758,7 @@ const ApplicantsList: React.FC = () => {
           {showRecommendations && aiRecommendations && aiRecommendations.topRecommendations.length === 0 && aiRecommendations.summary.totalAnalyzed > 0 && (
             <div className="mb-6 bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
               <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
-                <SparklesIcon className="h-8 w-8 text-gray-400" />
+                <SparklesIcon className="h-8 w-8 text-gray-600" />
               </div>
               <h3 className="text-lg font-semibold text-gray-900 mb-2">No Strong Matches Found</h3>
               <p className="text-sm text-gray-600 max-w-md mx-auto mb-4">
@@ -824,7 +812,7 @@ const ApplicantsList: React.FC = () => {
                 {aiRecommendations.topRecommendations.length > 0 && aiRecommendations.topRecommendations[0].matchScore < 50 && (
                   <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
                     <div className="flex items-start gap-2">
-                      <span className="text-amber-600 text-lg">⚠️</span>
+                      <span className="text-amber-800 text-lg">⚠️</span>
                       <div className="flex-1">
                         <p className="text-sm font-medium text-amber-900">Limited Match Quality</p>
                         <p className="text-xs text-amber-700 mt-1">
@@ -1026,11 +1014,8 @@ const ApplicantsList: React.FC = () => {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left">
-                      <input type="checkbox" className="rounded border-gray-300" />
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100">
-                      Candidate ▲
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ">
+                      Candidate
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Position
@@ -1060,9 +1045,6 @@ const ApplicantsList: React.FC = () => {
                   ) : (
                     paginatedApplicants.map((applicant) => (
                       <tr key={applicant.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-6 py-4">
-                          <input type="checkbox" className="rounded border-gray-300" />
-                        </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
                             <div className="h-10 w-10 flex-shrink-0">
@@ -1099,58 +1081,12 @@ const ApplicantsList: React.FC = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm">
                           <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => handleViewApplicant(applicant)}
-                              className="p-2 text-primary-600 border border-primary-600 rounded hover:bg-primary-50 transition-colors"
-                              title="View Details"
-                            >
-                              <EyeIcon className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => {
-                                if (!recruiterId) {
-                                  toast.loading('Loading user data...');
-                                  return;
-                                }
-                                setSelectedApplicant(applicant);
-                                setMessageModalOpen(true);
-                              }}
-                              disabled={!recruiterId}
-                              className="p-2 text-green-600 border border-green-600 rounded hover:bg-green-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                              title="Send Message"
-                            >
-                              <ChatBubbleLeftIcon className="h-4 w-4" />
-                            </button>
+                            <ActionButton label={`View ${applicant.learner?.name||'candidate'}`} icon={EyeIcon} onClick={()=>handleViewApplicant(applicant)}/>
+                            <ActionButton label={`Message ${applicant.learner?.name||'candidate'}`} icon={ChatBubbleLeftIcon} disabled={!recruiterId} onClick={()=>{setSelectedApplicant(applicant);setMessageModalOpen(true)}}/>
 
                             {/* Pipeline Stage Actions */}
                             {(applicant.pipeline_candidate_id || applicant.application_status === 'applied' || applicant.application_status === 'viewed') && (
-                              <div className="relative group">
-                                <button className="p-2 text-purple-600 border border-purple-600 rounded hover:bg-purple-50 transition-colors">
-                                  <ChevronRightIcon className="h-4 w-4" />
-                                </button>
-                                <div className="absolute right-0 top-full mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
-                                  <div className="py-1">
-                                    <div className="px-3 py-2 text-xs font-medium text-gray-500 border-b">Move to Stage</div>
-                                    {getNextStageOptions(applicant).map((stage) => (
-                                      <button
-                                        key={stage}
-                                        onClick={() => handleMoveToPipelineStage(applicant, stage)}
-                                        className="block w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                                      >
-                                        {pipelineStages.find(s => s.stage === stage)?.label || stage}
-                                      </button>
-                                    ))}
-                                    <div className="border-t">
-                                      <button
-                                        onClick={() => handleMoveToPipelineStage(applicant, 'rejected')}
-                                        className="block w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50"
-                                      >
-                                        ❌ Reject
-                                      </button>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
+                              <DropdownMenu.Root><DropdownMenu.Trigger asChild><button type="button" aria-label={`Move ${applicant.learner?.name||'candidate'} to stage`} title="Move to stage" className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-purple-300 text-purple-800 focus-visible:ring-2 focus-visible:ring-primary-500"><ChevronRightIcon className="h-5 w-5"/></button></DropdownMenu.Trigger><DropdownMenu.Portal><DropdownMenu.Content align="end" sideOffset={6} className="z-50 w-52 rounded-lg border border-gray-200 bg-white p-1 shadow-xl"><DropdownMenu.Label className="px-3 py-2 text-xs font-medium text-gray-600">Move to stage</DropdownMenu.Label>{getNextStageOptions(applicant).map(stage=><DropdownMenu.Item key={stage} onSelect={()=>handleMoveToPipelineStage(applicant,stage)} className="cursor-pointer rounded px-3 py-2 text-sm text-gray-800 outline-none focus:bg-gray-100">{pipelineStages.find(s=>s.stage===stage)?.label||stage}</DropdownMenu.Item>)}<DropdownMenu.Separator className="my-1 border-t border-gray-200"/><DropdownMenu.Item onSelect={()=>handleMoveToPipelineStage(applicant,'rejected')} className="cursor-pointer rounded px-3 py-2 text-sm text-red-800 outline-none focus:bg-red-50">Reject application</DropdownMenu.Item></DropdownMenu.Content></DropdownMenu.Portal></DropdownMenu.Root>
                             )}
                           </div>
                         </td>
@@ -1299,6 +1235,7 @@ const ApplicantsList: React.FC = () => {
         </button>
       )}
 
+      {viewingApplicant && <Frame title={viewingApplicant.learner?.name || 'Applicant details'} description={viewingApplicant.opportunity?.job_title || viewingApplicant.opportunity?.title || 'Application details'} onClose={() => setViewingApplicant(null)}><div className="space-y-6 overflow-y-auto p-6"><dl className="grid gap-5 text-sm sm:grid-cols-2">{[['Status', viewingApplicant.application_status.replace(/_/g, ' ')], ['Applied', new Date(viewingApplicant.applied_at).toLocaleString()], ['Email', viewingApplicant.learner?.email], ['Phone', viewingApplicant.learner?.phone], ['College', viewingApplicant.learner?.university], ['Department', viewingApplicant.learner?.department], ['Pipeline stage', viewingApplicant.pipeline_stage?.replace(/_/g, ' ')]].map(([label, value]) => <div key={label}><dt className="font-medium text-gray-600">{label}</dt><dd className="mt-1 break-words text-gray-900">{value || 'Not provided'}</dd></div>)}</dl><section><h3 className="text-sm font-semibold text-gray-900">Application notes</h3><p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-gray-700">{viewingApplicant.notes || 'No notes recorded.'}</p></section></div></Frame>}
       {/* Message Modal */}
       {selectedApplicant && recruiterId && (
         <MessageModal

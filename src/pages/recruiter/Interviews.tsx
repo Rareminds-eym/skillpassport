@@ -1,3 +1,4 @@
+import { AccessibleModal } from './shared/RecruitmentControls';
 import { useAuthStore } from '@/shared/model/authStore';
 import React, { useState, useEffect } from 'react';
 import {
@@ -172,17 +173,17 @@ const ScorecardModal = ({ interview, isOpen, onClose, onSave }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+    <AccessibleModal title="Interview Scorecard" onClose={onClose}><div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
         <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
 
         <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full sm:p-6">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
             <div>
               <h3 className="text-lg font-medium text-gray-900">Interview Scorecard</h3>
               <p className="text-sm text-gray-500">{interview?.candidate_name} • {interview?.job_title}</p>
             </div>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <button aria-label="Close dialog" onClick={onClose} className="text-gray-400 hover:text-gray-600">
               <XMarkIcon className="h-6 w-6" />
             </button>
           </div>
@@ -236,7 +237,7 @@ const ScorecardModal = ({ interview, isOpen, onClose, onSave }) => {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Interview Notes
               </label>
-              <textarea
+              <textarea aria-label="Interview Notes"
                 value={scorecard.notes}
                 onChange={(e) => setScorecard({ ...scorecard, notes: e.target.value })}
                 rows={4}
@@ -257,7 +258,7 @@ const ScorecardModal = ({ interview, isOpen, onClose, onSave }) => {
                   { value: 'reject', label: 'Reject', color: 'text-red-600 border-red-300 bg-red-50' }
                 ].map(rec => (
                   <label key={rec.value} className="inline-flex items-center">
-                    <input
+                    <input aria-label="Value"
                       type="radio"
                       name="recommendation"
                       value={rec.value}
@@ -290,7 +291,7 @@ const ScorecardModal = ({ interview, isOpen, onClose, onSave }) => {
           </div>
         </div>
       </div>
-    </div>
+    </div></AccessibleModal>
   );
 };
 
@@ -496,7 +497,7 @@ const CalendarView = ({ interviews, selectedDate, onDateSelect }) => {
       <div className="grid grid-cols-7 gap-1">
         {calendar.map((week, weekIndex) =>
           week.map((day, dayIndex) => (
-            <button
+            <button aria-label="Div"
               key={`${weekIndex}-${dayIndex}`}
               onClick={() => onDateSelect(day.date)}
               className={`p-2 text-sm rounded-lg hover:bg-gray-50 ${!day.isCurrentMonth ? 'text-gray-300' : 'text-gray-900'
@@ -537,7 +538,7 @@ const CandidateSearchDropdown = ({
     <div className="relative">
       <div className="relative">
         <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-        <input
+        <input aria-label="Search Term"
           type="text"
           value={searchTerm}
           onChange={(e) => onSearchChange(e.target.value)}
@@ -551,7 +552,7 @@ const CandidateSearchDropdown = ({
         <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
           {filteredCandidates.length > 0 ? (
             filteredCandidates.map(candidate => (
-              <button
+              <button aria-label="Div"
                 key={candidate.id}
                 onClick={() => onCandidateSelect(candidate)}
                 className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 border-b border-gray-100 last:border-b-0"
@@ -760,12 +761,12 @@ const Interviews = () => {
   return (
     <div className="p-6 pb-20 md:pb-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Interviews</h1>
           <p className="text-gray-600 mt-1">Manage interview scheduling and feedback</p>
         </div>
-        <div className="flex items-center space-x-3">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="flex rounded-lg border border-gray-300 p-1 bg-white">
             <button
               onClick={() => setViewMode('list')}
@@ -1108,7 +1109,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, onSuccess, candidates, onOpen
   const minDate = tomorrow.toISOString().split('T')[0];
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+    <AccessibleModal title="Schedule New Interview" onClose={onClose}><div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
         <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
 
@@ -1118,7 +1119,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, onSuccess, candidates, onOpen
               <h3 className="text-lg font-medium text-gray-900">Schedule New Interview</h3>
               <p className="text-sm text-gray-500">Create a new interview appointment</p>
             </div>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <button aria-label="Close dialog" onClick={onClose} className="text-gray-400 hover:text-gray-600">
               <XMarkIcon className="h-6 w-6" />
             </button>
           </div>
@@ -1172,7 +1173,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, onSuccess, candidates, onOpen
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Email
                   </label>
-                  <input
+                  <input aria-label="Email"
                     type="email"
                     value={formData.candidate_email}
                     onChange={(e) => setFormData({ ...formData, candidate_email: e.target.value })}
@@ -1184,7 +1185,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, onSuccess, candidates, onOpen
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Phone
                   </label>
-                  <input
+                  <input aria-label="Phone"
                     type="tel"
                     value={formData.candidate_phone}
                     onChange={(e) => setFormData({ ...formData, candidate_phone: e.target.value })}
@@ -1196,7 +1197,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, onSuccess, candidates, onOpen
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Position <span className="text-red-500">*</span>
                   </label>
-                  <input
+                  <input aria-label="Position *"
                     type="text"
                     value={formData.job_title}
                     onChange={(e) => setFormData({ ...formData, job_title: e.target.value })}
@@ -1215,7 +1216,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, onSuccess, candidates, onOpen
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Interviewer Name <span className="text-red-500">*</span>
                   </label>
-                  <input
+                  <input aria-label="Interviewer Name *"
                     type="text"
                     value={formData.interviewer}
                     onChange={(e) => setFormData({ ...formData, interviewer: e.target.value })}
@@ -1227,7 +1228,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, onSuccess, candidates, onOpen
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Interviewer Email
                   </label>
-                  <input
+                  <input aria-label="Interviewer Email"
                     type="email"
                     value={formData.interviewer_email}
                     onChange={(e) => setFormData({ ...formData, interviewer_email: e.target.value })}
@@ -1246,7 +1247,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, onSuccess, candidates, onOpen
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Date <span className="text-red-500">*</span>
                   </label>
-                  <input
+                  <input aria-label="Date *"
                     type="date"
                     value={formData.date}
                     onChange={(e) => setFormData({ ...formData, date: e.target.value })}
@@ -1258,7 +1259,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, onSuccess, candidates, onOpen
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Time <span className="text-red-500">*</span>
                   </label>
-                  <input
+                  <input aria-label="Time *"
                     type="time"
                     value={formData.time}
                     onChange={(e) => setFormData({ ...formData, time: e.target.value })}
@@ -1269,7 +1270,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, onSuccess, candidates, onOpen
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Duration
                   </label>
-                  <select
+                  <select aria-label="Duration"
                     value={formData.duration}
                     onChange={(e) => setFormData({ ...formData, duration: parseInt(e.target.value) })}
                     className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -1285,7 +1286,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, onSuccess, candidates, onOpen
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Interview Type
                   </label>
-                  <select
+                  <select aria-label="Interview Type"
                     value={formData.type}
                     onChange={(e) => setFormData({ ...formData, type: e.target.value })}
                     className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -1308,7 +1309,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, onSuccess, candidates, onOpen
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Platform
                   </label>
-                  <select
+                  <select aria-label="Platform"
                     value={formData.meeting_type}
                     onChange={(e) => setFormData({ ...formData, meeting_type: e.target.value })}
                     className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -1324,7 +1325,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, onSuccess, candidates, onOpen
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Meeting Link
                   </label>
-                  <input
+                  <input aria-label="Meeting Link"
                     type="url"
                     value={formData.meeting_link}
                     onChange={(e) => setFormData({ ...formData, meeting_link: e.target.value })}
@@ -1336,7 +1337,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, onSuccess, candidates, onOpen
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Notes
                   </label>
-                  <textarea
+                  <textarea aria-label="Notes"
                     value={formData.meeting_notes}
                     onChange={(e) => setFormData({ ...formData, meeting_notes: e.target.value })}
                     rows={2}
@@ -1379,7 +1380,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, onSuccess, candidates, onOpen
           </div>
         </div>
       </div>
-    </div>
+    </div></AccessibleModal>
   );
 };
 

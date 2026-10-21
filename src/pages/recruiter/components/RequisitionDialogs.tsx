@@ -32,10 +32,11 @@ const input = 'w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-
 export function Frame({ title, description, busy = false, onClose, children, small = false }: {
   title: string; description: string; busy?: boolean; small?: boolean; onClose: () => void; children: React.ReactNode;
 }) {
+  const returnFocus=useRef(document.activeElement instanceof HTMLElement?document.activeElement:null);
   return <Dialog.Root open onOpenChange={open => { if (!open && !busy) onClose(); }}>
     <Dialog.Portal>
       <Dialog.Overlay className="fixed inset-0 z-50 bg-gray-950/60 backdrop-blur-sm" />
-      <Dialog.Content onEscapeKeyDown={event => { if (busy) event.preventDefault(); }}
+      <Dialog.Content onCloseAutoFocus={event=>{event.preventDefault();if(returnFocus.current?.isConnected)returnFocus.current.focus()}} onEscapeKeyDown={event => { if (busy) event.preventDefault(); }}
         onPointerDownOutside={event => { if (busy) event.preventDefault(); }}
         className={`fixed left-1/2 top-1/2 z-50 flex max-h-[90dvh] w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl bg-white shadow-2xl focus:outline-none ${small ? 'max-w-lg' : 'max-w-4xl'}`}>
         <div className="flex items-start justify-between gap-4 border-b border-gray-200 px-5 py-5 sm:px-7">

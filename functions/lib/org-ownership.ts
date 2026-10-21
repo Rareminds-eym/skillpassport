@@ -103,62 +103,35 @@ export async function getOrgOwnedOpportunityIds(
   return (data ?? []).map((r: { id: string }) => r.id);
 }
 
-/**
- * The one gate for interview rows, keyed on the interviews table's real shape
- * (no organization_id column — ownership is derived):
- *   allowed ⇔ (interview's learner is one of the learners who applied to one
- *              of THIS org's opportunities) OR (created_by = caller id)
- *
- * ⚠ DB id-space note (psql-verified): interviews.learner_id FK →
- * learners(user_id) (USER id-space) while applied_jobs.learner_id matches
- * learners.id (learner-PK id-space). The applied learner set is therefore
- * remapped through learners.id → learners.user_id before comparing.
- */
+/** Interviews belong to their hiring organization. Legacy unassigned rows are
+ * visible only to their author; sharing a candidate never grants access. */
 export async function assertInterviewAccess(
   supabase: SupabaseClient,
   user: AuthUserShape,
   orgId: string | null,
-  interview: { learner_id?: string | null; created_by?: string | null } | null,
+  interview: { learner_id?: string | null; created_by?: string | null; organization_id?: string | null } | null,
   scope?: OrgScope
 ): Promise<boolean> {
-  if (!interview) return false;
-  if (interview.created_by && interview.created_by === String(user?.id ?? '')) return true;
-  if (!orgId || !interview.learner_id) return false;
-
-  const opportunityIds = scope?.opportunityIds ?? (await getOrgOwnedOpportunityIds(supabase, orgId));
-  if (opportunityIds.length === 0) return false;
-
-  const { data: apps, error } = await supabase
-    .from('applied_jobs')
-    .select('learner_id')
-    .in('opportunity_id', opportunityIds);
-  if (error) {
-    console.error('[org-ownership] applied_jobs scope query failed:', { code: error.code });
-    return false;
+  if (!interview || !user.id) return false;
+  const row = interview as { created_by?: string | null; organization_id?: string | null };
+  if (row.organization_id) {
+    if (!orgId || row.organization_id !== orgId) return false;
+    const members = await getOrgMemberUserIds(supabase, orgId);
+    return members.includes(String(user.id));
   }
-  const appliedLearnerIds = [...new Set((apps ?? []).map((r: { learner_id: string }) => r.learner_id))].filter(Boolean);
-  if (appliedLearnerIds.length === 0) return false;
-
-  // Remap applied_jobs learner-PK ids → interviews' user-space ids.
-  const { data: learnerRows, error: learnerErr } = await supabase
-    .from('learners')
-    .select('user_id')
-    .in('id', appliedLearnerIds);
-  if (learnerErr) {
-    console.error('[org-ownership] learner id-space remap failed:', { code: learnerErr.code });
-    return false;
-  }
-  return (learnerRows ?? []).some((r: { user_id: string | null }) => r.user_id === interview.learner_id);
+  // Unattributed legacy rows are private to their author, never to every
+  // employer receiving an application from the same learner.
+  return row.created_by === String(user.id);
 }
 
 /** Fetch an interview row by id (canonical read used by all gating decisions). */
 export async function getInterviewRow(
   supabase: SupabaseClient,
   interviewId: string
-): Promise<{ learner_id: string | null; created_by: string | null } | null> {
+): Promise<{ learner_id: string | null; created_by: string | null; organization_id: string | null } | null> {
   const { data, error } = await supabase
     .from('interviews')
-    .select('learner_id, created_by')
+    .select('learner_id, created_by, organization_id')
     .eq('id', interviewId)
     .maybeSingle();
   if (error) {

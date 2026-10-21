@@ -35,7 +35,7 @@ describe('Requisition API', () => {
     expect(mocks.access).toHaveBeenCalledWith(expect.anything(), 'user-1', 'org-1', 'create_jobs');
     expect(chain.insert).toHaveBeenCalledWith(expect.objectContaining({ title: 'Engineer', organization_id: 'org-1', created_by: 'user-1', applications_count: 0, is_active: false }));
   });
-  it.each(['create-requisition', 'update-requisition', 'delete-requisition'])('denies %s without mutation permission', async action => {
+  it.each(['create-requisition', 'update-requisition', 'delete-requisition', 'delete-opportunity'])('denies %s without mutation permission', async action => {
     mocks.access.mockResolvedValue({ allowed: false });
     const response = await request({ action, id: 'job-1', requisitionData: valid, updates: { description: 'Changed' } });
     expect(response.status).toBe(403);

@@ -71,7 +71,8 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON body', context.request);
   }
 
-  const { action } = body;
+  // Compatibility aliases use the exact same permission and integrity checks.
+  const action = body.action === 'delete-opportunity' ? 'delete-requisition' : body.action;
 
   // Auth-derived tenant resolution (H1): the client-supplied organizationId must NOT be
   // trusted — the JWT org claim (or the user's ACTIVE membership row) decides the tenant.
@@ -344,66 +345,21 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     }
 
     if (action === 'list-interviews') {
-      // 🔒 IDOR fix: interviews carry candidate PII and previously leaked ALL
-      // rows to any authenticated caller. Gated scope (merged in code —
-      // PostgREST or() over embedded ids is too limited to express this):
-      //   A) interviews whose learner applied to one of THIS org's opportunities
-      //   B) interviews the caller created
       const orgId = await resolveOrgId();
-
-      const opportunityIds = orgId ? await getOrgOwnedOpportunityIds(supabase, orgId) : [];
-      // ⚠ DB id-space (psql-verified): interviews.learner_id FK → learners(user_id)
-      // (USER space); applied_jobs.learner_id matches learners.id (learner-PK
-      // space). Remap the applied set through learners.id → learners.user_id
-      // before comparing interview.learner_id.
-      let appliedLearnerUserIds: string[] = [];
-      if (opportunityIds.length) {
-        const { data: apps, error: appsErr } = await supabase
-          .from('applied_jobs')
-          .select('learner_id')
-          .in('opportunity_id', opportunityIds);
-        if (appsErr) return apiDbError(appsErr, context.request);
-        const appliedLearnerIds = [...new Set((apps || []).map((a: any) => String(a.learner_id)))].filter(Boolean);
-        if (appliedLearnerIds.length) {
-          const { data: learnerRows, error: learnerErr } = await supabase
-            .from('learners')
-            .select('user_id')
-            .in('id', appliedLearnerIds);
-          if (learnerErr) return apiDbError(learnerErr, context.request);
-          appliedLearnerUserIds = (learnerRows || []).map((l: any) => l.user_id).filter(Boolean);
-        }
-      }
-
-      // Branch A: interviews tied to org-scoped applicants
-      let rowsA: any[] = [];
-      if (appliedLearnerUserIds.length) {
-        const { data, error } = await supabase
-          .from('interviews')
-          .select('*')
-          .in('learner_id', appliedLearnerUserIds);
-        if (error) return apiDbError(error, context.request);
-        rowsA = data || [];
-      }
-
-      // Branch B: interviews created by the caller
-      const { data: rowsB, error: ownErr } = await supabase
-        .from('interviews')
-        .select('*')
-        .eq('created_by', user.id);
-      if (ownErr) return apiDbError(ownErr, context.request);
-
-      const seen = new Set<string>();
-      const merged = [...rowsA, ...(rowsB || [])].filter((r: any) => {
-        if (seen.has(String(r.id))) return false;
-        seen.add(String(r.id));
-        return true;
-      });
-      merged.sort((a: any, b: any) => String(a.date ?? '').localeCompare(String(b.date ?? '')));
-      return apiSuccess(merged, context.request);
+      if (!orgId) return apiError(403, 'FORBIDDEN', 'An active organization is required', context.request);
+      const access = await verifyOrgAccess(supabase, user.id, orgId, PERMISSIONS.VIEW_CANDIDATES);
+      if (!access.allowed) return apiError(403, 'FORBIDDEN', 'You cannot view interviews', context.request);
+      const { data, error } = await supabase.from('interviews').select('*').eq('organization_id', orgId).order('date');
+      if (error) return apiDbError(error, context.request);
+      return apiSuccess(data || [], context.request);
     }
 
     if (action === 'update-interview') {
-      const { id, ...updates } = body;
+      const { id } = body;
+      const updates: Record<string, unknown> = {};
+      for (const field of ['scorecard', 'status', 'completed_date', 'date', 'duration', 'type', 'meeting_type', 'meeting_link', 'meeting_notes', 'interviewer', 'interviewer_email']) {
+        if (body[field] !== undefined) updates[field] = body[field];
+      }
       if (!id) return apiError(400, 'VALIDATION_ERROR', 'Missing interview id', context.request);
 
       // 🔒 Ownership: creator OR a learner scoped to the caller's org. This
@@ -417,7 +373,8 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         return apiError(403, 'FORBIDDEN', 'You do not have access to this interview', context.request);
       }
 
-      delete updates.created_by; // never allow re-authoring via the payload
+      const permission = iOrgId && await verifyOrgAccess(supabase, user.id, iOrgId, PERMISSIONS.MANAGE_CANDIDATES);
+      if (!permission || !permission.allowed) return apiError(403, 'FORBIDDEN', 'You cannot update interviews', context.request);
       const { data, error } = await supabase
         .from('interviews')
         .update({ ...updates, updated_at: new Date().toISOString() })
@@ -1361,6 +1318,7 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       const entry = `[${now}] ${input.expectedStatus} → ${input.status} by ${user.email || user.id}${input.note ? ': ' + input.note : ''}`;
       const updates = {
         application_status: input.status,
+        updated_by: user.id,
         updated_at: now,
         notes: [application.notes, entry].filter(Boolean).join('\n'),
         ...(input.status === 'viewed' && !application.viewed_at ? { viewed_at: now } : {}),

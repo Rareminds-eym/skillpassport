@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import * as Tooltip from '@radix-ui/react-tooltip';
+import { EyeIcon, PencilSquareIcon, UserPlusIcon, XCircleIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import { twMerge } from 'tailwind-merge';
 import { apiPost } from '@/shared/api/apiClient';
@@ -33,6 +35,22 @@ const formatDate = (value: string) => Number.isNaN(Date.parse(value)) ? 'Not ava
 const badge = (status: string) => status === 'rejected' ? 'bg-red-50 text-red-700 border-red-200' : status === 'accepted' ? 'bg-green-50 text-green-800 border-green-200' : status === 'under_review' ? 'bg-amber-50 text-amber-800 border-amber-200' : 'bg-gray-50 text-gray-700 border-gray-200';
 function Status({ value }: { value: string }) { return <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${badge(value)}`}>{statusLabel(value || 'unknown')}</span>; }
 
+function ActionIcon({ label, tooltip = label, icon: Icon, disabled = false, danger = false, onClick }: {
+  label: string; tooltip?: string; icon: typeof EyeIcon; disabled?: boolean; danger?: boolean; onClick: () => void;
+}) {
+  const control = <button type="button" aria-label={label} disabled={disabled} onClick={onClick}
+    className={twMerge('inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 transition-colors hover:border-primary-200 hover:bg-primary-50 hover:text-primary-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-40', danger && 'border-red-200 text-red-600 hover:border-red-300 hover:bg-red-50 hover:text-red-700')}>
+    <Icon className="h-5 w-5" aria-hidden="true" />
+  </button>;
+  return <Tooltip.Root>
+    <Tooltip.Trigger asChild>{disabled ? <span tabIndex={0} aria-label={`${label}: ${tooltip}`} className="inline-flex cursor-not-allowed rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2">{control}</span> : control}</Tooltip.Trigger>
+    <Tooltip.Portal><Tooltip.Content side="top" sideOffset={7} collisionPadding={12}
+      className="z-[70] max-w-64 rounded-md bg-gray-900 px-3 py-2 text-xs leading-relaxed text-white shadow-lg">
+      {tooltip}<Tooltip.Arrow className="fill-gray-900" />
+    </Tooltip.Content></Tooltip.Portal>
+  </Tooltip.Root>;
+}
+
 export function ApplicationsDialog({ requisition, canManage, onClose }: { requisition: Opportunity; canManage: boolean; onClose: () => void }) {
   const [applications, setApplications] = useState<ApplicationRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -65,14 +83,14 @@ export function ApplicationsDialog({ requisition, canManage, onClose }: { requis
   const actions = (app: ApplicationRecord) => {
     const transitions = reviewChoices(app.application_status);
     const unavailable = !canManage ? 'Your role does not allow application management' : 'Manage this stage through the hiring pipeline or candidate workflow';
-    return <div className="flex flex-wrap gap-2">
-      <button className={button} aria-label={`View ${nameOf(app)}`} onClick={() => setSelectedId(app.id)}>View</button>
-      <button className={button} disabled={!canManage || !transitions.length} title={!canManage || !transitions.length ? unavailable : undefined} onClick={() => setEditor({ id: app.id, reject: false })}>Update status</button>
-      <button className={button} disabled={!canManage || !(app.learner_id || app.learners?.id)} title={!canManage ? unavailable : undefined} onClick={() => setShortlistId(app.id)}>Add to shortlist</button>
-      <button className={twMerge(button, 'border-red-200 text-red-700 hover:bg-red-50')} disabled={!canManage || !transitions.includes('rejected')} title={app.application_status === 'rejected' ? 'Already rejected. Use Update status to reopen for review.' : !canManage || !transitions.includes('rejected') ? unavailable : undefined} onClick={() => setEditor({ id: app.id, reject: true })}>{app.application_status === 'rejected' ? 'Rejected' : 'Reject'}</button>
+    return <div className="flex items-center gap-2">
+      <ActionIcon label={`View ${nameOf(app)}`} tooltip="View candidate details" icon={EyeIcon} onClick={() => setSelectedId(app.id)} />
+      <ActionIcon label="Update status" tooltip={!canManage || !transitions.length ? unavailable : 'Update application status'} icon={PencilSquareIcon} disabled={!canManage || !transitions.length} onClick={() => setEditor({ id: app.id, reject: false })} />
+      <ActionIcon label="Add to shortlist" tooltip={!canManage ? unavailable : !(app.learner_id || app.learners?.id) ? 'Candidate profile is unavailable' : 'Add candidate to shortlist'} icon={UserPlusIcon} disabled={!canManage || !(app.learner_id || app.learners?.id)} onClick={() => setShortlistId(app.id)} />
+      <ActionIcon label={app.application_status === 'rejected' ? 'Rejected' : 'Reject'} tooltip={app.application_status === 'rejected' ? 'Already rejected. Use Update status to reopen for review.' : !canManage || !transitions.includes('rejected') ? unavailable : 'Reject application'} icon={XCircleIcon} danger disabled={!canManage || !transitions.includes('rejected')} onClick={() => setEditor({ id: app.id, reject: true })} />
     </div>;
   };
-  return <Frame title={`Applications for ${requisition.job_title || requisition.title}`} description={loading ? 'Loading applications…' : error ? 'Applications are temporarily unavailable.' : `${applications.length} application${applications.length === 1 ? '' : 's'} received · ${requisition.company_name}`} onClose={close}>
+  return <Tooltip.Provider delayDuration={200} skipDelayDuration={100}><Frame title={`Applications for ${requisition.job_title || requisition.title}`} description={loading ? 'Loading applications…' : error ? 'Applications are temporarily unavailable.' : `${applications.length} application${applications.length === 1 ? '' : 's'} received · ${requisition.company_name}`} onClose={close}>
     <div className="min-h-0 overflow-y-auto p-5 sm:p-7">
       <div className="mb-5 flex flex-col gap-3 sm:flex-row">
         <input className={`${field} flex-1`} aria-label="Search applications" placeholder="Search candidates or education" value={search} onChange={e => setSearch(e.target.value)} />
@@ -85,7 +103,7 @@ export function ApplicationsDialog({ requisition, canManage, onClose }: { requis
       {loading ? <p role="status" className="py-12 text-center text-sm text-gray-500">Loading applications…</p> : error ? <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-5 text-sm text-red-800"><p>{error}</p><button className={`${button} mt-3`} onClick={() => void load()}>Retry loading applications</button></div> : !applications.length ? <p className="py-12 text-center text-sm text-gray-500">No applications received yet.</p> : !visible.length ? <p className="py-12 text-center text-sm text-gray-500">No applications match your search or status filter.</p> : <>
         <div className="hidden overflow-x-auto rounded-lg border border-gray-200 md:block">
           <table className="min-w-full text-left text-sm"><thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500"><tr>{['Candidate', 'Education', 'Status', 'Applied', 'Actions'].map(label => <th key={label} scope="col" className="px-4 py-3 font-medium">{label}</th>)}</tr></thead>
-            <tbody className="divide-y divide-gray-200">{visible.map(app => { const profile = profileOf(app); return <tr key={app.id} className="align-top hover:bg-gray-50/50"><td className="px-4 py-4"><p className="font-medium text-gray-900">{nameOf(app)}</p><p className="mt-1 break-words text-xs text-gray-500">{text(profile.email)}</p></td><td className="px-4 py-4 text-gray-600">{text(profile.course || profile.branch_field)}</td><td className="px-4 py-4"><Status value={app.application_status} /></td><td className="px-4 py-4 text-xs text-gray-600">{formatDate(app.applied_at)}</td><td className="min-w-64 px-4 py-4">{actions(app)}</td></tr>; })}</tbody>
+            <tbody className="divide-y divide-gray-200">{visible.map(app => { const profile = profileOf(app); return <tr key={app.id} className="align-top hover:bg-gray-50/50"><td className="px-4 py-4"><p className="font-medium text-gray-900">{nameOf(app)}</p><p className="mt-1 break-words text-xs text-gray-500">{text(profile.email)}</p></td><td className="px-4 py-4 text-gray-600">{text(profile.course || profile.branch_field)}</td><td className="px-4 py-4"><Status value={app.application_status} /></td><td className="px-4 py-4 text-xs text-gray-600">{formatDate(app.applied_at)}</td><td className="w-px whitespace-nowrap px-4 py-4">{actions(app)}</td></tr>; })}</tbody>
           </table>
         </div>
         <div className="space-y-4 md:hidden">{visible.map(app => { const profile = profileOf(app); return <article key={app.id} className="space-y-3 rounded-lg border border-gray-200 p-4"><div className="flex flex-wrap items-start justify-between gap-2"><div className="min-w-0"><h3 className="break-words text-base font-semibold text-gray-900">{nameOf(app)}</h3><p className="break-all text-sm text-gray-500">{text(profile.email)}</p></div><Status value={app.application_status} /></div><dl className="text-sm text-gray-600"><dt className="font-medium">Education</dt><dd>{text(profile.course || profile.branch_field)}</dd><dt className="mt-2 font-medium">Applied</dt><dd>{formatDate(app.applied_at)}</dd></dl>{actions(app)}</article>; })}</div>
@@ -95,7 +113,7 @@ export function ApplicationsDialog({ requisition, canManage, onClose }: { requis
     {selected && <CandidateDetails app={selected} requisition={requisition} onClose={() => setSelectedId(null)} />}
     {edited && <ReviewEditor app={edited} opportunityId={requisition.id} reject={Boolean(editor?.reject)} onClose={() => setEditor(null)} onSuccess={updated => { setApplications(prev => prev.map(app => app.id === updated.id ? { ...app, ...updated } : app)); setEditor(null); toast.success('Application status updated'); }} />}
     {shortlisted && <ShortlistDialog app={shortlisted} onClose={() => setShortlistId(null)} />}
-  </Frame>;
+  </Frame></Tooltip.Provider>;
 }
 
 function CandidateDetails({ app, requisition, onClose }: { app: ApplicationRecord; requisition: Opportunity; onClose: () => void }) {

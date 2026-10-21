@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { SparklesIcon } from '@heroicons/react/24/outline';
-import { AIRecommendations, PipelineCandidate, AIRecommendation } from '@/features/learner-profile/model';
+import { AIRecommendations, PipelineCandidate, AIRecommendation } from './types';
 
 const scrollbarStyles = `
   .ai-scrollbar::-webkit-scrollbar {
@@ -20,7 +20,7 @@ const scrollbarStyles = `
 interface AIRecommendedColumnProps {
   recommendations: AIRecommendations | null;
   loading: boolean;
-  onCandidateMove: (candidateId: number, newStage: string) => void;
+  onCandidateMove: (candidateId: string, newStage: string) => void;
   pipelineCandidates: any[];
   onCandidateView?: (candidate: PipelineCandidate) => void;
   onMoveToScreened?: (rec: AIRecommendation, pipelineCandidate: any) => Promise<void>;
@@ -35,9 +35,9 @@ export const AIRecommendedColumn: React.FC<AIRecommendedColumnProps> = ({
   onMoveToScreened
 }) => {
   const [showAll, setShowAll] = useState(false);
-  const [movingIds, setMovingIds] = useState<number[]>([]);
+  const [movingIds, setMovingIds] = useState<string[]>([]);
 
-  const findPipelineCandidate = (applicantId: number) => {
+  const findPipelineCandidate = (applicantId: string) => {
     return pipelineCandidates?.find(c => c.id === applicantId);
   };
 
@@ -182,7 +182,7 @@ export const AIRecommendedColumn: React.FC<AIRecommendedColumnProps> = ({
                   handleMoveToScreened(rec, pipelineCandidate);
                 }}
                 disabled={movingIds.includes(rec.applicantId)}
-                className={`w-full text-sm font-medium text-white bg-teal-500 hover:bg-teal-600 px-4 py-2 rounded-lg transition-all ${
+                className={`w-full text-sm font-medium text-white bg-teal-700 hover:bg-teal-800 px-4 py-2 rounded-lg transition-all ${
                   movingIds.includes(rec.applicantId) ? 'opacity-60 cursor-not-allowed' : ''
                 }`}
               >
