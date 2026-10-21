@@ -47,7 +47,7 @@ export const getlearnerPortfolioByEmail = async (email) => {
       experience || []
     );
 
-    return { success: true, data: portfolioData };
+    return { success: true, data: { ...portfolioData, reviewedArtifactCount: Number(response.data.reviewedArtifactCount ?? 0) } };
 
   } catch (error) {
     logger.error('Exception in getlearnerPortfolioByEmail', error as Error);

@@ -234,7 +234,10 @@ const Header = ({ hasBanner = false }) => {
           {/* Mobile Menu Button */}
           <div className="md:hidden">
             <button
+              type="button"
               onClick={toggleMobileMenu}
+              aria-label={isMobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
+              aria-expanded={isMobileMenuOpen}
               className="p-2 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-all duration-200"
             >
               {isMobileMenuOpen ? (

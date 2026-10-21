@@ -15,6 +15,7 @@
 
 import type { StrengthScore, AdaptiveAptitudeData } from '../../types';
 import { getTopStrengths } from '../../lib/analysis-helpers';
+import { requireResponseScale } from '../../utils/response-scale';
 import { generateMiddleSchoolReports } from '../core/report-generator';
 
 /**
@@ -156,14 +157,19 @@ export async function analyzeMiddleSchool(
 
         for (const section of sections) {
           sectionNameById.set(section.id, section.name);
-          const scale = Array.isArray(section.response_scale) ? section.response_scale : [];
-          const maxValue = scale.length > 0
-            ? Math.max(...scale.map((s: any) => s.value))
-            : 5; // default 1-5 rating scale when section has no explicit response_scale
+          if (!questions.some((q: any) => q.section_id === section.id && q.question_type === 'rating')) continue;
+          const scale = requireResponseScale(section.response_scale, section.name);
+          const maxValue = Math.max(...scale.map(option => option.value));
           sectionScaleMax.set(section.id, maxValue);
         }
       }
     }
+
+    const requireSectionMaximum = (sectionId: string): number => {
+      const maximum = sectionScaleMax.get(sectionId);
+      if (maximum === undefined) throw new Error(`Missing rating scale for section ${sectionId}`);
+      return maximum;
+    };
 
     // Step 3: Aggregate ratings into strength dimensions and capability areas
     const strengthsByDimension = new Map<string, number[]>();
@@ -191,7 +197,7 @@ export async function analyzeMiddleSchool(
         // Process capability-area grouping (Self/EQ, Social/SQ, etc.) for combined scores
         const capabilityArea = (question.metadata as any).capability_area;
         if (capabilityArea) {
-          const maxValue = sectionScaleMax.get(question.section_id) ?? 5;
+          const maxValue = requireSectionMaximum(question.section_id);
           const entry = capabilityRawByArea.get(capabilityArea) ?? { total: 0, max: 0, count: 0 };
           entry.total += answer;
           entry.max += maxValue;
@@ -250,7 +256,7 @@ export async function analyzeMiddleSchool(
       if (!strengthType) continue;
 
       const sectionName = sectionNameById.get(question.section_id) ?? '';
-      const maxValue = sectionScaleMax.get(question.section_id) ?? 5;
+      const maxValue = requireSectionMaximum(question.section_id);
       const percentage = maxValue > 0 ? Math.round((answer / maxValue) * 10000) / 100 : 0;
       const scoreOutOf5 = Math.round((percentage / 20) * 100) / 100;
 

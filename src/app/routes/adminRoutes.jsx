@@ -9,6 +9,8 @@ const COLLEGE_ADMIN_ROLES = ["college_admin"];
 const SCHOOL_ADMIN_ROLES = ["school_admin"];
 const UNIVERSITY_ADMIN_ROLES = ["university_admin"];
 
+const ReviewOperations = lazy(() => import("@/features/artifact-review").then(module => ({ default: module.ReviewOperations })));
+
 // Shared imports
 const CoursePlayer = lazy(() => import("@/pages/learner/CoursePlayer"));
 const SubscriptionManage = lazy(() =>
@@ -343,6 +345,7 @@ export const collegeAdminRoutes = (
     }
   >
     <Route path="dashboard" element={<CollegeDashboard />} />
+    <Route path="artifact-reviews" element={<ReviewOperations />} />
     <Route path="departments/management" element={<DepartmentManagement />} />
     <Route path="departments/mapping" element={<CourseMapping />} />
     <Route path="departments/educators" element={<FacultyManagement />} />
@@ -408,6 +411,7 @@ export const schoolAdminRoutes = (
     }
   >
     <Route path="dashboard" element={<SchoolAdminDashboard />} />
+    <Route path="artifact-reviews" element={<ReviewOperations />} />
     <Route path="learners/admissions" element={<LearnerAdmissions />} />
     <Route path="learners/attendance-reports" element={<AttendanceReports />} />
     <Route path="learners/assessment-results" element={<SchoolAdminAssessmentResults />} />

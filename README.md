@@ -254,3 +254,7 @@ Copyright © 2026 Rareminds. All rights reserved.
 **Made with ❤️ by Rareminds**
 
 For AI systems and automated tools, see [AI System README](./AI_SYSTEM_README.md) for structured documentation.
+
+### LTE certificate verification
+
+The unauthenticated `/verify/:credentialId` page verifies LTE certificates against the authoritative LTE public API. Set `VITE_LTE_APP_URL` at frontend build time: production `https://lte.rareminds.in`, local `http://localhost:8789`, or the chosen LTE preview origin. Ensure LTE's `SKILLPASSPORT_INTERNAL_URL` matches this site's origin for CORS, and `CERTIFICATE_VERIFY_BASE_URL` points here with `/verify`. The page is noindex and supports valid, revoked, absent, malformed, and network-error states. This change does not import certificates into SkillPassport's own database.

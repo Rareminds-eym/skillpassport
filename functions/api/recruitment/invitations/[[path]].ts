@@ -6,13 +6,13 @@ import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { withAuth } from '../../../lib/auth';
 import { PERMISSIONS, verifyOrgAccess } from '../../../lib/permissions';
 import {
-  ssoAssignMembershipRole,
-  ssoCreateMember,
-  ssoCreateMembership,
-  ssoGetUserByEmail,
-  ssoGetUserMemberships,
-  ssoListRoles,
-  ssoUpdateMembershipStatus,
+    ssoAssignMembershipRole,
+    ssoCreateMember,
+    ssoCreateMembership,
+    ssoGetUserByEmail,
+    ssoGetUserMemberships,
+    ssoListRoles,
+    ssoUpdateMembershipStatus,
 } from '../../../lib/sso-client';
 import { getServiceClient } from '../../../lib/supabase';
 
@@ -213,9 +213,19 @@ async function handleValidateInvitation(context: any): Promise<Response> {
             .eq('invitation_token', token)
             .single();
 
-        if (inviteError || !invitation) {
-            console.error('[validate-invitation] Invitation not found:', inviteError);
-            return Response.json({ error: 'Invalid invitation token' }, { status: 404 });
+        // PGRST116 = "no row" (invitation_token is UNIQUE, so never "multiple rows"). Any other
+        // lookup error is a server fault and must not look like an unknown token.
+        if (inviteError && inviteError.code !== 'PGRST116') {
+            console.error('[validate-invitation] Invitation lookup failed', { code: inviteError.code });
+            return Response.json({ error: 'Failed to validate invitation' }, { status: 500 });
+        }
+
+        if (!invitation) {
+            // The code lets the accept page hand unknown UUID tokens to the SSO accept flow.
+            return Response.json(
+                { error: 'Invalid invitation token', code: 'INVITATION_NOT_FOUND' },
+                { status: 404 },
+            );
         }
 
         console.log('[validate-invitation] ✓ Invitation found:', {
@@ -237,6 +247,17 @@ async function handleValidateInvitation(context: any): Promise<Response> {
 
         if (new Date(invitation.expires_at) < new Date()) {
             return Response.json({ error: 'Invitation has expired' }, { status: 410 });
+        }
+
+        // Legacy educator invitations are retired: educators are invited through SSO only.
+        if (typeof invitation.invitee_role === 'string' && invitation.invitee_role.includes('educator')) {
+            return Response.json(
+                {
+                    error: 'Educator invitations are now sent through the central sign-in service. Ask your administrator for a new invitation.',
+                    code: 'EDUCATOR_INVITE_RETIRED',
+                },
+                { status: 410 },
+            );
         }
 
         // Get organization name in separate query
@@ -338,6 +359,17 @@ async function handleAcceptInvitation(context: any): Promise<Response> {
         }
         if (new Date(invitation.expires_at) < new Date()) {
             return Response.json({ error: 'Invitation has expired' }, { status: 410 });
+        }
+
+        // Legacy educator invitations are retired: educators are invited through SSO only.
+        if (typeof invitation.invitee_role === 'string' && invitation.invitee_role.includes('educator')) {
+            return Response.json(
+                {
+                    error: 'Educator invitations are now sent through the central sign-in service. Ask your administrator for a new invitation.',
+                    code: 'EDUCATOR_INVITE_RETIRED',
+                },
+                { status: 410 },
+            );
         }
 
         console.log('[accept-invitation] ✓ Token validated successfully');

@@ -7,7 +7,7 @@ import tseslint from 'typescript-eslint';
 import fsdRules from './.kiro/eslint/fsd-rules.js';
 
 export default tseslint.config(
-  { ignores: ['dist', '.kiro/templates/**'] },
+  { ignores: ['dist/**', 'coverage/**', '.wrangler/**', '.kiro/templates/**', 'graphify-out/**'] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ['**/*.{ts,tsx,js,jsx}'], // ✅ Added .js and .jsx
@@ -24,7 +24,7 @@ export default tseslint.config(
       'import/resolver': {
         typescript: {
           alwaysTryTypes: true,
-          project: './tsconfig.json',
+          project: ['./tsconfig.app.json', './tsconfig.node.json', './tsconfig.functions.json'],
         },
         node: {
           extensions: ['.js', '.jsx', '.ts', '.tsx'],
@@ -69,6 +69,13 @@ export default tseslint.config(
       ],
     },
   },
+  // Runtime globals belong to their environment; generated Wrangler bundles are excluded above.
+  {
+    files: ['functions/**/*.{ts,js}', 'scripts/**/*.{ts,js}', '.kiro/**/*.{ts,js}', '*.config.{ts,js}'],
+    languageOptions: { globals: { ...globals.node, ...globals.worker } },
+  },
+  // TypeScript resolves identifiers and ambient types; ESLint's JS scope rule reports types as variables.
+  { files: ['**/*.{ts,tsx}'], rules: { 'no-undef': 'off' } },
   // Allow the canonical declaration of `UserRole` ONLY in the generated module.
   // Placed after the base block so it overrides the no-restricted-syntax rule there.
   {

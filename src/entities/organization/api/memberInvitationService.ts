@@ -1,7 +1,8 @@
 import { apiGet, apiPost } from '@/shared/api/apiClient';
-import { useAuthStore } from '@/shared/model/authStore';
-import { LicenseAssignment, licenseManagementService } from './licenseManagementService';
+import { ssoClient } from '@/shared/api/ssoClient';
 import { getLogger } from '@/shared/config/logging';
+import { useAuthStore } from '@/shared/model/authStore';
+import { LicenseAssignment } from './licenseManagementService';
 
 const logger = getLogger('memberInvitation');
 
@@ -49,8 +50,99 @@ export interface BulkInviteResult {
   totalFailed: number;
 }
 
+export interface InviteEducatorRequest {
+  organizationId: string;
+  organizationType: 'school' | 'college' | 'university';
+  email: string;
+}
+
+/** Delivery result reported by SSO. Absent means SSO did not confirm delivery. */
+export type EmailStatus = 'sent' | 'failed';
+
+/** A pending (unaccepted) SSO invitation. Never carries the invite token or its hash. */
+export interface SsoPendingInvite {
+  readonly inviteId: string;
+  readonly email: string;
+  readonly roles: readonly string[];
+  readonly createdAt: string | null;
+  readonly expiresAt: string | null;
+  readonly status: 'pending' | 'expired';
+}
+
+export interface SsoInviteList {
+  readonly invites: readonly SsoPendingInvite[];
+  readonly truncated: boolean;
+}
+
+export interface SsoInviteResent {
+  readonly inviteId: string;
+  readonly email: string;
+  readonly expiresAt: string;
+  readonly emailStatus?: EmailStatus;
+}
+
+export class EducatorInviteUnsupportedError extends Error {
+  constructor(message = 'Educator invitations are not supported for university organizations.') {
+    super(message);
+    this.name = 'EducatorInviteUnsupportedError';
+  }
+}
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MAX_EMAIL_LENGTH = 254;
+
+// Strict map: no guessing a role for organization types that have no educator profile table.
+const EDUCATOR_ROLE_BY_ORG_TYPE: Readonly<Record<string, string>> = {
+  college: 'college_educator',
+  school: 'school_educator',
+};
+
 export class MemberInvitationService {
+  /**
+   * Educator invites go through the SSO service (single source of truth); the SkillPassport-only
+   * invite path is retired for educators. Rejections surface as SsoWorkflowError (code preserved).
+   */
+  async inviteEducator(request: InviteEducatorRequest): Promise<{ inviteId: string; email: string; expiresAt: string; emailStatus?: EmailStatus }> {
+    const email = request.email.trim().toLowerCase();
+    if (!email || email.length > MAX_EMAIL_LENGTH || !EMAIL_PATTERN.test(email)) {
+      throw new Error('Please enter a valid email address');
+    }
+    if (!request.organizationId?.trim()) throw new Error('Organization is required');
+    const role = EDUCATOR_ROLE_BY_ORG_TYPE[request.organizationType];
+    if (!role) throw new EducatorInviteUnsupportedError();
+
+    try {
+      return await ssoClient.createInvite({ email, organizationId: request.organizationId, roles: [role] });
+    } catch (error) {
+      logger.error('Error inviting educator', error as Error);
+      throw error;
+    }
+  }
+
+  /** Pending SSO invitations of the caller's active organization (admin-gated by SSO). */
+  async listSsoInvites(organizationId: string): Promise<SsoInviteList> {
+    try {
+      return await ssoClient.listInvites({ organizationId });
+    } catch (error) {
+      logger.error('Error listing SSO invitations', error as Error);
+      throw error;
+    }
+  }
+
+  /** Issues a fresh token and expiry for a pending SSO invitation and re-sends the email. */
+  async resendSsoInvite(inviteId: string): Promise<SsoInviteResent> {
+    try {
+      return await ssoClient.resendInvite({ inviteId });
+    } catch (error) {
+      logger.error('Error resending SSO invitation', error as Error);
+      throw error;
+    }
+  }
+
   async inviteMember(request: InviteMemberRequest): Promise<OrganizationInvitation> {
+    if (request.memberType === 'educator') {
+      throw new Error('Educator invitations are sent through SSO; use inviteEducator');
+    }
     try {
       const user = useAuthStore.getState().user;
       if (!user) throw new Error('User not authenticated');
@@ -97,9 +189,10 @@ export class MemberInvitationService {
     }
   }
 
-  async acceptInvitation(token: string, userId: string): Promise<InvitationAcceptResult> {
+  /** The server takes the accepting user from the authenticated session; no user id is sent. */
+  async acceptInvitation(token: string): Promise<InvitationAcceptResult> {
     try {
-      const result = await apiPost<any>('/organization', { action: 'acceptInvitation', token, userId });
+      const result = await apiPost<any>('/organization', { action: 'acceptInvitation', token });
       const d = result.data;
       return {
         invitation: this.mapToOrganizationInvitation(d),

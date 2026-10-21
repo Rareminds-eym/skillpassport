@@ -18,6 +18,7 @@ import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('TalentPool');
 import { SearchBar } from '@/shared/ui';
+import { EmptyStateWithQuote } from '@/components/EmptyStateWithQuote';
 // import { FeatureGate } from '@/features/subscription'; // Commented out - talent pool always accessible
 
 import { useLearners } from '@/entities/learner';
@@ -4017,21 +4018,28 @@ const TalentPoolContent = () => {
                   ))}
                   {!loading && filteredAndSortedlearners.length === 0 && !error && (
                     <div className="col-span-full text-center py-8">
-                      <p className="text-sm text-gray-500">
-                        {searchQuery || filters.skills.length > 0 || filters.locations.length > 0
-                          ? 'No candidates match your current filters'
-                          : 'No learners found.'}
-                      </p>
-                      <p className="text-xs text-gray-400 mt-2">
-                        Try adjusting your search terms or filters.
-                      </p>
-                      {(filters.skills.length > 0 || filters.locations.length > 0 || filters.courses.length > 0) && (
-                        <button
-                          onClick={handleClearFilters}
-                          className="mt-3 text-sm text-primary-600 hover:text-primary-700 font-medium"
-                        >
-                          Clear all filters
-                        </button>
+                      {searchQuery || filters.skills.length > 0 || filters.locations.length > 0 ? (
+                        <>
+                          <p className="text-sm text-gray-500">
+                            No candidates match your current filters
+                          </p>
+                          <p className="text-xs text-gray-400 mt-2">
+                            Try adjusting your search terms or filters.
+                          </p>
+                          {(filters.skills.length > 0 || filters.locations.length > 0 || filters.courses.length > 0) && (
+                            <button
+                              onClick={handleClearFilters}
+                              className="mt-3 text-sm text-primary-600 hover:text-primary-700 font-medium"
+                            >
+                              Clear all filters
+                            </button>
+                          )}
+                        </>
+                      ) : (
+                        <EmptyStateWithQuote
+                          page="talent-pool"
+                          icon={BookmarkSolidIcon}
+                        />
                       )}
                     </div>
                   )}

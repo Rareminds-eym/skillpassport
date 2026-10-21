@@ -25,6 +25,8 @@ export interface PagesEnv {
   LTE_APP_URL?: string;
   /** Shared HMAC secret for the LTE ↔ SkillPassport internal gateway (server-only). */
   LTE_INTERNAL_SECRET?: string;
+  SP_DASH_CATALOG_URL?: string;
+  LTE_CATALOG_SYNC_SECRET?: string;
   /**
    * Cookie domain for refresh-token scoping across subdomains.
    * Production: ".rareminds.in"  →  __Secure-refresh_token; Domain=.rareminds.in
@@ -64,6 +66,8 @@ export interface PagesEnv {
   /** Cloudflare Service Binding to the Email worker */
   EMAIL_SERVICE?: EmailWorkerRpc;
   ADMIN_EMAIL?: string;
+  /** Trusted public frontend URL for email links. */
+  APP_URL?: string;
 
   // Career AI credit wallet (30-credit plan): product_id is SSO-canonical
   // (RPC/sync payloads), never local configuration. Scope career_ai pins rows.

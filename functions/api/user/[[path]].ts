@@ -21,14 +21,12 @@
  * - POST /check-college-code - Validate college code
  * - POST /check-university-code - Validate university code
  * - POST /check-company-code - Validate company code
- * - POST /check-email - Check email availability
  * - POST /create-learner - Create learner (authenticated)
  * - POST /create-teacher - Create teacher (authenticated)
  * - POST /create-college-staff - Create college staff (authenticated)
  * - POST /update-learner-documents - Update learner documents (authenticated)
  * - POST /create-event-user - Create event user (authenticated)
  * - POST /send-interview-reminder - Send interview reminder (authenticated)
- * - POST /reset-password - Reset password
  */
 
 import type { PagesFunction } from '../../lib/types';
@@ -45,7 +43,6 @@ import {
   handleCheckCollegeCode,
   handleCheckUniversityCode,
   handleCheckCompanyCode,
-  handleCheckEmail,
 } from './handlers/utility';
 import { handleUnifiedSignup } from './handlers/unified';
 import {
@@ -54,7 +51,6 @@ import {
   handleCreateCollegeStaff,
   handleUpdateLearnerDocuments,
 } from './handlers/authenticated';
-import { handleResetPassword } from './handlers/password';
 import { onRequestPost, onRequestPostUnverified } from './handlers/actions';
 import {
   handleGetProfileExtended,
@@ -105,11 +101,10 @@ export const onRequest: PagesFunction = async (context) => {
           utility: [
             '/schools', '/colleges', '/universities', '/companies',
             '/check-school-code', '/check-college-code', '/check-university-code',
-            '/check-company-code', '/check-email',
+            '/check-company-code',
           ],
           authenticated: [
             '/create-learner', '/create-teacher', '/create-college-staff',
-            '/reset-password',
           ],
         },
         timestamp: new Date().toISOString(),
@@ -156,9 +151,6 @@ export const onRequest: PagesFunction = async (context) => {
     if (path === '/check-company-code' && request.method === 'POST') {
       return await handleCheckCompanyCode(request, env);
     }
-    if (path === '/check-email' && request.method === 'POST') {
-      return await handleCheckEmail(request, env);
-    }
 
     // Authenticated endpoints
     if (path === '/create-learner' && request.method === 'POST') {
@@ -190,9 +182,6 @@ export const onRequest: PagesFunction = async (context) => {
       return withAuth(async (authContext: AuthenticatedContext) => {
         return await handleUpdateLearnerDocuments(authContext.request, authContext.env);
       })(context);
-    }
-    if (path === '/reset-password' && request.method === 'POST') {
-      return await handleResetPassword(request, env);
     }
 
     // Management endpoints

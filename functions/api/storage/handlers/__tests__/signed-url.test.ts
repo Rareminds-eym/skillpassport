@@ -5,6 +5,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { handleSignedUrl, handleSignedUrls } from '../signed-url';
 
+interface SignedUrlResponse {
+  success: boolean;
+  data: { signedUrl: string; signedUrls: Record<string, string>; expiresAt: string };
+  error: { message: string };
+}
+
 // Mock R2Client
 vi.mock('../../utils/r2-client', () => {
   const mockExtractKeyFromUrl = vi.fn();
@@ -56,15 +62,15 @@ describe('Signed URL Handlers', () => {
       });
 
       const response = await handleSignedUrl({ request, env: mockEnv } as any);
-      const data = await response.json() as Record<string, unknown>;
+      const data = await response.json() as SignedUrlResponse;
 
       expect(response.status).toBe(200);
       expect(data.success).toBe(true);
-      expect(data.signedUrl).toBe(
+      expect(data.data.signedUrl).toBe(
         'http://localhost/api/storage/document-access?key=courses%2Fcourse-123%2Ftest.pdf&mode=inline'
       );
-      expect(data.expiresAt).toBeDefined();
-      expect(new Date(data.expiresAt as string).getTime()).toBeGreaterThan(Date.now());
+      expect(data.data.expiresAt).toBeDefined();
+      expect(new Date(data.data.expiresAt as string).getTime()).toBeGreaterThan(Date.now());
     });
 
     it('should generate signed URL with url parameter', async () => {
@@ -78,11 +84,11 @@ describe('Signed URL Handlers', () => {
       });
 
       const response = await handleSignedUrl({ request, env: mockEnv } as any);
-      const data = await response.json() as Record<string, unknown>;
+      const data = await response.json() as SignedUrlResponse;
 
       expect(response.status).toBe(200);
       expect(data.success).toBe(true);
-      expect(data.signedUrl).toContain('/api/storage/document-access?key=');
+      expect(data.data.signedUrl).toContain('/api/storage/document-access?key=');
       expect(mockExtractKeyFromUrl).toHaveBeenCalledWith(
         'https://pub-123.r2.dev/courses/course-123/test.pdf'
       );
@@ -98,11 +104,11 @@ describe('Signed URL Handlers', () => {
       });
 
       const response = await handleSignedUrl({ request, env: mockEnv } as any);
-      const data = await response.json() as Record<string, unknown>;
+      const data = await response.json() as SignedUrlResponse;
 
       expect(response.status).toBe(200);
       expect(data.success).toBe(true);
-      const expiresAt = new Date(data.expiresAt as string).getTime();
+      const expiresAt = new Date(data.data.expiresAt as string).getTime();
       const expectedExpiry = Date.now() + 7200 * 1000;
       // Allow 1 second tolerance
       expect(Math.abs(expiresAt - expectedExpiry)).toBeLessThan(1000);
@@ -117,10 +123,10 @@ describe('Signed URL Handlers', () => {
       });
 
       const response = await handleSignedUrl({ request, env: mockEnv } as any);
-      const data = await response.json() as Record<string, unknown>;
+      const data = await response.json() as SignedUrlResponse;
 
       expect(response.status).toBe(200);
-      const expiresAt = new Date(data.expiresAt as string).getTime();
+      const expiresAt = new Date(data.data.expiresAt as string).getTime();
       const expectedExpiry = Date.now() + 3600 * 1000;
       // Allow 1 second tolerance
       expect(Math.abs(expiresAt - expectedExpiry)).toBeLessThan(1000);
@@ -135,10 +141,10 @@ describe('Signed URL Handlers', () => {
       });
 
       const response = await handleSignedUrl({ request, env: mockEnv } as any);
-      const data = await response.json() as Record<string, unknown>;
+      const data = await response.json() as SignedUrlResponse;
 
       expect(response.status).toBe(400);
-      expect(data.error).toBe('File key or URL is required');
+      expect(data.error.message).toBe('File key or URL is required');
     });
 
     it('should reject non-POST requests', async () => {
@@ -147,10 +153,10 @@ describe('Signed URL Handlers', () => {
       });
 
       const response = await handleSignedUrl({ request, env: mockEnv } as any);
-      const data = await response.json() as Record<string, unknown>;
+      const data = await response.json() as SignedUrlResponse;
 
       expect(response.status).toBe(405);
-      expect(data.error).toBe('Method not allowed');
+      expect(data.error.message).toBe('Method not allowed');
     });
 
     it('should prefer fileKey over url parameter', async () => {
@@ -163,10 +169,10 @@ describe('Signed URL Handlers', () => {
       });
 
       const response = await handleSignedUrl({ request, env: mockEnv } as any);
-      const data = await response.json() as Record<string, unknown>;
+      const data = await response.json() as SignedUrlResponse;
 
       expect(response.status).toBe(200);
-      expect(data.signedUrl).toContain('courses%2Fcourse-123%2Ftest.pdf');
+      expect(data.data.signedUrl).toContain('courses%2Fcourse-123%2Ftest.pdf');
       expect(mockExtractKeyFromUrl).not.toHaveBeenCalled();
     });
 
@@ -179,10 +185,10 @@ describe('Signed URL Handlers', () => {
       });
 
       const response = await handleSignedUrl({ request, env: mockEnv } as any);
-      const data = await response.json() as Record<string, unknown>;
+      const data = await response.json() as SignedUrlResponse;
 
       expect(response.status).toBe(200);
-      expect(data.signedUrl).toContain('my%20file%20(1).pdf');
+      expect(data.data.signedUrl).toContain('my%20file%20(1).pdf');
     });
   });
 
@@ -209,16 +215,16 @@ describe('Signed URL Handlers', () => {
       });
 
       const response = await handleSignedUrls({ request, env: mockEnv } as any);
-      const data = await response.json() as Record<string, unknown>;
+      const data = await response.json() as SignedUrlResponse;
 
       expect(response.status).toBe(200);
       expect(data.success).toBe(true);
-      expect(data.signedUrls).toBeDefined();
-      expect(Object.keys(data.signedUrls as Record<string, string>)).toHaveLength(3);
-      expect((data.signedUrls as Record<string, string>)['https://pub-123.r2.dev/courses/course-123/test1.pdf']).toContain(
+      expect(data.data.signedUrls).toBeDefined();
+      expect(Object.keys(data.data.signedUrls as Record<string, string>)).toHaveLength(3);
+      expect((data.data.signedUrls as Record<string, string>)['https://pub-123.r2.dev/courses/course-123/test1.pdf']).toContain(
         '/api/storage/document-access?key='
       );
-      expect(data.expiresAt).toBeDefined();
+      expect(data.data.expiresAt).toBeDefined();
     });
 
     it('should use custom expiresIn parameter', async () => {
@@ -233,10 +239,10 @@ describe('Signed URL Handlers', () => {
       });
 
       const response = await handleSignedUrls({ request, env: mockEnv } as any);
-      const data = await response.json() as Record<string, unknown>;
+      const data = await response.json() as SignedUrlResponse;
 
       expect(response.status).toBe(200);
-      const expiresAt = new Date(data.expiresAt as string).getTime();
+      const expiresAt = new Date(data.data.expiresAt as string).getTime();
       const expectedExpiry = Date.now() + 7200 * 1000;
       expect(Math.abs(expiresAt - expectedExpiry)).toBeLessThan(1000);
     });
@@ -257,10 +263,10 @@ describe('Signed URL Handlers', () => {
       });
 
       const response = await handleSignedUrls({ request, env: mockEnv } as any);
-      const data = await response.json() as Record<string, unknown>;
+      const data = await response.json() as SignedUrlResponse;
 
       expect(response.status).toBe(200);
-      expect((data.signedUrls as Record<string, string>)['https://example.com/unknown/path/file.pdf']).toBe(
+      expect((data.data.signedUrls as Record<string, string>)['https://example.com/unknown/path/file.pdf']).toBe(
         'https://example.com/unknown/path/file.pdf'
       );
     });
@@ -272,10 +278,10 @@ describe('Signed URL Handlers', () => {
       });
 
       const response = await handleSignedUrls({ request, env: mockEnv } as any);
-      const data = await response.json() as Record<string, unknown>;
+      const data = await response.json() as SignedUrlResponse;
 
       expect(response.status).toBe(400);
-      expect(data.error).toBe('URLs array is required');
+      expect(data.error.message).toBe('URLs array is required');
     });
 
     it('should reject request with non-array urls', async () => {
@@ -287,10 +293,10 @@ describe('Signed URL Handlers', () => {
       });
 
       const response = await handleSignedUrls({ request, env: mockEnv } as any);
-      const data = await response.json() as Record<string, unknown>;
+      const data = await response.json() as SignedUrlResponse;
 
       expect(response.status).toBe(400);
-      expect(data.error).toBe('URLs array is required');
+      expect(data.error.message).toBe('URLs array is required');
     });
 
     it('should reject request with empty urls array', async () => {
@@ -302,10 +308,10 @@ describe('Signed URL Handlers', () => {
       });
 
       const response = await handleSignedUrls({ request, env: mockEnv } as any);
-      const data = await response.json() as Record<string, unknown>;
+      const data = await response.json() as SignedUrlResponse;
 
       expect(response.status).toBe(400);
-      expect(data.error).toBe('URLs array cannot be empty');
+      expect(data.error.message).toBe('URLs array cannot be empty');
     });
 
     it('should reject non-POST requests', async () => {
@@ -314,10 +320,10 @@ describe('Signed URL Handlers', () => {
       });
 
       const response = await handleSignedUrls({ request, env: mockEnv } as any);
-      const data = await response.json() as Record<string, unknown>;
+      const data = await response.json() as SignedUrlResponse;
 
       expect(response.status).toBe(405);
-      expect(data.error).toBe('Method not allowed');
+      expect(data.error.message).toBe('Method not allowed');
     });
 
     it('should handle mixed success and fallback URLs', async () => {
@@ -341,16 +347,16 @@ describe('Signed URL Handlers', () => {
       });
 
       const response = await handleSignedUrls({ request, env: mockEnv } as any);
-      const data = await response.json() as Record<string, unknown>;
+      const data = await response.json() as SignedUrlResponse;
 
       expect(response.status).toBe(200);
-      expect((data.signedUrls as Record<string, string>)['https://pub-123.r2.dev/courses/course-123/test1.pdf']).toContain(
+      expect((data.data.signedUrls as Record<string, string>)['https://pub-123.r2.dev/courses/course-123/test1.pdf']).toContain(
         '/api/storage/document-access'
       );
-      expect((data.signedUrls as Record<string, string>)['https://example.com/unknown/file.pdf']).toBe(
+      expect((data.data.signedUrls as Record<string, string>)['https://example.com/unknown/file.pdf']).toBe(
         'https://example.com/unknown/file.pdf'
       );
-      expect((data.signedUrls as Record<string, string>)['https://pub-123.r2.dev/courses/course-123/test3.pdf']).toContain(
+      expect((data.data.signedUrls as Record<string, string>)['https://pub-123.r2.dev/courses/course-123/test3.pdf']).toContain(
         '/api/storage/document-access'
       );
     });

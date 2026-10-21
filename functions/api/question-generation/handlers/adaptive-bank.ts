@@ -7,7 +7,7 @@ import { PagesEnv } from '../../../lib/types';
 import { GradeLevel, DifficultyLevel, Subtag, QuestionGenerationResult, Question } from '../adaptive-types';
 import { reorderToPreventConsecutiveSubtags } from '../adaptive-utils';
 import { ALL_SUBTAGS } from '../adaptive-constants';
-import { createClient } from '@supabase/supabase-js';
+import { createSupabaseClient } from '../../../lib/supabase';
 
 /**
  * Generate questions from CSV question bank
@@ -39,7 +39,7 @@ async function generateQuestionsFromBank(
         throw new Error('Supabase credentials not configured');
     }
     
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const supabase = createSupabaseClient(env);
 
     // Map grade level to numeric grade
     const gradeMap: Record<string, number> = {

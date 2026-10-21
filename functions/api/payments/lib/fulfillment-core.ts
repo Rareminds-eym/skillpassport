@@ -1,4 +1,5 @@
-import { requireSelfServePlan } from './salesPlan';
+import { requireSelfServePlan, subscriptionForUpgrade } from './salesPlan';
+import { completePlanSelection } from '../../../shared/lib/org-subscription';
 import { ssoRecordTransaction, ssoRecordAddonPurchase, ssoRecordBundlePurchase, ssoCreateSubscription, ssoUpdateSubscriptionField, ssoSyncSubscription } from '../../../lib/sso-client';
 import { getServiceClient } from '../../../lib/supabase';
 import { syncUserShadow, syncSubscriptionCache } from '../../../lib/sync-shadow';
@@ -380,6 +381,8 @@ export async function fulfillLearnerSubscription(
   env: FulfillmentEnv,
   payload: {
     user_id: string;
+    org_id?: string;
+    organization_type?: string;
     plan_id: string;
     plan_name: string;
     plan_code: string;
@@ -402,12 +405,7 @@ export async function fulfillLearnerSubscription(
   let subscription: any = null;
   let isUpgrade = false;
 
-  const { data: existingCache } = await supabase
-    .from('subscription_cache')
-    .select('id, status, plan_id, plan_code, plan_amount')
-    .eq('user_id', payload.user_id)
-    .in('status', ['active', 'pending', 'grace_period'])
-    .maybeSingle();
+  const existingCache = await subscriptionForUpgrade(supabase, payload.user_id, catalogPlan, payload.org_id);
 
   const now = new Date();
   const endDate = new Date(now);
@@ -441,6 +439,9 @@ export async function fulfillLearnerSubscription(
     try {
       subscription = await ssoCreateSubscription(ssoEnv, {
         user_id: payload.user_id,
+        organization_id: payload.org_id,
+        organization_type: payload.organization_type,
+        is_organization_subscription: catalogPlan.business_type === 'b2b',
         plan_id: payload.plan_id,
         plan_code: payload.plan_code,
         plan_type: payload.plan_name,
@@ -494,5 +495,6 @@ export async function fulfillLearnerSubscription(
     console.error('[FulfillmentCore] Shadow sync failed:', syncError);
   }
 
+  await completePlanSelection(supabase, payload.user_id, catalogPlan.id);
   return { success: true, subscription, isUpgrade, already_fulfilled: duplicateCaught };
 }

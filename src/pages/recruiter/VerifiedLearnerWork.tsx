@@ -747,7 +747,9 @@
 // }
 
 import React, { useMemo, useState } from "react";
-import { FileText } from "lucide-react";
+import { FileText, CheckCircle, XCircle, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { DocumentCheckIcon } from '@heroicons/react/24/outline';
+import { EmptyStateWithQuote } from '@/components/EmptyStateWithQuote';
 
 export default function VerifiedLearnerWorkUI() {
   const initialData = [
@@ -899,11 +901,10 @@ export default function VerifiedLearnerWorkUI() {
                   setTab(t);
                   setPage(1);
                 }}
-                className={`px-3 py-2 rounded-lg text-sm font-medium ${
-                  tab === t
+                className={`px-3 py-2 rounded-lg text-sm font-medium ${tab === t
                     ? "bg-blue-600 text-white"
                     : "bg-transparent border border-gray-300"
-                }`}
+                  }`}
               >
                 {t === "all"
                   ? "All"
@@ -991,9 +992,10 @@ export default function VerifiedLearnerWorkUI() {
 
         {/* No Results */}
         {filtered.length === 0 && (
-          <div className="text-center text-gray-500 mt-10">
-            No results found.
-          </div>
+          <EmptyStateWithQuote
+            page="verified-work"
+            icon={DocumentCheckIcon}
+          />
         )}
 
         {/* Pagination */}

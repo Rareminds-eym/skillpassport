@@ -2,18 +2,21 @@
  * Unit Tests for MemberInvitationService
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useAuthStore } from '@/shared/model/authStore';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-    MemberInvitationService,
-    type InviteMemberRequest
+  MemberInvitationService,
+  type InviteMemberRequest
 } from '../memberInvitationService';
 
 // Mock SSO client
 vi.mock('@/shared/api/ssoClient', () => ({
   ssoClient: {
     fetch: vi.fn(),
-    getAccessToken: vi.fn(() => 'test-token')
+    getAccessToken: vi.fn(() => 'test-token'),
+    createInvite: vi.fn(),
+    listInvites: vi.fn(),
+    resendInvite: vi.fn()
   }
 }));
 
@@ -66,7 +69,7 @@ describe('MemberInvitationService', () => {
       organizationId: 'org-123',
       organizationType: 'school',
       email: 'teacher@school.edu',
-      memberType: 'educator',
+      memberType: 'learner',
       autoAssignSubscription: true
     };
 
@@ -75,7 +78,7 @@ describe('MemberInvitationService', () => {
       organization_id: 'org-123',
       organization_type: 'school',
       invitee_email: 'teacher@school.edu',
-      invitee_role: 'educator',
+      invitee_role: 'learner',
       invited_by: 'admin-456',
       status: 'pending',
       invitation_token: 'token-abc-123',
@@ -103,20 +106,124 @@ describe('MemberInvitationService', () => {
     });
   });
 
+  describe('inviteMember (educator retired)', () => {
+    it('rejects educator invites without calling the API', async () => {
+      await expect(service.inviteMember({
+        organizationId: 'org-123', organizationType: 'college', email: 'edu@example.com',
+        memberType: 'educator', autoAssignSubscription: false
+      })).rejects.toThrow('Educator invitations are sent through SSO');
+      expect(ssoClient.fetch).not.toHaveBeenCalled();
+    });
+
+    it('learner invites still post to /api/organization inviteMember', async () => {
+      vi.mocked(ssoClient.fetch).mockResolvedValue(createMockResponse({
+        data: {
+          id: 'inv-9', invitee_email: 'l@example.com', invitee_role: 'learner', status: 'pending'
+        }
+      }));
+      await service.inviteMember({
+        organizationId: 'org-123', organizationType: 'college', email: 'l@example.com',
+        memberType: 'learner', autoAssignSubscription: false
+      });
+      const [, init] = vi.mocked(ssoClient.fetch).mock.calls[0];
+      expect(JSON.parse(String((init as RequestInit).body))).toMatchObject({ action: 'inviteMember', memberType: 'learner' });
+    });
+  });
+
+  describe('inviteEducator', () => {
+    const created = { inviteId: 'i1', email: 'edu@example.com', expiresAt: '2026-10-13T00:00:00.000Z' };
+
+    it.each([
+      ['college', 'college_educator'],
+      ['school', 'school_educator']
+    ] as const)('%s maps to role %s and goes through SSO createInvite only', async (organizationType, role) => {
+      vi.mocked(ssoClient.createInvite).mockResolvedValue(created);
+      const result = await service.inviteEducator({ organizationId: 'org-1', organizationType, email: '  Edu@Example.com ' });
+
+      expect(result).toEqual(created);
+      expect(ssoClient.createInvite).toHaveBeenCalledWith({ email: 'edu@example.com', organizationId: 'org-1', roles: [role] });
+      expect(ssoClient.fetch).not.toHaveBeenCalled();
+    });
+
+    it.each(['sent', 'failed'] as const)('returns emailStatus "%s" from SSO', async (emailStatus) => {
+      vi.mocked(ssoClient.createInvite).mockResolvedValue({ ...created, emailStatus });
+      const result = await service.inviteEducator({ organizationId: 'org-1', organizationType: 'college', email: 'edu@example.com' });
+      expect(result.emailStatus).toBe(emailStatus);
+    });
+
+    it('rejects university organizations explicitly and sends nothing', async () => {
+      await expect(service.inviteEducator({ organizationId: 'org-1', organizationType: 'university', email: 'edu@example.com' }))
+        .rejects.toMatchObject({ name: 'EducatorInviteUnsupportedError', message: 'Educator invitations are not supported for university organizations.' });
+      expect(ssoClient.createInvite).not.toHaveBeenCalled();
+    });
+
+    it.each(['', 'not-an-email', 'a@b', `${'a'.repeat(250)}@example.com`])('rejects invalid email %j', async (email) => {
+      await expect(service.inviteEducator({ organizationId: 'org-1', organizationType: 'college', email }))
+        .rejects.toThrow('valid email');
+      expect(ssoClient.createInvite).not.toHaveBeenCalled();
+    });
+
+    it('rejects an empty organization id', async () => {
+      await expect(service.inviteEducator({ organizationId: ' ', organizationType: 'college', email: 'edu@example.com' }))
+        .rejects.toThrow('Organization is required');
+    });
+
+    it('propagates SSO failures unchanged', async () => {
+      const failure = Object.assign(new Error('x'), { code: 'not_authorized' });
+      vi.mocked(ssoClient.createInvite).mockRejectedValue(failure);
+      await expect(service.inviteEducator({ organizationId: 'org-1', organizationType: 'college', email: 'edu@example.com' }))
+        .rejects.toBe(failure);
+    });
+  });
+
+  describe('listSsoInvites', () => {
+    it('delegates to ssoClient.listInvites with the organization id and returns the data', async () => {
+      const data = { invites: [], truncated: false };
+      vi.mocked(ssoClient.listInvites).mockResolvedValue(data);
+
+      await expect(service.listSsoInvites('org-1')).resolves.toBe(data);
+      expect(ssoClient.listInvites).toHaveBeenCalledWith({ organizationId: 'org-1' });
+    });
+
+    it('rethrows the SSO failure unchanged', async () => {
+      const failure = Object.assign(new Error('x'), { code: 'not_authorized' });
+      vi.mocked(ssoClient.listInvites).mockRejectedValue(failure);
+
+      await expect(service.listSsoInvites('org-1')).rejects.toBe(failure);
+    });
+  });
+
+  describe('resendSsoInvite', () => {
+    it('delegates to ssoClient.resendInvite with the invite id and returns the data', async () => {
+      const data = { inviteId: 'i1', email: 'edu@example.com', expiresAt: '2026-10-14T00:00:00.000Z', emailStatus: 'sent' as const };
+      vi.mocked(ssoClient.resendInvite).mockResolvedValue(data);
+
+      await expect(service.resendSsoInvite('i1')).resolves.toBe(data);
+      expect(ssoClient.resendInvite).toHaveBeenCalledWith({ inviteId: 'i1' });
+    });
+
+    it('rethrows the SSO failure unchanged', async () => {
+      const failure = Object.assign(new Error('x'), { code: 'rate_limited' });
+      vi.mocked(ssoClient.resendInvite).mockRejectedValue(failure);
+
+      await expect(service.resendSsoInvite('i1')).rejects.toBe(failure);
+    });
+  });
+
   describe('bulkInviteMembers', () => {
     const mockRequests: InviteMemberRequest[] = [
       {
         organizationId: 'org-123',
         organizationType: 'school',
         email: 'teacher1@school.edu',
-        memberType: 'educator',
+        memberType: 'learner',
         autoAssignSubscription: true
       },
       {
         organizationId: 'org-123',
         organizationType: 'school',
         email: 'teacher2@school.edu',
-        memberType: 'educator',
+        memberType: 'learner',
         autoAssignSubscription: true
       }
     ];
@@ -132,7 +239,7 @@ describe('MemberInvitationService', () => {
               organization_id: 'org-123',
               organization_type: 'school',
               invitee_email: 'teacher1@school.edu',
-              invitee_role: 'educator',
+              invitee_role: 'learner',
               invited_by: 'admin-456',
               status: 'pending',
               invitation_token: 'token-1',
@@ -189,10 +296,15 @@ describe('MemberInvitationService', () => {
 
       vi.mocked(ssoClient.fetch).mockResolvedValue(createMockResponse({ data: mockData }));
 
-      const result = await service.acceptInvitation('token-abc', 'user-789');
+      const result = await service.acceptInvitation('token-abc');
 
       expect(result.invitation.status).toBe('accepted');
       expect(result.organizationName).toBe('St. Mary School');
+      // The server derives the accepting user from the session: the body carries no userId.
+      const [, init] = vi.mocked(ssoClient.fetch).mock.calls[0];
+      const sent = JSON.parse(String((init as RequestInit).body));
+      expect(sent).toEqual({ action: 'acceptInvitation', token: 'token-abc' });
+      expect(sent).not.toHaveProperty('userId');
     });
 
     it('should throw error for expired invitation', async () => {
@@ -200,7 +312,7 @@ describe('MemberInvitationService', () => {
         createMockResponse({ error: { message: 'Invitation has expired' } }, 410, false)
       );
 
-      await expect(service.acceptInvitation('expired-token', 'user-789'))
+      await expect(service.acceptInvitation('expired-token'))
         .rejects.toThrow('Invitation has expired');
     });
 
@@ -209,7 +321,7 @@ describe('MemberInvitationService', () => {
         createMockResponse({ error: { message: 'Invalid or expired invitation' } }, 404, false)
       );
 
-      await expect(service.acceptInvitation('invalid-token', 'user-789'))
+      await expect(service.acceptInvitation('invalid-token'))
         .rejects.toThrow('Invalid or expired invitation');
     });
 
@@ -232,7 +344,7 @@ describe('MemberInvitationService', () => {
 
       vi.mocked(ssoClient.fetch).mockResolvedValue(createMockResponse({ data: mockData }));
 
-      const result = await service.acceptInvitation('token-abc', 'user-789');
+      const result = await service.acceptInvitation('token-abc');
 
       expect(result.invitation.autoAssignSubscription).toBe(true);
       expect(result.invitation.targetLicensePoolId).toBe('pool-001');

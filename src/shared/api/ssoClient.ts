@@ -182,6 +182,28 @@ export const ssoClient = {
     const outcome = await authClient.acceptInvite({ invitationToken: input.token, password: input.password });
     throwOnNonSuccess(outcome, "Invite acceptance");
   },
+  // redirectUrl is intentionally not exposed: SSO builds the accept link from its own configured app URL.
+  createInvite: async (input: { email: string; organizationId: string; roles: readonly string[] }) => {
+    const outcome = await authClient.createInvite({
+      email: input.email,
+      organizationId: input.organizationId,
+      roles: input.roles,
+    });
+    throwOnNonSuccess(outcome, "Invite creation");
+    return outcome.data;
+  },
+  // Read-only, org-scoped, admin-gated SSO list. Never carries the invite token or its hash.
+  listInvites: async (input: { organizationId: string }) => {
+    const outcome = await authClient.listInvites({ organizationId: input.organizationId });
+    throwOnNonSuccess(outcome, "Invite list");
+    return outcome.data;
+  },
+  // redirectUrl is intentionally not exposed (same reason as createInvite).
+  resendInvite: async (input: { inviteId: string }) => {
+    const outcome = await authClient.resendInvite({ inviteId: input.inviteId });
+    throwOnNonSuccess(outcome, "Invite resend");
+    return outcome.data;
+  },
   forgotPassword: async (input: { email: string; redirect_url?: string }) => {
     const outcome = await authClient.forgotPassword({ email: input.email, redirectUrl: input.redirect_url });
     throwOnNonSuccess(outcome, "Password reset request");

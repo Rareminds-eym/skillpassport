@@ -620,11 +620,6 @@ export const ADMIN_FEATURE_POLICIES: Record<string, Record<string, readonly stri
   "college-admin/recruiter-pipeline": {
     "shortlist-tags-creators": ["placement_status"],
   },
-  "college-admin/storage": {
-    "upload": null,
-    "get-url": null,
-    "delete": null,
-  },
   "college-admin/verifications": {
     "resolve-college-id": ["learner_verifications"],
   },

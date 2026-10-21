@@ -171,7 +171,7 @@ export default function AcceptInvitationPage() {
         result = await response.json();
       } else {
         // Use standard school/college invitation flow
-        result = await memberInvitationService.acceptInvitation(token!, user.id);
+        result = await memberInvitationService.acceptInvitation(token!);
       }
 
       setPageState('accepted');

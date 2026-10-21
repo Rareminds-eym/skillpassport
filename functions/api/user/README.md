@@ -31,7 +31,7 @@ This API has 20+ endpoints organized into multiple handler files. Full migration
 11. **POST /signup/recruiter-admin** - Recruiter admin signup
 12. **POST /signup/recruiter** - Recruiter signup
 
-### Utility Endpoints (9)
+### Utility Endpoints (8)
 13. **GET /schools** - Get schools list
 14. **GET /colleges** - Get colleges list
 15. **GET /universities** - Get universities list
@@ -40,16 +40,14 @@ This API has 20+ endpoints organized into multiple handler files. Full migration
 18. **POST /check-college-code** - Validate college code
 19. **POST /check-university-code** - Validate university code
 20. **POST /check-company-code** - Validate company code
-21. **POST /check-email** - Check email availability
 
-### Authenticated Endpoints (7)
+### Authenticated Endpoints (6)
 22. **POST /create-learner** - Create learner (requires auth)
 23. **POST /create-teacher** - Create teacher (requires auth)
 24. **POST /create-college-staff** - Create college staff (requires auth)
 25. **POST /update-learner-documents** - Update learner documents (requires auth)
 26. **POST /create-event-user** - Create event user (requires auth)
 27. **POST /send-interview-reminder** - Send interview reminder (requires auth)
-28. **POST /reset-password** - Reset password
 
 ## Handler Files Structure
 
@@ -59,7 +57,6 @@ cloudflare-workers/user-api/src/handlers/
 ├── authenticated.ts    - Authenticated operations
 ├── college.ts          - College signup handlers
 ├── events.ts           - Event user creation
-├── password.ts         - Password reset
 ├── recruiter.ts        - Recruiter signup handlers
 ├── school.ts           - School signup handlers
 ├── unified.ts          - Unified signup
@@ -83,7 +80,6 @@ cloudflare-workers/user-api/src/utils/
 - Multiple institution types (school, college, university, company)
 - Email validation and uniqueness checks
 - Code validation for institutions
-- Password reset functionality
 - Event user creation
 - Document management for learners
 

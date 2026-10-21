@@ -321,6 +321,14 @@ async function inviteMember(context: AuthenticatedContext, body: any) {
   const user = getUserId(context);
   const { organizationId, organizationType, email, memberType, autoAssignSubscription, licensePoolId, invitationMessage, metadata } = body;
 
+  // Educator invitations are sent through SSO (single source of truth), never through this path.
+  if (memberType === 'educator') {
+    return apiError(400, 'VALIDATION_ERROR', 'Educator invitations are sent through SSO. Use the Invitations tab to send an educator invite.', context.request);
+  }
+  if (memberType !== 'learner') {
+    return apiError(400, 'VALIDATION_ERROR', 'memberType must be learner', context.request);
+  }
+
   // 🔒 SECURITY: Verify user is a member of the organization
   const membership = await verifyOrgMembership(supabase, user, organizationId);
   if (!membership) {
@@ -341,9 +349,7 @@ async function inviteMember(context: AuthenticatedContext, body: any) {
   // primary role (a semantic change). Deferred; flagged for review.
   const { data: userData } = await supabase.from('users').select('role').eq('id', user).single();
   const invitedByRole = userData?.role || 'school_admin';
-  const inviteeRole = memberType === 'educator'
-    ? (organizationType === 'school' ? 'school_educator' : 'college_educator')
-    : 'learner';
+  const inviteeRole = 'learner';
   const invitationToken = Array.from({ length: 64 }, () => 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'.charAt(Math.floor(Math.random() * 62))).join('');
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
@@ -359,6 +365,7 @@ async function resendInvitation(context: AuthenticatedContext, body: any) {
   const { data: invitation, error } = await supabase.from('organization_invitations').select('*').eq('id', invitationId).single();
   if (error || !invitation) return apiError(404, 'NOT_FOUND', 'Invitation not found', context.request);
   if (invitation.status !== 'pending') return apiError(400, 'VALIDATION_ERROR', 'Can only resend pending invitations', context.request);
+  if (isEducatorInvitation(invitation)) return educatorInviteRetired(context);
 
   const newToken = Array.from({ length: 64 }, () => 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'.charAt(Math.floor(Math.random() * 62))).join('');
   const newExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
@@ -377,9 +384,24 @@ async function cancelInvitation(context: AuthenticatedContext, body: any) {
   return apiSuccess({ success: true }, context.request);
 }
 
+const EDUCATOR_INVITE_RETIRED_MESSAGE = 'Educator invitations are now sent by email through the central sign-in service. Ask your administrator to send a new invitation.';
+
+function isEducatorInvitation(invitation: { invitee_role?: string | null }): boolean {
+  return typeof invitation.invitee_role === 'string' && invitation.invitee_role.includes('educator');
+}
+
+function educatorInviteRetired(context: AuthenticatedContext) {
+  return apiError(410, 'EDUCATOR_INVITE_RETIRED', EDUCATOR_INVITE_RETIRED_MESSAGE, context.request);
+}
+
 async function acceptInvitation(context: AuthenticatedContext, body: any) {
   const supabase = getSupabase(context);
-  const { token, userId: acceptingUserId } = body;
+  // The accepting user is always the authenticated session user; body.userId is never read.
+  const user = getContextUser(context);
+  const token = body?.token;
+  if (typeof token !== 'string' || token.length === 0 || token.length > 128) {
+    return apiError(400, 'VALIDATION_ERROR', 'A valid invitation token is required', context.request);
+  }
 
   const { data: invitation, error } = await supabase.from('organization_invitations').select('*').eq('invitation_token', token).eq('status', 'pending').single();
   if (error || !invitation) return apiError(404, 'NOT_FOUND', 'Invalid or expired invitation', context.request);
@@ -389,8 +411,24 @@ async function acceptInvitation(context: AuthenticatedContext, body: any) {
     return apiError(410, 'EXPIRED', 'Invitation has expired', context.request);
   }
 
-  const { error: updateError } = await supabase.from('organization_invitations').update({ status: 'accepted', accepted_at: new Date().toISOString(), accepted_by_user_id: acceptingUserId, updated_at: new Date().toISOString() }).eq('id', invitation.id);
+  if (isEducatorInvitation(invitation)) return educatorInviteRetired(context);
+
+  // The invitation is bound to an email address: the session user must own it.
+  if (!user.email || user.email.toLowerCase() !== String(invitation.invitee_email ?? '').toLowerCase()) {
+    logger.warn('acceptInvitation: session email does not match invitation', { userId: user.id, invitationId: invitation.id });
+    return apiError(403, 'FORBIDDEN', 'This invitation was sent to a different email address', context.request);
+  }
+
+  // Claim first: only one concurrent request can move the row out of 'pending'.
+  const { data: claimed, error: updateError } = await supabase.from('organization_invitations')
+    .update({ status: 'accepted', accepted_at: new Date().toISOString(), accepted_by_user_id: user.id, updated_at: new Date().toISOString() })
+    .eq('id', invitation.id)
+    .eq('status', 'pending')
+    .select('id');
   if (updateError) throw updateError;
+  if (!claimed || claimed.length === 0) {
+    return apiError(409, 'ALREADY_ACCEPTED', 'This invitation has already been accepted', context.request);
+  }
 
   // Map invitee_role to SSO role for organization_members
   let memberRole = 'member';
@@ -400,20 +438,19 @@ async function acceptInvitation(context: AuthenticatedContext, body: any) {
   const { error: omError } = await supabase
     .from('organization_members')
     .upsert({
-      user_id: acceptingUserId,
+      user_id: user.id,
       organization_id: invitation.organization_id,
       role: memberRole,
       status: 'active',
     }, { onConflict: 'user_id, organization_id' });
   if (omError) console.error('[accept-invitation] Failed to upsert organization_members:', omError);
 
-  await linkUserToOrganization(supabase, acceptingUserId, invitation.organization_id, invitation.organization_type, invitation.invitee_role, invitation.invitee_email);
+  await linkUserToOrganization(supabase, user.id, invitation.organization_id, invitation.organization_type, invitation.invitee_role, invitation.invitee_email);
 
   return apiSuccess(invitation, context.request);
 }
 
 async function linkUserToOrganization(supabase: any, userId: string, organizationId: string, organizationType: string, inviteeRole: string, inviteeEmail?: string) {
-  const isEducator = inviteeRole.includes('educator');
   const isLearner = inviteeRole.includes('learner');
   const memberUpdateData: Record<string, any> = {};
   if (organizationType === 'school') memberUpdateData.school_id = organizationId;
@@ -423,13 +460,6 @@ async function linkUserToOrganization(supabase: any, userId: string, organizatio
     const { data: updatedByUserId } = await supabase.from('learners').update(memberUpdateData).eq('user_id', userId).select('id');
     if ((!updatedByUserId || updatedByUserId.length === 0) && inviteeEmail) {
       await supabase.from('learners').update({ ...memberUpdateData, user_id: userId }).eq('email', inviteeEmail.toLowerCase()).select('id');
-    }
-  }
-
-  if (isEducator && organizationType === 'school') {
-    const { data: updatedByUserId } = await supabase.from('school_educators').update({ school_id: organizationId }).eq('user_id', userId).select('id');
-    if ((!updatedByUserId || updatedByUserId.length === 0) && inviteeEmail) {
-      await supabase.from('school_educators').update({ school_id: organizationId, user_id: userId }).eq('email', inviteeEmail.toLowerCase()).select('id');
     }
   }
 

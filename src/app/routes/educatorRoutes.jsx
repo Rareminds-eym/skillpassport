@@ -5,6 +5,8 @@ import EducatorLayout from "../layouts/EducatorLayout";
 
 const EDUCATOR_ROLES = ["educator", "school_educator", "college_educator"];
 
+const ArtifactReviews = lazy(() => import("@/features/artifact-review").then(module => ({ default: module.ReviewWorkspace })));
+
 const EducatorDashboard = lazy(() => import("@/pages/educator/Dashboard"));
 const EducatorLearners = lazy(() => import("@/pages/educator/LearnersPage"));
 const EducatorClasses = lazy(() => import("@/pages/educator/ClassesPage"));
@@ -67,6 +69,8 @@ export const educatorRoutes = (
       </SubscriptionProtectedRoute>
     }
   >
+    <Route path="reviews" element={<ArtifactReviews />} />
+    <Route path="reviews/:id" element={<ArtifactReviews />} />
     <Route path="dashboard" element={<EducatorDashboard />} />
     <Route path="ai-copilot" element={<EducatorAI />} />
     <Route path="learners" element={<EducatorLearners />} />

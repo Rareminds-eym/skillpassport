@@ -27,6 +27,7 @@ import { RequisitionImport } from '@/features/recruiter';
 import { apiPost } from '@/shared/api/apiClient';
 import { RequisitionFilters } from '@/shared/types/recruiter';
 import { getLogger } from '@/shared/config/logging';
+import { EmptyStateWithQuote } from '@/components/EmptyStateWithQuote';
 
 import { useUser } from '@/shared/model/authStore';
 const logger = getLogger('Requisitions');
@@ -528,23 +529,28 @@ const Requisitions = () => {
           </div>
         ) : requisitions.length === 0 ? (
           <div className="text-center py-12">
-            <BriefcaseSolidIcon className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-2 text-sm font-medium text-gray-900">No requisitions found</h3>
-            <p className="mt-1 text-sm text-gray-500">
-              {searchQuery || statusFilter !== 'all'
-                ? 'Try adjusting your search or filters'
-                : 'Get started by creating a new requisition'}
-            </p>
-            {searchQuery === '' && statusFilter === 'all' && (
-              <div className="mt-6">
-                <button
-                  onClick={() => setShowCreateModal(true)}
-                  className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700"
-                >
-                  <PlusIcon className="h-5 w-5 mr-2" />
-                  Create Your First Requisition
-                </button>
-              </div>
+            {searchQuery || statusFilter !== 'all' ? (
+              <>
+                <BriefcaseSolidIcon className="mx-auto h-12 w-12 text-gray-400" />
+                <h3 className="mt-2 text-sm font-medium text-gray-900">No requisitions found</h3>
+                <p className="mt-1 text-sm text-gray-500">
+                  Try adjusting your search or filters
+                </p>
+              </>
+            ) : (
+              <EmptyStateWithQuote
+                page="requisitions"
+                icon={BriefcaseSolidIcon}
+                actionButton={
+                  <button
+                    onClick={() => setShowCreateModal(true)}
+                    className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700"
+                  >
+                    <PlusIcon className="h-5 w-5 mr-2" />
+                    Create Your First Requisition
+                  </button>
+                }
+              />
             )}
           </div>
         ) : viewMode === 'grid' ? (
