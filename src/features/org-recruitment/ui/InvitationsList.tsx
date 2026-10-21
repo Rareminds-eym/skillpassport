@@ -1,6 +1,13 @@
 /**
  * Invitations List Component
  * Displays pending, accepted, and expired invitations
+ * 
+ * Details Displayed:
+ * - Invitee name and email
+ * - Role assignment (company_admin, recruiter, viewer)
+ * - Status (pending, accepted, expired, cancelled)
+ * - Sent date
+ * - Expiry date (7 days from sent date)
  */
 
 import React, { useState } from 'react';
@@ -10,8 +17,9 @@ import {
     XCircleIcon,
     EnvelopeIcon,
     ArrowPathIcon,
+    UserCircleIcon,
 } from '@heroicons/react/24/outline';
-import { useRecruitmentInvitations, useCancelInvitation } from '@/entities/recruitment/model/useRecruitmentInvitations';
+import { useRecruitmentInvitations, useCancelInvitation, useResendInvitation } from '@/entities/recruitment/model/useRecruitmentInvitations';
 import { RoleIndicator } from './RoleIndicator';
 import type { RecruitmentRole } from '@/entities/recruitment/model/types';
 
@@ -22,6 +30,7 @@ export const InvitationsList: React.FC = () => {
 
     const { data: invitations, isLoading } = useRecruitmentInvitations();
     const cancelMutation = useCancelInvitation();
+    const resendMutation = useResendInvitation();
 
     // Filter invitations
     const filteredInvitations = invitations?.filter((inv) => {
@@ -30,13 +39,37 @@ export const InvitationsList: React.FC = () => {
     });
 
     const handleCancelInvitation = async (invitationId: string) => {
-        if (!confirm('Are you sure you want to cancel this invitation?')) return;
+        if (!confirm('Are you sure you want to cancel this invitation? This action cannot be undone.')) return;
 
         try {
             await cancelMutation.mutateAsync(invitationId);
         } catch (error) {
             console.error('Failed to cancel invitation:', error);
+            alert('Failed to cancel invitation. Please try again.');
         }
+    };
+
+    const handleResendInvitation = async (invitationId: string) => {
+        try {
+            await resendMutation.mutateAsync(invitationId);
+            alert('Invitation email resent successfully!');
+        } catch (error) {
+            console.error('Failed to resend invitation:', error);
+            alert('Failed to resend invitation. Please try again.');
+        }
+    };
+
+    const getTimeRemaining = (expiresAt: string) => {
+        const now = new Date();
+        const expiry = new Date(expiresAt);
+        const diffMs = expiry.getTime() - now.getTime();
+        const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+        
+        if (diffDays < 0) return { text: 'Expired', color: 'text-red-600' };
+        if (diffDays === 0) return { text: 'Expires today', color: 'text-orange-600' };
+        if (diffDays === 1) return { text: '1 day left', color: 'text-orange-600' };
+        if (diffDays <= 3) return { text: `${diffDays} days left`, color: 'text-yellow-600' };
+        return { text: `${diffDays} days left`, color: 'text-gray-600' };
     };
 
     const getStatusBadge = (status: string) => {
@@ -145,147 +178,97 @@ export const InvitationsList: React.FC = () => {
                         </p>
                     </div>
                 ) : (
-                    filteredInvitations?.map((invitation) => (
-                        <div
-                            key={invitation.id}
-                            className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
-                        >
-                            <div className="flex items-start justify-between">
-                                {/* Invitation Info */}
-                                <div className="flex items-start gap-4 flex-1">
-                                    {/* Icon */}
-                                    <div className="flex-shrink-0">
-                                        <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-                                            <EnvelopeIcon className="h-5 w-5 text-white" />
+                    filteredInvitations?.map((invitation) => {
+                        const timeRemaining = invitation.expiresAt ? getTimeRemaining(invitation.expiresAt) : null;
+
+                        return (
+                            <div
+                                key={invitation.id}
+                                className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+                            >
+                                <div className="flex items-center justify-between gap-4">
+                                    {/* Left: Avatar + Info */}
+                                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                                        <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0">
+                                            <UserCircleIcon className="h-6 w-6 text-white" />
+                                        </div>
+                                        
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <h3 className="text-base font-semibold text-gray-900 truncate">
+                                                    {invitation.inviteeName || 'No name provided'}
+                                                </h3>
+                                                {invitation.inviteeRole && (
+                                                    <RoleIndicator
+                                                        role={invitation.inviteeRole as RecruitmentRole}
+                                                        size="sm"
+                                                    />
+                                                )}
+                                            </div>
+                                            <p className="text-sm text-gray-600 truncate">{invitation.inviteeEmail}</p>
                                         </div>
                                     </div>
 
-                                    {/* Details */}
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2 mb-2">
-                                            <h3 className="text-base font-semibold text-gray-900 truncate">
-                                                {invitation.inviteeName || invitation.inviteeEmail}
-                                            </h3>
-                                            {invitation.inviteeRole && (
-                                                <RoleIndicator
-                                                    role={invitation.inviteeRole as RecruitmentRole}
-                                                    size="sm"
-                                                />
-                                            )}
-                                            {getStatusBadge(invitation.status)}
+                                    {/* Middle: Dates */}
+                                    <div className="hidden md:flex items-center gap-6 text-sm">
+                                        <div className="text-center">
+                                            <p className="text-xs text-gray-500 mb-1">Sent</p>
+                                            <p className="text-gray-900 font-medium">
+                                                {invitation.createdAt ? new Date(invitation.createdAt).toLocaleDateString('en-US', {
+                                                    month: 'short',
+                                                    day: 'numeric',
+                                                    year: 'numeric'
+                                                }) : '-'}
+                                            </p>
                                         </div>
 
-                                        <div className="space-y-2">
-                                            {/* Email */}
-                                            <div className="flex items-center gap-2 text-sm text-gray-600">
-                                                <EnvelopeIcon className="h-4 w-4 text-gray-400" />
-                                                <span className="truncate">
-                                                    {invitation.inviteeEmail}
-                                                </span>
-                                            </div>
-
-                                            {/* Invitation Details Card */}
-                                            <div className="bg-gray-50 rounded-lg p-3 mt-2 space-y-2">
-                                                <div className="grid grid-cols-2 gap-3 text-xs">
-                                                    {/* Sent Date */}
-                                                    <div>
-                                                        <span className="text-gray-500 font-medium">Sent:</span>
-                                                        <p className="text-gray-900 mt-0.5">
-                                                            {new Date(invitation.createdAt).toLocaleDateString('en-US', {
-                                                                month: 'short',
-                                                                day: 'numeric',
-                                                                year: 'numeric'
-                                                            })}
-                                                        </p>
-                                                    </div>
-
-                                                    {/* Expiry Date */}
-                                                    {invitation.expiresAt && (
-                                                        <div>
-                                                            <span className="text-gray-500 font-medium">Expires:</span>
-                                                            <p className="text-gray-900 mt-0.5">
-                                                                {new Date(invitation.expiresAt).toLocaleDateString('en-US', {
-                                                                    month: 'short',
-                                                                    day: 'numeric',
-                                                                    year: 'numeric'
-                                                                })}
-                                                            </p>
-                                                        </div>
-                                                    )}
-
-                                                    {/* Role */}
-                                                    <div>
-                                                        <span className="text-gray-500 font-medium">Role:</span>
-                                                        <p className="text-gray-900 mt-0.5 capitalize">
-                                                            {invitation.inviteeRole?.replace('_', ' ')}
-                                                        </p>
-                                                    </div>
-
-                                                    {/* Invited By */}
-                                                    {invitation.invitedByName && (
-                                                        <div>
-                                                            <span className="text-gray-500 font-medium">Invited by:</span>
-                                                            <p className="text-gray-900 mt-0.5 truncate">
-                                                                {invitation.invitedByName}
-                                                            </p>
-                                                        </div>
-                                                    )}
-
-                                                    {/* Accepted Date (for accepted invitations) */}
-                                                    {invitation.acceptedAt && (
-                                                        <div className="col-span-2">
-                                                            <span className="text-green-600 font-medium">Accepted:</span>
-                                                            <p className="text-green-700 mt-0.5">
-                                                                {new Date(invitation.acceptedAt).toLocaleDateString('en-US', {
-                                                                    month: 'short',
-                                                                    day: 'numeric',
-                                                                    year: 'numeric',
-                                                                    hour: '2-digit',
-                                                                    minute: '2-digit'
-                                                                })}
-                                                            </p>
-                                                        </div>
-                                                    )}
-
-                                                    {/* Organization Name */}
-                                                    {invitation.organizationName && (
-                                                        <div className="col-span-2">
-                                                            <span className="text-gray-500 font-medium">Organization:</span>
-                                                            <p className="text-gray-900 mt-0.5">
-                                                                {invitation.organizationName}
-                                                            </p>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
-
-                                            {/* Custom Message */}
-                                            {invitation.invitationMessage && (
-                                                <div className="bg-blue-50 border-l-4 border-blue-400 p-2 mt-2">
-                                                    <p className="text-sm text-gray-700 italic">
-                                                        "{invitation.invitationMessage}"
+                                        {invitation.expiresAt && invitation.status === 'pending' && (
+                                            <div className="text-center">
+                                                <p className="text-xs text-gray-500 mb-1">Expires</p>
+                                                <p className="text-gray-900 font-medium">
+                                                    {new Date(invitation.expiresAt).toLocaleDateString('en-US', {
+                                                        month: 'short',
+                                                        day: 'numeric'
+                                                    })}
+                                                </p>
+                                                {timeRemaining && (
+                                                    <p className={`text-xs font-medium ${timeRemaining.color}`}>
+                                                        {timeRemaining.text}
                                                     </p>
-                                                </div>
-                                            )}
-                                        </div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Right: Status + Actions */}
+                                    <div className="flex items-center gap-3">
+                                        {getStatusBadge(invitation.status)}
+                                        
+                                        {invitation.status === 'pending' && (
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => handleResendInvitation(invitation.id)}
+                                                    disabled={resendMutation.isPending}
+                                                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50"
+                                                    title="Resend invitation"
+                                                >
+                                                    <ArrowPathIcon className="h-5 w-5" />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleCancelInvitation(invitation.id)}
+                                                    disabled={cancelMutation.isPending}
+                                                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                                                    title="Cancel invitation"
+                                                >
+                                                    <XCircleIcon className="h-5 w-5" />
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
-
-                                {/* Actions */}
-                                {invitation.status === 'pending' && (
-                                    <div className="flex items-center gap-2 ml-4">
-                                        <button
-                                            onClick={() => handleCancelInvitation(invitation.id)}
-                                            disabled={cancelMutation.isPending}
-                                            className="px-3 py-1.5 text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                        >
-                                            Cancel
-                                        </button>
-                                    </div>
-                                )}
                             </div>
-                        </div>
-                    ))
+                        );
+                    })
                 )}
             </div>
         </div>

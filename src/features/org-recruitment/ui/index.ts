@@ -13,3 +13,6 @@ export { OrgSettings } from './OrgSettings';
 export { EmailTemplateSettings } from './EmailTemplateSettings';
 export { ChangeRoleModal } from './ChangeRoleModal';
 export { TeamAnalytics } from './TeamAnalytics';
+
+// Analytics Dashboard
+export { AnalyticsDashboard } from './analytics';
