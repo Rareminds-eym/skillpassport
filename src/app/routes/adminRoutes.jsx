@@ -112,6 +112,9 @@ const CollegeAdminAssessmentResults = lazy(() =>
 const LessonPlanManagement = lazy(() =>
   import("@/pages/admin/collegeAdmin/LessonPlanManagement")
 );
+const CollegeAdminTasksAssignments = lazy(() =>
+  import("@/pages/admin/collegeAdmin/TasksAssignments")
+);
 const MentorAllocation = lazy(() =>
   import("@/pages/admin/collegeAdmin/MentorAllocation")
 );
@@ -365,6 +368,7 @@ export const collegeAdminRoutes = (
     <Route path="courses/:courseId/learn" element={<CoursePlayer />} />
     <Route path="academics/curriculum" element={<CollegeCurriculumBuilder />} />
     <Route path="academics/lesson-plans" element={<LessonPlanManagement />} />
+    <Route path="academics/assignments" element={<CollegeAdminTasksAssignments />} />
     <Route path="academics/coverage-tracker" element={<AcademicCoverageTracker />} />
     <Route path="academics/programs" element={<ProgramManagement />} />
     <Route path="academics/program-sections" element={<ProgramSectionManagement />} />

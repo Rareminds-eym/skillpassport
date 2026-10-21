@@ -821,7 +821,8 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           return apiError(400, 'VALIDATION_ERROR', 'Missing semester', context.request, { startTime });
         }
 
-        const { data, error } = await supabase
+        // Fetch college-specific mapped courses
+        const { data: mappedCourses, error: mappedError } = await supabase
           .from('college_course_mappings')
           .select(`
             id,
@@ -837,9 +838,20 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           .eq('program_id', program_id)
           .eq('semester', courseSemester);
 
-        if (error) return apiDbError(error, context.request, { startTime });
+        if (mappedError) return apiDbError(mappedError, context.request, { startTime });
 
-        const transformedData = (data || []).map((mapping: any) => ({
+        // Fetch all generic courses from the courses table
+        const { data: genericCourses, error: genericError } = await supabase
+          .from('courses')
+          .select('course_id, code, title, credits, course_type')
+          .or('status.eq.Active,status.eq.Published')
+          .is('deleted_at', null)
+          .order('title');
+
+        if (genericError) return apiDbError(genericError, context.request, { startTime });
+
+        // Transform mapped courses
+        const transformedMapped = (mappedCourses || []).map((mapping: any) => ({
           id: mapping.course?.id,
           mapping_id: mapping.id,
           course_code: mapping.course?.course_code,
@@ -847,9 +859,35 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           credits: mapping.course?.credits,
           type: mapping.offering_type,
           course_type: mapping.course?.course_type,
+          source: 'college_course',
         }));
 
-        return apiSuccess(transformedData, context.request, { startTime });
+        // Transform generic courses
+        const transformedGeneric = (genericCourses || []).map((course: any) => ({
+          id: course.course_id,
+          mapping_id: null,
+          course_code: course.code,
+          course_name: course.title,
+          credits: course.credits,
+          type: 'core',
+          course_type: course.course_type,
+          source: 'generic_course',
+        }));
+
+        // Combine both and remove duplicates (prefer college-specific if exists)
+        const combinedCourses = [...transformedMapped];
+        const mappedIds = new Set(transformedMapped.map((c: any) => c.course_code));
+
+        transformedGeneric.forEach((course: any) => {
+          if (!mappedIds.has(course.course_code)) {
+            combinedCourses.push(course);
+          }
+        });
+
+        // Sort by course name
+        combinedCourses.sort((a, b) => (a.course_name || '').localeCompare(b.course_name || ''));
+
+        return apiSuccess(combinedCourses, context.request, { startTime });
       }
 
       case 'get-semesters': {

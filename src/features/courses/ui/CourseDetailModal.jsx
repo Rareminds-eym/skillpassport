@@ -6,11 +6,11 @@ import { useUser } from '@/shared/model/authStore';
 import { useSubscriptionQuery } from '@/features/subscription/model/useSubscriptionQuery';
 import { PLAN_IDS, PLAN_HIERARCHY_LEVELS } from '@/shared/config/subscriptionPlans';
 
-const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentProgress, isRecordingInterest = false }) => {
+const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentProgress, isRecordingInterest = false, readOnly=false }) => {
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
   const navigate = useNavigate();
   const user = useUser();
-  const { subscriptionData } = useSubscriptionQuery();
+  const { subscriptionData } = useSubscriptionQuery({enabled:!readOnly});
   const userPlan = subscriptionData?.plan || PLAN_IDS.FREEMIUM;
 
   if (!isOpen || !course) return null;
@@ -32,6 +32,20 @@ const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentP
 
   // Determine button text and icon
   const getButtonContent = () => {
+    // Assigned teaching content is free to view — readOnly only blocks
+    // enrollment/purchase actions, never opening the course player.
+    if (readOnly) {
+      if (course.status !== 'Active') {
+        return { text: 'Coming Soon', icon: Play, disabled: true };
+      }
+      if (isCompleted) {
+        return { text: 'Review Course', icon: RotateCcw, disabled: false };
+      }
+      if (isInProgress) {
+        return { text: `Continue Learning (${progress.progress}%)`, icon: Play, disabled: false };
+      }
+      return { text: 'Start Learning', icon: Play, disabled: false };
+    }
     if (course.status !== 'Active') {
       return { text: 'Coming Soon', icon: Play, disabled: true };
     }
@@ -49,6 +63,11 @@ const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentP
 
   // Handle start course with plan-based access control
   const handleStartCourse = () => {
+    // Assigned teaching content bypasses the purchase/plan gate.
+    if (readOnly) {
+      onStartCourse(course);
+      return;
+    }
     if (!hasAccess) {
       setShowUpgradePrompt(true);
       return;
