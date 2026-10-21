@@ -1,3 +1,4 @@
+import {useAssignedTeaching} from '@/features/external-teaching/model/teachingContext';
 import {
   AcademicCapIcon,
   BookOpenIcon,
@@ -37,6 +38,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   onMobileMenuClose,
 }) => {
   const navigate = useNavigate();
+  const assignedTeaching=useAssignedTeaching();
   const location = useLocation();
   
   // Get educator school/college info to determine if they are a "rareminds" educator
@@ -63,7 +65,19 @@ const Sidebar: React.FC<SidebarProps> = ({
   };
 
   // collapsible groups - only shown for school/college educators
-  const navGroups = isRaremindsEducator ? [] : [
+  const navGroups = assignedTeaching ? [
+    {title:"Classroom Management",key:"management",items:[
+      {name:"Learners",path:"/educator/learners",icon:UserGroupIcon},
+      {name:"Mark Attendance",path:"/educator/mark-attendance",icon:ClipboardDocumentCheckIcon},
+      {name:"Courses",path:"/educator/browse-courses",icon:BookOpenIcon},
+    ]},
+    {title:"Learning & Evaluation",key:"learning",items:[
+      {name:"Assignments",path:"/educator/college-assignments",icon:AcademicCapIcon},
+      {name:"Mentor Notes",path:"/educator/mentor-notes",icon:PencilSquareIcon,disabled:true},
+      {name:"My Mentees",path:"/educator/my-mentees",icon:UserGroupIcon,disabled:true},
+      {name:"Verification",path:"/educator/activities",icon:CheckCircleIcon,disabled:true},
+    ]},
+  ] : isRaremindsEducator ? [] : [
     {
       title: "Classroom Management",
       key: "management",
@@ -142,7 +156,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   // For school/college educators: show all items
   const coursesItem = { name: "Courses", path: "/educator/browse-courses", icon: BookOpenIcon };
 
-  const bottomItems = isRaremindsEducator
+  const bottomItems = assignedTeaching ? [] : isRaremindsEducator
     ? [
         // Rareminds educators only see these items
         { name: "Digital Portfolio", path: "/educator/digital-portfolio", icon: FolderIcon },
@@ -200,7 +214,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         </button>
 
         {/* 🌟 Teaching Intelligence - Featured */}
-        <button
+        {!assignedTeaching&&(        <button
           type="button"
           onClick={() => handleNavigation(aiCopilotItem.name, aiCopilotItem.path)}
           className={classNames(
@@ -220,10 +234,10 @@ const Sidebar: React.FC<SidebarProps> = ({
           />
           <span className="whitespace-nowrap flex-1 truncate">{aiCopilotItem.name}</span>
           <span className="ml-auto text-xs font-semibold px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full flex-shrink-0">NEW</span>
-        </button>
+        </button>)}
 
         {/* 📚 Courses - Only shown as standalone for Rareminds educators */}
-        {isRaremindsEducator && (
+        {!assignedTeaching&&isRaremindsEducator && (
           <button
             type="button"
             onClick={() => handleNavigation(coursesItem.name, coursesItem.path)}

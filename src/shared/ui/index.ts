@@ -1,4 +1,5 @@
 export { Badge, badgeVariants } from './Badge';
+export { default as toast } from 'react-hot-toast';
 export { BoltStyleChat } from './BoltStyleChat';
 export { Button, buttonVariants } from './ButtonNew';
 export { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './Card';

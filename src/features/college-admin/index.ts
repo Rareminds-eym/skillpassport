@@ -68,7 +68,7 @@ export { collegeEventRegistrationsService } from './api/collegeEventRegistration
 export { resolveNote } from './api/mentorAllocationService';
 export { updateMentorPeriod } from './api/mentorAllocationService';
 export { getlearnersByProgramSection } from './api/programService';
-export { submitCollegeAssignment } from './api/collegeLearnerAssignmentService';
+export { submitCollegeAssignment, fetchCollegeAssignmentSubmissions, gradeCollegeAssignment } from './api/collegeLearnerAssignmentService';
 export { getCollegeClassmates } from './api/collegeClassService';
 export { updateCollegeLearnerAssignmentStatus } from './api/collegeLearnerAssignmentService';
 export { getFaculty } from './api/facultyService';
@@ -91,3 +91,4 @@ export type { default as SwapRequestModal } from './ui/modals/SwapRequestModal';
 // Note: AttendanceSession and AttendanceRecord already exported above
 // Note: getFacultyStatistics from facultyService
 export { timetableService, assessmentService } from './api/assessmentService';
+export { CollegeGradingModal } from './ui/CollegeGradingModal';

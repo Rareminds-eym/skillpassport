@@ -1,3 +1,4 @@
+import {useAssignedTeaching} from '@/features/external-teaching/model/teachingContext';
 import {
   AcademicCapIcon,
   ArrowDownTrayIcon,
@@ -346,7 +347,8 @@ const Settings: React.FC = () => {
   });
 
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-  const [activeTab, setActiveTab] = useState<'profile' | 'notifications' | 'teaching' | 'privacy' | 'security' | 'subscription'>('profile');
+  const assignedTeaching=useAssignedTeaching();
+  const [activeTab, setActiveTab] = useState<'profile' | 'notifications' | 'teaching' | 'privacy' | 'security' | 'subscription'>(assignedTeaching?'security':'profile');
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
     newPassword: '',
@@ -373,6 +375,7 @@ const Settings: React.FC = () => {
 
   // Data fetching function
   const fetchEducatorData = async () => {
+    if(assignedTeaching){setLoading(false);return;}
     if (!userId) return;
 
     try {
@@ -1159,7 +1162,7 @@ const Settings: React.FC = () => {
     { id: 'security', label: 'Security', icon: LockClosedIcon },
     { id: 'privacy', label: 'Privacy', icon: ShieldCheckIcon },
     { id: 'subscription', label: 'Subscription', icon: CreditCardIcon },
-  ];
+  ].filter(tab=>!assignedTeaching||tab.id==='security');
 
   const getInitials = (name: string) => {
     return name

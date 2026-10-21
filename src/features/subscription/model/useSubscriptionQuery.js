@@ -166,7 +166,7 @@ const fetchSubscription = async (userId, scope) => {
  * Main hook for subscription data with React Query
  * @returns {Object} Subscription query result
  */
-export const useSubscriptionQuery = () => {
+export const useSubscriptionQuery = (options = {}) => {
   const user = useUser();
   const { pathname } = useLocation();
   const scope = pathname.startsWith('/college-admin') ? 'college_admin'

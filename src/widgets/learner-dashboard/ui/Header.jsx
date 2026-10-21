@@ -64,7 +64,7 @@ const Header = ({ activeTab }) => {
   const { unreadCount } = useNotifications(userEmail);
 
   const { learnerData, loading: learnerDataLoading } = useLearnerDataByEmail(userEmail);
-  const isPartOfSchoolOrCollege = !learnerDataLoading && (learnerData?.school_id || learnerData?.university_college_id) && !isLearner(learnerData);
+  const isPartOfSchoolOrCollege = !learnerDataLoading && (learnerData?.school_id || learnerData?.college_id) && !isLearner(learnerData);
 
   // Get subscription data for feature gating
   const { subscriptionData } = useSubscriptionQuery();

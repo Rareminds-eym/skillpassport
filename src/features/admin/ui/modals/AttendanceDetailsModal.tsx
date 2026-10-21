@@ -240,9 +240,9 @@ const AttendanceDetailsModal = ({
         }
     };
 
-    if (!isOpen || !subjectGroup) return null;
+    if (!isOpen || !subjectGroup || subjectGroup.sessions.length === 0) return null;
 
-    // Get the selected session
+    // Get the selected session (sessions guaranteed non-empty above)
     const session = subjectGroup.sessions.find(s => s.id === selectedSessionId) || subjectGroup.sessions[0];
 
     // Get class learners for this subject
