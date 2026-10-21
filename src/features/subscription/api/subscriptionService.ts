@@ -30,12 +30,12 @@ const logger = getLogger('subscription-service');
  * Includes cancelled subscriptions that haven't expired yet (user retains access until end date).
  * @returns {Promise<{ success: boolean, data: Object | null, error: string | null }>}
  */
-export const getActiveSubscription = async () => {
+export const getActiveSubscription = async (scope?: string) => {
   try {
     logger.info('Fetching active subscription via API');
 
     const result = await apiGet<{ success: boolean; data: any; error: string | null }>(
-      '/payments/get-active-subscription'
+      `/payments/get-active-subscription${scope ? `?scope=${encodeURIComponent(scope)}` : ''}`
     );
 
     logger.info('Active subscription API response', { success: result.success, hasData: !!result.data });

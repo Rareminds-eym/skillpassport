@@ -33,7 +33,8 @@
  * deferral note in `functions/lib/auth.ts`.
  */
 
-import { FREEMIUM_FEATURES, PLAN_IDS } from '@/shared/config/subscriptionPlans';
+import { FREEMIUM_FEATURES } from '@/shared/config/subscriptionPlans';
+import { isFreemiumPlan } from '@/shared/lib/isFreemiumPlan';
 import { createFeatureAccessErrorLog, logError } from '@/shared/lib/error-logging';
 
 /**
@@ -66,7 +67,7 @@ export function checkFeatureAccess(
 ): FeatureAccessResult {
   try {
     // Handle Freemium tier
-    if (userPlan === PLAN_IDS.FREEMIUM) {
+    if (isFreemiumPlan(userPlan)) {
       return checkFreemiumAccess(feature);
     }
 
@@ -107,7 +108,7 @@ export function checkFeatureAccess(
 
     // Graceful degradation: fail open for paid plans, fail closed for freemium
     // This prevents legitimate users from being locked out due to transient errors
-    const shouldFailOpen = userPlan !== PLAN_IDS.FREEMIUM;
+    const shouldFailOpen = !isFreemiumPlan(userPlan);
 
     return {
       hasAccess: shouldFailOpen,

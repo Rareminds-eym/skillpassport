@@ -366,7 +366,7 @@ Top prod risks: **university panel mock-majority (22/42 UI-only)** — `Finance.
 | 18 | Unified Signup | `/signup` | ✅ Working | `UnifiedSignup.tsx` + `unified.ts:32 handleUnifiedSignup` |
 | 19 | Company Signup | `/signup/company` | ✅ Working | `CompanySignup.tsx` creates org + owner |
 | 20 | Forgot Password | `/forgot-password` | ✅ Working | `UnifiedForgotPassword.tsx` + `password.ts:14 send` |
-| 21 | Reset Password (Token) | `/reset-password` | ✅ Working | `TokenPasswordReset.tsx` + `verify-otp/reset-password` |
+| 21 | Reset Password (Token) | `/reset-password` | ✅ Working | `TokenPasswordReset.tsx` + SSO worker (`ssoClient.resetPassword`) |
 | 22 | Verify Email | `/verify-email` | ✅ Working | `VerifyEmail.tsx` |
 | 23 | Accept Invite (Auth) | `/invite/accept` | ✅ Working | `AcceptInvite.tsx` |
 | 24 | Invitation Error | `/invitation-error` | ✅ Working | Static error, correct |

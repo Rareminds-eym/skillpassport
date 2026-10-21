@@ -28,6 +28,7 @@ import { sendOtp, verifyOtp as verifyOtpApi } from '@/features/auth/api/otpServi
 // @ts-ignore - JS module without types
 import { DatePicker } from '@/features/subscription';
 import { ssoClient } from '@/shared/api/ssoClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { PASSWORD_MIN } from '@/shared/constants';
 import { isDevelopment, isLocalhost } from '@/shared/lib';
 import { trackSignup } from '@/shared/lib/analytics';
@@ -39,11 +40,11 @@ import type { UserRole } from '@/shared/types/generated/roles';
 
 /**
  * UI-ONLY redirect label (DEPRECATED - kept for reference).
- * 
+ *
  * Previously used to distinguish between recruitment admin (creates company)
  * and recruiter (invitation-based). This distinction is now handled on Page 3
  * via recruiter sub-role selection, so this constant is no longer used.
- * 
+ *
  * Left here temporarily to avoid breaking any references during migration.
  */
 // const RECRUITMENT_ADMIN_REDIRECT = 'recruitment_admin' as const;
@@ -51,7 +52,7 @@ import type { UserRole } from '@/shared/types/generated/roles';
 /**
  * The set of options the signup dropdown can offer: a curated subset of real
  * SSO `UserRole`s, plus UI-only redirect labels.
- * 
+ *
  * 'recruiter_admin' is a UI-only label that triggers admin recruiter signup flow
  * (creates org with owner role). It's not an actual SSO role.
  */
@@ -303,6 +304,8 @@ const UnifiedSignup = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
+  // Keep control until the destination route commits, including concurrent navigation.
+  useEffect(() => () => { useAuthStore.setState({ signupInProgress: false }); }, []);
 
   // Check if running on localhost using utility function
   const isDevEnvironment = isLocalhost() || isDevelopment();
@@ -694,8 +697,10 @@ const UnifiedSignup = () => {
 
     setState(prev => ({ ...prev, loading: true, error: '' }));
 
+    useAuthStore.setState({ signupInProgress: true });
+    let accountCreated = false;
     try {
-      // UPDATED FLOW: 
+      // UPDATED FLOW:
       // - recruiter_admin role = creates org during signup (admin type)
       // - recruiter role (via invitation) = joins existing org (invited type)
       // - institution admins = create org with proper role
@@ -728,6 +733,7 @@ const UnifiedSignup = () => {
         });
 
         ssoUserId = ssoResult.user.id;
+        accountCreated = true;
         ssoUserIdentity = ssoResult.user;
         if (ssoResult.email_sent === false) {
           sessionStorage.setItem('email_sent_failed', 'true');
@@ -759,6 +765,7 @@ const UnifiedSignup = () => {
           },
         });
         ssoUserId = ssoResult.user.id;
+        accountCreated = true;
         ssoUserIdentity = ssoResult.user;
         if (ssoResult.email_sent === false) {
           sessionStorage.setItem('email_sent_failed', 'true');
@@ -785,6 +792,7 @@ const UnifiedSignup = () => {
           },
         });
         ssoUserId = ssoResult.user.id;
+        accountCreated = true;
         ssoUserIdentity = ssoResult.user;
         if (ssoResult.email_sent === false) {
           sessionStorage.setItem('email_sent_failed', 'true');
@@ -810,36 +818,24 @@ const UnifiedSignup = () => {
         role: state.selectedRole,
       });
 
-      // Step 2: Create app profile via Pages Function
-      const { getApiUrl } = await import('@/shared/api/apiUtils');
-      const USER_API_URL = getApiUrl('user');
-
-      const response = await ssoClient.fetch(`${USER_API_URL}/signup`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: ssoUserId,
-          email: emailToUse, // Use the forced email, not state.email
-          firstName: state.firstName,
-          lastName: state.lastName,
-          phone: state.phone || undefined,
-          role: state.selectedRole,
-          dateOfBirth: state.dateOfBirth || undefined,
-          country: state.country || undefined,
-          state: state.state || undefined,
-          city: state.city || undefined,
-          preferredLanguage: state.preferredLanguage || undefined,
-          referralCode: normalizedReferralCode || undefined,
-          // Store recruiter type for post-verification routing
-          // recruiter_admin -> 'admin', recruiter (via invite) -> 'invited'
-          recruiterType: state.selectedRole === 'recruiter_admin' ? 'admin' : (state.recruiterType || undefined),
-        }),
+      // Identity is already committed; profile saving is independently retryable.
+      await apiPost('/user/signup', {
+        userId: ssoUserId,
+        email: emailToUse, // Use the forced email, not state.email
+        firstName: state.firstName,
+        lastName: state.lastName,
+        phone: state.phone || undefined,
+        role: state.selectedRole,
+        dateOfBirth: state.dateOfBirth || undefined,
+        country: state.country || undefined,
+        state: state.state || undefined,
+        city: state.city || undefined,
+        preferredLanguage: state.preferredLanguage || undefined,
+        referralCode: normalizedReferralCode || undefined,
+        // Store recruiter type for post-verification routing
+        // recruiter_admin -> 'admin', recruiter (via invite) -> 'invited'
+        recruiterType: state.selectedRole === 'recruiter_admin' ? 'admin' : (state.recruiterType || undefined),
       });
-
-      if (!response.ok) {
-        const result = await response.json().catch(() => ({}));
-        throw new Error((result as any).error || 'Failed to create profile');
-      }
 
       // Step 3: Redirect based on role
       const entityTypeMap: Record<OfferedSignupRole, string> = {
@@ -980,6 +976,14 @@ const UnifiedSignup = () => {
         });
       } else {
         // Redirect to subscription plans page to choose a plan
+        const { getActiveSubscription } = await import('@/features/subscription/api/subscriptionService');
+        const coverage = await getActiveSubscription();
+        // On verification failure the protected route shows Retry; never delete a completed account.
+        if (!coverage.success || coverage.data) {
+          const { getRouteForRole } = await import('@/features/auth/lib/roleBasedRouter');
+          navigate(getRouteForRole(state.selectedRole === 'recruiter_admin' ? 'recruiter' : state.selectedRole!), { replace: true });
+          return;
+        }
         const subscriptionPlansPath = normalizedReferralCode
           ? `/subscription/plans/${entityType}/purchase?referralCode=${encodeURIComponent(normalizedReferralCode)}`
           : `/subscription/plans/${entityType}/purchase`;
@@ -1002,23 +1006,23 @@ const UnifiedSignup = () => {
         errorMessage = error.message;
       }
 
-      // Rollback: If SSO user was created but app profile failed,
-      // delete the SSO account entirely so the user can retry cleanly.
-      if (ssoClient.isAuthenticated()) {
+      // Never delete a committed identity because a later profile/network request failed.
+      // Clear this signup session so the user can log in and resume using the saved account.
+      if (accountCreated) {
+        errorMessage = `Your account was created, but setup could not finish. ${errorMessage} Please log in to continue; you do not need to sign up again.`;
         try {
-          // Delete the SSO user (cascades to sessions, memberships, etc.)
-          const { apiPost } = await import('@/shared/api/apiClient');
-          await apiPost('/auth/delete-account', {});
+          await useAuthStore.getState().logout();
         } catch {
-          // If delete fails, still clear auth state
+          // A logout outage must not hide the original failure or leave signup stuck.
+          useAuthStore.setState({ user: null, session: null, isAuthenticated: false, role: null });
         }
-        await useAuthStore.getState().logout();
       }
 
       // Track signup_failed — error message and role captured for GTM
       trackSignup.failed(errorMessage, state.selectedRole || undefined);
 
       setState(prev => ({ ...prev, loading: false, error: errorMessage }));
+      useAuthStore.setState({ signupInProgress: false });
     }
   };
   const [countdown, setCountdown] = useState(getTimeUntilFullRegOpens());

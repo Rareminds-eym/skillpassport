@@ -22,7 +22,7 @@ function extractError(body: any): { message: string, code?: string } {
   if (typeof body.error === 'string') return { message: body.error };
   if (body.error && typeof body.error === 'object') {
     return { 
-      message: body.error.message || 'Request failed', 
+      message: typeof body.error.message === 'string' && body.error.message.trim() ? body.error.message : 'Request failed',
       code: body.error.code 
     };
   }
