@@ -1034,8 +1034,8 @@ function SubscriptionPlans() {
             userId: user.id,
             email: user.email,
             amount: 0,
-            planId: 'freemium',
-            planName: 'freemium'
+            planId: plan.id,
+            planName: plan.name
           })
         });
 

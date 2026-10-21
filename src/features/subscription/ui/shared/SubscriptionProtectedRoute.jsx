@@ -88,7 +88,7 @@ function getUserTypeFromPath(pathname) {
       return userType;
     }
   }
-  return 'learner'; // fallback
+  return null;
 }
 
 /**
@@ -161,9 +161,9 @@ function usePostPaymentSync(isPostPayment, hasAccess, refreshSubscription) {
 
     // Set overall timeout
     timeoutRef.current = setTimeout(() => {
-      if (mountedRef.current && syncState.status === 'syncing') {
+      if (mountedRef.current) {
         log.warn('Post-payment sync timeout reached');
-        setSyncState(prev => ({
+        setSyncState(prev => prev.status !== 'syncing' ? prev : ({
           ...prev,
           status: 'failed',
           error: new Error('Sync timeout'),
@@ -174,7 +174,8 @@ function usePostPaymentSync(isPostPayment, hasAccess, refreshSubscription) {
     // Perform sync with retries
     retryWithBackoff(
       async () => {
-        await refreshSubscription();
+        const subscription = await refreshSubscription();
+        if (!subscription) throw new Error('Subscription activation is still pending');
         // Small delay to ensure React Query cache is updated
         await sleep(100);
       },
@@ -215,7 +216,7 @@ function usePostPaymentSync(isPostPayment, hasAccess, refreshSubscription) {
   }, [hasAccess, syncState.status]);
 
   return {
-    isSyncing: syncState.status === 'syncing',
+    isSyncing: syncState.status === 'syncing' || (syncState.status === 'idle' && isPostPayment && !hasAccess),
     isSynced: syncState.status === 'synced' || syncState.status === 'idle',
     syncFailed: syncState.status === 'failed',
     syncAttempts: syncState.attempts,
@@ -260,17 +261,9 @@ function useGuardState({
       return GUARD_STATES.ACCESS_DENIED;
     }
 
-    // Step 3: Role check - be lenient for admin roles
+    // A different administrator role does not authorize this dashboard.
     if (allowedRoles.length > 0 && !allowedRoles.includes(role)) {
-      // Check if this is an admin role mismatch that should be allowed
-      const isAdminRoute = allowedRoles.some(r => r.includes('_admin'));
-      const userIsAdmin = role === 'admin' || role?.includes('_admin');
-
-      if (!(isAdminRoute && userIsAdmin)) {
-        log.info('Step 3: Role mismatch → ACCESS_DENIED. role=', role, 'allowedRoles=', allowedRoles);
-        return GUARD_STATES.ACCESS_DENIED;
-      }
-      // Admin exception - continue to subscription check
+      return GUARD_STATES.ACCESS_DENIED;
     }
 
     // Step 4: Subscription not required
@@ -291,7 +284,7 @@ function useGuardState({
       return GUARD_STATES.CHECKING_SUBSCRIPTION;
     }
 
-    // Step 7: Subscription error (allow with warning)
+    // Step 7: Verification errors require retry, never dashboard access.
     if (subscriptionError) {
       log.info('Step 7: subscriptionError → ERROR');
       return GUARD_STATES.ERROR;
@@ -303,11 +296,9 @@ function useGuardState({
       return GUARD_STATES.ACCESS_GRANTED;
     }
 
-    // Step 9: Post-payment sync failed but we should still grant access
-    // The user has already paid — blocking them here creates a redirect loop to plans.
+    // Step 9: A payment-navigation flag cannot substitute for verified activation.
     if (isPostPayment && postPaymentSync.syncFailed) {
-      log.info('Step 9: Post-payment sync failed, granting access to prevent redirect loop');
-      return GUARD_STATES.ACCESS_GRANTED;
+      return GUARD_STATES.ERROR;
     }
 
     log.info('Step 10: Fallback → ACCESS_DENIED', {
@@ -358,9 +349,10 @@ const SubscriptionProtectedRoute = ({
   loginFallbackPath = '/login',
 }) => {
   const isAuthenticated = useIsAuthenticated();
-  const { role } = useUserRole();
+  const { role: primaryRole } = useUserRole();
   const authLoading = useAuthLoading();
   const user = useUser();
+  const role = allowedRoles.find(allowed => user?.roles?.includes(allowed)) ?? primaryRole;
   const location = useLocation();
 
   // Debug logging for redirect loop investigation
@@ -417,6 +409,7 @@ const SubscriptionProtectedRoute = ({
       return subscriptionFallbackPath;
     }
     const userType = getUserTypeFromPath(location.pathname);
+    if (!userType) return subscriptionFallbackPath;
     const separator = subscriptionFallbackPath.includes('?') ? '&' : '?';
     return `${subscriptionFallbackPath}${separator}type=${userType}`;
   }, [subscriptionFallbackPath, location.pathname]);
@@ -447,15 +440,11 @@ const SubscriptionProtectedRoute = ({
 
   // Error state - allow access with warning
   if (guardState === GUARD_STATES.ERROR) {
-    log.error('Subscription check error, allowing access with warning:', subscriptionError);
     return (
-      <>
-        <SubscriptionBanner
-          type="error"
-          message="Unable to verify subscription status. Some features may be limited."
-        />
-        {children}
-      </>
+      <div role="alert" className="p-8 text-center">
+        <p>Unable to verify your subscription. Please try again.</p>
+        <button type="button" onClick={() => window.location.reload()} className="mt-4 underline">Retry</button>
+      </div>
     );
   }
 
@@ -470,20 +459,8 @@ const SubscriptionProtectedRoute = ({
       return <Navigate to={redirectPath} state={{ from: location }} replace />;
     }
 
-    // Role mismatch - but be lenient for admin roles
-    // Allow 'admin' role to access school_admin, college_admin, university_admin routes
-    // This handles the case where the role in metadata is 'admin' but the route expects a specific admin type
     const roleMatches = allowedRoles.length === 0 || allowedRoles.includes(role);
-    const isAdminRoute = allowedRoles.some(r => r.includes('_admin'));
-    const userIsAdmin = role === 'admin' || role?.includes('_admin');
-    const adminRoleException = isAdminRoute && userIsAdmin;
-
-    if (!roleMatches && !adminRoleException) {
-      // Role doesn't match and no admin exception applies
-      const expectedRole = allowedRoles[0] || 'learner';
-      log.info('Role mismatch, redirecting to plans. Expected:', allowedRoles, 'Got:', role);
-      return <Navigate to={`/subscription/plans?type=${expectedRole}`} replace />;
-    }
+    if (!roleMatches) return <Navigate to="/unauthorized" replace />;
 
     // Role matches (or admin exception applies) but no subscription access
     const fallbackUrl = getSubscriptionFallbackUrl();
@@ -495,7 +472,7 @@ const SubscriptionProtectedRoute = ({
       message = 'Your subscription has ended. Subscribe again to access.';
     }
 
-    log.info('No subscription access, redirecting to:', fallbackUrl, 'Reason:', accessReason, 'Role:', role, 'AdminException:', adminRoleException);
+    log.info('No subscription access, redirecting to:', fallbackUrl, 'Reason:', accessReason, 'Role:', role);
     return (
       <Navigate
         to={fallbackUrl}

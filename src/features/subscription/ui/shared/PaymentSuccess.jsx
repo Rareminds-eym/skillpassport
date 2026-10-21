@@ -1,3 +1,4 @@
+import { verifyPayment } from '@/features/subscription/api/paymentsApiService';
 /**
  * PaymentSuccess Component
  * 
@@ -271,7 +272,7 @@ function useNavigationState(cacheRefresh, getDashboardUrl, navigate) {
         navigate(dashboardUrl, { state: { fromPayment: true } });
       }
     }
-  }, [state.status, cacheRefresh, getDashboardUrl, navigate]);
+  }, [state.status, cacheRefresh, getDashboardUrl, navigate, queryClient]);
 
   const reset = useCallback(() => {
     setState({ status: NAV_STATES.IDLE, error: null });
@@ -404,8 +405,11 @@ function PaymentSuccess() {
 
   // ── Read exclusively from location.state (set by initiateRazorpayPayment callbacks) ──
   const stateData = location.state || {};
-  const verificationStatus = stateData.verificationResult ? 'success' : 'error';
-  const transactionDetails = stateData.verificationResult || null;
+  const [verificationStatus, setVerificationStatus] = useState(stateData.verificationResult ? 'success' : 'loading');
+  const [transactionDetails, setTransactionDetails] = useState(stateData.verificationResult?.data ?? stateData.verificationResult ?? null);
+  const [verificationError, setVerificationError] = useState(null);
+  const verificationAttempted = useRef(false);
+  const verificationInFlight = useRef(false);
   const isUpgrade = transactionDetails?.is_upgrade || stateData.isUpgrade || false;
   const paymentParams = {
     razorpay_payment_id: stateData.razorpay_payment_id || '',
@@ -424,7 +428,7 @@ function PaymentSuccess() {
   const [showConfetti, setShowConfetti] = useState(false);
   const [receiptUrl, setReceiptUrl] = useState(null);
   const [receiptKey, setReceiptKey] = useState(null); // R2 key — preferred over URL for downloads
-  const verificationError = null;
+
 
   // Refs for cleanup
   const mountedRef = useRef(true);
@@ -432,11 +436,37 @@ function PaymentSuccess() {
   const emailTimeoutRef = useRef(null);
   const sessionTimeoutRef = useRef(null);
 
-  const retry = useCallback(() => {
-    // Re-navigate to plans page for a fresh attempt
-    const userType = stateData.learnerType || role || 'learner';
-    navigate(`/subscription/plans?type=${userType}`, { replace: true });
-  }, [navigate, stateData.learnerType, role]);
+  const retry = useCallback(async () => {
+    if (verificationInFlight.current) return;
+    const { razorpay_payment_id, razorpay_order_id, razorpay_signature, plan } = stateData;
+    if (!razorpay_payment_id || !razorpay_order_id || !razorpay_signature || !plan?.id) {
+      setVerificationStatus('error');
+      setVerificationError(new Error('Payment details are missing. Open My Subscription or contact support before making another payment.'));
+      return;
+    }
+    verificationInFlight.current = true;
+    setVerificationStatus('loading');
+    setVerificationError(null);
+    try {
+      const result = await verifyPayment({ razorpay_payment_id, razorpay_order_id, razorpay_signature, plan });
+      if (!mountedRef.current) return;
+      setTransactionDetails(result);
+      setVerificationStatus('success');
+    } catch (error) {
+      if (!mountedRef.current) return;
+      setVerificationError(error instanceof Error ? error : new Error('Unable to confirm activation. Retry verification; do not pay again.'));
+      setVerificationStatus('error');
+    } finally {
+      verificationInFlight.current = false;
+    }
+  }, [stateData]);
+
+  useEffect(() => {
+    if (!stateData.verificationResult && !verificationAttempted.current) {
+      verificationAttempted.current = true;
+      void retry();
+    }
+  }, [stateData.verificationResult, retry]);
 
   // Memoized values
   const managePath = useMemo(() => {

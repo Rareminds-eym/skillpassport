@@ -1,4 +1,4 @@
-import { requireSelfServePlan, catalogPlanErrorResponse } from '../lib/salesPlan';
+import { requireSelfServePlan, assertPlanPurchaseScope, catalogPlanErrorResponse } from '../lib/salesPlan';
 /**
  * Verify Org Payment Handler
  *
@@ -56,20 +56,8 @@ export async function handleVerifyOrgPayment(context: AuthenticatedContext): Pro
 
     const supabase = getServiceClient(env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string });
 
-    // Guard: Verify user is an admin or owner of the organization
-    const { data: membership } = await supabase
-      .from('license_assignments')
-      .select('id, role')
-      .eq('user_id', user.id)
-      .eq('organization_id', body.org_id as string)
-      .limit(1)
-      .maybeSingle();
-
-    if (!membership || (membership.role !== 'admin' && membership.role !== 'owner')) {
-      return apiError(403, 'FORBIDDEN', 'Not authorized for this organization', context.request);
-    }
-
     const catalogPlan = await requireSelfServePlan(supabase, body);
+    await assertPlanPurchaseScope(supabase, catalogPlan, user, body.org_id as string);
 
     // Step 1: Verify Razorpay HMAC signature via payment-worker RPC (unchanged)
     const worker = getPaymentWorker(env);
