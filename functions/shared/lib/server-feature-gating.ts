@@ -11,6 +11,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createLogger } from '../../lib/logger';
 import { isStale } from '../../lib/sync-shadow';
+import { isFreemiumPlan } from '../../../src/shared/lib/isFreemiumPlan';
 
 const logger = createLogger('server-feature-gating');
 
@@ -103,7 +104,7 @@ export async function checkServerFeatureAccess(
       };
     }
 
-    if (planCode === 'freemium') {
+    if (isFreemiumPlan(planCode)) {
       const hasAccess = FREEMIUM_FEATURES[feature] === true;
       return {
         hasAccess,

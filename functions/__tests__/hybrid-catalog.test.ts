@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({ client: vi.fn(), worker: vi.fn(), freemium: vi.fn(), createSubscription: vi.fn(), updateSubscription: vi.fn() }));
 vi.mock('../lib/supabase', () => ({ getServiceClient: mocks.client }));
 vi.mock('../lib/auth', () => ({
-  getAuthInstance: vi.fn(), withAuth: vi.fn(), getContextUser: () => ({ id: 'admin-1', email: 'admin@example.edu' }),
+  getAuthInstance: vi.fn(), withAuth: vi.fn(), getContextUser: () => ({ id: 'admin-1', email: 'admin@example.edu', roles: ['school_admin'], org_id: 'org-1' }),
 }));
 vi.mock('../api/payments/lib/paymentBinding', () => ({
   getPaymentWorker: mocks.worker, rpcErrorResponse: () => new Response(null, { status: 500 }),
@@ -124,8 +124,10 @@ describe('Sales-only checkout enforcement', () => {
   });
 
   it('continues to create orders for a standard plan at its catalog price', async () => {
-    const standardPlan = { ...rawPlan, plan_code: 'school_starter', name: 'Starter', entity_config: {}, pricing_matrix: { school: { yearly: 4999 } } };
-    mocks.client.mockReturnValue({ from: (table: string) => query(table === 'users' ? { role: 'school_admin' } : standardPlan) });
+    const standardPlan = { ...rawPlan, plan_code: 'school_starter', name: 'Starter', applicable_entities: ['school'], entity_config: {}, pricing_matrix: { school: { yearly: 4999 } } };
+    mocks.client.mockReturnValue({ from: (table: string) => query(table === 'users' ? { role: 'school_admin' }
+      : table === 'organizations' ? { id: 'org-1', organization_type: 'school', admin_id: 'admin-1' }
+        : table === 'organization_members' ? { role: 'owner' } : standardPlan) });
     const createOrder = vi.fn(async () => ({ id: 'order-1', key_id: 'test-key' }));
     mocks.worker.mockReturnValue({ createOrder });
     const response = await handleCreateOrder({ request: new Request('https://example.test/api/payments/create-order', {

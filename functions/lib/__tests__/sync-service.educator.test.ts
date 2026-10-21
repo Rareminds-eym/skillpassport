@@ -42,6 +42,19 @@ function seedBase(f: FakeSupabase) {
 
 const service = () => new SyncService({} as never);
 
+describe('plan-selection state during identity sync', () => {
+  it('does not reset completed selection when an old signup event is replayed', async () => {
+    fake.tables.users = [{ id: USER, metadata: { subscription_selection_required: false, referralCode: 'KEEP' } }];
+    expect(await service().syncUser({ id: USER, user_metadata: { subscription_selection_required: true } })).toEqual({ success: true });
+    expect(fake.rows('users')[0].metadata).toEqual({ subscription_selection_required: false, referralCode: 'KEEP' });
+  });
+  it('marks a new OAuth signup for explicit selection without losing profile metadata', async () => {
+    fake.tables.users = [{ id: USER, metadata: { referralCode: 'KEEP' } }];
+    expect(await service().syncUser({ id: USER, user_metadata: { subscription_selection_required: true } })).toEqual({ success: true });
+    expect(fake.rows('users')[0].metadata).toEqual({ subscription_selection_required: true, referralCode: 'KEEP' });
+  });
+});
+
 beforeEach(() => {
   fake = new FakeSupabase();
   seedBase(fake);

@@ -325,7 +325,7 @@ function PaymentCompletion() {
   useEffect(() => {
     if (!subscriptionLoading && subscriptionData && managePath) {
       // Never redirect when user is upgrading or renewing
-      if (isUpgrade || isRenewal) return;
+      if (loading || isUpgrade || isRenewal) return;
 
       const status = subscriptionData.status;
       const endDate = subscriptionData.endDate ? new Date(subscriptionData.endDate) : null;
@@ -340,7 +340,7 @@ function PaymentCompletion() {
         navigate(managePath, { replace: true });
       }
     }
-  }, [subscriptionData, subscriptionLoading, navigate, managePath, isUpgrade, isRenewal]);
+  }, [subscriptionData, subscriptionLoading, navigate, managePath, isUpgrade, isRenewal, loading]);
 
   // Redirect if no plan — but ONLY after auth has settled
   // Without this guard, the useEffect fires on the very first render frame
@@ -486,7 +486,7 @@ function PaymentCompletion() {
   }
 
   return (
-    <SubscriptionRouteGuard mode="payment">
+    <SubscriptionRouteGuard mode="payment" paymentInProgress={loading}>
       <div className="min-h-screen bg-gray-50 py-6 px-4 sm:px-6 lg:px-8">
         <div className="max-w-5xl mx-auto">
           {/* Back Button */}

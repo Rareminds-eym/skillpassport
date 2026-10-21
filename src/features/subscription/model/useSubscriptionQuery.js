@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 
 import { getActiveSubscription } from '@/features/subscription/api/subscriptionService';
 import { queryLogger } from '@/shared/lib/debug/queryLogger';
@@ -79,6 +80,12 @@ const computeAccessState = (sub) => {
   }
 
   const status = sub.status;
+  const now = Date.now();
+  const end = sub.endDate ? Date.parse(sub.endDate) : null;
+  if ((sub.startDate && !(Date.parse(sub.startDate) <= now)) ||
+      (end !== null && !(end + (status === 'grace_period' ? 7 * 86400000 : 0) > now))) {
+    return { hasAccess: false, accessReason: 'expired', showWarning: false, daysUntilExpiry: 0 };
+  }
   let accessReason = 'no_subscription';
   let hasAccess = false;
   let showWarning = false;
@@ -137,10 +144,10 @@ const computeAccessState = (sub) => {
  * Fetch subscription data
  * Returns null if no subscription exists (user should be redirected to subscription page)
  */
-const fetchSubscription = async (userId) => {
+const fetchSubscription = async (userId, scope) => {
   if (!userId) return null;
 
-  const result = await getActiveSubscription();
+  const result = await getActiveSubscription(scope);
 
   if (!result.success) {
     throw new Error(result.error || 'Failed to fetch subscription');
@@ -161,15 +168,22 @@ const fetchSubscription = async (userId) => {
  */
 export const useSubscriptionQuery = () => {
   const user = useUser();
+  const { pathname } = useLocation();
+  const scope = pathname.startsWith('/college-admin') ? 'college_admin'
+    : pathname.startsWith('/school-admin') ? 'school_admin'
+      : pathname.startsWith('/university-admin') ? 'university_admin'
+        : pathname.startsWith('/learner') ? 'learner'
+          : pathname.startsWith('/educator') ? 'educator'
+            : pathname.startsWith('/recruitment') ? 'recruiter' : undefined;
   const queryClient = useQueryClient();
 
   // Check if the query can run
   const isQueryEnabled = !!user;
-  const queryKey = user?.id ? queryKeys.subscription.data.byOrganization(user.id) : queryKeys.subscription.data.all;
+  const queryKey = user?.id ? [...queryKeys.subscription.data.byOrganization(user.id), scope ?? 'default'] : queryKeys.subscription.data.all;
 
   const query = useQuery({
     queryKey,
-    queryFn: () => fetchSubscription(user?.id),
+    queryFn: () => fetchSubscription(user?.id, scope),
     enabled: isQueryEnabled,
     staleTime: STALE_TIME,
     gcTime: CACHE_TIME,
@@ -207,17 +221,19 @@ export const useSubscriptionQuery = () => {
     if (!user?.id) return;
 
     await queryClient.prefetchQuery({
-      queryKey: queryKeys.subscription.data.byOrganization(user.id),
-      queryFn: () => fetchSubscription(user.id),
+      queryKey,
+      queryFn: () => fetchSubscription(user.id, scope),
       staleTime: STALE_TIME,
     });
   };
 
   // Invalidate and refetch subscription
-  const refreshSubscription = () => {
-    return queryClient.invalidateQueries({
+  const refreshSubscription = async () => {
+    await queryClient.invalidateQueries({
       queryKey: user?.id ? queryKeys.subscription.data.byOrganization(user.id) : queryKeys.subscription.data.all
     });
+    if (!user?.id) return null;
+    return queryClient.fetchQuery({ queryKey, queryFn: () => fetchSubscription(user.id, scope), staleTime: 0 });
   };
 
   // Clear subscription cache
