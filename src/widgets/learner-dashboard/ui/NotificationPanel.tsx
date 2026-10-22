@@ -48,7 +48,6 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
     unreadCount,
     markRead,
     markAllRead,
-    remove,
     hasMore,
     loadMore,
     loading,
@@ -126,6 +125,9 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
         break;
 
       case "new_opportunity":
+        navigate("/learner/opportunities", notification.opportunity_id ? { state: { selectedOpportunityId: notification.opportunity_id } } : undefined);
+        break;
+
       case "opportunity_closed":
       case "offer_accepted":
       case "offer_declined":

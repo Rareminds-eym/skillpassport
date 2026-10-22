@@ -1,8 +1,9 @@
 // @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-const mocks = vi.hoisted(() => ({ client: vi.fn(), create: vi.fn(), updateSubscription: vi.fn(), worker: vi.fn(), sync: vi.fn(), user: { id: 'u', email: 'u@example.test', roles: ['learner'], org_id: undefined as string | undefined } }));
+const mocks = vi.hoisted(() => ({ client: vi.fn(), allocate: vi.fn(), create: vi.fn(), updateSubscription: vi.fn(), worker: vi.fn(), sync: vi.fn(), user: { id: 'u', email: 'u@example.test', roles: ['learner'], org_id: undefined as string | undefined } }));
 vi.mock('../lib/auth', () => ({ getContextUser: () => mocks.user, withAuth: (handler: unknown) => handler }));
 vi.mock('../lib/supabase', () => ({ getServiceClient: mocks.client }));
+vi.mock('../shared/lib/entitlement-service', () => ({ allocateInitialPlanCredits: mocks.allocate }));
 vi.mock('../lib/sso-client', () => ({ ssoCreateSubscription: mocks.create, ssoUpdateSubscriptionField: mocks.updateSubscription }));
 vi.mock('../lib/sync-shadow', () => ({ syncUserShadow: vi.fn(), syncSubscriptionCache: mocks.sync }));
 vi.mock('../api/payments/lib/paymentBinding', () => ({ getPaymentWorker: mocks.worker, rpcErrorResponse: () => new Response(null, { status: 500 }) }));
@@ -28,7 +29,7 @@ function db(): any {
 const free = { id: 'actual-free-id', plan_code: 'catalogue-free-code', name: 'Current free plan', business_type: 'b2c', applicable_entities: ['all'], is_active: true, pricing_matrix: { all: { yearly: 0 } }, entity_config: { all: { duration: 'lifetime' } }, base_features: ['profile'] };
 function checkout(planId: string, amount = 0) { return handleCreateOrder({ env: {}, request: new Request('https://example.test', { method: 'POST', body: JSON.stringify({ planId, amount }) }) } as any); }
 beforeEach(() => {
-  vi.clearAllMocks(); mocks.user.roles = ['learner']; mocks.user.org_id = undefined;
+  vi.clearAllMocks(); mocks.allocate.mockResolvedValue({ success: true, allocated: 0 }); mocks.user.roles = ['learner']; mocks.user.org_id = undefined;
   tables = { plans_cache: [free], subscription_cache: [], users: [{ id: 'u', metadata: { referralCode: 'KEEP', subscription_selection_required: true } }],
     organizations: [{ id: 'org', organization_type: 'college', admin_id: 'u' }], organization_members: [{ user_id: 'u', organization_id: 'org', role: 'owner', status: 'active' }] };
   mocks.client.mockImplementation(db);
@@ -48,6 +49,23 @@ describe('Explicit catalogue checkout', () => {
     expect(mocks.updateSubscription).toHaveBeenCalledWith(expect.anything(), prior.id, { status: 'expired' });
     expect(mocks.create).toHaveBeenCalled();
     expect(tables.users[0].metadata.subscription_selection_required).toBe(false);
+  });
+  it('retains recruiter-free credit allocation with the same subscription reference on retry', async () => {
+    mocks.user.roles = ['company_admin']; mocks.user.org_id = 'org';
+    tables.organizations[0].organization_type = 'company';
+    tables.plans_cache[0] = { ...free, business_type: 'b2b', applicable_entities: ['recruitment'] };
+    expect((await checkout(free.id)).status).toBe(200);
+    expect((await checkout(free.id)).status).toBe(200);
+    expect(mocks.create).toHaveBeenCalledTimes(1);
+    expect(mocks.allocate).toHaveBeenCalledTimes(2);
+    for (const call of mocks.allocate.mock.calls) {
+      expect(call.slice(1)).toEqual(['org', free.id, true, expect.any(String), 'new-sub']);
+    }
+  });
+  it('does not complete plan selection when initial credit allocation fails', async () => {
+    mocks.allocate.mockResolvedValueOnce({ success: false, error: 'Unavailable' });
+    expect((await checkout(free.id)).status).toBe(503);
+    expect(tables.users[0].metadata.subscription_selection_required).toBe(true);
   });
   it('preserves a previously selected free plan and explains the conflict', async () => {
     tables.users[0].metadata.subscription_selection_required = false;

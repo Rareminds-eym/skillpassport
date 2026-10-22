@@ -1,3 +1,4 @@
+import {resolveReviewCollege} from "../review-affiliation";
 import { z } from "zod";
 import { listOrgEducators } from "../review-educators";
 import type { GatewayAction, GatewayContext } from "../types";
@@ -9,6 +10,7 @@ interface Learner {
   program_section_id: string | null;
   college_class_id: string | null;
   college_id: string | null;
+  university_college_id?: string | null;
   school_class_id: string | null;
   school_id: string | null;
 }
@@ -98,10 +100,10 @@ export const handleReviewScope: GatewayAction = async (ctx, payload) => {
       },
     };
   const learners = await ctx.db.query<Learner>(
-    `learners?user_id=eq.${ctx.userId}&is_deleted=is.false&select=user_id,program_id,program_section_id,college_class_id,college_id,school_class_id,school_id&limit=2`,
+    `learners?user_id=eq.${ctx.userId}&is_deleted=is.false&select=user_id,program_id,program_section_id,college_class_id,college_id,university_college_id,school_class_id,school_id&limit=2`,
   );
   if (learners.length !== 1) return { ok: true, data: null };
-  const learner = learners[0]!;
+  const learner = {...learners[0]!,college_id:await resolveReviewCollege(ctx.db,learners[0]!)};
   // Ambiguous dual enrolment requires explicit operator resolution, not a guess.
   if (learner.program_id && learner.school_class_id)
     return { ok: true, data: null };

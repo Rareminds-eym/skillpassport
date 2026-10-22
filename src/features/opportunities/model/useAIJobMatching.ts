@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { matchJobsWithAI, refreshJobMatches } from '@/features/opportunities';
+import { useUser } from '@/shared/model/authStore';
 
 /**
  * Custom hook for AI-powered job matching
@@ -13,25 +14,27 @@ import { matchJobsWithAI, refreshJobMatches } from '@/features/opportunities';
  * @param {number} topN - Number of matches to return (default: 3)
  * @returns {Object} Hook state with matched jobs, loading, error, cacheInfo, and refreshMatches
  */
-export const useAIJobMatching = (learnerProfile, enabled = true, topN = 3) => {
-  const [matchedJobs, setMatchedJobs] = useState([]);
+export const useAIJobMatching = (learnerProfile: any, enabled = true, topN = 3) => {
+  const user = useUser();
+  const learnerId = learnerProfile?.id || learnerProfile?.learner_id;
+  const identity = `${user?.id || ''}:${learnerId || ''}`;
+  const generation = useRef(0);
+  const activeIdentity = useRef(identity);
+  activeIdentity.current = identity;
+  const [resultIdentity, setResultIdentity] = useState(identity);
+  const [matchedJobs, setMatchedJobs] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [cacheInfo, setCacheInfo] = useState({});
 
-  useEffect(() => {
-    const fetchMatches = async () => {
+  const fetchMatches = useCallback(async (force = false) => {
+      const ticket = ++generation.current;
+      const current = () => ticket === generation.current && identity === activeIdentity.current;
       // Don't run if disabled or no profile
-      if (!enabled || !learnerProfile) {
+      if (!enabled || !learnerId || !user?.id) {
         setMatchedJobs([]);
-        setLoading(false);
-        return;
-      }
-
-      // Check if learnerProfile has an ID
-      const learnerId = learnerProfile?.id || learnerProfile?.learner_id;
-      if (!learnerId) {
-        setMatchedJobs([]);
+        setCacheInfo({});
+        setError(null);
         setLoading(false);
         return;
       }
@@ -41,70 +44,67 @@ export const useAIJobMatching = (learnerProfile, enabled = true, topN = 3) => {
         setError(null);
 
         // Call the API - it handles opportunities fetching internally
-        const matches = await matchJobsWithAI(learnerProfile, topN, false);
+        const matches = await (force ? refreshJobMatches(learnerProfile, topN) : matchJobsWithAI(learnerProfile, topN, false));
+        if (!current()) return;
 
         // Extract cache info from first match if available
-        if (matches.length > 0) {
-          setCacheInfo({
-            cached: matches[0].cached,
-            computedAt: matches[0].computed_at
-          });
-        }
+        setCacheInfo(matches.length ? { cached: matches[0].cached, computedAt: matches[0].computed_at } : {});
 
+        setResultIdentity(identity);
         setMatchedJobs(matches);
 
-      } catch (err) {
+      } catch (err: any) {
+        if (!current()) return;
+        setResultIdentity(identity);
         setError(err.message || 'Failed to match jobs');
         setMatchedJobs([]);
       } finally {
-        setLoading(false);
+        if (current()) setLoading(false);
       }
-    };
-
-    fetchMatches();
   }, [
-    learnerProfile?.id, 
+    identity, user?.id, learnerId,
     learnerProfile?.email,
     learnerProfile?.department,
     learnerProfile?.profile?.department,
     learnerProfile?.profile?.branch_field,
+    learnerProfile?.updated_at, learnerProfile?.recommendation_revision,
     enabled, 
     topN
   ]);
+
+  useEffect(() => {
+    setMatchedJobs([]); setCacheInfo({}); setError(null);
+    void fetchMatches();
+    return () => { generation.current++; };
+  }, [fetchMatches]);
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const saved = (event: Event) => {
+      if ((event as CustomEvent).detail?.learnerId !== learnerId) return;
+      clearTimeout(timer);
+      const before = generation.current;
+      timer = setTimeout(() => {
+        // A refreshed profile prop may already have started this same fetch.
+        if (generation.current === before) void fetchMatches(true);
+      }, 0);
+    };
+    window.addEventListener('learner-profile-updated', saved);
+    return () => { clearTimeout(timer); window.removeEventListener('learner-profile-updated', saved); };
+  }, [learnerId, fetchMatches]);
 
   /**
    * Manually refresh job matches - forces cache bypass
    */
   const refreshMatches = async () => {
-    if (!learnerProfile) return;
-
-    try {
-      setLoading(true);
-      setError(null);
-
-      // Force refresh bypasses cache
-      const matches = await refreshJobMatches(learnerProfile, topN);
-      
-      if (matches.length > 0) {
-        setCacheInfo({
-          cached: false,
-          computedAt: new Date().toISOString()
-        });
-      }
-
-      setMatchedJobs(matches);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
+    return fetchMatches(true);
   };
 
   return {
-    matchedJobs,
-    loading,
-    error,
-    cacheInfo,
+    matchedJobs: enabled && resultIdentity === identity ? matchedJobs : [],
+    loading: enabled ? loading : false,
+    error: enabled && resultIdentity === identity ? error : null,
+    cacheInfo: enabled && resultIdentity === identity ? cacheInfo : {},
     refreshMatches
   };
 };

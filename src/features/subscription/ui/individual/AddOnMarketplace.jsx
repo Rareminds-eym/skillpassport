@@ -369,13 +369,13 @@ export function AddOnMarketplace({
 
             <div className="flex border-2 border-slate-200 rounded-2xl overflow-hidden shadow-lg">
               <button
-                onClick={() => setViewMode('grid')}
+                aria-label="Grid view" aria-pressed={viewMode==='grid'} title="Grid view" onClick={() => setViewMode('grid')}
                 className={`p-3 transition-colors ${viewMode === 'grid' ? 'bg-slate-100' : 'hover:bg-slate-50'}`}
               >
                 <Grid className="w-4 h-4 text-slate-600" />
               </button>
               <button
-                onClick={() => setViewMode('list')}
+                aria-label="List view" aria-pressed={viewMode==='list'} title="List view" onClick={() => setViewMode('list')}
                 className={`p-3 transition-colors ${viewMode === 'list' ? 'bg-slate-100' : 'hover:bg-slate-50'}`}
               >
                 <List className="w-4 h-4 text-slate-600" />

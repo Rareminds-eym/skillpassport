@@ -57,12 +57,34 @@ export async function checkServerFeatureAccess(
   feature: string
 ): Promise<FeatureAccessResult> {
   try {
-    const { data: cached, error } = await supabase
+    // H5: `.maybeSingle()` errors when two rows match (cancelled history row + fresh
+    // resubscription resolve to >1 matches). Fetch newest-active first, then fall back
+    // to cancelled/grace_period so the cancelled-preserved-time contract still applies.
+    const selectColumns = 'id, user_id, organization_id, status, plan_code, features, synced_at, is_organization_subscription, subscription_end_date';
+    let { data: cached, error } = await supabase
       .from('subscription_cache')
-      .select('id, status, plan_code, features, synced_at, is_organization_subscription')
+      .select(selectColumns)
       .eq('user_id', userId)
-      .in('status', ['active', 'grace_period'])
+      .in('status', ['active'])
+      .order('created_at', { ascending: false })
+      .limit(1)
       .maybeSingle();
+
+    if (!cached && !error) {
+      const { data: prior, error: priorErr } = await supabase
+        .from('subscription_cache')
+        .select(selectColumns)
+        .eq('user_id', userId)
+        .in('status', ['grace_period', 'cancelled'])
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (priorErr) {
+        error = priorErr;
+      } else {
+        cached = prior;
+      }
+    }
 
     if (error) {
       logger.error('Error fetching subscription_cache', { error: (error as Error).message, userId });
@@ -71,6 +93,75 @@ export async function checkServerFeatureAccess(
         reason: 'Unable to verify subscription',
         requiresUpgrade: false,
       };
+    }
+
+    // Check if user belongs to an organization if they have no personal active paid plan
+    let orgId: string | null = null;
+    if (!cached || cached.plan_code === 'freemium') {
+      try {
+        const { data: mem } = await supabase
+          .from('organization_members')
+          .select('organization_id')
+          .eq('user_id', userId)
+          .eq('status', 'active')
+          .limit(1)
+          .maybeSingle();
+        if (mem?.organization_id) {
+          orgId = mem.organization_id;
+        } else {
+          const { data: u } = await supabase
+            .from('users')
+            .select('"organizationId"')
+            .eq('id', userId)
+            .maybeSingle();
+          if (u?.organizationId) orgId = u.organizationId;
+        }
+
+        if (orgId) {
+          const { data: orgSub } = await supabase
+            .from('subscription_cache')
+            .select('id, user_id, organization_id, status, plan_code, features, synced_at, is_organization_subscription, subscription_end_date')
+            .eq('organization_id', orgId)
+            .in('status', ['active', 'grace_period', 'cancelled'])
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          if (orgSub) {
+            cached = orgSub;
+          }
+        }
+      } catch (e) {
+        logger.warn('Error resolving organization subscription for user', { error: (e as Error).message, userId });
+      }
+    }
+
+    // Check dynamic Entitlement Engine (Database single source of truth).
+    // H6: the engine only reads status='active' (entitlement-service.ts), so consulting
+    // it for grace_period/cancelled rows resolved the default free plan and denied
+    // every catalog feature pre-emptively. For non-active rows fall straight through
+    // to the paid-time-preserving legacy path below.
+    if (cached?.status === 'active') {
+    const effectiveTenantId = orgId || cached?.organization_id || userId;
+    try {
+      const { checkEntitlement } = await import('./entitlement-service');
+      const ent = await checkEntitlement(supabase, effectiveTenantId, feature);
+      if (ent && ent.allowed) {
+        return {
+          hasAccess: true,
+          planCode: cached?.plan_code || 'active',
+          requiresUpgrade: false,
+        };
+      } else if (ent && ent.reason && !ent.reason.includes('not recognized')) {
+        return {
+          hasAccess: false,
+          reason: ent.reason,
+          planCode: cached?.plan_code || 'free',
+          requiresUpgrade: true,
+        };
+      }
+    } catch {
+      // Feature not in new entitlement catalog or mock environment, proceed to plan features check
+    }
     }
 
     if (!cached) {
@@ -96,6 +187,16 @@ export async function checkServerFeatureAccess(
 
     const planCode = cached.plan_code;
 
+    // Preserve already-paid time after cancellation, as required by the
+    // existing entitlement contract/tests. Missing or invalid expiry denies.
+    if (cached.status === 'cancelled' &&
+        (!cached.subscription_end_date || !Number.isFinite(Date.parse(cached.subscription_end_date)) ||
+         Date.parse(cached.subscription_end_date) <= Date.now())) {
+      const baseline = FREEMIUM_FEATURES[feature] === true;
+      return {hasAccess: baseline, planCode: 'freemium', requiresUpgrade: !baseline,
+        reason: baseline ? undefined : 'Subscription has expired'};
+    }
+
     if (!planCode) {
       return {
         hasAccess: false,
@@ -115,7 +216,7 @@ export async function checkServerFeatureAccess(
     }
 
     const planFeatures = Array.isArray(cached.features) ? cached.features : [];
-    const hasFeature = planFeatures.includes(feature) || cached.is_organization_subscription === true;
+    const hasFeature = planFeatures.includes(feature);
 
     return {
       hasAccess: hasFeature,
@@ -163,11 +264,16 @@ export async function canUpgradeToPlan(
   targetPlanCode: string
 ): Promise<{ canUpgrade: boolean; reason?: string; currentPlanCode?: string }> {
   try {
+    // Newest-first + limit(1) (H5 class fix): with cancelled-history + resub
+    // rows this query can match multiple rows and .maybeSingle() would error
+    // PGRST116 — the same failure mode removed from the gating engine query.
     const { data: cached, error } = await supabase
       .from('subscription_cache')
       .select('id, status, plan_code')
       .eq('user_id', userId)
       .in('status', ['active', 'grace_period'])
+      .order('created_at', { ascending: false })
+      .limit(1)
       .maybeSingle();
 
     if (error) {
@@ -185,18 +291,22 @@ export async function canUpgradeToPlan(
       return { canUpgrade: true };
     }
 
-    const currentIndex = PLAN_HIERARCHY.indexOf(currentPlanCode);
-    const targetIndex = PLAN_HIERARCHY.indexOf(targetPlanCode);
+    const { comparePlanTiers } = await import('./entitlement-service');
+    const comparison = await comparePlanTiers(supabase, currentPlanCode, targetPlanCode);
 
-    if (currentIndex === -1 || targetIndex === -1) {
-      return { canUpgrade: false, reason: 'Invalid plan code', currentPlanCode };
+    if (comparison === 'equal') {
+      return {
+        canUpgrade: false,
+        reason: 'Current plan is already at this tier',
+        currentPlanCode,
+      };
     }
 
-    const canUpgrade = targetIndex > currentIndex;
+    const canUpgrade = comparison === 'lower'; // current is lower than target => can upgrade
 
     return {
       canUpgrade,
-      reason: canUpgrade ? undefined : 'Cannot downgrade or make lateral moves to the same tier',
+      reason: canUpgrade ? undefined : 'Cannot downgrade or make lateral moves to a lower tier',
       currentPlanCode,
     };
   } catch (error) {

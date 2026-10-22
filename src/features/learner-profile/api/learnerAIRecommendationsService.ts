@@ -89,7 +89,7 @@ export async function getLearnerAIRecommendations(): Promise<AIRecommendationsRe
       
       return {
         success: false,
-        error: errorData.message || `HTTP ${response.status}: ${response.statusText}`,
+        error: (typeof errorData.error === 'string' ? errorData.error : errorData.error?.message) || errorData.message || `HTTP ${response.status}: ${response.statusText}`,
       };
     }
 

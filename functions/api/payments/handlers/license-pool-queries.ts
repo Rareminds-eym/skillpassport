@@ -67,6 +67,6 @@ export async function handleLicensePoolQueries(context: AuthenticatedContext): P
     return apiError(400, 'VALIDATION_ERROR', 'Invalid action or missing params', context.request);
   } catch (error) {
     console.error('[LicensePoolQueries] Error:', error);
-    return apiError(200, 'ERROR', error instanceof Error ? error.message : 'Unknown error', context.request);
+    return apiError(500, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Unknown error', context.request);
   }
 }

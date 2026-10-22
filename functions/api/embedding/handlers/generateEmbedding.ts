@@ -82,7 +82,7 @@ const ENTITY_CONFIGS: Record<string, EntityConfig> = {
   learners: {
     selectFields: '*', // Will use buildlearnerTextFromDatabase
     buildText: () => '', // Not used, handled separately
-    ownershipField: 'id', // Special case: check id === learnerId
+    ownershipField: 'user_id',
     entityName: 'Learner',
   },
   profiles: {
@@ -183,14 +183,12 @@ async function verifyEntityOwnership(
 
   // Special case: learners table checks id directly
   if (table === 'learners') {
-    if (id !== learnerId) {
-      return { authorized: false, error: 'Unauthorized: Cannot generate embedding for other users' };
-    }
     // Fetch data atomically with authorization check
     const { data, error } = await userSupabase
       .from(table)
       .select('*')
       .eq('id', id)
+      .eq('user_id', learnerId)
       .single();
     
     if (error || !data) {
@@ -236,7 +234,16 @@ async function verifyEntityOwnership(
     }
     
     // Check 3: Verify ownership matches
-    if (record[ownershipField] !== learnerId) {
+    let expectedOwner = learnerId;
+    if (ownershipField === 'learner_id') {
+      const { data: ownLearner, error: identityError } = await userSupabase
+        .from('learners').select('id').eq('user_id', learnerId).maybeSingle();
+      if (identityError || !ownLearner) {
+        return { authorized: false, error: 'Learner ownership could not be resolved' };
+      }
+      expectedOwner = ownLearner.id;
+    }
+    if (record[ownershipField] !== expectedOwner) {
       return { 
         authorized: false, 
         error: `Unauthorized: Cannot generate embedding for other users' ${table}` 
@@ -371,6 +378,10 @@ export async function handleGenerateEmbedding(
     return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON', request);
   }
 
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    return apiError(400, 'VALIDATION_ERROR', 'Request body must be an object', request);
+  }
+
   const {
     text,
     fromDatabase = false,
@@ -379,6 +390,10 @@ export async function handleGenerateEmbedding(
     returnEmbedding = false,
     skipDatabaseUpdate = false,
   } = body;
+
+  if ([fromDatabase, returnEmbedding, skipDatabaseUpdate].some(value => typeof value !== 'boolean')) {
+    return apiError(400, 'VALIDATION_ERROR', 'Embedding options must be booleans', request);
+  }
 
   // Validate required fields based on mode
   if (!table || !id) {
@@ -469,7 +484,7 @@ export async function handleGenerateEmbedding(
         }
       } catch (error) {
         if (error instanceof EmbeddingError) {
-          return apiError(500, 'INTERNAL_ERROR', error.message, request);
+          return apiError(500, 'INTERNAL_ERROR', 'Embedding persistence failed', request);
         }
         throw error;
       }
@@ -492,7 +507,6 @@ export async function handleGenerateEmbedding(
   } catch (error) {
     console.error('[Embedding] Error:', error);
     
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    return apiError(500, 'INTERNAL_ERROR', errorMessage, request);
+    return apiError(500, 'INTERNAL_ERROR', 'Embedding generation unavailable', request);
   }
 }

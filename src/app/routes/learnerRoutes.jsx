@@ -6,6 +6,8 @@ import { DigitalPortfolioThemeProvider } from "@/features/digital-portfolio/prov
 
 // Digital Passport imports - lazy loaded
 const HomePage = lazy(() => import('@/pages/digital-pp/HomePage'));
+const LearningEvidence = lazy(() => import('@/pages/learner/LearningEvidence'));
+const LearningJobs = lazy(() => import('@/pages/learner/LearningJobs'));
 const DigitalPassportPage = lazy(() => import('@/pages/digital-pp/PassportPage'));
 const DigitalPortfolioPage = lazy(() => import('@/pages/digital-pp/PortfolioPage'));
 const DigitalVideoPortfolioPage = lazy(() => import('@/pages/digital-pp/VideoPortfolioPage'));
@@ -71,6 +73,8 @@ export const learnerRoutes = (
     <Route path="profile/:email" element={<Profile />} />
     <Route path="my-skills" element={<MySkills />} />
     <Route path="my-learning" element={<MyLearning />} />
+    <Route path="learning-evidence" element={<LearningEvidence />} />
+    <Route path="learning-jobs" element={<LearningJobs />} />
     <Route path="my-training" element={<MyLearning />} />
     <Route path="courses" element={<Courses />} />
     <Route path="courses/:courseId/learn" element={<CoursePlayer />} />

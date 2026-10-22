@@ -1,12 +1,34 @@
 /**
  * Opportunities API — list with filters (ORG-SCOPED)
  */
-import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+type AuthenticatedContext = Parameters<PagesFunction>[0];
 import { getContextUser, withAuth } from '../../lib/auth';
 import { notifyLearnersOfNewOpportunity } from '../../lib/newOpportunityNotifications';
-import { verifyOrgAccess } from '../../lib/permissions';
+import { verifyOrgAccess, PERMISSIONS } from '../../lib/permissions';
 import { apiDbError, apiError, apiMethodNotAllowed, apiSuccess } from '../../lib/response';
 import { getServiceClient } from '../../lib/supabase';
+import { eligibleJobs, isEligibleJob, stringSkills } from '../../lib/job-recommendations';
+import { getNumericLimit } from '../../shared/lib/entitlement-service';
+import { LearningError, decorateLearningForActor, validateLearningRequirements, verifyLearningApplication } from '../../lib/learning-eligibility';
+import {
+  getActiveOrgId,
+  getOrgMemberUserIds,
+  getOrgOwnedOpportunityIds,
+  assertInterviewAccess,
+  getInterviewRow,
+  assertLearnerOwnership,
+  ALLOWED_REQUISITION_STATUSES,
+} from '../../lib/org-ownership';
+
+/**
+ * Server-side application_status whitelist — derived from the live DB CHECK
+ * constraint `check_application_status` on applied_jobs (verified via psql).
+ * Never trust the client status value.
+ */
+const APPLICATION_STATUSES = [
+  'applied', 'viewed', 'under_review', 'interview_scheduled', 'interviewed',
+  'offer_received', 'accepted', 'rejected', 'withdrawn',
+] as const;
 
 export const onRequest = async (context: any) => {
   if (context.request.method === 'GET') return onRequestGet(context);
@@ -65,19 +87,216 @@ async function findOpportunityById(supabase: any, id: number | string, select = 
     .maybeSingle();
 }
 
+// ── Org-scope resolvers (OWASP API1: object-level authorization) ──────────────
+// Org ownership is ALWAYS derived from the DB via org-ownership helpers — the
+// JWT org claim or the user's ACTIVE organization_members row — never from
+// client input.
+
+interface OrgScopeInfo {
+  orgId: string | null;
+  memberIds: string[] | null;
+  oppIds: string[] | null;
+}
+
+/** Resolve the caller's org scope; never throws (null org = caller has none). */
+async function resolveOrgScopeInfo(supabase: any, user: any): Promise<OrgScopeInfo> {
+  const orgId = await getActiveOrgId(supabase, user);
+  if (!orgId) return { orgId: null, memberIds: null, oppIds: null };
+  const [memberIds, oppIds] = await Promise.all([
+    getOrgMemberUserIds(supabase, orgId),
+    getOrgOwnedOpportunityIds(supabase, orgId),
+  ]);
+  return { orgId, memberIds, oppIds };
+}
+
+/** Fetch an applied_jobs row's primary keys for gating (learner_id, opportunity_id, id). */
+async function getApplicationRow(supabase: any, id: any) {
+  const rawId = String(id || '').trim();
+  if (!rawId) return null;
+  const { data, error } = await supabase
+    .from('applied_jobs')
+    .select('id, learner_id, opportunity_id')
+    .eq('id', rawId)
+    .limit(1)
+    .maybeSingle();
+  if (error) {
+    console.error('[opportunities] application lookup failed:', { code: error.code });
+    return null;
+  }
+  return data ?? null;
+}
+
+/**
+ * Mutation gate for an application row: the caller must be a member of the org
+ * that owns the application's opportunity (recruiter surface) OR the learner
+ * who owns the application (learner surface — mirrors apply-to-job's
+ * assertLearnerOwnership rule). Deny-by-default: no scope ⇒ 403.
+ */
+async function canMutateApplication(
+  supabase: any,
+  user: any,
+  scope: OrgScopeInfo,
+  appRow: { learner_id: string; opportunity_id: string } | null
+): Promise<boolean> {
+  if (!appRow) return false;
+  // Learner path: the application belongs to the caller's own learner identity.
+  if (appRow.learner_id) {
+    const { data: own } = await supabase
+      .from('learners')
+      .select('id')
+      .eq('id', appRow.learner_id)
+      .eq('user_id', user.id)
+      .limit(1)
+      .maybeSingle();
+    if (own) return true;
+  }
+  // Recruiter path: target opportunity belongs to the caller's active org.
+  if (scope.orgId && scope.oppIds && scope.oppIds.includes(String(appRow.opportunity_id))) return true;
+  return false;
+}
+
+// ── Interview gating (fixes in the interviews action block use these) ────────
+// interviews has NO organization_id column. DB id-space fact (psql-verified):
+// interviews.learner_id > learners(user_id) while applied_jobs.learner_id >
+// learners(id), so the foundation org-scope learner compare runs in USER space.
+
+const INTERVIEW_CREATE_FIELDS = [
+  'learner_id', 'candidate_name', 'candidate_email', 'candidate_phone',
+  'job_title', 'interviewer', 'interviewer_email', 'date', 'duration',
+  'status', 'type', 'meeting_type', 'meeting_link', 'meeting_notes', 'scorecard',
+] as const;
+
+const INTERVIEW_UPDATE_FIELDS = [
+  'status', 'type', 'meeting_type', 'meeting_link', 'meeting_notes',
+  'duration', 'date', 'interviewer', 'interviewer_email',
+  'candidate_email', 'candidate_phone', 'completed_date', 'scorecard',
+] as const;
+
+/**
+ * Interview-scope helper — learner ids owning rows visible to the caller,
+ * in the USER id-space (learners.user_id):
+ *   own identity + learners who applied to the caller's org-owned opportunities.
+ */
+async function getInterviewLearnerUserIds(supabase: any, user: any): Promise<string[] | null> {
+  const ids = new Set<string>();
+  if (user?.id) ids.add(user.id); // learners.user_id === users.id (FK space)
+
+  const orgId = await getActiveOrgId(supabase, user);
+  if (orgId) {
+    const oppIds = await getOrgOwnedOpportunityIds(supabase, orgId);
+    if (oppIds.length > 0) {
+      const { data: apps, error: appErr } = await supabase
+        .from('applied_jobs')
+        .select('learner_id')
+        .in('opportunity_id', oppIds);
+      if (!appErr && (apps || []).length > 0) {
+        const learnerIds = [...new Set((apps || []).map((r: any) => r.learner_id))].filter(Boolean);
+        if (learnerIds.length > 0) {
+          const { data: learnerRows, error: learnerErr } = await supabase
+            .from('learners')
+            .select('user_id')
+            .in('id', learnerIds);
+          if (!learnerErr) {
+            (learnerRows || []).forEach((r: any) => { if (r.user_id) ids.add(r.user_id); });
+          }
+        }
+      }
+    }
+  }
+  return [...ids];
+}
+
+/**
+ * Org/interview access gate used by every interview read-by-id and mutation.
+ * Foundation rule first (assertInterviewAccess: creator OR applied-to-org
+ * learner), supplemented by the real DB id-space check (interview learner = the
+ * caller's own user id, i.e. self) since the foundation compare runs in the
+ * applied_jobs learner id-space and cannot match interviews' user-space ids.
+ */
+async function canAccessInterview(supabase: any, user: any, interview: { learner_id?: string | null; created_by?: string | null } | null): Promise<boolean> {
+  if (!interview) return false;
+  if (!(interview as any).organization_id && interview.created_by && interview.created_by === user.id) return true;
+  // Self (learner): interviews.learner_id stores learners.user_id (= users.id).
+  if (interview.learner_id && interview.learner_id === user.id) return true;
+  const orgId = await getActiveOrgId(supabase, user);
+  return assertInterviewAccess(supabase, user, orgId, interview);
+}
+
+/**
+ * Load + gate an interview by id for any read-by-id or mutation. Fetches the
+ * canonical row BEFORE touching it (deny-by-default) and returns an error
+ * Response on gate failure instead of a row.
+ */
+async function loadGatedInterview(
+  supabase: any,
+  user: any,
+  context: AuthenticatedContext,
+  id: any
+): Promise<{ id: string; row: { learner_id: string | null; created_by: string | null } | null; error: Response | null }> {
+  const rawId = String(id || '').trim();
+  if (!rawId) {
+    return { id: rawId, row: null, error: apiError(400, 'VALIDATION_ERROR', 'id required', context.request) };
+  }
+  const row = await getInterviewRow(supabase, rawId);
+  if (!row) {
+    // getInterviewRow folds "missing" and "db error" into null → NOT_FOUND.
+    return { id: rawId, row: null, error: apiError(404, 'NOT_FOUND', 'Interview not found', context.request) };
+  }
+  if (!(await canAccessInterview(supabase, user, row))) {
+    return { id: rawId, row: null, error: apiError(403, 'FORBIDDEN', 'You do not have access to this interview', context.request) };
+  }
+  return { id: rawId, row, error: null };
+}
+
+// ── Shortlist ownership gate ─────────────────────────────────────────────────
+// Shortlists are organization-owned; unattributed legacy rows remain private to an
+// active member of the caller's org (or the caller themself). Rows are fetched
+// BEFORE any mutation (deny-by-default).
+const SL_ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
+
+async function loadGatedShortlist(
+  supabase: any,
+  user: any,
+  context: AuthenticatedContext,
+  id: any
+): Promise<{ id: string; row: Record<string, any> | null; error: Response | null }> {
+  const rawId = String(id || '').trim();
+  if (!rawId || !SL_ID_RE.test(rawId)) {
+    return { id: rawId, row: null, error: apiError(400, 'VALIDATION_ERROR', 'id required', context.request) };
+  }
+  const { data: row, error } = await supabase
+    .from('shortlists')
+    .select('id, created_by,organization_id')
+    .eq('id', rawId)
+    .limit(1)
+    .maybeSingle();
+  if (error) return { id: rawId, row: null, error: apiDbError(error, context.request) };
+  if (!row) return { id: rawId, row: null, error: apiError(404, 'NOT_FOUND', 'Shortlist not found', context.request) };
+  const orgId = await getActiveOrgId(supabase, user);
+  const memberIds = orgId ? await getOrgMemberUserIds(supabase, orgId) : [];
+  const createdBy = String(row.created_by ?? '');
+  if (!orgId||!memberIds.includes(user.id)||!(await verifyOrgAccess(supabase,user.id,orgId,PERMISSIONS.VIEW_CANDIDATES)).allowed|| (row.organization_id ? row.organization_id!==orgId : createdBy!==user.id)) {
+    return { id: rawId, row: null, error: apiError(403, 'FORBIDDEN', 'You do not have access to this shortlist', context.request) };
+  }
+  return { id: rawId, row, error: null };
+}
+
 const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   const user = getContextUser(context);
-  const env = context.env as Record<string, string>;
+  const env = context.env as unknown as Record<string, string>;
   const supabase = getServiceClient(env as any);
 
   const url = new URL(context.request.url);
 
   const id = url.searchParams.get('id');
+  const learnerFeed = user.roles?.includes('learner') === true;
   if (id) {
     const { data, error } = await findOpportunityById(supabase, id);
     if (error) return apiDbError(error, context.request);
     if (!data) return apiError(404, 'NOT_FOUND', 'Opportunity not found', context.request);
-    return apiSuccess({ opportunity: data }, context.request);
+    if (learnerFeed && !isEligibleJob(data)) return apiError(404, 'NOT_FOUND', 'Opportunity is no longer available', context.request);
+    const [opportunity] = await decorateLearningForActor(supabase,context.env as any,user,[data]);
+    return apiSuccess({ opportunity }, context.request);
   }
 
   const rawLimit = parseInt(url.searchParams.get('limit') || '6', 10);
@@ -129,6 +348,7 @@ const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   }
 
   if (activeOnly) query = query.eq('is_active', true);
+  if (learnerFeed) query = eligibleJobs(query);
 
   if (employmentType) {
     const vals = employmentType.split(',');
@@ -172,18 +392,69 @@ const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   }
 
   const ascending = sortBy === 'oldest';
-  query = query.order('created_at', { ascending }).range(offset, offset + limit - 1);
+  if (!ascending) {
+    // Boost/featured fulfilment (spec §6): boosted and featured posts surface above
+    // regular feed positions while their window is active; otherwise created_at wins.
+    query = query
+      .order('boosted_until', { ascending: false, nullsFirst: false })
+      .order('featured_until', { ascending: false, nullsFirst: false })
+      .order('created_at', { ascending: false });
+  } else {
+    query = query.order('created_at', { ascending });
+  }
+  query = query.range(offset, offset + limit - 1);
 
   const { data, error, count } = await query;
   if (error) return apiDbError(error, context.request);
-  return apiSuccess({ opportunities: data, total: count }, context.request);
+
+  // Featured-employer surface (spec §6): annotate rows whose organizations hold an
+  // active featured_employer add-on override so the learner UI can badge them.
+  const featuredEmployerByOrg = await resolveFeaturedEmployerOrgs(supabase, data || []);
+  const annotated = (data || []).map((o: any) => ({
+    ...o,
+    featuredEmployer: featuredEmployerByOrg.has(String(o.organization_id)),
+  }));
+
+  return apiSuccess({ opportunities: await decorateLearningForActor(supabase,context.env as any,user,annotated), total: count }, context.request);
 });
 
+/**
+ * One batched lookup of active featured_employer overrides for the organizations
+ * present on the current page. Returns org ids that are currently featured.
+ */
+async function resolveFeaturedEmployerOrgs(supabase: any, rows: any[]): Promise<Set<string>> {
+  const orgIds = [...new Set(rows.map((o: any) => o?.organization_id).filter(Boolean))];
+  if (orgIds.length === 0) return new Set();
+
+  const { data: feature, error: featErr } = await supabase
+    .from('features')
+    .select('id')
+    .eq('feature_key', 'featured_employer')
+    .maybeSingle();
+  if (featErr || !feature) return new Set();
+
+  const { data: overrides, error: ovErr } = await supabase
+    .from('tenant_entitlement_overrides')
+    .select('tenant_id, expires_at')
+    .eq('feature_id', feature.id)
+    .eq('is_enabled', true)
+    .in('tenant_id', orgIds);
+  if (ovErr) return new Set();
+
+  const now = Date.now();
+  return new Set(
+    (overrides || [])
+      .filter((ov: any) => !ov.expires_at || new Date(ov.expires_at).getTime() > now)
+      .map((ov: any) => String(ov.tenant_id))
+  );
+}
+
 const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
-  const env = context.env as Record<string, string>;
+  const env = context.env as unknown as Record<string, string>;
   const supabase = getServiceClient(env as any);
   const body: any = await context.request.json().catch(() => ({}));
   const { action } = body;
+  if(['create-shortlist','update-shortlist','delete-shortlist','add-candidate-to-shortlist','remove-candidate-from-shortlist','update-shortlist-candidate-notes','update-interview','delete-interview','update-scorecard','update-interview-status','update-application-status','bulk-update-applications'].includes(action)){const user=getContextUser(context);const orgId=await getActiveOrgId(supabase,user);if(!orgId||!(await verifyOrgAccess(supabase,user.id,orgId,PERMISSIONS.MANAGE_CANDIDATES)).allowed)return apiError(403,'FORBIDDEN','Candidate management permission is required',context.request);}
 
   if (!action) return apiError(400, 'VALIDATION_ERROR', 'action is required', context.request);
 
@@ -191,19 +462,171 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
     // ── Existing actions ──
     case 'can-proceed-pipeline': {
+      const user = getContextUser(context);
       const { application_id } = body;
       if (!application_id) return apiError(400, 'VALIDATION_ERROR', 'application_id required', context.request);
+      // 🔒 Object-level authz (OWASP API1): the pipeline oracle must only ever
+      // be consulted for an application targeting one of THIS org's
+      // opportunities — otherwise it is a cross-tenant metadata oracle.
+      const orgId = await getActiveOrgId(supabase, user);
+      if (!orgId) return apiError(403, 'FORBIDDEN', 'No active organization for this user', context.request);
+      const orgOppIds = await getOrgOwnedOpportunityIds(supabase, orgId);
+      const { data: appRow, error: appErr } = await supabase
+        .from('applied_jobs')
+        .select('opportunity_id')
+        .eq('id', String(application_id))
+        .limit(1)
+        .maybeSingle();
+      if (appErr) return apiDbError(appErr, context.request);
+      if (!appRow || !orgOppIds.includes(String(appRow.opportunity_id ?? ''))) {
+        return apiError(403, 'FORBIDDEN', 'Application does not belong to your organization', context.request);
+      }
       const { data, error } = await supabase.rpc('can_proceed_in_pipeline', { p_application_id: application_id });
       if (error) return apiDbError(error, context.request);
       return apiSuccess({ canProceed: data }, context.request);
     }
 
     case 'increment-search-usage': {
+      const user = getContextUser(context);
       const { search_id } = body;
       if (!search_id) return apiError(400, 'VALIDATION_ERROR', 'search_id required', context.request);
+      // 🔒 Object-level authz (OWASP API1): a saved search may only be
+      // incremented by its owner — never used as a cross-user write.
+      const { data: row, error: rowErr } = await supabase
+        .from('recruiter_saved_searches')
+        .select('recruiter_id')
+        .eq('id', String(search_id))
+        .limit(1)
+        .maybeSingle();
+      if (rowErr) return apiDbError(rowErr, context.request);
+      if (!row || String(row.recruiter_id ?? '') !== String(user.id)) {
+        return apiError(403, 'FORBIDDEN', 'You do not own this saved search', context.request);
+      }
       const { error } = await supabase.rpc('increment_search_usage', { search_id });
       if (error) return apiDbError(error, context.request);
       return apiSuccess({ incremented: true }, context.request);
+    }
+
+    // Job boost fulfilment (spec §6): 1 job_boost_credits credit per boost event.
+    // Boosted posts surface above regular feed positions while the window is active.
+    //
+    // Idempotency (Stripe pattern): credit consumption is keyed on the caller's
+    // optional `requestId`. A replayed request finds the pre-existing
+    // credit_ledger consumption row for (tenant, feature, reference) and is
+    // treated as ALREADY CHARGED — the boost window is recomputed from the row's
+    // current state without a second deduction.
+    case 'boost-opportunity': {
+      const user = getContextUser(context);
+      const { id } = body;
+      if (!id) return apiError(400, 'VALIDATION_ERROR', 'id required', context.request);
+      if (!user.org_id) return apiError(400, 'VALIDATION_ERROR', 'Organization ID is required', context.request);
+
+      const access = await verifyOrgAccess(supabase, user.sub, user.org_id, undefined);
+      if (!access.allowed) {
+        return access.error || apiError(403, 'FORBIDDEN', 'Access denied to this organization', context.request);
+      }
+
+      // The post must belong to the calling organization and be eligible
+      const { data: existing, error: exErr } = await supabase
+        .from('opportunities')
+        .select('id, status, is_active, boosted_until')
+        .eq('id', String(id))
+        .eq('organization_id', user.org_id)
+        .maybeSingle();
+      if (exErr) return apiDbError(exErr, context.request);
+      const visible = existing && (existing.status === 'open' || existing.is_active === true);
+      if (!visible) return apiError(404, 'NOT_FOUND', 'Active opportunity not found in this organization', context.request);
+
+      // Re-boost EXTEND semantics: an already-boosted post gets its window
+      // extended by 7 days from the later of (existing expiry, now) — never
+      // shortened, never restarted from zero. The charge stays 1 credit.
+      const now = new Date();
+      const base = existing.boosted_until && new Date(existing.boosted_until).getTime() > now.getTime()
+        ? new Date(existing.boosted_until)
+        : now;
+      const boostedUntil = new Date(base.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+      // Idempotency reference: client requestId when present, else a
+      // feature-scoped random id (Stripe idempotency-key pattern). Refunds use
+      // the identical reference so charge/refund rows stay linked.
+      const requestId =
+        typeof body.requestId === 'string' && body.requestId.trim()
+          ? body.requestId.trim()
+          : `job_boost_credits-${existing.id}-${crypto.randomUUID()}`;
+
+      // Pre-check (idempotency contract): if a consumption row already exists
+      // for (tenant, feature, reference) treat the request as ALREADY CHARGED
+      // and continue the flow — no second deduction, no failure.
+      let credit: { allowed: boolean; success: boolean; remaining?: number } | null = null;
+      const { data: priorCharge } = await supabase
+        .from('credit_ledger')
+        .select('id')
+        .eq('tenant_id', user.org_id)
+        .eq('feature_key', 'job_boost_credits')
+        .eq('reference_id', requestId)
+        .eq('transaction_type', 'consumption')
+        .limit(1)
+        .maybeSingle();
+      if (priorCharge) {
+        credit = { allowed: true, success: true };
+      } else {
+        // Pre-check the balance so we don't charge a credit whose downstream
+        // update then fails (charge compensation below covers the race window).
+        const { enforceAndConsumeCredits } = await import('../../shared/lib/credit-middleware');
+        credit = await enforceAndConsumeCredits(
+          supabase,
+          user.org_id,
+          'job_boost_credits',
+          1,
+          requestId,
+          JSON.stringify({ boosted_by: user.id, opportunity_id: existing.id, request_id: requestId }),
+          context.request
+        );
+        // Note on the 23505 arm of the idempotency contract: credit-ledger rows
+        // for transaction_type='consumption' carry no UNIQUE constraint (only
+        // allocation rows do, via uq_credit_ledger_alloc_ref), and
+        // enforceAndConsumeCredits does not surface the underlying error code —
+        // so the pre-check above is the app-level idempotency gate here. The
+        // 23505-treat-as-charged branch is enforced at the ledger level where
+        // the constraint exists (plan allocation / top-up replay paths).
+      }
+      if (!credit.allowed || !credit.success) {
+        return (credit as any).errorResponse || (credit as any).response || apiError(402, 'INSUFFICIENT_CREDITS', 'Credit deduction failed', context.request);
+      }
+      const chargedNow = !priorCharge;
+
+      const { data: updated, error: upErr } = await supabase
+        .from('opportunities')
+        .update({
+          boosted_until: boostedUntil.toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', existing.id)
+        .select('id, boosted_until, featured_until')
+        .single();
+      if (upErr) {
+        // The charge already succeeded — refund it so a failed update never
+        // burns a credit silently (best-effort; the reference ties both rows so
+        // a replay with the same requestId never double-refunds... the ledger
+        // refund insert is app-level compensating action, same reference).
+        if (chargedNow) {
+          try {
+            await supabase.from('credit_ledger').insert({
+              tenant_id: user.org_id,
+              feature_key: 'job_boost_credits',
+              transaction_type: 'refund',
+              amount: 1,
+              reference_id: requestId,
+              notes: JSON.stringify({ reason: 'boost_update_failed', boosted_by: user.id, opportunity_id: existing.id }),
+            });
+          } catch (refundErr) {
+            console.error('[boost-opportunity] Failed to refund credit after failed update:', refundErr);
+          }
+        }
+        return apiDbError(upErr, context.request);
+      }
+
+      return apiSuccess({ boosted: true, opportunity: updated, credits_remaining: chargedNow ? (credit as any).remaining : undefined }, context.request);
     }
 
     case 'recruiter-saved-searches': {
@@ -249,6 +672,84 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     case 'create-opportunity': {
       const opportunity = body.opportunity;
       if (!opportunity) return apiError(400, 'VALIDATION_ERROR', 'opportunity data required', context.request);
+      if (opportunity.learning_requirements !== undefined) {
+        try { opportunity.learning_requirements = await validateLearningRequirements(supabase,context.env as any,opportunity.learning_requirements); }
+        catch(e) { return e instanceof LearningError ? apiError(e.status,e.code,e.message,context.request) : apiError(503,'LEARNING_UNAVAILABLE','Learning requirements could not be verified.',context.request); }
+      }
+      if (typeof opportunity.skills_required === 'string') opportunity.skills_required = stringSkills(opportunity.skills_required);
+      if (opportunity.skills_required != null && (!Array.isArray(opportunity.skills_required) || opportunity.skills_required.some((skill: unknown) => typeof skill !== 'string'))) {
+        return apiError(400, 'VALIDATION_ERROR', 'skills_required must be an array of strings', context.request);
+      }
+
+      // 🔒 Quota check: Enforce active_job_posts plan entitlement
+      const user = getContextUser(context);
+      let organizationId = opportunity.organization_id || (user as any)?.org_id;
+      if (!organizationId && user?.id) {
+        const { data: mem } = await supabase
+          .from('organization_members')
+          .select('organization_id')
+          .eq('user_id', user.id)
+          .limit(1)
+          .maybeSingle();
+        organizationId = mem?.organization_id;
+      }
+
+      // 🔒 Fail-closed + authority: a client-named organization different from
+      // the JWT org requires verified membership; unresolvable orgs cannot
+      // create postings at all (fixes the verifyOrgAccess-less corner).
+      if (!organizationId) {
+        return apiError(400, 'VALIDATION_ERROR', 'organizationId is required', context.request);
+      }
+      if ((user as any)?.org_id && (user as any)?.org_id !== organizationId) {
+        const access = await verifyOrgAccess(supabase, user.sub, organizationId, undefined);
+        if (!access.allowed) {
+          return access.error || apiError(403, 'FORBIDDEN', 'Access denied to this organization', context.request);
+        }
+      }
+      // 🔒 The row is always owned by the verified organization, never the raw body value
+      opportunity.organization_id = organizationId;
+      // 🔒 Authorship is server-set: no client-created_by trust
+      opportunity.created_by = user.id;
+
+      if (organizationId) {
+        // 🔒 Quota check: Enforce active_job_posts plan entitlement.
+        // getNumericLimit is the bounded hot-path resolver; fail-closed at this
+        // call site: an unresolvable plan/entitlement (null result, or a
+        // disabled feature) denies the posting rather than allowing it unchecked.
+        const entitlement = await getNumericLimit(supabase, organizationId, 'active_job_posts');
+        if (!entitlement || !entitlement.enabled) {
+          return apiError(
+            402,
+            'QUOTA_EXCEEDED',
+            'Your plan does not include permission to publish job posts, or the limit could not be verified. Please upgrade your recruiter plan or contact support.',
+            context.request
+          );
+        }
+        // enabled && limit === null ⇒ explicit "no enforced limit" entitlement
+        // (Enterprise custom style per the entitlement service contract).
+        if (entitlement.limit !== null) {
+          const { count, error: countErr } = await supabase
+            .from('opportunities')
+            .select('id', { count: 'exact', head: true })
+            .eq('organization_id', organizationId)
+            .or('is_active.eq.true,status.eq.open');
+
+          if (countErr) {
+            console.error('[Opportunities] Failed to count active job posts:', countErr);
+            return apiDbError(countErr, context.request);
+          }
+
+          if (typeof count === 'number' && count >= entitlement.limit) {
+            return apiError(
+              402,
+              'QUOTA_EXCEEDED',
+              `Your current plan allows up to ${entitlement.limit} active job posts. You currently have ${count} active posts. Please upgrade your recruiter plan to publish more opportunities.`,
+              context.request
+            );
+          }
+        }
+      }
+
       const { data, error } = await supabase.from('opportunities').insert([opportunity]).select().single();
       if (error) return apiDbError(error, context.request);
       await notifyLearnersOfNewOpportunity(supabase, data);
@@ -259,9 +760,91 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       const { action: _action, id, updates: nestedUpdates, ...flatUpdates } = body;
       const updates = nestedUpdates || flatUpdates;
       if (!id) return apiError(400, 'VALIDATION_ERROR', 'id required', context.request);
-      const existing = await findOpportunityById(supabase, id, 'id');
+      if (updates.learning_requirements !== undefined) {
+        if(!Number.isSafeInteger(updates.learning_requirements_version)||updates.learning_requirements_version<1)return apiError(400,'VALIDATION_ERROR','Provide the current learning requirements version before editing.',context.request);
+        try { updates.learning_requirements = await validateLearningRequirements(supabase,context.env as any,updates.learning_requirements); }
+        catch(e) { return e instanceof LearningError ? apiError(e.status,e.code,e.message,context.request) : apiError(503,'LEARNING_UNAVAILABLE','Learning requirements could not be verified.',context.request); }
+      }
+      if (typeof updates.skills_required === 'string') updates.skills_required = stringSkills(updates.skills_required);
+      if (updates.skills_required != null && (!Array.isArray(updates.skills_required) || updates.skills_required.some((skill: unknown) => typeof skill !== 'string'))) {
+        return apiError(400, 'VALIDATION_ERROR', 'skills_required must be an array of strings', context.request);
+      }
+      const existing = await findOpportunityById(supabase, id, 'id, organization_id, created_by, status, is_active');
       if (existing.error) return apiDbError(existing.error, context.request);
       if (!existing.data) return apiError(404, 'NOT_FOUND', 'Opportunity not found', context.request);
+
+      // 🔒 Ownership (§6.3 completion): only the owning organization/author may update
+      const user = getContextUser(context);
+      const orgId = (user as any)?.org_id || null;
+      const owns = existing.data.organization_id ? existing.data.organization_id === orgId : existing.data.created_by === user.id;
+      if (!owns) return apiError(403, 'FORBIDDEN', 'You do not have access to this opportunity', context.request);
+
+      delete updates.organization_id; // never allow re-owning the row
+      delete updates.created_by;
+      // 🔒 Server-owned counters: client updates must never inflate activity
+      // metrics that the quota/usage surfaces read back.
+      delete updates.applications_count;
+      delete updates.messages_count;
+      delete updates.views_count;
+      delete updates.posted_date;
+
+      // 🔒 Status whitelist + server-owned visibility (parity with
+      // update-requisition / the hardened legacy alias in recruiter/actions.ts):
+      // the update payload may no longer set is_active directly and status
+      // transitions validate against the same server-side whitelist the
+      // requisition actions use — visibility always mirrors the enforced
+      // status.
+      if (updates.status !== undefined) {
+        const nextStatus = String(updates.status).trim().toLowerCase();
+        if (!(ALLOWED_REQUISITION_STATUSES as readonly string[]).includes(nextStatus)) {
+          return apiError(
+            400,
+            'VALIDATION_ERROR',
+            `Invalid status '${updates.status}'. Allowed values: ${ALLOWED_REQUISITION_STATUSES.join(', ')}`,
+            context.request
+          );
+        }
+        updates.status = nextStatus;
+        updates.is_active = nextStatus === 'open';
+      }
+
+      // 🔒 Publishing a draft must respect the active_job_posts plan quota
+      // (H4 bypass fix — mirrors recruiter/actions.ts update-opportunity):
+      // becomesVisible ⇔ the update toggles the post into the open/is_active
+      // state it didn't already have; the count excludes this post itself.
+      const currentlyVisible = existing.data.status === 'open' || existing.data.is_active === true;
+      const becomesVisible = !currentlyVisible && (updates.status === 'open' || updates.is_active === true);
+      if (becomesVisible && existing.data.organization_id) {
+        // getNumericLimit hot-path resolver; fail-closed: an unresolvable or
+        // disabled entitlement denies the publish rather than allowing it.
+        const entitlement = await getNumericLimit(supabase, existing.data.organization_id, 'active_job_posts');
+        if (!entitlement || !entitlement.enabled) {
+          return apiError(
+            402,
+            'QUOTA_EXCEEDED',
+            'Your plan does not include permission to publish job posts, or the limit could not be verified. Please upgrade your recruiter plan or contact support.',
+            context.request
+          );
+        }
+        if (entitlement.limit !== null) {
+          const { count, error: countErr } = await supabase
+            .from('opportunities')
+            .select('id', { count: 'exact', head: true })
+            .eq('organization_id', existing.data.organization_id)
+            .neq('id', existing.data.id)
+            .or('is_active.eq.true,status.eq.open');
+          if (countErr) return apiDbError(countErr, context.request);
+          if (typeof count === 'number' && count >= entitlement.limit) {
+            return apiError(
+              402,
+              'QUOTA_EXCEEDED',
+              `Your current plan allows up to ${entitlement.limit} active job posts. You currently have ${count} active posts. Please upgrade your recruiter plan to publish more opportunities.`,
+              context.request
+            );
+          }
+        }
+      }
+
       const { data, error } = await supabase.from('opportunities').update(updates).eq('id', existing.data.id).select().single();
       if (error) return apiDbError(error, context.request);
       return apiSuccess({ opportunity: data }, context.request);
@@ -270,9 +853,16 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     case 'delete-opportunity': {
       const { id } = body;
       if (!id) return apiError(400, 'VALIDATION_ERROR', 'id required', context.request);
-      const existing = await findOpportunityById(supabase, id, 'id');
+      const existing = await findOpportunityById(supabase, id, 'id, organization_id, created_by');
       if (existing.error) return apiDbError(existing.error, context.request);
       if (!existing.data) return apiError(404, 'NOT_FOUND', 'Opportunity not found', context.request);
+
+      // 🔒 Ownership (§6.3 completion): only the owning organization/author may delete
+      const user = getContextUser(context);
+      const orgId = (user as any)?.org_id || null;
+      const owns = existing.data.organization_id ? existing.data.organization_id === orgId : existing.data.created_by === user.id;
+      if (!owns) return apiError(403, 'FORBIDDEN', 'You do not have access to this opportunity', context.request);
+
       const { error } = await supabase.from('opportunities').delete().eq('id', existing.data.id);
       if (error) return apiDbError(error, context.request);
       return apiSuccess({ deleted: true }, context.request);
@@ -281,13 +871,17 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     case 'increment-view-count': {
       const { id } = body;
       if (!id) return apiError(400, 'VALIDATION_ERROR', 'id required', context.request);
-      const { data: currentData, error: fetchError } = await findOpportunityById(supabase, id, 'id, views_count');
-      if (fetchError) return apiDbError(fetchError, context.request);
-      if (!currentData) return apiError(404, 'NOT_FOUND', 'Opportunity not found', context.request);
-      const currentCount = currentData?.views_count || 0;
-      const { error } = await supabase.from('opportunities').update({ views_count: currentCount + 1 }).eq('id', currentData.id);
+      // Existence check only — the increment itself is delegated to the
+      // SECURITY DEFINER RPC increment_opportunity_views(p_id) (contract with
+      // the concurrently-shipped migration), which performs the counter
+      // update atomically inside Postgres. A read-then-write UPDATE here was
+      // racy under concurrent viewers.
+      const existing = await findOpportunityById(supabase, id, 'id');
+      if (existing.error) return apiDbError(existing.error, context.request);
+      if (!existing.data) return apiError(404, 'NOT_FOUND', 'Opportunity not found', context.request);
+      const { data: incremented, error } = await supabase.rpc('increment_opportunity_views', { p_id: existing.data.id });
       if (error) return apiDbError(error, context.request);
-      return apiSuccess({ incremented: true }, context.request);
+      return apiSuccess({ incremented: true, views_count: incremented ?? null }, context.request);
     }
 
     case 'get-opportunities-stats': {
@@ -307,9 +901,14 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     case 'get-placement-stats': {
       const { collegeId: explicitCollegeId } = body;
       const authUser = getContextUser(context);
-      
-      // Use org_id from JWT (for college admins in organizations table)
-      const collegeId = explicitCollegeId || authUser?.org_id;
+
+      // 🔒 No client-trusted collegeId: an explicit college_id is only honored
+      // when it matches the caller's own active organization (there is no
+      // college-role util in this codebase, so no other bypass exists).
+      if (explicitCollegeId && explicitCollegeId !== (authUser as any)?.org_id) {
+        return apiError(403, 'FORBIDDEN', 'You may only view placement stats for your own organization', context.request);
+      }
+      const collegeId = (authUser as any)?.org_id;
 
       // Security check: collegeId must be present to prevent data leakage
       if (!collegeId) {
@@ -365,16 +964,27 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
     // ── applied_jobs / application actions ──
     case 'apply-to-job': {
+      const user = getContextUser(context);
       const { learner_id, opportunity_id } = body;
       if (!learner_id || !opportunity_id) return apiError(400, 'VALIDATION_ERROR', 'learner_id and opportunity_id required', context.request);
+      const { data: owner, error: ownerError } = await supabase.from('learners').select('id').eq('id', learner_id).eq('user_id', user.id).maybeSingle();
+      if (ownerError) return apiError(503, 'PROFILE_UNAVAILABLE', 'Learner profile is temporarily unavailable', context.request);
+      if (!owner) return apiError(403, 'FORBIDDEN', 'Only your own applications may be submitted', context.request);
+      const available = await findOpportunityById(supabase, opportunity_id, 'id,status,is_active,deadline,learning_requirements,learning_requirements_version');
+      if (available.error) return apiError(503, 'OPPORTUNITY_UNAVAILABLE', 'Opportunity could not be verified', context.request);
+      if (!isEligibleJob(available.data)) return apiError(409, 'OPPORTUNITY_CLOSED', 'Opportunity is no longer available', context.request);
 
       const { data: existing } = await supabase.from('applied_jobs').select('id').eq('learner_id', learner_id).eq('opportunity_id', opportunity_id).maybeSingle();
       if (existing) return apiSuccess({ success: false, message: 'You have already applied to this job', data: existing }, context.request);
 
+      let learningVerification: string | null;
+      try { learningVerification = await verifyLearningApplication(supabase,context.env as any,user.id,learner_id,available.data); }
+      catch(e) { return e instanceof LearningError ? apiError(e.status,e.code,e.message,context.request) : apiError(503,'LEARNING_UNAVAILABLE','Learning evidence could not be verified. Please retry.',context.request); }
+
       const { data: learner } = await supabase.from('learners').select('name, email, contact_number').eq('id', learner_id).maybeSingle();
       if (!learner) return apiSuccess({ success: false, message: 'Learner profile not found' }, context.request);
 
-      const { data, error } = await supabase.from('applied_jobs').insert([{ learner_id, opportunity_id, application_status: 'applied' }]).select().single();
+      const { data, error } = await supabase.from('applied_jobs').insert([{ learner_id, opportunity_id, application_status: 'applied', ...(learningVerification ? {learning_verification_id:learningVerification} : {}) }]).select().single();
       if (error) return apiDbError(error, context.request);
 
       try {
@@ -421,7 +1031,15 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
     case 'get-all-applications': {
       const { status, date_from, date_to, search, company_name, department, employment_type, college_id } = body;
-      let query = supabase.from('applied_jobs').select('*').order('applied_at', { ascending: false });
+      // 🔒 ORG SCOPING (OWASP API1): applied_jobs carries learner PII; listable
+      // rows are only those whose opportunity belongs to the caller's active
+      // organization. Empty org ⇒ empty list (never a cross-org dump).
+      const user = getContextUser(context);
+      const scope = await resolveOrgScopeInfo(supabase, user);
+      if (!scope.oppIds || scope.oppIds.length === 0) {
+        return apiSuccess({ applications: [] }, context.request);
+      }
+      let query = supabase.from('applied_jobs').select('*').in('opportunity_id', scope.oppIds).order('applied_at', { ascending: false });
       if (status) query = query.eq('application_status', status);
       if (date_from) query = query.gte('applied_at', date_from);
       if (date_to) query = query.lte('applied_at', date_to);
@@ -494,7 +1112,15 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const stats = (data || []).reduce((acc, app) => { acc.total++; if (Object.hasOwn(acc, app.application_status)) acc[app.application_status]++; return acc; }, { total: 0, applied: 0, viewed: 0, under_review: 0, interview_scheduled: 0, interviewed: 0, offer_received: 0, accepted: 0, rejected: 0, withdrawn: 0 });
         return apiSuccess({ stats }, context.request);
       }
-      let query = supabase.from('applied_jobs').select('application_status');
+      // 🔒 ORG SCOPING: without a college filter the stats must still be
+      // limited to applications against the caller's org-owned opportunities.
+      // Empty org ⇒ zeroed stats (never a cross-org aggregate).
+      const user = getContextUser(context);
+      const scope = await resolveOrgScopeInfo(supabase, user);
+      if (!scope.oppIds || scope.oppIds.length === 0) {
+        return apiSuccess({ stats: { total: 0, applied: 0, viewed: 0, under_review: 0, interview_scheduled: 0, interviewed: 0, offer_received: 0, accepted: 0, rejected: 0, withdrawn: 0 } }, context.request);
+      }
+      let query = supabase.from('applied_jobs').select('application_status').in('opportunity_id', scope.oppIds);
       if (status) query = query.eq('application_status', status);
       if (date_from) query = query.gte('applied_at', date_from);
       if (date_to) query = query.lte('applied_at', date_to);
@@ -507,11 +1133,25 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     case 'update-application-status': {
       const { id, status: newStatus, notes } = body;
       if (!id || !newStatus) return apiError(400, 'VALIDATION_ERROR', 'id and status required', context.request);
-      const updateData: any = { application_status: newStatus, updated_at: new Date().toISOString() };
+      // 🔒 Server-side whitelist for the status enum (derived from the applied_jobs
+      // CHECK constraint); the update payload itself is fully server-constructed.
+      if (!APPLICATION_STATUSES.includes(newStatus as any)) {
+        return apiError(400, 'VALIDATION_ERROR', `Invalid status. Allowed values: ${APPLICATION_STATUSES.join(', ')}`, context.request);
+      }
+      // 🔒 Object-level authz (OWASP API1): fetch the row first, then verify the
+      // caller is org-member of the owning opportunity or the owning learner.
+      const appRow = await getApplicationRow(supabase, id);
+      if (!appRow) return apiError(404, 'NOT_FOUND', 'Application not found', context.request);
+      const user = getContextUser(context);
+      const scope = await resolveOrgScopeInfo(supabase, user);
+      if (!(await canMutateApplication(supabase, user, scope, appRow))) {
+        return apiError(403, 'FORBIDDEN', 'You do not have access to this application', context.request);
+      }
+      const updateData: any = { application_status: newStatus, updated_by: user.id, updated_at: new Date().toISOString() };
       if (notes) updateData.notes = notes;
       if (newStatus === 'viewed') updateData.viewed_at = new Date().toISOString();
       else if (newStatus === 'interview_scheduled') updateData.interview_scheduled_at = new Date().toISOString();
-      const { data, error } = await supabase.from('applied_jobs').update(updateData).eq('id', id).select().single();
+      const { data, error } = await supabase.from('applied_jobs').update(updateData).eq('id', appRow.id).select().single();
       if (error) return apiDbError(error, context.request);
       return apiSuccess({ application: data }, context.request);
     }
@@ -519,7 +1159,31 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     case 'bulk-update-applications': {
       const { ids, status: newStatus, notes } = body;
       if (!ids || !Array.isArray(ids) || ids.length === 0 || !newStatus) return apiError(400, 'VALIDATION_ERROR', 'ids array and status required', context.request);
-      const updateData: any = { application_status: newStatus, updated_at: new Date().toISOString() };
+      // 🔒 Server-side status whitelist (applied_jobs CHECK constraint).
+      if (!APPLICATION_STATUSES.includes(newStatus as any)) {
+        return apiError(400, 'VALIDATION_ERROR', `Invalid status. Allowed values: ${APPLICATION_STATUSES.join(', ')}`, context.request);
+      }
+      // 🔒 Object-level authz, all-or-nothing: fetch EVERY target row first;
+      // if any id is outside the caller's scope nothing is applied (no partial
+      // cross-org mutation).
+      const user = getContextUser(context);
+      const scope = await resolveOrgScopeInfo(supabase, user);
+      const { data: appRows, error: fetchErr } = await supabase
+        .from('applied_jobs')
+        .select('id, learner_id, opportunity_id')
+        .in('id', ids);
+      if (fetchErr) return apiDbError(fetchErr, context.request);
+      const found = new Set((appRows || []).map((r: any) => r.id));
+      const missing = ids.filter((x: any) => !found.has(String(x)));
+      if (missing.length > 0) {
+        return apiError(404, 'NOT_FOUND', 'One or more applications were not found', context.request);
+      }
+      for (const row of appRows || []) {
+        if (!(await canMutateApplication(supabase, user, scope, row))) {
+          return apiError(403, 'FORBIDDEN', 'You do not have access to one or more of the selected applications', context.request);
+        }
+      }
+      const updateData: any = { application_status: newStatus, updated_by: user.id, updated_at: new Date().toISOString() };
       if (notes) updateData.notes = notes;
       if (newStatus === 'viewed') updateData.viewed_at = new Date().toISOString();
       else if (newStatus === 'interview_scheduled') updateData.interview_scheduled_at = new Date().toISOString();
@@ -531,6 +1195,12 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     case 'withdraw-application': {
       const { id, learner_id } = body;
       if (!id || !learner_id) return apiError(400, 'VALIDATION_ERROR', 'id and learner_id required', context.request);
+      // 🔒 Learner ownership (mirrors apply-to-job): the learner_id in the body
+      // must be bound to the caller's user account.
+      const user = getContextUser(context);
+      if (!(await assertLearnerOwnership(supabase, user, learner_id))) {
+        return apiError(403, 'FORBIDDEN', 'Only your own applications may be withdrawn', context.request);
+      }
       const { data, error } = await supabase.from('applied_jobs').update({ application_status: 'withdrawn', updated_at: new Date().toISOString() }).eq('id', id).eq('learner_id', learner_id).select().single();
       if (error) return apiDbError(error, context.request);
       return apiSuccess({ success: true, message: 'Application withdrawn successfully', data }, context.request);
@@ -539,6 +1209,11 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     case 'delete-application': {
       const { id, learner_id } = body;
       if (!id || !learner_id) return apiError(400, 'VALIDATION_ERROR', 'id and learner_id required', context.request);
+      // 🔒 Learner ownership (mirrors apply-to-job).
+      const user = getContextUser(context);
+      if (!(await assertLearnerOwnership(supabase, user, learner_id))) {
+        return apiError(403, 'FORBIDDEN', 'Only your own applications may be deleted', context.request);
+      }
       const { error } = await supabase.from('applied_jobs').delete().eq('id', id).eq('learner_id', learner_id);
       if (error) return apiDbError(error, context.request);
       return apiSuccess({ success: true, message: 'Application deleted successfully' }, context.request);
@@ -621,7 +1296,14 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     }
 
     case 'get-companies-with-applications': {
-      const { data: appliedJobs, error } = await supabase.from('applied_jobs').select('opportunity_id');
+      // 🔒 ORG SCOPING: company facets derived only from applications to the
+      // caller's org-owned opportunities. Empty org ⇒ empty list.
+      const user = getContextUser(context);
+      const scope = await resolveOrgScopeInfo(supabase, user);
+      if (!scope.oppIds || scope.oppIds.length === 0) {
+        return apiSuccess({ companies: [] }, context.request);
+      }
+      const { data: appliedJobs, error } = await supabase.from('applied_jobs').select('opportunity_id').in('opportunity_id', scope.oppIds);
       if (error) return apiDbError(error, context.request);
       if (!appliedJobs || appliedJobs.length === 0) return apiSuccess({ companies: [] }, context.request);
       const opportunityIds = [...new Set(appliedJobs.map(j => j.opportunity_id))];
@@ -641,10 +1323,21 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     }
 
     // ── Offer actions ──
+    // 🔒 Object-level authz on both offer-status mutations: the caller must be a
+    // member of the org owning the application's opportunity (recruiter flow) OR
+    // the learner who owns the application (learner offer-inbox flow — same
+    // assertLearnerOwnership rule as apply-to-job). Deny-by-default.
     case 'accept-offer': {
       const { id } = body;
       if (!id) return apiError(400, 'VALIDATION_ERROR', 'id required', context.request);
-      const { data, error } = await supabase.from('applied_jobs').update({ application_status: 'accepted', responded_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', id).select('*, opportunity:opportunities(id, job_title, company_name, applications_count)').single();
+      const appRow = await getApplicationRow(supabase, id);
+      if (!appRow) return apiError(404, 'NOT_FOUND', 'Application not found', context.request);
+      const user = getContextUser(context);
+      const scope = await resolveOrgScopeInfo(supabase, user);
+      if (!(await canMutateApplication(supabase, user, scope, appRow))) {
+        return apiError(403, 'FORBIDDEN', 'You do not have access to this application', context.request);
+      }
+      const { data, error } = await supabase.from('applied_jobs').update({ application_status: 'accepted', responded_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', appRow.id).select('*, opportunity:opportunities(id, job_title, company_name, applications_count)').single();
       if (error) return apiDbError(error, context.request);
       return apiSuccess({ success: true, data }, context.request);
     }
@@ -652,9 +1345,16 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     case 'reject-offer': {
       const { id, reason } = body;
       if (!id) return apiError(400, 'VALIDATION_ERROR', 'id required', context.request);
+      const appRow = await getApplicationRow(supabase, id);
+      if (!appRow) return apiError(404, 'NOT_FOUND', 'Application not found', context.request);
+      const user = getContextUser(context);
+      const scope = await resolveOrgScopeInfo(supabase, user);
+      if (!(await canMutateApplication(supabase, user, scope, appRow))) {
+        return apiError(403, 'FORBIDDEN', 'You do not have access to this application', context.request);
+      }
       const updateData: any = { application_status: 'rejected', responded_at: new Date().toISOString(), updated_at: new Date().toISOString() };
       if (reason) updateData.notes = reason;
-      const { data, error } = await supabase.from('applied_jobs').update(updateData).eq('id', id).select().single();
+      const { data, error } = await supabase.from('applied_jobs').update(updateData).eq('id', appRow.id).select().single();
       if (error) return apiDbError(error, context.request);
       return apiSuccess({ success: true, data }, context.request);
     }
@@ -677,69 +1377,175 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     }
 
     // ── Interview actions ──
+    // 🔒 ORG SCOPING (interviews have NO organization_id — ownership is derived):
+    // visible = created_by the caller OR learner in the caller's org scope
+    // (user-space learner ids of org-owned applications + own learner ids).
+    // Merge approach: two scoped queries + dedupe (matches actions.ts style).
     case 'get-interviews': {
-      const { data, error } = await supabase.from('interviews').select('*').order('date', { ascending: true });
+      const user = getContextUser(context);
+      const orgId = await getActiveOrgId(supabase, user);
+      let query = supabase.from('interviews').select('*');
+      if (user.roles?.includes('learner')) query = query.eq('learner_id', user.id);
+      else {
+        if (!orgId) return apiError(403, 'FORBIDDEN', 'An active organization is required', context.request);
+        const access = await verifyOrgAccess(supabase, user.id, orgId, PERMISSIONS.VIEW_CANDIDATES);
+        if (!access.allowed) return apiError(403, 'FORBIDDEN', 'You cannot view interviews', context.request);
+        query = query.eq('organization_id', orgId);
+      }
+      const { data, error } = await query.order('date');
       if (error) return apiDbError(error, context.request);
-      return apiSuccess({ interviews: data }, context.request);
+      return apiSuccess({ interviews: data || [] }, context.request);
     }
     case 'get-interview-by-id': {
-      const { id } = body;
-      if (!id) return apiError(400, 'VALIDATION_ERROR', 'id required', context.request);
-      const { data, error } = await supabase.from('interviews').select('*').eq('id', id).single();
+      const user = getContextUser(context);
+      const gated = await loadGatedInterview(supabase, user, context, body.id);
+      if (gated.error) return gated.error;
+      const { data, error } = await supabase.from('interviews').select('*').eq('id', gated.id).single();
       if (error) return apiDbError(error, context.request);
       return apiSuccess({ interview: data }, context.request);
     }
     case 'get-interviews-for-learner': {
       const { learner_id } = body;
       if (!learner_id) return apiError(400, 'VALIDATION_ERROR', 'learner_id required', context.request);
-      const { data, error } = await supabase.from('interviews').select('*').eq('learner_id', learner_id).order('date', { ascending: false });
+      // 🔒 The requested learner profile must belong to the caller: accept
+      // either the learners.id or the learners.user_id (= users.id) alias —
+      // interviews.learner_id stores the user-space id (FK to learners(user_id)).
+      const user = getContextUser(context);
+      let ownedLearner: boolean;
+      if (learner_id === user.id) {
+        ownedLearner = true;
+      } else {
+        const { data: own, error: ownerErr } = await supabase
+          .from('learners')
+          .select('id')
+          .eq('id', learner_id)
+          .eq('user_id', user.id)
+          .limit(1)
+          .maybeSingle();
+        if (ownerErr) return apiDbError(ownerErr, context.request);
+        ownedLearner = !!own;
+      }
+      if (!ownedLearner) return apiError(403, 'FORBIDDEN', 'You may only view interviews for your own learner profile', context.request);
+      const { data, error } = await supabase.from('interviews').select('*').eq('learner_id', user.id).order('date', { ascending: false });
       if (error) return apiDbError(error, context.request);
       return apiSuccess({ interviews: data }, context.request);
     }
     case 'get-upcoming-interviews': {
-      const { data, error } = await supabase.from('upcoming_interviews').select('*');
+      const user = getContextUser(context);
+      const orgId = await getActiveOrgId(supabase, user);
+      let query = supabase.from('interviews').select('*');
+      if (user.roles?.includes('learner')) query = query.eq('learner_id', user.id);
+      else {
+        if (!orgId) return apiError(403, 'FORBIDDEN', 'An active organization is required', context.request);
+        const access = await verifyOrgAccess(supabase, user.id, orgId, PERMISSIONS.VIEW_CANDIDATES);
+        if (!access.allowed) return apiError(403, 'FORBIDDEN', 'You cannot view interviews', context.request);
+        query = query.eq('organization_id', orgId);
+      }
+      query = query.gt('date', new Date().toISOString()).not('status', 'in', '(completed,cancelled)');
+      const { data, error } = await query.order('date');
       if (error) return apiDbError(error, context.request);
-      return apiSuccess({ interviews: data }, context.request);
+      return apiSuccess({ interviews: data || [] }, context.request);
     }
     case 'get-pending-scorecards': {
-      const { data, error } = await supabase.from('pending_scorecards').select('*');
+      const user = getContextUser(context);
+      const orgId = await getActiveOrgId(supabase, user);
+      let query = supabase.from('interviews').select('*');
+      if (user.roles?.includes('learner')) query = query.eq('learner_id', user.id);
+      else {
+        if (!orgId) return apiError(403, 'FORBIDDEN', 'An active organization is required', context.request);
+        const access = await verifyOrgAccess(supabase, user.id, orgId, PERMISSIONS.VIEW_CANDIDATES);
+        if (!access.allowed) return apiError(403, 'FORBIDDEN', 'You cannot view interviews', context.request);
+        query = query.eq('organization_id', orgId);
+      }
+      query = query.eq('status', 'completed').is('scorecard', null);
+      const { data, error } = await query.order('date');
       if (error) return apiDbError(error, context.request);
-      return apiSuccess({ scorecards: data }, context.request);
+      return apiSuccess({ scorecards: data || [] }, context.request);
     }
     case 'create-interview': {
+      const user = getContextUser(context);
       const { interview } = body;
       if (!interview) return apiError(400, 'VALIDATION_ERROR', 'interview data required', context.request);
-      const { data, error } = await supabase.from('interviews').insert([interview]).select().single();
+      // 🔒 Field whitelist (no mass-assignment, OWASP API5): only the columns the
+      // endpoint exposes may be set, including legacy alias fields which map to
+      // canonical names when the canonical field is absent.
+      const canonical: any = {};
+      INTERVIEW_CREATE_FIELDS.forEach((field) => { if (interview[field] !== undefined) canonical[field] = interview[field]; });
+      if (canonical.date === undefined && interview.scheduled_at !== undefined) canonical.date = interview.scheduled_at; // legacy alias
+      if (canonical.duration === undefined && interview.duration_minutes !== undefined) canonical.duration = interview.duration_minutes; // legacy alias
+      // required-field validation (fail fast, clear 400)
+      const missing: string[] = [];
+      if (!canonical.date) missing.push('date');
+      if (!canonical.interviewer) missing.push('interviewer');
+      if (!canonical.job_title) missing.push('job_title');
+      if (missing.length > 0) {
+        return apiError(400, 'VALIDATION_ERROR', `Missing required interview field(s): ${missing.join(', ')}`, context.request);
+      }
+      // 🔒 Authorship is forced server-side — never trusted from the client, and
+      // any client-supplied created_by is stripped by the whitelist.
+      const orgId = await getActiveOrgId(supabase, user);
+      if (!orgId) return apiError(403, 'FORBIDDEN', 'An active organization is required', context.request);
+      const permission = await verifyOrgAccess(supabase, user.id, orgId, PERMISSIONS.MANAGE_CANDIDATES);
+      if (!permission.allowed) return apiError(403, 'FORBIDDEN', 'You cannot schedule interviews', context.request);
+      if (!canonical.candidate_name || !Number.isFinite(Date.parse(canonical.date)) || Date.parse(canonical.date) <= Date.now()) return apiError(400, 'VALIDATION_ERROR', 'Choose a candidate and a future interview time', context.request);
+      if (canonical.duration != null && (!Number.isInteger(canonical.duration) || canonical.duration < 5 || canonical.duration > 480)) return apiError(400, 'VALIDATION_ERROR', 'Interview duration must be 5–480 minutes', context.request);
+      canonical.organization_id = orgId;
+      canonical.created_by = user.id;
+      canonical.organization_id = await getActiveOrgId(supabase,user);
+      // interviews.id is a text PRIMARY KEY with NO default (DB-verified), so the
+      // row needs an explicit id. Accept the client's id only when it is a safe
+      // literal (charset/length-controlled — never a foreign-key-style injection
+      // surface since it is just a text PK); otherwise mint one server-side.
+      const clientId = typeof interview.id === 'string' ? interview.id.trim() : '';
+      canonical.id = /^[A-Za-z0-9_-]{1,64}$/.test(clientId)
+        ? clientId
+        : `int_${crypto.randomUUID().replace(/-/g, '')}`;
+      const { data, error } = await supabase.from('interviews').insert([canonical]).select().single();
       if (error) return apiDbError(error, context.request);
       return apiSuccess({ interview: data }, context.request);
     }
     case 'update-interview': {
-      const { id, ...updates } = body;
-      if (!id) return apiError(400, 'VALIDATION_ERROR', 'id required', context.request);
-      const { data, error } = await supabase.from('interviews').update(updates).eq('id', id).select().single();
+      const user = getContextUser(context);
+      // 🔒 Gate BEFORE mutation: fetch the row, enforce org/creator access.
+      const gated = await loadGatedInterview(supabase, user, context, body.id);
+      if (gated.error) return gated.error;
+      // 🔒 Field whitelist; reminders_sent is internal-only; created_by is
+      // never re-authorable.
+      const raw = body;
+      const updates: any = {};
+      INTERVIEW_UPDATE_FIELDS.forEach((field: string) => { if (raw[field] !== undefined && field !== 'id') updates[field] = raw[field]; });
+      const { data, error } = await supabase.from('interviews').update(updates).eq('id', gated.id).select().single();
       if (error) return apiDbError(error, context.request);
       return apiSuccess({ interview: data }, context.request);
     }
     case 'delete-interview': {
-      const { id } = body;
-      if (!id) return apiError(400, 'VALIDATION_ERROR', 'id required', context.request);
-      const { error } = await supabase.from('interviews').delete().eq('id', id);
+      const user = getContextUser(context);
+      const gated = await loadGatedInterview(supabase, user, context, body.id);
+      if (gated.error) return gated.error;
+      const { error } = await supabase.from('interviews').delete().eq('id', gated.id);
       if (error) return apiDbError(error, context.request);
       return apiSuccess({ deleted: true }, context.request);
     }
     case 'update-interview-status': {
       const { id, status: newStatus } = body;
       if (!id || !newStatus) return apiError(400, 'VALIDATION_ERROR', 'id and status required', context.request);
-      const updates: any = { status: newStatus };
+      const user = getContextUser(context);
+      const gated = await loadGatedInterview(supabase, user, context, id);
+      if (gated.error) return gated.error;
+      const updates: any = { status: newStatus }; // whitelisted via INTERVIEW_UPDATE_FIELDS
       if (newStatus === 'completed') updates.completed_date = new Date().toISOString();
-      const { data, error } = await supabase.from('interviews').update(updates).eq('id', id).select().single();
+      const { data, error } = await supabase.from('interviews').update(updates).eq('id', gated.id).select().single();
       if (error) return apiDbError(error, context.request);
       return apiSuccess({ interview: data }, context.request);
     }
     case 'update-scorecard': {
       const { id, scorecard } = body;
       if (!id || !scorecard) return apiError(400, 'VALIDATION_ERROR', 'id and scorecard required', context.request);
-      const { data, error } = await supabase.from('interviews').update({ scorecard, status: 'completed', completed_date: new Date().toISOString() }).eq('id', id).select().single();
+      const user = getContextUser(context);
+      const gated = await loadGatedInterview(supabase, user, context, id);
+      if (gated.error) return gated.error;
+      // only the whitelisted scorecard/completed fields are written
+      const { data, error } = await supabase.from('interviews').update({ scorecard, status: 'completed', completed_date: new Date().toISOString() }).eq('id', gated.id).select().single();
       if (error) return apiDbError(error, context.request);
       return apiSuccess({ interview: data }, context.request);
     }
@@ -760,9 +1566,16 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     case 'send-interview-reminder': {
       const { id, reminders_sent, sent_to } = body;
       if (!id) return apiError(400, 'VALIDATION_ERROR', 'id required', context.request);
-      const { error: updateError } = await supabase.from('interviews').update({ reminders_sent: (reminders_sent || 0) + 1 }).eq('id', id);
+      const user = getContextUser(context);
+      // 🔒 Gate BEFORE mutation (the reminders_sent counter and the reminder log
+      // row must both be unreachable for interviews the caller cannot access).
+      const gated = await loadGatedInterview(supabase, user, context, id);
+      if (gated.error) return gated.error;
+      // reminders_sent is internal-only: the counter increments server-side and
+      // the client value is never trusted.
+      const { error: updateError } = await supabase.from('interviews').update({ reminders_sent: (reminders_sent || 0) + 1 }).eq('id', gated.id);
       if (updateError) return apiDbError(updateError, context.request);
-      const reminderData: any = { interview_id: id, sent_to: sent_to || '', reminder_type: 'interview_reminder' };
+      const reminderData: any = { interview_id: gated.id, sent_to: sent_to || '', reminder_type: 'interview_reminder' };
       const { data, error: logError } = await supabase.from('interview_reminders').insert([reminderData]).select().single();
       if (logError) return apiDbError(logError, context.request);
       return apiSuccess({ reminder: data }, context.request);
@@ -801,24 +1614,24 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     case 'get-saved-jobs-with-details': {
       const { learner_id, activeOnly, limit } = body;
       if (!learner_id) return apiError(400, 'VALIDATION_ERROR', 'learner_id required', context.request);
-      let query = supabase.from('saved_jobs').select('*, opportunity:opportunities(id, title, job_title, company_name, company_logo, employment_type, location, mode, stipend_or_salary, salary_range_min, salary_range_max, experience_required, experience_level, skills_required, description, application_link, deadline, posted_date, is_active, department, created_at)').eq('learner_id', learner_id).order('saved_at', { ascending: false });
+      let query = supabase.from('saved_jobs').select('*, opportunity:opportunities(id, title, job_title, company_name, company_logo, employment_type, location, mode, stipend_or_salary, salary_range_min, salary_range_max, experience_required, experience_level, skills_required, description, application_link, deadline, posted_date, is_active, department, created_at, learning_requirements, learning_requirements_version)').eq('learner_id', learner_id).order('saved_at', { ascending: false });
       if (limit) query = query.limit(limit);
       const { data, error } = await query;
       if (error) return apiDbError(error, context.request);
       let savedJobs = (data || []).map(item => ({ saved_job_id: item.id, saved_at: item.saved_at, ...item.opportunity }));
       if (activeOnly) savedJobs = savedJobs.filter(j => j.is_active);
-      return apiSuccess({ savedJobs }, context.request);
+      return apiSuccess({ savedJobs: await decorateLearningForActor(supabase,context.env as any,getContextUser(context),savedJobs) }, context.request);
     }
     case 'get-saved-jobs-with-applied-status': {
       const { learner_id } = body;
       if (!learner_id) return apiError(400, 'VALIDATION_ERROR', 'learner_id required', context.request);
-      let query = supabase.from('saved_jobs').select('*, opportunity:opportunities(id, title, job_title, company_name, company_logo, employment_type, location, mode, stipend_or_salary, salary_range_min, salary_range_max, experience_required, experience_level, skills_required, description, application_link, deadline, posted_date, is_active, department, created_at)').eq('learner_id', learner_id).order('saved_at', { ascending: false });
+      let query = supabase.from('saved_jobs').select('*, opportunity:opportunities(id, title, job_title, company_name, company_logo, employment_type, location, mode, stipend_or_salary, salary_range_min, salary_range_max, experience_required, experience_level, skills_required, description, application_link, deadline, posted_date, is_active, department, created_at, learning_requirements, learning_requirements_version)').eq('learner_id', learner_id).order('saved_at', { ascending: false });
       const { data } = await query;
       const savedJobs = (data || []).map(item => ({ saved_job_id: item.id, saved_at: item.saved_at, ...item.opportunity }));
       const { data: appliedJobs } = await supabase.from('applied_jobs').select('opportunity_id, application_status, applied_at').eq('learner_id', learner_id);
       const appliedMap = new Map((appliedJobs || []).map(app => [app.opportunity_id, app]));
       const result = savedJobs.map(job => ({ ...job, has_applied: appliedMap.has(job.id), application_status: appliedMap.get(job.id)?.application_status || null, applied_at: appliedMap.get(job.id)?.applied_at || null }));
-      return apiSuccess({ savedJobs: result }, context.request);
+      return apiSuccess({ savedJobs: await decorateLearningForActor(supabase,context.env as any,getContextUser(context),result) }, context.request);
     }
     case 'get-saved-jobs-count': {
       const { learner_id } = body;
@@ -889,53 +1702,121 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     }
 
     // ── Shortlist actions ──
+    // Organization ownership is persisted independently of changing memberships.
     case 'get-shortlists': {
-      const { data, error } = await supabase.from('shortlists').select('*, shortlist_candidates(count)').order('created_date', { ascending: false });
+      const user = getContextUser(context);
+      const orgId = await getActiveOrgId(supabase, user);
+      const memberIds = orgId ? await getOrgMemberUserIds(supabase, orgId) : [];
+      if (memberIds.length === 0) return apiSuccess({ shortlists: [] }, context.request);
+      const { data, error } = await supabase
+        .from('shortlists')
+        .select('*, shortlist_candidates(count)')
+        .eq('organization_id',orgId)
+        .order('created_date', { ascending: false });
       if (error) return apiDbError(error, context.request);
       const formatted = (data || []).map(item => ({ ...item, candidate_count: item.shortlist_candidates?.[0]?.count || 0 }));
       return apiSuccess({ shortlists: formatted }, context.request);
     }
     case 'get-shortlist-by-id': {
-      const { id } = body;
-      if (!id) return apiError(400, 'VALIDATION_ERROR', 'id required', context.request);
-      const { data, error } = await supabase.from('shortlists').select('*').eq('id', id).single();
+      const user = getContextUser(context);
+      const gated = await loadGatedShortlist(supabase, user, context, body.id);
+      if (gated.error) return gated.error;
+      const { data, error } = await supabase.from('shortlists').select('*').eq('id', gated.id).single();
       if (error) return apiDbError(error, context.request);
       return apiSuccess({ shortlist: data }, context.request);
     }
     case 'create-shortlist': {
+      const user = getContextUser(context);
       const { shortlist } = body;
       if (!shortlist) return apiError(400, 'VALIDATION_ERROR', 'shortlist data required', context.request);
-      const { data, error } = await supabase.from('shortlists').insert([shortlist]).select().single();
+      // 🔒 Field whitelist (no mass-assignment): name/description/status/shared
+      // and tags. Sharing tokens are generated only by the dedicated server endpoint.
+      if (!shortlist.name) {
+        return apiError(400, 'VALIDATION_ERROR', 'shortlist name is required', context.request);
+      }
+      const canonical: any = {
+        name: shortlist.name,
+        description: shortlist.description,
+        status: shortlist.status || 'active',
+        shared: false,
+        tags: Array.isArray(shortlist.tags) ? [...new Set(shortlist.tags.filter((x: unknown) => typeof x === 'string').map((x: string) => x.trim()).filter(Boolean))].slice(0, 30) : [],
+      };
+      if (shortlist.id !== undefined && shortlist.id !== null) {
+        if (!SL_ID_RE.test(String(shortlist.id))) {
+          return apiError(400, 'VALIDATION_ERROR', 'shortlist id must be alphanumeric (-, _ allowed, ≤64 chars)', context.request);
+        }
+        canonical.id = String(shortlist.id); // INSERT-only: an existing id cannot be overwritten
+      }
+      // 🔒 Authorship forced server-side; client created_by ignored
+      canonical.created_by = user.id;
+      canonical.organization_id = await getActiveOrgId(supabase,user);
+      const { data, error } = await supabase.from('shortlists').insert([canonical]).select().single();
       if (error) return apiDbError(error, context.request);
       return apiSuccess({ shortlist: data }, context.request);
     }
     case 'update-shortlist': {
-      const { id, ...updates } = body;
-      if (!id) return apiError(400, 'VALIDATION_ERROR', 'id required', context.request);
-      const { data, error } = await supabase.from('shortlists').update(updates).eq('id', id).select().single();
+      const user = getContextUser(context);
+      const gated = await loadGatedShortlist(supabase, user, context, body.id);
+      if (gated.error) return gated.error;
+      // 🔒 Field whitelist (no mass-assignment) restricted to actual shortlists
+      // columns. Sharing-token changes use the dedicated authenticated endpoint.
+      const updates: Record<string, unknown> = {};
+      for (const field of ['name', 'description', 'status', 'watermark', 'include_pii', 'notify_on_access', 'tags']) {
+        if (body[field] !== undefined) updates[field] = body[field];
+      }
+      const { data, error } = await supabase.from('shortlists').update(updates).eq('id', gated.id).select().single();
       if (error) return apiDbError(error, context.request);
       return apiSuccess({ shortlist: data }, context.request);
     }
     case 'delete-shortlist': {
-      const { id } = body;
-      if (!id) return apiError(400, 'VALIDATION_ERROR', 'id required', context.request);
-      const { error } = await supabase.from('shortlists').delete().eq('id', id);
+      const user = getContextUser(context);
+      const gated = await loadGatedShortlist(supabase, user, context, body.id);
+      if (gated.error) return gated.error;
+      const { error } = await supabase.from('shortlists').delete().eq('id', gated.id);
       if (error) return apiDbError(error, context.request);
       return apiSuccess({ deleted: true }, context.request);
     }
     case 'get-shortlist-candidates': {
       const { shortlist_id } = body;
       if (!shortlist_id) return apiError(400, 'VALIDATION_ERROR', 'shortlist_id required', context.request);
-      await supabase.from('shortlists').select('id, name').eq('id', shortlist_id).single();
-      const { data, error } = await supabase.from('shortlist_candidates').select('id, added_at, notes, learner_id, shortlist_id').eq('shortlist_id', shortlist_id);
+      // 🔒 Reachable ONLY through the ownership-gated parent shortlist.
+      const user = getContextUser(context);
+      const gated = await loadGatedShortlist(supabase, user, context, shortlist_id);
+      if (gated.error) return gated.error;
+      const { data, error } = await supabase.from('shortlist_candidates').select('id, added_at, notes, learner_id, shortlist_id').eq('shortlist_id', gated.id);
       if (error) return apiDbError(error, context.request);
       if (!data || data.length === 0) return apiSuccess({ candidates: [] }, context.request);
+      // Contact fields (email/phone) remain in-org-only visibility (documented
+      // owner-consent design) — this endpoint is now only reachable through the
+      // ownership-scoped parent shortlist above.
       const learnerIds = data.map(d => d.learner_id);
-      const { data: learners } = await supabase.from('learners').select('id, profile').in('id', learnerIds);
+      // profile (jsonb) may be absent on drifted/local DBs — select the flat
+      // authoritative columns too and compose the object server-side so the
+      // FE contract holds regardless of schema drift state.
+      const { data: learners, error: learnersErr } = await supabase.from('learners').select('id, name, email, contact_number, alternate_number, branch_field, college_school_name, university, registration_number, date_of_birth, age, profile').in('id', learnerIds);
+      if (learnersErr) return apiDbError(learnersErr, context.request);
+      const composeProfile = (l: any): Record<string, unknown> => {
+        if (!l) return {};
+        const base: Record<string, unknown> = {
+          name: l.name,
+          email: l.email,
+          contact_number: l.contact_number,
+          phone_number: l.contact_number,
+          alternate_number: l.alternate_number,
+          branch_field: l.branch_field,
+          university: l.university || l.college_school_name,
+          college_school_name: l.college_school_name,
+          registration_number: l.registration_number,
+          date_of_birth: l.date_of_birth,
+          age: l.age,
+        };
+        const stored = l.profile && typeof l.profile === 'object' && !Array.isArray(l.profile) ? l.profile : {};
+        return { ...base, ...stored };
+      };
       const candidates = data.map(item => {
         const learner = (learners || []).find(l => l.id === item.learner_id);
         if (!learner) return null;
-        let profile = typeof learner.profile === 'string' ? (() => { try { return JSON.parse(learner.profile); } catch { return {}; } })() : (learner.profile || {});
+        const profile = composeProfile(learner);
         const educationArray = profile.education || [];
         const education = educationArray.find((e: any) => e.status === 'ongoing') || educationArray[0] || {};
         let cgpa = education.cgpa || profile.cgpa || 'N/A';
@@ -951,9 +1832,18 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       return apiSuccess({ candidates }, context.request);
     }
     case 'add-candidate-to-shortlist': {
-      const { shortlist_id, learner_id, added_by, notes } = body;
+      const { shortlist_id, learner_id, notes } = body;
       if (!shortlist_id || !learner_id) return apiError(400, 'VALIDATION_ERROR', 'shortlist_id and learner_id required', context.request);
-      const { data, error } = await supabase.from('shortlist_candidates').insert([{ shortlist_id, learner_id, added_by, notes }]).select().single();
+      const user = getContextUser(context);
+      const orgId = await getActiveOrgId(supabase, user);
+      if (!orgId) return apiError(403, 'FORBIDDEN', 'No active organization', context.request);
+      const access = await verifyOrgAccess(supabase, user.id, orgId, 'manage_candidates');
+      if (!access.allowed) return apiError(403, 'FORBIDDEN', 'You do not have permission to manage candidates', context.request);
+      // 🔒 Verify parent shortlist ownership BEFORE touching the junction rows,
+      // and force added_by to the server-side user id (client value ignored).
+      const gated = await loadGatedShortlist(supabase, user, context, shortlist_id);
+      if (gated.error) return gated.error;
+      const { data, error } = await supabase.from('shortlist_candidates').insert([{ shortlist_id: gated.id, learner_id, added_by: user.id, notes }]).select().single();
       if (error) {
         if (error.code === '23505') return apiSuccess({ data: null, error: { ...error, message: 'Candidate is already in this shortlist' } }, context.request);
         return apiDbError(error, context.request);
@@ -963,20 +1853,50 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     case 'remove-candidate-from-shortlist': {
       const { shortlist_id, learner_id } = body;
       if (!shortlist_id || !learner_id) return apiError(400, 'VALIDATION_ERROR', 'shortlist_id and learner_id required', context.request);
-      const { error } = await supabase.from('shortlist_candidates').delete().eq('shortlist_id', shortlist_id).eq('learner_id', learner_id);
+      const user = getContextUser(context);
+      // 🔒 Junction rows are scoped by shortlist_id — verify the parent first.
+      const gated = await loadGatedShortlist(supabase, user, context, shortlist_id);
+      if (gated.error) return gated.error;
+      const { error } = await supabase.from('shortlist_candidates').delete().eq('shortlist_id', gated.id).eq('learner_id', learner_id);
       if (error) return apiDbError(error, context.request);
       return apiSuccess({ deleted: true }, context.request);
     }
     case 'is-learner-in-shortlist': {
       const { shortlist_id, learner_id } = body;
       if (!shortlist_id || !learner_id) return apiError(400, 'VALIDATION_ERROR', 'shortlist_id and learner_id required', context.request);
-      const { data, error } = await supabase.from('shortlist_candidates').select('id').eq('shortlist_id', shortlist_id).eq('learner_id', learner_id).maybeSingle();
+      // 🔒 Gate: the shortlist owner's org (recruiter side, via
+      // loadGatedShortlist) OR the learner themself (learner side).
+      const user = getContextUser(context);
+      if (String(shortlist_id) !== String(shortlist_id).trim() || !SL_ID_RE.test(String(shortlist_id))) {
+        return apiError(400, 'VALIDATION_ERROR', 'shortlist_id required', context.request);
+      }
+      const isSelf = learner_id === user.id
+        || !!(await supabase.from('learners').select('id').eq('id', learner_id).eq('user_id', user.id).limit(1).maybeSingle()).data;
+      if (!isSelf) {
+        const gated = await loadGatedShortlist(supabase, user, context, shortlist_id);
+        if (gated.error) return gated.error;
+      } else {
+        // Learner side: confirm the shortlist exists, then answer membership
+        // (existence check avoids leaking presence across a deleted shortlist).
+        const { data: exists, error } = await supabase.from('shortlists').select('id').eq('id', String(shortlist_id)).limit(1).maybeSingle();
+        if (error) return apiDbError(error, context.request);
+        if (!exists) return apiError(404, 'NOT_FOUND', 'Shortlist not found', context.request);
+      }
+      const { data, error } = await supabase.from('shortlist_candidates').select('id').eq('shortlist_id', String(shortlist_id)).eq('learner_id', learner_id).maybeSingle();
       if (error) return apiDbError(error, context.request);
       return apiSuccess({ inShortlist: !!data }, context.request);
     }
     case 'get-shortlists-for-learner': {
       const { learner_id } = body;
       if (!learner_id) return apiError(400, 'VALIDATION_ERROR', 'learner_id required', context.request);
+      // 🔒 Only the learner themself may list the shortlists they appear in.
+      const user = getContextUser(context);
+      let owned = learner_id === user.id;
+      if (!owned) {
+        const { data: own } = await supabase.from('learners').select('id').eq('id', learner_id).eq('user_id', user.id).limit(1).maybeSingle();
+        owned = !!own;
+      }
+      if (!owned) return apiError(403, 'FORBIDDEN', 'You may only view your own shortlists', context.request);
       const { data, error } = await supabase.from('shortlist_candidates').select('*, shortlists(id, name, description, created_date, status)').eq('learner_id', learner_id);
       if (error) return apiDbError(error, context.request);
       return apiSuccess({ shortlists: (data || []).map(item => item.shortlists) }, context.request);
@@ -984,7 +1904,11 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     case 'update-candidate-notes': {
       const { shortlist_id, learner_id, notes } = body;
       if (!shortlist_id || !learner_id) return apiError(400, 'VALIDATION_ERROR', 'shortlist_id and learner_id required', context.request);
-      const { data, error } = await supabase.from('shortlist_candidates').update({ notes }).eq('shortlist_id', shortlist_id).eq('learner_id', learner_id).select().single();
+      const user = getContextUser(context);
+      // 🔒 Verify via the parent shortlist first (rows are scoped by shortlist_id).
+      const gated = await loadGatedShortlist(supabase, user, context, shortlist_id);
+      if (gated.error) return gated.error;
+      const { data, error } = await supabase.from('shortlist_candidates').update({ notes }).eq('shortlist_id', gated.id).eq('learner_id', learner_id).select().single();
       if (error) return apiDbError(error, context.request);
       return apiSuccess({ data }, context.request);
     }

@@ -230,7 +230,7 @@ class EntitlementService {
    * @param {string} featureKey - The feature_key to look up
    * @returns {Promise<Object|null>} - Add-on details or null
    */
-  async getAddonByFeatureKey(featureKey) {
+  async getAddonByFeatureKey(featureKey: string) {
     try {
       const result = await apiGet<{ success: boolean; data: any; error: string | null }>(
         `/payments/get-addon-by-feature-key?featureKey=${encodeURIComponent(featureKey)}`
@@ -238,8 +238,13 @@ class EntitlementService {
       
       if (!result.success || !result.data) return null;
       return result.data;
-    } catch (error) {
-      return null;
+    } catch (error: any) {
+      const isNotFound = error?.status === 404 || error?.statusCode === 404 || error?.message?.toLowerCase().includes('not found');
+      if (isNotFound) {
+        return null;
+      }
+      console.error(`[entitlementService] Failed to fetch add-on for feature '${featureKey}':`, error);
+      throw error;
     }
   }
 

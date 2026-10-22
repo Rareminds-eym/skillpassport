@@ -1,30 +1,22 @@
 /**
- * SubscriptionGate
+ * SubscriptionGate Component
  * 
- * Conditionally renders content based on subscription status.
- * Use for gating premium features within pages.
+ * Conditionally renders content based on entitlement manifest & subscription status.
+ * Zero hardcoded plan arrays.
  * 
  * Usage:
  * <SubscriptionGate 
  *   fallback={<UpgradePrompt />}
- *   requiredPlan="professional"
+ *   requiredFeature="advanced_skill_filters"
  * >
- *   <PremiumFeature />
+ *   <CandidateAdvancedFilters />
  * </SubscriptionGate>
  */
 
 import { Link, useLocation } from 'react-router-dom';
 import { useSubscriptionQuery } from '@/features/subscription/model/useSubscriptionQuery';
+import { useEntitlementManifest } from '@/features/subscription/model/useEntitlementManifest';
 
-
-// Plan hierarchy for access-control comparisons (lowest → highest).
-// Must match plan_code values in the Supabase subscription_plans table.
-// Pricing is never read from here — prices come exclusively from the DB via the API.
-const PLAN_HIERARCHY = ['freemium', 'basic', 'professional', 'premium', 'enterprise', 'enterprise_ecosystem'];
-
-/**
- * Get the base path for subscription routes based on current location
- */
 function getSubscriptionBasePath(pathname) {
   if (pathname.startsWith('/learner')) return '/learner';
   if (pathname.startsWith('/recruitment')) return '/recruitment';
@@ -32,12 +24,9 @@ function getSubscriptionBasePath(pathname) {
   if (pathname.startsWith('/college-admin')) return '/college-admin';
   if (pathname.startsWith('/school-admin')) return '/school-admin';
   if (pathname.startsWith('/university-admin')) return '/university-admin';
-  return ''; // fallback to root
+  return '';
 }
 
-/**
- * Get the user type for subscription plans based on current path
- */
 function getUserTypeFromPath(pathname) {
   if (pathname.startsWith('/learner')) return 'learner';
   if (pathname.startsWith('/recruitment')) return 'recruiter';
@@ -45,10 +34,10 @@ function getUserTypeFromPath(pathname) {
   if (pathname.startsWith('/college-admin')) return 'college_admin';
   if (pathname.startsWith('/school-admin')) return 'school_admin';
   if (pathname.startsWith('/university-admin')) return 'university_admin';
-  return 'learner'; // fallback
+  return 'learner';
 }
 
-const DefaultFallback = ({ requiredPlan, basePath, userType }) => (
+const DefaultFallback = ({ requiredFeature, requiredPlan, basePath, userType }) => (
   <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100 rounded-lg p-6 text-center">
     <div className="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4">
       <svg className="w-6 h-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -56,62 +45,89 @@ const DefaultFallback = ({ requiredPlan, basePath, userType }) => (
       </svg>
     </div>
     <h3 className="text-lg font-semibold text-gray-900 mb-2">
-      Premium Feature
+      Premium Capability
     </h3>
     <p className="text-gray-600 mb-4">
-      {requiredPlan
-        ? `This feature requires a ${requiredPlan} plan or higher.`
-        : 'This feature requires an active subscription.'}
+      {requiredFeature
+        ? `This capability (${requiredFeature.replace(/_/g, ' ')}) requires an upgraded subscription plan.`
+        : requiredPlan
+          ? `This feature requires a ${requiredPlan} plan or higher.`
+          : 'This feature requires an active subscription.'}
     </p>
     <Link
       to={`/subscription/plans?type=${userType}`}
-      className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
+      className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
     >
-      Upgrade Now
+      View Upgrade Plans
     </Link>
   </div>
 );
 
-/**
- * Get plan level from hierarchy array
- * @param {string} planId - Plan ID to check
- * @returns {number} Plan level (index in hierarchy)
- */
-const getPlanLevel = (planId) => {
-  if (!planId) return -1;
-  const normalizedPlan = planId.toLowerCase();
-  const index = PLAN_HIERARCHY.indexOf(normalizedPlan);
-  return index >= 0 ? index : -1;
-};
-
 const SubscriptionGate = ({
   children,
   fallback,
+  requiredFeature = null,
   requiredPlan = null,
   requireActive = true,
 }) => {
   const location = useLocation();
   const basePath = getSubscriptionBasePath(location.pathname);
   const userType = getUserTypeFromPath(location.pathname);
-  const { hasAccess, subscriptionData: subscription, loading: isLoading } = useSubscriptionQuery();
+  const isInstitution = ['college_admin', 'school_admin', 'university_admin', 'educator'].includes(userType);
+  const family = userType === 'recruiter' ? 'recruiter' : (isInstitution ? 'institution' : 'individual');
 
-  // Show nothing while loading
+  const { hasAccess, subscriptionData, loading: subLoading } = useSubscriptionQuery();
+  const { manifest, loading: manifestLoading } = useEntitlementManifest({ family });
+
+  const isLoading = subLoading || manifestLoading;
+
   if (isLoading) {
     return null;
   }
 
-  // Check basic access
-  if (requireActive && !hasAccess) {
-    return fallback || <DefaultFallback requiredPlan={requiredPlan} basePath={basePath} userType={userType} />;
+  // 1. If a specific entitlement feature key is specified, check against manifest
+  if (requiredFeature && manifest?.features) {
+    const feat = manifest.features[requiredFeature];
+    if (!feat || !feat.enabled) {
+      return fallback || (
+        <DefaultFallback 
+          requiredFeature={requiredFeature} 
+          basePath={basePath} 
+          userType={userType} 
+        />
+      );
+    }
+    return children;
   }
 
-  // Check plan level if specified
-  if (requiredPlan && subscription) {
-    const userPlanLevel = getPlanLevel(subscription.plan);
-    const requiredPlanLevel = getPlanLevel(requiredPlan);
+  // 2. Check basic active subscription access
+  if (requireActive && !hasAccess && !manifest?.is_subscribed) {
+    return fallback || (
+      <DefaultFallback 
+        requiredPlan={requiredPlan} 
+        basePath={basePath} 
+        userType={userType} 
+      />
+    );
+  }
 
-    if (userPlanLevel < requiredPlanLevel) {
-      return fallback || <DefaultFallback requiredPlan={requiredPlan} basePath={basePath} userType={userType} />;
+  // 3. Check plan hierarchy dynamically if specified
+  if (requiredPlan && manifest) {
+    const isRecruiterContext = userType === 'recruiter' || manifest.plan_family === 'recruiter';
+    if (!isRecruiterContext && !isInstitution) {
+      // Legacy learner plan fallback (only for individual learner context)
+      const learnerHierarchy = ['freemium', 'basic', 'professional', 'premium', 'enterprise', 'enterprise_ecosystem'];
+      const userLevel = learnerHierarchy.indexOf((subscriptionData?.plan || manifest.plan_code || '').toLowerCase());
+      const reqLevel = learnerHierarchy.indexOf(requiredPlan.toLowerCase());
+      if (userLevel < reqLevel && reqLevel >= 0) {
+        return fallback || (
+          <DefaultFallback 
+            requiredPlan={requiredPlan} 
+            basePath={basePath} 
+            userType={userType} 
+          />
+        );
+      }
     }
   }
 

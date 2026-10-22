@@ -17,7 +17,7 @@ import RecruiterCopilot from '@/features/recruiter-copilot/ui/RecruiterCopilot';
  */
 export default function RecruiterAI() {
   return (
-    <FeatureGate featureKey="recruiter_ai" showUpgradePrompt={true}>
+    <FeatureGate featureKey="ai_candidate_recommendations" showUpgradePrompt={true}>
       <RecruiterCopilot />
     </FeatureGate>
   );

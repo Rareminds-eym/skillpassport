@@ -1,3 +1,4 @@
+import {resolveReviewCollege} from "../review-affiliation";
 import { z } from "zod";
 import { DEFAULT_EVALUATION_MODE } from "../../../../../lib/lte/review-defaults";
 import type { GatewayAction } from "../types";
@@ -17,6 +18,7 @@ import type { GatewayAction } from "../types";
 interface LearnerOrgs {
   school_id: string | null;
   college_id: string | null;
+  university_college_id?: string | null;
 }
 
 export const handleReviewPolicy: GatewayAction = async (ctx, payload) => {
@@ -29,11 +31,12 @@ export const handleReviewPolicy: GatewayAction = async (ctx, payload) => {
       },
     };
   const learners = await ctx.db.query<LearnerOrgs>(
-    `learners?user_id=eq.${ctx.userId}&is_deleted=is.false&select=school_id,college_id&limit=5`,
+    `learners?user_id=eq.${ctx.userId}&is_deleted=is.false&select=school_id,college_id,university_college_id&limit=5`,
   );
+  const resolved=await Promise.all(learners.map(async learner=>({...learner,college_id:await resolveReviewCollege(ctx.db,learner)})));
   const organizationIds = [
     ...new Set(
-      learners.flatMap((row) => [row.school_id, row.college_id]).filter((id): id is string => !!id),
+      resolved.flatMap((row) => [row.school_id, row.college_id]).filter((id): id is string => !!id),
     ),
   ];
   if (!organizationIds.length)

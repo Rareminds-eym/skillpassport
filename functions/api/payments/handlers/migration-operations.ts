@@ -31,7 +31,7 @@ export async function handleMigrationOperations(context: AuthenticatedContext): 
     if (action === 'getMigrationMapping') {
       const { planCode } = body;
       const { data: plan, error: planError } = await supabase.from('plans_cache').select('id, plan_code, name, base_features').eq('plan_code', planCode).single();
-      if (planError) return apiError(200, 'ERROR', 'PLAN_NOT_FOUND', context.request);
+      if (planError) return apiError(404, 'PLAN_NOT_FOUND', 'Plan not found', context.request);
 
       const addonsData = await ssoListAddonCatalog(env as any);
       const addons = (addonsData.addons || []) as any[];
@@ -48,7 +48,7 @@ export async function handleMigrationOperations(context: AuthenticatedContext): 
 
     if (action === 'calculatePriceProtection') {
       const { data: subscription } = await supabase.from('subscription_cache').select('id, plan_id, status, created_at, plan_amount, plan_code, plan_name, features').eq('user_id', userId).eq('status', 'active').single();
-      if (!subscription) return apiError(200, 'ERROR', 'NO_ACTIVE_SUBSCRIPTION', context.request);
+      if (!subscription) return apiError(404, 'NO_ACTIVE_SUBSCRIPTION', 'No active subscription found', context.request);
 
       const addonsData = await ssoListAddonCatalog(env as any);
       const addons = (addonsData.addons || []) as any[];
@@ -73,7 +73,7 @@ export async function handleMigrationOperations(context: AuthenticatedContext): 
 
     if (action === 'optOutOfMigration') {
       const { data: migration, error } = await supabase.from('subscription_migrations').update({ migration_status: 'opted_out', updated_at: new Date().toISOString() }).eq('user_id', userId).in('migration_status', ['pending', 'notified']).select().single();
-      if (error && error.code === 'PGRST116') return apiError(200, 'ERROR', 'NO_PENDING_MIGRATION', context.request);
+      if (error && error.code === 'PGRST116') return apiError(404, 'NO_PENDING_MIGRATION', 'No pending migration found', context.request);
       if (error) throw error;
       await trackEvent(supabase, userId, 'migration_opted_out', { migration_id: migration.id });
       return apiSuccess({ migrationId: migration.id, status: 'opted_out' }, context.request);
@@ -90,12 +90,12 @@ export async function handleMigrationOperations(context: AuthenticatedContext): 
 
       const { data: subscription, error: subError } = await supabase.from('subscription_cache').select('id, plan_id, plan_code, status, subscription_end_date, plan_amount').eq('user_id', migrateId).in('status', ['active', 'pending']).single();
       if (subError) {
-        if (subError.code === 'PGRST116') return apiError(200, 'ERROR', 'NO_ACTIVE_SUBSCRIPTION', context.request);
+        if (subError.code === 'PGRST116') return apiError(404, 'NO_ACTIVE_SUBSCRIPTION', 'No active subscription found', context.request);
         throw subError;
       }
 
       const { data: plan, error: planError } = await supabase.from('plans_cache').select('id, plan_code, name').eq('id', subscription.plan_id).single();
-      if (planError || !plan) return apiError(200, 'ERROR', 'PLAN_NOT_FOUND', context.request);
+      if (planError || !plan) return apiError(404, 'PLAN_NOT_FOUND', 'Plan not found', context.request);
 
       const mappingData = await ssoListAddonCatalog(env as any);
       const addons = (mappingData.addons || []) as any[];
@@ -123,7 +123,7 @@ export async function handleMigrationOperations(context: AuthenticatedContext): 
         migration_date: new Date().toISOString(),
         migration_status: 'pending',
       }).select().single();
-      if (migrationError) return apiError(200, 'ERROR', migrationError.message, context.request);
+      if (migrationError) return apiError(500, 'MIGRATION_ERROR', migrationError.message, context.request);
 
       const entitlements = relevantAddons.map(addon => ({
         user_id: migrateId,
@@ -139,7 +139,7 @@ export async function handleMigrationOperations(context: AuthenticatedContext): 
       const { error: entError } = await supabase.from('user_entitlements').insert(entitlements).select();
       if (entError) {
         await supabase.from('subscription_migrations').update({ migration_status: 'failed' }).eq('id', migration.id);
-        return apiError(200, 'ERROR', entError.message, context.request);
+        return apiError(500, 'ENTITLEMENT_ERROR', entError.message, context.request);
       }
 
       await supabase.from('subscription_migrations').update({ migration_status: 'completed' }).eq('id', migration.id);
@@ -175,7 +175,7 @@ export async function handleMigrationOperations(context: AuthenticatedContext): 
           notification_sent_at: notificationDate.toISOString(),
         }).eq('id', existing.id).select().single();
 
-        if (updateError) return apiError(200, 'ERROR', updateError.message, context.request);
+        if (updateError) return apiError(500, 'UPDATE_ERROR', updateError.message, context.request);
         await trackEvent(supabase, notifyId, 'notification_scheduled', { migration_id: existing.id, notification_date: notificationDate.toISOString(), migration_date: migration.toISOString() });
 
         return apiSuccess({ migrationId: existing.id, notificationDate: notificationDate.toISOString(), migrationDate: migration.toISOString(), status: 'notified', isUpdate: true }, context.request);
@@ -193,7 +193,7 @@ export async function handleMigrationOperations(context: AuthenticatedContext): 
         migration_status: 'notified',
       }).select().single();
 
-      if (insertError) return apiError(200, 'ERROR', insertError.message, context.request);
+      if (insertError) return apiError(500, 'INSERT_ERROR', insertError.message, context.request);
       await trackEvent(supabase, notifyId, 'notification_scheduled', { migration_id: newMigration.id, notification_date: notificationDate.toISOString(), migration_date: migration.toISOString() });
 
       return apiSuccess({ migrationId: newMigration.id, notificationDate: notificationDate.toISOString(), migrationDate: migration.toISOString(), status: 'notified', isUpdate: false }, context.request);
@@ -211,6 +211,6 @@ export async function handleMigrationOperations(context: AuthenticatedContext): 
     return apiError(400, 'VALIDATION_ERROR', 'Invalid action or missing params', context.request);
   } catch (error) {
     console.error('[MigrationOperations] Error:', error);
-    return apiError(200, 'ERROR', error instanceof Error ? error.message : 'Unknown error', context.request);
+    return apiError(500, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Unknown error', context.request);
   }
 }

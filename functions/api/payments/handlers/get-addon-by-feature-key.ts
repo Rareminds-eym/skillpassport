@@ -25,11 +25,17 @@ export async function handleGetAddonByFeatureKey(context: AuthenticatedContext):
     try {
       addon = await ssoGetAddonByFeatureKey(env as any, featureKey);
     } catch (err: any) {
-      if (err.message?.includes('Not found')) {
-        return apiSuccess(null, context.request, 200);
+      const errMsg = err instanceof Error ? err.message : String(err);
+      const isNotFound = err?.status === 404 || errMsg.toLowerCase().includes('not found');
+      if (isNotFound) {
+        return apiError(404, 'NOT_FOUND', `Addon not found for feature key: ${featureKey}`, context.request);
       }
       console.error('[GetAddonByFeatureKey] SSO Worker error:', err);
-      return apiError(200, 'ERROR', `SSO Worker error: ${err.message}`, context.request);
+      return apiError(500, 'INTERNAL_ERROR', `SSO Worker error: ${errMsg}`, context.request);
+    }
+
+    if (!addon) {
+      return apiError(404, 'NOT_FOUND', `Addon not found for feature key: ${featureKey}`, context.request);
     }
 
     // Transform to expected format
@@ -51,6 +57,6 @@ export async function handleGetAddonByFeatureKey(context: AuthenticatedContext):
     return apiSuccess(transformedData, context.request, 200);
   } catch (error) {
     console.error('[GetAddonByFeatureKey] Error:', error);
-    return apiError(200, 'ERROR', error instanceof Error ? error.message : 'Unknown error', context.request);
+    return apiError(500, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Unknown error', context.request);
   }
 }

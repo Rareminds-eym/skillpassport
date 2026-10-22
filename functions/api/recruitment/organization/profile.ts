@@ -3,7 +3,7 @@
  * Manages company profile information
  */
 
-import { withAuth } from '../../../lib/auth';
+import { withAuth, getContextUser } from '../../../lib/auth';
 import { getServiceClient } from '../../../lib/supabase';
 import { verifyOrgAccess, PERMISSIONS } from '../../../lib/permissions';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
@@ -13,7 +13,7 @@ import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
  * Fetch complete organization profile
  */
 export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
-    const user = context.data.user;
+    const user = getContextUser(context);
     const env = context.env as Record<string, string>;
     const supabase = getServiceClient(env as any);
 
@@ -21,7 +21,7 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
     const orgId = url.searchParams.get('org_id');
 
     console.log('[profile API] GET request:', {
-        userId: user.sub,
+        userId: user.id,
         orgId,
     });
 
@@ -32,7 +32,7 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
     }
 
     // Verify user has access to this organization
-    const access = await verifyOrgAccess(supabase, user.sub, orgId, undefined);
+    const access = await verifyOrgAccess(supabase, user.id, orgId, undefined);
     if (!access.allowed) {
         console.error('[profile API] Access denied');
         return access.error!;
@@ -145,12 +145,12 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
  * Update organization profile
  */
 export const onRequestPut = withAuth(async (context: AuthenticatedContext) => {
-    const user = context.data.user;
+    const user = getContextUser(context);
     const env = context.env as Record<string, string>;
     const supabase = getServiceClient(env as any);
 
     console.log('[profile API] PUT request:', {
-        userId: user.sub,
+        userId: user.id,
     });
 
     let body: any;
@@ -171,7 +171,7 @@ export const onRequestPut = withAuth(async (context: AuthenticatedContext) => {
     }
 
     // Verify user has admin access
-    const access = await verifyOrgAccess(supabase, user.sub, org_id, PERMISSIONS.MANAGE_ORG_SETTINGS);
+    const access = await verifyOrgAccess(supabase, user.id, org_id, PERMISSIONS.MANAGE_TEAM);
     if (!access.allowed) {
         console.error('[profile API] Admin access required');
         return access.error!;

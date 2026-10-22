@@ -34,6 +34,8 @@ import {
 } from 'lucide-react';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { opportunitiesService } from '@/features/opportunities/api/opportunitiesService';
+import { getExternalApplicationUrl, openExternalApplication } from '@/features/opportunities/lib/externalApplication';
 import { AdvancedFilters, OpportunityCard, OpportunityListItem, OpportunityPreview, RecommendedJobs, IndustrialVisitPreview } from '@/widgets/learner-dashboard';
 import {
   Pagination,
@@ -370,6 +372,19 @@ const Opportunities = () => {
   const [sortBy, setSortBy] = useState('newest');
   const [viewMode, setViewMode] = useState('grid');
   const [selectedOpportunity, setSelectedOpportunity] = useState(null);
+
+  useEffect(() => {
+    const selectedId = location.state?.selectedOpportunityId;
+    if (!selectedId) return;
+    let active = true;
+    opportunitiesService.getOpportunityById(selectedId).then(job => {
+      if (!active) return;
+      if (job) setSelectedOpportunity(job);
+      else toast.error('This opportunity is no longer available');
+      navigate(location.pathname, { replace: true, state: {} });
+    }).catch(() => { if (active) toast.error('Unable to load opportunity details'); });
+    return () => { active = false; };
+  }, [location.state?.selectedOpportunityId]);
   const [appliedJobs, setAppliedJobs] = useState(new Set());
   const [savedJobs, setSavedJobs] = useState(new Set());
   const [isApplying, setIsApplying] = useState(false);
@@ -581,18 +596,7 @@ const Opportunities = () => {
 
   // Pre-select opportunity from navigation state (from Dashboard) or auto-select first
   useEffect(() => {
-    if (location.state?.selectedOpportunityId && opportunities.length > 0) {
-      const preSelectedOpp = opportunities.find(
-        opp => opp.id === location.state.selectedOpportunityId
-      );
-      if (preSelectedOpp) {
-        setSelectedOpportunity(preSelectedOpp);
-        // Scroll to top to show the selected opportunity
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      }
-      // Clear the navigation state
-      navigate(location.pathname, { replace: true, state: {} });
-    } else if (opportunities.length > 0 && !selectedOpportunity && activeTab === 'my-jobs') {
+    if (!location.state?.selectedOpportunityId && opportunities.length > 0 && !selectedOpportunity && activeTab === 'my-jobs') {
       // Auto-select first opportunity if none selected
       setSelectedOpportunity(opportunities[0]);
     }
@@ -851,13 +855,13 @@ const Opportunities = () => {
       console.log('[Feature Gating] Blocking job application - Freemium user');
       setShowUpgradePrompt(true);
       toast.error('Upgrade required to apply for jobs');
-      return;
+      return false;
     }
 
     if (!learnerId) {
       logger.error('Please log in to apply for jobs');
       toast.error('Please log in to apply for jobs');
-      return;
+      return false;
     }
 
     // Check if profile is complete before allowing application
@@ -865,33 +869,49 @@ const Opportunities = () => {
       toast.error('Please complete your profile before applying');
       // Navigate to settings page
       navigate('/learner/settings');
-      return;
+      return false;
     }
 
     if (appliedJobs.has(opportunity.id)) {
-      toast.info('You have already applied to this job');
-      return;
+      toast('You have already applied to this job');
+      return false;
     }
 
     setIsApplying(true);
 
     try {
+      // Refresh authoritative action fields; ranker projections are not a job DTO.
+      const currentOpportunity = await opportunitiesService.getOpportunityById(opportunity.id);
+      if (!currentOpportunity) throw new Error('This opportunity is no longer available');
+      // Keep Details/retry destination and confirmation wording aligned with the action.
+      setSelectedOpportunity(previous => previous?.id === currentOpportunity.id ? currentOpportunity : previous);
+      opportunity = currentOpportunity;
       // Handle external application link
       if (opportunity.application_link) {
+        // Validate before recording anything; the Details retry uses the same guard.
+        const destination = getExternalApplicationUrl(opportunity.application_link);
         // Save application to profile for tracking
         const result = await AppliedJobsService.applyToJob(learnerId, opportunity.id);
 
         if (result.success) {
           setAppliedJobs(prev => new Set([...prev, opportunity.id]));
-          toast.success('Application submitted successfully!');
+          toast.success('Application recorded. Complete submission on the employer website.');
         } else {
-          toast.error(result.message || 'Failed to submit application');
+          toast.error(result.message || 'Failed to record application');
         }
 
-        // Open external link
-        window.open(opportunity.application_link, '_blank');
-        setIsApplying(false);
-        return;
+        if (!result.success) return false;
+        // Opening the employer page is not evidence of employer submission.
+        try {
+          const opened = openExternalApplication(destination);
+          // noopener can itself produce a null handle; it is not an opening failure.
+          if (!opened) toast('If the employer page did not open, use the application link in Details.');
+        } catch {
+          toast.error(result.success
+            ? 'Application recorded, but the employer page could not be opened. Use the application link in Details to retry.'
+            : 'The employer page could not be opened. Use the application link in Details to retry.');
+        }
+        return result.success === true;
       }
 
       // Handle regular application
@@ -904,9 +924,11 @@ const Opportunities = () => {
         toast.error(result.message || 'Failed to submit application');
         logger.error('Application failed:', result.message);
       }
+      return result.success === true;
     } catch (error) {
       logger.error('Error applying to job:', error);
       toast.error('An error occurred while applying');
+      return false;
     } finally {
       setIsApplying(false);
     }
@@ -963,7 +985,6 @@ const Opportunities = () => {
               <button
                 onClick={() => {
                   setShowInstitutionModal(false);
-                  navigate('/learner/dashboard');
                 }}
                 className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
               >
@@ -1039,7 +1060,6 @@ const Opportunities = () => {
                 <button
                   onClick={() => {
                     setShowInstitutionModal(false);
-                    navigate('/learner/dashboard');
                   }}
                   className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
                 >
@@ -1098,6 +1118,7 @@ const Opportunities = () => {
         )}
 
         {/* Tab Switcher - Show different tabs based on learner level */}
+        {!isLoading&&<div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3"><div><p className="text-sm font-medium text-slate-900">Find jobs for your learning</p><p className="mt-1 text-xs text-slate-500">Reviewer-approved levels, clear requirements, and equivalent evidence.</p></div><button type="button" onClick={()=>navigate('/learner/learning-jobs')} className="rounded-md border border-slate-300 px-3 py-2 text-xs font-medium text-slate-700">Explore learning matches →</button></div>}
         {!isLoading && (
           <div className="mb-8">
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-2 overflow-x-auto">

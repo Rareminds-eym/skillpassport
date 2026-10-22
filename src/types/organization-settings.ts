@@ -1,5 +1,18 @@
 export type VerificationStatus = 'pending' | 'approved' | 'rejected' | 'under_review';
-export type PlanTier = 'starter' | 'pro' | 'premium' | 'enterprise';
+export type PlanTier = 
+  | 'free' 
+  | 'lite' 
+  | 'starter' 
+  | 'growth' 
+  | 'pro' 
+  | 'enterprise'
+  | 'recruiter_free'
+  | 'recruiter_lite'
+  | 'recruiter_starter'
+  | 'recruiter_growth'
+  | 'recruiter_pro'
+  | 'recruiter_enterprise'
+  | (string & {});
 
 // Stored in organizations table (legal_name), 'name' field is used for display/brand name
 export interface CompanyNames {
