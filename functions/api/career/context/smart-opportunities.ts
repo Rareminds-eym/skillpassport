@@ -1,185 +1,30 @@
-// Smart Opportunities Fetcher - AI-Driven Context-Aware Job Matching
+// Smart Opportunities Fetcher - Deterministic Context-Aware Job Matching
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Opportunity, LearnerProfile, StoredMessage } from '../types';
-import { callCloudflareWithRetry } from '../../shared/ai-config';
+import { deriveOpportunityFilters, type OpportunityFilters } from './opportunity-filters';
 
 interface FetchContext {
   userMessage: string;
   conversationHistory: StoredMessage[];
   learnerProfile: LearnerProfile;
   intent: string;
-  /** Pages env (request-scoped) — only the Cloudflare AI binding is read. */
+  /** Pages env (request-scoped) — retained for caller compatibility; never used for inference. */
   env: unknown;
-}
-
-interface OpportunityFilters {
-  location?: string;
-  employmentType?: string;
-  experienceLevel?: string;
-  skills?: string[];
-  searchQuery?: string;
-  limit?: number;
-}
-
-interface AIFilterResponse {
-  searchTerms: string[];
-  location?: string;
-  employmentType?: string;
-  reasoning: string;
-}
-
-/**
- * Use AI to intelligently extract search filters from conversation
- * Uses chain-of-thought reasoning for accurate filter extraction
- */
-async function extractFiltersWithAI(context: FetchContext): Promise<OpportunityFilters> {
-  const { userMessage, conversationHistory, learnerProfile, env } = context;
-  
-  const recentContext = conversationHistory
-    .slice(-5)
-    .map(m => `${m.role}: ${m.content}`)
-    .join('\n');
-
-  const learnerSkills = learnerProfile.technicalSkills.map(s => s.name).join(', ') || 'None listed';
-  const learnerExperience = learnerProfile.experience?.map(e => e.title || e.role).join(', ') || 'No experience';
-  const learnerField = learnerProfile.department || 'Not specified';
-
-  const prompt = `You are an expert job search analyst. Extract precise search filters from the user's message.
-
-<learner_profile>
-Field: ${learnerField}
-Skills: ${learnerSkills}
-Experience: ${learnerExperience}
-</learner_profile>
-
-<conversation_history>
-${recentContext || 'No previous conversation'}
-</conversation_history>
-
-<current_message>
-${userMessage}
-</current_message>
-
-<instructions>
-Analyze the message and extract:
-
-1. searchTerms: Extract ALL relevant keywords from the user's message
-   - Include exact phrases if they mention job titles
-   - Include individual words that are meaningful
-   - Include technologies/skills mentioned
-   - If message is vague, use learner's top skills
-   - Return 2-5 terms
-
-2. location: Extract ONLY if explicitly mentioned
-   - City names, "remote", "hybrid", etc.
-   - Return null if not mentioned
-
-3. employmentType: Extract ONLY if explicitly stated
-   - Must be one of: "Internship", "Full-time", "Part-time", "Contract"
-   - Return null if not mentioned
-
-4. reasoning: Brief explanation of what you extracted and why
-</instructions>
-
-<output>
-Return ONLY valid JSON:
-{
-  "searchTerms": ["term1", "term2"],
-  "location": "value or null",
-  "employmentType": "value or null",
-  "reasoning": "explanation"
-}
-</output>
-
-JSON:`;
-
-  try {
-    const content = await callCloudflareWithRetry(
-      env,
-      [{ role: 'user', content: prompt }],
-      { maxTokens: 400, temperature: 0.1 }
-    );
-    if (!content) throw new Error('AI service error: empty response');
-    
-    // Extract JSON from response (handle markdown code blocks and extra text)
-    let jsonMatch = content.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      // Try to find JSON after "JSON:" marker
-      const jsonStart = content.indexOf('{');
-      const jsonEnd = content.lastIndexOf('}');
-      if (jsonStart !== -1 && jsonEnd !== -1) {
-        jsonMatch = [content.substring(jsonStart, jsonEnd + 1)];
-      }
-    }
-    
-    const aiResponse: AIFilterResponse = jsonMatch ? JSON.parse(jsonMatch[0]) : {};
-
-    console.log('🤖 AI Filter Reasoning:', aiResponse.reasoning);
-    console.log('🔍 Extracted Terms:', aiResponse.searchTerms);
-
-    // Build filters from AI response
-    const filters: OpportunityFilters = { limit: 15 };
-    
-    // Search terms
-    if (aiResponse.searchTerms && Array.isArray(aiResponse.searchTerms) && aiResponse.searchTerms.length > 0) {
-      filters.searchQuery = aiResponse.searchTerms
-        .filter(term => term && typeof term === 'string')
-        .slice(0, 5)
-        .join(' ');
-    }
-    
-    // Location (only if explicitly provided)
-    if (aiResponse.location && aiResponse.location !== 'null' && aiResponse.location.trim() !== '') {
-      filters.location = aiResponse.location;
-    }
-    
-    // Employment type (only if explicitly provided and valid)
-    const validTypes = ['Internship', 'Full-time', 'Part-time', 'Contract'];
-    if (aiResponse.employmentType && validTypes.includes(aiResponse.employmentType)) {
-      filters.employmentType = aiResponse.employmentType;
-    }
-
-    // Experience level from profile
-    const experienceCount = learnerProfile.experience?.length || 0;
-    if (experienceCount === 0) {
-      filters.experienceLevel = 'entry';
-    } else if (experienceCount <= 2) {
-      filters.experienceLevel = 'junior';
-    } else {
-      filters.experienceLevel = 'mid';
-    }
-
-    return filters;
-
-  } catch (error) {
-    console.error('❌ AI filter extraction failed, using intelligent fallback:', error);
-    
-    // Intelligent fallback: Use learner's profile intelligently
-    const topSkills = learnerProfile.technicalSkills
-      .slice(0, 3)
-      .map(s => s.name)
-      .filter(name => name && name.trim() !== '');
-
-    return {
-      searchQuery: topSkills.length > 0 ? topSkills.join(' ') : learnerProfile.department || '',
-      experienceLevel: learnerProfile.experience?.length === 0 ? 'entry' : 'junior',
-      limit: 15
-    };
-  }
 }
 
 /**
  * Build dynamic Supabase query based on filters
  * Uses intelligent query construction for optimal results
  */
-function buildQuery(
+export function buildQuery(
   supabase: SupabaseClient,
-  filters: OpportunityFilters
+  filters: OpportunityFilters,
+  columns = '*'
 ) {
   let query = supabase
     .from('opportunities')
-    .select('*')
+    .select(columns)
     .eq('is_active', true)
     .eq('status', 'open');
   
@@ -214,7 +59,7 @@ function buildQuery(
  * Calculate skill match score for ranking
  * Matches learner skills against job requirements
  */
-function calculateMatchScore(
+export function calculateMatchScore(
   opportunity: any,
   learnerSkills: string[],
   searchTerms: string[]
@@ -251,7 +96,7 @@ function calculateMatchScore(
 /**
  * Check if opportunity matches search terms
  */
-function matchesSearchTerms(opportunity: any, searchQuery: string): boolean {
+export function matchesSearchTerms(opportunity: any, searchQuery: string): boolean {
   if (!searchQuery) return true;
   
   const searchTerms = searchQuery.toLowerCase().split(' ').filter(t => t.length > 2);
@@ -272,46 +117,24 @@ function matchesSearchTerms(opportunity: any, searchQuery: string): boolean {
   // Match if ANY search term is found (more lenient)
   const matches = searchTerms.some(term => combinedText.includes(term));
   
-  if (!matches) {
-    console.log(`❌ No match for "${opportunity.title}": searched for [${searchTerms.join(', ')}] in "${combinedText.substring(0, 100)}..."`);
-  } else {
-    console.log(`✅ Match found for "${opportunity.title}": [${searchTerms.join(', ')}]`);
-  }
-  
   return matches;
 }
 
 /**
- * Smart fetch with AI-driven context-aware filtering and ranking
+ * Smart fetch with deterministic filtering and existing ranking
  */
 export async function fetchSmartOpportunities(
   supabase: SupabaseClient,
   context: FetchContext
 ): Promise<Opportunity[]> {
   try {
-    // Quick path: If user message is generic, skip AI extraction
-    const isGenericQuery = /^(what|show|find|get|list).*(job|position|role|opportunit)/i.test(context.userMessage);
-    
-    let filters: OpportunityFilters;
-    
-    if (isGenericQuery && context.userMessage.length < 50) {
-      // Fast path: Use learner skills directly without AI call
-      console.log('⚡ Fast path: Using learner skills directly');
-      filters = {
-        searchQuery: context.learnerProfile.technicalSkills
-          .slice(0, 3)
-          .map(s => s.name)
-          .join(' '),
-        experienceLevel: context.learnerProfile.experience?.length === 0 ? 'entry' : 'junior',
-        limit: 15
-      };
-    } else {
-      // AI path: Extract filters intelligently
-      filters = await extractFiltersWithAI(context);
-    }
-    
-    console.log('🎯 Smart Opportunity Filters:', filters);
-    
+    const filters = deriveOpportunityFilters({
+      message: context.userMessage,
+      skills: context.learnerProfile.technicalSkills.map(skill => skill.name),
+      department: context.learnerProfile.department,
+      experienceCount: context.learnerProfile.experience?.length ?? 0,
+    });
+
     // Build and execute query
     const query = buildQuery(supabase, filters);
     const { data, error } = await query;

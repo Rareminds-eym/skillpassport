@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { handleAiTutorSuggestions } from "../handlers/ai-tutor-suggestions.js";
 
 function makeSupabase(overrides: { lesson?: unknown; module?: unknown; lessonError?: unknown } = {}) {
-  const lesson = overrides.lesson ?? { lesson_id: "l-1", title: "Fractions", content: "A fraction is a part.", module_id: "m-1" };
-  const mod = overrides.module ?? { title: "Arithmetic" };
+  const lesson = overrides.lesson ?? { lesson_id: "22222222-2222-4222-8222-222222222222", title: "Fractions", content: "A fraction is a part.", module_id: "m-1" };
+  const mod = overrides.module ?? { title: "Arithmetic", course_id: '11111111-1111-4111-8111-111111111111' };
   return {
     from(table: string) {
       if (table === "lessons") {
@@ -55,6 +55,46 @@ function makeContext(body: unknown, env: Record<string, string> = {}, supabase?:
 const workerQuestions = ["What is a fraction?", "Why does it matter?", "How to add them?"];
 
 describe("tutor suggestions via worker", () => {
+  it('rejects missing authentication before database reads or prompt issuance', async () => {
+    const { context } = makeContext({ lessonId: 'l-1' });
+    context.data = {};
+    let reads = 0;
+    const response = await handleAiTutorSuggestions(context, { supabase: { from() { reads++; throw new Error('must not read'); } } } as any);
+    expect(response.status).toBe(401);
+    expect(reads).toBe(0);
+  });
+  it('preserves orchestrator authorization denials instead of returning static defaults', async () => {
+    const { context, supabase } = makeContext({ lessonId: 'l-1' }, { AI_SERVICE: {
+      orchestrator: async () => Response.json({ error: { code: 'FEATURE_ACCESS_DENIED', message: 'Course access denied' } }, { status: 403 }),
+    } } as any);
+    const response = await handleAiTutorSuggestions(context, { supabase } as any);
+    expect(response.status).toBe(403);
+    expect(await response.text()).toContain('FEATURE_ACCESS_DENIED');
+  });
+  it('assembles product instructions from resolved lesson rows and ignores browser prompt overrides', async () => {
+    let input: any;
+    const { context, supabase } = makeContext({ lessonId: 'l-1', courseId: 'BROWSER COURSE OVERRIDE', prompt: { user: 'BROWSER OVERRIDE' } }, {
+      AI_SERVICE: { orchestrator: async (request: any) => {
+        input = request.input.task.input;
+        expect(request.input.task.action).toBe('seniorEducator.suggest');
+        expect(input.courseId).toBe('11111111-1111-4111-8111-111111111111');
+        expect(input.lessonId).toBe('22222222-2222-4222-8222-222222222222');
+        const claims = JSON.parse(Buffer.from(request.executionAssertion.split('.')[1], 'base64url').toString('utf8'));
+        expect(claims.action).toBe('orchestration.assist');
+        expect(claims.promptHash).toMatch(/^[a-f0-9]{64}$/);
+        return new Response([
+          { type: 'result', result: { kind: 'tutor-suggestions', data: { questions: workerQuestions } } },
+          { type: 'completed', executionId: 'e', outcome: 'answered' },
+        ].map(event => `data: ${JSON.stringify(event)}\n\n`).join(''), { headers: { 'content-type': 'text/event-stream' } });
+      } },
+    } as any);
+    const response = await handleAiTutorSuggestions(context, { supabase } as any);
+    expect(response.status).toBe(200);
+    expect(input.prompt.id).toBe('seniorEducator.suggest');
+    expect(input.prompt.user).toContain('## Lesson: Fractions');
+    expect(input.prompt.system).toBeUndefined();
+    expect(JSON.stringify(input.prompt)).not.toContain('BROWSER OVERRIDE');
+  });
   it("returns worker questions on success", async () => {
     let seen: unknown;
     const { context, supabase } = makeContext({ lessonId: "l-1" });

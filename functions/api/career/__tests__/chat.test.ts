@@ -43,6 +43,66 @@ function basePorts(overrides: Record<string, unknown> = {}) {
 }
 
 describe("career chat via worker", () => {
+  it.each([undefined, '4.0.0'])('preserves frozen system version %s without rebuilding instructions', async systemVersion => {
+    let payload: any;
+    const env = { AI_ASSERT_SECRET: 'pages-test-secret-min-32-chars-0000', AI_SERVICE: { orchestrator: async (request: any) => {
+      payload = request.input.task.input;
+      return workerSse(['Saved answer']);
+    } } };
+    const response = await handleCareerChat(post({ message: 'hello' }), env as never, USER, basePorts({
+      claimTurnIntent: async () => ({ created: false, state: 'ready', sessionId: 'sess-1', workerInputHash: 'f'.repeat(64),
+        workerInput: { system: 'FROZEN POLICY', ...(systemVersion ? { systemVersion } : {}), history: [] } }),
+      assembleContext: async () => { throw new Error('must reuse frozen policy'); },
+    }) as never);
+    await response.text();
+    expect(payload.system).toBe('FROZEN POLICY');
+    expect(payload.systemVersion).toBe(systemVersion);
+    expect(payload.workerInputHash).toBe('f'.repeat(64));
+  });
+
+  it('forwards a missing-context clarification through the existing browser chat contract', async () => {
+    let saved: any;
+    const response = await handleCareerChat(post({ message: 'help' }), {} as never, USER, basePorts({
+      callWorker: async () => new Response([
+        { type: 'clarification', question: 'Please update your skills.' },
+        { type: 'completed', executionId: 'exec', outcome: 'clarify' },
+      ].map(event => `data: ${JSON.stringify(event)}\n\n`).join('')),
+      saveMessages: async (_db: unknown, args: unknown) => { saved = args; return { success: true, conversation_id: 'conv-1' }; },
+    }) as never);
+    expect(await response.text()).toContain('Please update your skills.');
+    expect(saved.messages[1].content).toBe('Please update your skills.');
+  });
+  it('never saves an interrupted partial answer as a successful turn', async () => {
+    let saves = 0;
+    const response = await handleCareerChat(post({ message: 'help' }), {} as never, USER, basePorts({
+      callWorker: async () => new Response([
+        { type: 'delta', sequence: 0, text: 'Partial answer' },
+        { type: 'partial', executionId: 'exec', text: 'Partial answer', error: { code: 'PARTIAL_MODEL_OUTPUT', message: 'interrupted', requestId: 'r', retryable: false } },
+      ].map(event => `data: ${JSON.stringify(event)}\n\n`).join('')),
+      saveMessages: async () => { saves++; return { success: true, conversation_id: 'conv-1' }; },
+    }) as never);
+    expect(await response.text()).toContain('Worker generation failed');
+    expect(saves).toBe(0);
+  });
+  it.each([{ roles: ['learner'] }, { roles: ['educator'] }, { roles: [] }])('signs authenticated roles $roles and ignores body roles', async ({ roles }) => {
+    let signedRoles: unknown;
+    const env = {
+      AI_ASSERT_SECRET: 'pages-test-secret-min-32-chars-0000',
+      AI_SERVICE: { orchestrator: async (request: { executionAssertion: string; input: { kind: string; task: { action: string } } }) => {
+        const claims = JSON.parse(Buffer.from(request.executionAssertion.split('.')[1], 'base64url').toString('utf8'));
+        signedRoles = claims.roles;
+        expect(claims.action).toBe('orchestration.assist');
+        expect(request.input.kind).toBe('task');
+        expect((request.input.task as any).input.systemVersion).toBe('4.0.0');
+        expect(request.input.task.action).toBe('careerTalentStrategist.chat');
+        return workerSse(['ok']);
+      } },
+    };
+    const response = await handleCareerChat(post({ message: 'hi', roles: ['admin', 'learner'], actor: { roles: ['learner'] } }), env as never, USER, basePorts() as never, roles);
+    expect(response.status).toBe(200);
+    await response.text();
+    expect(signedRoles).toEqual(roles);
+  });
   it("streams worker deltas as legacy lines, completes, and persists identically", async () => {
     let workerInput: unknown;
     let saved: unknown;

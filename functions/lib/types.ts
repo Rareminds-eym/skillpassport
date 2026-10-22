@@ -25,6 +25,11 @@ export interface PagesEnv {
   LTE_APP_URL?: string;
   /** Shared HMAC secret for the LTE ↔ SkillPassport internal gateway (server-only). */
   LTE_INTERNAL_SECRET?: string;
+  /**
+   * Shared HMAC secret for the internal evidence API used by the AI worker
+   * (server-only, never exposed to the browser).
+   */
+  EVIDENCE_SHARED_SECRET?: string;
   SP_DASH_CATALOG_URL?: string;
   LTE_CATALOG_SYNC_SECRET?: string;
   /**

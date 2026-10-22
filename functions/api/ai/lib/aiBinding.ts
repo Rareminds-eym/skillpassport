@@ -12,13 +12,14 @@
 import type {
   AiError,
   AiResult,
+  AiServiceContract,
   CareerRequest,
   EducatorRequest,
-  ExecutionStatus,
   KeywordsOutput,
   ResumeParseOutput,
   SummarizeVideoOutput,
   TutorSuggestionsOutput,
+  OrchestratorRequest,
 } from "@rareminds-eym/ai-protocol";
 
 /**
@@ -28,6 +29,7 @@ import type {
  * and mistype every bounded result.
  */
 export interface AiServiceBinding {
+  orchestrator(request: OrchestratorRequest): Promise<Response>;
   careerTalentStrategist(
     request: Extract<CareerRequest, { feature: "chat" }>,
   ): Promise<Response>;
@@ -56,7 +58,7 @@ export interface AiServiceBinding {
     executionAssertion: string;
     actor: { actorId: string; product: string };
     input: { executionId: string };
-  }): Promise<AiResult<ExecutionStatus>>;
+  }): ReturnType<AiServiceContract['getExecutionStatus']>;
   cancelExecution(request: {
     contractVersion: "1";
     requestId: string;
@@ -64,7 +66,7 @@ export interface AiServiceBinding {
     executionAssertion: string;
     actor: { actorId: string; product: string };
     input: { executionId: string };
-  }): Promise<AiResult<ExecutionStatus>>;
+  }): ReturnType<AiServiceContract['cancelExecution']>;
 }
 
 export interface AiServiceEnv {

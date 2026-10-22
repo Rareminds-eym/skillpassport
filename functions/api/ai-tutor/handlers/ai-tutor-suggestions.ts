@@ -1,11 +1,7 @@
 /**
- * AI Tutor Suggestions Handler — RPC cutover.
- *
- * Cut over 2026-09-12: direct OpenRouter call replaced by
- * `seniorEducator({ feature: 'suggest' })`. Lesson/module reads and the
- * static `getDefaultQuestions` fallback stay in Pages; prompt assembly,
- * retry/fallback inside AI call deleted (worker owns strict 3-5 validation).
- * Graceful degradation for missing lesson / short results preserved exactly.
+ * Tutor suggestions: product prompt assembly, lesson/module reads and static
+ * defaults remain in SkillPassport. Worker RPC supplies model transport and
+ * strict 3-5 question validation. Legacy response/degradation behavior is preserved.
  */
 
 import { createSupabaseClient } from '../../../lib/supabase';
@@ -13,12 +9,13 @@ import { apiSuccess, apiError } from '../../../lib/response';
 import type { PagesFunction, PagesEnv } from '../../../lib/types';
 import { getAiWorker, rpcErrorToHttpStatus } from '../../ai/lib/aiBinding';
 import { issueExecutionAssertion } from '../../ai/lib/assertion';
-import type { EducatorRequest } from '@rareminds-eym/ai-protocol';
+import { buildTutorSuggestionsPrompt } from '../prompts/tutor-suggestions';
+import type { OrchestratorRequest } from '@rareminds-eym/ai-protocol';
+import { readOrchestratorResult } from '../../ai/lib/orchestrator-result';
 
-type SuggestRpcRequest = Extract<EducatorRequest, { feature: 'suggest' }>;
 
 /**
- * Default questions to use when AI is unavailable or fails — preserved verbatim.
+ * Default questions to use when AI is unavailable or fails â€” preserved verbatim.
  */
 function getDefaultQuestions(lessonTitle: string): string[] {
   return [
@@ -74,6 +71,9 @@ export const handleAiTutorSuggestions: PagesFunction<PagesEnv> = async (context,
   }
 
   try {
+    const identity = (context as unknown as { data?: { user?: { sub?: string; id?: string } } }).data?.user;
+    const userId = identity?.sub ?? identity?.id;
+    if (!userId) return apiError(401, 'UNAUTHORIZED', 'Authentication is required', request);
     const supabase = p.supabase ?? createSupabaseClient(env);
 
     let body: unknown;
@@ -85,11 +85,11 @@ export const handleAiTutorSuggestions: PagesFunction<PagesEnv> = async (context,
 
     const { lessonId } = body as { lessonId?: string };
 
-    if (!lessonId) {
+    if (!lessonId || typeof lessonId !== 'string' || lessonId.length > 256) {
       return apiError(400, 'VALIDATION_ERROR', 'Missing required field: lessonId', request);
     }
 
-    // Fetch lesson with module info — preserved
+    // Fetch lesson with module info â€” preserved
     const { data: lesson, error: lessonError } = await supabase
       .from('lessons')
       .select('lesson_id, title, content, module_id')
@@ -97,12 +97,12 @@ export const handleAiTutorSuggestions: PagesFunction<PagesEnv> = async (context,
       .maybeSingle();
 
     if (lessonError) {
-      console.error('❌ Lesson fetch error:', lessonError);
+      console.error('âŒ Lesson fetch error:', lessonError);
       return apiError(500, 'INTERNAL_ERROR', 'Database error fetching lesson', request);
     }
 
     if (!lesson) {
-      console.warn(`⚠️ Lesson not found: ${lessonId}, returning default questions`);
+      console.warn(`âš ï¸ Lesson not found: ${lessonId}, returning default questions`);
       return apiSuccess({
         questions: [
           "What are the key concepts in this lesson?",
@@ -117,24 +117,18 @@ export const handleAiTutorSuggestions: PagesFunction<PagesEnv> = async (context,
     const lessonRow = lesson as { lesson_id: string; title: string; content?: string | null; module_id: string };
     const { data: module } = await supabase
       .from('course_modules')
-      .select('title')
+      .select('title, course_id')
       .eq('module_id', lessonRow.module_id)
       .maybeSingle();
 
     const moduleTitle = (module as { title?: string } | null)?.title || 'Unknown Module';
-
-    // Derive userId for assertion
-    const userId =
-      ((context as unknown as { data?: { user?: { sub?: string; id?: string } } }).data?.user?.sub ??
-        (context as unknown as { data?: { user?: { sub?: string; id?: string } } }).data?.user?.id ??
-        'unknown') as string;
 
     // Worker call (the single deliberate difference)
     const lessonContent = (lessonRow.content || 'No content available').slice(0, 8000);
 
     const result = p.callWorker
       ? await p.callWorker({ env: env as unknown as Record<string, unknown>, userId, lessonTitle: lessonRow.title, moduleTitle, lessonContent })
-      : await callSuggestWorker(env as unknown as Record<string, string>, userId, { lessonTitle: lessonRow.title, moduleTitle, lessonContent });
+      : await callSuggestWorker(env as unknown as Record<string, string>, userId, { lessonTitle: lessonRow.title, moduleTitle, lessonContent, lessonId: lessonRow.lesson_id, courseId: (module as { course_id?: string } | null)?.course_id ?? '' });
 
     if (result.ok) {
       return apiSuccess({
@@ -146,7 +140,7 @@ export const handleAiTutorSuggestions: PagesFunction<PagesEnv> = async (context,
 
     // Typed failure <3 questions => fallback to defaults (role-overview precedent: Pages owns fallback)
     if (result.code === 'INVALID_MODEL_OUTPUT') {
-      console.warn('⚠️ Worker returned fewer than 3 questions, using defaults');
+      console.warn('âš ï¸ Worker returned fewer than 3 questions, using defaults');
       return apiSuccess({
         questions: getDefaultQuestions(lessonRow.title),
         lessonId,
@@ -161,7 +155,7 @@ export const handleAiTutorSuggestions: PagesFunction<PagesEnv> = async (context,
     if (status === 403 || status === 429 || status === 401) {
       return apiError(status, result.code, result.message.slice(0, 500), request);
     }
-    console.error('❌ Worker suggest error:', result.message);
+    console.error('âŒ Worker suggest error:', result.message);
     return apiSuccess({
       questions: getDefaultQuestions(lessonRow.title),
       lessonId,
@@ -169,8 +163,12 @@ export const handleAiTutorSuggestions: PagesFunction<PagesEnv> = async (context,
     }, request);
 
   } catch (error: unknown) {
-    console.error('❌ AI Tutor Suggestions error:', error);
+    console.error('âŒ AI Tutor Suggestions error:', error);
     const message = error instanceof Error ? error.message : String(error);
+    const status = rpcErrorToHttpStatus(error);
+    if (status === 401 || status === 403 || status === 429 || status === 409) {
+      return apiError(status, /^([A-Z_]+):/.exec(message)?.[1] ?? 'INTERNAL_ERROR', message.slice(0, 500), request);
+    }
     if (message.includes('binding is not configured') || message.includes('AI_ASSERT_SECRET')) {
       // Graceful degradation as before: return generic defaults even if wiring missing
       return apiSuccess({
@@ -198,19 +196,21 @@ export const handleAiTutorSuggestions: PagesFunction<PagesEnv> = async (context,
 async function callSuggestWorker(
   env: Record<string, string>,
   userId: string,
-  input: { lessonTitle: string; moduleTitle: string; lessonContent: string },
+  input: { lessonTitle: string; moduleTitle: string; lessonContent: string; courseId: string; lessonId: string },
 ): Promise<{ ok: true; questions: string[] } | { ok: false; code: string; message: string }> {
   const secret = env.AI_ASSERT_SECRET;
   if (!secret) throw new Error('AI_ASSERT_SECRET is not configured');
   const worker = getAiWorker(env as unknown as Parameters<typeof getAiWorker>[0]);
+  const prompt = buildTutorSuggestionsPrompt(input);
   const assertion = await issueExecutionAssertion(secret, {
     issuer: 'skillpassport',
-    action: 'seniorEducator.suggest',
+    action: 'orchestration.assist',
     userId,
     product: 'skillpassport',
     entitlements: ['career_ai'],
+    promptPayload: { prompt },
   });
-  const request: SuggestRpcRequest = {
+  const request: OrchestratorRequest = {
     contractVersion: '1',
     requestId: crypto.randomUUID(),
     operationId: crypto.randomUUID(),
@@ -225,14 +225,9 @@ async function callSuggestWorker(
       resourceScope: [],
       relevantContext: [],
     },
-    feature: 'suggest',
-    input,
+    input: { kind: 'task', task: { action: 'seniorEducator.suggest', input: { ...input, prompt } } },
   };
-  const result = await worker.seniorEducator(request);
-  if (result && typeof result === 'object' && 'duplicate' in (result as Record<string, unknown>)) {
-    return { ok: false, code: 'IDEMPOTENCY_CONFLICT', message: 'duplicate execution' };
-  }
-  if (result instanceof Response) throw new Error('INTERNAL_ERROR: unexpected stream for suggest');
-  if (!result.ok) return { ok: false, code: result.error.code, message: result.error.message };
-  return { ok: true, questions: (result.data as { questions: string[] }).questions };
+  const result = await readOrchestratorResult(await worker.orchestrator(request));
+  if (result.kind !== 'tutor-suggestions') throw new Error('INVALID_MODEL_OUTPUT: Expected tutor suggestion result');
+  return { ok: true, questions: result.data.questions };
 }

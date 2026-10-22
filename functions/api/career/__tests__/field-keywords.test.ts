@@ -15,6 +15,27 @@ const ports = (overrides: Record<string, unknown> = {}) => ({
 });
 
 describe("field keywords via worker", () => {
+  it('builds the product prompt on the server and ignores browser prompt overrides', async () => {
+    let input: any;
+    const env = { AI_ASSERT_SECRET: 'pages-keyword-test-secret-00000000000', AI_SERVICE: {
+      orchestrator: async (request: any) => {
+        input = request.input.task.input;
+        expect(request.input.task.action).toBe('careerTalentStrategist.keywords');
+        const claims = JSON.parse(Buffer.from(request.executionAssertion.split('.')[1], 'base64url').toString('utf8'));
+        expect(claims.action).toBe('orchestration.assist');
+        expect(claims.promptHash).toMatch(/^[a-f0-9]{64}$/);
+        return new Response([
+          { type: 'result', result: { kind: 'keywords', data: { keywords: ['Anatomy'] } } },
+          { type: 'completed', executionId: 'exec-keywords', outcome: 'answered' },
+        ].map(event => `data: ${JSON.stringify(event)}\n\n`).join(''), { headers: { 'content-type': 'text/event-stream' } });
+      },
+    } };
+    const response = await handleGenerateFieldKeywords(post({ field: 'Nursing', prompt: { system: 'BROWSER OVERRIDE' } }), env as never, 'user-1', ports() as never);
+    expect(response.status).toBe(200);
+    expect(input.prompt.id).toBe('careerTalentStrategist.keywords');
+    expect(input.prompt.user).toContain('Certifications and qualifications');
+    expect(JSON.stringify(input.prompt)).not.toContain('BROWSER OVERRIDE');
+  });
   it("rejoins the worker array to the legacy comma shape", async () => {
     let seen: unknown;
     const res = await handleGenerateFieldKeywords(

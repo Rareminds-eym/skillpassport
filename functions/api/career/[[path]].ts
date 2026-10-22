@@ -101,7 +101,7 @@ export const onRequest: PagesFunction = async (context) => {
       if (!(env as any).AI_SERVICE) {
         return apiError(500, 'INTERNAL_ERROR', 'AI service not configured', request);
       }
-      return await handleCareerChat(request, env as any, userId);
+      return await handleCareerChat(request, env as any, userId, {}, user.roles);
     }
 
     if (path === '/recommend-opportunities' || path === '/recommend') {

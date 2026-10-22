@@ -25,7 +25,7 @@ function req(): Request {
 function okStatus(state = "completed") {
   return {
     ok: true as const,
-    data: { state, executionId: EXEC },
+    data: { state, executionId: EXEC, result: null, updatedAt: 7 },
     requestId: "r-1",
     traceId: "t-1",
   };
@@ -54,7 +54,7 @@ describe("ai executions adapter", () => {
     expect(res.status).toBe(200);
     const body = await bodyOf(res);
     expect(body.success).toBe(true);
-    expect(body.data).toEqual({ state: "completed", executionId: EXEC });
+    expect(body.data).toEqual({ state: "completed", executionId: EXEC, result: null, updatedAt: 7 });
     expect(calls).toBe(1);
     const call = seen as {
       input: unknown;
@@ -127,18 +127,38 @@ describe("ai executions adapter", () => {
     expect(body.error?.code).toBe("UNAUTHORIZED");
   });
 
-  it("cancel returns completed state on success with a cancel operation id", async () => {
+  it.each(['cancelled', 'completed', 'failed'])("cancel preserves terminal state %s with a stable cancel operation id", async (state) => {
     let seen: unknown;
     const cancelExecution = async (r: unknown) => {
       seen = r;
-      return okStatus("cancelled");
+      return okStatus(state);
     };
     const env = { AI_SERVICE: { cancelExecution }, AI_ASSERT_SECRET: SECRET };
     const res = await handleCancelExecution(req(), env as never, USER, EXEC, {
       checkEntitlement: async () => true,
     });
     expect(res.status).toBe(200);
+    expect((await bodyOf(res)).data).toEqual({ state, executionId: EXEC, result: null, updatedAt: 7 });
     const call = seen as { operationId: unknown };
     expect(call.operationId).toBe(`cx-${EXEC}`);
+  });
+
+  it.each([
+    { cancelled: true },
+    { state: 'cancelled', executionId: EXEC },
+    { state: 'cancelled', executionId: 'another-execution', result: null, updatedAt: 7 },
+    { state: 'not-a-state', executionId: EXEC, result: null, updatedAt: 7 },
+    { state: 'cancelled', executionId: EXEC, result: null, updatedAt: 7, privateRecord: 'must-not-escape' },
+  ])('rejects malformed or mismatched control results without forwarding them: %j', async (data) => {
+    const response = async () => ({ ...okStatus(), data });
+    const env = { AI_SERVICE: { getExecutionStatus: response, cancelExecution: response }, AI_ASSERT_SECRET: SECRET };
+    for (const handler of [handleGetExecutionStatus, handleCancelExecution]) {
+      const res = await handler(req(), env as never, USER, EXEC, { checkEntitlement: async () => true });
+      expect(res.status).toBe(502);
+      const body = await bodyOf(res);
+      expect(body.error?.code).toBe('DEPENDENCY_UNAVAILABLE');
+      expect(body.data).toBeNull();
+      expect(JSON.stringify(body)).not.toContain('must-not-escape');
+    }
   });
 });

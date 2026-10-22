@@ -14,7 +14,6 @@ import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { apiError } from '../../../lib/response';
 import type { PagesEnv } from '../../../lib/types';
 import { getContextUser, getServiceClient } from '../../../lib/auth';
-import { callCloudflareWithRetry, getCloudflareConfig } from '../../shared/ai-config';
 import type { WorksheetConfig } from '../types/worksheet';
 import type { LessonPlanConfig } from '../types/lesson-plan';
 import {
@@ -24,9 +23,10 @@ import { hasReachedLimit, incrementGenerationCount } from '../utils/generation-l
 import { createLogger } from '../../../lib/logger';
 import { getAiWorker, rpcErrorToHttpStatus } from '../../ai/lib/aiBinding';
 import { issueExecutionAssertion } from '../../ai/lib/assertion';
-import type { EducatorRequest, TutorCourseContext } from '@rareminds-eym/ai-protocol';
+import { buildTutorChatPrompt } from '../prompts/tutor-chat';
+import { buildMaterialPrompts } from '../prompts/material';
+import type { EducatorRequest, OrchestratorRequest, TutorCourseContext } from '@rareminds-eym/ai-protocol';
 
-type TutorChatRpcRequest = Extract<EducatorRequest, { feature: 'tutor-chat' }>;
 type EducatorMaterialRpcRequest = Extract<EducatorRequest, { feature: 'generate-material' }>;
 
 const logger = createLogger('ai-tutor-chat');
@@ -98,7 +98,7 @@ export const handleAiTutorChat = async (context: TypedContext, ports?: TutorChat
     return apiError(400, 'VALIDATION_ERROR', 'Invalid request body', request);
   }
   const { conversationId, courseId, lessonId, message, worksheetConfig, lessonPlanConfig } = body;
-  if (!courseId || !message) {
+  if (!courseId || typeof courseId !== 'string' || courseId.length > 128 || !message || typeof message !== 'string' || !message.trim() || (lessonId !== undefined && (typeof lessonId !== 'string' || lessonId.length > 128))) {
     return apiError(400, 'VALIDATION_ERROR', 'Missing required fields: courseId and message', request);
   }
 
@@ -205,6 +205,8 @@ export const handleAiTutorChat = async (context: TypedContext, ports?: TutorChat
           userRole,
         })
       : await callTutorChatWorker(env as unknown as Record<string, string>, learnerId, {
+          courseId,
+          ...(lessonId ? { lessonId } : {}),
           conversationId: currentConversationId || crypto.randomUUID(),
           message,
           history: historyForWorker,
@@ -239,12 +241,13 @@ export const handleAiTutorChat = async (context: TypedContext, ports?: TutorChat
     async start(controller) {
       try {
         const text = await workerResponse.text();
+        let completed = false;
         for (const line of text.split('\n')) {
           const trimmed = line.trim();
           if (!trimmed.startsWith('data: ')) continue;
           const data = trimmed.replace('data: ', '').trim();
           if (!data) continue;
-          let event: { type?: string; text?: string; error?: { code?: string; message?: string } };
+          let event: { type?: string; text?: string; question?: string; outcome?: string; error?: { code?: string; message?: string } };
           try {
             event = JSON.parse(data) as typeof event;
           } catch {
@@ -253,14 +256,19 @@ export const handleAiTutorChat = async (context: TypedContext, ports?: TutorChat
           if (event.type === 'delta' && typeof event.text === 'string' && event.text) {
             fullResponse += event.text;
             controller.enqueue(encoder.encode(`event: token\ndata: ${JSON.stringify({ content: event.text })}\n\n`));
-          } else if (event.type === 'failed') {
+          } else if (event.type === 'clarification' && typeof event.question === 'string') {
+            fullResponse += event.question;
+            controller.enqueue(encoder.encode(`event: token\ndata: ${JSON.stringify({ content: event.question })}\n\n`));
+          } else if (event.type === 'completed') {
+            completed = event.outcome === 'answered' || event.outcome === 'clarify';
+          } else if (event.type === 'failed' || event.type === 'partial' || event.type === 'unsupported') {
             const msg = event.error?.message || 'Generation failed';
             controller.enqueue(encoder.encode(`event: error\ndata: ${JSON.stringify({ error: msg })}\n\n`));
             controller.close();
             return;
           }
-          // started/completed carry no legacy payload
         }
+        if (!completed || !fullResponse.trim()) throw new Error('Tutor response did not complete');
 
         // Persistence — preserved exactly
         const assistantMessageId = crypto.randomUUID();
@@ -283,20 +291,7 @@ export const handleAiTutorChat = async (context: TypedContext, ports?: TutorChat
             logger.info('Updated conversation', { conversationId: currentConversationId });
           }
         } else {
-          let title = message.slice(0, 50);
-          try {
-            if (getCloudflareConfig(env)) {
-              const generated = await callCloudflareWithRetry(
-                env,
-                [{ role: 'user', content: `Generate a short title (max 50 chars) for a tutoring conversation about "${courseContext.courseTitle}" starting with: "${message}"` }],
-                { maxTokens: 60, temperature: 0.5, timeoutMs: 5000 }
-              );
-              const trimmed = generated.trim();
-              if (trimmed) title = trimmed;
-            }
-          } catch (error) {
-            logger.warn('Title generation failed, using default', { error: error instanceof Error ? error.message : String(error) });
-          }
+          const title = message.slice(0, 50);
           const { data: newConv } = await supabase
             .from('tutor_conversations')
             .insert({
@@ -434,27 +429,34 @@ async function handleEducatorMaterialRpc(args: {
     async start(controller) {
       try {
         const text = await workerResponse.text();
+        let completed = false;
         for (const line of text.split('\n')) {
           const trimmed = line.trim();
           if (!trimmed.startsWith('data: ')) continue;
           const data = trimmed.replace('data: ', '').trim();
           if (!data) continue;
-          let event: { type?: string; text?: string; error?: { code?: string; message?: string } };
+          let event: { type?: string; text?: string; outcome?: string; error?: { code?: string; message?: string } };
           try {
             event = JSON.parse(data) as typeof event;
           } catch {
             continue;
           }
+          if (completed) throw new Error('Unexpected event after material completion');
           if (event.type === 'delta' && typeof event.text === 'string' && event.text) {
             fullResponse += event.text;
             controller.enqueue(encoder.encode(`event: token\ndata: ${JSON.stringify({ content: event.text })}\n\n`));
-          } else if (event.type === 'failed') {
+          } else if (event.type === 'completed') {
+            if (event.outcome !== 'answered') throw new Error('Material response did not complete');
+            completed = true;
+          } else if (event.type === 'failed' || event.type === 'partial' || event.type === 'unsupported') {
             const msg = event.error?.message || 'Generation failed';
             controller.enqueue(encoder.encode(`event: error\ndata: ${JSON.stringify({ error: msg })}\n\n`));
             controller.close();
             return;
           }
         }
+
+        if (!completed || !fullResponse.trim()) throw new Error('Material response did not complete');
 
         const assistantMessageId = crypto.randomUUID();
         const assistantMessage: StoredMessage = { id: assistantMessageId, role: 'assistant', content: fullResponse, timestamp: new Date().toISOString() };
@@ -464,20 +466,7 @@ async function handleEducatorMaterialRpc(args: {
           if (updateError) logger.error('Failed to append messages', updateError as Error);
           else logger.info('Updated conversation', { conversationId: currentConversationId });
         } else {
-          let title = message.slice(0, 50);
-          try {
-            if (getCloudflareConfig(env)) {
-              const generated = await callCloudflareWithRetry(
-                env,
-                [{ role: 'user', content: `Generate a short title (max 50 chars) for a tutoring conversation about "${courseContext.courseTitle}" starting with: "${message}"` }],
-                { maxTokens: 60, temperature: 0.5, timeoutMs: 5000 }
-              );
-              const trimmed = generated.trim();
-              if (trimmed) title = trimmed;
-            }
-          } catch (error) {
-            logger.warn('Title generation failed, using default', { error: error instanceof Error ? error.message : String(error) });
-          }
+          const title = message.slice(0, 50);
           const { data: newConv } = await supabase.from('tutor_conversations').insert({ learner_id: learnerId, course_id: courseId, lesson_id: lessonId || null, title: title.slice(0, 255), messages: updatedMessages }).select('id').single();
           if (newConv) {
             currentConversationId = (newConv as { id: string }).id;
@@ -514,9 +503,11 @@ async function callMaterialWorker(
   const secret = env.AI_ASSERT_SECRET;
   if (!secret) throw new Error('AI_ASSERT_SECRET is not configured');
   const worker = getAiWorker(env as unknown as Parameters<typeof getAiWorker>[0]);
+  const prompts = buildMaterialPrompts(input as Parameters<typeof buildMaterialPrompts>[0]);
   const assertion = await issueExecutionAssertion(secret, {
     issuer: 'skillpassport',
     action: 'seniorEducator.generate-material',
+    promptPayload: { prompts },
     userId,
     product: 'skillpassport',
     entitlements: ['career_ai'],
@@ -529,6 +520,7 @@ async function callMaterialWorker(
     actor: { actorId: userId, product: 'skillpassport', goals: [], responsibilities: [], permissions: [], capabilities: ['career_ai'], resourceScope: [], relevantContext: [] },
     feature: 'generate-material',
     input: {
+      prompts,
       conversationId: input.conversationId,
       message: input.message,
       history: input.history as EducatorMaterialRpcRequest['input']['history'],
@@ -552,40 +544,43 @@ async function callMaterialWorker(
 async function callTutorChatWorker(
   env: Record<string, string>,
   userId: string,
-  input: { conversationId: string; message: string; history: Array<{ role: 'user' | 'assistant'; content: string }>; course: TutorCourseContext; userRole: string },
+  input: { courseId: string; lessonId?: string; conversationId: string; message: string; history: Array<{ role: 'user' | 'assistant'; content: string }>; course: TutorCourseContext; userRole: string },
 ): Promise<Response> {
   const secret = env.AI_ASSERT_SECRET;
   if (!secret) throw new Error('AI_ASSERT_SECRET is not configured');
   const worker = getAiWorker(env as unknown as Parameters<typeof getAiWorker>[0]);
+  const message = input.message.trim();
+  const prompt = buildTutorChatPrompt({ ...input, message });
   const assertion = await issueExecutionAssertion(secret, {
     issuer: 'skillpassport',
-    action: 'seniorEducator.tutor-chat',
+    action: 'orchestration.assist',
+    promptPayload: { prompt },
     userId,
     product: 'skillpassport',
     entitlements: ['career_ai'],
   });
-  const request: TutorChatRpcRequest = {
+  const request: OrchestratorRequest = {
     contractVersion: '1',
     requestId: crypto.randomUUID(),
     operationId: crypto.randomUUID(),
     executionAssertion: assertion,
     actor: { actorId: userId, product: 'skillpassport', goals: [], responsibilities: [], permissions: [], capabilities: ['career_ai'], resourceScope: [], relevantContext: [] },
-    feature: 'tutor-chat',
-    input: {
+    input: { kind: 'task', task: { action: 'seniorEducator.tutor-chat', input: {
+      courseId: input.courseId,
+      ...(input.lessonId ? { lessonId: input.lessonId } : {}),
+      prompt,
       conversationId: input.conversationId,
-      message: input.message,
-      history: input.history as TutorChatRpcRequest['input']['history'],
+      message,
+      history: input.history,
       course: input.course,
       userRole: input.userRole,
-    },
+    } } },
   };
-  const result: unknown = await worker.seniorEducator(request);
-  if (result instanceof Response) return result;
-  // Bounded duplicate pointer — treat as error (should not happen with fresh operationId)
-  if (result && typeof result === 'object' && 'duplicate' in (result as Record<string, unknown>)) {
-    throw new Error(`IDEMPOTENCY_CONFLICT: duplicate execution`);
+  const result = await worker.orchestrator(request);
+  if (result.headers.get('content-type')?.includes('application/json')) {
+    const payload = await result.json() as { error?: { code?: string; message?: string } };
+    if (!result.ok && payload.error?.code) throw new Error(`${payload.error.code}: ${payload.error.message ?? 'Tutor request unavailable'}`);
+    throw new Error('AI_REQUEST_IN_PROGRESS: Tutor execution already exists');
   }
-  const failed = result as { ok: boolean; error: { code: string; message: string } };
-  if (!failed.ok) throw new Error(`${failed.error.code}: ${failed.error.message}`);
-  throw new Error('INTERNAL_ERROR: unexpected non-stream for tutor-chat');
+  return result;
 }

@@ -39,6 +39,7 @@ export function createSupabaseAdminClient(
     orgId?: string;
     ipAddress?: string;
     requestId?: string;
+    abortSignal?: AbortSignal;
   }
 ): SupabaseClient {
   const supabaseUrl = env.SUPABASE_URL || env.VITE_SUPABASE_URL;
@@ -49,6 +50,7 @@ export function createSupabaseAdminClient(
   }
 
   return createClient(supabaseUrl, serviceRoleKey, {
+    ...(context?.abortSignal ? { global: { fetch: (input, init) => fetch(input, { ...init, signal: context?.abortSignal }) } } : {}),
     accessToken: async () => serviceRoleKey,
   });
 }

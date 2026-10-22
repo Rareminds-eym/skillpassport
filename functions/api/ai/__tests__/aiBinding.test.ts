@@ -50,6 +50,27 @@ describe("aiBinding", () => {
 
 describe("issueExecutionAssertion", () => {
   const secret = "pages-test-secret-min-32-chars-00!";
+  it('signs canonical prompt content and version without exposing prompt text in claims', async () => {
+    const claims = { issuer: 'skillpassport' as const, action: 'seniorEducator.suggest', userId: 'u', product: 'skillpassport', entitlements: [] };
+    const prompt = { id: 'seniorEducator.suggest', version: '1', user: 'Private lesson context' };
+    const read = async (value: unknown) => JSON.parse(Buffer.from((await issueExecutionAssertion(secret, { ...claims, promptPayload: value }, 1000)).split('.')[1], 'base64url').toString('utf8'));
+    const first = await read({ prompt });
+    expect(first.promptHash).toMatch(/^[a-f0-9]{64}$/);
+    expect(JSON.stringify(first)).not.toContain(prompt.user);
+    expect((await read({ prompt: { user: prompt.user, version: '1', id: prompt.id } })).promptHash).toBe(first.promptHash);
+    expect((await read({ prompt: { ...prompt, version: '2' } })).promptHash).not.toBe(first.promptHash);
+    expect((await read({ prompt: { ...prompt, user: 'Changed context' } })).promptHash).not.toBe(first.promptHash);
+    expect((await read({})).promptHash).toBeUndefined();
+  });
+  it('carries explicit server roles and rejects malformed role projections', async () => {
+    const claims = { issuer: 'skillpassport' as const, action: 'careerTalentStrategist.chat', userId: 'u', product: 'skillpassport', entitlements: [], roles: ['learner'] };
+    const token = await issueExecutionAssertion(secret, claims, 1000);
+    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString('utf8'));
+    expect(payload.roles).toEqual(['learner']);
+    for (const roles of ['learner', [1], ['Learner'], new Array(17).fill('learner')]) {
+      await expect(issueExecutionAssertion(secret, { ...claims, roles } as never, 1000)).rejects.toThrow('Authenticated role claims are malformed');
+    }
+  });
 
   it("mints v1 three-part tokens deterministically", async () => {
     const claims = {

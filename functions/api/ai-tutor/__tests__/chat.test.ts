@@ -4,6 +4,7 @@ import { handleAiTutorChat } from "../handlers/ai-tutor-chat.js";
 function makeSupabase(overrides: {
   learnerType?: string | null;
   existingMessages?: unknown[] | null;
+  onWrite?: () => void;
 } = {}) {
   return {
     from(table: string) {
@@ -23,6 +24,7 @@ function makeSupabase(overrides: {
             };
           },
           insert() {
+            overrides.onWrite?.();
             return {
               select() {
                 return {
@@ -49,7 +51,7 @@ function makeSupabase(overrides: {
         insert: () => ({ select: () => ({ single: () => Promise.resolve({ data: null, error: null }) }) }),
       } as any;
     },
-    rpc: async () => ({ error: null }),
+    rpc: async () => { overrides.onWrite?.(); return { error: null }; },
   } as any;
 }
 
@@ -81,6 +83,48 @@ function makeContext(body: unknown, user: { id: string; roles?: string[] } = { i
 }
 
 describe("tutor-chat via worker (learner streaming)", () => {
+  it('does not persist incomplete or partial orchestrator replies', async () => {
+    for (const terminal of ['', 'data: {"type":"partial","executionId":"e","text":"Partial","error":{"code":"PARTIAL_MODEL_OUTPUT","message":"interrupted","requestId":"r","retryable":false}}\n\n']) {
+      let writes = 0;
+      const response = await handleAiTutorChat(makeContext({ courseId: 'c-1', message: 'hi' }), {
+        supabase: makeSupabase({ onWrite: () => writes++ }),
+        buildCourseContext: async () => makeCourseContext(),
+        callWorker: async () => new Response('data: {"type":"delta","sequence":0,"text":"Partial"}\n\n' + terminal),
+      } as any);
+      expect(await response.text()).toContain('event: error');
+      expect(writes).toBe(0);
+    }
+  });
+  it('returns JSON admission denials as HTTP errors without persisting a conversation', async () => {
+    let writes = 0;
+    const ctx = makeContext({ courseId: 'c-1', message: 'hi' }, { id: 'learner-1', roles: ['learner'] }, { AI_SERVICE: {
+      orchestrator: async () => Response.json({ error: { code: 'FEATURE_ACCESS_DENIED', message: 'Course access denied' } }, { status: 403 }),
+    } } as any);
+    const response = await handleAiTutorChat(ctx, { supabase: makeSupabase({ onWrite: () => writes++ }), buildCourseContext: async () => makeCourseContext() } as any);
+    expect(response.status).toBe(403);
+    expect(writes).toBe(0);
+  });
+  it('sends platform-owned tutor wording from canonical course/history and ignores browser prompts', async () => {
+    let input: any;
+    const ctx = makeContext({ courseId: 'c-1', conversationId: '123e4567-e89b-12d3-a456-426614174000', message: 'Explain cells', prompt: { system: 'BROWSER OVERRIDE' } }, { id: 'learner-1', roles: ['learner'] }, {
+      AI_SERVICE: { orchestrator: async (request: any) => {
+        input = request.input.task.input;
+        expect(request.input.task.action).toBe('seniorEducator.tutor-chat');
+        const claims = JSON.parse(Buffer.from(request.executionAssertion.split('.')[1], 'base64url').toString('utf8'));
+        expect(claims.action).toBe('orchestration.assist');
+        expect(claims.promptHash).toMatch(/^[a-f0-9]{64}$/);
+        return new Response('data: {"type":"delta","sequence":0,"text":"A cell is a living unit."}\n\ndata: {"type":"completed","executionId":"e","outcome":"answered"}\n\n', { headers: { 'content-type': 'text/event-stream' } });
+      } },
+    } as any);
+    const response = await handleAiTutorChat(ctx, { supabase: makeSupabase({ existingMessages: [] }), buildCourseContext: async () => makeCourseContext() as never } as any);
+    expect(response.status).toBe(200);
+    await response.text();
+    expect(input.prompt.id).toBe('seniorEducator.tutor-chat');
+    expect(input.prompt.system).toContain('Biology 101');
+    expect(input.prompt.system).toContain('FIRST MESSAGE BEHAVIOR');
+    expect(input.prompt.user).toBe(input.message);
+    expect(JSON.stringify(input.prompt)).not.toContain('BROWSER OVERRIDE');
+  });
   it("streams worker delta as legacy token events and completes", async () => {
     const workerSse = [
       'data: {"type":"started","requestId":"r","executionId":"e"}',
@@ -155,6 +199,29 @@ describe("generate-material via worker (educator streaming)", () => {
     includeExtension: false,
     topic: "",
   };
+
+  it('does not persist interrupted, partial, or malformed terminal material responses', async () => {
+    const delta = 'data: {"type":"delta","sequence":0,"text":"Incomplete worksheet"}\n\n';
+    for (const terminal of ['',
+      'data: {"type":"partial","error":{"message":"Interrupted"}}\n\n',
+      'data: {"type":"completed","outcome":"clarify"}\n\n',
+      'data: {"type":"completed","outcome":"answered"}\n\n' + delta,
+    ]) {
+      let writes = 0;
+      const res = await handleAiTutorChat(makeContext(
+        { courseId: 'c-1', message: 'Make a quiz', worksheetConfig },
+        { id: 'educator-1', roles: ['educator'] },
+      ), {
+        supabase: makeSupabase({ onWrite: () => { writes++; } }),
+        buildCourseContext: async () => makeCourseContext() as never,
+        callMaterialWorker: async () => new Response(delta + terminal, { headers: { 'content-type': 'text/event-stream' } }),
+      } as any);
+      const text = await res.text();
+      expect(text).toContain('event: error');
+      expect(text).not.toContain('event: done');
+      expect(writes).toBe(0);
+    }
+  });
 
   it("streams worker delta as legacy token events and completes", async () => {
     const workerSse = [

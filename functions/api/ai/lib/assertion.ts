@@ -1,3 +1,4 @@
+import { serializePlatformPromptPayload } from '@rareminds-eym/ai-protocol';
 /**
  * Pages-side issuance of short-lived execution assertions for the AI worker.
  * Format `v1.<base64url(json)>.<base64url(hmac-sha256)>` must match the
@@ -15,6 +16,10 @@ export interface AssertionClaimsInput {
   tenantId?: string;
   product: string;
   entitlements: string[];
+  /** Copy only from the authenticated server context, never from request JSON. */
+  roles?: readonly string[];
+  /** Canonical backend-assembled feature input; only its prompt fields are signed. */
+  promptPayload?: unknown;
   /** Lifetime in ms. Short: 60s recommended. */
   ttlMs?: number;
   /**
@@ -37,6 +42,7 @@ function b64urlEncode(bytes: Uint8Array): string {
 
 /** Minimal WebCrypto surface this module needs. Structural: no DOM/worker lib required. */
 interface HmacSubtle {
+  digest(algorithm: string, data: Uint8Array): Promise<ArrayBuffer>;
   importKey(
     format: string,
     keyData: Uint8Array,
@@ -70,7 +76,13 @@ export async function issueExecutionAssertion(
   if (!secret || secret.length < 32) {
     throw new Error("AI_ASSERT_SECRET must be at least 32 characters");
   }
+  if (claims.roles !== undefined && (!Array.isArray(claims.roles) || claims.roles.length > 16 ||
+    claims.roles.some(role => typeof role !== 'string' || !/^[a-z][a-z0-9_-]{0,63}$/.test(role)))) {
+    throw new Error('Authenticated role claims are malformed');
+  }
   const ttl = claims.ttlMs ?? 60000;
+  const promptPayload = serializePlatformPromptPayload(claims.promptPayload);
+  const promptHash = promptPayload === null ? undefined : Array.from(new Uint8Array(await subtle().digest('SHA-256', new TextEncoder().encode(promptPayload))), byte => byte.toString(16).padStart(2, '0')).join('');
   const payload = {
     issuer: claims.issuer,
     audience: "ai-api",
@@ -79,6 +91,8 @@ export async function issueExecutionAssertion(
     ...(claims.tenantId ? { tenantId: claims.tenantId } : {}),
     product: claims.product,
     entitlements: claims.entitlements,
+    ...(promptHash ? { promptHash } : {}),
+    ...(claims.roles !== undefined ? { roles: [...claims.roles] } : {}),
     ...(claims.sessionId ? { sessionId: claims.sessionId } : {}),
     ...(claims.operationId ? { operationId: claims.operationId } : {}),
     ...(claims.workerInputHash ? { workerInputHash: claims.workerInputHash } : {}),

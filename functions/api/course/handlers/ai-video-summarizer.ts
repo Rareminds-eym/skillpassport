@@ -19,6 +19,7 @@ import { transcribeVideo } from '../utils/transcription';
 import { generateSRT, generateVTT } from '../utils/subtitle-generation';
 import { getAiWorker } from '../../ai/lib/aiBinding';
 import { issueExecutionAssertion } from '../../ai/lib/assertion';
+import { buildVideoPrompts } from '../prompts/video-summary';
 import type { EducatorRequest } from '@rareminds-eym/ai-protocol';
 
 interface VideoSummarizerRequestBody {
@@ -254,9 +255,11 @@ async function callVideoWorker(
   const secret = env.AI_ASSERT_SECRET;
   if (!secret) throw new Error('AI_ASSERT_SECRET is not configured');
   const worker = getAiWorker(env as unknown as Parameters<typeof getAiWorker>[0]);
+  const prompts = buildVideoPrompts(input as Parameters<typeof buildVideoPrompts>[0]);
   const assertion = await issueExecutionAssertion(secret, {
     issuer: 'skillpassport',
     action: 'seniorEducator.summarize-video',
+    promptPayload: { prompts },
     userId,
     product: 'skillpassport',
     entitlements: ['career_ai'],
@@ -269,6 +272,7 @@ async function callVideoWorker(
     actor: { actorId: userId, product: 'skillpassport', goals: [], responsibilities: [], permissions: [], capabilities: ['career_ai'], resourceScope: [], relevantContext: [] },
     feature: 'summarize-video',
     input: {
+      prompts,
       transcript: input.transcript,
       segments: input.segments as never,
       enableQuiz: input.enableQuiz,

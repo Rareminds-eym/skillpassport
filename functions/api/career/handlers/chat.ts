@@ -11,10 +11,10 @@
  * with TURN_STATE_UNKNOWN (send as a new message).
  *
  * Every pre-step is otherwise preserved (rate limit, guards, conversation
- * load, intent + phase, context builders, system prompt + memory assembly,
+ * load, intent + phase, app policy and grade selection,
  * guardrail validation, `save_career_ai_message` persistence, legacy
  * browser SSE shape). Reasoning executes in ai-worker over the protocol
- * `{ system, history }` context channel.
+ * `{ system, history }` channel; live facts arrive through authorized evidence.
  */
 
 import { apiError } from '../../../lib/response';
@@ -22,17 +22,12 @@ import { createSupabaseAdminClient } from '../../../lib/supabase';
 import type { SupabaseClient as SupabaseClientType } from '@supabase/supabase-js';
 import { sanitizeInput, generateConversationTitle } from '../../../lib/validation';
 import { checkRateLimit } from '../utils/rate-limit';
-import type { ChatRequest, StoredMessage, CareerIntent, Opportunity } from '../types';
+import type { ChatRequest, StoredMessage, CareerIntent } from '../types';
 import { validateResponse } from '../ai/guardrails';
 import { detectIntent } from '../ai/intent-detection';
-import { compressContext, buildMemoryContext } from '../ai/memory';
 import { getConversationPhase } from '../ai/conversation-phase';
-import { buildEnhancedSystemPrompt } from '../ai/prompts/enhanced-system-prompt';
-import { buildlearnerContext } from '../context/learner';
-import { buildAssessmentContext } from '../context/assessment';
-import { buildCareerProgressContext } from '../context/progress';
-import { buildCourseContext } from '../context/courses';
-import { fetchSmartOpportunities } from '../context/smart-opportunities';
+import { buildCareerInstructions } from '../ai/prompts/career-instructions';
+import { loadCareerPolicyContext } from '../context/policy-context';
 import { getAiWorker, rpcErrorToHttpStatus, type AiServiceBinding } from '../../ai/lib/aiBinding';
 import { issueExecutionAssertion } from '../../ai/lib/assertion';
 
@@ -272,8 +267,8 @@ async function defaultCompleteTurnIntent(
   }
 }
 
-/** Legacy-identical assembly: phase, intent, profile/assessment/progress/courses, system prompt, memory tail. */
-async function defaultAssembleContext(args: {
+/** App policy and display metadata; live execution facts are gathered by the worker. */
+export async function defaultAssembleContext(args: {
   db: () => SupabaseLike;
   dbAdmin: () => DbClient;
   env: Record<string, string>;
@@ -282,61 +277,27 @@ async function defaultAssembleContext(args: {
   chips: string[];
   history: StoredMessage[];
 }): Promise<AssembledContext | null> {
-  const { env, learnerId, message, chips, history } = args;
-  const db = args.db();
+  const { learnerId, message, chips, history } = args;
   const dbAdmin = args.dbAdmin();
   const conversationPhase = getConversationPhase(history.length);
   const intentResult = detectIntent(message, chips, history);
 
-  const [learnerProfile, assessmentContext, progressContext, courseContext] = await Promise.all([
-    buildlearnerContext(dbAdmin, learnerId),
-    buildAssessmentContext(dbAdmin, learnerId),
-    buildCareerProgressContext(db as never, learnerId),
-    buildCourseContext(db as never, learnerId),
-  ]);
+  const policy = await loadCareerPolicyContext(dbAdmin, learnerId);
+  if (!policy) return null;
 
-  if (!learnerProfile) return null;
-
-  let opportunities: Opportunity[] = [];
-  const jobRelatedIntents: CareerIntent[] = ['find-jobs', 'skill-gap', 'career-guidance', 'application-status'];
-  if (jobRelatedIntents.includes(intentResult.intent)) {
-    opportunities = await fetchSmartOpportunities(db as never, {
-      userMessage: message,
-      conversationHistory: history,
-      learnerProfile,
-      intent: intentResult.intent,
-      env,
-    });
-  }
-
-  const systemPrompt = buildEnhancedSystemPrompt({
-    profile: learnerProfile,
-    assessment: assessmentContext,
-    progress: progressContext,
-    opportunities,
+  const systemPrompt = buildCareerInstructions({
+    gradeLevel: policy.gradeLevel,
     phase: conversationPhase,
-    intentResult,
-    courseContext,
+    intent: intentResult.intent,
   });
-
-  let memoryContext = '';
-  let recentMessages = history;
-  if (history.length > 10) {
-    const compressed = compressContext(history, 10);
-    recentMessages = compressed.recentMessages;
-    memoryContext = buildMemoryContext(compressed);
-  } else {
-    recentMessages = history.slice(-10);
-  }
+  const recentMessages = history.slice(-10);
 
   return {
     conversationPhase,
     intent: intentResult.intent,
     confidence: intentResult.confidence,
-    hasAssessment: Boolean(
-      (assessmentContext as { hasAssessment?: boolean } | null)?.hasAssessment,
-    ),
-    systemPromptWithMemory: memoryContext ? `${systemPrompt}\n\n${memoryContext}` : systemPrompt,
+    hasAssessment: policy.hasAssessment,
+    systemPromptWithMemory: systemPrompt,
     historyTail: recentMessages.map((m) => ({ role: m.role, content: m.content })),
   };
 }
@@ -346,7 +307,10 @@ export async function handleCareerChat(
   env: Record<string, string>,
   userId: string,
   ports: ChatFlipPorts = {},
+  authenticatedRoles: readonly string[] = [],
 ): Promise<Response> {
+  // The route supplies these from withAuth. Request JSON is never a role source.
+  const roles = [...authenticatedRoles];
   if (request.method !== 'POST') {
     return apiError(405, 'ERROR', 'Method not allowed', request);
   }
@@ -473,6 +437,7 @@ export async function handleCareerChat(
     // IDEMPOTENCY_CONFLICT on retries). Only a turn with no frozen input
     // assembles context and freezes it now.
     let systemPromptWithMemory: string;
+    let systemVersion: string | undefined = '4.0.0';
     let historyTail: Array<{ role: 'user' | 'assistant'; content: string }>;
     let conversationPhase: string;
     let intent: CareerIntent;
@@ -482,9 +447,10 @@ export async function handleCareerChat(
 
     if (!claim.created && claim.workerInput && typeof claim.workerInput === 'object' && claim.workerInputHash) {
       const frozen = claim.workerInput as {
-        system?: string; history?: Array<{ role: 'user' | 'assistant'; content: string }>;
+        system?: string; systemVersion?: string; history?: Array<{ role: 'user' | 'assistant'; content: string }>;
       };
       systemPromptWithMemory = typeof frozen.system === 'string' ? frozen.system : '';
+      systemVersion = frozen.systemVersion;
       historyTail = Array.isArray(frozen.history) ? frozen.history : [];
       workerInputHash = claim.workerInputHash;
       // Replay display metadata is best-effort: re-derive cheaply.
@@ -493,7 +459,7 @@ export async function handleCareerChat(
       confidence = 'high';
       hasAssessment = false;
     } else {
-      // ==================== PHASE, INTENT, CONTEXT (legacy-identical) ====================
+      // ==================== PHASE, INTENT, APP POLICY ====================
       // Thunks: the client is built only if the running branch needs it —
       // stubbed ports in tests never touch the network or env vars.
       const ctxArgs = {
@@ -521,6 +487,7 @@ export async function handleCareerChat(
       hasAssessment = assembled.hasAssessment;
 
       const workerInput = {
+        systemVersion,
         conversationId: sessionId,
         message: processedMessage.slice(0, 8000),
         ...(systemPromptWithMemory.trim() ? { system: systemPromptWithMemory.slice(0, 12000) } : {}),
@@ -542,8 +509,9 @@ export async function handleCareerChat(
         if ('error' in reread || typeof reread.workerInput !== 'object' || !reread.workerInput || !reread.workerInputHash) {
           return apiError(500, 'INTERNAL_ERROR', 'Turn preparation raced; please retry', request);
         }
-        const adopted = reread.workerInput as { system?: string; history?: Array<{ role: 'user' | 'assistant'; content: string }> };
+        const adopted = reread.workerInput as { system?: string; systemVersion?: string; history?: Array<{ role: 'user' | 'assistant'; content: string }> };
         systemPromptWithMemory = typeof adopted.system === 'string' ? adopted.system : '';
+        systemVersion = adopted.systemVersion;
         historyTail = Array.isArray(adopted.history) ? adopted.history : [];
         workerInputHash = reread.workerInputHash;
       }
@@ -576,9 +544,10 @@ export async function handleCareerChat(
             system: systemPromptWithMemory,
             history: historyTail,
             turnId,
+            systemVersion,
             workerInputHash,
             sessionId,
-          });
+          }, roles);
     } catch (err) {
       await completeTurn({ responseText: null, assistantMessageId: null, state: 'failed' });
       return mapWorkerError(err, request);
@@ -600,12 +569,13 @@ export async function handleCareerChat(
       async start(controller) {
         try {
           const text = await workerResponse.text();
+          let completed = false;
           for (const line of text.split('\n')) {
             const trimmed = line.trim();
             if (!trimmed.startsWith('data: ')) continue;
             const data = trimmed.replace('data: ', '').trim();
             if (!data) continue;
-            let event: { type?: string; text?: string; error?: { code?: string; message?: string } };
+            let event: { type?: string; text?: string; question?: string; outcome?: string; error?: { code?: string; message?: string } };
             try {
               event = JSON.parse(data) as typeof event;
             } catch {
@@ -614,11 +584,16 @@ export async function handleCareerChat(
             if (event.type === 'delta' && typeof event.text === 'string' && event.text) {
               assistantMessage += event.text;
               controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: event.text })}\n\n`));
-            } else if (event.type === 'failed') {
+            } else if (event.type === 'clarification' && typeof event.question === 'string') {
+              assistantMessage += event.question;
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: event.question })}\n\n`));
+            } else if (event.type === 'failed' || event.type === 'partial' || event.type === 'unsupported') {
               throw new Error('WORKER_FAILED');
+            } else if (event.type === 'completed') {
+              completed = event.outcome === 'answered' || event.outcome === 'clarify';
             }
-            // started/completed/clarification/unsupported carry no browser payload.
           }
+          if (!completed || !assistantMessage.trim()) throw new Error('WORKER_FAILED');
 
           // ==================== VALIDATE + SAVE (legacy-identical) ====================
           const responseValidation = validateResponse(assistantMessage);
@@ -821,8 +796,9 @@ async function callChatWorker(
   input: {
     conversationId: string; message: string; system: string;
     history: Array<{ role: 'user' | 'assistant'; content: string }>;
-    turnId: string; workerInputHash: string; sessionId: string;
+    turnId: string; workerInputHash: string; sessionId: string; systemVersion?: string;
   },
+  authenticatedRoles: readonly string[],
 ): Promise<Response | { duplicate: true; executionId?: string }> {
   const secret = env.AI_ASSERT_SECRET;
   if (!secret) throw new Error('AI_ASSERT_SECRET is not configured');
@@ -831,17 +807,19 @@ async function callChatWorker(
   // existing user/product/action claims; the worker cross-checks all three.
   const assertion = await issueExecutionAssertion(secret, {
     issuer: 'skillpassport',
-    action: 'careerTalentStrategist.chat',
+    action: 'orchestration.assist',
+    promptPayload: input.system && input.system.trim() ? { system: input.system.slice(0, 12000), ...(input.systemVersion ? { systemVersion: input.systemVersion } : {}) } : undefined,
     userId,
     product: 'skillpassport',
     entitlements: ['career_ai'],
+    roles: authenticatedRoles,
     sessionId: input.sessionId,
     operationId: input.turnId,
     workerInputHash: input.workerInputHash,
   });
   // Clamp to protocol limits (career.ts: message 8000, system 12000, history content 8000, max 12 items)
   const clampedInput = {
-    conversationId: input.conversationId,
+    ...(input.systemVersion ? { systemVersion: input.systemVersion } : {}),    conversationId: input.conversationId,
     message: input.message.slice(0, 8000),
     ...(input.system && input.system.trim() ? { system: input.system.slice(0, 12000) } : {}),
     ...(input.history?.length
@@ -853,7 +831,7 @@ async function callChatWorker(
   };
   // operationId is the stable turn id (replays dedupe); requestId is fresh
   // per HTTP attempt and never reused for billing identity.
-  const result = await worker.careerTalentStrategist({
+  const result = await worker.orchestrator({
     contractVersion: '1',
     requestId: crypto.randomUUID(),
     operationId: input.turnId,
@@ -868,8 +846,7 @@ async function callChatWorker(
       resourceScope: [],
       relevantContext: [],
     },
-    feature: 'chat',
-    input: clampedInput,
+    input: { kind: 'task', task: { action: 'careerTalentStrategist.chat', input: clampedInput } },
   });
   if (!(result instanceof Response)) throw new Error('WORKER_FAILED');
   // Duplicate replays arrive as JSON, billed turns as event-stream SSE.

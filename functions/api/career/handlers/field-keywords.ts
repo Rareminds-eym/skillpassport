@@ -12,11 +12,12 @@
 import { apiSuccess, apiError } from '../../../lib/response';
 import { CLOUDFLARE_MODELS } from '../../shared/ai-config';
 import { checkRateLimit } from '../utils/rate-limit';
-import type { CareerRequest } from '@rareminds-eym/ai-protocol';
+import type { OrchestratorRequest } from '@rareminds-eym/ai-protocol';
 import { getAiWorker, rpcErrorToHttpStatus } from '../../ai/lib/aiBinding';
+import { readOrchestratorResult } from '../../ai/lib/orchestrator-result';
 
-type KeywordsRpcRequest = Extract<CareerRequest, { feature: 'keywords' }>;
 import { issueExecutionAssertion } from '../../ai/lib/assertion';
+import { buildFieldKeywordPrompt } from '../prompts/field-keywords';
 
 export interface KeywordsPorts {
   checkRateLimit?: (userId: string, env: Record<string, string>) => Promise<boolean>;
@@ -90,7 +91,8 @@ export async function handleGenerateFieldKeywords(
     if (message.includes('binding is not configured') || message.includes('AI_ASSERT_SECRET')) {
       return apiError(503, 'DEPENDENCY_UNAVAILABLE', 'AI service not configured', request);
     }
-    return apiError(500, 'INTERNAL_ERROR', message.slice(0, 500), request);
+    const code = /^([A-Z_]+):/.exec(message)?.[1] ?? 'INTERNAL_ERROR';
+    return apiError(rpcErrorToHttpStatus(error), code, message.slice(0, 500), request);
   }
 }
 
@@ -102,14 +104,16 @@ async function callKeywordsWorker(
   const secret = env.AI_ASSERT_SECRET;
   if (!secret) throw new Error('AI_ASSERT_SECRET is not configured');
   const worker = getAiWorker(env as unknown as Parameters<typeof getAiWorker>[0]);
+  const prompt = buildFieldKeywordPrompt(field);
   const assertion = await issueExecutionAssertion(secret, {
     issuer: 'skillpassport',
-    action: 'careerTalentStrategist.keywords',
+    action: 'orchestration.assist',
     userId,
     product: 'skillpassport',
     entitlements: ['career_ai'],
+    promptPayload: { prompt },
   });
-  const request: KeywordsRpcRequest = {
+  const request: OrchestratorRequest = {
     contractVersion: '1',
     requestId: crypto.randomUUID(),
     operationId: crypto.randomUUID(),
@@ -124,11 +128,9 @@ async function callKeywordsWorker(
       resourceScope: [],
       relevantContext: [],
     },
-    feature: 'keywords',
-    input: { field },
+    input: { kind: 'task', task: { action: 'careerTalentStrategist.keywords', input: { field, prompt } } },
   };
-  const result = await worker.careerTalentStrategist(request);
-  if (result instanceof Response) throw new Error('INTERNAL_ERROR: unexpected stream for keywords');
-  if (!result.ok) return { ok: false, code: result.error.code, message: result.error.message };
+  const result = await readOrchestratorResult(await worker.orchestrator(request));
+  if (result.kind !== 'keywords') throw new Error('INVALID_MODEL_OUTPUT: Expected keyword task result');
   return { ok: true, keywords: result.data.keywords };
 }

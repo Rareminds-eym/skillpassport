@@ -14,7 +14,7 @@
 import { apiSuccess, apiError } from '../../../lib/response';
 import { getServiceClient } from '../../../lib/supabase';
 import { hasFeatureEntitlement } from '../../../lib/entitlements';
-import type { ExecutionStatus } from '@rareminds-eym/ai-protocol';
+import { ExecutionStatusSchema } from '@rareminds-eym/ai-protocol';
 import {
   getAiWorker,
   rpcErrorToHttpStatus,
@@ -107,8 +107,11 @@ async function callWorker(
       input: { executionId },
     });
     if (!result.ok) return failure(request, new Error(`${result.error.code}: ${result.error.message}`));
-    const data = result.data as ExecutionStatus;
-    return apiSuccess(data, request);
+    const status = ExecutionStatusSchema.safeParse(result.data);
+    if (!status.success || status.data.executionId !== executionId) {
+      return apiError(502, 'DEPENDENCY_UNAVAILABLE', 'AI service returned an invalid execution status', request);
+    }
+    return apiSuccess(status.data, request);
   } catch (error) {
     return failure(request, error);
   }
