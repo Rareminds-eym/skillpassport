@@ -40,3 +40,17 @@ it('submits a profile source identity without copying its title or description',
  await waitFor(()=>expect(apiPost).toHaveBeenCalledWith('/learning/equivalencies',{levelId:'target',sourceKind:'training',sourceId:'source'}));
  expect(screen.queryByLabelText('Evidence title')).toBeNull();expect(screen.queryByLabelText('Evidence link (HTTPS)')).toBeNull();
 });
+
+it('preserves submission feedback through the automatic request/source refresh and clears it on a successful retry',async()=>{
+ vi.mocked(apiPost).mockRejectedValueOnce(new Error('AI evaluation requires at least 200 characters of actual evidence content.'));
+ load(item);
+ const retry=await screen.findByRole('button',{name:'Request another evaluation round'});
+ const readsBefore=vi.mocked(apiGet).mock.calls.length;
+ fireEvent.click(retry);
+ await waitFor(()=>expect(vi.mocked(apiGet).mock.calls.length).toBeGreaterThan(readsBefore));
+ await waitFor(()=>expect(retry).not.toBeDisabled());
+ expect(screen.getByRole('alert')).toHaveTextContent('200 characters');
+ fireEvent.click(retry);
+ expect(await screen.findByText('Evaluation rescheduled.')).toBeInTheDocument();
+ await waitFor(()=>expect(screen.queryByRole('alert')).toBeNull());
+});

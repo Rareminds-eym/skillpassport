@@ -4,6 +4,7 @@ import { GraduationCap,ExternalLink } from 'lucide-react';
 
 export default function LearningEvidence({reviewMode=false}:{reviewMode?:boolean}){
  const [items,setItems]=useState<any[]>([]),[levels,setLevels]=useState<any[]>([]),[error,setError]=useState(''),[success,setSuccess]=useState(''),[busy,setBusy]=useState(false),[page,setPage]=useState(0),[next,setNext]=useState<number|null>(null),[refresh,setRefresh]=useState(0);
+ const [submissionError,setSubmissionError]=useState('');
  const [policy,setPolicy]=useState('human');
  const [sources,setSources]=useState<any[]>([]),[sourcePage,setSourcePage]=useState(0),[sourceNext,setSourceNext]=useState<number|null>(null),[sourceBusy,setSourceBusy]=useState(false);
  const [form,setForm]=useState({levelId:'',sourceKind:'training',sourceId:''});
@@ -18,14 +19,14 @@ export default function LearningEvidence({reviewMode=false}:{reviewMode?:boolean
   apiGet<any>(`/learning/evidence-sources?kind=${form.sourceKind}&offset=${sourcePage}`).then(r=>{if(active){setSources(r.data?.items||[]);setSourceNext(r.data?.nextOffset??null);}}).catch(e=>{if(active){setSources([]);setError(e.message);}}).finally(()=>{if(active)setSourceBusy(false);});
   return()=>{active=false;};
  },[reviewMode,form.sourceKind,sourcePage,refresh]);
- const save=async(payload:any)=>{setBusy(true);setError('');setSuccess('');try{const result=await apiPost<any>('/learning/equivalencies',payload);setSuccess(reviewMode?'Review recorded.':result.data?.duplicate?'This evidence already has an evaluation request.':payload.action==='requeue-ai'?'Evaluation rescheduled.':payload.action==='retry-ai'?'Evaluation requested.':'Evidence submitted for evaluation.');if(!reviewMode&&!payload.action)setForm({levelId:'',sourceKind:'training',sourceId:''});setRefresh(v=>v+1);}catch(e){setError(e instanceof Error?e.message:'Unable to save evidence.');setRefresh(v=>v+1);}finally{setBusy(false);}};
+ const save=async(payload:any)=>{setBusy(true);setSubmissionError('');setError('');setSuccess('');try{const result=await apiPost<any>('/learning/equivalencies',payload);setSuccess(reviewMode?'Review recorded.':result.data?.duplicate?'This evidence already has an evaluation request.':payload.action==='requeue-ai'?'Evaluation rescheduled.':payload.action==='retry-ai'?'Evaluation requested.':'Evidence submitted for evaluation.');if(!reviewMode&&!payload.action)setForm({levelId:'',sourceKind:'training',sourceId:''});setRefresh(v=>v+1);}catch(e){setSubmissionError(e instanceof Error?e.message:'Unable to save evidence.');setRefresh(v=>v+1);}finally{setBusy(false);}};
  const input='w-full min-w-0 max-w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm';
  return <main className="mx-auto max-w-4xl space-y-6 p-5 sm:p-8">
   <header><div className="mb-2 flex items-center gap-2"><GraduationCap size={22}/><h1 className="text-xl font-semibold text-slate-900">{reviewMode?'Equivalent learning reviews':'Equivalent learning evidence'}</h1></div>
    <p className="text-sm leading-6 text-slate-600">{reviewMode?'Review evidence from learners in your institution. Approve only when it demonstrates the selected capability and level.':policy==='ai'?'As an independent candidate, your equivalent evidence is evaluated by AI against the published level outcomes. Provide the actual work or evidence content; a credential claim or link alone cannot qualify you.':'Use another course, certification, or work sample to demonstrate a required learning level. An authorized reviewer must approve the evidence before it qualifies you for applications.'}</p>
    <button type="button" disabled={busy} onClick={()=>setRefresh(v=>v+1)} className="mt-3 text-xs font-medium text-blue-700 underline disabled:text-slate-400">Refresh evaluation status</button>
   </header>
-  {error&&<p role="alert" className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+  {(submissionError||error)&&<p role="alert" className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{submissionError||error}</p>}
   {success&&<p role="status" className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{success}</p>}
   {!reviewMode&&<form className="space-y-4 rounded-lg border border-slate-200 bg-white p-5" onSubmit={e=>{e.preventDefault();void save(form);}}>
    <fieldset disabled={busy} className="grid min-w-0 gap-4 sm:grid-cols-2">

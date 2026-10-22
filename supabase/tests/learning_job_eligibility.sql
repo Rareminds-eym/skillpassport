@@ -4,7 +4,7 @@ BEGIN;
 DO $$
 DECLARE subject uuid:=gen_random_uuid(); learner uuid:=gen_random_uuid(); reviewer uuid:=gen_random_uuid(); stranger uuid:=gen_random_uuid();
  org uuid:=gen_random_uuid(); level uuid:=gen_random_uuid(); job uuid:=gen_random_uuid(); proof uuid; unused_proof uuid; request uuid; row public.learning_equivalencies;
- requirement jsonb; result jsonb; version bigint; before_count integer; after_count integer; course uuid:=gen_random_uuid(); payload jsonb; source uuid:=gen_random_uuid();
+ requirement jsonb; result jsonb; version bigint; before_count integer; after_count integer; course uuid:=gen_random_uuid(); payload jsonb; source uuid:=gen_random_uuid(); type_label text;
 BEGIN
  INSERT INTO public.users(id,email,role) VALUES(subject,subject||'@learning-test.invalid','learner'),(reviewer,reviewer||'@learning-test.invalid','educator'),(stranger,stranger||'@learning-test.invalid','educator');
  INSERT INTO public.organizations(id,name) VALUES(org,'Learning eligibility fixture');
@@ -106,6 +106,21 @@ BEGIN
  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
  UPDATE public.learners SET school_id=NULL,learner_type='independent' WHERE id=learner;
  IF public.job_learning_evaluation_policy(learner,subject)<>'ai' THEN RAISE EXCEPTION 'FAIL: independent policy'; END IF;
+ UPDATE public.learning_equivalencies SET evaluation_type='ai' WHERE id=request;
+ -- Mixed-case or padded institutional labels must never select AI evaluation.
+ FOREACH type_label IN ARRAY ARRAY['College',' COLLEGE ','College_Student',' SCHOOL ','School_Student'] LOOP
+  UPDATE public.learners SET learner_type=type_label WHERE id=learner;
+  IF public.job_learning_evaluation_policy(learner,subject) IS DISTINCT FROM 'human' THEN
+   RAISE EXCEPTION 'FAIL: institutional type normalization: %',type_label;
+  END IF;
+  row:=public.claim_learning_ai_equivalency(request,subject,1);
+  IF row.id IS NOT NULL THEN RAISE EXCEPTION 'FAIL: institutional type obtained AI lease: %',type_label; END IF;
+  BEGIN
+   PERFORM public.record_learning_ai_equivalency(request,subject,1,'approved','Valid work','fixture-model',90);
+   RAISE EXCEPTION 'FAIL: institutional type accepted AI approval: %',type_label;
+  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ END LOOP;
+ UPDATE public.learners SET learner_type='independent' WHERE id=learner;
  UPDATE public.learning_equivalencies SET evaluation_type='ai' WHERE id=request;
  row:=public.claim_learning_ai_equivalency(request,subject,1);
  IF row.id IS NULL OR row.version<>2 OR row.ai_attempts<>1 THEN RAISE EXCEPTION 'FAIL: AI lease claim'; END IF;
