@@ -21,6 +21,7 @@ import { callEmbeddingWorker } from '../../embedding/services/embeddingWorkerCli
 import { hydrateJobs } from '../../../lib/job-recommendations';
 import { readRecommendationState, publishRecommendationVector } from '../utils/recommendation-state';
 import { RECOMMENDATION_PREPROCESSING_VERSION, RECOMMENDATION_RANKING_POLICY_VERSION } from '../utils/recommendation-versions';
+import { learningDecisions } from '../../../lib/learning-eligibility';
 
 const RECOMMEND_CONFIG = {
   MATCH_THRESHOLD: 0.01,
@@ -38,7 +39,8 @@ async function getPopularFallback(
   limit: number,
   startTime: number,
   reason: string,
-  dismissedIds: string[] = []
+  dismissedIds: string[] = [],
+  env: Record<string,string> = {}
 ): Promise<Response> {
   try {
     // Availability and dismissals are applied BEFORE LIMIT in this actor-bound
@@ -53,7 +55,7 @@ async function getPopularFallback(
     const jobs = await hydrateJobs(supabase, popular || [], dismissedIds);
     const executionTime = Date.now() - startTime;
     return apiSuccess({
-      recommendations: jobs,
+      recommendations: await learningDecisions(supabase,env,userId,learnerId,jobs),
       fallback: true,
       provenance: 'generic',
       freshness: 'not_personalized',
@@ -168,10 +170,10 @@ export async function handleRecommendOpportunities(
   // Operators must attest the deployed catalog AND entity-vector provenance.
   const model = env.MATCHING_EMBEDDING_MODEL;
   if (!model || env.MATCHING_CATALOG_MODEL !== model) {
-    return getPopularFallback(request, supabase, learnerId, learnerUserId, safeLimit, startTime, 'model_provenance_unverified', dismissedIds);
+    return getPopularFallback(request, supabase, learnerId, learnerUserId, safeLimit, startTime, 'model_provenance_unverified', dismissedIds,env);
   }
   if (env.MATCHING_VECTOR_PIPELINE_VERIFIED !== 'true') {
-    return getPopularFallback(request, supabase, learnerId, learnerUserId, safeLimit, startTime, 'embedding_pipeline_unverified', dismissedIds);
+    return getPopularFallback(request, supabase, learnerId, learnerUserId, safeLimit, startTime, 'embedding_pipeline_unverified', dismissedIds,env);
   }
   const state = await readRecommendationState(supabase, learnerId, learnerUserId, model);
   const current = async (requireVector = false) => {
@@ -188,7 +190,7 @@ export async function handleRecommendOpportunities(
         if (!await current(true)) return obsolete();
         const executionTime = Date.now() - startTime;
         return apiSuccess({
-          recommendations: cachedMatches,
+          recommendations: await learningDecisions(supabase,env,learnerUserId,learnerId,cachedMatches),
           cached: true,
           computed_at: state.computed_at,
           provenance: 'embedding', freshness: 'current', input_revision: state.revision, model,
@@ -242,7 +244,7 @@ export async function handleRecommendOpportunities(
       learnerEmbedding = embedding;
     } catch (error) {
       console.error('[RECOMMEND]', {stage:'vector_generation',outcome:'unavailable'});
-      return await getPopularFallback(request, supabase, learnerId, learnerUserId, safeLimit, startTime, 'embedding_generation_failed', dismissedIds);
+      return await getPopularFallback(request, supabase, learnerId, learnerUserId, safeLimit, startTime, 'embedding_generation_failed', dismissedIds,env);
     }
   } else {
     console.log(`[RECOMMEND] Learner ${learnerId} - using existing embedding`);
@@ -286,11 +288,11 @@ export async function handleRecommendOpportunities(
 
   if (matchError) {
     console.error('[RECOMMEND]', {stage:'ranking',outcome:'unavailable'});
-    return await getPopularFallback(request, supabase, learnerId, learnerUserId, safeLimit, startTime, 'match_error', dismissedIds);
+    return await getPopularFallback(request, supabase, learnerId, learnerUserId, safeLimit, startTime, 'match_error', dismissedIds,env);
   }
 
   if (!recommendations || recommendations.length === 0) {
-    return await getPopularFallback(request, supabase, learnerId, learnerUserId, safeLimit, startTime, 'no_matches', dismissedIds);
+    return await getPopularFallback(request, supabase, learnerId, learnerUserId, safeLimit, startTime, 'no_matches', dismissedIds,env);
   }
 
   // ==================== RESPONSE ENRICHMENT ====================
@@ -328,7 +330,7 @@ export async function handleRecommendOpportunities(
   if (!await current(true)) return obsolete();
 
   return apiSuccess({
-    recommendations: topRecommendations,
+    recommendations: await learningDecisions(supabase,env,learnerUserId,learnerId,topRecommendations),
     cached: false,
     cache_saved: cacheSaved,
     provenance: 'embedding', freshness: 'current', input_revision: state.revision, model,

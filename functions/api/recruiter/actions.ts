@@ -6,6 +6,7 @@ import { notifyLearnersOfNewOpportunity } from '../../lib/newOpportunityNotifica
 import { verifyOrgAccess, PERMISSIONS, getUserRecruitmentRoles } from '../../lib/permissions';
 import { reviewApplicationSchema } from '../../../src/shared/schemas/applicationReview';
 import { createRequisitionSchema, updateRequisitionSchema, validSalaryRange } from '../../lib/requisitionValidation';
+import { LearningError, validateLearningRequirements } from '../../lib/learning-eligibility';
 import {
   getActiveOrgId,
   getOrgMemberUserIds,
@@ -632,6 +633,7 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     }
 
     if (action === 'create-opportunity') {
+      if(body.data?.learning_requirements!==undefined)body.data.learning_requirements=await validateLearningRequirements(supabase,context.env as any,body.data.learning_requirements);
       let orgId = (user as any)?.org_id || body.data?.organization_id;
       if (!orgId) {
         const { data: mem } = await supabase
@@ -726,11 +728,16 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         'requirements', 'responsibilities', 'benefits', 'salary_range_min', 'salary_range_max',
         'deadline', 'status', 'stipend_or_salary', 'application_link', 'description', 'sector',
         'exposure_type', 'total_hours', 'duration_weeks', 'duration_days', 'schedule_note',
+        'learning_requirements', 'learning_requirements_version',
         'what_youll_learn', 'what_youll_do',
       ]);
       const sanitizedUpdates: Record<string, any> = {};
       for (const [key, value] of Object.entries(updates as Record<string, any>)) {
         if (ALLOWED_OPPORTUNITY_UPDATE_FIELDS.has(key)) sanitizedUpdates[key] = value;
+      }
+      if(sanitizedUpdates.learning_requirements!==undefined){
+        if(!Number.isSafeInteger(sanitizedUpdates.learning_requirements_version)||sanitizedUpdates.learning_requirements_version<1)return apiError(400,'VALIDATION_ERROR','Provide the current learning requirements version before editing.',context.request);
+        sanitizedUpdates.learning_requirements=await validateLearningRequirements(supabase,context.env as any,sanitizedUpdates.learning_requirements);
       }
       if (sanitizedUpdates.status !== undefined) {
         const nextStatus = String(sanitizedUpdates.status).trim().toLowerCase();
@@ -1074,6 +1081,7 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       const parsed = createRequisitionSchema.safeParse(body.requisitionData);
       if (!parsed.success) return apiError(400, 'VALIDATION_ERROR', parsed.error.issues.map(issue => `${issue.path.join('.')}: ${issue.message}`).join('; '), context.request);
       const requisitionData = parsed.data;
+      if (requisitionData.learning_requirements !== undefined) requisitionData.learning_requirements = await validateLearningRequirements(supabase, context.env as any, requisitionData.learning_requirements);
       if (!validSalaryRange(requisitionData)) return apiError(400, 'VALIDATION_ERROR', 'Maximum salary must be greater than or equal to minimum salary', context.request);
 
       // 🔒 SECURITY: Get organization_id from authenticated user
@@ -1166,6 +1174,7 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       const parsed = updateRequisitionSchema.safeParse(updates);
       if (!parsed.success) return apiError(400, 'VALIDATION_ERROR', parsed.error.issues.map(issue => `${issue.path.join('.')}: ${issue.message}`).join('; '), context.request);
       const sanitizedUpdates: Record<string, any> = parsed.data;
+      if (sanitizedUpdates.learning_requirements !== undefined) sanitizedUpdates.learning_requirements = await validateLearningRequirements(supabase, context.env as any, sanitizedUpdates.learning_requirements);
       if (sanitizedUpdates.job_title !== undefined) sanitizedUpdates.title = sanitizedUpdates.job_title;
       if (Object.keys(sanitizedUpdates).length === 0) {
         return apiError(400, 'VALIDATION_ERROR', 'No updatable fields provided', context.request);
@@ -1442,6 +1451,7 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
     return apiError(400, 'BAD_REQUEST', `Unknown action: ${action}`, context.request);
   } catch (error: any) {
+    if (error instanceof LearningError) return apiError(error.status,error.code,error.message,context.request);
     console.error(`[recruiter/actions] action=${action}:`, error?.message || error);
     return apiDbError(error, context.request);
   }

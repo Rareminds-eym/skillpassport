@@ -87,8 +87,8 @@ export async function matchJobsWithAI(learnerProfile: any, topN = 3, forceRefres
     match_reason: fallback ? 'Recent opportunity; not a personalized match.' : score === null ? 'Review this opportunity.' : 'Ranked against your profile; this is not a hiring probability.',
     fallback, provenance, reason: result.data?.reason,
     freshness: result.data?.freshness || 'unknown',
-    key_matching_skills: [],
-    skills_gap: [],
+    key_matching_skills: (rec.learning_eligibility?.criteria||[]).filter((c:any)=>c.status==='eligible').map((c:any)=>`${c.capabilityName} · Level ${c.levelNumber}`),
+    skills_gap: (rec.learning_eligibility?.criteria||[]).filter((c:any)=>c.mandatory&&c.status!=='eligible').map((c:any)=>`${c.capabilityName} · Level ${c.levelNumber}`),
     recommendation: 'Review the job requirements and apply if interested.',
     opportunity: rec, // Full opportunity data from API
     cached: result.data?.cached || false,

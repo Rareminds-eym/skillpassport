@@ -17,6 +17,7 @@ import { createLogger } from '../../lib/logger';
 type AuthenticatedContext = Parameters<PagesFunction>[0];
 import { apiSuccess, apiError } from '../../lib/response';
 import { eligibleJobs, isEligibleJob, privateRecommendations, stringSkills } from '../../lib/job-recommendations';
+import { learningDecisions } from '../../lib/learning-eligibility';
 
 const logger = createLogger('learner-ai-recommendations-api');
 
@@ -75,7 +76,7 @@ const authenticatedGet = withAuth(async (context: AuthenticatedContext) => {
       .from('skills')
       .select('name, type, proficiency_level')
       .eq('learner_id', learnerId)
-      .is('training_id', null);
+      .eq('enabled',true).eq('approval_status','approved');
 
     if (skillsError) {
       logger.error('Error fetching skills', { learnerId, error: skillsError });
@@ -195,7 +196,7 @@ const authenticatedGet = withAuth(async (context: AuthenticatedContext) => {
     });
 
     const responseData = {
-      recommendations: topRecommendations,
+      recommendations: await learningDecisions(supabase,env,userId,learnerId,topRecommendations),
       cached: false,
       fallback: false,
       provenance: 'rules',

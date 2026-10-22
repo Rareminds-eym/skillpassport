@@ -1,4 +1,5 @@
 import React from 'react';
+import { LearningEligibilityPanel } from '@/features/opportunities/ui/LearningEligibilityPanel';
 import { MapPin, Bookmark } from 'lucide-react';
 
 const OpportunityCard = ({ 
@@ -137,6 +138,7 @@ const OpportunityCard = ({
         )}
 
         {/* Openings Count */}
+        <LearningEligibilityPanel job={opportunity} compact />
         {opportunity.openings_count !== null && opportunity.openings_count !== undefined && (
           <div className="mt-2 px-3 py-1.5 bg-gradient-to-r from-indigo-50 to-blue-50 rounded-full">
             <span className="text-xs font-semibold text-indigo-700">

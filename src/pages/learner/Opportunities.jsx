@@ -900,6 +900,7 @@ const Opportunities = () => {
           toast.error(result.message || 'Failed to record application');
         }
 
+        if (!result.success) return false;
         // Opening the employer page is not evidence of employer submission.
         try {
           const opened = openExternalApplication(destination);
@@ -1119,6 +1120,7 @@ const Opportunities = () => {
         )}
 
         {/* Tab Switcher - Show different tabs based on learner level */}
+        {!isLoading&&<div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3"><div><p className="text-sm font-medium text-slate-900">Find jobs for your learning</p><p className="mt-1 text-xs text-slate-500">Reviewer-approved levels, clear requirements, and equivalent evidence.</p></div><button type="button" onClick={()=>navigate('/learner/learning-jobs')} className="rounded-md border border-slate-300 px-3 py-2 text-xs font-medium text-slate-700">Explore learning matches →</button></div>}
         {!isLoading && (
           <div className="mb-8">
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-2 overflow-x-auto">

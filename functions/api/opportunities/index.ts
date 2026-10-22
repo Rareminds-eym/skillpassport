@@ -9,6 +9,7 @@ import { apiDbError, apiError, apiMethodNotAllowed, apiSuccess } from '../../lib
 import { getServiceClient } from '../../lib/supabase';
 import { eligibleJobs, isEligibleJob, stringSkills } from '../../lib/job-recommendations';
 import { getNumericLimit } from '../../shared/lib/entitlement-service';
+import { LearningError, decorateLearningForActor, validateLearningRequirements, verifyLearningApplication } from '../../lib/learning-eligibility';
 import {
   getActiveOrgId,
   getOrgMemberUserIds,
@@ -294,7 +295,8 @@ const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
     if (error) return apiDbError(error, context.request);
     if (!data) return apiError(404, 'NOT_FOUND', 'Opportunity not found', context.request);
     if (learnerFeed && !isEligibleJob(data)) return apiError(404, 'NOT_FOUND', 'Opportunity is no longer available', context.request);
-    return apiSuccess({ opportunity: data }, context.request);
+    const [opportunity] = await decorateLearningForActor(supabase,context.env as any,user,[data]);
+    return apiSuccess({ opportunity }, context.request);
   }
 
   const rawLimit = parseInt(url.searchParams.get('limit') || '6', 10);
@@ -413,7 +415,7 @@ const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
     featuredEmployer: featuredEmployerByOrg.has(String(o.organization_id)),
   }));
 
-  return apiSuccess({ opportunities: annotated, total: count }, context.request);
+  return apiSuccess({ opportunities: await decorateLearningForActor(supabase,context.env as any,user,annotated), total: count }, context.request);
 });
 
 /**
@@ -670,6 +672,10 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     case 'create-opportunity': {
       const opportunity = body.opportunity;
       if (!opportunity) return apiError(400, 'VALIDATION_ERROR', 'opportunity data required', context.request);
+      if (opportunity.learning_requirements !== undefined) {
+        try { opportunity.learning_requirements = await validateLearningRequirements(supabase,context.env as any,opportunity.learning_requirements); }
+        catch(e) { return e instanceof LearningError ? apiError(e.status,e.code,e.message,context.request) : apiError(503,'LEARNING_UNAVAILABLE','Learning requirements could not be verified.',context.request); }
+      }
       if (typeof opportunity.skills_required === 'string') opportunity.skills_required = stringSkills(opportunity.skills_required);
       if (opportunity.skills_required != null && (!Array.isArray(opportunity.skills_required) || opportunity.skills_required.some((skill: unknown) => typeof skill !== 'string'))) {
         return apiError(400, 'VALIDATION_ERROR', 'skills_required must be an array of strings', context.request);
@@ -754,6 +760,11 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       const { action: _action, id, updates: nestedUpdates, ...flatUpdates } = body;
       const updates = nestedUpdates || flatUpdates;
       if (!id) return apiError(400, 'VALIDATION_ERROR', 'id required', context.request);
+      if (updates.learning_requirements !== undefined) {
+        if(!Number.isSafeInteger(updates.learning_requirements_version)||updates.learning_requirements_version<1)return apiError(400,'VALIDATION_ERROR','Provide the current learning requirements version before editing.',context.request);
+        try { updates.learning_requirements = await validateLearningRequirements(supabase,context.env as any,updates.learning_requirements); }
+        catch(e) { return e instanceof LearningError ? apiError(e.status,e.code,e.message,context.request) : apiError(503,'LEARNING_UNAVAILABLE','Learning requirements could not be verified.',context.request); }
+      }
       if (typeof updates.skills_required === 'string') updates.skills_required = stringSkills(updates.skills_required);
       if (updates.skills_required != null && (!Array.isArray(updates.skills_required) || updates.skills_required.some((skill: unknown) => typeof skill !== 'string'))) {
         return apiError(400, 'VALIDATION_ERROR', 'skills_required must be an array of strings', context.request);
@@ -959,17 +970,21 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       const { data: owner, error: ownerError } = await supabase.from('learners').select('id').eq('id', learner_id).eq('user_id', user.id).maybeSingle();
       if (ownerError) return apiError(503, 'PROFILE_UNAVAILABLE', 'Learner profile is temporarily unavailable', context.request);
       if (!owner) return apiError(403, 'FORBIDDEN', 'Only your own applications may be submitted', context.request);
-      const available = await findOpportunityById(supabase, opportunity_id, 'id,status,is_active,deadline');
+      const available = await findOpportunityById(supabase, opportunity_id, 'id,status,is_active,deadline,learning_requirements,learning_requirements_version');
       if (available.error) return apiError(503, 'OPPORTUNITY_UNAVAILABLE', 'Opportunity could not be verified', context.request);
       if (!isEligibleJob(available.data)) return apiError(409, 'OPPORTUNITY_CLOSED', 'Opportunity is no longer available', context.request);
 
       const { data: existing } = await supabase.from('applied_jobs').select('id').eq('learner_id', learner_id).eq('opportunity_id', opportunity_id).maybeSingle();
       if (existing) return apiSuccess({ success: false, message: 'You have already applied to this job', data: existing }, context.request);
 
+      let learningVerification: string | null;
+      try { learningVerification = await verifyLearningApplication(supabase,context.env as any,user.id,learner_id,available.data); }
+      catch(e) { return e instanceof LearningError ? apiError(e.status,e.code,e.message,context.request) : apiError(503,'LEARNING_UNAVAILABLE','Learning evidence could not be verified. Please retry.',context.request); }
+
       const { data: learner } = await supabase.from('learners').select('name, email, contact_number').eq('id', learner_id).maybeSingle();
       if (!learner) return apiSuccess({ success: false, message: 'Learner profile not found' }, context.request);
 
-      const { data, error } = await supabase.from('applied_jobs').insert([{ learner_id, opportunity_id, application_status: 'applied' }]).select().single();
+      const { data, error } = await supabase.from('applied_jobs').insert([{ learner_id, opportunity_id, application_status: 'applied', ...(learningVerification ? {learning_verification_id:learningVerification} : {}) }]).select().single();
       if (error) return apiDbError(error, context.request);
 
       try {
@@ -1599,24 +1614,24 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     case 'get-saved-jobs-with-details': {
       const { learner_id, activeOnly, limit } = body;
       if (!learner_id) return apiError(400, 'VALIDATION_ERROR', 'learner_id required', context.request);
-      let query = supabase.from('saved_jobs').select('*, opportunity:opportunities(id, title, job_title, company_name, company_logo, employment_type, location, mode, stipend_or_salary, salary_range_min, salary_range_max, experience_required, experience_level, skills_required, description, application_link, deadline, posted_date, is_active, department, created_at)').eq('learner_id', learner_id).order('saved_at', { ascending: false });
+      let query = supabase.from('saved_jobs').select('*, opportunity:opportunities(id, title, job_title, company_name, company_logo, employment_type, location, mode, stipend_or_salary, salary_range_min, salary_range_max, experience_required, experience_level, skills_required, description, application_link, deadline, posted_date, is_active, department, created_at, learning_requirements, learning_requirements_version)').eq('learner_id', learner_id).order('saved_at', { ascending: false });
       if (limit) query = query.limit(limit);
       const { data, error } = await query;
       if (error) return apiDbError(error, context.request);
       let savedJobs = (data || []).map(item => ({ saved_job_id: item.id, saved_at: item.saved_at, ...item.opportunity }));
       if (activeOnly) savedJobs = savedJobs.filter(j => j.is_active);
-      return apiSuccess({ savedJobs }, context.request);
+      return apiSuccess({ savedJobs: await decorateLearningForActor(supabase,context.env as any,getContextUser(context),savedJobs) }, context.request);
     }
     case 'get-saved-jobs-with-applied-status': {
       const { learner_id } = body;
       if (!learner_id) return apiError(400, 'VALIDATION_ERROR', 'learner_id required', context.request);
-      let query = supabase.from('saved_jobs').select('*, opportunity:opportunities(id, title, job_title, company_name, company_logo, employment_type, location, mode, stipend_or_salary, salary_range_min, salary_range_max, experience_required, experience_level, skills_required, description, application_link, deadline, posted_date, is_active, department, created_at)').eq('learner_id', learner_id).order('saved_at', { ascending: false });
+      let query = supabase.from('saved_jobs').select('*, opportunity:opportunities(id, title, job_title, company_name, company_logo, employment_type, location, mode, stipend_or_salary, salary_range_min, salary_range_max, experience_required, experience_level, skills_required, description, application_link, deadline, posted_date, is_active, department, created_at, learning_requirements, learning_requirements_version)').eq('learner_id', learner_id).order('saved_at', { ascending: false });
       const { data } = await query;
       const savedJobs = (data || []).map(item => ({ saved_job_id: item.id, saved_at: item.saved_at, ...item.opportunity }));
       const { data: appliedJobs } = await supabase.from('applied_jobs').select('opportunity_id, application_status, applied_at').eq('learner_id', learner_id);
       const appliedMap = new Map((appliedJobs || []).map(app => [app.opportunity_id, app]));
       const result = savedJobs.map(job => ({ ...job, has_applied: appliedMap.has(job.id), application_status: appliedMap.get(job.id)?.application_status || null, applied_at: appliedMap.get(job.id)?.applied_at || null }));
-      return apiSuccess({ savedJobs: result }, context.request);
+      return apiSuccess({ savedJobs: await decorateLearningForActor(supabase,context.env as any,getContextUser(context),result) }, context.request);
     }
     case 'get-saved-jobs-count': {
       const { learner_id } = body;

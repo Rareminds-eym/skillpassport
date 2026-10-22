@@ -22,7 +22,7 @@ export function privateRecommendations(response: Response): Response {
   return response;
 }
 
-export const JOB_FIELDS = 'id,title,job_title,company_name,company_logo,employment_type,location,mode,stipend_or_salary,experience_required,experience_level,skills_required,description,application_link,deadline,is_active,status,created_at,updated_at,department,sector,salary_range_min,salary_range_max,posted_date,closing_date,requirements,responsibilities,benefits';
+export const JOB_FIELDS = 'id,title,job_title,company_name,company_logo,employment_type,location,mode,stipend_or_salary,experience_required,experience_level,skills_required,description,application_link,deadline,is_active,status,created_at,updated_at,department,sector,salary_range_min,salary_range_max,posted_date,closing_date,requirements,responsibilities,benefits,learning_requirements,learning_requirements_version';
 
 /** Ranker/cache rows supply scores only; current job fields always come from DB. */
 export async function hydrateJobs(db: SupabaseClient, ranks: any[], dismissedIds: string[]): Promise<any[]> {

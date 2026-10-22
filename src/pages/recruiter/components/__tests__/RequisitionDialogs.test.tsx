@@ -84,8 +84,9 @@ describe('Requisition form', () => {
 
 describe('Details and deletion', () => {
   it('renders imported text lists and every job field without crashing', () => {
-    render(<RequisitionDetails requisition={{ ...job, requirements: 'SQL\nReact' as unknown as string[], benefits: '["Insurance"]' as unknown as string[] }} recruiters={[]} canEdit canDelete onClose={vi.fn()} onEdit={vi.fn()} onDelete={vi.fn()} onViewApplications={vi.fn()} />);
+    render(<RequisitionDetails requisition={{ ...job, learning_requirements:[{levelId:'10000000-0000-4000-8000-000000000001',fingerprint:'a'.repeat(32),capabilityName:'Fixture capability',title:'Published assessed outcomes',levelNumber:2,version:1,mandatory:true}], requirements: 'SQL\nReact' as unknown as string[], benefits: '["Insurance"]' as unknown as string[] }} recruiters={[]} canEdit canDelete onClose={vi.fn()} onEdit={vi.fn()} onDelete={vi.fn()} onViewApplications={vi.fn()} />);
     expect(screen.getByText('SQL')).toBeInTheDocument(); expect(screen.getByText('React')).toBeInTheDocument();
+    expect(screen.getByText('Published assessed outcomes')).toBeInTheDocument(); expect(screen.getByText('Required')).toBeInTheDocument();
     expect(screen.getByText('Insurance')).toBeInTheDocument(); expect(screen.getByText('3 years')).toBeInTheDocument();
     expect(screen.getByText('Chennai')).toBeInTheDocument(); expect(screen.getByRole('button', { name: 'View applications (2)' })).toBeEnabled();
   });

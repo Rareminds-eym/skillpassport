@@ -92,6 +92,8 @@ export interface Opportunity {
   posted_date: string;
   description: string;
   requirements: string[];
+  learning_requirements?: import('@/features/opportunities/ui/LearningRequirementsEditor').LearningRequirement[];
+  learning_requirements_version?: number;
   responsibilities: string[];
   applications_count: number;
   messages_count: number;
@@ -299,6 +301,7 @@ const Requisitions = () => {
         ...opp,
         job_title: opp.title || opp.job_title || '',
         requirements: opp.requirements || [],
+        learning_requirements:opp.learning_requirements||[], learning_requirements_version:opp.learning_requirements_version||1,
         responsibilities: opp.responsibilities || [],
         benefits: opp.benefits || [],
         applications_count: opp.applications_count || 0,
@@ -363,6 +366,7 @@ const Requisitions = () => {
         status: requisitionData.status,
         description: requisitionData.description,
         requirements: requisitionData.requirements,
+        learning_requirements:requisitionData.learning_requirements, learning_requirements_version:requisitionData.learning_requirements_version,
         responsibilities: requisitionData.responsibilities,
         created_by: user?.id,
         recruiter_id: requisitionData.recruiter_id

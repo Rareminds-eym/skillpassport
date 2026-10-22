@@ -96,3 +96,9 @@ describe("review:policy (organization-wide, independent of course/class/program)
     expect(query).not.toHaveBeenCalled();
   });
 });
+
+it('university-only affiliation uses the mapped organization policy rather than treating the learner as independent',async()=>{
+ const query=vi.fn(async(path:string)=>path.startsWith('learners?')?[{school_id:null,college_id:null,university_college_id:id(8)}]:path.startsWith('university_colleges?')?[{college_id:id(4)}]:[{organization_id:id(4),evaluation_mode:'human_only'}]);
+ const result=await handleReviewPolicy({userId:id(1),db:{query}} as unknown as GatewayContext,{});
+ expect(result).toEqual({ok:true,data:{evaluationMode:'human_only',organizationIds:[id(4)]}});
+});

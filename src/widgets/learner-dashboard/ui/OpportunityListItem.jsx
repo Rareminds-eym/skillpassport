@@ -167,6 +167,7 @@
 
 
 import React from 'react';
+import { LearningEligibilityPanel } from '@/features/opportunities/ui/LearningEligibilityPanel';
 import { MapPin, Briefcase, Bookmark } from 'lucide-react';
 
 const OpportunityListItem = ({ 
@@ -312,6 +313,7 @@ const OpportunityListItem = ({
       </div>
 
       {/* Salary with Icon Box */}
+      <LearningEligibilityPanel job={opportunity} compact />
       {salary && (
         <div className="hidden sm:flex items-center gap-3">
           <div>

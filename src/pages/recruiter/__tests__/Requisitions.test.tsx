@@ -5,8 +5,8 @@ import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import Requisitions from '../Requisitions';
 
-const { apiPost, user } = vi.hoisted(() => ({ apiPost: vi.fn(), user: { id: 'user-1', email: 'recruiter@example.invalid' } }));
-vi.mock('@/shared/api/apiClient', () => ({ apiPost, ApiError: class ApiError extends Error {} }));
+const { apiGet, apiPost, user } = vi.hoisted(() => ({ apiGet: vi.fn(), apiPost: vi.fn(), user: { id: 'user-1', email: 'recruiter@example.invalid' } }));
+vi.mock('@/shared/api/apiClient', () => ({ apiGet, apiPost, ApiError: class ApiError extends Error {} }));
 vi.mock('@/shared/model/authStore', () => ({ useUser: () => user }));
 vi.mock('@/shared/config/logging', () => ({ getLogger: () => ({ info: vi.fn(), error: vi.fn() }) }));
 vi.mock('@/features/recruiter', () => ({ AdvancedRequisitionFilters: () => null, RequisitionImport: () => null }));
@@ -23,6 +23,7 @@ beforeEach(() => {
   // Radix positions its menu/tooltip with this browser API, absent in jsdom.
   vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} });
   jobs = [{ ...fixture }]; count = 1; allow = true; failDelete = false; failUpdate = false;
+  apiGet.mockReset();apiGet.mockResolvedValue({data:{levels:[]}});
   apiPost.mockReset();
   apiPost.mockImplementation(async (_path, body) => {
     switch (body.action) {

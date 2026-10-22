@@ -194,7 +194,7 @@ export const useSavedJobs = ({ learnerId }: UseSavedJobsProps): UseSavedJobsRetu
       } else {
         toast.error(result.message || (destination ? 'Failed to record application' : 'Failed to submit application'));
       }
-      if (destination) {
+      if (destination && result.success) {
         // Opening the employer page is not an application acknowledgement.
         try {
           const opened = openExternalApplication(destination);

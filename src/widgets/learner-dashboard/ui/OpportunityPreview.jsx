@@ -459,6 +459,7 @@
 
 
 import { openExternalApplication } from '@/features/opportunities/lib/externalApplication';
+import { LearningEligibilityPanel } from '@/features/opportunities/ui/LearningEligibilityPanel';
 import { AlertCircle, Award, Bookmark, Briefcase, Calendar, CheckCircle2, Clock, ExternalLink, MapPin, Send, Star, TrendingUp, Users, X } from 'lucide-react';
 import React from 'react';
 import ReactDOM from 'react-dom';
@@ -1419,7 +1420,7 @@ const OpportunityPreview = ({
                       setShowApplicationModal(true);
                     }
                   }}
-                  disabled={isApplied || isApplying || hasCurrentBacklogs}
+                  disabled={isApplied || isApplying || hasCurrentBacklogs || opportunity.learning_eligibility?.canApply === false}
                   className={`flex-1 relative overflow-hidden font-bold py-3.5 px-4 rounded-xl transition-all text-sm shadow-md group ${isApplied
                     ? 'bg-green-600 text-white cursor-not-allowed'
                     : isApplying
@@ -1467,7 +1468,7 @@ const OpportunityPreview = ({
                 </button>
 
                 {/* External Link Button */}
-                {opportunity.application_link && (
+                {opportunity.application_link && opportunity.learning_eligibility?.canApply !== false && (
                   <button
                     onClick={() => {
                       try {
@@ -1500,6 +1501,7 @@ const OpportunityPreview = ({
               </div>
 
               {/* Additional Info */}
+              <LearningEligibilityPanel job={opportunity}/>
               <p className="text-xs text-gray-500 text-center mt-3">
                 {isApplied
                   ? (opportunity.application_link

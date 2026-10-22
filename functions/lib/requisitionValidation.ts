@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { requirementsSchema } from './learning-eligibility';
 
 const shortText = z.string().trim().min(1, 'Required fields cannot be blank').max(500);
 const textItems = z.array(z.string().trim().min(1).max(20000)).max(500);
@@ -18,6 +19,8 @@ const fields = z.object({
   skills_required: textItems.optional(),
   description: z.string().trim().min(1, 'Job description is required').max(20000),
   requirements: textItems.optional(),
+  learning_requirements: requirementsSchema.optional(),
+  learning_requirements_version: z.number().int().positive().optional(),
   responsibilities: textItems.optional(),
   benefits: textItems.optional(),
   salary_range_min: salary.optional(),
@@ -28,7 +31,9 @@ const fields = z.object({
 });
 
 export const createRequisitionSchema = fields;
-export const updateRequisitionSchema = fields.partial();
+export const updateRequisitionSchema = fields.partial().superRefine((value,ctx)=>{
+  if(value.learning_requirements!==undefined&&value.learning_requirements_version===undefined)ctx.addIssue({code:z.ZodIssueCode.custom,path:['learning_requirements_version'],message:'Refresh the job before changing its learning requirements.'});
+});
 export function validSalaryRange(values: { salary_range_min?: number | null; salary_range_max?: number | null }) {
   return values.salary_range_min == null || values.salary_range_max == null || values.salary_range_min <= values.salary_range_max;
 }

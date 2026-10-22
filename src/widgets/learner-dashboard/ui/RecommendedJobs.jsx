@@ -15,6 +15,7 @@ import {
 import { useEffect, useState } from 'react';
 import { useAIJobMatching } from '@/features/opportunities';
 import { FeatureGate } from '@/features/subscription/ui/shared/FeatureGate';
+import { LearningEligibilityPanel } from '@/features/opportunities/ui/LearningEligibilityPanel';
 
 /**
  * RecommendedJobs - AI-powered job recommendations with industrial-grade caching
@@ -416,6 +417,7 @@ const RecommendedJobsContent = ({
                   </div>
 
                   {/* Actions */}
+                  <LearningEligibilityPanel job={opportunity} compact />
                   <div className="flex gap-2 mt-auto">
                     <button
                       onClick={() => onSelectJob(opportunity)}
@@ -428,7 +430,7 @@ const RecommendedJobsContent = ({
                         <CheckCircle className="w-4 h-4" />
                         Applied
                       </div>
-                    ) : (learnerProfile?.currentBacklogs || 0) > 0 ? (
+                    ) : (learnerProfile?.currentBacklogs || 0) > 0 || opportunity.learning_eligibility?.canApply === false ? (
                       <div className="flex-1 bg-red-50 text-red-700 border border-red-200 px-3 py-2 rounded-lg text-sm font-semibold flex items-center justify-center gap-1">
                         <X className="w-4 h-4" />
                         Not Eligible

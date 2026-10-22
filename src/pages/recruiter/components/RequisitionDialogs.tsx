@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { XMarkIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import type { Opportunity, Recruiter } from '../Requisitions';
+import { LearningRequirementsEditor, type LearningRequirement } from '@/features/opportunities/ui/LearningRequirementsEditor';
 
 // Older imports stored JSON arrays as text. Normalize before editing or rendering.
 export function textList(value: unknown, separator = '\n'): string[] {
@@ -24,10 +25,10 @@ export function formatSalary(job: Pick<Opportunity, 'salary_range_min' | 'salary
   return 'Salary not specified';
 }
 
-const button = 'inline-flex items-center justify-center rounded-md border px-4 py-2 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50';
+const button = 'inline-flex min-h-11 sm:min-h-10 items-center justify-center rounded-md border px-4 py-2 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50';
 const primary = `${button} border-transparent bg-primary-600 text-white hover:bg-primary-700`;
 const secondary = `${button} border-gray-300 bg-white text-gray-700 hover:bg-gray-50`;
-const input = 'w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500';
+const input = 'requisition-field min-h-11 sm:min-h-10 w-full min-w-0 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm leading-5 text-slate-900 shadow-sm transition-[border-color,box-shadow] placeholder:text-slate-400 hover:border-slate-400 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500';
 
 export function Frame({ title, description, busy = false, onClose, children, small = false }: {
   title: string; description: string; busy?: boolean; small?: boolean; onClose: () => void; children: React.ReactNode;
@@ -39,7 +40,7 @@ export function Frame({ title, description, busy = false, onClose, children, sma
       <Dialog.Content onCloseAutoFocus={event=>{event.preventDefault();if(returnFocus.current?.isConnected)returnFocus.current.focus()}} onEscapeKeyDown={event => { if (busy) event.preventDefault(); }}
         onPointerDownOutside={event => { if (busy) event.preventDefault(); }}
         className={`fixed left-1/2 top-1/2 z-50 flex max-h-[90dvh] w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl bg-white shadow-2xl focus:outline-none ${small ? 'max-w-lg' : 'max-w-4xl'}`}>
-        <div className="flex items-start justify-between gap-4 border-b border-gray-200 px-5 py-5 sm:px-7">
+        <div className="flex items-start justify-between gap-4 border-b border-gray-200 px-5 py-4 sm:px-6">
           <div><Dialog.Title className="text-xl font-semibold text-gray-900">{title}</Dialog.Title>
             <Dialog.Description className="mt-1 text-sm text-gray-500">{description}</Dialog.Description></div>
           <Dialog.Close disabled={busy} aria-label="Close dialog" className="rounded-md p-2 text-gray-500 hover:bg-gray-100 focus-visible:ring-2 focus-visible:ring-primary-500 disabled:opacity-50"><XMarkIcon className="h-5 w-5" /></Dialog.Close>
@@ -70,6 +71,8 @@ export function RequisitionForm({ requisition, recruiters, currentRecruiterId, o
   onClose: () => void; onSuccess: (data: Record<string, unknown>) => Promise<void> | void;
 }) {
   const [values, setValues] = useState(() => initialValues(requisition, currentRecruiterId));
+  const [learningRequirements,setLearningRequirements]=useState<LearningRequirement[]>(requisition?.learning_requirements||[]);
+  const [learningPending,setLearningPending]=useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const lock = useRef(false);
@@ -82,6 +85,7 @@ export function RequisitionForm({ requisition, recruiters, currentRecruiterId, o
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (lock.current) return;
+    if (learningPending) return showError('Add the selected learning requirements or clear the capability selection before saving.');
     const required: (keyof Values)[] = ['job_title', 'company_name', 'department', 'location', 'description'];
     if (required.some(key => !values[key].trim())) return showError('Enter a job title, company, department, location, and description. Blank spaces are not valid.');
     const min = values.salary_range_min === '' ? null : Number(values.salary_range_min);
@@ -101,6 +105,7 @@ export function RequisitionForm({ requisition, recruiters, currentRecruiterId, o
         salary_range_min: min, salary_range_max: max,
         skills_required: [...new Set(textList(values.skills_required, ','))],
         benefits: textList(values.benefits), requirements: textList(values.requirements), responsibilities: textList(values.responsibilities),
+        learning_requirements:learningRequirements, learning_requirements_version:requisition?.learning_requirements_version||1,
         deadline: values.deadline ? new Date(`${values.deadline}T23:59:59`).toISOString() : null,
       });
     } catch (failure) {
@@ -111,10 +116,10 @@ export function RequisitionForm({ requisition, recruiters, currentRecruiterId, o
   const field = (key: keyof Values, label: string, options: { required?: boolean; type?: string; placeholder?: string; choices?: string[][]; multiline?: boolean; hint?: string } = {}) => {
     const id = `${prefix}-${key}`;
     return <div key={key}>
-      <label htmlFor={id} className="mb-1.5 block text-sm font-medium text-gray-700">{label}{options.required && <span className="text-red-600"> *</span>}</label>
+      <label htmlFor={id} className="mb-1 block text-xs font-medium text-gray-700">{label}{options.required && <span className="text-red-600"> *</span>}</label>
       {options.choices ? <select id={id} name={key} className={input} value={values[key]} onChange={e => set(key, e.target.value)} required={options.required}>
         {options.choices.map(([value, text]) => <option key={value} value={value}>{text}</option>)}
-      </select> : options.multiline ? <textarea id={id} name={key} className={input} rows={4} value={values[key]} onChange={e => set(key, e.target.value)} placeholder={options.placeholder} required={options.required} maxLength={20000} /> :
+      </select> : options.multiline ? <textarea id={id} name={key} className={`${input} resize-y`} rows={key === 'description' ? 3 : 2} value={values[key]} onChange={e => set(key, e.target.value)} placeholder={options.placeholder} required={options.required} maxLength={20000} /> :
         <input id={id} name={key} type={options.type || 'text'} className={input} value={values[key]} onChange={e => set(key, e.target.value)} placeholder={options.placeholder} required={options.required}
           min={options.type === 'number' ? 0 : undefined} max={options.type === 'number' ? 2147483647 : undefined} step={options.type === 'number' ? 1 : undefined}
           maxLength={key === 'company_logo' ? 2048 : 500} />}
@@ -127,11 +132,11 @@ export function RequisitionForm({ requisition, recruiters, currentRecruiterId, o
 
   return <Frame title={editing ? 'Edit Job Requisition' : 'Create Job Requisition'} description="Define the opening and hiring requirements. Fields marked * are required." busy={busy} onClose={onClose}>
     <form onSubmit={submit} className="flex min-h-0 flex-col" aria-busy={busy}>
-      <div className="overflow-y-auto px-5 py-6 sm:px-7">
+      <div className="overflow-y-auto px-5 py-4 sm:px-6">
         {error && <div ref={errorRef} tabIndex={-1} role="alert" className="mb-5 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800 outline-none">{error}</div>}
-        <fieldset disabled={busy} className="space-y-6">
-          <legend className="mb-4 text-xs font-semibold uppercase tracking-wider text-gray-500">Opening details</legend>
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+        <fieldset disabled={busy} className="min-w-0 space-y-5">
+          <legend className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">Opening details</legend>
+          <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
             {field('job_title', 'Job title', { required: true, placeholder: 'e.g., Senior Full Stack Developer' })}
             {field('department', 'Department', { required: true, placeholder: 'e.g., Engineering' })}
             {field('company_name', 'Company name', { required: true, placeholder: 'e.g., Tech Corp Inc.' })}
@@ -147,19 +152,20 @@ export function RequisitionForm({ requisition, recruiters, currentRecruiterId, o
             {field('salary_range_min', 'Minimum salary (₹)', { type: 'number', placeholder: 'e.g., 1500000' })}
             {field('salary_range_max', 'Maximum salary (₹)', { type: 'number', placeholder: 'e.g., 2500000' })}
           </div>
-          <div className="border-t border-gray-200 pt-6">
-            <h3 className="mb-4 text-xs font-semibold uppercase tracking-wider text-gray-500">Role & expectations</h3>
-            <div className="space-y-5">
-              {field('skills_required', 'Required skills', { placeholder: 'e.g., React, Node.js, TypeScript, SQL', hint: 'Separate skills with commas.' })}
-              {field('description', 'Job description', { multiline: true, required: true, placeholder: 'Describe the role and responsibilities...' })}
+          <LearningRequirementsEditor value={learningRequirements} onChange={setLearningRequirements} disabled={busy} onPendingChange={setLearningPending}/>
+          <div className="border-t border-gray-200 pt-4">
+            <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">Role & expectations</h3>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="sm:col-span-2">{field('skills_required', 'Required skills', { placeholder: 'e.g., React, Node.js, TypeScript, SQL', hint: 'Separate skills with commas.' })}</div>
+              <div className="sm:col-span-2">{field('description', 'Job description', { multiline: true, required: true, placeholder: 'Describe the role and responsibilities...' })}</div>
               {field('requirements', 'Requirements', { multiline: true, hint: 'One requirement per line.' })}
               {field('responsibilities', 'Responsibilities', { multiline: true, hint: 'One responsibility per line.' })}
-              {field('benefits', 'Benefits', { multiline: true, hint: 'One benefit per line.' })}
+              <div className="sm:col-span-2">{field('benefits', 'Benefits', { multiline: true, hint: 'One benefit per line.' })}</div>
             </div>
           </div>
         </fieldset>
       </div>
-      <div className="flex shrink-0 justify-end gap-3 border-t border-gray-200 bg-gray-50 px-5 py-4 sm:px-7">
+      <div className="flex shrink-0 justify-end gap-3 border-t border-gray-200 bg-gray-50 px-5 py-3 sm:px-6">
         <button type="button" disabled={busy} onClick={onClose} className={secondary}>Cancel</button>
         <button type="submit" disabled={busy} className={primary}>{busy ? 'Saving…' : editing ? 'Save changes' : 'Create Requisition'}</button>
       </div>
@@ -180,17 +186,20 @@ export function RequisitionDetails({ requisition: job, recruiters, onClose, onEd
     ['Posted', date(job.posted_date)], ['Last updated', date(job.updated_at)],
   ];
   return <Frame title={job.job_title || job.title} description={`${job.company_name} · Requisition details`} onClose={onClose}>
-    <div className="overflow-y-auto px-5 py-6 sm:px-7">
+    <div className="overflow-y-auto px-5 py-4 sm:px-6">
       <dl className="grid grid-cols-1 gap-x-8 gap-y-5 rounded-lg border border-gray-200 bg-gray-50 p-5 sm:grid-cols-2 lg:grid-cols-3">
         {details.map(([label, value]) => <div key={label}><dt className="text-xs font-medium text-gray-500">{label}</dt><dd className="mt-1 break-words text-sm font-medium text-gray-900">{value || 'Not specified'}</dd></div>)}
       </dl>
       <div className="mt-6 space-y-6">
+        <section aria-label="Published learning requirements"><h3 className="mb-2 font-semibold text-gray-900">Learning requirements</h3>
+          {job.learning_requirements?.length ? <ul className="space-y-2 text-sm text-gray-700">{job.learning_requirements.map(requirement=><li key={requirement.levelId} className="flex items-start justify-between gap-3 rounded-md border border-gray-200 px-3 py-2"><span className="min-w-0 break-words">{requirement.capabilityName} · Level {requirement.levelNumber}<span className="mt-1 block text-xs text-gray-500">{requirement.title}</span></span><span className="shrink-0 text-xs font-medium">{requirement.mandatory?'Required':'Preferred'}</span></li>)}</ul> : <p className="text-sm text-gray-500">No structured learning requirements.</p>}
+        </section>
         <section><h3 className="mb-2 font-semibold text-gray-900">Job description</h3><p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-gray-700">{job.description || 'No description provided.'}</p></section>
         {([['Required skills', textList(job.skills_required, ',')], ['Requirements', textList(job.requirements)], ['Responsibilities', textList(job.responsibilities)], ['Benefits', textList(job.benefits)]] as [string, string[]][]).map(([title, items]) =>
           <section key={title}><h3 className="mb-2 font-semibold text-gray-900">{title}</h3>{items.length ? <ul className="list-disc space-y-1 pl-5 text-sm text-gray-700">{items.map((item, i) => <li key={i} className="break-words">{item}</li>)}</ul> : <p className="text-sm text-gray-500">Not specified</p>}</section>)}
       </div>
     </div>
-    <div className="flex shrink-0 flex-wrap items-center gap-3 border-t bg-gray-50 px-5 py-4 sm:px-7">
+    <div className="flex shrink-0 flex-wrap items-center gap-3 border-t bg-gray-50 px-5 py-3 sm:px-6">
       <button className={`${button} border-red-200 text-red-700 hover:bg-red-50`} title={!canDelete ? "Deleting requisitions requires an organization administrator" : undefined} disabled={!canDelete} onClick={onDelete}>Delete</button>
       <button className={`${secondary} sm:ml-auto`} onClick={onViewApplications}>View applications ({job.applications_count})</button>
       <button className={primary} disabled={!canEdit} onClick={onEdit}>Edit requisition</button>

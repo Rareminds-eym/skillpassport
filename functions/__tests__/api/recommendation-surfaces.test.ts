@@ -3,6 +3,7 @@ const f=vi.hoisted(()=>({user:{id:'11111111-1111-4111-8111-111111111111',roles:[
 vi.mock('../../lib/auth',()=>({withAuth:(handler:any)=>handler,getContextUser:()=>f.user}));
 vi.mock('../../lib/supabase',()=>({getServiceClient:()=>({from:query})}));
 vi.mock('../../lib/logger',()=>({createLogger:()=>({info:vi.fn(),warn:vi.fn(),error:vi.fn()})}));
+vi.mock('../../shared/lib/entitlement-service',()=>({getNumericLimit:async()=>({enabled:true,limit:null})}));
 vi.mock('../../lib/heal-user',()=>({}));
 vi.mock('../../lib/newOpportunityNotifications',()=>({notifyLearnersOfNewOpportunity:vi.fn()}));
 vi.mock('../../lib/permissions',()=>({verifyOrgAccess:async()=>({allowed:true})}));
@@ -27,7 +28,7 @@ function query(table:string){
     then:(resolve:any,reject:any)=>Promise.resolve(result()).then(resolve,reject)};return q;
 }
 function context(path:string,body?:any){return {request:new Request('https://fixture.invalid'+path,{method:body?'POST':'GET',...(body?{body:JSON.stringify(body)}:{})}),env:{},data:{}} as any;}
-beforeEach(()=>{f.user.roles=['learner'];f.writes=[];f.skillError=false;f.tables={learners:[{id:learner,user_id:f.user.id,name:'Own fixture'}],skills:[{learner_id:learner,name:'Python',type:'technical',training_id:null}],opportunities:[{id:job,title:'Open job',company_name:'Fixture',status:'open',is_active:true,deadline:null,skills_required:['Python']}],applied_jobs:[],pipeline_candidates:[]};});
+beforeEach(()=>{f.user.roles=['learner'];f.writes=[];f.skillError=false;f.tables={learners:[{id:learner,user_id:f.user.id,name:'Own fixture'}],skills:[{learner_id:learner,name:'Python',type:'technical',training_id:null,enabled:true,approval_status:'approved'}],opportunities:[{id:job,title:'Open job',company_name:'Fixture',status:'open',is_active:true,deadline:null,skills_required:['Python']}],applied_jobs:[],pipeline_candidates:[]};});
 it('dashboard includes open jobs and excludes expired/inactive jobs',async()=>{
   f.tables.opportunities.push({...f.tables.opportunities[0],id:'closed',status:'closed'},{...f.tables.opportunities[0],id:'expired',deadline:'2000-01-01'},{...f.tables.opportunities[0],id:'inactive',is_active:false});
   const response=await dashboard(context('/api/learners/ai-recommendations'));
@@ -63,6 +64,7 @@ it('validates required-skill arrays on writes',async()=>{
 });
 it('normalizes the existing comma-separated skill write contract',async()=>{
   f.user.roles=['recruiter'];
+  f.tables.organization_members=[{user_id:f.user.id,organization_id:'88888888-8888-4888-8888-888888888888',status:'active'}];
   expect((await opportunities(context('/api/opportunities',{action:'create-opportunity',opportunity:{skills_required:'Python, SQL'}}))).status).toBe(200);
   expect(f.writes[0].value.skills_required).toEqual(['Python','SQL']);
 });
