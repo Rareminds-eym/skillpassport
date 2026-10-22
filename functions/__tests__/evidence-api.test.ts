@@ -61,6 +61,7 @@ function fakeSupabase() {
     appliedCount: 3 as number | null,
     savedCount: 1 as number | null,
     failedTable: '',
+    filters: [] as Array<[string, string]>,
     missingLearner: false,
     hangLearner: false,
     largeSkills: false,
@@ -76,6 +77,8 @@ function fakeSupabase() {
       select: () => chain,
       eq: () => chain,
       is: () => chain,
+      ilike: (column: string, value: string) => { state.filters.push([column, value]); return chain; },
+      or: () => chain,
       order: () => chain,
       limit: () => chain,
       maybeSingle: async () => result(),
@@ -298,6 +301,15 @@ describe('POST /api/internal/evidence', () => {
     const forged = await signEvidenceBody('a-different-secret-that-is-long-enough-x', text);
     const res = await onRequestPost(context(post(text, forged), ENV));
     expect(res.status).toBe(401);
+  });
+
+  it('forwards signed job relevance through the HTTP handler into database filtering', async () => {
+    const fake = fakeSupabase();
+    vi.mocked(createSupabaseAdminClient).mockReturnValue(fake.client as never);
+    const signed = await buildBody({ query: 'Python jobs in Chennai', kinds: ['learner.skills', 'opportunities.recommended'] });
+    const response = await onRequestPost(context(post(signed.text, signed.signature, signed.requestHash), ENV));
+    expect(response.status).toBe(200);
+    expect(fake.state.filters).toContainEqual(['location', '%Chennai%']);
   });
 
   it('authenticates relevance text and rejects oversized queries', async () => {

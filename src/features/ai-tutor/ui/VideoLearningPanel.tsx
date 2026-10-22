@@ -25,7 +25,6 @@ import {
 import React, { useEffect, useState } from 'react';
 import {
     VideoSummary,
-    deleteVideoSummary,
     downloadSRT,
     downloadVTT,
     formatTimestamp,
@@ -958,7 +957,7 @@ const VideoLearningPanel: React.FC<VideoLearningPanelProps> = ({
             {activeTab === 'quiz' && <QuizTab questions={summary.quizQuestions} onSeekTo={handleSeekTo} />}
 
             {/* ===== FLASHCARDS TAB ===== */}
-            {activeTab === 'flashcards' && <FlashcardsTab flashcards={summary.flashcards} onRetry={async () => { if (summary?.id) await deleteVideoSummary(summary.id); setSummary(null); loadOrProcessVideo(); }} />}
+            {activeTab === 'flashcards' && <FlashcardsTab flashcards={summary.flashcards} />}
           </>
         ) : null}
       </div>

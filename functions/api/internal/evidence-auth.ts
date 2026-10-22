@@ -30,6 +30,7 @@ export const ALLOWED_EVIDENCE_KINDS = [
   'opportunities.recommended',
   'course.lesson',
   'course.summary',
+  'video.source',
 ] as const;
 
 /** The only product this endpoint serves. */
@@ -62,6 +63,8 @@ export const EVIDENCE_TASKS = [
   'career-talent-strategist.keywords',
   'senior-educator.suggest',
   'senior-educator.tutor-chat',
+  'senior-educator.generate-material',
+  'senior-educator.summarize-video',
 ] as const;
 
 /** Resource kinds this endpoint can authorize. */
@@ -71,8 +74,8 @@ export const ALLOWED_RESOURCE_KINDS = ['learner'] as const;
 export function assertEvidenceKindsAllowed(task: string, kinds: string[]): void {
   assertEvidenceTaskAllowed(task);
   const allowed: readonly string[] = task === 'career-talent-strategist.chat'
-    ? ALLOWED_EVIDENCE_KINDS.filter(kind => !kind.startsWith('course.'))
-    : task === 'senior-educator.suggest' ? ['course.lesson'] : task === 'senior-educator.tutor-chat' ? ['course.summary'] : [];
+    ? ['learner.profile', 'learner.skills', 'assessment.summary', 'learner.courses', 'learner.progress', 'opportunities.recommended']
+    : task === 'senior-educator.suggest' ? ['course.lesson'] : (task === 'senior-educator.tutor-chat' || task === 'senior-educator.generate-material') ? ['course.summary'] : task === 'senior-educator.summarize-video' ? ['video.source'] : [];
   if (kinds.some(kind => !allowed.includes(kind))) {
     throw new EvidenceAuthError('Evidence kind is not permitted for this task', 'FORBIDDEN', 403);
   }
@@ -420,7 +423,7 @@ export function assertResourceKindsAllowed(
   resources: Array<{ kind: string; id: string }>,
   task?: string,
 ): void {
-  const allowed: readonly string[] = task === 'senior-educator.suggest' || task === 'senior-educator.tutor-chat' ? ['course', 'lesson'] : ALLOWED_RESOURCE_KINDS;
+  const allowed: readonly string[] = task === 'senior-educator.suggest' || task === 'senior-educator.tutor-chat' || task === 'senior-educator.generate-material' ? ['course', 'lesson'] : task === 'senior-educator.summarize-video' ? ['video-job'] : ALLOWED_RESOURCE_KINDS;
   for (const resource of resources) {
     if (!allowed.includes(resource.kind)) {
       throw new EvidenceAuthError('Resource kind is not served by this endpoint', 'FORBIDDEN', 403);

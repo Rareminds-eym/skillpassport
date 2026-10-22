@@ -6,6 +6,9 @@ name = "skill-passport-portal"
 compatibility_date = "2026-09-04"
 compatibility_flags = ["nodejs_compat"]
 
+# Video job code is retained for a future release; its SQL migrations are deferred.
+# Do not enable before restoring/reviewing the required schema and durable runner.
+
 # Flagship feature flags (Cloudflare native, KV+DO backed, sub-ms edge eval)
 # Public beta 2026-05-26 — Worker binding replaces env-var toggles for DORA elite MTTR
 # Requires app created in Cloudflare dashboard → flagship app_id
@@ -75,6 +78,7 @@ bucket_name = "skill-echosystem"
 # ============================================================================
 
 [vars]
+VIDEO_JOBS_ENABLED = "false"
 ENVIRONMENT = "production"
 REALTIME_PARTITIONS = "10"
 SUPABASE_URL = "https://dpooleduinyyzxgrcwko.supabase.co"

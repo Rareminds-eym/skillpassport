@@ -62,6 +62,8 @@ const AITutorChat: React.FC<AITutorChatProps> = ({ courseId, lessonId, onClose }
     conversations,
     suggestedQuestions,
     sendMessage,
+    retryPendingMessage,
+    hasPendingSend,
     editMessage,
     loadConversation,
     startNewConversation,
@@ -533,9 +535,9 @@ const AITutorChat: React.FC<AITutorChatProps> = ({ courseId, lessonId, onClose }
           <AlertCircle className="w-4 h-4 flex-shrink-0" />
           <p className="text-sm flex-1">{error}</p>
           <button type="button"
-            onClick={() => window.location.reload()}
+            onClick={() => { if (hasPendingSend) void retryPendingMessage(); else void refreshConversations(); }}
             className="p-1 hover:bg-red-100 rounded"
-            title="Retry"
+            title={hasPendingSend ? 'Retry the same turn' : 'Refresh conversations'}
           >
             <RefreshCw className="w-4 h-4" />
           </button>

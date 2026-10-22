@@ -24,6 +24,8 @@ import { apiError, apiSuccess } from '../../lib/response';
 import { createSupabaseAdminClient } from '../../lib/supabase';
 import { buildCareerEvidence } from '../career/context/evidence';
 import { buildLessonEvidence } from './lesson-evidence';
+import { buildVideoSourceEvidence } from './video-source-evidence';
+import { buildAuthoringCourseEvidence } from './authoring-course-evidence';
 import { buildCourseEvidence } from './course-evidence';
 import {
   EVIDENCE_MAX_BODY_BYTES,
@@ -87,11 +89,15 @@ export const onRequestPost: PagesFunction<PagesEnv> = async (context) => {
     // serving. A duplicate is a replay (403); a store failure is an outage.
     await awaitEvidence(claimEvidenceNonce(supabase, parsed.nonce, parsed.expiresAt), controller.signal);
 
-    const projection = parsed.task === 'senior-educator.suggest' ? buildLessonEvidence : parsed.task === 'senior-educator.tutor-chat' ? buildCourseEvidence : buildCareerEvidence;
+    if (parsed.task === 'senior-educator.summarize-video' && env.VIDEO_JOBS_ENABLED !== 'true') {
+      return apiError(503, 'UNAVAILABLE', 'Video evidence is reserved for a future release', request);
+    }
+    const projection = parsed.task === 'senior-educator.suggest' ? buildLessonEvidence : parsed.task === 'senior-educator.tutor-chat' ? buildCourseEvidence : parsed.task === 'senior-educator.generate-material' ? buildAuthoringCourseEvidence : parsed.task === 'senior-educator.summarize-video' ? buildVideoSourceEvidence : buildCareerEvidence;
     const result = await awaitEvidence(projection(
       supabase,
       {
         actorId: parsed.actorId,
+        ...(parsed.query !== undefined ? { query: parsed.query } : {}),
         kinds: parsed.kinds,
         resources: parsed.resources,
       },

@@ -64,6 +64,8 @@ export interface Conversation {
 }
 
 export interface ChatRequest {
+  /** Stable for one send; edits are a new turn. */
+  turnId?: string;
   conversationId?: string;
   courseId: string;
   lessonId?: string;
@@ -113,10 +115,12 @@ export interface StreamChunk {
  * Returns an async generator that yields content and reasoning chunks
  */
 export async function* sendMessage(request: ChatRequest): AsyncGenerator<StreamChunk, void, unknown> {
+  lastConversationId = null;
   const response = await ssoClient.fetch(
     `${API_URL}/chat`,
     {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(request),
     }
   );
@@ -133,10 +137,15 @@ export async function* sendMessage(request: ChatRequest): AsyncGenerator<StreamC
   const decoder = new TextDecoder();
   let buffer = '';
   let currentEventType = '';
+  let completed = false;
+  let bytes = 0;
 
+  try {
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
+    bytes += value.byteLength;
+    if (bytes > 128000) throw new Error('Tutor response exceeded its size limit.');
 
     buffer += decoder.decode(value, { stream: true });
     const lines = buffer.split('\n');
@@ -151,19 +160,27 @@ export async function* sendMessage(request: ChatRequest): AsyncGenerator<StreamC
 
       if (line.startsWith('data: ')) {
         const data = line.slice(6);
+        let parsed: any;
         try {
-          const parsed = JSON.parse(data);
+          parsed = JSON.parse(data);
+        } catch {
+          throw new Error('Tutor response contained an invalid event.');
+        }
+        if (!parsed || typeof parsed !== 'object') throw new Error('Tutor response contained an invalid event.');
+        if (completed) throw new Error('Tutor response continued after completion.');
+        if (currentEventType === 'error' || parsed.error) throw new Error(typeof parsed.error === 'string' ? parsed.error : 'Tutor execution failed. Retry the same turn.');
 
           // Handle reasoning events (from grok/reasoning models)
-          if (currentEventType === 'reasoning' && parsed.reasoning) {
+          if (currentEventType === 'reasoning' && typeof parsed.reasoning === 'string') {
             yield { type: 'reasoning', reasoning: parsed.reasoning };
           }
           // Handle content events
-          else if (parsed.content) {
+          else if (currentEventType === 'token' && typeof parsed.content === 'string') {
             yield { type: 'content', content: parsed.content };
           }
           // Handle done event with conversation info
-          else if (parsed.conversationId) {
+          else if (currentEventType === 'done' && typeof parsed.conversationId === 'string' && typeof parsed.messageId === 'string') {
+            completed = true;
             lastConversationId = parsed.conversationId;
             yield {
               type: 'done',
@@ -172,11 +189,13 @@ export async function* sendMessage(request: ChatRequest): AsyncGenerator<StreamC
               generationUsage: parsed.generationUsage
             };
           }
-        } catch {
-          // Skip invalid JSON
-        }
       }
     }
+  }
+  if (buffer.trim() || !completed) throw new Error('Tutor response was interrupted before saving. Retry the same turn.');
+  } finally {
+    await reader.cancel().catch(() => undefined);
+    reader.releaseLock();
   }
 }
 

@@ -1,10 +1,16 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { handleAiTutorChat } from "../handlers/ai-tutor-chat.js";
+import { videoIdentityHash } from '../../course/utils/video-job';
+import { loadEnrolledCourse } from '../../internal/lesson-evidence';
+import { loadAuthoringCourse } from '../../internal/authoring-course-evidence';
+vi.mock('../../internal/lesson-evidence', () => ({ loadEnrolledCourse: vi.fn(), resolveCourseLesson: vi.fn() }));
+vi.mock('../../internal/authoring-course-evidence', () => ({ loadAuthoringCourse: vi.fn(async () => null) }));
 
 function makeSupabase(overrides: {
   learnerType?: string | null;
   existingMessages?: unknown[] | null;
   onWrite?: () => void;
+  saveError?: boolean;
 } = {}) {
   return {
     from(table: string) {
@@ -28,7 +34,7 @@ function makeSupabase(overrides: {
             return {
               select() {
                 return {
-                  single: () => Promise.resolve({ data: { id: "new-conv" }, error: null }),
+                  single: () => Promise.resolve({ data: overrides.saveError ? null : { id: "new-conv" }, error: overrides.saveError ? { message: 'outage' } : null }),
                 };
               },
             };
@@ -51,7 +57,7 @@ function makeSupabase(overrides: {
         insert: () => ({ select: () => ({ single: () => Promise.resolve({ data: null, error: null }) }) }),
       } as any;
     },
-    rpc: async () => { overrides.onWrite?.(); return { error: null }; },
+    rpc: async () => { overrides.onWrite?.(); return { error: overrides.saveError ? { message: 'outage' } : null }; },
   } as any;
 }
 
@@ -307,5 +313,95 @@ describe("generate-material via worker (educator streaming)", () => {
       buildCourseContext: async () => makeCourseContext() as never,
     } as any);
     expect(res.status).toBe(503);
+  });
+});
+
+
+describe('stable tutor/material send identity', () => {
+  const turnId = '11111111-1111-4111-8111-111111111111';
+  it('reserves teacher allowance before generation and completes it only after saving', async () => {
+    const events: string[] = [];
+    const db = makeSupabase({ learnerType: 'teacher', onWrite: () => events.push('save') });
+    db.rpc = async (method: string) => { events.push(method); return { data: { limit: 2, used: method === 'complete_tutor_generation' ? 1 : 0, remaining: 1 }, error: null }; };
+    vi.mocked(loadAuthoringCourse).mockResolvedValueOnce({ course_id: 'c-1' } as never);
+    const response = await handleAiTutorChat(makeContext({ turnId, courseId: 'c-1', message: 'Create quiz',
+      worksheetConfig: { templateType: 'multiple_choice', difficulty: 'medium', questionCount: 5 } }), {
+      supabase: db, buildCourseContext: async () => makeCourseContext(), callMaterialWorker: async () => {
+        events.push('model');
+        return new Response('data: {"type":"delta","sequence":0,"text":"Quiz"}\n\ndata: {"type":"completed","executionId":"e","outcome":"answered"}\n\n');
+      },
+    } as any);
+    expect(await response.text()).toContain('event: done');
+    expect(events).toEqual(['claim_tutor_generation', 'model', 'save', 'complete_tutor_generation']);
+  });
+  it('denies exhausted teacher allowance before model work', async () => {
+    const db = makeSupabase({ learnerType: 'teacher' });
+    db.rpc = async () => ({ data: null, error: { code: 'P0001' } });
+    vi.mocked(loadAuthoringCourse).mockResolvedValueOnce({ course_id: 'c-1' } as never);
+    const callMaterialWorker = vi.fn();
+    const response = await handleAiTutorChat(makeContext({ turnId, courseId: 'c-1', message: 'Create quiz',
+      worksheetConfig: { templateType: 'multiple_choice', difficulty: 'medium', questionCount: 5 } }), { supabase: db, callMaterialWorker } as any);
+    expect(response.status).toBe(403);
+    expect(callMaterialWorker).not.toHaveBeenCalled();
+  });
+  it('recovers a committed initial turn after a lost acknowledgement without inference or writes', async () => {
+    const requestHash = await videoIdentityHash({ courseId: 'c-1', lessonId: null, message: 'Explain cells', worksheetConfig: null, lessonPlanConfig: null });
+    const messages = [{ id: turnId, role: 'user', content: 'Explain cells', requestHash }, { id: 'answer', role: 'assistant', content: 'Saved answer' }];
+    let writes = 0;
+    const callWorker = vi.fn();
+    vi.mocked(loadEnrolledCourse).mockResolvedValue({ course_id: 'c-1' } as never);
+    const response = await handleAiTutorChat(makeContext({ turnId, courseId: 'c-1', message: 'Explain cells' }), {
+      supabase: makeSupabase({ existingMessages: messages, onWrite: () => writes++ }), callWorker,
+    } as any);
+    expect(await response.text()).toContain('Saved answer');
+    expect(callWorker).not.toHaveBeenCalled();
+    expect(writes).toBe(0);
+    vi.mocked(loadEnrolledCourse).mockResolvedValue(null);
+    const revoked = await handleAiTutorChat(makeContext({ turnId, courseId: 'c-1', message: 'Explain cells' }), {
+      supabase: makeSupabase({ existingMessages: messages }), callWorker,
+    } as any);
+    expect(revoked.status).toBe(403);
+  });
+  it('rejects changed payloads for already applied turns without regeneration', async () => {
+    const callWorker = vi.fn();
+    const response = await handleAiTutorChat(makeContext({ turnId, courseId: 'c-1', message: 'Changed question' }), {
+      supabase: makeSupabase({ existingMessages: [{ id: turnId, role: 'user', content: 'Original', requestHash: 'original-hash' }] }), callWorker,
+    } as any);
+    expect(response.status).toBe(409);
+    expect(callWorker).not.toHaveBeenCalled();
+  });
+  it.each(['learner', 'educator'])('does not report %s completion when application persistence fails', async role => {
+    const workerSse = 'data: {"type":"delta","sequence":0,"text":"Generated content"}\n\ndata: {"type":"completed","executionId":"e","outcome":"answered"}\n\n';
+    const call = async () => new Response(workerSse, { headers: { 'content-type': 'text/event-stream' } });
+    const response = await handleAiTutorChat(makeContext({ turnId, courseId: 'c-1', message: 'Create content',
+      ...(role === 'educator' ? { worksheetConfig: { templateType: 'multiple_choice', difficulty: 'medium', questionCount: 5 } } : {}) },
+      { id: 'actor', roles: [role] }), { supabase: makeSupabase({ saveError: true }),
+      buildCourseContext: async () => makeCourseContext() as never, callWorker: call, callMaterialWorker: call } as any);
+    const text = await response.text();
+    expect(text).toContain('event: error');
+    expect(text).toContain('Do not regenerate this turn');
+    expect(text).not.toContain('event: done');
+  });
+  it.each(['learner', 'educator'])('keeps the same operation and initial session for retried %s sends', async role => {
+    const requests: any[] = [];
+    const worker = {
+      orchestrator: async (request: any) => { requests.push(request); return Response.json({ error: { code: 'FEATURE_ACCESS_DENIED', message: 'denied' } }, { status: 403 }); },
+      seniorEducator: async (request: any) => { requests.push(request); return { ok: false, error: { code: 'FEATURE_ACCESS_DENIED', message: 'denied' } }; },
+    };
+    const worksheetConfig = { templateType: 'multiple_choice', difficulty: 'medium', gradeLevel: '', questionCount: 10, includeAnswerKey: true, includeRubric: false, includeExtension: false, topic: '' };
+    for (let i = 0; i < 2; i++) {
+      const response = await handleAiTutorChat(makeContext({ turnId, courseId: 'c-1', message: 'Create learning content', ...(role === 'educator' ? { worksheetConfig } : {}) },
+        { id: 'actor', roles: [role] }, { AI_SERVICE: worker } as any), {
+        supabase: makeSupabase(), buildCourseContext: async () => makeCourseContext() as never,
+      } as any);
+      expect(response.status).toBe(403);
+    }
+    expect(requests).toHaveLength(2);
+    expect(requests.map(request => request.operationId)).toEqual([turnId, turnId]);
+    for (const request of requests) expect((request.input.task?.input ?? request.input).conversationId).toBe(turnId);
+  });
+  it('rejects malformed client turn identities before worker work', async () => {
+    const response = await handleAiTutorChat(makeContext({ turnId: 'bad', courseId: 'c-1', message: 'hi' }), { supabase: makeSupabase() } as any);
+    expect(response.status).toBe(400);
   });
 });

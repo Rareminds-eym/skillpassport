@@ -6,7 +6,6 @@
  * GET /api/course/generation-usage?userId=<id>
  */
 
-import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getContextUser, getServiceClient } from '../../../lib/auth';
 import { createLogger } from '../../../lib/logger';
 import { apiError, apiSuccess } from '../../../lib/response';
@@ -21,7 +20,7 @@ interface RequiredEnv {
   SUPABASE_SERVICE_ROLE_KEY: string;
 }
 
-type TypedContext = AuthenticatedContext<PagesEnv> & { env: RequiredEnv };
+type TypedContext = Parameters<typeof getContextUser>[0] & { request: Request; env: RequiredEnv & PagesEnv };
 
 export const onRequestGet = async (context: TypedContext) => {
   const { request, env } = context;
@@ -87,6 +86,9 @@ export const onRequestGet = async (context: TypedContext) => {
       isTeacher: true,
     }, request);
   } catch (error: unknown) {
+    if (error instanceof Error && error.message.startsWith('DEPENDENCY_UNAVAILABLE:')) {
+      return apiError(503, 'DEPENDENCY_UNAVAILABLE', 'Generation usage is temporarily unavailable', request);
+    }
     logger.error('Get generation usage error', error instanceof Error ? error : new Error(String(error)));
     return apiError(500, 'INTERNAL_ERROR', 'Internal server error', request);
   }

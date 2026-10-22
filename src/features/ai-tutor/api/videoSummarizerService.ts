@@ -298,11 +298,7 @@ export async function getVideoSummary(id: string): Promise<VideoSummary | null> 
 }
 
 export async function deleteVideoSummary(id: string): Promise<void> {
-  try {
-    await apiPost('/ai-tutor/actions', { action: 'delete-video-summary', id });
-  } catch (err) {
-    logger.warn('Exception deleting video summary', { err, id });
-  }
+  await apiPost('/ai-tutor/actions', { action: 'delete-video-summary', id });
 }
 
 export async function checkProcessingStatus(id: string): Promise<{

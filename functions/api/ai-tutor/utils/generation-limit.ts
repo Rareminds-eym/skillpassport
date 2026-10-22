@@ -9,6 +9,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createLogger } from '../../../lib/logger';
+import { readTutorGenerationUsage } from './generation-claim';
 
 const logger = createLogger('generation-limit');
 
@@ -29,31 +30,7 @@ export async function getGenerationUsage(
   supabaseAdmin: SupabaseClient,
   userId: string
 ): Promise<GenerationUsage> {
-  const { data: userData, error } = await supabaseAdmin
-    .from('users')
-    .select('metadata')
-    .eq('id', userId)
-    .maybeSingle();
-
-  if (error || !userData) {
-    logger.error('Failed to fetch user metadata', error instanceof Error ? error : new Error(String(error)));
-    throw new Error('Failed to fetch generation usage');
-  }
-
-  const rawMetadata = userData.metadata;
-  const metadata: Record<string, unknown> =
-    typeof rawMetadata === 'object' && rawMetadata !== null && !Array.isArray(rawMetadata)
-      ? (rawMetadata as Record<string, unknown>)
-      : {};
-  const rawCount = metadata[GENERATION_COUNT_KEY];
-  const used = Number.isFinite(Number(rawCount)) ? Math.max(0, Math.floor(Number(rawCount))) : 0;
-  const remaining = Math.max(0, TEACHER_GENERATION_LIMIT - used);
-
-  return {
-    limit: TEACHER_GENERATION_LIMIT,
-    used,
-    remaining,
-  };
+  return readTutorGenerationUsage(supabaseAdmin, userId);
 }
 
 /**

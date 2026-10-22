@@ -1,5 +1,30 @@
 import { OrchestratorEventSchema, type OrchestratorBoundedResult } from '@rareminds-eym/ai-protocol';
 
+/** Compatibility text adapter with a whole-response deadline and byte cap. */
+export async function readBoundedWorkerText(response: Response, timeoutMs: number): Promise<string> {
+  if (!response.body) throw new Error('INVALID_MODEL_OUTPUT: Missing orchestrator response');
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  const deadline = Date.now() + timeoutMs;
+  let bytes = 0;
+  let text = '';
+  try {
+    for (;;) {
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const chunk = await Promise.race([reader.read(), new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error('DOWNSTREAM_TIMEOUT: Orchestrator response timed out')), Math.max(0, deadline - Date.now()));
+      })]).finally(() => { if (timer !== undefined) clearTimeout(timer); });
+      if (chunk.done) return text + decoder.decode();
+      bytes += chunk.value.byteLength;
+      if (bytes > 128000) throw new Error('INVALID_MODEL_OUTPUT: Orchestrator response exceeds limit');
+      text += decoder.decode(chunk.value, { stream: true });
+    }
+  } finally {
+    await reader.cancel().catch(() => undefined);
+    reader.releaseLock();
+  }
+}
+
 /** Bounded server-side result adapter. Never retry a partially consumed execution. */
 export async function readOrchestratorResult(response: Response, timeoutMs = 60000): Promise<OrchestratorBoundedResult> {
   if (response.headers.get('content-type')?.includes('application/json')) {

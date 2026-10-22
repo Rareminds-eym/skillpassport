@@ -18,6 +18,8 @@ import type {
  * Standard environment variables available to all Pages Functions
  */
 export interface PagesEnv {
+  /** Deferred video job implementation; requires future schema review before activation. */
+  VIDEO_JOBS_ENABLED?: string;
   // SSO / Auth configuration
   /** Cloudflare Service Binding to the SSO worker (sso-api) */
   SSO_SERVICE?: SsoWorkerRpc;
@@ -48,6 +50,9 @@ export interface PagesEnv {
   GOOGLE_OAUTH_ENABLED?: string;
 
   // Supabase configuration
+  /** Legacy Pages aliases already accepted by the server client factory. */
+  VITE_SUPABASE_URL?: string;
+  VITE_SUPABASE_ANON_KEY?: string;
   SUPABASE_URL?: string;
   SUPABASE_ANON_KEY?: string;
   SUPABASE_SERVICE_ROLE_KEY?: string;

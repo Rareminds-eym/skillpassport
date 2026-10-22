@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { readOrchestratorResult } from '../lib/orchestrator-result';
+import { readOrchestratorResult, readBoundedWorkerText } from '../lib/orchestrator-result';
 
 const result = { type: 'result', result: { kind: 'keywords', data: { keywords: ['Physics'] } } };
 const complete = { type: 'completed', executionId: 'exec-1', outcome: 'answered' };
@@ -12,6 +12,13 @@ function stream(events: unknown[]) {
   } }), { headers: { 'content-type': 'text/event-stream' } });
 }
 describe('bounded orchestrator adapter', () => {
+  it('bounds the compatibility text adapter and cancels stalled streams', async () => {
+    expect(await readBoundedWorkerText(new Response('αβ'), 1000)).toBe('αβ');
+    await expect(readBoundedWorkerText(new Response('x'.repeat(128001)), 1000)).rejects.toThrow('exceeds limit');
+    let cancelled = false;
+    await expect(readBoundedWorkerText(new Response(new ReadableStream({ cancel() { cancelled = true; } })), 5)).rejects.toThrow('DOWNSTREAM_TIMEOUT');
+    expect(cancelled).toBe(true);
+  });
   it('cancels a stalled result at the whole-response deadline', async () => {
     let cancelled = false;
     const response = new Response(new ReadableStream({ cancel() { cancelled = true; } }), { headers: { 'content-type': 'text/event-stream' } });

@@ -6,7 +6,7 @@ import { resolveCourseLesson, loadEnrolledCourse } from './lesson-evidence';
 /** Bounded learner course grounding, with optional lesson membership verification. */
 export async function buildCourseEvidence(db: SupabaseClient, input: {
   actorId: string; kinds: string[]; resources: Array<{ kind: string; id: string }>;
-}, nowMs: number): Promise<{ bundle: ContextBundle; forbiddenResources: string[] }> {
+}, nowMs: number, loadCourse: typeof loadEnrolledCourse = loadEnrolledCourse): Promise<{ bundle: ContextBundle; forbiddenResources: string[] }> {
   const courses = input.resources.filter(item => item.kind === 'course');
   const lessons = input.resources.filter(item => item.kind === 'lesson');
   const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -17,7 +17,7 @@ export async function buildCourseEvidence(db: SupabaseClient, input: {
   const now = new Date(nowMs).toISOString();
   const forbidden = () => ({ forbiddenResources: input.resources.map(item => `${item.kind}:${item.id}`), bundle: ContextBundleSchema.parse({ evidence: [], sources: [], missing: ['course.summary'], absent: [], stale: [], invalid: [], gatheredAt: now }) });
   const courseId = courses[0]!.id;
-  const course = await loadEnrolledCourse(db, input.actorId, courseId);
+  const course = await loadCourse(db, input.actorId, courseId);
   if (!course) return forbidden();
   const evidence: ContextBundle['evidence'] = [];
   if (lessons.length) {

@@ -10,7 +10,6 @@
  * reasoning executes in ai-worker instead of direct provider calls.
  */
 
-import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { apiError } from '../../../lib/response';
 import type { PagesEnv } from '../../../lib/types';
 import { getContextUser, getServiceClient } from '../../../lib/auth';
@@ -19,13 +18,18 @@ import type { LessonPlanConfig } from '../types/lesson-plan';
 import {
   buildCourseContext,
 } from '../utils/course-context';
-import { hasReachedLimit, incrementGenerationCount } from '../utils/generation-limit';
+import { claimTutorGeneration, completeTutorGeneration } from '../utils/generation-claim';
 import { createLogger } from '../../../lib/logger';
 import { getAiWorker, rpcErrorToHttpStatus } from '../../ai/lib/aiBinding';
 import { issueExecutionAssertion } from '../../ai/lib/assertion';
 import { buildTutorChatPrompt } from '../prompts/tutor-chat';
 import { buildMaterialPrompts } from '../prompts/material';
 import type { EducatorRequest, OrchestratorRequest, TutorCourseContext } from '@rareminds-eym/ai-protocol';
+import { videoIdentityHash } from '../../course/utils/video-job';
+import { loadEnrolledCourse, resolveCourseLesson } from '../../internal/lesson-evidence';
+import { loadAuthoringCourse } from '../../internal/authoring-course-evidence';
+import { OrchestratorEventSchema, WorksheetConfigSchema, LessonPlanConfigSchema } from '@rareminds-eym/ai-protocol';
+import { readBoundedWorkerText } from '../../ai/lib/orchestrator-result';
 
 type EducatorMaterialRpcRequest = Extract<EducatorRequest, { feature: 'generate-material' }>;
 
@@ -35,14 +39,16 @@ interface RequiredEnv {
   SUPABASE_URL: string;
   SUPABASE_SERVICE_ROLE_KEY: string;
 }
-type TypedContext = AuthenticatedContext<PagesEnv> & { env: RequiredEnv };
+type TypedContext = Parameters<typeof getContextUser>[0] & { request: Request; env: RequiredEnv & PagesEnv };
 interface StoredMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   timestamp: string;
+  requestHash?: string;
 }
 interface AiTutorChatRequest {
+  turnId?: string;
   conversationId?: string;
   courseId?: string;
   lessonId?: string;
@@ -98,22 +104,51 @@ export const handleAiTutorChat = async (context: TypedContext, ports?: TutorChat
     return apiError(400, 'VALIDATION_ERROR', 'Invalid request body', request);
   }
   const { conversationId, courseId, lessonId, message, worksheetConfig, lessonPlanConfig } = body;
+  if (body.turnId !== undefined && (typeof body.turnId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.turnId))) return apiError(400, 'VALIDATION_ERROR', 'Invalid turnId', request);
+  const turnId = body.turnId ?? crypto.randomUUID();
   if (!courseId || typeof courseId !== 'string' || courseId.length > 128 || !message || typeof message !== 'string' || !message.trim() || (lessonId !== undefined && (typeof lessonId !== 'string' || lessonId.length > 128))) {
     return apiError(400, 'VALIDATION_ERROR', 'Missing required fields: courseId and message', request);
+  }
+  if (worksheetConfig !== undefined && !WorksheetConfigSchema.safeParse(worksheetConfig).success ||
+      lessonPlanConfig !== undefined && !LessonPlanConfigSchema.safeParse(lessonPlanConfig).success) {
+    return apiError(400, 'VALIDATION_ERROR', 'Invalid material generation configuration', request);
   }
 
   // Fetch existing messages if conversation exists — preserved
   let currentConversationId = conversationId;
   let existingMessages: StoredMessage[] = [];
-  if (conversationId) {
-    const { data: conversation } = await supabase
+  const requestHash = await videoIdentityHash({ courseId, lessonId: lessonId ?? null, message,
+    worksheetConfig: worksheetConfig ?? null, lessonPlanConfig: lessonPlanConfig ?? null });
+  if (conversationId || body.turnId) {
+    const { data: conversation, error: conversationError } = await supabase
       .from('tutor_conversations')
-      .select('messages')
-      .eq('id', conversationId)
+      .select('id, course_id, lesson_id, messages')
+      .eq('id', conversationId ?? turnId)
       .eq('learner_id', learnerId)
       .maybeSingle();
+    if (conversationError) return apiError(503, 'DEPENDENCY_UNAVAILABLE', 'Conversation lookup is unavailable', request);
     if (conversation) {
+      if (conversation.course_id !== undefined && (conversation.course_id !== courseId || (conversation.lesson_id ?? null) !== (lessonId ?? null))) {
+        return apiError(409, 'IDEMPOTENCY_CONFLICT', 'Conversation resource scope changed', request);
+      }
+      currentConversationId = conversationId ?? turnId;
       existingMessages = (conversation as { messages?: StoredMessage[] }).messages || [];
+      const previousIndex = existingMessages.findIndex(item => item.id === turnId && item.role === 'user');
+      if (previousIndex >= 0) {
+        const previous = existingMessages[previousIndex]!;
+        if (previous.requestHash !== requestHash) return apiError(409, 'IDEMPOTENCY_CONFLICT', 'Turn payload changed or its original identity is unavailable', request);
+        const answer = existingMessages[previousIndex + 1];
+        if (!answer || answer.role !== 'assistant' || !answer.content) return apiError(409, 'AI_REQUEST_IN_PROGRESS', 'This turn requires reconciliation', request);
+        // Replays still require current course/lesson authority; they never call a model.
+        const course = await loadEnrolledCourse(supabase, learnerId, courseId) ?? await loadAuthoringCourse(supabase, learnerId, courseId);
+        if (!course || lessonId && !await resolveCourseLesson(supabase, courseId, lessonId)) return apiError(403, 'FORBIDDEN', 'Course access is required', request);
+        const generationUsage = worksheetConfig || lessonPlanConfig
+          ? await completeTutorGeneration(supabase, learnerId, turnId, requestHash) : undefined;
+        return new Response(`event: token\ndata: ${JSON.stringify({ content: answer.content })}\n\nevent: done\ndata: ${JSON.stringify({ conversationId: currentConversationId, messageId: answer.id, generationUsage })}\n\n`,
+          { headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-store' } });
+      }
+    } else if (conversationId) {
+      return apiError(404, 'NOT_FOUND', 'Conversation not found', request);
     }
   }
   const isGenerationRequest = Boolean(worksheetConfig || lessonPlanConfig);
@@ -132,10 +167,13 @@ export const handleAiTutorChat = async (context: TypedContext, ports?: TutorChat
   }
   let generationUsage: { limit: number; used: number; remaining: number } | undefined;
   if (isTeacherLearner && isGenerationRequest) {
-    const limitReached = await hasReachedLimit(supabase, learnerId);
-    if (limitReached) {
-      logger.warn('Blocked: teacher learner reached generation limit');
-      return apiError(403, 'FORBIDDEN', 'You have reached your 2-generation limit for worksheet and lesson plan generation.', request);
+    try {
+      const course = await loadAuthoringCourse(supabase, learnerId, courseId);
+      if (!course || lessonId && !await resolveCourseLesson(supabase, courseId, lessonId)) return apiError(403, 'FORBIDDEN', 'Course authoring access is required', request);
+      generationUsage = await claimTutorGeneration(supabase, learnerId, turnId, requestHash);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'DEPENDENCY_UNAVAILABLE: Generation allowance unavailable';
+      return apiError(message.startsWith('FORBIDDEN:') ? 403 : rpcErrorToHttpStatus(error), message.split(':')[0]!, message.slice(0, 300), request);
     }
   }
   if (userRole.toLowerCase().includes('educator')) {
@@ -157,6 +195,8 @@ export const handleAiTutorChat = async (context: TypedContext, ports?: TutorChat
       env,
       request,
       learnerId,
+      turnId,
+      requestHash,
       currentConversationId,
       existingMessages,
       courseId,
@@ -181,12 +221,13 @@ export const handleAiTutorChat = async (context: TypedContext, ports?: TutorChat
     return apiError(404, 'NOT_FOUND', e instanceof Error ? e.message : 'Course not found', request);
   }
 
-  const userMessageId = crypto.randomUUID();
+  const userMessageId = turnId;
   const userMessage: StoredMessage = {
     id: userMessageId,
     role: 'user',
     content: message,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    requestHash,
   };
   const recentMessages = existingMessages.slice(-6);
   const historyForWorker = recentMessages.map(m => ({ role: m.role as 'user' | 'assistant', content: m.content }));
@@ -198,16 +239,17 @@ export const handleAiTutorChat = async (context: TypedContext, ports?: TutorChat
       ? await p.callWorker({
           env: env as unknown as Record<string, unknown>,
           userId: learnerId,
-          conversationId: currentConversationId || crypto.randomUUID(),
+          conversationId: currentConversationId || turnId,
           message,
           history: historyForWorker,
           course: courseContext as unknown as TutorCourseContext,
           userRole,
         })
       : await callTutorChatWorker(env as unknown as Record<string, string>, learnerId, {
+          operationId: turnId,
           courseId,
           ...(lessonId ? { lessonId } : {}),
-          conversationId: currentConversationId || crypto.randomUUID(),
+          conversationId: currentConversationId || turnId,
           message,
           history: historyForWorker,
           course: courseContext as unknown as TutorCourseContext,
@@ -240,7 +282,7 @@ export const handleAiTutorChat = async (context: TypedContext, ports?: TutorChat
   const stream = new ReadableStream({
     async start(controller) {
       try {
-        const text = await workerResponse.text();
+        const text = await readBoundedWorkerText(workerResponse, 120000);
         let completed = false;
         for (const line of text.split('\n')) {
           const trimmed = line.trim();
@@ -249,10 +291,11 @@ export const handleAiTutorChat = async (context: TypedContext, ports?: TutorChat
           if (!data) continue;
           let event: { type?: string; text?: string; question?: string; outcome?: string; error?: { code?: string; message?: string } };
           try {
-            event = JSON.parse(data) as typeof event;
+            event = OrchestratorEventSchema.parse(JSON.parse(data));
           } catch {
-            continue;
+            throw new Error('INVALID_MODEL_OUTPUT: Malformed tutor event');
           }
+          if (completed) throw new Error('Unexpected event after tutor completion');
           if (event.type === 'delta' && typeof event.text === 'string' && event.text) {
             fullResponse += event.text;
             controller.enqueue(encoder.encode(`event: token\ndata: ${JSON.stringify({ content: event.text })}\n\n`));
@@ -286,15 +329,16 @@ export const handleAiTutorChat = async (context: TypedContext, ports?: TutorChat
             p_new_messages: [userMessage, assistantMessage]
           });
           if (updateError) {
-            logger.error('Failed to append messages', updateError as Error);
+            throw new Error('DEPENDENCY_UNAVAILABLE: Conversation save could not be confirmed. Do not regenerate this turn.');
           } else {
             logger.info('Updated conversation', { conversationId: currentConversationId });
           }
         } else {
           const title = message.slice(0, 50);
-          const { data: newConv } = await supabase
+          const { data: newConv, error: insertError } = await supabase
             .from('tutor_conversations')
             .insert({
+              id: turnId,
               learner_id: learnerId,
               course_id: courseId,
               lesson_id: lessonId || null,
@@ -303,6 +347,7 @@ export const handleAiTutorChat = async (context: TypedContext, ports?: TutorChat
             })
             .select('id')
             .single();
+          if (insertError || !newConv) throw new Error('DEPENDENCY_UNAVAILABLE: Conversation save could not be confirmed. Do not regenerate this turn.');
           if (newConv) {
             currentConversationId = (newConv as { id: string }).id;
             logger.info('Created new conversation', { conversationId: currentConversationId });
@@ -310,10 +355,11 @@ export const handleAiTutorChat = async (context: TypedContext, ports?: TutorChat
         }
         if (isTeacherLearner && isGenerationRequest) {
           try {
-            generationUsage = await incrementGenerationCount(supabase, learnerId);
+            generationUsage = await completeTutorGeneration(supabase, learnerId, turnId, requestHash);
+            if (!generationUsage) throw new Error('DEPENDENCY_UNAVAILABLE: Generation receipt is missing');
             logger.info('Generation count incremented', { used: (generationUsage as { used: number }).used });
           } catch (err) {
-            logger.error('Failed to increment generation count', err instanceof Error ? err : new Error(String(err)));
+            throw new Error('DEPENDENCY_UNAVAILABLE: Generation receipt could not be confirmed. Retry the same turn.');
           }
         }
         controller.enqueue(encoder.encode(`event: done\ndata: ${JSON.stringify({
@@ -348,6 +394,8 @@ async function handleEducatorMaterialRpc(args: {
   env: RequiredEnv & PagesEnv;
   request: Request;
   learnerId: string;
+  turnId: string;
+  requestHash: string;
   currentConversationId?: string;
   existingMessages: StoredMessage[];
   courseId: string;
@@ -361,7 +409,7 @@ async function handleEducatorMaterialRpc(args: {
   generationUsage: { limit: number; used: number; remaining: number } | undefined;
   ports: TutorChatPorts;
 }): Promise<Response> {
-  const { supabase, env, request, learnerId, existingMessages, courseId, lessonId, message, worksheetConfig, lessonPlanConfig, userRole, ports } = args;
+  const { supabase, env, request, learnerId, turnId, existingMessages, courseId, lessonId, message, worksheetConfig, lessonPlanConfig, userRole, ports } = args;
   let { currentConversationId, generationUsage } = args;
 
   const courseContextBuilder = ports.buildCourseContext ?? buildCourseContext;
@@ -372,8 +420,8 @@ async function handleEducatorMaterialRpc(args: {
     return apiError(404, 'NOT_FOUND', e instanceof Error ? e.message : 'Course not found', request);
   }
 
-  const userMessageId = crypto.randomUUID();
-  const userMessage: StoredMessage = { id: userMessageId, role: 'user', content: message, timestamp: new Date().toISOString() };
+  const userMessageId = turnId;
+  const userMessage: StoredMessage = { id: userMessageId, role: 'user', content: message, timestamp: new Date().toISOString(), requestHash: args.requestHash };
   const recentMessages = existingMessages.slice(-6);
   const historyForWorker = recentMessages.map(m => ({ role: m.role as 'user' | 'assistant', content: m.content }));
   const fullMessageCount = existingMessages.length;
@@ -384,7 +432,7 @@ async function handleEducatorMaterialRpc(args: {
       ? await ports.callMaterialWorker({
           env: env as unknown as Record<string, unknown>,
           userId: learnerId,
-          conversationId: currentConversationId || crypto.randomUUID(),
+          conversationId: currentConversationId || turnId,
           message,
           history: historyForWorker,
           course: courseContext as unknown as TutorCourseContext,
@@ -394,7 +442,10 @@ async function handleEducatorMaterialRpc(args: {
           lessonPlanConfig,
         })
       : await callMaterialWorker(env as unknown as Record<string, string>, learnerId, {
-          conversationId: currentConversationId || crypto.randomUUID(),
+          courseId,
+          ...(lessonId ? { lessonId } : {}),
+          operationId: turnId,
+          conversationId: currentConversationId || turnId,
           message,
           history: historyForWorker,
           course: courseContext as unknown as TutorCourseContext,
@@ -428,7 +479,7 @@ async function handleEducatorMaterialRpc(args: {
   const stream = new ReadableStream({
     async start(controller) {
       try {
-        const text = await workerResponse.text();
+        const text = await readBoundedWorkerText(workerResponse, 300000);
         let completed = false;
         for (const line of text.split('\n')) {
           const trimmed = line.trim();
@@ -437,9 +488,9 @@ async function handleEducatorMaterialRpc(args: {
           if (!data) continue;
           let event: { type?: string; text?: string; outcome?: string; error?: { code?: string; message?: string } };
           try {
-            event = JSON.parse(data) as typeof event;
+            event = OrchestratorEventSchema.parse(JSON.parse(data));
           } catch {
-            continue;
+            throw new Error('INVALID_MODEL_OUTPUT: Malformed material event');
           }
           if (completed) throw new Error('Unexpected event after material completion');
           if (event.type === 'delta' && typeof event.text === 'string' && event.text) {
@@ -463,11 +514,12 @@ async function handleEducatorMaterialRpc(args: {
         const updatedMessages = [...existingMessages, userMessage, assistantMessage];
         if (currentConversationId) {
           const { error: updateError } = await supabase.rpc('append_tutor_messages', { p_conversation_id: currentConversationId, p_learner_id: learnerId, p_new_messages: [userMessage, assistantMessage] });
-          if (updateError) logger.error('Failed to append messages', updateError as Error);
+          if (updateError) throw new Error('DEPENDENCY_UNAVAILABLE: Material save could not be confirmed. Do not regenerate this turn.');
           else logger.info('Updated conversation', { conversationId: currentConversationId });
         } else {
           const title = message.slice(0, 50);
-          const { data: newConv } = await supabase.from('tutor_conversations').insert({ learner_id: learnerId, course_id: courseId, lesson_id: lessonId || null, title: title.slice(0, 255), messages: updatedMessages }).select('id').single();
+          const { data: newConv, error: insertError } = await supabase.from('tutor_conversations').insert({ id: turnId, learner_id: learnerId, course_id: courseId, lesson_id: lessonId || null, title: title.slice(0, 255), messages: updatedMessages }).select('id').single();
+          if (insertError || !newConv) throw new Error('DEPENDENCY_UNAVAILABLE: Material save could not be confirmed. Do not regenerate this turn.');
           if (newConv) {
             currentConversationId = (newConv as { id: string }).id;
             logger.info('Created new conversation', { conversationId: currentConversationId });
@@ -475,10 +527,11 @@ async function handleEducatorMaterialRpc(args: {
         }
         if (args.isTeacherLearner && args.isGenerationRequest) {
           try {
-            generationUsage = await incrementGenerationCount(supabase, learnerId);
+            generationUsage = await completeTutorGeneration(supabase, learnerId, turnId, args.requestHash);
+            if (!generationUsage) throw new Error('DEPENDENCY_UNAVAILABLE: Generation receipt is missing');
             logger.info('Generation count incremented', { used: (generationUsage as { used: number }).used });
           } catch (err) {
-            logger.error('Failed to increment generation count', err instanceof Error ? err : new Error(String(err)));
+            throw new Error('DEPENDENCY_UNAVAILABLE: Generation receipt could not be confirmed. Retry the same turn.');
           }
         }
         controller.enqueue(encoder.encode(`event: done\ndata: ${JSON.stringify({ conversationId: currentConversationId, messageId: assistantMessage.id, generationUsage })}\n\n`));
@@ -498,7 +551,7 @@ async function handleEducatorMaterialRpc(args: {
 async function callMaterialWorker(
   env: Record<string, string>,
   userId: string,
-  input: { conversationId: string; message: string; history: Array<{ role: 'user' | 'assistant'; content: string }>; course: TutorCourseContext; userRole: string; messageCount: number; worksheetConfig?: WorksheetConfig; lessonPlanConfig?: LessonPlanConfig },
+  input: { courseId: string; lessonId?: string; operationId: string; conversationId: string; message: string; history: Array<{ role: 'user' | 'assistant'; content: string }>; course: TutorCourseContext; userRole: string; messageCount: number; worksheetConfig?: WorksheetConfig; lessonPlanConfig?: LessonPlanConfig },
 ): Promise<Response> {
   const secret = env.AI_ASSERT_SECRET;
   if (!secret) throw new Error('AI_ASSERT_SECRET is not configured');
@@ -506,20 +559,21 @@ async function callMaterialWorker(
   const prompts = buildMaterialPrompts(input as Parameters<typeof buildMaterialPrompts>[0]);
   const assertion = await issueExecutionAssertion(secret, {
     issuer: 'skillpassport',
-    action: 'seniorEducator.generate-material',
+    action: 'orchestration.assist',
     promptPayload: { prompts },
     userId,
     product: 'skillpassport',
     entitlements: ['career_ai'],
   });
-  const request: EducatorMaterialRpcRequest = {
+  const request: OrchestratorRequest = {
     contractVersion: '1',
     requestId: crypto.randomUUID(),
-    operationId: crypto.randomUUID(),
+    operationId: input.operationId,
     executionAssertion: assertion,
     actor: { actorId: userId, product: 'skillpassport', goals: [], responsibilities: [], permissions: [], capabilities: ['career_ai'], resourceScope: [], relevantContext: [] },
-    feature: 'generate-material',
-    input: {
+    input: { kind: 'task', task: { action: 'seniorEducator.generate-material', input: {
+      courseId: input.courseId,
+      ...(input.lessonId ? { lessonId: input.lessonId } : {}),
       prompts,
       conversationId: input.conversationId,
       message: input.message,
@@ -529,22 +583,21 @@ async function callMaterialWorker(
       messageCount: input.messageCount,
       ...(input.worksheetConfig ? { worksheetConfig: input.worksheetConfig as EducatorMaterialRpcRequest['input']['worksheetConfig'] } : {}),
       ...(input.lessonPlanConfig ? { lessonPlanConfig: input.lessonPlanConfig as EducatorMaterialRpcRequest['input']['lessonPlanConfig'] } : {}),
-    },
+    } } },
   };
-  const result: unknown = await worker.seniorEducator(request);
-  if (result instanceof Response) return result;
-  if (result && typeof result === 'object' && 'duplicate' in (result as Record<string, unknown>)) {
-    throw new Error(`IDEMPOTENCY_CONFLICT: duplicate execution`);
+  const result = await worker.orchestrator(request);
+  if (result.headers.get('content-type')?.includes('application/json')) {
+    const payload = await result.json() as { error?: { code?: string; message?: string } };
+    if (!result.ok && payload.error?.code) throw new Error(`${payload.error.code}: ${payload.error.message ?? 'Material request unavailable'}`);
+    throw new Error('AI_REQUEST_IN_PROGRESS: Material execution already exists');
   }
-  const failed = result as { ok: boolean; error: { code: string; message: string } };
-  if (!failed.ok) throw new Error(`${failed.error.code}: ${failed.error.message}`);
-  throw new Error('INTERNAL_ERROR: unexpected non-stream for generate-material');
+  return result;
 }
 
 async function callTutorChatWorker(
   env: Record<string, string>,
   userId: string,
-  input: { courseId: string; lessonId?: string; conversationId: string; message: string; history: Array<{ role: 'user' | 'assistant'; content: string }>; course: TutorCourseContext; userRole: string },
+  input: { operationId: string; courseId: string; lessonId?: string; conversationId: string; message: string; history: Array<{ role: 'user' | 'assistant'; content: string }>; course: TutorCourseContext; userRole: string },
 ): Promise<Response> {
   const secret = env.AI_ASSERT_SECRET;
   if (!secret) throw new Error('AI_ASSERT_SECRET is not configured');
@@ -562,7 +615,7 @@ async function callTutorChatWorker(
   const request: OrchestratorRequest = {
     contractVersion: '1',
     requestId: crypto.randomUUID(),
-    operationId: crypto.randomUUID(),
+    operationId: input.operationId,
     executionAssertion: assertion,
     actor: { actorId: userId, product: 'skillpassport', goals: [], responsibilities: [], permissions: [], capabilities: ['career_ai'], resourceScope: [], relevantContext: [] },
     input: { kind: 'task', task: { action: 'seniorEducator.tutor-chat', input: {

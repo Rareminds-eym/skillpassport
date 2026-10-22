@@ -14,13 +14,19 @@
 
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { createSupabaseAdminClient } from '../../../lib/supabase';
+import { getContextUser } from '../../../lib/auth';
+import { OrchestratorVideoInputSchema } from '@rareminds-eym/ai-protocol';
 import { apiSuccess, apiError } from '../../../lib/response';
 import { transcribeVideo } from '../utils/transcription';
 import { generateSRT, generateVTT } from '../utils/subtitle-generation';
 import { getAiWorker } from '../../ai/lib/aiBinding';
 import { issueExecutionAssertion } from '../../ai/lib/assertion';
 import { buildVideoPrompts } from '../prompts/video-summary';
-import type { EducatorRequest } from '@rareminds-eym/ai-protocol';
+import type { OrchestratorRequest, OrchestratorVideoInput } from '@rareminds-eym/ai-protocol';
+import { readOrchestratorResult } from '../../ai/lib/orchestrator-result';
+import { claimVideoJob, freezeVideoInput, videoIdentityHash } from '../utils/video-job';
+import { loadEnrolledCourse, resolveCourseLesson } from '../../internal/lesson-evidence';
+import { loadAuthoringCourse } from '../../internal/authoring-course-evidence';
 
 interface VideoSummarizerRequestBody {
   videoUrl?: string;
@@ -57,6 +63,10 @@ export const onRequestPost = async (context: AuthenticatedContext) => {
   const { request, env, waitUntil } = context as unknown as { request: Request; env: Record<string, unknown>; waitUntil: (p: Promise<unknown>) => void };
   try {
 
+    const authenticatedUser = getContextUser(context as unknown as Parameters<typeof getContextUser>[0]);
+    if (!authenticatedUser.id) return apiError(401, 'UNAUTHORIZED', 'Authentication required', request);
+    if (env.VIDEO_JOBS_ENABLED !== 'true') return apiError(503, 'DEPENDENCY_UNAVAILABLE', 'Video generation is reserved for a future release.', request);
+
     // Parse request body
     let body: VideoSummarizerRequestBody;
     try {
@@ -75,63 +85,51 @@ export const onRequestPost = async (context: AuthenticatedContext) => {
     } = body;
 
     // Validate required fields
-    if (!videoUrl) {
+    if (typeof videoUrl !== 'string' || !videoUrl.trim() || videoUrl.length > 4096) {
       return apiError(400, 'VALIDATION_ERROR', 'Video URL is required', request);
     }
 
     // Create Supabase admin client for database operations
     const supabase = createSupabaseAdminClient(env);
 
-    // Check cache for existing completed summary
-    const { data: existing } = await supabase
-      .from('video_summaries')
-      .select('*')
-      .eq('video_url', videoUrl)
-      .eq('processing_status', 'completed')
-      .maybeSingle();
-
-    if (existing) {
-      return apiSuccess(existing, request);
+    const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if ((courseId !== undefined && (typeof courseId !== 'string' || !uuid.test(courseId))) ||
+        (lessonId !== undefined && (typeof lessonId !== 'string' || !uuid.test(lessonId) || !courseId)) ||
+        typeof language !== 'string' || language.length > 32 || typeof enableQuiz !== 'boolean' || typeof enableFlashcards !== 'boolean') {
+      return apiError(400, 'VALIDATION_ERROR', 'Invalid video processing options', request);
     }
-
-    // Check if already processing
-    const { data: inProgress } = await supabase
-      .from('video_summaries')
-      .select('*')
-      .eq('video_url', videoUrl)
-      .eq('processing_status', 'processing')
-      .maybeSingle();
-
-    if (inProgress) {
-      return apiSuccess(
-        { 
-          ...inProgress, 
-          message: 'Video is being processed. Poll for status updates.' 
-        }, 
-        request,
-        202
-      );
+    if (courseId) {
+      const course = await loadEnrolledCourse(supabase, authenticatedUser.id, courseId) ?? await loadAuthoringCourse(supabase, authenticatedUser.id, courseId);
+      if (!course || (lessonId && !await resolveCourseLesson(supabase, courseId, lessonId))) return apiError(403, 'FORBIDDEN', 'Course access is required', request);
     }
-
-    // Create processing record
-    const { data: record, error: insertError } = await supabase
-      .from('video_summaries')
-      .insert({
-        video_url: videoUrl,
-        lesson_id: lessonId || null,
-        course_id: courseId || null,
-        language,
-        processing_status: 'processing'
-      })
-      .select()
-      .single();
-
-    if (insertError) {
-      console.error('Failed to create processing record:', insertError);
-      return apiError(500, 'INTERNAL_ERROR', `Failed to create record: ${insertError.message}`, request);
+    const requestHash = await videoIdentityHash({ videoUrl, courseId: courseId ?? null, lessonId: lessonId ?? null, language, enableQuiz, enableFlashcards });
+    const claim = await claimVideoJob(supabase, authenticatedUser.id, requestHash, {
+      video_url: videoUrl, course_id: courseId ?? null, lesson_id: lessonId ?? null, language,
+    });
+    if (!claim.created) {
+      if (claim.summary.processing_status !== 'completed') {
+        const saved = await supabase.from('ai_video_jobs').select('source_input').eq('id', claim.id).eq('actor_id', authenticatedUser.id).maybeSingle();
+        if (saved.error) return apiError(503, 'DEPENDENCY_UNAVAILABLE', 'Video recovery is temporarily unavailable', request);
+        const frozen = OrchestratorVideoInputSchema.safeParse(saved.data?.source_input);
+        if (frozen.success && frozen.data.jobId === claim.id) {
+          // A recovery-only call cannot create a root or invoke another model.
+          const recovered = await callVideoWorker(env as Record<string, string>, authenticatedUser.id, claim.id, frozen.data, true);
+          if (recovered.ok) {
+            const output = recovered.data;
+            const applied = await supabase.from('video_summaries').update({ summary: output.summary, key_points: output.keyPoints,
+              chapters: output.chapters, topics: output.topics, notable_quotes: output.quotes,
+              quiz_questions: output.quiz, flashcards: output.flashcards, processing_status: 'completed',
+              error_message: null, processed_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+            }).eq('id', claim.id).select('*').single();
+            if (applied.error || !applied.data) return apiError(503, 'DEPENDENCY_UNAVAILABLE', 'Video result application requires reconciliation', request);
+            return apiSuccess(applied.data, request);
+          }
+        }
+      }
+      if (claim.summary.processing_status === 'failed') return apiError(409, 'DEPENDENCY_UNAVAILABLE', 'The previous video execution requires reconciliation before retrying.', request);
+      return apiSuccess(claim.summary, request, claim.summary.processing_status === 'completed' ? 200 : 202);
     }
-
-    const recordId = record.id;
+    const recordId = claim.id;
 
     // Start background processing
     waitUntil((async () => {
@@ -149,24 +147,29 @@ export const onRequestPost = async (context: AuthenticatedContext) => {
         } = await transcribeVideo(env as unknown as Record<string, any>, videoUrl, language);
 
         console.log(`Transcription complete: ${segments.length} segments, ${duration}s duration`);
+        // Preserve non-model outputs before inference so a confirmed worker
+        // result can be reapplied without repeating transcription or generation.
+        const staged = await supabase.from('video_summaries').update({ transcript, transcript_segments: segments,
+          duration_seconds: duration, sentiment_data: sentimentData, speakers, deepgram_summary: deepgramSummary,
+          srt_content: generateSRT(segments), vtt_content: generateVTT(segments), updated_at: new Date().toISOString(),
+        }).eq('id', recordId);
+        if (staged.error) throw new Error('DEPENDENCY_UNAVAILABLE: Video source staging could not be confirmed');
 
         // Step 2+3: Single RPC for all AI generation (summary + quotes + quiz + flashcards)
         // Replaces 4 direct OpenRouter calls (video-processing.ts). Transcription stays in Pages.
         // Worker mirrors the same orchestration: summary first, then quotes/quiz/flashcards in parallel,
         // each degrading to [] on failure — never throws. enableQuiz/enableFlashcards are passed
         // through so worker can skip those calls (source parity: .catch → []).
-        const userId = ((context as unknown) as { data?: { user?: { sub?: string } } }).data?.user?.sub ?? 'unknown';
-        const videoResult = await callVideoWorker(
-          env as unknown as Record<string, string>,
-          userId,
-          {
-            transcript: transcript.slice(0, 20000),
-            segments: segments.slice(0, 128),
-            enableQuiz,
-            enableFlashcards,
-          }
-        );
-        if (!videoResult.ok) throw new Error(`${videoResult.code}: ${videoResult.message}`);
+        const source = {
+          transcript: transcript.slice(0, 20000),
+          segments: segments.slice(0, 128).map(segment => ({ start: segment.start, text: segment.text.slice(0, 4000) })),
+          enableQuiz, enableFlashcards,
+        };
+        const frozen = await freezeVideoInput(supabase, authenticatedUser.id, OrchestratorVideoInputSchema.parse({
+          ...source, jobId: recordId, prompts: buildVideoPrompts(source),
+        }));
+        const videoResult = await callVideoWorker(env as unknown as Record<string, string>, authenticatedUser.id, recordId, frozen);
+        if (videoResult.ok === false) throw new Error(`${videoResult.code}: ${videoResult.message}`);
         const { summary, keyPoints, chapters, topics, quotes: notableQuotes, quiz: quizQuestions, flashcards } = videoResult.data;
 
         console.log(`AI summary complete: ${keyPoints.length} key points, ${chapters.length} chapters`);
@@ -209,8 +212,8 @@ export const onRequestPost = async (context: AuthenticatedContext) => {
         console.log(`Video processing complete for record ${recordId}`);
 
       } catch (processingError) {
-        const errorMessage = (processingError as Error).message;
-        console.error(`Video processing failed for record ${recordId}:`, errorMessage);
+        const errorMessage = 'Video execution did not complete. Reconciliation is required before retrying.';
+        console.error(`Video processing failed for record ${recordId}`);
         
         // Update record with error status
         await supabase
@@ -220,7 +223,8 @@ export const onRequestPost = async (context: AuthenticatedContext) => {
             error_message: errorMessage,
             updated_at: new Date().toISOString()
           })
-          .eq('id', recordId);
+          .eq('id', recordId)
+          .eq('processing_status', 'processing');
       }
     })());
 
@@ -237,53 +241,55 @@ export const onRequestPost = async (context: AuthenticatedContext) => {
     );
 
   } catch (error) {
-    console.error('AI video summarizer error:', error);
+    if (error instanceof Error && error.message.startsWith('DEPENDENCY_UNAVAILABLE:')) {
+      return apiError(503, 'DEPENDENCY_UNAVAILABLE', 'Video processing is temporarily unavailable.', request);
+    }
+    console.error('AI video summarizer request failed');
     return apiError(500, 'INTERNAL_ERROR', 'Internal server error', request);
   }
 };
 
-type VideoRpcRequest = Extract<EducatorRequest, { feature: 'summarize-video' }>;
 
-async function callVideoWorker(
+export async function callVideoWorker(
   env: Record<string, string>,
   userId: string,
-  input: { transcript: string; segments: unknown[]; enableQuiz: boolean; enableFlashcards: boolean },
+  jobId: string,
+  input: Pick<OrchestratorVideoInput, 'transcript' | 'segments' | 'enableQuiz' | 'enableFlashcards'> & Partial<Pick<OrchestratorVideoInput, 'prompts' | 'jobId'>>,
+  replayOnly = false,
 ): Promise<
   | { ok: true; data: { summary: string; keyPoints: string[]; chapters: unknown[]; topics: string[]; quotes: unknown[]; quiz: unknown[]; flashcards: unknown[] } }
   | { ok: false; code: string; message: string }
 > {
+  if (!userId || userId === 'unknown' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(jobId)) throw new Error('INVALID_INPUT: video job identity is required');
   const secret = env.AI_ASSERT_SECRET;
   if (!secret) throw new Error('AI_ASSERT_SECRET is not configured');
   const worker = getAiWorker(env as unknown as Parameters<typeof getAiWorker>[0]);
-  const prompts = buildVideoPrompts(input as Parameters<typeof buildVideoPrompts>[0]);
+  if (input.jobId !== undefined && input.jobId !== jobId) throw new Error('INVALID_INPUT: frozen video job identity changed');
+  const canonical = OrchestratorVideoInputSchema.parse({ ...input, jobId, prompts: input.prompts ?? buildVideoPrompts(input) });
+  const prompts = canonical.prompts;
   const assertion = await issueExecutionAssertion(secret, {
     issuer: 'skillpassport',
-    action: 'seniorEducator.summarize-video',
+    action: 'orchestration.assist',
     promptPayload: { prompts },
     userId,
     product: 'skillpassport',
     entitlements: ['career_ai'],
   });
-  const request: VideoRpcRequest = {
+  const request: OrchestratorRequest = {
+    ...(replayOnly ? { replayOnly: true } : {}),
     contractVersion: '1',
     requestId: crypto.randomUUID(),
-    operationId: crypto.randomUUID(),
+    operationId: jobId,
     executionAssertion: assertion,
     actor: { actorId: userId, product: 'skillpassport', goals: [], responsibilities: [], permissions: [], capabilities: ['career_ai'], resourceScope: [], relevantContext: [] },
-    feature: 'summarize-video',
-    input: {
-      prompts,
-      transcript: input.transcript,
-      segments: input.segments as never,
-      enableQuiz: input.enableQuiz,
-      enableFlashcards: input.enableFlashcards,
-    },
+    input: { kind: 'task', task: { action: 'seniorEducator.summarize-video', input: canonical } },
   };
-  const result = await worker.seniorEducator(request);
-  if (result && typeof result === 'object' && 'duplicate' in (result as Record<string, unknown>)) {
-    return { ok: false, code: 'IDEMPOTENCY_CONFLICT', message: 'duplicate execution' };
+  try {
+    const result = await readOrchestratorResult(await worker.orchestrator(request), 300000);
+    if (result.kind !== 'video-summary') return { ok: false, code: 'DEPENDENCY_UNAVAILABLE', message: 'Video worker returned an unexpected result' };
+    return { ok: true, data: result.data };
+  } catch (error) {
+    const raw = error instanceof Error ? error.message : '';
+    return { ok: false, code: /^([A-Z_]+):/.exec(raw)?.[1] ?? 'DEPENDENCY_UNAVAILABLE', message: 'Video execution did not produce a confirmed result' };
   }
-  if (result instanceof Response) throw new Error('INTERNAL_ERROR: unexpected stream for summarize-video');
-  if (!result.ok) return { ok: false, code: result.error.code, message: result.error.message };
-  return { ok: true, data: result.data as never };
 }

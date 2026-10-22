@@ -819,7 +819,8 @@ async function callChatWorker(
   });
   // Clamp to protocol limits (career.ts: message 8000, system 12000, history content 8000, max 12 items)
   const clampedInput = {
-    ...(input.systemVersion ? { systemVersion: input.systemVersion } : {}),    conversationId: input.conversationId,
+    ...(input.systemVersion ? { systemVersion: input.systemVersion } : {}),
+    conversationId: input.conversationId,
     message: input.message.slice(0, 8000),
     ...(input.system && input.system.trim() ? { system: input.system.slice(0, 12000) } : {}),
     ...(input.history?.length

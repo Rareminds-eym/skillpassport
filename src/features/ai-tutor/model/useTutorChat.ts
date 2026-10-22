@@ -1,4 +1,7 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import type { ChatRequest } from '../api/tutorService';
+import { useAuthStore } from '@/shared/model/authStore';
+import { clearPendingTurn, loadPendingTurn, savePendingTurn } from './pendingTurn';
 import {
   ChatMessage,
   Conversation,
@@ -45,6 +48,8 @@ export interface UseTutorChatReturn {
   conversations: Conversation[];
   suggestedQuestions: string[];
   sendMessage: (content: string) => Promise<void>;
+  retryPendingMessage: () => Promise<void>;
+  hasPendingSend: boolean;
   editMessage: (messageId: string, newContent: string) => Promise<void>;
   loadConversation: (conversationId: string) => Promise<void>;
   startNewConversation: () => void;
@@ -70,12 +75,35 @@ export function useTutorChat({
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([]);
+  const pendingSend = useRef<ChatRequest | null>(null);
+  const sendInFlight = useRef(false);
+  const actorId = useAuthStore(state => state.user?.id) as string | undefined;
+  const activeScope = useRef('');
+  activeScope.current = JSON.stringify([actorId ?? null, courseId, lessonId ?? null]);
+  useEffect(() => {
+    pendingSend.current = null;
+    setMessages([]);
+    setConversationId(null);
+    setConversations([]);
+    setError(null);
+    if (!actorId) return;
+    try {
+      const restored = loadPendingTurn(sessionStorage, actorId, courseId, lessonId);
+      if (restored) {
+        pendingSend.current = restored;
+        setConversationId(restored.conversationId ?? null);
+        setMessages([{ id: restored.turnId!, role: 'user', content: restored.message, timestamp: new Date() }]);
+        setError('A pending turn was recovered. Retry the same turn to check its saved result.');
+      }
+    } catch { /* Storage may be disabled; in-page recovery still works. */ }
+  }, [actorId, courseId, lessonId]);
 
   // Fetch conversations on mount and when courseId changes
   const refreshConversations = useCallback(async () => {
+    const scope = activeScope.current;
     try {
       const convs = await getConversations(courseId);
-      setConversations(convs);
+      if (scope === activeScope.current) setConversations(convs);
     } catch (err) {
       logger.error('Error fetching conversations', err instanceof Error ? err : new Error(String(err)));
     }
@@ -83,13 +111,14 @@ export function useTutorChat({
 
   // Fetch suggested questions when lessonId changes
   const refreshSuggestions = useCallback(async () => {
+    const scope = activeScope.current;
     if (!lessonId) {
       setSuggestedQuestions([]);
       return;
     }
     try {
       const questions = await getSuggestedQuestions(lessonId);
-      setSuggestedQuestions(questions);
+      if (scope === activeScope.current) setSuggestedQuestions(questions);
     } catch (err) {
       logger.error('Error fetching suggestions', err instanceof Error ? err : new Error(String(err)));
       setSuggestedQuestions([]);
@@ -106,8 +135,22 @@ export function useTutorChat({
 
 
   // Send a message to the AI tutor
-  const handleSendMessage = useCallback(async (content: string) => {
-    if (!content.trim() || isStreaming) return;
+  const handleSendMessage = useCallback(async (content: string, retry = false) => {
+    if (!content.trim() || isStreaming || sendInFlight.current) return;
+    const frozenRequest: ChatRequest = retry && pendingSend.current
+      ? pendingSend.current
+      : JSON.parse(JSON.stringify({ turnId: crypto.randomUUID(), conversationId: conversationId || undefined,
+          courseId, lessonId, message: content.trim(), worksheetConfig, lessonPlanConfig }));
+    if (retry && (frozenRequest.courseId !== courseId || frozenRequest.lessonId !== lessonId)) {
+      setError('Open the original course and lesson to recover this pending turn.');
+      return;
+    }
+    pendingSend.current = frozenRequest;
+    const sendingScope = activeScope.current;
+    if (actorId) {
+      try { savePendingTurn(sessionStorage, actorId, frozenRequest); } catch { /* Keep the in-memory identity. */ }
+    }
+    sendInFlight.current = true;
 
     setError(null);
     setIsLoading(true);
@@ -115,12 +158,12 @@ export function useTutorChat({
 
     // Add user message immediately
     const userMessage: ChatMessage = {
-      id: crypto.randomUUID(),
+      id: frozenRequest.turnId!,
       role: 'user',
       content: content.trim(),
       timestamp: new Date()
     };
-    setMessages(prev => [...prev, userMessage]);
+    if (!retry) setMessages(prev => [...prev, userMessage]);
 
     // Create placeholder for assistant message
     const assistantMessageId = crypto.randomUUID();
@@ -134,18 +177,12 @@ export function useTutorChat({
 
     try {
       // Stream the response
-      const generator = sendMessage({
-        conversationId: conversationId || undefined,
-        courseId,
-        lessonId,
-        message: content.trim(),
-        worksheetConfig,  // Pass worksheet config to API
-        lessonPlanConfig  // Pass lesson plan config to API
-      });
+      const generator = sendMessage(frozenRequest);
 
       setCurrentReasoning('');
 
       for await (const chunk of generator) {
+        if (activeScope.current !== sendingScope) throw new Error('Tutor request scope changed.');
         if (chunk.type === 'reasoning' && chunk.reasoning) {
           // AI is thinking/reasoning
           setIsReasoning(true);
@@ -161,6 +198,10 @@ export function useTutorChat({
             )
           );
         } else if (chunk.type === 'done') {
+          pendingSend.current = null;
+          if (actorId) {
+            try { clearPendingTurn(sessionStorage, actorId, frozenRequest.courseId, frozenRequest.lessonId); } catch { /* No effect on server completion. */ }
+          }
           // Stream complete
           if (chunk.generationUsage) {
             onGenerationUsageUpdate?.(chunk.generationUsage);
@@ -180,16 +221,19 @@ export function useTutorChat({
         refreshConversations();
       }
     } catch (err: unknown) {
+      if (activeScope.current !== sendingScope) return;
       setError(getErrorMessage(err, 'Failed to send message'));
       // Remove the empty assistant message on error
       setMessages(prev => prev.filter(msg => msg.id !== assistantMessageId));
     } finally {
+      sendInFlight.current = false;
       setIsLoading(false);
       setIsStreaming(false);
       setIsReasoning(false);
     }
   }, [
     conversationId,
+    actorId,
     courseId,
     lessonId,
     isStreaming,
@@ -246,6 +290,7 @@ export function useTutorChat({
     const updatedMessages = messages.slice(0, messageIndex);
     const editedUserMessage: ChatMessage = {
       ...message,
+      id: crypto.randomUUID(),
       content: newContent.trim(),
       timestamp: new Date()
     };
@@ -264,6 +309,7 @@ export function useTutorChat({
     try {
       // Stream the new response
       const generator = sendMessage({
+        turnId: editedUserMessage.id,
         conversationId: conversationId || undefined,
         courseId,
         lessonId,
@@ -371,6 +417,8 @@ export function useTutorChat({
     conversations,
     suggestedQuestions,
     sendMessage: handleSendMessage,
+    retryPendingMessage: async () => { if (pendingSend.current) await handleSendMessage(pendingSend.current.message, true); },
+    hasPendingSend: pendingSend.current !== null,
     editMessage: handleEditMessage,
     loadConversation,
     startNewConversation,
