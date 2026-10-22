@@ -8,7 +8,7 @@ import {
 } from '@heroicons/react/24/outline';
 
 interface PipelineBulkActionsBarProps {
-  selectedCandidates: number[];
+  selectedCandidates: string[];
   onBulkEmail: () => void;
   onBulkWhatsApp: () => void;
   onAssignInterviewer: () => void;
@@ -31,7 +31,7 @@ export const PipelineBulkActionsBar: React.FC<PipelineBulkActionsBarProps> = ({
       hasSelection ? 'border-primary-500 bg-primary-50' : 'border-gray-200'
     }`}>
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3">
+        <div className="flex flex-wrap items-center gap-3">
           <span className={`text-sm font-medium ${
             hasSelection ? 'text-primary-700' : 'text-gray-500'
           }`}>
@@ -41,14 +41,14 @@ export const PipelineBulkActionsBar: React.FC<PipelineBulkActionsBarProps> = ({
             }
           </span>
           <div className="h-4 w-px bg-gray-300" />
-          <div className="flex items-center space-x-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={onBulkEmail}
               disabled={!hasSelection}
               className={`inline-flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                 hasSelection
                   ? 'text-primary-700 hover:bg-primary-100 bg-white border border-primary-200'
-                  : 'text-gray-400 bg-gray-100 cursor-not-allowed border border-gray-200'
+                  : 'text-gray-600 bg-gray-100 cursor-not-allowed border border-gray-200'
               }`}
             >
               <EnvelopeIcon className="h-4 w-4 mr-1.5" />
@@ -60,7 +60,7 @@ export const PipelineBulkActionsBar: React.FC<PipelineBulkActionsBarProps> = ({
               className={`inline-flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                 hasSelection
                   ? 'text-primary-700 hover:bg-primary-100 bg-white border border-primary-200'
-                  : 'text-gray-400 bg-gray-100 cursor-not-allowed border border-gray-200'
+                  : 'text-gray-600 bg-gray-100 cursor-not-allowed border border-gray-200'
               }`}
             >
               <PhoneIcon className="h-4 w-4 mr-1.5" />
@@ -72,7 +72,7 @@ export const PipelineBulkActionsBar: React.FC<PipelineBulkActionsBarProps> = ({
               className={`inline-flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                 hasSelection
                   ? 'text-primary-700 hover:bg-primary-100 bg-white border border-primary-200'
-                  : 'text-gray-400 bg-gray-100 cursor-not-allowed border border-gray-200'
+                  : 'text-gray-600 bg-gray-100 cursor-not-allowed border border-gray-200'
               }`}
             >
               <UserIcon className="h-4 w-4 mr-1.5" />
@@ -84,7 +84,7 @@ export const PipelineBulkActionsBar: React.FC<PipelineBulkActionsBarProps> = ({
               className={`inline-flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                 hasSelection
                   ? 'text-red-700 hover:bg-red-50 bg-white border border-red-200'
-                  : 'text-gray-400 bg-gray-100 cursor-not-allowed border border-gray-200'
+                  : 'text-gray-600 bg-gray-100 cursor-not-allowed border border-gray-200'
               }`}
             >
               <XCircleIcon className="h-4 w-4 mr-1.5" />

@@ -603,6 +603,20 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
       if (syncData.subscription) {
         await syncSubscriptionCache(supabase, syncData.subscription, syncData.plan);
       }
+
+      if (validPlan?.id) {
+        const { allocateInitialPlanCredits } = await import('../../../shared/lib/entitlement-service');
+        const orgId = user.org_id;
+        await allocateInitialPlanCredits(
+          supabase,
+          orgId || user.id,
+          validPlan.id,
+          !!orgId,
+          `Initial plan allocation on subscription purchase (${validPlan.plan_code})`,
+          // Blocks credit-stacking when the upgrade path is double-verified
+          razorpayPaymentId
+        );
+      }
     } catch (syncError) {
       logger.error('Shadow sync failed (non-critical)', syncError instanceof Error ? syncError : new Error(String(syncError)), {
         userId: user.id,

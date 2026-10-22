@@ -28,7 +28,7 @@ export async function handleAddonAnalytics(context: AuthenticatedContext): Promi
     if (action === 'trackEvent') {
       const { eventType, featureKey, metadata } = body;
       const validEventTypes = ['view', 'purchase', 'activation', 'cancellation', 'renewal', 'expiry', 'upgrade_prompt', 'bundle_view', 'bundle_purchase', 'discount_applied', 'payment_failed', 'grace_period_started', 'grace_period_ended', 'migration_opted_out', 'notification_scheduled'];
-      if (!validEventTypes.includes(eventType)) return apiError(200, 'ERROR', 'Invalid event type', context.request);
+      if (!validEventTypes.includes(eventType)) return apiError(400, 'VALIDATION_ERROR', 'Invalid event type', context.request);
 
       const eventData: any = { user_id: userId || null, event_type: eventType, feature_key: featureKey || null, metadata: { ...metadata, timestamp: new Date().toISOString() } };
       if (metadata?.bundleId) eventData.bundle_id = metadata.bundleId;
@@ -84,6 +84,6 @@ export async function handleAddonAnalytics(context: AuthenticatedContext): Promi
     return apiError(400, 'VALIDATION_ERROR', 'Invalid action or missing params', context.request);
   } catch (error) {
     console.error('[AddonAnalytics] Error:', error);
-    return apiError(200, 'ERROR', error instanceof Error ? error.message : 'Unknown error', context.request);
+    return apiError(500, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Unknown error', context.request);
   }
 }

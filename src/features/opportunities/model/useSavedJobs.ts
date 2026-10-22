@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import toast from 'react-hot-toast';
 import { SavedJobsService, AppliedJobsService } from '../api';
+import { opportunitiesService } from '../api/opportunitiesService';
+import { getExternalApplicationUrl, openExternalApplication } from '../lib/externalApplication';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('useSavedJobs');
@@ -40,7 +42,7 @@ interface UseSavedJobsReturn {
   setSelectedOpportunity: (opportunity: SavedJob | null) => void;
   setShowActiveOnly: (show: boolean) => void;
   handleUnsave: (opportunity: SavedJob) => Promise<void>;
-  handleApply: (opportunity: SavedJob) => Promise<void>;
+  handleApply: (opportunity: SavedJob) => Promise<boolean>;
 }
 
 export const useSavedJobs = ({ learnerId }: UseSavedJobsProps): UseSavedJobsReturn => {
@@ -66,16 +68,16 @@ export const useSavedJobs = ({ learnerId }: UseSavedJobsProps): UseSavedJobsRetu
 
       try {
         setLoading(true);
-        logger.info('📥 Loading saved jobs for learnerId:', learnerId);
+        logger.info('📥 Loading saved jobs', { learnerId });
 
-        const jobs = await SavedJobsService.getSavedJobsWithAppliedStatus(learnerId);
+        const jobs: SavedJob[] = await SavedJobsService.getSavedJobsWithAppliedStatus(learnerId);
 
         logger.info('✅ Saved jobs loaded:', { count: jobs?.length || 0, jobs });
 
         setSavedJobs(jobs || []);
 
         // Set applied jobs
-        const appliedSet = new Set(
+        const appliedSet = new Set<string>(
           (jobs || []).filter((job: SavedJob) => job.has_applied).map((job: SavedJob) => job.id)
         );
         setAppliedJobs(appliedSet);
@@ -83,7 +85,7 @@ export const useSavedJobs = ({ learnerId }: UseSavedJobsProps): UseSavedJobsRetu
         setError(null);
       } catch (err: unknown) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to load saved jobs';
-        logger.error('❌ Error loading saved jobs', err);
+        logger.error('❌ Error loading saved jobs', err instanceof Error ? err : new Error(errorMessage));
         setError(errorMessage);
         setSavedJobs([]);
       } finally {
@@ -147,7 +149,7 @@ export const useSavedJobs = ({ learnerId }: UseSavedJobsProps): UseSavedJobsRetu
       }
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to unsave job';
-      logger.error('Error unsaving job', err);
+      logger.error('Error unsaving job', err instanceof Error ? err : new Error(errorMessage));
       toast.error(errorMessage);
     }
   };
@@ -156,40 +158,58 @@ export const useSavedJobs = ({ learnerId }: UseSavedJobsProps): UseSavedJobsRetu
   const handleApply = async (opportunity: SavedJob) => {
     if (!learnerId) {
       toast.error('Please log in to apply for jobs');
-      return;
+      return false;
     }
 
     if (appliedJobs.has(opportunity.id)) {
       toast.error('You have already applied to this job');
-      return;
+      return false;
     }
 
-    // If there's an external application link
-    if (opportunity.application_link) {
-      window.open(opportunity.application_link, '_blank');
-      try {
-        await AppliedJobsService.applyToJob(learnerId, opportunity.id);
-        setAppliedJobs(prev => new Set([...prev, opportunity.id]));
-      } catch (err: unknown) {
-        logger.error('Error recording external application', err);
-      }
-      return;
-    }
-
-    // Internal application
     setIsApplying(true);
     try {
+      // A saved snapshot is not authoritative for the action or its destination.
+      const currentOpportunity = await opportunitiesService.getOpportunityById(opportunity.id);
+      if (!currentOpportunity) throw new Error('This opportunity is no longer available');
+      // Refresh the selected Details DTO and saved row before recording/opening.
+      // Preserve saved-application metadata, which is not part of the job endpoint.
+      const refreshSnapshot = (saved: SavedJob): SavedJob => ({
+        ...saved,
+        ...currentOpportunity,
+        saved_at: saved.saved_at,
+        has_applied: saved.has_applied,
+      });
+      setSavedJobs(previous => previous.map(saved => saved.id === currentOpportunity.id ? refreshSnapshot(saved) : saved));
+      setSelectedOpportunity(previous => previous?.id === currentOpportunity.id ? refreshSnapshot(previous) : previous);
+      const destination = currentOpportunity.application_link
+        ? getExternalApplicationUrl(currentOpportunity.application_link)
+        : null;
       const result = await AppliedJobsService.applyToJob(learnerId, opportunity.id);
 
       if (result.success) {
         setAppliedJobs(prev => new Set([...prev, opportunity.id]));
-        toast.success('Application submitted successfully!');
+        toast.success(destination
+          ? 'Application recorded. Complete submission on the employer website.'
+          : 'Application submitted successfully!');
       } else {
-        toast.error(result.message || 'Failed to submit application');
+        toast.error(result.message || (destination ? 'Failed to record application' : 'Failed to submit application'));
       }
+      if (destination && result.success) {
+        // Opening the employer page is not an application acknowledgement.
+        try {
+          const opened = openExternalApplication(destination);
+          if (!opened) toast('If the employer page did not open, use the application link in Details.');
+        } catch {
+          toast.error(result.success
+            ? 'Application recorded, but the employer page could not be opened. Use the application link in Details to retry.'
+            : 'The employer page could not be opened. Use the application link in Details to retry.');
+        }
+      }
+      return result.success === true;
     } catch (err: unknown) {
-      logger.error('Error applying to job', err);
+      logger.error('Error applying to job', err instanceof Error ? err : new Error('Failed to submit application'));
       toast.error('Failed to submit application');
+      return false;
     } finally {
       setIsApplying(false);
     }

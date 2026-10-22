@@ -42,6 +42,9 @@ export interface Opportunity {
   posted_date?: string;
   closing_date?: string;
   requirements?: string[] | string;
+  learning_requirements?: any[];
+  learning_requirements_version?: number;
+  learning_eligibility?: {state:string;canApply:boolean;criteria:any[]};
   responsibilities?: string[] | string;
   benefits?: string[] | string;
   applications_count: number;

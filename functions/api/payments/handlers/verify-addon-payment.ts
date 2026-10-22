@@ -18,7 +18,7 @@ import { getContextUser } from '../../../lib/auth';
 import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../lib/paymentBinding';
 import { getServiceClient } from '../../../lib/supabase';
 import { ssoRecordTransaction, ssoRecordAddonPurchase } from '../../../lib/sso-client';
-import { apiSuccess, apiError } from '../../../lib/response';
+import { apiSuccess, apiError, apiDbError } from '../../../lib/response';
 
 export async function handleVerifyAddonPayment(context: AuthenticatedContext): Promise<Response> {
   const user = getContextUser(context);
@@ -66,11 +66,48 @@ export async function handleVerifyAddonPayment(context: AuthenticatedContext): P
       return apiError(400, 'VALIDATION_ERROR', 'billing_period is required', context.request);
     }
 
+    // H16: reject non-canonical/alias keys before any recording — the first-party
+    // UI sends catalog keys directly, so aliases only arrive in hand-crafted calls.
+    const featureKey = body.feature_key as string;
+    const canonicalKeyRe =
+      /^(contact_unlocks_(25|100|500)|job_boost_(1|10)|ai_shortlist_role|featured_job_7d|featured_employer_30d|additional_recruiter_seat)$/;
+    if (!canonicalKeyRe.test(featureKey)) {
+      return apiError(400, 'VALIDATION_ERROR', `Unknown add-on feature_key: ${featureKey}`, context.request);
+    }
+    if (featureKey === 'featured_job_7d' && !body.opportunity_id) {
+      return apiError(400, 'VALIDATION_ERROR', 'opportunity_id is required for featured_job_7d', context.request);
+    }
+
     // payment.amount is in paise (from authoritative Razorpay API); DB columns expect rupees
     const priceAtPurchase = payment.amount / 100;
     const billingPeriod = body.billing_period as string;
 
-    // Step 2: Record purchase in Auth DB via SSO Worker RPC
+    // Step 2: Grant App DB entitlement locally for immediate access
+    const supabase = getServiceClient(env);
+
+    // C3 replay guard: the entitlement keyed by (order, feature) is the marker
+    // that this payment was already verified end-to-end. Short-circuit BEFORE
+    // the SSO record and any credit allocation, so a replay does zero work.
+    const entitlementKey = `${body.razorpay_order_id}_${body.feature_key}`;
+    const { data: existingEntitlement, error: replayCheckErr } = await supabase
+      .from('user_entitlements')
+      .select('id, feature_key, status')
+      .eq('razorpay_subscription_id', entitlementKey)
+      .maybeSingle();
+    if (replayCheckErr) {
+      console.error('[VerifyAddonPayment] Replay check failed:', replayCheckErr);
+      return apiDbError(replayCheckErr, context.request);
+    }
+    if (existingEntitlement) {
+      console.log('[VerifyAddonPayment] Replay rejected: payment already verified', { entitlementKey });
+      return apiSuccess({
+        purchase_created: false,
+        replay: true,
+        purchase: existingEntitlement,
+      }, context.request);
+    }
+
+    // Step 3: Record purchase in Auth DB via SSO Worker RPC (idempotent per payment)
     try {
       await ssoRecordAddonPurchase(env, {
         user_id: user.id,
@@ -90,8 +127,6 @@ export async function handleVerifyAddonPayment(context: AuthenticatedContext): P
       }
     }
 
-    // Step 3: Grant App DB entitlement locally for immediate access
-    const supabase = getServiceClient(env);
     const endDate = new Date();
     if (billingPeriod === 'annual') endDate.setFullYear(endDate.getFullYear() + 1);
     else endDate.setMonth(endDate.getMonth() + 1);
@@ -102,7 +137,7 @@ export async function handleVerifyAddonPayment(context: AuthenticatedContext): P
       status: 'active',
       billing_period: billingPeriod,
       price_at_purchase: priceAtPurchase,
-      razorpay_subscription_id: `${body.razorpay_order_id}_${body.feature_key}`,
+      razorpay_subscription_id: entitlementKey,
       start_date: new Date().toISOString(),
       end_date: endDate.toISOString()
     }, { onConflict: 'razorpay_subscription_id' }).select().single();
@@ -110,6 +145,44 @@ export async function handleVerifyAddonPayment(context: AuthenticatedContext): P
     if (entError) {
       console.error('[VerifyAddonPayment] Failed to create user entitlement:', entError);
       return apiError(500, 'DATABASE_ERROR', 'Failed to create user entitlement', context.request);
+    }
+
+    // Fulfil the add-on (server-resolved tenant — body.org_id is not trusted)
+    try {
+      const { grantAddonFulfilment } = await import('../../../shared/lib/entitlement-service');
+      let orgId = (user as any)?.org_id;
+      if (!orgId) {
+        const { data: mem, error: memErr } = await supabase
+          .from('organization_members')
+          .select('organization_id')
+          .eq('user_id', user.id)
+          .limit(1)
+          .maybeSingle();
+        if (memErr) {
+          console.error('[VerifyAddonPayment] Failed to query organization membership:', memErr);
+          return apiDbError(memErr, context.request);
+        }
+        orgId = mem?.organization_id;
+      }
+
+      const fulfilRes = await grantAddonFulfilment(
+        supabase,
+        orgId || user.id,
+        body.feature_key as string,
+        body.razorpay_payment_id as string,
+        {
+          opportunityId: (body.opportunity_id as string) || undefined,
+          notes: `Add-on pack purchase: ${body.feature_key} (${body.razorpay_payment_id})`,
+        }
+      );
+
+      if (!fulfilRes.success) {
+        console.error('[VerifyAddonPayment] Fulfilment failed:', fulfilRes.error);
+        return apiError(500, 'ALLOCATION_ERROR', `Fulfilment failed: ${fulfilRes.error}`, context.request);
+      }
+    } catch (creditErr: any) {
+      console.error('[VerifyAddonPayment] Fulfilment exception:', creditErr);
+      return apiError(500, 'ALLOCATION_ERROR', `Fulfilment failed: ${creditErr?.message || String(creditErr)}`, context.request);
     }
 
     // Record transaction in auth DB (non-blocking)

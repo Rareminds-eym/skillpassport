@@ -1,1227 +1,337 @@
-import React, { useMemo, useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useState, type ReactNode } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
-  UsersIcon,
-  CheckCircleIcon,
-  ClockIcon,
-  StarIcon,
-  ArrowUpIcon,
-  ArrowDownIcon,
-  MapPinIcon,
-  AcademicCapIcon,
-  TrophyIcon,
-  CalendarIcon,
-  SparklesIcon,
-  BoltIcon,
-  ArrowDownTrayIcon,
-  UserGroupIcon
+  AcademicCapIcon, ArrowDownTrayIcon, ArrowPathIcon, ArrowRightIcon,
+  ChartBarIcon, ChartPieIcon, CheckCircleIcon, ChevronDownIcon, ClockIcon,
+  ExclamationTriangleIcon, SparklesIcon, StarIcon, UsersIcon,
 } from '@heroicons/react/24/outline';
-import {
-  SkeletonCard,
-  ExportButton,
-  InfoIcon,
-  DrillDownModal,
-  SectionHeaderWithActions
-} from '@/features/recruiter';
-import { TrendLineChart, AreaChart, ColumnChart, BarChart, ProgressRing } from '@/features/recruiter';
-import { exportSectionToCSV, exportComprehensiveAnalytics } from '@/shared/lib/export-utils';
-import { getDataForPeriod, getPeriodDisplayName } from '@/shared/lib/mock-data-generator';
-
-// Phase 1: Import new components
-import { AdvancedFilters } from '@/features/recruiter';
 import { DateRangePicker } from '@/features/recruiter';
-import { ChartDownloadButton } from '@/features/recruiter';
-import { AnalyticsFilters } from '@/shared/types/recruiter';
-
-// React Query Hooks
 import { useRecruitmentFunnel } from '@/entities/user';
-import { useAnalyticsKPIs, useSpeedAnalytics, getRecruitmentFunnelStats } from '@/features/analytics';
+import { getRecruitmentFunnelStats, useAnalyticsKPIs } from '@/features/analytics';
 import { useCoursePerformance } from '@/features/courses';
 import { useDiversityData, useQualityMetrics } from '@/features/educator';
-import { DiversityExportModal } from '@/features/recruiter-pipeline';
-import type { FunnelRangePreset } from '@/features/educator-copilot';
+import HiringTrendChart from './analytics/HiringTrendChart';
+import {
+  downloadCSV, formatNumber, getQueryRange, parseAnalyticsParams, periodLabel,
+  type AnalyticsRange, type ChartType, type ExportRow,
+} from './analytics/model';
 
-// Enhanced KPI Card with trend indicator
-interface KpiCardProps {
-  title: string | React.ReactNode;
-  value: number | string;
-  icon: any;
-  iconColor: string;
-  iconBg: string;
-  trend?: number;
-  trendLabel?: string;
+const focusClass = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2';
+const buttonClass = `inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 ${focusClass}`;
+const panelClass = 'min-w-0 rounded-xl border border-gray-200 bg-white shadow-sm';
+const stageDefinitions = [
+  { key: 'sourced', label: 'Sourced', color: 'bg-blue-500' },
+  { key: 'screened', label: 'Screened', color: 'bg-cyan-500' },
+  { key: 'interviewed', label: 'Interviewed', color: 'bg-amber-500' },
+  { key: 'offered', label: 'Offered', color: 'bg-indigo-500' },
+  { key: 'hired', label: 'Hired', color: 'bg-emerald-500' },
+] as const;
+
+function Panel({ id, title, description, action, children }: {
+  id: string; title: string; description?: string; action?: ReactNode; children: ReactNode;
+}) {
+  return (
+    <section aria-labelledby={`${id}-heading`} className={panelClass}>
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-gray-100 px-5 py-4">
+        <div className="min-w-0 flex-1">
+          <h2 id={`${id}-heading`} className="text-base font-semibold text-gray-900">{title}</h2>
+          {description && <p className="mt-1 text-sm leading-6 text-gray-500">{description}</p>}
+        </div>
+        {action}
+      </div>
+      {children}
+    </section>
+  );
 }
 
-const KpiCard: React.FC<KpiCardProps> = ({ title, value, icon: Icon, iconColor, iconBg, trend, trendLabel }) => {
-  const isPositive = trend && trend > 0;
-  const isNegative = trend && trend < 0;
-  const showTrend = trend !== undefined && trend !== 0;
+function Empty({ title, children, icon: Icon = ChartBarIcon }: {
+  title: string; children: ReactNode; icon?: typeof ChartBarIcon;
+}) {
+  return (
+    <div className="flex flex-col items-center px-5 py-9 text-center">
+      <div className="rounded-full bg-gray-50 p-3"><Icon className="h-6 w-6 text-gray-400" aria-hidden /></div>
+      <p className="mt-3 text-sm font-semibold text-gray-900">{title}</p>
+      <p className="mt-1 max-w-sm text-sm leading-6 text-gray-500">{children}</p>
+    </div>
+  );
+}
+
+function DataState({ loading, error, empty, onRetry, emptyTitle, children }: {
+  loading: boolean; error: boolean; empty: boolean; onRetry: () => void;
+  emptyTitle: string; children: ReactNode;
+}) {
+  if (loading) return (
+    <div role="status" aria-label="Loading analytics" className="space-y-4 p-5 motion-safe:animate-pulse">
+      <span className="sr-only">Loading analytics…</span>
+      {[75, 55, 65].map(width => <div key={width} className="h-5 rounded bg-gray-100" style={{ width: `${width}%` }} />)}
+    </div>
+  );
+  if (error) return (
+    <div className="flex flex-col items-start gap-3 p-5" role="alert">
+      <p className="text-sm leading-6 text-gray-600">This report couldn't be loaded. Please try again.</p>
+      <button type="button" className={buttonClass} onClick={onRetry}><ArrowPathIcon className="h-4 w-4" aria-hidden />Try again</button>
+    </div>
+  );
+  if (empty) return <Empty title={emptyTitle}>Try another date range or return as your hiring activity grows.</Empty>;
+  return children;
+}
+
+function MetricCard({ title, value, icon: Icon, color, detail, trend }: {
+  title: string; value: string; icon: typeof UsersIcon; color: string; detail: string; trend?: number;
+}) {
+  const hasTrend = typeof trend === 'number' && Number.isFinite(trend) && trend !== 0;
+  return (
+    <div className={`${panelClass} p-4 sm:p-5`}>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <div className={`rounded-lg p-2.5 ${color}`}><Icon className="h-5 w-5" aria-hidden /></div>
+        {hasTrend && <span className={`rounded-md px-2 py-1 text-xs font-semibold ${trend > 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
+          {trend > 0 ? '+' : ''}{formatNumber(trend)}%
+        </span>}
+      </div>
+      <p className="min-h-10 text-sm font-medium leading-5 text-gray-600">{title}</p>
+      <p className="mt-1 text-3xl font-semibold tabular-nums tracking-tight text-gray-900">{value}</p>
+      <p className="mt-2 text-xs leading-5 text-gray-500">{hasTrend ? 'vs. previous period' : detail}</p>
+    </div>
+  );
+}
+
+function Distribution({ rows, unit = 'candidates' }: {
+  rows: { name: string; count: number; percentage: number }[]; unit?: string;
+}) {
+  return (
+    <ul className="space-y-5">
+      {rows.map((row, index) => (
+        <li key={`${row.name}-${index}`}>
+          <div className="mb-2 flex items-start justify-between gap-4 text-sm">
+            <span className="min-w-0 break-words font-medium text-gray-700 [overflow-wrap:anywhere]">{row.name}</span>
+            <span className="shrink-0 text-right tabular-nums"><span className="font-semibold text-gray-900">{formatNumber(row.count)}</span><span className="ml-2 text-xs text-gray-500">{formatNumber(row.percentage)}%</span></span>
+          </div>
+          <div className="h-2 overflow-hidden rounded-full bg-gray-100" aria-hidden>
+            <div className="h-full rounded-full bg-primary-500" style={{ width: `${Math.max(0, Math.min(100, row.percentage || 0))}%` }} />
+          </div>
+          <span className="sr-only">{row.count} {unit}, {row.percentage} percent</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+export default function Analytics() {
+  const [params, setParams] = useSearchParams();
+  const state = parseAnalyticsParams(params);
+  const range = getQueryRange(state);
+  const label = periodLabel(state);
+  const [showChartData, setShowChartData] = useState(false);
+  const [exportError, setExportError] = useState(false);
+  const [exported, setExported] = useState(false);
+
+  const funnel = useRecruitmentFunnel(range, getRecruitmentFunnelStats);
+  const kpis = useAnalyticsKPIs(range);
+  const quality = useQualityMetrics(range);
+  const courses = useCoursePerformance({ ...range, limit: 4 });
+  const diversity = useDiversityData({ ...range, geoLimit: 4, collegesLimit: 4 });
+
+  const queries = [funnel, kpis, quality, courses, diversity.geographic, diversity.colleges];
+  const busy = queries.some(query => query.isFetching);
+  const hasError = queries.some(query => query.isError);
+  const metrics = kpis.data;
+  const qualityData = quality.data;
+  const hasHires = (metrics?.successfulHires ?? 0) > 0;
+  const hasQuality = (qualityData?.totalHired ?? 0) > 0;
+  const score = hasQuality && (qualityData?.avgAiScore ?? 0) > 0 ? qualityData!.avgAiScore : undefined;
+  const stages = stageDefinitions.map(stage => ({ ...stage, count: funnel.data?.[stage.key] ?? 0 }));
+  const totalInPipeline = stages.reduce((sum, stage) => sum + stage.count, 0);
+  const trend = (funnel.data?.hiresTrend ?? []).map((hires, index) => ({ period: funnel.data?.trendLabels[index] || `Period ${index + 1}`, hires }));
+  const hasTrend = trend.some(point => point.hires > 0);
+  const trendHires = trend.reduce((sum, point) => sum + point.hires, 0);
+  const locations = diversity.geographic.data ?? [];
+  const colleges = diversity.colleges.data ?? [];
+  const courseData = courses.data ?? [];
+
+  function updateParams(changes: { range?: AnalyticsRange; chart?: ChartType; start?: string; end?: string }) {
+    const next = new URLSearchParams(params);
+    next.set('range', changes.range ?? state.range);
+    next.set('chart', changes.chart ?? state.chart);
+    if ((changes.range ?? state.range) === 'custom') {
+      next.set('start', changes.start ?? state.start);
+      next.set('end', changes.end ?? state.end);
+    } else { next.delete('start'); next.delete('end'); }
+    setParams(next);
+    setExported(false);
+  }
+
+  function refresh() {
+    void funnel.refetch(); void kpis.refetch(); void quality.refetch(); void courses.refetch();
+    diversity.refetchAll();
+    setExported(false);
+  }
+
+  // Every exported value comes from the same reports currently shown on screen.
+  const rows: ExportRow[] = [];
+  const add = (section: string, metric: string, value: number | undefined, unit = 'candidates', period = label) => {
+    if (typeof value === 'number' && Number.isFinite(value)) rows.push({ Section: section, Metric: metric, Value: value, Unit: unit, Period: period });
+  };
+  if (metrics && !kpis.isError && !kpis.isFetching) {
+    add('Overview', 'Total candidates', metrics.totalCandidates);
+    add('Overview', 'Successful hires', metrics.successfulHires, 'hires');
+    if (hasHires) add('Hiring speed', 'Average time to hire', metrics.timeToHire, 'days');
+  }
+  if (funnel.data && !funnel.isError && !funnel.isFetching) {
+    stages.forEach(stage => add('Current pipeline', stage.label, stage.count, 'candidates', 'Current snapshot · all dates'));
+    trend.forEach(point => add('Hiring trend', point.period, point.hires, 'hires'));
+  }
+  if (qualityData && !quality.isError && !quality.isFetching) {
+    add('Candidate quality', 'Hired candidates', qualityData.totalHired);
+    if (score !== undefined) add('Candidate quality', 'Average recorded score', score, 'score');
+    if (hasQuality && qualityData.avgCgpa > 0) add('Candidate quality', 'Average CGPA', qualityData.avgCgpa, 'CGPA');
+    if (hasQuality && qualityData.ageDemographics.averageAge > 0) add('Candidate quality', 'Average age', qualityData.ageDemographics.averageAge, 'years');
+    if (hasQuality) {
+      const gender = qualityData.genderDiversity;
+      add('Reported gender', 'Male', gender.male); add('Reported gender', 'Female', gender.female); add('Reported gender', 'Other / unspecified', gender.other);
+      qualityData.ageDemographics.ageRanges.forEach(group => add('Age distribution', group.range, group.count));
+      qualityData.topCourses.forEach(course => add('Hired candidate courses', course.name, course.count));
+    }
+  }
+  if (!diversity.geographic.isError && !diversity.geographic.isFetching) locations.forEach(location => add('Top locations', location.city, location.count));
+  if (!diversity.colleges.isError && !diversity.colleges.isFetching) colleges.forEach(college => add('Leading colleges', college.name, college.count));
+  if (!courses.isError && !courses.isFetching) courseData.forEach(course => {
+    add('Course candidates', course.name, course.totalCandidates);
+    add('Course hires', course.name, course.hiredCandidates, 'hires');
+    add('Course success rate', course.name, course.successRate, 'percent');
+  });
+
+  function exportReport(section?: string) {
+    setExportError(false);
+    try {
+      const selected = section ? rows.filter(row => row.Section === section) : rows;
+      downloadCSV(selected, `recruitment_analytics_${section ? section.toLowerCase().replace(/\s+/g, '_') + '_' : ''}${state.range === 'custom' ? `${state.start}_${state.end}` : state.range}`);
+      setExported(true);
+    } catch { setExportError(true); }
+  }
+
+  const reportState = (query: { isFetching?: boolean; isLoading: boolean; isError: boolean; refetch: () => unknown }) => ({
+    loading: query.isLoading || !!query.isFetching,
+    error: query.isError,
+    onRetry: () => { void query.refetch(); },
+  });
+  const insights: string[] = [];
+  if (funnel.data && !funnel.isError && hasTrend) insights.push(`${formatNumber(trendHires)} hires recorded in ${label.toLowerCase()}.`);
+  if (metrics && !kpis.isError && metrics.totalCandidates > 0) insights.push(`${formatNumber(metrics.totalCandidates)} candidates entered your pipeline in this period.`);
+  if (colleges.length && !diversity.colleges.isError) insights.push(`${colleges[0].name} leads the reported colleges with ${formatNumber(colleges[0].count)} candidates.`);
+  if (courseData.length && !courses.isError) {
+    const topCourse = [...courseData].sort((a, b) => b.successRate - a.successRate)[0];
+    if (topCourse.successRate > 0) insights.push(`${topCourse.name} has the highest hire rate among the displayed courses (${formatNumber(topCourse.successRate)}%).`);
+  }
 
   return (
-    <div className="group bg-white rounded-xl border border-gray-200/60 p-5 hover:shadow-lg hover:border-gray-300 transition-all duration-200 relative">
-      <div className="flex items-start justify-between mb-4">
-        <div className={`w-12 h-12 rounded-xl ${iconBg} flex items-center justify-center shadow-sm`}>
-          <Icon className={`h-6 w-6 ${iconColor}`} />
+    <div className="mx-auto max-w-[1600px] space-y-6 p-4 sm:p-6 lg:p-8">
+      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+        <div>
+          <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-primary-700">Recruitment workspace</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-gray-900 sm:text-3xl">Hiring analytics</h1>
+          <p className="mt-2 text-sm leading-6 text-gray-600">Understand your pipeline, hiring outcomes, and talent sources.</p>
         </div>
-        {showTrend && (
-          <div className={`flex items-center gap-1 px-2.5 py-1 rounded-lg ${isPositive ? 'bg-green-50 text-green-700' : isNegative ? 'bg-red-50 text-red-700' : 'bg-gray-50 text-gray-700'
-            }`}>
-            {isPositive && <ArrowUpIcon className="h-3 w-3" />}
-            {isNegative && <ArrowDownIcon className="h-3 w-3" />}
-            <span className="text-xs font-semibold">{Math.abs(trend)}%</span>
-          </div>
-        )}
-      </div>
-      <div>
-        <div className="text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wider">{title}</div>
-        <p className="text-2xl font-bold text-gray-900 mb-1">{value}</p>
-        <p className="text-xs text-gray-500">{trendLabel}</p>
-      </div>
-    </div>
-  );
-};
-
-// Simple horizontal bar used in charts without external libs
-const HBar = ({ percent, color = 'primary' }: { percent: number; color?: 'primary' | 'success' | 'warning' | 'danger' }) => {
-  const colors: Record<string, string> = {
-    primary: 'bg-primary-500',
-    success: 'bg-success-500',
-    warning: 'bg-warning-500',
-    danger: 'bg-danger-500'
-  };
-  const p = Math.max(0, Math.min(100, percent));
-  return (
-    <div className="w-full bg-gray-100 h-3 rounded">
-      <div className={`${colors[color]} h-3 rounded`} style={{ width: `${p}%` }} />
-    </div>
-  );
-};
-
-// Tiny sparkline using inline SVG (no deps)
-const Sparkline = ({ points, color = '#6366F1' }: { points: number[]; color?: string }) => {
-  if (!points.length) return null;
-  const w = 140;
-  const h = 36;
-  const max = Math.max(...points);
-  const min = Math.min(...points);
-  const norm = (v: number) => (max === min ? h / 2 : h - ((v - min) / (max - min)) * h);
-  const step = w / (points.length - 1);
-  const d = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${i * step} ${norm(p)}`).join(' ');
-  return (
-    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="overflow-visible">
-      <path d={d} fill="none" stroke={color} strokeWidth="2" />
-    </svg>
-  );
-};
-
-const SectionHeader: React.FC<{ title: string; right?: React.ReactNode }> = ({ title, right }) => (
-  <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-    <h3 className="text-lg font-medium text-gray-900">{title}</h3>
-    {right}
-  </div>
-);
-
-const Analytics: React.FC = () => {
-  // URL Parameters for bookmarkable state
-  const [searchParams, setSearchParams] = useSearchParams();
-
-  // State management
-  const [range, setRange] = useState<'7d' | '30d' | '90d' | 'ytd' | 'custom'>(
-    (searchParams.get('range') as any) || '30d'
-  );
-  const [loading, setLoading] = useState(false);
-  const [drillDownModal, setDrillDownModal] = useState<{ isOpen: boolean; title: string; data: any }>({
-    isOpen: false, title: '', data: null
-  });
-  const [chartType, setChartType] = useState<'line' | 'area' | 'column'>(
-    (searchParams.get('chart') as any) || 'line'
-  );
-  const [diversityExportModalOpen, setDiversityExportModalOpen] = useState(false);
-
-  // Phase 1: Advanced Filters State
-  const [filters, setFilters] = useState<AnalyticsFilters>({
-    dateRange: {
-      preset: '30d',
-      startDate: '',
-      endDate: ''
-    },
-    departments: [],
-    jobLevels: [],
-    sources: [],
-    skills: [],
-    locations: [],
-    recruiters: []
-  });
-
-  // Get dynamic data based on selected period and filters (for sections other than funnel)
-  const periodData = useMemo(() => {
-    const baseData = getDataForPeriod(range === 'custom' ? '30d' : range);
-    // NOTE: Keeping mock transformations for non-funnel sections to avoid regressions.
-    return baseData;
-  }, [range]);
-
-  const periodName = useMemo(() => getPeriodDisplayName(range === 'custom' ? '30d' : range), [range]);
-
-  // Live Funnel from DB via React Query + Realtime
-  const funnelPreset = (range as FunnelRangePreset) || '30d';
-  const { data: liveFunnel, isLoading: funnelLoading } = useRecruitmentFunnel({
-    preset: funnelPreset,
-    startDate: filters.dateRange.startDate || undefined,
-    endDate: filters.dateRange.endDate || undefined,
-  }, getRecruitmentFunnelStats);
-
-  // Live KPI Metrics from DB
-  const { data: kpiMetrics, isLoading: kpiLoading } = useAnalyticsKPIs({
-    preset: funnelPreset,
-    startDate: filters.dateRange.startDate || undefined,
-    endDate: filters.dateRange.endDate || undefined,
-  });
-
-  // Live Course Performance from DB
-  const { data: coursePerformance, isLoading: coursesLoading } = useCoursePerformance({
-    preset: funnelPreset,
-    startDate: filters.dateRange.startDate || undefined,
-    endDate: filters.dateRange.endDate || undefined,
-    limit: 4,
-  });
-
-  // Optimized Diversity Data (Geographic + Colleges) with shared WebSocket
-  const diversityData = useDiversityData({
-    preset: funnelPreset,
-    startDate: filters.dateRange.startDate || undefined,
-    endDate: filters.dateRange.endDate || undefined,
-    geoLimit: 4,
-    collegesLimit: 4,
-  });
-
-  // Destructure for easier access
-  const geographicData = diversityData.geographic.data;
-  const geoLoading = diversityData.geographic.isLoading;
-  const topColleges = diversityData.colleges.data;
-  const collegesLoading = diversityData.colleges.isLoading;
-
-  // Live Speed Analytics from DB
-  const { data: speedData, isLoading: speedLoading } = useSpeedAnalytics({
-    preset: funnelPreset,
-    startDate: filters.dateRange.startDate || undefined,
-    endDate: filters.dateRange.endDate || undefined,
-  });
-
-  // Live Quality Metrics from DB
-  const { data: qualityMetrics, isLoading: qualityLoading } = useQualityMetrics({
-    preset: funnelPreset,
-    startDate: filters.dateRange.startDate || undefined,
-    endDate: filters.dateRange.endDate || undefined,
-  });
-
-  const trendLabels = liveFunnel?.trendLabels || [];
-
-  // Update URL when filters change
-  useEffect(() => {
-    const params: any = { range, chart: chartType };
-    setSearchParams(params);
-  }, [range, chartType]);
-
-
-  // Drill-down handlers
-  const handleDrillDown = (title: string, data: any) => {
-    setDrillDownModal({ isOpen: true, title, data });
-  };
-
-  // Phase 1: Filter handlers
-  const handleFiltersChange = (newFilters: AnalyticsFilters) => {
-    setFilters(newFilters);
-    // In production, trigger data refetch with filters
-  };
-
-  const handleFiltersReset = () => {
-    setFilters({
-      dateRange: { preset: '30d', startDate: '', endDate: '' },
-      departments: [],
-      jobLevels: [],
-      sources: [],
-      skills: [],
-      locations: [],
-      recruiters: []
-    });
-    setRange('30d');
-  };
-
-  const handleDateRangeChange = (preset: '7d' | '30d' | '90d' | 'ytd' | 'custom', startDate?: string, endDate?: string) => {
-    setRange(preset);
-    setFilters({
-      ...filters,
-      dateRange: { preset, startDate: startDate || '', endDate: endDate || '' }
-    });
-  };
-
-  // Phase 1: Export handler
-  const handleComprehensiveExport = () => {
-    exportComprehensiveAnalytics({
-      funnel: periodData.funnel,
-      quality: periodData.qualityMetrics,
-      speed: periodData.speedMetrics,
-      geography: periodData.geography,
-      attribution: periodData.attribution
-    }, 'excel');
-  };
-
-  // Calculate funnel stages from live data (without conversions)
-  const funnelStages = useMemo(() => {
-    const sourced = liveFunnel?.sourced || 0;
-    const screened = liveFunnel?.screened || 0;
-    const interviewed = liveFunnel?.interviewed || 0;
-    const offered = liveFunnel?.offered || 0;
-    const hired = liveFunnel?.hired || 0;
-
-    const calcConv = (curr: number, prev: number) => prev > 0 ? Math.round((curr / prev) * 100) : 0;
-
-    return [
-      { key: 'sourced', label: 'Sourced', value: sourced, color: 'bg-gray-600', conversion: 100 },
-      { key: 'screened', label: 'Screened', value: screened, color: 'bg-blue-500', conversion: calcConv(screened, sourced) },
-      { key: 'interviewed', label: 'Interviewed', value: interviewed, color: 'bg-yellow-500', conversion: calcConv(interviewed, screened) },
-      { key: 'offered', label: 'Offered', value: offered, color: 'bg-green-500', conversion: calcConv(offered, interviewed) },
-      { key: 'hired', label: 'Hired', value: hired, color: 'bg-purple-600', conversion: calcConv(hired, offered) }
-    ];
-  }, [liveFunnel]);
-
-  const maxFunnel = Math.max(1, ...funnelStages.map((s) => s.value));
-
-  // Generate dynamic Key Insights based on actual data
-  const keyInsights = useMemo(() => {
-    const insights: Array<{
-      type: 'success' | 'warning' | 'info';
-      text: string;
-      priority: number;
-    }> = [];
-
-    // Insight 1: Quality Score Performance
-    if (kpiMetrics?.qualityScore) {
-      if (kpiMetrics.qualityScore >= 85) {
-        insights.push({
-          type: 'success',
-          text: `High-quality talent pool with ${kpiMetrics.qualityScore} average quality score`,
-          priority: 1
-        });
-      } else if (kpiMetrics.qualityScore >= 75) {
-        insights.push({
-          type: 'info',
-          text: `Quality score of ${kpiMetrics.qualityScore} meets industry standards`,
-          priority: 2
-        });
-      } else {
-        insights.push({
-          type: 'warning',
-          text: `Quality score (${kpiMetrics.qualityScore}) below target - review screening criteria`,
-          priority: 1
-        });
-      }
-    }
-
-    // Insight 2: Speed Performance
-    if (speedData?.timeToHire) {
-      const industryAvg = 25;
-      if (speedData.timeToHire < industryAvg) {
-        const improvement = Math.round(((industryAvg - speedData.timeToHire) / industryAvg) * 100);
-        insights.push({
-          type: 'success',
-          text: `Hiring process is ${improvement}% faster than industry average (${speedData.timeToHire} vs ${industryAvg} days)`,
-          priority: 1
-        });
-      } else if (speedData.timeToHire > 30) {
-        insights.push({
-          type: 'warning',
-          text: `Time to hire (${speedData.timeToHire} days) exceeds target - identify bottlenecks`,
-          priority: 1
-        });
-      }
-    }
-
-    // Insight 3: Top Performing College
-    if (topColleges && topColleges.length > 0 && topColleges[0].count > 0) {
-      insights.push({
-        type: 'info',
-        text: `${topColleges[0].name} is top talent source with ${topColleges[0].count} candidates (${topColleges[0].percentage}%)`,
-        priority: 2
-      });
-    }
-
-    // Insight 4: Top Performing Course
-    if (coursePerformance && coursePerformance.length > 0 && coursePerformance[0].successRate > 0) {
-      const topCourse = coursePerformance[0];
-      insights.push({
-        type: 'success',
-        text: `Top performing course: ${topCourse.name} with ${topCourse.successRate}% success rate (${topCourse.hiredCandidates}/${topCourse.totalCandidates} hired)`,
-        priority: 2
-      });
-    }
-
-    // Insight 5: Geographic Diversity
-    if (geographicData && geographicData.length > 0) {
-      const totalCandidates = geographicData.reduce((sum, loc) => sum + loc.count, 0);
-      if (geographicData.length >= 3) {
-        insights.push({
-          type: 'success',
-          text: `Strong geographic diversity across ${geographicData.length} regions with ${totalCandidates} total candidates`,
-          priority: 2
-        });
-      } else if (geographicData[0] && geographicData[0].percentage > 60) {
-        insights.push({
-          type: 'info',
-          text: `High concentration in ${geographicData[0].city} (${geographicData[0].percentage}%) - consider expanding to other regions`,
-          priority: 3
-        });
-      }
-    }
-
-    // Insight 6: Hiring Momentum
-    if (kpiMetrics?.successfulHiresTrend && kpiMetrics.successfulHiresTrend !== 0) {
-      if (kpiMetrics.successfulHiresTrend > 10) {
-        insights.push({
-          type: 'success',
-          text: `Strong hiring momentum with ${Math.abs(kpiMetrics.successfulHiresTrend)}% increase in successful hires`,
-          priority: 1
-        });
-      } else if (kpiMetrics.successfulHiresTrend < -10) {
-        insights.push({
-          type: 'warning',
-          text: `Hiring declined by ${Math.abs(kpiMetrics.successfulHiresTrend)}% - review pipeline strategy`,
-          priority: 1
-        });
-      }
-    }
-
-    // Insight 7: Pipeline Growth
-    if (kpiMetrics?.totalCandidatesTrend && kpiMetrics.totalCandidatesTrend > 15) {
-      insights.push({
-        type: 'success',
-        text: `Pipeline growing rapidly with ${kpiMetrics.totalCandidatesTrend}% increase in candidates`,
-        priority: 2
-      });
-    }
-
-    // Insight 8: Speed Improvement
-    if (speedData?.fastestHire && speedData.fastestHire < 15) {
-      insights.push({
-        type: 'info',
-        text: `Fastest hire completed in just ${speedData.fastestHire} days - excellent process efficiency`,
-        priority: 3
-      });
-    }
-
-    // Sort by priority and return top 5 insights
-    return insights
-      .sort((a, b) => a.priority - b.priority)
-      .slice(0, 5);
-  }, [kpiMetrics, speedData, topColleges, coursePerformance, geographicData]);
-
-  return (
-    <div className="bg-gray-50 min-h-screen -m-6">
-      {/* Page header */}
-      <div className="bg-white border-b border-gray-200 px-8 py-3 sticky top-0 z-50 mb-4">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2">
-          <div>
-            <h1 className="text-xl font-bold text-gray-900">Analytics Dashboard</h1>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-
-            {/* Phase 1: Date Range Picker */}
-            <DateRangePicker
-              startDate={filters.dateRange.startDate || ''}
-              endDate={filters.dateRange.endDate || ''}
-              preset={filters.dateRange.preset || '30d'}
-              onRangeChange={handleDateRangeChange}
-            />
-
-            {/* Phase 1: Advanced Filters */}
-            <AdvancedFilters
-              filters={filters}
-              onFiltersChange={handleFiltersChange}
-              onReset={handleFiltersReset}
-            />
-
-            {/* Phase 1: Comprehensive Export */}
-            <button
-              onClick={handleComprehensiveExport}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
-            >
-              <ArrowDownTrayIcon className="h-4 w-4" />
-              Export
-            </button>
-          </div>
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <button type="button" onClick={refresh} disabled={busy} className={buttonClass}><ArrowPathIcon className={`h-4 w-4 ${busy ? 'motion-safe:animate-spin' : ''}`} aria-hidden />{busy ? 'Refreshing…' : 'Refresh'}</button>
+          <button type="button" onClick={() => exportReport()} disabled={busy || !rows.length} className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50 ${focusClass}`}><ArrowDownTrayIcon className="h-4 w-4" aria-hidden />Export CSV</button>
         </div>
       </div>
 
-      {/* Main Content Wrapper */}
-      <div className="px-8 pt-4 pb-20 md:pb-6 space-y-5">
-        {/* KPI Cards */}
-        {loading || kpiLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-            {[1, 2, 3, 4].map((i) => <SkeletonCard key={i} />)}
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-            <KpiCard
-              title={
-                <div className="flex items-center gap-2">
-                  <span>Total Candidates</span>
-                  <InfoIcon content="Total number of candidates who entered the recruitment pipeline in the selected period" />
-                </div>
-              }
-              value={kpiMetrics?.totalCandidates ?? 0}
-              icon={UsersIcon}
-              iconColor="text-blue-600"
-              iconBg="bg-blue-50"
-              trend={kpiMetrics?.totalCandidatesTrend ?? 0}
-              trendLabel="from last period"
-            />
-            <KpiCard
-              title={
-                <div className="flex items-center gap-2">
-                  <span>Successful Hires</span>
-                  <InfoIcon content="Number of candidates successfully hired and onboarded" />
-                </div>
-              }
-              value={kpiMetrics?.successfulHires ?? 0}
-              icon={CheckCircleIcon}
-              iconColor="text-green-600"
-              iconBg="bg-green-50"
-              trend={kpiMetrics?.successfulHiresTrend ?? 0}
-              trendLabel="from last period"
-            />
-            <KpiCard
-              title={
-                <div className="flex items-center gap-2">
-                  <span>Time to Hire</span>
-                  <InfoIcon content="Average number of days from candidate sourcing to hiring" />
-                </div>
-              }
-              value={`${kpiMetrics?.timeToHire ?? 23} days`}
-              icon={ClockIcon}
-              iconColor="text-indigo-600"
-              iconBg="bg-indigo-50"
-              trend={kpiMetrics?.timeToHireTrend ?? 0}
-              trendLabel={kpiMetrics?.timeToHireTrend && kpiMetrics.timeToHireTrend < 0 ? 'faster than last period' : 'from last period'}
-            />
-            <KpiCard
-              title={
-                <div className="flex items-center gap-2">
-                  <span>Quality Score</span>
-                  <InfoIcon content="Average AI-powered quality score of hired candidates" />
-                </div>
-              }
-              value={kpiMetrics?.qualityScore ?? 85.2}
-              icon={StarIcon}
-              iconColor="text-yellow-600"
-              iconBg="bg-yellow-50"
-              trend={kpiMetrics?.qualityScoreTrend ?? 0}
-              trendLabel="from last period"
-            />
-          </div>
-        )}
-
-        {/* Main content grid */}
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-          {/* Left Column: Metrics Sections */}
-          <div className="space-y-6">
-            {/* Quality Metrics */}
-            <div id="quality-metrics-section" className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-lg font-semibold text-gray-900">Quality Metrics</h2>
-                <ChartDownloadButton
-                  chartId="quality-metrics-section"
-                  chartName="Quality_Metrics"
-                  data={qualityMetrics ? [
-                    { metric: 'Total Hired', value: qualityMetrics.totalHired || 0 },
-                    { metric: 'Avg CGPA', value: qualityMetrics.avgCgpa || 0 },
-                    { metric: 'Gender Diversity', value: `${qualityMetrics.genderDiversity?.femalePercent || 0}% Female` }
-                  ] : []}
-                  compact
-                />
-              </div>
-
-              {qualityLoading ? (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                  {[1, 2, 3].map((i) => (
-                    <div key={i} className="h-32 bg-gray-100 rounded-lg animate-pulse" />
-                  ))}
-                </div>
-              ) : qualityMetrics ? (
-                <div className="space-y-8">
-                  {/* Top Row: Key Metrics */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                    {/* Total Hired */}
-                    <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
-                      <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-green-100 mb-3">
-                        <UserGroupIcon className="h-7 w-7 text-green-600" />
-                      </div>
-                      <p className="text-2xl font-bold text-gray-900 mb-1">
-                        {qualityMetrics.totalHired || 0}
-                      </p>
-                      <p className="text-xs font-medium text-gray-600">Total Hired Candidates</p>
-                    </div>
-
-                    {/* Avg CGPA */}
-                    <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
-                      <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-blue-100 mb-3">
-                        <AcademicCapIcon className="h-7 w-7 text-blue-600" />
-                      </div>
-                      <p className="text-2xl font-bold text-gray-900 mb-1">
-                        {qualityMetrics.avgCgpa || 0}
-                      </p>
-                      <p className="text-xs font-medium text-gray-600">Average CGPA</p>
-                    </div>
-
-                    {/* Gender Diversity */}
-                    <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
-                      <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-purple-100 mb-3">
-                        <UserGroupIcon className="h-7 w-7 text-purple-600" />
-                      </div>
-                      <div className="flex items-center justify-center gap-3 mb-1">
-                        <div className="text-center">
-                          <span className="text-lg font-bold text-gray-900">{qualityMetrics.genderDiversity?.malePercent || 0}%</span>
-                          <span className="text-[10px] block text-gray-500">Male</span>
-                        </div>
-                        <div className="h-8 w-px bg-gray-300"></div>
-                        <div className="text-center">
-                          <span className="text-lg font-bold text-gray-900">{qualityMetrics.genderDiversity?.femalePercent || 0}%</span>
-                          <span className="text-[10px] block text-gray-500">Female</span>
-                        </div>
-                      </div>
-                      <p className="text-xs font-medium text-gray-600">Gender Diversity</p>
-                    </div>
-                  </div>
-
-                  {/* Bottom Row: Age & Courses */}
-                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-                    {/* Age Demographics */}
-                    <div>
-                      <h3 className="text-sm font-semibold text-gray-900 mb-4">Age Demographics</h3>
-                      <div className="bg-gray-50 rounded-lg p-4 border border-gray-200 h-full">
-                        <div className="flex items-center justify-between mb-4">
-                          <div>
-                            <p className="text-xs text-gray-500">Average Age</p>
-                            <p className="text-xl font-bold text-gray-900">{qualityMetrics.ageDemographics?.averageAge || 0} years</p>
-                          </div>
-                        </div>
-                        <div className="space-y-3">
-                          {qualityMetrics.ageDemographics?.ageRanges?.map((group) => (
-                            <div key={group.range}>
-                              <div className="flex justify-between text-xs mb-1">
-                                <span className="text-gray-600">{group.range}</span>
-                                <span className="font-medium text-gray-900">{group.count} ({group.percentage}%)</span>
-                              </div>
-                              <div className="w-full bg-gray-200 rounded-full h-2">
-                                <div
-                                  className="bg-blue-500 h-2 rounded-full"
-                                  style={{ width: `${group.percentage}%` }}
-                                ></div>
-                              </div>
-                            </div>
-                          ))}
-                          {(!qualityMetrics.ageDemographics?.ageRanges || qualityMetrics.ageDemographics.ageRanges.length === 0) && (
-                            <div className="text-center py-8 text-gray-500 text-sm">
-                              No age distribution data available
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Top Courses */}
-                    <div>
-                      <h3 className="text-sm font-semibold text-gray-900 mb-4">Top Courses / Branches</h3>
-                      <div className="bg-gray-50 rounded-lg p-4 border border-gray-200 h-full">
-                        <div className="space-y-3">
-                          {qualityMetrics.topCourses?.map((course, index) => (
-                            <div key={index} className="flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                <div className="flex-shrink-0 w-6 h-6 rounded-full bg-white border border-gray-200 flex items-center justify-center text-xs font-medium text-gray-600">
-                                  {index + 1}
-                                </div>
-                                <span className="text-sm text-gray-700 truncate max-w-[180px]" title={course.name}>
-                                  {course.name}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-3">
-                                <div className="w-24 bg-gray-200 rounded-full h-1.5">
-                                  <div
-                                    className="bg-indigo-500 h-1.5 rounded-full"
-                                    style={{ width: `${course.percentage}%` }}
-                                  ></div>
-                                </div>
-                                <span className="text-xs font-medium text-gray-900 w-8 text-right">{course.count}</span>
-                              </div>
-                            </div>
-                          ))}
-                          {(!qualityMetrics.topCourses || qualityMetrics.topCourses.length === 0) && (
-                            <div className="text-center py-8 text-gray-500 text-sm">
-                              No course data available
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="p-6 text-center text-gray-500 text-sm">
-                  No quality metrics available for this period
-                </div>
-              )}
-            </div>
-
-            {/* Speed Analytics */}
-            <div id="speed-analytics-section" className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-lg font-semibold text-gray-900">Speed Analytics</h2>
-                <ChartDownloadButton
-                  chartId="speed-analytics-section"
-                  chartName="Speed_Analytics"
-                  data={speedData ? [
-                    { metric: 'Time to First Response', days: speedData.timeToFirstResponse },
-                    { metric: 'Time to Hire', days: speedData.timeToHire },
-                    { metric: 'Interview to Offer', days: speedData.interviewToOffer },
-                    { metric: 'Fastest Hire', days: speedData.fastestHire }
-                  ] : []}
-                  compact
-                />
-              </div>
-              {speedLoading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
-                  {[1, 2, 3, 4].map((i) => (
-                    <div key={i} className="h-32 bg-gray-100 rounded-lg animate-pulse" />
-                  ))}
-                </div>
-              ) : speedData ? (
-                <>
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
-                    <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
-                      <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-blue-100 mb-3">
-                        <ClockIcon className="h-7 w-7 text-blue-600" />
-                      </div>
-                      <p className="text-2xl font-bold text-gray-900 mb-1">
-                        {speedData.timeToFirstResponse < 1 && speedData.timeToFirstResponse > 0
-                          ? `${Math.round(speedData.timeToFirstResponse * 24)} hrs`
-                          : `${speedData.timeToFirstResponse} days`}
-                      </p>
-                      <p className="text-xs font-medium text-gray-600">Time to First Response</p>
-                    </div>
-                    <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
-                      <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-green-100 mb-3">
-                        <CheckCircleIcon className="h-7 w-7 text-green-600" />
-                      </div>
-                      <p className="text-2xl font-bold text-gray-900 mb-1">
-                        {speedData.timeToHire < 1 && speedData.timeToHire > 0
-                          ? `${Math.round(speedData.timeToHire * 24)} hrs`
-                          : `${speedData.timeToHire} days`}
-                      </p>
-                      <p className="text-xs font-medium text-gray-600">Time to Hire</p>
-                    </div>
-                    <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
-                      <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-yellow-100 mb-3">
-                        <CalendarIcon className="h-7 w-7 text-yellow-600" />
-                      </div>
-                      <p className="text-2xl font-bold text-gray-900 mb-1">
-                        {speedData.interviewToOffer < 1 && speedData.interviewToOffer > 0
-                          ? `${Math.round(speedData.interviewToOffer * 24)} hrs`
-                          : `${speedData.interviewToOffer} days`}
-                      </p>
-                      <p className="text-xs font-medium text-gray-600">Interview to Offer</p>
-                    </div>
-                    <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
-                      <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-purple-100 mb-3">
-                        <BoltIcon className="h-7 w-7 text-purple-600" />
-                      </div>
-                      <p className="text-2xl font-bold text-gray-900 mb-1">
-                        {speedData.fastestHire < 1 && speedData.fastestHire > 0
-                          ? `${Math.round(speedData.fastestHire * 24)} hrs`
-                          : `${speedData.fastestHire} days`}
-                      </p>
-                      <p className="text-xs font-medium text-gray-600">Fastest Hire</p>
-                    </div>
-                  </div>
-                  <div className="mt-6 pt-6 border-t border-gray-200 flex items-center gap-2 text-sm">
-                    <SparklesIcon className="h-5 w-5 text-green-600" />
-                    <span className="text-gray-700">Process Efficiency</span>
-                    <span className="font-semibold text-green-600">
-                      {speedData.timeToHire < 25
-                        ? `${Math.round(((25 - speedData.timeToHire) / 25) * 100)}% faster than industry average (25 days)`
-                        : 'Within industry average (25 days)'}
-                    </span>
-                  </div>
-                </>
-              ) : (
-                <div className="p-6 text-center text-gray-500 text-sm">
-                  No speed data available for this period
-                </div>
-              )}
-            </div>
-
-            {/* Diversity & Geography Section */}
-            <div id="geography-section" className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h2 className="text-lg font-semibold text-gray-900">Diversity & Geography</h2>
-                  <p className="text-sm text-gray-600 mt-1">Understanding where your talent comes from</p>
-                </div>
-                <button
-                  onClick={() => setDiversityExportModalOpen(true)}
-                  onMouseEnter={() => {
-                    // Prefetch data on hover for faster modal rendering
-                    if (!geographicData || !topColleges) {
-                      diversityData.refetchAll();
-                    }
-                  }}
-                  className="inline-flex items-center justify-center w-8 h-8 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                  title="Export Diversity & Geography"
-                >
-                  <ArrowDownTrayIcon className="h-5 w-5" />
-                </button>
-              </div>
-
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-                {/* Geographic Distribution */}
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-900 mb-4">Geographic Distribution</h3>
-                  {geoLoading ? (
-                    <div className="space-y-4">
-                      {[1, 2, 3, 4].map((i) => (
-                        <div key={i} className="h-16 bg-gray-100 rounded-lg animate-pulse" />
-                      ))}
-                    </div>
-                  ) : geographicData && geographicData.length > 0 ? (
-                    <>
-                      <div className="space-y-4">
-                        {geographicData.map((l) => (
-                          <div key={l.city}>
-                            <div className="flex items-center justify-between text-sm mb-2">
-                              <div className="flex items-center gap-2">
-                                <MapPinIcon className="h-4 w-4 text-gray-400" />
-                                <span className="text-gray-700">{l.city}</span>
-                              </div>
-                              <div className="flex items-center gap-3">
-                                <span className="text-xs text-gray-500">({l.percentage}%)</span>
-                                <span className="text-sm font-bold text-gray-900">{l.count}</span>
-                              </div>
-                            </div>
-                            <div className="w-full bg-gray-100 h-2 rounded-full">
-                              <div
-                                className="bg-blue-500 h-2 rounded-full"
-                                style={{ width: `${l.percentage}%` }}
-                              />
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="mt-4 pt-4 border-t border-gray-200">
-                        <p className="text-xs text-gray-500">Total Candidates: <span className="font-bold text-gray-900">{geographicData.reduce((sum, l) => sum + l.count, 0)}</span></p>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="p-6 text-center text-gray-500 text-sm">
-                      No geographic data available for this period
-                    </div>
-                  )}
-                </div>
-
-                {/* Top Hiring Colleges */}
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-900 mb-4">Top Hiring Colleges</h3>
-                  {collegesLoading ? (
-                    <div className="space-y-3">
-                      {[1, 2, 3, 4].map((i) => (
-                        <div key={i} className="h-14 bg-gray-100 rounded-lg animate-pulse" />
-                      ))}
-                    </div>
-                  ) : topColleges && topColleges.length > 0 ? (
-                    <>
-                      <div className="space-y-3">
-                        {topColleges.map((c, idx) => (
-                          <div key={c.name} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                            <div className="flex items-center gap-3">
-                              <div className="flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 text-blue-700 text-xs font-bold">
-                                {idx + 1}
-                              </div>
-                              <span className="text-sm text-gray-700">{c.name}</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <div className="w-16 bg-gray-200 h-1.5 rounded-full">
-                                <div className="bg-green-500 h-1.5 rounded-full" style={{ width: `${c.percentage}%` }} />
-                              </div>
-                              <span className="text-sm font-bold text-gray-900 w-6 text-right">{c.count}</span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                        <p className="text-xs text-blue-700 font-medium">Diversity Index</p>
-                        <p className="text-sm text-blue-900 mt-1">Good distribution across {topColleges.length} institutions</p>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="p-6 text-center text-gray-500 text-sm">
-                      No college data available for this period
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Attribution Analysis */}
-            <div id="attribution-section" className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm" >
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h2 className="text-lg font-semibold text-gray-900">Attribution Analysis</h2>
-                  <p className="text-sm text-gray-600 mt-1">Which programs and events yield the best hires</p>
-                </div>
-                <ChartDownloadButton
-                  chartId="attribution-section"
-                  chartName="Attribution_Analysis"
-                  data={[...periodData.attribution.hackathons, ...periodData.attribution.courses]}
-                  compact
-                />
-              </div>
-
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-                {/* Hackathon Performance */}
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-900 mb-4">Hackathon Performance</h3>
-                  <div className="space-y-3">
-                    {periodData.attribution.hackathons.map((h: any) => (
-                      <div key={h.name} className="p-4 bg-gray-50 rounded-lg">
-                        <div className="flex items-start justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <TrophyIcon className="h-4 w-4 text-yellow-600" />
-                            <span className="text-sm font-medium text-gray-900">{h.name}</span>
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-3 gap-3 mt-3">
-                          <div>
-                            <p className="text-xs text-gray-500">Applications</p>
-                            <p className="text-lg font-bold text-gray-900">{h.applications}</p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-gray-500">Hires</p>
-                            <p className="text-lg font-bold text-green-600">{h.hires}</p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-gray-500">Success Rate</p>
-                            <p className="text-lg font-bold text-purple-600">{((h.hires / h.applications) * 100).toFixed(1)}%</p>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Course Performance */}
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-900 mb-4">Course Performance</h3>
-                  {coursesLoading ? (
-                    <div className="space-y-3">
-                      {[1, 2, 3, 4].map((i) => (
-                        <div key={i} className="h-24 bg-gray-100 rounded-lg animate-pulse" />
-                      ))}
-                    </div>
-                  ) : coursePerformance && coursePerformance.length > 0 ? (
-                    <div className="space-y-3">
-                      {coursePerformance.map((c) => (
-                        <div key={c.name} className="p-4 bg-gray-50 rounded-lg">
-                          <div className="flex items-start justify-between mb-2">
-                            <div className="flex items-center gap-2">
-                              <AcademicCapIcon className="h-4 w-4 text-blue-600" />
-                              <span className="text-sm font-medium text-gray-900">{c.name}</span>
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-3 gap-3 mt-3">
-                            <div>
-                              <p className="text-xs text-gray-500">Candidates</p>
-                              <p className="text-lg font-bold text-gray-900">{c.totalCandidates}</p>
-                            </div>
-                            <div>
-                              <p className="text-xs text-gray-500">Hired</p>
-                              <p className="text-lg font-bold text-green-600">{c.hiredCandidates}/{c.totalCandidates}</p>
-                            </div>
-                            <div>
-                              <p className="text-xs text-gray-500">Success Rate</p>
-                              <p className="text-lg font-bold text-indigo-600">{c.successRate}%</p>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="p-6 text-center text-gray-500 text-sm">
-                      No course data available for this period
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Executive Summary */}
-            <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm" >
-              <h2 className="text-lg font-semibold text-gray-900 mb-6">Executive Summary</h2>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-5">
-                <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
-                  <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-yellow-100 mb-3">
-                    <StarIcon className="h-6 w-6 text-yellow-600" />
-                  </div>
-                  <p className="text-2xl font-bold text-gray-900 mb-1">{periodData.qualityMetrics.external_audited_percentage}%</p>
-                  <p className="text-xs font-medium text-gray-600">Premium Quality</p>
-                </div>
-                <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
-                  <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-green-100 mb-3">
-                    <ClockIcon className="h-6 w-6 text-green-600" />
-                  </div>
-                  <p className="text-2xl font-bold text-gray-900 mb-1">{periodData.speedMetrics.median_time_to_hire}d</p>
-                  <p className="text-xs font-medium text-gray-600">Avg Time to Hire</p>
-                </div>
-                <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
-                  <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-purple-100 mb-3">
-                    <MapPinIcon className="h-6 w-6 text-purple-600" />
-                  </div>
-                  <p className="text-2xl font-bold text-gray-900 mb-1">4</p>
-                  <p className="text-xs font-medium text-gray-600">Cities Covered</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Key Insights */}
-            <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm" >
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Key Insights</h2>
-              {
-                keyInsights.length > 0 ? (
-                  <ul className="space-y-3">
-                    {keyInsights.map((insight, index) => {
-                      const iconBgColor =
-                        insight.type === 'success' ? 'bg-green-100' :
-                          insight.type === 'warning' ? 'bg-yellow-100' :
-                            'bg-blue-100';
-                      const iconColor =
-                        insight.type === 'success' ? 'text-green-600' :
-                          insight.type === 'warning' ? 'text-yellow-600' :
-                            'text-blue-600';
-
-                      return (
-                        <li key={index} className="flex items-start gap-3">
-                          <div className={`flex-shrink-0 w-6 h-6 rounded-full ${iconBgColor} flex items-center justify-center mt-0.5`}>
-                            <CheckCircleIcon className={`h-4 w-4 ${iconColor}`} />
-                          </div>
-                          <p className="text-sm text-gray-700">
-                            <span className="font-semibold">{insight.text}</span>
-                          </p>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                ) : (
-                  <p className="text-sm text-gray-500 text-center py-4">
-                    No insights available yet. Data will appear as your pipeline grows.
-                  </p>
-                )
-              }
-            </div>
-
-            {/* Diversity Export Modal */}
-            <DiversityExportModal
-              isOpen={diversityExportModalOpen}
-              onClose={() => setDiversityExportModalOpen(false)}
-              geographicData={geographicData || null}
-              collegesData={topColleges || null}
-            />
-
-            {/* Drill-down Modal */}
-            <DrillDownModal
-              isOpen={drillDownModal.isOpen}
-              onClose={() => setDrillDownModal({ isOpen: false, title: '', data: null })}
-              title={drillDownModal.title}
-            >
-              {
-                drillDownModal.data && Array.isArray(drillDownModal.data) && (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between mb-4">
-                      <p className="text-sm text-gray-600">
-                        Showing {drillDownModal.data.length} {drillDownModal.data.length === 1 ? 'candidate' : 'candidates'}
-                      </p>
-                      <ExportButton
-                        onClick={() => exportSectionToCSV(drillDownModal.title, drillDownModal.data)}
-                        label="Export List"
-                        variant="primary"
-                      />
-                    </div>
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">College</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">AI Score</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {drillDownModal.data.map((candidate: any) => (
-                            <tr key={candidate.id} className="hover:bg-gray-50">
-                              <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{candidate.name}</td>
-                              <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">{candidate.college}</td>
-                              <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">{candidate.location}</td>
-                              <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 font-semibold">{candidate.ai_score_overall}</td>
-                              <td className="px-4 py-3 whitespace-nowrap">
-                                <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
-                                  Active
-                                </span>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )
-              }
-            </DrillDownModal>
-          </div>
-
-          {/* Right Column: Recruitment Funnel */}
-          <div>
-            <div id="recruitment-funnel-section" className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-              <SectionHeaderWithActions
-                title="Recruitment Funnel"
-                description="Track candidates through each stage of your hiring process"
-                actions={
-                  <div className="flex items-center gap-2">
-                    <ChartDownloadButton
-                      chartId="recruitment-funnel-section"
-                      chartName="Recruitment_Funnel"
-                      data={funnelStages}
-                      compact
-                    />
-                    <ExportButton
-                      onClick={() => exportSectionToCSV('Recruitment Funnel', funnelStages)}
-                      label="Export CSV"
-                    />
-                  </div>
-                }
-              />
-              {/* Trend visualization */}
-              <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                <div className="flex items-center justify-between mb-4">
-                  <p className="text-xs text-gray-600">{periodName} Hiring Trend</p>
-
-                  {/* Chart Type Selector */}
-                  <div className="flex items-center gap-1 bg-white rounded-lg p-1 border border-gray-300 shadow-sm">
-                    <button
-                      onClick={() => setChartType('line')}
-                      className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${chartType === 'line'
-                        ? 'bg-blue-600 text-white'
-                        : 'text-gray-600 hover:bg-gray-100'
-                        }`}
-                      title="Line Chart"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4" />
-                      </svg>
-                    </button>
-                    <button
-                      onClick={() => setChartType('area')}
-                      className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${chartType === 'area'
-                        ? 'bg-blue-600 text-white'
-                        : 'text-gray-600 hover:bg-gray-100'
-                        }`}
-                      title="Area Chart"
-                    >
-                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M3 21h18v-2L18 14l-3 3-6-6-6 6v4z" opacity="0.5" />
-                        <path d="M3 21l6-6 6 6 3-3 3 5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    </button>
-                    <button
-                      onClick={() => setChartType('column')}
-                      className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${chartType === 'column'
-                        ? 'bg-blue-600 text-white'
-                        : 'text-gray-600 hover:bg-gray-100'
-                        }`}
-                      title="Column Chart"
-                    >
-                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                        <rect x="4" y="14" width="3" height="7" rx="1" />
-                        <rect x="10" y="10" width="3" height="11" rx="1" />
-                        <rect x="16" y="6" width="3" height="15" rx="1" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Render selected chart type */}
-                {funnelLoading ? (
-                  <div className="w-full h-[150px] bg-gray-100 rounded-lg animate-pulse flex items-center justify-center">
-                    <div className="text-sm text-gray-400">Loading trend data...</div>
-                  </div>
-                ) : !liveFunnel?.hiresTrend || liveFunnel.hiresTrend.length === 0 ? (
-                  <div className="w-full h-[150px] bg-gray-50 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center">
-                    <div className="text-center px-4">
-                      <p className="text-sm text-gray-500 font-medium mb-1">No hiring trend data available</p>
-                      <p className="text-xs text-gray-400">Trend will appear when hires are recorded in the selected period</p>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    {chartType === 'line' && (
-                      <TrendLineChart
-                        data={liveFunnel.hiresTrend}
-                        labels={trendLabels}
-                        height={150}
-                      />
-                    )}
-                    {chartType === 'area' && (
-                      <AreaChart
-                        data={liveFunnel.hiresTrend}
-                        labels={trendLabels}
-                        height={150}
-                      />
-                    )}
-                    {chartType === 'column' && (
-                      <ColumnChart
-                        data={liveFunnel.hiresTrend}
-                        labels={trendLabels}
-                        height={150}
-                      />
-                    )}
-                  </>
-                )}
-              </div>
-              <div className="space-y-4">
-                {funnelStages.map((stage, idx) => (
-                  <div key={stage.key} className="relative">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-gray-700">{stage.label}</span>
-                        {idx > 0 && (
-                          <span className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded-full">
-                            {stage.conversion}% conv.
-                          </span>
-                        )}
-                      </div>
-                      <span className="text-sm font-bold text-gray-900">{stage.value}</span>
-                    </div>
-                    <div className="w-full bg-gray-200 h-3 rounded-full overflow-hidden">
-                      <div
-                        className={`${stage.color} h-full rounded-full transition-all duration-300`}
-                        style={{ width: `${(stage.value / maxFunnel) * 100}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
+      <div className={`${panelClass} flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between`}>
+        <div className="flex min-w-0 flex-wrap items-center gap-3">
+          <span className="text-sm font-medium text-gray-600">Reporting period</span>
+          <DateRangePicker startDate={state.start} endDate={state.end} preset={state.range} onRangeChange={(preset, start, end) => updateParams({ range: preset, start, end })} />
+          {(state.range !== '30d' || state.chart !== 'line') && <button type="button" onClick={() => updateParams({ range: '30d', chart: 'line' })} className={`min-h-11 rounded-lg px-2 text-sm font-medium text-primary-700 hover:bg-primary-50 ${focusClass}`}>Reset view</button>}
         </div>
+        <p className="text-xs leading-5 text-gray-500" role="status">{busy ? 'Updating reports…' : 'Date range applies to reports; pipeline stages show the current snapshot.'}</p>
       </div>
+
+      {hasError && !busy && <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3"><p className="flex items-start gap-2 text-sm leading-6 text-amber-900"><ExclamationTriangleIcon className="mt-0.5 h-5 w-5 shrink-0" aria-hidden />Some reports couldn't be loaded. Available reports are shown below.</p><button type="button" onClick={refresh} className={`${buttonClass} border-amber-200`}>Retry reports</button></div>}
+      {exportError && <p role="alert" className="rounded-lg bg-rose-50 p-3 text-sm text-rose-800">The report couldn't be downloaded. Please try exporting again.</p>}
+      <span role="status" className="sr-only">{exported ? 'CSV report downloaded.' : ''}</span>
+
+      <section aria-label="Key hiring metrics" aria-busy={kpis.isLoading || kpis.isFetching}>
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+          {kpis.isLoading || kpis.isFetching ? Array.from({ length: 4 }, (_, index) => <div key={index} className={`${panelClass} min-h-[200px] space-y-4 p-5 motion-safe:animate-pulse`}><div className="h-10 w-10 rounded-lg bg-gray-100" /><div className="h-4 w-3/4 rounded bg-gray-100" /><div className="h-8 w-16 rounded bg-gray-100" /></div>) : <>
+            <MetricCard title="Total candidates" value={kpis.isError ? '—' : formatNumber(metrics?.totalCandidates)} icon={UsersIcon} color="bg-primary-50 text-primary-700" trend={metrics?.totalCandidatesTrend} detail="Entered the pipeline this period" />
+            <MetricCard title="Successful hires" value={kpis.isError ? '—' : formatNumber(metrics?.successfulHires)} icon={CheckCircleIcon} color="bg-emerald-50 text-emerald-700" trend={metrics?.successfulHiresTrend} detail="Hires recorded this period" />
+            <MetricCard title="Average time to hire" value={!kpis.isError && hasHires ? `${formatNumber(metrics?.timeToHire)} days` : '—'} icon={ClockIcon} color="bg-indigo-50 text-indigo-700" detail={!hasHires ? 'Available after your first recorded hire' : 'From sourcing to a recorded hire'} />
+            <MetricCard title="Quality score" value={quality.isError || quality.isFetching ? '—' : formatNumber(score)} icon={StarIcon} color="bg-amber-50 text-amber-700" detail="Based on recorded hired-candidate scores" />
+          </>}
+        </div>
+      </section>
+
+      <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-3">
+        <div className="min-w-0 xl:col-span-2">
+          <Panel id="hiring-trend" title="Hiring trend" description={`${label} · completed hires over time`} action={<div role="group" aria-label="Chart type" className="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-1">{(['line', 'area', 'column'] as const).map(type => <button key={type} type="button" aria-pressed={state.chart === type} onClick={() => updateParams({ chart: type })} className={`min-h-9 rounded-md px-3 py-2 text-xs font-semibold ${focusClass} ${state.chart === type ? 'bg-white text-primary-700 shadow-sm' : 'text-gray-600 hover:bg-gray-100'}`}>{type === 'column' ? 'Columns' : type === 'line' ? 'Line' : 'Area'}</button>)}</div>}>
+            <DataState {...reportState(funnel)} empty={!hasTrend} emptyTitle="No hires recorded in this period">
+              <div className="p-4 sm:p-5">
+                <div className="mb-3 flex items-baseline gap-2"><span className="text-3xl font-semibold tabular-nums text-gray-900">{formatNumber(trendHires)}</span><span className="text-sm text-gray-500">total hires</span></div>
+                <HiringTrendChart data={trend} type={state.chart} />
+              </div>
+            </DataState>
+            {funnel.data && !funnel.isError && !funnel.isFetching && trend.length > 0 && <div className="border-t border-gray-100 px-5 py-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <button type="button" aria-expanded={showChartData} aria-controls="hiring-trend-data" onClick={() => setShowChartData(value => !value)} className={`inline-flex min-h-11 items-center gap-2 rounded-lg py-2 text-sm font-medium text-primary-700 ${focusClass}`}>{showChartData ? 'Hide chart data' : 'View chart data'}<ChevronDownIcon className={`h-4 w-4 ${showChartData ? 'rotate-180' : ''}`} aria-hidden /></button>
+                <button type="button" onClick={() => exportReport('Hiring trend')} className={`inline-flex min-h-11 items-center gap-2 rounded-lg py-2 text-sm font-medium text-gray-600 ${focusClass}`}><ArrowDownTrayIcon className="h-4 w-4" aria-hidden />Export trend</button>
+              </div>
+              {showChartData && <table id="hiring-trend-data" className="mb-3 w-full text-left text-sm"><caption className="sr-only">Hiring trend for {label}</caption><thead><tr className="border-b border-gray-100 text-gray-500"><th scope="col" className="py-3 font-medium">Period</th><th scope="col" className="py-3 text-right font-medium">Hires</th></tr></thead><tbody>{trend.map((point, index) => <tr key={`${point.period}-${index}`} className="border-b border-gray-50"><th scope="row" className="py-2 font-normal text-gray-600">{point.period}</th><td className="py-2 text-right font-medium tabular-nums text-gray-900">{formatNumber(point.hires)}</td></tr>)}</tbody></table>}
+            </div>}
+          </Panel>
+        </div>
+        <Panel id="pipeline-snapshot" title="Current pipeline" description="Candidates at each stage · all dates">
+          <DataState {...reportState(funnel)} empty={totalInPipeline === 0} emptyTitle="Your pipeline is ready to grow">
+            <div className="p-5"><p className="mb-5 text-sm text-gray-500"><span className="font-semibold text-gray-900">{formatNumber(totalInPipeline)}</span> candidates currently in the pipeline</p><ul className="space-y-5">{stages.map(stage => <li key={stage.key}><div className="mb-2 flex items-center justify-between gap-3 text-sm"><span className="font-medium text-gray-600">{stage.label}</span><span className="font-semibold tabular-nums text-gray-900">{formatNumber(stage.count)}</span></div><div className="h-2.5 overflow-hidden rounded-full bg-gray-100" aria-hidden><div className={`h-full rounded-full ${stage.color}`} style={{ width: `${totalInPipeline > 0 ? stage.count / totalInPipeline * 100 : 0}%` }} /></div></li>)}</ul></div>
+          </DataState>
+          {!funnel.isLoading && !funnel.isFetching && !funnel.isError && totalInPipeline === 0 && <div className="px-5 pb-5 text-center"><Link to="/recruitment/pipelines" className={`inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm font-medium text-primary-700 hover:bg-primary-50 ${focusClass}`}>Go to pipelines<ArrowRightIcon className="h-4 w-4" aria-hidden /></Link></div>}
+        </Panel>
+      </div>
+
+      <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-3">
+        <div className="min-w-0 xl:col-span-2">
+          <Panel id="candidate-quality" title="Candidate quality" description="Reported academic and demographic data for hired candidates in this period">
+            <DataState {...reportState(quality)} empty={!hasQuality} emptyTitle="No hired-candidate data yet">
+              {qualityData && hasQuality && <div className="space-y-6 p-5">
+                <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  {[{ label: 'Hired candidates', value: formatNumber(qualityData.totalHired) }, { label: 'Average CGPA', value: formatNumber(qualityData.avgCgpa > 0 ? qualityData.avgCgpa : undefined) }, { label: 'Average age', value: qualityData.ageDemographics.averageAge > 0 ? `${formatNumber(qualityData.ageDemographics.averageAge)} years` : '—' }].map(metric => <div key={metric.label} className="rounded-lg border border-gray-100 bg-gray-50 p-4"><dt className="text-xs leading-5 text-gray-500">{metric.label}</dt><dd className="mt-2 text-xl font-semibold tabular-nums text-gray-900">{metric.value}</dd></div>)}
+                </dl>
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                  <div><h3 className="mb-4 text-sm font-semibold text-gray-900">Age distribution</h3>{qualityData.ageDemographics.ageRanges.some(group => group.count > 0) ? <Distribution rows={qualityData.ageDemographics.ageRanges.map(group => ({ name: group.range, count: group.count, percentage: group.percentage }))} unit="hires" /> : <p className="text-sm leading-6 text-gray-500">No reported age data for this period.</p>}</div>
+                  <div><h3 className="mb-4 text-sm font-semibold text-gray-900">Top courses / branches</h3>{qualityData.topCourses.length > 0 ? <Distribution rows={qualityData.topCourses} unit="hires" /> : <p className="text-sm leading-6 text-gray-500">No reported course data for this period.</p>}</div>
+                </div>
+                <div className="border-t border-gray-100 pt-4"><h3 className="mb-3 text-sm font-semibold text-gray-900">Reported gender</h3><dl className="flex flex-wrap gap-x-6 gap-y-3 text-sm">{[{ label: 'Male', count: qualityData.genderDiversity.male }, { label: 'Female', count: qualityData.genderDiversity.female }, { label: 'Other / unspecified', count: qualityData.genderDiversity.other }].map(gender => <div key={gender.label} className="flex items-center gap-2"><dt className="text-gray-500">{gender.label}</dt><dd className="font-semibold tabular-nums text-gray-900">{formatNumber(gender.count)}</dd></div>)}</dl></div>
+              </div>}
+            </DataState>
+          </Panel>
+        </div>
+        <Panel id="hiring-speed" title="Hiring speed" description="Time from sourcing to a recorded hire">
+          <DataState {...reportState(kpis)} empty={!hasHires} emptyTitle="Hiring speed is not available yet">
+            <div className="p-5"><div className="mb-4 inline-flex rounded-lg bg-indigo-50 p-3 text-indigo-700"><ClockIcon className="h-6 w-6" aria-hidden /></div><p className="text-3xl font-semibold tabular-nums text-gray-900">{formatNumber(metrics?.timeToHire)} <span className="text-base font-medium text-gray-500">days</span></p><p className="mt-2 text-sm leading-6 text-gray-500">Average time to hire for {formatNumber(metrics?.successfulHires)} recorded hires in this period.</p></div>
+          </DataState>
+        </Panel>
+      </div>
+
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
+        <Panel id="top-locations" title="Top locations" description="Up to four regions represented by candidates added in this period">
+          <DataState loading={diversity.geographic.isLoading || diversity.geographic.isFetching} error={diversity.geographic.isError} onRetry={diversity.refetchAll} empty={!locations.length} emptyTitle="No location data for this period">
+            <div className="p-5"><Distribution rows={locations.map(location => ({ name: location.city, count: location.count, percentage: location.percentage }))} /></div>
+          </DataState>
+        </Panel>
+        <Panel id="leading-colleges" title="Leading colleges" description="Up to four colleges represented by candidates added in this period">
+          <DataState loading={diversity.colleges.isLoading || diversity.colleges.isFetching} error={diversity.colleges.isError} onRetry={diversity.refetchAll} empty={!colleges.length} emptyTitle="No college data for this period">
+            <div className="p-5"><Distribution rows={colleges} /></div>
+          </DataState>
+        </Panel>
+        <Panel id="course-performance" title="Course performance" description="Hiring outcomes for the courses represented in this period">
+          <DataState {...reportState(courses)} empty={!courseData.length} emptyTitle="No course outcomes for this period">
+            <ul className="divide-y divide-gray-100">{courseData.map((course, index) => <li key={`${course.name}-${index}`} className="p-5"><div className="flex items-start gap-3"><AcademicCapIcon className="mt-0.5 h-5 w-5 shrink-0 text-primary-600" aria-hidden /><h3 className="min-w-0 break-words text-sm font-semibold text-gray-900 [overflow-wrap:anywhere]">{course.name}</h3></div><dl className="mt-4 grid grid-cols-3 gap-3 text-xs text-gray-500"><div><dt>Candidates</dt><dd className="mt-1 text-lg font-semibold tabular-nums text-gray-900">{formatNumber(course.totalCandidates)}</dd></div><div><dt>Hired</dt><dd className="mt-1 text-lg font-semibold tabular-nums text-emerald-700">{formatNumber(course.hiredCandidates)}</dd></div><div><dt>Hire rate</dt><dd className="mt-1 text-lg font-semibold tabular-nums text-primary-700">{formatNumber(course.successRate)}%</dd></div></dl></li>)}</ul>
+          </DataState>
+        </Panel>
+        <Panel id="key-insights" title="Key insights" description="Highlights from the available reports">
+          {busy ? <div className="space-y-3 p-5 motion-safe:animate-pulse" role="status" aria-label="Loading insights"><div className="h-4 rounded bg-gray-100" /><div className="h-4 w-3/4 rounded bg-gray-100" /></div> : insights.length > 0 ? <ul className="space-y-4 p-5">{insights.map(insight => <li key={insight} className="flex items-start gap-3 text-sm leading-6 text-gray-600"><SparklesIcon className="mt-0.5 h-5 w-5 shrink-0 text-primary-600" aria-hidden /><p className="min-w-0 break-words [overflow-wrap:anywhere]">{insight}</p></li>)}</ul> : hasError ? <p className="p-5 text-sm leading-6 text-gray-500">Insights will update when your reports are available.</p> : <Empty title="Insights will grow with your pipeline" icon={ChartPieIcon}>Your hiring activity will reveal useful patterns as candidates move through the pipeline.</Empty>}
+        </Panel>
+      </div>
+      <p className="text-xs leading-5 text-gray-500">A dash means a metric isn't available yet. Exports include available report data and each metric's reporting period.</p>
     </div>
   );
-};
-
-export default Analytics;
+}

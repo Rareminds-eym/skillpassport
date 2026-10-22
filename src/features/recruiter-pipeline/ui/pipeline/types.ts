@@ -15,6 +15,7 @@ export interface PipelineCandidate {
   learner_id: string; // UUID
   stage: string;
   source: string;
+  recruiter_rating?:number;
   next_action?: string;
   next_action_date?: string;
   added_at?: string;

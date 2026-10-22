@@ -59,7 +59,7 @@ export const KanbanColumn: React.FC<KanbanColumnProps> = ({
         </div>
         <button
           onClick={() => onAddClick()}
-          className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-white rounded-lg transition-colors"
+          className="p-1.5 text-gray-600 hover:text-gray-700 hover:bg-white rounded-lg transition-colors"
           title="Add candidate"
         >
           <PlusIcon className="h-4 w-4" />

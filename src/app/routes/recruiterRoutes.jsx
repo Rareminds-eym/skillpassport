@@ -3,6 +3,7 @@ import { Navigate, Route } from "react-router-dom";
 import SubscriptionProtectedRoute from "@/features/subscription/ui/shared/SubscriptionProtectedRoute";
 import OrganizationProtectedRoute from "@/features/recruitment/ui/OrganizationProtectedRoute";
 import AdminProtectedRoute from "@/features/recruitment/ui/AdminProtectedRoute";
+import { ErrorBoundary } from "@/features/subscription/ui/organization/ErrorBoundary";
 import RecruiterLayout from "../layouts/RecruiterLayout";
 
 const RECRUITER_ROLES = ["recruiter", "company_admin", "owner"];
@@ -39,6 +40,9 @@ const OnboardingStep2 = lazy(() => import("@/pages/recruitment/onboarding/step-2
 const OnboardingStep3 = lazy(() => import("@/pages/recruitment/onboarding/step-3"));
 
 // Onboarding route - protected by subscription requirement (must purchase before accessing onboarding)
+// Per-route error boundaries (outer wrapper) on the 3 rows that mount lazily loaded
+// recruiter onboarding pages: a chunk-import failure renders fallback=Retry for that
+// page only, instead of the app-wide GlobalErrorBoundary nuclear option.
 export const recruiterOnboardingRoute = (
   <Route
     key="recruiter-onboarding"
@@ -47,37 +51,43 @@ export const recruiterOnboardingRoute = (
     <Route
       path="step-1"
       element={
-        <SubscriptionProtectedRoute
-          allowedRoles={RECRUITER_ROLES}
-          requireSubscription={true}
-          subscriptionFallbackPath="/subscription/plans?type=recruiter"
-        >
-          <OnboardingWizard currentStep={1}><OnboardingStep1 /></OnboardingWizard>
-        </SubscriptionProtectedRoute>
+        <ErrorBoundary>
+          <SubscriptionProtectedRoute
+            allowedRoles={RECRUITER_ROLES}
+            requireSubscription={true}
+            subscriptionFallbackPath="/subscription/plans?type=recruiter"
+          >
+            <OnboardingWizard currentStep={1}><OnboardingStep1 /></OnboardingWizard>
+          </SubscriptionProtectedRoute>
+        </ErrorBoundary>
       }
     />
     <Route
       path="step-2"
       element={
-        <SubscriptionProtectedRoute
-          allowedRoles={RECRUITER_ROLES}
-          requireSubscription={true}
-          subscriptionFallbackPath="/subscription/plans?type=recruiter"
-        >
-          <OnboardingWizard currentStep={2}><OnboardingStep2 /></OnboardingWizard>
-        </SubscriptionProtectedRoute>
+        <ErrorBoundary>
+          <SubscriptionProtectedRoute
+            allowedRoles={RECRUITER_ROLES}
+            requireSubscription={true}
+            subscriptionFallbackPath="/subscription/plans?type=recruiter"
+          >
+            <OnboardingWizard currentStep={2}><OnboardingStep2 /></OnboardingWizard>
+          </SubscriptionProtectedRoute>
+        </ErrorBoundary>
       }
     />
     <Route
       path="step-3"
       element={
-        <SubscriptionProtectedRoute
-          allowedRoles={RECRUITER_ROLES}
-          requireSubscription={true}
-          subscriptionFallbackPath="/subscription/plans?type=recruiter"
-        >
-          <OnboardingWizard currentStep={3}><OnboardingStep3 /></OnboardingWizard>
-        </SubscriptionProtectedRoute>
+        <ErrorBoundary>
+          <SubscriptionProtectedRoute
+            allowedRoles={RECRUITER_ROLES}
+            requireSubscription={true}
+            subscriptionFallbackPath="/subscription/plans?type=recruiter"
+          >
+            <OnboardingWizard currentStep={3}><OnboardingStep3 /></OnboardingWizard>
+          </SubscriptionProtectedRoute>
+        </ErrorBoundary>
       }
     />
     <Route path="step-4" element={<Navigate to="/recruitment/onboarding/step-3" replace />} />
@@ -96,7 +106,13 @@ export const recruiterRoutes = (
         subscriptionFallbackPath="/subscription/plans?type=recruiter"
       >
         <OrganizationProtectedRoute allowedRoles={RECRUITER_ROLES}>
-          <RecruiterLayout />
+          {/* Per-section error boundary: a lazy chunk-import failure (deploy mid-session,
+              network) renders the boundary's retry fallback for this section only instead
+              of bubbling to the app-wide GlobalErrorBoundary. Covers all lazy child pages
+              rendered through the layout Outlet. */}
+          <ErrorBoundary>
+            <RecruiterLayout />
+          </ErrorBoundary>
         </OrganizationProtectedRoute>
       </SubscriptionProtectedRoute>
     }

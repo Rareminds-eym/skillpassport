@@ -4,7 +4,7 @@ import { ActivityFeed } from '@/features/recruiter';
 import { useRealtimeActivities } from '@/features/analytics/model/useRealtimeActivities';
 
 const Activities: React.FC = () => {
-  const { activities, loading } = useRealtimeActivities();
+  const { activities, isLoading: loading, isError, error, refetch } = useRealtimeActivities();
   const [isExpanded, setIsExpanded] = useState(true);
 
   return (
@@ -13,7 +13,7 @@ const Activities: React.FC = () => {
       <div>
         <h1 className="text-2xl font-semibold text-gray-900">Recent Activity</h1>
         <p className="mt-2 text-sm text-gray-700">
-          Track all recruitment activities and team actions in real-time
+          Track recruitment activities and team actions. This view refreshes automatically every 30 seconds.
         </p>
       </div>
 
@@ -27,12 +27,12 @@ const Activities: React.FC = () => {
           <h2 className="text-lg font-medium text-gray-900">All Activities</h2>
           <div className="flex items-center gap-3">
             {/* Live Indicator */}
-            <div className="flex items-center gap-1.5 text-xs text-green-600">
+            <div className="flex items-center gap-1.5 text-xs text-green-700">
               <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                <span className="absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
               </span>
-              <span>Live</span>
+              <span>Auto-refresh</span>
             </div>
             
             {/* Expand/Collapse Icon */}
@@ -47,11 +47,12 @@ const Activities: React.FC = () => {
         {/* Accordion Content */}
         {isExpanded && (
           <div className="p-6">
-            <ActivityFeed 
+            {isError && <div role="alert" className="mb-5 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800"><p>{error instanceof Error ? error.message : 'Activity could not be refreshed.'}</p><button type="button" className="mt-3 rounded-md border border-red-300 px-3 py-2 font-medium" onClick={() => void refetch()}>Retry</button></div>}
+            {(!isError || activities.length > 0) && <ActivityFeed
               activities={activities} 
               loading={loading}
               showRealtimeIndicator={false}
-            />
+            />}
           </div>
         )}
       </div>

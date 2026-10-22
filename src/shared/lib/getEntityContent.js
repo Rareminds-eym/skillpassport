@@ -75,7 +75,7 @@ export function getEntityContent(learnerType) {
         if (role === 'admin') {
             subtitle = 'Manage your recruitment team effectively with comprehensive tools built for recruitment administrators';
         } else if (role === 'recruiter') {
-            subtitle = 'Access verified candidates and streamline your hiring process with powerful recruitment tools';
+            subtitle = 'Post jobs, access verified learner profiles, filter by skill readiness, and shortlist candidates using assessment-backed insights.';
         } else {
             subtitle = 'Select the plan that best suits your needs';
         }

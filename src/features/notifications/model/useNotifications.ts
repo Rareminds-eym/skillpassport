@@ -36,6 +36,8 @@ export type NotificationType =
 export type Notification = {
   id: string;
   recipient_id: string;
+  opportunity_id?: string | null;
+  learning_requirements_version?: number | null;
   type: NotificationType;
   title: string;
   message: string;
@@ -127,7 +129,6 @@ export function useNotifications(
 
   useEffect(() => {
     if (!userId) return;
-    let isSubscribed = true;
 
     const wsClient = getWSClient();
     const unsubscribers: Array<() => void> = [];
@@ -157,7 +158,6 @@ export function useNotifications(
     setConnectionStatus('SUBSCRIBED');
 
     return () => {
-      isSubscribed = false;
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
         reconnectTimeoutRef.current = null;

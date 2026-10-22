@@ -14,14 +14,16 @@ import { withAuth, getContextUser } from '../../lib/auth';
 import { ensureAppUserAndLearner } from '../../lib/heal-user';
 import { getServiceClient } from '../../lib/supabase';
 import { createLogger } from '../../lib/logger';
-import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+type AuthenticatedContext = Parameters<PagesFunction>[0];
 import { apiSuccess, apiError } from '../../lib/response';
+import { eligibleJobs, isEligibleJob, privateRecommendations, stringSkills } from '../../lib/job-recommendations';
+import { learningDecisions } from '../../lib/learning-eligibility';
 
 const logger = createLogger('learner-ai-recommendations-api');
 
-export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
+const authenticatedGet = withAuth(async (context: AuthenticatedContext) => {
   const startTime = Date.now();
-  const env = context.env as Record<string, string>;
+  const env = context.env as unknown as Record<string, string>;
   const supabase = getServiceClient(env as any);
   const user = getContextUser(context);
 
@@ -74,15 +76,16 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
       .from('skills')
       .select('name, type, proficiency_level')
       .eq('learner_id', learnerId)
-      .is('training_id', null);
+      .eq('enabled',true).eq('approval_status','approved');
 
     if (skillsError) {
       logger.error('Error fetching skills', { learnerId, error: skillsError });
+      return privateRecommendations(apiError(503, 'EVIDENCE_UNAVAILABLE', 'Profile skills are temporarily unavailable', context.request));
     }
 
     const learnerSkills = skillsData || [];
-    const technicalSkills = learnerSkills.filter(s => s.type === 'technical').map(s => s.name);
-    const softSkills = learnerSkills.filter(s => s.type === 'soft').map(s => s.name);
+    const technicalSkills = stringSkills(learnerSkills.filter(s => s.type === 'technical').map(s => s.name));
+    const softSkills = stringSkills(learnerSkills.filter(s => s.type === 'soft').map(s => s.name));
 
     logger.info('Fetched learner skills', { 
       learnerId, 
@@ -91,10 +94,10 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
     });
 
     // Step 3: Get active opportunities
-    const { data: opportunities, error: oppError } = await supabase
+    const { data: opportunities, error: oppError } = await eligibleJobs(supabase
       .from('opportunities')
       .select('*')
-      .eq('status', 'active')
+    )
       .order('created_at', { ascending: false })
       .limit(50); // Get top 50 for matching
 
@@ -106,12 +109,12 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
     logger.info('Fetched opportunities', { count: opportunities?.length || 0 });
 
     // Step 4: Calculate match scores for each opportunity
-    const matchedJobs = (opportunities || []).map((opp: any) => {
+    const matchedJobs = (opportunities || []).filter(opp => isEligibleJob(opp)).map((opp: any) => {
       let matchScore = 0;
       const matchReasons: any = {};
 
       // Skills matching (40% weight)
-      const oppSkills = Array.isArray(opp.skills_required) ? opp.skills_required : [];
+      const oppSkills = stringSkills(opp.skills_required);
       const matchedSkills = oppSkills.filter((skill: string) => 
         technicalSkills.some(ls => ls.toLowerCase().includes(skill.toLowerCase())) ||
         softSkills.some(ls => ls.toLowerCase().includes(skill.toLowerCase()))
@@ -134,7 +137,7 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
 
       // Location matching (15% weight)
       if (resolvedLearner.preferred_locations && Array.isArray(resolvedLearner.preferred_locations)) {
-        if (resolvedLearner.preferred_locations.some((loc: string) => 
+        if (stringSkills(resolvedLearner.preferred_locations).some((loc: string) =>
           opp.location?.toLowerCase().includes(loc.toLowerCase())
         )) {
           matchScore += 15;
@@ -193,9 +196,10 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
     });
 
     const responseData = {
-      recommendations: topRecommendations,
+      recommendations: await learningDecisions(supabase,env,userId,learnerId,topRecommendations),
       cached: false,
       fallback: false,
+      provenance: 'rules',
       learnerProfile: {
         skills: {
           technical: technicalSkills,
@@ -209,10 +213,12 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
       }
     };
 
-    return apiSuccess(responseData, context.request, { startTime });
+    return privateRecommendations(apiSuccess(responseData, context.request, { startTime }));
 
   } catch (err) {
     logger.error('Unexpected error fetching AI recommendations', { error: err });
     return apiError(500, 'INTERNAL_ERROR', 'An internal error occurred', context.request, { startTime });
   }
 });
+
+export const onRequestGet: PagesFunction = async context => privateRecommendations(await authenticatedGet(context));

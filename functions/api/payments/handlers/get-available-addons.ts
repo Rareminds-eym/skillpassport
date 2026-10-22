@@ -23,7 +23,7 @@ export async function handleGetAvailableAddons(context: AuthenticatedContext): P
       addonsData = await ssoListAddonCatalog(env as any);
     } catch (err: any) {
       console.error('[GetAvailableAddons] SSO Worker error:', err);
-      return apiError(200, 'ERROR', `SSO Worker error: ${err.message}`, context.request);
+      return apiError(500, 'SSO_WORKER_ERROR', `SSO Worker error: ${err.message}`, context.request);
     }
 
     let addons = (addonsData.addons || []) as any[];
@@ -51,6 +51,6 @@ export async function handleGetAvailableAddons(context: AuthenticatedContext): P
     return apiSuccess(resultData, context.request, 200);
   } catch (error) {
     console.error('[GetAvailableAddons] Error:', error);
-    return apiError(200, 'ERROR', error instanceof Error ? error.message : 'Unknown error', context.request);
+    return apiError(500, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Unknown error', context.request);
   }
 }

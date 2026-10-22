@@ -1,0 +1,571 @@
+{
+  "suite": "learner-recommendation-boundaries",
+  "mode": "desired-behavior-regression",
+  "generatedAt": "2026-10-15T11:56:21.982Z",
+  "fixedFixtureTime": "2026-10-15T00:00:00.000Z",
+  "passed": 24,
+  "failed": 0,
+  "setupErrors": 0,
+  "skipped": 2,
+  "assurance": "Isolated source execution only. Characterization PASS can reproduce a defect. Regression failures are not waived.",
+  "scope": "Actual application auth wrapper, router, handlers, response builders, UUID validation, local rate limiter, embedding client and updater. Auth-core transport, DB/RPC transport, profile text construction and provider are fixtures. No live JWT verification, SQL, browser, or network.",
+  "mutations": "In-memory fixture-only router redirection and hardcoded denial controls; not production fixes; application files never modified.",
+  "environment": {
+    "node": "v22.22.3",
+    "typescript": "5.5.3",
+    "zod": "3.24.0"
+  },
+  "sources": [
+    {
+      "path": "audit-evidence/learner-job-recommendations/verify-boundaries.cjs",
+      "sha256": "73c7112780365e6ed680c663afbe612a563797c9f86ba7b8db29dafb50c2e51c"
+    },
+    {
+      "path": "skillpassport/functions/api/career/[[path]].ts",
+      "sha256": "57888dcee51c7adb3998d00b7ed67a11405673cca1f6a9b556de1dd4184d6d14"
+    },
+    {
+      "path": "skillpassport/functions/api/career/handlers/recommend.ts",
+      "sha256": "653de9cd1f71d3058e15c1e569e9c17ecc8af35d7e57e32bd7bbbcb65a2a1358"
+    },
+    {
+      "path": "skillpassport/functions/api/career/utils/rate-limit.ts",
+      "sha256": "f0e48a13cf1b598926b1f439dab4932bbc998195ff811279abbe3665ba615c83"
+    },
+    {
+      "path": "skillpassport/functions/api/career/utils/recommendation-state.ts",
+      "sha256": "da66420501ee15b4c5e2564e56ddbe97c00bd59a2bb786feeb028f42df58e939"
+    },
+    {
+      "path": "skillpassport/functions/api/embedding/config/constants.ts",
+      "sha256": "ee9a466ea66a61ef745cb356520756f4e91a311fca7583119d4ea3269da7e75b"
+    },
+    {
+      "path": "skillpassport/functions/api/embedding/handlers/generateEmbedding.ts",
+      "sha256": "ab23f2ee217ede23d7314b33bc3f05b10deea7471bd6b963d195e41fa0d91ef3"
+    },
+    {
+      "path": "skillpassport/functions/api/embedding/lib/embeddingBinding.ts",
+      "sha256": "91113574741cfdea253b48ddc18fc83a287ec97e08d872deb6bb983e3e3f2ede"
+    },
+    {
+      "path": "skillpassport/functions/api/embedding/services/databaseUpdater.ts",
+      "sha256": "91f9465b1dc28fb48d11582a803b91165e7b0e63e11e2721f404bd2cdf872604"
+    },
+    {
+      "path": "skillpassport/functions/api/embedding/services/embeddingValidation.ts",
+      "sha256": "faab5b4bd583fe1df363014bd9147bb44eb5223382bbb1f9ec016d58ec8a7a46"
+    },
+    {
+      "path": "skillpassport/functions/api/embedding/services/embeddingWorkerClient.ts",
+      "sha256": "0ea8d11c5ba4bc5e499cc7de28358bd41fb09c39de196009828e177f0cb222b4"
+    },
+    {
+      "path": "skillpassport/functions/api/embedding/types/index.ts",
+      "sha256": "40de2c642e959e943846237d12275922d90c4d8ba77736abc20054308fd335d5"
+    },
+    {
+      "path": "skillpassport/functions/lib/auth.ts",
+      "sha256": "0ed662881e5a82b958c90e047b5deb2e8b9bab4bd255b5b5a27dd8bba09453d0"
+    },
+    {
+      "path": "skillpassport/functions/lib/cors.ts",
+      "sha256": "8f46b608f8a4bc16724942bd4613c74370ba49b2e45772d8699b5f9cdf46a179"
+    },
+    {
+      "path": "skillpassport/functions/lib/job-recommendations.ts",
+      "sha256": "349c450350031dbc3a675d399ced511ca5d1cd5e30393e8fb318681ae09fbc40"
+    },
+    {
+      "path": "skillpassport/functions/lib/response.ts",
+      "sha256": "738b1214979c8d51c3d47c58f91ee507c9f53060aa391b1167b67ca3b8eeb2e3"
+    },
+    {
+      "path": "skillpassport/functions/lib/supabase.ts",
+      "sha256": "2c5fe892733f5856bf2984753adc0f570ea40d383a6c9581681f51cedf982e74"
+    },
+    {
+      "path": "skillpassport/functions/lib/validation.ts",
+      "sha256": "fc63fd44ff435aab0642260ee6871a6d8ca73506dc13817fe8017e5d2021af61"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260526000000_schema.sql",
+      "sha256": "7a8b73b1687e80242e85da4b775f5488c338ba51b62bb4ae0cddbb5df26a283c"
+    }
+  ],
+  "results": [
+    {
+      "id": "OWN/recommend-opportunities/hit",
+      "description": "Foreign subject is selected under current code; regression requires rejection before work",
+      "category": "known-defect",
+      "result": "PASS",
+      "evidence": {
+        "status": 403,
+        "rpcs": [],
+        "providerCalls": 0,
+        "writes": [],
+        "entitlementChecks": [
+          {
+            "userId": "11111111-1111-4111-8111-111111111111",
+            "feature": "ai_job_matching"
+          }
+        ]
+      }
+    },
+    {
+      "id": "SELF/recommend-opportunities/hit",
+      "description": "Authorized self remains allowed with selector-aware cache and ranking",
+      "category": "control",
+      "result": "PASS",
+      "evidence": {
+        "status": 200,
+        "rpcs": [
+          {
+            "name": "get_recommendation_state_v3",
+            "selector": "33333333-3333-4333-8333-333333333333"
+          },
+          {
+            "name": "get_recommendation_state_v3",
+            "selector": "33333333-3333-4333-8333-333333333333"
+          }
+        ],
+        "providerCalls": 0,
+        "writes": [],
+        "entitlementChecks": [
+          {
+            "userId": "11111111-1111-4111-8111-111111111111",
+            "feature": "ai_job_matching"
+          }
+        ]
+      }
+    },
+    {
+      "id": "OWN/recommend-opportunities/miss",
+      "description": "Foreign subject is selected under current code; regression requires rejection before work",
+      "category": "known-defect",
+      "result": "PASS",
+      "evidence": {
+        "status": 403,
+        "rpcs": [],
+        "providerCalls": 0,
+        "writes": [],
+        "entitlementChecks": [
+          {
+            "userId": "11111111-1111-4111-8111-111111111111",
+            "feature": "ai_job_matching"
+          }
+        ]
+      }
+    },
+    {
+      "id": "SELF/recommend-opportunities/miss",
+      "description": "Authorized self remains allowed with selector-aware cache and ranking",
+      "category": "control",
+      "result": "PASS",
+      "evidence": {
+        "status": 200,
+        "rpcs": [
+          {
+            "name": "get_recommendation_state_v3",
+            "selector": "33333333-3333-4333-8333-333333333333"
+          },
+          {
+            "name": "match_opportunities_enhanced_v2",
+            "selector": "33333333-3333-4333-8333-333333333333",
+            "dismissed": [
+              "dismissed-own-job"
+            ]
+          },
+          {
+            "name": "save_recommendation_matches_v3",
+            "selector": "33333333-3333-4333-8333-333333333333"
+          },
+          {
+            "name": "get_recommendation_state_v3",
+            "selector": "33333333-3333-4333-8333-333333333333"
+          }
+        ],
+        "providerCalls": 0,
+        "writes": [],
+        "entitlementChecks": [
+          {
+            "userId": "11111111-1111-4111-8111-111111111111",
+            "feature": "ai_job_matching"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ENT/recommend-opportunities",
+      "description": "Denied matching entitlement must be checked before cache/provider work",
+      "category": "known-defect",
+      "result": "PASS",
+      "evidence": {
+        "status": 403,
+        "rpcs": [],
+        "providerCalls": 0,
+        "writes": [],
+        "entitlementChecks": [
+          {
+            "userId": "11111111-1111-4111-8111-111111111111",
+            "feature": "ai_job_matching"
+          }
+        ]
+      }
+    },
+    {
+      "id": "OWN/recommend/hit",
+      "description": "Foreign subject is selected under current code; regression requires rejection before work",
+      "category": "known-defect",
+      "result": "PASS",
+      "evidence": {
+        "status": 403,
+        "rpcs": [],
+        "providerCalls": 0,
+        "writes": [],
+        "entitlementChecks": [
+          {
+            "userId": "11111111-1111-4111-8111-111111111111",
+            "feature": "ai_job_matching"
+          }
+        ]
+      }
+    },
+    {
+      "id": "SELF/recommend/hit",
+      "description": "Authorized self remains allowed with selector-aware cache and ranking",
+      "category": "control",
+      "result": "PASS",
+      "evidence": {
+        "status": 200,
+        "rpcs": [
+          {
+            "name": "get_recommendation_state_v3",
+            "selector": "33333333-3333-4333-8333-333333333333"
+          },
+          {
+            "name": "get_recommendation_state_v3",
+            "selector": "33333333-3333-4333-8333-333333333333"
+          }
+        ],
+        "providerCalls": 0,
+        "writes": [],
+        "entitlementChecks": [
+          {
+            "userId": "11111111-1111-4111-8111-111111111111",
+            "feature": "ai_job_matching"
+          }
+        ]
+      }
+    },
+    {
+      "id": "OWN/recommend/miss",
+      "description": "Foreign subject is selected under current code; regression requires rejection before work",
+      "category": "known-defect",
+      "result": "PASS",
+      "evidence": {
+        "status": 403,
+        "rpcs": [],
+        "providerCalls": 0,
+        "writes": [],
+        "entitlementChecks": [
+          {
+            "userId": "11111111-1111-4111-8111-111111111111",
+            "feature": "ai_job_matching"
+          }
+        ]
+      }
+    },
+    {
+      "id": "SELF/recommend/miss",
+      "description": "Authorized self remains allowed with selector-aware cache and ranking",
+      "category": "control",
+      "result": "PASS",
+      "evidence": {
+        "status": 200,
+        "rpcs": [
+          {
+            "name": "get_recommendation_state_v3",
+            "selector": "33333333-3333-4333-8333-333333333333"
+          },
+          {
+            "name": "match_opportunities_enhanced_v2",
+            "selector": "33333333-3333-4333-8333-333333333333",
+            "dismissed": [
+              "dismissed-own-job"
+            ]
+          },
+          {
+            "name": "save_recommendation_matches_v3",
+            "selector": "33333333-3333-4333-8333-333333333333"
+          },
+          {
+            "name": "get_recommendation_state_v3",
+            "selector": "33333333-3333-4333-8333-333333333333"
+          }
+        ],
+        "providerCalls": 0,
+        "writes": [],
+        "entitlementChecks": [
+          {
+            "userId": "11111111-1111-4111-8111-111111111111",
+            "feature": "ai_job_matching"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ENT/recommend",
+      "description": "Denied matching entitlement must be checked before cache/provider work",
+      "category": "known-defect",
+      "result": "PASS",
+      "evidence": {
+        "status": 403,
+        "rpcs": [],
+        "providerCalls": 0,
+        "writes": [],
+        "entitlementChecks": [
+          {
+            "userId": "11111111-1111-4111-8111-111111111111",
+            "feature": "ai_job_matching"
+          }
+        ]
+      }
+    },
+    {
+      "id": "CTRL/unverified",
+      "description": "Existing verified-email guard rejects before matching work",
+      "category": "control",
+      "result": "PASS",
+      "evidence": {
+        "status": 403,
+        "rpcs": [],
+        "providerCalls": 0,
+        "writes": [],
+        "entitlementChecks": []
+      }
+    },
+    {
+      "id": "CTRL/invalid-uuid",
+      "description": "Actual UUID validation rejects invalid subject",
+      "category": "control",
+      "result": "PASS",
+      "evidence": {
+        "status": 400,
+        "rpcs": [],
+        "providerCalls": 0,
+        "writes": [],
+        "entitlementChecks": [
+          {
+            "userId": "11111111-1111-4111-8111-111111111111",
+            "feature": "ai_job_matching"
+          }
+        ]
+      }
+    },
+    {
+      "id": "GEN/distinct/learners",
+      "description": "Standalone own generation must distinguish actor-user from learner-primary identity",
+      "category": "known-defect",
+      "result": "PASS",
+      "evidence": {
+        "status": 200,
+        "rpcs": [],
+        "providerCalls": 1,
+        "writes": [
+          {
+            "table": "learners",
+            "columns": "*",
+            "filters": [
+              [
+                "id",
+                "33333333-3333-4333-8333-333333333333"
+              ]
+            ],
+            "rows": 1
+          }
+        ],
+        "entitlementChecks": []
+      }
+    },
+    {
+      "id": "GEN/distinct/skills",
+      "description": "Standalone own generation must distinguish actor-user from learner-primary identity",
+      "category": "known-defect",
+      "result": "PASS",
+      "evidence": {
+        "status": 200,
+        "rpcs": [],
+        "providerCalls": 1,
+        "writes": [
+          {
+            "table": "skills",
+            "columns": "*",
+            "filters": [
+              [
+                "id",
+                "55555555-5555-4555-8555-555555555555"
+              ]
+            ],
+            "rows": 1
+          }
+        ],
+        "entitlementChecks": []
+      }
+    },
+    {
+      "id": "GEN/equal-ids",
+      "description": "Equal-ID generation control succeeds; failure is not universal",
+      "category": "control",
+      "result": "PASS",
+      "evidence": {
+        "status": 200,
+        "rpcs": [],
+        "providerCalls": 1,
+        "writes": [
+          {
+            "table": "learners",
+            "columns": "*",
+            "filters": [
+              [
+                "id",
+                "11111111-1111-4111-8111-111111111111"
+              ]
+            ],
+            "rows": 1
+          }
+        ],
+        "entitlementChecks": []
+      }
+    },
+    {
+      "id": "GEN/profile-user",
+      "description": "Profile ownership uses actor-user identity, not learner-primary identity",
+      "category": "control",
+      "result": "PASS",
+      "evidence": {
+        "status": 200,
+        "rpcs": [],
+        "providerCalls": 1,
+        "writes": [
+          {
+            "table": "profiles",
+            "columns": "*",
+            "filters": [
+              [
+                "id",
+                "77777777-7777-4777-8777-777777777777"
+              ]
+            ],
+            "rows": 1
+          }
+        ],
+        "entitlementChecks": []
+      }
+    },
+    {
+      "id": "GEN/foreign-control",
+      "description": "Existing standalone ownership guard rejects a foreign learner",
+      "category": "control",
+      "result": "PASS",
+      "evidence": {
+        "status": 403,
+        "rpcs": [],
+        "providerCalls": 0,
+        "writes": [],
+        "entitlementChecks": []
+      }
+    },
+    {
+      "id": "GEN/admin-user",
+      "description": "Administrative generation retains the actor-user key rather than requiring a learner-primary key",
+      "category": "control",
+      "result": "PASS",
+      "evidence": {
+        "status": 200,
+        "rpcs": [],
+        "providerCalls": 1,
+        "writes": [
+          {
+            "table": "opportunities",
+            "columns": "*",
+            "filters": [
+              [
+                "id",
+                "99999999-9999-4999-8999-999999999999"
+              ]
+            ],
+            "rows": 1
+          }
+        ],
+        "entitlementChecks": []
+      }
+    },
+    {
+      "id": "GEN/admin-denied",
+      "description": "A caller without the administrative mapping cannot generate an opportunity vector",
+      "category": "control",
+      "result": "PASS",
+      "evidence": {
+        "status": 403,
+        "rpcs": [],
+        "providerCalls": 0,
+        "writes": [],
+        "entitlementChecks": []
+      }
+    },
+    {
+      "id": "WRITE/zero",
+      "description": "An update affecting zero rows must not report completed persistence",
+      "category": "known-defect",
+      "result": "PASS",
+      "evidence": {
+        "success": false,
+        "rowsAffected": 0,
+        "rejectionCode": "API_ERROR"
+      }
+    },
+    {
+      "id": "WRITE/one",
+      "description": "A real one-row fixture update remains successful",
+      "category": "control",
+      "result": "PASS",
+      "evidence": {
+        "success": true,
+        "rowsAffected": 1
+      }
+    },
+    {
+      "id": "VECTOR/dimensions",
+      "description": "Existing persistence validation rejects invalid vectors before writing",
+      "category": "control",
+      "result": "PASS"
+    },
+    {
+      "id": "VECTOR/nonfinite",
+      "description": "Existing persistence validation rejects invalid vectors before writing",
+      "category": "control",
+      "result": "PASS"
+    },
+    {
+      "id": "MUT/selector-aware",
+      "description": "Self-redirection cannot satisfy an assertion that foreign selectors actually ran",
+      "category": "fixture-mutation-control",
+      "result": "SKIP",
+      "message": "Historical mutation control; execute in characterization mode"
+    },
+    {
+      "id": "MUT/denial-oracle",
+      "description": "Denial oracle detects unsafe route and accepts only an in-memory fixture guard",
+      "category": "fixture-mutation-control",
+      "result": "SKIP",
+      "message": "Historical mutation control; execute in characterization mode"
+    },
+    {
+      "id": "SCHEMA/key-spaces",
+      "description": "Checked-in evidence/cache and interaction foreign keys use different identifier spaces",
+      "category": "checked-in-schema-only",
+      "result": "PASS"
+    }
+  ]
+}

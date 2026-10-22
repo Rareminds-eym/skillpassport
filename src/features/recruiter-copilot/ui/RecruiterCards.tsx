@@ -38,9 +38,9 @@ export const CandidateInsightCard: React.FC<CandidateInsightCardProps> = ({ card
   const getInsightIcon = () => {
     switch (card.insightType) {
       case 'top-match':
-        return <Target className="text-green-600" size={20} />;
+        return <Target className="text-green-700" size={20} />;
       case 'ready-to-hire':
-        return <Award className="text-green-600" size={20} />;
+        return <Award className="text-green-700" size={20} />;
       case 'high-potential':
         return <TrendingUp className="text-blue-600" size={20} />;
       case 'emerging-talent':
@@ -197,7 +197,7 @@ export const JobAnalyticsCard: React.FC<JobAnalyticsCardProps> = ({ card }) => {
           <p className="text-xs text-gray-600">Total Applicants</p>
         </div>
         <div className="text-center">
-          <p className="text-2xl font-bold text-green-600">{card.qualifiedCandidates}</p>
+          <p className="text-2xl font-bold text-green-700">{card.qualifiedCandidates}</p>
           <p className="text-xs text-gray-600">Qualified</p>
         </div>
         <div className="text-center">

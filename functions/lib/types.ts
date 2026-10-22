@@ -61,6 +61,13 @@ export interface PagesEnv {
   // Embedding Worker configuration
   /** Cloudflare Service Binding to the Embedding worker */
   EMBEDDING_SERVICE?: EmbeddingWorkerRpc;
+  /** Explicit rollout kill switch. "false" disables both matching aliases. */
+  JOB_MATCHING_ENABLED?: string;
+  /** Verified worker model and catalog/entity vector-space attestation. */
+  MATCHING_EMBEDDING_MODEL?: string;
+  MATCHING_CATALOG_MODEL?: string;
+  /** Enable personalization only after ALL retained entity/job writers are fenced or disabled. */
+  MATCHING_VECTOR_PIPELINE_VERIFIED?: string;
 
   // Email Worker configuration
   /** Cloudflare Service Binding to the Email worker */
