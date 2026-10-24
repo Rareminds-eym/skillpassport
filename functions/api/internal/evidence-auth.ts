@@ -28,6 +28,8 @@ export const ALLOWED_EVIDENCE_KINDS = [
   'learner.courses',
   'learner.progress',
   'opportunities.recommended',
+  'roles.recommended',
+  'courses.recommended',
   'course.lesson',
   'course.summary',
   'video.source',
@@ -74,7 +76,7 @@ export const ALLOWED_RESOURCE_KINDS = ['learner'] as const;
 export function assertEvidenceKindsAllowed(task: string, kinds: string[]): void {
   assertEvidenceTaskAllowed(task);
   const allowed: readonly string[] = task === 'career-talent-strategist.chat'
-    ? ['learner.profile', 'learner.skills', 'assessment.summary', 'learner.courses', 'learner.progress', 'opportunities.recommended']
+    ? ['learner.profile', 'learner.skills', 'assessment.summary', 'learner.courses', 'learner.progress', 'opportunities.recommended', 'roles.recommended', 'courses.recommended']
     : task === 'senior-educator.suggest' ? ['course.lesson'] : (task === 'senior-educator.tutor-chat' || task === 'senior-educator.generate-material') ? ['course.summary'] : task === 'senior-educator.summarize-video' ? ['video.source'] : [];
   if (kinds.some(kind => !allowed.includes(kind))) {
     throw new EvidenceAuthError('Evidence kind is not permitted for this task', 'FORBIDDEN', 403);
@@ -183,6 +185,7 @@ export class EvidenceAuthError extends Error {
 }
 
 export interface EvidenceRequestInput {
+  catalogPins?: Array<{kind:'role'|'course';id:string;revision:string}>;
   audience: string;
   product: string;
   actorId: string;
@@ -273,6 +276,7 @@ export async function sha256Hex(value: string): Promise<string> {
 }
 
 const ALLOWED_FIELDS = new Set([
+  'catalogPins',
   'audience',
   'product',
   'actorId',
@@ -382,6 +386,7 @@ export function parseEvidenceRequest(value: unknown, nowMs: number = Date.now())
     actorId: body.actorId,
     ...(body.tenantId !== undefined ? { tenantId: body.tenantId as string } : {}),
     task: body.task,
+    ...(body.catalogPins !== undefined ? { catalogPins: EvidenceRequestSchema.parse(body).catalogPins } : {}),
     ...(body.query !== undefined ? { query: body.query as string } : {}),
     kinds: body.kinds as string[],
     resources,

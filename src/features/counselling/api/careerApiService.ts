@@ -6,6 +6,7 @@
 import { getApiUrl, getAuthHeaders } from '@/shared/api/apiUtils';
 import { getGlobalCareerApiInterceptor } from './careerApiInterceptor';
 import { getLogger } from '@/shared/config/logging';
+import { readCareerStream } from './careerStream';
 
 const logger = getLogger('career-api-service');
 
@@ -81,52 +82,11 @@ export async function sendCareerChatMessage(
       return;
     }
 
-    const reader = response.body?.getReader();
-    if (!reader) {
-      onError?.(new Error('No response stream'));
-      return;
-    }
-
-    const decoder = new TextDecoder();
-    let buffer = '';
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || '';
-
-      for (const line of lines) {
-        if (line.trim() === '') continue; // Skip empty lines
-
-        if (line.startsWith('event: ')) {
-          continue; // Process next line for data
-        }
-
-        if (line.startsWith('data: ')) {
-          try {
-            const data = JSON.parse(line.slice(6));
-
-            // Handle different event types based on data structure
-            if (data.content) {
-              onToken?.(data.content);
-            } else if (data.error) {
-              onError?.(new Error(typeof data.error === 'string' ? data.error : data.error.type || data.error.message || 'Unknown error'));
-            } else if (data.done || data.conversationId || data.messageId || data.intent) {
-              onDone?.(data);
-            }
-          } catch (parseError) {
-            logger.warn('Failed to parse career chat SSE data', {
-              error: parseError instanceof Error ? parseError.message : String(parseError)
-            });
-          }
-        }
-      }
-    }
+    const receipt = await readCareerStream(response, onToken);
+    onDone?.(receipt);
   } catch (error) {
     if ((error as Error).name === 'AbortError') {
+      onError?.(new Error('TURN_STATE_UNKNOWN: Connection stopped; retry the same message to recover it.'));
       return;
     }
     onError?.(error as Error);

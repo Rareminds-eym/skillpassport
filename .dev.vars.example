@@ -91,3 +91,5 @@ OAUTH_STATE_SECRET=
 # Shared HMAC secret, at least 32 characters, server-only. The AI worker signs
 # each request with it; the endpoint fails closed (500) when it is unset.
 EVIDENCE_SHARED_SECRET=<at-least-32-character-shared-secret>
+
+# Catalog retrieval requires the generic RAG migration, compatible index and embedding binding.

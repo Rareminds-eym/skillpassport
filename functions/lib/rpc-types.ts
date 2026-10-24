@@ -33,6 +33,7 @@ export interface EmailWorkerRpc {
 }
 
 export interface EmbeddingWorkerRpc {
+  embedText(input: unknown, taskType?: string, policy?: {deadlineMs:number;maxAttempts:1}): Promise<import('../api/embedding/lib/embeddingBinding').EmbedTextResult>;
   [key: string]: (...args: any[]) => Promise<any>;
 }
 

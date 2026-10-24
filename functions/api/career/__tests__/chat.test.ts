@@ -43,6 +43,45 @@ function basePorts(overrides: Record<string, unknown> = {}) {
 }
 
 describe("career chat via worker", () => {
+  it('freezes requested depth into the signed worker input and keeps it on replay',async()=>{
+    const payloads:any[]=[];let frozen:any;
+    const env={AI_ASSERT_SECRET:'pages-test-secret-min-32-chars-0000',AI_SERVICE:{orchestrator:async(request:any)=>{
+      payloads.push(request.input.task.input);return workerSse(['Detailed guidance']);
+    }}};
+    const ports=basePorts({freezeTurnIntent:async(_db:unknown,args:any)=>{frozen=args;return {ok:true};}});
+    const body={message:'Explain in detail a career plan',turnId:'11111111-1111-4111-8111-111111111111'};
+    await (await handleCareerChat(post(body),env as never,USER,ports as never)).text();
+    expect(payloads[0].responseProfile).toBe('detailed');expect(frozen.workerInput.responseProfile).toBe('detailed');
+    await (await handleCareerChat(post(body),env as never,USER,basePorts({claimTurnIntent:async()=>({created:false,state:'ready',sessionId:'sess-1',workerInput:frozen.workerInput,workerInputHash:frozen.workerInputHash})}) as never)).text();
+    expect(payloads[1]).toEqual(payloads[0]);
+  });
+  it('forwards the first delta while upstream is open, saving only after terminal EOF',async()=>{
+    const encoder=new TextEncoder();let upstream!:ReadableStreamDefaultController<Uint8Array>;let saves=0;
+    const response=await handleCareerChat(post({message:'help'}),{} as never,USER,basePorts({
+      callWorker:async()=>new Response(new ReadableStream<Uint8Array>({start(c){upstream=c;}})),
+      saveMessages:async()=>{saves++;return {success:true,conversation_id:'conv-1'};},
+    }) as never);
+    const reader=response.body!.getReader();
+    upstream.enqueue(encoder.encode(`data: ${JSON.stringify({type:'delta',sequence:0,text:'First useful text'})}\n\n`));
+    const chunk=await reader.read();
+    expect(new TextDecoder().decode(chunk.value)).toContain('First useful text');expect(saves).toBe(0);
+    upstream.enqueue(encoder.encode(`data: ${JSON.stringify({type:'completed',executionId:'exec',outcome:'answered'})}\n\n`));upstream.close();
+    while(!(await reader.read()).done){ /* consume final app receipt */ }
+    expect(saves).toBe(1);
+  });
+
+  it.each(['invalid JSON','post-terminal delta'])('does not save a corrupted %s stream',async mode=>{
+    let saves=0;
+    const events=[`data: ${JSON.stringify({type:'delta',sequence:0,text:'Some text'})}\n\n`,
+      ...(mode==='invalid JSON'?['data: {broken}\n\n']:[]),
+      `data: ${JSON.stringify({type:'completed',executionId:'exec',outcome:'answered'})}\n\n`,
+      ...(mode==='post-terminal delta'?[`data: ${JSON.stringify({type:'delta',sequence:1,text:'Trailing'})}\n\n`]:[])];
+    const response=await handleCareerChat(post({message:'help'}),{} as never,USER,basePorts({
+      callWorker:async()=>new Response(events.join('')),
+      saveMessages:async()=>{saves++;return {success:true,conversation_id:'conv-1'};},
+    }) as never);
+    expect(await response.text()).toContain('Stream processing error');expect(saves).toBe(0);
+  });
   it.each([undefined, '4.0.0'])('preserves frozen system version %s without rebuilding instructions', async systemVersion => {
     let payload: any;
     const env = { AI_ASSERT_SECRET: 'pages-test-secret-min-32-chars-0000', AI_SERVICE: { orchestrator: async (request: any) => {
@@ -93,7 +132,7 @@ describe("career chat via worker", () => {
         signedRoles = claims.roles;
         expect(claims.action).toBe('orchestration.assist');
         expect(request.input.kind).toBe('task');
-        expect((request.input.task as any).input.systemVersion).toBe('4.0.0');
+        expect((request.input.task as any).input.systemVersion).toBe('4.1.0');
         expect(request.input.task.action).toBe('careerTalentStrategist.chat');
         return workerSse(['ok']);
       } },

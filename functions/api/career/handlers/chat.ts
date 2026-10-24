@@ -30,6 +30,10 @@ import { buildCareerInstructions } from '../ai/prompts/career-instructions';
 import { loadCareerPolicyContext } from '../context/policy-context';
 import { getAiWorker, rpcErrorToHttpStatus, type AiServiceBinding } from '../../ai/lib/aiBinding';
 import { issueExecutionAssertion } from '../../ai/lib/assertion';
+import { readOrchestratorEvents } from '../../ai/lib/orchestrator-result';
+import { selectCareerHistory } from '../context/history';
+import { careerResponseProfile } from '../ai/prompts/response-profile';
+import {CareerResponseProfileSchema,type CareerResponseProfile} from '@rareminds-eym/ai-protocol';
 
 interface QueryChain {
   select(cols: string): QueryChain;
@@ -289,8 +293,8 @@ export async function defaultAssembleContext(args: {
     gradeLevel: policy.gradeLevel,
     phase: conversationPhase,
     intent: intentResult.intent,
+    responseProfile:careerResponseProfile(message),
   });
-  const recentMessages = history.slice(-10);
 
   return {
     conversationPhase,
@@ -298,7 +302,7 @@ export async function defaultAssembleContext(args: {
     confidence: intentResult.confidence,
     hasAssessment: policy.hasAssessment,
     systemPromptWithMemory: systemPrompt,
-    historyTail: recentMessages.map((m) => ({ role: m.role, content: m.content })),
+    historyTail: selectCareerHistory(history,message),
   };
 }
 
@@ -437,7 +441,8 @@ export async function handleCareerChat(
     // IDEMPOTENCY_CONFLICT on retries). Only a turn with no frozen input
     // assembles context and freezes it now.
     let systemPromptWithMemory: string;
-    let systemVersion: string | undefined = '4.0.0';
+    let systemVersion: string | undefined = '4.1.0';
+    let responseProfile:CareerResponseProfile|undefined;
     let historyTail: Array<{ role: 'user' | 'assistant'; content: string }>;
     let conversationPhase: string;
     let intent: CareerIntent;
@@ -447,10 +452,11 @@ export async function handleCareerChat(
 
     if (!claim.created && claim.workerInput && typeof claim.workerInput === 'object' && claim.workerInputHash) {
       const frozen = claim.workerInput as {
-        system?: string; systemVersion?: string; history?: Array<{ role: 'user' | 'assistant'; content: string }>;
+        system?: string; systemVersion?: string; responseProfile?:unknown; history?: Array<{ role: 'user' | 'assistant'; content: string }>;
       };
       systemPromptWithMemory = typeof frozen.system === 'string' ? frozen.system : '';
       systemVersion = frozen.systemVersion;
+      responseProfile=CareerResponseProfileSchema.optional().parse(frozen.responseProfile);
       historyTail = Array.isArray(frozen.history) ? frozen.history : [];
       workerInputHash = claim.workerInputHash;
       // Replay display metadata is best-effort: re-derive cheaply.
@@ -486,8 +492,10 @@ export async function handleCareerChat(
       confidence = assembled.confidence;
       hasAssessment = assembled.hasAssessment;
 
+      responseProfile=careerResponseProfile(processedMessage);
       const workerInput = {
         systemVersion,
+        responseProfile,
         conversationId: sessionId,
         message: processedMessage.slice(0, 8000),
         ...(systemPromptWithMemory.trim() ? { system: systemPromptWithMemory.slice(0, 12000) } : {}),
@@ -509,9 +517,10 @@ export async function handleCareerChat(
         if ('error' in reread || typeof reread.workerInput !== 'object' || !reread.workerInput || !reread.workerInputHash) {
           return apiError(500, 'INTERNAL_ERROR', 'Turn preparation raced; please retry', request);
         }
-        const adopted = reread.workerInput as { system?: string; systemVersion?: string; history?: Array<{ role: 'user' | 'assistant'; content: string }> };
+        const adopted = reread.workerInput as { system?: string; systemVersion?: string; responseProfile?:unknown; history?: Array<{ role: 'user' | 'assistant'; content: string }> };
         systemPromptWithMemory = typeof adopted.system === 'string' ? adopted.system : '';
         systemVersion = adopted.systemVersion;
+        responseProfile=CareerResponseProfileSchema.optional().parse(adopted.responseProfile);
         historyTail = Array.isArray(adopted.history) ? adopted.history : [];
         workerInputHash = reread.workerInputHash;
       }
@@ -546,6 +555,7 @@ export async function handleCareerChat(
             turnId,
             systemVersion,
             workerInputHash,
+            responseProfile,
             sessionId,
           }, roles);
     } catch (err) {
@@ -568,26 +578,17 @@ export async function handleCareerChat(
     const stream = new ReadableStream({
       async start(controller) {
         try {
-          const text = await workerResponse.text();
           let completed = false;
-          for (const line of text.split('\n')) {
-            const trimmed = line.trim();
-            if (!trimmed.startsWith('data: ')) continue;
-            const data = trimmed.replace('data: ', '').trim();
-            if (!data) continue;
-            let event: { type?: string; text?: string; question?: string; outcome?: string; error?: { code?: string; message?: string } };
-            try {
-              event = JSON.parse(data) as typeof event;
-            } catch {
-              continue;
-            }
+          for await (const event of readOrchestratorEvents(workerResponse)) {
             if (event.type === 'delta' && typeof event.text === 'string' && event.text) {
               assistantMessage += event.text;
               controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: event.text })}\n\n`));
             } else if (event.type === 'clarification' && typeof event.question === 'string') {
               assistantMessage += event.question;
               controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: event.question })}\n\n`));
-            } else if (event.type === 'failed' || event.type === 'partial' || event.type === 'unsupported') {
+            } else if (event.type === 'failed' || event.type === 'partial') {
+              throw new Error(`${event.error.code}: Worker generation failed`);
+            } else if (event.type === 'unsupported') {
               throw new Error('WORKER_FAILED');
             } else if (event.type === 'completed') {
               completed = event.outcome === 'answered' || event.outcome === 'clarify';
@@ -656,6 +657,10 @@ export async function handleCareerChat(
           );
           controller.close();
         } catch (error) {
+          if(error instanceof Error && /^(AI_CREDITS_PENDING|AI_CREDITS_EXHAUSTED|AI_REQUEST_IN_PROGRESS|PARTIAL_MODEL_OUTPUT|DOWNSTREAM_TIMEOUT):/.test(error.message)){
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({error:{type:error.message.split(':')[0],message:'Worker generation failed. Recover the same request.'}})}\n\n`));
+            controller.close();return;
+          }
           if (error instanceof Error && error.message === 'WORKER_FAILED') {
             controller.enqueue(
               encoder.encode(`data: ${JSON.stringify({ error: 'Worker generation failed' })}\n\n`),
@@ -796,7 +801,7 @@ async function callChatWorker(
   input: {
     conversationId: string; message: string; system: string;
     history: Array<{ role: 'user' | 'assistant'; content: string }>;
-    turnId: string; workerInputHash: string; sessionId: string; systemVersion?: string;
+    turnId: string; workerInputHash: string; sessionId: string; systemVersion?: string; responseProfile?:CareerResponseProfile;
   },
   authenticatedRoles: readonly string[],
 ): Promise<Response | { duplicate: true; executionId?: string }> {
@@ -819,6 +824,7 @@ async function callChatWorker(
   });
   // Clamp to protocol limits (career.ts: message 8000, system 12000, history content 8000, max 12 items)
   const clampedInput = {
+    ...(input.responseProfile?{responseProfile:input.responseProfile}:{}),
     ...(input.systemVersion ? { systemVersion: input.systemVersion } : {}),
     conversationId: input.conversationId,
     message: input.message.slice(0, 8000),

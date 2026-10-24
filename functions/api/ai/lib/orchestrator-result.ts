@@ -1,5 +1,36 @@
 import { OrchestratorEventSchema, type OrchestratorBoundedResult } from '@rareminds-eym/ai-protocol';
 
+/** Incremental, bounded event reader. Successful persistence requires full validation through EOF. */
+export async function* readOrchestratorEvents(response: Response, timeoutMs = 65000) {
+  if (!response.body) throw new Error('INVALID_MODEL_OUTPUT: Missing orchestrator response');
+  const reader=response.body.getReader(), decoder=new TextDecoder('utf-8',{fatal:true});
+  const deadline=Date.now()+timeoutMs;
+  let bytes=0, buffer='', terminal=false, sequence=0;
+  try {
+    for (;;) {
+      let timer:ReturnType<typeof setTimeout>|undefined;
+      const chunk=await Promise.race([reader.read(),new Promise<never>((_,reject)=>{
+        timer=setTimeout(()=>reject(new Error('DOWNSTREAM_TIMEOUT: Orchestrator stream timed out')),Math.max(0,deadline-Date.now()));
+      })]).finally(()=>{if(timer!==undefined)clearTimeout(timer);});
+      if(chunk.done){buffer+=decoder.decode(); if(buffer.trim()||!terminal)throw new Error('INVALID_MODEL_OUTPUT: Incomplete orchestrator stream'); return;}
+      bytes+=chunk.value.byteLength;
+      if(bytes>512000)throw new Error('INVALID_MODEL_OUTPUT: Orchestrator stream exceeds limit');
+      buffer+=decoder.decode(chunk.value,{stream:true}).replace(/\r/g,'');
+      let end:number;
+      while((end=buffer.indexOf('\n\n'))>=0){
+        const frame=buffer.slice(0,end);buffer=buffer.slice(end+2);
+        if(!frame.trim()||frame.startsWith(':'))continue;
+        if(terminal)throw new Error('INVALID_MODEL_OUTPUT: Event after terminal');
+        if(!frame.startsWith('data: ')||frame.includes('\n'))throw new Error('INVALID_MODEL_OUTPUT: Invalid orchestrator frame');
+        const event=OrchestratorEventSchema.parse(JSON.parse(frame.slice(6)));
+        if(event.type==='delta'&&event.sequence!==sequence++)throw new Error('INVALID_MODEL_OUTPUT: Invalid stream sequence');
+        if(event.type==='completed'||event.type==='failed'||event.type==='partial')terminal=true;
+        yield event;
+      }
+    }
+  } finally { void reader.cancel().catch(()=>undefined);reader.releaseLock(); }
+}
+
 /** Compatibility text adapter with a whole-response deadline and byte cap. */
 export async function readBoundedWorkerText(response: Response, timeoutMs: number): Promise<string> {
   if (!response.body) throw new Error('INVALID_MODEL_OUTPUT: Missing orchestrator response');

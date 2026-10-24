@@ -18,6 +18,7 @@ import type {
  * Standard environment variables available to all Pages Functions
  */
 export interface PagesEnv {
+    /** Enable only after compatible worker/protocol, RAG migration and verified catalog indexing. */
   /** Deferred video job implementation; requires future schema review before activation. */
   VIDEO_JOBS_ENABLED?: string;
   // SSO / Auth configuration

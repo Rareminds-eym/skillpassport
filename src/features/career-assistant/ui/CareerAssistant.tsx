@@ -1,9 +1,9 @@
 /**
  * Career Assistant Component
- * 
+ *
  * Main chat interface for Career AI assistant.
  * Refactored with optimized React patterns for better performance.
- * 
+ *
  * @author Senior React Developer
  * @pattern Component Composition & Performance Optimization
  */
@@ -21,7 +21,8 @@ function formatCredits(value: string): string {
   if (!Number.isFinite(n)) return value;
   return n.toFixed(2);
 }
-import toast from 'react-hot-toast';
+import { toast } from '@/shared/ui';
+import {loadCareerTurn,saveCareerTurn,clearCareerTurn,type PendingCareerTurn} from '../model/pendingTurn';
 import {
   Send,
   Mic,
@@ -69,9 +70,9 @@ import {
 const CareerAssistantContainer: React.FC = () => {
   const user = useUser();
   const location = useLocation();
-  
+
   // ==================== HOOKS ====================
-  
+
   // Conversation management
   const {
     conversations,
@@ -114,19 +115,20 @@ const CareerAssistantContainer: React.FC = () => {
   } = useSmartScroll([messages]);
 
   // ==================== STATE ====================
-  
+
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [showWelcome, setShowWelcome] = useState(true);
   const [selectedChips, setSelectedChips] = useState<string[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [autoSendQuery, setAutoSendQuery] = useState(false);
+  const [pendingTurn,setPendingTurn]=useState<PendingCareerTurn|null>(null);
   // 30-credit plan: account-wide exhaustion (never per-conversation),
   // display balance, and pending-settlement state.
   const [creditExhausted, setCreditExhausted] = useState(false);
   const [creditPending, setCreditPending] = useState(false);
   const [creditBalance, setCreditBalance] = useState<{ remaining: string; granted: string } | null>(null);
-  
+
   // Sidebar state - collapsed on mobile by default
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -134,15 +136,26 @@ const CareerAssistantContainer: React.FC = () => {
     }
     return false;
   });
-  
+
   // ==================== REFS ====================
-  
+
   const inputRef = useRef<HTMLInputElement>(null);
   const typingTimerRef = useRef<number | null>(null);
   const userInteractedRef = useRef(false);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const requestEpochRef=useRef(0);
   const lastSendTimeRef = useRef<number>(0); // Rate limiting
   const userMsgIdRef = useRef<string | null>(null);
+  const activeScope=JSON.stringify([user?.id,currentConversationId]);
+  const activeScopeRef=useRef(activeScope);activeScopeRef.current=activeScope;
+
+  useEffect(()=>{
+    requestEpochRef.current++;
+    abortControllerRef.current?.abort();abortControllerRef.current=null;
+    setIsTyping(false);setLoading(false);
+    try { setPendingTurn(user?.id?loadCareerTurn(sessionStorage,user.id,currentConversationId):null); }
+    catch { setPendingTurn(null); }
+  },[user?.id,currentConversationId]);
 
   // Conversation switching with race condition prevention
   const {
@@ -155,7 +168,7 @@ const CareerAssistantContainer: React.FC = () => {
   });
 
   // ==================== EFFECTS ====================
-  
+
   /**
    * Load conversation messages when currentConversation changes
    * Uses replaceMessages from optimized hook
@@ -223,13 +236,14 @@ const CareerAssistantContainer: React.FC = () => {
   }, [refreshCredits]);
 
   useCreditSettlementRefresh(creditPending, refreshCredits);
-  
+
   /**
    * Stop AI response generation
    * Aborts the current request and cleans up state
    * FIX: Remove empty assistant messages when stopping
    */
   const stopTyping = useCallback(() => {
+    requestEpochRef.current++;
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
@@ -238,12 +252,12 @@ const CareerAssistantContainer: React.FC = () => {
       clearTimeout(typingTimerRef.current);
       typingTimerRef.current = null;
     }
-    
+
     // Remove any empty assistant messages (loading indicators)
-    setMessages(prev => prev.filter(m => 
+    setMessages(prev => prev.filter(m =>
       !(m.role === 'assistant' && m.content.trim() === '')
     ));
-    
+
     setIsTyping(false);
     setLoading(false);
     userInteractedRef.current = false;
@@ -256,7 +270,7 @@ const CareerAssistantContainer: React.FC = () => {
    * FIX: Added rate limiting and input validation
    */
   const handleSend = useCallback(async () => {
-    if (!input.trim() || loading) return;
+    if (!input.trim() || loading || isTyping || abortControllerRef.current) return;
     // Credit gate (display-side; the server enforces authoritatively).
     if (creditExhausted) return;
 
@@ -268,6 +282,9 @@ const CareerAssistantContainer: React.FC = () => {
 
     // Input validation
     const trimmedInput = input.trim();
+    if(pendingTurn&&pendingTurn.message!==trimmedInput){
+      toast.error('Recover your previous message or forget its retry before sending a different message.');return;
+    }
     if (trimmedInput.length > MAX_INPUT_LENGTH) {
       logger.warn('Message exceeds maximum length', {
         messageLength: trimmedInput.length,
@@ -296,7 +313,10 @@ const CareerAssistantContainer: React.FC = () => {
 
     // Track the temporary message ID for cleanup
     let tempMessageId: string | null = null;
-    
+    let requestController:AbortController|null=null;
+    const requestScope=activeScopeRef.current;
+    const requestEpoch=++requestEpochRef.current;
+
     try {
       const learnerId = user?.id;
       if (!learnerId) {
@@ -305,36 +325,38 @@ const CareerAssistantContainer: React.FC = () => {
 
       const id = (Date.now() + 1).toString();
       tempMessageId = id; // Track for cleanup
-      
+
       const aiMessage: Message = {
         id,
         role: 'assistant',
         content: '',
         timestamp: new Date().toISOString()
       };
-      
+
       setMessages(prev => [...prev, aiMessage]);
       setLoading(false);
       setIsTyping(true);
 
       // Create abort controller for this request
-      abortControllerRef.current = new AbortController();
+      requestController=new AbortController();abortControllerRef.current = requestController;
 
       // Stable turn identity: one UUID per send, reused if this request is
       // retried, so the backend dedupes instead of rebilling.
-      const turnId = typeof crypto !== 'undefined' && 'randomUUID' in crypto
-        ? crypto.randomUUID()
-        : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const turnId = pendingTurn?.turnId ?? crypto.randomUUID();
+      const frozenChips=pendingTurn?.selectedChips ?? selectedChips;
+      const pending={turnId,conversationId:currentConversationId,message:userInput,selectedChips:frozenChips};
+      saveCareerTurn(sessionStorage,learnerId,pending);setPendingTurn(pending);
 
       const result = await streamCareerChat(
         userInput,
         currentConversationId,
-        selectedChips,
+        frozenChips,
         (chunk: string) => {
-          setMessages(prev => prev.map(m => 
+          if(activeScopeRef.current!==requestScope||requestEpochRef.current!==requestEpoch)return;
+          setMessages(prev => prev.map(m =>
             m.id === id ? { ...m, content: m.content + chunk } : m
           ));
-          
+
           if (!userInteractedRef.current) {
             requestAnimationFrame(() => {
               if (!userInteractedRef.current) {
@@ -343,10 +365,11 @@ const CareerAssistantContainer: React.FC = () => {
             });
           }
         },
-        abortControllerRef.current.signal,
+        requestController.signal,
         turnId
       );
-      
+      if(activeScopeRef.current!==requestScope||requestEpochRef.current!==requestEpoch)return;
+
       if (!result.success && result.error) {
         setMessages(prev => prev.filter(m => m.id !== id));
         tempMessageId = null;
@@ -371,15 +394,16 @@ const CareerAssistantContainer: React.FC = () => {
           return;
         }
         if (code === 'TURN_STATE_UNKNOWN' || code === 'TURN_PAYLOAD_CONFLICT' || code === 'IDEMPOTENCY_CONFLICT') {
-          toast.error('That message could not be recovered. Please send it again as a new message.');
+          toast.error('The saved answer is not available yet. Recover the same message later; a new request may use additional credits.');
           return;
         }
         throw new Error(result.error);
       }
 
       // Success - update message with backend's messageId
+      clearCareerTurn(sessionStorage,learnerId,currentConversationId);setPendingTurn(null);
       tempMessageId = null; // Clear since message is now permanent
-      
+
       if (result.conversationId && result.conversationId !== currentConversationId) {
         setCurrentConversationId(result.conversationId);
         fetchConversations();
@@ -390,9 +414,9 @@ const CareerAssistantContainer: React.FC = () => {
       void refreshCredits(true);
 
       // Update message with backend's messageId, interactive content and metadata
-      setMessages(prev => prev.map(m => 
-        m.id === id ? { 
-          ...m, 
+      setMessages(prev => prev.map(m =>
+        m.id === id ? {
+          ...m,
           id: result.messageId || m.id,
           interactive: result.interactive,
           intent: result.intent,
@@ -401,6 +425,7 @@ const CareerAssistantContainer: React.FC = () => {
         } : m
       ));
     } catch (error: unknown) {
+      if(activeScopeRef.current!==requestScope||requestEpochRef.current!==requestEpoch)return;
       if (error instanceof Error && (error.name === 'AbortError' || error.message.includes('aborted'))) {
         if (tempMessageId) {
           setMessages(prev => prev.filter(m => m.id !== tempMessageId));
@@ -421,15 +446,17 @@ const CareerAssistantContainer: React.FC = () => {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       toast.error(`Failed to send message: ${errorMessage}. Please try again.`);
     } finally {
+      if(abortControllerRef.current===requestController)abortControllerRef.current=null;
+      if(activeScopeRef.current===requestScope&&requestEpochRef.current===requestEpoch){
       setLoading(false);
       setIsTyping(false);
       if (typingTimerRef.current) {
         clearTimeout(typingTimerRef.current);
         typingTimerRef.current = null;
       }
-      abortControllerRef.current = null;
+      }
     }
-  }, [input, loading, creditExhausted, refreshCredits, user?.id, currentConversationId, selectedChips, setMessages, setUserScrolledUp, messagesEndRef, setCurrentConversationId, fetchConversations]);
+  }, [input, loading, isTyping, pendingTurn, creditExhausted, refreshCredits, user?.id, currentConversationId, selectedChips, setMessages, setUserScrolledUp, messagesEndRef, setCurrentConversationId, fetchConversations]);
 
   /**
    * Auto-send query if set from navigation
@@ -492,9 +519,12 @@ const CareerAssistantContainer: React.FC = () => {
 
 
   // ==================== RENDER ====================
-  
+
   return (
     <CareerAssistantUI
+      hasPendingTurn={pendingTurn!==null}
+      onRecoverTurn={()=>{if(pendingTurn){setInput(pendingTurn.message);setSelectedChips(pendingTurn.selectedChips);setAutoSendQuery(true);}}}
+      onForgetTurn={()=>{if(user?.id){try{clearCareerTurn(sessionStorage,user.id,currentConversationId);setPendingTurn(null);}catch{toast.error('Could not clear the pending retry.');}}}}
       showWelcome={showWelcome}
       creditExhausted={creditExhausted}
       creditBalance={creditBalance}
@@ -514,7 +544,7 @@ const CareerAssistantContainer: React.FC = () => {
       handleScroll={handleScroll}
       userScrolledUp={userScrolledUp}
       setUserScrolledUp={setUserScrolledUp}
-      scrollToBottom={scrollToBottom}
+      scrollToBottom={(smooth)=>{userInteractedRef.current=false;scrollToBottom(smooth);}}
       getFeedback={getFeedback}
       isFeedbackLoading={isFeedbackLoading}
       submitFeedback={handleFeedback}
@@ -535,6 +565,9 @@ const CareerAssistantContainer: React.FC = () => {
 };
 
 interface CareerAssistantUIProps {
+  hasPendingTurn:boolean;
+  onRecoverTurn:()=>void;
+  onForgetTurn:()=>void;
   showWelcome: boolean;
   creditExhausted: boolean;
   creditBalance: { remaining: string; granted: string } | null;
@@ -549,11 +582,11 @@ interface CareerAssistantUIProps {
   setInput: React.Dispatch<React.SetStateAction<string>>;
   onSendMessage: () => void;
   onStopTyping: () => void;
-  messagesContainerRef: React.RefObject<HTMLDivElement | null>;
-  messagesEndRef: React.RefObject<HTMLDivElement | null>;
+  messagesContainerRef: React.RefObject<HTMLDivElement>;
+  messagesEndRef: React.RefObject<HTMLDivElement>;
   handleScroll: () => void;
   userScrolledUp: boolean;
-  setUserScrolledUp: React.Dispatch<React.SetStateAction<boolean>>;
+  setUserScrolledUp: (value:boolean)=>void;
   scrollToBottom: (smooth?: boolean) => void;
   getFeedback: (messageId: string) => FeedbackData | null;
   isFeedbackLoading: (messageId: string) => boolean;
@@ -574,6 +607,7 @@ interface CareerAssistantUIProps {
  * Uses Zustand store for state management
  */
 const CareerAssistantUI: React.FC<CareerAssistantUIProps> = ({
+  hasPendingTurn,onRecoverTurn,onForgetTurn,
   showWelcome,
   creditExhausted,
   creditBalance,
@@ -607,9 +641,8 @@ const CareerAssistantUI: React.FC<CareerAssistantUIProps> = ({
   hasMore,
   loadMore,
 }) => {
-  
+
   const inputRef = useRef<HTMLInputElement>(null);
-  const userInteractedRef = useRef(false);
 
   /**
    * Auto-focus input on mount
@@ -636,6 +669,16 @@ const CareerAssistantUI: React.FC<CareerAssistantUIProps> = ({
 
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col max-w-5xl mx-auto relative">
+        {hasPendingTurn&&!loading&&!isTyping&&(
+          <div role="status" className="mx-4 mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm">
+            <p>A previous message has no confirmed saved answer. Recover it using the same request.</p>
+            <div className="mt-2 flex flex-col gap-2 md:flex-row">
+              <button type="button" onClick={onRecoverTurn} className="rounded border px-3 py-2">Recover previous message</button>
+              <button type="button" onClick={onForgetTurn} className="rounded border px-3 py-2">Forget retry</button>
+            </div>
+            <p className="mt-2 text-xs">Forgetting the retry does not cancel the earlier request or its credit usage.</p>
+          </div>
+        )}
         {/* Mobile sidebar toggle */}
         <div className="md:hidden absolute top-4 left-4 z-10">
           <button
@@ -647,7 +690,7 @@ const CareerAssistantUI: React.FC<CareerAssistantUIProps> = ({
         </div>
 
         {/* Messages Area */}
-        <div 
+        <div
           ref={messagesContainerRef}
           onScroll={handleScroll}
           className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-8"
@@ -665,7 +708,7 @@ const CareerAssistantUI: React.FC<CareerAssistantUIProps> = ({
               </div>
 
               <CareerAIToolsGrid onAction={(prompt) => onSendQuery(prompt)} variant="full" animated={true} />
- 
+
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="text-center text-sm text-gray-500 mt-8">
                 💡 Click a card above or type your question below to get started
               </motion.div>
@@ -684,11 +727,11 @@ const CareerAssistantUI: React.FC<CareerAssistantUIProps> = ({
                   // Create unique key by combining ID with role and index
                   // Backend uses same turnId for user+assistant pair, so we need unique keys for React
                   const uniqueKey = `${message.id}-${message.role}-${index}`;
-                  
+
                   // Virtual scrolling: Always render first 5 and last 5 messages
                   // Virtualize messages in the middle for performance
                   const isInitialVisible = index < INITIAL_VISIBLE_MESSAGES || index >= messages.length - INITIAL_VISIBLE_MESSAGES;
-                  
+
                   return (
                     <VirtualMessage
                       key={uniqueKey}
@@ -712,12 +755,12 @@ const CareerAssistantUI: React.FC<CareerAssistantUIProps> = ({
                           </div>
                         </motion.div>
                       ) : (
-                        <SimpleMessage 
-                          content={message.content} 
-                          timestamp={message.timestamp} 
+                        <SimpleMessage
+                          content={message.content}
+                          timestamp={message.timestamp}
                           isUser={false}
                           messageId={message.id}
-                           onFeedback={(id, type) => submitFeedback(id, type)}
+                           onFeedback={(id, thumbsUp) => submitFeedback(id, thumbsUp?'positive':'negative')}
                           feedbackData={getFeedback(message.id)}
                           feedbackLoading={isFeedbackLoading(message.id)}
                         />
@@ -784,7 +827,6 @@ const CareerAssistantUI: React.FC<CareerAssistantUIProps> = ({
                     whileTap={{ y: 0 }}
                     onClick={() => {
                       setUserScrolledUp(false);
-                      userInteractedRef.current = false;
                       scrollToBottom(true);
                     }}
                     className="p-3 bg-white border border-gray-300 text-gray-700 rounded-full shadow-lg hover:shadow-xl hover:bg-gray-50 transition-all"
@@ -819,7 +861,6 @@ const CareerAssistantUI: React.FC<CareerAssistantUIProps> = ({
                     whileTap={{ y: 0 }}
                     onClick={() => {
                       setUserScrolledUp(false);
-                      userInteractedRef.current = false;
                       scrollToBottom(true);
                     }}
                     className="p-3 bg-white border border-gray-300 text-gray-700 rounded-full shadow-md hover:shadow-lg hover:bg-gray-50 transition-all"
@@ -866,7 +907,7 @@ const CareerAssistantUI: React.FC<CareerAssistantUIProps> = ({
                 disabled={loading || isTyping || creditExhausted}
                 className="w-full px-5 py-4 pr-32 text-gray-900 placeholder-gray-500 bg-gray-50 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed transition-all"
               />
-              
+
               <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2">
                 <button className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded-lg transition-colors" title="Attach file">
                   <Paperclip className="w-5 h-5" />

@@ -23,6 +23,7 @@ import type { PagesFunction, PagesEnv } from '../../lib/types';
 import { apiError, apiSuccess } from '../../lib/response';
 import { createSupabaseAdminClient } from '../../lib/supabase';
 import { buildCareerEvidence } from '../career/context/evidence';
+import { buildCareerRagEvidence, RAG_KINDS } from '../career/context/rag';
 import { buildLessonEvidence } from './lesson-evidence';
 import { buildVideoSourceEvidence } from './video-source-evidence';
 import { buildAuthoringCourseEvidence } from './authoring-course-evidence';
@@ -49,6 +50,7 @@ export const onRequestPost: PagesFunction<PagesEnv> = async (context) => {
   let requestHash: string | undefined;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 4000);
+  let callerTimer:ReturnType<typeof setTimeout>|undefined;
 
   try {
     const secret = getEvidenceSecret(env);
@@ -70,6 +72,9 @@ export const onRequestPost: PagesFunction<PagesEnv> = async (context) => {
     }
 
     const parsed = parseEvidenceRequest(decoded);
+    // Signed expiry also bounds downstream work under the caller's remaining root time.
+    const remainingDeadline = Math.min(startedAt + 4000, Date.parse(parsed.expiresAt));
+    callerTimer = setTimeout(() => controller.abort(), Math.max(0, remainingDeadline - Date.now()));
 
     // The audit hash ties the logs to the exact bytes that were signed.
     await verifyRequestHash(body, request.headers.get('x-evidence-request-hash'));
@@ -80,6 +85,9 @@ export const onRequestPost: PagesFunction<PagesEnv> = async (context) => {
     // be one this product can ownership-check.
     assertEvidenceTaskAllowed(parsed.task);
     assertEvidenceKindsAllowed(parsed.task, parsed.kinds);
+    if (parsed.catalogPins !== undefined && parsed.task !== 'career-talent-strategist.chat') {
+      throw new EvidenceAuthError('Catalog replay is not allowed for this task','FORBIDDEN',403);
+    }
     assertEvidenceTenantUnsupported(parsed.tenantId);
     assertResourceKindsAllowed(parsed.resources, parsed.task);
 
@@ -93,7 +101,17 @@ export const onRequestPost: PagesFunction<PagesEnv> = async (context) => {
       return apiError(503, 'UNAVAILABLE', 'Video evidence is reserved for a future release', request);
     }
     const projection = parsed.task === 'senior-educator.suggest' ? buildLessonEvidence : parsed.task === 'senior-educator.tutor-chat' ? buildCourseEvidence : parsed.task === 'senior-educator.generate-material' ? buildAuthoringCourseEvidence : parsed.task === 'senior-educator.summarize-video' ? buildVideoSourceEvidence : buildCareerEvidence;
-    const result = await awaitEvidence(projection(
+    const projectionInput = {
+      deadlineMs: remainingDeadline,
+      ...(parsed.catalogPins !== undefined ? { catalogPins: parsed.catalogPins } : {}),
+      actorId: parsed.actorId,
+      ...(parsed.query !== undefined ? { query: parsed.query } : {}),
+      kinds: parsed.kinds,
+      resources: parsed.resources,
+    };
+    const result = await awaitEvidence(parsed.task === 'career-talent-strategist.chat' && parsed.kinds.some(kind => (RAG_KINDS as readonly string[]).includes(kind))
+      ? buildCareerRagEvidence(supabase, projectionInput, startedAt, env, controller.signal)
+      : projection(
       supabase,
       {
         actorId: parsed.actorId,
@@ -146,6 +164,7 @@ export const onRequestPost: PagesFunction<PagesEnv> = async (context) => {
     });
   } finally {
     clearTimeout(timer);
+    if(callerTimer!==undefined)clearTimeout(callerTimer);
   }
 };
 

@@ -62,7 +62,7 @@ export interface DocInput {
  * Mirrors the EmbeddingService WorkerEntrypoint methods.
  */
 export interface EmbeddingWorkerBinding {
-  embedText(input: unknown, taskType?: string): Promise<EmbedTextResult>;
+  embedText(input: unknown, taskType?: string, policy?: {deadlineMs:number;maxAttempts:1}): Promise<EmbedTextResult>;
   embedImage(input: unknown): Promise<EmbedImageResult>;
   embedDoc(input: DocInput, maxPages?: number): Promise<EmbedDocResult>;
 }
