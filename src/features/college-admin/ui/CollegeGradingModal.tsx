@@ -501,6 +501,36 @@ export const CollegeGradingModal: React.FC<CollegeGradingModalProps> = ({
                         </div>
                       )}
 
+                      {/* Submitted Project / Repository URL */}
+                      {selectedSubmission.submission_url && (
+                        <div>
+                          <p className="text-xs font-medium text-gray-500 mb-2">Submitted Project / Repository Link:</p>
+                          <div className="flex items-center justify-between p-3.5 bg-purple-50/70 border border-purple-200/80 rounded-xl hover:bg-purple-50 transition-colors">
+                            <div className="flex items-center gap-3 min-w-0 pr-3">
+                              <div className="p-2 bg-purple-600 text-white rounded-lg">
+                                <ExternalLink className="w-4 h-4" />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-sm font-semibold text-gray-900 truncate">
+                                  {selectedSubmission.submission_url}
+                                </p>
+                                <p className="text-xs text-purple-700">Project / Web URL</p>
+                              </div>
+                            </div>
+
+                            <a
+                              href={selectedSubmission.submission_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-medium transition-colors shadow-sm shrink-0"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                              Open Link
+                            </a>
+                          </div>
+                        </div>
+                      )}
+
                       {/* Uploaded Files */}
                       {selectedSubmission.submission_files && selectedSubmission.submission_files.length > 0 ? (
                         <div>
@@ -550,7 +580,9 @@ export const CollegeGradingModal: React.FC<CollegeGradingModalProps> = ({
                           </div>
                         </div>
                       ) : (
-                        <p className="text-xs text-gray-500 italic">No files attached with this submission.</p>
+                        !selectedSubmission.submission_url && (
+                          <p className="text-xs text-gray-500 italic">No files attached with this submission.</p>
+                        )
                       )}
                     </>
                   ) : (

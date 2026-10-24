@@ -204,6 +204,14 @@ const AssignmentCard: React.FC<AssignmentCardProps> = ({
 
   // Helper function to open file with error handling
   const openFile = (fileUrl: string, fileName: string = 'file') => {
+    // If it's an external web link (GitHub, Figma, live demo, etc.), open directly
+    if (fileUrl.startsWith('http://') || fileUrl.startsWith('https://')) {
+      if (!fileUrl.includes('.r2.dev')) {
+        window.open(fileUrl, '_blank', 'noopener,noreferrer');
+        return;
+      }
+    }
+
     const storageApiUrl = getApiUrl('storage');
     
     // Generate proxy URL
@@ -416,17 +424,6 @@ const AssignmentCard: React.FC<AssignmentCardProps> = ({
               <AlertCircle className="w-4 h-4" />
               Late submission not allowed
             </div>
-          )}
-          
-          {/* View Submission Button */}
-          {(assignment.status === 'submitted' || assignment.status === 'graded') && assignment.submission_url && (
-            <button
-              onClick={() => openFile(assignment.submission_url, assignment.submission_content || 'submission')}
-              className="flex items-center gap-2 px-4 py-2.5 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors text-sm font-medium"
-            >
-              <FileText className="w-4 h-4" />
-              View Submission
-            </button>
           )}
         </div>
       </div>
