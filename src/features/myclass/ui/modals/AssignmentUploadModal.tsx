@@ -49,6 +49,7 @@ const AssignmentUploadModal: React.FC<AssignmentUploadModalProps> = ({
             <p className="text-sm text-gray-500 mt-1">{assignment.title}</p>
           </div>
           <button
+            type="button"
             onClick={handleClose}
             disabled={isUploading}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
@@ -102,6 +103,7 @@ const AssignmentUploadModal: React.FC<AssignmentUploadModalProps> = ({
         {/* Footer */}
         <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200 shrink-0 bg-gray-50/50 rounded-b-xl">
           <button
+            type="button"
             onClick={handleClose}
             disabled={isUploading}
             className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
@@ -109,6 +111,7 @@ const AssignmentUploadModal: React.FC<AssignmentUploadModalProps> = ({
             Cancel
           </button>
           <button
+            type="button"
             onClick={handleSubmit}
             disabled={isUploading}
             className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"

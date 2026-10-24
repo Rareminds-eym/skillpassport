@@ -147,8 +147,8 @@ export const CollegeGradingModal: React.FC<CollegeGradingModalProps> = ({
     e.preventDefault();
     if (!selectedSubmission || !assignment) return;
 
-    const numericGrade = parseFloat(gradeInput);
-    if (isNaN(numericGrade) || numericGrade < 0 || numericGrade > assignment.total_points) {
+    const numericGrade = Number.parseFloat(gradeInput);
+    if (Number.isNaN(numericGrade) || numericGrade < 0 || numericGrade > assignment.total_points) {
       toast.error(`Please enter a valid grade between 0 and ${assignment.total_points}`);
       return;
     }
@@ -294,7 +294,9 @@ export const CollegeGradingModal: React.FC<CollegeGradingModalProps> = ({
           </div>
 
           <button
+            type="button"
             onClick={onClose}
+            aria-label="Close"
             className="p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-xl transition-colors"
           >
             <X className="w-5 h-5" />
@@ -313,6 +315,7 @@ export const CollegeGradingModal: React.FC<CollegeGradingModalProps> = ({
                 <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
+                  aria-label="Search learners"
                   placeholder="Search by learner name or roll #..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -323,24 +326,28 @@ export const CollegeGradingModal: React.FC<CollegeGradingModalProps> = ({
               {/* Status Filter Tabs */}
               <div className="grid grid-cols-4 gap-1 p-1 bg-gray-100 rounded-xl text-xs font-medium text-gray-600">
                 <button
+                  type="button"
                   onClick={() => setFilterStatus('all')}
                   className={`py-1.5 rounded-lg transition-all text-center ${filterStatus === 'all' ? 'bg-white text-blue-700 shadow-sm font-semibold' : 'hover:text-gray-900'}`}
                 >
                   All ({stats.total})
                 </button>
                 <button
+                  type="button"
                   onClick={() => setFilterStatus('submitted')}
                   className={`py-1.5 rounded-lg transition-all text-center ${filterStatus === 'submitted' ? 'bg-white text-amber-700 shadow-sm font-semibold' : 'hover:text-gray-900'}`}
                 >
                   Submitted ({stats.submitted})
                 </button>
                 <button
+                  type="button"
                   onClick={() => setFilterStatus('graded')}
                   className={`py-1.5 rounded-lg transition-all text-center ${filterStatus === 'graded' ? 'bg-white text-emerald-700 shadow-sm font-semibold' : 'hover:text-gray-900'}`}
                 >
                   Graded ({stats.graded})
                 </button>
                 <button
+                  type="button"
                   onClick={() => setFilterStatus('pending')}
                   className={`py-1.5 rounded-lg transition-all text-center ${filterStatus === 'pending' ? 'bg-white text-gray-700 shadow-sm font-semibold' : 'hover:text-gray-900'}`}
                 >
@@ -369,6 +376,12 @@ export const CollegeGradingModal: React.FC<CollegeGradingModalProps> = ({
                     <div
                       key={sub.learner_assignment_id}
                       onClick={() => selectSubmission(sub)}
+                      onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        selectSubmission(sub);
+                        }
+                      }}
                       className={`p-3.5 cursor-pointer transition-all border-l-4 ${isSelected
                           ? 'bg-blue-50/70 border-blue-600 shadow-sm'
                           : 'border-transparent hover:bg-gray-50'
@@ -604,10 +617,10 @@ export const CollegeGradingModal: React.FC<CollegeGradingModalProps> = ({
                   <form onSubmit={handleGradeSubmit} className="space-y-4">
                     <div>
                       <div className="flex items-center justify-between mb-1.5">
-                        <label className="text-sm font-semibold text-gray-800">
+                        <label htmlFor="grade-input" className="text-sm font-semibold text-gray-800">
                           Grade / Score (out of {assignment.total_points})
                         </label>
-                        {gradeInput && !isNaN(parseFloat(gradeInput)) && (
+                        {gradeInput && !Number.isNaN(parseFloat(gradeInput)) && (
                           <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
                             {assignment.total_points > 0
                               ? Math.round((parseFloat(gradeInput) / assignment.total_points) * 100)
@@ -617,6 +630,7 @@ export const CollegeGradingModal: React.FC<CollegeGradingModalProps> = ({
                         )}
                       </div>
                       <input
+                        id="grade-input"
                         type="number"
                         min="0"
                         max={assignment.total_points}
@@ -630,10 +644,11 @@ export const CollegeGradingModal: React.FC<CollegeGradingModalProps> = ({
                     </div>
 
                     <div>
-                      <label className="text-sm font-semibold text-gray-800 block mb-1.5">
+                      <label htmlFor="feedback-input" className="text-sm font-semibold text-gray-800 block mb-1.5">
                         Educator Feedback
                       </label>
                       <textarea
+                        id="feedback-input"
                         rows={3}
                         placeholder="Write constructive feedback for this learner..."
                         value={feedbackInput}

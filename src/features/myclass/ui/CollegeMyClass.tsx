@@ -551,6 +551,7 @@ const CollegeMyClass: React.FC = () => {
             {/* Mobile Tab Selector */}
             <div className="sm:hidden">
               <select
+                aria-label="Select tab"
                 value={activeTab}
                 onChange={(e) => setActiveTab(e.target.value as CollegeTabType)}
                 className="block w-full px-4 py-3 text-base border-0 bg-transparent focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -570,6 +571,7 @@ const CollegeMyClass: React.FC = () => {
               ].map(tab => (
                 <button
                   key={tab.id}
+                  type="button"
                   onClick={() => setActiveTab(tab.id as CollegeTabType)}
                   className={`flex items-center gap-2 px-4 lg:px-6 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeTab === tab.id
                     ? 'border-blue-600 text-blue-600'
@@ -637,7 +639,9 @@ const CollegeMyClass: React.FC = () => {
                 <p className="text-sm text-gray-500 mt-1">{selectedAssignment?.title}</p>
               </div>
               <button
+                type="button"
                 onClick={closeUploadModal}
+                aria-label="Close"
                 disabled={isUploading}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
               >
@@ -657,11 +661,12 @@ const CollegeMyClass: React.FC = () => {
 
               {/* Project / Submission URL Input */}
               <div className="mb-6 p-4 bg-gray-50/70 border border-gray-200 rounded-xl">
-                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                <label htmlFor="submission-url" className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
                   <LinkIcon className="w-3.5 h-3.5 text-blue-600" />
-                  Submission URL (GitHub_link)
+                  Submission URL
                 </label>
                 <input
+                  id="submission-url"
                   type="url"
                   placeholder="https://github.com/... or https://..."
                   value={submissionUrl}
@@ -709,13 +714,16 @@ const CollegeMyClass: React.FC = () => {
             {/* Modal Footer */}
             <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200 shrink-0 bg-gray-50/50 rounded-b-xl">
               <button
+                type="button"
                 onClick={closeUploadModal}
+                aria-label="Close"
                 disabled={isUploading}
                 className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={handleUploadSubmit}
                 disabled={isUploading}
                 className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
@@ -752,6 +760,8 @@ const CollegeMyClass: React.FC = () => {
                 </p>
               </div>
               <button
+                type="button"
+                aria-label="Close"
                 onClick={closeDetailsModal}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
               >
@@ -821,6 +831,7 @@ const CollegeMyClass: React.FC = () => {
                               </div>
                             </div>
                             <button
+                              type="button"
                               onClick={() => handleFileAccess(file.url, file.name, 'view')}
                               className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
                             >
@@ -887,6 +898,7 @@ const CollegeMyClass: React.FC = () => {
                                       </div>
                                     </div>
                                     <button
+                                      type="button"
                                       onClick={() => handleFileAccess(file.url, file.name, 'view')}
                                       className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
                                     >
@@ -940,6 +952,8 @@ const CollegeMyClass: React.FC = () => {
                         <p className="text-blue-600 text-sm">Upload your assignment files and submit for grading.</p>
                       </div>
                       <button
+                        type="button"
+                        aria-label="Close"
                         onClick={() => {
                           closeDetailsModal();
                           handleUploadClick(assignmentDetails);
