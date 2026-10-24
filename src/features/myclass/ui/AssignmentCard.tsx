@@ -204,6 +204,14 @@ const AssignmentCard: React.FC<AssignmentCardProps> = ({
 
   // Helper function to open file with error handling
   const openFile = (fileUrl: string, fileName: string = 'file') => {
+    // If it's an external web link (GitHub, Figma, live demo, etc.), open directly
+    if (fileUrl.startsWith('http://') || fileUrl.startsWith('https://')) {
+      if (!fileUrl.includes('.r2.dev')) {
+        window.open(fileUrl, '_blank', 'noopener,noreferrer');
+        return;
+      }
+    }
+
     const storageApiUrl = getApiUrl('storage');
     
     // Generate proxy URL
@@ -361,8 +369,11 @@ const AssignmentCard: React.FC<AssignmentCardProps> = ({
                   <Clock className="w-4 h-4 text-blue-600" />
                 </div>
                 <div className="flex-1">
-                  <label className="text-sm font-medium text-blue-800 block mb-2">Update Status</label>
+                  <label 
+                  htmlFor={`status-${assignment.learner_assignment_id}`}
+                  className="text-sm font-medium text-blue-800 block mb-2">Update Status</label>
                   <select
+                    id={`status-${assignment.learner_assignment_id}`}
                     value={assignment.status}
                     onChange={(e) => onStatusChange(assignment.assignment_id, assignment.learner_assignment_id, e.target.value)}
                     className="w-full px-3 py-2 text-sm border border-blue-200 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
@@ -392,6 +403,7 @@ const AssignmentCard: React.FC<AssignmentCardProps> = ({
         <div className="flex flex-wrap gap-3">
           {/* View Details Button */}
           <button
+            type="button"
             onClick={() => onViewDetails(assignment)}
             className="flex items-center gap-2 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-colors text-sm font-medium"
           >
@@ -402,6 +414,7 @@ const AssignmentCard: React.FC<AssignmentCardProps> = ({
           {/* Upload Button */}
           {canSubmitAssignment(assignment) && (
             <button
+              type="button"
               onClick={() => onUploadClick(assignment)}
               className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors text-sm font-medium"
             >
@@ -416,17 +429,6 @@ const AssignmentCard: React.FC<AssignmentCardProps> = ({
               <AlertCircle className="w-4 h-4" />
               Late submission not allowed
             </div>
-          )}
-          
-          {/* View Submission Button */}
-          {(assignment.status === 'submitted' || assignment.status === 'graded') && assignment.submission_url && (
-            <button
-              onClick={() => openFile(assignment.submission_url, assignment.submission_content || 'submission')}
-              className="flex items-center gap-2 px-4 py-2.5 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors text-sm font-medium"
-            >
-              <FileText className="w-4 h-4" />
-              View Submission
-            </button>
           )}
         </div>
       </div>
