@@ -1,4 +1,4 @@
--- Create 10 historical MBA sessions (semester 4, section A) for 4 trainers, plus one blank attendance record per student of the trainer's stream.
+-- Create 23 historical MBA sessions (semester 4, section A) for 8 trainers, plus one blank attendance record per student of the trainer's stream.
 -- Runs after the production trainers seed (20261023100100_seed_soundarya_trainers_skillpassport.sql) and the MBA assignments seed (20261023100500_seed_soundarya_mba_trainer_assignments.sql). Nothing is written to the SSO database.
 -- Follows the app's create_session action (20270113_staff_attendance_split.sql) and the college-admin "Create Attendance Session" form:
 -- Department / Course (the stream's MBA program) / Semester / Section come from the class, Subject is the trainer's mapped course,
@@ -17,6 +17,20 @@
 --   row 38  Ajay        Finance            2026-09-26 09:00-16:00  MBA-FIN-L1-SRILAKSHMI
 --   row 39  Vishwanath  Marketing          2026-09-26 09:00-16:00  MBA-MKT-L1-SWAADFIT
 --   row 42  Sadiq       Business Analytics 2026-09-30 13:30-16:00  MBA-BA-L1-SRILAKSHMI
+-- Added with the uploaded Pre-Counselling (PRE-COUNSEL-INTRO) and Video Resume (VIDEO-RESUME-INTRO-2026) courses; each session uses the trainer's own mapping from the assignments seed:
+--   row  4  subashini.r  HR                 2026-08-31 09:00-16:00  PRE-COUNSEL-INTRO
+--   row  5  lalitha      Finance            2026-08-31 09:00-16:00  PRE-COUNSEL-INTRO
+--   row  6  visakh2013   Marketing          2026-08-31 09:00-16:00  PRE-COUNSEL-INTRO
+--   row  8  subashini.r  HR                 2026-09-01 09:00-16:00  PRE-COUNSEL-INTRO
+--   row  9  lalitha      Finance            2026-09-01 09:00-16:00  PRE-COUNSEL-INTRO
+--   row 10  visakh2013   Marketing          2026-09-01 09:00-16:00  PRE-COUNSEL-INTRO
+--   row 12  visakh2013   HR                 2026-09-02 09:00-16:00  VIDEO-RESUME-INTRO-2026
+--   row 14  lalitha      Marketing          2026-09-02 09:00-16:00  VIDEO-RESUME-INTRO-2026
+--   row 15  krishnalatha Business Analytics 2026-09-02 09:00-16:00  VIDEO-RESUME-INTRO-2026
+--   row 16  visakh2013   HR                 2026-09-03 09:00-16:00  VIDEO-RESUME-INTRO-2026
+--   row 17  subashini.r  Finance            2026-09-03 09:00-16:00  VIDEO-RESUME-INTRO-2026
+--   row 18  lalitha      Marketing          2026-09-03 09:00-16:00  VIDEO-RESUME-INTRO-2026
+--   row 19  krishnalatha Business Analytics 2026-09-03 09:00-16:00  VIDEO-RESUME-INTRO-2026
 -- Each session uses the trainer's own LMS course (courses.code above), found in the trainer's assignment. The sheet's topic is kept in
 -- remarks ('Sheet row N: <topic> (<session id>)'). Room number is empty (not in the sheet); subject code and academic year come from
 -- the course and the section. created_by and creation_request_id stay empty, as in the MCA sessions seed.
@@ -24,16 +38,18 @@
 -- Students of a session are the non-deleted learners of that stream program, semester 4, section A, status blank (unmarked).
 -- Three trainers teach at the same time on 24 to 26 Sep: that is allowed, each has their own stream class.
 --
--- NOT CREATED: MBA trainers without a confirmed course (Sandhya Mohan, Subashini Ramaswamy, Lalitha Srinivasan, Visakh Madhu,
--- Krishnalatha Atmakuri, Maheswari kumar, Koutham K A); MCA sessions are in the MCA sessions seed.
+-- NOT CREATED: Sandhya Mohan's rows 7, 11, 13 (MBA) and 45-47 (MCA) overlap in time on the same days and the workbook does not say which class she taught, so none is chosen;
+-- rows with no stream class (2, 3, 44 Student Assessment, 40 Skill Ecosystem, 41 Interview, 43); Maheswari kumar (Power BI undecided); Subashini's Interview row 25;
+-- rows with no uploaded course (Sandhya rows 20-22, 26, 27). MCA sessions are in the MCA sessions seed.
 -- Skipped on purpose, never forced: a missing trainer, class, course or assignment, an overlapping session of the same trainer.
 -- Safe to re-run: fixed session ids, unique (session, student) records and the overlap check mean a second run inserts nothing.
 --
 -- PRE-CHECK (read-only), run first:
---   1. The four trainers must each have an active assignment for their stream class that covers the dates: expect 4 rows.
+--   1. The eight trainers must each have an active assignment for their stream class(es) that covers the dates: expect 11 rows (4 + 7 added).
 --      SELECT s.email, p.specializations, a.start_date, a.end_date FROM public.organization_staff_assignments a
 --        JOIN public.organization_staff s ON s.id = a.staff_id JOIN public.programs p ON p.id = a.program_id
---        WHERE a.is_active AND p.code = 'MBA' AND lower(s.email) IN ('cacsajay22@gmail.com', 'vishwanathgurlhosur@gmail.com', 'poornima.du@gmail.com', 'msadiq.india@gmail.com');
+--        WHERE a.is_active AND p.code = 'MBA' AND lower(s.email) IN ('cacsajay22@gmail.com', 'vishwanathgurlhosur@gmail.com', 'poornima.du@gmail.com', 'msadiq.india@gmail.com',
+--        'subashini.r@rareminds.in', 'lalitha@rareminds.in', 'visakh2013@rediffmail.com', 'krishnalatha@rareminds.in');
 --   2. The students must be linked to the stream program with section 'A' and semester 4: expect Finance 12, Marketing 15, HR 18, Business Analytics 13.
 --      A student on the generic MBA program, or with another section text, gets NO record and the learner attendance import will find an empty class.
 --      SELECT p.specializations, count(*) FROM public.learners l JOIN public.programs p ON p.id = l.program_id
@@ -59,7 +75,20 @@ FROM (VALUES
   ('d4a9c478-dd18-5cd9-af5c-aa3802f32af8'::uuid, 'poornima.du@gmail.com'::text, 'HR'::text, 'MBA-HR-L1-ONBOARDING'::text, '2026-09-26'::date, '09:00'::time, '16:00'::time, 'Sheet row 37: Interview communication and boot camp (SES-MBA-020)'::text),
   ('578b5ee3-8b2b-5b8f-9769-a78c35723914'::uuid, 'cacsajay22@gmail.com'::text, 'Finance'::text, 'MBA-FIN-L1-SRILAKSHMI'::text, '2026-09-26'::date, '09:00'::time, '16:00'::time, 'Sheet row 38: Interview communication and boot camp (SES-MBA-020)'::text),
   ('80e7fc05-4246-5048-b520-ce12768cbcc9'::uuid, 'vishwanathgurlhosur@gmail.com'::text, 'Marketing'::text, 'MBA-MKT-L1-SWAADFIT'::text, '2026-09-26'::date, '09:00'::time, '16:00'::time, 'Sheet row 39: Interview communication and boot camp (SES-MBA-020)'::text),
-  ('768c6d53-1cc5-5971-abfc-9e4eee3f00a6'::uuid, 'msadiq.india@gmail.com'::text, 'Business Analytics'::text, 'MBA-BA-L1-SRILAKSHMI'::text, '2026-09-30'::date, '13:30'::time, '16:00'::time, 'Sheet row 42: Business Analytics (SES-MBA-023)'::text)
+  ('768c6d53-1cc5-5971-abfc-9e4eee3f00a6'::uuid, 'msadiq.india@gmail.com'::text, 'Business Analytics'::text, 'MBA-BA-L1-SRILAKSHMI'::text, '2026-09-30'::date, '13:30'::time, '16:00'::time, 'Sheet row 42: Business Analytics (SES-MBA-023)'::text),
+  ('101729f1-fbf9-52ac-98de-e37d44b0b3ee'::uuid, 'subashini.r@rareminds.in'::text, 'HR'::text, 'PRE-COUNSEL-INTRO'::text, '2026-08-31'::date, '09:00'::time, '16:00'::time, 'Sheet row 4: Pre Counseling (SES-MBA-003)'::text),
+  ('a8c7953a-d12c-538f-9347-20b929108812'::uuid, 'lalitha@rareminds.in'::text, 'Finance'::text, 'PRE-COUNSEL-INTRO'::text, '2026-08-31'::date, '09:00'::time, '16:00'::time, 'Sheet row 5: Pre Counseling (SES-MBA-003)'::text),
+  ('f0ea25ab-ae3d-561f-911c-c93f22a1d0a3'::uuid, 'visakh2013@rediffmail.com'::text, 'Marketing'::text, 'PRE-COUNSEL-INTRO'::text, '2026-08-31'::date, '09:00'::time, '16:00'::time, 'Sheet row 6: Pre Counseling (SES-MBA-003)'::text),
+  ('76d27e5b-e70d-561c-b710-72fe7ef8d628'::uuid, 'subashini.r@rareminds.in'::text, 'HR'::text, 'PRE-COUNSEL-INTRO'::text, '2026-09-01'::date, '09:00'::time, '16:00'::time, 'Sheet row 8: Pre Counseling (SES-MBA-004)'::text),
+  ('6cc4c35d-7327-5e85-89b5-5533e5d12b93'::uuid, 'lalitha@rareminds.in'::text, 'Finance'::text, 'PRE-COUNSEL-INTRO'::text, '2026-09-01'::date, '09:00'::time, '16:00'::time, 'Sheet row 9: Pre Counseling (SES-MBA-004)'::text),
+  ('fb66672c-5c28-5827-9c1d-ba0028426c9a'::uuid, 'visakh2013@rediffmail.com'::text, 'Marketing'::text, 'PRE-COUNSEL-INTRO'::text, '2026-09-01'::date, '09:00'::time, '16:00'::time, 'Sheet row 10: Pre Counseling (SES-MBA-004)'::text),
+  ('8da493bc-afd0-5e62-a169-611f4edb1c42'::uuid, 'visakh2013@rediffmail.com'::text, 'HR'::text, 'VIDEO-RESUME-INTRO-2026'::text, '2026-09-02'::date, '09:00'::time, '16:00'::time, 'Sheet row 12: Direct Counseling, Professional Introduction, Video Resume (SES-MBA-005)'::text),
+  ('3b5ed27b-81c6-5901-88c9-0e008fe4a258'::uuid, 'lalitha@rareminds.in'::text, 'Marketing'::text, 'VIDEO-RESUME-INTRO-2026'::text, '2026-09-02'::date, '09:00'::time, '16:00'::time, 'Sheet row 14: Direct Counseling, Professional Introduction, Video Resume (SES-MBA-005)'::text),
+  ('be188d8a-956e-5767-b6cf-cb21c68af965'::uuid, 'krishnalatha@rareminds.in'::text, 'Business Analytics'::text, 'VIDEO-RESUME-INTRO-2026'::text, '2026-09-02'::date, '09:00'::time, '16:00'::time, 'Sheet row 15: Direct Counseling, Professional Introduction, Video Resume (SES-MBA-005)'::text),
+  ('6564a227-a338-52d9-a350-a5dfacea4d92'::uuid, 'visakh2013@rediffmail.com'::text, 'HR'::text, 'VIDEO-RESUME-INTRO-2026'::text, '2026-09-03'::date, '09:00'::time, '16:00'::time, 'Sheet row 16: Direct Counseling, Professional Introduction, Video Resume (SES-MBA-006)'::text),
+  ('d5a40870-d3e1-5188-958b-483d7018c9ca'::uuid, 'subashini.r@rareminds.in'::text, 'Finance'::text, 'VIDEO-RESUME-INTRO-2026'::text, '2026-09-03'::date, '09:00'::time, '16:00'::time, 'Sheet row 17: Direct Counseling, Professional Introduction, Video Resume (SES-MBA-006)'::text),
+  ('550f4236-3f29-59fc-8e63-c2d3e9a2faa4'::uuid, 'lalitha@rareminds.in'::text, 'Marketing'::text, 'VIDEO-RESUME-INTRO-2026'::text, '2026-09-03'::date, '09:00'::time, '16:00'::time, 'Sheet row 18: Direct Counseling, Professional Introduction, Video Resume (SES-MBA-006)'::text),
+  ('1ed37700-37da-52b1-8cde-28990eb3dce6'::uuid, 'krishnalatha@rareminds.in'::text, 'Business Analytics'::text, 'VIDEO-RESUME-INTRO-2026'::text, '2026-09-03'::date, '09:00'::time, '16:00'::time, 'Sheet row 19: Direct Counseling, Professional Introduction, Video Resume (SES-MBA-006)'::text)
 ) AS v(id, email, stream, course_code, date, start_time, end_time, remarks)
 JOIN public.organization_staff s ON lower(s.email) = v.email
   AND s.organization_id = '00000000-0000-0000-0000-000000000001' AND s.account_status = 'active'
@@ -87,13 +116,13 @@ SELECT ss.id, l.id, l.name, coalesce(l.roll_number, ''), ss.department_name, ss.
 FROM public.college_attendance_sessions ss
 JOIN public.learners l ON l.college_id = ss.college_id AND l.program_id = ss.program_id
   AND l.semester = ss.semester AND l.section = ss.section AND NOT coalesce(l.is_deleted, false)
-WHERE ss.id IN ('d0e19023-a79b-5210-824f-18d2cd308e53', 'ed04cfb3-467c-5d1b-a143-86306bf789da', '6886c001-5167-5b70-bc5a-b0a3622e877e', 'd830d391-17a3-54bd-b56b-a48e6fbea390', 'bf7ad410-e697-544f-b67d-943aa28c733e', '550187b5-eed4-5b5f-94cd-4760947e3c07', 'd4a9c478-dd18-5cd9-af5c-aa3802f32af8', '578b5ee3-8b2b-5b8f-9769-a78c35723914', '80e7fc05-4246-5048-b520-ce12768cbcc9', '768c6d53-1cc5-5971-abfc-9e4eee3f00a6')
+WHERE ss.id IN ('d0e19023-a79b-5210-824f-18d2cd308e53', 'ed04cfb3-467c-5d1b-a143-86306bf789da', '6886c001-5167-5b70-bc5a-b0a3622e877e', 'd830d391-17a3-54bd-b56b-a48e6fbea390', 'bf7ad410-e697-544f-b67d-943aa28c733e', '550187b5-eed4-5b5f-94cd-4760947e3c07', 'd4a9c478-dd18-5cd9-af5c-aa3802f32af8', '578b5ee3-8b2b-5b8f-9769-a78c35723914', '80e7fc05-4246-5048-b520-ce12768cbcc9', '768c6d53-1cc5-5971-abfc-9e4eee3f00a6', '101729f1-fbf9-52ac-98de-e37d44b0b3ee', 'a8c7953a-d12c-538f-9347-20b929108812', 'f0ea25ab-ae3d-561f-911c-c93f22a1d0a3', '76d27e5b-e70d-561c-b710-72fe7ef8d628', '6cc4c35d-7327-5e85-89b5-5533e5d12b93', 'fb66672c-5c28-5827-9c1d-ba0028426c9a', '8da493bc-afd0-5e62-a169-611f4edb1c42', '3b5ed27b-81c6-5901-88c9-0e008fe4a258', 'be188d8a-956e-5767-b6cf-cb21c68af965', '6564a227-a338-52d9-a350-a5dfacea4d92', 'd5a40870-d3e1-5188-958b-483d7018c9ca', '550f4236-3f29-59fc-8e63-c2d3e9a2faa4', '1ed37700-37da-52b1-8cde-28990eb3dce6')
 ON CONFLICT (session_id, learner_id) DO NOTHING;
 
 -- 3. Student counts on the sessions (the app does this right after creating the records)
 UPDATE public.college_attendance_sessions ss
 SET total_learners = (SELECT count(*) FROM public.college_attendance_records r WHERE r.session_id = ss.id)
-WHERE ss.id IN ('d0e19023-a79b-5210-824f-18d2cd308e53', 'ed04cfb3-467c-5d1b-a143-86306bf789da', '6886c001-5167-5b70-bc5a-b0a3622e877e', 'd830d391-17a3-54bd-b56b-a48e6fbea390', 'bf7ad410-e697-544f-b67d-943aa28c733e', '550187b5-eed4-5b5f-94cd-4760947e3c07', 'd4a9c478-dd18-5cd9-af5c-aa3802f32af8', '578b5ee3-8b2b-5b8f-9769-a78c35723914', '80e7fc05-4246-5048-b520-ce12768cbcc9', '768c6d53-1cc5-5971-abfc-9e4eee3f00a6')
+WHERE ss.id IN ('d0e19023-a79b-5210-824f-18d2cd308e53', 'ed04cfb3-467c-5d1b-a143-86306bf789da', '6886c001-5167-5b70-bc5a-b0a3622e877e', 'd830d391-17a3-54bd-b56b-a48e6fbea390', 'bf7ad410-e697-544f-b67d-943aa28c733e', '550187b5-eed4-5b5f-94cd-4760947e3c07', 'd4a9c478-dd18-5cd9-af5c-aa3802f32af8', '578b5ee3-8b2b-5b8f-9769-a78c35723914', '80e7fc05-4246-5048-b520-ce12768cbcc9', '768c6d53-1cc5-5971-abfc-9e4eee3f00a6', '101729f1-fbf9-52ac-98de-e37d44b0b3ee', 'a8c7953a-d12c-538f-9347-20b929108812', 'f0ea25ab-ae3d-561f-911c-c93f22a1d0a3', '76d27e5b-e70d-561c-b710-72fe7ef8d628', '6cc4c35d-7327-5e85-89b5-5533e5d12b93', 'fb66672c-5c28-5827-9c1d-ba0028426c9a', '8da493bc-afd0-5e62-a169-611f4edb1c42', '3b5ed27b-81c6-5901-88c9-0e008fe4a258', 'be188d8a-956e-5767-b6cf-cb21c68af965', '6564a227-a338-52d9-a350-a5dfacea4d92', 'd5a40870-d3e1-5188-958b-483d7018c9ca', '550f4236-3f29-59fc-8e63-c2d3e9a2faa4', '1ed37700-37da-52b1-8cde-28990eb3dce6')
   AND ss.total_learners IS DISTINCT FROM (SELECT count(*) FROM public.college_attendance_records r WHERE r.session_id = ss.id);
 
 COMMIT;
