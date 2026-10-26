@@ -45,7 +45,7 @@ const AdminLayout = () => {
     const handleMobileMenuClose = () => setShowMobileMenu(false);
 
     return (
-            <div className="h-screen w-full flex flex-col bg-gray-50 overflow-hidden">
+            <div className="relative h-screen w-full bg-gray-50 overflow-hidden">
             {/* ===== Fixed Header ===== */}
             <div className="fixed top-0 left-0 right-0 z-30 bg-white border-b">
                 <Header
@@ -55,7 +55,7 @@ const AdminLayout = () => {
             </div>
 
             {/* ===== Sidebar + Main Content ===== */}
-            <div className="flex flex-1 overflow-hidden">
+            <div className="absolute inset-x-0 top-16 bottom-0 flex min-h-0 overflow-hidden">
                 {/* Desktop Sidebar */}
                 <div className="hidden md:flex md:flex-col md:w-64 bg-white border-r fixed top-16 bottom-0 left-0 z-20">
                     <Sidebar
@@ -84,7 +84,7 @@ const AdminLayout = () => {
                 )}
 
                 {/* Scrollable Content */}
-                <main className="flex-1 overflow-y-auto md:ml-72 flex flex-col pt-16">
+                <main className="flex-1 min-h-0 overflow-y-auto md:ml-72 flex flex-col">
                     <div className="mx-auto w-full flex-1">
                         {loading && !ready ? (
                             <div className="min-h-[calc(100vh-12rem)] flex items-center justify-center p-8">
@@ -99,7 +99,7 @@ const AdminLayout = () => {
                             <Outlet />
                         )}
                     </div>
-                    <footer className="bg-white border-t border-gray-200 py-4 px-6">
+                    <footer className="shrink-0 bg-white border-t border-gray-200 py-4 px-6">
                         <div className="flex items-center justify-between text-sm text-gray-500">
                             <span>© {new Date().getFullYear()} Admin Portal. All rights reserved.</span>
                             <div className="flex items-center gap-4">
