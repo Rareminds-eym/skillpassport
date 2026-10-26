@@ -725,9 +725,6 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
 
             {/* Prompt Chips */}
             <div className="w-full space-y-1.5 text-left">
-              <p className="text-[11px] font-medium text-slate-400 uppercase tracking-wider mb-2">
-                Suggested Actions:
-              </p>
               {isEducator ? (
                 educatorPrompts.map((p, i) => (
                   <button

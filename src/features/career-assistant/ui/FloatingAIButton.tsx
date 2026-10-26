@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useAssistantVisibility } from '@/shared/model/assistantVisibility';
 
 const FloatingAIButton: React.FC = () => {
   const [isTooltipVisible, setIsTooltipVisible] = useState(false);
   const [isPulsing, setIsPulsing] = useState(true);
   const navigate = useNavigate();
   const location = useLocation();
+  const tutorOpen = useAssistantVisibility(state => state.facilitatorOpen);
   const timeoutRef = useRef<NodeJS.Timeout>();
 
   useEffect(() => {
@@ -15,8 +17,8 @@ const FloatingAIButton: React.FC = () => {
     return () => clearTimeout(timer);
   }, []);
 
-  // Don't show on the Career AI page itself
-  if (location.pathname === '/learner/career-ai') {
+  // Keep the course tutor composer clear while its panel is open.
+  if (tutorOpen || location.pathname === '/learner/career-ai') {
     return null;
   }
 
