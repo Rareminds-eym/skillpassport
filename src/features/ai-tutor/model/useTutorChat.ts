@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import {
   ChatMessage,
   Conversation,
@@ -45,6 +45,7 @@ export interface UseTutorChatReturn {
   conversations: Conversation[];
   suggestedQuestions: string[];
   sendMessage: (content: string) => Promise<void>;
+  stopGeneration: () => void;
   editMessage: (messageId: string, newContent: string) => Promise<void>;
   loadConversation: (conversationId: string) => Promise<void>;
   startNewConversation: () => void;
@@ -61,6 +62,9 @@ export function useTutorChat({
   lessonPlanConfig,
   onGenerationUsageUpdate
 }: UseTutorChatOptions): UseTutorChatReturn {
+  const activeRequestRef = useRef<AbortController | null>(null);
+  const stopGeneration = useCallback(() => activeRequestRef.current?.abort(), []);
+  useEffect(() => () => { activeRequestRef.current?.abort(); }, []);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -109,6 +113,8 @@ export function useTutorChat({
   const handleSendMessage = useCallback(async (content: string) => {
     if (!content.trim() || isStreaming) return;
 
+    const requestController = new AbortController();
+    activeRequestRef.current = requestController;
     setError(null);
     setIsLoading(true);
     setIsStreaming(true);
@@ -127,6 +133,7 @@ export function useTutorChat({
     const assistantMessage: ChatMessage = {
       id: assistantMessageId,
       role: 'assistant',
+      status: 'streaming',
       content: '',
       timestamp: new Date()
     };
@@ -141,11 +148,12 @@ export function useTutorChat({
         message: content.trim(),
         worksheetConfig,  // Pass worksheet config to API
         lessonPlanConfig  // Pass lesson plan config to API
-      });
+      }, requestController.signal);
 
       setCurrentReasoning('');
 
       for await (const chunk of generator) {
+        requestController.signal.throwIfAborted();
         if (chunk.type === 'reasoning' && chunk.reasoning) {
           // AI is thinking/reasoning
           setIsReasoning(true);
@@ -161,6 +169,7 @@ export function useTutorChat({
             )
           );
         } else if (chunk.type === 'done') {
+          setMessages(prev => prev.map(msg => msg.id === assistantMessageId ? { ...msg, status: 'complete' } : msg));
           // Stream complete
           if (chunk.generationUsage) {
             onGenerationUsageUpdate?.(chunk.generationUsage);
@@ -180,10 +189,11 @@ export function useTutorChat({
         refreshConversations();
       }
     } catch (err: unknown) {
-      setError(getErrorMessage(err, 'Failed to send message'));
-      // Remove the empty assistant message on error
-      setMessages(prev => prev.filter(msg => msg.id !== assistantMessageId));
+      if (!requestController.signal.aborted) setError(getErrorMessage(err, 'Failed to send message'));
+      // Keep generated material available for export when persistence fails.
+      setMessages(prev => prev.filter(msg => msg.id !== assistantMessageId || msg.content.trim()).map(msg => msg.id === assistantMessageId ? { ...msg, status: requestController.signal.aborted ? 'stopped' as const : 'failed' as const } : msg));
     } finally {
+      if (activeRequestRef.current === requestController) activeRequestRef.current = null;
       setIsLoading(false);
       setIsStreaming(false);
       setIsReasoning(false);
@@ -238,6 +248,8 @@ export function useTutorChat({
     const message = messages[messageIndex];
     if (message.role !== 'user') return;
 
+    const requestController = new AbortController();
+    activeRequestRef.current = requestController;
     setError(null);
     setIsLoading(true);
     setIsStreaming(true);
@@ -256,6 +268,7 @@ export function useTutorChat({
     const assistantMessage: ChatMessage = {
       id: assistantMessageId,
       role: 'assistant',
+      status: 'streaming',
       content: '',
       timestamp: new Date()
     };
@@ -270,11 +283,12 @@ export function useTutorChat({
         message: newContent.trim(),
         worksheetConfig,  // Pass worksheet config to API
         lessonPlanConfig  // Pass lesson plan config to API
-      });
+      }, requestController.signal);
 
       setCurrentReasoning('');
 
       for await (const chunk of generator) {
+        requestController.signal.throwIfAborted();
         if (chunk.type === 'reasoning' && chunk.reasoning) {
           setIsReasoning(true);
           setCurrentReasoning(prev => prev + chunk.reasoning);
@@ -288,6 +302,7 @@ export function useTutorChat({
             )
           );
         } else if (chunk.type === 'done') {
+          setMessages(prev => prev.map(msg => msg.id === assistantMessageId ? { ...msg, status: 'complete' } : msg));
           if (chunk.generationUsage) {
             onGenerationUsageUpdate?.(chunk.generationUsage);
           }
@@ -305,9 +320,10 @@ export function useTutorChat({
         refreshConversations();
       }
     } catch (err: unknown) {
-      setError(getErrorMessage(err, 'Failed to regenerate response'));
-      setMessages(prev => prev.filter(msg => msg.id !== assistantMessageId));
+      if (!requestController.signal.aborted) setError(getErrorMessage(err, 'Failed to regenerate response'));
+      setMessages(prev => prev.filter(msg => msg.id !== assistantMessageId || msg.content.trim()).map(msg => msg.id === assistantMessageId ? { ...msg, status: requestController.signal.aborted ? 'stopped' as const : 'failed' as const } : msg));
     } finally {
+      if (activeRequestRef.current === requestController) activeRequestRef.current = null;
       setIsLoading(false);
       setIsStreaming(false);
       setIsReasoning(false);
@@ -371,6 +387,7 @@ export function useTutorChat({
     conversations,
     suggestedQuestions,
     sendMessage: handleSendMessage,
+    stopGeneration,
     editMessage: handleEditMessage,
     loadConversation,
     startNewConversation,

@@ -37,6 +37,8 @@ export interface WorksheetConfig {
   
   /** Difficulty level */
   difficulty: DifficultyLevel;
+  /** Selected levels; questionCount applies to each. Omitted for legacy clients. */
+  difficultyLevels?: DifficultyLevel[];
   
   /** Specific grade level (e.g., "9-12", "College") */
   gradeLevel?: string;

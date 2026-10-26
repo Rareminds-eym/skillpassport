@@ -108,6 +108,16 @@ export const handleAiTutorChat = async (context: TypedContext) => {
     return apiError(400, 'VALIDATION_ERROR', 'Missing required fields: courseId and message', request);
   }
 
+  if (worksheetConfig) {
+    const levels = worksheetConfig.difficultyLevels ?? [worksheetConfig.difficulty];
+    if (!Array.isArray(levels) || levels.length < 1 || levels.length > 3 ||
+        levels.some(level => !['low', 'medium', 'high'].includes(level)) ||
+        new Set(levels).size !== levels.length || !Number.isInteger(worksheetConfig.questionCount) ||
+        worksheetConfig.questionCount < 5 || worksheetConfig.questionCount > 30) {
+      return apiError(400, 'VALIDATION_ERROR', 'Select one to three distinct difficulty levels and 5 to 30 questions per level.', request);
+    }
+  }
+
   // Check if AI is configured
   const { openRouter: openRouterKey } = getAPIKeys(env);
   if (!openRouterKey) {
@@ -234,9 +244,15 @@ export const handleAiTutorChat = async (context: TypedContext) => {
     const encoder = new TextEncoder();
     let fullResponse = '';
 
+    const generationAbort = new AbortController();
+    const abortGeneration = () => generationAbort.abort();
+    request.signal.addEventListener('abort', abortGeneration, { once: true });
+    if (request.signal.aborted) abortGeneration();
+    const providerSignal = () => AbortSignal.any([generationAbort.signal, AbortSignal.timeout(120000)]);
     const stream = new ReadableStream({
       async start(controller) {
         try {
+          generationAbort.signal.throwIfAborted();
           // Check if two-pass prompting is enabled for lesson plans
           const useTwoPass = isLessonPlanGeneration && lessonPlanConfig?.useTwoPass;
 
@@ -254,6 +270,7 @@ export const handleAiTutorChat = async (context: TypedContext) => {
                 'HTTP-Referer': env.SUPABASE_URL ?? '',
                 'X-Title': 'AI Course Tutor - Lesson Plan Outline'
               },
+              signal: providerSignal(),
               body: JSON.stringify({
                 model: chatModel,
                 messages: [{ role: 'user', content: outlinePrompt }],
@@ -303,6 +320,7 @@ export const handleAiTutorChat = async (context: TypedContext) => {
                 'HTTP-Referer': env.SUPABASE_URL ?? '',
                 'X-Title': 'AI Course Tutor - Lesson Plan'
               },
+              signal: providerSignal(),
               body: JSON.stringify({
                 model: chatModel,
                 messages: [{ role: 'user', content: finalPrompt }],
@@ -331,7 +349,9 @@ export const handleAiTutorChat = async (context: TypedContext) => {
 
             // Stream final lesson plan to client
             while (true) {
-              const { done, value } = await reader.read();
+              generationAbort.signal.throwIfAborted();
+                  const { done, value } = await reader.read();
+                  generationAbort.signal.throwIfAborted();
               if (done) break;
 
               buffer += decoder.decode(value, { stream: true });
@@ -359,71 +379,88 @@ export const handleAiTutorChat = async (context: TypedContext) => {
 
             logger.info('Two-pass lesson plan complete', { responseLength: fullResponse.length });
           } else {
-            // SINGLE-PASS MODE: Original implementation
-            // Call OpenRouter with streaming
-            const response = await fetch(endpoint, {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${openRouterKey}`,
-                'Content-Type': 'application/json',
-                'HTTP-Referer': env.SUPABASE_URL ?? '',
-                'X-Title': 'AI Course Tutor'
-              },
-              body: JSON.stringify({
-                model: chatModel,
-                messages: aiMessages,
-                stream: true,
-                max_tokens: maxTokens,
-                temperature: phaseParams.temperature
-              })
-            });
-
-            if (!response.ok) {
-              logger.error('OpenRouter error', new Error(`HTTP ${response.status}`));
-              controller.enqueue(encoder.encode(`event: error\ndata: ${JSON.stringify({ error: 'AI service error' })}\n\n`));
-              controller.close();
-              return;
-            }
-
-            const reader = response.body?.getReader();
-            if (!reader) {
-              controller.enqueue(encoder.encode(`event: error\ndata: ${JSON.stringify({ error: 'No response stream' })}\n\n`));
-              controller.close();
-              return;
-            }
-
-            const decoder = new TextDecoder();
-            let buffer = '';
-
-            // Stream tokens to client
-            while (true) {
-              const { done, value } = await reader.read();
-              if (done) break;
-
-              buffer += decoder.decode(value, { stream: true });
-              const lines = buffer.split('\n');
-              buffer = lines.pop() || '';
-
-              for (const line of lines) {
-                if (line.startsWith('data: ')) {
-                  const data = line.slice(6);
-                  if (data === '[DONE]') continue;
-
-                  try {
-                    const parsed = JSON.parse(data);
-                    const content = parsed.choices?.[0]?.delta?.content;
-                    if (content) {
-                      fullResponse += content;
-                      controller.enqueue(encoder.encode(`event: token\ndata: ${JSON.stringify({ content })}\n\n`));
-                    }
-                  } catch {
-                    // Skip invalid JSON
-                  }
+            // Generate each selected level separately so its count and output budget
+            // do not compete with the other levels. Persist one completed material.
+            const levels = isWorksheetGeneration
+              ? (worksheetConfig!.difficultyLevels ?? [worksheetConfig!.difficulty])
+              : [undefined];
+            const labels = { low: 'Beginner', medium: 'Intermediate', high: 'Advanced' };
+            for (const level of levels) {
+              generationAbort.signal.throwIfAborted();
+              const levelMessages = level ? [
+                { role: 'system', content: buildSystemPrompt(courseContext, conversationPhase, userRole,
+                  { ...worksheetConfig!, difficulty: level, difficultyLevels: undefined }, undefined) },
+                ...recentMessages.map(item => ({ role: item.role, content: item.content })),
+                { role: 'user', content: `${message}\nFor this section generate exactly ${worksheetConfig!.questionCount} questions at ${labels[level]} difficulty only. Other selected levels are generated separately.` },
+              ] : aiMessages;
+              const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${openRouterKey}`,
+                  'Content-Type': 'application/json',
+                  'HTTP-Referer': env.SUPABASE_URL ?? '',
+                  'X-Title': 'AI Course Tutor',
+                },
+                body: JSON.stringify({
+                  model: chatModel, messages: levelMessages, stream: true,
+                  max_tokens: level ? Math.min(8000, Math.max(2000, worksheetConfig!.questionCount * 250)) : maxTokens,
+                  temperature: phaseParams.temperature,
+                }),
+                signal: providerSignal(),
+              });
+              if (!response.ok) {
+                logger.error('OpenRouter error', new Error(`HTTP ${response.status}`));
+                throw new Error('AI generation failed. Please try again.');
+              }
+              const reader = response.body?.getReader();
+              if (!reader) throw new Error('No response stream');
+              if (level) {
+                const heading = `\n\n## ${labels[level]} - ${worksheetConfig!.questionCount} questions\n\n`;
+                fullResponse += heading;
+                controller.enqueue(encoder.encode(`event: token\ndata: ${JSON.stringify({ content: heading })}\n\n`));
+              }
+              const decoder = new TextDecoder();
+              let buffer = '';
+              let providerCompleted = false;
+              let sectionContent = '';
+              const processLine = (line: string) => {
+                if (!line.startsWith('data: ')) return;
+                const data = line.slice(6).trim();
+                if (data === '[DONE]') { providerCompleted = true; return; }
+                let parsed;
+                try { parsed = JSON.parse(data); } catch { throw new Error('The AI returned an invalid response.'); }
+                if (parsed.error) throw new Error('The AI response failed before completion.');
+                const choice = parsed.choices?.[0];
+                if (choice?.finish_reason === 'length') throw new Error('The material exceeded the response limit. Reduce the question count and try again.');
+                if (choice?.finish_reason === 'content_filter') throw new Error('The AI could not complete this material.');
+                const content = choice?.delta?.content;
+                if (content) {
+                  sectionContent += content;
+                  fullResponse += content;
+                  controller.enqueue(encoder.encode(`event: token\ndata: ${JSON.stringify({ content })}\n\n`));
                 }
+                if (choice?.finish_reason === 'stop') providerCompleted = true;
+              };
+              try {
+                while (true) {
+                  generationAbort.signal.throwIfAborted();
+                  const { done, value } = await reader.read();
+                  generationAbort.signal.throwIfAborted();
+                  buffer += done ? decoder.decode() : decoder.decode(value, { stream: true });
+                  const lines = buffer.split('\n');
+                  buffer = lines.pop() || '';
+                  for (const line of lines) processLine(line);
+                  if (done) { if (buffer.trim()) processLine(buffer); break; }
+                }
+                if (!providerCompleted || !sectionContent.trim()) throw new Error('The AI response ended before the material was complete.');
+              } finally {
+                await reader.cancel().catch(() => {});
+                reader.releaseLock();
               }
             }
           }
 
+          generationAbort.signal.throwIfAborted();
           // Create assistant message
           const assistantMessageId = crypto.randomUUID();
           const assistantMessage: StoredMessage = {
@@ -446,7 +483,7 @@ export const handleAiTutorChat = async (context: TypedContext) => {
 
             if (updateError) {
               logger.error('Failed to append messages', updateError);
-              // Continue anyway - the generation succeeded
+              throw new Error('The material was generated but could not be saved. Copy or export it before closing this page.');
             } else {
               logger.info('Updated conversation', { conversationId: currentConversationId });
             }
@@ -475,7 +512,7 @@ export const handleAiTutorChat = async (context: TypedContext) => {
                   max_tokens: 60,
                   temperature: 0.5
                 }),
-                signal: titleAbortController.signal
+                signal: AbortSignal.any([generationAbort.signal, titleAbortController.signal])
               });
 
               clearTimeout(titleTimeoutId);
@@ -503,7 +540,8 @@ export const handleAiTutorChat = async (context: TypedContext) => {
               logger.warn('Title generation failed, using default', { error: error instanceof Error ? error.message : String(error) });
             }
 
-            const { data: newConv } = await supabase
+            generationAbort.signal.throwIfAborted();
+            const { data: newConv, error: insertError } = await supabase
               .from('tutor_conversations')
               .insert({
                 learner_id: learnerId,
@@ -514,6 +552,11 @@ export const handleAiTutorChat = async (context: TypedContext) => {
               })
               .select('id')
               .single();
+
+            if (insertError || !newConv) {
+              logger.error('Failed to save conversation', insertError ?? new Error('No conversation returned'));
+              throw new Error('The material was generated but could not be saved. Copy or export it before closing this page.');
+            }
 
             if (newConv) {
               currentConversationId = newConv.id;
@@ -543,14 +586,18 @@ export const handleAiTutorChat = async (context: TypedContext) => {
           controller.close();
 
         } catch (error: unknown) {
+          if (generationAbort.signal.aborted) return;
           logger.error('Streaming error', error instanceof Error ? error : new Error(String(error)));
           const errorMessage = error instanceof Error ? error.message : 'Stream processing error';
           controller.enqueue(encoder.encode(`event: error\ndata: ${JSON.stringify({
             error: errorMessage
           })}\n\n`));
           controller.close();
+        } finally {
+          request.signal.removeEventListener('abort', abortGeneration);
         }
-      }
+      },
+      cancel() { abortGeneration(); }
     });
 
     return new Response(stream, {

@@ -13,6 +13,7 @@ const API_URL = getApiUrl('ai-tutor');
 // ==================== TYPES ====================
 
 export interface ChatMessage {
+  status?: 'streaming' | 'complete' | 'failed' | 'stopped';
   id: string;
   role: 'user' | 'assistant';
   content: string;
@@ -112,12 +113,13 @@ export interface StreamChunk {
  * Send a message to the AI tutor with streaming response
  * Returns an async generator that yields content and reasoning chunks
  */
-export async function* sendMessage(request: ChatRequest): AsyncGenerator<StreamChunk, void, unknown> {
+export async function* sendMessage(request: ChatRequest, signal?: AbortSignal): AsyncGenerator<StreamChunk, void, unknown> {
   const response = await ssoClient.fetch(
     `${API_URL}/chat`,
     {
       method: 'POST',
-            body: JSON.stringify(request),
+      body: JSON.stringify(request),
+      signal,
     }
   );
 
@@ -134,8 +136,13 @@ export async function* sendMessage(request: ChatRequest): AsyncGenerator<StreamC
   let buffer = '';
   let currentEventType = '';
 
+  const cancelReader = () => { void reader.cancel().catch(() => {}); };
+  signal?.addEventListener('abort', cancelReader, { once: true });
+  try {
   while (true) {
+    signal?.throwIfAborted();
     const { done, value } = await reader.read();
+    signal?.throwIfAborted();
     if (done) break;
 
     buffer += decoder.decode(value, { stream: true });
@@ -151,6 +158,15 @@ export async function* sendMessage(request: ChatRequest): AsyncGenerator<StreamC
 
       if (line.startsWith('data: ')) {
         const data = line.slice(6);
+        if (currentEventType === 'error') {
+          let streamError: { error?: string };
+          try {
+            streamError = JSON.parse(data);
+          } catch {
+            throw new Error('The AI response failed. Please try again.');
+          }
+          throw new Error(streamError.error || 'The AI response failed. Please try again.');
+        }
         try {
           const parsed = JSON.parse(data);
 
@@ -177,6 +193,11 @@ export async function* sendMessage(request: ChatRequest): AsyncGenerator<StreamC
         }
       }
     }
+  }
+  } finally {
+    signal?.removeEventListener('abort', cancelReader);
+    await reader.cancel().catch(() => {});
+    reader.releaseLock();
   }
 }
 

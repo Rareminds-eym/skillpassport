@@ -14,6 +14,8 @@ export type DifficultyLevel =
 export interface WorksheetConfig {
   templateType: WorksheetTemplateType;
   difficulty: DifficultyLevel;
+  /** Selected levels; questionCount applies to each. Omitted for legacy clients. */
+  difficultyLevels?: DifficultyLevel[];
   gradeLevel?: string;
   questionCount: number;
   includeAnswerKey: boolean;
