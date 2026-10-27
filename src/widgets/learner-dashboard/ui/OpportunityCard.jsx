@@ -1,152 +1,203 @@
-import React from 'react';
-import { MapPin, Bookmark } from 'lucide-react';
+import { ArrowUpRight, Bookmark, Briefcase, Eye, MapPin } from 'lucide-react';
+import { LearningEligibilityPanel } from '@/features/opportunities/ui/LearningEligibilityPanel';
+import {
+  applicationState,
+  jobSalary,
+  jobTitle,
+  opportunityText,
+} from '@/features/opportunities/lib/presentation';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/shared/ui/tooltip';
 
-const OpportunityCard = ({ 
-  opportunity, 
-  onClick, 
-  isSelected, 
+const avatarTones = [
+  'border-blue-100 bg-blue-50 text-blue-700',
+  'border-teal-100 bg-teal-50 text-teal-700',
+  'border-amber-100 bg-amber-50 text-amber-800',
+  'border-indigo-100 bg-indigo-50 text-indigo-700',
+];
+
+const OpportunityCard = ({
+  opportunity,
+  onClick,
+  isSelected,
   isApplied = false,
+  isApplying = false,
   isSaved = false,
-  onToggleSave
+  onToggleSave,
+  onApply,
+  learnerData,
+  list = false,
 }) => {
-  const getInitials = (name) => {
-    if (!name) return '??';
-    return name
-      .split(' ')
-      .map(word => word[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
-  };
-
-  const getDisplayName = () => {
-    return opportunity.company_name || opportunity.job_title || opportunity.title || 'Unknown';
-  };
-
-  const formatSalary = (min, max) => {
-    if (!min && !max) return null;
-    if (min && max) return `₹ ${min.toLocaleString()} - ₹ ${max.toLocaleString()}`;
-    if (min) return `₹ ${min.toLocaleString()}+`;
-    return `Up to ₹ ${max.toLocaleString()}`;
-  };
-
-  // Generate consistent color based on company name
-  const getColorFromName = (name) => {
-    if (!name) return '#6B7280';
-    const colors = [
-      '#3B82F6', // blue
-      '#EC4899', // pink
-      '#06B6D4', // cyan
-      '#84CC16', // lime
-      '#8B5CF6', // purple
-      '#F59E0B', // amber
-      '#10B981', // emerald
-      '#EF4444', // red
+  const title = jobTitle(opportunity);
+  const company =
+    opportunityText(opportunity.company_name) || 'Company not specified';
+  const avatarTone =
+    avatarTones[
+      Array.from(company).reduce(
+        (sum, letter) => sum + letter.codePointAt(0),
+        0,
+      ) % avatarTones.length
     ];
-    const index = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    return colors[index % colors.length];
-  };
-
-  const salary = formatSalary(opportunity.salary_range_min, opportunity.salary_range_max);
-  const displayName = getDisplayName();
-  const logoColor = getColorFromName(displayName);
-
-  const handleSaveClick = (e) => {
-    e.stopPropagation(); // Prevent card click
-    if (onToggleSave) {
-      onToggleSave(opportunity);
-    }
-  };
+  const state = applicationState(opportunity, {
+    isApplied,
+    isApplying,
+    learnerData,
+  });
+  const salary = jobSalary(opportunity);
+  const hasSalary =
+    opportunity.salary_range_min != null ||
+    opportunity.salary_range_max != null;
+  const hasLearning =
+    opportunity.learning_requirements?.length ||
+    opportunity.learning_eligibility;
+  const tags = [
+    ...new Set(
+      [
+        opportunity.employment_type,
+        opportunity.mode,
+        opportunity.experience_level,
+      ]
+        .filter(Boolean)
+        .map(opportunityText),
+    ),
+  ];
+  const iconButton =
+    'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-colors hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600';
 
   return (
-    <div
-      className="bg-white rounded-lg sm:rounded-xl p-3 sm:p-6 cursor-pointer transition-all duration-200 relative shadow-sm hover:shadow-md border border-gray-100"
-      onClick={onClick}
-    >
-      {/* Bookmark Button */}
-      {onToggleSave && (
-        <button
-          onClick={handleSaveClick}
-          className="absolute top-2 left-2 p-2 rounded-full bg-white shadow-sm hover:shadow-md transition-all"
-          title={isSaved ? 'Unsave job' : 'Save job'}
-        >
-          <Bookmark
-            className={`w-4 h-4 sm:w-5 sm:h-5 transition-all ${
-              isSaved ? 'fill-blue-600 text-blue-600' : 'text-gray-400 hover:text-blue-600'
-            }`}
-          />
-        </button>
-      )}
-      
-      {/* Applied Badge */}
-      {isApplied && (
-        <div className="absolute top-2 right-2 z-10 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full">
-          ✓ Applied
-        </div>
-      )}
-      <div className="flex flex-col items-center text-center space-y-2.5 sm:space-y-4">
-        {/* Company Logo */}
-        <div 
-          className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center text-white font-bold text-lg sm:text-xl shadow-sm"
-          style={{ backgroundColor: opportunity.company_logo ? 'transparent' : logoColor }}
-        >
-          {opportunity.company_logo ? (
-            <img 
-              src={opportunity.company_logo} 
-              alt={displayName}
-              className="w-full h-full object-cover rounded-2xl"
-            />
-          ) : (
-            <div className="w-10 h-10 bg-white bg-opacity-30 rounded-full flex items-center justify-center">
-              <span className="text-sm">{getInitials(displayName)}</span>
-            </div>
+    <TooltipProvider delayDuration={250}>
+      <article
+        className={`group flex h-full min-w-0 flex-col rounded-xl border bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.03)] transition-[border-color,box-shadow] ${isSelected ? 'border-blue-400 ring-1 ring-blue-100' : 'border-slate-200 hover:border-slate-300 hover:shadow-[0_4px_14px_rgba(15,23,42,0.06)]'} ${list ? 'w-full' : ''}`}
+      >
+        <div className="flex items-start gap-3">
+          <div
+            aria-hidden="true"
+            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border text-xs font-semibold tracking-wide ${avatarTone}`}
+          >
+            {company.slice(0, 2).toUpperCase()}
+          </div>
+          <div className="min-w-0 flex-1">
+            <h3 className="text-base font-semibold leading-6 text-slate-950">
+              <button
+                type="button"
+                onClick={onClick}
+                aria-label={`View details for ${title}`}
+                aria-current={isSelected ? 'true' : undefined}
+                title={title}
+                className="line-clamp-2 break-words text-left hover:text-blue-700 focus-visible:rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+              >
+                {title}
+              </button>
+            </h3>
+            <p
+              className="mt-1 break-words text-sm leading-5 text-slate-600"
+              title={company}
+            >
+              {company}
+            </p>
+          </div>
+          {onToggleSave && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => onToggleSave(opportunity)}
+                  aria-label={isSaved ? `Unsave ${title}` : `Save ${title}`}
+                  aria-pressed={isSaved}
+                  className={`${iconButton} ${isSaved ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-transparent'}`}
+                >
+                  <Bookmark
+                    size={16}
+                    className={isSaved ? 'fill-blue-600 text-blue-600' : ''}
+                  />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {isSaved ? 'Remove from saved jobs' : 'Save job'}
+              </TooltipContent>
+            </Tooltip>
           )}
         </div>
-
-        {/* Job Title */}
-        <h3 className="font-semibold text-gray-900 text-base sm:text-lg leading-tight">
-          {opportunity.job_title || opportunity.title}
-        </h3>
-
-        {/* Company Name - Only show if exists */}
-        {opportunity.company_name && (
-          <p className="text-xs sm:text-sm text-gray-600">
-            {opportunity.company_name}
-          </p>
-        )}
-
-        {/* Location */}
-        {opportunity.location && (
-          <div className="flex items-center justify-center gap-1.5 text-xs sm:text-sm text-gray-500">
-            <MapPin className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-            <span>{opportunity.location}</span>
-          </div>
-        )}
-
-        {/* Salary */}
-        {salary && (
-          <div className="flex items-center justify-center gap-1.5 text-xs sm:text-sm text-gray-500">
-            <span>{salary}</span>
-          </div>
-        )}
-
-        {/* Openings Count */}
-        {opportunity.openings_count !== null && opportunity.openings_count !== undefined && (
-          <div className="mt-2 px-3 py-1.5 bg-gradient-to-r from-indigo-50 to-blue-50 rounded-full">
-            <span className="text-xs font-semibold text-indigo-700">
-              {opportunity.openings_count === 0 ? (
-                '🔒 No openings'
-              ) : opportunity.openings_count === 1 ? (
-                '1 opening'
-              ) : (
-                `${opportunity.openings_count} openings`
-              )}
+        <div className="mb-3 mt-3 space-y-2.5">
+          <div className="flex min-w-0 items-start gap-1.5 text-sm leading-5 text-slate-600">
+            <MapPin size={13} aria-hidden="true" className="mt-1 shrink-0" />
+            <span className="break-words">
+              {opportunityText(opportunity.location) ||
+                'Location not specified'}
             </span>
           </div>
-        )}
-      </div>
-    </div>
+          {tags.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {tags.map((tag, index) => (
+                <span
+                  key={tag}
+                  className={`inline-flex max-w-full items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-medium leading-4 ${tag.toLowerCase() === 'remote' ? 'border-blue-100 bg-blue-50 text-blue-700' : 'border-slate-100 bg-slate-50 text-slate-600'}`}
+                >
+                  {index === 0 && (
+                    <Briefcase
+                      size={13}
+                      aria-hidden="true"
+                      className="shrink-0"
+                    />
+                  )}
+                  <span className="break-words">{tag}</span>
+                </span>
+              ))}
+            </div>
+          )}
+          {hasLearning ? (
+            <LearningEligibilityPanel job={opportunity} compact />
+          ) : null}
+        </div>
+        <div className="mt-auto flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-3">
+          <p
+            className={`min-w-0 flex-[1_1_100px] break-words leading-5 ${hasSalary ? 'text-sm font-semibold tracking-tight text-slate-900' : 'text-sm text-slate-600'}`}
+          >
+            {salary}
+          </p>
+          <div className="flex min-w-0 max-w-full flex-wrap items-center justify-end gap-2">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={onClick}
+                  aria-label={`Details for ${title}`}
+                  className={iconButton}
+                >
+                  <Eye size={16} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>View job details</TooltipContent>
+            </Tooltip>
+            {onApply ? (
+              <button
+                type="button"
+                onClick={onApply}
+                disabled={state.disabled}
+                className="inline-flex min-h-9 max-w-full items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-600"
+              >
+                <span className="break-words">{state.label}</span>
+                {!state.disabled && (
+                  <ArrowUpRight
+                    size={14}
+                    className="shrink-0"
+                    aria-hidden="true"
+                  />
+                )}
+              </button>
+            ) : isApplied ? (
+              <span className="text-sm font-medium text-emerald-700">
+                {state.label}
+              </span>
+            ) : null}
+          </div>
+        </div>
+      </article>
+    </TooltipProvider>
   );
 };
-
 export default OpportunityCard;

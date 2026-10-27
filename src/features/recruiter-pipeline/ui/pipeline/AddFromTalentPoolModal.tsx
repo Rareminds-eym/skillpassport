@@ -18,7 +18,7 @@ const logger = getLogger('AddFromTalentPoolModal');
 interface AddFromTalentPoolModalProps {
   isOpen: boolean;
   onClose: () => void;
-  requisitionId: number | null;
+  requisitionId: string | null;
   targetStage: string | null;
   onSuccess?: () => void;
 }
@@ -144,7 +144,7 @@ export const AddFromTalentPoolModal: React.FC<AddFromTalentPoolModalProps> = ({
               <h3 className="text-lg font-medium text-gray-900">Add Candidates from Talent Pool</h3>
               <p className="text-sm text-gray-500">Select candidates to add to {targetStage} stage</p>
             </div>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <button onClick={onClose} className="text-gray-600 hover:text-gray-600">
               <XMarkIcon className="h-6 w-6" />
             </button>
           </div>
@@ -158,7 +158,7 @@ export const AddFromTalentPoolModal: React.FC<AddFromTalentPoolModalProps> = ({
           {/* Search */}
           <div className="mb-4">
             <div className="relative">
-              <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-600" />
               <input
                 type="text"
                 value={searchQuery}

@@ -2,6 +2,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Opportunity, LearnerProfile, StoredMessage } from '../types';
+import { eligibleJobs, stringSkills } from '../../../lib/job-recommendations';
 
 interface FetchContext {
   userMessage: string;
@@ -14,7 +15,6 @@ interface FetchContext {
 interface OpportunityFilters {
   location?: string;
   employmentType?: string;
-  experienceLevel?: string;
   skills?: string[];
   searchQuery?: string;
   limit?: number;
@@ -157,15 +157,7 @@ JSON:`;
       filters.employmentType = aiResponse.employmentType;
     }
 
-    // Experience level from profile
-    const experienceCount = learnerProfile.experience?.length || 0;
-    if (experienceCount === 0) {
-      filters.experienceLevel = 'entry';
-    } else if (experienceCount <= 2) {
-      filters.experienceLevel = 'junior';
-    } else {
-      filters.experienceLevel = 'mid';
-    }
+    // Experience is not a hard retrieval filter; ranking/context can explain it.
 
     return filters;
 
@@ -180,7 +172,6 @@ JSON:`;
 
     return {
       searchQuery: topSkills.length > 0 ? topSkills.join(' ') : learnerProfile.department || '',
-      experienceLevel: learnerProfile.experience?.length === 0 ? 'entry' : 'junior',
       limit: 15
     };
   }
@@ -194,11 +185,11 @@ function buildQuery(
   supabase: SupabaseClient,
   filters: OpportunityFilters
 ) {
-  let query = supabase
+  let query = eligibleJobs(supabase
     .from('opportunities')
     .select('*')
     .eq('is_active', true)
-    .eq('status', 'open');
+    .eq('status', 'open'));
   
   // Location filter - flexible matching
   if (filters.location) {
@@ -239,9 +230,7 @@ function calculateMatchScore(
   if (learnerSkills.length === 0) return 0;
   
   let score = 0;
-  const requiredSkills = Array.isArray(opportunity.skills_required)
-    ? opportunity.skills_required
-    : [];
+  const requiredSkills = stringSkills(opportunity.skills_required);
   
   const learnerSkillsLower = learnerSkills.map(s => s.toLowerCase());
   const searchTermsLower = searchTerms.map(s => s.toLowerCase());
@@ -280,9 +269,7 @@ function matchesSearchTerms(opportunity: any, searchQuery: string): boolean {
   const location = (opportunity.location || '').toLowerCase();
   
   // Properly handle skills array
-  const skills = Array.isArray(opportunity.skills_required) 
-    ? opportunity.skills_required.map((s: string) => s.toLowerCase()).join(' ')
-    : '';
+  const skills = stringSkills(opportunity.skills_required).map(s => s.toLowerCase()).join(' ');
   
   const combinedText = `${title} ${description} ${company} ${location} ${skills}`;
   
@@ -319,7 +306,6 @@ export async function fetchSmartOpportunities(
           .slice(0, 3)
           .map(s => s.name)
           .join(' '),
-        experienceLevel: context.learnerProfile.experience?.length === 0 ? 'entry' : 'junior',
         limit: 15
       };
     } else {

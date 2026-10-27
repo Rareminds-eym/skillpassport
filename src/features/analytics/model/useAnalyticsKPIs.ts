@@ -1,7 +1,8 @@
-import { useEffect, useRef } from 'react';
+import { useUser } from '@/shared/model/authStore';
+import { useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getWSClient } from '@/shared/api/wsRealtimeClient';
-import type { FunnelRangePreset } from '@/features/educator-copilot';
+import { getAnalyticsKPIMetrics, type FunnelRangePreset } from '../api/analyticsService';
 import { queryKeys } from '@/shared/lib/queryKeys';
 
 interface UseAnalyticsKPIsOptions {
@@ -11,13 +12,15 @@ interface UseAnalyticsKPIsOptions {
 }
 
 export const useAnalyticsKPIs = ({ preset, startDate, endDate }: UseAnalyticsKPIsOptions) => {
+  const user = useUser();
   const queryClient = useQueryClient();
-  const channelRef = useRef<any>(null);
 
   const query = useQuery({
-    queryKey: queryKeys.analytics.kpis.data(preset, { startDate, endDate }),
+    queryKey: [...queryKeys.analytics.kpis.data(user?.id || ''), { preset, startDate, endDate }],
     queryFn: async () => {
-      return null;
+      const { data, error } = await getAnalyticsKPIMetrics(preset, startDate, endDate);
+      if (error) throw error;
+      return data;
     },
     refetchOnWindowFocus: false,
     staleTime: 10 * 1000,
@@ -55,6 +58,7 @@ export const useAnalyticsKPIs = ({ preset, startDate, endDate }: UseAnalyticsKPI
   return {
     data: query.data,
     isLoading: query.isLoading,
+    isFetching: query.isFetching,
     isError: query.isError,
     refetch: query.refetch,
   };

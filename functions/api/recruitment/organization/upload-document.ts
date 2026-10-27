@@ -3,7 +3,7 @@
  * Handles file uploads for verification documents and company assets to R2 storage
  */
 
-import { withAuth } from '../../../lib/auth';
+import { withAuth, getContextUser } from '../../../lib/auth';
 import { getServiceClient } from '../../../lib/supabase';
 import { verifyOrgAccess, PERMISSIONS } from '../../../lib/permissions';
 import { R2Client } from '../../storage/utils/r2-client';
@@ -25,7 +25,7 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
  * Upload a document to R2 storage
  */
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
-    const user = context.data.user;
+    const user = getContextUser(context);
     const env = context.env as PagesEnv;
     const supabase = getServiceClient(env as any);
 
@@ -42,7 +42,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
             }, { status: 400 });
         }
 
-        const access = await verifyOrgAccess(supabase, user.sub, orgId, PERMISSIONS.MANAGE_ORG_SETTINGS);
+        const access = await verifyOrgAccess(supabase, user.id, orgId, PERMISSIONS.MANAGE_TEAM);
         if (!access.allowed) {
             return access.error!;
         }
@@ -119,7 +119,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
  * Delete a document from R2 storage
  */
 export const onRequestDelete = withAuth(async (context: AuthenticatedContext) => {
-    const user = context.data.user;
+    const user = getContextUser(context);
     const env = context.env as PagesEnv;
     const supabase = getServiceClient(env as any);
 
@@ -133,7 +133,7 @@ export const onRequestDelete = withAuth(async (context: AuthenticatedContext) =>
         }, { status: 400 });
     }
 
-    const access = await verifyOrgAccess(supabase, user.sub, orgId, PERMISSIONS.MANAGE_ORG_SETTINGS);
+    const access = await verifyOrgAccess(supabase, user.id, orgId, PERMISSIONS.MANAGE_TEAM);
     if (!access.allowed) {
         return access.error!;
     }

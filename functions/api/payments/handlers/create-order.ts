@@ -123,7 +123,11 @@ export async function handleCreateOrder(context: AuthenticatedContext): Promise<
     if (body.amount === undefined || typeof body.amount !== 'number') {
       return apiError(400, 'VALIDATION_ERROR', 'amount is required and must be a number', context.request);
     }
-
+    if (!body.planId) {
+      // Without a plan reference the server cannot price-check; zero-value orders
+      // must never be creatable by omission.
+      return apiError(400, 'VALIDATION_ERROR', 'planId is required', context.request);
+    }
 
     const supabase = getServiceClient(env);
     const catalogPlan = await requireSelfServePlan(supabase, { plan_id: body.planId });
@@ -173,6 +177,14 @@ export async function handleCreateOrder(context: AuthenticatedContext): Promise<
       });
       await syncUserShadow(supabase, user.id, user.email);
       await syncSubscriptionCache(supabase, subscription, catalogPlan);
+      const { allocateInitialPlanCredits } = await import('../../../shared/lib/entitlement-service');
+      const allocation = await allocateInitialPlanCredits(
+        supabase, scope.organizationId || user.id, catalogPlan.id, isOrganization,
+        `Initial plan credit allocation for ${catalogPlan.plan_code}`, String(subscription.id),
+      );
+      if (!allocation.success) {
+        return apiError(503, 'ALLOCATION_ERROR', 'Unable to allocate plan credits. Please retry.', context.request);
+      }
       await completePlanSelection(supabase, user.id, catalogPlan.id);
       return apiSuccess({ isFreemium: true, data: {
         id: subscription.id, userId: user.id, planId: catalogPlan.id,
@@ -199,10 +211,14 @@ export async function handleCreateOrder(context: AuthenticatedContext): Promise<
         return apiError(403, 'PLAN_NOT_AVAILABLE', 'This plan is not available for this referral code.', context.request);
       }
 
+      // The catalog stage above already resolved planId by id OR plan_code —
+      // reuse that resolution here instead of re-querying by id only, which
+      // 404'd for code-addressed paid plans.
+      const paidPathPlanId = catalogPlan?.id || body.planId;
       const { data: dbPlan } = await supabase
         .from('plans_cache')
         .select('plan_code, name, business_type, pricing_matrix')
-        .eq('id', body.planId)
+        .eq('id', paidPathPlanId)
         .eq('is_active', true)
         .maybeSingle();
 

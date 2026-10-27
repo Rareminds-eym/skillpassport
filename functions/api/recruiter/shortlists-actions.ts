@@ -1,3 +1,4 @@
+import { getActiveOrgId, getOrgMemberUserIds } from '../../lib/org-ownership';
 import { withAuth, getContextUser } from '../../lib/auth';
 import { getServiceClient } from '../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
@@ -23,6 +24,10 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const { action } = body;
 
   if (action === 'list') {
+    const orgId = await getActiveOrgId(supabase, user);
+    if (!orgId) return apiError(403, 'FORBIDDEN', 'An active organization is required', context.request);
+    const members = await getOrgMemberUserIds(supabase, orgId);
+    if (!members.includes(user.id)) return apiError(403, 'FORBIDDEN', 'Active membership is required', context.request);
     const {
       searchQuery,
       advancedFilters = {},
@@ -34,10 +39,10 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       const baseSelect = from === 'shortlists'
         ? '*, shortlist_candidates(count)'
         : '*';
-      let query: any = supabase.from(from).select(baseSelect);
+      let query: any = supabase.from(from).select(baseSelect).eq('organization_id',orgId);
 
       if (searchQuery) {
-        const q = searchQuery.trim();
+        const q = String(searchQuery).trim().replace(/[(),%]/g, '');
         query = query.or(`name.ilike.%${q}%,description.ilike.%${q}%,created_by.ilike.%${q}%`);
       }
 
@@ -91,26 +96,25 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       } else if (sortField === 'share_expiry') {
         query = query.order('share_expiry', { ascending: asc, nullsFirst: !asc });
       } else {
-        query = query.order(sortField, { ascending: asc });
+        const safeField = ['created_date','name','updated_at','shared'].includes(sortField) ? sortField : 'created_date';
+        query = query.order(safeField, { ascending: asc });
       }
 
       return query;
     };
 
-    let usingView = true;
-    let { data, error } = await buildQuery('shortlists_with_counts');
-    if (error) {
-      usingView = false;
-      ({ data, error } = await buildQuery('shortlists'));
-    }
+    const usingView = false;
+    const { data, error } = await buildQuery('shortlists');
     if (error) return apiDbError(error, context.request);
 
     const rows = (data as any[]) || [];
-    const formatted = rows.map((item: any) => ({
+    let formatted = rows.map((item: any) => ({
       ...item,
       candidate_count: item.candidate_count ?? (item.shortlist_candidates?.[0]?.count ?? 0),
     }));
 
+    const ranges:Record<string,[number,number]>={'0':[0,0],'1-5':[1,5],'6-20':[6,20],'21-50':[21,50],'50+':[51,Infinity]};
+    const range=ranges[advancedFilters.candidateCountRange];if(range)formatted=formatted.filter(item=>item.candidate_count>=range[0]&&item.candidate_count<=range[1]);
     if (!usingView && sortField === 'candidate_count') {
       formatted.sort((a: any, b: any) => {
         const diff = (a.candidate_count || 0) - (b.candidate_count || 0);

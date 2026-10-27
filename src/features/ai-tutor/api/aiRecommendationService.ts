@@ -30,9 +30,10 @@ class AIRecommendationService {
       }
 
       // Generate fresh recommendations via Cloudflare Worker (falls back to edge function)
-      let data, error;
+      let data;
       try {
-        data = await careerApiService.getRecommendations(learnerId, { forceRefresh: true });
+        const envelope = await careerApiService.getRecommendations(learnerId, { forceRefresh });
+        data = envelope?.data || envelope;
       } catch (err: unknown) {
         logger.error('Error fetching recommendations', err instanceof Error ? err : new Error(String(err)));
         throw err;
@@ -46,7 +47,7 @@ class AIRecommendationService {
       return {
         success: true,
         recommendations: data?.recommendations || [],
-        cached: false,
+        cached: data?.cached === true,
         fallback: data?.fallback || false,
         reason: data?.reason
       };

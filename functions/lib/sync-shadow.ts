@@ -61,7 +61,12 @@ export async function syncSubscriptionCache(
       plan_amount: subscription.plan_amount,
       billing_cycle: subscription.billing_cycle,
       status: subscription.status,
-      features: subscription.features || (plan as Record<string, unknown>)?.base_features || [],
+      // H8: an empty subscription.features array (`[]` on self-serve org purchases) is
+      // truthy and previously shadowed base_features, wiping every feature at sync time.
+      // Only accept a NON-EMPTY array; otherwise fall back to the plan's base_features.
+      features: (Array.isArray(subscription.features) && subscription.features.length > 0)
+        ? subscription.features
+        : ((plan as Record<string, unknown>)?.base_features || []),
       subscription_start_date: subscription.subscription_start_date,
       subscription_end_date: subscription.subscription_end_date,
       is_organization_subscription: isOrg,
@@ -98,6 +103,14 @@ export async function syncPlanCache(
       display_order: plan.display_order,
       is_active: plan.is_active,
       product_id: plan.product_id || null,
+      plan_family: (plan.plan_family as string) || (
+        Array.isArray(plan.applicable_entities) && plan.applicable_entities.includes('recruitment')
+          ? 'recruiter'
+          : (Array.isArray(plan.applicable_entities) && plan.applicable_entities.some((e: string) => ['school', 'college', 'university', 'institution'].includes(e))
+              ? 'institution'
+              : 'individual')
+      ),
+      hierarchy_order: (plan.hierarchy_order as number) ?? (plan.display_order as number) ?? 0,
       synced_at: new Date().toISOString(),
       auth_updated_at: plan.updated_at,
     }, { onConflict: 'id' });

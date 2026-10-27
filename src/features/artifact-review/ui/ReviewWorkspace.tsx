@@ -73,6 +73,7 @@ function Queue() {
       <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-900">
         Artifact reviews
       </h1>
+      <Link to="/educator/learning-equivalencies" className="mt-3 inline-block text-sm font-medium text-blue-700 underline">Review equivalent learning evidence →</Link>
       <p className="mt-3 max-w-xl text-slate-600">
         Read the learner’s evidence, apply the rubric, and give clear next
         steps.

@@ -106,11 +106,11 @@ export async function buildlearnerTextFromDatabase(
     // Fetch ALL related data in parallel for maximum performance
     // This reduces total query time from ~500ms (sequential) to ~100ms (parallel)
     const [
-      { data: skills },
-      { data: certificates },
-      { data: projects },
-      { data: courseEnrollments },
-      { data: trainings }
+      { data: skills, error: skillsError },
+      { data: certificates, error: certificatesError },
+      { data: projects, error: projectsError },
+      { data: courseEnrollments, error: coursesError },
+      { data: trainings, error: trainingsError }
     ] = await Promise.all([
       // Fetch skills with proficiency levels
       supabase
@@ -120,6 +120,7 @@ export async function buildlearnerTextFromDatabase(
         .eq('enabled', true)
         .eq('approval_status', 'approved')
         .order('level', { ascending: false })
+        .order('id', { ascending: true })
         .limit(EMBEDDING_CONFIG.MAX_SKILLS),
       
       // Fetch certificates with full context including training join
@@ -133,6 +134,7 @@ export async function buildlearnerTextFromDatabase(
         .eq('enabled', true)
         .or('expiry_date.is.null,expiry_date.gte.now()')
         .eq('approval_status', 'approved')
+        .order('id', { ascending: true })
         .limit(EMBEDDING_CONFIG.MAX_CERTIFICATES),
       
       // Fetch projects with tech stacks
@@ -145,6 +147,7 @@ export async function buildlearnerTextFromDatabase(
         .eq('learner_id', learnerId)
         .eq('enabled', true)
         .eq('approval_status', 'approved')
+        .order('id', { ascending: true })
         .limit(EMBEDDING_CONFIG.MAX_PROJECTS),
       
       // Fetch course enrollments
@@ -152,7 +155,9 @@ export async function buildlearnerTextFromDatabase(
         .from('course_enrollments')
         .select('course_title, status, skills_acquired')
         .eq('learner_id', learnerId)
-        .in('status', ['completed', 'in_progress', 'active']),
+        .in('status', ['completed', 'in_progress', 'active'])
+        .order('id', { ascending: true })
+        .limit(EMBEDDING_CONFIG.MAX_COURSES),
       
       // Fetch trainings
       supabase
@@ -160,8 +165,13 @@ export async function buildlearnerTextFromDatabase(
         .select('title, organization, description, source, status, start_date, end_date')
         .eq('learner_id', learnerId)
         .eq('approval_status', 'approved')
+        .order('id', { ascending: true })
         .limit(EMBEDDING_CONFIG.MAX_TRAININGS)
     ]);
+
+    if ([skillsError, certificatesError, projectsError, coursesError, trainingsError].some(Boolean)) {
+      throw new EmbeddingError('Learner evidence is temporarily unavailable', 'API_ERROR');
+    }
 
     // ========== Build ENRICHED Embedding Text ==========
     const parts: string[] = [];

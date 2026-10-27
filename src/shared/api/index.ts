@@ -30,3 +30,5 @@ export * from './storageService';
 // - migration* services -> @/features/admin/api/
 // - streak* services -> @/features/learner-profile/api/
 // Import them directly from their feature locations
+
+export { apiGet } from './apiClient';

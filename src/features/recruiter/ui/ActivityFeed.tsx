@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import * as React from 'react';
+import { useState } from 'react';
 import {
   UserPlusIcon,
   BriefcaseIcon,
@@ -15,10 +16,10 @@ import {
 } from '@heroicons/react/24/outline';
 
 // Format relative time (e.g., "2 hours ago")
-const formatRelativeTime = (timestamp) => {
+const formatRelativeTime = (timestamp: string) => {
   const now = new Date();
   const activityTime = new Date(timestamp);
-  const diffMs = now - activityTime;
+  const diffMs = now.getTime() - activityTime.getTime();
   const diffSecs = Math.floor(diffMs / 1000);
   const diffMins = Math.floor(diffSecs / 60);
   const diffHours = Math.floor(diffMins / 60);
@@ -32,7 +33,7 @@ const formatRelativeTime = (timestamp) => {
 };
 
 // Get icon based on activity type
-const getActivityIcon = (iconType, type) => {
+const getActivityIcon = (iconType: string | undefined, type: string) => {
   const iconClass = 'h-4 w-4';
   
   switch (iconType || type) {
@@ -76,7 +77,7 @@ const getActivityIcon = (iconType, type) => {
 };
 
 // Get color based on activity type
-const getActivityColor = (type) => {
+const getActivityColor = (type: string) => {
   switch (type) {
     case 'offer_accepted':
     case 'placement':
@@ -118,7 +119,7 @@ interface ActivityItemProps {
     timestamp: string;
     type: string;
     icon?: string;
-    metadata?: any;
+    metadata?: { status?: string };
   };
   isLast: boolean;
 }
@@ -128,7 +129,7 @@ const ActivityItem: React.FC<ActivityItemProps> = ({ activity, isLast }) => {
 
   return (
     <li>
-      <div className="relative pb-8">
+      <div className={isLast ? "relative" : "relative pb-6"}>
         {!isLast && (
           <span
             className="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200"
@@ -141,9 +142,9 @@ const ActivityItem: React.FC<ActivityItemProps> = ({ activity, isLast }) => {
               {getActivityIcon(activity.icon, activity.type)}
             </span>
           </div>
-          <div className="flex min-w-0 flex-1 justify-between space-x-4 pt-1">
+          <div className="flex min-w-0 flex-1 flex-col gap-1 pt-1">
             <div className="min-w-0 flex-1">
-              <p className="text-sm text-gray-900">
+              <p className="break-words text-sm leading-6 text-gray-900 [overflow-wrap:anywhere]">
                 <span className="font-medium">{activity.user}</span>
                 {' '}
                 <span className="text-gray-600">{activity.action}</span>
@@ -164,7 +165,7 @@ const ActivityItem: React.FC<ActivityItemProps> = ({ activity, isLast }) => {
                 </span>
               )}
             </div>
-            <div className="whitespace-nowrap text-right text-xs text-gray-500">
+            <div className="text-xs text-gray-500">
               <time dateTime={activity.timestamp}>{formatRelativeTime(activity.timestamp)}</time>
             </div>
           </div>
@@ -175,7 +176,7 @@ const ActivityItem: React.FC<ActivityItemProps> = ({ activity, isLast }) => {
 };
 
 interface ActivityFeedProps {
-  activities: any[];
+  activities: ActivityItemProps['activity'][];
   loading?: boolean;
   onLoadMore?: () => void;
   hasMore?: boolean;
@@ -186,8 +187,7 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({
   activities = [], 
   loading = false,
   onLoadMore,
-  hasMore = false,
-  showRealtimeIndicator = false
+  hasMore = false
 }) => {
   const [filter, setFilter] = useState('all');
   
@@ -215,10 +215,10 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({
 
   if (!activities || activities.length === 0) {
     return (
-      <div className="text-center py-12">
-        <UserGroupIcon className="mx-auto h-12 w-12 text-gray-400" />
+      <div className="px-2 py-7 text-center">
+        <UserGroupIcon className="mx-auto h-9 w-9 text-gray-400" />
         <h3 className="mt-2 text-sm font-medium text-gray-900">No activities yet</h3>
-        <p className="mt-1 text-sm text-gray-500">
+        <p className="mt-1 text-sm leading-6 text-gray-500">
           Activities will appear here as your team works with candidates.
         </p>
       </div>
@@ -230,9 +230,10 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({
       {/* Filter */}
       <div className="mb-4">
         <select
+          aria-label="Filter recent activity"
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
-          className="block w-full rounded-md border-gray-300 py-2 pl-3 pr-10 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+          className="block min-h-11 w-full rounded-lg border border-gray-200 bg-white py-2 pl-3 pr-10 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
         >
           <option value="all">All Activities</option>
           <option value="shortlist">Shortlists</option>
@@ -245,7 +246,8 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({
       </div>
 
       {/* Activity List */}
-      <ul className="-mb-8">
+      {filteredActivities.length === 0 && <p role="status" className="py-6 text-center text-sm text-gray-500">No activity matches this filter.</p>}
+      <ul>
         {filteredActivities.map((activity, activityIdx) => (
           <ActivityItem
             key={activity.id}

@@ -1,23 +1,25 @@
-import { withAuth } from '../../../lib/auth';
+import { withAuth, getContextUser } from '../../../lib/auth';
 import { getServiceClient } from '../../../lib/supabase';
-import type { AuthenticatedContext } from '@rareminds-eym-auth/core';
-import { apiSuccess, apiDbError } from '../../../lib/response';
+type AuthenticatedContext = Parameters<PagesFunction>[0];
+import { apiSuccess, apiDbError, apiError } from '../../../lib/response';
+import { isValidUUID } from '../../../lib/validation';
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const startTime = Date.now();
-  const env = context.env as Record<string, string>;
+  const env = context.env as unknown as Record<string, string>;
   const supabase = getServiceClient(env as any);
 
   let body: any;
   try {
     body = await context.request.json();
   } catch {
-    return apiDbError(new Error('Invalid JSON body'), context.request, { startTime });
+    return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON body', context.request);
   }
 
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return apiError(400, 'VALIDATION_ERROR', 'Request body must be an object', context.request);
   const { action, ...params } = body;
   if (!action) {
-    return apiDbError(new Error('action is required'), context.request, { startTime });
+    return apiError(400, 'VALIDATION_ERROR', 'action is required', context.request);
   }
 
   try {
@@ -34,10 +36,16 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       // ─── OPPORTUNITY INTERACTIONS ─────────────────────────────────
 
       case 'track-interaction': {
-        const { learner_id, opportunity_id, action: interactionAction } = params;
-        if (!learner_id || !opportunity_id || !interactionAction) return apiDbError(new Error('learner_id, opportunity_id, action required'), context.request, { startTime });
+        const { learner_id, opportunity_id, interaction_type: interactionAction } = params;
+        if (!isValidUUID(learner_id) || !isValidUUID(opportunity_id) || !['view','save','apply','dismiss'].includes(interactionAction)) {
+          return apiError(400, 'VALIDATION_ERROR', 'Valid learner, opportunity and interaction_type required', context.request);
+        }
+        const actor = getContextUser(context);
+        const {data: own, error: identityError} = await supabase.from('learners').select('id, user_id').eq('user_id', actor.id).maybeSingle();
+        if (identityError) return apiError(503, 'PROFILE_UNAVAILABLE', 'Learner profile unavailable', context.request);
+        if (!own || ![own.id, own.user_id].includes(learner_id)) return apiError(403, 'FORBIDDEN', 'Only your own feedback may be recorded', context.request);
         const { error } = await supabase.from('opportunity_interactions').upsert({
-          learner_id, opportunity_id, action: interactionAction,
+          learner_id: own.user_id, opportunity_id, action: interactionAction,
         }, { onConflict: 'learner_id,opportunity_id,action' });
         if (error) return apiDbError(error, context.request, { startTime });
         return apiSuccess({ success: true }, context.request, { startTime });

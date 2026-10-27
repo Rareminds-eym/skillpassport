@@ -2,13 +2,26 @@
  * FeatureGate Component - Premium locked feature UI
  */
 
-import { ArrowLeft, ArrowRight, Check, Lock, Shield, Sparkles, X, Zap, AlertCircle } from 'lucide-react';
-import { useCallback, useMemo, useState } from 'react';
+import {
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  Lock,
+  X,
+  AlertCircle,
+} from 'lucide-react';
+import { useCallback, useRef, useState } from 'react';
+import * as Dialog from '@radix-ui/react-dialog';
+import '@/shared/ui/workflow-dialog.css';
+import { useUser } from '@/shared/model/authStore';
 import { useNavigate } from 'react-router-dom';
 
-import { clearFeatureAccessCache, useFeatureGate } from '@/features/subscription/model/useFeatureGate';
-import { addOnPaymentService } from '@/features/subscription';
-import { loadRazorpayScript } from '@/features/subscription/api';
+import {
+  clearFeatureAccessCache,
+  useFeatureGate,
+} from '@/features/subscription/model/useFeatureGate';
+import { addOnPaymentService } from '../../api/addOnPaymentService';
+import { loadRazorpayScript } from '../../api/razorpayService';
 
 import { useSubscription } from '@/features/subscription/model/subscriptionStore';
 export function FeatureGate({
@@ -18,9 +31,11 @@ export function FeatureGate({
   showUpgradePrompt = true,
   blurContent = false,
   className = '',
-  onUpgradeClick
+  embedded = false,
+  onUpgradeClick,
 }) {
-  const { hasAccess, isLoading, requiredAddOn, upgradePrice, error } = useFeatureGate(featureKey);
+  const { hasAccess, isLoading, requiredAddOn, upgradePrice, error } =
+    useFeatureGate(featureKey);
   const { purchaseAddOn, isPurchasing } = useSubscription();
   const [showModal, setShowModal] = useState(false);
 
@@ -34,7 +49,9 @@ export function FeatureGate({
 
   if (isLoading) {
     return (
-      <div className={`flex items-center justify-center min-h-[300px] ${className}`}>
+      <div
+        className={`flex items-center justify-center ${embedded ? 'min-h-20' : 'min-h-[300px]'} ${className}`}
+      >
         <div className="w-8 h-8 border-2 border-indigo-100 border-t-indigo-600 rounded-full animate-spin"></div>
       </div>
     );
@@ -43,10 +60,14 @@ export function FeatureGate({
   // Handle errors - default to denying access with error message
   if (error) {
     return (
-      <div className={`flex flex-col h-full min-h-[calc(100vh-200px)] p-8 ${className}`}>
-        <div className="mb-4">
-          <BackButton />
-        </div>
+      <div
+        className={`${embedded ? 'flex min-w-0 flex-col' : 'flex flex-col h-full min-h-[calc(100vh-200px)] p-8'} ${className}`}
+      >
+        {!embedded && (
+          <div className="mb-4">
+            <BackButton />
+          </div>
+        )}
         <div className="flex-1 flex items-center justify-center">
           <ErrorCard message="Unable to verify access. Please refresh the page." />
         </div>
@@ -69,25 +90,57 @@ export function FeatureGate({
             <BackButton />
           </div>
           <div className="flex-1 flex items-center justify-center">
-            <LockedCard featureKey={featureKey} addOn={requiredAddOn} upgradePrice={upgradePrice} showUpgradePrompt={showUpgradePrompt} onUpgradeClick={handleUpgradeClick} />
+            <LockedCard
+              featureKey={featureKey}
+              addOn={requiredAddOn}
+              upgradePrice={upgradePrice}
+              showUpgradePrompt={showUpgradePrompt}
+              onUpgradeClick={handleUpgradeClick}
+            />
           </div>
         </div>
-        {showModal && <PurchaseModal addOn={requiredAddOn} upgradePrice={upgradePrice} onClose={() => setShowModal(false)} onPurchase={purchaseAddOn} isPurchasing={isPurchasing} />}
+        {showModal && (
+          <PurchaseModal
+            addOn={requiredAddOn}
+            upgradePrice={upgradePrice}
+            onClose={() => setShowModal(false)}
+            onPurchase={purchaseAddOn}
+            isPurchasing={isPurchasing}
+          />
+        )}
       </div>
     );
   }
 
   return (
-    <div className={`flex flex-col h-full min-h-[calc(100vh-200px)] p-8 ${className}`}>
+    <div
+      className={`${embedded ? 'flex min-w-0 flex-col' : 'flex flex-col h-full min-h-[calc(100vh-200px)] p-8'} ${className}`}
+    >
       {/* Back button */}
-      <div className="mb-4">
-        <BackButton />
-      </div>
+      {!embedded && (
+        <div className="mb-4">
+          <BackButton />
+        </div>
+      )}
       {/* Centered card */}
       <div className="flex-1 flex items-center justify-center">
-        <LockedCard featureKey={featureKey} addOn={requiredAddOn} upgradePrice={upgradePrice} showUpgradePrompt={showUpgradePrompt} onUpgradeClick={handleUpgradeClick} />
+        <LockedCard
+          featureKey={featureKey}
+          addOn={requiredAddOn}
+          upgradePrice={upgradePrice}
+          showUpgradePrompt={showUpgradePrompt}
+          onUpgradeClick={handleUpgradeClick}
+        />
       </div>
-      {showModal && <PurchaseModal addOn={requiredAddOn} upgradePrice={upgradePrice} onClose={() => setShowModal(false)} onPurchase={purchaseAddOn} isPurchasing={isPurchasing} />}
+      {showModal && (
+        <PurchaseModal
+          addOn={requiredAddOn}
+          upgradePrice={upgradePrice}
+          onClose={() => setShowModal(false)}
+          onPurchase={purchaseAddOn}
+          isPurchasing={isPurchasing}
+        />
+      )}
     </div>
   );
 }
@@ -110,7 +163,7 @@ function BackButton() {
  */
 function ErrorCard({ message }) {
   const navigate = useNavigate();
-  
+
   return (
     <div className="w-full max-w-md">
       <div className="bg-white rounded-3xl shadow-2xl border-2 border-red-200 overflow-hidden">
@@ -125,9 +178,7 @@ function ErrorCard({ message }) {
           <h3 className="text-xl font-bold text-gray-900 mb-2">
             Access Verification Failed
           </h3>
-          <p className="text-gray-500 text-sm leading-relaxed">
-            {message}
-          </p>
+          <p className="text-gray-500 text-sm leading-relaxed">{message}</p>
         </div>
 
         {/* Actions */}
@@ -178,396 +229,344 @@ function LockedContentPlaceholder() {
   );
 }
 
-function LockedCard({ featureKey, addOn, upgradePrice, showUpgradePrompt, onUpgradeClick }) {
-  const monthlyPrice = upgradePrice?.monthly ? parseFloat(upgradePrice.monthly) : 0;
-  const annualPrice = upgradePrice?.annual ? parseFloat(upgradePrice.annual) : 0;
-  const savings = monthlyPrice > 0 && annualPrice > 0 ? Math.round(((monthlyPrice * 12 - annualPrice) / (monthlyPrice * 12)) * 100) : 0;
+function formatOfferPrice(offer) {
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: offer.currency,
+    maximumFractionDigits: offer.minor_unit,
+  }).format(Number(offer.amount_minor) / 10 ** offer.minor_unit);
+}
 
-  const benefits = {
-    career_ai: ['AI-powered career guidance', 'Personalized recommendations', 'Industry insights'],
-    video_portfolio: ['Professional video showcase', 'Easy hosting & sharing', 'Portfolio builder'],
-    educator_ai: ['AI teaching assistant', 'Content generation', 'Student insights'],
-    recruiter_ai: ['AI candidate matching', 'Smart screening', 'Talent insights'],
-    kpi_dashboard: ['Real-time metrics', 'Custom reports', 'Performance tracking'],
-    curriculum_builder: ['Drag & drop builder', 'Template library', 'Standards alignment'],
-    mentor_notes: ['Private student notes', 'Progress tracking', 'Intervention alerts'],
-    ai_job_matching: ['Smart job matching', 'Skill-based recommendations', 'Application tracking'],
-    talent_pool_access: ['Verified candidates', 'Advanced filters', 'Direct messaging'],
-    pipeline_management: ['Visual pipelines', 'Stage tracking', 'Team collaboration'],
-    project_hiring: ['Project-based hiring', 'Milestone tracking', 'Contract management'],
-  }[featureKey] || ['Premium features', 'Priority support', 'Regular updates'];
+function CatalogBenefits({ addOn }) {
+  return addOn?.benefits?.length ? (
+    <ul className="space-y-2.5">
+      {addOn.benefits.map((benefit) => (
+        <li
+          key={benefit}
+          className="flex items-start gap-2 text-sm leading-5 text-slate-600"
+        >
+          <Check size={16} className="mt-0.5 shrink-0 text-emerald-600" />
+          {benefit}
+        </li>
+      ))}
+    </ul>
+  ) : null;
+}
 
+function LockedCard({ addOn, showUpgradePrompt, onUpgradeClick }) {
+  const offer = addOn?.billing_options?.[0];
   return (
-    <div className="w-full max-w-md">
-      <div className="bg-white rounded-3xl shadow-2xl border-2 border-slate-200 overflow-hidden">
-        {/* Header with gradient accent */}
-        <div className="relative px-8 pt-8 pb-6">
-          {/* Pro badge */}
-          <div className="absolute top-6 right-6">
-            <div className="flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full shadow-sm">
-              <Sparkles className="w-3 h-3 text-white" />
-              <span className="text-[11px] font-semibold text-white uppercase tracking-wide">Pro</span>
-            </div>
-          </div>
-
-          {/* Lock icon */}
-          <div className="w-14 h-14 bg-indigo-100 rounded-2xl flex items-center justify-center mb-5">
-            <Lock className="w-7 h-7 text-indigo-600" />
-          </div>
-
-          {/* Title & description */}
-          <h3 className="text-xl font-bold text-gray-900 mb-2">
-            {addOn?.feature_name || 'Premium Feature'}
-          </h3>
-          <p className="text-gray-500 text-sm leading-relaxed">
-            {addOn?.addon_description || 'Unlock this feature to enhance your experience.'}
+    <section
+      aria-label={addOn?.feature_name || 'Purchase options'}
+      className="w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
+    >
+      <div className="p-6">
+        <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+          <Lock size={22} />
+        </div>
+        <h2 className="text-lg font-semibold leading-6 text-slate-900">
+          {addOn?.feature_name || 'Purchase options unavailable'}
+        </h2>
+        {addOn?.description && (
+          <p className="mt-2 text-sm leading-6 text-slate-500">
+            {addOn.description}
           </p>
-        </div>
-
-        {/* Benefits */}
-        <div className="px-8 py-5 bg-gray-50 border-y border-gray-100">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">What you'll get</p>
-          <div className="space-y-3">
-            {benefits.map((benefit, i) => (
-              <div key={i} className="flex items-center gap-3">
-                <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                  <Check className="w-3 h-3 text-emerald-600" strokeWidth={3} />
-                </div>
-                <span className="text-sm text-gray-700">{benefit}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Pricing & CTA */}
-        <div className="px-8 py-6">
-          {monthlyPrice > 0 ? (
-            <div className="flex items-center justify-between mb-5">
-              <div>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-3xl font-bold text-gray-900">₹{monthlyPrice}</span>
-                  <span className="text-gray-400 text-sm">/month</span>
-                </div>
-                {savings > 0 && (
-                  <p className="text-emerald-600 text-xs font-medium mt-1 flex items-center gap-1">
-                    <Zap className="w-3 h-3" /> Save {savings}% with annual
-                  </p>
-                )}
-              </div>
-              <div className="text-right">
-                <p className="text-xs text-gray-400">Billed monthly</p>
-                <p className="text-xs text-gray-400">Cancel anytime</p>
-              </div>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2 mb-5">
-              <div className="w-4 h-4 border-2 border-gray-200 border-t-indigo-500 rounded-full animate-spin"></div>
-              <span className="text-gray-400 text-sm">Loading pricing...</span>
-            </div>
-          )}
-
-          {showUpgradePrompt && (
-            <button
-              onClick={onUpgradeClick}
-              className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl transition-colors flex items-center justify-center gap-2"
-            >
-              Upgrade to Pro
-              <ArrowRight className="w-4 h-4" />
-            </button>
-          )}
-
-          <p className="text-center text-xs text-gray-400 mt-4 flex items-center justify-center gap-1">
-            <Shield className="w-3 h-3" /> Secure checkout powered by Razorpay
-          </p>
-        </div>
+        )}
       </div>
-    </div>
+      {addOn?.benefits?.length > 0 && (
+        <div className="border-y border-slate-100 bg-slate-50 px-6 py-4">
+          <CatalogBenefits addOn={addOn} />
+        </div>
+      )}
+      <div className="p-6">
+        {offer ? (
+          <div className="mb-4">
+            <p className="text-2xl font-semibold tracking-tight text-slate-900">
+              {formatOfferPrice(offer)}
+            </p>
+            <p className="mt-1 text-xs leading-5 text-slate-500">
+              {offer.display_name}
+            </p>
+          </div>
+        ) : (
+          <p className="mb-4 text-sm text-slate-500">
+            No purchase options are currently available.
+          </p>
+        )}
+        {showUpgradePrompt && offer && (
+          <button
+            type="button"
+            onClick={onUpgradeClick}
+            className="flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+          >
+            View purchase options
+            <ArrowRight size={16} />
+          </button>
+        )}
+      </div>
+    </section>
   );
 }
 
-function PurchaseModal({ addOn, upgradePrice, onClose, onPurchase, isPurchasing }) {
-  const [billing, setBilling] = useState('annual'); // Default to annual for better value
-  const [error, setError] = useState(null);
-  const [isVerifying, setIsVerifying] = useState(false);
-  const { refreshAccess, fetchUserEntitlements, activeEntitlements } = useSubscription();
+function readPendingAddonOrder(key) {
+  try {
+    return sessionStorage.getItem(key) || '';
+  } catch {
+    return '';
+  }
+}
 
-  // Check if user already owns this add-on (including cancelled but not expired)
-  const isAlreadyOwned = useMemo(() => {
-    if (!addOn?.feature_key || !activeEntitlements) return false;
-    const now = new Date();
-    return activeEntitlements.some(ent => 
-      ent.feature_key === addOn.feature_key && 
-      (ent.status === 'active' || 
-       ent.status === 'grace_period' ||
-       (ent.status === 'cancelled' && ent.end_date && new Date(ent.end_date) >= now))
-    );
-  }, [addOn?.feature_key, activeEntitlements]);
-
-  const monthly = upgradePrice?.monthly ? parseFloat(upgradePrice.monthly) : 0;
-  const annual = upgradePrice?.annual ? parseFloat(upgradePrice.annual) : 0;
-  const price = billing === 'monthly' ? monthly : annual;
-  const monthlyEquivalent = billing === 'annual' ? Math.round(annual / 12) : monthly;
-  const savings = monthly > 0 && annual > 0 ? Math.round(monthly * 12 - annual) : 0;
-  const savingsPct = monthly > 0 && annual > 0 ? Math.round(((monthly * 12 - annual) / (monthly * 12)) * 100) : 0;
-
-  const handlePurchase = async () => {
-    if (!addOn?.feature_key) {
-      console.error('[PurchaseModal] No feature_key found in addOn:', addOn);
-      setError('Unable to process purchase - missing feature information');
-      return;
-    }
-    
-    // Check for duplicate purchase
-    if (isAlreadyOwned) {
-      setError('You already own this add-on. Access is active until your subscription expires.');
-      return;
-    }
-    
+function PurchaseModal({ addOn, onClose, onPurchase, isPurchasing }) {
+  const options = addOn?.billing_options || [];
+  const [selectedId, setSelectedId] = useState(options[0]?.id || '');
+  const selected = options.find((option) => option.id === selectedId);
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const inFlight = useRef(false);
+  const user = useUser();
+  const storageKey = `pending-addon-order:${user?.id}:${addOn?.feature_key}`;
+  const [pendingOrder, setPendingOrder] = useState(() =>
+    readPendingAddonOrder(storageKey),
+  );
+  const { refreshAccess, fetchUserEntitlements } = useSubscription();
+  const remember = (orderId) => {
     try {
-      setError(null);
-      console.log('[PurchaseModal] Starting purchase for:', addOn.feature_key, billing);
-      
-      // Load Razorpay script first
-      console.log('[PurchaseModal] Loading Razorpay script...');
-      const scriptLoaded = await loadRazorpayScript();
-      if (!scriptLoaded) {
-        setError('Failed to load payment system. Please check your internet connection and try again.');
+      sessionStorage.setItem(storageKey, orderId);
+    } catch {
+      /* Browser storage is optional; the database owns recovery. */
+    }
+    setPendingOrder(orderId);
+  };
+  const finish = async (result) => {
+    if (!result.success) {
+      setError(
+        result.error ||
+          'Payment was captured. Retry verification to finish activation.',
+      );
+      return;
+    }
+    try {
+      sessionStorage.removeItem(storageKey);
+    } catch {
+      /* A storage failure must not undo a verified purchase. */
+    }
+    setPendingOrder('');
+    clearFeatureAccessCache();
+    await Promise.all([refreshAccess(), fetchUserEntitlements()]);
+    onClose();
+  };
+  const retry = async () => {
+    if (inFlight.current) return;
+    inFlight.current = true;
+    setBusy(true);
+    setError('');
+    try {
+      await finish(
+        await addOnPaymentService.reconcileAddonPayment(pendingOrder),
+      );
+    } catch {
+      setError('Verification is unavailable. Retry without paying again.');
+    } finally {
+      inFlight.current = false;
+      setBusy(false);
+    }
+  };
+  const purchase = async () => {
+    if (pendingOrder) {
+      await retry();
+      return;
+    }
+    if (inFlight.current || !selected) return;
+    inFlight.current = true;
+    setBusy(true);
+    setError('');
+    let launched = false;
+    try {
+      if (!(await loadRazorpayScript()) || !window.Razorpay)
+        throw new Error('Checkout is unavailable. Please try again.');
+      const result = await onPurchase(
+        addOn.feature_key,
+        selected.billing_period,
+      );
+      if (!result?.success) {
+        if (result?.recoveryOrderId) remember(result.recoveryOrderId);
+        setError(result?.error || 'Unable to create purchase order.');
         return;
       }
-      console.log('[PurchaseModal] Razorpay script loaded successfully');
-      
-      const orderResult = await onPurchase(addOn.feature_key, billing);
-      console.log('[PurchaseModal] Order result:', orderResult);
-      
-      if (!orderResult?.success) {
-        setError(orderResult?.error || 'Failed to create order - no response received');
-        return;
-      }
-      
-      if (!window.Razorpay) {
-        setError('Payment system not loaded. Please refresh the page.');
-        return;
-      }
-      
-      const data = orderResult.data;
-      console.log('[PurchaseModal] Opening Razorpay with:', {
-        key: data.razorpayKeyId,
-        amount: data.amount,
-        order_id: data.orderId
-      });
-      
-      const razorpay = new window.Razorpay({
+      const data = result.data;
+      const checkout = new window.Razorpay({
         key: data.razorpayKeyId,
         amount: data.amount,
         currency: data.currency,
-        name: 'SkillPassport',
-        description: `${addOn.feature_name ?? addOn.name} - ${billing === 'monthly' ? 'Monthly' : 'Annual'}`,
         order_id: data.orderId,
+        name: document.title,
+        description: `${addOn.feature_name} · ${selected.display_name}`,
+        prefill: { email: data.userEmail, name: data.userName },
         handler: async (response) => {
-          // Payment successful - now verify and create entitlement
-          console.log('[PurchaseModal] Payment successful, verifying...', response);
-          setIsVerifying(true);
-          
+          remember(response.razorpay_order_id);
+          setCheckoutOpen(false);
+          setBusy(true);
+          inFlight.current = true;
           try {
-            const verifyResult = await addOnPaymentService.verifyAddonPayment(
-              response.razorpay_order_id,
-              response.razorpay_payment_id,
-              response.razorpay_signature,
-              addOn.feature_key,
-              data.amount,
-              billing
+            await finish(
+              await addOnPaymentService.verifyAddonPayment(
+                response.razorpay_order_id,
+                response.razorpay_payment_id,
+                response.razorpay_signature,
+                addOn.feature_key,
+                undefined,
+                selected.billing_period,
+              ),
             );
-            
-            console.log('[PurchaseModal] Verification result:', verifyResult);
-            
-            if (verifyResult.success) {
-              console.log('[PurchaseModal] Payment verified and entitlement created!');
-              // Clear feature access cache to force re-check
-              clearFeatureAccessCache();
-              // Refresh entitlements in context instead of page reload
-              await Promise.all([
-                refreshAccess(),
-                fetchUserEntitlements()
-              ]);
-              onClose();
-            } else {
-              setError(`Payment verification failed: ${verifyResult.error}. Please contact support with Order ID: ${response.razorpay_order_id}`);
-              setIsVerifying(false);
-            }
-          } catch (verifyError) {
-            console.error('[PurchaseModal] Verification error:', verifyError);
-            setError(`Payment completed but verification failed. Please contact support with Order ID: ${response.razorpay_order_id}`);
-            setIsVerifying(false);
+          } catch {
+            setError(
+              'Payment confirmation is pending. Retry verification without paying again.',
+            );
+          } finally {
+            setBusy(false);
+            inFlight.current = false;
           }
         },
-        prefill: { email: data.userEmail, name: data.userName },
-        theme: { color: '#4f46e5' },
         modal: {
           ondismiss: () => {
-            console.log('[PurchaseModal] Payment modal dismissed');
-          }
-        }
+            setCheckoutOpen(false);
+            setBusy(false);
+            inFlight.current = false;
+          },
+        },
       });
-      
-      // Handle payment failure
-      razorpay.on('payment.failed', (response) => {
-        console.error('[PurchaseModal] Payment failed:', response.error);
-        setError(`Payment failed: ${response.error.description || 'Unknown error'}. Please try again.`);
+      checkout.on('payment.failed', () => {
+        setError(
+          'Payment was not completed. Check the payment status before trying again.',
+        );
       });
-      
-      razorpay.open();
-    } catch (e) {
-      console.error('[PurchaseModal] Purchase error:', e);
-      setError(e.message || 'Purchase failed');
+      setCheckoutOpen(true);
+      launched = true;
+      checkout.open();
+    } catch (caught) {
+      launched = false;
+      setCheckoutOpen(false);
+      setError(caught.message || 'Unable to start checkout.');
+    } finally {
+      if (!launched) {
+        setBusy(false);
+        inFlight.current = false;
+      }
     }
   };
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
-      <div className="bg-white rounded-3xl shadow-2xl max-w-[420px] w-full overflow-hidden animate-in fade-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
-        {/* Header with gradient background */}
-        <div className="relative bg-gradient-to-br from-indigo-600 via-indigo-700 to-purple-700 px-6 pt-6 pb-8">
-          <button 
-            onClick={onClose} 
-            className="absolute top-4 right-4 p-1.5 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
-          >
-            <X className="w-4 h-4 text-white" />
-          </button>
-          
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-12 h-12 bg-white/15 backdrop-blur rounded-2xl flex items-center justify-center">
-              <Sparkles className="w-6 h-6 text-white" />
+    <Dialog.Root
+      open={!checkoutOpen}
+      onOpenChange={(open) => {
+        if (!open && !busy && !checkoutOpen) onClose();
+      }}
+    >
+      <Dialog.Portal>
+        <Dialog.Overlay className="workflow-dialog-overlay" />
+        <Dialog.Content
+          onEscapeKeyDown={(event) => {
+            if (busy) event.preventDefault();
+          }}
+          onPointerDownOutside={(event) => event.preventDefault()}
+          className="workflow-dialog workflow-dialog--purchase"
+        >
+          <div className="workflow-dialog-header">
+            <span className="workflow-dialog-mark" aria-hidden="true"><Lock size={21} /></span>
+            <div className="workflow-dialog-heading">
+              <p className="workflow-dialog-eyebrow">Feature access</p>
+              <Dialog.Title className="workflow-dialog-title">
+                {addOn.feature_name}
+              </Dialog.Title>
+              <Dialog.Description className="workflow-dialog-description">
+                {pendingOrder
+                  ? 'Finish activating your existing payment.'
+                  : 'Review the available purchase terms.'}
+              </Dialog.Description>
             </div>
-            <div>
-              <h2 className="text-xl font-bold text-white">{addOn?.feature_name || 'Premium Feature'}</h2>
-              <p className="text-indigo-200 text-sm">Unlock full access</p>
-            </div>
+            <Dialog.Close
+              disabled={busy}
+              aria-label="Close purchase dialog"
+              className="workflow-dialog-close"
+            >
+              <X size={18} />
+            </Dialog.Close>
           </div>
-        </div>
-
-        {/* Content */}
-        <div className="p-6 -mt-4">
-          {monthly === 0 && annual === 0 ? (
-            <div className="text-center py-12 bg-white rounded-3xl shadow-lg border-2 border-slate-200">
-              <div className="w-10 h-10 border-2 border-slate-200 border-t-amber-500 rounded-full animate-spin mx-auto mb-4"></div>
-              <p className="text-slate-500 font-medium">Loading pricing...</p>
-            </div>
-          ) : (
-            <>
-              {/* Billing Toggle */}
-              <div className="bg-gray-100 p-1 rounded-xl flex mb-5">
-                <button
-                  onClick={() => setBilling('monthly')}
-                  className={`flex-1 py-2.5 px-4 rounded-2xl text-sm font-semibold transition-all ${
-                    billing === 'monthly' 
-                      ? 'bg-white text-slate-900 shadow-lg' 
-                      : 'text-gray-500 hover:text-gray-700'
-                  }`}
-                >
-                  Monthly
-                </button>
-                <button
-                  onClick={() => setBilling('annual')}
-                  className={`flex-1 py-2.5 px-4 rounded-2xl text-sm font-semibold transition-all relative ${
-                    billing === 'annual' 
-                      ? 'bg-white text-slate-900 shadow-lg' 
-                      : 'text-gray-500 hover:text-gray-700'
-                  }`}
-                >
-                  Annual
-                  {savingsPct > 0 && (
-                    <span className="absolute -top-2 -right-1 px-1.5 py-0.5 bg-emerald-500 text-white text-[10px] font-bold rounded-full">
-                      -{savingsPct}%
-                    </span>
-                  )}
-                </button>
-              </div>
-
-              {/* Pricing Card */}
-              <div className="bg-gradient-to-br from-slate-50 to-slate-100/50 rounded-3xl p-5 mb-5 border-2 border-slate-200">
-                <div className="flex items-baseline justify-between mb-1">
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-4xl font-bold text-gray-900">₹{price}</span>
-                    <span className="text-gray-400 text-sm">/{billing === 'monthly' ? 'mo' : 'yr'}</span>
-                  </div>
-                  {billing === 'annual' && (
-                    <div className="text-right">
-                      <p className="text-xs text-gray-400">₹{monthlyEquivalent}/mo</p>
-                    </div>
-                  )}
+          <div role="region" aria-label="Purchase options content" tabIndex={0} className="workflow-dialog-body space-y-5">
+            {!pendingOrder && (
+              <fieldset disabled={busy || isPurchasing}>
+                <legend className="mb-2 text-xs font-medium text-slate-600">
+                  Billing option
+                </legend>
+                <div className="grid gap-2">
+                  {options.map((option) => (
+                    <label
+                      key={option.id}
+                      className={`flex cursor-pointer items-center justify-between gap-3 rounded-lg border p-3 text-sm ${selectedId === option.id ? 'border-indigo-400 bg-indigo-50' : 'border-slate-200'}`}
+                    >
+                      <span className="flex items-center gap-2">
+                        <input
+                          type="radio"
+                          name="addon-offer"
+                          value={option.id}
+                          checked={selectedId === option.id}
+                          onChange={() => setSelectedId(option.id)}
+                        />
+                        {option.display_name}
+                      </span>
+                      <span className="font-semibold text-slate-900">
+                        {formatOfferPrice(option)}
+                      </span>
+                    </label>
+                  ))}
                 </div>
-                
-                {billing === 'annual' && savings > 0 && (
-                  <div className="flex items-center gap-1.5 mt-2">
-                    <div className="w-4 h-4 rounded-full bg-emerald-100 flex items-center justify-center">
-                      <Check className="w-2.5 h-2.5 text-emerald-600" strokeWidth={3} />
-                    </div>
-                    <span className="text-emerald-600 text-sm font-medium">Save ₹{savings} per year</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Features included */}
-              <div className="space-y-2.5 mb-6">
-                {['Full feature access', 'Priority support', 'Cancel anytime'].map((feature, i) => (
-                  <div key={i} className="flex items-center gap-2.5">
-                    <div className="w-5 h-5 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0">
-                      <Check className="w-3 h-3 text-indigo-600" strokeWidth={3} />
-                    </div>
-                    <span className="text-sm text-gray-600">{feature}</span>
-                  </div>
-                ))}
-              </div>
-
-              {error && (
-                <div className="mb-4 p-3 bg-gradient-to-br from-red-50 to-red-100 border-2 border-red-200 rounded-2xl text-red-700 text-sm flex items-center gap-2 font-medium">
-                  <div className="w-5 h-5 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
-                    <X className="w-3 h-3 text-red-500" />
-                  </div>
-                  {error}
-                </div>
-              )}
-
-              <button
-                onClick={handlePurchase}
-                disabled={isPurchasing || isVerifying}
-                className="w-full py-4 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 disabled:from-indigo-400 disabled:to-indigo-500 text-white font-semibold rounded-xl transition-all shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 flex items-center justify-center gap-2"
+              </fieldset>
+            )}
+            <CatalogBenefits addOn={addOn} />
+            {pendingOrder && (
+              <p className="rounded-lg bg-slate-50 p-3 text-xs leading-5 text-slate-600">
+                Order: {pendingOrder}. Retry verifies this payment; it does not
+                start another checkout.
+              </p>
+            )}
+            {error && (
+              <p
+                role="alert"
+                className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm leading-5 text-red-700"
               >
-                {isVerifying ? (
-                  <>
-                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                    Verifying payment...
-                  </>
-                ) : isPurchasing ? (
-                  <>
-                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                    Processing...
-                  </>
-                ) : (
-                  <>
-                    Purchase
-                    <ArrowRight className="w-4 h-4" />
-                  </>
-                )}
-              </button>
-
-              <div className="flex items-center justify-center gap-4 mt-4 text-xs text-gray-400">
-                <span className="flex items-center gap-1">
-                  <Shield className="w-3.5 h-3.5" />
-                  Secure checkout
-                </span>
-                <span>•</span>
-                <span>Powered by Razorpay</span>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-    </div>
+                {error}
+              </p>
+            )}
+          </div>
+          <div className="workflow-dialog-footer">
+            <button
+              type="button"
+              onClick={purchase}
+              disabled={busy || isPurchasing || (!selected && !pendingOrder)}
+              className="flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-3 text-sm font-semibold text-white hover:bg-indigo-700 disabled:cursor-wait disabled:opacity-60"
+            >
+              {busy
+                ? 'Processing…'
+                : pendingOrder
+                  ? 'Retry verification'
+                  : 'Purchase'}
+              <ArrowRight size={16} />
+            </button>
+            <p className="mt-3 text-center text-xs leading-5 text-slate-400">
+              Secure checkout · Razorpay
+            </p>
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }
 
-export function FeatureGateInline({ featureKey, children, lockedText = 'Pro' }) {
+export function FeatureGateInline({
+  featureKey,
+  children,
+  lockedText = 'Pro',
+}) {
   const { hasAccess, isLoading } = useFeatureGate(featureKey);
   if (isLoading) return <span className="text-gray-400">...</span>;
   if (hasAccess) return <>{children}</>;

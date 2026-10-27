@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import * as React from 'react';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('RecruiterOverview');
@@ -13,86 +14,81 @@ import {
   CheckCircleIcon,
   XCircleIcon,
   ChevronDownIcon,
-  ChevronUpIcon
+  ChevronUpIcon,
+  ArrowRightIcon,
+  ArrowUpRightIcon,
+  MagnifyingGlassIcon,
+  ArrowPathIcon
 } from '@heroicons/react/24/outline';
 import { getDashboardData } from '@/features/analytics';
 import { ActivityFeed } from '@/features/recruiter';
 import { useRealtimeActivities } from '@/features/analytics/model/useRealtimeActivities';
 import { trackSearchUsage } from '@/features/opportunities';
 import { OrgSetupBanner, OrgSetupModal } from '@/components/recruitment/OrgSetupChecklist';
-import { useAuthStore } from '@/shared/model/authStore';
 import { ssoClient } from '@/shared/api/ssoClient';
 
-const KpiCard = ({ title, value, icon: Icon, trend, color = 'primary' }) => {
-  const colorClasses = {
-    primary: 'text-primary-600 bg-primary-50',
-    success: 'text-success-600 bg-success-50',
-    warning: 'text-warning-600 bg-warning-50',
-    danger: 'text-danger-600 bg-danger-50'
+type SavedSearch = { id?: string; name: string; search_criteria?: { query?: string; skills?: string[]; location?: string; experience?: string } };
+type DashboardAlert = { id: string; source?: string; type?: string; title: string; message: string; time?: string; urgent?: boolean };
+type DashboardData = {
+  kpis?: Record<string, number | null>;
+  alerts?: DashboardAlert[];
+  shortlists?: { id: string; name: string; candidates?: unknown[]; candidate_count?: number; created_date?: string }[];
+  savedSearches?: (SavedSearch | string)[];
+};
+type SetupProgress = React.ComponentProps<typeof OrgSetupModal>['initialProgress'] & { banner_dismissed?: boolean };
+
+const actionClass = 'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-primary-700 transition-colors hover:bg-primary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2';
+const panelClass = 'min-w-0 rounded-xl border border-gray-200 bg-white shadow-sm';
+
+const KpiCard = ({ title, value, icon: Icon, trend, color = 'primary', lowerIsBetter = false, href }: {
+  title: string; value: number | string; icon: typeof UsersIcon; trend?: number; color?: string; lowerIsBetter?: boolean; href: string;
+}) => {
+  const colorClasses: Record<string, string> = {
+    primary: 'text-primary-700 bg-primary-50',
+    success: 'text-emerald-700 bg-emerald-50',
+    warning: 'text-amber-700 bg-amber-50',
   };
+  const hasTrend = typeof trend === 'number' && Number.isFinite(trend) && trend !== 0;
+  const improving = lowerIsBetter ? (trend ?? 0) < 0 : (trend ?? 0) > 0;
 
   return (
-    <div className="bg-white overflow-hidden shadow-sm rounded-lg border border-gray-200">
-      <div className="p-5">
-        <div className="flex items-center">
-          <div className="flex-shrink-0">
-            <div className={`p-3 rounded-lg ${colorClasses[color]}`}>
-              <Icon className="h-6 w-6" aria-hidden="true" />
-            </div>
-          </div>
-          <div className="ml-4 w-0 flex-1">
-            <dl>
-              <dt className="text-sm font-medium text-gray-500 truncate">{title}</dt>
-              <dd className="flex items-baseline">
-                <div className="text-2xl font-semibold text-gray-900">{value}</div>
-                {trend && (
-                  <div className={`ml-2 flex items-baseline text-sm font-semibold ${trend > 0 ? 'text-success-600' : 'text-danger-600'
-                    }`}>
-                    {trend > 0 ? '+' : ''}{trend}%
-                  </div>
-                )}
-              </dd>
-            </dl>
-          </div>
-        </div>
+    <Link to={href} className={`${panelClass} group flex flex-col p-4 transition-colors hover:border-primary-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 sm:p-5`}>
+      <div className="mb-4 flex items-center justify-between gap-2">
+        <div className={`rounded-lg p-2.5 ${colorClasses[color]}`}><Icon className="h-5 w-5" aria-hidden="true" /></div>
+        <ArrowUpRightIcon className="h-4 w-4 text-gray-400 group-hover:text-primary-600" aria-hidden="true" />
       </div>
-    </div>
+      <p className="min-h-10 text-sm font-medium leading-5 text-gray-600">{title}</p>
+      <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+        <span className="text-3xl font-semibold tabular-nums tracking-tight text-gray-900">{typeof value === 'number' ? value.toLocaleString() : value}</span>
+        {hasTrend && <span className={`rounded-md px-1.5 py-0.5 text-xs font-semibold ${improving ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`} aria-label={`${Math.abs(trend!)}% ${trend! > 0 ? 'increase' : 'decrease'}`}>
+          {trend! > 0 ? '+' : ''}{trend}%
+        </span>}
+      </div>
+    </Link>
   );
 };
 
-const AlertCard = ({ type, title, message, time, urgent = false, action, onActionClick }) => {
-  const getIcon = () => {
-    switch (type) {
-      case 'warning':
-        return <ExclamationTriangleIcon className="h-5 w-5 text-warning-500" />;
-      case 'success':
-        return <CheckCircleIcon className="h-5 w-5 text-success-500" />;
-      case 'error':
-        return <XCircleIcon className="h-5 w-5 text-danger-500" />;
-      default:
-        return <ExclamationTriangleIcon className="h-5 w-5 text-gray-500" />;
-    }
-  };
+const EmptyState = ({ icon: Icon, title, children, action }: { icon: typeof UsersIcon; title: string; children: React.ReactNode; action?: React.ReactNode }) => (
+  <div className="flex flex-col items-center px-4 py-7 text-center">
+    <div className="rounded-full bg-gray-50 p-3"><Icon className="h-6 w-6 text-gray-400" aria-hidden="true" /></div>
+    <p className="mt-3 text-sm font-semibold text-gray-900">{title}</p>
+    <p className="mt-1 max-w-sm text-sm leading-6 text-gray-500">{children}</p>
+    {action && <div className="mt-3">{action}</div>}
+  </div>
+);
 
+const AlertCard = ({ type, title, message, time, urgent = false, onActionClick }: DashboardAlert & { onActionClick: () => void }) => {
+  const Icon = type === 'success' ? CheckCircleIcon : type === 'error' ? XCircleIcon : ExclamationTriangleIcon;
   return (
-    <div className={`border-l-4 p-4 ${urgent ? 'border-danger-400 bg-danger-50' : 'border-gray-200 bg-white'} rounded-r-lg shadow-sm`}>
-      <div className="flex items-start">
-        <div className="flex-shrink-0">
-          {getIcon()}
-        </div>
-        <div className="ml-3 flex-1">
-          <p className="text-sm font-medium text-gray-900">{title}</p>
-          <p className="mt-1 text-sm text-gray-600">{message}</p>
-          <div className="mt-2 flex items-center justify-between">
-            <p className="text-xs text-gray-500">{time}</p>
-            {action && onActionClick && (
-              <button
-                onClick={onActionClick}
-                className="text-xs font-medium text-primary-600 hover:text-primary-700"
-              >
-                {action}
-              </button>
-            )}
+    <div className={`rounded-lg border p-4 ${urgent ? 'border-amber-200 bg-amber-50' : 'border-gray-200 bg-gray-50/50'}`}>
+      <div className="flex items-start gap-3">
+        <Icon className={`mt-0.5 h-5 w-5 shrink-0 ${type === 'success' ? 'text-emerald-600' : type === 'error' ? 'text-rose-600' : 'text-amber-600'}`} aria-hidden="true" />
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-gray-900">{title}</p>
+          <p className="mt-1 text-sm leading-6 text-gray-600">{message}</p>
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+            {time && <p className="text-xs text-gray-500">{time}</p>}
+            <button type="button" onClick={onActionClick} className={`${actionClass} -mr-2`} aria-label={`View details: ${title}`}>View details <ArrowRightIcon className="h-4 w-4" aria-hidden="true" /></button>
           </div>
         </div>
       </div>
@@ -103,11 +99,11 @@ const AlertCard = ({ type, title, message, time, urgent = false, action, onActio
 const Overview = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const user = useAuthStore((state) => state.user);
 
-  const [dashboardData, setDashboardData] = useState(null);
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
   const [isActivityExpanded, setIsActivityExpanded] = useState(false);
 
   // Org setup state
@@ -117,11 +113,11 @@ const Overview = () => {
   const [completedSteps, setCompletedSteps] = useState(0);
   const [progressPercentage, setProgressPercentage] = useState(0);
   const [isSetupModalOpen, setIsSetupModalOpen] = useState(false);
-  const [setupProgress, setSetupProgress] = useState(null);
-  const [orgData, setOrgData] = useState(null);
+  const [setupProgress, setSetupProgress] = useState<SetupProgress | null>(null);
+  const [orgData, setOrgData] = useState<React.ComponentProps<typeof OrgSetupModal>['orgData'] | null>(null);
 
   // Real-time activities hook
-  const { activities: realtimeActivities, isLoading: activitiesLoading } = useRealtimeActivities(15);
+  const { activities: realtimeActivities, isLoading: activitiesLoading, isError: activityError, refetch: refreshActivities } = useRealtimeActivities(15);
 
   // Show only 4 activities by default, all when expanded
   const displayedActivities = isActivityExpanded ? realtimeActivities : realtimeActivities.slice(0, 4);
@@ -138,16 +134,16 @@ const Overview = () => {
         window.history.replaceState({}, document.title);
       }
 
-      // Check org setup progress from new API
+      // Check org setup progress from new API (only if authenticated)
+      if (!ssoClient.getAccessToken()) {
+        return;
+      }
+
       try {
-        const response = await fetch('/api/recruitment/setup/progress', {
-          headers: {
-            'Authorization': `Bearer ${ssoClient.getAccessToken()}`,
-          },
-        });
+        const response = await ssoClient.fetch('/api/recruitment/setup/progress');
 
         if (response.ok) {
-          const data = await response.json();
+          const data = await response.json() as { setup_progress: SetupProgress; orgData: React.ComponentProps<typeof OrgSetupModal>['orgData'] };
 
           // Check if setup is complete
           const setupProgress = data.setup_progress || {};
@@ -209,16 +205,14 @@ const Overview = () => {
     setShowOrgSetup(false);
     setIsSetupModalOpen(false);
 
-    // Refresh org setup data
+    // Refresh org setup data (only if authenticated)
+    if (!ssoClient.getAccessToken()) return;
+
     try {
-      const response = await fetch('/api/recruitment/setup/progress', {
-        headers: {
-          'Authorization': `Bearer ${ssoClient.getAccessToken()}`,
-        },
-      });
+      const response = await ssoClient.fetch('/api/recruitment/setup/progress');
 
       if (response.ok) {
-        const data = await response.json();
+        const data = await response.json() as { setup_progress: SetupProgress; orgData: React.ComponentProps<typeof OrgSetupModal>['orgData'] };
         const setupProgress = data.setup_progress || {};
 
         setSetupProgress(setupProgress);
@@ -232,42 +226,23 @@ const Overview = () => {
   };
 
   // Handle quick search click
-  const handleQuickSearchClick = async (search) => {
-    try {
-      // Track search usage if it has an ID
-      if (search.id && !search.id.startsWith('default-')) {
-        await trackSearchUsage(search.id);
-      }
-
-      // Navigate to talent pool with search criteria
-      const searchCriteria = search.search_criteria || {};
-      const params = new URLSearchParams();
-
-      if (searchCriteria.query) {
-        params.append('q', searchCriteria.query);
-      }
-      if (searchCriteria.skills && searchCriteria.skills.length > 0) {
-        params.append('skills', searchCriteria.skills.join(','));
-      }
-      if (searchCriteria.location) {
-        params.append('location', searchCriteria.location);
-      }
-      if (searchCriteria.experience) {
-        params.append('experience', searchCriteria.experience);
-      }
-
-      navigate(`/recruitment/talent-pool?${params.toString()}`);
-    } catch (error) {
-      logger.error('Error handling quick search', error);
-      // Navigate anyway even if tracking fails
-      navigate('/recruitment/talent-pool');
+  const handleQuickSearchClick = async (search: SavedSearch) => {
+    const criteria = search.search_criteria || {};
+    const params = new URLSearchParams();
+    if (criteria.query) params.set('q', criteria.query);
+    if (criteria.skills?.length) params.set('skills', criteria.skills.join(','));
+    if (criteria.location) params.set('location', criteria.location);
+    if (criteria.experience) params.set('experience', criteria.experience);
+    navigate(`/recruitment/talent-pool?${params.toString()}`);
+    if (search.id && !search.id.startsWith('default-')) {
+      void trackSearchUsage(search.id).catch(error => logger.error('Error tracking quick search', error));
     }
   };
 
   // Handle alert action clicks
-  const handleAlertAction = (alert) => {
+  const handleAlertAction = (alert: DashboardAlert) => {
     // Route based on alert source and ID
-    const alertId = alert.id || alert;
+    const alertId = String(alert.id || '');
     const source = alert.source;
 
     // Handle by source - navigate to basic pages without advanced filters
@@ -302,121 +277,44 @@ const Overview = () => {
   };
 
   useEffect(() => {
+    let active = true;
     const fetchDashboardData = async () => {
       setLoading(true);
-      setError(null);
-
+      setError(false);
       try {
         const result = await getDashboardData();
-
-        if (result.data) {
-          setDashboardData(result.data);
-          setError(null);
-        } else {
-          setError(result.error || 'No data returned from service');
-        }
+        if (!active) return;
+        if (result.error || !result.data) setError(true);
+        else setDashboardData(result.data);
       } catch (err) {
-        logger.error('❌ Overview: Error fetching dashboard data', err);
-        setError(err);
+        logger.error('Error fetching dashboard data', err instanceof Error ? err : new Error(String(err)));
+        if (active) setError(true);
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     };
+    void fetchDashboardData();
+    return () => { active = false; };
+  }, [refreshKey]);
 
-    fetchDashboardData();
-  }, []);
-
-  // Fallback data when database is not available or during loading
-  const fallbackData = {
-    kpis: {
-      newProfiles: 24,
-      newProfilesTrend: 12,
-      shortlisted: 18,
-      shortlistedTrend: 8,
-      interviewsScheduled: 12,
-      interviewsTrend: -5,
-      offersExtended: 8,
-      offersTrend: 15,
-      timeToHire: 16,
-      timeToHireTrend: -8
-    },
-    alerts: [
-      {
-        id: 'verification-pending',
-        type: 'warning',
-        title: 'Verification Pending',
-        message: '3 candidates waiting for document verification',
-        time: '2 hours ago',
-        urgent: true
-      },
-      {
-        id: 'expiring-offers',
-        type: 'error',
-        title: 'Expiring Offers',
-        message: 'Offer for Arjun Kumar expires in 24 hours',
-        time: '4 hours ago',
-        urgent: true
-      },
-      {
-        id: 'positive-feedback',
-        type: 'success',
-        title: 'Interview Feedback',
-        message: 'Positive feedback received for Priya S',
-        time: '1 day ago',
-        urgent: false
-      }
-    ],
-    recentActivity: [
-      {
-        id: 'activity-1',
-        user: 'Sarah Johnson',
-        action: 'shortlisted',
-        candidate: 'Priya S',
-        timestamp: '2 hours ago'
-      },
-      {
-        id: 'activity-2',
-        user: 'Mike Chen',
-        action: 'added note for',
-        candidate: 'Arjun Kumar',
-        timestamp: '4 hours ago'
-      },
-      {
-        id: 'activity-3',
-        user: 'Lisa Wang',
-        action: 'scheduled interview with',
-        candidate: 'Deepika M',
-        timestamp: '1 day ago'
-      }
-    ],
-    shortlists: [
-      {
-        id: 'sl_001',
-        name: 'FSQM Q4 Plant Quality Interns',
-        candidates: [null, null, null],
-        created_date: '2025-09-25'
-      }
-    ],
-    savedSearches: [
-      'React + Node.js',
-      'Python Developers',
-      'Data Science + ML',
-      'Frontend Developers'
-    ]
-  };
-
-  // Prioritize database data over fallback - only use fallback if we have an error AND no data
-  const data = dashboardData || (error ? fallbackData : {
-    kpis: { newProfiles: 0, shortlisted: 0, interviewsScheduled: 0, offersExtended: 0, timeToHire: 0 },
-    alerts: [],
-    recentActivity: [],
-    shortlists: [],
-    savedSearches: []
-  });
-  const alerts = data.alerts || [];
+  const data = dashboardData;
+  const alerts = data?.alerts || [];
+  const shortlists = data?.shortlists || [];
+  const searches = data?.savedSearches || [];
+  const kpis = [
+    { title: 'New profiles this week', key: 'newProfiles', trend: 'newProfilesTrend', icon: UsersIcon, color: 'primary', href: '/recruitment/talent-pool' },
+    { title: 'Shortlisted candidates', key: 'shortlisted', trend: 'shortlistedTrend', icon: BookmarkIcon, color: 'success', href: '/recruitment/shortlists' },
+    { title: 'Interviews scheduled', key: 'interviewsScheduled', trend: 'interviewsTrend', icon: CalendarDaysIcon, color: 'warning', href: '/recruitment/interviews' },
+    { title: 'Offers extended', key: 'offersExtended', trend: 'offersTrend', icon: DocumentTextIcon, color: 'primary', href: '/recruitment/offers-decisions' },
+    { title: 'Time to hire (days)', key: 'timeToHire', trend: 'timeToHireTrend', icon: ClockIcon, color: 'success', href: '/recruitment/analytics' },
+  ];
+  const sectionLoading = loading && !data;
+  const sectionUnavailable = error && !data;
+  const skeleton = <div className="space-y-3 p-5 motion-safe:animate-pulse" aria-label="Loading dashboard section" role="status"><div className="h-4 w-2/3 rounded bg-gray-100" /><div className="h-4 w-1/2 rounded bg-gray-100" /><div className="h-4 w-3/4 rounded bg-gray-100" /></div>;
+  const unavailable = <p className="p-5 text-sm text-gray-500">This section is temporarily unavailable. Retry loading the dashboard.</p>;
 
   return (
-    <div className="space-y-6 pb-20 md:pb-6">
+    <div className="mx-auto max-w-[1600px] space-y-6 p-4 sm:p-6 lg:p-8">
       {/* Org Setup Banner */}
       {showOrgSetup && !orgSetupComplete && !setupDismissed && (
         <OrgSetupBanner
@@ -445,178 +343,77 @@ const Overview = () => {
         />
       )}
 
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard Overview</h1>
+      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+        <div>
+          <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-primary-700">Recruitment workspace</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-gray-900 sm:text-3xl">Dashboard overview</h1>
+          <p className="mt-2 text-sm leading-6 text-gray-600">Your hiring progress, priorities, and team activity in one place.</p>
+        </div>
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <button type="button" onClick={() => { setRefreshKey(key => key + 1); void refreshActivities(); }} disabled={loading} className={`${actionClass} border border-gray-200 bg-white text-gray-600 disabled:cursor-wait disabled:opacity-60`}>
+            <ArrowPathIcon className={`h-4 w-4 ${loading ? 'motion-safe:animate-spin' : ''}`} aria-hidden="true" />{loading ? 'Refreshing…' : 'Refresh'}
+          </button>
+          <Link to="/recruitment/talent-pool" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2">
+            <MagnifyingGlassIcon className="h-4 w-4" aria-hidden="true" />Find candidates
+          </Link>
+        </div>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-        {loading ? (
-          // Loading skeleton
-          [...Array(5)].map((_, i) => (
-            <div key={i} className="bg-white overflow-hidden shadow-sm rounded-lg border border-gray-200 animate-pulse">
-              <div className="p-5">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <div className="p-3 rounded-lg bg-gray-200 h-12 w-12"></div>
-                  </div>
-                  <div className="ml-4 w-0 flex-1">
-                    <div className="h-4 bg-gray-200 rounded mb-2"></div>
-                    <div className="h-6 bg-gray-200 rounded w-16"></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))
-        ) : (
-          <>
-            <KpiCard
-              title="New Profiles This Week"
-              value={data.kpis?.newProfiles || 0}
-              icon={UsersIcon}
-              trend={data.kpis?.newProfilesTrend || 0}
-              color="primary"
-            />
-            <KpiCard
-              title="Shortlisted"
-              value={data.kpis?.shortlisted || 0}
-              icon={BookmarkIcon}
-              trend={data.kpis?.shortlistedTrend || 0}
-              color="success"
-            />
-            <KpiCard
-              title="Interviews Scheduled"
-              value={data.kpis?.interviewsScheduled || 0}
-              icon={CalendarDaysIcon}
-              trend={data.kpis?.interviewsTrend || 0}
-              color="warning"
-            />
-            <KpiCard
-              title="Offers Extended"
-              value={data.kpis?.offersExtended || 0}
-              icon={DocumentTextIcon}
-              trend={data.kpis?.offersTrend || 0}
-              color="primary"
-            />
-            <KpiCard
-              title="Time-to-hire (Days)"
-              value={data.kpis?.timeToHire || 0}
-              icon={ClockIcon}
-              trend={data.kpis?.timeToHireTrend || 0}
-              color="success"
-            />
-          </>
-        )}
-      </div>
+      {error && <div role="alert" className="flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-start gap-3"><ExclamationTriangleIcon className="h-5 w-5 shrink-0 text-amber-700" aria-hidden="true" /><div><p className="text-sm font-semibold text-amber-900">Couldn't load the dashboard</p><p className="mt-1 text-sm text-amber-800">{data ? 'Showing the last loaded data. Refresh to try again.' : 'Your hiring data is temporarily unavailable. Please try again.'}</p></div></div>
+        <button type="button" onClick={() => setRefreshKey(key => key + 1)} className={`${actionClass} shrink-0 text-amber-900`}>Try again</button>
+      </div>}
 
-      {/* Two Column Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column - Alerts and Saved Searches */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Alerts */}
-          <div className="bg-white shadow-sm rounded-lg border border-gray-200">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-medium text-gray-900">Alerts & Tasks</h3>
-            </div>
-            <div className="p-6 space-y-4">
-              {alerts.map((alert) => (
-                <AlertCard
-                  key={alert.id}
-                  {...alert}
-                  action="View Details"
-                  onActionClick={() => handleAlertAction(alert)}
-                />
-              ))}
-            </div>
-          </div>
+      <section aria-label="Hiring metrics" aria-busy={loading}>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 xl:grid-cols-5">
+          {kpis.map(metric => sectionLoading ? <div key={metric.key} className={`${panelClass} min-h-[184px] p-5 motion-safe:animate-pulse`}><div className="mb-4 h-10 w-10 rounded-lg bg-gray-100" /><div className="mb-3 h-4 w-3/4 rounded bg-gray-100" /><div className="h-8 w-12 rounded bg-gray-100" /></div> :
+            <KpiCard key={metric.key} title={metric.title} value={sectionUnavailable ? '—' : data?.kpis?.[metric.key] ?? '—'} icon={metric.icon} trend={data?.kpis?.[metric.trend]} color={metric.color} lowerIsBetter={metric.key === 'timeToHire'} href={metric.href} />)}
+        </div>
+        {sectionLoading && <p className="sr-only" role="status">Loading hiring metrics…</p>}
+      </section>
 
-          {/* Saved Searches */}
-          <div className="bg-white shadow-sm rounded-lg border border-gray-200">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-medium text-gray-900">Quick Searches</h3>
+      <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-3">
+        <div className="min-w-0 space-y-6 xl:col-span-2">
+          <section className={panelClass} aria-labelledby="overview-tasks">
+            <div className="flex min-h-[72px] items-center justify-between gap-3 border-b border-gray-100 px-5 py-3">
+              <h2 id="overview-tasks" className="text-base font-semibold text-gray-900">Alerts & tasks</h2>
+              {alerts.length > 0 && <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-800">{alerts.length} to review</span>}
             </div>
-            <div className="p-6">
-              <div className="flex flex-wrap gap-2">
-                {(data.savedSearches || []).map((search, index) => {
-                  const searchName = typeof search === 'string' ? search : search.name;
-                  const searchObj = typeof search === 'string'
-                    ? { id: `search-${index}`, name: search, search_criteria: { query: search } }
-                    : search;
+            {sectionLoading ? skeleton : sectionUnavailable ? unavailable : alerts.length ? <div className="space-y-3 p-5">{alerts.map(alert => <AlertCard key={alert.id} {...alert} onActionClick={() => handleAlertAction(alert)} />)}</div> :
+              <EmptyState icon={CheckCircleIcon} title="You're all caught up">Upcoming tasks and hiring updates will appear here when they need your attention.</EmptyState>}
+          </section>
 
-                  return (
-                    <button
-                      key={searchObj.id || index}
-                      onClick={() => handleQuickSearchClick(searchObj)}
-                      className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-primary-50 text-primary-700 hover:bg-primary-100 border border-primary-200 transition-colors cursor-pointer"
-                    >
-                      {searchName}
-                    </button>
-                  );
-                })}
-              </div>
+          <section className={panelClass} aria-labelledby="overview-searches">
+            <div className="flex min-h-[72px] flex-wrap items-center justify-between gap-2 border-b border-gray-100 px-5 py-3">
+              <h2 id="overview-searches" className="text-base font-semibold text-gray-900">Quick searches</h2>
+              <Link to="/recruitment/talent-pool" className={actionClass}>Browse talent <ArrowRightIcon className="h-4 w-4" aria-hidden="true" /></Link>
             </div>
-          </div>
+            {sectionLoading ? skeleton : sectionUnavailable ? unavailable : searches.length ? <div className="flex flex-wrap gap-2 p-5">{searches.map((search, index) => {
+              const item = typeof search === 'string' ? { id: `default-${index}`, name: search, search_criteria: { query: search } } : search;
+              return <button type="button" key={item.id || index} onClick={() => handleQuickSearchClick(item)} className="inline-flex min-h-11 max-w-full items-center gap-2 rounded-lg border border-primary-100 bg-primary-50 px-3 py-2 text-left text-sm font-medium text-primary-800 hover:bg-primary-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"><MagnifyingGlassIcon className="h-4 w-4 shrink-0" aria-hidden="true" /><span className="break-words [overflow-wrap:anywhere]">{item.name}</span></button>;
+            })}</div> : <EmptyState icon={MagnifyingGlassIcon} title="Your next great hire starts with a search">Save searches in the talent pool to quickly revisit the skills and experience you need.</EmptyState>}
+          </section>
 
-          {/* Recent Shortlists */}
-          <div className="bg-white shadow-sm rounded-lg border border-gray-200">
-            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-              <h3 className="text-lg font-medium text-gray-900">Recent Shortlists</h3>
-              <button className="text-sm text-primary-600 hover:text-primary-700 font-medium">
-                View all
-              </button>
+          <section className={panelClass} aria-labelledby="overview-shortlists">
+            <div className="flex min-h-[72px] items-center justify-between gap-2 border-b border-gray-100 px-5 py-3">
+              <h2 id="overview-shortlists" className="text-base font-semibold text-gray-900">Recent shortlists</h2>
+              <Link to="/recruitment/shortlists" className={actionClass}>View all <ArrowRightIcon className="h-4 w-4" aria-hidden="true" /></Link>
             </div>
-            <div className="p-6">
-              <div className="space-y-3">
-                {(data.shortlists || []).map((shortlist) => (
-                  <div key={shortlist.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">{shortlist.name}</p>
-                      <p className="text-xs text-gray-500">{shortlist.candidates.length} candidates • {shortlist.created_date}</p>
-                    </div>
-                    <div className="flex space-x-2">
-                      <button className="text-xs text-primary-600 hover:text-primary-700 font-medium">
-                        Open
-                      </button>
-                      <button className="text-xs text-gray-500 hover:text-gray-700 font-medium">
-                        Share
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
+            {sectionLoading ? skeleton : sectionUnavailable ? unavailable : shortlists.length ? <ul className="divide-y divide-gray-100">{shortlists.map(shortlist => {
+              const count = shortlist.candidates?.length ?? shortlist.candidate_count ?? 0;
+              return <li key={shortlist.id}><Link to={`/recruitment/shortlists?q=${encodeURIComponent(shortlist.name)}`} className="group flex items-center justify-between gap-3 p-5 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500"><div className="min-w-0"><p className="break-words text-sm font-semibold text-gray-900 [overflow-wrap:anywhere]">{shortlist.name}</p><p className="mt-1 text-xs text-gray-500">{count} {count === 1 ? 'candidate' : 'candidates'}{shortlist.created_date ? ` · ${shortlist.created_date}` : ''}</p></div><ArrowRightIcon className="h-5 w-5 shrink-0 text-gray-400 group-hover:text-primary-600" aria-hidden="true" /><span className="sr-only">View shortlist</span></Link></li>;
+            })}</ul> : <EmptyState icon={BookmarkIcon} title="Keep promising candidates together" action={<Link to="/recruitment/shortlists" className={actionClass}>Go to shortlists <ArrowRightIcon className="h-4 w-4" aria-hidden="true" /></Link>}>Create a shortlist to organize candidates and collaborate with your hiring team.</EmptyState>}
+          </section>
         </div>
 
-        {/* Right Column - Activity Feed */}
-        <div className="space-y-6">
-          <div className="bg-white shadow-sm rounded-lg border border-gray-200">
-            <button
-              onClick={() => setIsActivityExpanded(!isActivityExpanded)}
-              className="w-full px-6 py-4 border-b border-gray-200 flex items-center justify-between hover:bg-gray-50 transition-colors text-left"
-            >
-              <h3 className="text-lg font-medium text-gray-900">Recent Activity</h3>
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-primary-600 font-medium">
-                  {isActivityExpanded ? 'Hide' : 'View All'}
-                </span>
-                {isActivityExpanded ? (
-                  <ChevronUpIcon className="h-5 w-5 text-gray-500" />
-                ) : (
-                  <ChevronDownIcon className="h-5 w-5 text-gray-500" />
-                )}
-              </div>
-            </button>
-            <div className="p-6">
-              <ActivityFeed
-                activities={displayedActivities}
-                loading={activitiesLoading}
-                showRealtimeIndicator={true}
-              />
-            </div>
+        <section className={panelClass} aria-labelledby="overview-activity">
+          <div className="flex min-h-[72px] flex-wrap items-center justify-between gap-2 border-b border-gray-100 px-5 py-3">
+            <h2 id="overview-activity" className="text-base font-semibold text-gray-900">Recent activity</h2>
+            <Link to="/recruitment/activities" className={actionClass}>View all <ArrowRightIcon className="h-4 w-4" aria-hidden="true" /></Link>
           </div>
-        </div>
+          <div className="p-5">{activityError?<div role="alert" className="text-sm text-red-800">Activity could not be loaded. <button type="button" onClick={()=>refreshActivities()} className="underline">Try again</button></div>:<ActivityFeed activities={displayedActivities} loading={activitiesLoading} />}</div>
+          {realtimeActivities.length > 4 && <div className="border-t border-gray-100 px-5 py-2"><button type="button" aria-expanded={isActivityExpanded} onClick={() => setIsActivityExpanded(expanded => !expanded)} className={`${actionClass} w-full`}>{isActivityExpanded ? 'Show less' : 'Show more activity'}{isActivityExpanded ? <ChevronUpIcon className="h-4 w-4" aria-hidden="true" /> : <ChevronDownIcon className="h-4 w-4" aria-hidden="true" />}</button></div>}
+        </section>
       </div>
     </div>
   );
