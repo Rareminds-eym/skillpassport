@@ -60,3 +60,16 @@ it('does not fetch disabled tabs or missing learner identities', async () => {
   await act(() => vi.advanceTimersByTimeAsync(1000));
   expect(f.get).not.toHaveBeenCalled();
 });
+it('coalesces rapid search edits into one request for the final page', async () => {
+  f.get.mockResolvedValue({data: {visits: [], total: 0}});
+  const {rerender} = renderHook(({path}) => useOpportunityPage(path, 'visits', 'learner', true), {
+    initialProps: {path: '/opportunities/visits?search=D'},
+  });
+  await act(() => vi.advanceTimersByTimeAsync(100));
+  rerender({path: '/opportunities/visits?search=De'});
+  await act(() => vi.advanceTimersByTimeAsync(100));
+  rerender({path: '/opportunities/visits?search=Delhi'});
+  await act(() => vi.advanceTimersByTimeAsync(250));
+  expect(f.get).toHaveBeenCalledTimes(1);
+  expect(f.get.mock.calls[0][0]).toBe('/opportunities/visits?search=Delhi');
+});

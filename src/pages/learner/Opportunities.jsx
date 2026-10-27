@@ -295,7 +295,21 @@ const Opportunities = () => {
   const [isRegistering, setIsRegistering] = useState(false);
   const [visitRegistrationError, setVisitRegistrationError] = useState(null);
   const [visitDialogOpen,setVisitDialogOpen] = useState(false);
-  const openVisit = visit => {setSelectedIndustrialVisit(visit);setVisitDialogOpen(true);};
+  const [hasVisitPreview, setHasVisitPreview] = useState(() => window.matchMedia('(min-width: 1024px)').matches);
+  useEffect(() => {
+    const query = window.matchMedia('(min-width: 1024px)');
+    const update = () => {
+      setHasVisitPreview(query.matches);
+      if (query.matches) setVisitDialogOpen(false);
+    };
+    update();
+    query.addEventListener('change', update);
+    return () => query.removeEventListener('change', update);
+  }, []);
+  const openVisit = visit => {
+    setSelectedIndustrialVisit(visit);
+    setVisitDialogOpen(!hasVisitPreview);
+  };
   const visitsParams = new URLSearchParams({ limit: String(ivItemsPerPage), offset: String((ivCurrentPage-1)*ivItemsPerPage), search: ivSearchTerm });
   if (ivSectorFilter !== 'all') visitsParams.set('sector', ivSectorFilter);
   if (ivLocationFilter !== 'all') visitsParams.set('location', ivLocationFilter);
@@ -450,7 +464,12 @@ const Opportunities = () => {
     enabled: !!learnerId
   });
 
-  const membershipIds = React.useMemo(() => [...new Set([...opportunities.map(job=>job.id),...industrialVisits.map(visit=>visit.id),...recommendedJobIds,selectedOpportunity?.id].filter(Boolean))].sort(), [opportunities,industrialVisits,recommendedJobIds,selectedOpportunity?.id]);
+  const membershipIds = React.useMemo(() => {
+    const visibleIds = activeTab === 'industrial-visits'
+      ? industrialVisits.map(visit => visit.id)
+      : activeTab === 'my-jobs' ? [...opportunities.map(job => job.id), ...recommendedJobIds, selectedOpportunity?.id] : [];
+    return [...new Set(visibleIds.filter(Boolean))].sort();
+  }, [activeTab, opportunities, industrialVisits, recommendedJobIds, selectedOpportunity?.id]);
   const membershipKey = membershipIds.join(',');
   const membershipEpoch = React.useRef(0);
   const membershipMutations = React.useRef(0);
@@ -677,6 +696,7 @@ const Opportunities = () => {
   };
 
   const handleRegisterForVisit = async (visit) => {
+    if (isRegistering || registeredVisits.has(visit.id)) return;
     if (!learnerId) {
       toast.error('Please log in to register for visits');
       return;
@@ -1100,7 +1120,7 @@ const Opportunities = () => {
                                   ? 'border-blue-500 shadow-md ring-2 ring-blue-200'
                                   : 'border-gray-200 hover:border-blue-300'
                                   }`}
-                                role="button" tabIndex={0} aria-haspopup="dialog" aria-describedby={`visit-state-${visit.id}`} aria-current={selectedIndustrialVisit?.id === visit.id ? 'true' : undefined} aria-label={`View visit at ${visit.company_name}`} onKeyDown={event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();openVisit(visit);}}} onClick={() => openVisit(visit)}
+                                role="button" tabIndex={0} aria-haspopup={hasVisitPreview ? undefined : 'dialog'} aria-controls={hasVisitPreview ? 'industrial-visit-preview' : undefined} aria-describedby={`visit-state-${visit.id}`} aria-current={selectedIndustrialVisit?.id === visit.id ? 'true' : undefined} aria-label={`View visit at ${visit.company_name}`} onKeyDown={event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();openVisit(visit);}}} onClick={() => openVisit(visit)}
                               >
                                 <div className="flex items-start justify-between mb-3">
                                   <div className="p-2 bg-blue-50 rounded-lg">
@@ -1137,7 +1157,7 @@ const Opportunities = () => {
                                   ? 'border-blue-500 shadow-md ring-2 ring-blue-200'
                                   : 'border-gray-200 hover:border-blue-300'
                                   }`}
-                                role="button" tabIndex={0} aria-haspopup="dialog" aria-describedby={`visit-state-${visit.id}`} aria-current={selectedIndustrialVisit?.id === visit.id ? 'true' : undefined} aria-label={`View visit at ${visit.company_name}`} onKeyDown={event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();openVisit(visit);}}} onClick={() => openVisit(visit)}
+                                role="button" tabIndex={0} aria-haspopup={hasVisitPreview ? undefined : 'dialog'} aria-controls={hasVisitPreview ? 'industrial-visit-preview' : undefined} aria-describedby={`visit-state-${visit.id}`} aria-current={selectedIndustrialVisit?.id === visit.id ? 'true' : undefined} aria-label={`View visit at ${visit.company_name}`} onKeyDown={event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();openVisit(visit);}}} onClick={() => openVisit(visit)}
                               >
                                 <div className="flex items-start gap-4">
                                   <div className="p-3 bg-blue-50 rounded-lg flex-shrink-0">
@@ -1179,7 +1199,7 @@ const Opportunities = () => {
                       </div>
 
                       {/* Right: Fixed Preview Panel - Last in DOM and visually */}
-                      <div className="opportunity-visit-preview hidden lg:block lg:col-span-1 lg:sticky lg:top-20 lg:self-start">
+                      <div id="industrial-visit-preview" className="opportunity-visit-preview hidden lg:block lg:col-span-1 lg:sticky lg:top-20 lg:self-start">
                         {selectedIndustrialVisit ? (
                           <IndustrialVisitPreview
                             visit={selectedIndustrialVisit}
@@ -1230,8 +1250,8 @@ const Opportunities = () => {
                               </button>
                             </PaginationItem>
 
-                            {getPageNumbers(ivCurrentPage, totalPages).map((pageNum) => (
-                              <PaginationItem key={`page-${pageNum}`}>
+                            {getPageNumbers(ivCurrentPage, totalPages).map((pageNum, index) => (
+                              <PaginationItem key={pageNum === '...' ? `gap-${index}` : `page-${pageNum}`}>
                                 {pageNum === '...' ? (
                                   <PaginationEllipsis className="text-xs md:text-sm" />
                                 ) : (
