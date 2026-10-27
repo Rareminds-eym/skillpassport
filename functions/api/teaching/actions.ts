@@ -1,7 +1,7 @@
 import { withAuth, getContextUser } from '../../lib/auth';
 import { getServiceClient } from '../../lib/supabase';
 import { apiError, apiSuccess } from '../../lib/response';
-import { parseTeachingRequest, PLATFORM_TEACHING_ADMIN_ACTIONS, teachingFailure } from '../../lib/teaching-contract';
+import { parseTeachingRequest, PLATFORM_TEACHING_ADMIN_ACTIONS, teachingFailure, teachingRpcName } from '../../lib/teaching-contract';
 
 export const onRequestPost = withAuth(async context => {
   let operation;
@@ -20,7 +20,7 @@ export const onRequestPost = withAuth(async context => {
     if(content.error)return apiError(503,'CONTENT_UNAVAILABLE','Course content is unavailable',context.request);
     return apiSuccess(content.data||[],context.request);
   }
-  const {data,error}=await db.rpc('external_educator_action',{
+  const {data,error}=await db.rpc(teachingRpcName(operation.action),{
     p_actor:user.id,p_action:operation.action,p_payload:operation.payload,
   });
   if(error){const failure=teachingFailure(error);return apiError(failure.status,failure.code,failure.message,context.request);}
