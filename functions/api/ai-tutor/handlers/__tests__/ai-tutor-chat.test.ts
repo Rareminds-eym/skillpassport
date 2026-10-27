@@ -63,6 +63,10 @@ describe('tutor conversation persistence', () => {
     expect(stream).toContain('event: done');
     expect(stream).toContain('saved-conversation');
     expect(stream).not.toContain('event: error');
+    expect(stream).toContain('"worksheetAvailable":true');
+    const conversationQuery = mocks.client.from.mock.results.find(result => result.value.insert.mock.calls.length)?.value;
+    const saved = conversationQuery.insert.mock.calls[0][0].messages.at(-1);
+    expect(saved.worksheetVariants).toEqual([{ difficulty: 'intermediate', content: 'Generated worksheet' }]);
   });
 
   it('reports an insert failure instead of claiming success', async () => {

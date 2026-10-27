@@ -33,6 +33,7 @@ import { onRequestGet as handleAiTutorProgressGet, onRequestPost as handleAiTuto
 import { onRequestGet as handleGetLearnerType } from './handlers/get-learner-type';
 import { onRequestGet as handleGetGenerationUsage } from './handlers/get-generation-usage';
 import { onRequestPost as handleAiTutorActions } from './handlers/actions';
+import { handleWorksheets } from './handlers/worksheets';
 
 export const onRequest: PagesFunction<PagesEnv> = async (context) => {
   const { request } = context;
@@ -46,6 +47,9 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
   const path = url.pathname.replace('/api/ai-tutor', '');
 
   try {
+    if (path === '/worksheets' && request.method === 'POST') {
+      return withAuth(handleWorksheets as any)(context);
+    }
     // Health check
     if ((path === '' || path === '/' || path === '/health') && request.method === 'GET') {
       return apiSuccess({

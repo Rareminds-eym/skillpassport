@@ -1,393 +1,192 @@
-import { getLogger } from '@/shared/config';
-import { loadLogo, WATERMARK_CONFIG } from './logoLoader';
-import { parseMarkdownLines } from '@/shared/utils';
+import { getLogger } from '@/shared/config/logging';
+import { loadLogo } from './logoLoader';
+import { stripWorksheetMarkers } from '@/shared/utils';
 import type { jsPDF } from 'jspdf';
 
 const logger = getLogger('export-to-pdf');
+interface ExportToPDFOptions { content: string; courseTitle: string; lessonTitle: string; filename: string }
+const WIDTH = 210, HEIGHT = 297, MARGIN = 18, BOTTOM = 272, TEXT_WIDTH = WIDTH - MARGIN * 2;
+const INK: [number, number, number] = [30, 41, 59];
+const MUTED: [number, number, number] = [100, 116, 139];
+const BLUE: [number, number, number] = [37, 99, 235];
+const LINE: [number, number, number] = [226, 232, 240];
 
-interface ExportToPDFOptions {
-  content: string;
-  courseTitle: string;
-  lessonTitle: string;
-  filename: string;
+function clean(text: string): string {
+  return text.replace(/<!--\s*(?:STUDENT_WORKSHEET|PRIVATE_SOLUTIONS|END_WORKSHEET)\s*-->/g, '')
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1 ($2)').replace(/\*\*|__([^_]+)__|`/g, '$1')
+    .replace(/[\u2018\u2019]/g, "'").replace(/[\u201c\u201d]/g, '"').replace(/[\u2013\u2014]/g, ' - ')
+    .replace(/\u2026/g, '...').replace(/\uFE0F/g, '').replace(/[\u{1F300}-\u{1FAFF}]/gu, '').trim();
 }
 
-const PAGE_WIDTH = 210; // A4 width in mm
-const PAGE_HEIGHT = 297; // A4 height in mm
-const MARGIN = 20;
-const LINE_HEIGHT = 7;
-const MAX_WIDTH = PAGE_WIDTH - (MARGIN * 2);
-
-/**
- * Add watermark to all pages in the PDF
- * GState must be passed from the caller since it's part of the jsPDF dynamic import
- */
-function addWatermark(doc: jsPDF, GStateConstructor: new (options: { opacity: number }) => unknown): void {
-  const totalPages = doc.getNumberOfPages();
-  
-  // Hoist GState objects outside the loop
-  const dimState = new GStateConstructor({ opacity: 0.15 });
-  const fullState = new GStateConstructor({ opacity: 1 });
-  
-  for (let i = 1; i <= totalPages; i++) {
-    doc.setPage(i);
-    
-    // Apply watermark state
-    doc.setFontSize(55);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(210, 210, 210);
-    
-    // Apply opacity using setGState
-    (doc as unknown as { setGState: (state: unknown) => void }).setGState(dimState);
-    
-    // Center of page
-    const centerX = PAGE_WIDTH / 2;
-    const centerY = PAGE_HEIGHT / 2;
-    
-    // Draw diagonal watermark text
-    doc.text(WATERMARK_CONFIG.text, centerX, centerY, {
-      align: 'center',
-      angle: WATERMARK_CONFIG.angle,
-    });
-    
-    // Restore ALL state properties
-    (doc as unknown as { setGState: (state: unknown) => void }).setGState(fullState);
-    doc.setTextColor(0, 0, 0);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(11);
-    doc.setDrawColor(0, 0, 0);
-  }
-}
-
-/**
- * Split text into lines that fit within the page width
- * 
- * This function breaks down a text string into multiple lines based on word boundaries,
- * ensuring each line fits within the specified maximum width when rendered in the PDF.
- * 
- * @param doc - A jsPDF instance used to measure text width via `doc.getTextWidth()`
- * @param text - The text string to split into lines
- * @param maxWidth - The maximum width (in mm) that each line can occupy
- * @returns An array of strings, where each string represents a line that fits within maxWidth
- */
-function splitTextToLines(doc: jsPDF, text: string, maxWidth: number): string[] {
-  if (!text) return [''];
-  
-  const words = text.split(' ');
-  const lines: string[] = [];
-  let currentLine = '';
-
-  for (const word of words) {
-    const testLine = currentLine ? `${currentLine} ${word}` : word;
-    const width = doc.getTextWidth(testLine);
-
-    if (width > maxWidth && currentLine) {
-      lines.push(currentLine);
-      currentLine = word;
-    } else {
-      currentLine = testLine;
-    }
-  }
-
-  if (currentLine) {
-    lines.push(currentLine);
-  }
-
-  return lines.length > 0 ? lines : [''];
-}
-
-/**
- * Export content to PDF with proper formatting
- * Uses dynamic import to reduce initial bundle size
- */
-export async function exportToPDF({
-  content,
-  courseTitle,
-  lessonTitle,
-  filename,
-}: ExportToPDFOptions): Promise<void> {
-  try {
-    if (!content || !content.trim()) {
-      throw new Error('Content is empty');
-    }
-
-    if (content.length > 500_000) {
-      throw new Error('Content is too large to export (max 500,000 characters)');
-    }
-
-    // Lazy load jsPDF - reduces initial bundle by ~200KB
-    const jsPDFModule = await import('jspdf');
-    const { jsPDF } = jsPDFModule;
-    
-    // GState is needed for watermark opacity
-    const GState = (jsPDFModule as unknown as { GState?: new (options: { opacity: number }) => unknown }).GState;
-    
-    if (!GState) {
-      throw new Error('jsPDF GState not available');
-    }
-
-    const doc = new jsPDF({
-      orientation: 'portrait',
-      unit: 'mm',
-      format: 'a4',
-    });
-
-    // Use state object to track y position
-    const state = { y: MARGIN };
-
-    // Helper to check if we need a new page
-    const checkPageBreak = (requiredSpace: number): void => {
-      if (state.y + requiredSpace > PAGE_HEIGHT - MARGIN) {
-        doc.addPage();
-        state.y = MARGIN;
-      }
-    };
-
-    // Add branding logo at the top
-    const logo = await loadLogo();
-    if (logo) {
+/** Build a print-friendly A4 resource. Kept separate from saving for layout verification. */
+export async function createWorksheetPDF({ content, courseTitle, lessonTitle }: Omit<ExportToPDFOptions, 'filename'>): Promise<jsPDF> {
+  if (!content.trim()) throw new Error('Content is empty');
+  if (content.length > 500_000) throw new Error('Content is too large to export (max 500,000 characters)');
+  const { jsPDF: PDF } = await import('jspdf');
+  const doc = new PDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
+  const [logo, watermark] = await Promise.all([loadLogo('/RareMinds ISO Logo-01.png'), loadLogo()]);
+  const lines = stripWorksheetMarkers(content).replace(/\r/g, '').split('\n');
+  const titleIndex = lines.findIndex(line => /^\s*(?:#{1,3}\s*)?(?:\*\*)?title\s*:/i.test(line));
+  const title = clean(titleIndex >= 0 ? lines[titleIndex].replace(/^\s*(?:#{1,3}\s*)?(?:\*\*)?title\s*:\s*/i, '') : courseTitle);
+  doc.setProperties({ title, subject: `${courseTitle} | ${lessonTitle}`, author: 'RareMinds', creator: 'SkillPassport' });
+  let y = 20;
+  const decorated = new Set<number>();
+  const backgrounds = new Set<number>();
+  function background() {
+    const page = doc.getCurrentPageInfo().pageNumber;
+    if (backgrounds.has(page)) return;
+    backgrounds.add(page);
+    if (!watermark || watermark.naturalWidth <= 0 || watermark.naturalHeight <= 0) return;
+    const aspect = watermark.naturalHeight / watermark.naturalWidth;
+    // Match the assessment report's 8% center / 5% corner bulb branding, behind content.
+    for (const mark of [{ x: (WIDTH - 96) / 2, y: 108, width: 96, opacity: 0.08 }, { x: MARGIN, y: 58, width: 46, opacity: 0.05 }, { x: WIDTH - MARGIN - 46, y: 58, width: 46, opacity: 0.05 }]) {
+      doc.saveGraphicsState();
       try {
-        const MAX_LOGO_WIDTH = 25;   // mm — small, professional
-        const MAX_LOGO_HEIGHT = 10;  // mm — hard cap on height
-        const aspectRatio = logo.naturalHeight / logo.naturalWidth;
-        const logoWidth = Math.min(MAX_LOGO_WIDTH, logo.naturalWidth * 0.264); // px to mm
-        const logoHeight = logoWidth * aspectRatio;
-        
-        // If height still exceeds cap, scale width down to match
-        const finalLogoHeight = Math.min(logoHeight, MAX_LOGO_HEIGHT);
-        const finalLogoWidth = finalLogoHeight / aspectRatio;
-        
-        // Align logo to the left at top margin
-        const logoX = MARGIN;
-        const logoY = MARGIN;
-        
-        doc.addImage(logo.dataUrl, 'PNG', logoX, logoY, finalLogoWidth, finalLogoHeight);
-        state.y = MARGIN + finalLogoHeight + 3; // tight spacing after logo
-      } catch (err) {
-        logger.warn('Failed to add logo to PDF', { error: err instanceof Error ? err.message : String(err) });
-        // Continue without logo if it fails
+        doc.setGState(doc.GState({ opacity: mark.opacity }));
+        doc.addImage(watermark.dataUrl, 'PNG', mark.x, mark.y, mark.width, mark.width * aspect, 'worksheet-background');
+      } catch { logger.warn('Worksheet background unavailable; continuing without it'); }
+      finally { doc.restoreGraphicsState(); }
+    }
+  }
+  function font(size = 10.5, weight: 'normal' | 'bold' = 'normal', color = INK) {
+    doc.setFont('helvetica', weight); doc.setFontSize(size); doc.setTextColor(...color);
+  }
+  function fit(text: string, maxWidth: number) {
+    let result = clean(text);
+    while (result && doc.getTextWidth(result) > maxWidth) result = result.slice(0, -1);
+    return result.length < clean(text).length ? `${result.slice(0, -3)}...` : result;
+  }
+  function rule(at: number) { doc.setDrawColor(...LINE); doc.setLineWidth(0.25); doc.line(MARGIN, at, WIDTH - MARGIN, at); }
+  function continuation() {
+    const page = doc.getCurrentPageInfo().pageNumber;
+    if (decorated.has(page)) return;
+    decorated.add(page);
+    font(8, 'normal', MUTED); doc.text(fit(title, TEXT_WIDTH - 55), MARGIN, 19);
+    doc.setTextColor(...BLUE); doc.text('RAREMINDS / SKILLPASSPORT', WIDTH - MARGIN, 19, { align: 'right' });
+    rule(23);
+  }
+  function newPage() { doc.addPage(); background(); continuation(); y = 33; }
+  function ensure(space: number) { if (y + space > BOTTOM) newPage(); }
+  function paragraph(text: string, options: { size?: number; bold?: boolean; indent?: number; after?: number; keep?: number } = {}) {
+    const size = options.size || 10.5, indent = options.indent || 0, height = size * 0.3528 * 1.5;
+    font(size, options.bold ? 'bold' : 'normal');
+    const wrapped = doc.splitTextToSize(clean(text), TEXT_WIDTH - indent) as string[];
+    ensure(Math.min(wrapped.length * height + (options.keep || 0), BOTTOM - 33));
+    for (const line of wrapped) { ensure(height); font(size, options.bold ? 'bold' : 'normal'); doc.text(line, MARGIN + indent, y); y += height; }
+    y += options.after ?? 1.5;
+  }
+  function section(text: string) {
+    ensure(20); y += 4;
+    font(11, 'bold');
+    const wrapped = doc.splitTextToSize(clean(text), TEXT_WIDTH) as string[];
+    for (const line of wrapped) { ensure(12); font(11, 'bold'); doc.text(line, MARGIN, y); y += 5.8; }
+    doc.setDrawColor(...BLUE); doc.setLineWidth(0.35); doc.line(MARGIN, y, WIDTH - MARGIN, y); y += 6;
+  }
+
+  // Small brand mark, one document title, and useful metadata instead of a cover page.
+  background();
+  let logoAdded = false;
+  if (logo && logo.naturalWidth > 0 && logo.naturalHeight > 0) {
+    const scale = Math.min(39 / logo.naturalWidth, 12 / logo.naturalHeight);
+    try { doc.addImage(logo.dataUrl, 'PNG', MARGIN, 13, logo.naturalWidth * scale, logo.naturalHeight * scale); logoAdded = true; }
+    catch { logger.warn('PDF logo unavailable; using text branding'); }
+  }
+  if (!logoAdded) { font(12, 'bold', BLUE); doc.text('RareMinds', MARGIN, 22); }
+  font(8, 'bold', BLUE); doc.text(/lesson plan/i.test(lessonTitle) ? 'LESSON PLAN' : 'COURSE WORKSHEET', WIDTH - MARGIN, 20, { align: 'right' });
+  rule(29); y = 39;
+  paragraph(title, { size: 17, bold: true, after: 0.5 });
+  const courseLabel = clean(courseTitle).replace(/\s+worksheet$/i, '');
+  const level = /\b(beginner|intermediate|advanced)\b/i.exec(lessonTitle)?.[1];
+  const subtitle = [courseLabel !== title ? courseLabel : '', level ? `${level[0].toUpperCase()}${level.slice(1).toLowerCase()}` : clean(lessonTitle)].filter(Boolean).join('  /  ');
+  font(9, 'normal', MUTED);
+  for (const line of doc.splitTextToSize(subtitle, TEXT_WIDTH) as string[]) { ensure(5); font(9, 'normal', MUTED); doc.text(line, MARGIN, y); y += 5; }
+  y += 3;
+  if (/worksheet|quiz|assessment/i.test(`${courseTitle} ${lessonTitle}`)) {
+    ensure(14); font(8.5, 'normal', MUTED);
+    doc.text('Name', MARGIN, y); doc.text('Date', MARGIN + 120, y);
+    doc.setDrawColor(...LINE); doc.setLineWidth(0.3);
+    doc.line(MARGIN + 12, y + 0.5, MARGIN + 105, y + 0.5); doc.line(MARGIN + 130, y + 0.5, WIDTH - MARGIN, y + 0.5);
+    y += 11;
+  }
+  decorated.add(1);
+
+  for (let index = 0; index < lines.length; index++) {
+    const raw = lines[index].trim(), text = clean(raw);
+    if (index === titleIndex || !text && /<!--/.test(raw)) continue;
+    if (!text) { y = Math.min(y + 2, BOTTOM); continue; }
+    if (/^[-*_]{3,}$/.test(text)) { ensure(7); rule(y); y += 6; continue; }
+    if (text === 'RareMinds' || text.toLowerCase() === title.toLowerCase()) continue;
+
+    if (/^\|/.test(raw) && index + 1 < lines.length && /^\s*\|?[\s:|-]+\|\s*$/.test(lines[index + 1])) {
+      const cells = (line: string) => line.trim().replace(/^\||\|$/g, '').split('|').map(clean);
+      const head = cells(raw), body: string[][] = []; index += 2;
+      while (index < lines.length && /^\s*\|/.test(lines[index])) { body.push(cells(lines[index])); index++; }
+      index--;
+      ensure(20);
+      const { default: autoTable } = await import('jspdf-autotable');
+      autoTable(doc, { startY: y, head: [head], body, theme: 'plain', margin: { left: MARGIN, right: MARGIN, top: 32, bottom: HEIGHT - BOTTOM },
+        styles: { font: 'helvetica', fontSize: 9, cellPadding: 2.5, textColor: INK, lineColor: LINE, lineWidth: 0.1, overflow: 'linebreak' },
+        headStyles: { fillColor: [248, 250, 252], textColor: INK, fontStyle: 'bold' },
+        willDrawPage: () => { background(); if (doc.getCurrentPageInfo().pageNumber > 1) continuation(); },
+      });
+      y = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 5;
+      continue;
+    }
+    const heading = /^#{1,6}\s+(.+)$/.exec(text);
+    if (heading || /^(?:answer key|sample answers|solutions|word bank|questions|instructions|grading rubric|scoring guide)\s*:?$/i.test(text)) { section(heading ? heading[1] : text.replace(/:$/, '')); continue; }
+    const numbered = /^(\d+)[.)]\s+(.+)$/.exec(text);
+    if (numbered) {
+      const height = 5.55;
+      font(); const wrapped = doc.splitTextToSize(numbered[2], TEXT_WIDTH - 9) as string[];
+      let optionHeight = 0;
+      for (let next = index + 1; next < lines.length; next++) {
+        const candidate = clean(lines[next]);
+        if (!candidate) { optionHeight += 2; continue; }
+        if (!/^[A-Da-d][.)]\s+/.test(candidate)) break;
+        font(10); optionHeight += (doc.splitTextToSize(candidate, TEXT_WIDTH - 9) as string[]).length * 5.3 + 0.5;
       }
+      ensure(Math.min(wrapped.length * height + optionHeight + 4, BOTTOM - 33));
+      font(9.5, 'bold', BLUE); doc.text(`${numbered[1]}.`, MARGIN, y);
+      for (const line of wrapped) { ensure(height); font(); doc.text(line, MARGIN + 9, y); y += height; }
+      y += 3;
+      continue;
     }
-
-    // Add a thin header rule line after logo
-    doc.setDrawColor(220, 220, 220);
-    doc.setLineWidth(0.3);
-    doc.line(MARGIN, state.y, PAGE_WIDTH - MARGIN, state.y);
-    state.y += 6;
-
-    // Header - Course Title
-    doc.setFontSize(16); // slightly smaller looks cleaner
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(30, 30, 30); // near-black, not pure black
-    const courseTitleLines = splitTextToLines(doc, courseTitle, MAX_WIDTH);
-    for (const line of courseTitleLines) {
-      checkPageBreak(LINE_HEIGHT);
-      doc.text(line, MARGIN, state.y);
-      state.y += LINE_HEIGHT;
+    const option = /^([A-Da-d])[.)]\s+(.+)$/.exec(text);
+    if (option) { paragraph(`${option[1].toUpperCase()}.  ${option[2]}`, { size: 10, indent: 9, after: 0.5 }); continue; }
+    const bullet = /^[-*•]\s+(.+)$/.exec(text);
+    if (bullet) { ensure(7); doc.setFillColor(...MUTED); doc.circle(MARGIN + 1.5, y - 1, 0.55, 'F'); paragraph(bullet[1], { indent: 6, after: 1 }); continue; }
+    const label = /^(Learning Objective|Learning Objectives|Instructions|Duration|Grade|Materials|Objective)\s*:\s*(.+)$/i.exec(text);
+    if (label) {
+      font(9.5); const wrapped = doc.splitTextToSize(label[2], TEXT_WIDTH - 10) as string[];
+      const cardHeight = 11 + wrapped.length * 5;
+      if (cardHeight <= BOTTOM - 33) {
+        ensure(cardHeight + 4);
+        doc.setFillColor(248, 250, 255); doc.roundedRect(MARGIN, y - 3, TEXT_WIDTH, cardHeight, 1.5, 1.5, 'F');
+        font(7.5, 'bold', BLUE); doc.text(label[1].toUpperCase(), MARGIN + 4, y + 1); y += 7;
+        for (const line of wrapped) { font(9.5); doc.text(line, MARGIN + 4, y); y += 5; }
+        y += 5;
+      } else paragraph(`${label[1]}: ${label[2]}`, { size: 9.5, after: 3 });
+      continue;
     }
+    paragraph(text, { bold: /^\*\*[^*]+\*\*\s*$/.test(raw) });
+  }
 
-    state.y += 3;
+  const total = doc.getNumberOfPages();
+  for (let page = 1; page <= total; page++) {
+    doc.setPage(page); rule(280);
+    font(8, 'normal', MUTED); doc.text(fit(`RareMinds SkillPassport | ${courseTitle.replace(/\s+worksheet$/i, '')}`, TEXT_WIDTH - 35), MARGIN, 286);
+    doc.text(`${page} / ${total}`, WIDTH - MARGIN, 286, { align: 'right' });
+  }
+  return doc;
+}
 
-    // Lesson Title
-    doc.setFontSize(13); // professional sizing
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(30, 30, 30);
-    const lessonTitleLines = splitTextToLines(doc, lessonTitle, MAX_WIDTH);
-    for (const line of lessonTitleLines) {
-      checkPageBreak(LINE_HEIGHT);
-      doc.text(line, MARGIN, state.y);
-      state.y += LINE_HEIGHT;
-    }
-
-    state.y += 2;
-
-    // Generated Date
-    doc.setFontSize(10);
-    doc.setTextColor(100, 100, 100);
-    checkPageBreak(LINE_HEIGHT);
-    doc.text(`Generated: ${new Date().toLocaleDateString()}`, MARGIN, state.y);
-    state.y += LINE_HEIGHT + 5;
-
-    // Separator line
-    doc.setDrawColor(200, 200, 200);
-    doc.setLineWidth(0.3);
-    doc.line(MARGIN, state.y, PAGE_WIDTH - MARGIN, state.y);
-    state.y += 8;
-
-    // Content
-    doc.setTextColor(0, 0, 0);
-    const parsedContent = parseMarkdownLines(content);
-
-    for (const item of parsedContent) {
-      switch (item.type) {
-        case 'blank':
-          state.y += LINE_HEIGHT * 0.5;
-          break;
-
-        case 'separator':
-          checkPageBreak(6);
-          doc.setDrawColor(200, 200, 200);
-          doc.setLineWidth(0.3);
-          doc.line(MARGIN, state.y, PAGE_WIDTH - MARGIN, state.y);
-          state.y += 6;
-          break;
-
-        case 'answer_key':
-          checkPageBreak(14);
-          doc.setFillColor(240, 240, 240);
-          doc.roundedRect(MARGIN, state.y - 4, MAX_WIDTH, 10, 2, 2, 'F');
-          doc.setFontSize(13);
-          doc.setFont('helvetica', 'bold');
-          doc.setTextColor(60, 60, 60);
-          doc.text('Answer Key', MARGIN + 3, state.y + 3);
-          state.y += 14;
-          doc.setTextColor(0, 0, 0);
-          break;
-
-        case 'blank_line': {
-          checkPageBreak(LINE_HEIGHT);
-          const lineText = item.raw;
-          const parts = lineText.split('__________');
-          let xPos = MARGIN;
-          
-          doc.setFont('helvetica', 'normal');
-          doc.setFontSize(11);
-          doc.setTextColor(0, 0, 0);
-          
-          for (let i = 0; i < parts.length; i++) {
-            if (parts[i]) {
-              doc.text(parts[i], xPos, state.y);
-              xPos += doc.getTextWidth(parts[i]);
-            }
-            if (i < parts.length - 1) {
-              // Draw underline instead of underscores
-              doc.setDrawColor(80, 80, 80);
-              doc.setLineWidth(0.4);
-              doc.line(xPos, state.y, xPos + 30, state.y);
-              xPos += 32;
-            }
-          }
-          state.y += LINE_HEIGHT;
-          break;
-        }
-
-        case 'heading':
-          if (item.level === 1) {
-            doc.setFontSize(13);
-            doc.setFont('helvetica', 'bold');
-            doc.setTextColor(30, 30, 30);
-            checkPageBreak(LINE_HEIGHT + 4);
-            state.y += 4;
-          } else if (item.level === 2) {
-            doc.setFontSize(14);
-            doc.setFont('helvetica', 'bold');
-            doc.setTextColor(30, 30, 30);
-            checkPageBreak(LINE_HEIGHT + 3);
-            state.y += 3;
-          } else if (item.level === 3) {
-            doc.setFontSize(12);
-            doc.setFont('helvetica', 'bold');
-            doc.setTextColor(30, 30, 30);
-            checkPageBreak(LINE_HEIGHT + 2);
-            state.y += 2;
-          }
-          
-          {
-            const lines = splitTextToLines(doc, item.text, MAX_WIDTH);
-            for (const line of lines) {
-              checkPageBreak(LINE_HEIGHT);
-              doc.text(line, MARGIN, state.y);
-              state.y += LINE_HEIGHT;
-            }
-            state.y += 2;
-          }
-          break;
-
-        case 'bold': {
-          doc.setFontSize(11);
-          doc.setFont('helvetica', 'bold');
-          doc.setTextColor(0, 0, 0);
-          
-          const boldText = item.segments.map(seg => seg.text).join('');
-          const lines = splitTextToLines(doc, boldText, MAX_WIDTH);
-          for (const line of lines) {
-            checkPageBreak(LINE_HEIGHT);
-            doc.text(line, MARGIN, state.y);
-            state.y += LINE_HEIGHT;
-          }
-          break;
-        }
-
-        case 'bullet': {
-          doc.setFontSize(11);
-          doc.setFont('helvetica', 'normal');
-          doc.setTextColor(0, 0, 0);
-          
-          const lines = splitTextToLines(doc, '• ' + item.text, MAX_WIDTH);
-          for (const line of lines) {
-            checkPageBreak(LINE_HEIGHT);
-            doc.text(line, MARGIN, state.y);
-            state.y += LINE_HEIGHT;
-          }
-          break;
-        }
-
-        case 'numbered': {
-          checkPageBreak(LINE_HEIGHT + 3);
-          state.y += 3;
-          doc.setFontSize(11);
-          doc.setFont('helvetica', 'bold');
-          doc.setTextColor(20, 20, 20);
-          
-          const lines = splitTextToLines(doc, `${item.n}. ${item.text}`, MAX_WIDTH);
-          for (const line of lines) {
-            checkPageBreak(LINE_HEIGHT);
-            doc.text(line, MARGIN, state.y);
-            state.y += LINE_HEIGHT;
-          }
-          break;
-        }
-
-        case 'normal': {
-          doc.setFontSize(11);
-          doc.setFont('helvetica', 'normal');
-          doc.setTextColor(0, 0, 0);
-          
-          const lines = splitTextToLines(doc, item.text, MAX_WIDTH);
-          for (const line of lines) {
-            checkPageBreak(LINE_HEIGHT);
-            doc.text(line, MARGIN, state.y);
-            state.y += LINE_HEIGHT;
-          }
-          break;
-        }
-      }
-    }
-
-    // Add watermark to all pages
-    addWatermark(doc, GState);
-
-    // Add page numbers to all pages
-    const totalPages = doc.getNumberOfPages();
-    for (let i = 1; i <= totalPages; i++) {
-      doc.setPage(i);
-      doc.setFontSize(9);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(150, 150, 150);
-      doc.text(
-        `Page ${i} of ${totalPages}`,
-        PAGE_WIDTH / 2,
-        PAGE_HEIGHT - 10,
-        { align: 'center' }
-      );
-    }
-
-    // Save the PDF
+export async function exportToPDF({ filename, ...options }: ExportToPDFOptions): Promise<void> {
+  try {
+    const doc = await createWorksheetPDF(options);
     doc.save(`${filename}.pdf`);
-    
     logger.info('PDF export successful', { filename, pages: doc.getNumberOfPages() });
-  } catch (err) {
-    logger.error('PDF export failed', err instanceof Error ? err : new Error(String(err)));
-    throw err instanceof Error ? err : new Error('Failed to export PDF');
+  } catch (error) {
+    logger.error('PDF export failed', error instanceof Error ? error : new Error(String(error)));
+    throw error instanceof Error ? error : new Error('Failed to export PDF');
   }
 }

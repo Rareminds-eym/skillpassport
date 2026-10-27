@@ -36,11 +36,11 @@ describe('material completion state', () => {
   it('marks a response complete only after a successful completion event', async () => {
     mocks.send.mockImplementation(async function* () {
       yield { type: 'content', content: 'Generated questions' };
-      yield { type: 'done', conversationId: 'saved-conversation' };
+      yield { type: 'done', conversationId: 'saved-conversation', messageId: 'saved-message', worksheetAvailable: true };
     });
     const { result } = renderHook(() => useTutorChat({ courseId: 'course' }));
     await act(async () => { await result.current.sendMessage('Generate'); });
-    expect(result.current.messages.at(-1)).toMatchObject({ content: 'Generated questions', status: 'complete' });
+    expect(result.current.messages.at(-1)).toMatchObject({ id: 'saved-message', content: 'Generated questions', status: 'complete', worksheetAvailable: true });
   });
 
   it('keeps partial text marked as failed when generation errors', async () => {

@@ -109,6 +109,7 @@ export function useExport({
         }
 
         onErrorRef.current?.(error, format);
+        throw error;
       } finally {
         isExportingRef.current = false;
       }

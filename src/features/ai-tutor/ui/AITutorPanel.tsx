@@ -7,6 +7,7 @@ import {
   ChevronDown,
   ChevronUp,
   History,
+  ClipboardList,
   Loader2,
   LogIn,
   Pencil,
@@ -22,17 +23,19 @@ import {
   FileText,
   Copy,
   Check,
-  MessageSquare,
   X,
 } from 'lucide-react';
 import * as React from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { useEffect, useState, useRef, useCallback } from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
+import { stripWorksheetMarkers } from '@/shared/utils';
 import { useTutorChat, type GenerationUsage } from '@/features/ai-tutor/model/useTutorChat';
 import WorksheetConfigPanel from './WorksheetConfigPanel';
 import LessonPlanConfigPanel from './LessonPlanConfigPanel';
 import WorksheetExportButton from './WorksheetExportButton';
+import AssignWorksheetButton from './AssignWorksheetButton';
+import LearnerWorksheets from './LearnerWorksheets';
 import type { WorksheetConfig } from '../types/worksheet';
 import { DEFAULT_WORKSHEET_CONFIG } from '../types/worksheet';
 import type { LessonPlanConfig } from '../types';
@@ -62,7 +65,7 @@ interface AITutorPanelProps {
   defaultExpanded?: boolean;
 }
 
-type AssistantTab = 'worksheet' | 'lesson-plan' | 'chat';
+type AssistantTab = 'worksheet' | 'lesson-plan';
 
 const AITutorPanel: React.FC<AITutorPanelProps> = ({
   courseId,
@@ -83,9 +86,9 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
   }, [isExpanded, setFacilitatorOpen]);
   const [isConfigExpanded, setIsConfigExpanded] = useState(false);
   const [configTool, setConfigTool] = useState<AssistantTab>('worksheet');
-  const [refinement, setRefinement] = useState('');
   const [input, setInput] = useState('');
   const [showHistory, setShowHistory] = useState(false);
+  const [showWorksheets, setShowWorksheets] = useState(false);
   const [feedbackGiven, setFeedbackGiven] = useState<Record<number, 1 | -1>>({});
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -289,7 +292,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
 
   const handleCopyText = (text: string, index: number) => {
     if (navigator?.clipboard?.writeText) {
-      navigator.clipboard.writeText(text);
+      navigator.clipboard.writeText(stripWorksheetMarkers(text));
       setCopiedIndex(index);
       toast.success('Copied to clipboard');
       setTimeout(() => setCopiedIndex(null), 2000);
@@ -487,6 +490,22 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
     );
   }
 
+  if (showWorksheets && !isEducator) {
+    return (
+      <motion.section initial={{ x: 400, opacity: 0 }} animate={{ x: 0, opacity: 1 }}
+        transition={{ type: 'spring', damping: 26, stiffness: 220 }}
+        aria-label="Course assignments"
+        className="fixed right-0 top-0 h-dvh w-full sm:w-[500px] max-w-full bg-white shadow-2xl z-50 flex flex-col border-l border-slate-200">
+        <div className="p-3.5 border-b border-slate-200 bg-slate-50/80 flex items-center gap-2">
+          <button type="button" onClick={() => setShowWorksheets(false)} aria-label="Back to AI tutor"
+            className="p-1.5 hover:bg-slate-200/70 text-slate-600 rounded-lg transition-colors"><ChevronLeft className="w-4 h-4" /></button>
+          <h3 className="font-semibold text-xs text-slate-900" title={courseName}>Course assignments</h3>
+        </div>
+        <div className="flex-1 min-h-0 overflow-y-auto"><LearnerWorksheets key={courseId} courseId={courseId} /></div>
+      </motion.section>
+    );
+  }
+
   // Conversation History Drawer
   if (showHistory) {
     return (
@@ -660,6 +679,13 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
             </button>
 
             {/* History */}
+            {!isEducator && (
+              <button type="button" onClick={() => setShowWorksheets(true)}
+                className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors"
+                title="Course assignments" aria-label="View course assignments">
+                <ClipboardList className="w-3.5 h-3.5" />
+              </button>
+            )}
             <button
               type="button"
               onClick={() => {
@@ -886,7 +912,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
                         {msg.content ? (
                           <div className="text-slate-800">
                             <ReactMarkdown components={markdownComponents}>
-                              {msg.content}
+                              {stripWorksheetMarkers(msg.content, isLastAssistant && isStreaming)}
                             </ReactMarkdown>
 
                             {/* Real-time streaming pulse cursor */}
@@ -934,9 +960,12 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
                               </button>
 
                               {/* Export Button (PDF / DOCX) */}
+                              {isEducator && msg.worksheetAvailable && conversationId && (
+                                <AssignWorksheetButton conversationId={conversationId} messageId={msg.id} courseTitle={courseName} />
+                              )}
                               {isEducator && (
                                 <WorksheetExportButton
-                                  content={msg.content}
+                                  content={stripWorksheetMarkers(msg.content)}
                                   courseTitle={courseName}
                                   lessonTitle={lessonContext?.lessonTitle}
                                 />
@@ -1019,17 +1048,17 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
             {([
               { tool: 'worksheet', label: 'Worksheet', Icon: FileText },
               { tool: 'lesson-plan', label: 'Lesson Plan', Icon: BookOpen },
-              { tool: 'chat', label: 'Refine', Icon: MessageSquare },
             ] as const).map(({ tool, label, Icon }) => (
               <button key={tool} type="button" aria-label={label} title={label}
                 aria-haspopup="dialog" disabled={isStreaming || !isAuthenticated}
                 onClick={() => {
                   setConfigTool(tool);
-                  if (tool !== 'chat') setAssistantMode(tool);
+                  setAssistantMode(tool);
                   setIsConfigExpanded(true);
                 }}
-                className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-blue-50 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-40">
-                <Icon className="h-4 w-4" />
+                className="group flex h-8 items-center rounded-lg px-2 text-slate-500 transition-colors hover:bg-blue-50 hover:text-blue-700 focus-visible:bg-blue-50 focus-visible:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-40">
+                <Icon className="h-4 w-4 shrink-0" />
+                <span aria-hidden="true" className="max-w-0 overflow-hidden whitespace-nowrap text-xs font-medium opacity-0 transition-all duration-200 group-hover:ml-1.5 group-hover:max-w-24 group-hover:opacity-100 group-focus-visible:ml-1.5 group-focus-visible:max-w-24 group-focus-visible:opacity-100 motion-reduce:transition-none">{label}</span>
               </button>
             ))}
           </div>
@@ -1082,10 +1111,10 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
             className="fixed left-1/2 top-1/2 z-[61] flex max-h-[85dvh] w-[calc(100vw_-_2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 flex-col rounded-2xl border border-slate-200 bg-white shadow-2xl focus:outline-none">
             <div className="border-b border-slate-100 p-5 pr-12">
               <Dialog.Title className="text-base font-semibold text-slate-900">
-                {configTool === 'worksheet' ? 'Create a worksheet' : configTool === 'lesson-plan' ? 'Plan a lesson' : 'Refine your material'}
+                {configTool === 'worksheet' ? 'Create a worksheet' : 'Plan a lesson'}
               </Dialog.Title>
               <Dialog.Description className="mt-1 text-xs leading-5 text-slate-500">
-                {configTool === 'chat' ? 'Describe the changes you need, then add them to your message.' : 'Choose your settings. Your material will appear in the conversation.'}
+                Choose your settings. Your material will appear in the conversation.
               </Dialog.Description>
               <Dialog.Close aria-label="Close settings" className="absolute right-4 top-4 rounded-lg p-2 text-slate-500 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-blue-500">
                 <X className="h-4 w-4" />
@@ -1098,27 +1127,12 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
                   generationLimit={isTeacher ? teacherGenerationLimit : undefined}
                   remainingGenerations={isTeacher ? remainingTeacherGenerations : undefined}
                   isGenerationLimitReached={isGenerationLocked} isUsageLoading={isCheckingGenerationUsage} />
-              ) : configTool === 'lesson-plan' ? (
+              ) : (
                 <LessonPlanConfigPanel config={lessonPlanConfig} onChange={setLessonPlanConfig}
                   onGenerate={handleGenerate} isGenerating={isStreaming}
                   generationLimit={isTeacher ? teacherGenerationLimit : undefined}
                   remainingGenerations={isTeacher ? remainingTeacherGenerations : undefined}
                   isGenerationLimitReached={isGenerationLocked} isUsageLoading={isCheckingGenerationUsage} />
-              ) : (
-                <div className="space-y-4">
-                  <label className="block text-sm font-medium text-slate-700" htmlFor="facilitator-refinement">What would you like to change?</label>
-                  <textarea id="facilitator-refinement" value={refinement} onChange={(event) => setRefinement(event.target.value)}
-                    placeholder="For example, simplify the questions and include an answer key."
-                    className="min-h-24 w-full resize-y rounded-xl border border-slate-300 p-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                  <div className="flex flex-wrap gap-2">
-                    {['Make questions harder', 'Add answer key', 'Include 5 more questions'].map((prompt) => (
-                      <button type="button" key={prompt} onClick={() => setRefinement(prompt)}
-                        className="rounded-full border border-slate-200 px-3 py-1.5 text-xs text-slate-600 hover:bg-blue-50">{prompt}</button>
-                    ))}
-                  </div>
-                  <button type="button" disabled={!refinement.trim()} onClick={() => { setInput(refinement.trim()); setIsConfigExpanded(false); }}
-                    className="w-full rounded-xl bg-blue-700 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-800 disabled:opacity-40">Add to message</button>
-                </div>
               )}
             </div>
           </Dialog.Content>

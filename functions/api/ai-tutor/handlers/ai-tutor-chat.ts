@@ -27,6 +27,7 @@ import {
 import { buildLessonPlanPrompt } from '../utils/lesson-plan-templates';
 import { hasReachedLimit, incrementGenerationCount } from '../utils/generation-limit';
 import { createLogger } from '../../../lib/logger';
+import { WORKSHEET_ASSIGNMENT_FORMAT } from '../utils/worksheet-content';
 
 const logger = createLogger('ai-tutor-chat');
 
@@ -40,6 +41,8 @@ interface RequiredEnv {
 type TypedContext = AuthenticatedContext<PagesEnv> & { env: RequiredEnv };
 
 interface StoredMessage {
+  worksheetVariants?: Array<{ difficulty: string; content: string }>;
+  worksheetConfig?: WorksheetConfig;
   id: string;
   role: 'user' | 'assistant';
   content: string;
@@ -243,6 +246,7 @@ export const handleAiTutorChat = async (context: TypedContext) => {
     // Create SSE stream
     const encoder = new TextEncoder();
     let fullResponse = '';
+    const worksheetVariants: Array<{ difficulty: string; content: string }> = [];
 
     const generationAbort = new AbortController();
     const abortGeneration = () => generationAbort.abort();
@@ -391,7 +395,7 @@ export const handleAiTutorChat = async (context: TypedContext) => {
                 { role: 'system', content: buildSystemPrompt(courseContext, conversationPhase, userRole,
                   { ...worksheetConfig!, difficulty: level, difficultyLevels: undefined }, undefined) },
                 ...recentMessages.map(item => ({ role: item.role, content: item.content })),
-                { role: 'user', content: `${message}\nFor this section generate exactly ${worksheetConfig!.questionCount} questions at ${labels[level]} difficulty only. Other selected levels are generated separately.` },
+                { role: 'user', content: `${message}\nFor this section generate exactly ${worksheetConfig!.questionCount} questions at ${labels[level]} difficulty only. Other selected levels are generated separately.\n${WORKSHEET_ASSIGNMENT_FORMAT}` },
               ] : aiMessages;
               const response = await fetch(endpoint, {
                 method: 'POST',
@@ -453,6 +457,7 @@ export const handleAiTutorChat = async (context: TypedContext) => {
                   if (done) { if (buffer.trim()) processLine(buffer); break; }
                 }
                 if (!providerCompleted || !sectionContent.trim()) throw new Error('The AI response ended before the material was complete.');
+                if (level) worksheetVariants.push({ difficulty: ({ low: 'beginner', medium: 'intermediate', high: 'advanced' })[level], content: sectionContent });
               } finally {
                 await reader.cancel().catch(() => {});
                 reader.releaseLock();
@@ -464,6 +469,7 @@ export const handleAiTutorChat = async (context: TypedContext) => {
           // Create assistant message
           const assistantMessageId = crypto.randomUUID();
           const assistantMessage: StoredMessage = {
+            ...(worksheetVariants.length ? { worksheetVariants, worksheetConfig } : {}),
             id: assistantMessageId,
             role: 'assistant',
             content: fullResponse,
@@ -579,6 +585,7 @@ export const handleAiTutorChat = async (context: TypedContext) => {
           controller.enqueue(encoder.encode(`event: done\ndata: ${JSON.stringify({
             conversationId: currentConversationId,
             messageId: assistantMessage.id,
+            worksheetAvailable: worksheetVariants.length > 0,
             generationUsage
           })}\n\n`));
 

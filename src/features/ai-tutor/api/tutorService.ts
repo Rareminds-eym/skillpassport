@@ -13,6 +13,7 @@ const API_URL = getApiUrl('ai-tutor');
 // ==================== TYPES ====================
 
 export interface ChatMessage {
+  worksheetAvailable?: boolean;
   status?: 'streaming' | 'complete' | 'failed' | 'stopped';
   id: string;
   role: 'user' | 'assistant';
@@ -21,6 +22,7 @@ export interface ChatMessage {
 }
 
 interface MessageData {
+  worksheetVariants?: unknown[];
   id: string;
   role: 'user' | 'assistant';
   content: string;
@@ -97,6 +99,7 @@ export interface CourseProgress {
 let lastConversationId: string | null = null;
 
 export interface StreamChunk {
+  worksheetAvailable?: boolean;
   type: 'content' | 'reasoning' | 'done';
   content?: string;
   reasoning?: string;
@@ -185,6 +188,7 @@ export async function* sendMessage(request: ChatRequest, signal?: AbortSignal): 
               type: 'done',
               conversationId: parsed.conversationId,
               messageId: parsed.messageId,
+              worksheetAvailable: parsed.worksheetAvailable,
               generationUsage: parsed.generationUsage
             };
           }
@@ -227,7 +231,7 @@ export function getLastConversationId(): string | null {
  */
 export async function getConversations(courseId: string): Promise<Conversation[]> {
   try {
-    const response = await apiPost('/ai-tutor/actions', { action: 'get-conversations', course_id: courseId });
+    const response = await apiPost<{ data: RawConversation[] }>('/ai-tutor/actions', { action: 'get-conversations', course_id: courseId });
     const data = response?.data || [];
     return data.map((conv: RawConversation) => ({
       id: conv.id,
@@ -240,7 +244,8 @@ export async function getConversations(courseId: string): Promise<Conversation[]
         id: m.id,
         role: m.role,
         content: m.content,
-        timestamp: new Date(m.timestamp)
+        timestamp: new Date(m.timestamp),
+        worksheetAvailable: !!m.worksheetVariants?.length
       }))
     }));
   } catch (error) {
@@ -254,7 +259,7 @@ export async function getConversations(courseId: string): Promise<Conversation[]
  */
 export async function getConversation(conversationId: string): Promise<Conversation | null> {
   try {
-    const response = await apiPost('/ai-tutor/actions', { action: 'get-conversation', id: conversationId });
+    const response = await apiPost<{ data: RawConversation }>('/ai-tutor/actions', { action: 'get-conversation', id: conversationId });
     const data = response?.data;
     if (!data) return null;
     return {
@@ -268,7 +273,8 @@ export async function getConversation(conversationId: string): Promise<Conversat
         id: m.id,
         role: m.role,
         content: m.content,
-        timestamp: new Date(m.timestamp)
+        timestamp: new Date(m.timestamp),
+        worksheetAvailable: !!m.worksheetVariants?.length
       }))
     };
   } catch (error) {

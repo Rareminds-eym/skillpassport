@@ -16,6 +16,7 @@ import {
   FileText
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import { stripWorksheetMarkers } from '@/shared/utils';
 import { useTutorChat } from '@/features/ai-tutor/model/useTutorChat';
 import type { ChatMessage } from '@/features/ai-tutor/api/tutorService';
 import { getLogger } from '@/shared/config/logging';
@@ -267,7 +268,7 @@ const AITutorChat: React.FC<AITutorChatProps> = ({ courseId, lessonId, onClose }
                 <p className="whitespace-pre-wrap text-sm">{msg.content}</p>
               ) : (
                 <div className="prose prose-sm max-w-none text-sm leading-normal text-gray-800 [&>p]:mb-2 [&>p:last-child]:mb-0 [&>p]:text-sm [&>p]:leading-normal [&_strong]:font-semibold [&_strong]:text-gray-900">
-                  <ReactMarkdown>{msg.content}</ReactMarkdown>
+                  <ReactMarkdown>{stripWorksheetMarkers(msg.content, isLastAssistant && isStreaming)}</ReactMarkdown>
                 </div>
               )}
               {/* Reasoning indicator - AI is thinking */}
@@ -305,7 +306,7 @@ const AITutorChat: React.FC<AITutorChatProps> = ({ courseId, lessonId, onClose }
             {/* Export button for assistant messages (educators only) */}
             {!isUser && msg.content && isEducator && (
               <WorksheetExportButton
-                content={msg.content}
+                content={stripWorksheetMarkers(msg.content)}
                 courseTitle="Current Course"
                 lessonTitle="Current Lesson"
                 className="opacity-0 group-hover:opacity-100 transition-opacity"

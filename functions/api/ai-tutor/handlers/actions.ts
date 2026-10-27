@@ -1,4 +1,4 @@
-import { withAuth } from '../../../lib/auth';
+import { withAuth, getContextUser } from '../../../lib/auth';
 import { getServiceClient } from '../../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym-auth/core';
 import { apiSuccess, apiDbError } from '../../../lib/response';
@@ -81,7 +81,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       case 'get-conversations': {
         const { course_id } = params;
         if (!course_id) return apiDbError(new Error('course_id required'), context.request, { startTime });
-        const { data, error } = await supabase.from('tutor_conversations').select('id, title, course_id, lesson_id, created_at, updated_at, messages').eq('course_id', course_id).order('updated_at', { ascending: false });
+        const { data, error } = await supabase.from('tutor_conversations').select('id, title, course_id, lesson_id, created_at, updated_at, messages').eq('learner_id', getContextUser(context).id).eq('course_id', course_id).order('updated_at', { ascending: false });
         if (error) return apiDbError(error, context.request, { startTime });
         return apiSuccess(data || [], context.request, { startTime });
       }
@@ -89,7 +89,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       case 'get-conversation': {
         const { id } = params;
         if (!id) return apiDbError(new Error('id required'), context.request, { startTime });
-        const { data, error } = await supabase.from('tutor_conversations').select('id, title, course_id, lesson_id, created_at, updated_at, messages').eq('id', id).maybeSingle();
+        const { data, error } = await supabase.from('tutor_conversations').select('id, title, course_id, lesson_id, created_at, updated_at, messages').eq('learner_id', getContextUser(context).id).eq('id', id).maybeSingle();
         if (error) return apiDbError(error, context.request, { startTime });
         return apiSuccess(data, context.request, { startTime });
       }
@@ -97,6 +97,9 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       case 'delete-conversation': {
         const { id } = params;
         if (!id) return apiDbError(new Error('id required'), context.request, { startTime });
+        const { data: owned, error: ownershipError } = await supabase.from('tutor_conversations').select('id').eq('id', id).eq('learner_id', getContextUser(context).id).maybeSingle();
+        if (ownershipError) return apiDbError(ownershipError, context.request, { startTime });
+        if (!owned) return apiSuccess({ success: true }, context.request, { startTime });
         await supabase.from('tutor_feedback').delete().eq('conversation_id', id);
         const { error } = await supabase.from('tutor_conversations').delete().eq('id', id);
         if (error) return apiDbError(error, context.request, { startTime });

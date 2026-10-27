@@ -4,9 +4,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   sendMessage: vi.fn(), stopGeneration: vi.fn(), refreshSuggestions: vi.fn(), refreshConversations: vi.fn(),
-  streaming: false, content: '## Learning objectives\nPractise time management.', user: { id: 'educator' },
+  streaming: false, educator: true, content: '## Learning objectives\nPractise time management.', user: { id: 'educator' },
 }));
-vi.mock('@/shared/model', () => ({ useUser: () => mocks.user, useUserRole: () => ({ isEducator: true }) }));
+vi.mock('@/shared/model', () => ({ useUser: () => mocks.user, useUserRole: () => ({ isEducator: mocks.educator }) }));
+vi.mock('../LearnerWorksheets', () => ({ default: ({ courseId }: { courseId: string }) => <div>Assignments for {courseId}</div> }));
 vi.mock('@/features/ai-tutor/model', () => ({ useLearnerType: () => ({ isTeacher: false, loading: false }) }));
 vi.mock('@/features/ai-tutor/model/useTutorChat', () => ({ useTutorChat: () => ({
   messages: [{ id: '1', role: 'assistant', content: mocks.content, timestamp: new Date() }],
@@ -26,6 +27,8 @@ import FloatingEducatorAIButton from '@/shared/ui/FloatingEducatorAIButton';
 
 beforeEach(() => {
   mocks.streaming = false;
+  mocks.educator = true;
+  mocks.content = '## Learning objectives\nPractise time management.';
   vi.clearAllMocks();
   Element.prototype.scrollIntoView = vi.fn();
 });
@@ -35,6 +38,37 @@ function showPanel() {
     lessonContext={{ lessonId: 'lesson', lessonTitle: 'Planning your day' }} defaultExpanded /><FloatingEducatorAIButton /></MemoryRouter>);
 }
 describe('AI facilitator workspace', () => {
+  it('renders escaped worksheet comments as clean content rather than implementation markers', () => {
+    mocks.content = '```markdown\n&lt;!-- STUDENT_WORKSHEET --&gt;\n## Clean worksheet\nQuestions\n<!-- PRIVATE_SOLUTIONS -->\nAnswer guidance\n<!-- END_WORKSHEET -->\n```';
+    showPanel();
+    expect(screen.getByRole('heading', { name: 'Clean worksheet' })).toBeInTheDocument();
+    expect(screen.queryByText(/STUDENT_WORKSHEET|PRIVATE_SOLUTIONS|END_WORKSHEET/)).not.toBeInTheDocument();
+    expect(screen.getByText('Answer guidance')).toBeInTheDocument();
+  });
+  it('copies teaching content without worksheet protocol comments', () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+    mocks.content = '`<!-- STUDENT_WORKSHEET -->`\nQuestions\n<!-- PRIVATE_SOLUTIONS -->\nAnswers\n<!-- END_WORKSHEET -->';
+    showPanel();
+    fireEvent.click(screen.getByTitle('Copy content'));
+    expect(writeText).toHaveBeenCalledWith('\nQuestions\n\nAnswers\n');
+  });
+  it('opens course-specific assignments from the learner tutor header', () => {
+    mocks.educator = false;
+    showPanel();
+    expect(screen.queryByText('Assignments for course')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'View course assignments' }));
+    expect(screen.getByRole('region', { name: 'Course assignments' })).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByText('Assignments for course')).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText('Back to AI tutor'));
+    expect(screen.queryByRole('region', { name: 'Course assignments' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'View course assignments' })).toBeInTheDocument();
+  });
+  it('does not show the learner assignment icon to educators', () => {
+    showPanel();
+    expect(screen.queryByLabelText('View course assignments')).not.toBeInTheDocument();
+  });
   it('hides the floating teaching assistant until the facilitator closes', () => {
     showPanel();
     expect(screen.queryByRole('button', { name: 'Open Teaching AI Assistant' })).not.toBeInTheDocument();
@@ -65,13 +99,12 @@ describe('AI facilitator workspace', () => {
     expect(screen.getByRole('dialog', { name: 'Create a worksheet' })).toBeInTheDocument();
     expect(screen.getByText('Worksheet controls')).toBeInTheDocument();
   });
-  it('places refinement instructions in the composer without sending automatically', () => {
+  it('keeps only worksheet and lesson-plan tools with expandable labels', () => {
     showPanel();
-    fireEvent.click(screen.getByRole('button', { name: 'Refine' }));
-    fireEvent.change(screen.getByRole('textbox', { name: 'What would you like to change?' }), { target: { value: 'Add examples' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Add to message' }));
+    expect(screen.queryByRole('button', { name: 'Refine' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Worksheet' })).toHaveTextContent('Worksheet');
+    expect(screen.getByRole('button', { name: 'Lesson Plan' })).toHaveTextContent('Lesson Plan');
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    expect(screen.getByRole('textbox', { name: 'Message the AI facilitator' })).toHaveValue('Add examples');
     expect(mocks.sendMessage).not.toHaveBeenCalled();
   });
   it('closes settings and generates into the conversation', () => {
