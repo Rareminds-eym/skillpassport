@@ -584,7 +584,7 @@ const Courses = () => {
 
   // Handle start course - navigate to course player
   /**
-   * Records the learner's interest instead of opening the course.
+   * Opens courses locally in development; otherwise records learner interest.
    *
    * The request is awaited so the confirmation is shown only after the record
    * has been persisted. On failure no confirmation is shown and the learner can
@@ -598,6 +598,15 @@ const Courses = () => {
     isCapturingRef.current = true;
 
     try {
+      // Support both Vite dev and build:dev served by local Wrangler Pages.
+      const isLocalDevelopment = import.meta.env.MODE === 'development' &&
+        ['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname);
+      if (isLocalDevelopment) {
+        setShowDetailModal(false);
+        navigate(`/learner/courses/${courseId}/learn`);
+        return;
+      }
+
       // Webinars/live events bypass interest capture entirely and open directly,
       // exactly as all courses did before this feature was introduced.
       if (course.course_type === 'webinar') {
