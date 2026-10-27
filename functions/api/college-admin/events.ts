@@ -2,6 +2,7 @@ import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getContextUser, withAuth } from '../../lib/auth';
 import { apiDbError, apiError, apiMethodNotAllowed, apiSuccess } from '../../lib/response';
 import { getServiceClient } from '../../lib/supabase';
+import { isValidUUID } from '../../lib/validation';
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const user = getContextUser(context);
@@ -248,21 +249,37 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
       case 'register-for-factory-visit': {
         const { learner_id, opportunity_id } = params;
-        if (!learner_id || !opportunity_id) return apiError(400, 'VALIDATION_ERROR', 'Missing learner_id or opportunity_id', context.request, { startTime });
-        const { data: existing } = await supabase
-          .from('applied_jobs')
+        if (!isValidUUID(learner_id) || !isValidUUID(opportunity_id))
+          return apiError(400, 'VALIDATION_ERROR', 'Valid learner_id and opportunity_id are required', context.request, { startTime });
+        const { data: learner, error: learnerError } = await supabase
+          .from('learners')
           .select('id')
-          .eq('learner_id', learner_id)
-          .eq('opportunity_id', opportunity_id)
+          .eq('user_id', user.id)
+          .eq('is_deleted', false)
           .maybeSingle();
-        if (existing) return apiError(409, 'DUPLICATE', 'Already registered for this visit', context.request, { startTime });
+        if (learnerError) return apiDbError(learnerError, context.request, { startTime });
+        if (!learner || learner.id.toLowerCase() !== learner_id.toLowerCase())
+          return apiError(403, 'FORBIDDEN', 'Only your own visit registration may be submitted', context.request, { startTime });
+        const { data: visit, error: visitError } = await supabase
+          .from('opportunities')
+          .select('id')
+          .eq('id', opportunity_id)
+          .eq('employment_type', 'factory_visit')
+          .eq('is_active', true)
+          .maybeSingle();
+        if (visitError) return apiDbError(visitError, context.request, { startTime });
+        if (!visit) return apiError(404, 'NOT_FOUND', 'This visit is no longer available', context.request, { startTime });
+        // The existing unique_application constraint arbitrates concurrent
+        // requests. Ignore retries without overwriting status or applied_at.
         const { data, error } = await supabase
           .from('applied_jobs')
-          .insert([{ learner_id, opportunity_id, application_status: 'applied', applied_at: new Date().toISOString() }])
+          .upsert([{ learner_id: learner.id, opportunity_id: visit.id, application_status: 'applied', applied_at: new Date().toISOString() }], {
+            onConflict: 'learner_id,opportunity_id', ignoreDuplicates: true,
+          })
           .select()
-          .single();
+          .maybeSingle();
         if (error) return apiDbError(error, context.request, { startTime });
-        return apiSuccess(data, context.request, { startTime });
+        return apiSuccess({ ...data, alreadyRegistered: !data }, context.request, { startTime });
       }
 
       case 'get-factory-visit-sectors': {

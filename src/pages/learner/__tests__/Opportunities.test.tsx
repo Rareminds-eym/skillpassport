@@ -11,8 +11,11 @@ const f = vi.hoisted(() => ({
   get: vi.fn(),
   register: vi.fn(),
   registeredIds: [] as string[],
+  jobs: [] as {id: string}[],
+  visitTotal: 30,
+  api: vi.fn(),
 }));
-vi.mock('@/shared/api', () => ({ apiGet: (path: string) => path.includes('/application-details?') ? f.get(path) : Promise.resolve({ data: { appliedIds: f.registeredIds, savedIds: [], sectors: ['Technology'], locations: ['Delhi'] } }) }));
+vi.mock('@/shared/api', () => ({ apiGet: (path: string) => { f.api(path); return path.includes('/application-details?') ? f.get(path) : Promise.resolve({ data: { appliedIds: f.registeredIds, savedIds: [], sectors: ['Technology'], locations: ['Delhi'] } }); } }));
 vi.mock('@/shared/model/authStore', () => ({ useUser: () => ({ id: 'user', email: 'learner@example.test' }), useAuthStore: { getState: () => ({ user: { email: 'learner@example.test' } }) } }));
 vi.mock('@/entities/learner', () => ({ useLearnerDataByEmail: () => ({ learnerData: f.learner }) }));
 vi.mock('@/entities/learner/lib/learnerType', () => ({ isSchoolLearner: () => false, isCollegeLearner: () => !f.independent, isLearner: () => f.independent }));
@@ -29,8 +32,8 @@ vi.mock('@/features/opportunities/api/opportunitiesService', () => ({ opportunit
 vi.mock('@/features/opportunities', async () => ({
   ApplicationsPanel: (await import('@/features/opportunities/ui/ApplicationsPanel')).ApplicationsPanel,
   applicationUpdated: (await import('@/features/opportunities/lib/applicationPresentation')).applicationUpdated,
-  useOpportunities: () => ({ opportunities: [], loading: false, hasLoadedPage: true, totalCount: 0, totalPages: 1 }),
-  useOpportunityPage: (_path: string, collection: string) => ({ rows: collection === 'visits' ? f.visits : f.apps, total: 30, loading: false, error: '' }),
+  useOpportunities: () => ({ opportunities: f.jobs, loading: false, hasLoadedPage: true, totalCount: 0, totalPages: 1 }),
+  useOpportunityPage: (_path: string, collection: string) => ({ rows: collection === 'visits' ? f.visits : f.apps, total: collection === 'visits' ? f.visitTotal : 30, loading: false, error: '' }),
   LearningMatches: () => null, AppliedJobsService: {}, SavedJobsService: {},
 }));
 vi.mock('@/widgets/learner-dashboard', async () => ({
@@ -53,8 +56,14 @@ function mount(query: string) {
   render(<QueryClientProvider client={new QueryClient()}><MemoryRouter initialEntries={['/learner/opportunities' + query]}><Opportunities /><Location /></MemoryRouter></QueryClientProvider>);
 }
 beforeEach(() => {
+  window.matchMedia = vi.fn(query => ({media: query, matches: false, onchange: null,
+    addEventListener: vi.fn(), removeEventListener: vi.fn(), addListener: vi.fn(), removeListener: vi.fn(), dispatchEvent: vi.fn(),
+  }));
   f.independent = false;
   f.registeredIds = [];
+  f.jobs = [];
+  f.visitTotal = 30;
+  f.api.mockClear();
   f.register.mockReset();
   f.apps[0].application_status = 'applied';
   Object.assign(f.apps[0], { has_pipeline_status: false, pipeline_stage: null, interviews: [] });
@@ -62,6 +71,82 @@ beforeEach(() => {
   window.scrollTo = vi.fn();
 });
 afterEach(cleanup);
+
+it.each(['grid', 'list'])('selects the desktop %s card in the side preview without opening a popup', async view => {
+  const originalVisits = f.visits;
+  f.visits = [...originalVisits, {...originalVisits[0], id: 'second-visit', company_name: 'Another employer'}];
+  const media = vi.spyOn(window, 'matchMedia').mockImplementation(query => ({
+    media: query, matches: true, onchange: null,
+    addEventListener: vi.fn(), removeEventListener: vi.fn(),
+    addListener: vi.fn(), removeListener: vi.fn(), dispatchEvent: vi.fn(),
+  } as any));
+  try {
+    mount(`?tab=industrial-visits&visitView=${view}`);
+    const card = await screen.findByRole('button', {name: 'View visit at Another employer'});
+    expect(card).not.toHaveAttribute('aria-haspopup');
+    expect(card).toHaveAttribute('aria-controls', 'industrial-visit-preview');
+    await userEvent.click(card);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(card).toHaveAttribute('aria-current', 'true');
+    card.focus();
+    await userEvent.keyboard('{Enter}');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  } finally { media.mockRestore(); f.visits = originalVisits; }
+});
+
+it('closes the mobile visit popup when resizing to the desktop preview', async () => {
+  const query = {matches: false, media: '(min-width: 1024px)', addEventListener: vi.fn(), removeEventListener: vi.fn()};
+  const media = vi.spyOn(window, 'matchMedia').mockReturnValue(query as any);
+  try {
+    mount('?tab=industrial-visits');
+    const card = await screen.findByRole('button', {name: 'View visit at Visit employer'});
+    expect(card).toHaveAttribute('aria-haspopup', 'dialog');
+    await userEvent.click(card);
+    expect(screen.getByRole('dialog')).toBeVisible();
+    await act(async () => {
+      query.matches = true;
+      query.addEventListener.mock.calls.find(([event]) => event === 'change')![1]();
+    });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(card).not.toHaveAttribute('aria-haspopup');
+    expect(card).toHaveAttribute('aria-current', 'true');
+  } finally { media.mockRestore(); }
+});
+
+it('only batches badge lookups for visible visits, excluding retained jobs from hidden tabs', async () => {
+  f.jobs = [{id: 'hidden-job'}];
+  mount('?tab=industrial-visits');
+  await waitFor(() => expect(f.api.mock.calls.some(([path]) => path.includes('/membership?'))).toBe(true));
+  const requests = f.api.mock.calls.map(([path]) => path).filter(path => path.includes('/membership?'));
+  expect(requests).toHaveLength(1);
+  expect(new URL(requests[0], 'http://app.test').searchParams.get('ids')).toBe('visit');
+});
+
+it('renders both pagination gaps without duplicate React keys', async () => {
+  f.visitTotal = 200;
+  const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+  try {
+    mount('?tab=industrial-visits&visitPage=10');
+    expect(await screen.findByRole('button', {name: 'Page 10', exact: true})).toHaveAttribute('aria-current', 'page');
+    expect(screen.getAllByText('…')).toHaveLength(2);
+    expect(errors.mock.calls.flat().join(' ')).not.toMatch(/same key|unique.*key/i);
+  } finally { errors.mockRestore(); }
+});
+
+it('resets backend pagination when changing visit filters while keeping the tab', async () => {
+  mount('?tab=industrial-visits&visitPage=3&visitLocation=Delhi');
+  await userEvent.selectOptions(await screen.findByRole('combobox', {name: 'Visit industry'}), 'Technology');
+  expect(screen.getByTestId('location')).toHaveTextContent('visitSector=Technology');
+  expect(screen.getByTestId('location')).toHaveTextContent('visitLocation=Delhi');
+  expect(screen.getByTestId('location')).toHaveTextContent('tab=industrial-visits');
+  expect(screen.getByTestId('location')).not.toHaveTextContent('visitPage=');
+});
+
+it('corrects an out-of-range visit bookmark to the last backend page', async () => {
+  mount('?tab=industrial-visits&visitPage=999&visitSector=Technology');
+  await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('visitPage=3'));
+  expect(screen.getByTestId('location')).toHaveTextContent('visitSector=Technology');
+});
 
 it('advances Visits repeatedly without dropping the current tab or filters', async () => {
   mount('?tab=industrial-visits&visitSector=Technology&visitLocation=Delhi');
