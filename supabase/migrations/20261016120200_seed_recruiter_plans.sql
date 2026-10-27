@@ -4,6 +4,20 @@
 
 BEGIN;
 
+-- Preserve v1 catalog IDs and any references while freeing the plan codes
+-- reused by the v2 catalog. Subscription rows are remapped separately by
+-- 20261016120300; changing or deleting the old primary keys would lose history.
+UPDATE public.plans_cache
+SET plan_code = 'legacy_' || plan_code,
+    is_active = false,
+    plan_family = 'recruiter',
+    updated_at = NOW()
+WHERE (id, plan_code) IN (
+  ('b0000000-0000-4000-8000-000000000001'::uuid, 'recruiter_starter'),
+  ('b0000000-0000-4000-8000-000000000002'::uuid, 'recruiter_pro'),
+  ('b0000000-0000-4000-8000-000000000004'::uuid, 'recruiter_enterprise')
+);
+
 -- ============================================================
 -- 1. SEED FEATURES CATALOG
 -- ============================================================

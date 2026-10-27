@@ -122,6 +122,7 @@ export async function checkServerFeatureAccess(
             .from('subscription_cache')
             .select('id, user_id, organization_id, status, plan_code, features, synced_at, is_organization_subscription, subscription_end_date')
             .eq('organization_id', orgId)
+            .eq('is_organization_subscription', true)
             .in('status', ['active', 'grace_period', 'cancelled'])
             .order('created_at', { ascending: false })
             .limit(1)
