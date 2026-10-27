@@ -689,22 +689,6 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
                     </div>
                   )}
 
-                  {/* Specialization */}
-                  {(profileData.programId || showCustomProgram || customProgramName) && (
-                    <div className="space-y-2">
-                      <label className="text-sm font-semibold text-gray-700" htmlFor="specialization">Specialization <span className="text-gray-400 text-xs font-normal">(e.g., AI/ML, Finance)</span></label>
-                      <input
-                        type="text"
-                        value={specialization}
-                        onChange={(e) => setSpecialization(e.target.value)}
-                        placeholder="Enter specialization (e.g., Artificial Intelligence)"
-                        className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
-                        maxLength={150}
-                      />
-                      <p className="text-xs text-gray-400">Optional — your focus area within the program</p>
-                    </div>
-                  )}
-
                   {/* Program Selection */}
                   {(filteredPrograms.length > 0 || profileData.universityCollegeId || showCustomCollege || customCollegeName) && (
                     <div className="space-y-2">
@@ -765,14 +749,15 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
                     <div className="space-y-2">
                       <label className="text-sm font-semibold text-gray-700" htmlFor="specialization">Specialization <span className="text-gray-400 text-xs font-normal">(e.g., AI/ML, Finance)</span></label>
                       <input
+                        id="specialization"
                         type="text"
                         value={specialization}
                         onChange={(e) => setSpecialization(e.target.value)}
-                        placeholder="Enter specialization (e.g., Artificial Intelligence)"
+                        placeholder="e.g., Artificial Intelligence, Data Science"
                         className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
                         maxLength={150}
                       />
-                      <p className="text-xs text-gray-400">Optional — your focus area within the program</p>
+                      <p className="text-xs text-gray-400">Optional — separate multiple specializations with commas</p>
                     </div>
                   )}
 
