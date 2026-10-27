@@ -11,9 +11,12 @@ const f = vi.hoisted(() => ({
   get: vi.fn(),
   register: vi.fn(),
   registeredIds: [] as string[],
-  jobs: [] as {id: string}[],
+  jobs: [] as Record<string, any>[],
+  recommendations: [] as Record<string, any>[],
+  apply: vi.fn(),
   visitTotal: 30,
   api: vi.fn(),
+  subscription: {subscriptionData: null, error: null, hasAccess: false} as Record<string, any>,
 }));
 vi.mock('@/shared/api', () => ({ apiGet: (path: string) => { f.api(path); return path.includes('/application-details?') ? f.get(path) : Promise.resolve({ data: { appliedIds: f.registeredIds, savedIds: [], sectors: ['Technology'], locations: ['Delhi'] } }); } }));
 vi.mock('@/shared/model/authStore', () => ({ useUser: () => ({ id: 'user', email: 'learner@example.test' }), useAuthStore: { getState: () => ({ user: { email: 'learner@example.test' } }) } }));
@@ -21,7 +24,7 @@ vi.mock('@/entities/learner', () => ({ useLearnerDataByEmail: () => ({ learnerDa
 vi.mock('@/entities/learner/lib/learnerType', () => ({ isSchoolLearner: () => false, isCollegeLearner: () => !f.independent, isLearner: () => f.independent }));
 vi.mock('@/features/opportunities/lib/institutionDetails', () => ({ getMissingInstitutionFields: () => [] }));
 vi.mock('@/features/learner-profile', () => ({ useProfileCompletion: () => ({ canApplyToJobs: true, needsProfileCompletion: false }) }));
-vi.mock('@/features/subscription/model/useSubscriptionQuery', () => ({ useSubscriptionQuery: () => ({ subscriptionData: null }) }));
+vi.mock('@/features/subscription/model/useSubscriptionQuery', () => ({ useSubscriptionQuery: () => f.subscription }));
 vi.mock('@/features/subscription/lib/featureGating', () => ({ checkFeatureAccess: () => ({ hasAccess: true }) }));
 vi.mock('@/features/messaging', () => ({ useMessageNotifications: () => {} }));
 vi.mock('@/shared/api/messageService', () => ({ default: {} }));
@@ -34,12 +37,15 @@ vi.mock('@/features/opportunities', async () => ({
   applicationUpdated: (await import('@/features/opportunities/lib/applicationPresentation')).applicationUpdated,
   useOpportunities: () => ({ opportunities: f.jobs, loading: false, hasLoadedPage: true, totalCount: 0, totalPages: 1 }),
   useOpportunityPage: (_path: string, collection: string) => ({ rows: collection === 'visits' ? f.visits : f.apps, total: collection === 'visits' ? f.visitTotal : 30, loading: false, error: '' }),
-  LearningMatches: () => null, AppliedJobsService: {}, SavedJobsService: {},
+  LearningMatches: () => null, AppliedJobsService: {applyToJob: f.apply}, SavedJobsService: {},
 }));
 vi.mock('@/widgets/learner-dashboard', async () => ({
   IndustrialVisitRegistration: (await import('@/widgets/learner-dashboard/ui/IndustrialVisitPreview')).IndustrialVisitRegistration,
-  AdvancedFilters: () => null, OpportunityCard: () => null, OpportunityListItem: () => null,
-  OpportunityPreview: () => null, RecommendedJobs: () => null,
+  AdvancedFilters: () => null,
+  OpportunityCard: (await import('@/widgets/learner-dashboard/ui/OpportunityCard')).default,
+  OpportunityListItem: (await import('@/widgets/learner-dashboard/ui/OpportunityListItem')).default,
+  OpportunityPreview: (await import('@/widgets/learner-dashboard/ui/OpportunityPreview')).default,
+  RecommendedJobs: ({onSelectJob, onApply}: any) => <>{f.recommendations.map(job => <div key={job.id}><button onClick={() => onSelectJob(job)}>Recommended details</button><button onClick={() => onApply(job)}>Recommended apply</button></div>)}</>,
   IndustrialVisitPreview: ({ visit, onRegister, isRegistered, isRegistering, inDialog }: { inDialog?: boolean; visit: { id: string }; onRegister: (visit: { id: string }) => void; isRegistered: boolean; isRegistering: boolean }) => inDialog ? <p>Visit preview</p> : <button disabled={isRegistered || isRegistering} onClick={() => onRegister(visit)}>{isRegistered ? 'Registered' : 'Register for visit'}</button>,
 }));
 vi.mock('@/shared/ui', () => ({
@@ -60,8 +66,11 @@ beforeEach(() => {
     addEventListener: vi.fn(), removeEventListener: vi.fn(), addListener: vi.fn(), removeListener: vi.fn(), dispatchEvent: vi.fn(),
   }));
   f.independent = false;
+  f.subscription = {subscriptionData: null, error: null, hasAccess: false};
   f.registeredIds = [];
   f.jobs = [];
+  f.recommendations = [];
+  f.apply.mockClear();
   f.visitTotal = 30;
   f.api.mockClear();
   f.register.mockReset();
@@ -71,6 +80,52 @@ beforeEach(() => {
   window.scrollTo = vi.fn();
 });
 afterEach(cleanup);
+
+it('keeps valid cached application access during a failed background subscription refresh', async () => {
+  f.jobs = [{id: 'job', title: 'Engineer'}];
+  f.subscription = {subscriptionData: {plan: 'premium', status: 'active'}, hasAccess: true, error: new Error('Background refresh failed')};
+  mount('?tab=my-jobs');
+  await userEvent.click(await screen.findByRole('button', {name: 'Apply Now', exact: true}));
+  expect(await screen.findByRole('dialog', {name: 'Confirm Application'})).toBeVisible();
+  expect(screen.queryByRole('button', {name: 'Retry access check'})).not.toBeInTheDocument();
+});
+
+it('does not treat expired cached subscription data as verified access after a refresh failure', async () => {
+  f.jobs = [{id: 'job', title: 'Engineer'}];
+  f.subscription = {subscriptionData: {plan: 'premium', status: 'expired'}, hasAccess: false, error: new Error('Refresh failed')};
+  mount('?tab=my-jobs');
+  await userEvent.click(await screen.findByRole('button', {name: 'Apply Now', exact: true}));
+  expect(screen.queryByRole('dialog', {name: 'Confirm Application'})).not.toBeInTheDocument();
+  expect(await screen.findByRole('button', {name: 'Access check unavailable'})).toBeDisabled();
+});
+
+it.each(['grid', 'list'])('opens application confirmation directly from the %s card, keeping details separate', async view => {
+  f.jobs = [{id: 'first-job', title: 'First job'}, {id: 'second-job', title: 'Engineer', company_name: 'Employer', description: 'Full job description.'}];
+  f.get.mockImplementation(async id => f.jobs.find(job => job.id === id));
+  mount(`?visitPage=5&tab=my-jobs&view=${view}`);
+  const applyButtons = await screen.findAllByRole('button', {name: 'Apply Now', exact: true});
+  await userEvent.click(applyButtons[1]);
+  expect(await screen.findByRole('dialog', {name: 'Confirm Application'})).toHaveTextContent('Engineer');
+  expect(screen.queryByRole('dialog', {name: 'Engineer'})).not.toBeInTheDocument();
+  expect(f.apply).not.toHaveBeenCalled();
+  await userEvent.click(screen.getByRole('button', {name: 'Cancel', exact: true}));
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  await userEvent.click(screen.getByRole('button', {name: 'Details for Engineer'}));
+  expect(await screen.findByRole('dialog', {name: 'Engineer'})).toHaveTextContent('Full job description.');
+  expect(screen.queryByRole('dialog', {name: 'Confirm Application'})).not.toBeInTheDocument();
+});
+
+it('starts confirmation for a recommended job that is outside the current result page', async () => {
+  f.jobs = [{id: 'first-job', title: 'First job'}];
+  f.recommendations = [{id: 'recommended-job', title: 'Recommended Engineer', application_link: 'https://example.test/apply'}];
+  mount('?visitPage=5&tab=my-jobs');
+  await userEvent.click(await screen.findByRole('button', {name: 'Recommended apply'}));
+  const dialog = await screen.findByRole('dialog', {name: 'Confirm Application'});
+  expect(dialog).toHaveTextContent('Recommended Engineer');
+  expect(within(dialog).getByRole('button', {name: 'Record & Open Employer Site'})).toBeVisible();
+  expect(f.apply).not.toHaveBeenCalled();
+  expect(screen.getAllByRole('dialog')).toHaveLength(1);
+});
 
 it.each(['grid', 'list'])('selects the desktop %s card in the side preview without opening a popup', async view => {
   const originalVisits = f.visits;

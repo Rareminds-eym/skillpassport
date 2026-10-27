@@ -8,6 +8,8 @@ import {
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
+import { StrictMode } from 'react';
+import { act } from '@testing-library/react';
 import AdvancedFilters from '@/widgets/learner-dashboard/ui/AdvancedFilters';
 import OpportunityCard from '@/widgets/learner-dashboard/ui/OpportunityCard';
 import OpportunityPreview from '@/widgets/learner-dashboard/ui/OpportunityPreview';
@@ -23,6 +25,86 @@ const job = {
 };
 
 describe('opportunities workflow regressions', () => {
+  it('keeps a requested confirmation open under StrictMode effect replay', async () => {
+    render(<StrictMode><OpportunityPreview opportunity={job} onApply={vi.fn()} showSummary={false} applicationRequest={{jobId: job.id}} /></StrictMode>);
+    expect(await screen.findByRole('dialog', {name: 'Confirm Application'})).toBeVisible();
+  });
+  it('does not show an earlier job submission result in a different job confirmation', async () => {
+    let resolve!: (value: boolean) => void;
+    const apply = vi.fn(() => new Promise<boolean>(done => {resolve = done;}));
+    const {rerender} = render(<OpportunityPreview opportunity={job} onApply={apply} showSummary={false} applicationRequest={{jobId: job.id}} />);
+    await userEvent.click(await screen.findByRole('button', {name: 'Confirm & Apply'}));
+    const other = {...job, id: 'other-job', title: 'Another engineer'};
+    rerender(<OpportunityPreview opportunity={other} onApply={apply} showSummary={false} applicationRequest={{jobId: other.id}} />);
+    await act(async () => resolve(true));
+    expect(screen.queryByRole('dialog', {name: 'Application Submitted!'})).not.toBeInTheDocument();
+    expect(screen.getByRole('dialog', {name: 'Confirm Application'})).toHaveTextContent('Another engineer');
+  });
+  it.each(['profile', 'access', 'eligibility', 'access-loading', 'access-error'])('blocks confirmation if %s changes after the dialog opens', async changed => {
+    const apply = vi.fn();
+    const request = {jobId: job.id};
+    const {rerender} = render(<OpportunityPreview opportunity={job} onApply={apply} showSummary={false} applicationRequest={request} />);
+    expect(await screen.findByRole('button', {name: 'Confirm & Apply'})).toBeEnabled();
+    rerender(<OpportunityPreview opportunity={changed === 'eligibility' ? {...job, learning_eligibility: {canApply: false}} : job}
+      onApply={apply} showSummary={false} applicationRequest={request}
+      profileCheckError={changed === 'profile' ? 'Network error' : null} canAccessOpportunities={changed !== 'access'}
+      accessCheckLoading={changed === 'access-loading'} accessCheckError={changed === 'access-error' ? 'Network error' : null} />);
+    expect(screen.getByRole('button', {name: 'Confirm & Apply'})).toBeDisabled();
+    expect(apply).not.toHaveBeenCalled();
+  });
+  it('waits for subscription access before showing an upgrade prompt or confirmation', async () => {
+    const upgrade = vi.fn();
+    const request = {jobId: job.id};
+    const {rerender} = render(<OpportunityPreview opportunity={job} onApply={vi.fn()} showSummary={false}
+      applicationRequest={request} accessCheckLoading canAccessOpportunities={false} onShowUpgradePrompt={upgrade} />);
+    expect(upgrade).not.toHaveBeenCalled();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    rerender(<OpportunityPreview opportunity={job} onApply={vi.fn()} showSummary={false}
+      applicationRequest={request} canAccessOpportunities onShowUpgradePrompt={upgrade} />);
+    expect(await screen.findByRole('dialog', {name: 'Confirm Application'})).toBeVisible();
+    expect(upgrade).not.toHaveBeenCalled();
+  });
+  it('offers access-check retry without offering an upgrade after a lookup failure', async () => {
+    const retry = vi.fn(), upgrade = vi.fn();
+    render(<OpportunityPreview opportunity={job} onApply={vi.fn()} showSummary={false}
+      applicationRequest={{jobId: job.id}} accessCheckError="Network error" canAccessOpportunities={false}
+      onRetryAccess={retry} onShowUpgradePrompt={upgrade} />);
+    await userEvent.click(await screen.findByRole('button', {name: 'Retry access check'}));
+    expect(retry).toHaveBeenCalledOnce();
+    expect(upgrade).not.toHaveBeenCalled();
+    expect(screen.queryByRole('dialog', {name: 'Confirm Application'})).not.toBeInTheDocument();
+  });
+  it('disables a job which closes while its confirmation is open', async () => {
+    const apply = vi.fn();
+    const request = {jobId: job.id};
+    const {rerender} = render(<OpportunityPreview opportunity={job} onApply={apply} showSummary={false} applicationRequest={request} />);
+    expect(await screen.findByRole('button', {name: 'Confirm & Apply'})).toBeEnabled();
+    rerender(<OpportunityPreview opportunity={{...job, status: 'closed'}} onApply={apply} showSummary={false} applicationRequest={request} />);
+    expect(screen.getByRole('button', {name: 'Confirm & Apply'})).toBeDisabled();
+    expect(screen.getByRole('alert')).toHaveTextContent('Applications closed');
+    expect(apply).not.toHaveBeenCalled();
+  });
+  it('waits for the profile check before opening a requested application and does not reopen after cancellation', async () => {
+    const apply = vi.fn();
+    const request = {jobId: job.id};
+    const {rerender} = render(<OpportunityPreview opportunity={null} onApply={apply} showSummary={false} />);
+    rerender(<OpportunityPreview opportunity={job} onApply={apply} showSummary={false} applicationRequest={request} profileCheckLoading />);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    rerender(<OpportunityPreview opportunity={job} onApply={apply} showSummary={false} applicationRequest={request} />);
+    expect(await screen.findByRole('dialog', {name: 'Confirm Application'})).toBeVisible();
+    await userEvent.click(screen.getByRole('button', {name: 'Cancel'}));
+    rerender(<OpportunityPreview opportunity={{...job}} onApply={apply} showSummary={false} applicationRequest={request} />);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(apply).not.toHaveBeenCalled();
+  });
+  it('keeps profile completion checks when Apply is requested directly from a card', async () => {
+    const apply = vi.fn();
+    render(<OpportunityPreview opportunity={job} onApply={apply} showSummary={false} applicationRequest={{jobId: job.id}}
+      needsProfileCompletion completionPercentage={50} missingFields={['Phone']} />);
+    expect(await screen.findByRole('dialog', {name: 'Complete Your Profile'})).toHaveTextContent('Phone');
+    expect(screen.queryByRole('dialog', {name: 'Confirm Application'})).not.toBeInTheDocument();
+    expect(apply).not.toHaveBeenCalled();
+  });
   it('does not apply canceled filters or count them as active', async () => {
     const apply = vi.fn();
     render(

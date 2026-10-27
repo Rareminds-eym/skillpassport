@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Bookmark, ExternalLink, MapPin } from 'lucide-react';
 import { OpportunityDialog } from '@/features/opportunities/ui/OpportunityDialog';
 import { LearningEligibilityPanel } from '@/features/opportunities/ui/LearningEligibilityPanel';
@@ -27,6 +27,9 @@ export default function OpportunityPreview({
   completionPercentage = 0,
   profileCheckLoading = false,
   profileCheckError = null,
+  accessCheckLoading = false,
+  accessCheckError = null,
+  onRetryAccess,
   onRetryProfile,
   navigate,
   learnerData,
@@ -35,42 +38,54 @@ export default function OpportunityPreview({
   showSummary = true,
   detailsOpen,
   onDetailsOpenChange,
+  applicationRequest,
 }) {
   const [localDetails, setLocalDetails] = useState(false);
   const [confirmation, setConfirmation] = useState(false);
   const [profilePrompt, setProfilePrompt] = useState(false);
   const [status, setStatus] = useState('confirm');
   const [actionError, setActionError] = useState('');
+  const [submissionPending, setSubmissionPending] = useState(false);
   const inFlight = useRef(false);
+  const consumedApplicationRequest = useRef(null);
+  const previousOpportunityId = useRef();
+  const applicationGeneration = useRef(0);
+  const mounted = useRef(true);
   const showDetails = detailsOpen ?? localDetails;
-  const setDetails = (open) => {
+  const setDetails = useCallback((open) => {
     setLocalDetails(open);
     onDetailsOpenChange?.(open);
-  };
+  }, [onDetailsOpenChange]);
   useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      applicationGeneration.current += 1;
+    };
+  }, []);
+  useEffect(() => {
+    if (previousOpportunityId.current === opportunity?.id) return;
+    previousOpportunityId.current = opportunity?.id;
+    applicationGeneration.current += 1;
     setConfirmation(false);
     setProfilePrompt(false);
     setStatus('confirm');
     setActionError('');
     setLocalDetails(false);
   }, [opportunity?.id]);
-  if (!opportunity)
-    return showSummary ? (
-      <div className="rounded-lg border border-slate-200 bg-white p-6 text-center">
-        <p className="text-sm leading-5 text-slate-600">
-          Select a job to view details.
-        </p>
-      </div>
-    ) : null;
   const title = jobTitle(opportunity);
   const state = applicationState(opportunity, {
     isApplied,
-    isApplying: isApplying || status === 'applying',
+    isApplying: isApplying || submissionPending,
     learnerData,
   });
-  const external = !!opportunity.application_link;
-  const startApplication = () => {
-    if (state.disabled || profileCheckLoading || profileCheckError) return;
+  const external = !!opportunity?.application_link;
+  const startApplication = useCallback(() => {
+    if (!opportunity || state.disabled || profileCheckLoading || accessCheckLoading) return;
+    if (profileCheckError || accessCheckError) {
+      setDetails(true);
+      return;
+    }
     if (!canAccessOpportunities) {
       onShowUpgradePrompt?.();
       return;
@@ -82,14 +97,35 @@ export default function OpportunityPreview({
     setActionError('');
     setStatus('confirm');
     setConfirmation(true);
-  };
+  }, [opportunity, state.disabled, profileCheckLoading, profileCheckError, accessCheckLoading, accessCheckError, canAccessOpportunities, needsProfileCompletion, onShowUpgradePrompt, setDetails]);
+  useEffect(() => {
+    if (!applicationRequest || applicationRequest.jobId !== opportunity?.id ||
+      profileCheckLoading || accessCheckLoading || submissionPending || isApplying || consumedApplicationRequest.current === applicationRequest) return;
+    consumedApplicationRequest.current = applicationRequest;
+    startApplication();
+  }, [applicationRequest, opportunity?.id, profileCheckLoading, accessCheckLoading, submissionPending, isApplying, startApplication]);
+  if (!opportunity)
+    return showSummary ? (
+      <div className="rounded-lg border border-slate-200 bg-white p-6 text-center">
+        <p className="text-sm leading-5 text-slate-600">
+          Select a job to view details.
+        </p>
+      </div>
+    ) : null;
   const confirmApplication = async () => {
-    if (inFlight.current) return;
+    const latestState = applicationState(opportunity, {isApplied, isApplying: isApplying || submissionPending, learnerData});
+    if (inFlight.current || latestState.disabled || profileCheckLoading || profileCheckError || accessCheckLoading || accessCheckError || needsProfileCompletion || !canAccessOpportunities) {
+      if (!inFlight.current && latestState.disabled) setActionError(latestState.label);
+      return;
+    }
+    const generation = applicationGeneration.current;
     inFlight.current = true;
+    setSubmissionPending(true);
     setStatus('applying');
     setActionError('');
     try {
       const acknowledged = await onApply(opportunity);
+      if (!mounted.current || generation !== applicationGeneration.current) return;
       if (acknowledged === true) setStatus('success');
       else {
         setStatus('confirm');
@@ -98,12 +134,22 @@ export default function OpportunityPreview({
         );
       }
     } catch {
-      setStatus('confirm');
-      setActionError('Unable to complete your application. Please try again.');
+      if (mounted.current && generation === applicationGeneration.current) {
+        setStatus('confirm');
+        setActionError('Unable to complete your application. Please try again.');
+      }
     } finally {
       inFlight.current = false;
+      if (mounted.current) setSubmissionPending(false);
     }
   };
+  const confirmationBlock = profileCheckLoading ? 'Checking your profile. Please wait.'
+    : accessCheckLoading ? 'Checking application access. Please wait.'
+    : profileCheckError ? 'Your profile could not be verified. Retry the profile check before applying.'
+    : accessCheckError ? 'Application access could not be verified. Please retry.'
+    : needsProfileCompletion ? 'Complete your profile before applying.'
+    : !canAccessOpportunities ? 'Your current plan does not include job applications.'
+    : state.disabled ? state.label : '';
   const save = onToggleSave && (
     <button
       type="button"
@@ -198,7 +244,7 @@ export default function OpportunityPreview({
                 type="button"
                 onClick={startApplication}
                 disabled={
-                  state.disabled || profileCheckLoading || !!profileCheckError
+                  state.disabled || profileCheckLoading || accessCheckLoading || !!profileCheckError || !!accessCheckError
                 }
                 className={`${primary} flex-1`}
               >
@@ -206,8 +252,12 @@ export default function OpportunityPreview({
                   ? state.label
                   : profileCheckLoading
                     ? 'Checking profile…'
+                    : accessCheckLoading
+                      ? 'Checking access…'
                     : profileCheckError
                       ? 'Profile check unavailable'
+                      : accessCheckError
+                        ? 'Access check unavailable'
                       : needsProfileCompletion
                         ? 'Complete Profile Info'
                         : !canAccessOpportunities
@@ -245,6 +295,7 @@ export default function OpportunityPreview({
                 Retry profile check
               </button>
             )}
+            {accessCheckError && onRetryAccess && <button type="button" onClick={onRetryAccess} className="mt-2 text-sm text-blue-700 underline">Retry access check</button>}
             {isApplied && (
               <p className="mt-2 text-xs leading-5 text-slate-600">
                 {external
@@ -333,7 +384,7 @@ export default function OpportunityPreview({
           <LearningEligibilityPanel job={opportunity} />
           {(opportunity.deadline || opportunity.closing_date) && (
             <p className="text-sm leading-5 text-slate-700">
-              Application deadline:{' '}
+              {opportunity.deadline ? 'Application deadline' : 'Listed closing date'}:{' '}
               {new Date(
                 opportunity.deadline || opportunity.closing_date,
               ).toLocaleDateString()}
@@ -378,7 +429,7 @@ export default function OpportunityPreview({
                 type="button"
                 className={`${primary} flex-1`}
                 onClick={confirmApplication}
-                disabled={status === 'applying' || isApplying}
+                disabled={status === 'applying' || state.disabled || !!confirmationBlock}
               >
                 {status === 'applying'
                   ? 'Submitting…'
@@ -404,6 +455,13 @@ export default function OpportunityPreview({
             {actionError}
           </p>
         )}
+        {status === 'confirm' && confirmationBlock && <div role="alert" className="mt-3 text-sm text-amber-800">
+          <p>{confirmationBlock}</p>
+          {profileCheckError && onRetryProfile && <button type="button" onClick={onRetryProfile} className="mt-2 underline">Retry profile check</button>}
+          {accessCheckError && onRetryAccess && <button type="button" onClick={onRetryAccess} className="mt-2 underline">Retry access check</button>}
+          {!accessCheckLoading && !accessCheckError && !canAccessOpportunities && onShowUpgradePrompt && <button type="button" onClick={onShowUpgradePrompt} className="mt-2 underline">View application plans</button>}
+          {needsProfileCompletion && navigate && <button type="button" onClick={() => navigate('/learner/settings')} className="mt-2 underline">Complete your profile</button>}
+        </div>}
       </OpportunityDialog>
       <OpportunityDialog
         variant="profile"

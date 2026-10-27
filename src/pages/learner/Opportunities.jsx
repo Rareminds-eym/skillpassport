@@ -2,7 +2,7 @@ import './Opportunities.css';
 import { apiGet } from '@/shared/api';
 import { OpportunityDialog } from '@/features/opportunities/ui/OpportunityDialog';
 import { emptyOpportunityFilters, readOpportunitySearch } from '@/features/opportunities/lib/filters';
-import { opportunityText, jobSalary } from '@/features/opportunities/lib/presentation';
+import { opportunityText, jobSalary, applicationState } from '@/features/opportunities/lib/presentation';
 import { getOpportunityTabs, resolveOpportunityTab } from '@/features/opportunities/lib/navigation';
 import { ApplicationsPanel as MyApplicationsContent } from '@/features/opportunities';
 import { applicationUpdated } from '@/features/opportunities';
@@ -92,12 +92,15 @@ const Opportunities = () => {
 
   // Feature gating for job applications
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
-  const { subscriptionData } = useSubscriptionQuery();
+  const { subscriptionData, loading: accessCheckLoading, error: subscriptionError, hasAccess: hasCurrentSubscriptionAccess, refreshSubscription } = useSubscriptionQuery();
   const userPlan = subscriptionData?.plan || PLAN_IDS.FREEMIUM;
 
   // Check feature access for job applications
   const accessResult = checkFeatureAccess(userPlan, 'opportunities_access', [], {}, user?.id);
   const canAccessOpportunities = accessResult.hasAccess;
+  // A background refetch failure does not revoke still-valid cached access.
+  // Initial failures and expired/invalid cached subscriptions remain blocked.
+  const accessCheckError = subscriptionData && hasCurrentSubscriptionAccess && canAccessOpportunities ? null : subscriptionError;
 
   // Check institution details completion
   const [showInstitutionModal, setShowInstitutionModal] = useState(false);
@@ -231,7 +234,14 @@ const Opportunities = () => {
   useEffect(() => { setSearchTerm(searchState.query); setDebouncedSearch(searchState.query); }, [searchState.query]);
   const [selectedOpportunity, setSelectedOpportunity] = useState(null);
   const [detailsOpen, setDetailsOpen] = useState(!!searchParams.get('job'));
-  const selectOpportunity = job => { setSelectedOpportunity(job); setDetailsOpen(true); updateSearch({ job: job.id }, { replace: false }); };
+  const [applicationRequest, setApplicationRequest] = useState(null);
+  const selectOpportunity = job => { setApplicationRequest(null); setSelectedOpportunity(job); setDetailsOpen(true); updateSearch({ job: job.id }, { replace: false }); };
+  const requestApplication = job => {
+    setSelectedOpportunity(job);
+    setDetailsOpen(false);
+    setApplicationRequest({ jobId: job.id });
+    updateSearch({ job: null });
+  };
   const changeDetailsOpen = open => { setDetailsOpen(open); if (!open) updateSearch({ job: null }); };
 
 
@@ -428,11 +438,12 @@ const Opportunities = () => {
     return () => clearTimeout(timer);
   }, [searchTerm, debouncedSearch]);
   const resultKey = JSON.stringify([debouncedSearch, sortBy, advancedFilters, currentPage]);
+  useEffect(() => setApplicationRequest(null), [resultKey, activeTab]);
   useEffect(() => {
     if (dataLoading || !hasLoadedPage || activeTab !== 'my-jobs') return;
     if (error) { setSelectedOpportunity(null); setDetailsOpen(false); return; }
     if (!searchParams.get('job')) {
-      setSelectedOpportunity(previous => opportunities.find(job => job.id === previous?.id) || opportunities[0] || null);
+      setSelectedOpportunity(previous => applicationRequest?.jobId === previous?.id ? previous : opportunities.find(job => job.id === previous?.id) || opportunities[0] || null);
       setDetailsOpen(false);
     }
     if (totalPages > 0 && currentPage > totalPages) setCurrentPage(totalPages);
@@ -643,6 +654,12 @@ const Opportunities = () => {
       // Refresh authoritative action fields; ranker projections are not a job DTO.
       const currentOpportunity = await opportunitiesService.getOpportunityById(opportunity.id);
       if (!currentOpportunity) throw new Error('This opportunity is no longer available');
+      const currentState = applicationState(currentOpportunity, { learnerData });
+      if (currentState.disabled) {
+        setSelectedOpportunity(previous => previous?.id === currentOpportunity.id ? currentOpportunity : previous);
+        toast.error(currentState.label);
+        return false;
+      }
       // Keep Details/retry destination and confirmation wording aligned with the action.
       setSelectedOpportunity(previous => previous?.id === currentOpportunity.id ? currentOpportunity : previous);
       opportunity = currentOpportunity;
@@ -802,10 +819,15 @@ const Opportunities = () => {
                 completionPercentage={completionPercentage}
                 profileCheckLoading={profileCheckLoading}
                 profileCheckError={profileCheckError}
+                accessCheckLoading={accessCheckLoading}
+                accessCheckError={accessCheckError}
+                onRetryAccess={refreshSubscription}
                 onRetryProfile={refreshProfileStatus}
                 detailsOpen={detailsOpen}
                 onDetailsOpenChange={changeDetailsOpen}
                 onSelect={selectOpportunity}
+                onRequestApply={requestApplication}
+                applicationRequest={applicationRequest}
                 selectedOpportunity={selectedOpportunity}
                 setSelectedOpportunity={setSelectedOpportunity}
                 appliedJobs={appliedJobs}
@@ -1311,7 +1333,7 @@ const Opportunities = () => {
 
 
 // My Jobs Content Component
-const MyJobsContent = ({ onRecommendationsChange, searchTerm, setSearchTerm, sortBy, setSortBy, viewMode, setViewMode, opportunities, error, loading, onRetry, selectedOpportunity, appliedJobs, savedJobs, handleToggleSave, handleApply, isApplying, advancedFilters, setAdvancedFilters, currentPage, setCurrentPage, totalCount, totalPages, needsProfileCompletion, navigate, learnerData, canAccessOpportunities, setShowUpgradePrompt, missingFields, completionPercentage, profileCheckLoading, profileCheckError, onRetryProfile, detailsOpen, onDetailsOpenChange, onSelect }) => {
+const MyJobsContent = ({ onRecommendationsChange, searchTerm, setSearchTerm, sortBy, setSortBy, viewMode, setViewMode, opportunities, error, loading, onRetry, selectedOpportunity, appliedJobs, savedJobs, handleToggleSave, handleApply, isApplying, advancedFilters, setAdvancedFilters, currentPage, setCurrentPage, totalCount, totalPages, needsProfileCompletion, navigate, learnerData, canAccessOpportunities, setShowUpgradePrompt, missingFields, completionPercentage, profileCheckLoading, profileCheckError, onRetryProfile, detailsOpen, onDetailsOpenChange, onSelect, onRequestApply, applicationRequest, accessCheckLoading, accessCheckError, onRetryAccess }) => {
   const activeFilters = Object.values(advancedFilters).some(value=>Array.isArray(value)?value.length:!!value);
   return <div className="grid min-w-0 grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_340px] 2xl:grid-cols-[minmax(0,1fr)_360px]"><div className="min-w-0">
     <LearningMatches onSelectJob={onSelect}/>
@@ -1328,7 +1350,7 @@ const MyJobsContent = ({ onRecommendationsChange, searchTerm, setSearchTerm, sor
     {error ? <section role="alert" className="rounded-lg border border-red-200 bg-white p-6"><h2 className="text-base font-semibold text-slate-900">Unable to load jobs</h2><p className="mt-2 text-sm leading-5 text-slate-600">Your search and filters have been kept. Please try again.</p><button type="button" onClick={onRetry} className="mt-4 rounded-md bg-blue-600 px-4 py-2 text-sm text-white">Retry jobs</button></section> : <>
       <div className="min-w-0">
         <div aria-busy={loading} className="min-w-0">
-          {loading && !opportunities.length ? <div role="status" className="rounded-lg border bg-white p-6 text-sm text-slate-600">Loading jobs…</div> : opportunities.length ? <div className={viewMode==='grid'?'grid grid-cols-1 gap-3 sm:grid-cols-2 2xl:grid-cols-3':'space-y-3'}>{opportunities.map(job=>{const Card=viewMode==='grid'?OpportunityCard:OpportunityListItem;return <Card key={job.id} opportunity={job} isSelected={selectedOpportunity?.id===job.id} isApplied={appliedJobs.has(job.id)} isSaved={savedJobs.has(job.id)} isApplying={isApplying} learnerData={learnerData} onClick={()=>onSelect(job)} onApply={()=>onSelect(job)} onToggleSave={handleToggleSave}/>;})}</div> : <section className="rounded-lg border border-slate-200 bg-white p-8 text-center"><h2 className="text-base font-semibold text-slate-900">No jobs match your search</h2><p className="mt-2 text-sm leading-5 text-slate-600">Try another keyword or remove a filter.</p><button type="button" onClick={()=>{setSearchTerm('');setAdvancedFilters(emptyOpportunityFilters());}} className="mt-4 rounded-md border border-slate-300 px-4 py-2 text-sm">Reset search and filters</button></section>}
+          {loading && !opportunities.length ? <div role="status" className="rounded-lg border bg-white p-6 text-sm text-slate-600">Loading jobs…</div> : opportunities.length ? <div className={viewMode==='grid'?'grid grid-cols-1 gap-3 sm:grid-cols-2 2xl:grid-cols-3':'space-y-3'}>{opportunities.map(job=>{const Card=viewMode==='grid'?OpportunityCard:OpportunityListItem;return <Card key={job.id} opportunity={job} isSelected={selectedOpportunity?.id===job.id} isApplied={appliedJobs.has(job.id)} isSaved={savedJobs.has(job.id)} isApplying={isApplying} learnerData={learnerData} onClick={()=>onSelect(job)} onApply={()=>onRequestApply(job)} onToggleSave={handleToggleSave}/>;})}</div> : <section className="rounded-lg border border-slate-200 bg-white p-8 text-center"><h2 className="text-base font-semibold text-slate-900">No jobs match your search</h2><p className="mt-2 text-sm leading-5 text-slate-600">Try another keyword or remove a filter.</p><button type="button" onClick={()=>{setSearchTerm('');setAdvancedFilters(emptyOpportunityFilters());}} className="mt-4 rounded-md border border-slate-300 px-4 py-2 text-sm">Reset search and filters</button></section>}
           {totalPages>1&&<nav aria-label="Job result pages" className="mt-5 flex flex-wrap items-center justify-center gap-1">
             <button type="button" aria-label="Previous page" disabled={currentPage===1||loading} onClick={()=>setCurrentPage(currentPage-1)} className="min-h-9 rounded-md border bg-white px-3 text-sm disabled:opacity-40">Previous</button>
             {getPageNumbers(currentPage,totalPages).map((page,index)=>page==='...'?<span key={`gap-${index}`} className="px-2 text-slate-400">…</span>:<button type="button" key={page} aria-label={`Page ${page}`} aria-current={currentPage===page?'page':undefined} disabled={loading} onClick={()=>setCurrentPage(page)} className={`min-h-9 min-w-9 rounded-md border text-sm ${page===currentPage?'border-blue-600 bg-blue-600 text-white':'bg-white text-slate-600'}`}>{page}</button>)}
@@ -1339,10 +1361,10 @@ const MyJobsContent = ({ onRecommendationsChange, searchTerm, setSearchTerm, sor
       </div>
     </>}
         <div className="contents">
-          <OpportunityPreview showSummary={false} opportunity={selectedOpportunity} onApply={handleApply} onToggleSave={handleToggleSave} isApplied={appliedJobs.has(selectedOpportunity?.id)} isSaved={savedJobs.has(selectedOpportunity?.id)} isApplying={isApplying} needsProfileCompletion={needsProfileCompletion} missingFields={missingFields} completionPercentage={completionPercentage} profileCheckLoading={profileCheckLoading} profileCheckError={profileCheckError} onRetryProfile={onRetryProfile} navigate={navigate} learnerData={learnerData} canAccessOpportunities={canAccessOpportunities} onShowUpgradePrompt={()=>setShowUpgradePrompt(true)} detailsOpen={detailsOpen} onDetailsOpenChange={onDetailsOpenChange}/>
+          <OpportunityPreview accessCheckLoading={accessCheckLoading} accessCheckError={accessCheckError} onRetryAccess={onRetryAccess} applicationRequest={applicationRequest} showSummary={false} opportunity={selectedOpportunity} onApply={handleApply} onToggleSave={handleToggleSave} isApplied={appliedJobs.has(selectedOpportunity?.id)} isSaved={savedJobs.has(selectedOpportunity?.id)} isApplying={isApplying} needsProfileCompletion={needsProfileCompletion} missingFields={missingFields} completionPercentage={completionPercentage} profileCheckLoading={profileCheckLoading} profileCheckError={profileCheckError} onRetryProfile={onRetryProfile} navigate={navigate} learnerData={learnerData} canAccessOpportunities={canAccessOpportunities} onShowUpgradePrompt={()=>setShowUpgradePrompt(true)} detailsOpen={detailsOpen} onDetailsOpenChange={onDetailsOpenChange}/>
         </div>
   </div><aside aria-label="AI job matching" className="min-w-0 xl:sticky xl:top-24">
-    <RecommendedJobs sidebar onResultsChange={onRecommendationsChange} learnerProfile={{...learnerData, profile:learnerData}} onSelectJob={onSelect} appliedJobs={appliedJobs} savedJobs={savedJobs} onToggleSave={handleToggleSave} onApply={onSelect}/>
+    <RecommendedJobs sidebar onResultsChange={onRecommendationsChange} learnerProfile={{...learnerData, profile:learnerData}} onSelectJob={onSelect} appliedJobs={appliedJobs} savedJobs={savedJobs} onToggleSave={handleToggleSave} onApply={onRequestApply}/>
   </aside></div>;
 };
 

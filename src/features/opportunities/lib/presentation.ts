@@ -5,6 +5,10 @@ interface PresentedJob {
   salary_range_max?: number | null;
   stipend_or_salary?: string;
   application_link?: string;
+  status?: string;
+  is_active?: boolean;
+  deadline?: string | null;
+  closing_date?: string;
   learning_eligibility?: { canApply?: boolean };
 }
 interface LearnerApplicationProfile {
@@ -58,6 +62,11 @@ export function applicationState(
         : 'Application Submitted',
     };
   if (isApplying) return { disabled: true, label: 'Submitting…' };
+  // The API closes jobs using deadline; closing_date is legacy display metadata.
+  const deadline = job?.deadline;
+  if (job?.is_active === false || (job?.status && job.status !== 'open') ||
+      (deadline != null && !(Date.parse(deadline) > Date.now())))
+    return { disabled: true, label: 'Applications closed' };
   if (Number(learnerData?.currentBacklogs || 0) > 0)
     return { disabled: true, label: 'Clear backlogs to apply' };
   if (job?.learning_eligibility?.canApply === false)
