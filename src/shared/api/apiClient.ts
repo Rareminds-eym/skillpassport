@@ -33,8 +33,8 @@ function extractError(body: any): { message: string, code?: string } {
  * Authenticated GET request via Pages Functions.
  * Uses ssoClient.fetch() for automatic token attachment and 401 retry.
  */
-export async function apiGet<T>(path: string): Promise<T> {
-  const res = await ssoClient.fetch(`${API_BASE}${path}`);
+export async function apiGet<T>(path: string, options?: { signal?: AbortSignal }): Promise<T> {
+  const res = await ssoClient.fetch(`${API_BASE}${path}`, options);
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     const err = extractError(body);

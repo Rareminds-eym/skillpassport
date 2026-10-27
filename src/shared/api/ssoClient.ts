@@ -1,3 +1,4 @@
+import type { AuthStateEvent } from "@rareminds-eym/auth-client";
 import { authClient } from "./authClient";
 
 const REJECTION_HTTP_STATUS: Record<string, number> = {
@@ -258,5 +259,5 @@ export const ssoClient = {
     enforceRequestBudget("session");
     return authClient.initialize({ force });
   },
-  onAuthStateChange: (listener: (event: any) => void) => authClient.subscribe(listener),
+  onAuthStateChange: (listener: (event: AuthStateEvent) => void, options?: {emitCurrent?:boolean}) => authClient.subscribe(listener, options),
 };

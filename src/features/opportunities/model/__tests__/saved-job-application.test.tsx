@@ -99,6 +99,8 @@ it('renders the current Details retry destination when the employer URL changes 
   fireEvent.click(screen.getByRole('button', { name: /View More Details/i }));
   fireEvent.click(screen.getByRole('button', { name: 'Apply Now' }));
   await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Record & Open Employer Site' })); });
+  // The accessible confirmation keeps background actions inert until dismissed.
+  fireEvent.click(screen.getByRole('button', { name: 'Done' }));
   vi.mocked(window.open).mockClear();
   fireEvent.click(screen.getByRole('button', { name: 'Open employer application page' }));
   expect(window.open).toHaveBeenCalledWith('https://current.example/apply', '_blank', 'noopener,noreferrer');
@@ -126,7 +128,8 @@ it('updates success labels when an internal snapshot becomes an external applica
   fireEvent.click(screen.getByRole('button', { name: 'Apply Now' }));
   await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Confirm & Apply' })); });
   expect(screen.getByText('Application Recorded!')).toBeInTheDocument();
+  expect(screen.getByText(/opening a page does not confirm submission/)).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Done' }));
   expect(screen.getByRole('button', { name: 'Application Recorded' })).toBeDisabled();
   expect(screen.queryByText('Application Submitted!')).not.toBeInTheDocument();
-  expect(screen.getByText(/opening a page does not confirm submission/)).toBeInTheDocument();
 });

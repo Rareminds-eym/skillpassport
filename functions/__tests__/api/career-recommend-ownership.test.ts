@@ -168,7 +168,8 @@ beforeEach(() => {
       const own = args.p_learner_id === fixture.learners[0]?.id;
       return { data: { revision: '1', catalog_revision: '1', embedding: fixture.missingVector ? null : Array(1536).fill(0.01), computed_at: '2026-10-15T00:00:00Z', algorithm_version: 'v2.0', matches: fixture.cacheMiss ? null : Array.from({ length: 60 }, (_, index) => ({ id: `${own ? 'own' : 'foreign'}-${index}` })) }, error: null };
     }
-    if (name === 'match_opportunities_enhanced_v2') return { data: [{ id: 'own-ranked', similarity: 0.8 }], error: null };
+    if (name === 'job_matching_index_status') return {data:{total:60,verified:60},error:null};
+    if (name === 'match_verified_opportunities') return { data: [{ id: 'own-ranked', similarity: 0.8 }], error: null };
     if (name === 'match_opportunities_enhanced' || name === 'get_generic_recommendations_v3') return { data: [{ id: 'own-ranked' }], error: null };
     if (name === 'publish_recommendation_vector_v3') fixture.missingVector = false;
     if (name === 'save_recommendation_matches_v3' || name === 'publish_recommendation_vector_v3') return { data: true, error: null };
@@ -231,8 +232,8 @@ describe('canonical identifiers and authorized execution', () => {
     expect(fixture.reads.find(read => read.table === 'opportunity_interactions')?.filters).toEqual([
       ['learner_id', fixture.userId], ['action', 'dismiss'],
     ]);
-    expect(fixture.rpc).toHaveBeenCalledWith('match_opportunities_enhanced_v2', expect.objectContaining({
-      learner_id_param: fixture.learnerId, dismissed_ids: ['dismissed-own-job'],
+    expect(fixture.rpc).toHaveBeenCalledWith('match_verified_opportunities', expect.objectContaining({
+      p_learner_id: fixture.learnerId, p_user_id:fixture.userId,
     }));
     expect(fixture.rpc).toHaveBeenCalledWith('save_recommendation_matches_v3', expect.objectContaining({ p_learner_id: fixture.learnerId, p_user_id: fixture.userId, p_revision: '1' }));
   });
@@ -333,13 +334,13 @@ describe('request contract', () => {
 describe('release boundary regressions', () => {
   it('carries preprocessing/ranking versions and cached algorithm provenance', async () => {
     const body = await (await request()).json() as any;
-    expect(body.data).toMatchObject({cached:true, algorithmVersion:'v2.0', entityEmbeddingsEnabled:true,
+    expect(body.data).toMatchObject({cached:true, algorithmVersion:'v2.0', entityEmbeddingsEnabled:false,
       preprocessing_version: RECOMMENDATION_PREPROCESSING_VERSION, ranking_policy_version: RECOMMENDATION_RANKING_POLICY_VERSION});
     fixture.cacheMiss = true;
     await request();
     expect(fixture.rpc).toHaveBeenCalledWith('save_recommendation_matches_v3', expect.objectContaining({
       p_preprocessing: RECOMMENDATION_PREPROCESSING_VERSION, p_ranking_policy: RECOMMENDATION_RANKING_POLICY_VERSION,
-      p_algorithm: 'v2.0',
+      p_algorithm: 'semantic-v3',
     }));
   });
 
@@ -375,30 +376,19 @@ describe('release boundary regressions', () => {
     expect((await request()).status).toBe(503);
   });
 
-  it('uses the actor-bound pre-limit generic query instead of a limited legacy RPC', async () => {
-    env.MATCHING_CATALOG_MODEL = '';
-    const body = await (await request({learnerId:fixture.learnerId,limit:1})).json() as any;
-    expect(body.data.recommendations).toHaveLength(1);
-    expect(fixture.rpc).toHaveBeenCalledWith('get_generic_recommendations_v3', {
-      p_learner_id:fixture.learnerId, p_user_id:fixture.userId, p_limit:1,
-    });
-    expect(fixture.rpc.mock.calls.some(([name]) => name === 'get_popular_opportunities')).toBe(false);
+  it('never queries generic recommendations when the AI model is missing', async () => {
+    env.MATCHING_EMBEDDING_MODEL='';
+    const response=await request();expect(response.status).toBe(503);
+    expect((await response.json() as any).error.code).toBe('MATCHING_MODEL_UNCONFIGURED');
+    expect(fixture.rpc).not.toHaveBeenCalled();
   });
 
-  it.each([null, {}, 'invalid'])('does not present invalid generic data as healthy emptiness: %j', async data => {
-    env.MATCHING_CATALOG_MODEL = '';
-    const original = fixture.rpc.getMockImplementation()!;
-    fixture.rpc.mockImplementation(async(name,args) => name === 'get_generic_recommendations_v3' ? {data,error:null} : original(name,args));
-    expect((await request()).status).toBe(503);
-  });
-
-  it('allows a genuinely empty eligible generic catalog', async () => {
-    env.MATCHING_CATALOG_MODEL = '';
-    const original = fixture.rpc.getMockImplementation()!;
-    fixture.rpc.mockImplementation(async(name,args) => name === 'get_generic_recommendations_v3' ? {data:[],error:null} : original(name,args));
-    const response = await request();
-    expect(response.status).toBe(200);
-    expect((await response.json() as any).data).toMatchObject({recommendations:[],fallback:true});
+  it('returns a genuine empty AI result without substituting generic jobs', async () => {
+    fixture.cacheMiss=true;const original=fixture.rpc.getMockImplementation()!;
+    fixture.rpc.mockImplementation(async(name,args)=>name==='match_verified_opportunities'?{data:[],error:null}:original(name,args));
+    const response=await request();expect(response.status).toBe(200);
+    expect((await response.json() as any).data).toMatchObject({recommendations:[],provenance:'embedding'});
+    expect(fixture.rpc.mock.calls.some(([name])=>name==='get_generic_recommendations_v3')).toBe(false);
   });
 
   it.each(aliases)('enforces matching entitlement on %s before target work', async alias => {
@@ -422,11 +412,10 @@ describe('release boundary regressions', () => {
     expect(fixture.rpc).not.toHaveBeenCalled(); expect(fixture.embed).not.toHaveBeenCalled();
   });
 
-  it('returns an explicit generic result when vector-space provenance is unverified', async () => {
-    env.MATCHING_CATALOG_MODEL = '';
-    const body = await (await request()).json() as any;
-    expect(body.data).toMatchObject({fallback:true, provenance:'generic', reason:'model_provenance_unverified'});
-    expect(fixture.buildText).not.toHaveBeenCalled(); expect(fixture.embed).not.toHaveBeenCalled();
+  it('does not rank when the verified index is unavailable', async () => {
+    const original=fixture.rpc.getMockImplementation()!;
+    fixture.rpc.mockImplementation(async(name,args)=>name==='job_matching_index_status'?{data:null,error:{code:'outage'}}:original(name,args));
+    expect((await request()).status).toBe(503);expect(fixture.embed).not.toHaveBeenCalled();
   });
 
   it('detects profile changes during a cache read', async () => {
@@ -439,12 +428,27 @@ describe('release boundary regressions', () => {
     expect((await request()).status).toBe(409);
   });
 
-  it('keeps unverified alternate vector writers behind an explicit readiness gate', async () => {
-    env.MATCHING_VECTOR_PIPELINE_VERIFIED = 'false';
-    const response = await request();
-    expect((await response.json() as any).data).toMatchObject({fallback:true,reason:'embedding_pipeline_unverified'});
-    expect(fixture.embed).not.toHaveBeenCalled();
-    expect(fixture.rpc.mock.calls.some(([name]) => name === 'get_recommendation_state_v3')).toBe(false);
+  it('repairs changed jobs through the guarded publisher before ranking', async () => {
+    const original=fixture.rpc.getMockImplementation()!;let repaired=false;
+    fixture.rpc.mockImplementation(async(name,args)=>{
+      if(name==='job_matching_index_status')return {data:{total:60,verified:repaired?60:59},error:null};
+      if(name==='get_job_matching_index_batch')return {data:[{id:'job',input_text:'Job source',input_hash:'hash'}],error:null};
+      if(name==='publish_job_matching_vector'){repaired=true;return {data:true,error:null};}
+      return original(name,args);
+    });
+    expect((await request()).status).toBe(200);
+    expect(fixture.rpc).toHaveBeenCalledWith('publish_job_matching_vector',expect.objectContaining({p_id:'job',p_model:'fixture-model',p_input_hash:'hash'}));
+  });
+
+  it('reports an incomplete index without returning recent jobs', async () => {
+    const original=fixture.rpc.getMockImplementation()!;
+    fixture.rpc.mockImplementation(async(name,args)=>{
+      if(name==='job_matching_index_status')return {data:{total:60,verified:0},error:null};
+      if(name==='get_job_matching_index_batch')return {data:[],error:null};
+      return original(name,args);
+    });
+    const response=await request();expect(response.status).toBe(503);
+    expect((await response.json() as any).error.code).toBe('MATCHING_INDEX_BUILDING');
   });
 
   it('does not publish an obsolete generated vector', async () => {
@@ -452,7 +456,7 @@ describe('release boundary regressions', () => {
     const original=fixture.rpc.getMockImplementation()!;
     fixture.rpc.mockImplementation(async (name,args) => name==='publish_recommendation_vector_v3' ? {data:false,error:null} : original(name,args));
     expect((await request()).status).toBe(409);
-    expect(fixture.rpc.mock.calls.some(([name])=>name==='match_opportunities_enhanced_v2')).toBe(false);
+    expect(fixture.rpc.mock.calls.some(([name])=>name==='match_verified_opportunities')).toBe(false);
   });
 
   it('rejects an inconsistent input build before calling the provider', async () => {
@@ -473,17 +477,25 @@ describe('release boundary regressions', () => {
     expect((await response.json() as any).data.cache_saved).toBe(false);
   });
 
+  it('does not substitute recent jobs when the AI provider fails', async () => {
+    fixture.cacheMiss=true;fixture.missingVector=true;
+    fixture.embed.mockRejectedValueOnce(new Error('provider unavailable'));
+    const response=await request();expect(response.status).toBe(503);
+    expect((await response.json() as any).error.code).toBe('EMBEDDING_GENERATION_FAILED');
+    expect(fixture.rpc.mock.calls.some(([name])=>name==='get_generic_recommendations_v3')).toBe(false);
+  });
+
   it('does not persist incomplete evidence', async () => {
     fixture.cacheMiss=true; fixture.missingVector=true; fixture.buildText.mockRejectedValueOnce(new Error('evidence unavailable'));
-    const response=await request(); expect(response.status).toBe(200);
-    expect((await response.json() as any).data.fallback).toBe(true);
+    const response=await request(); expect(response.status).toBe(503);
+    expect((await response.json() as any).error.code).toBe('EMBEDDING_GENERATION_FAILED');
     expect(fixture.embed).not.toHaveBeenCalled();
     expect(fixture.rpc.mock.calls.some(([name])=>name==='publish_recommendation_vector_v3')).toBe(false);
   });
 
-  it('returns 503 rather than healthy emptiness when ranking and fallback fail', async () => {
+  it('returns 503 when AI ranking fails and never queries a generic ranker', async () => {
     fixture.cacheMiss=true; const original=fixture.rpc.getMockImplementation()!;
-    fixture.rpc.mockImplementation(async(name,args)=>name.startsWith('match_opportunities')||name==='get_generic_recommendations_v3'?{data:null,error:{code:'fixture-outage'}}:original(name,args));
+    fixture.rpc.mockImplementation(async(name,args)=>name==='match_verified_opportunities'?{data:null,error:{code:'fixture-outage'}}:original(name,args));
     expect((await request()).status).toBe(503);
   });
 });
