@@ -69,7 +69,7 @@ export async function getTenantEntitlements(
   const { data: sub, error: subErr } = await supabase
     .from('subscription_cache')
     .select('*')
-    .or(`organization_id.eq.${tenantId},user_id.eq.${tenantId}`)
+    .or(`and(organization_id.eq.${tenantId},is_organization_subscription.eq.true),user_id.eq.${tenantId}`)
     .eq('status', 'active')
     .order('created_at', { ascending: false })
     .limit(1)
