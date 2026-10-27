@@ -23,13 +23,13 @@
     "check:roles": "tsx scripts/generate-role-types.ts --verify",
     "check:roles:precommit": "tsx scripts/generate-role-types.ts --verify --allow-db-unavailable",
     "test:storage:live": "STORAGE_INTEGRATION=1 vitest run functions/api/storage/__tests__/integration.test.ts --environment node",
-    "workers:dev": "concurrently -n \"email,pay,sso,realtime\" -c \"blue,yellow,magenta,cyan\" \"npm run workers:email\" \"npm run workers:payments\" \"npm run workers:sso\" \"npm run workers:realtime\"",
+    "workers:dev": "concurrently -n \"email,pay,sso,realtime,embedding,lte\" -c \"blue,yellow,magenta,cyan,green,white\" \"npm run workers:email\" \"npm run workers:payments\" \"npm run workers:sso\" \"npm run workers:realtime\" \"npm run workers:embedding\" \"npm run workers:lte\"",
     "pages:dev": "wrangler pages dev dist --compatibility-date=2026-06-08 --port=8788 --r2 R2_BUCKET --service PAYMENT_WORKER=razorpay-api --service SSO_SERVICE=sso-api#SsoWorker --service REALTIME_WORKER=realtime-worker --service EMBEDDING_SERVICE=embedding-api#EmbeddingService --service EMAIL_SERVICE=shared-email-api",
     "pages:build": "npm run build",
     "workers:email": "cd ../email-worker && wrangler dev --port=9001 --inspector-port=9229",
-    "workers:payments": "cd ../payment-worker && wrangler dev --port=9003 --inspector-port=9232",
+    "workers:payments": "cd ../payments-worker && wrangler dev --port=9003 --inspector-port=9232",
     "workers:sso": "cd ../sso-worker && wrangler dev --port=8787",
-    "workers:realtime": "cd ../realtime-worker && wrangler dev --port=8790",
+    "workers:realtime": "cd ../realtime-worker && wrangler dev --port=8790 --persist-to=.wrangler/skillpassport-local",
     "workers:all": "npm run workers:dev",
     "supabase:start": "supabase start",
     "supabase:stop": "supabase stop",
@@ -41,7 +41,10 @@
     "db:backup:verify": "python3 scripts/backup_remote_db.py --verify latest",
     "pages:start": "wrangler pages dev dist --compatibility-date=2026-06-08 --port=8788 --live-reload=false --r2 R2_BUCKET --service PAYMENT_WORKER=razorpay-api --service SSO_SERVICE=sso-api#SsoWorker --service REALTIME_WORKER=realtime-worker --service EMBEDDING_SERVICE=embedding-api#EmbeddingService --service EMAIL_SERVICE=shared-email-api",
     "cleanup": "bash scripts/cleanup-ports.sh",
-    "lint:certificates": "eslint src/pages/verify src/__tests__/verify"
+    "lint:certificates": "eslint src/pages/verify src/__tests__/verify",
+    "index:job-matching": "node scripts/index-job-matching.mjs",
+    "workers:embedding": "cd ../embedding-worker && wrangler dev --local --port=9004 --inspector-port=9230",
+    "workers:lte": "cd ../lte && npm run pages:dev"
   },
   "dependencies": {
     "@casl/ability": "6.8.0",

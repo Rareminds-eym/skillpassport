@@ -74,3 +74,7 @@ OAUTH_STATE_SECRET=
 # Catalogue gateway: authoritative SP-Dash origin and server-only shared secret.
 # SP_DASH_CATALOG_URL=http://localhost:3000
 # LTE_CATALOG_SYNC_SECRET=<same-private-secret-as-SP-Dash-at-least-32-characters>
+
+# AI-only job matching: use the exact model returned by EMBEDDING_SERVICE.
+# Build the verified local catalog with npm run index:job-matching before use.
+MATCHING_EMBEDDING_MODEL=google/gemini-embedding-2-preview

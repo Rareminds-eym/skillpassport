@@ -277,6 +277,7 @@ class OpportunitiesService {
     sortBy?: string;
     filters?: any;
     activeOnly?: boolean;
+    signal?: AbortSignal;
   }): Promise<{ data: Opportunity[]; count: number }> {
     try {
       const {
@@ -285,7 +286,8 @@ class OpportunitiesService {
         searchTerm = '',
         sortBy = 'newest',
         filters = {},
-        activeOnly = true
+        activeOnly = true,
+        signal
       } = options;
 
       const params = new URLSearchParams();
@@ -301,19 +303,15 @@ class OpportunitiesService {
       if (filters.salaryMin) params.set('salaryMin', filters.salaryMin);
       if (filters.salaryMax) params.set('salaryMax', filters.salaryMax);
       if (filters.postedWithin) params.set('postedWithin', filters.postedWithin);
+      if (filters.skills?.length) params.set('skills', JSON.stringify(filters.skills));
 
-      const response = await apiGet<ApiResponse<{ opportunities: Opportunity[]; total: number }>>(`/opportunities?${params.toString()}`);
-      const data = response?.data?.opportunities ?? [];
-      const total = response?.data?.total ?? data.length;
+      const response = await apiGet<ApiResponse<{ opportunities: Opportunity[]; total: number }>>(`/opportunities?${params.toString()}`, { signal });
+      if (!Array.isArray(response?.data?.opportunities) || !Number.isSafeInteger(response?.data?.total) || response.data.total < 0) throw new Error('Invalid opportunities response. Please retry.');
+      const data = response.data.opportunities;
+      const total = response.data.total;
       return { data, count: total };
     } catch (error: any) {
-      console.error('[opportunitiesService] Error in getPaginatedOpportunities:', error);
-      if (error?.message?.includes('416') || error?.message?.includes('Range Not Satisfiable')) {
-        return {
-          data: [],
-          count: 0
-        };
-      }
+      if (error?.name !== 'AbortError') console.error('[opportunitiesService] Error in getPaginatedOpportunities:', error);
       throw error;
     }
   }

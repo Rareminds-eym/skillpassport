@@ -1,3 +1,5 @@
+import { paginationParams, integerParam, readPage } from '../../lib/opportunity-pagination';
+import { opportunitySearchPredicate, workModeVariants, skillsPredicate, parseSalaryBound } from '../../lib/opportunity-search';
 /**
  * Opportunities API — list with filters (ORG-SCOPED)
  */
@@ -7,7 +9,7 @@ import { notifyLearnersOfNewOpportunity } from '../../lib/newOpportunityNotifica
 import { verifyOrgAccess, PERMISSIONS } from '../../lib/permissions';
 import { apiDbError, apiError, apiMethodNotAllowed, apiSuccess } from '../../lib/response';
 import { getServiceClient } from '../../lib/supabase';
-import { eligibleJobs, isEligibleJob, stringSkills } from '../../lib/job-recommendations';
+import { eligibleJobs, isEligibleJob, stringSkills, JOB_FIELDS } from '../../lib/job-recommendations';
 import { getNumericLimit } from '../../shared/lib/entitlement-service';
 import { LearningError, decorateLearningForActor, validateLearningRequirements, verifyLearningApplication } from '../../lib/learning-eligibility';
 import {
@@ -291,18 +293,20 @@ const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   const id = url.searchParams.get('id');
   const learnerFeed = user.roles?.includes('learner') === true;
   if (id) {
-    const { data, error } = await findOpportunityById(supabase, id);
+    const { data, error } = await findOpportunityById(supabase, id, learnerFeed ? `${JOB_FIELDS},organization_id,applications_count,views_count` : '*');
     if (error) return apiDbError(error, context.request);
     if (!data) return apiError(404, 'NOT_FOUND', 'Opportunity not found', context.request);
     if (learnerFeed && !isEligibleJob(data)) return apiError(404, 'NOT_FOUND', 'Opportunity is no longer available', context.request);
     const [opportunity] = await decorateLearningForActor(supabase,context.env as any,user,[data]);
-    return apiSuccess({ opportunity }, context.request);
+    const response = apiSuccess({ opportunity }, context.request);
+    if (learnerFeed) response.headers.set('Cache-Control', 'private, no-store');
+    return response;
   }
 
-  const rawLimit = parseInt(url.searchParams.get('limit') || '6', 10);
-  const rawOffset = parseInt(url.searchParams.get('offset') || '0', 10);
-  const searchTerm = url.searchParams.get('search') || '';
-  const sortBy = url.searchParams.get('sortBy') || 'newest';
+  let page;
+  try { page = paginationParams(url.searchParams, 6); }
+  catch (error) { return apiError(400, 'VALIDATION_ERROR', (error as Error).message, context.request); }
+  const { limit, offset, search: searchTerm, sort: sortBy } = page;
   const activeOnly = url.searchParams.get('activeOnly') !== 'false';
   const employmentType = url.searchParams.get('employmentType');
   const experienceLevel = url.searchParams.get('experienceLevel');
@@ -311,17 +315,22 @@ const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   const salaryMin = url.searchParams.get('salaryMin');
   const salaryMax = url.searchParams.get('salaryMax');
   const postedWithin = url.searchParams.get('postedWithin');
+  let selectedSkills: string[] = [];
+  let minimum: number | undefined, maximum: number | undefined;
+  try {
+    const parsed = JSON.parse(url.searchParams.get('skills') || '[]');
+    if (!Array.isArray(parsed) || parsed.length > 30 || parsed.some(skill => typeof skill !== 'string' || !skill.trim() || skill.length > 80)) throw new Error('Select up to 30 valid skills.');
+    selectedSkills = parsed.map(skill => skill.trim());
+    minimum = parseSalaryBound(salaryMin); maximum = parseSalaryBound(salaryMax);
+    if (minimum !== undefined && maximum !== undefined && minimum > maximum) throw new Error('Maximum salary must be at least the minimum salary.');
+  } catch (error) { return apiError(400, 'VALIDATION_ERROR', error instanceof Error ? error.message : 'Invalid filters', context.request); }
 
-  if (Number.isNaN(rawLimit) || rawLimit < 1) return apiError(400, 'VALIDATION_ERROR', 'limit must be a positive integer', context.request);
-  if (Number.isNaN(rawOffset) || rawOffset < 0) return apiError(400, 'VALIDATION_ERROR', 'offset must be a non-negative integer', context.request);
-  const limit = rawLimit;
-  const offset = rawOffset;
 
   const isRecruiter = !!user.roles && (user.roles.includes('recruiter') || user.roles.includes('company_admin'));
 
   let query = supabase
     .from('opportunities')
-    .select('*', { count: 'exact' })
+    .select(learnerFeed ? `${JOB_FIELDS},organization_id,applications_count,views_count` : '*', { count: 'exact' })
     .neq('employment_type', 'factory_visit');
 
   const requestedOrgId = url.searchParams.get('org_id');
@@ -360,32 +369,20 @@ const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
     if (vals.length === 1) query = query.eq('experience_level', vals[0]);
     else query = query.in('experience_level', vals);
   }
-  if (mode) {
-    const vals = mode.split(',');
-    if (vals.length === 1) query = query.eq('mode', vals[0]);
-    else query = query.in('mode', vals);
-  }
+  if (mode) query = query.in('mode', workModeVariants(mode));
+  if (selectedSkills.length) query = query.or(skillsPredicate(selectedSkills));
   if (department) {
     const vals = department.split(',');
     if (vals.length === 1) query = query.eq('department', vals[0]);
     else query = query.in('department', vals);
   }
-  if (searchTerm) {
-    query = query.or(`title.ilike.%${searchTerm}%,company_name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,department.ilike.%${searchTerm}%`);
-  }
-  if (salaryMin) {
-    const raw = parseInt(salaryMin, 10);
-    if (Number.isNaN(raw) || raw < 0) return apiError(400, 'VALIDATION_ERROR', 'salaryMin must be a non-negative integer', context.request);
-    query = query.gte('salary_range_min', raw);
-  }
-  if (salaryMax) {
-    const raw = parseInt(salaryMax, 10);
-    if (Number.isNaN(raw) || raw < 0) return apiError(400, 'VALIDATION_ERROR', 'salaryMax must be a non-negative integer', context.request);
-    query = query.lte('salary_range_max', raw);
-  }
+  if (searchTerm) query = query.or(opportunitySearchPredicate(searchTerm));
+  if (minimum !== undefined) query = query.gte('salary_range_min', minimum);
+  if (maximum !== undefined) query = query.lte('salary_range_max', maximum);
   if (postedWithin) {
-    const raw = parseInt(postedWithin, 10);
-    if (Number.isNaN(raw) || raw < 1) return apiError(400, 'VALIDATION_ERROR', 'postedWithin must be a positive integer', context.request);
+    let raw;
+    try { raw = integerParam(postedWithin, 30, 1, 3650, 'postedWithin'); }
+    catch (error) { return apiError(400, 'VALIDATION_ERROR', (error as Error).message, context.request); }
     const dateThreshold = new Date();
     dateThreshold.setDate(dateThreshold.getDate() - raw);
     query = query.gte('created_at', dateThreshold.toISOString());
@@ -402,9 +399,9 @@ const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   } else {
     query = query.order('created_at', { ascending });
   }
-  query = query.range(offset, offset + limit - 1);
+  query = query.order('id', { ascending });
 
-  const { data, error, count } = await query;
+  const { data, error, count } = await readPage<any>(query, limit, offset);
   if (error) return apiDbError(error, context.request);
 
   // Featured-employer surface (spec §6): annotate rows whose organizations hold an
@@ -415,7 +412,9 @@ const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
     featuredEmployer: featuredEmployerByOrg.has(String(o.organization_id)),
   }));
 
-  return apiSuccess({ opportunities: await decorateLearningForActor(supabase,context.env as any,user,annotated), total: count }, context.request);
+  const response = apiSuccess({ opportunities: await decorateLearningForActor(supabase,context.env as any,user,annotated), total: count ?? 0, limit, offset }, context.request);
+  if (learnerFeed) response.headers.set('Cache-Control', 'private, no-store');
+  return response;
 });
 
 /**

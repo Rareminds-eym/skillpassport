@@ -1,24 +1,11 @@
-import {useEffect,useState} from 'react';
-import {Link,useNavigate} from 'react-router-dom';
-import {useUser} from '@/shared/model/authStore';
-import {apiGet} from '@/shared/api/apiClient';
-import {LearningEligibilityPanel} from '@/features/opportunities/ui/LearningEligibilityPanel';
-import {Briefcase,MapPin,ArrowRight,Search} from 'lucide-react';
-export default function LearningJobs(){
- const user=useUser(),navigate=useNavigate();
- const [state,setState]=useState('eligible'),[search,setSearch]=useState(''),[query,setQuery]=useState(''),[offset,setOffset]=useState(0),[jobs,setJobs]=useState<any[]>([]),[total,setTotal]=useState(0),[loading,setLoading]=useState(true),[error,setError]=useState(''),[refresh,setRefresh]=useState(0);
- useEffect(()=>{const timer=setTimeout(()=>{setQuery(search.trim());setOffset(0);},300);return()=>clearTimeout(timer);},[search]);
- useEffect(()=>{let active=true;setLoading(true);setError('');setJobs([]);
-  apiGet<any>(`/learning/jobs?state=${state}&search=${encodeURIComponent(query)}&offset=${offset}`).then(r=>{if(active){setJobs(r.data?.jobs||[]);setTotal(r.data?.total||0);}}).catch(e=>{if(active)setError(e.message||'Learning-based jobs could not be loaded.');}).finally(()=>{if(active)setLoading(false);});
-  return()=>{active=false;};
- },[user?.id,state,query,offset,refresh]);
- return <main className="mx-auto max-w-6xl space-y-5 p-5 sm:p-8">
-  <header className="flex flex-wrap items-start justify-between gap-4"><div><p className="mb-2 text-xs font-medium uppercase tracking-wider text-slate-500">Learning → opportunities</p><h1 className="text-xl font-semibold text-slate-900">Jobs for your learning</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">Discover openings that match evaluated learning. See the required levels and submit equivalent course, certification, or work evidence where needed.</p></div><Link to="/learner/learning-evidence" className="rounded-md border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700">My equivalent evidence</Link></header>
-  <div className="flex flex-wrap items-center gap-3 border-b border-slate-200 pb-4"><div role="group" aria-label="Learning eligibility filter" className="flex rounded-md border border-slate-200 bg-slate-50 p-1">{[['eligible','Ready to apply'],['not_yet_eligible','Learning gaps'],['all','Explore all']].map(([value,label])=><button key={value} type="button" aria-pressed={state===value} onClick={()=>{setState(value);setOffset(0);}} className={`rounded px-3 py-1.5 text-xs font-medium ${state===value?'bg-white text-slate-900 shadow-sm':'text-slate-500 hover:text-slate-900'}`}>{label}</button>)}</div><label className="relative min-w-48 flex-1"><span className="sr-only">Search jobs</span><Search size={15} className="absolute left-3 top-2.5 text-slate-400"/><input maxLength={100} value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search role, employer, or location" className="w-full rounded-md border border-slate-300 py-2 pl-9 pr-3 text-xs"/></label><button onClick={()=>setRefresh(v=>v+1)} disabled={loading} className="text-xs text-blue-700 disabled:text-slate-400">Refresh learning</button></div>
-  {error&&<p role="alert" className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">{error} <Link to="/learner/opportunities" className="underline">Browse general openings</Link></p>}
-  {loading?<p role="status" className="py-8 text-sm text-slate-500">Verifying learning and openings…</p>:error?null:!jobs.length?<div className="rounded-lg border border-dashed border-slate-300 p-8 text-center"><Briefcase className="mx-auto mb-3 text-slate-400" size={24}/><p className="text-sm font-medium text-slate-700">No openings in this view yet</p><p className="mt-2 text-xs text-slate-500">Explore all openings, continue learning, or submit equivalent evidence for review.</p></div>:<>
-   <p className="text-xs text-slate-500">{total} {total===1?'opening':'openings'}</p><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{jobs.map(job=><article key={job.id} className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-white p-4"><div><h2 className="text-sm font-semibold text-slate-900">{job.job_title||job.title}</h2><p className="mt-1 text-xs text-slate-500">{job.company_name}</p></div><p className="flex items-center gap-1.5 text-xs text-slate-500"><MapPin size={13}/>{job.location} · {job.employment_type}</p><LearningEligibilityPanel job={job}/><button onClick={()=>navigate('/learner/opportunities',{state:{selectedOpportunityId:job.id}})} className="mt-auto inline-flex items-center justify-between rounded-md border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700">View job and application requirements<ArrowRight size={14}/></button></article>)}</div>
-   <nav aria-label="Job pages" className="flex justify-between pt-3 text-xs"><button disabled={offset===0} onClick={()=>setOffset(Math.max(0,offset-12))} className="text-blue-700 disabled:text-slate-400">Previous</button><span className="text-slate-500">{offset+1}–{Math.min(offset+12,total)} of {total}</span><button disabled={offset+12>=total} onClick={()=>setOffset(offset+12)} className="text-blue-700 disabled:text-slate-400">Next</button></nav>
-  </>}
- </main>;
+import { Navigate } from 'react-router-dom';
+
+/** Keep existing bookmarks and evidence-workflow links on the Jobs page. */
+export default function LearningJobs() {
+  return (
+    <Navigate
+      to="/learner/opportunities?tab=my-jobs#learning-matches"
+      replace
+    />
+  );
 }
