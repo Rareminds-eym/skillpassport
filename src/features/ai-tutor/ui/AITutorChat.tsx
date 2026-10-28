@@ -146,7 +146,7 @@ const AITutorChat: React.FC<AITutorChatProps> = ({ courseId, lessonId, onClose }
 
   const handleGenerateWorksheet = async () => {
     if (isStreaming) return;
-    await sendMessage('Generate a worksheet based on the configured settings.');
+    await sendMessage('Generate a worksheet based on the configured settings.', { generate: true });
     inputRef.current?.focus();
   };
 

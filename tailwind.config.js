@@ -10,6 +10,11 @@ export default {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
       },
       animation: {
+        'facilitator-orbit': 'facilitator-orbit-turn 24s linear infinite',
+        'facilitator-orbit-reverse': 'facilitator-orbit-turn 31s linear infinite reverse',
+        'facilitator-orbit-slow': 'facilitator-orbit-turn 38s linear infinite',
+        'facilitator-particles': 'facilitator-orbit-turn 42s linear infinite reverse',
+        'facilitator-blink': 'facilitator-eye-blink 5.6s ease-in-out infinite',
         'shimmer': 'shimmer 2s infinite linear',
         'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
         'fade-in': 'fadeIn 0.3s ease-out forwards',
@@ -24,6 +29,13 @@ export default {
         'fifth': 'moveInCircle 20s ease infinite',
       },
       keyframes: {
+        'facilitator-orbit-turn': {
+          to: { transform: 'rotate(360deg)' },
+        },
+        'facilitator-eye-blink': {
+          '0%, 40%, 46%, 88%, 94%, 100%': { transform: 'scaleY(1)' },
+          '43%, 91%': { transform: 'scaleY(0.08)' },
+        },
         shimmer: {
           '0%': { backgroundPosition: '200% 0' },
           '100%': { backgroundPosition: '-200% 0' },

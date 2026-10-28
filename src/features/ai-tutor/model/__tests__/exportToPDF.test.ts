@@ -36,4 +36,11 @@ describe('minimal worksheet PDF', () => {
   it('rejects empty content', async () => {
     await expect(createWorksheetPDF({ courseTitle: 'Course', lessonTitle: 'Worksheet', content: ' ' })).rejects.toThrow('Content is empty');
   });
+  it('starts each combined difficulty on a new page with one assignment title', async () => {
+    const doc = await createWorksheetPDF({ courseTitle: 'Combined assignment', lessonTitle: 'Multiple difficulty levels',
+      content: ['Beginner', 'Intermediate', 'Advanced'].map(level => `## ${level}\nTitle: ${level} questions\n1. Explain this concept.`).join('\n\n') });
+    expect(doc.getNumberOfPages()).toBe(3);
+    expect(doc.output()).toContain('/Title (Combined assignment)');
+  });
+
 });

@@ -25,4 +25,10 @@ describe('worksheet difficulty selection', () => {
     expect(screen.getByRole('button', { name: 'Generate Worksheet' })).toBeDisabled();
     expect(screen.getByText('Select at least one difficulty level.')).toBeInTheDocument();
   });
+  it('shows the mapped grade read-only when used inside the facilitator', () => {
+    render(<WorksheetConfigPanel automaticGrade config={{ ...DEFAULT_WORKSHEET_CONFIG, gradeLevel: 'College/University' }} onChange={vi.fn()} onGenerate={vi.fn()} isGenerating={false} />);
+    expect(screen.getByLabelText('Automatic grade level')).toHaveTextContent('College/University');
+    expect(screen.queryByRole('combobox', { name: 'Grade / Level' })).not.toBeInTheDocument();
+  });
+
 });

@@ -44,7 +44,7 @@ export interface UseTutorChatReturn {
   conversationId: string | null;
   conversations: Conversation[];
   suggestedQuestions: string[];
-  sendMessage: (content: string) => Promise<void>;
+  sendMessage: (content: string, options?: { generate: boolean }) => Promise<void>;
   stopGeneration: () => void;
   editMessage: (messageId: string, newContent: string) => Promise<void>;
   loadConversation: (conversationId: string) => Promise<void>;
@@ -110,7 +110,7 @@ export function useTutorChat({
 
 
   // Send a message to the AI tutor
-  const handleSendMessage = useCallback(async (content: string) => {
+  const handleSendMessage = useCallback(async (content: string, options?: { generate: boolean }) => {
     if (!content.trim() || isStreaming) return;
 
     const requestController = new AbortController();
@@ -146,8 +146,7 @@ export function useTutorChat({
         courseId,
         lessonId,
         message: content.trim(),
-        worksheetConfig,  // Pass worksheet config to API
-        lessonPlanConfig  // Pass lesson plan config to API
+        ...(options?.generate ? { worksheetConfig, lessonPlanConfig } : {}),
       }, requestController.signal);
 
       setCurrentReasoning('');
@@ -281,8 +280,6 @@ export function useTutorChat({
         courseId,
         lessonId,
         message: newContent.trim(),
-        worksheetConfig,  // Pass worksheet config to API
-        lessonPlanConfig  // Pass lesson plan config to API
       }, requestController.signal);
 
       setCurrentReasoning('');
@@ -335,8 +332,6 @@ export function useTutorChat({
     lessonId,
     isStreaming,
     refreshConversations,
-    worksheetConfig,
-    lessonPlanConfig,
     onGenerationUsageUpdate
   ]);
 

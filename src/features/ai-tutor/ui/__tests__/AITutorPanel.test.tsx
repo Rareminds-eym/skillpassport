@@ -1,16 +1,17 @@
-import { fireEvent, render, screen, cleanup } from '@testing-library/react';
+import { fireEvent, render, screen, cleanup, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   sendMessage: vi.fn(), stopGeneration: vi.fn(), refreshSuggestions: vi.fn(), refreshConversations: vi.fn(),
-  streaming: false, educator: true, content: '## Learning objectives\nPractise time management.', user: { id: 'educator' },
+  streaming: false, educator: true, empty: false, content: '## Learning objectives\nPractise time management.', user: { id: 'educator' },
 }));
 vi.mock('@/shared/model', () => ({ useUser: () => mocks.user, useUserRole: () => ({ isEducator: mocks.educator }) }));
+vi.mock('../../api/worksheetService', () => ({ worksheetAction: vi.fn().mockResolvedValue({ organization: { name: 'Mapped College' }, gradeLevel: 'College/University', learnerCount: 8 }) }));
 vi.mock('../LearnerWorksheets', () => ({ default: ({ courseId }: { courseId: string }) => <div>Assignments for {courseId}</div> }));
 vi.mock('@/features/ai-tutor/model', () => ({ useLearnerType: () => ({ isTeacher: false, loading: false }) }));
 vi.mock('@/features/ai-tutor/model/useTutorChat', () => ({ useTutorChat: () => ({
-  messages: [{ id: '1', role: 'assistant', content: mocks.content, timestamp: new Date() }],
+  messages: mocks.empty ? [] : [{ id: '1', role: 'assistant', content: mocks.content, timestamp: new Date() }],
   conversations: [], suggestedQuestions: [], isStreaming: mocks.streaming, isLoading: false,
   isReasoning: false, error: null, sendMessage: mocks.sendMessage, stopGeneration: mocks.stopGeneration,
   refreshSuggestions: mocks.refreshSuggestions, refreshConversations: mocks.refreshConversations,
@@ -19,7 +20,7 @@ vi.mock('@/features/ai-tutor/model/useTutorChat', () => ({ useTutorChat: () => (
 vi.mock('@/shared/ui', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 vi.mock('@/shared/config', () => ({ getLogger: () => ({ error: vi.fn(), warn: vi.fn() }) }));
 vi.mock('@/shared/api/ssoClient', () => ({ ssoClient: { fetch: vi.fn() } }));
-vi.mock('../WorksheetConfigPanel', () => ({ default: ({ onGenerate }: { onGenerate: () => void }) => <div>Worksheet controls<button onClick={onGenerate}>Generate worksheet</button></div> }));
+vi.mock('../WorksheetConfigPanel', () => ({ default: ({ onGenerate, config }: { onGenerate: () => void; config: { difficultyLevels?: string[] } }) => <div>Worksheet controls<span>Levels: {config.difficultyLevels?.join(', ')}</span><button onClick={onGenerate}>Generate worksheet</button></div> }));
 vi.mock('../LessonPlanConfigPanel', () => ({ default: () => <div>Lesson plan controls</div> }));
 vi.mock('../WorksheetExportButton', () => ({ default: () => <button>Export material</button> }));
 import AITutorPanel from '../AITutorPanel';
@@ -27,6 +28,7 @@ import FloatingEducatorAIButton from '@/shared/ui/FloatingEducatorAIButton';
 
 beforeEach(() => {
   mocks.streaming = false;
+  mocks.empty = false;
   mocks.educator = true;
   mocks.content = '## Learning objectives\nPractise time management.';
   vi.clearAllMocks();
@@ -87,17 +89,18 @@ describe('AI facilitator workspace', () => {
     showPanel();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Lesson Plan' }));
-    expect(screen.getByRole('dialog', { name: 'Plan a lesson' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Plan a lesson' })).toBeInTheDocument();
     expect(screen.getByText('Lesson plan controls')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Close settings' }));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
-  it('opens worksheet settings only when its tool is selected', () => {
+  it('opens worksheet settings only when its tool is selected', async () => {
     showPanel();
     expect(screen.queryByText('Worksheet controls')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Worksheet' }));
-    expect(screen.getByRole('dialog', { name: 'Create a worksheet' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Create a worksheet' })).toBeInTheDocument();
     expect(screen.getByText('Worksheet controls')).toBeInTheDocument();
+    await screen.findByText(/Mapped College/);
   });
   it('keeps only worksheet and lesson-plan tools with expandable labels', () => {
     showPanel();
@@ -107,12 +110,13 @@ describe('AI facilitator workspace', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(mocks.sendMessage).not.toHaveBeenCalled();
   });
-  it('closes settings and generates into the conversation', () => {
+  it('closes settings and generates into the conversation', async () => {
     showPanel();
     fireEvent.click(screen.getByRole('button', { name: 'Worksheet' }));
+    await screen.findByText(/Mapped College/);
     fireEvent.click(screen.getByRole('button', { name: 'Generate worksheet' }));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    expect(mocks.sendMessage).toHaveBeenCalledWith(expect.stringContaining('worksheet'));
+    await waitFor(() => expect(mocks.sendMessage).toHaveBeenCalledWith(expect.stringContaining('worksheet'), { generate: true }));
     expect(screen.getByRole('region', { name: 'AI facilitator' })).toBeInTheDocument();
   });
   it('sends refinement requests through the existing chat action', () => {
@@ -148,6 +152,70 @@ describe('AI facilitator workspace', () => {
     mocks.content += ' More streamed text';
     view.rerender(<MemoryRouter><AITutorPanel courseId="course" defaultExpanded /></MemoryRouter>);
     expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled();
+  });
+
+  it('keeps the welcome screen as default and opens roles only through the facilitator icon', () => {
+    mocks.empty = true;
+    showPanel();
+    expect(screen.getByText('What would you like to do?')).toBeInTheDocument();
+    for (const name of ['Plan', 'Create', 'Guide', 'Solve']) expect(screen.getByRole('button', { name })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Six AI facilitators' })).not.toBeInTheDocument();
+    const explore = screen.getByRole('button', { name: 'Explore six facilitators' });
+    expect(explore).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(explore);
+    expect(screen.getByRole('region', { name: 'Six AI facilitators' })).toBeInTheDocument();
+    expect(explore).toHaveAttribute('aria-expanded', 'true');
+    fireEvent.click(screen.getByRole('button', { name: 'Back to conversation' }));
+    expect(screen.getByText('What would you like to do?')).toBeInTheDocument();
+    expect(explore).toHaveAttribute('aria-expanded', 'false');
+  });
+  it.each(['Plan', 'Create'])('opens settings from welcome action %s without generating automatically', async label => {
+    mocks.empty = true;
+    showPanel();
+    fireEvent.click(screen.getByRole('button', { name: label }));
+    expect(screen.getByRole('region', { name: label === 'Plan' ? 'Plan a lesson' : 'Create a worksheet' })).toBeInTheDocument();
+    await screen.findByText(/Mapped College/);
+    expect(mocks.sendMessage).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Close settings' }));
+    expect(screen.getByText('What would you like to do?')).toBeInTheDocument();
+  });
+  it('opens Organizer lesson planning without sending a chat request', async () => {
+    showPanel();
+    fireEvent.click(screen.getByRole('button', { name: 'Explore six facilitators' }));
+    fireEvent.click(screen.getByRole('button', { name: /Organizer/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Plan this lesson' }));
+    expect(screen.getByRole('region', { name: 'Plan a lesson' })).toBeInTheDocument();
+    await screen.findByText(/Mapped College/);
+    expect(mocks.sendMessage).not.toHaveBeenCalled();
+  });
+  it('selects all three levels from Individualized Support', async () => {
+    showPanel();
+    fireEvent.click(screen.getByRole('button', { name: 'Explore six facilitators' }));
+    fireEvent.click(screen.getByRole('button', { name: /Individualized Support/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create three difficulty levels' }));
+    expect(screen.getByText('Levels: low, medium, high')).toBeInTheDocument();
+    await screen.findByText(/Mapped College/);
+    expect(mocks.sendMessage).not.toHaveBeenCalled();
+  });
+  it('prepares a guidance question for review instead of generating material', () => {
+    showPanel();
+    fireEvent.click(screen.getByRole('button', { name: 'Explore six facilitators' }));
+    fireEvent.click(screen.getByRole('button', { name: /Mentor and Guide/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Review a learner response' }));
+    expect((screen.getByRole('textbox', { name: 'Message the AI facilitator' }) as HTMLTextAreaElement).value).toContain('Ask me to share the response');
+    expect(mocks.sendMessage).not.toHaveBeenCalled();
+    expect(screen.getByRole('heading', { name: 'Learning objectives' })).toBeInTheDocument();
+  });
+
+  it.each(['Guide', 'Solve'])('prepares a chat question from the welcome %s action without sending automatically', name => {
+    mocks.empty = true;
+    showPanel();
+    fireEvent.click(screen.getByRole('button', { name }));
+    const input = screen.getByRole('textbox', { name: 'Message the AI facilitator' }) as HTMLTextAreaElement;
+    expect(input.value).toContain(name === 'Guide' ? 'review a learner response' : 'work through a misconception');
+    expect(input).toHaveFocus();
+    expect(mocks.sendMessage).not.toHaveBeenCalled();
+    expect(screen.queryByRole('region', { name: 'Six AI facilitators' })).not.toBeInTheDocument();
   });
 
 });

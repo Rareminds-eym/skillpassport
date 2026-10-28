@@ -6,6 +6,11 @@ import type { PagesEnv } from '../../../lib/types';
 import { splitWorksheetContent, type WorksheetSeparationOptions } from '../utils/worksheet-content';
 
 const uuid = z.string().uuid();
+const bundleSchema = z.object({
+  conversationId: uuid, messageId: uuid, groupId: uuid,
+  title: z.string().trim().min(1).max(200), instructions: z.string().max(10000).default(''),
+  dueAt: z.string().datetime().nullable().default(null), reviewed: z.literal(true),
+});
 export const publicationSchema = z.object({
   conversationId: uuid, messageId: uuid, groupId: uuid,
   title: z.string().trim().min(1).max(200), instructions: z.string().max(10000),
@@ -68,7 +73,12 @@ export async function handleWorksheets(context: AuthenticatedContext) {
     if (!['educator', 'school_educator', 'college_educator'].includes(profile.role)) return fail(403, 'Educator access required.');
     const { data: scope, error: scopeError } = await db.rpc('ai_worksheet_educator_scope', { p_user_id: user.id }).single();
     if (scopeError || !scope) return fail(403, 'Your active educator college or school profile could not be resolved. Contact your administrator.');
-    if (body.action === 'source' || body.action === 'publish') {
+    if (body.action === 'context') {
+      const { data, error } = await db.rpc('ai_worksheet_context', { p_user_id: user.id });
+      if (error) throw error;
+      return apiSuccess(data, request);
+    }
+    if (body.action === 'source' || body.action === 'publish' || body.action === 'publish-all') {
       const { data: conversation, error } = await db.from('tutor_conversations').select('messages,course_id').eq('id', uuid.parse(body.conversationId)).eq('learner_id', user.id).maybeSingle();
       if (error) throw error;
       const messages = (conversation?.messages || []) as Array<{ id: string; role: string; worksheetConfig?: WorksheetSeparationOptions; worksheetVariants?: Array<{ difficulty: string; content: string }> }>;
@@ -87,6 +97,17 @@ export async function handleWorksheets(context: AuthenticatedContext) {
         return fail(409, error instanceof Error ? error.message : 'Regenerate the worksheet before assigning.');
       }
       if (body.action === 'source') return apiSuccess({ variants: variants.map(v => ({ difficulty: v.difficulty, content: v.studentContent })), organization: { id: scope.organization_id, name: scope.organization_name }, assignmentReady: true }, request);
+      if (body.action === 'publish-all') {
+        const input = bundleSchema.parse(body);
+        const { data, error } = await db.rpc('publish_ai_worksheet_bundle', {
+          p_user_id: user.id, p_conversation_id: input.conversationId, p_message_id: input.messageId,
+          p_group_id: input.groupId, p_title: input.title, p_instructions: input.instructions, p_due_at: input.dueAt,
+          p_variants: [...variants].sort((a, b) => ['beginner', 'intermediate', 'advanced'].indexOf(a.difficulty) - ['beginner', 'intermediate', 'advanced'].indexOf(b.difficulty))
+            .map(v => ({ difficulty: v.difficulty, studentContent: v.studentContent, solutions: v.solutions })),
+        });
+        if (error) return fail(400, 'Unable to assign. Check that active learners are still mapped to your programs or classes.');
+        return apiSuccess(data, request);
+      }
       const input = publicationSchema.parse(body);
       const selectedVariants = input.variants.map(selection => {
         const generated = variants.find(v => v.difficulty === selection.difficulty);

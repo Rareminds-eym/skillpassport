@@ -3,6 +3,7 @@ import type { LessonPlanConfig, LessonPlanTemplateType } from '../types';
 import { LESSON_PLAN_TEMPLATES } from '../types';
 
 interface LessonPlanConfigPanelProps {
+  automaticGrade?: boolean;
   config: LessonPlanConfig;
   onChange: (_config: LessonPlanConfig) => void;
   onGenerate: () => void;
@@ -15,6 +16,7 @@ interface LessonPlanConfigPanelProps {
 
 const LessonPlanConfigPanel = ({
   config,
+  automaticGrade = false,
   onChange,
   onGenerate,
   isGenerating,
@@ -41,6 +43,7 @@ const LessonPlanConfigPanel = ({
           <label htmlFor="lesson-plan-grade" className="block text-xs font-medium text-slate-700 mb-1">
             Grade / Level
           </label>
+          {automaticGrade ? <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-700" aria-label="Automatic grade level">{config.gradeLevel || 'Loading teaching level...'}</p> : (
           <select
             id="lesson-plan-grade"
             value={config.gradeLevel || ''}
@@ -60,6 +63,7 @@ const LessonPlanConfigPanel = ({
             <option value="Grade 12">Grade 12</option>
             <option value="College/University">College / University</option>
           </select>
+          )}
         </div>
 
         {/* Template Type */}

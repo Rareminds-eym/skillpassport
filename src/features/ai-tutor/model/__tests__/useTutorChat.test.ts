@@ -11,6 +11,8 @@ vi.mock('../../api/tutorService', () => ({
 }));
 vi.mock('@/shared/config/logging', () => ({ getLogger: () => ({ error: vi.fn() }) }));
 import { useTutorChat } from '../useTutorChat';
+import { DEFAULT_WORKSHEET_CONFIG } from '../../types/worksheet';
+import { DEFAULT_LESSON_PLAN_CONFIG } from '../../types/lesson-plan';
 beforeEach(() => vi.clearAllMocks());
 afterEach(cleanup);
 
@@ -53,4 +55,22 @@ describe('material completion state', () => {
     expect(result.current.messages.at(-1)).toMatchObject({ content: 'Partial questions', status: 'failed' });
     expect(result.current.error).toBe('Generation interrupted');
   });
+  it('keeps normal questions free of generation settings even after generating a worksheet', async () => {
+    mocks.send.mockImplementation(async function* () { yield { type: 'done' }; });
+    const { result } = renderHook(() => useTutorChat({ courseId: 'course', worksheetConfig: DEFAULT_WORKSHEET_CONFIG }));
+    await act(async () => { await result.current.sendMessage('Generate worksheet', { generate: true }); });
+    expect(mocks.send.mock.calls[0][0].worksheetConfig).toEqual(DEFAULT_WORKSHEET_CONFIG);
+    await act(async () => { await result.current.sendMessage('Is that assigned to all learners?'); });
+    expect(mocks.send.mock.calls[1][0]).not.toHaveProperty('worksheetConfig');
+    expect(mocks.send.mock.calls[1][0]).not.toHaveProperty('lessonPlanConfig');
+  });
+  it('only attaches lesson-plan settings for an explicit generate action', async () => {
+    mocks.send.mockImplementation(async function* () { yield { type: 'done' }; });
+    const { result } = renderHook(() => useTutorChat({ courseId: 'course', lessonPlanConfig: DEFAULT_LESSON_PLAN_CONFIG }));
+    await act(async () => { await result.current.sendMessage('Explain the lesson objective'); });
+    expect(mocks.send.mock.calls[0][0]).not.toHaveProperty('lessonPlanConfig');
+    await act(async () => { await result.current.sendMessage('Generate lesson plan', { generate: true }); });
+    expect(mocks.send.mock.calls[1][0].lessonPlanConfig).toEqual(DEFAULT_LESSON_PLAN_CONFIG);
+  });
+
 });

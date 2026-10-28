@@ -45,12 +45,12 @@ describe('tutor conversation persistence', () => {
     )));
   });
 
-  async function generate(conversationId?: string, difficultyLevels = ['medium'], questionCount = 10) {
+  async function generate(conversationId?: string, difficultyLevels = ['medium'], questionCount = 10, chat = false) {
     const response = await handleAiTutorChat({
       request: new Request('https://example.test/api/ai-tutor/chat', {
         method: 'POST', body: JSON.stringify({
-          courseId: 'course-id', conversationId, message: 'Generate a worksheet',
-          worksheetConfig: { templateType: 'multiple_choice', difficulty: 'medium', difficultyLevels, questionCount },
+          courseId: 'course-id', conversationId, message: chat ? 'Is that assigned to all the learners?' : 'Generate a worksheet',
+          ...(chat ? {} : { worksheetConfig: { templateType: 'multiple_choice', difficulty: 'medium', difficultyLevels, questionCount } }),
         }),
       }),
       env: { SUPABASE_URL: 'https://example.test', SUPABASE_SERVICE_ROLE_KEY: 'test' },
@@ -135,6 +135,30 @@ describe('tutor conversation persistence', () => {
     expect(providerSignal?.aborted).toBe(true);
     expect(fetch).toHaveBeenCalledOnce();
     expect(mocks.client.rpc).not.toHaveBeenCalled();
+    expect(mocks.increment).not.toHaveBeenCalled();
+  });
+
+  it('answers educator questions without regenerating and supplies verified assignment counts', async () => {
+    const original = mocks.client.from.getMockImplementation()!;
+    const eq = vi.fn();
+    mocks.client.from.mockImplementation((table: string) => {
+      if (table !== 'ai_worksheet_sets') return original(table);
+      const query: Record<string, ReturnType<typeof vi.fn>> = {};
+      query.select = vi.fn(() => query); query.eq = eq.mockImplementation(() => query); query.order = vi.fn(() => query);
+      query.limit = vi.fn().mockResolvedValue({ data: [{ title: 'Time worksheet', recipients: [{ count: 8 }], generation_config: { assignmentMode: 'all-mapped', includedDifficulties: ['beginner', 'intermediate', 'advanced'] } }], error: null });
+      return query;
+    });
+    const stream = await generate('existing-conversation', ['medium'], 10, true);
+    expect(stream).toContain('event: done');
+    expect(stream).toContain('"worksheetAvailable":false');
+    expect(stream).not.toContain('Intermediate -');
+    const payload = vi.mocked(fetch).mock.calls.map(([, init]) => JSON.parse(String(init?.body))).find(body => body.stream);
+    expect(payload.messages[0].content).toContain('"count":8');
+    expect(payload.messages[0].content).toContain('Verified published assignments');
+    expect(payload.messages.at(-1).content).toBe('Is that assigned to all the learners?');
+    expect(eq).toHaveBeenCalledWith('educator_user_id', 'educator-id');
+    expect(eq).toHaveBeenCalledWith('source_conversation_id', 'existing-conversation');
+    expect(eq).toHaveBeenCalledWith('course_id', 'course-id');
     expect(mocks.increment).not.toHaveBeenCalled();
   });
 

@@ -103,7 +103,7 @@ export async function buildCourseContext(
     .eq('course_id', courseId)
     .order('order_index', { ascending: true });
 
-  const allModules: ModuleContext[] = (modules || []).map((m: any) => ({
+  const allModules: ModuleContext[] = (modules || []).map((m) => ({
     moduleId: m.module_id,
     title: m.title,
     description: m.description,
@@ -136,7 +136,7 @@ export async function buildCourseContext(
   let availableResources: ResourceContext[] = [];
 
   if (lessonId) {
-    const lessonData = (lessons || []).find((l: any) => l.lesson_id === lessonId);
+    const lessonData = (lessons || []).find((l) => l.lesson_id === lessonId);
     if (lessonData) {
       const module = allModules.find(m => m.moduleId === lessonData.module_id);
       currentLesson = {
@@ -156,7 +156,7 @@ export async function buildCourseContext(
         .select('resource_id, name, type, url, content')
         .eq('lesson_id', lessonId);
 
-      availableResources = (resources || []).map((r: any) => ({
+      availableResources = (resources || []).map((r) => ({
         resourceId: r.resource_id,
         name: r.name,
         type: r.type,
@@ -178,11 +178,11 @@ export async function buildCourseContext(
       .eq('course_id', courseId);
 
     completedLessons = (progress || [])
-      .filter((p: any) => p.status === 'completed')
-      .map((p: any) => p.lesson_id);
+      .filter((p) => p.status === 'completed')
+      .map((p) => p.lesson_id);
     
     currentLessonProgress = lessonId 
-      ? (progress || []).find((p: any) => p.lesson_id === lessonId) || null 
+      ? (progress || []).find((p) => p.lesson_id === lessonId) || null
       : null;
   }
 
@@ -303,36 +303,27 @@ ${getPhaseInstructions(phase)}`;
 }
 
 /**
- * Educator Worksheet Prompt Template
+ * Educator Conversation Prompt Template
  * 
  * This template can be edited to change how the AI generates worksheets for educators.
- * The AI acts as a teaching assistant that creates classroom-ready materials.
+ * The AI answers educator questions; explicit generation uses separate template prompts.
  */
-function getEducatorWorksheetPrompt(context: CourseContext): string {
+function getEducatorChatPrompt(context: CourseContext): string {
   const courseContextStr = formatCourseContextForPrompt(context);
   
   return `You are an expert teaching assistant for educators working with "${context.courseTitle}".
 
 Your job:
-- Create high-quality worksheets from the provided course content.
-- Make the worksheet classroom-ready.
-- Include clear instructions and an answer key.
-
-Worksheet format:
-Title:
-Learning Objective:
-Difficulty Level:
-Instructions:
-Questions:
-Answer Key:
-Optional Extension Activity:
+- Answer the educator's current question directly and concisely.
+- Explain course concepts, discuss existing teaching material and clarify workflow.
+- This is a conversation, not a request to generate a worksheet or lesson plan.
+- Do not repeat or regenerate teaching material from earlier messages unless the explicit generation tool is used.
+- For new material, guide the educator to the Worksheet or Lesson Plan tool. For assignment actions, guide them to Assign.
 
 Rules:
 - Use the provided course content as the source.
 - Do not invent unsupported facts.
-- Make the worksheet clear, structured, and useful for classroom learning.
-- If grade level or difficulty is provided, adapt the worksheet to it.
-- If not provided, choose a reasonable general difficulty and mention it.
+- Never infer successful assignment from the educator's question or prior AI text. Use verified assignment context only.
 
 ${courseContextStr}`;
 }
@@ -352,7 +343,7 @@ function getCoursePromptByRole(
   const normalizedRole = userRole.toLowerCase();
   
   if (normalizedRole.includes('educator')) {
-    return getEducatorWorksheetPrompt(context);
+    return getEducatorChatPrompt(context);
   }
   
   if (normalizedRole === 'learner') {

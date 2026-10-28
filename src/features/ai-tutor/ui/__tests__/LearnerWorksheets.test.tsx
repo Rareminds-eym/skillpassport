@@ -37,4 +37,13 @@ describe('learner worksheets', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Download Time management as PDF' }));
     await waitFor(() => expect(mocks.pdf).toHaveBeenCalledTimes(2));
   });
+  it('downloads all difficulty sections as one combined PDF', async () => {
+    mocks.action.mockImplementation(async (action: string) => action === 'list' ? [{ id: 'recipient', worksheet: { title: 'Combined worksheet', difficulty: 'mixed' } }] : { title: 'Combined worksheet', difficulty: 'mixed', student_content: '## Beginner\nQuestions\n## Advanced\nMore questions' });
+    render(<LearnerWorksheets courseId="course-a" />);
+    expect(await screen.findByText('Multiple difficulty levels')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Download Combined worksheet as PDF' }));
+    await waitFor(() => expect(mocks.pdf).toHaveBeenCalledWith(expect.objectContaining({ lessonTitle: 'Multiple difficulty levels', filename: 'Combined_worksheet_all-levels' })));
+    expect(screen.queryByText('More questions')).toBeNull();
+  });
+
 });

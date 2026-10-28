@@ -386,6 +386,7 @@ export function buildLessonPlanPrompt(
   twoPass: boolean = false,
   outline?: string
 ): string {
+  const audience = config.gradeLevel ? `Teaching level: ${config.gradeLevel}. Adapt vocabulary, activities and expected prior knowledge to this audience.\n\n` : '';
   // Input validation
   if (config.duration < 15) {
     throw new Error('Lesson duration must be at least 15 minutes');
@@ -398,10 +399,10 @@ export function buildLessonPlanPrompt(
   if (twoPass) {
     if (outline) {
       // Second pass: generate full lesson plan from outline
-      return buildLessonPlanFromOutlinePrompt(config, context, outline);
+      return audience + buildLessonPlanFromOutlinePrompt(config, context, outline);
     } else {
       // First pass: generate outline
-      return buildLessonPlanOutlinePrompt(config, context);
+      return audience + buildLessonPlanOutlinePrompt(config, context);
     }
   }
 
@@ -418,5 +419,5 @@ export function buildLessonPlanPrompt(
     throw new Error(`Unknown lesson plan template type: ${config.templateType}`);
   }
   
-  return builder(config, context);
+  return audience + builder(config, context);
 }

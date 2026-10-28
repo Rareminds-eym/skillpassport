@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import {
+  ArrowRight,
   BookOpen,
   Brain,
   ChevronLeft,
@@ -8,6 +9,7 @@ import {
   ChevronUp,
   History,
   ClipboardList,
+  LayoutGrid,
   Loader2,
   LogIn,
   Pencil,
@@ -26,7 +28,6 @@ import {
   X,
 } from 'lucide-react';
 import * as React from 'react';
-import * as Dialog from '@radix-ui/react-dialog';
 import { useEffect, useState, useRef, useCallback } from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import { stripWorksheetMarkers } from '@/shared/utils';
@@ -35,6 +36,10 @@ import WorksheetConfigPanel from './WorksheetConfigPanel';
 import LessonPlanConfigPanel from './LessonPlanConfigPanel';
 import WorksheetExportButton from './WorksheetExportButton';
 import AssignWorksheetButton from './AssignWorksheetButton';
+import FacilitatorHub from './FacilitatorHub';
+import FacilitatorWelcome from './FacilitatorWelcome';
+import { FACILITATORS, type FacilitatorRole } from '../config/facilitators';
+import { worksheetAction, type WorksheetContext } from '../api/worksheetService';
 import LearnerWorksheets from './LearnerWorksheets';
 import type { WorksheetConfig } from '../types/worksheet';
 import { DEFAULT_WORKSHEET_CONFIG } from '../types/worksheet';
@@ -86,6 +91,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
   }, [isExpanded, setFacilitatorOpen]);
   const [isConfigExpanded, setIsConfigExpanded] = useState(false);
   const [configTool, setConfigTool] = useState<AssistantTab>('worksheet');
+  const [showFacilitators, setShowFacilitators] = useState(false);
   const [input, setInput] = useState('');
   const [showHistory, setShowHistory] = useState(false);
   const [showWorksheets, setShowWorksheets] = useState(false);
@@ -111,6 +117,25 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
   const [worksheetConfig, setWorksheetConfig] = useState<WorksheetConfig>(DEFAULT_WORKSHEET_CONFIG);
   const [lessonPlanConfig, setLessonPlanConfig] = useState<LessonPlanConfig>(DEFAULT_LESSON_PLAN_CONFIG);
   const [assistantMode, setAssistantMode] = useState<AssistantTab>('worksheet');
+  const [generationContext, setGenerationContext] = useState<WorksheetContext | null>(null);
+  const [contextError, setContextError] = useState('');
+  const [contextLoading, setContextLoading] = useState(false);
+  const [contextRetry, setContextRetry] = useState(0);
+  useEffect(() => {
+    if (!isEducator || !isConfigExpanded) return;
+    let active = true;
+    setContextLoading(true); setContextError(''); setGenerationContext(null);
+    worksheetAction<WorksheetContext>('context').then(data => {
+      if (!active) return;
+      if (!data.gradeLevel) throw new Error('No grade or program level is available in your active teaching mappings.');
+      setGenerationContext(data);
+      setWorksheetConfig(previous => ({ ...previous, gradeLevel: data.gradeLevel }));
+      setLessonPlanConfig(previous => ({ ...previous, gradeLevel: data.gradeLevel }));
+    }).catch(err => { if (active) setContextError(err.message); })
+      .finally(() => { if (active) setContextLoading(false); });
+    return () => { active = false; };
+  }, [isEducator, isConfigExpanded, courseId, contextRetry]);
+
 
   // Fetch generation count for teacher-learner accounts
   const fetchGenerationCount = useCallback(async () => {
@@ -206,19 +231,32 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
     onGenerationUsageUpdate: handleGenerationUsageUpdate
   });
 
+  const isWelcome = isEducator && messages.length === 0 && !showFacilitators && !isConfigExpanded;
+  const handleFacilitatorAction = (role: FacilitatorRole) => {
+    setShowFacilitators(false);
+    if (role.action === 'chat') {
+      setInput(`${role.prompt}\n\nCourse: ${courseName}.`);
+      inputRef.current?.focus();
+    } else {
+      const tool = role.action === 'lesson-plan' ? 'lesson-plan' : 'worksheet';
+      if (role.action === 'differentiated') setWorksheetConfig(previous => ({ ...previous, difficultyLevels: ['low', 'medium', 'high'] }));
+      setConfigTool(tool); setAssistantMode(tool); setIsConfigExpanded(true);
+    }
+  };
+
   // Handle generate for educators
   const handleGenerate = async () => {
-    if (isStreaming || isGenerationLocked || isCheckingGenerationUsage || (assistantMode === 'worksheet' && worksheetConfig.difficultyLevels?.length === 0)) return;
+    if (!generationContext?.gradeLevel || contextLoading || contextError || isStreaming || isGenerationLocked || isCheckingGenerationUsage || (assistantMode === 'worksheet' && worksheetConfig.difficultyLevels?.length === 0)) return;
 
     const generateMessage =
       assistantMode === 'worksheet'
         ? `Generate a ${(worksheetConfig.difficultyLevels ?? [worksheetConfig.difficulty]).join(", ")} level ${worksheetConfig.templateType} worksheet with ${worksheetConfig.questionCount} questions per selected difficulty level based on ${courseName}.`
-        : `Generate a structured ${lessonPlanConfig.duration}-minute lesson plan based on ${courseName}.`;
+        : `Generate a structured ${lessonPlanConfig.duration}-minute lesson plan for ${generationContext.gradeLevel} based on ${courseName}.`;
 
     setIsConfigExpanded(false);
 
     try {
-      await sendMessage(generateMessage);
+      await sendMessage(generateMessage, { generate: true });
     } catch (err) {
       setIsConfigExpanded(true);
       toast.error('Generation failed. Check your settings and try again.');
@@ -242,8 +280,9 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
         e.preventDefault();
         setIsExpanded(prev => !prev);
       }
-      if (e.key === 'Escape' && isExpanded && !isConfigExpanded) {
-        setIsExpanded(false);
+      if (e.key === 'Escape' && isExpanded) {
+        if (isConfigExpanded) setIsConfigExpanded(false);
+        else setIsExpanded(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -274,6 +313,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
     if (!input.trim() || isStreaming) return;
     const message = input;
     setInput('');
+    setShowFacilitators(false);
     await sendMessage(message);
   };
 
@@ -342,13 +382,6 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
-
-  // Quick prompt chips
-  const educatorPrompts = [
-    { label: 'Create 10-Question Quiz', prompt: 'Create a 10-question multiple choice quiz with answer key and scoring guide for this lesson.' },
-    { label: 'Generate Grading Rubric', prompt: 'Create a comprehensive grading rubric with detailed performance criteria for this lesson.' },
-    { label: 'Lesson Activity Plan', prompt: 'Create an interactive 30-minute classroom activity plan based on this lesson content.' },
-  ];
 
   // Markdown Custom Component Mapping (Calm, professional, no vibrant color)
   const markdownComponents: Components = {
@@ -481,7 +514,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
           <div className="bg-white text-slate-800 text-xs px-3 py-2 rounded-xl whitespace-nowrap shadow-xl border border-slate-200">
             <p className="font-semibold flex items-center gap-1.5 text-slate-800">
               <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-              {isEducator ? 'AI Facilitator' : 'AI Course Tutor'}
+              {isEducator ? 'AI Facilitators' : 'AI Course Tutor'}
             </p>
             <p className="text-slate-400 text-[10px] mt-0.5">Press ⌘K or click to toggle</p>
           </div>
@@ -533,6 +566,8 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
             onClick={() => {
               startNewConversation();
               setShowHistory(false);
+              setShowFacilitators(false);
+              setIsConfigExpanded(false);
             }}
             className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
           >
@@ -625,6 +660,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
       transition={{ type: 'spring', damping: 28, stiffness: 220 }}
       role="region"
       aria-label={isEducator ? 'AI facilitator' : 'AI course tutor'}
+      data-orb-pointer-area
       className={`fixed right-0 top-0 h-dvh ${panelWidthClass} max-w-full bg-slate-50/95 backdrop-blur-xl shadow-[-12px_0_48px_-24px_rgba(15,23,42,0.3)] z-50 flex flex-col border-l border-slate-200 text-slate-800 transition-[width] duration-200`}
     >
       {/* 1. Header (Clean, Professional, No Black, No Vibrant Color) */}
@@ -633,12 +669,12 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
           {/* Left: Avatar + Title + Status */}
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 flex-shrink-0 flex items-center justify-center">
-              <img src="/ai.gif" alt="" aria-hidden="true" className="h-full w-full object-contain scale-110" />
+              <img src="/RMLogo.webp" alt="" aria-hidden="true" className="h-9 w-9 object-contain" />
             </div>
             <div>
               <div className="flex items-center gap-1.5">
                 <h3 className="font-semibold text-base text-slate-900 tracking-tight">
-                  {isEducator ? 'AI Facilitator' : 'AI Course Tutor'}
+                  {isEducator ? 'AI Facilitators' : 'AI Course Tutor'}
                 </h3>
               </div>
               <div role="status" className="flex items-center gap-1.5 mt-1">
@@ -669,6 +705,8 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
               type="button"
               onClick={() => {
                 startNewConversation();
+                setShowFacilitators(false);
+                setIsConfigExpanded(false);
                 toast.success('Started new chat');
               }}
               className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors"
@@ -717,8 +755,32 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
       </div>
 
       {/* 5. Messages Stream Area */}
-      <div aria-label="Conversation" aria-busy={isStreaming} className="flex-1 min-h-0 overflow-y-auto overscroll-contain bg-slate-50/80 px-4 py-6 sm:px-5 space-y-6">
-        {!isAuthenticated ? (
+      <div aria-label="Conversation" aria-busy={isStreaming} className={`flex-1 min-h-0 overflow-y-auto overscroll-contain ${isWelcome ? 'bg-white/90' : 'bg-slate-50/80'} px-4 py-6 sm:px-5 space-y-6`}>
+        {isEducator && isConfigExpanded ? (
+          <section aria-label={configTool === 'worksheet' ? 'Create a worksheet' : 'Plan a lesson'} className="rounded-xl border border-slate-200 bg-white p-4">
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="!m-0 !text-sm !font-semibold text-slate-900">{configTool === 'worksheet' ? 'Create a worksheet' : 'Plan a lesson'}</h3>
+              <button type="button" aria-label="Close settings" onClick={() => { setIsConfigExpanded(false); inputRef.current?.focus(); }} className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100"><X className="h-4 w-4" /></button>
+            </div>
+            <p className="mt-1 !text-xs !leading-5 text-slate-500">Set up your material here. Your grade is filled from your teaching mappings.</p>
+            {contextLoading && <p role="status" className="my-3 text-xs text-slate-500">Loading your teaching level...</p>}
+            {contextError && <p role="alert" className="my-3 text-xs text-red-700">{contextError}<button type="button" className="ml-2 underline" onClick={() => setContextRetry(value => value + 1)}>Retry</button></p>}
+            {generationContext && <p className="my-3 !text-xs !leading-5 text-slate-500">{generationContext.organization.name} ? {generationContext.learnerCount} mapped learners</p>}
+            {configTool === 'worksheet' ? (
+              <WorksheetConfigPanel config={{ ...worksheetConfig, gradeLevel: generationContext?.gradeLevel || '' }} onChange={setWorksheetConfig} automaticGrade
+                onGenerate={handleGenerate} isGenerating={isStreaming}
+                generationLimit={isTeacher ? teacherGenerationLimit : undefined}
+                remainingGenerations={isTeacher ? remainingTeacherGenerations : undefined}
+                isGenerationLimitReached={isGenerationLocked || !generationContext || !!contextError} isUsageLoading={isCheckingGenerationUsage || contextLoading} />
+            ) : (
+              <LessonPlanConfigPanel config={{ ...lessonPlanConfig, gradeLevel: generationContext?.gradeLevel || '' }} onChange={setLessonPlanConfig} automaticGrade
+                onGenerate={handleGenerate} isGenerating={isStreaming}
+                generationLimit={isTeacher ? teacherGenerationLimit : undefined}
+                remainingGenerations={isTeacher ? remainingTeacherGenerations : undefined}
+                isGenerationLimitReached={isGenerationLocked || !generationContext || !!contextError} isUsageLoading={isCheckingGenerationUsage || contextLoading} />
+            )}
+          </section>
+        ) : !isAuthenticated ? (
           <div className="h-full flex flex-col items-center justify-center p-6 text-center">
             <div className="w-12 h-12 bg-amber-100/80 rounded-2xl flex items-center justify-center mb-3">
               <LogIn className="w-6 h-6 text-amber-600" />
@@ -734,59 +796,25 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
               Log In
             </Link>
           </div>
+        ) : isEducator && showFacilitators ? (
+          <FacilitatorHub key={conversationId || 'new'} courseName={courseName} disabled={isStreaming}
+            onBack={() => setShowFacilitators(false)}
+            onAction={handleFacilitatorAction} />
+        ) : isWelcome ? (
+          <FacilitatorWelcome disabled={isStreaming} onSelectRole={id => {
+            const role = FACILITATORS.find(item => item.id === id);
+            if (role) handleFacilitatorAction(role);
+          }} />
         ) : messages.length === 0 ? (
-          /* Empty / Welcome State */
-          <div className="h-full flex flex-col items-center justify-center p-4 text-center">
-            <div className="w-12 h-12 bg-blue-50 border border-blue-200/80 rounded-2xl flex items-center justify-center mb-3 text-blue-600 shadow-2xs">
-              <Sparkles className="w-6 h-6" />
-            </div>
-            <h4 className="font-semibold text-sm text-slate-900 mb-1">
-              {isEducator ? 'What are we teaching today?' : 'Welcome to AI Tutor'}
-            </h4>
-            <p className="text-xs text-slate-500 mb-5 max-w-xs leading-relaxed">
-              {isEducator
-                ? 'Generate high-quality worksheets, rubrics, and lesson plans directly from this course.'
-                : 'Ask questions, review definitions, or ask for clarifications about this lesson.'}
-            </p>
-
-            {/* Prompt Chips */}
-            <div className="w-full space-y-1.5 text-left">
-              {isEducator ? (
-                educatorPrompts.map((p, i) => (
-                  <button
-                    type="button"
-                    key={i}
-                    onClick={() => {
-                      setInput(p.prompt);
-                      inputRef.current?.focus();
-                    }}
-                    className="w-full p-2.5 text-left text-xs bg-white border border-slate-200 rounded-xl hover:border-blue-400 hover:bg-blue-50/40 transition-all flex items-center justify-between group shadow-2xs"
-                  >
-                    <span className="font-medium text-slate-700 group-hover:text-blue-900 truncate mr-2">
-                      {p.label}
-                    </span>
-                    <Sparkles className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-600 flex-shrink-0" />
-                  </button>
-                ))
-              ) : (
-                suggestedQuestions.slice(0, 3).map((q, i) => (
-                  <button
-                    type="button"
-                    key={i}
-                    onClick={() => {
-                      setInput(q);
-                      inputRef.current?.focus();
-                    }}
-                    className="w-full p-2.5 text-left text-xs bg-white border border-slate-200 rounded-xl hover:border-blue-400 hover:bg-blue-50/40 transition-all flex items-center justify-between group shadow-2xs"
-                  >
-                    <span className="font-medium text-slate-700 group-hover:text-blue-900 truncate mr-2">
-                      {q}
-                    </span>
-                    <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-600 flex-shrink-0" />
-                  </button>
-                ))
-              )}
-            </div>
+          <div className="flex h-full flex-col items-center justify-center p-4 text-center">
+            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-blue-200/80 bg-blue-50 text-blue-600"><Sparkles className="h-6 w-6" /></div>
+            <h4 className="mb-1 text-sm font-semibold text-slate-900">Welcome to AI Tutor</h4>
+            <p className="mb-5 max-w-xs text-xs leading-relaxed text-slate-500">Ask questions, review definitions, or ask for clarifications about this lesson.</p>
+            <div className="w-full space-y-1.5 text-left">{suggestedQuestions.slice(0, 3).map(question => (
+              <button key={question} type="button" onClick={() => { setInput(question); inputRef.current?.focus(); }} className="flex w-full items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white p-2.5 text-left text-xs transition-colors hover:border-blue-400 hover:bg-blue-50/40 focus-visible:ring-2 focus-visible:ring-blue-500">
+                <span className="font-medium text-slate-700">{question}</span><ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+              </button>
+            ))}</div>
           </div>
         ) : (
           /* Message List */
@@ -870,7 +898,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
                               <Sparkles className="w-3 h-3" />
                             </div>
                             <span className="text-xs font-semibold text-slate-900">
-                              {isEducator ? 'Teaching material' : 'AI Tutor'}
+                              {isEducator ? (msg.worksheetAvailable ? 'Resource Provider' : 'AI Facilitators') : 'AI Tutor'}
                             </span>
                           </div>
 
@@ -960,9 +988,6 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
                               </button>
 
                               {/* Export Button (PDF / DOCX) */}
-                              {isEducator && msg.worksheetAvailable && conversationId && (
-                                <AssignWorksheetButton conversationId={conversationId} messageId={msg.id} courseTitle={courseName} />
-                              )}
                               {isEducator && (
                                 <WorksheetExportButton
                                   content={stripWorksheetMarkers(msg.content)}
@@ -995,6 +1020,9 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
                                 </button>
                               </div>
                             </div>
+                            {isEducator && msg.worksheetAvailable && conversationId && (
+                              <div className="w-full"><AssignWorksheetButton conversationId={conversationId} messageId={msg.id} courseTitle={courseName} /></div>
+                            )}
                           </div>
                         )}
                       </div>
@@ -1045,13 +1073,17 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
       <div className="px-3 pb-3 pt-1 flex-shrink-0">
         {isEducator && (
           <div role="group" aria-label="Facilitator tools" className="flex items-center gap-1 mb-1">
+            <button type="button" aria-label="Explore six facilitators" aria-expanded={showFacilitators && !isConfigExpanded} disabled={isStreaming || !isAuthenticated}
+              onClick={() => { setIsConfigExpanded(false); setShowFacilitators(value => !value); }}
+              className="group flex h-8 items-center rounded-lg px-2 text-slate-500 transition-colors hover:bg-blue-50 hover:text-blue-700 focus-visible:bg-blue-50 focus-visible:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-40"><LayoutGrid className="h-4 w-4 shrink-0" /><span aria-hidden="true" className="max-w-0 overflow-hidden whitespace-nowrap text-xs font-medium opacity-0 transition-all duration-200 group-hover:ml-1.5 group-hover:max-w-24 group-hover:opacity-100 group-focus-visible:ml-1.5 group-focus-visible:max-w-24 group-focus-visible:opacity-100 motion-reduce:transition-none">Facilitators</span></button>
             {([
               { tool: 'worksheet', label: 'Worksheet', Icon: FileText },
               { tool: 'lesson-plan', label: 'Lesson Plan', Icon: BookOpen },
             ] as const).map(({ tool, label, Icon }) => (
               <button key={tool} type="button" aria-label={label} title={label}
-                aria-haspopup="dialog" disabled={isStreaming || !isAuthenticated}
+                aria-expanded={isConfigExpanded && configTool === tool} disabled={isStreaming || !isAuthenticated}
                 onClick={() => {
+                  setShowFacilitators(false);
                   setConfigTool(tool);
                   setAssistantMode(tool);
                   setIsConfigExpanded(true);
@@ -1064,7 +1096,8 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
           </div>
         )}
 
-        <div className="relative flex items-center gap-2 bg-white border border-slate-300 rounded-full pl-4 pr-1.5 py-1.5 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20 shadow-xs transition-all">
+        <div className={`relative flex items-center gap-2 bg-white border border-slate-300 rounded-full pl-4 pr-1.5 ${isWelcome ? 'py-2.5' : 'py-1.5'} focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20 shadow-xs transition-all`}>
+          {isWelcome && <Sparkles aria-hidden="true" className="mr-1 h-5 w-5 shrink-0 text-primary" />}
           <textarea
             ref={inputRef}
             aria-label="Message the AI facilitator"
@@ -1074,8 +1107,10 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
             placeholder={
               !isAuthenticated
                 ? 'Please log in to chat...'
+                : isWelcome
+                ? 'Ask anything about this lesson...'
                 : isEducator
-                ? 'Describe what you’d like to create or refine…'
+                ? 'Ask a question or refine your material...'
                 : 'Ask anything about this lesson...'
             }
             disabled={isStreaming || !isAuthenticated}
@@ -1095,6 +1130,8 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
               <Square className="w-3.5 h-3.5 fill-current" />
             ) : isLoading ? (
               <Loader2 className="w-4 h-4 animate-spin text-white" />
+            ) : isWelcome ? (
+              <ArrowRight className="w-4 h-4" />
             ) : (
               <Send className="w-3.5 h-3.5" />
             )}
@@ -1103,41 +1140,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
 
 
       </div>
-      <Dialog.Root open={isConfigExpanded} onOpenChange={setIsConfigExpanded}>
-        <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 z-[60] bg-slate-950/30 backdrop-blur-sm" />
-          <Dialog.Content
-            onCloseAutoFocus={(event) => { event.preventDefault(); inputRef.current?.focus(); }}
-            className="fixed left-1/2 top-1/2 z-[61] flex max-h-[85dvh] w-[calc(100vw_-_2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 flex-col rounded-2xl border border-slate-200 bg-white shadow-2xl focus:outline-none">
-            <div className="border-b border-slate-100 p-5 pr-12">
-              <Dialog.Title className="text-base font-semibold text-slate-900">
-                {configTool === 'worksheet' ? 'Create a worksheet' : 'Plan a lesson'}
-              </Dialog.Title>
-              <Dialog.Description className="mt-1 text-xs leading-5 text-slate-500">
-                Choose your settings. Your material will appear in the conversation.
-              </Dialog.Description>
-              <Dialog.Close aria-label="Close settings" className="absolute right-4 top-4 rounded-lg p-2 text-slate-500 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-blue-500">
-                <X className="h-4 w-4" />
-              </Dialog.Close>
-            </div>
-            <div className="min-h-0 overflow-y-auto p-5">
-              {configTool === 'worksheet' ? (
-                <WorksheetConfigPanel config={worksheetConfig} onChange={setWorksheetConfig}
-                  onGenerate={handleGenerate} isGenerating={isStreaming}
-                  generationLimit={isTeacher ? teacherGenerationLimit : undefined}
-                  remainingGenerations={isTeacher ? remainingTeacherGenerations : undefined}
-                  isGenerationLimitReached={isGenerationLocked} isUsageLoading={isCheckingGenerationUsage} />
-              ) : (
-                <LessonPlanConfigPanel config={lessonPlanConfig} onChange={setLessonPlanConfig}
-                  onGenerate={handleGenerate} isGenerating={isStreaming}
-                  generationLimit={isTeacher ? teacherGenerationLimit : undefined}
-                  remainingGenerations={isTeacher ? remainingTeacherGenerations : undefined}
-                  isGenerationLimitReached={isGenerationLocked} isUsageLoading={isCheckingGenerationUsage} />
-              )}
-            </div>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
+
     </motion.div>
   );
 };

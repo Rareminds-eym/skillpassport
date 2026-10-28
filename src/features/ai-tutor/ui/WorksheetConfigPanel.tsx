@@ -3,6 +3,7 @@ import type { WorksheetConfig, WorksheetTemplateType, DifficultyLevel } from '..
 import { WORKSHEET_TEMPLATES } from '../types/worksheet';
 
 interface WorksheetConfigPanelProps {
+  automaticGrade?: boolean;
   config: WorksheetConfig;
   onChange: (_config: WorksheetConfig) => void;
   onGenerate: () => void;
@@ -21,6 +22,7 @@ const DIFFICULTY_OPTIONS: { value: DifficultyLevel; label: string; desc: string 
 
 const WorksheetConfigPanel = ({
   config,
+  automaticGrade = false,
   onChange,
   onGenerate,
   isGenerating,
@@ -48,6 +50,7 @@ const WorksheetConfigPanel = ({
           <label htmlFor="worksheet-grade" className="block text-xs font-medium text-slate-700 mb-1">
             Grade / Level
           </label>
+          {automaticGrade ? <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-700" aria-label="Automatic grade level">{config.gradeLevel || 'Loading teaching level...'}</p> : (
           <select
             id="worksheet-grade"
             value={config.gradeLevel || ''}
@@ -67,6 +70,7 @@ const WorksheetConfigPanel = ({
             <option value="Grade 12">Grade 12</option>
             <option value="College/University">College / University</option>
           </select>
+          )}
         </div>
 
         {/* Template Type */}

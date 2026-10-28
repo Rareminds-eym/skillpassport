@@ -27,7 +27,8 @@ export async function createWorksheetPDF({ content, courseTitle, lessonTitle }: 
   const [logo, watermark] = await Promise.all([loadLogo('/RareMinds ISO Logo-01.png'), loadLogo()]);
   const lines = stripWorksheetMarkers(content).replace(/\r/g, '').split('\n');
   const titleIndex = lines.findIndex(line => /^\s*(?:#{1,3}\s*)?(?:\*\*)?title\s*:/i.test(line));
-  const title = clean(titleIndex >= 0 ? lines[titleIndex].replace(/^\s*(?:#{1,3}\s*)?(?:\*\*)?title\s*:\s*/i, '') : courseTitle);
+  const combined = lessonTitle === 'Multiple difficulty levels';
+  const title = clean(!combined && titleIndex >= 0 ? lines[titleIndex].replace(/^\s*(?:#{1,3}\s*)?(?:\*\*)?title\s*:\s*/i, '') : courseTitle);
   doc.setProperties({ title, subject: `${courseTitle} | ${lessonTitle}`, author: 'RareMinds', creator: 'SkillPassport' });
   let y = 20;
   const decorated = new Set<number>();
@@ -110,9 +111,11 @@ export async function createWorksheetPDF({ content, courseTitle, lessonTitle }: 
   }
   decorated.add(1);
 
+  let difficultySections = 0;
   for (let index = 0; index < lines.length; index++) {
     const raw = lines[index].trim(), text = clean(raw);
     if (index === titleIndex || !text && /<!--/.test(raw)) continue;
+    if (combined && /^(?:#{1,3}\s*)?title\s*:/i.test(text)) continue;
     if (!text) { y = Math.min(y + 2, BOTTOM); continue; }
     if (/^[-*_]{3,}$/.test(text)) { ensure(7); rule(y); y += 6; continue; }
     if (text === 'RareMinds' || text.toLowerCase() === title.toLowerCase()) continue;
@@ -133,6 +136,10 @@ export async function createWorksheetPDF({ content, courseTitle, lessonTitle }: 
       continue;
     }
     const heading = /^#{1,6}\s+(.+)$/.exec(text);
+    if (combined && heading && /^(beginner|intermediate|advanced)$/i.test(heading[1])) {
+      if (difficultySections > 0) newPage();
+      difficultySections++;
+    }
     if (heading || /^(?:answer key|sample answers|solutions|word bank|questions|instructions|grading rubric|scoring guide)\s*:?$/i.test(text)) { section(heading ? heading[1] : text.replace(/:$/, '')); continue; }
     const numbered = /^(\d+)[.)]\s+(.+)$/.exec(text);
     if (numbered) {
