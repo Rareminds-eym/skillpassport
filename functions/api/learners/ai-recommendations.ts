@@ -16,7 +16,7 @@ import { getServiceClient } from '../../lib/supabase';
 import { createLogger } from '../../lib/logger';
 type AuthenticatedContext = Parameters<PagesFunction>[0];
 import { apiSuccess, apiError } from '../../lib/response';
-import { eligibleJobs, isEligibleJob, privateRecommendations, stringSkills } from '../../lib/job-recommendations';
+import { recommendableJobs, isRecommendableJob, privateRecommendations, stringSkills } from '../../lib/job-recommendations';
 import { learningDecisions } from '../../lib/learning-eligibility';
 
 const logger = createLogger('learner-ai-recommendations-api');
@@ -94,7 +94,7 @@ const authenticatedGet = withAuth(async (context: AuthenticatedContext) => {
     });
 
     // Step 3: Get active opportunities
-    const { data: opportunities, error: oppError } = await eligibleJobs(supabase
+    const { data: opportunities, error: oppError } = await recommendableJobs(supabase
       .from('opportunities')
       .select('*')
     )
@@ -109,7 +109,7 @@ const authenticatedGet = withAuth(async (context: AuthenticatedContext) => {
     logger.info('Fetched opportunities', { count: opportunities?.length || 0 });
 
     // Step 4: Calculate match scores for each opportunity
-    const matchedJobs = (opportunities || []).filter(opp => isEligibleJob(opp)).map((opp: any) => {
+    const matchedJobs = (opportunities || []).filter(opp => isRecommendableJob(opp)).map((opp: any) => {
       let matchScore = 0;
       const matchReasons: any = {};
 

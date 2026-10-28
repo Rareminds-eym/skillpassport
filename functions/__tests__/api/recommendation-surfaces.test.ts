@@ -34,6 +34,12 @@ it('dashboard includes open jobs and excludes expired/inactive jobs',async()=>{
   const response=await dashboard(context('/api/learners/ai-recommendations'));
   expect(response.status).toBe(200);expect((await response.json() as any).data.recommendations.map((r:any)=>r.id)).toEqual([job]);expect(response.headers.get('Cache-Control')).toContain('no-store');
 });
+it('dashboard excludes industrial visits even when their skills match',async()=>{
+  f.tables.opportunities.push({...f.tables.opportunities[0],id:'visit',employment_type:'factory_visit'});
+  const response=await dashboard(context('/api/learners/ai-recommendations'));
+  expect(response.status).toBe(200);
+  expect((await response.json() as any).data.recommendations.map((r:any)=>r.id)).toEqual([job]);
+});
 it('dashboard survives null/non-string required-skill entries',async()=>{
   f.tables.opportunities[0].skills_required=[null,{},'Python'];expect((await dashboard(context('/api/learners/ai-recommendations'))).status).toBe(200);
 });

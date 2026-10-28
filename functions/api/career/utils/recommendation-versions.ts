@@ -7,4 +7,4 @@ export const RECOMMENDATION_PREPROCESSING_VERSION = 'learner-text-1';
 // policy changes, including deployed SQL changes. Keep this deployment contract
 // aligned with the installed rankers before enabling personalization.
 export const RECOMMENDATION_RANKING_POLICY_VERSION =
-  'semantic-ranking-3-ai-only';
+  'semantic-ranking-4-jobs-only';
