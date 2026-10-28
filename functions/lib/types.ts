@@ -23,10 +23,9 @@ export interface PagesEnv {
   SSO_SERVICE?: SsoWorkerRpc;
   /** LTE app base URL used for cross-app SSO callback redirects. */
   LTE_APP_URL?: string;
-  /** Shared HMAC secret for the LTE ↔ SkillPassport internal gateway (server-only). */
+  /** Shared server-only signing secret for LTE gateway, catalogue and learning requests. */
   LTE_INTERNAL_SECRET?: string;
   SP_DASH_CATALOG_URL?: string;
-  LTE_CATALOG_SYNC_SECRET?: string;
   /**
    * Cookie domain for refresh-token scoping across subdomains.
    * Production: ".rareminds.in"  →  __Secure-refresh_token; Domain=.rareminds.in

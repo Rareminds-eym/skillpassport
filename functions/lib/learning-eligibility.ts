@@ -23,7 +23,7 @@ export class LearningError extends Error {
 
 /** Uses the existing path-bound catalogue HMAC; never forwards a browser token. */
 export async function learningServiceRequest(env:Record<string,any>,path:string,payload:unknown,timeout=15000):Promise<unknown>{
-  const secret = env.LTE_CATALOG_SYNC_SECRET;
+  const secret = env.LTE_INTERNAL_SECRET;
   if (typeof secret !== 'string' || secret.length < 32 || !env.LTE_APP_URL)
     throw new LearningError('LEARNING_UNAVAILABLE', 'Learning verification is not configured. Please try again later.');
   const url = new URL(path, env.LTE_APP_URL);
