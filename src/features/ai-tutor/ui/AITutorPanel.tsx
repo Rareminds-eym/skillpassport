@@ -13,9 +13,9 @@ import {
   Loader2,
   LogIn,
   Pencil,
+  SquarePen,
   Plus,
   RefreshCw,
-  RotateCcw,
   Send,
   Square,
   Sparkles,
@@ -28,7 +28,7 @@ import {
   X,
 } from 'lucide-react';
 import * as React from 'react';
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useLayoutEffect, useState, useRef, useCallback } from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import { stripWorksheetMarkers } from '@/shared/utils';
 import { useTutorChat, type GenerationUsage } from '@/features/ai-tutor/model/useTutorChat';
@@ -38,6 +38,7 @@ import WorksheetExportButton from './WorksheetExportButton';
 import AssignWorksheetButton from './AssignWorksheetButton';
 import FacilitatorHub from './FacilitatorHub';
 import FacilitatorWelcome from './FacilitatorWelcome';
+import TutorOrb from './TutorOrb';
 import { FACILITATORS, type FacilitatorRole } from '../config/facilitators';
 import { worksheetAction, type WorksheetContext } from '../api/worksheetService';
 import LearnerWorksheets from './LearnerWorksheets';
@@ -106,6 +107,29 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const latestMessageRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  useLayoutEffect(() => {
+    const textarea = inputRef.current;
+    if (!textarea) return;
+    const resize = () => {
+      // The composer uses 20px line height and no padding: three lines = 60px.
+      textarea.style.height = '0px';
+      const contentHeight = textarea.scrollHeight;
+      textarea.style.height = `${Math.max(20, Math.min(60, contentHeight))}px`;
+      textarea.style.overflowY = contentHeight > 60 ? 'auto' : 'hidden';
+    };
+    resize();
+    if (typeof ResizeObserver === 'undefined') return;
+    let lastWidth = textarea.getBoundingClientRect().width;
+    const observer = new ResizeObserver(entries => {
+      const width = entries[0]?.contentRect.width;
+      if (width !== undefined && width !== lastWidth) {
+        lastWidth = width;
+        resize();
+      }
+    });
+    observer.observe(textarea);
+    return () => observer.disconnect();
+  }, [input, isExpanded, showHistory, showWorksheets]);
   const editTextareaRef = useRef<HTMLTextAreaElement>(null);
   const isAuthenticated = !!user;
 
@@ -713,7 +737,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
               title="New Chat"
               aria-label="Start new conversation"
             >
-              <RotateCcw className="w-3.5 h-3.5" />
+              <SquarePen className="w-3.5 h-3.5" />
             </button>
 
             {/* History */}
@@ -807,7 +831,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
           }} />
         ) : messages.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center p-4 text-center">
-            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-blue-200/80 bg-blue-50 text-blue-600"><Sparkles className="h-6 w-6" /></div>
+            <TutorOrb className="!my-0 !max-w-[240px]" />
             <h4 className="mb-1 text-sm font-semibold text-slate-900">Welcome to AI Tutor</h4>
             <p className="mb-5 max-w-xs text-xs leading-relaxed text-slate-500">Ask questions, review definitions, or ask for clarifications about this lesson.</p>
             <div className="w-full space-y-1.5 text-left">{suggestedQuestions.slice(0, 3).map(question => (
@@ -1096,8 +1120,8 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
           </div>
         )}
 
-        <div className={`relative flex items-center gap-2 bg-white border border-slate-300 rounded-full pl-4 pr-1.5 ${isWelcome ? 'py-2.5' : 'py-1.5'} focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20 shadow-xs transition-all`}>
-          {isWelcome && <Sparkles aria-hidden="true" className="mr-1 h-5 w-5 shrink-0 text-primary" />}
+        <div className={`relative flex items-end gap-2 bg-white border border-slate-300 rounded-[26px] pl-4 pr-1.5 ${isWelcome ? 'py-2.5' : 'py-1.5'} focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20 shadow-xs transition-all`}>
+          {isWelcome && <Sparkles aria-hidden="true" className="mr-1 h-5 w-5 shrink-0 self-center text-primary" />}
           <textarea
             ref={inputRef}
             aria-label="Message the AI facilitator"
@@ -1115,7 +1139,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
             }
             disabled={isStreaming || !isAuthenticated}
             rows={1}
-            className="flex-1 min-w-0 !m-0 !border-0 !rounded-none !p-0 text-[13px] leading-5 text-slate-800 placeholder:text-slate-400 !bg-transparent resize-none !outline-none !ring-0 !shadow-none focus:!outline-none focus:!ring-0 focus-visible:!outline-none focus-visible:!ring-0 disabled:opacity-50 h-5 my-0.5"
+            className="flex-1 min-w-0 self-center !m-0 !border-0 !rounded-none !p-0 text-[13px] leading-5 text-slate-800 placeholder:text-slate-400 !bg-transparent resize-none !outline-none !ring-0 !shadow-none focus:!outline-none focus:!ring-0 focus-visible:!outline-none focus-visible:!ring-0 disabled:opacity-50 h-5 min-h-5 max-h-[60px] overflow-y-hidden"
           />
 
           <button

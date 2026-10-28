@@ -4,6 +4,20 @@ import FacilitatorHub from '../FacilitatorHub';
 import { FACILITATORS } from '../../config/facilitators';
 afterEach(cleanup);
 describe('six facilitator explorer', () => {
+  it('previews a role on hover or keyboard focus without opening it', () => {
+    const action = vi.fn();
+    render(<FacilitatorHub courseName="Science" onAction={action} />);
+    const role = FACILITATORS[2];
+    const button = screen.getByRole('button', { name: role.name });
+    fireEvent.pointerEnter(button);
+    expect(screen.getByText(role.purpose)).toBeInTheDocument();
+    fireEvent.pointerLeave(button);
+    expect(screen.getByText('Explore an approach. Make it your own.')).toBeInTheDocument();
+    fireEvent.focus(button);
+    expect(button).toHaveAccessibleDescription(role.purpose);
+    expect(action).not.toHaveBeenCalled();
+    expect(screen.queryByRole('heading', { name: role.name })).not.toBeInTheDocument();
+  });
   it('makes every role visible with a course-specific introduction', () => {
     render(<FacilitatorHub courseName="Time Management" onAction={vi.fn()} />);
     expect(screen.getByText('Time Management')).toBeInTheDocument();

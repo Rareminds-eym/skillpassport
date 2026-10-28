@@ -40,6 +40,35 @@ function showPanel() {
     lessonContext={{ lessonId: 'lesson', lessonTitle: 'Planning your day' }} defaultExpanded /><FloatingEducatorAIButton /></MemoryRouter>);
 }
 describe('AI facilitator workspace', () => {
+  it.each([true, false])('grows the composer to three rows and collapses after sending (educator=%s)', educator => {
+    mocks.educator = educator;
+    showPanel();
+    const input = screen.getByRole('textbox', { name: 'Message the AI facilitator' }) as HTMLTextAreaElement;
+    Object.defineProperty(input, 'scrollHeight', { configurable: true, get: () => input.value ? input.value.split('\n').length * 20 : 20 });
+    fireEvent.change(input, { target: { value: 'First\nSecond' } });
+    expect(input.style.height).toBe('40px');
+    fireEvent.change(input, { target: { value: 'First\nSecond\nThird' } });
+    expect(input.style.height).toBe('60px');
+    expect(input.style.overflowY).toBe('hidden');
+    fireEvent.change(input, { target: { value: 'First\nSecond\nThird\nFourth' } });
+    expect(input.style.height).toBe('60px');
+    expect(input.style.overflowY).toBe('auto');
+    fireEvent.keyDown(input, { key: 'Enter', shiftKey: true });
+    expect(mocks.sendMessage).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Send message' }));
+    expect(mocks.sendMessage).toHaveBeenCalledWith('First\nSecond\nThird\nFourth');
+    expect(input.style.height).toBe('20px');
+    expect(input.style.overflowY).toBe('hidden');
+  });
+  it('shows the shared orb in learner welcome without educator role controls', () => {
+    mocks.educator = false;
+    mocks.empty = true;
+    const { container } = showPanel();
+    expect(screen.getByText('Welcome to AI Tutor')).toBeInTheDocument();
+    expect(container.querySelector('.facilitator-orb')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Plan' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Create' })).not.toBeInTheDocument();
+  });
   it('renders escaped worksheet comments as clean content rather than implementation markers', () => {
     mocks.content = '```markdown\n&lt;!-- STUDENT_WORKSHEET --&gt;\n## Clean worksheet\nQuestions\n<!-- PRIVATE_SOLUTIONS -->\nAnswer guidance\n<!-- END_WORKSHEET -->\n```';
     showPanel();

@@ -1,12 +1,29 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, BookOpen, CalendarDays, Compass, FileText, Layers, Lightbulb } from 'lucide-react';
 import { FACILITATORS, type FacilitatorRole } from '../config/facilitators';
 
 const ROLE_ICONS = [CalendarDays, BookOpen, Layers, FileText, Lightbulb, Compass];
+function circlePoint(radius: number, degrees: number) {
+  const angle = degrees * Math.PI / 180;
+  return { x: 50 + radius * Math.cos(angle), y: 50 + radius * Math.sin(angle) };
+}
+const ROLE_SEGMENTS = FACILITATORS.map((_, index) => {
+  const angle = index * 60 - 90;
+  const start = angle - 28;
+  const end = angle + 28;
+  const outer = Array.from({ length: 19 }, (_, step) => circlePoint(48, start + (end - start) * step / 18));
+  const inner = Array.from({ length: 19 }, (_, step) => circlePoint(19, end - (end - start) * step / 18));
+  return {
+    clipPath: `polygon(${[...outer, ...inner].map(point => `${point.x}% ${point.y}%`).join(',')})`,
+    label: circlePoint(33.5, angle),
+  };
+});
 interface Props { courseName: string; disabled?: boolean; onAction: (_role: FacilitatorRole) => void; onBack?: () => void }
 
 /** One workspace, six discoverable roles; examples never impersonate live learner evidence. */
 export default function FacilitatorHub({ courseName, disabled = false, onAction, onBack }: Props) {
+  const descriptionId = useId();
+  const [highlighted, setHighlighted] = useState<number | null>(null);
   const [selected, setSelected] = useState<FacilitatorRole | null>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => { if (selected) heading.current?.focus(); }, [selected]);
@@ -32,16 +49,33 @@ export default function FacilitatorHub({ courseName, disabled = false, onAction,
     </div> : <div className="space-y-4">
       {onBack && <button type="button" onClick={onBack} className={`inline-flex min-h-9 items-center gap-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-primary ${focusClass}`}><ArrowLeft className="h-3.5 w-3.5" />Back to conversation</button>}
       <div className="pb-1 pt-2">
-        <h2 className="!mb-2 !mt-0 !text-2xl !font-semibold !leading-8 !tracking-tight">More ways to bring<br />learning to life.</h2>
-        <p className="!m-0 !text-xs !leading-5 text-muted-foreground">Plan, create and support learning in <span className="font-medium text-foreground">{courseName}</span>. Choose a facilitator to explore an example and get started.</p>
+        <h2 className="!mb-2 !mt-0 !text-xl !font-semibold !leading-7 !tracking-tight">More ways to bring<br />learning to life.</h2>
+        <p className="!m-0 !text-xs !leading-5 text-muted-foreground">Choose your approach for <span className="font-medium text-foreground">{courseName}</span>. Explore a role, then put it to work.</p>
       </div>
-      <div className="grid grid-cols-1 gap-2.5 min-[360px]:grid-cols-2" aria-label="Choose a facilitator">
-        {FACILITATORS.map((role, index) => {
-          const RoleIcon = ROLE_ICONS[index]; return <button key={role.id} type="button" disabled={disabled} onClick={() => setSelected(role)} className={`flex min-h-32 flex-col items-start rounded-xl border border-border bg-card/90 p-3.5 text-left shadow-sm backdrop-blur-sm transition-all enabled:hover:-translate-y-0.5 enabled:hover:border-primary/40 enabled:hover:bg-primary/5 enabled:hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transform-none motion-reduce:transition-none ${focusClass}`}>
-            <span className="mb-3 flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary"><RoleIcon className="h-4 w-4" /></span>
-            <span className="!text-xs font-semibold !leading-5">{role.name}</span><span className="mt-1 !text-[11px] !leading-4 text-muted-foreground">{role.purpose}</span>
-          </button>;
-        })}
+      <div className="mx-auto w-full max-w-[400px]">
+        <div className="relative isolate aspect-square w-full" aria-label="Choose a facilitator">
+          <div aria-hidden="true" className="pointer-events-none absolute inset-[1%] rounded-full border border-muted-foreground/10" />
+          {FACILITATORS.map((role, index) => {
+            const RoleIcon = ROLE_ICONS[index];
+            const segment = ROLE_SEGMENTS[index];
+            return <button key={role.id} type="button" aria-label={role.name} aria-describedby={highlighted === index ? descriptionId : undefined} disabled={disabled}
+              onClick={() => setSelected(role)} onPointerEnter={() => setHighlighted(index)} onPointerLeave={() => setHighlighted(null)} onFocus={() => setHighlighted(index)} onBlur={() => setHighlighted(null)}
+              style={{ clipPath: segment.clipPath }}
+              className="group absolute inset-0 bg-muted-foreground/[0.045] text-muted-foreground transition-colors enabled:hover:bg-blue-50 enabled:hover:text-blue-700 focus-visible:bg-blue-100 focus-visible:text-blue-800 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40 motion-reduce:transition-none">
+              <span style={{ left: `${segment.label.x}%`, top: `${segment.label.y}%` }} className="pointer-events-none absolute flex w-[27%] -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-1.5 px-1 text-center">
+                <RoleIcon aria-hidden="true" className="h-[18px] w-[18px] shrink-0" strokeWidth={1.5} />
+                <span className="block text-balance text-[10px] font-medium leading-[1.35] min-[420px]:text-[11px]">{role.name}</span>
+              </span>
+            </button>;
+          })}
+          <div aria-hidden="true" className="pointer-events-none absolute inset-[34%] flex flex-col items-center justify-center gap-1.5 rounded-full border border-muted-foreground/10 bg-background text-center shadow-[inset_0_2px_12px_0_rgba(0,0,0,0.025)]">
+            <Lightbulb className="h-6 w-6 text-muted-foreground" strokeWidth={1.25} />
+            <span className="text-[9px] font-medium uppercase leading-4 tracking-[0.12em] text-muted-foreground">Your teaching<br />toolkit</span>
+          </div>
+        </div>
+        <div id={descriptionId} aria-live="polite" className="mx-auto flex min-h-16 max-w-xs items-center justify-center px-3 text-center text-xs leading-5 text-muted-foreground">
+          {highlighted === null ? 'Explore an approach. Make it your own.' : FACILITATORS[highlighted].purpose}
+        </div>
       </div>
     </div>}
   </section>;
