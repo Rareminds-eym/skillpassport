@@ -107,6 +107,7 @@ function makeQuery(table: string) {
     select(value: string) { columns = value; return query; },
     eq(key: string, value: unknown) { filters.push([key, value]); return query; },
     in(key: string, value: unknown[]) { filters.push([key, value]); return query; },
+    neq() { return query; },
     or() { return query; },
     async maybeSingle() { return resolve(); },
     then(resolveResult: (value: unknown) => unknown, reject: (error: unknown) => unknown) {
@@ -332,6 +333,25 @@ describe('request contract', () => {
 });
 
 describe('release boundary regressions', () => {
+  it.each([false, true])('filters visits from cached and freshly ranked results (cacheMiss=%s)', async cacheMiss => {
+    fixture.cacheMiss = cacheMiss;
+    fixture.jobOverrides[cacheMiss ? 'own-ranked' : 'own-0'] = {employment_type:'factory_visit'};
+    const response = await request({learnerId:fixture.learnerId,limit:3});
+    expect(response.status).toBe(200);
+    const body = await response.json() as any;
+    expect(body.data.recommendations.every((job:any)=>job.employment_type!=='factory_visit')).toBe(true);
+    expect(body.data.recommendations.map((job:any)=>job.id)).not.toContain(cacheMiss?'own-ranked':'own-0');
+    if(!cacheMiss) expect(body.data.recommendations).toHaveLength(3);
+  });
+
+  it.each(['Full-time','Internship','Part-time','Contract'])('retains %s job recommendations', async employmentType => {
+    fixture.cacheMiss = true;
+    fixture.jobOverrides['own-ranked'] = {employment_type:employmentType};
+    const body = await (await request()).json() as any;
+    expect(body.data.recommendations).toHaveLength(1);
+    expect(body.data.recommendations[0].employment_type).toBe(employmentType);
+  });
+
   it('carries preprocessing/ranking versions and cached algorithm provenance', async () => {
     const body = await (await request()).json() as any;
     expect(body.data).toMatchObject({cached:true, algorithmVersion:'v2.0', entityEmbeddingsEnabled:false,
