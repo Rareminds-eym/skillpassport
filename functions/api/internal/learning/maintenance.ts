@@ -2,7 +2,7 @@ import {dispatchIndependentEvaluations} from '../../../lib/learning-ai-equivalen
 import {getServiceClient} from '../../../lib/supabase';
 import {dispatchLearningJobNotifications} from '../../../lib/learning-job-notifications';
 export const onRequestPost=async(context:any)=>{
- const secret=context.env.LTE_CATALOG_SYNC_SECRET,timestamp=String(context.request.headers.get('x-lte-timestamp')||''),signature=String(context.request.headers.get('x-lte-signature')||'');
+ const secret=context.env.LTE_INTERNAL_SECRET,timestamp=String(context.request.headers.get('x-lte-timestamp')||''),signature=String(context.request.headers.get('x-lte-signature')||'');
  if(typeof secret!=='string'||secret.length<32)return Response.json({error:'Learning maintenance unavailable'},{status:503});
  if(!/^\d{13}$/.test(timestamp)||Math.abs(Date.now()-Number(timestamp))>60000||!/^[a-f0-9]{64}$/.test(signature))return Response.json({error:'Unauthorized'},{status:401});
  try{

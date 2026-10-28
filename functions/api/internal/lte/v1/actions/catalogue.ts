@@ -40,7 +40,7 @@ export const handleCatalogue: GatewayAction = async (ctx, payload) => {
         message: "Role is not recommended for this learner",
       },
     };
-  const secret = ctx.env.LTE_CATALOG_SYNC_SECRET;
+  const secret = ctx.env.LTE_INTERNAL_SECRET;
   if (!ctx.env.SP_DASH_CATALOG_URL || !secret || secret.length < 32)
     return {
       ok: false,

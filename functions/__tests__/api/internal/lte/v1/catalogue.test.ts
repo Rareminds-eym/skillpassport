@@ -12,7 +12,7 @@ const ctx = {
   userId: user,
   env: {
     SP_DASH_CATALOG_URL: "https://catalogue.example",
-    LTE_CATALOG_SYNC_SECRET: "a-test-secret-that-is-at-least-32-characters",
+    LTE_INTERNAL_SECRET: "a-test-secret-that-is-at-least-32-characters",
   },
 } as GatewayContext;
 beforeEach(() => vi.resetAllMocks());

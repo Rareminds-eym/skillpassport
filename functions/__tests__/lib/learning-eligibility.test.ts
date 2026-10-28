@@ -7,7 +7,7 @@ const levelId='10000000-0000-4000-8000-000000000001';
 const req:LearningRequirement={levelId,fingerprint:'a'.repeat(32),capabilityName:'Frontend',title:'React fundamentals',levelNumber:2,version:1,mandatory:true};
 const level={...req,capabilityId:'10000000-0000-4000-8000-000000000002',code:'FE-L2',approved:false,evidence:[]};
 const snapshot:LearningSnapshot={schemaVersion:1,revision:'current',levels:[level]};
-const env={LTE_APP_URL:'http://127.0.0.1:8789',LTE_CATALOG_SYNC_SECRET:'x'.repeat(32)};
+const env={LTE_APP_URL:'http://127.0.0.1:8789',LTE_INTERNAL_SECRET:'x'.repeat(32)};
 function db(){const insert=vi.fn();const q:any={select:()=>q,eq:()=>q,in:()=>q,order:()=>q,range:()=>q,upsert:()=>Promise.resolve({error:null}),insert:(data:any)=>{insert(data);return q;},single:async()=>({data:{id:'private-proof'},error:null}),then:(r:any)=>Promise.resolve({data:[],error:null}).then(r)};return{from:()=>q,insert,rpc:async(name:string)=>({data:name==='job_learning_evaluation_policy'?'human':[],error:null})};}
 beforeEach(()=>{vi.stubGlobal('crypto',webcrypto);vi.mocked(hasFeatureEntitlement).mockResolvedValue(true);vi.stubGlobal('fetch',vi.fn().mockImplementation(async()=>Response.json(snapshot)));});
 afterEach(()=>{vi.unstubAllGlobals();vi.clearAllMocks();});
@@ -23,6 +23,18 @@ describe('deterministic reviewer-approved learning',()=>{
  it('accepts AI-approved equivalent evidence only for independently resolved AI policy',()=>{const evidence=[{id:'ai',level_id:levelId,fingerprint:req.fingerprint,status:'approved',evaluation_type:'ai',version:2}];expect(evaluateLearning([req],snapshot,evidence).canApply).toBe(false);expect(evaluateLearning([req],{...snapshot,evaluationPolicy:'ai'},evidence)).toMatchObject({state:'eligible',criteria:[{reason:'AI_EVALUATED_EQUIVALENT'}]});});
 });
 describe('service boundary and application proof',()=>{
+ it('authenticates learning requests with the shared internal gateway key',async()=>{
+  await readLearningSnapshot(env,'verified-user',[levelId]);
+  const [url,init]=vi.mocked(fetch).mock.calls[0];
+  const headers=new Headers(init?.headers);
+  const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(env.LTE_INTERNAL_SECRET),{name:'HMAC',hash:'SHA-256'},false,['verify']);
+  const signature=Uint8Array.from(headers.get('x-lte-signature')!.match(/../g)!,value=>parseInt(value,16));
+  expect(await crypto.subtle.verify('HMAC',key,signature,new TextEncoder().encode(`POST\n${new URL(String(url)).pathname}\n${headers.get('x-lte-timestamp')}\n${init?.body}`))).toBe(true);
+ });
+ it('fails closed before calling LTE when the shared internal secret is missing',async()=>{
+  await expect(readLearningSnapshot({LTE_APP_URL:env.LTE_APP_URL},null,null)).rejects.toMatchObject({code:'LEARNING_UNAVAILABLE'});
+  expect(fetch).not.toHaveBeenCalled();
+ });
  it('signs the exact server-generated path, actor and evaluation policy',async()=>{await readLearningSnapshot(env,'verified-user',[levelId]);const [url,init]=vi.mocked(fetch).mock.calls[0];expect(String(url)).toContain('/api/v1/internal/learning/qualifications');expect(JSON.parse(String(init?.body))).toEqual({userId:'verified-user',levelIds:[levelId],evaluationPolicy:'human'});expect((init?.headers as any)['x-lte-signature']).toMatch(/^[a-f0-9]{64}$/);});
  it('rejects upstream evidence evaluated under a different policy',async()=>{vi.mocked(fetch).mockResolvedValue(Response.json({...snapshot,evaluationPolicy:'ai'}));await expect(readLearningSnapshot(env,'verified-user',[levelId],'human')).rejects.toMatchObject({code:'LEARNING_UNAVAILABLE'});});
  it('rejects redirects without forwarding the signed request',async()=>{vi.mocked(fetch).mockResolvedValue(new Response(null,{status:302,headers:{Location:'https://other.invalid'}}));await expect(readLearningSnapshot(env,null,null)).rejects.toMatchObject({code:'LEARNING_UNAVAILABLE'});expect(vi.mocked(fetch).mock.calls[0][1]?.redirect).toBe('manual');});
