@@ -16,12 +16,12 @@
 --   row 23  Subashini Ramaswamy        VoltEdge_V18                       2026-09-10 09:00-16:00
 --   row 24  Subashini Ramaswamy        VoltEdge_V18                       2026-09-11 09:00-16:00
 --   row 25  Subashini Ramaswamy        PRES-EVAL-INT-SCREEN-INTRO         2026-09-12 10:00-13:00   (Presentations & Evaluations - Interview Screening)
---   row 28  Subashini Ramaswamy        VoltEdge_V19                       2026-09-21 09:00-16:00
---   row 29  Subashini Ramaswamy        VoltEdge_V20                       2026-09-22 09:00-16:00   (the sheet writes 'Communciation'; kept in remarks)
+--   row 28  Subashini Ramaswamy        VoltEdge_V18                       2026-09-21 09:00-16:00
+--   row 29  Subashini Ramaswamy        VoltEdge_V18                       2026-09-22 09:00-16:00   (the sheet writes 'Communciation'; kept in remarks)
 --   row 41  Visakh Madhu               PRES-EVAL-INT-SCREEN-INTRO         2026-09-29 13:30-16:00   (sheet text 'Virtual Interviews', taught under the Interview Screening course; learner marks are not imported here)
--- Her five September events use her three September groups (groups seed): rows 23 and 24 the V18 group (2026-09-10 to 2026-09-11), row 25 the Interview Screening group (2026-09-12), rows 28 and 29 the
--- V19 + V20 group (2026-09-21 to 2026-09-30). The workbook Learner Attendance tab has marks for them (SES-MBA-010, 011, 012, 015, 016); this seed creates blank records only, the marks come in through the
--- bulk attendance import.
+-- Her five September events use her September groups (groups seed), all on the one LMS course VoltEdge_V18 except row 25: rows 23 and 24 the first V18 group (2026-09-10 to 2026-09-11), row 25 the Interview
+-- Screening group (2026-09-12), rows 28 and 29 the second V18 group (2026-09-21 to 2026-09-30). Each event picks the group valid on its date. The sheet text of each row stays in the remarks. The workbook
+-- Learner Attendance tab has marks for them (SES-MBA-010, 011, 012, 015, 016); this seed creates blank records only, the marks come in through the bulk attendance import.
 -- Each event uses the trainer's group: the four stream mappings that carry a combined_class_group_id and hold the course. The sheet's topic is
 -- kept in remarks ('Sheet row N: <topic> (<session id>)'). Room number is empty (not in the sheet). created_by and creation_request_id stay empty,
 -- as in the other sessions seeds. Students of a session are the non-deleted learners of that stream program, semester 4, section A, status blank (unmarked).
@@ -61,8 +61,8 @@ BEGIN
     ('4244c59d-fa26-5b00-9b20-32218fb587a8'::uuid, 'subashini.r@rareminds.in'::text, 'VoltEdge_V18'::text, '2026-09-10'::date, '09:00'::time, '16:00'::time, 'Sheet row 23: Business Formation to Performance - Functional Implementation (SES-MBA-010)'::text),
     ('2a91ce84-f86d-5c96-9ca5-9bb9948411de'::uuid, 'subashini.r@rareminds.in'::text, 'VoltEdge_V18'::text, '2026-09-11'::date, '09:00'::time, '16:00'::time, 'Sheet row 24: Business Formation to Performance - Functional Implementation (SES-MBA-011)'::text),
     ('ac39b6f0-6118-5ed2-9655-fda3a53fa2c5'::uuid, 'subashini.r@rareminds.in'::text, 'PRES-EVAL-INT-SCREEN-INTRO'::text, '2026-09-12'::date, '10:00'::time, '13:00'::time, 'Sheet row 25: Presentations & Evaluations / Interview Screening (SES-MBA-012)'::text),
-    ('33785216-59f4-55d7-ac1a-fac5688c23f5'::uuid, 'subashini.r@rareminds.in'::text, 'VoltEdge_V19'::text, '2026-09-21'::date, '09:00'::time, '16:00'::time, 'Sheet row 28: Business data interpretation and decision-making (SES-MBA-015)'::text),
-    ('c25bda6d-e0b8-5a3f-8b5d-dcb08c82da5d'::uuid, 'subashini.r@rareminds.in'::text, 'VoltEdge_V20'::text, '2026-09-22'::date, '09:00'::time, '16:00'::time, 'Sheet row 29: Stakeholder Management & Communciation (SES-MBA-016)'::text),
+    ('33785216-59f4-55d7-ac1a-fac5688c23f5'::uuid, 'subashini.r@rareminds.in'::text, 'VoltEdge_V18'::text, '2026-09-21'::date, '09:00'::time, '16:00'::time, 'Sheet row 28: Business data interpretation and decision-making (SES-MBA-015)'::text),
+    ('c25bda6d-e0b8-5a3f-8b5d-dcb08c82da5d'::uuid, 'subashini.r@rareminds.in'::text, 'VoltEdge_V18'::text, '2026-09-22'::date, '09:00'::time, '16:00'::time, 'Sheet row 29: Stakeholder Management & Communciation (SES-MBA-016)'::text),
     ('a9e50753-aab7-5345-866b-e65afbdd114e'::uuid, 'visakh2013@rediffmail.com'::text, 'PRES-EVAL-INT-SCREEN-INTRO'::text, '2026-09-29'::date, '13:30'::time, '16:00'::time, 'Sheet row 41: Virtual Interviews (SES-MBA-022)'::text)
   ) AS t(sgid, email, course_code, day, st, en, remarks)
   LOOP

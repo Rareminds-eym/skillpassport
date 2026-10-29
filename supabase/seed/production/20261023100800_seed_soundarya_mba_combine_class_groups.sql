@@ -10,10 +10,12 @@
 -- session dates. Row 25 (2026-09-12, 10:00-13:00) falls between her VoltEdge events (2026-09-10/11 and 2026-09-21/22), so it would clash with any single VoltEdge group spanning them. The windows do not overlap:
 --   2026-09-10 to 2026-09-11  09:00-16:00  VoltEdge_V18  Business Formation to Performance - Functional Implementation (rows 23 and 24)
 --   2026-09-12 to 2026-09-12  10:00-13:00  PRES-EVAL-INT-SCREEN-INTRO  Presentations & Evaluations - Interview Screening (row 25; the sheet writes 'Presentations & Evaluations / Interview Screening')
---   2026-09-21 to 2026-09-30  09:00-16:00  VoltEdge_V19 Business data interpretation and decision-making (row 28) and VoltEdge_V20 Stakeholder Management & Communication (row 29; the sheet writes 'Communciation')
+--   2026-09-21 to 2026-09-30  09:00-16:00  VoltEdge_V18 again, a second group on the same course (row 28 Business data interpretation and decision-making, row 29 Stakeholder Management & Communication; the sheet
+--   writes 'Communciation'): all of her VoltEdge rows are taught under the one existing LMS course VoltEdge_V18, and each row's sheet text stays in the session remarks. The two V18 groups do not overlap in dates,
+--   so the one-trainer, one-course overlap rule (migration 20270118) is satisfied; step 2 below tells them apart by their start date.
 -- These (and Sandhya's one-day group below) are the only Combine mappings WITH an end date: an open-ended slot would overlap her open-ended Skill Ecosystem slot (10:00-13:00 from 2026-10-01), and 2026-09-30 is the last end date that does not.
 -- An educator cannot open the roster of a session whose mapping ended before today; the College Admin bulk attendance import is not affected. Each group needs only its own course(s) to be Active, so a missing
--- course skips only that group (a group needs the same courses in every class, which is why V19 and V20 share one).
+-- course skips only that group.
 -- SANDHYA MOHAN, Student Registration (row 2, 2026-08-28, 09:00-16:00; no new course: the sheet's 'Student Registration' is taught under the existing LMS course Student Assessment): a second group of four mappings
 -- to the SAME course as her first group (from 2026-08-29, slot 10:00-13:00). Two groups of one trainer and one course are allowed because their date ranges do not overlap (migration 20270118 and the app's
 -- slot check only compare overlapping ranges); the new group ends on 2026-08-28 because an open-ended 09:00-16:00 slot would overlap her 10:00-13:00 slot from 2026-08-29. An educator cannot open the roster
@@ -40,7 +42,7 @@
 --   subashini.r@rareminds.in         SKILL-ECOSYSTEM-ORIENTATION-2026                           2026-10-01               10:00-13:00  43          none for this date
 --   subashini.r@rareminds.in         VoltEdge_V18                                                2026-09-10 to 2026-09-11  09:00-16:00  23, 24  Business Formation to Performance: the four streams, 13/12/18/15 learners (SES-MBA-010, 011)
 --   subashini.r@rareminds.in         PRES-EVAL-INT-SCREEN-INTRO                                  2026-09-12 to 2026-09-12  10:00-13:00  25      Interview Screening: the four streams, 13/12/18/15 learners (SES-MBA-012)
---   subashini.r@rareminds.in         VoltEdge_V19 + VoltEdge_V20                                 2026-09-21 to 2026-09-30  09:00-16:00  28, 29  Business data interpretation (28), Stakeholder Management (29): the four streams, 13/12/18/15 learners (SES-MBA-015, 016)
+--   subashini.r@rareminds.in         VoltEdge_V18 (second group)                                 2026-09-21 to 2026-09-30  09:00-16:00  28, 29  Business data interpretation (28), Stakeholder Management (29), taught under V18: the four streams, 13/12/18/15 learners (SES-MBA-015, 016)
 --   visakh2013@rediffmail.com        PRES-EVAL-INT-SCREEN-INTRO                                  2026-09-29 (no end)       13:30-16:00  41          the four streams: Marketing 15, Finance 12, HR 18, Business Analyst 13 (SES-MBA-022; all marked absent in the workbook, not imported here)
 -- The class of each mapping is the stream's own MBA program record (programs.specializations = {Finance}, {HR}, {Marketing}, {"Business Analytics"}),
 -- never the code 'MBA' alone. The mapping specialization list stays empty. Lalitha and Subashini keep every mapping they already have
@@ -63,8 +65,8 @@
 --      SELECT 1 FROM pg_proc WHERE proname = 'trainer_class_mapping_clash';
 --   2. Before the first run no mapping carries the Combine note; after it there are 40 (10 groups x 4 streams):
 --      SELECT count(*) FROM public.organization_staff_assignments WHERE notes LIKE 'Soundarya sheet MBA Combine class%';
---   3. The seven courses must be Active: expect 7 rows.
---      SELECT code, status FROM public.courses WHERE deleted_at IS NULL AND code IN ('STUDENT-ASSESSMENT-INTRO-2026', 'POWERBI-CORE-FOUND-2026', 'SKILL-ECOSYSTEM-ORIENTATION-2026', 'VoltEdge_V18', 'VoltEdge_V19', 'VoltEdge_V20', 'PRES-EVAL-INT-SCREEN-INTRO');
+--   3. The five courses must be Active: expect 5 rows.
+--      SELECT code, status FROM public.courses WHERE deleted_at IS NULL AND code IN ('STUDENT-ASSESSMENT-INTRO-2026', 'POWERBI-CORE-FOUND-2026', 'SKILL-ECOSYSTEM-ORIENTATION-2026', 'VoltEdge_V18', 'PRES-EVAL-INT-SCREEN-INTRO');
 
 BEGIN;
 
@@ -117,10 +119,10 @@ FROM (VALUES
   ('204d07f3-8759-50c2-8d8e-e1a98adde3e6'::uuid, 'subashini.r@rareminds.in'::text, 'HR'::text, ARRAY['PRES-EVAL-INT-SCREEN-INTRO']::text[], '2026-09-12'::date, '2026-09-12'::date, 'Soundarya sheet MBA Combine class, Attendance row 25'::text),
   ('82fbb7ea-0983-57bb-95cf-3551120f4a67'::uuid, 'subashini.r@rareminds.in'::text, 'Marketing'::text, ARRAY['PRES-EVAL-INT-SCREEN-INTRO']::text[], '2026-09-12'::date, '2026-09-12'::date, 'Soundarya sheet MBA Combine class, Attendance row 25'::text),
   ('3b08680a-37de-5e3a-896a-e812192b49a4'::uuid, 'subashini.r@rareminds.in'::text, 'Business Analytics'::text, ARRAY['PRES-EVAL-INT-SCREEN-INTRO']::text[], '2026-09-12'::date, '2026-09-12'::date, 'Soundarya sheet MBA Combine class, Attendance row 25'::text),
-  ('4199cedb-895d-5a84-929f-30ba3711b390'::uuid, 'subashini.r@rareminds.in'::text, 'Finance'::text, ARRAY['VoltEdge_V19', 'VoltEdge_V20']::text[], '2026-09-21'::date, '2026-09-30'::date, 'Soundarya sheet MBA Combine class, Attendance rows 28, 29'::text),
-  ('93b3dfc5-125d-5672-b29f-cc610b3038bb'::uuid, 'subashini.r@rareminds.in'::text, 'HR'::text, ARRAY['VoltEdge_V19', 'VoltEdge_V20']::text[], '2026-09-21'::date, '2026-09-30'::date, 'Soundarya sheet MBA Combine class, Attendance rows 28, 29'::text),
-  ('ab388d92-3994-5bf0-baa5-52c18434ac75'::uuid, 'subashini.r@rareminds.in'::text, 'Marketing'::text, ARRAY['VoltEdge_V19', 'VoltEdge_V20']::text[], '2026-09-21'::date, '2026-09-30'::date, 'Soundarya sheet MBA Combine class, Attendance rows 28, 29'::text),
-  ('e926b6ed-c729-5190-858b-95a465599902'::uuid, 'subashini.r@rareminds.in'::text, 'Business Analytics'::text, ARRAY['VoltEdge_V19', 'VoltEdge_V20']::text[], '2026-09-21'::date, '2026-09-30'::date, 'Soundarya sheet MBA Combine class, Attendance rows 28, 29'::text),
+  ('fd0f99ce-57d9-52ff-8270-a50cea6c41ea'::uuid, 'subashini.r@rareminds.in'::text, 'Finance'::text, ARRAY['VoltEdge_V18']::text[], '2026-09-21'::date, '2026-09-30'::date, 'Soundarya sheet MBA Combine class, Attendance rows 28, 29'::text),
+  ('6f212c19-7d3e-5aa1-b78e-4a53fbd4127d'::uuid, 'subashini.r@rareminds.in'::text, 'HR'::text, ARRAY['VoltEdge_V18']::text[], '2026-09-21'::date, '2026-09-30'::date, 'Soundarya sheet MBA Combine class, Attendance rows 28, 29'::text),
+  ('b09bb640-b6f0-597f-b186-8090dc3633b2'::uuid, 'subashini.r@rareminds.in'::text, 'Marketing'::text, ARRAY['VoltEdge_V18']::text[], '2026-09-21'::date, '2026-09-30'::date, 'Soundarya sheet MBA Combine class, Attendance rows 28, 29'::text),
+  ('18923559-87ef-5573-8b59-c36daf990425'::uuid, 'subashini.r@rareminds.in'::text, 'Business Analytics'::text, ARRAY['VoltEdge_V18']::text[], '2026-09-21'::date, '2026-09-30'::date, 'Soundarya sheet MBA Combine class, Attendance rows 28, 29'::text),
   ('5063b4f0-33c0-544a-8fc5-ddfa0befd88c'::uuid, 'sandhyamohan.sharath@gmail.com'::text, 'Finance'::text, ARRAY['STUDENT-ASSESSMENT-INTRO-2026']::text[], '2026-08-28'::date, '2026-08-28'::date, 'Soundarya sheet MBA Combine class, Attendance row 2'::text),
   ('40873ef0-a29f-50d1-84c2-d32ff6e75563'::uuid, 'sandhyamohan.sharath@gmail.com'::text, 'HR'::text, ARRAY['STUDENT-ASSESSMENT-INTRO-2026']::text[], '2026-08-28'::date, '2026-08-28'::date, 'Soundarya sheet MBA Combine class, Attendance row 2'::text),
   ('c40238ed-d648-565c-8a44-4412f543abc6'::uuid, 'sandhyamohan.sharath@gmail.com'::text, 'Marketing'::text, ARRAY['STUDENT-ASSESSMENT-INTRO-2026']::text[], '2026-08-28'::date, '2026-08-28'::date, 'Soundarya sheet MBA Combine class, Attendance row 2'::text),
@@ -160,7 +162,7 @@ BEGIN
     ('c862f7dc-dfed-599a-b9f4-37a3cb8754bd'::uuid, 'subashini.r@rareminds.in'::text, ARRAY['SKILL-ECOSYSTEM-ORIENTATION-2026']::text[], '10:00'::time, '13:00'::time, '2026-10-01'::date),
     ('066ec4ee-5c5d-5026-8773-75491f9b63da'::uuid, 'subashini.r@rareminds.in'::text, ARRAY['VoltEdge_V18']::text[], '09:00'::time, '16:00'::time, '2026-09-10'::date),
     ('5b63c2d1-cf2d-558a-8d49-c1c83992b360'::uuid, 'subashini.r@rareminds.in'::text, ARRAY['PRES-EVAL-INT-SCREEN-INTRO']::text[], '10:00'::time, '13:00'::time, '2026-09-12'::date),
-    ('7efabf47-b00a-5eac-834b-5ba360a3784b'::uuid, 'subashini.r@rareminds.in'::text, ARRAY['VoltEdge_V19', 'VoltEdge_V20']::text[], '09:00'::time, '16:00'::time, '2026-09-21'::date),
+    ('4d6dec34-147a-5876-87e2-a83202ec2eba'::uuid, 'subashini.r@rareminds.in'::text, ARRAY['VoltEdge_V18']::text[], '09:00'::time, '16:00'::time, '2026-09-21'::date),
     ('b9a61ad2-58d7-5409-8eda-4e1924b980c1'::uuid, 'sandhyamohan.sharath@gmail.com'::text, ARRAY['STUDENT-ASSESSMENT-INTRO-2026']::text[], '09:00'::time, '16:00'::time, '2026-08-28'::date),
     ('49552c9e-a6bc-5565-88d2-1712e51e2298'::uuid, 'visakh2013@rediffmail.com'::text, ARRAY['PRES-EVAL-INT-SCREEN-INTRO']::text[], '13:30'::time, '16:00'::time, '2026-09-29'::date)
   ) AS t(gid, email, course_codes, slot_start, slot_end, gstart)

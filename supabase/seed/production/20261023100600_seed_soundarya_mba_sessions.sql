@@ -35,16 +35,16 @@
 --   row  7  sandhyamohan Business Analytics 2026-08-31 09:00-16:00  PRE-COUNSEL-INTRO
 --   row 11  sandhyamohan Business Analytics 2026-09-01 09:00-16:00  PRE-COUNSEL-INTRO
 --   row 13  sandhyamohan Finance            2026-09-02 09:00-16:00  VIDEO-RESUME-INTRO-2026
--- Sandhya Mohan, MBA HR, VoltEdge courses (workbook 8 rows 20-22; mappings in the MBA assignments seed). The sheet's course text is kept in remarks. The workbook has no learner attendance for
--- these three sessions (SES-MBA-007 to 009), so their records stay blank (unmarked):
---   row 20  sandhyamohan HR                 2026-09-07 13:30-16:00  VoltEdge_V21
---   row 21  sandhyamohan HR                 2026-09-08 13:30-16:00  VoltEdge_V22
---   row 22  sandhyamohan HR                 2026-09-09 13:30-16:00  VoltEdge_V23
--- Sandhya Mohan, MBA HR only, VoltEdge_V24 Revisit Implementation Based on Learnings from Evaluations (workbook 8 rows 26 and 27, which the sheet labels 'MBA HR'; mapping in the MBA assignments seed):
---   row 26  sandhyamohan HR                 2026-09-15 13:30-16:00  VoltEdge_V24
---   row 27  sandhyamohan HR                 2026-09-16 13:30-16:00  VoltEdge_V24
--- Records are the HR class only (18 students) and stay blank. The Learner Attendance tab (SES-MBA-013 and 014) also lists Finance, Marketing and Business Analyst learners under these session ids, but the
--- sheet gives no trainer for those streams, so no session is created for them; only the HR marks can come in through the bulk attendance import.
+-- Sandhya Mohan, MBA HR only, all taught under the existing LMS course VoltEdge_V18 Business Formation to Performance - Functional Implementation (workbook 8 rows 20-22 and 26-27; the sheet labels them 'MBA HR';
+-- her one HR mapping is in the MBA assignments seed). The sheet's own course text of each row is kept in the session remarks:
+--   row 20  sandhyamohan HR                 2026-09-07 13:30-16:00  VoltEdge_V18  (Business Formation - Understanding Company & its Departments)
+--   row 21  sandhyamohan HR                 2026-09-08 13:30-16:00  VoltEdge_V18  (Business Strategy & Planning)
+--   row 22  sandhyamohan HR                 2026-09-09 13:30-16:00  VoltEdge_V18  (Functional Strategy & Planning)
+--   row 26  sandhyamohan HR                 2026-09-15 13:30-16:00  VoltEdge_V18  (Revist Implementation based on learnigns from evaluations)
+--   row 27  sandhyamohan HR                 2026-09-16 13:30-16:00  VoltEdge_V18  (Revist Implementation based on learnigns from evaluations)
+-- Records are the HR class only (18 students) and stay blank. The workbook has no learner attendance for rows 20-22 (SES-MBA-007 to 009). The Learner Attendance tab (SES-MBA-013 and 014) also lists Finance,
+-- Marketing and Business Analyst learners under the row 26 and 27 session ids, but the sheet gives no trainer for those streams, so no session is created for them; only the HR marks can come in through the bulk
+-- attendance import.
 -- Each session uses the trainer's own LMS course (courses.code above), found in the trainer's assignment. The sheet's topic is kept in
 -- remarks ('Sheet row N: <topic> (<session id>)'). Room number is empty (not in the sheet); subject code and academic year come from
 -- the course and the section. created_by and creation_request_id stay empty, as in the MCA sessions seed.
@@ -106,11 +106,11 @@ FROM (VALUES
   ('4b193434-cb45-511f-9d6e-00f4cc1cda0b'::uuid, 'sandhyamohan.sharath@gmail.com'::text, 'Business Analytics'::text, 'PRE-COUNSEL-INTRO'::text, '2026-08-31'::date, '09:00'::time, '16:00'::time, 'Sheet row 7: Pre Counseling (SES-MBA-003)'::text),
   ('24c4ba8b-c594-57db-98f6-6e8821bd001e'::uuid, 'sandhyamohan.sharath@gmail.com'::text, 'Business Analytics'::text, 'PRE-COUNSEL-INTRO'::text, '2026-09-01'::date, '09:00'::time, '16:00'::time, 'Sheet row 11: Pre Counseling (SES-MBA-004)'::text),
   ('87754297-df9a-5215-80e0-a060e689585e'::uuid, 'sandhyamohan.sharath@gmail.com'::text, 'Finance'::text, 'VIDEO-RESUME-INTRO-2026'::text, '2026-09-02'::date, '09:00'::time, '16:00'::time, 'Sheet row 13: Direct Counseling, Professional Introduction, Video Resume (SES-MBA-005)'::text),
-  ('bfc9eff1-763d-531d-9ef3-71f6031dd754'::uuid, 'sandhyamohan.sharath@gmail.com'::text, 'HR'::text, 'VoltEdge_V21'::text, '2026-09-07'::date, '13:30'::time, '16:00'::time, 'Sheet row 20: Business Formation - Understanding Company & its Departments (SES-MBA-007)'::text),
-  ('506bc694-b27a-5c6c-873a-15de193e035a'::uuid, 'sandhyamohan.sharath@gmail.com'::text, 'HR'::text, 'VoltEdge_V22'::text, '2026-09-08'::date, '13:30'::time, '16:00'::time, 'Sheet row 21: Business Strategy & Planning (SES-MBA-008)'::text),
-  ('ec180281-779d-5fc1-8b23-474de6d660e6'::uuid, 'sandhyamohan.sharath@gmail.com'::text, 'HR'::text, 'VoltEdge_V23'::text, '2026-09-09'::date, '13:30'::time, '16:00'::time, 'Sheet row 22: Functional Strategy & Planning (SES-MBA-009)'::text),
-  ('3159f7b7-cad5-5aeb-ab87-1c3012478680'::uuid, 'sandhyamohan.sharath@gmail.com'::text, 'HR'::text, 'VoltEdge_V24'::text, '2026-09-15'::date, '13:30'::time, '16:00'::time, 'Sheet row 26: Revist Implementation based on learnigns from evaluations (SES-MBA-013)'::text),
-  ('cb8e6bab-8638-584b-8580-fc8fe606b18f'::uuid, 'sandhyamohan.sharath@gmail.com'::text, 'HR'::text, 'VoltEdge_V24'::text, '2026-09-16'::date, '13:30'::time, '16:00'::time, 'Sheet row 27: Revist Implementation based on learnigns from evaluations (SES-MBA-014)'::text)
+  ('bfc9eff1-763d-531d-9ef3-71f6031dd754'::uuid, 'sandhyamohan.sharath@gmail.com'::text, 'HR'::text, 'VoltEdge_V18'::text, '2026-09-07'::date, '13:30'::time, '16:00'::time, 'Sheet row 20: Business Formation - Understanding Company & its Departments (SES-MBA-007)'::text),
+  ('506bc694-b27a-5c6c-873a-15de193e035a'::uuid, 'sandhyamohan.sharath@gmail.com'::text, 'HR'::text, 'VoltEdge_V18'::text, '2026-09-08'::date, '13:30'::time, '16:00'::time, 'Sheet row 21: Business Strategy & Planning (SES-MBA-008)'::text),
+  ('ec180281-779d-5fc1-8b23-474de6d660e6'::uuid, 'sandhyamohan.sharath@gmail.com'::text, 'HR'::text, 'VoltEdge_V18'::text, '2026-09-09'::date, '13:30'::time, '16:00'::time, 'Sheet row 22: Functional Strategy & Planning (SES-MBA-009)'::text),
+  ('3159f7b7-cad5-5aeb-ab87-1c3012478680'::uuid, 'sandhyamohan.sharath@gmail.com'::text, 'HR'::text, 'VoltEdge_V18'::text, '2026-09-15'::date, '13:30'::time, '16:00'::time, 'Sheet row 26: Revist Implementation based on learnigns from evaluations (SES-MBA-013)'::text),
+  ('cb8e6bab-8638-584b-8580-fc8fe606b18f'::uuid, 'sandhyamohan.sharath@gmail.com'::text, 'HR'::text, 'VoltEdge_V18'::text, '2026-09-16'::date, '13:30'::time, '16:00'::time, 'Sheet row 27: Revist Implementation based on learnigns from evaluations (SES-MBA-014)'::text)
 ) AS v(id, email, stream, course_code, date, start_time, end_time, remarks)
 JOIN public.organization_staff s ON lower(s.email) = v.email
   AND s.organization_id = '00000000-0000-0000-0000-000000000001' AND s.account_status = 'active'

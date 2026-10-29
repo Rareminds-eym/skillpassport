@@ -23,12 +23,11 @@
 -- SANDHYA MOHAN (second INSERT below), from workbook 8: rows 7 and 11 (Business Analytics, Pre Counseling, 2026-08-31 and 2026-09-01) and row 13 (Finance,
 -- "Direct Counseling, Professional Introduction, Video Resume", 2026-09-02). Rows 45-47, which used to overlap them, now name Subashini and Swaroop, so the
 -- overlap that blocked her is gone. The courses follow the other trainers' rows: Pre Counseling -> PRE-COUNSEL-INTRO, the Direct Counseling row -> VIDEO-RESUME-INTRO-2026.
--- SANDHYA MOHAN, VoltEdge (rows 20, 21, 22: MBA HR, 13:30-16:00, workbook 8 Educator Attendance; the course names are the sheet's course texts): one HR mapping per LMS course,
--- each starting on its session date, with no end date and no slot, like her other mappings here: Business Formation - Understanding Company & its Departments -> VoltEdge_V21 (2026-09-07),
--- Business Strategy & Planning -> VoltEdge_V22 (2026-09-08), Functional Strategy & Planning -> VoltEdge_V23 (2026-09-09). The courses differ from her Student Assessment group mapping in HR, so they sit beside it.
--- SANDHYA MOHAN, rows 26 and 27 (MBA HR only, 13:30-16:00, 2026-09-15 and 2026-09-16; the sheet writes 'Revist Implementation based on learnigns from evaluations'): one HR mapping to the LMS course
--- VoltEdge_V24 (Revisit Implementation Based on Learnings from Evaluations), starting on the first session date, with no end date and no slot, so it covers both days and the educator can still mark. She is
--- not mapped to Finance, Marketing or Business Analytics for this course.
+-- SANDHYA MOHAN, VoltEdge (rows 20, 21, 22, 26 and 27: MBA HR only, 13:30-16:00; workbook 8 Educator Attendance): every one of these entries is taught under the one existing LMS course VoltEdge_V18
+-- (Business Formation to Performance - Functional Implementation); the sheet's own course texts (Business Formation - Understanding Company & its Departments, Business Strategy & Planning, Functional Strategy &
+-- Planning, 'Revist Implementation based on learnigns from evaluations') stay in the session remarks. One HR mapping starting on the first session date (2026-09-07), with no end date and no slot, covers all five
+-- dates and the educator can still mark; a second open-ended mapping to the same course would clash with it (migration 20270118). Her course differs from her Student Assessment group mapping in HR, so they sit
+-- beside it. She is not mapped to Finance, Marketing or Business Analytics for this course.
 -- Mappings only: her sessions and tasks for these rows are not created here. The second INSERT needs migration 20270118000000_allow_multiple_trainer_class_mappings.sql
 -- (the Combine groups seed later gives her more mappings in the same classes, with another course) and is skipped with a NOTICE without it. Safe to re-run: fixed ids.
 --
@@ -95,10 +94,7 @@ SELECT v.id, s.id, c.id, ps.department_id, ps.program_id, ps.id,
 FROM (VALUES
   ('8a595b85-8194-5787-b574-c5d460a10dac'::uuid, 'sandhyamohan.sharath@gmail.com'::text, 'Business Analytics'::text, 'PRE-COUNSEL-INTRO'::text, '2026-08-31'::date, NULL::date, 'Soundarya sheet MBA Business Analytics, Attendance rows 7, 11'::text),
   ('03f4508e-f748-5df5-a075-e14c89c56d20'::uuid, 'sandhyamohan.sharath@gmail.com'::text, 'Finance'::text, 'VIDEO-RESUME-INTRO-2026'::text, '2026-09-02'::date, NULL::date, 'Soundarya sheet MBA Finance, Attendance row 13'::text),
-  ('f9849885-0e3b-5980-99c3-3f3ff1adf8fb'::uuid, 'sandhyamohan.sharath@gmail.com'::text, 'HR'::text, 'VoltEdge_V21'::text, '2026-09-07'::date, NULL::date, 'Soundarya sheet MBA HR, Attendance row 20'::text),
-  ('538c31cd-8453-577a-9c14-44990b0980f0'::uuid, 'sandhyamohan.sharath@gmail.com'::text, 'HR'::text, 'VoltEdge_V22'::text, '2026-09-08'::date, NULL::date, 'Soundarya sheet MBA HR, Attendance row 21'::text),
-  ('5304455f-4323-559a-8457-5c9c6d4c6a49'::uuid, 'sandhyamohan.sharath@gmail.com'::text, 'HR'::text, 'VoltEdge_V23'::text, '2026-09-09'::date, NULL::date, 'Soundarya sheet MBA HR, Attendance row 22'::text),
-  ('7f0e3f35-6a73-503e-88e0-5a76b7d2e6ac'::uuid, 'sandhyamohan.sharath@gmail.com'::text, 'HR'::text, 'VoltEdge_V24'::text, '2026-09-15'::date, NULL::date, 'Soundarya sheet MBA HR, Attendance rows 26, 27'::text)
+  ('0a886042-8e2c-5699-b33e-8410750c0c1e'::uuid, 'sandhyamohan.sharath@gmail.com'::text, 'HR'::text, 'VoltEdge_V18'::text, '2026-09-07'::date, NULL::date, 'Soundarya sheet MBA HR, Attendance rows 20, 21, 22, 26, 27'::text)
 ) AS v(id, email, stream, course_code, start_date, end_date, notes)
 JOIN public.organization_staff s ON lower(s.email) = v.email
   AND s.organization_id = '00000000-0000-0000-0000-000000000001' AND s.account_status = 'active'
@@ -122,7 +118,7 @@ ON CONFLICT (id) DO NOTHING;
 -- A mapping without an end date stays valid for every later date; the educator can open and mark its past sessions.
 UPDATE public.organization_staff_assignments
 SET end_date = NULL, assignment_version = assignment_version + 1
-WHERE id IN ('7f0e3f35-6a73-503e-88e0-5a76b7d2e6ac', 'f9849885-0e3b-5980-99c3-3f3ff1adf8fb', '538c31cd-8453-577a-9c14-44990b0980f0', '5304455f-4323-559a-8457-5c9c6d4c6a49', 'b0ffe1fe-0a3d-539c-a817-d9fe8dc98196', 'cc6c7728-c442-54d0-842b-4afc1b793ae8', '71ae88fe-407e-5410-b45b-e361aedf7526', 'bf2e3c9a-724c-5abc-a538-a1574cb53ab3', '23e7f0b9-e9a1-56e2-9c2e-3d50c1ece8dc', '3fe011f5-c743-558f-91d8-9e7ace264fc7', 'a09f8fd1-64be-5d75-ba31-615733ac791c', '6a2bc271-5e42-5735-93a8-8a5ba33e9421', '03157256-d2a7-5f30-b3c2-8df95d60cb7c', 'a88e1b9f-753a-5ca2-aa7b-d3cfda16f6d4', '996f429e-1491-519a-925c-d65e2a686c5d', '8a595b85-8194-5787-b574-c5d460a10dac', '03f4508e-f748-5df5-a075-e14c89c56d20')
+WHERE id IN ('0a886042-8e2c-5699-b33e-8410750c0c1e', 'b0ffe1fe-0a3d-539c-a817-d9fe8dc98196', 'cc6c7728-c442-54d0-842b-4afc1b793ae8', '71ae88fe-407e-5410-b45b-e361aedf7526', 'bf2e3c9a-724c-5abc-a538-a1574cb53ab3', '23e7f0b9-e9a1-56e2-9c2e-3d50c1ece8dc', '3fe011f5-c743-558f-91d8-9e7ace264fc7', 'a09f8fd1-64be-5d75-ba31-615733ac791c', '6a2bc271-5e42-5735-93a8-8a5ba33e9421', '03157256-d2a7-5f30-b3c2-8df95d60cb7c', 'a88e1b9f-753a-5ca2-aa7b-d3cfda16f6d4', '996f429e-1491-519a-925c-d65e2a686c5d', '8a595b85-8194-5787-b574-c5d460a10dac', '03f4508e-f748-5df5-a075-e14c89c56d20')
   AND is_active AND end_date IS NOT NULL;
 
 COMMIT;
