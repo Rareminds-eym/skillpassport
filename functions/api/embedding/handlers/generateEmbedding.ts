@@ -308,11 +308,12 @@ async function fetchAndBuildText(
   table: string,
   id: string,
   supabase: SupabaseClientType,
-  preValidatedData?: DatabaseRecord | null
+  preValidatedData?: DatabaseRecord | null,
+  env: Record<string, any> = {},
 ): Promise<string> {
   // Use shared text builders for complex entities
   if (table === 'learners') {
-    return await buildlearnerTextFromDatabase(supabase, id);
+    return await buildlearnerTextFromDatabase(supabase, id, env);
   } else if (table === 'opportunities') {
     return await buildOpportunityTextFromDatabase(supabase, id);
   } else if (table === 'courses') {
@@ -458,7 +459,7 @@ export async function handleGenerateEmbedding(
       // MODE 2: Fetch from database using shared text builders
       // Use pre-validated data when available to prevent race conditions
       console.log(`[Embedding] Fetching data from ${table} for ID ${id}`);
-      finalText = await fetchAndBuildText(table, id, supabase, preValidatedData);
+      finalText = await fetchAndBuildText(table, id, supabase, preValidatedData, env);
       console.log(`[Embedding] Built text from database (${finalText.length} chars)`);
     } else {
       // MODE 1: Use provided text

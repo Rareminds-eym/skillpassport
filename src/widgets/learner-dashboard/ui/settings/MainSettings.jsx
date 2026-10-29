@@ -29,6 +29,7 @@ import { useUser } from '@/shared/model/authStore';
 
 // Keep the initial personal profile eager; defer optional screens and editors.
 const NotificationsTab = lazy(() => import('./NotificationsTab'));
+const CareerPreferencesTab = lazy(() => import('./CareerPreferencesTab'));
 const PrivacyTab = lazy(() => import('./PrivacyTab'));
 const SecurityTab = lazy(() => import('./SecurityTab'));
 const SubscriptionSettingsSection = lazy(() => import('@/features/subscription/ui/shared/SubscriptionSettingsSection'));
@@ -1460,6 +1461,7 @@ const MainSettings = () => {
 
   const tabs = [
     { id: "profile", label: "Profile", icon: User },
+    { id: "career", label: "Career preferences", icon: SettingsIcon },
     { id: "security", label: "Security", icon: Lock },
     { id: "notifications", label: "Notifications", icon: Bell },
     { id: "privacy", label: "Privacy", icon: Shield },
@@ -1602,6 +1604,7 @@ const MainSettings = () => {
           <div className="lg:col-span-3 order-2 lg:order-2">
             <Suspense fallback={<TabSkeleton />} >
             {/* Profile Settings */}
+            {activeTab === "career" && <SettingsErrorBoundary section="Career preferences" variant="compact"><CareerPreferencesTab /></SettingsErrorBoundary>}
             {activeTab === "profile" && (
               <SettingsErrorBoundary section="Profile" variant="compact">
                 <ProfileTab

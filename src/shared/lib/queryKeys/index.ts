@@ -1,3 +1,4 @@
+export { recommendationKeys } from './recommendations';
 export { learnerKeys } from './learner';
 export { educatorKeys } from './educator';
 export { collegeKeys } from './college';
@@ -12,6 +13,7 @@ export { interviewsKeys } from './interviews';
 
 export type { QueryKey, UserType, ConversationType, ArchiveStatus } from './types';
 
+import { recommendationKeys } from './recommendations';
 import { learnerKeys } from './learner';
 import { educatorKeys } from './educator';
 import { collegeKeys } from './college';
@@ -64,6 +66,7 @@ import { interviewsKeys } from './interviews';
  * queryKeys.analytics.diversity.data(orgId, { gender: 'all' });
  */
 export const queryKeys = {
+    recommendations: recommendationKeys,
     learner: learnerKeys,
     educator: educatorKeys,
     college: collegeKeys,

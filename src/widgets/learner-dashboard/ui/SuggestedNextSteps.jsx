@@ -1,3 +1,4 @@
+import RecommendationProfilePrompt from './RecommendationProfilePrompt';
 import React from "react";
 import { useNavigate } from 'react-router-dom';
 import {
@@ -24,6 +25,7 @@ import {
  */
 const SuggestedNextSteps = ({
   matchedJobs = [],
+  readiness = null,
   loading = false,
   error = null,
   fallbackSuggestions = [],
@@ -65,6 +67,8 @@ const SuggestedNextSteps = ({
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-600"></div>
             <p className="ml-3 text-sm text-gray-500">Finding best job matches for you...</p>
           </div>
+        ) : readiness?.state === 'needs_profile' || readiness?.state === 'limited_context' ? (
+          <RecommendationProfilePrompt readiness={readiness} />
         ) : error ? (
           <div className="p-4 rounded-lg bg-red-50 border border-red-200">
             <p className="text-sm text-red-700">⚠️ {error}</p>

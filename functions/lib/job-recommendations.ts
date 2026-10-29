@@ -25,6 +25,11 @@ export function stringSkills(value: unknown): string[] {
   return Array.isArray(list) ? list.filter((s): s is string => typeof s === 'string' && !!s.trim()).map(s => s.trim()) : [];
 }
 
+/** Exact normalized names only. Aliases require an explicit reviewed mapping. */
+export function canonicalSkillName(value: string): string {
+  return value.normalize('NFKC').trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
 export function privateRecommendations(response: Response): Response {
   response.headers.set('Cache-Control', 'private, no-store');
   response.headers.set('Vary', 'Origin, Authorization, Cookie');

@@ -5,7 +5,9 @@
  */
 
 import { ssoClient } from '@/shared/api/ssoClient';
+import { parseRecommendationResponse, recommendationRetryAt } from '@/shared/api/recommendationResponse';
 import { getLogger } from '@/shared/config/logging';
+import { type RecommendationReadiness, type RecommendationEnvelope } from '../../../../shared/contracts/job-recommendations';
 
 const logger = getLogger('learner-ai-recommendations-service');
 
@@ -40,10 +42,12 @@ export interface AIRecommendation {
 }
 
 export interface AIRecommendationsData {
+  schemaVersion?: number;
+  readiness?: RecommendationReadiness;
   recommendations: AIRecommendation[];
   cached: boolean;
-  fallback: boolean;
-  learnerProfile: {
+  fallback?: boolean;
+  learnerProfile?: {
     skills: {
       technical: string[];
       soft: string[];
@@ -66,50 +70,30 @@ export interface AIRecommendationsResponse {
  * Fetch AI recommendations from backend API
  * Uses ssoClient to automatically inject JWT tokens
  */
+export async function getLearnerRecommendationEnvelope(signal?: AbortSignal) {
+  const response = await ssoClient.fetch(`${ORIGIN}/api/learners/ai-recommendations`, {
+    method: 'GET', signal, headers: { 'Content-Type': 'application/json' },
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok || result.success === false) {
+    const detail = result.error;
+    const retryAt = recommendationRetryAt(response.headers);
+    throw Object.assign(new Error((typeof detail === 'string' ? detail : detail?.message) || `Job recommendations unavailable (${response.status})`), {
+      status: response.status, code: typeof detail === 'object' ? detail?.code : result.code,
+      retryAt: retryAt,
+    });
+  }
+  const envelope = parseRecommendationResponse(response, result.data);
+  return envelope as RecommendationEnvelope & { learnerProfile?: AIRecommendationsData['learnerProfile'] };
+}
+
+/** Compatibility response for callers outside the migrated query hook. */
 export async function getLearnerAIRecommendations(): Promise<AIRecommendationsResponse> {
   try {
-    const url = `${ORIGIN}/api/learners/ai-recommendations`;
-    
-    logger.info('Fetching AI recommendations from backend', { url });
-
-    const response = await ssoClient.fetch(url, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      logger.error('Failed to fetch AI recommendations', { 
-        status: response.status, 
-        statusText: response.statusText,
-        error: errorData 
-      });
-      
-      return {
-        success: false,
-        error: (typeof errorData.error === 'string' ? errorData.error : errorData.error?.message) || errorData.message || `HTTP ${response.status}: ${response.statusText}`,
-      };
-    }
-
-    const result = await response.json();
-    
-    logger.info('AI recommendations fetched successfully', { 
-      count: result.data?.recommendations?.length || 0,
-      cached: result.data?.cached,
-      fallback: result.data?.fallback
-    });
-
-    return {
-      success: true,
-      data: result.data,
-    };
+    const data = await getLearnerRecommendationEnvelope();
+    return { success: true, data: data as unknown as AIRecommendationsData };
   } catch (error: any) {
     logger.error('Failed to fetch AI recommendations', error);
-    return {
-      success: false,
-      error: error.message || 'Network error',
-    };
+    return { success: false, error: error.message || 'Network error' };
   }
 }

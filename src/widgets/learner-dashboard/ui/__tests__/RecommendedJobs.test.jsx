@@ -4,6 +4,7 @@ const f = vi.hoisted(() => ({ result: {}, refresh: vi.fn() }));
 vi.mock('@/features/opportunities', () => ({
   useAIJobMatching: () => ({ ...f.result, refreshMatches: f.refresh }),
 }));
+vi.mock('@/shared/model/authStore', () => ({ useUser: () => ({ id: 'actor', orgId: 'org' }) }));
 vi.mock('@/features/subscription/ui/shared/FeatureGate', () => ({
   FeatureGate: ({ children }) => children,
 }));
@@ -18,6 +19,12 @@ beforeEach(() => {
   vi.clearAllMocks();
   f.result = { matchedJobs: [], loading: false, error: null };
 });
+it('shows source errors before stale profile guidance', () => {
+  f.result = { matchedJobs: [], loading: false, error: 'Career context unavailable', readiness: { state: 'needs_profile' } };
+  render(<RecommendedJobs {...props} sidebar />);
+  expect(screen.getByRole('alert').textContent).toContain('Career context unavailable');
+  expect(screen.queryByRole('link', { name: 'Add a skill' })).toBeNull();
+});
 it('shows an explicit AI empty state instead of leaving the sidebar blank', () => {
   render(<RecommendedJobs {...props} sidebar />);
   expect(
@@ -28,6 +35,15 @@ it('shows an explicit AI empty state instead of leaving the sidebar blank', () =
     screen.getByRole('button', { name: 'Refresh recommendations' }),
   );
   expect(f.refresh).toHaveBeenCalledOnce();
+});
+it.each(['needs_profile', 'limited_context'])('shows actionable %s without a retry loop or job cards', state => {
+  f.result.readiness = { state };
+  render(<RecommendedJobs {...props} sidebar />);
+  expect(screen.getByRole('status')).toBeTruthy();
+  expect(screen.getByRole('link', { name: 'Add a skill' }).getAttribute('href')).toBe('/learner/my-skills');
+  expect(screen.queryByRole('button', { name: 'Retry suggestions' })).toBeNull();
+  expect(screen.getByRole('button', { name: 'Refresh suggestions' }).disabled).toBe(true);
+  expect(screen.queryByRole('article')).toBeNull();
 });
 it('shows the actionable matching failure and a retry without generic jobs', () => {
   f.result.error =
@@ -103,10 +119,10 @@ it('hides and restores recommendations using the learner-specific preference', (
   const change = vi.fn();
   render(<RecommendedJobs {...props} sidebar onResultsChange={change} />);
   fireEvent.click(screen.getByRole('button', { name: 'Hide suggestions' }));
-  expect(localStorage.getItem('recommendations_dismissed:fixture-learner')).toBe('true');
+  expect(localStorage.getItem('recommendations_dismissed:actor:org:fixture-learner')).toBe('true');
   expect(change).toHaveBeenLastCalledWith([]);
   fireEvent.click(screen.getByRole('button', { name: 'Show suggested opportunities' }));
-  expect(localStorage.getItem('recommendations_dismissed:fixture-learner')).toBeNull();
+  expect(localStorage.getItem('recommendations_dismissed:actor:org:fixture-learner')).toBeNull();
   expect(change).toHaveBeenLastCalledWith(['job']);
 });
 

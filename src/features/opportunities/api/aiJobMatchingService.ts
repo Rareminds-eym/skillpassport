@@ -1,6 +1,8 @@
 import { ssoClient } from '@/shared/api/ssoClient';
 
+import { parseRecommendationResponse, recommendationRetryAt } from '@/shared/api/recommendationResponse';
 import { getApiUrl } from '@/shared/api/apiUtils';
+import { recommendationPending, type RecommendationEnvelope } from '../../../../shared/contracts/job-recommendations';
 
 interface LearnerMatchingProfile {
   id?: string;
@@ -21,10 +23,12 @@ interface RankedOpportunity extends Record<string, unknown> {
   match_percentage?: number;
   similarity?: number;
   learning_eligibility?: { criteria?: MatchingCriterion[] };
+  recommendation_reasons?: Array<{ source: string; label: string }>;
 }
 interface MatchingResponse {
   success?: boolean;
   data?: {
+    schemaVersion?: number;
     recommendations?: RankedOpportunity[];
     fallback?: boolean;
     provenance?: string;
@@ -56,10 +60,12 @@ interface MatchingResponse {
  * @param {boolean} forceRefresh - Force recomputation even if cache is valid
  * @returns {Promise<Array>} Top N matched jobs with scores and reasons
  */
-export async function matchJobsWithAI(
+async function requestJobRecommendations(
   learnerProfile: LearnerMatchingProfile,
   topN = 3,
   forceRefresh = false,
+  requireEnvelope = false,
+  signal?: AbortSignal,
 ) {
   if (!learnerProfile) {
     throw new Error('Learner profile is required');
@@ -79,6 +85,7 @@ export async function matchJobsWithAI(
 
   const response = await ssoClient.fetch(`${API_URL}/recommend-opportunities`, {
     method: 'POST',
+    signal,
     headers: {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -101,12 +108,19 @@ export async function matchJobsWithAI(
           (typeof detail === 'object' ? detail?.code : undefined) ||
           errorData.code,
         status: response.status,
+        retryAt: recommendationRetryAt(response.headers),
       },
     );
   }
 
   const result: MatchingResponse = await response.json();
   const data = result?.data;
+  // Versioned consumers keep metadata even when there are no cards. Legacy
+  // array callers remain supported only when no version was advertised.
+  const envelope = data?.schemaVersion === undefined && response.status !== 202
+    ? null
+    : parseRecommendationResponse(response, data);
+  if (requireEnvelope && !envelope) throw new Error('A versioned recommendation response is required');
   if (
     !result ||
     result.success === false ||
@@ -114,21 +128,17 @@ export async function matchJobsWithAI(
     !Array.isArray(data.recommendations)
   )
     throw new Error('Invalid recommendation response');
+  if (envelope?.state === 'needs_profile' || envelope?.state === 'limited_context' || recommendationPending(envelope)) {
+    return { matches: [], envelope };
+  }
   if (data.fallback === true || data.provenance !== 'embedding') {
-    throw new Error(
-      'Personalized AI recommendations are unavailable. Please retry.',
-    );
+    throw new Error('Personalized AI recommendations are unavailable. Please retry.');
   }
   const recommendations = data.recommendations;
 
-  if (recommendations.length === 0) {
-    // Return empty array instead of throwing - no matches is valid
-    return [];
-  }
-
   // Transform matches - opportunity data comes from API response
   const provenance = 'embedding';
-  return recommendations.map((rec) => {
+  const matches = recommendations.map((rec) => {
     const overall =
       typeof rec.match_percentage === 'number' &&
       Number.isFinite(rec.match_percentage)
@@ -151,10 +161,9 @@ export async function matchJobsWithAI(
           : overall !== null
             ? 'Match index'
             : 'Profile similarity',
-      match_reason:
-        score === null
-          ? 'Review this opportunity.'
-          : 'Ranked against your profile; this is not a hiring probability.',
+      match_reason: Array.isArray(rec.recommendation_reasons) && rec.recommendation_reasons.length
+        ? rec.recommendation_reasons.slice(0, 3).filter(reason => typeof reason?.label === 'string').map(reason => reason.label).join(' · ')
+        : score === null ? 'Review this opportunity.' : 'Ranked against your profile; this is not a hiring probability.',
       provenance,
       reason: data.reason,
       freshness: data.freshness || 'unknown',
@@ -170,6 +179,34 @@ export async function matchJobsWithAI(
       computed_at: data.computed_at,
     };
   });
+  return { matches, envelope };
+}
+
+/** Versioned response for feature consumers; profile guidance is a success. */
+export async function getJobRecommendations(
+  learnerProfile: LearnerMatchingProfile,
+  topN = 3,
+  forceRefresh = false,
+  signal?: AbortSignal,
+) {
+  const result = await requestJobRecommendations(learnerProfile, topN, forceRefresh, true, signal);
+  return { matches: result.matches, envelope: result.envelope as RecommendationEnvelope };
+}
+
+/** Compatibility adapter for callers that still expect an array. */
+export async function matchJobsWithAI(
+  learnerProfile: LearnerMatchingProfile,
+  topN = 3,
+  forceRefresh = false,
+) {
+  const { matches, envelope } = await requestJobRecommendations(learnerProfile, topN, forceRefresh);
+  if (envelope?.state === 'needs_profile' || envelope?.state === 'limited_context') {
+    throw Object.assign(new Error('Add career context to get personalized job recommendations.'), {
+      code: 'PROFILE_CONTEXT_REQUIRED', status: 200, readiness: envelope.readiness,
+    });
+  }
+  if (recommendationPending(envelope)) throw Object.assign(new Error('Job recommendations are being prepared. Please try again shortly.'), {code:'MATCHING_PROCESSING',status:202});
+  return matches;
 }
 
 /**
@@ -183,4 +220,4 @@ export async function refreshJobMatches(
   return matchJobsWithAI(learnerProfile, topN, true);
 }
 
-export default { matchJobsWithAI, refreshJobMatches };
+export default { getJobRecommendations, matchJobsWithAI, refreshJobMatches };

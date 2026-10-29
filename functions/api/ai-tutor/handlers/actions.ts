@@ -48,7 +48,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           learner_id: own.user_id, opportunity_id, action: interactionAction,
         }, { onConflict: 'learner_id,opportunity_id,action' });
         if (error) return apiDbError(error, context.request, { startTime });
-        return apiSuccess({ success: true }, context.request, { startTime });
+        return apiSuccess({ success: true, learnerId: own.id }, context.request, { startTime });
       }
 
       case 'get-opportunity': {

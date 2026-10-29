@@ -22,6 +22,7 @@ const fixture = vi.hoisted(() => ({
   lookupThrows: false,
   identityOverride: null as Row | null,
   missingVector: false,
+  storedPreprocessing: '',
   feedbackError: false,
   jobOverrides: {} as Record<string, Row>,
   dismissedId: 'dismissed-own-job',
@@ -29,7 +30,7 @@ const fixture = vi.hoisted(() => ({
   rpc: vi.fn(),
   entitled: vi.fn(async () => true),
   rateLimit: vi.fn(async (_key: string, _env?: unknown) => true),
-  buildText: vi.fn(async () => 'Controlled profile input'),
+  buildText: vi.fn(async (_db?: unknown, _learner?: string, _user?: string) => ({ text: 'Controlled profile input', inputRevision: '1', readiness: { state: 'ready' as string, policyVersion: 'career-readiness-4', coverage: ['skills'], suggestedActions: [] as string[] } })),
   embed: vi.fn(async () => Array(1536).fill(0.01)),
   persist: vi.fn(async () => ({ success: true, rowsAffected: 1 })),
 }));
@@ -44,8 +45,8 @@ vi.mock('../../lib/supabase', () => ({
   createSupabaseAdminClient: () => ({ from: fixture.from, rpc: fixture.rpc }),
   getServiceClient: () => ({ from: fixture.from, rpc: fixture.rpc }),
 }));
-vi.mock('../../api/career/utils/rate-limit', () => ({ checkRateLimit: fixture.rateLimit }));
-vi.mock('../../api/embedding/services/textBuilder', () => ({ buildlearnerTextFromDatabase: fixture.buildText }));
+vi.mock('../../api/career/utils/rate-limit', () => ({ checkRateLimit: fixture.rateLimit, getRateLimitInfo: () => ({remaining:0,resetAt:Date.now()+10000}) }));
+vi.mock('../../api/embedding/services/textBuilder', () => ({ buildLearnerRecommendationContext: fixture.buildText }));
 vi.mock('../../api/embedding/services/embeddingWorkerClient', () => ({ callEmbeddingWorker: fixture.embed }));
 vi.mock('../../api/embedding/services/databaseUpdater', () => ({ updateEmbedding: fixture.persist }));
 vi.mock('../../api/embedding/handlers/generateEmbedding', () => ({}));
@@ -158,6 +159,7 @@ beforeEach(() => {
   fixture.lookupThrows = false;
   fixture.identityOverride = null;
   fixture.missingVector = false;
+  fixture.storedPreprocessing = RECOMMENDATION_PREPROCESSING_VERSION;
   fixture.feedbackError = false; fixture.jobOverrides = {}; fixture.dismissedId = 'dismissed-own-job';
   env.MATCHING_EMBEDDING_MODEL = 'fixture-model'; env.MATCHING_CATALOG_MODEL = 'fixture-model';
   env.MATCHING_VECTOR_PIPELINE_VERIFIED = 'true';
@@ -167,12 +169,17 @@ beforeEach(() => {
   fixture.rpc.mockImplementation(async (name: string, args: Record<string, unknown>) => {
     if (name === 'get_recommendation_state_v3') {
       const own = args.p_learner_id === fixture.learners[0]?.id;
-      return { data: { revision: '1', catalog_revision: '1', embedding: fixture.missingVector ? null : Array(1536).fill(0.01), computed_at: '2026-10-15T00:00:00Z', algorithm_version: 'v2.0', matches: fixture.cacheMiss ? null : Array.from({ length: 60 }, (_, index) => ({ id: `${own ? 'own' : 'foreign'}-${index}` })) }, error: null };
+      const compatible = args.p_preprocessing === fixture.storedPreprocessing;
+      return { data: { revision: '1', catalog_revision: '1', embedding: fixture.missingVector || !compatible ? null : Array(1536).fill(0.01), computed_at: '2026-10-15T00:00:00Z', algorithm_version: 'v2.0', matches: fixture.cacheMiss || !compatible ? null : Array.from({ length: 60 }, (_, index) => ({ id: `${own ? 'own' : 'foreign'}-${index}`, similarity: 0.95-index*0.001 })) }, error: null };
     }
     if (name === 'job_matching_index_status') return {data:{total:60,verified:60},error:null};
     if (name === 'match_verified_opportunities') return { data: [{ id: 'own-ranked', similarity: 0.8 }], error: null };
     if (name === 'match_opportunities_enhanced' || name === 'get_generic_recommendations_v3') return { data: [{ id: 'own-ranked' }], error: null };
-    if (name === 'publish_recommendation_vector_v3') fixture.missingVector = false;
+    if (name === 'publish_recommendation_vector_v3') {
+      fixture.missingVector = false;
+      fixture.storedPreprocessing = args.p_preprocessing as string;
+      fixture.cacheMiss = true;
+    }
     if (name === 'save_recommendation_matches_v3' || name === 'publish_recommendation_vector_v3') return { data: true, error: null };
     throw new Error(`Unexpected RPC ${name}`);
   });
@@ -224,6 +231,58 @@ describe.each(aliases)('%s ownership boundary', alias => {
 });
 
 describe('canonical identifiers and authorized execution', () => {
+  it('regenerates instead of serving vectors/cards under the old preprocessing identity', async () => {
+    // The RPC double enforces the inspected SQL version predicate; this checks
+    // handler integration, not PostgreSQL execution or provider quality.
+    fixture.storedPreprocessing = 'learner-text-1';
+    expect(RECOMMENDATION_PREPROCESSING_VERSION).not.toBe(fixture.storedPreprocessing);
+    const response = await request();
+    expect(response.status).toBe(200);
+    const body = await response.json() as { data: { cached: boolean; recommendations: Array<{ id: string }> } };
+    expect(body.data.cached).toBe(false);
+    expect(body.data.recommendations.map(row => row.id)).toEqual(['own-ranked']);
+    expect(fixture.buildText).toHaveBeenCalledOnce();
+    expect(fixture.embed).toHaveBeenCalledOnce();
+    expect(fixture.rpc).toHaveBeenCalledWith('publish_recommendation_vector_v3', expect.objectContaining({ p_preprocessing: RECOMMENDATION_PREPROCESSING_VERSION }));
+  });
+
+  it('G02: a profile-needed response prevents reuse of cached cards', async () => {
+    // The default owner has no career evidence. Keep the real handler and
+    // cached-vector path: the proposed readiness guard must run before either.
+    fixture.buildText.mockResolvedValueOnce({ text: '', inputRevision: '1', readiness: { state: 'needs_profile', policyVersion: 'career-readiness-4', coverage: [], suggestedActions: ['add_skill'] } });
+    const response = await request();
+    expect(response.status).toBe(200);
+    const body = await response.json() as { data: { state?: string; recommendations: unknown[] } };
+    expect(body.data.recommendations).toEqual([]);
+    expect(body.data.state).toBe('needs_profile');
+    expect(fixture.rpc).not.toHaveBeenCalled();
+    expect(fixture.embed).not.toHaveBeenCalled();
+    expect(fixture.rpc.mock.calls.some(([name]) => name === 'match_verified_opportunities')).toBe(false);
+  });
+
+  it.each([false, true])('checks readiness before an unconfigured/unready index with forceRefresh=%s', async forceRefresh => {
+    delete (env as Partial<typeof env>).MATCHING_EMBEDDING_MODEL;
+    fixture.buildText.mockResolvedValueOnce({ text: '', inputRevision: '1', readiness: { state: 'needs_profile', policyVersion: 'career-readiness-4', coverage: [], suggestedActions: ['add_education'] } });
+    const response = await request({ learnerId: fixture.learnerId, forceRefresh });
+    expect(response.status).toBe(200);
+    expect((await response.json() as any).data).toMatchObject({ state: 'needs_profile', provenance: 'none', recommendations: [], cached: false });
+    expect(fixture.rpc).not.toHaveBeenCalled();
+    expect(fixture.embed).not.toHaveBeenCalled();
+  });
+
+  it('returns changed-input instead of publishing a context collected under an old revision', async () => {
+    fixture.buildText.mockResolvedValueOnce({ text: 'Controlled context', inputRevision: '0', readiness: { state: 'ready', policyVersion: 'career-readiness-4', coverage: ['skills'], suggestedActions: [] } });
+    expect((await request()).status).toBe(409);
+    expect(fixture.embed).not.toHaveBeenCalled();
+  });
+
+  it('does not turn a profile-needed response into an index outage', async () => {
+    fixture.rpc.mockRejectedValue(new Error('index unavailable'));
+    fixture.buildText.mockResolvedValueOnce({ text: '', inputRevision: '1', readiness: { state: 'needs_profile', policyVersion: 'career-readiness-4', coverage: [], suggestedActions: ['add_skill'] } });
+    expect((await request()).status).toBe(200);
+    expect(fixture.rpc).not.toHaveBeenCalled();
+  });
+
   it('uses learner primary IDs for profile/ranking/cache and user IDs for feedback', async () => {
     fixture.cacheMiss = true;
     expect((await request()).status).toBe(200);
@@ -243,7 +302,7 @@ describe('canonical identifiers and authorized execution', () => {
     fixture.cacheMiss = true;
     fixture.missingVector = true;
     expect((await request()).status).toBe(200);
-    expect(fixture.buildText).toHaveBeenCalledWith(expect.anything(), fixture.learnerId);
+    expect(fixture.buildText).toHaveBeenCalledWith(expect.anything(), fixture.learnerId, fixture.userId, env);
     expect(fixture.rpc).toHaveBeenCalledWith('publish_recommendation_vector_v3', expect.objectContaining({ p_learner_id: fixture.learnerId, p_user_id: fixture.userId, p_revision: '1' }));
   });
 
@@ -277,7 +336,7 @@ describe('canonical identifiers and authorized execution', () => {
     expect((await request({ learnerId: fixture.learnerId, forceRefresh: true })).status).toBe(200);
     expect(fixture.reads[0].filters).toEqual([['user_id', fixture.userId]]);
     expect(fixture.rpc.mock.calls.some(([name]) => name === 'get_cached_job_matches')).toBe(false);
-    expect(fixture.buildText).not.toHaveBeenCalled();
+    expect(fixture.buildText).toHaveBeenCalledOnce();
     expect(fixture.embed).not.toHaveBeenCalled();
   });
 });
@@ -385,6 +444,27 @@ describe('release boundary regressions', () => {
     });
     expect((await request()).status).toBe(409);
   });
+  it.each(['revision', 'catalog_revision'])('rechecks %s after asynchronous eligibility enrichment', async field => {
+    const original = fixture.rpc.getMockImplementation()!;
+    let reads = 0;
+    fixture.rpc.mockImplementation(async (name, args) => {
+      const result = await original(name, args);
+      if (name === 'get_recommendation_state_v3' && ++reads > 2) (result.data as any)[field] = '2';
+      return result;
+    });
+    expect((await request()).status).toBe(409);
+    expect(reads).toBe(3);
+  });
+
+  it('classifies a failed final response fence as unavailable', async () => {
+    const original = fixture.rpc.getMockImplementation()!;
+    let reads = 0;
+    fixture.rpc.mockImplementation(async (name, args) => {
+      if (name === 'get_recommendation_state_v3' && ++reads > 2) return { data: null, error: { code: 'unavailable' } };
+      return original(name, args);
+    });
+    expect((await request()).status).toBe(503);
+  });
 
   it('rejects cached matches with missing algorithm provenance', async () => {
     const original = fixture.rpc.getMockImplementation()!;
@@ -448,6 +528,16 @@ describe('release boundary regressions', () => {
     expect((await request()).status).toBe(409);
   });
 
+  it('advertises the actual rate-window wait without starting matching work', async () => {
+    fixture.rateLimit.mockResolvedValueOnce(false);
+    const response=await request();expect(response.status).toBe(429);expect(Number(response.headers.get('Retry-After'))).toBeGreaterThan(0);
+    expect(fixture.buildText).not.toHaveBeenCalled();expect(fixture.embed).not.toHaveBeenCalled();
+  });
+  it.each([{total:-1,verified:0},{total:60,verified:-1},{total:60,verified:61}])('does not claim index progress from invalid counts %j', async counts => {
+    const original=fixture.rpc.getMockImplementation()!;
+    fixture.rpc.mockImplementation(async(name,args)=>name==='job_matching_index_status'?{data:counts,error:null}:original(name,args));
+    const response=await request();expect(response.status).toBe(503);expect((await response.json() as any).error.code).toBe('MATCHING_INDEX_UNAVAILABLE');expect(fixture.embed).not.toHaveBeenCalled();
+  });
   it('repairs changed jobs through the guarded publisher before ranking', async () => {
     const original=fixture.rpc.getMockImplementation()!;let repaired=false;
     fixture.rpc.mockImplementation(async(name,args)=>{
@@ -460,6 +550,31 @@ describe('release boundary regressions', () => {
     expect(fixture.rpc).toHaveBeenCalledWith('publish_job_matching_vector',expect.objectContaining({p_id:'job',p_model:'fixture-model',p_input_hash:'hash'}));
   });
 
+  it('acknowledges verified batch progress as bounded index preparation', async () => {
+    const original=fixture.rpc.getMockImplementation()!;let published=false;
+    fixture.rpc.mockImplementation(async(name,args)=>{
+      if(name==='job_matching_index_status') return {data:{total:60,verified:published?1:0},error:null};
+      if(name==='get_job_matching_index_batch') return {data:[{id:'job',input_text:'Job source',input_hash:'hash'}],error:null};
+      if(name==='publish_job_matching_vector') {published=true;return {data:true,error:null};}
+      return original(name,args);
+    });
+    const response=await request();expect(response.status).toBe(202);expect(response.headers.get('Retry-After')).toBe('3');
+    expect((await response.json() as any).data).toMatchObject({state:'index_building',recommendations:[],provenance:'none',cached:false,input_revision:'1',retry_after_seconds:3});
+    expect(fixture.embed).toHaveBeenCalledTimes(1);
+    expect(fixture.rpc.mock.calls.some(([name])=>name==='publish_recommendation_vector_v3'||name==='save_recommendation_matches_v3')).toBe(false);
+  });
+  it('rejects a changed context before returning an index-progress acknowledgment', async () => {
+    const original=fixture.rpc.getMockImplementation()!;let published=false;
+    fixture.rpc.mockImplementation(async(name,args)=>{
+      if(name==='job_matching_index_status') return {data:{total:60,verified:published?1:0},error:null};
+      if(name==='get_job_matching_index_batch') return {data:[{id:'job',input_text:'Job source',input_hash:'hash'}],error:null};
+      if(name==='publish_job_matching_vector') {published=true;return {data:true,error:null};}
+      const result=await original(name,args);
+      if(name==='get_recommendation_state_v3') (result.data as any).revision='2';
+      return result;
+    });
+    expect((await request()).status).toBe(409);
+  });
   it('reports an incomplete index without returning recent jobs', async () => {
     const original=fixture.rpc.getMockImplementation()!;
     fixture.rpc.mockImplementation(async(name,args)=>{
@@ -508,7 +623,7 @@ describe('release boundary regressions', () => {
   it('does not persist incomplete evidence', async () => {
     fixture.cacheMiss=true; fixture.missingVector=true; fixture.buildText.mockRejectedValueOnce(new Error('evidence unavailable'));
     const response=await request(); expect(response.status).toBe(503);
-    expect((await response.json() as any).error.code).toBe('EMBEDDING_GENERATION_FAILED');
+    expect((await response.json() as any).error.code).toBe('RECOMMENDATIONS_UNAVAILABLE');
     expect(fixture.embed).not.toHaveBeenCalled();
     expect(fixture.rpc.mock.calls.some(([name])=>name==='publish_recommendation_vector_v3')).toBe(false);
   });

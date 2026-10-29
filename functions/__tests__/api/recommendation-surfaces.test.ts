@@ -1,7 +1,8 @@
 import { beforeEach, expect, it, vi } from 'vitest';
-const f=vi.hoisted(()=>({user:{id:'11111111-1111-4111-8111-111111111111',roles:['learner']},tables:{} as Record<string,any[]>,writes:[] as any[],skillError:false}));
+const f=vi.hoisted(()=>({user:{id:'11111111-1111-4111-8111-111111111111',roles:['learner']},tables:{} as Record<string,any[]>,writes:[] as any[],skillError:false,entitled:true}));
+vi.mock('../../lib/entitlements',()=>({hasFeatureEntitlement:async()=>f.entitled}));
 vi.mock('../../lib/auth',()=>({withAuth:(handler:any)=>handler,getContextUser:()=>f.user}));
-vi.mock('../../lib/supabase',()=>({getServiceClient:()=>({from:query})}));
+vi.mock('../../lib/supabase',()=>({getServiceClient:()=>({from:query,rpc:async(name:string)=>{if(name==='get_recommendation_freshness_v1')return {data:{inputRevision:'1',catalogRevision:'1'},error:null};if(name==='get_recommendation_candidates_v1')return {data:(f.tables.opportunities||[]).filter(r=>r.status==='open'&&r.is_active&&r.employment_type!=='factory_visit'&&(!r.deadline||Date.parse(r.deadline)>Date.now())),error:null};if(name!=='get_recommendation_context_revision_v1')throw new Error(name);return {data:'1',error:null};}})}));
 vi.mock('../../lib/logger',()=>({createLogger:()=>({info:vi.fn(),warn:vi.fn(),error:vi.fn()})}));
 vi.mock('../../shared/lib/entitlement-service',()=>({getNumericLimit:async()=>({enabled:true,limit:null})}));
 vi.mock('../../lib/heal-user',()=>({}));
@@ -21,14 +22,14 @@ function query(table:string){
   };
   const q:any={select:()=>q,eq:(k:string,v:any)=>{rows=rows.filter(r=>r[k]===v);return q;},is:(k:string,v:any)=>{rows=rows.filter(r=>r[k]===v);return q;},
     neq:(k:string,v:any)=>{rows=rows.filter(r=>r[k]!==v);return q;},
-    or:(filter:string)=>{if(filter.startsWith('deadline.'))rows=rows.filter(r=>r.deadline==null||Date.parse(r.deadline)>Date.now());return q;},
+    or:(filter:string)=>{if(filter.startsWith('deadline.'))rows=rows.filter(r=>r.deadline==null||Date.parse(r.deadline)>Date.now());else if(filter==='enabled.is.null,enabled.eq.true')rows=rows.filter(r=>r.enabled==null||r.enabled===true);return q;},
     order:()=>q,limit:(n:number)=>{rows=rows.slice(0,n);return q;},range:(a:number,b:number)=>{rows=rows.slice(a,b+1);return q;},
     upsert:(v:any)=>{write=v;return q;},insert:(v:any)=>{write=Array.isArray(v)?v[0]:v;return q;},
     maybeSingle:async()=>{const r=result();return {...r,data:r.data?.[0]||null};},single:async()=>{const r=result();return {...r,data:r.data?.[0]||null};},
     then:(resolve:any,reject:any)=>Promise.resolve(result()).then(resolve,reject)};return q;
 }
 function context(path:string,body?:any){return {request:new Request('https://fixture.invalid'+path,{method:body?'POST':'GET',...(body?{body:JSON.stringify(body)}:{})}),env:{},data:{}} as any;}
-beforeEach(()=>{f.user.roles=['learner'];f.writes=[];f.skillError=false;f.tables={learners:[{id:learner,user_id:f.user.id,name:'Own fixture'}],skills:[{learner_id:learner,name:'Python',type:'technical',training_id:null,enabled:true,approval_status:'approved'}],opportunities:[{id:job,title:'Open job',company_name:'Fixture',status:'open',is_active:true,deadline:null,skills_required:['Python']}],applied_jobs:[],pipeline_candidates:[]};});
+beforeEach(()=>{f.entitled=true;f.user.roles=['learner'];f.writes=[];f.skillError=false;f.tables={learners:[{id:learner,user_id:f.user.id,name:'Own fixture'}],skills:[{learner_id:learner,name:'Python',type:'technical',training_id:null,enabled:true,approval_status:'approved'}],opportunities:[{id:job,title:'Open job',company_name:'Fixture',status:'open',is_active:true,deadline:null,skills_required:['Python']}],applied_jobs:[],pipeline_candidates:[],learner_career_preferences:[{learner_id:learner,preferences:{useAssessmentRecommendations:false,useVerifiedLearning:false}}]};});
 it('dashboard includes open jobs and excludes expired/inactive jobs',async()=>{
   f.tables.opportunities.push({...f.tables.opportunities[0],id:'closed',status:'closed'},{...f.tables.opportunities[0],id:'expired',deadline:'2000-01-01'},{...f.tables.opportunities[0],id:'inactive',is_active:false});
   const response=await dashboard(context('/api/learners/ai-recommendations'));
@@ -43,8 +44,43 @@ it('dashboard excludes industrial visits even when their skills match',async()=>
 it('dashboard survives null/non-string required-skill entries',async()=>{
   f.tables.opportunities[0].skills_required=[null,{},'Python'];expect((await dashboard(context('/api/learners/ai-recommendations'))).status).toBe(200);
 });
+it('G09: JavaScript does not support a Java skill-match explanation', async () => {
+  f.tables.skills[0].name = 'JavaScript';
+  f.tables.opportunities[0].skills_required = ['Java'];
+  const response = await dashboard(context('/api/learners/ai-recommendations'));
+  expect(response.status).toBe(200);
+  const body = await response.json() as any;
+  const matchedSkills = body.data.recommendations.flatMap((row: any) => row.match_reasons?.matched_skills ?? []);
+  expect(matchedSkills).not.toContain('Java');
+});
+it.each(['python', '  PYTHON  ', 'Ｐｙｔｈｏｎ'])('G09: keeps an exact normalized skill match for %s', async name => {
+  f.tables.skills[0].name = name;
+  const response = await dashboard(context('/api/learners/ai-recommendations'));
+  expect(response.status).toBe(200);
+  const body = await response.json() as any;
+  expect(body.data.recommendations[0].match_reasons.matched_skills).toEqual(['Python']);
+});
 it('dashboard distinguishes unavailable skills from an empty profile',async()=>{
   f.skillError=true;expect((await dashboard(context('/api/learners/ai-recommendations'))).status).toBe(503);
+});
+it('dashboard returns needs_profile for a name-only owner without ranking jobs', async () => {
+  f.tables.skills = [];
+  const response = await dashboard(context('/api/learners/ai-recommendations'));
+  expect(response.status).toBe(200);
+  expect((await response.json() as any).data).toMatchObject({ state: 'needs_profile', recommendations: [], provenance: 'none', cached: false });
+});
+it('dashboard preserves normalized-only fresher education', async () => {
+  f.tables.skills = [];
+  f.tables.education = [{ id: 'edu', learner_id: learner, degree: 'BSc', department: 'Marine Biology', enabled: true, approval_status: 'approved' }];
+  const response = await dashboard(context('/api/learners/ai-recommendations'));
+  expect(response.status).toBe(200);
+  expect((await response.json() as any).data.readiness).toMatchObject({ state: 'ready', coverage: ['education'] });
+});
+it('dashboard enforces matching entitlement before exposing career context', async () => {
+  f.entitled = false;
+  const response = await dashboard(context('/api/learners/ai-recommendations'));
+  expect(response.status).toBe(403);
+  expect((await response.json() as any).error.code).toBe('FEATURE_ACCESS_DENIED');
 });
 it('learner details exclude closed jobs but recruiter details retain them',async()=>{
   f.tables.opportunities[0].status='closed';expect((await opportunities(context('/api/opportunities?id='+job))).status).toBe(404);
