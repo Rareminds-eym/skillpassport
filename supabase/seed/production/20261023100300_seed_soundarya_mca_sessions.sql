@@ -15,8 +15,10 @@
 --   raghu.astepahead@gmail.com      row 62             (1 session)
 -- Course for every session: 'Grama Resource Connect - Web Developer L1'. The sheet's own topic is kept in remarks
 -- ('Sheet row N: <topic> (<session id>)') because none of the sheet's course names exist in the database.
+-- Exception: row 58 (Skill ecosystem - Orientation & Marketplace) uses 'Skill Ecosystem Orientation' (SKILL-ECOSYSTEM-ORIENTATION-2026) and the one-day mapping that the
+-- MCA assignments seed creates for it; it is step 1b below. Step 1b needs migration 20270118000000 through that mapping and creates nothing without it.
 --
--- NOT CREATED: MBA rows (2-44); Sandhya Mohan rows 45-47 (her MCA times overlap her MBA rows 7, 11, 13); row 61
+-- NOT CREATED: MBA rows (2-44); rows 45-47 (Subashini and Swaroop in workbook 8, no MCA mapping); row 61
 -- (Rareminds-Clients is not a trainer).
 --
 -- created_by and creation_request_id are left NULL: the app uses them only as a retry guard for a logged-in admin's request.
@@ -52,7 +54,6 @@ FROM (VALUES
   ('13d6fccf-8113-5dd3-b3a1-e17c3e263222'::uuid, 'surajsp263@gmail.com'::text, '2026-09-24'::date, '09:00'::time, '16:00'::time, 'Sheet row 55: Debugging / integration /Deployment / environments (SES-MCA-012)'::text),
   ('ff099cdb-ca50-546a-8660-d623a3041c99'::uuid, 'karthikeyan201219996@gmail.com'::text, '2026-09-25'::date, '09:00'::time, '15:00'::time, 'Sheet row 56: Project orientation & SDLC /Requirement understanding & user stories (SES-MCA-013)'::text),
   ('8488a994-3afe-54e7-8aba-d8b81f9dbc83'::uuid, 'karthikeyan201219996@gmail.com'::text, '2026-09-26'::date, '10:00'::time, '13:00'::time, 'Sheet row 57: Documentation / README / technical presentation / (SES-MCA-014)'::text),
-  ('7bbeb09b-3572-5c0e-86ad-139146c11242'::uuid, 'karthikeyan201219996@gmail.com'::text, '2026-09-28'::date, '09:00'::time, '16:00'::time, 'Sheet row 58: Skill ecosystem - Orientation & Marketplace; AI-assisted research, documentation, presentation creation and SkillPassport evidence; Digital-tools completion, portfolio, marketplace and job applications (SES-MCA-015)'::text),
   ('e51eae5b-6435-5b6c-afd9-2e9eb44f5653'::uuid, 'surajsp263@gmail.com'::text, '2026-09-29'::date, '09:00'::time, '16:00'::time, 'Sheet row 59: Agile/Scrum/project execution/Git workflow & team collaboration /Testing mindset / defect reporting /Communication & project defence ,Interviews (SES-MCA-016)'::text),
   ('8a9bc53a-9196-5a3f-a9c2-5d40c380a4fd'::uuid, 'surajsp263@gmail.com'::text, '2026-09-30'::date, '09:00'::time, '16:00'::time, 'Sheet row 60: Resume / GitHub / interview articulation /Mock project / behavioural -Interviews (SES-MCA-017)'::text),
   ('3dcc0b82-46d0-5a88-a2c2-1e3195f7a553'::uuid, 'raghu.astepahead@gmail.com'::text, '2026-10-16'::date, '09:00'::time, '12:00'::time, 'Sheet row 62: Testing'::text)
@@ -65,6 +66,34 @@ JOIN public.programs p ON p.department_id = d.id AND p.code = 'MCA'
 JOIN public.program_sections ps ON ps.program_id = p.id AND ps.department_id = d.id
   AND ps.semester = 4 AND ps.section = 'A' AND ps.status = 'active'
 JOIN public.courses co ON co.title = 'Grama Resource Connect - Web Developer L1' AND co.deleted_at IS NULL AND co.status = 'Active'
+JOIN public.organization_staff_assignments a ON a.staff_id = s.id AND a.section_id = ps.id AND a.is_active
+WHERE public.external_teaching_mapping_valid(a.id, s.id, c.id, ps.id, co.course_id, v.date)
+  AND public.external_teaching_slot_covers(a.id, v.date, v.start_time, v.end_time, co.course_id, ps.id)
+  AND NOT EXISTS (
+    SELECT 1 FROM public.college_attendance_sessions x
+    WHERE x.organization_staff_id = s.id AND x.date = v.date AND x.status <> 'cancelled'
+      AND x.start_time < v.end_time AND x.end_time > v.start_time)
+ON CONFLICT (id) DO NOTHING;
+
+-- 1b. Row 58 uses the Skill Ecosystem Orientation course and its own mapping (created by the MCA assignments seed)
+INSERT INTO public.college_attendance_sessions
+  (id, college_id, department_id, program_id, program_section_id, department_name, program_name, semester, section, academic_year,
+   date, start_time, end_time, subject_name, subject_code, faculty_name, remarks,
+   instructor_source, lms_course_id, staff_assignment_id, organization_staff_id, original_organization_staff_id, assignment_version_at_creation)
+SELECT v.id, c.id, ps.department_id, ps.program_id, ps.id, d.name, p.name, ps.semester, ps.section, ps.academic_year,
+  v.date, v.start_time, v.end_time, co.title, co.code, s.first_name || ' ' || s.last_name, v.remarks,
+  'platform_staff', co.course_id, a.id, s.id, s.id, a.assignment_version
+FROM (VALUES
+  ('7bbeb09b-3572-5c0e-86ad-139146c11242'::uuid, 'karthikeyan201219996@gmail.com'::text, '2026-09-28'::date, '09:00'::time, '16:00'::time, 'Sheet row 58: Skill ecosystem - Orientation & Marketplace; AI-assisted research, documentation, presentation creation and SkillPassport evidence; Digital-tools completion, portfolio, marketplace and job applications (SES-MCA-015)'::text)
+) AS v(id, email, date, start_time, end_time, remarks)
+JOIN public.organization_staff s ON lower(s.email) = v.email
+  AND s.organization_id = '00000000-0000-0000-0000-000000000001' AND s.account_status = 'active'
+JOIN public.organizations c ON c.name = 'Soundarya Institute of Management and Science' AND c.organization_type = 'college'
+JOIN public.departments d ON d.college_id = c.id
+JOIN public.programs p ON p.department_id = d.id AND p.code = 'MCA'
+JOIN public.program_sections ps ON ps.program_id = p.id AND ps.department_id = d.id
+  AND ps.semester = 4 AND ps.section = 'A' AND ps.status = 'active'
+JOIN public.courses co ON co.code = 'SKILL-ECOSYSTEM-ORIENTATION-2026' AND co.deleted_at IS NULL AND co.status = 'Active'
 JOIN public.organization_staff_assignments a ON a.staff_id = s.id AND a.section_id = ps.id AND a.is_active
 WHERE public.external_teaching_mapping_valid(a.id, s.id, c.id, ps.id, co.course_id, v.date)
   AND public.external_teaching_slot_covers(a.id, v.date, v.start_time, v.end_time, co.course_id, ps.id)
