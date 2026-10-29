@@ -1,29 +1,25 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { ClipboardList, Download, Loader2 } from 'lucide-react';
-import { worksheetAction, type AssignedWorksheet, type WorksheetDelivery } from '../api/worksheetService';
+import { useUser } from '@/shared/model';
+import { useAssignedWorksheets, useOpenWorksheet } from '../model/worksheetQueries';
 
 export default function LearnerWorksheets({ courseId }: { courseId: string }) {
-  const [deliveries, setDeliveries] = useState<WorksheetDelivery[]>([]);
+  const user = useUser();
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState<string | null>(null);
   const downloadInProgress = useRef(false);
-  const [revision, setRevision] = useState(0);
   const [page, setPage] = useState(0);
-  useEffect(() => {
-    let active = true;
-    setLoading(true); setError('');
-    setDeliveries([]);
-    worksheetAction<WorksheetDelivery[]>('list', { page, courseId }).then(data => { if (active) setDeliveries(data); })
-      .catch(err => { if (active) setError(err.message); }).finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
-  }, [revision, page, courseId]);
+  const assignments = useAssignedWorksheets(user?.id || '', courseId, page);
+  const opening = useOpenWorksheet(user?.id || '', courseId);
+  const deliveries = assignments.data || [];
+  const loading = assignments.isFetching;
+  const displayError = error || assignments.error?.message || '';
   async function download(id: string) {
     if (downloadInProgress.current) return;
     downloadInProgress.current = true;
     setDownloading(id); setError('');
     try {
-      const worksheet = await worksheetAction<AssignedWorksheet>('open', { recipientId: id, courseId });
+      const worksheet = await opening.mutateAsync(id);
       const { exportToPDF } = await import('../model/exportToPDF');
       await exportToPDF({
         content: `${worksheet.instructions ? `${worksheet.instructions}\n\n` : ''}${worksheet.student_content}`,
@@ -35,8 +31,8 @@ export default function LearnerWorksheets({ courseId }: { courseId: string }) {
     finally { downloadInProgress.current = false; setDownloading(null); }
   }
   return <section className="bg-white p-3.5" aria-label="Assigned AI worksheets">
-    <div className="flex items-center justify-between"><h2 className="text-xs font-semibold text-slate-900">Assigned worksheets</h2><button type="button" disabled={loading} onClick={() => setRevision(revision + 1)} className="rounded-lg px-2.5 py-1 text-xs font-semibold text-blue-600 hover:bg-blue-50 hover:text-blue-700 disabled:opacity-50">Refresh</button></div>
-    {error && <p role="alert" className="mt-2 text-xs text-red-700">{error}</p>}
+    <div className="flex items-center justify-between"><h2 className="text-xs font-semibold text-slate-900">Assigned worksheets</h2><button type="button" disabled={loading} onClick={() => { setError(''); void assignments.refetch(); }} className="rounded-lg px-2.5 py-1 text-xs font-semibold text-blue-600 hover:bg-blue-50 hover:text-blue-700 disabled:opacity-50">Refresh</button></div>
+    {displayError && <p role="alert" className="mt-2 text-xs text-red-700">{displayError}</p>}
     {loading ? <p role="status" className="mt-2 text-xs text-slate-500">Loading worksheets…</p> : deliveries.length === 0 ? <div className="py-12 text-center"><ClipboardList className="mx-auto mb-2.5 h-10 w-10 text-slate-300" /><p className="text-xs font-semibold text-slate-700">No assignments yet</p><p className="mt-0.5 text-[11px] text-slate-400">Worksheets assigned by your educator will appear here.</p></div> : <div className="mt-3 flex flex-col gap-2">{deliveries.map(row => <div key={row.id} className="flex min-w-0 flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 p-3">
       <div className="min-w-0 flex-1"><span className="block truncate text-xs font-semibold text-slate-900" title={row.worksheet.title}>{row.worksheet.title}</span><span className="mt-1 block truncate text-[10px] capitalize text-slate-400">{row.worksheet.difficulty === 'mixed' ? 'Multiple difficulty levels' : row.worksheet.difficulty}{row.worksheet.due_at ? ` · Due ${new Date(row.worksheet.due_at).toLocaleString()}` : ''}</span></div>
       <button type="button" aria-label={`Download ${row.worksheet.title} as PDF`} disabled={!!downloading} onClick={() => download(row.id)} className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-blue-100 bg-blue-50 px-2.5 py-2 text-[11px] font-medium text-blue-700 transition hover:bg-blue-100 focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-50">

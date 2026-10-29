@@ -18,13 +18,13 @@ const ROLE_SEGMENTS = FACILITATORS.map((_, index) => {
     label: circlePoint(33.5, angle),
   };
 });
-interface Props { courseName: string; disabled?: boolean; onAction: (_role: FacilitatorRole) => void; onBack?: () => void }
+interface Props { initialRoleId?: string; courseName: string; disabled?: boolean; onAction: (_role: FacilitatorRole) => void; onBack?: () => void }
 
 /** One workspace, six discoverable roles; examples never impersonate live learner evidence. */
-export default function FacilitatorHub({ courseName, disabled = false, onAction, onBack }: Props) {
+export default function FacilitatorHub({ courseName, disabled = false, onAction, onBack, initialRoleId }: Props) {
   const descriptionId = useId();
   const [highlighted, setHighlighted] = useState<number | null>(null);
-  const [selected, setSelected] = useState<FacilitatorRole | null>(null);
+  const [selected, setSelected] = useState<FacilitatorRole | null>(() => FACILITATORS.find(role => role.id === initialRoleId) ?? null);
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => { if (selected) heading.current?.focus(); }, [selected]);
   const Icon = selected ? ROLE_ICONS[FACILITATORS.indexOf(selected)] : Lightbulb;

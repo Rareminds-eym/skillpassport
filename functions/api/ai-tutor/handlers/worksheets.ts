@@ -78,6 +78,17 @@ export async function handleWorksheets(context: AuthenticatedContext) {
       if (error) throw error;
       return apiSuccess(data, request);
     }
+    if (body.action === 'status') {
+      const conversationId = uuid.parse(body.conversationId);
+      const messageId = uuid.parse(body.messageId);
+      const { data, error } = await db.from('ai_worksheet_sets')
+        .select('id,published_at,recipients:ai_worksheet_recipients(count)')
+        .eq('educator_user_id', user.id).eq('organization_id', scope.organization_id)
+        .eq('source_conversation_id', conversationId).eq('source_message_id', messageId)
+        .eq('status', 'published').order('published_at', { ascending: false }).limit(1).maybeSingle();
+      if (error) throw error;
+      return apiSuccess({ published: !!data, learnerCount: data?.recipients?.[0]?.count ?? 0 }, request);
+    }
     if (body.action === 'source' || body.action === 'publish' || body.action === 'publish-all') {
       const { data: conversation, error } = await db.from('tutor_conversations').select('messages,course_id').eq('id', uuid.parse(body.conversationId)).eq('learner_id', user.id).maybeSingle();
       if (error) throw error;

@@ -1,5 +1,12 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import type { ReactNode } from 'react';
+import { render as baseRender, screen, fireEvent, waitFor } from '@testing-library/react';
+function render(ui: ReactNode) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+  return baseRender(ui, { wrapper: ({ children }) => <QueryClientProvider client={client}>{children}</QueryClientProvider> });
+}
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+vi.mock('@/shared/model', () => ({ useUser: () => ({ id: 'test-user' }) }));
 const mocks = vi.hoisted(() => ({ action: vi.fn(), pdf: vi.fn() }));
 vi.mock('../../api/worksheetService', () => ({ worksheetAction: mocks.action }));
 vi.mock('../../model/exportToPDF', () => ({ exportToPDF: mocks.pdf }));

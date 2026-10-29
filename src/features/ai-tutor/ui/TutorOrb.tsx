@@ -1,11 +1,11 @@
 import { useEffect, useId, useRef, type ReactNode } from 'react';
+import { caretPosition } from './caretPosition';
 
-function followPointer(event: PointerEvent, orb: HTMLDivElement) {
-  if (event.pointerType === 'touch') return;
+function followPoint(clientX: number, clientY: number, orb: HTMLDivElement) {
   const bounds = orb.getBoundingClientRect();
   if (!bounds.width || !bounds.height) return;
-  const x = Math.max(-1, Math.min(1, (event.clientX - bounds.left) / bounds.width * 2 - 1));
-  const y = Math.max(-1, Math.min(1, (event.clientY - bounds.top) / bounds.height * 2 - 1));
+  const x = Math.max(-1, Math.min(1, (clientX - bounds.left) / bounds.width * 2 - 1));
+  const y = Math.max(-1, Math.min(1, (clientY - bounds.top) / bounds.height * 2 - 1));
   orb.style.setProperty('--orb-eye-x', `${x * 9}px`);
   orb.style.setProperty('--orb-eye-y', `${y * 6}px`);
   // Project the face across a sphere instead of rotating its flat silhouette.
@@ -36,19 +36,40 @@ export default function TutorOrb({ className = '', children }: Props) {
     const orb = orbRef.current;
     if (!orb) return;
     const area = orb.closest<HTMLElement>('[data-orb-pointer-area]') ?? orb;
-    const follow = (event: PointerEvent) => followPointer(event, orb);
-    const reset = () => resetEyes(orb);
+    const activeInput = () => {
+      const input = document.activeElement;
+      return input instanceof HTMLTextAreaElement && input.hasAttribute('data-orb-caret') && area.contains(input) && input.value ? input : null;
+    };
+    const followCaret = () => {
+      const input = activeInput();
+      if (!input) return false;
+      const caret = caretPosition(input);
+      followPoint(caret.x, caret.y, orb);
+      return true;
+    };
+    const follow = (event: PointerEvent) => {
+      if (!activeInput() && event.pointerType !== 'touch') followPoint(event.clientX, event.clientY, orb);
+    };
+    const reset = () => { if (!followCaret()) resetEyes(orb); };
+    const refreshCaret = () => { followCaret(); };
+    const blur = () => resetEyes(orb);
+    for (const event of ['input', 'select', 'keyup', 'click', 'focusin', 'scroll']) area.addEventListener(event, refreshCaret, true);
+    area.addEventListener('focusout', blur, true);
+    document.addEventListener('selectionchange', refreshCaret);
     // Capture also tracks over interactive children that stop event bubbling.
     area.addEventListener('pointermove', follow, true);
     area.addEventListener('pointerenter', follow);
     area.addEventListener('pointerleave', reset);
     area.addEventListener('pointercancel', reset, true);
     return () => {
+      for (const event of ['input', 'select', 'keyup', 'click', 'focusin', 'scroll']) area.removeEventListener(event, refreshCaret, true);
+      area.removeEventListener('focusout', blur, true);
+      document.removeEventListener('selectionchange', refreshCaret);
       area.removeEventListener('pointermove', follow, true);
       area.removeEventListener('pointerenter', follow);
       area.removeEventListener('pointerleave', reset);
       area.removeEventListener('pointercancel', reset, true);
-      reset();
+      resetEyes(orb);
     };
   }, []);
   return <div ref={orbRef} className={`facilitator-orb relative my-4 aspect-[4/3] w-full max-w-sm sm:my-6 ${className}`}>

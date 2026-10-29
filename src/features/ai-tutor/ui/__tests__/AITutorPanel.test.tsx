@@ -1,18 +1,25 @@
-import { fireEvent, render, screen, cleanup, waitFor } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import type { ReactNode } from 'react';
+import { fireEvent, render as baseRender, screen, cleanup, waitFor, within } from '@testing-library/react';
+function render(ui: ReactNode) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+  return baseRender(ui, { wrapper: ({ children }) => <QueryClientProvider client={client}>{children}</QueryClientProvider> });
+}
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
-  sendMessage: vi.fn(), stopGeneration: vi.fn(), refreshSuggestions: vi.fn(), refreshConversations: vi.fn(),
-  streaming: false, educator: true, empty: false, content: '## Learning objectives\nPractise time management.', user: { id: 'educator' },
+  setFacilitatorMode: vi.fn(), sendMessage: vi.fn(), stopGeneration: vi.fn(), refreshSuggestions: vi.fn(), refreshConversations: vi.fn(),
+  worksheet: false, streaming: false, educator: true, empty: false, content: '## Learning objectives\nPractise time management.', user: { id: 'educator' },
 }));
 vi.mock('@/shared/model', () => ({ useUser: () => mocks.user, useUserRole: () => ({ isEducator: mocks.educator }) }));
 vi.mock('../../api/worksheetService', () => ({ worksheetAction: vi.fn().mockResolvedValue({ organization: { name: 'Mapped College' }, gradeLevel: 'College/University', learnerCount: 8 }) }));
 vi.mock('../LearnerWorksheets', () => ({ default: ({ courseId }: { courseId: string }) => <div>Assignments for {courseId}</div> }));
 vi.mock('@/features/ai-tutor/model', () => ({ useLearnerType: () => ({ isTeacher: false, loading: false }) }));
 vi.mock('@/features/ai-tutor/model/useTutorChat', () => ({ useTutorChat: () => ({
-  messages: mocks.empty ? [] : [{ id: '1', role: 'assistant', content: mocks.content, timestamp: new Date() }],
-  conversations: [], suggestedQuestions: [], isStreaming: mocks.streaming, isLoading: false,
+  facilitatorMode: 'auto', setFacilitatorMode: mocks.setFacilitatorMode, activeFacilitator: 'organizer',
+  messages: mocks.empty ? [] : [{ id: '1', role: 'assistant', content: mocks.content, worksheetAvailable: mocks.worksheet, timestamp: new Date() }],
+  conversationId: 'saved-conversation', conversations: [], suggestedQuestions: [], isStreaming: mocks.streaming, isLoading: false,
   isReasoning: false, error: null, sendMessage: mocks.sendMessage, stopGeneration: mocks.stopGeneration,
   refreshSuggestions: mocks.refreshSuggestions, refreshConversations: mocks.refreshConversations,
   startNewConversation: vi.fn(),
@@ -27,6 +34,7 @@ import AITutorPanel from '../AITutorPanel';
 import FloatingEducatorAIButton from '@/shared/ui/FloatingEducatorAIButton';
 
 beforeEach(() => {
+  mocks.worksheet = false;
   mocks.streaming = false;
   mocks.empty = false;
   mocks.educator = true;
@@ -40,6 +48,37 @@ function showPanel() {
     lessonContext={{ lessonId: 'lesson', lessonTitle: 'Planning your day' }} defaultExpanded /><FloatingEducatorAIButton /></MemoryRouter>);
 }
 describe('AI facilitator workspace', () => {
+  it('shows all six facilitators vertically on hover and opens a chosen role page', () => {
+    showPanel();
+    const trigger = screen.getByRole('button', { name: 'Explore six facilitators' });
+    expect(screen.queryByRole('group', { name: 'Choose a facilitator' })).not.toBeInTheDocument();
+    fireEvent.mouseEnter(trigger.parentElement!);
+    const choices = screen.getByRole('group', { name: 'Choose a facilitator' });
+    expect(within(choices).getAllByRole('button')).toHaveLength(6);
+    fireEvent.click(within(choices).getByRole('button', { name: 'Problem Solver' }));
+    expect(screen.getByRole('heading', { name: 'Problem Solver' })).toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: 'Choose a facilitator' })).not.toBeInTheDocument();
+    expect(mocks.sendMessage).not.toHaveBeenCalled();
+  });
+  it('opens the hover choices with keyboard focus and dismisses with Escape or pointer exit', () => {
+    showPanel();
+    const trigger = screen.getByRole('button', { name: 'Explore six facilitators' });
+    fireEvent.focus(trigger);
+    expect(screen.getByRole('group', { name: 'Choose a facilitator' })).toBeInTheDocument();
+    fireEvent.keyDown(trigger, { key: 'Escape' });
+    expect(screen.queryByRole('group', { name: 'Choose a facilitator' })).not.toBeInTheDocument();
+    fireEvent.mouseEnter(trigger.parentElement!);
+    fireEvent.mouseLeave(trigger.parentElement!);
+    expect(screen.queryByRole('group', { name: 'Choose a facilitator' })).not.toBeInTheDocument();
+  });
+
+  it('omits the facilitator dropdown while keeping the chat tools', () => {
+    showPanel();
+    expect(screen.queryByRole('combobox', { name: 'Active facilitator' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Automatic')).not.toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Facilitator tools' })).toBeInTheDocument();
+  });
+
   it.each([true, false])('grows the composer to three rows and collapses after sending (educator=%s)', educator => {
     mocks.educator = educator;
     showPanel();
@@ -111,7 +150,7 @@ describe('AI facilitator workspace', () => {
     expect(screen.getByRole('region', { name: 'AI facilitator' })).toBeInTheDocument();
     expect(screen.getByText('Planning your day')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Learning objectives' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Export material' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Export material' })).not.toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'Message the AI facilitator' })).toBeEnabled();
   });
   it('switches generation settings', () => {
@@ -154,6 +193,12 @@ describe('AI facilitator workspace', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Send message' }));
     expect(mocks.sendMessage).toHaveBeenCalledWith('Add examples');
   });
+  it('shows export and assignment invitation only for generated questions', async () => {
+    mocks.worksheet = true;
+    showPanel();
+    expect(screen.getByRole('button', { name: 'Export material' })).toBeInTheDocument();
+    expect(await screen.findByText('Would you like to assign these questions to your learners?')).toBeInTheDocument();
+  });
   it('announces generation and disables sending while streaming', () => {
     mocks.streaming = true;
     showPanel();
@@ -164,6 +209,7 @@ describe('AI facilitator workspace', () => {
     expect(mocks.stopGeneration).toHaveBeenCalledOnce();
   });
   it('hides response actions while streaming and shows them after completion', () => {
+    mocks.worksheet = true;
     mocks.streaming = true;
     const view = showPanel();
     expect(screen.queryByRole('button', { name: 'Export material' })).not.toBeInTheDocument();

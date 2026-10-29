@@ -21,6 +21,26 @@ describe('worksheet publication validation', () => {
   });
 });
 describe('worksheet access', () => {
+  it('restores publication status from owned persisted assignments without republishing', async () => {
+    const eq = vi.fn();
+    mocks.from.mockImplementation((table: string) => {
+      const query: Record<string, ReturnType<typeof vi.fn>> = {};
+      for (const method of ['select', 'order', 'limit']) query[method] = vi.fn(() => query);
+      query.eq = vi.fn((...args) => { eq(...args); return query; });
+      query.single = vi.fn().mockResolvedValue({ data: { role: 'college_educator' }, error: null });
+      query.maybeSingle = vi.fn().mockResolvedValue({ data: table === 'ai_worksheet_sets' ? { id: id(4), recipients: [{ count: 8 }] } : null, error: null });
+      return query;
+    });
+    mocks.rpc.mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { organization_id: id(9) }, error: null }) });
+    const response = await request({ action: 'status', conversationId: id(2), messageId: id(3) });
+    expect(response.status).toBe(200);
+    expect((await response.json()).data).toEqual({ published: true, learnerCount: 8 });
+    expect(eq).toHaveBeenCalledWith('educator_user_id', 'current-user');
+    expect(eq).toHaveBeenCalledWith('organization_id', id(9));
+    expect(eq).toHaveBeenCalledWith('source_message_id', id(3));
+    expect(mocks.rpc.mock.calls.map(call => call[0])).not.toContain('publish_ai_worksheet_bundle');
+  });
+
   beforeEach(() => vi.clearAllMocks());
   const request = (body: unknown) => handleWorksheets({ request: new Request('https://test/api/ai-tutor/worksheets', { method: 'POST', body: JSON.stringify(body) }), env: {} } as unknown as Parameters<typeof handleWorksheets>[0]);
   it('rejects educator actions for a learner even with a supplied educator role', async () => {

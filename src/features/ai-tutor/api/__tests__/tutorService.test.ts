@@ -10,6 +10,13 @@ import { sendMessage } from '../tutorService';
 
 afterEach(() => vi.clearAllMocks());
 describe('tutor streaming errors', () => {
+  it('delivers generation and facilitator metadata to the UI', async () => {
+    mocks.fetch.mockResolvedValue(new Response('event: done\ndata: {"conversationId":"saved","messageId":"questions","facilitator":"resource-provider","facilitatorMode":"auto","worksheetAvailable":true}\n\n'));
+    const stream = sendMessage({ courseId: 'course', message: 'Generate questions' });
+    expect((await stream.next()).value).toMatchObject({ type: 'done', messageId: 'questions', facilitator: 'resource-provider', worksheetAvailable: true });
+    await stream.return();
+  });
+
   it('forwards cancellation and stops consuming the response', async () => {
     const abort = new AbortController();
     const cancel = vi.fn();

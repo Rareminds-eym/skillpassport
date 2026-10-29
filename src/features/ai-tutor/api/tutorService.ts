@@ -13,6 +13,9 @@ const API_URL = getApiUrl('ai-tutor');
 // ==================== TYPES ====================
 
 export interface ChatMessage {
+  facilitator?: string;
+  facilitatorMode?: string;
+  assignmentSourceId?: string;
   worksheetAvailable?: boolean;
   status?: 'streaming' | 'complete' | 'failed' | 'stopped';
   id: string;
@@ -22,6 +25,9 @@ export interface ChatMessage {
 }
 
 interface MessageData {
+  facilitator?: string;
+  facilitatorMode?: string;
+  assignmentSourceId?: string;
   worksheetVariants?: unknown[];
   id: string;
   role: 'user' | 'assistant';
@@ -67,6 +73,7 @@ export interface Conversation {
 }
 
 export interface ChatRequest {
+  facilitatorMode?: string;
   conversationId?: string;
   courseId: string;
   lessonId?: string;
@@ -99,6 +106,9 @@ export interface CourseProgress {
 let lastConversationId: string | null = null;
 
 export interface StreamChunk {
+  facilitator?: string;
+  facilitatorMode?: string;
+  assignmentSourceId?: string;
   worksheetAvailable?: boolean;
   type: 'content' | 'reasoning' | 'done';
   content?: string;
@@ -189,6 +199,9 @@ export async function* sendMessage(request: ChatRequest, signal?: AbortSignal): 
               conversationId: parsed.conversationId,
               messageId: parsed.messageId,
               worksheetAvailable: parsed.worksheetAvailable,
+              facilitator: parsed.facilitator,
+              facilitatorMode: parsed.facilitatorMode,
+              assignmentSourceId: parsed.assignmentSourceId,
               generationUsage: parsed.generationUsage
             };
           }
@@ -245,6 +258,7 @@ export async function getConversations(courseId: string): Promise<Conversation[]
         role: m.role,
         content: m.content,
         timestamp: new Date(m.timestamp),
+        facilitator: m.facilitator, facilitatorMode: m.facilitatorMode, assignmentSourceId: m.assignmentSourceId,
         worksheetAvailable: !!m.worksheetVariants?.length
       }))
     }));
@@ -274,6 +288,7 @@ export async function getConversation(conversationId: string): Promise<Conversat
         role: m.role,
         content: m.content,
         timestamp: new Date(m.timestamp),
+        facilitator: m.facilitator, facilitatorMode: m.facilitatorMode, assignmentSourceId: m.assignmentSourceId,
         worksheetAvailable: !!m.worksheetVariants?.length
       }))
     };

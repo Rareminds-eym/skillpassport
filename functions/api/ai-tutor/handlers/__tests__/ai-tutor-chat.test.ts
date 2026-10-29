@@ -3,10 +3,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   client: { from: vi.fn(), rpc: vi.fn() },
-  increment: vi.fn(),
+  increment: vi.fn(), roles: ['college_educator'],
 }));
 vi.mock('../../../../lib/auth', () => ({
-  getContextUser: () => ({ id: 'educator-id', roles: ['college_educator'] }),
+  getContextUser: () => ({ id: 'educator-id', roles: mocks.roles }),
   getServiceClient: () => mocks.client,
 }));
 vi.mock('../../../shared/ai-config', () => ({
@@ -28,10 +28,12 @@ describe('tutor conversation persistence', () => {
   let saveResult: { data: { id: string } | null; error: { message: string } | null };
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.roles = ['college_educator'];
     saveResult = { data: { id: 'saved-conversation' }, error: null };
     mocks.client.from.mockImplementation((table: string) => {
       const query: Record<string, unknown> = {};
-      for (const method of ['select', 'eq', 'insert']) query[method] = vi.fn(() => query);
+      for (const method of ['select', 'eq', 'insert', 'order']) query[method] = vi.fn(() => query);
+      query.limit = vi.fn().mockResolvedValue({ data: [], error: null });
       query.maybeSingle = vi.fn().mockResolvedValue({
         data: table === 'learners' ? null : { messages: [] }, error: null,
       });
@@ -58,6 +60,67 @@ describe('tutor conversation persistence', () => {
     return response.text();
   }
 
+  it('routes a typed generation request and persists its selected persona', async () => {
+    mocks.client.rpc.mockImplementation(async name => name === 'ai_worksheet_context' ? { data: { gradeLevel: 'College/University' }, error: null } : { error: null });
+    const response = await handleAiTutorChat({ request: new Request('https://example.test/chat', { method: 'POST', body: JSON.stringify({ courseId: 'course-id', message: 'Create a worksheet with 15 questions', facilitatorMode: 'organizer' }) }), env: { SUPABASE_URL: 'https://example.test', SUPABASE_SERVICE_ROLE_KEY: 'test' } } as Parameters<typeof handleAiTutorChat>[0]);
+    const stream = await response.text();
+    expect(stream).toContain('"facilitator":"organizer"');
+    expect(stream).toContain('"worksheetAvailable":true');
+    const query = mocks.client.from.mock.results.find(result => result.value.insert.mock.calls.length)?.value;
+    expect(query.insert.mock.calls[0][0].messages.at(-1)).toMatchObject({ facilitatorMode: 'organizer', worksheetConfig: { questionCount: 15, gradeLevel: 'College/University' } });
+  });
+  it('generates assignable question variants after a clarification reply', async () => {
+    const original = mocks.client.from.getMockImplementation()!;
+    mocks.client.from.mockImplementation((table: string) => {
+      const query = original(table);
+      if (table === 'tutor_conversations') query.maybeSingle.mockResolvedValue({ data: { messages: [
+        { id: 'request', role: 'user', content: 'I need a worksheet with 5 multiple-choice questions for beginner and intermediate levels' },
+        { id: 'clarification', role: 'assistant', content: 'I need to clarify. Do you want specific topics?', facilitatorMode: 'auto', facilitator: 'facilitator-of-learning' },
+      ] }, error: null });
+      return query;
+    });
+    mocks.client.rpc.mockImplementation(async name => name === 'ai_worksheet_context' ? { data: { gradeLevel: 'College/University' }, error: null } : { error: null });
+    const response = await handleAiTutorChat({ request: new Request('https://example.test/chat', { method: 'POST', body: JSON.stringify({ courseId: 'course-id', conversationId: 'conversation', message: 'it can general', facilitatorMode: 'auto' }) }), env: { SUPABASE_URL: 'https://example.test', SUPABASE_SERVICE_ROLE_KEY: 'test' } } as Parameters<typeof handleAiTutorChat>[0]);
+    const stream = await response.text();
+    expect(stream).toContain('"facilitator":"resource-provider"');
+    expect(stream).toContain('"worksheetAvailable":true');
+    expect(stream).toContain('event: done');
+    const saved = mocks.client.rpc.mock.calls.find(call => call[0] === 'append_tutor_messages')?.[1].p_new_messages.at(-1);
+    expect(saved.worksheetVariants.map((variant: { difficulty: string }) => variant.difficulty)).toEqual(['beginner', 'intermediate']);
+    expect(saved.worksheetConfig).toMatchObject({ questionCount: 5, templateType: 'multiple_choice' });
+  });
+  it('routes assignment requests to an existing source without publishing', async () => {
+    const original = mocks.client.from.getMockImplementation()!;
+    mocks.client.from.mockImplementation((table: string) => {
+      const query = original(table);
+      if (table === 'tutor_conversations') query.maybeSingle.mockResolvedValue({ data: { messages: [{ id: 'source-worksheet', role: 'assistant', content: 'Questions', worksheetConfig: { difficulty: 'medium', questionCount: 10 }, worksheetVariants: [{}] }] }, error: null });
+      return query;
+    });
+    const response = await handleAiTutorChat({ request: new Request('https://example.test/chat', { method: 'POST', body: JSON.stringify({ courseId: 'course-id', conversationId: 'conversation', message: 'Assign this to my learners' }) }), env: { SUPABASE_URL: 'https://example.test', SUPABASE_SERVICE_ROLE_KEY: 'test' } } as Parameters<typeof handleAiTutorChat>[0]);
+    const stream = await response.text();
+    expect(stream).toContain('"assignmentSourceId":"source-worksheet"');
+    expect(stream).toContain('Review the learner details below');
+    expect(fetch).not.toHaveBeenCalled();
+    expect(stream).toContain('"worksheetAvailable":false');
+    expect(mocks.client.rpc.mock.calls.map(call => call[0])).toEqual(['append_tutor_messages']);
+  });
+  it('blocks learner access to educator persona controls', async () => {
+    mocks.roles = ['learner'];
+    const response = await handleAiTutorChat({ request: new Request('https://example.test/chat', { method: 'POST', body: JSON.stringify({ courseId: 'course-id', message: 'Hello', facilitatorMode: 'organizer' }) }), env: { SUPABASE_URL: 'https://example.test', SUPABASE_SERVICE_ROLE_KEY: 'test' } } as Parameters<typeof handleAiTutorChat>[0]);
+    expect(response.status).toBe(403);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+  it('requires a verified teaching level for typed generation', async () => {
+    mocks.client.rpc.mockResolvedValue({ data: null, error: null });
+    const response = await handleAiTutorChat({ request: new Request('https://example.test/chat', { method: 'POST', body: JSON.stringify({ courseId: 'course-id', message: 'Create a worksheet' }) }), env: { SUPABASE_URL: 'https://example.test', SUPABASE_SERVICE_ROLE_KEY: 'test' } } as Parameters<typeof handleAiTutorChat>[0]);
+    expect(response.status).toBe(400);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+  it('rejects invalid persona IDs before calling the provider', async () => {
+    const response = await handleAiTutorChat({ request: new Request('https://example.test/chat', { method: 'POST', body: JSON.stringify({ courseId: 'course-id', message: 'Hello', facilitatorMode: '__proto__' }) }), env: { SUPABASE_URL: 'https://example.test', SUPABASE_SERVICE_ROLE_KEY: 'test' } } as Parameters<typeof handleAiTutorChat>[0]);
+    expect(response.status).toBe(400);
+    expect(fetch).not.toHaveBeenCalled();
+  });
   it('completes only after saving a new educator conversation', async () => {
     const stream = await generate();
     expect(stream).toContain('event: done');

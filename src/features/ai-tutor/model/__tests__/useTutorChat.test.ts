@@ -1,3 +1,4 @@
+import { getConversation } from '../../api/tutorService';
 import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -13,10 +14,58 @@ vi.mock('@/shared/config/logging', () => ({ getLogger: () => ({ error: vi.fn() }
 import { useTutorChat } from '../useTutorChat';
 import { DEFAULT_WORKSHEET_CONFIG } from '../../types/worksheet';
 import { DEFAULT_LESSON_PLAN_CONFIG } from '../../types/lesson-plan';
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => { vi.clearAllMocks(); sessionStorage.clear(); });
 afterEach(cleanup);
 
 describe('material completion state', () => {
+  it('does not restore another user or course conversation', () => {
+    sessionStorage.setItem('ai-tutor-active:alice:other-course', 'private-conversation');
+    const { result } = renderHook(() => useTutorChat({ courseId: 'course', userId: 'bob' }));
+    expect(getConversation).not.toHaveBeenCalled();
+    expect(result.current.messages).toEqual([]);
+  });
+  it('does not overwrite a new chat when an old restore finishes later', async () => {
+    sessionStorage.setItem('ai-tutor-active:educator:course', 'saved');
+    let resolve!: (value: Awaited<ReturnType<typeof getConversation>>) => void;
+    vi.mocked(getConversation).mockReturnValueOnce(new Promise(done => { resolve = done; }));
+    const { result } = renderHook(() => useTutorChat({ courseId: 'course', userId: 'educator' }));
+    act(() => result.current.startNewConversation());
+    await act(async () => { resolve({ id: 'saved', courseId: 'course', messages: [{ id: 'old', content: 'Old questions' }] } as Awaited<ReturnType<typeof getConversation>>); });
+    expect(result.current.messages).toEqual([]);
+    expect(result.current.conversationId).toBeNull();
+  });
+  it('restores the active course conversation after refresh and clears it for new chat', async () => {
+    const saved = { id: 'saved', courseId: 'course', messages: [{ id: 'questions', role: 'assistant', content: 'Questions', worksheetAvailable: true, timestamp: new Date() }] } as Awaited<ReturnType<typeof getConversation>>;
+    vi.mocked(getConversation).mockResolvedValue(saved);
+    const first = renderHook(() => useTutorChat({ courseId: 'course', userId: 'educator' }));
+    await act(async () => { await first.result.current.loadConversation('saved'); });
+    first.unmount();
+    const restored = renderHook(() => useTutorChat({ courseId: 'course', userId: 'educator' }));
+    await waitFor(() => expect(restored.result.current.messages.at(-1)?.worksheetAvailable).toBe(true));
+    expect(restored.result.current.conversationId).toBe('saved');
+    act(() => restored.result.current.startNewConversation());
+    expect(sessionStorage.getItem('ai-tutor-active:educator:course')).toBeNull();
+  });
+
+  it('restores the saved conversation persona, sends it on each turn and resets for new chat', async () => {
+    vi.mocked(getConversation).mockResolvedValue({ id: 'saved', messages: [{ id: 'reply', role: 'assistant', content: 'Feedback', facilitator: 'mentor-and-guide', facilitatorMode: 'mentor-and-guide', timestamp: new Date() }] } as Awaited<ReturnType<typeof getConversation>>);
+    mocks.send.mockImplementation(async function* () { yield { type: 'done', conversationId: 'saved', facilitator: 'mentor-and-guide', facilitatorMode: 'mentor-and-guide' }; });
+    const { result } = renderHook(() => useTutorChat({ courseId: 'course', isEducator: true }));
+    await act(async () => { await result.current.loadConversation('saved'); });
+    expect(result.current.facilitatorMode).toBe('mentor-and-guide');
+    await act(async () => { await result.current.sendMessage('What next?'); });
+    expect(mocks.send.mock.calls[0][0].facilitatorMode).toBe('mentor-and-guide');
+    expect(result.current.activeFacilitator).toBe('mentor-and-guide');
+    act(() => result.current.startNewConversation());
+    expect(result.current.facilitatorMode).toBe('auto');
+  });
+  it('does not send educator persona controls for a learner', async () => {
+    mocks.send.mockImplementation(async function* () { yield { type: 'done' }; });
+    const { result } = renderHook(() => useTutorChat({ courseId: 'course' }));
+    await act(async () => { await result.current.sendMessage('Explain this'); });
+    expect(mocks.send.mock.calls[0][0]).not.toHaveProperty('facilitatorMode');
+  });
+
   it('aborts the request and preserves received text as stopped', async () => {
     mocks.send.mockImplementation(async function* (_request, signal: AbortSignal) {
       yield { type: 'content', content: 'First questions' };
