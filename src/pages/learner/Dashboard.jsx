@@ -1,3 +1,4 @@
+import RecommendationProfilePrompt, { RecommendationReadinessGate } from '@/widgets/learner-dashboard/ui/RecommendationProfilePrompt';
 import {
   ChartBarIcon,
   LockClosedIcon,
@@ -105,9 +106,11 @@ import {
 // Import Tour Components - Now handled globally
 // Tours are managed by GlobalTourManager in App.tsx
 
-const OpportunitiesCardContent = ({ opportunities, learnerData, navigate, matchedJobs = [] }) => {
+const OpportunitiesCardContent = ({ opportunities, learnerData, navigate, matchedJobs = [], readiness }) => {
   const [selectedOpportunity, setSelectedOpportunity] = useState(null);
   const [showModal, setShowModal] = useState(false);
+
+  if (readiness?.state === 'needs_profile' || readiness?.state === 'limited_context') return <RecommendationProfilePrompt readiness={readiness} />;
 
   // Check if user is a learner
   const isLearnerUser = isLearner(learnerData);
@@ -890,8 +893,13 @@ const LearnerDashboard = () => {
     loading: aiLoading,
     cached: aiCached,
     fallback: aiFallback,
+    readiness: aiReadiness,
+    error: aiError,
+    processing: aiProcessing,
+    refreshRecommendations: refreshAIRecommendations,
   } = useLearnerAIRecommendations({
     enabled: !isViewingOthersProfile,
+    learnerId: learnerData?.id,
     autoFetch: true
   });
 
@@ -2143,6 +2151,7 @@ const LearnerDashboard = () => {
           </div>
         </CardHeader>
         <CardContent className="pt-4 p-6 space-y-4">
+          <RecommendationReadinessGate readiness={aiReadiness} error={aiError} processing={aiProcessing} onRetry={refreshAIRecommendations}>
           {opportunitiesLoading ? (
             <div className="flex justify-center items-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -2172,8 +2181,10 @@ const LearnerDashboard = () => {
               learnerData={learnerData}
               navigate={navigate}
               matchedJobs={matchedJobs}
+              readiness={aiReadiness}
             />
           )}
+          </RecommendationReadinessGate>
         </CardContent>
       </Card>
     ),

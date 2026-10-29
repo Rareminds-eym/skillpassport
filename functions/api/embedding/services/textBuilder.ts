@@ -1,33 +1,33 @@
 /**
  * Text Builders
  * Single source of truth for building embedding text from database records
- * 
+ *
  * CRITICAL: Always use these builders to ensure consistent embeddings
  * across the entire application.
- * 
+ *
  * SCHEMA-ALIGNED IMPLEMENTATION:
  * - Uses actual column names from SQL schema (supabase/migrations/20260204094733_remote_schema.sql)
  * - Filters: enabled=true, approval_status='approved', expiry_date validation
  * - Includes training JOIN for certificates via training_id
- * - Supports both legacy (date_of_birth, contact_number) and new (dateOfBirth, contactNumber) columns
+ * - Identity, demographics, contact fields and raw profile links are excluded
  */
 
 import { SupabaseClient } from '@supabase/supabase-js';
-import { 
+import {
   CourseData,
   OpportunityData,
   EmbeddingError
 } from '../types';
 import { EMBEDDING_CONFIG } from '../config/constants';
+import { evaluateRecommendationReadiness, normalizeCareerSignal, isUsefulCareerSignal } from '../../../lib/recommendation-readiness';
+import type { RecommendationReadiness } from '../../../../shared/contracts/job-recommendations';
+import { careerPreferencesSchema, type CareerPreferences } from '../../../../shared/contracts/career-preferences';
+import { assessmentRoleIntent, prepareRecommendationLearning } from '../../../lib/recommendation-learning';
 
 // Database record types (matching actual Supabase schema)
 interface LearnerRecord {
   id: string;
-  name: string | null;
-  age: number | null;
-  date_of_birth: string | null;
-  dateOfBirth: string | null;
-  gender: string | null;
+  user_id: string;
   bio: string | null;
   branch_field: string | null;
   course_name: string | null;
@@ -46,14 +46,6 @@ interface LearnerRecord {
   gap_in_studies: boolean | null;
   gap_years: number | null;
   gap_reason: string | null;
-  github_link: string | null;
-  linkedin_link: string | null;
-  portfolio_link: string | null;
-  resumeUrl: string | null;
-  profilePicture: string | null;
-  contact_number: string | null;
-  contactNumber: string | null;
-  email: string | null;
 }
 
 // These interfaces document the expected Supabase response shape.
@@ -61,40 +53,96 @@ interface LearnerRecord {
 
 /**
  * Build ENRICHED text from learner record
- * 
+ *
  * This is the ONLY correct way to build learner text.
  * Includes: profile, skills, certificates, projects, trainings, and courses
- * 
+ *
  * @param supabase - Supabase client
  * @param learnerId - Learner UUID
  * @returns Enriched text string (typically 2000-4000 chars)
  * @throws EmbeddingError if insufficient data
  */
-export async function buildlearnerTextFromDatabase(
+export interface LearnerRecommendationContext {
+  text: string;
+  readiness: RecommendationReadiness;
+  inputRevision: string;
+  preferences: CareerPreferences;
+  skillNames: string[];
+  softSkillNames: string[];
+  inferredRoles: string[];
+  sourceStatus: { assessment: string; learning: string };
+}
+
+// Reserve room for every source category; a long biography/certificate must
+// not hide skills or completed learning at the worker's 10,000-character cap.
+const CAREER_TEXT_BUDGETS: Record<string, number> = {
+  '=== LEARNER PROFILE ===': 1100, '=== EDUCATION ===': 1000,
+  '=== EXPERIENCE ===': 1200, '=== TECHNICAL SKILLS ===': 1800,
+  '=== CERTIFICATIONS ===': 900, '=== PROJECTS ===': 1200,
+  '=== TRAINING PROGRAMS ===': 600, '=== COMPLETED COURSES ===': 800,
+  '=== VERIFIED LEARNING ===': 1000,
+};
+function budgetCareerText(parts: string[]): string {
+  const sections: Array<{ heading: string; lines: string[] }> = [];
+  for (const part of parts) {
+    const heading = part.trim();
+    if (Object.hasOwn(CAREER_TEXT_BUDGETS, heading)) sections.push({ heading, lines: [heading] });
+    else sections[sections.length - 1]?.lines.push(part);
+  }
+  return sections.map(section => section.lines.join('\n').slice(0, CAREER_TEXT_BUDGETS[section.heading])).join('\n');
+}
+
+export async function readRecommendationContextRevision(supabase: SupabaseClient, learnerId: string, userId: string): Promise<string> {
+  const { data, error } = await supabase.rpc('get_recommendation_context_revision_v1', { p_learner_id: learnerId, p_user_id: userId });
+  if (error || typeof data !== 'string' || !/^\d+$/.test(data)) throw new EmbeddingError('Career context is temporarily unavailable', 'API_ERROR');
+  return data;
+}
+
+export async function readRecommendationFreshness(supabase: SupabaseClient, learnerId: string, userId: string): Promise<{ inputRevision: string; catalogRevision: string }> {
+  const { data, error } = await supabase.rpc('get_recommendation_freshness_v1', { p_learner_id: learnerId, p_user_id: userId });
+  if (error || !data || typeof data.inputRevision !== 'string' || typeof data.catalogRevision !== 'string' || !/^\d+$/.test(data.inputRevision) || !/^\d+$/.test(data.catalogRevision)) throw new EmbeddingError('Career context is temporarily unavailable', 'API_ERROR');
+  return data;
+}
+
+export async function buildLearnerRecommendationContext(
   supabase: SupabaseClient,
-  learnerId: string
-): Promise<string> {
+  learnerId: string,
+  expectedUserId?: string,
+  env: Record<string, any> = {},
+): Promise<LearnerRecommendationContext> {
   try {
-    // Fetch learner with ALL relevant data for comprehensive embedding
+    let ownerId = expectedUserId;
+    if (!ownerId) {
+      const identity = await supabase.from('learners').select('user_id').eq('id', learnerId).single();
+      if (identity.error || typeof identity.data?.user_id !== 'string') throw new EmbeddingError('Learner identity is temporarily unavailable', 'API_ERROR');
+      ownerId = identity.data.user_id;
+    }
+    const initialPreferences = await supabase.from('learner_career_preferences').select('preferences').eq('learner_id', learnerId).maybeSingle();
+    const initialParsed = careerPreferencesSchema.safeParse(initialPreferences.data?.preferences ?? {});
+    if (initialPreferences.error || !initialParsed.success) throw new EmbeddingError('Career preferences are temporarily unavailable', 'API_ERROR');
+    // Synchronize the external dependency before opening the local read fence.
+    // Only its hash is stored; no learner submissions/review payload is copied.
+    const learning = await prepareRecommendationLearning(supabase, env, learnerId, ownerId, initialParsed.data);
+    // Bracket profile fields as well as evidence queries, not just the latter.
+    const inputRevision = await readRecommendationContextRevision(supabase, learnerId, ownerId);
+    // Fetch only the profile fields used for career context.
     const { data: learner, error: learnerError } = await supabase
       .from('learners')
       .select(`
-        id, name, age, date_of_birth, dateOfBirth, gender, bio,
-        branch_field, course_name, university, college_school_name, 
+        id, user_id, bio,
+        branch_field, course_name, university, college_school_name,
         city, state, country,
         grade, semester, currentCgpa,
         interests, hobbies, languages,
-        work_experience, gap_in_studies, gap_years, gap_reason,
-        github_link, linkedin_link, portfolio_link,
-        resumeUrl, profilePicture,
-        contact_number, contactNumber, email
+        work_experience, gap_in_studies, gap_years, gap_reason
       `)
       .eq('id', learnerId)
       .single();
 
-    if (learnerError || !learner) {
+    if (learnerError) throw new EmbeddingError('Learner profile is temporarily unavailable', 'API_ERROR');
+    if (!learner || learner.user_id !== ownerId) {
       throw new EmbeddingError(
-        `Failed to fetch learner: ${learnerError?.message || 'Not found'}`,
+        'Learner identity changed during context collection',
         'INSUFFICIENT_DATA',
         { learnerId, error: learnerError }
       );
@@ -110,7 +158,10 @@ export async function buildlearnerTextFromDatabase(
       { data: certificates, error: certificatesError },
       { data: projects, error: projectsError },
       { data: courseEnrollments, error: coursesError },
-      { data: trainings, error: trainingsError }
+      { data: trainings, error: trainingsError },
+      { data: education, error: educationError },
+      { data: experience, error: experienceError },
+      { data: preferenceRow, error: preferencesError },
     ] = await Promise.all([
       // Fetch skills with proficiency levels
       supabase
@@ -122,13 +173,13 @@ export async function buildlearnerTextFromDatabase(
         .order('level', { ascending: false })
         .order('id', { ascending: true })
         .limit(EMBEDDING_CONFIG.MAX_SKILLS),
-      
+
       // Fetch certificates with full context including training join
       supabase
         .from('certificates')
         .select(`
           title, issuer, level, category, description, platform, instructor,
-          trainings!training_id(title)
+          trainings!training_id(title, learner_id, enabled, approval_status)
         `)
         .eq('learner_id', learnerId)
         .eq('enabled', true)
@@ -136,7 +187,7 @@ export async function buildlearnerTextFromDatabase(
         .eq('approval_status', 'approved')
         .order('id', { ascending: true })
         .limit(EMBEDDING_CONFIG.MAX_CERTIFICATES),
-      
+
       // Fetch projects with tech stacks
       supabase
         .from('projects')
@@ -149,40 +200,79 @@ export async function buildlearnerTextFromDatabase(
         .eq('approval_status', 'approved')
         .order('id', { ascending: true })
         .limit(EMBEDDING_CONFIG.MAX_PROJECTS),
-      
+
       // Fetch course enrollments
       supabase
         .from('course_enrollments')
         .select('course_title, status, skills_acquired')
         .eq('learner_id', learnerId)
-        .in('status', ['completed', 'in_progress', 'active'])
+        .eq('status', 'completed')
         .order('id', { ascending: true })
         .limit(EMBEDDING_CONFIG.MAX_COURSES),
-      
+
       // Fetch trainings
       supabase
         .from('trainings')
         .select('title, organization, description, source, status, start_date, end_date')
         .eq('learner_id', learnerId)
         .eq('approval_status', 'approved')
+        // Existing profile visibility treats legacy NULL as visible.
+        .or('enabled.is.null,enabled.eq.true')
         .order('id', { ascending: true })
-        .limit(EMBEDDING_CONFIG.MAX_TRAININGS)
+        .limit(EMBEDDING_CONFIG.MAX_TRAININGS),
+      supabase.from('education').select('degree, department')
+        .eq('learner_id', learnerId).eq('approval_status', 'approved')
+        .or('enabled.is.null,enabled.eq.true').order('id', { ascending: true }).limit(10),
+      supabase.from('experience').select('role, description, start_date, end_date')
+        .eq('learner_id', learnerId).eq('approval_status', 'approved')
+        .or('enabled.is.null,enabled.eq.true').order('id', { ascending: true }).limit(10),
+      supabase.from('learner_career_preferences').select('preferences').eq('learner_id', learnerId).maybeSingle(),
     ]);
 
-    if ([skillsError, certificatesError, projectsError, coursesError, trainingsError].some(Boolean)) {
+    if ([skillsError, certificatesError, projectsError, coursesError, trainingsError, educationError, experienceError, preferencesError].some(Boolean)) {
       throw new EmbeddingError('Learner evidence is temporarily unavailable', 'API_ERROR');
     }
+
+    const str = normalizeCareerSignal;
+    const parsedPreferences = careerPreferencesSchema.safeParse(preferenceRow?.preferences ?? {});
+    if (!parsedPreferences.success) throw new EmbeddingError('Career preferences are temporarily unavailable', 'API_ERROR');
+    const preferences = parsedPreferences.data;
+    if (JSON.stringify(preferences) !== JSON.stringify(initialParsed.data)) throw new EmbeddingError('Career preferences changed during collection', 'CONTEXT_CHANGED');
+    let inferredRoles: string[] = [];
+    if (preferences.useAssessmentRecommendations) {
+      const assessment = await supabase.from('personal_assessment_results').select('id, career_fit').eq('learner_id', learnerId).eq('status', 'completed').order('created_at', { ascending: false }).order('id', { ascending: true }).limit(1).maybeSingle();
+      if (assessment.error) throw new EmbeddingError('Career assessment is temporarily unavailable', 'API_ERROR');
+      inferredRoles = assessmentRoleIntent(assessment.data?.career_fit);
+    }
+    const legacyExperience = str(learnerRecord.work_experience);
+    const legacyField = str(learnerRecord.branch_field);
+    const legacyDegree = str(learnerRecord.course_name);
+    const usableSkills = (skills || []).filter(row => isUsefulCareerSignal(str(row.name)));
+    const list = (value: unknown): string[] => Array.isArray(value) ? value.map(str).filter(Boolean).slice(0, 100) : [];
+    const readiness = evaluateRecommendationReadiness({
+      skills: usableSkills.map(row => str(row.name)),
+      education: [
+        { field: legacyField, degree: legacyDegree },
+        ...(education || []).map(row => ({ field: str(row.department), degree: str(row.degree) })),
+      ],
+      experience: [
+        { description: legacyExperience },
+        ...(experience || []).map(row => ({ role: str(row.role), description: str(row.description) })),
+      ],
+      projects: (projects || []).map(row => ({ title: str(row.title), description: str(row.description), technologies: list(row.tech_stack) })),
+      credentials: (certificates || []).map(row => str(row.title)),
+      completedCourses: [...(courseEnrollments || []).filter(row => row.status === 'completed').map(row => str(row.course_title)), ...(learning?.levels || []).map(row => row.title)].slice(0, 100),
+      trainings: (trainings || []).map(row => ({ title: str(row.title), status: str(row.status) })),
+      interests: [...list(learnerRecord.interests), ...preferences.targetRoles, ...inferredRoles].slice(0, 100),
+    });
 
     // ========== Build ENRICHED Embedding Text ==========
     const parts: string[] = [];
 
     // Section 1: Core Profile
     parts.push('=== LEARNER PROFILE ===');
-    if (learnerRecord.name) parts.push(`Name: ${learnerRecord.name}`);
-    if (learnerRecord.age) parts.push(`Age: ${learnerRecord.age}`);
-    if (learnerRecord.gender) parts.push(`Gender: ${learnerRecord.gender}`);
-    if (learnerRecord.branch_field) parts.push(`Field of Study: ${learnerRecord.branch_field}`);
-    if (learnerRecord.course_name) parts.push(`Course: ${learnerRecord.course_name}`);
+    if (legacyField) parts.push(`Field of Study: ${legacyField}`);
+    if (legacyDegree) parts.push(`Course: ${legacyDegree}`);
     if (learnerRecord.university) parts.push(`University: ${learnerRecord.university}`);
     if (learnerRecord.college_school_name) parts.push(`Institution: ${learnerRecord.college_school_name}`);
     if (learnerRecord.city) parts.push(`City: ${learnerRecord.city}`);
@@ -204,60 +294,55 @@ export async function buildlearnerTextFromDatabase(
       parts.push(`Languages: ${learnerRecord.languages.join(', ')}`);
     }
 
-    // Add work experience and career gaps
-    if (learnerRecord.work_experience) {
-      parts.push(`Work Experience: ${learnerRecord.work_experience}`);
-    }
+    // Stable, deduplicated normalized records supplement the legacy columns.
+    const fingerprint = (value: string) => value.normalize('NFKC').trim().replace(/\s+/g, ' ').toLowerCase();
+    const uniqueLines = (values: string[]) => [...new Map(values.filter(Boolean).map(value => [fingerprint(value), value])).values()];
+    const normalizedEducation = uniqueLines((education || []).map(row =>
+      [str(row.degree), str(row.department)].filter(Boolean).join(' · ')));
+    const legacyEducation = [legacyDegree, legacyField].filter(Boolean).join(' · ');
+    if (normalizedEducation.length) parts.push('=== EDUCATION ===');
+    for (const item of normalizedEducation) if (fingerprint(item) !== fingerprint(legacyEducation)) parts.push(`Education: ${item}`);
+    const normalizedExperience = uniqueLines((experience || []).map(row =>
+      [str(row.role), str(row.description)].filter(Boolean).join(' · ')));
+    if (normalizedExperience.length || legacyExperience) parts.push('=== EXPERIENCE ===');
+    if (legacyExperience) parts.push(`Work Experience: ${legacyExperience}`);
+    for (const item of normalizedExperience) if (fingerprint(item) !== fingerprint(legacyExperience)) parts.push(`Experience: ${item}`);
     if (learnerRecord.gap_in_studies && learnerRecord.gap_reason) {
       parts.push(`Career Gap: ${learnerRecord.gap_years || 0} years - ${learnerRecord.gap_reason}`);
     }
 
-    // Add social/portfolio links
-    const links: string[] = [];
-    if (learnerRecord.github_link) links.push(`GitHub: ${learnerRecord.github_link}`);
-    if (learnerRecord.linkedin_link) links.push(`LinkedIn: ${learnerRecord.linkedin_link}`);
-    if (learnerRecord.portfolio_link) links.push(`Portfolio: ${learnerRecord.portfolio_link}`);
-    if (links.length > 0) {
-      parts.push(`Professional Links: ${links.join(', ')}`);
-    }
-
-    // Section 2: Skills with Proficiency
-    if (skills && skills.length > 0) {
-      parts.push('\n=== TECHNICAL SKILLS ===');
-      const safeStr = (val: unknown): string | null => typeof val === 'string' ? val : null;
-      const safeNum = (val: unknown): number | null => typeof val === 'number' ? val : null;
-      
-      const skillStrings = (skills as unknown as Record<string, unknown>[]).map((s) => {
-        const name = safeStr(s.name);
-        if (!name) return null;
-        
-        let skillStr = name;
-        const level = safeNum(s.level);
-        const proficiencyLevel = safeStr(s.proficiency_level);
-        const type = safeStr(s.type);
-        const description = safeStr(s.description);
-        
-        if (level) skillStr += ` (Level ${level}/5)`;
-        else if (proficiencyLevel) skillStr += ` (${proficiencyLevel})`;
-        if (type) skillStr += ` [${type}]`;
-        if (description) skillStr += ` - ${description}`;
-        return skillStr;
-      }).filter((s): s is string => s !== null);
-      
-      if (skillStrings.length > 0) {
-        parts.push(skillStrings.join(', '));
-      }
+    // Reserve a share for every selected skill; a verbose early description
+    // must not erase later names that established readiness.
+    if (usableSkills.length > 0) {
+      const heading = '=== TECHNICAL SKILLS ===';
+      const separator = ', ';
+      const perSkill = Math.floor((CAREER_TEXT_BUDGETS[heading] - heading.length - 1
+        - separator.length * (usableSkills.length - 1)) / usableSkills.length);
+      parts.push(heading);
+      const skillStrings = usableSkills.map(skill => {
+        let line = str(skill.name);
+        const level = typeof skill.level === 'number' ? skill.level : null;
+        const proficiency = str(skill.proficiency_level);
+        const type = str(skill.type);
+        const description = str(skill.description);
+        if (level) line += ` (Level ${level}/5)`;
+        else if (proficiency) line += ` (${proficiency})`;
+        if (type) line += ` [${type}]`;
+        if (description) line += ` - ${description}`;
+        return line.slice(0, perSkill);
+      });
+      parts.push(skillStrings.join(separator));
     }
 
     // Section 3: Certificates
     if (certificates && certificates.length > 0) {
       parts.push('\n=== CERTIFICATIONS ===');
       const safeStr = (val: unknown): string | null => typeof val === 'string' ? val : null;
-      
+
       for (const cert of certificates as unknown as Record<string, unknown>[]) {
         const title = safeStr(cert.title);
         if (!title) continue;
-        
+
         let certStr = title;
         const issuer = safeStr(cert.issuer);
         const platform = safeStr(cert.platform);
@@ -265,35 +350,40 @@ export async function buildlearnerTextFromDatabase(
         const category = safeStr(cert.category);
         const instructor = safeStr(cert.instructor);
         const description = safeStr(cert.description);
-        
+
         if (issuer) certStr += ` from ${issuer}`;
         if (platform) certStr += ` on ${platform}`;
         if (level) certStr += ` (${level})`;
         if (category) certStr += ` - Category: ${category}`;
         if (instructor) certStr += ` - Instructor: ${instructor}`;
         if (description) certStr += `. ${description}`;
-        
+
         // Handle trainings join - can be object, array, or null
         const trainings = cert.trainings;
         let trainingTitle: string | null = null;
-        
+
         if (trainings && typeof trainings === 'object') {
           if (Array.isArray(trainings) && trainings.length > 0) {
             // Array case: take first element's title
             const firstTraining = trainings[0];
-            if (firstTraining && typeof firstTraining === 'object') {
+            if (firstTraining && typeof firstTraining === 'object' &&
+              firstTraining.learner_id === learnerId &&
+              firstTraining.enabled !== false && firstTraining.approval_status === 'approved') {
               trainingTitle = safeStr((firstTraining as Record<string, unknown>).title);
             }
-          } else if (!Array.isArray(trainings)) {
+          } else if (!Array.isArray(trainings) &&
+            (trainings as Record<string, unknown>).learner_id === learnerId &&
+            (trainings as Record<string, unknown>).enabled !== false &&
+            (trainings as Record<string, unknown>).approval_status === 'approved') {
             // Object case: extract title directly
             trainingTitle = safeStr((trainings as Record<string, unknown>).title);
           }
         }
-        
+
         if (trainingTitle) {
           certStr += ` | Related Training: ${trainingTitle}`;
         }
-        
+
         parts.push(`• ${certStr}`);
       }
     }
@@ -302,21 +392,21 @@ export async function buildlearnerTextFromDatabase(
     if (projects && projects.length > 0) {
       parts.push('\n=== PROJECTS ===');
       const safeStr = (val: unknown): string | null => typeof val === 'string' ? val : null;
-      
+
       for (const proj of projects as unknown as Record<string, unknown>[]) {
         const title = safeStr(proj.title);
         if (!title) continue;
-        
+
         let projStr = title;
         const role = safeStr(proj.role);
         const organization = safeStr(proj.organization);
         const status = safeStr(proj.status);
         const description = safeStr(proj.description);
-        
+
         if (role) projStr += ` (${role})`;
         if (organization) projStr += ` at ${organization}`;
         if (status) projStr += ` [${status}]`;
-        
+
         const techStack = proj.tech_stack;
         if (Array.isArray(techStack) && techStack.length > 0) {
           const techStrings = techStack
@@ -326,7 +416,7 @@ export async function buildlearnerTextFromDatabase(
             projStr += ` | Technologies: ${techStrings.join(', ')}`;
           }
         }
-        
+
         if (description) {
           projStr += `. ${description.slice(0, EMBEDDING_CONFIG.PROJECT_DESC_MAX_LENGTH)}`;
         }
@@ -338,17 +428,17 @@ export async function buildlearnerTextFromDatabase(
     if (trainings && trainings.length > 0) {
       parts.push('\n=== TRAINING PROGRAMS ===');
       const safeStr = (val: unknown): string | null => typeof val === 'string' ? val : null;
-      
+
       for (const training of trainings as unknown as Record<string, unknown>[]) {
         const title = safeStr(training.title);
         if (!title) continue;
-        
+
         let trainStr = title;
         const organization = safeStr(training.organization);
         const source = safeStr(training.source);
         const status = safeStr(training.status);
         const description = safeStr(training.description);
-        
+
         if (organization) trainStr += ` by ${organization}`;
         if (source) trainStr += ` via ${source}`;
         if (status) trainStr += ` (${status})`;
@@ -362,19 +452,19 @@ export async function buildlearnerTextFromDatabase(
     // Section 6: Completed Courses
     if (courseEnrollments && courseEnrollments.length > 0) {
       const safeStr = (val: unknown): string | null => typeof val === 'string' ? val : null;
-      
+
       const completed = (courseEnrollments as unknown as Record<string, unknown>[])
         .filter((c) => safeStr(c.status) === 'completed');
-      
+
       if (completed.length > 0) {
         parts.push('\n=== COMPLETED COURSES ===');
         for (const course of completed.slice(0, EMBEDDING_CONFIG.MAX_COURSES)) {
           const courseTitle = safeStr(course.course_title);
           if (!courseTitle) continue;
-          
+
           let courseStr = courseTitle;
           const skillsAcquired = course.skills_acquired;
-          
+
           if (Array.isArray(skillsAcquired) && skillsAcquired.length > 0) {
             const skillStrings = skillsAcquired
               .map((s) => typeof s === 'string' ? s : null)
@@ -388,18 +478,21 @@ export async function buildlearnerTextFromDatabase(
       }
     }
 
-    const text = parts.join('\n');
-    
-    if (text.length < 50) {
-      throw new EmbeddingError(
-        `Insufficient data for learner ${learnerId} (only ${text.length} chars)`,
-        'INSUFFICIENT_DATA',
-        { learnerId, textLength: text.length }
-      );
+    if (learning?.levels.length) {
+      parts.push('=== VERIFIED LEARNING ===');
+      // Reserve a bounded share per selected achievement, with source labels.
+      const share = Math.floor((1000 - 32 - learning.levels.length) / learning.levels.length);
+      for (const level of learning.levels) parts.push(`${level.capabilityName} · ${level.title} · Level ${level.levelNumber} (${learning.evaluationPolicy} evaluated)`.slice(0, share));
     }
+    const text = budgetCareerText(parts);
+
+    if (learning) await prepareRecommendationLearning(supabase, env, learnerId, learnerRecord.user_id, preferences);
+    if (await readRecommendationContextRevision(supabase, learnerId, learnerRecord.user_id) !== inputRevision)
+      throw new EmbeddingError('Career context changed during collection', 'CONTEXT_CHANGED');
 
     console.log(`[TextBuilder] Built enriched learner text (${text.length} chars) for ${learnerId}`);
-    return text;
+    return { text: readiness.state === 'ready' ? text : '', readiness, inputRevision, preferences, skillNames: usableSkills.map(row => str(row.name)), softSkillNames: usableSkills.filter(row => row.type === 'soft').map(row => str(row.name)), inferredRoles,
+      sourceStatus: { assessment: !preferences.useAssessmentRecommendations ? 'not_requested' : inferredRoles.length ? 'available_inferred' : 'absent', learning: !learning ? 'not_requested' : learning.truncated ? 'available_truncated' : 'available' } };
 
   } catch (error) {
     if (error instanceof EmbeddingError) {
@@ -413,9 +506,16 @@ export async function buildlearnerTextFromDatabase(
   }
 }
 
+/** Legacy database embedding callers use the same authoritative readiness. */
+export async function buildlearnerTextFromDatabase(supabase: SupabaseClient, learnerId: string, env: Record<string, any> = {}): Promise<string> {
+  const context = await buildLearnerRecommendationContext(supabase, learnerId, undefined, env);
+  if (context.readiness.state !== 'ready') throw new EmbeddingError('Add career context before preparing personalized matches', 'INSUFFICIENT_DATA');
+  return context.text;
+}
+
 /**
  * Build text from course record
- * 
+ *
  * @param supabase - Supabase client
  * @param courseId - Course UUID
  * @returns Course text
@@ -467,14 +567,14 @@ export function buildCourseText(course: CourseData): string {
   if (course.provider) parts.push(`Provider: ${course.provider}`);
   if (course.category) parts.push(`Category: ${course.category}`);
   if (course.level) parts.push(`Level: ${course.level}`);
-  
+
   if (course.skills_taught) {
-    const skills = Array.isArray(course.skills_taught) 
+    const skills = Array.isArray(course.skills_taught)
       ? course.skills_taught.join(', ')
       : course.skills_taught;
     parts.push(`Skills: ${skills}`);
   }
-  
+
   if (course.description) {
     parts.push(`Description: ${course.description.slice(0, 500)}`);
   }
@@ -484,7 +584,7 @@ export function buildCourseText(course: CourseData): string {
 
 /**
  * Build text from opportunity record
- * 
+ *
  * @param supabase - Supabase client
  * @param opportunityId - Opportunity UUID
  * @returns Opportunity text
@@ -526,7 +626,7 @@ export async function buildOpportunityTextFromDatabase(
 /**
  * Build text from opportunity object (in-memory)
  * Used when you already have the opportunity data
- * 
+ *
  * @throws EmbeddingError if no skills_required
  */
 export function buildOpportunityText(opportunity: OpportunityData): string {
@@ -572,11 +672,11 @@ export function buildOpportunityText(opportunity: OpportunityData): string {
   if (jobTitle) {
     parts.push(`Job: ${jobTitle}`);
   }
-  
+
   if (opportunity?.company_name) {
     parts.push(`Company: ${opportunity.company_name}`);
   }
-  
+
   if (opportunity?.location) {
     parts.push(`Location: ${opportunity.location}`);
   }

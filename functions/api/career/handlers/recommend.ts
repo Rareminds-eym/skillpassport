@@ -13,9 +13,11 @@
 import { apiSuccess, apiError } from '../../../lib/response';
 import { createSupabaseAdminClient } from '../../../lib/supabase';
 import { isValidUUID } from '../../../lib/validation';
-import { checkRateLimit } from '../utils/rate-limit';
+import { checkRateLimit, getRateLimitInfo } from '../utils/rate-limit';
 
-import { buildlearnerTextFromDatabase } from '../../embedding/services/textBuilder';
+import { buildLearnerRecommendationContext } from '../../embedding/services/textBuilder';
+import { EmbeddingError } from '../../embedding/types';
+import { recommendationEnvelopeSchema } from '../../../../shared/contracts/job-recommendations';
 import { callEmbeddingWorker } from '../../embedding/services/embeddingWorkerClient';
 import { hydrateJobs } from '../../../lib/job-recommendations';
 import {
@@ -27,12 +29,21 @@ import {
   RECOMMENDATION_RANKING_POLICY_VERSION,
 } from '../utils/recommendation-versions';
 import { refreshJobMatchingIndex } from '../utils/job-matching-index';
-import { learningDecisions } from '../../../lib/learning-eligibility';
+import { rankRecommendationCandidates } from '../../../lib/recommendation-ranking';
+import { prepareRecommendationLearning } from '../../../lib/recommendation-learning';
+import { learningDecisions, LearningError } from '../../../lib/learning-eligibility';
 
 const RECOMMEND_CONFIG = {
   MAX_RECOMMENDATIONS: 50,
   DEFAULT_LIMIT: 20,
 };
+
+function validIndexStatus(value: unknown): value is { total: number; verified: number } {
+  if (!value || typeof value !== 'object') return false;
+  const counts = value as { total: number; verified: number };
+  return Number.isInteger(counts.total) && Number.isInteger(counts.verified)
+    && counts.total >= 0 && counts.verified >= 0 && counts.verified <= counts.total;
+}
 
 // ==================== MAIN HANDLER ====================
 
@@ -179,11 +190,22 @@ export async function handleRecommendOpportunities(
     );
   }
   if (!(await checkRateLimit(`matching:${learnerUserId}`, env))) {
-    return apiError(429, 'ERROR', 'Rate limit exceeded', request);
+    const response = apiError(429, 'MATCHING_RATE_LIMITED', 'Please wait before requesting recommendations again.', request);
+    response.headers.set('Retry-After', String(Math.max(1, Math.ceil((getRateLimitInfo(`matching:${learnerUserId}`).resetAt - Date.now()) / 1000))));
+    return response;
   }
   const safeLimit = limit;
 
   try {
+    // Readiness runs before the global index, cached cards and stored vectors.
+    const context = await buildLearnerRecommendationContext(supabase, learnerId, learnerUserId, env);
+    if (context.readiness.state !== 'ready') {
+      return apiSuccess(recommendationEnvelopeSchema.parse({
+        schemaVersion: 2, state: context.readiness.state, readiness: context.readiness,
+        recommendations: [], provenance: 'none', cached: false,
+        input_revision: context.inputRevision,
+      }), request);
+    }
     const { data: dismissed, error: dismissalError } = await supabase
       .from('opportunity_interactions')
       .select('opportunity_id')
@@ -215,9 +237,7 @@ export async function handleRecommendOpportunities(
     const indexError = initialIndex.error;
     if (
       indexError ||
-      !indexStatus ||
-      !Number.isInteger(indexStatus.total) ||
-      !Number.isInteger(indexStatus.verified)
+      !validIndexStatus(indexStatus)
     )
       return apiError(
         503,
@@ -241,9 +261,7 @@ export async function handleRecommendOpportunities(
       });
       if (
         refreshed.error ||
-        !refreshed.data ||
-        !Number.isInteger(refreshed.data.total) ||
-        !Number.isInteger(refreshed.data.verified)
+        !validIndexStatus(refreshed.data)
       )
         return apiError(
           503,
@@ -252,6 +270,20 @@ export async function handleRecommendOpportunities(
           request,
         );
       indexStatus = refreshed.data;
+    }
+    if (indexStatus.verified < indexStatus.total && indexStatus.total === initialIndex.data.total && indexStatus.verified > initialIndex.data.verified) {
+      // A bounded repair batch made verified progress. Subsequent ordinary
+      // requests can advance it; no background job or learner vector is claimed.
+      const latest = await readRecommendationState(supabase, learnerId, learnerUserId, model);
+      if (latest.revision !== context.inputRevision) return apiError(409, 'RECOMMENDATIONS_CHANGED', 'Profile changed; please refresh recommendations', request);
+      const response = apiSuccess(recommendationEnvelopeSchema.parse({
+        schemaVersion: 2, state: 'index_building', readiness: context.readiness,
+        recommendations: [], provenance: 'none', cached: false,
+        input_revision: context.inputRevision, catalog_revision: latest.catalog_revision,
+        retry_after_seconds: 3,
+      }), request, 202);
+      response.headers.set('Retry-After', '3');
+      return response;
     }
     if (indexStatus.verified < indexStatus.total)
       return apiError(
@@ -286,24 +318,29 @@ export async function handleRecommendOpportunities(
         'Profile or catalog changed; please refresh recommendations',
         request,
       );
+    if (state.revision !== context.inputRevision) return obsolete();
+    const recommendationSuccess = async (data: Record<string, unknown> & { recommendations: unknown[] }) => {
+      if (context.preferences?.useVerifiedLearning) await prepareRecommendationLearning(supabase, env, learnerId, learnerUserId, context.preferences);
+      // Eligibility may await another service. Fence the response after that
+      // await as well, including both profile and catalogue revision changes.
+      if (!(await current(true))) return obsolete();
+      return apiSuccess(recommendationEnvelopeSchema.parse({ ...data, schemaVersion: 2,
+        state: data.recommendations.length ? 'ready' : 'no_matches', readiness: context.readiness,
+        input_revision: context.inputRevision, catalog_revision: state.catalog_revision, cached: data.cached === true, source_status: context.sourceStatus,
+      }), request);
+    };
 
     // ==================== CACHE CHECK ====================
     if (!forceRefresh) {
       if (state.matches) {
-        const cachedMatches = (
-          await hydrateJobs(supabase, state.matches, dismissedIds)
-        ).slice(0, safeLimit);
+        const cachedMatches = rankRecommendationCandidates(await learningDecisions(
+          supabase, env, learnerUserId, learnerId, await hydrateJobs(supabase, state.matches, dismissedIds),
+        ), context).slice(0, safeLimit);
         if (!(await current(true))) return obsolete();
         const executionTime = Date.now() - startTime;
-        return apiSuccess(
+        return await recommendationSuccess(
           {
-            recommendations: await learningDecisions(
-              supabase,
-              env,
-              learnerUserId,
-              learnerId,
-              cachedMatches,
-            ),
+            recommendations: cachedMatches,
             cached: true,
             computed_at: state.computed_at,
             provenance: 'embedding',
@@ -319,7 +356,6 @@ export async function handleRecommendOpportunities(
             executionTime,
             message: 'Recommendations retrieved from cache',
           },
-          request,
         );
       }
       console.log('[RECOMMEND]', { stage: 'cache', outcome: 'miss' });
@@ -354,7 +390,7 @@ export async function handleRecommendOpportunities(
         );
 
         // Build enriched text from learner profile
-        const text = await buildlearnerTextFromDatabase(supabase, learnerId);
+        const text = context.text;
         // The multi-query builder must observe one unchanged input revision.
         if (!(await current())) return obsolete();
         console.log(
@@ -431,7 +467,7 @@ export async function handleRecommendOpportunities(
     }
     if (!recommendations.length) {
       if (!(await current(true))) return obsolete();
-      return apiSuccess(
+      return await recommendationSuccess(
         {
           recommendations: [],
           provenance: 'embedding',
@@ -439,13 +475,14 @@ export async function handleRecommendOpportunities(
           model,
           count: 0,
         },
-        request,
       );
     }
 
     // ==================== RESPONSE ENRICHMENT ====================
     const hydrated = await hydrateJobs(supabase, recommendations, dismissedIds);
-    const topRecommendations = hydrated.slice(0, safeLimit);
+    const topRecommendations = rankRecommendationCandidates(await learningDecisions(
+      supabase, env, learnerUserId, learnerId, hydrated,
+    ), context).slice(0, safeLimit);
     const executionTime = Date.now() - startTime;
 
     // ==================== SAVE TO CACHE ====================
@@ -477,15 +514,9 @@ export async function handleRecommendOpportunities(
 
     if (!(await current(true))) return obsolete();
 
-    return apiSuccess(
+    return await recommendationSuccess(
       {
-        recommendations: await learningDecisions(
-          supabase,
-          env,
-          learnerUserId,
-          learnerId,
-          topRecommendations,
-        ),
+        recommendations: topRecommendations,
         cached: false,
         cache_saved: cacheSaved,
         provenance: 'embedding',
@@ -501,9 +532,12 @@ export async function handleRecommendOpportunities(
         algorithmVersion,
         entityEmbeddingsEnabled: false,
       },
-      request,
     );
-  } catch {
+  } catch (error) {
+    if (error instanceof LearningError) return apiError(503, 'LEARNING_UNAVAILABLE', 'Learning recommendations are temporarily unavailable.', request);
+    if (error instanceof EmbeddingError && error.code === 'CONTEXT_CHANGED') return apiError(
+      409, 'RECOMMENDATIONS_CHANGED', 'Profile changed; please refresh recommendations', request,
+    );
     console.error('[RECOMMEND] Required dependency unavailable');
     return apiError(
       503,

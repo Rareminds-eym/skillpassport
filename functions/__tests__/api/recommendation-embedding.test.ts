@@ -29,7 +29,9 @@ it.each([0,1])('acknowledges exactly one persisted row, not %i rows',async count
   if(count===0){await expect(updateEmbedding(db,'learners','A',vector())).rejects.toMatchObject({code:'API_ERROR'});expect((await batchUpdateEmbeddings(db,'learners',[{id:'A',embedding:vector()}]))[0].success).toBe(false);}
   else expect(await updateEmbedding(db,'learners','A',vector())).toMatchObject({success:true,rowsAffected:1});
 });
-it.each(['skills','certificates','projects','course_enrollments','trainings'])('does not build a partial profile after %s fails',async failed=>{
-  const db:any={from(table:string){const q:any={};for(const method of ['select','eq','or','order','limit','in'])q[method]=()=>q;q.single=async()=>({data:{id:'A',name:'Fixture learner',bio:'Detailed controlled learner biography'},error:null});q.then=(resolve:any)=>Promise.resolve(table===failed?{data:null,error:{code:'fixture'}}:{data:[],error:null}).then(resolve);return q;}};
+it.each(['skills','certificates','projects','course_enrollments','trainings','education','experience'])('does not build a partial profile after %s fails',async failed=>{
+  const reads: string[] = [];
+  const db:any={rpc:async()=>({data:'1',error:null}),from(table:string){reads.push(table);const q:any={};for(const method of ['select','eq','or','order','limit','in'])q[method]=()=>q;q.single=async()=>({data:{id:'A',user_id:'fixture-user',name:'Fixture learner',bio:'Detailed controlled learner biography'},error:null});q.maybeSingle=async()=>({data:table==='learner_career_preferences'?{preferences:{useAssessmentRecommendations:false,useVerifiedLearning:false}}:null,error:table===failed?{code:'fixture'}:null});q.then=(resolve:any)=>Promise.resolve(table===failed?{data:null,error:{code:'fixture'}}:{data:[],error:null}).then(resolve);return q;}};
   await expect(buildlearnerTextFromDatabase(db,'A')).rejects.toMatchObject({code:'API_ERROR'});
+  expect(reads).toContain(failed);
 });

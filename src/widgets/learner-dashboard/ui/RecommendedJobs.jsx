@@ -4,17 +4,21 @@ import { useAIJobMatching } from '@/features/opportunities';
 import { FeatureGate } from '@/features/subscription/ui/shared/FeatureGate';
 import { jobTitle, opportunityText, applicationState } from '@/features/opportunities/lib/presentation';
 import './RecommendedJobs.css';
+import RecommendationProfilePrompt from './RecommendationProfilePrompt';
+import { useUser } from '@/shared/model/authStore';
 
 function RecommendedJobsContent({ learnerProfile, onSelectJob, appliedJobs = new Set(), onApply, sidebar = false, onResultsChange }) {
-  const key = `recommendations_dismissed:${learnerProfile?.id || learnerProfile?.learner_id || 'none'}`;
+  const user = useUser();
+  const key = `recommendations_dismissed:${user?.id || 'anonymous'}:${user?.orgId || ''}:${learnerProfile?.id || learnerProfile?.learner_id || 'none'}`;
   const [dismissed, setDismissed] = useState(() => localStorage.getItem(key) === 'true');
   useEffect(() => { setDismissed(localStorage.getItem(key) === 'true'); }, [key]);
-  const { matchedJobs = [], loading, error, refreshMatches } = useAIJobMatching(learnerProfile, !dismissed, 3);
+  const { matchedJobs = [], loading, processing, error, readiness, refreshMatches } = useAIJobMatching(learnerProfile, !dismissed, 3);
+  const profileNeeded = readiness?.state === 'needs_profile' || readiness?.state === 'limited_context';
   const matches = matchedJobs.slice(0, 3);
   const resultIds = matches.map(match => (match.opportunity || match).id).filter(Boolean).join(',');
   useEffect(() => {
-    onResultsChange?.(dismissed || !resultIds ? [] : resultIds.split(','));
-  }, [resultIds, dismissed, onResultsChange]);
+    onResultsChange?.(dismissed || loading || error || !resultIds ? [] : resultIds.split(','));
+  }, [resultIds, dismissed, loading, error, onResultsChange]);
   if (dismissed) return <button type="button" className="recommended-jobs-restore" onClick={() => { localStorage.removeItem(key); setDismissed(false); }}><Sparkles size={15} aria-hidden="true" />Show suggested opportunities</button>;
   return <section aria-label={matches.length && !error ? 'Suggested opportunities' : 'AI job recommendations'} className="recommended-jobs">
     <header className="recommended-jobs-header">
@@ -22,14 +26,15 @@ function RecommendedJobsContent({ learnerProfile, onSelectJob, appliedJobs = new
         <span className="recommended-jobs-mark" aria-hidden="true"><Sparkles size={18} /></span>
         <h2>{!loading && !error && !matches.length ? 'AI job recommendations' : 'AI recommended for you'}</h2>
         <div className="recommended-jobs-controls">
-          <button type="button" aria-label="Refresh suggestions" title="Refresh suggestions" onClick={refreshMatches} disabled={loading}><RefreshCw size={16} aria-hidden="true" className={loading ? 'recommended-jobs-spinner' : undefined} /></button>
+          <button type="button" aria-label="Refresh suggestions" title="Refresh suggestions" onClick={refreshMatches} disabled={loading || profileNeeded}><RefreshCw size={16} aria-hidden="true" className={loading ? 'recommended-jobs-spinner' : undefined} /></button>
           <button type="button" aria-label="Hide suggestions" title="Hide suggestions" onClick={() => { localStorage.setItem(key, 'true'); setDismissed(true); }}><X size={16} aria-hidden="true" /></button>
         </div>
       </div>
       <p>Suggestions based on your profile.</p>
     </header>
-    {loading ? <div className="recommended-jobs-loading"><p role="status">Finding AI recommendations…</p><div aria-hidden="true" className="recommended-jobs-skeleton"><span /><span /><span /></div></div>
+    {loading ? <div className="recommended-jobs-loading"><p role="status">{processing ? 'Preparing job recommendations…' : 'Finding AI recommendations…'}</p><div aria-hidden="true" className="recommended-jobs-skeleton"><span /><span /><span /></div></div>
       : error ? <div role="alert" className="recommended-jobs-state"><p>{opportunityText(error) || 'Recommendations could not be loaded.'}</p><button type="button" onClick={refreshMatches} className="recommended-jobs-secondary">Retry suggestions</button></div>
+      : profileNeeded ? <RecommendationProfilePrompt readiness={readiness} />
       : !matches.length ? <div className="recommended-jobs-state"><Briefcase size={24} aria-hidden="true" /><p>No matching jobs found for your current profile. Keep your skills and learning achievements up to date.</p><button type="button" onClick={refreshMatches} className="recommended-jobs-secondary">Refresh recommendations</button></div>
       : <>
         <div className={`recommended-jobs-list ${sidebar ? 'is-sidebar' : 'is-inline'}`}>

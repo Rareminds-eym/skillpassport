@@ -16,8 +16,14 @@ import { getServiceClient } from '../../lib/supabase';
 import { createLogger } from '../../lib/logger';
 type AuthenticatedContext = Parameters<PagesFunction>[0];
 import { apiSuccess, apiError } from '../../lib/response';
-import { recommendableJobs, isRecommendableJob, privateRecommendations, stringSkills } from '../../lib/job-recommendations';
-import { learningDecisions } from '../../lib/learning-eligibility';
+import { privateRecommendations, stringSkills } from '../../lib/job-recommendations';
+import { rankRecommendationCandidates } from '../../lib/recommendation-ranking';
+import { prepareRecommendationLearning } from '../../lib/recommendation-learning';
+import { learningDecisions, LearningError } from '../../lib/learning-eligibility';
+import { hasFeatureEntitlement } from '../../lib/entitlements';
+import { buildLearnerRecommendationContext, readRecommendationFreshness } from '../embedding/services/textBuilder';
+import { EmbeddingError } from '../embedding/types';
+import { recommendationEnvelopeSchema } from '../../../shared/contracts/job-recommendations';
 
 const logger = createLogger('learner-ai-recommendations-api');
 
@@ -30,6 +36,9 @@ const authenticatedGet = withAuth(async (context: AuthenticatedContext) => {
   try {
     const userId = user.id;
     const userEmail = user.email;
+    if (!await hasFeatureEntitlement(supabase, userId, 'ai_job_matching')) return privateRecommendations(
+      apiError(403, 'FEATURE_ACCESS_DENIED', 'Job matching requires an active plan or matching add-on.', context.request),
+    );
     logger.info('Fetching AI recommendations', { userId, userEmail });
     
     // Step 1: Get learner by user_id
@@ -68,8 +77,15 @@ const authenticatedGet = withAuth(async (context: AuthenticatedContext) => {
     }
 
     const learnerId = finalLearner.id;
-    const resolvedLearner = finalLearner;
+    const careerContext = await buildLearnerRecommendationContext(supabase, learnerId, userId, env);
+    if (careerContext.readiness.state !== 'ready') return privateRecommendations(apiSuccess(
+      recommendationEnvelopeSchema.parse({ schemaVersion: 2, state: careerContext.readiness.state,
+        readiness: careerContext.readiness, input_revision: careerContext.inputRevision,
+        recommendations: [], provenance: 'none', cached: false }), context.request,
+    ));
     logger.info('Learner found', { learnerId, userId });
+    const freshness = await readRecommendationFreshness(supabase, learnerId, userId);
+    if (freshness.inputRevision !== careerContext.inputRevision) return apiError(409, 'RECOMMENDATIONS_CHANGED', 'Profile changed; please refresh recommendations.', context.request);
 
     // Step 2: Get learner's skills for matching
     const { data: skillsData, error: skillsError } = await supabase
@@ -93,99 +109,15 @@ const authenticatedGet = withAuth(async (context: AuthenticatedContext) => {
       softCount: softSkills.length 
     });
 
-    // Step 3: Get active opportunities
-    const { data: opportunities, error: oppError } = await recommendableJobs(supabase
-      .from('opportunities')
-      .select('*')
-    )
-      .order('created_at', { ascending: false })
-      .limit(50); // Get top 50 for matching
-
-    if (oppError) {
-      logger.error('Error fetching opportunities', { error: oppError });
-      return apiError(500, 'DATABASE_ERROR', 'Failed to fetch opportunities', context.request, { startTime });
-    }
-
-    logger.info('Fetched opportunities', { count: opportunities?.length || 0 });
-
-    // Step 4: Calculate match scores for each opportunity
-    const matchedJobs = (opportunities || []).filter(opp => isRecommendableJob(opp)).map((opp: any) => {
-      let matchScore = 0;
-      const matchReasons: any = {};
-
-      // Skills matching (40% weight)
-      const oppSkills = stringSkills(opp.skills_required);
-      const matchedSkills = oppSkills.filter((skill: string) => 
-        technicalSkills.some(ls => ls.toLowerCase().includes(skill.toLowerCase())) ||
-        softSkills.some(ls => ls.toLowerCase().includes(skill.toLowerCase()))
-      );
-      
-      if (oppSkills.length > 0) {
-        const skillMatchPercent = (matchedSkills.length / oppSkills.length) * 100;
-        matchScore += skillMatchPercent * 0.4;
-        matchReasons.skill_match = matchedSkills.length > 0;
-        matchReasons.matched_skills = matchedSkills;
-      }
-
-      // Employment type matching (15% weight)
-      if (resolvedLearner.preferred_employment_types && Array.isArray(resolvedLearner.preferred_employment_types)) {
-        if (resolvedLearner.preferred_employment_types.includes(opp.employment_type)) {
-          matchScore += 15;
-          matchReasons.employment_type_match = true;
-        }
-      }
-
-      // Location matching (15% weight)
-      if (resolvedLearner.preferred_locations && Array.isArray(resolvedLearner.preferred_locations)) {
-        if (stringSkills(resolvedLearner.preferred_locations).some((loc: string) =>
-          opp.location?.toLowerCase().includes(loc.toLowerCase())
-        )) {
-          matchScore += 15;
-          matchReasons.location_match = true;
-        }
-      }
-
-      // Department/sector matching (15% weight)
-      if (resolvedLearner.preferred_departments && Array.isArray(resolvedLearner.preferred_departments)) {
-        if (resolvedLearner.preferred_departments.includes(opp.department) || 
-            resolvedLearner.preferred_departments.includes(opp.sector)) {
-          matchScore += 15;
-          matchReasons.department_match = true;
-        }
-      }
-
-      // Experience level matching (10% weight)
-      if (resolvedLearner.experience_level && opp.experience_level) {
-        if (resolvedLearner.experience_level === opp.experience_level) {
-          matchScore += 10;
-          matchReasons.experience_match = true;
-        }
-      }
-
-      // Recent post bonus (5% weight)
-      const daysSincePosted = opp.posted_date 
-        ? Math.floor((Date.now() - new Date(opp.posted_date).getTime()) / (1000 * 60 * 60 * 24))
-        : 999;
-      
-      if (daysSincePosted <= 7) {
-        matchScore += 5;
-        matchReasons.recent_post = true;
-      }
-
-      return {
-        ...opp,
-        match_percentage: Math.round(matchScore),
-        match_reasons: matchReasons,
-        final_score: matchScore / 100,
-        isAIRecommended: matchScore >= 30 // Consider it AI recommended if 30% or higher match
-      };
+    // Apply ownership, applications, dismissals and required preferences in SQL
+    // before the bounded candidate limit. Ranking uses the shared evidence policy.
+    const { data: opportunities, error: oppError } = await supabase.rpc('get_recommendation_candidates_v1', {
+      p_learner_id: learnerId, p_user_id: userId,
     });
-
-    // Sort by match score descending
-    matchedJobs.sort((a, b) => b.match_percentage - a.match_percentage);
-
-    // Take top 20 recommendations
-    const topRecommendations = matchedJobs.slice(0, 20);
+    if (oppError || !Array.isArray(opportunities)) return apiError(503, 'MATCHING_UNAVAILABLE', 'Job candidates are temporarily unavailable.', context.request);
+    const topRecommendations = rankRecommendationCandidates(
+      await learningDecisions(supabase, env, userId, learnerId, opportunities), careerContext,
+    ).slice(0, 20);
 
     logger.info('Generated AI recommendations', { 
       learnerId, 
@@ -196,7 +128,13 @@ const authenticatedGet = withAuth(async (context: AuthenticatedContext) => {
     });
 
     const responseData = {
-      recommendations: await learningDecisions(supabase,env,userId,learnerId,topRecommendations),
+      schemaVersion: 2,
+      state: topRecommendations.length ? 'ready' : 'no_matches',
+      readiness: careerContext.readiness,
+      input_revision: careerContext.inputRevision,
+      catalog_revision: freshness.catalogRevision,
+      source_status: careerContext.sourceStatus,
+      recommendations: topRecommendations,
       cached: false,
       fallback: false,
       provenance: 'rules',
@@ -206,16 +144,27 @@ const authenticatedGet = withAuth(async (context: AuthenticatedContext) => {
           soft: softSkills
         },
         preferences: {
-          employmentTypes: resolvedLearner.preferred_employment_types || [],
-          locations: resolvedLearner.preferred_locations || [],
-          departments: resolvedLearner.preferred_departments || []
+          employmentTypes: careerContext.preferences.employmentTypes,
+          locations: careerContext.preferences.locations,
+          departments: careerContext.preferences.departments
         }
       }
     };
 
-    return privateRecommendations(apiSuccess(responseData, context.request, { startTime }));
+    if (careerContext.preferences.useVerifiedLearning) await prepareRecommendationLearning(supabase, env, learnerId, userId, careerContext.preferences);
+    const latest = await readRecommendationFreshness(supabase, learnerId, userId);
+    if (latest.inputRevision !== careerContext.inputRevision || latest.catalogRevision !== freshness.catalogRevision)
+      return privateRecommendations(apiError(409, 'RECOMMENDATIONS_CHANGED', 'Profile changed; please refresh recommendations', context.request));
+    return privateRecommendations(apiSuccess(recommendationEnvelopeSchema.parse(responseData), context.request, { startTime }));
 
   } catch (err) {
+    if (err instanceof LearningError) return apiError(503, 'LEARNING_UNAVAILABLE', 'Learning recommendations are temporarily unavailable.', context.request);
+    if (err instanceof EmbeddingError) return apiError(
+      err.code === 'CONTEXT_CHANGED' ? 409 : 503,
+      err.code === 'CONTEXT_CHANGED' ? 'RECOMMENDATIONS_CHANGED' : 'EVIDENCE_UNAVAILABLE',
+      err.code === 'CONTEXT_CHANGED' ? 'Profile changed; please refresh recommendations' : 'Career context is temporarily unavailable. Please retry.',
+      context.request,
+    );
     logger.error('Unexpected error fetching AI recommendations', { error: err });
     return apiError(500, 'INTERNAL_ERROR', 'An internal error occurred', context.request, { startTime });
   }
