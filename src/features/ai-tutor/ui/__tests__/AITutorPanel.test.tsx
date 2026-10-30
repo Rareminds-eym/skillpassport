@@ -48,6 +48,27 @@ function showPanel() {
     lessonContext={{ lessonId: 'lesson', lessonTitle: 'Planning your day' }} defaultExpanded /><FloatingEducatorAIButton /></MemoryRouter>);
 }
 describe('AI facilitator workspace', () => {
+  it('renders questions and private answers as separate numbered lists', () => {
+    mocks.content = '<!-- STUDENT_WORKSHEET -->\n1. First question? A) Plan\n   B) Delay\n2. Second question?\n<!-- PRIVATE_SOLUTIONS -->\n1. A\n2. B\n<!-- END_WORKSHEET -->';
+    showPanel();
+    expect(screen.getByRole('heading', { name: 'Answer key and grading' })).toBeInTheDocument();
+    const lists = screen.getAllByRole('list');
+    expect(lists).toHaveLength(2);
+    expect(within(lists[0]).getAllByRole('listitem')).toHaveLength(2);
+    expect(within(lists[0]).getAllByRole('listitem')[0].querySelector('br')).not.toBeNull();
+    expect(within(lists[1]).getAllByRole('listitem')).toHaveLength(2);
+    expect(within(lists[1]).getAllByRole('listitem')[0]).toHaveTextContent('A');
+  });
+  it('uses normal Markdown whitespace and scopes compact paragraphs to worksheets', () => {
+    mocks.content = '<!-- STUDENT_WORKSHEET -->\n1. What comes first? A) Plan\n\n   B) Delay\n\n2. Another question?\n<!-- PRIVATE_SOLUTIONS -->\n1. A\n2. B\n<!-- END_WORKSHEET -->';
+    showPanel();
+    const first = screen.getAllByRole('listitem')[0];
+    expect(first).not.toHaveClass('whitespace-pre-line');
+    const paragraphs = first.querySelectorAll('p');
+    expect(paragraphs.length).toBeGreaterThan(0);
+    expect(paragraphs[0]).not.toHaveClass('whitespace-pre-line');
+    expect(first.closest('div')).toHaveClass('[&_li>p]:!my-0');
+  });
   it('shows all six facilitators vertically on hover and opens a chosen role page', () => {
     showPanel();
     const trigger = screen.getByRole('button', { name: 'Explore six facilitators' });

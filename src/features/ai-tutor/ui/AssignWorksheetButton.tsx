@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { Check, Loader2, X } from 'lucide-react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { useUser } from '@/shared/model';
-import { useWorksheetContext, useWorksheetSource, usePublishWorksheet, useWorksheetStatus } from '../model/worksheetQueries';
+import { useWorksheetContext, useWorksheetSource, usePublishWorksheet, useWorksheetStatus, useDeferWorksheet } from '../model/worksheetQueries';
 
 interface Props { conversationId: string; messageId: string; courseTitle: string; initiallyOpen?: boolean }
 
@@ -10,10 +10,11 @@ interface Props { conversationId: string; messageId: string; courseTitle: string
 /** Inline confirmation: the server resolves the complete mapped audience at publication time. */
 export default function AssignWorksheetButton({ conversationId, messageId, courseTitle, initiallyOpen = false }: Props) {
   const [open, setOpen] = useState(initiallyOpen);
-  const [dismissed, setDismissed] = useState(false);
   const user = useUser();
   const userId = user?.id || '';
   const statusQuery = useWorksheetStatus(userId, conversationId, messageId);
+  const deferral = useDeferWorksheet(userId, conversationId, messageId);
+  const dismissed = statusQuery.data?.deferred === true;
   const contextQuery = useWorksheetContext(userId, open);
   const sourceQuery = useWorksheetSource(userId, conversationId, messageId, open);
   const publication = usePublishWorksheet(userId);
@@ -56,10 +57,11 @@ export default function AssignWorksheetButton({ conversationId, messageId, cours
     {!open && !dismissed ? <div className="mt-2 border-t border-slate-100 pt-3 text-left">
       <p className="!m-0 !text-xs !leading-5 text-slate-700">Would you like to assign these questions to your learners?</p>
       <div className="mt-2 flex gap-2">
-        <button type="button" onClick={() => { setReviewed(false); publication.reset(); setOpen(true); }} className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700">Yes, assign</button>
-        <button type="button" onClick={() => setDismissed(true)} className="rounded-lg px-3 py-1.5 text-xs text-slate-500 hover:bg-slate-100">Not now</button>
+        <button type="button" disabled={deferral.isPending} onClick={() => { setReviewed(false); publication.reset(); setOpen(true); }} className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50">Yes, assign</button>
+        <button type="button" disabled={deferral.isPending} onClick={() => deferral.mutate()} className="rounded-lg px-3 py-1.5 text-xs text-slate-500 hover:bg-slate-100 disabled:opacity-50">{deferral.isPending ? 'Saving...' : 'Not now'}</button>
       </div>
-    </div> : !open && <button type="button" aria-expanded={false} onClick={() => setOpen(true)} className="rounded px-2 py-1 text-xs text-blue-700 hover:bg-blue-50">Assign</button>}
+    </div> : !open && <div className="mt-2 flex items-center justify-between gap-2 border-t border-slate-100 pt-3"><p role="status" className="!m-0 !text-xs text-slate-500">Not assigned — saved for later.</p><button type="button" aria-expanded={false} onClick={() => { setReviewed(false); setOpen(true); }} className="rounded px-2 py-1 text-xs text-blue-700 hover:bg-blue-50">Assign</button></div>}
+    {deferral.error && <p role="alert" className="mt-2 text-xs text-red-700">Could not save your choice. Please try Not now again.</p>}
     {open && <section aria-label="Assign generated worksheet" className="mt-3 rounded-xl border border-blue-100 bg-blue-50/50 p-3 text-left text-xs text-slate-700">
       <div className="flex items-center justify-between gap-2"><h3 className="!m-0 !text-sm !font-semibold">Assign to my learners</h3><button type="button" disabled={busy} aria-label="Close assignment" onClick={() => setOpen(false)} className="rounded p-1 hover:bg-blue-100"><X className="h-3.5 w-3.5" /></button></div>
       {loading ? <p role="status" className="mt-2 flex items-center gap-2"><Loader2 className="h-3.5 w-3.5 animate-spin" />Checking worksheet and mapped learners...</p> : <>

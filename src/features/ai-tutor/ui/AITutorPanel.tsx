@@ -34,7 +34,7 @@ import {
 import * as React from 'react';
 import { useEffect, useLayoutEffect, useState, useRef, useCallback } from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
-import { stripWorksheetMarkers } from '@/shared/utils';
+import { stripWorksheetMarkers, formatWorksheetForDisplay } from '@/shared/utils';
 import { useTutorChat, type GenerationUsage } from '@/features/ai-tutor/model/useTutorChat';
 import WorksheetConfigPanel from './WorksheetConfigPanel';
 import LessonPlanConfigPanel from './LessonPlanConfigPanel';
@@ -437,8 +437,8 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
         {children}
       </ul>
     ),
-    ol: ({ children }) => (
-      <ol className="list-decimal marker:text-blue-700 pl-5 space-y-2 my-3 text-[13px] text-slate-600">
+    ol: ({ children, start }) => (
+      <ol start={start} className="list-decimal marker:text-blue-700 pl-5 space-y-2 my-3 text-[13px] text-slate-600">
         {children}
       </ol>
     ),
@@ -965,9 +965,9 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
 
                         {/* Message Content Rendered with Styled Markdown */}
                         {msg.content ? (
-                          <div className="text-slate-800">
+                          <div className={`text-slate-800 ${msg.worksheetAvailable || /STUDENT_WORKSHEET/i.test(msg.content) ? '[&_li>p]:!my-0 [&_li>p+p]:!mt-1' : ''}`}>
                             <ReactMarkdown components={markdownComponents}>
-                              {stripWorksheetMarkers(msg.content, isLastAssistant && isStreaming)}
+                              {formatWorksheetForDisplay(msg.content, isLastAssistant && isStreaming)}
                             </ReactMarkdown>
 
                             {/* Real-time streaming pulse cursor */}

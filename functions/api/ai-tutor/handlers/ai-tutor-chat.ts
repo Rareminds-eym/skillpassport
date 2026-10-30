@@ -44,6 +44,8 @@ interface RequiredEnv {
 type TypedContext = AuthenticatedContext<PagesEnv> & { env: RequiredEnv };
 
 interface StoredMessage {
+  assignmentDeferred?: boolean;
+  assignmentDeferredAt?: string;
   facilitator?: Persona;
   facilitatorMode?: Persona | 'auto';
   lessonPlanConfig?: LessonPlanConfig;
@@ -241,6 +243,10 @@ export const handleAiTutorChat = async (context: TypedContext) => {
       return apiError(403, 'FORBIDDEN', 'Course access is required to use lesson and resource context.', request);
     }
     let systemPrompt = buildSystemPrompt(courseContext, conversationPhase, userRole, worksheetConfig, lessonPlanConfig);
+    const latestWorksheet = [...existingMessages].reverse().find(item => item.worksheetVariants?.length);
+    if (educator && latestWorksheet?.assignmentDeferred) {
+      systemPrompt += `\nThe educator previously chose Not now for worksheet message ${JSON.stringify(latestWorksheet.id)}. Respect that preference and do not repeatedly offer assignment unless requested. This is a historical choice, not proof of current publication status; use verified assignment records for status questions. The actual Assign control is still available.`;
+    }
     if (educator) {
       systemPrompt += '\n\nActive facilitator: ' + teaching.facilitator + '. ' + PERSONAS[teaching.facilitator];
       systemPrompt += '\nContinue the same conversation through discussion, creation and revision. Preserve the latest material unless the educator requests a change. Ask one clarification when intent is ambiguous. Never invent submissions, marks or evaluation results; these are not connected yet.';

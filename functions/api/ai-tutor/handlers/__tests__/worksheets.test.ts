@@ -21,6 +21,24 @@ describe('worksheet publication validation', () => {
   });
 });
 describe('worksheet access', () => {
+  it('restores a saved Not now choice only from the owned worksheet message', async () => {
+    const eq = vi.fn();
+    mocks.from.mockImplementation((table: string) => {
+      const query: Record<string, ReturnType<typeof vi.fn>> = {};
+      for (const method of ['select', 'order', 'limit']) query[method] = vi.fn(() => query);
+      query.eq = vi.fn((...args) => { eq(...args); return query; });
+      query.single = vi.fn().mockResolvedValue({ data: { role: 'college_educator' }, error: null });
+      query.maybeSingle = vi.fn().mockResolvedValue({ data: table === 'tutor_conversations' ? {
+        messages: [{ id: id(3), role: 'assistant', worksheetVariants: [{}], assignmentDeferred: true }],
+      } : null, error: null });
+      return query;
+    });
+    mocks.rpc.mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { organization_id: id(9) }, error: null }) });
+    const response = await request({ action: 'status', conversationId: id(2), messageId: id(3) });
+    expect(response.status).toBe(200);
+    expect((await response.json()).data).toEqual({ published: false, learnerCount: 0, deferred: true });
+    expect(eq).toHaveBeenCalledWith('learner_id', 'current-user');
+  });
   it('restores publication status from owned persisted assignments without republishing', async () => {
     const eq = vi.fn();
     mocks.from.mockImplementation((table: string) => {

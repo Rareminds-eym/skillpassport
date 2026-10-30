@@ -9,7 +9,21 @@ export const worksheetKeys = {
   deliveries: (userId: string, courseId: string, page: number) => [...worksheetKeys.user(userId), 'deliveries', courseId, page] as const,
 };
 export interface WorksheetSource { variants: WorksheetVariant[]; assignmentReady?: boolean; readinessMessage?: string }
-export interface WorksheetStatus { published: boolean; learnerCount: number }
+export interface WorksheetStatus { published: boolean; learnerCount: number; deferred?: boolean }
+export function useDeferWorksheet(userId: string, conversationId: string, messageId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: () => {
+      if (!userId) throw new Error('Please log in to save this choice.');
+      return worksheetAction<{ deferred: boolean }>('defer', { conversationId, messageId });
+    }, retry: false,
+    onSuccess: async () => {
+      const key = worksheetKeys.status(userId, conversationId, messageId);
+      await client.cancelQueries({ queryKey: key });
+      client.setQueryData<WorksheetStatus>(key, current => ({ published: false, learnerCount: 0, ...current, deferred: true }));
+    },
+  });
+}
 export function useWorksheetStatus(userId: string, conversationId: string, messageId: string) {
   return useQuery({
     queryKey: worksheetKeys.status(userId, conversationId, messageId),

@@ -4,6 +4,7 @@ import { getContextUser, getServiceClient } from '../../../lib/auth';
 import { apiSuccess, apiError } from '../../../lib/response';
 import type { PagesEnv } from '../../../lib/types';
 import { splitWorksheetContent, type WorksheetSeparationOptions } from '../utils/worksheet-content';
+import { deferWorksheet } from '../utils/worksheet-deferral';
 
 const uuid = z.string().uuid();
 const bundleSchema = z.object({
@@ -78,6 +79,11 @@ export async function handleWorksheets(context: AuthenticatedContext) {
       if (error) throw error;
       return apiSuccess(data, request);
     }
+    if (body.action === 'defer') {
+      const saved = await deferWorksheet(db, user.id, uuid.parse(body.conversationId), uuid.parse(body.messageId));
+      if (!saved) return fail(404, 'Generated worksheet not found.');
+      return apiSuccess({ deferred: true }, request);
+    }
     if (body.action === 'status') {
       const conversationId = uuid.parse(body.conversationId);
       const messageId = uuid.parse(body.messageId);
@@ -87,7 +93,13 @@ export async function handleWorksheets(context: AuthenticatedContext) {
         .eq('source_conversation_id', conversationId).eq('source_message_id', messageId)
         .eq('status', 'published').order('published_at', { ascending: false }).limit(1).maybeSingle();
       if (error) throw error;
-      return apiSuccess({ published: !!data, learnerCount: data?.recipients?.[0]?.count ?? 0 }, request);
+      if (data) return apiSuccess({ published: true, learnerCount: data.recipients?.[0]?.count ?? 0 }, request);
+      const { data: conversation, error: conversationError } = await db.from('tutor_conversations').select('messages')
+        .eq('id', conversationId).eq('learner_id', user.id).maybeSingle();
+      if (conversationError) throw conversationError;
+      const source = conversation?.messages?.find((m: { id: string; role: string }) => m.id === messageId && m.role === 'assistant');
+      if (!source?.worksheetVariants?.length) return fail(404, 'Generated worksheet not found.');
+      return apiSuccess({ published: false, learnerCount: 0, deferred: source.assignmentDeferred === true }, request);
     }
     if (body.action === 'source' || body.action === 'publish' || body.action === 'publish-all') {
       const { data: conversation, error } = await db.from('tutor_conversations').select('messages,course_id').eq('id', uuid.parse(body.conversationId)).eq('learner_id', user.id).maybeSingle();

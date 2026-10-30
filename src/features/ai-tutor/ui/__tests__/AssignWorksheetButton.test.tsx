@@ -27,9 +27,37 @@ describe('inline combined worksheet assignment', () => {
     expect(await screen.findByText('Would you like to assign these questions to your learners?')).toBeInTheDocument();
     expect(mocks.action.mock.calls.map(call => call[0])).toEqual(['status']);
     fireEvent.click(screen.getByRole('button', { name: 'Not now' }));
-    expect(screen.queryByRole('button', { name: 'Yes, assign' })).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Yes, assign' })).not.toBeInTheDocument());
     expect(screen.getByRole('button', { name: 'Assign' })).toBeInTheDocument();
-    expect(mocks.action.mock.calls.map(call => call[0])).toEqual(['status']);
+    expect(mocks.action.mock.calls.map(call => call[0])).toEqual(['status', 'defer']);
+    expect(mocks.action).toHaveBeenCalledWith('defer', { conversationId: 'conversation', messageId: 'message' });
+  });
+  it('restores Not now from the server on remount and allows assigning later', async () => {
+    const original = mocks.action.getMockImplementation()!;
+    let deferred = false;
+    mocks.action.mockImplementation(async (action: string, ...args: unknown[]) => {
+      if (action === 'defer') { deferred = true; return { deferred }; }
+      if (action === 'status') return { published: false, learnerCount: 0, deferred };
+      return original(action, ...args);
+    });
+    const view = render(<AssignWorksheetButton conversationId="conversation" messageId="message" courseTitle="Time" />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Not now' }));
+    await screen.findByText('Not assigned — saved for later.');
+    view.unmount();
+    render(<AssignWorksheetButton conversationId="conversation" messageId="message" courseTitle="Time" />);
+    await screen.findByText('Not assigned — saved for later.');
+    expect(screen.queryByRole('button', { name: 'Not now' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Assign' }));
+    expect(await screen.findByRole('region', { name: 'Assign generated worksheet' })).toBeInTheDocument();
+  });
+  it('shows a save failure and keeps the original choice available to retry', async () => {
+    const original = mocks.action.getMockImplementation()!;
+    mocks.action.mockImplementation((action: string, ...args: unknown[]) => action === 'defer' ? Promise.reject(new Error('Offline')) : original(action, ...args));
+    render(<AssignWorksheetButton conversationId="conversation" messageId="message" courseTitle="Time" />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Not now' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Could not save your choice');
+    expect(screen.getByRole('button', { name: 'Not now' })).toBeEnabled();
+    expect(screen.queryByText('Not assigned — saved for later.')).not.toBeInTheDocument();
   });
   it('restores the published badge from the database after remount', async () => {
     mocks.action.mockResolvedValue({ published: true, learnerCount: 8 });

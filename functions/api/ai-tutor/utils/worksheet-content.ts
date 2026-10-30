@@ -6,6 +6,8 @@ Assignment format overrides conflicting formatting instructions above:
 Start with ${STUDENT}, then the title, instructions and all student questions.
 Never mark the correct choice, fill in blanks, or include answers/explanations in student questions.
 Then write ${PRIVATE}, followed by all answer keys, sample answers, grading guidance and solutions (or leave empty if none requested).
+Use Markdown headings: "## Questions" before the questions and "## Answer key" before private answers. Restart answer-key numbering at 1; answers are not additional questions.
+For multiple-choice questions put the question on its own line, then each option A), B), C), D) on a separate indented line. Never place option A on the question line. Separate questions with a blank line.
 Finish with ${END}. Use each marker exactly once, as a literal unescaped HTML comment on its own line. Do not put markers or the worksheet inside backticks or code fences. Keep student content and private content strictly separate.`;
 
 export interface WorksheetSeparationOptions { templateType?: string; questionCount?: number; includeAnswerKey?: boolean }
