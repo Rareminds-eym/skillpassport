@@ -4,7 +4,7 @@ import { ssoClient } from '@/shared/api/ssoClient';
 
 const PptxContentViewer = lazy(() => import('./PptxContentViewer').then(m => ({ default: m.PptxContentViewer })));
 
-type Resource = { title: string; url: string; originalUrl?: string; type?: string; mimeType?: string; size?: string; order?: number | null };
+type Resource = { id?: string; title: string; url: string; originalUrl?: string; type?: string; mimeType?: string; size?: string; order?: number | null };
 
 function getResourceIcon(type?: string) {
   switch (type?.toLowerCase()) {
@@ -33,8 +33,8 @@ function resourceKind(resource: Resource) {
   return resource.type || 'document';
 }
 
-export function LessonMediaViewer({ videoUrl, videoLoading, videoOrder, resources, children, onLeaveVideo }: {
-  videoUrl?: string; videoLoading: boolean; videoOrder?: number | null; resources: Resource[]; children: ReactNode; onLeaveVideo: () => void;
+export function LessonMediaViewer({ videoUrl, videoLoading, videoOrder, resources, children, onLeaveVideo, courseId, lessonId }: {
+  videoUrl?: string; videoLoading: boolean; videoOrder?: number | null; resources: Resource[]; children: ReactNode; onLeaveVideo: () => void; courseId?: string; lessonId?: string;
 }) {
   const [selected, setSelected] = useState(0);
   const [downloading, setDownloading] = useState<string | null>(null);
@@ -100,7 +100,7 @@ export function LessonMediaViewer({ videoUrl, videoLoading, videoOrder, resource
           <div hidden={active.kind !== 'video'} className="min-h-0 flex-1 [&>div]:mb-0 [&_video]:rounded-none">{children}</div>
           {active.kind !== 'video' && <div className="relative min-h-[240px] flex-1 aspect-[4/3] sm:aspect-video">
             {active.kind === 'pptx' ? <Suspense fallback={<p role="status" className="p-6 text-sm text-gray-600">Loading presentation preview…</p>}>
-              <PptxContentViewer key={active.url} title={active.title} url={active.url} />
+              <PptxContentViewer key={active.url} title={active.title} url={active.url} resourceId={'id' in active ? active.id : undefined} courseId={courseId} lessonId={lessonId} />
             </Suspense> : active.kind === 'pdf' ? <iframe title={active.title} src={active.url} className="h-full w-full border-0" /> :
               <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center text-sm text-gray-600">
                 <FileText size={32} />

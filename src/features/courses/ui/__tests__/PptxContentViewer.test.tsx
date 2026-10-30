@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PptxContentViewer } from "../PptxContentViewer";
+vi.mock('../../lib/normalizePptxRelationships', () => ({ normalizePptxRelationships: async (buffer: ArrayBuffer) => buffer }));
 
 const destroy = vi.fn();
 let viewerCallbacks: {

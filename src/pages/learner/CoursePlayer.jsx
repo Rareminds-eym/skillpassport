@@ -980,6 +980,7 @@ const CoursePlayer = () => {
               }
               
               return {
+                id: r.id,
                 title: r.name || r.title,
                 mimeType: r.mimeType || r.mime_type,
                 originalUrl: r.url,
@@ -1688,6 +1689,8 @@ const CoursePlayer = () => {
                       videoLoading={videoLoading}
                       videoOrder={currentLesson?.resources?.find(resource => resource.type === 'video' || resource.type === 'youtube')?.order}
                       resources={lessonResources}
+                      courseId={courseId}
+                      lessonId={currentLesson.id}
                       onLeaveVideo={() => videoRef.current?.pause()}
                     >
 

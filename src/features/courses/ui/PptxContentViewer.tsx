@@ -3,6 +3,8 @@ import type * as React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getLogger } from "@/shared/config/logging";
 import { ssoClient } from "@/shared/api/ssoClient";
+import { SlideQuiz } from './SlideQuiz';
+import { normalizePptxRelationships } from '../lib/normalizePptxRelationships';
 import { ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon, FileText as DocumentIcon, Maximize, Minimize } from "lucide-react";
 import "@file-viewer/pptx/styles.css";
 
@@ -11,6 +13,9 @@ const IconButton = ({ icon, ...props }: React.ButtonHTMLAttributes<HTMLButtonEle
 export interface PptxContentViewerProps {
   title: string;
   url: string;
+  courseId?: string;
+  lessonId?: string;
+  resourceId?: string;
 }
 
 interface SlideSize {
@@ -30,9 +35,20 @@ const getPreviewErrorMessage = (error: unknown) => {
   return "This presentation could not be previewed. Please try again or contact your educator.";
 };
 
-const getLogMetadata = (error: unknown) => ({
-  error: error instanceof Error ? error.message : String(error),
-});
+const getLogMetadata = (error: unknown) => {
+  if (error instanceof Error) return { error: error.message };
+  if (error && typeof error === 'object') {
+    const diagnostic = error as Record<string, unknown>;
+    return {
+      error: typeof diagnostic.message === 'string' ? diagnostic.message : 'PPTX processing failed',
+      code: diagnostic.code,
+      stage: diagnostic.stage,
+      detail: diagnostic.detail,
+      cause: diagnostic.cause,
+    };
+  }
+  return { error: String(error) };
+};
 
 const getSlideElements = (target: HTMLElement): HTMLElement[] =>
   Array.from(target.querySelectorAll<HTMLElement>(".slide, section[data-slide-index]")).filter(
@@ -141,7 +157,7 @@ const PptxViewerStatePanel: React.FC<{
   </div>
 );
 
-export const PptxContentViewer: React.FC<PptxContentViewerProps> = ({ title, url }) => {
+export const PptxContentViewer: React.FC<PptxContentViewerProps> = ({ title, url, courseId, lessonId, resourceId }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [fullscreenError, setFullscreenError] = useState(false);
@@ -275,7 +291,7 @@ export const PptxContentViewer: React.FC<PptxContentViewerProps> = ({ title, url
         });
         if (!response.ok) throw new Error("Presentation file could not be loaded.");
 
-        const buffer = await response.arrayBuffer();
+        const buffer = await normalizePptxRelationships(await response.arrayBuffer());
         if (!isActive) return;
 
         const viewer = await PptxViewer.open(buffer, target, {
@@ -340,6 +356,7 @@ export const PptxContentViewer: React.FC<PptxContentViewerProps> = ({ title, url
 
   return (
     <div ref={containerRef} className="relative flex h-full w-full flex-col overflow-hidden bg-gray-100 fullscreen:h-screen fullscreen:w-screen">
+      <SlideQuiz courseId={courseId} lessonId={lessonId} resourceId={resourceId} slide={activeSlide} ready={status === 'ready'} />
       <div ref={viewportRef} className="min-h-0 flex-1 overflow-hidden bg-gray-100 p-0.5">
         <div
           ref={targetRef}

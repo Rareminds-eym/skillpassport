@@ -86,11 +86,12 @@ export default defineConfig(({ command }) => ({
             return 'vendor-supabase';
           }
 
-          // Charts - group together
+          // Charts share dependencies with other vendor modules. Keeping them
+          // together avoids circular chunk initialization at application startup.
           if (packageName.startsWith('victory') || packageName === 'victory-vendor' ||
             packageName.startsWith('d3-') || packageName === 'recharts' ||
             packageName === 'apexcharts' || packageName === 'react-apexcharts') {
-            return 'vendor-charts';
+            return 'vendor';
           }
 
           // UI/Animation libraries - group together
