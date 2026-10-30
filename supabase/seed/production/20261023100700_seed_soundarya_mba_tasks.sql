@@ -1,194 +1,156 @@
--- Create the 23 MBA tasks of the Soundarya Educator Tasks sheet once for each of the 4 MBA trainers with a confirmed course (92 tasks),
--- and give every task to ALL students of that trainer's own stream (college_learner_assignments, status 'todo'). The same two steps
--- the app performs (create-assignment, then assign-task-to-learners) and the same structure as the MCA tasks seed.
--- Runs after the production trainers seed (20261023100100_seed_soundarya_trainers_skillpassport.sql), the MBA assignments seed (20261023100500_...mba_trainer_assignments.sql) and the MBA sessions seed.
--- Nothing is written to the SSO database. Safe to re-run: fixed task ids and unique (task, student) rows mean a second run inserts nothing.
+-- Seed for SkillPassport App DB (production)
+-- Creates the MBA tasks of the Soundarya Educator Tasks sheet for the confirmed courses and assigned educators:
+--   1. Pre-Counselling (PRE-COUNSEL-INTRO): Subashini (HR), Lalitha (Finance), Visakh (Marketing), Sandhya (Business Analytics) on 2026-08-31 & 2026-09-01
+--   2. Video Resume (VIDEO-RESUME-INTRO-2026): Visakh (HR), Lalitha (Marketing), Krishnalatha (Business Analytics), Subashini (Finance) on 2026-09-02 & 2026-09-03; Sandhya (Finance) on 2026-09-02
+--   3. Student Assessments & Registration (STUDENT-ASSESSMENT-INTRO-2026): Sandhya Mohan (2026-08-28) and Lalitha Srinivasan (2026-08-29) across all 4 streams
+--   4. Power BI (POWERBI-CORE-FOUND-2026): Maheswari kumar across all 4 streams on 2026-09-22
+--   5. Skill Ecosystem Orientation (SKILL-ECOSYSTEM-ORIENTATION-2026): Koutham K A (2026-09-28) and Subashini Ramaswamy (2026-09-28 & 2026-10-01) across all 4 streams
+--   6. Presentations & Evaluations - Interview Screening (PRES-EVAL-INT-SCREEN-INTRO): Subashini Ramaswamy (2026-09-12) and Visakh Madhu (2026-09-29) across all 4 streams
+--   7. VoltEdge (VoltEdge_V18): Sandhya Mohan (HR) on 2026-09-07, 09-08, 09-09, 09-15, 09-16; Subashini Ramaswamy across all 4 streams on 2026-09-10, 2026-09-11 & 2026-09-21
+--   8. HR Level 1 / Onboarding (MBA-HR-L1-ONBOARDING): Poornima (HR) on 2026-09-24, 2026-09-25, 2026-09-26
+--   9. Business Analytics L1 (MBA-BA-L1-SRILAKSHMI): Sadiq (Business Analytics) on 2026-09-30
 --
--- WHO GETS WHAT: each stream is its own MBA program record (programs.specializations = {Finance}, {Marketing}, {HR}, {"Business Analytics"}),
--- found by that list, never by the code 'MBA' alone. A task is owned by the trainer and attached to the trainer's stream class
--- (semester 4, section A). Students are the non-deleted learners of that program, semester 4, section A, who have a user_id.
--- A Finance student receives Ajay's 23 tasks, never a Marketing, HR or Business Analytics copy.
---   Trainer                        Stream              LMS course (courses.code)  Students  Student rows
---   cacsajay22@gmail.com           Finance             MBA-FIN-L1-SRILAKSHMI    12 students  x 23 tasks = 276 student rows
---   vishwanathgurlhosur@gmail.com  Marketing           MBA-MKT-L1-SWAADFIT      15 students  x 23 tasks = 345 student rows
---   poornima.du@gmail.com          HR                  MBA-HR-L1-ONBOARDING     18 students  x 23 tasks = 414 student rows
---   msadiq.india@gmail.com         Business Analytics  MBA-BA-L1-SRILAKSHMI     13 students  x 23 tasks = 299 student rows
---   Totals of the first four trainers: 92 tasks, 1334 student-task rows (= 23 tasks x 58 students: every student receives every task once).
--- ADDED: workbook rows 4-7 (Pre-Counselling and Video Resume tasks) for the educators who teach that stream's session on the task's due date. Same method as above: one task record per
--- educator, given to ALL students of that educator's own stream only. The course is the uploaded course of that educator's session (looked up by code in the courses table):
---   subashini.r@rareminds.in       HR                  PRE-COUNSEL-INTRO        18 students  x 2 tasks (rows 4, 5) =  36 student rows
---   lalitha@rareminds.in           Finance             PRE-COUNSEL-INTRO        12 students  x 2 tasks (rows 4, 5) =  24 student rows
---   visakh2013@rediffmail.com      Marketing           PRE-COUNSEL-INTRO        15 students  x 2 tasks (rows 4, 5) =  30 student rows
---   visakh2013@rediffmail.com      HR                  VIDEO-RESUME-INTRO-2026  18 students  x 2 tasks (rows 6, 7) =  36 student rows
---   lalitha@rareminds.in           Marketing           VIDEO-RESUME-INTRO-2026  15 students  x 2 tasks (rows 6, 7) =  30 student rows
---   krishnalatha@rareminds.in      Business Analytics  VIDEO-RESUME-INTRO-2026  13 students  x 2 tasks (rows 6, 7) =  26 student rows
---   subashini.r@rareminds.in       Finance             VIDEO-RESUME-INTRO-2026  12 students  x 1 task  (row 7)  =  12 student rows
---   Totals of the added tasks: 13 tasks, 194 student-task rows. Whole file: 105 tasks, 1528 student-task rows.
---   Sandhya Mohan's sessions are not seeded (overlapping rows), so a stream without an educator session that day gets no added task for that row
---   (Business Analytics rows 4 and 5, Finance row 6); those students still receive that workbook task from their stream trainer above.
+-- Each task is attached to the educator and their stream class (MBA Semester 4, Section A: Finance, HR, Marketing, Business Analytics).
+-- All students of that stream receive the task in public.college_learner_assignments (status 'todo', priority 'medium').
+-- Safe to re-run: fixed task ids and ON CONFLICT DO NOTHING mean reruns insert nothing.
 --
--- TASK IDS: uuid5(namespace 'soundarya-educators-seed.rareminds', 'task_mba:row<sheet row>:<trainer email>'), written out as literals,
--- the same method as the MCA tasks seed ('task_mca:row<sheet row>'); the trainer is part of the key because every row has one copy per trainer.
---
--- THE 23 TASKS (Educator Tasks tab of the Soundarya workbook 4, rows 2-24; title, description, instructions and due date are copied as they
--- are; a date without a time is stored as 00:00 UTC; total points 100 and type 'project', lowercase as the table requires):
---   row  2  due 2026-08-28  Candidate Participation
---   row  3  due 2026-08-29  Canddiate Assessment and profiling
---   row  4  due 2026-08-31  Career Interest Mapping: Roles, Location , Salary
---   row  5  due 2026-09-01  Career Interest Mapping: Roles, Location , Salary
---   row  6  due 2026-09-02  Self Introduction, Digital Resume, Career Alignment
---   row  7  due 2026-09-03  Self Introduction, Digital Resume, Career Alignment
---   row  8  due 2026-09-07  Functional, Business vocabulary, Decision Making
---   row  9  due 2026-09-08  Functional, Business vocabulary, Decision Making
---   row 10  due 2026-09-09  Functional, Business vocabulary, Decision Making
---   row 11  due 2026-09-10  Business vocabulary, Decision Making, Group Discussion
---   row 12  due 2026-09-11  Business vocabulary, Decision Making, Group Discussion
---   row 13  due 2026-09-12  Business vocabulary, Decision Making, Group Discussion
---   row 14  due 2026-09-15  Functional, Business vocabulary, Decision Making, Group Discussion
---   row 15  due 2026-09-16  Functional, Business vocabulary, Decision Making, Group Discussion
---   row 16  due 2026-09-21  COmmunication & Decision Making
---   row 17  due 2026-09-22  Data Cleaning, Formula and pivot table, Business dashboards, decision-
---   row 18  due 2026-09-23  Stream activity and trainer evidence
---   row 19  due 2026-09-24  Functional worksheet and practical output
---   row 20  due 2026-09-26  Evaluated practical exercise
---   row 21  due 2026-09-28  Updated SkillPassport
---   row 22  due 2026-09-29  list will be shared
---   row 23  due 2026-09-30  list will be shared
---   row 24  due 2026-10-01  Tool-based functional output
--- COURSE: course_name and course_code are read from the courses table (exact LMS title and code of the trainer's own course); the sheet's
--- own course names are not used. Skill outcomes, attachments and 'allow late submission' are empty in the sheet, so skill_outcomes is
--- empty, attachments [] and late submission keeps its default (true).
---
--- NOT INCLUDED: trainers without a seeded session and assignment (Maheswari, Sandhya Mohan, Koutham K A), and the workbook rows 3, 13, 17, 21, 22, 24 and the MCA rows 25-28
--- (no class, excluded course or excluded trainer). MCA tasks are in the MCA tasks seed.
--- A task is skipped, never forced, when the trainer, the class or the course is not found, or the trainer has no active mapping for the class.
---
--- PRE-CHECK (read-only), run first: the four stream classes (one section each), the six courses (Active), the eight trainers (active) and the
--- trainers' active mappings (11 rows); then the students per stream must be Finance 12, Marketing 15, HR 18, Business Analytics 13:
---   SELECT p.specializations, ps.id FROM public.program_sections ps JOIN public.programs p ON p.id = ps.program_id
---     JOIN public.departments d ON d.id = p.department_id AND d.id = ps.department_id JOIN public.organizations c ON c.id = d.college_id
---     WHERE c.name = 'Soundarya Institute of Management and Science' AND p.code = 'MBA' AND ps.semester = 4 AND ps.section = 'A' AND ps.status = 'active';
---   SELECT code, status FROM public.courses WHERE deleted_at IS NULL AND code IN ('MBA-FIN-L1-SRILAKSHMI', 'MBA-MKT-L1-SWAADFIT', 'MBA-HR-L1-ONBOARDING', 'MBA-BA-L1-SRILAKSHMI', 'PRE-COUNSEL-INTRO', 'VIDEO-RESUME-INTRO-2026');
---   SELECT s.email, p.specializations FROM public.organization_staff_assignments a JOIN public.organization_staff s ON s.id = a.staff_id
---     JOIN public.programs p ON p.id = a.program_id WHERE a.is_active AND p.code = 'MBA' AND lower(s.email) IN ('cacsajay22@gmail.com',
---     'vishwanathgurlhosur@gmail.com', 'poornima.du@gmail.com', 'msadiq.india@gmail.com', 'subashini.r@rareminds.in', 'lalitha@rareminds.in', 'visakh2013@rediffmail.com', 'krishnalatha@rareminds.in');
---   SELECT p.specializations, count(*) FROM public.learners l JOIN public.programs p ON p.id = l.program_id
---     WHERE p.code = 'MBA' AND l.semester = 4 AND l.section = 'A' AND NOT coalesce(l.is_deleted, false) AND l.user_id IS NOT NULL GROUP BY 1;
+-- Runs after:
+--   - 20261023100100_seed_soundarya_trainers_skillpassport.sql
+--   - 20261023100500_seed_soundarya_mba_trainer_assignments.sql
+--   - 20261023100800_seed_soundarya_mba_combine_class_groups.sql
 
 BEGIN;
 
--- 1. Tasks
+-- 1. Tasks (college_assignments)
 INSERT INTO public.college_assignments
   (assignment_id, title, description, instructions, course_name, course_code, college_id, external_educator_id, program_section_id,
    department_id, program_id, educator_name, total_points, assignment_type, skill_outcomes, due_date, available_from)
 SELECT v.id, v.title, v.description, v.instructions, co.title, co.code, c.id, s.user_id, ps.id,
   ps.department_id, ps.program_id, s.first_name || ' ' || s.last_name, 100, 'project', '{}', v.due_date, now()
 FROM (VALUES
-  ('bf52339f-7729-5e90-a12f-9e317c6814bb'::uuid, 'cacsajay22@gmail.com'::text, 'Finance'::text, 'MBA-FIN-L1-SRILAKSHMI'::text, 'Candidate Participation'::text, 'Candidate Participation'::text, 'Candidate Participation'::text, '2026-08-28 00:00:00+00'::timestamptz),
-  ('1de3f88a-8e66-5650-9d80-60942910698e'::uuid, 'cacsajay22@gmail.com'::text, 'Finance'::text, 'MBA-FIN-L1-SRILAKSHMI'::text, 'Canddiate Assessment and profiling'::text, 'Canddiate Assessment and profiling'::text, 'Canddiate Assessment and profiling'::text, '2026-08-29 00:00:00+00'::timestamptz),
-  ('8b493ccc-2212-54bf-a45b-825cdaf6bad0'::uuid, 'cacsajay22@gmail.com'::text, 'Finance'::text, 'MBA-FIN-L1-SRILAKSHMI'::text, 'Career Interest Mapping: Roles, Location , Salary'::text, 'Career Interest Mapping: Roles, Location , Salary'::text, 'Career Interest Mapping: Roles, Location , Salary'::text, '2026-08-31 00:00:00+00'::timestamptz),
-  ('9d404df5-53c0-5cb5-9796-ae493e82b3d6'::uuid, 'cacsajay22@gmail.com'::text, 'Finance'::text, 'MBA-FIN-L1-SRILAKSHMI'::text, 'Career Interest Mapping: Roles, Location , Salary'::text, 'Career Interest Mapping: Roles, Location , Salary'::text, 'Career Interest Mapping: Roles, Location , Salary'::text, '2026-09-01 00:00:00+00'::timestamptz),
-  ('324b1e82-411d-5f3b-bea7-d82591aa6066'::uuid, 'cacsajay22@gmail.com'::text, 'Finance'::text, 'MBA-FIN-L1-SRILAKSHMI'::text, 'Self Introduction, Digital Resume, Career Alignment'::text, 'Self Introduction, Digital Resume, Career Alignment'::text, 'Self Introduction, Digital Resume, Career Alignment'::text, '2026-09-02 00:00:00+00'::timestamptz),
-  ('027f2140-33a3-5143-af5c-696842925bf0'::uuid, 'cacsajay22@gmail.com'::text, 'Finance'::text, 'MBA-FIN-L1-SRILAKSHMI'::text, 'Self Introduction, Digital Resume, Career Alignment'::text, 'Self Introduction, Digital Resume, Career Alignment'::text, 'Self Introduction, Digital Resume, Career Alignment'::text, '2026-09-03 00:00:00+00'::timestamptz),
-  ('9679b4ca-dd0a-5b68-880f-9ee45ca7fc0c'::uuid, 'cacsajay22@gmail.com'::text, 'Finance'::text, 'MBA-FIN-L1-SRILAKSHMI'::text, 'Functional, Business vocabulary, Decision Making'::text, 'Functional, Business vocabulary, Decision Making'::text, 'Functional, Business vocabulary, Decision Making'::text, '2026-09-07 00:00:00+00'::timestamptz),
-  ('abaf4fff-3699-5bfa-a85a-204e2019c501'::uuid, 'cacsajay22@gmail.com'::text, 'Finance'::text, 'MBA-FIN-L1-SRILAKSHMI'::text, 'Functional, Business vocabulary, Decision Making'::text, 'Functional, Business vocabulary, Decision Making'::text, 'Functional, Business vocabulary, Decision Making'::text, '2026-09-08 00:00:00+00'::timestamptz),
-  ('07557737-9239-5323-8b68-572d5512f525'::uuid, 'cacsajay22@gmail.com'::text, 'Finance'::text, 'MBA-FIN-L1-SRILAKSHMI'::text, 'Functional, Business vocabulary, Decision Making'::text, 'Functional, Business vocabulary, Decision Making'::text, 'Functional, Business vocabulary, Decision Making'::text, '2026-09-09 00:00:00+00'::timestamptz),
-  ('cd63739d-dc89-52f0-9063-06997ed73654'::uuid, 'cacsajay22@gmail.com'::text, 'Finance'::text, 'MBA-FIN-L1-SRILAKSHMI'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, '2026-09-10 00:00:00+00'::timestamptz),
-  ('4e809ede-5fbf-535f-8d81-15f6ddfd0036'::uuid, 'cacsajay22@gmail.com'::text, 'Finance'::text, 'MBA-FIN-L1-SRILAKSHMI'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, '2026-09-11 00:00:00+00'::timestamptz),
-  ('47ca8147-21f4-5231-ac75-450b8500f409'::uuid, 'cacsajay22@gmail.com'::text, 'Finance'::text, 'MBA-FIN-L1-SRILAKSHMI'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, '2026-09-12 00:00:00+00'::timestamptz),
-  ('5e478042-f13b-5014-837d-7c0d10ee5804'::uuid, 'cacsajay22@gmail.com'::text, 'Finance'::text, 'MBA-FIN-L1-SRILAKSHMI'::text, 'Functional, Business vocabulary, Decision Making, Group Discussion'::text, 'Functional, Business vocabulary, Decision Making, Group Discussion'::text, 'Functional, Business vocabulary, Decision Making, Group Discussion'::text, '2026-09-15 00:00:00+00'::timestamptz),
-  ('90c7f77e-8635-51d4-bbe1-c72752b6ad36'::uuid, 'cacsajay22@gmail.com'::text, 'Finance'::text, 'MBA-FIN-L1-SRILAKSHMI'::text, 'Functional, Business vocabulary, Decision Making, Group Discussion'::text, 'Functional, Business vocabulary, Decision Making, Group Discussion'::text, 'Functional, Business vocabulary, Decision Making, Group Discussion'::text, '2026-09-16 00:00:00+00'::timestamptz),
-  ('d31a9eac-a96d-5a68-b7f2-efdccef689e9'::uuid, 'cacsajay22@gmail.com'::text, 'Finance'::text, 'MBA-FIN-L1-SRILAKSHMI'::text, 'COmmunication & Decision Making'::text, 'COmmunication & Decision Making'::text, 'COmmunication & Decision Making'::text, '2026-09-21 00:00:00+00'::timestamptz),
-  ('549da7fc-1df2-5eb8-94e6-9102f54b3d16'::uuid, 'cacsajay22@gmail.com'::text, 'Finance'::text, 'MBA-FIN-L1-SRILAKSHMI'::text, 'Data Cleaning, Formula and pivot table, Business dashboards, decision-making and analytical presentation'::text, 'Data Cleaning, Formula and pivot table, Business dashboards, decision-making and analytical presentation'::text, 'Data Cleaning, Formula and pivot table, Business dashboards, decision-making and analytical presentation'::text, '2026-09-22 00:00:00+00'::timestamptz),
-  ('d56e6f65-f909-5eea-b414-729aab518768'::uuid, 'cacsajay22@gmail.com'::text, 'Finance'::text, 'MBA-FIN-L1-SRILAKSHMI'::text, 'Stream activity and trainer evidence'::text, 'Stream activity and trainer evidence'::text, 'Stream activity and trainer evidence'::text, '2026-09-23 00:00:00+00'::timestamptz),
-  ('0c3c9ecf-e062-5c38-ba91-e26940b44ffb'::uuid, 'cacsajay22@gmail.com'::text, 'Finance'::text, 'MBA-FIN-L1-SRILAKSHMI'::text, 'Functional worksheet and practical output'::text, 'Functional worksheet and practical output'::text, 'Functional worksheet and practical output'::text, '2026-09-24 00:00:00+00'::timestamptz),
-  ('9a48b70c-276a-5a69-89d7-fc7a3b173d98'::uuid, 'cacsajay22@gmail.com'::text, 'Finance'::text, 'MBA-FIN-L1-SRILAKSHMI'::text, 'Evaluated practical exercise'::text, 'Evaluated practical exercise'::text, 'Evaluated practical exercise'::text, '2026-09-26 00:00:00+00'::timestamptz),
-  ('84da2e6b-0f0d-57fd-b858-a9fe2dfdee59'::uuid, 'cacsajay22@gmail.com'::text, 'Finance'::text, 'MBA-FIN-L1-SRILAKSHMI'::text, 'Updated SkillPassport'::text, 'Updated SkillPassport'::text, 'Updated SkillPassport'::text, '2026-09-28 00:00:00+00'::timestamptz),
-  ('ef2c7a01-33e4-584a-82cd-920ba7528a75'::uuid, 'cacsajay22@gmail.com'::text, 'Finance'::text, 'MBA-FIN-L1-SRILAKSHMI'::text, 'list will be shared'::text, 'list will be shared'::text, 'list will be shared'::text, '2026-09-29 00:00:00+00'::timestamptz),
-  ('07213add-32e1-5950-a082-e7d12d9fb9bc'::uuid, 'cacsajay22@gmail.com'::text, 'Finance'::text, 'MBA-FIN-L1-SRILAKSHMI'::text, 'list will be shared'::text, 'list will be shared'::text, 'list will be shared'::text, '2026-09-30 00:00:00+00'::timestamptz),
-  ('8e89553c-0c79-50ab-a6e0-c424b51f8102'::uuid, 'cacsajay22@gmail.com'::text, 'Finance'::text, 'MBA-FIN-L1-SRILAKSHMI'::text, 'Tool-based functional output'::text, 'Tool-based functional output'::text, 'Tool-based functional output'::text, '2026-10-01 00:00:00+00'::timestamptz),
-  ('2c82ab3c-7fed-5c83-917f-edfc4665c507'::uuid, 'vishwanathgurlhosur@gmail.com'::text, 'Marketing'::text, 'MBA-MKT-L1-SWAADFIT'::text, 'Candidate Participation'::text, 'Candidate Participation'::text, 'Candidate Participation'::text, '2026-08-28 00:00:00+00'::timestamptz),
-  ('6018c640-db7f-506f-9f44-492c86c0b1b7'::uuid, 'vishwanathgurlhosur@gmail.com'::text, 'Marketing'::text, 'MBA-MKT-L1-SWAADFIT'::text, 'Canddiate Assessment and profiling'::text, 'Canddiate Assessment and profiling'::text, 'Canddiate Assessment and profiling'::text, '2026-08-29 00:00:00+00'::timestamptz),
-  ('efa8757a-c9ed-55e8-8b53-7f16b0daaa6e'::uuid, 'vishwanathgurlhosur@gmail.com'::text, 'Marketing'::text, 'MBA-MKT-L1-SWAADFIT'::text, 'Career Interest Mapping: Roles, Location , Salary'::text, 'Career Interest Mapping: Roles, Location , Salary'::text, 'Career Interest Mapping: Roles, Location , Salary'::text, '2026-08-31 00:00:00+00'::timestamptz),
-  ('177520b6-2015-5d12-8c9e-25c2ff8caa92'::uuid, 'vishwanathgurlhosur@gmail.com'::text, 'Marketing'::text, 'MBA-MKT-L1-SWAADFIT'::text, 'Career Interest Mapping: Roles, Location , Salary'::text, 'Career Interest Mapping: Roles, Location , Salary'::text, 'Career Interest Mapping: Roles, Location , Salary'::text, '2026-09-01 00:00:00+00'::timestamptz),
-  ('039f1044-6719-5b24-adbe-cfd4b5a5ebd4'::uuid, 'vishwanathgurlhosur@gmail.com'::text, 'Marketing'::text, 'MBA-MKT-L1-SWAADFIT'::text, 'Self Introduction, Digital Resume, Career Alignment'::text, 'Self Introduction, Digital Resume, Career Alignment'::text, 'Self Introduction, Digital Resume, Career Alignment'::text, '2026-09-02 00:00:00+00'::timestamptz),
-  ('2c632669-2636-5088-bdfe-27917c661f17'::uuid, 'vishwanathgurlhosur@gmail.com'::text, 'Marketing'::text, 'MBA-MKT-L1-SWAADFIT'::text, 'Self Introduction, Digital Resume, Career Alignment'::text, 'Self Introduction, Digital Resume, Career Alignment'::text, 'Self Introduction, Digital Resume, Career Alignment'::text, '2026-09-03 00:00:00+00'::timestamptz),
-  ('071e4340-d85e-5761-825e-ccc1b396cbf0'::uuid, 'vishwanathgurlhosur@gmail.com'::text, 'Marketing'::text, 'MBA-MKT-L1-SWAADFIT'::text, 'Functional, Business vocabulary, Decision Making'::text, 'Functional, Business vocabulary, Decision Making'::text, 'Functional, Business vocabulary, Decision Making'::text, '2026-09-07 00:00:00+00'::timestamptz),
-  ('672f6890-166e-53ad-ada8-100c0a1e8552'::uuid, 'vishwanathgurlhosur@gmail.com'::text, 'Marketing'::text, 'MBA-MKT-L1-SWAADFIT'::text, 'Functional, Business vocabulary, Decision Making'::text, 'Functional, Business vocabulary, Decision Making'::text, 'Functional, Business vocabulary, Decision Making'::text, '2026-09-08 00:00:00+00'::timestamptz),
-  ('c56b5a7a-d613-5c30-84f7-33215d268188'::uuid, 'vishwanathgurlhosur@gmail.com'::text, 'Marketing'::text, 'MBA-MKT-L1-SWAADFIT'::text, 'Functional, Business vocabulary, Decision Making'::text, 'Functional, Business vocabulary, Decision Making'::text, 'Functional, Business vocabulary, Decision Making'::text, '2026-09-09 00:00:00+00'::timestamptz),
-  ('e09e9290-66b2-55ca-8613-854890967b73'::uuid, 'vishwanathgurlhosur@gmail.com'::text, 'Marketing'::text, 'MBA-MKT-L1-SWAADFIT'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, '2026-09-10 00:00:00+00'::timestamptz),
-  ('402dd169-20e0-5a36-b644-884b4f79b29b'::uuid, 'vishwanathgurlhosur@gmail.com'::text, 'Marketing'::text, 'MBA-MKT-L1-SWAADFIT'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, '2026-09-11 00:00:00+00'::timestamptz),
-  ('b0c5af57-5879-5301-85c2-f660759b0695'::uuid, 'vishwanathgurlhosur@gmail.com'::text, 'Marketing'::text, 'MBA-MKT-L1-SWAADFIT'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, '2026-09-12 00:00:00+00'::timestamptz),
-  ('b55afe4e-e907-532f-aaf8-bedb454b4ed6'::uuid, 'vishwanathgurlhosur@gmail.com'::text, 'Marketing'::text, 'MBA-MKT-L1-SWAADFIT'::text, 'Functional, Business vocabulary, Decision Making, Group Discussion'::text, 'Functional, Business vocabulary, Decision Making, Group Discussion'::text, 'Functional, Business vocabulary, Decision Making, Group Discussion'::text, '2026-09-15 00:00:00+00'::timestamptz),
-  ('67e21de2-9f92-5782-b9de-07edb8e135b3'::uuid, 'vishwanathgurlhosur@gmail.com'::text, 'Marketing'::text, 'MBA-MKT-L1-SWAADFIT'::text, 'Functional, Business vocabulary, Decision Making, Group Discussion'::text, 'Functional, Business vocabulary, Decision Making, Group Discussion'::text, 'Functional, Business vocabulary, Decision Making, Group Discussion'::text, '2026-09-16 00:00:00+00'::timestamptz),
-  ('4cb3e25f-eb58-51f6-b293-c06af152a3cb'::uuid, 'vishwanathgurlhosur@gmail.com'::text, 'Marketing'::text, 'MBA-MKT-L1-SWAADFIT'::text, 'COmmunication & Decision Making'::text, 'COmmunication & Decision Making'::text, 'COmmunication & Decision Making'::text, '2026-09-21 00:00:00+00'::timestamptz),
-  ('1466c8c1-2ad6-5aa9-80b3-ebfc1cd1a35e'::uuid, 'vishwanathgurlhosur@gmail.com'::text, 'Marketing'::text, 'MBA-MKT-L1-SWAADFIT'::text, 'Data Cleaning, Formula and pivot table, Business dashboards, decision-making and analytical presentation'::text, 'Data Cleaning, Formula and pivot table, Business dashboards, decision-making and analytical presentation'::text, 'Data Cleaning, Formula and pivot table, Business dashboards, decision-making and analytical presentation'::text, '2026-09-22 00:00:00+00'::timestamptz),
-  ('f6a07ce5-3e77-5424-bdf6-7770b1957c18'::uuid, 'vishwanathgurlhosur@gmail.com'::text, 'Marketing'::text, 'MBA-MKT-L1-SWAADFIT'::text, 'Stream activity and trainer evidence'::text, 'Stream activity and trainer evidence'::text, 'Stream activity and trainer evidence'::text, '2026-09-23 00:00:00+00'::timestamptz),
-  ('94e0296e-cb3a-5c5f-a015-12b74144818b'::uuid, 'vishwanathgurlhosur@gmail.com'::text, 'Marketing'::text, 'MBA-MKT-L1-SWAADFIT'::text, 'Functional worksheet and practical output'::text, 'Functional worksheet and practical output'::text, 'Functional worksheet and practical output'::text, '2026-09-24 00:00:00+00'::timestamptz),
-  ('0b6ceb23-a26b-5bec-a59d-8ad1d545467a'::uuid, 'vishwanathgurlhosur@gmail.com'::text, 'Marketing'::text, 'MBA-MKT-L1-SWAADFIT'::text, 'Evaluated practical exercise'::text, 'Evaluated practical exercise'::text, 'Evaluated practical exercise'::text, '2026-09-26 00:00:00+00'::timestamptz),
-  ('df0b124f-b234-5c4d-a5d4-d4a0a202cb7e'::uuid, 'vishwanathgurlhosur@gmail.com'::text, 'Marketing'::text, 'MBA-MKT-L1-SWAADFIT'::text, 'Updated SkillPassport'::text, 'Updated SkillPassport'::text, 'Updated SkillPassport'::text, '2026-09-28 00:00:00+00'::timestamptz),
-  ('e7a1c14b-8686-5720-864d-395571fa8dbd'::uuid, 'vishwanathgurlhosur@gmail.com'::text, 'Marketing'::text, 'MBA-MKT-L1-SWAADFIT'::text, 'list will be shared'::text, 'list will be shared'::text, 'list will be shared'::text, '2026-09-29 00:00:00+00'::timestamptz),
-  ('2da1e276-9d9f-5260-98b7-4e8f2f77b92a'::uuid, 'vishwanathgurlhosur@gmail.com'::text, 'Marketing'::text, 'MBA-MKT-L1-SWAADFIT'::text, 'list will be shared'::text, 'list will be shared'::text, 'list will be shared'::text, '2026-09-30 00:00:00+00'::timestamptz),
-  ('c5309124-0d45-584a-918d-ede88caa8d4a'::uuid, 'vishwanathgurlhosur@gmail.com'::text, 'Marketing'::text, 'MBA-MKT-L1-SWAADFIT'::text, 'Tool-based functional output'::text, 'Tool-based functional output'::text, 'Tool-based functional output'::text, '2026-10-01 00:00:00+00'::timestamptz),
-  ('ba1b8aca-40d1-5882-a9a3-eeaf43472d95'::uuid, 'poornima.du@gmail.com'::text, 'HR'::text, 'MBA-HR-L1-ONBOARDING'::text, 'Candidate Participation'::text, 'Candidate Participation'::text, 'Candidate Participation'::text, '2026-08-28 00:00:00+00'::timestamptz),
-  ('13f22870-8155-5815-80e6-815260d35471'::uuid, 'poornima.du@gmail.com'::text, 'HR'::text, 'MBA-HR-L1-ONBOARDING'::text, 'Canddiate Assessment and profiling'::text, 'Canddiate Assessment and profiling'::text, 'Canddiate Assessment and profiling'::text, '2026-08-29 00:00:00+00'::timestamptz),
-  ('b81bdb36-313a-5e8b-8fcb-5d99ff470d0a'::uuid, 'poornima.du@gmail.com'::text, 'HR'::text, 'MBA-HR-L1-ONBOARDING'::text, 'Career Interest Mapping: Roles, Location , Salary'::text, 'Career Interest Mapping: Roles, Location , Salary'::text, 'Career Interest Mapping: Roles, Location , Salary'::text, '2026-08-31 00:00:00+00'::timestamptz),
-  ('7abedf44-b208-5954-b0b1-ee5d64529db2'::uuid, 'poornima.du@gmail.com'::text, 'HR'::text, 'MBA-HR-L1-ONBOARDING'::text, 'Career Interest Mapping: Roles, Location , Salary'::text, 'Career Interest Mapping: Roles, Location , Salary'::text, 'Career Interest Mapping: Roles, Location , Salary'::text, '2026-09-01 00:00:00+00'::timestamptz),
-  ('9fdbe5a9-5f5c-51da-9c46-f936586509b7'::uuid, 'poornima.du@gmail.com'::text, 'HR'::text, 'MBA-HR-L1-ONBOARDING'::text, 'Self Introduction, Digital Resume, Career Alignment'::text, 'Self Introduction, Digital Resume, Career Alignment'::text, 'Self Introduction, Digital Resume, Career Alignment'::text, '2026-09-02 00:00:00+00'::timestamptz),
-  ('7547cae3-6bb9-50d0-aa3b-9a50c6a0b178'::uuid, 'poornima.du@gmail.com'::text, 'HR'::text, 'MBA-HR-L1-ONBOARDING'::text, 'Self Introduction, Digital Resume, Career Alignment'::text, 'Self Introduction, Digital Resume, Career Alignment'::text, 'Self Introduction, Digital Resume, Career Alignment'::text, '2026-09-03 00:00:00+00'::timestamptz),
-  ('c59cb759-4940-5e99-9deb-4ac0386f24d2'::uuid, 'poornima.du@gmail.com'::text, 'HR'::text, 'MBA-HR-L1-ONBOARDING'::text, 'Functional, Business vocabulary, Decision Making'::text, 'Functional, Business vocabulary, Decision Making'::text, 'Functional, Business vocabulary, Decision Making'::text, '2026-09-07 00:00:00+00'::timestamptz),
-  ('fd790338-5a94-5401-92df-e3777a937b47'::uuid, 'poornima.du@gmail.com'::text, 'HR'::text, 'MBA-HR-L1-ONBOARDING'::text, 'Functional, Business vocabulary, Decision Making'::text, 'Functional, Business vocabulary, Decision Making'::text, 'Functional, Business vocabulary, Decision Making'::text, '2026-09-08 00:00:00+00'::timestamptz),
-  ('4394d059-3991-5747-b303-420ee9f8a3b2'::uuid, 'poornima.du@gmail.com'::text, 'HR'::text, 'MBA-HR-L1-ONBOARDING'::text, 'Functional, Business vocabulary, Decision Making'::text, 'Functional, Business vocabulary, Decision Making'::text, 'Functional, Business vocabulary, Decision Making'::text, '2026-09-09 00:00:00+00'::timestamptz),
-  ('b6d70377-2d5a-598e-a415-91500a471f47'::uuid, 'poornima.du@gmail.com'::text, 'HR'::text, 'MBA-HR-L1-ONBOARDING'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, '2026-09-10 00:00:00+00'::timestamptz),
-  ('3064c1aa-29d1-579e-84da-06ea70de2522'::uuid, 'poornima.du@gmail.com'::text, 'HR'::text, 'MBA-HR-L1-ONBOARDING'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, '2026-09-11 00:00:00+00'::timestamptz),
-  ('12361868-94ab-52a0-aafe-e7a3354f84ab'::uuid, 'poornima.du@gmail.com'::text, 'HR'::text, 'MBA-HR-L1-ONBOARDING'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, '2026-09-12 00:00:00+00'::timestamptz),
-  ('3a88e0f3-87a9-5cdf-a1f4-5ca2924809aa'::uuid, 'poornima.du@gmail.com'::text, 'HR'::text, 'MBA-HR-L1-ONBOARDING'::text, 'Functional, Business vocabulary, Decision Making, Group Discussion'::text, 'Functional, Business vocabulary, Decision Making, Group Discussion'::text, 'Functional, Business vocabulary, Decision Making, Group Discussion'::text, '2026-09-15 00:00:00+00'::timestamptz),
-  ('1064c0a7-6ecc-531a-ac2a-0e707db96edf'::uuid, 'poornima.du@gmail.com'::text, 'HR'::text, 'MBA-HR-L1-ONBOARDING'::text, 'Functional, Business vocabulary, Decision Making, Group Discussion'::text, 'Functional, Business vocabulary, Decision Making, Group Discussion'::text, 'Functional, Business vocabulary, Decision Making, Group Discussion'::text, '2026-09-16 00:00:00+00'::timestamptz),
-  ('9587ef96-87e7-5240-a152-ebe143f6218c'::uuid, 'poornima.du@gmail.com'::text, 'HR'::text, 'MBA-HR-L1-ONBOARDING'::text, 'COmmunication & Decision Making'::text, 'COmmunication & Decision Making'::text, 'COmmunication & Decision Making'::text, '2026-09-21 00:00:00+00'::timestamptz),
-  ('cc42570a-f046-5294-a641-c1603b22ef05'::uuid, 'poornima.du@gmail.com'::text, 'HR'::text, 'MBA-HR-L1-ONBOARDING'::text, 'Data Cleaning, Formula and pivot table, Business dashboards, decision-making and analytical presentation'::text, 'Data Cleaning, Formula and pivot table, Business dashboards, decision-making and analytical presentation'::text, 'Data Cleaning, Formula and pivot table, Business dashboards, decision-making and analytical presentation'::text, '2026-09-22 00:00:00+00'::timestamptz),
-  ('5aacd7b2-aafb-5431-a9e6-a744a767d7f9'::uuid, 'poornima.du@gmail.com'::text, 'HR'::text, 'MBA-HR-L1-ONBOARDING'::text, 'Stream activity and trainer evidence'::text, 'Stream activity and trainer evidence'::text, 'Stream activity and trainer evidence'::text, '2026-09-23 00:00:00+00'::timestamptz),
-  ('4447719e-431e-58f9-9f3d-1fb1f86f9fd7'::uuid, 'poornima.du@gmail.com'::text, 'HR'::text, 'MBA-HR-L1-ONBOARDING'::text, 'Functional worksheet and practical output'::text, 'Functional worksheet and practical output'::text, 'Functional worksheet and practical output'::text, '2026-09-24 00:00:00+00'::timestamptz),
-  ('abac058d-e2d3-583d-8b84-18c866c41380'::uuid, 'poornima.du@gmail.com'::text, 'HR'::text, 'MBA-HR-L1-ONBOARDING'::text, 'Evaluated practical exercise'::text, 'Evaluated practical exercise'::text, 'Evaluated practical exercise'::text, '2026-09-26 00:00:00+00'::timestamptz),
-  ('d4bc8456-6fd0-593b-a447-456d1cab739d'::uuid, 'poornima.du@gmail.com'::text, 'HR'::text, 'MBA-HR-L1-ONBOARDING'::text, 'Updated SkillPassport'::text, 'Updated SkillPassport'::text, 'Updated SkillPassport'::text, '2026-09-28 00:00:00+00'::timestamptz),
-  ('670488e9-65e8-523c-81f4-c32dce81ed81'::uuid, 'poornima.du@gmail.com'::text, 'HR'::text, 'MBA-HR-L1-ONBOARDING'::text, 'list will be shared'::text, 'list will be shared'::text, 'list will be shared'::text, '2026-09-29 00:00:00+00'::timestamptz),
-  ('f243dd7a-e7b8-5d92-9e01-16ff7c9e6e5c'::uuid, 'poornima.du@gmail.com'::text, 'HR'::text, 'MBA-HR-L1-ONBOARDING'::text, 'list will be shared'::text, 'list will be shared'::text, 'list will be shared'::text, '2026-09-30 00:00:00+00'::timestamptz),
-  ('72138bfe-a269-5dc4-9938-581b6138c3f8'::uuid, 'poornima.du@gmail.com'::text, 'HR'::text, 'MBA-HR-L1-ONBOARDING'::text, 'Tool-based functional output'::text, 'Tool-based functional output'::text, 'Tool-based functional output'::text, '2026-10-01 00:00:00+00'::timestamptz),
-  ('06677e2c-60d8-5803-8090-5f9eebde306c'::uuid, 'msadiq.india@gmail.com'::text, 'Business Analytics'::text, 'MBA-BA-L1-SRILAKSHMI'::text, 'Candidate Participation'::text, 'Candidate Participation'::text, 'Candidate Participation'::text, '2026-08-28 00:00:00+00'::timestamptz),
-  ('be802d17-5b2a-54b1-8462-3650a76011db'::uuid, 'msadiq.india@gmail.com'::text, 'Business Analytics'::text, 'MBA-BA-L1-SRILAKSHMI'::text, 'Canddiate Assessment and profiling'::text, 'Canddiate Assessment and profiling'::text, 'Canddiate Assessment and profiling'::text, '2026-08-29 00:00:00+00'::timestamptz),
-  ('813592bd-7d70-568e-8ca3-b6dbf26a9fc8'::uuid, 'msadiq.india@gmail.com'::text, 'Business Analytics'::text, 'MBA-BA-L1-SRILAKSHMI'::text, 'Career Interest Mapping: Roles, Location , Salary'::text, 'Career Interest Mapping: Roles, Location , Salary'::text, 'Career Interest Mapping: Roles, Location , Salary'::text, '2026-08-31 00:00:00+00'::timestamptz),
-  ('e018bff3-29de-52ea-bb17-8e68eeee6f4c'::uuid, 'msadiq.india@gmail.com'::text, 'Business Analytics'::text, 'MBA-BA-L1-SRILAKSHMI'::text, 'Career Interest Mapping: Roles, Location , Salary'::text, 'Career Interest Mapping: Roles, Location , Salary'::text, 'Career Interest Mapping: Roles, Location , Salary'::text, '2026-09-01 00:00:00+00'::timestamptz),
-  ('1000ccdf-32a2-5f21-baf3-ce13ae94571d'::uuid, 'msadiq.india@gmail.com'::text, 'Business Analytics'::text, 'MBA-BA-L1-SRILAKSHMI'::text, 'Self Introduction, Digital Resume, Career Alignment'::text, 'Self Introduction, Digital Resume, Career Alignment'::text, 'Self Introduction, Digital Resume, Career Alignment'::text, '2026-09-02 00:00:00+00'::timestamptz),
-  ('d0198f32-d2fb-5dcc-9846-d96b4417459f'::uuid, 'msadiq.india@gmail.com'::text, 'Business Analytics'::text, 'MBA-BA-L1-SRILAKSHMI'::text, 'Self Introduction, Digital Resume, Career Alignment'::text, 'Self Introduction, Digital Resume, Career Alignment'::text, 'Self Introduction, Digital Resume, Career Alignment'::text, '2026-09-03 00:00:00+00'::timestamptz),
-  ('b07e759d-0ce4-5329-a23f-7ff64041954f'::uuid, 'msadiq.india@gmail.com'::text, 'Business Analytics'::text, 'MBA-BA-L1-SRILAKSHMI'::text, 'Functional, Business vocabulary, Decision Making'::text, 'Functional, Business vocabulary, Decision Making'::text, 'Functional, Business vocabulary, Decision Making'::text, '2026-09-07 00:00:00+00'::timestamptz),
-  ('1cbeb9f8-6723-5c4f-8119-74d740703961'::uuid, 'msadiq.india@gmail.com'::text, 'Business Analytics'::text, 'MBA-BA-L1-SRILAKSHMI'::text, 'Functional, Business vocabulary, Decision Making'::text, 'Functional, Business vocabulary, Decision Making'::text, 'Functional, Business vocabulary, Decision Making'::text, '2026-09-08 00:00:00+00'::timestamptz),
-  ('b77fc45c-77e6-55dd-a026-5da2c00369e4'::uuid, 'msadiq.india@gmail.com'::text, 'Business Analytics'::text, 'MBA-BA-L1-SRILAKSHMI'::text, 'Functional, Business vocabulary, Decision Making'::text, 'Functional, Business vocabulary, Decision Making'::text, 'Functional, Business vocabulary, Decision Making'::text, '2026-09-09 00:00:00+00'::timestamptz),
-  ('73d28b09-6679-5802-b5f1-a685f4c7eec9'::uuid, 'msadiq.india@gmail.com'::text, 'Business Analytics'::text, 'MBA-BA-L1-SRILAKSHMI'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, '2026-09-10 00:00:00+00'::timestamptz),
-  ('36177b98-31f5-5b80-8c1c-4395305ddd54'::uuid, 'msadiq.india@gmail.com'::text, 'Business Analytics'::text, 'MBA-BA-L1-SRILAKSHMI'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, '2026-09-11 00:00:00+00'::timestamptz),
-  ('f7749a41-3e0a-5fe2-bde1-08b048162d46'::uuid, 'msadiq.india@gmail.com'::text, 'Business Analytics'::text, 'MBA-BA-L1-SRILAKSHMI'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, '2026-09-12 00:00:00+00'::timestamptz),
-  ('18d38bc9-0997-5b98-b205-d9fd58f3bfc4'::uuid, 'msadiq.india@gmail.com'::text, 'Business Analytics'::text, 'MBA-BA-L1-SRILAKSHMI'::text, 'Functional, Business vocabulary, Decision Making, Group Discussion'::text, 'Functional, Business vocabulary, Decision Making, Group Discussion'::text, 'Functional, Business vocabulary, Decision Making, Group Discussion'::text, '2026-09-15 00:00:00+00'::timestamptz),
-  ('1a33cafa-b8a5-57c3-aa74-27e047833344'::uuid, 'msadiq.india@gmail.com'::text, 'Business Analytics'::text, 'MBA-BA-L1-SRILAKSHMI'::text, 'Functional, Business vocabulary, Decision Making, Group Discussion'::text, 'Functional, Business vocabulary, Decision Making, Group Discussion'::text, 'Functional, Business vocabulary, Decision Making, Group Discussion'::text, '2026-09-16 00:00:00+00'::timestamptz),
-  ('413757e3-0a4c-5477-8944-d2ae60dbf6db'::uuid, 'msadiq.india@gmail.com'::text, 'Business Analytics'::text, 'MBA-BA-L1-SRILAKSHMI'::text, 'COmmunication & Decision Making'::text, 'COmmunication & Decision Making'::text, 'COmmunication & Decision Making'::text, '2026-09-21 00:00:00+00'::timestamptz),
-  ('8a827d01-5810-5f56-b3f7-fd9e17a66163'::uuid, 'msadiq.india@gmail.com'::text, 'Business Analytics'::text, 'MBA-BA-L1-SRILAKSHMI'::text, 'Data Cleaning, Formula and pivot table, Business dashboards, decision-making and analytical presentation'::text, 'Data Cleaning, Formula and pivot table, Business dashboards, decision-making and analytical presentation'::text, 'Data Cleaning, Formula and pivot table, Business dashboards, decision-making and analytical presentation'::text, '2026-09-22 00:00:00+00'::timestamptz),
-  ('f740efda-47a5-5097-b48f-6f95ceb3826f'::uuid, 'msadiq.india@gmail.com'::text, 'Business Analytics'::text, 'MBA-BA-L1-SRILAKSHMI'::text, 'Stream activity and trainer evidence'::text, 'Stream activity and trainer evidence'::text, 'Stream activity and trainer evidence'::text, '2026-09-23 00:00:00+00'::timestamptz),
-  ('206fefb8-5204-5472-8deb-42b52c975930'::uuid, 'msadiq.india@gmail.com'::text, 'Business Analytics'::text, 'MBA-BA-L1-SRILAKSHMI'::text, 'Functional worksheet and practical output'::text, 'Functional worksheet and practical output'::text, 'Functional worksheet and practical output'::text, '2026-09-24 00:00:00+00'::timestamptz),
-  ('4f848b48-48e1-5a8c-8a52-8946e77feb66'::uuid, 'msadiq.india@gmail.com'::text, 'Business Analytics'::text, 'MBA-BA-L1-SRILAKSHMI'::text, 'Evaluated practical exercise'::text, 'Evaluated practical exercise'::text, 'Evaluated practical exercise'::text, '2026-09-26 00:00:00+00'::timestamptz),
-  ('d9d96ec9-e6e4-5916-ace0-bb0f4b931804'::uuid, 'msadiq.india@gmail.com'::text, 'Business Analytics'::text, 'MBA-BA-L1-SRILAKSHMI'::text, 'Updated SkillPassport'::text, 'Updated SkillPassport'::text, 'Updated SkillPassport'::text, '2026-09-28 00:00:00+00'::timestamptz),
-  ('7d86efdb-bb01-5abe-9ba9-c7eb03e48c0d'::uuid, 'msadiq.india@gmail.com'::text, 'Business Analytics'::text, 'MBA-BA-L1-SRILAKSHMI'::text, 'list will be shared'::text, 'list will be shared'::text, 'list will be shared'::text, '2026-09-29 00:00:00+00'::timestamptz),
-  ('10870cff-9569-5299-a206-d4c62c5b5556'::uuid, 'msadiq.india@gmail.com'::text, 'Business Analytics'::text, 'MBA-BA-L1-SRILAKSHMI'::text, 'list will be shared'::text, 'list will be shared'::text, 'list will be shared'::text, '2026-09-30 00:00:00+00'::timestamptz),
-  ('6a2024d6-9b29-53de-98c9-54ce2b21bd13'::uuid, 'msadiq.india@gmail.com'::text, 'Business Analytics'::text, 'MBA-BA-L1-SRILAKSHMI'::text, 'Tool-based functional output'::text, 'Tool-based functional output'::text, 'Tool-based functional output'::text, '2026-10-01 00:00:00+00'::timestamptz),
+  -- -------------------------------------------------------------------------
+  -- Course: PRE-COUNSEL-INTRO (Pre-Counselling)
+  -- -------------------------------------------------------------------------
   ('3ebc2f1b-5e21-59b3-8a69-bfd1c68476fd'::uuid, 'subashini.r@rareminds.in'::text, 'HR'::text, 'PRE-COUNSEL-INTRO'::text, 'Career Interest Mapping: Roles, Location , Salary'::text, 'Career Interest Mapping: Roles, Location , Salary'::text, 'Career Interest Mapping: Roles, Location , Salary'::text, '2026-08-31 00:00:00+00'::timestamptz),
   ('c6755e63-dec4-5bb0-96e6-ae71c92bc96f'::uuid, 'lalitha@rareminds.in'::text, 'Finance'::text, 'PRE-COUNSEL-INTRO'::text, 'Career Interest Mapping: Roles, Location , Salary'::text, 'Career Interest Mapping: Roles, Location , Salary'::text, 'Career Interest Mapping: Roles, Location , Salary'::text, '2026-08-31 00:00:00+00'::timestamptz),
   ('0d945880-d238-5dc2-82ca-e4728c0b1279'::uuid, 'visakh2013@rediffmail.com'::text, 'Marketing'::text, 'PRE-COUNSEL-INTRO'::text, 'Career Interest Mapping: Roles, Location , Salary'::text, 'Career Interest Mapping: Roles, Location , Salary'::text, 'Career Interest Mapping: Roles, Location , Salary'::text, '2026-08-31 00:00:00+00'::timestamptz),
+  ('5a3f1240-bc78-5e91-81df-9d0a1b2c3d4e'::uuid, 'sandhyamohan.sharath@gmail.com'::text, 'Business Analytics'::text, 'PRE-COUNSEL-INTRO'::text, 'Career Interest Mapping: Roles, Location , Salary'::text, 'Career Interest Mapping: Roles, Location , Salary'::text, 'Career Interest Mapping: Roles, Location , Salary'::text, '2026-08-31 00:00:00+00'::timestamptz),
+
   ('52d264bf-afc7-5e75-8286-3aa53438c1ac'::uuid, 'subashini.r@rareminds.in'::text, 'HR'::text, 'PRE-COUNSEL-INTRO'::text, 'Career Interest Mapping: Roles, Location , Salary'::text, 'Career Interest Mapping: Roles, Location , Salary'::text, 'Career Interest Mapping: Roles, Location , Salary'::text, '2026-09-01 00:00:00+00'::timestamptz),
   ('bc735640-2cf2-530f-9971-d8f1d6b42048'::uuid, 'lalitha@rareminds.in'::text, 'Finance'::text, 'PRE-COUNSEL-INTRO'::text, 'Career Interest Mapping: Roles, Location , Salary'::text, 'Career Interest Mapping: Roles, Location , Salary'::text, 'Career Interest Mapping: Roles, Location , Salary'::text, '2026-09-01 00:00:00+00'::timestamptz),
   ('3b0298e5-fb1a-51ea-881c-0454aab6dafa'::uuid, 'visakh2013@rediffmail.com'::text, 'Marketing'::text, 'PRE-COUNSEL-INTRO'::text, 'Career Interest Mapping: Roles, Location , Salary'::text, 'Career Interest Mapping: Roles, Location , Salary'::text, 'Career Interest Mapping: Roles, Location , Salary'::text, '2026-09-01 00:00:00+00'::timestamptz),
+  ('6b4a2351-cd89-5fa2-92e0-ae1b2c3d4e5f'::uuid, 'sandhyamohan.sharath@gmail.com'::text, 'Business Analytics'::text, 'PRE-COUNSEL-INTRO'::text, 'Career Interest Mapping: Roles, Location , Salary'::text, 'Career Interest Mapping: Roles, Location , Salary'::text, 'Career Interest Mapping: Roles, Location , Salary'::text, '2026-09-01 00:00:00+00'::timestamptz),
+
+  -- -------------------------------------------------------------------------
+  -- Course: VIDEO-RESUME-INTRO-2026 (Video Resume)
+  -- -------------------------------------------------------------------------
   ('369b06f2-b0c0-5d55-8e59-a410da122471'::uuid, 'visakh2013@rediffmail.com'::text, 'HR'::text, 'VIDEO-RESUME-INTRO-2026'::text, 'Self Introduction, Digital Resume, Career Alignment'::text, 'Self Introduction, Digital Resume, Career Alignment'::text, 'Self Introduction, Digital Resume, Career Alignment'::text, '2026-09-02 00:00:00+00'::timestamptz),
   ('b3bc9d49-a37b-5b47-ad3f-6975f270b176'::uuid, 'lalitha@rareminds.in'::text, 'Marketing'::text, 'VIDEO-RESUME-INTRO-2026'::text, 'Self Introduction, Digital Resume, Career Alignment'::text, 'Self Introduction, Digital Resume, Career Alignment'::text, 'Self Introduction, Digital Resume, Career Alignment'::text, '2026-09-02 00:00:00+00'::timestamptz),
   ('65dda50a-bc7f-5e0f-9fb5-9e1db60cd5a5'::uuid, 'krishnalatha@rareminds.in'::text, 'Business Analytics'::text, 'VIDEO-RESUME-INTRO-2026'::text, 'Self Introduction, Digital Resume, Career Alignment'::text, 'Self Introduction, Digital Resume, Career Alignment'::text, 'Self Introduction, Digital Resume, Career Alignment'::text, '2026-09-02 00:00:00+00'::timestamptz),
+  ('49a1bc2d-5310-53b3-82a1-e471d8a183b1'::uuid, 'subashini.r@rareminds.in'::text, 'Finance'::text, 'VIDEO-RESUME-INTRO-2026'::text, 'Self Introduction, Digital Resume, Career Alignment'::text, 'Self Introduction, Digital Resume, Career Alignment'::text, 'Self Introduction, Digital Resume, Career Alignment'::text, '2026-09-02 00:00:00+00'::timestamptz),
+  ('7c5e3462-de9a-5f03-a3d1-bf0c2e4f6a87'::uuid, 'sandhyamohan.sharath@gmail.com'::text, 'Finance'::text, 'VIDEO-RESUME-INTRO-2026'::text, 'Self Introduction, Digital Resume, Career Alignment'::text, 'Self Introduction, Digital Resume, Career Alignment'::text, 'Self Introduction, Digital Resume, Career Alignment'::text, '2026-09-02 00:00:00+00'::timestamptz),
+
   ('36199a3a-2fa3-5ecf-816c-2064aeb59da4'::uuid, 'visakh2013@rediffmail.com'::text, 'HR'::text, 'VIDEO-RESUME-INTRO-2026'::text, 'Self Introduction, Digital Resume, Career Alignment'::text, 'Self Introduction, Digital Resume, Career Alignment'::text, 'Self Introduction, Digital Resume, Career Alignment'::text, '2026-09-03 00:00:00+00'::timestamptz),
-  ('be600b8d-cfc9-5089-b618-6a65b9d5eb80'::uuid, 'subashini.r@rareminds.in'::text, 'Finance'::text, 'VIDEO-RESUME-INTRO-2026'::text, 'Self Introduction, Digital Resume, Career Alignment'::text, 'Self Introduction, Digital Resume, Career Alignment'::text, 'Self Introduction, Digital Resume, Career Alignment'::text, '2026-09-03 00:00:00+00'::timestamptz),
   ('3c5cdc2c-abd7-5393-be41-a4607d08d40f'::uuid, 'lalitha@rareminds.in'::text, 'Marketing'::text, 'VIDEO-RESUME-INTRO-2026'::text, 'Self Introduction, Digital Resume, Career Alignment'::text, 'Self Introduction, Digital Resume, Career Alignment'::text, 'Self Introduction, Digital Resume, Career Alignment'::text, '2026-09-03 00:00:00+00'::timestamptz),
-  ('a4557e25-5657-53be-8ebb-4dd899d86df4'::uuid, 'krishnalatha@rareminds.in'::text, 'Business Analytics'::text, 'VIDEO-RESUME-INTRO-2026'::text, 'Self Introduction, Digital Resume, Career Alignment'::text, 'Self Introduction, Digital Resume, Career Alignment'::text, 'Self Introduction, Digital Resume, Career Alignment'::text, '2026-09-03 00:00:00+00'::timestamptz)
+  ('a4557e25-5657-53be-8ebb-4dd899d86df4'::uuid, 'krishnalatha@rareminds.in'::text, 'Business Analytics'::text, 'VIDEO-RESUME-INTRO-2026'::text, 'Self Introduction, Digital Resume, Career Alignment'::text, 'Self Introduction, Digital Resume, Career Alignment'::text, 'Self Introduction, Digital Resume, Career Alignment'::text, '2026-09-03 00:00:00+00'::timestamptz),
+  ('be600b8d-cfc9-5089-b618-6a65b9d5eb80'::uuid, 'subashini.r@rareminds.in'::text, 'Finance'::text, 'VIDEO-RESUME-INTRO-2026'::text, 'Self Introduction, Digital Resume, Career Alignment'::text, 'Self Introduction, Digital Resume, Career Alignment'::text, 'Self Introduction, Digital Resume, Career Alignment'::text, '2026-09-03 00:00:00+00'::timestamptz),
+
+  -- -------------------------------------------------------------------------
+  -- Course: STUDENT-ASSESSMENT-INTRO-2026 (Student Assessments & Registration)
+  -- Educators: Lalitha Srinivasan & Sandhya Mohan across all 4 streams
+  -- -------------------------------------------------------------------------
+  ('1de3f88a-8e66-5650-9d80-60942910698e'::uuid, 'lalitha@rareminds.in'::text, 'Finance'::text, 'STUDENT-ASSESSMENT-INTRO-2026'::text, 'Canddiate Assessment and profiling'::text, 'Canddiate Assessment and profiling'::text, 'Canddiate Assessment and profiling'::text, '2026-08-29 00:00:00+00'::timestamptz),
+  ('13f22870-8155-5815-80e6-815260d35471'::uuid, 'lalitha@rareminds.in'::text, 'HR'::text, 'STUDENT-ASSESSMENT-INTRO-2026'::text, 'Canddiate Assessment and profiling'::text, 'Canddiate Assessment and profiling'::text, 'Canddiate Assessment and profiling'::text, '2026-08-29 00:00:00+00'::timestamptz),
+  ('6018c640-db7f-506f-9f44-492c86c0b1b7'::uuid, 'lalitha@rareminds.in'::text, 'Marketing'::text, 'STUDENT-ASSESSMENT-INTRO-2026'::text, 'Canddiate Assessment and profiling'::text, 'Canddiate Assessment and profiling'::text, 'Canddiate Assessment and profiling'::text, '2026-08-29 00:00:00+00'::timestamptz),
+  ('be802d17-5b2a-54b1-8462-3650a76011db'::uuid, 'lalitha@rareminds.in'::text, 'Business Analytics'::text, 'STUDENT-ASSESSMENT-INTRO-2026'::text, 'Canddiate Assessment and profiling'::text, 'Canddiate Assessment and profiling'::text, 'Canddiate Assessment and profiling'::text, '2026-08-29 00:00:00+00'::timestamptz),
+
+  -- Sandhya Mohan (Aug 28: Student Registration, all 4 streams)
+  ('a2d9c401-1b2c-5f3a-89a1-7c5d0e4b8190'::uuid, 'sandhyamohan.sharath@gmail.com'::text, 'Finance'::text, 'STUDENT-ASSESSMENT-INTRO-2026'::text, 'Candidate Participation'::text, 'Candidate Participation'::text, 'Candidate Participation'::text, '2026-08-28 00:00:00+00'::timestamptz),
+  ('b3e0d512-2c3d-5a4b-90b2-8d6e1f5c9201'::uuid, 'sandhyamohan.sharath@gmail.com'::text, 'HR'::text, 'STUDENT-ASSESSMENT-INTRO-2026'::text, 'Candidate Participation'::text, 'Candidate Participation'::text, 'Candidate Participation'::text, '2026-08-28 00:00:00+00'::timestamptz),
+  ('c4f1e623-3d4e-5b5c-a1c3-9e7f2a6d0312'::uuid, 'sandhyamohan.sharath@gmail.com'::text, 'Marketing'::text, 'STUDENT-ASSESSMENT-INTRO-2026'::text, 'Candidate Participation'::text, 'Candidate Participation'::text, 'Candidate Participation'::text, '2026-08-28 00:00:00+00'::timestamptz),
+  ('d5a2f734-4e5f-5c6d-b2d4-af8a3b7e1423'::uuid, 'sandhyamohan.sharath@gmail.com'::text, 'Business Analytics'::text, 'STUDENT-ASSESSMENT-INTRO-2026'::text, 'Candidate Participation'::text, 'Candidate Participation'::text, 'Candidate Participation'::text, '2026-08-28 00:00:00+00'::timestamptz),
+
+  -- -------------------------------------------------------------------------
+  -- Course: POWERBI-CORE-FOUND-2026 (Power BI)
+  -- Educator: Maheswari kumar across all 4 streams
+  -- -------------------------------------------------------------------------
+  ('549da7fc-1df2-5eb8-94e6-9102f54b3d16'::uuid, 'maheswarikumar27@gmail.com'::text, 'Finance'::text, 'POWERBI-CORE-FOUND-2026'::text, 'Data Cleaning, Formula and pivot table, Business dashboards, decision-making and analytical presentation'::text, 'Data Cleaning, Formula and pivot table, Business dashboards, decision-making and analytical presentation'::text, 'Data Cleaning, Formula and pivot table, Business dashboards, decision-making and analytical presentation'::text, '2026-09-22 00:00:00+00'::timestamptz),
+  ('cc42570a-f046-5294-a641-c1603b22ef05'::uuid, 'maheswarikumar27@gmail.com'::text, 'HR'::text, 'POWERBI-CORE-FOUND-2026'::text, 'Data Cleaning, Formula and pivot table, Business dashboards, decision-making and analytical presentation'::text, 'Data Cleaning, Formula and pivot table, Business dashboards, decision-making and analytical presentation'::text, 'Data Cleaning, Formula and pivot table, Business dashboards, decision-making and analytical presentation'::text, '2026-09-22 00:00:00+00'::timestamptz),
+  ('1466c8c1-2ad6-5aa9-80b3-ebfc1cd1a35e'::uuid, 'maheswarikumar27@gmail.com'::text, 'Marketing'::text, 'POWERBI-CORE-FOUND-2026'::text, 'Data Cleaning, Formula and pivot table, Business dashboards, decision-making and analytical presentation'::text, 'Data Cleaning, Formula and pivot table, Business dashboards, decision-making and analytical presentation'::text, 'Data Cleaning, Formula and pivot table, Business dashboards, decision-making and analytical presentation'::text, '2026-09-22 00:00:00+00'::timestamptz),
+  ('8a827d01-5810-5f56-b3f7-fd9e17a66163'::uuid, 'maheswarikumar27@gmail.com'::text, 'Business Analytics'::text, 'POWERBI-CORE-FOUND-2026'::text, 'Data Cleaning, Formula and pivot table, Business dashboards, decision-making and analytical presentation'::text, 'Data Cleaning, Formula and pivot table, Business dashboards, decision-making and analytical presentation'::text, 'Data Cleaning, Formula and pivot table, Business dashboards, decision-making and analytical presentation'::text, '2026-09-22 00:00:00+00'::timestamptz),
+
+  -- -------------------------------------------------------------------------
+  -- Course: SKILL-ECOSYSTEM-ORIENTATION-2026 (Skill Ecosystem Orientation)
+  -- Educators: Koutham K A & Subashini Ramaswamy across all 4 streams
+  -- -------------------------------------------------------------------------
+  ('84da2e6b-0f0d-57fd-b858-a9fe2dfdee59'::uuid, 'koutham8505@gmail.com'::text, 'Finance'::text, 'SKILL-ECOSYSTEM-ORIENTATION-2026'::text, 'Updated SkillPassport'::text, 'Updated SkillPassport'::text, 'Updated SkillPassport'::text, '2026-09-28 00:00:00+00'::timestamptz),
+  ('d4bc8456-6fd0-593b-a447-456d1cab739d'::uuid, 'koutham8505@gmail.com'::text, 'HR'::text, 'SKILL-ECOSYSTEM-ORIENTATION-2026'::text, 'Updated SkillPassport'::text, 'Updated SkillPassport'::text, 'Updated SkillPassport'::text, '2026-09-28 00:00:00+00'::timestamptz),
+  ('df0b124f-b234-5c4d-a5d4-d4a0a202cb7e'::uuid, 'koutham8505@gmail.com'::text, 'Marketing'::text, 'SKILL-ECOSYSTEM-ORIENTATION-2026'::text, 'Updated SkillPassport'::text, 'Updated SkillPassport'::text, 'Updated SkillPassport'::text, '2026-09-28 00:00:00+00'::timestamptz),
+  ('d9d96ec9-e6e4-5916-ace0-bb0f4b931804'::uuid, 'koutham8505@gmail.com'::text, 'Business Analytics'::text, 'SKILL-ECOSYSTEM-ORIENTATION-2026'::text, 'Updated SkillPassport'::text, 'Updated SkillPassport'::text, 'Updated SkillPassport'::text, '2026-09-28 00:00:00+00'::timestamptz),
+
+  ('e1b8c290-7d4e-5a1b-83c9-0a2b4c6e8f10'::uuid, 'subashini.r@rareminds.in'::text, 'Finance'::text, 'SKILL-ECOSYSTEM-ORIENTATION-2026'::text, 'Updated SkillPassport'::text, 'Updated SkillPassport'::text, 'Updated SkillPassport'::text, '2026-09-28 00:00:00+00'::timestamptz),
+  ('f2c9d301-8e5f-5b2c-94da-1b3c5d7f9a21'::uuid, 'subashini.r@rareminds.in'::text, 'HR'::text, 'SKILL-ECOSYSTEM-ORIENTATION-2026'::text, 'Updated SkillPassport'::text, 'Updated SkillPassport'::text, 'Updated SkillPassport'::text, '2026-09-28 00:00:00+00'::timestamptz),
+  ('03dae412-9f60-5c3d-a5eb-2c4d6e80ab32'::uuid, 'subashini.r@rareminds.in'::text, 'Marketing'::text, 'SKILL-ECOSYSTEM-ORIENTATION-2026'::text, 'Updated SkillPassport'::text, 'Updated SkillPassport'::text, 'Updated SkillPassport'::text, '2026-09-28 00:00:00+00'::timestamptz),
+  ('14ebf523-a071-5d4e-b6fc-3d5e7f91bc43'::uuid, 'subashini.r@rareminds.in'::text, 'Business Analytics'::text, 'SKILL-ECOSYSTEM-ORIENTATION-2026'::text, 'Updated SkillPassport'::text, 'Updated SkillPassport'::text, 'Updated SkillPassport'::text, '2026-09-28 00:00:00+00'::timestamptz),
+
+  ('c7d8e9f0-a1b2-5c3d-4e5f-6a7b8c9d0e1f'::uuid, 'subashini.r@rareminds.in'::text, 'Finance'::text, 'SKILL-ECOSYSTEM-ORIENTATION-2026'::text, 'Tool-based functional output'::text, 'Tool-based functional output'::text, 'Tool-based functional output'::text, '2026-10-01 00:00:00+00'::timestamptz),
+  ('d8e9f0a1-b2c3-5d4e-6f7a-8b9c0d1e2f3a'::uuid, 'subashini.r@rareminds.in'::text, 'HR'::text, 'SKILL-ECOSYSTEM-ORIENTATION-2026'::text, 'Tool-based functional output'::text, 'Tool-based functional output'::text, 'Tool-based functional output'::text, '2026-10-01 00:00:00+00'::timestamptz),
+  ('e9f0a1b2-c3d4-5e5f-7a8b-9c0d1e2f3a4b'::uuid, 'subashini.r@rareminds.in'::text, 'Marketing'::text, 'SKILL-ECOSYSTEM-ORIENTATION-2026'::text, 'Tool-based functional output'::text, 'Tool-based functional output'::text, 'Tool-based functional output'::text, '2026-10-01 00:00:00+00'::timestamptz),
+  ('f0a1b2c3-d4e5-5f6a-8b9c-0d1e2f3a4b5c'::uuid, 'subashini.r@rareminds.in'::text, 'Business Analytics'::text, 'SKILL-ECOSYSTEM-ORIENTATION-2026'::text, 'Tool-based functional output'::text, 'Tool-based functional output'::text, 'Tool-based functional output'::text, '2026-10-01 00:00:00+00'::timestamptz),
+
+  -- -------------------------------------------------------------------------
+  -- Course: PRES-EVAL-INT-SCREEN-INTRO (Presentations & Evaluations - Interview Screening)
+  -- Educators: Subashini Ramaswamy (2026-09-12) & Visakh Madhu (2026-09-29) across all 4 streams
+  -- -------------------------------------------------------------------------
+  ('a1b2c3d4-e5f6-5a7b-8c9d-0e1f2a3b4c5d'::uuid, 'subashini.r@rareminds.in'::text, 'Finance'::text, 'PRES-EVAL-INT-SCREEN-INTRO'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, '2026-09-12 00:00:00+00'::timestamptz),
+  ('b2c3d4e5-f6a7-5b8c-9d0e-1f2a3b4c5d6e'::uuid, 'subashini.r@rareminds.in'::text, 'HR'::text, 'PRES-EVAL-INT-SCREEN-INTRO'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, '2026-09-12 00:00:00+00'::timestamptz),
+  ('c3d4e5f6-a7b8-5c9d-0e1f-2a3b4c5d6e7f'::uuid, 'subashini.r@rareminds.in'::text, 'Marketing'::text, 'PRES-EVAL-INT-SCREEN-INTRO'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, '2026-09-12 00:00:00+00'::timestamptz),
+  ('d4e5f6a7-b8c9-5d0e-1f2a-3b4c5d6e7f8a'::uuid, 'subashini.r@rareminds.in'::text, 'Business Analytics'::text, 'PRES-EVAL-INT-SCREEN-INTRO'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, '2026-09-12 00:00:00+00'::timestamptz),
+
+  ('a3b4c5d6-e7f8-5a9b-0c1d-2e3f4a5b6c7d'::uuid, 'visakh2013@rediffmail.com'::text, 'Finance'::text, 'PRES-EVAL-INT-SCREEN-INTRO'::text, 'list will be shared'::text, 'list will be shared'::text, 'list will be shared'::text, '2026-09-29 00:00:00+00'::timestamptz),
+  ('b4c5d6e7-f8a9-5b0c-1d2e-3f4a5b6c7d8e'::uuid, 'visakh2013@rediffmail.com'::text, 'HR'::text, 'PRES-EVAL-INT-SCREEN-INTRO'::text, 'list will be shared'::text, 'list will be shared'::text, 'list will be shared'::text, '2026-09-29 00:00:00+00'::timestamptz),
+  ('c5d6e7f8-a9b0-5c1d-2e3f-4a5b6c7d8e9f'::uuid, 'visakh2013@rediffmail.com'::text, 'Marketing'::text, 'PRES-EVAL-INT-SCREEN-INTRO'::text, 'list will be shared'::text, 'list will be shared'::text, 'list will be shared'::text, '2026-09-29 00:00:00+00'::timestamptz),
+  ('d6e7f8a9-b0c1-5d2e-3f4a-5b6c7d8e9f0a'::uuid, 'visakh2013@rediffmail.com'::text, 'Business Analytics'::text, 'PRES-EVAL-INT-SCREEN-INTRO'::text, 'list will be shared'::text, 'list will be shared'::text, 'list will be shared'::text, '2026-09-29 00:00:00+00'::timestamptz),
+
+  -- -------------------------------------------------------------------------
+  -- Course: VoltEdge_V18 (VoltEdge)
+  -- Educator: Sandhya Mohan (HR only) on 2026-09-07, 09-08, 09-09, 09-15, 09-16
+  -- -------------------------------------------------------------------------
+  ('e5f6a7b8-c9d0-5e1f-2a3b-4c5d6e7f8a9b'::uuid, 'sandhyamohan.sharath@gmail.com'::text, 'HR'::text, 'VoltEdge_V18'::text, 'Business Formation - Understanding Company & its Departments'::text, 'Functional, Business vocabulary, Decision Making'::text, 'Functional, Business vocabulary, Decision Making'::text, '2026-09-07 00:00:00+00'::timestamptz),
+  ('f6a7b8c9-d0e1-5f2a-3b4c-5d6e7f8a9b0c'::uuid, 'sandhyamohan.sharath@gmail.com'::text, 'HR'::text, 'VoltEdge_V18'::text, 'Business Strategy & Planning'::text, 'Functional, Business vocabulary, Decision Making'::text, 'Functional, Business vocabulary, Decision Making'::text, '2026-09-08 00:00:00+00'::timestamptz),
+  ('a7b8c9d0-e1f2-5a3b-4c5d-6e7f8a9b0c1d'::uuid, 'sandhyamohan.sharath@gmail.com'::text, 'HR'::text, 'VoltEdge_V18'::text, 'Functional Strategy & Planning'::text, 'Functional, Business vocabulary, Decision Making'::text, 'Functional, Business vocabulary, Decision Making'::text, '2026-09-09 00:00:00+00'::timestamptz),
+  ('b8c9d0e1-f2a3-5b4c-5d6e-7f8a9b0c1d2e'::uuid, 'sandhyamohan.sharath@gmail.com'::text, 'HR'::text, 'VoltEdge_V18'::text, 'Revisit Implementation based on learnings from evaluations'::text, 'Functional, Business vocabulary, Decision Making, Group Discussion'::text, 'Functional, Business vocabulary, Decision Making, Group Discussion'::text, '2026-09-15 00:00:00+00'::timestamptz),
+  ('c9d0e1f2-a3b4-5c5d-6e7f-8a9b0c1d2e3f'::uuid, 'sandhyamohan.sharath@gmail.com'::text, 'HR'::text, 'VoltEdge_V18'::text, 'Revisit Implementation based on learnings from evaluations'::text, 'Functional, Business vocabulary, Decision Making, Group Discussion'::text, 'Functional, Business vocabulary, Decision Making, Group Discussion'::text, '2026-09-16 00:00:00+00'::timestamptz),
+
+  -- Educator: Subashini Ramaswamy across all 4 streams on 2026-09-10, 2026-09-11 & 2026-09-21
+  ('a2b3c4d5-e6f7-5a8b-9c0d-1e2f3a4b5c6d'::uuid, 'subashini.r@rareminds.in'::text, 'Finance'::text, 'VoltEdge_V18'::text, 'Company Formation & Performance'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, '2026-09-10 00:00:00+00'::timestamptz),
+  ('b3c4d5e6-f7a8-5b9c-0d1e-2f3a4b5c6d7e'::uuid, 'subashini.r@rareminds.in'::text, 'HR'::text, 'VoltEdge_V18'::text, 'Company Formation & Performance'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, '2026-09-10 00:00:00+00'::timestamptz),
+  ('c4d5e6f7-a8b9-5c0d-1e2f-3a4b5c6d7e8f'::uuid, 'subashini.r@rareminds.in'::text, 'Marketing'::text, 'VoltEdge_V18'::text, 'Company Formation & Performance'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, '2026-09-10 00:00:00+00'::timestamptz),
+  ('d5e6f7a8-b9c0-5d1e-2f3a-4b5c6d7e8f9a'::uuid, 'subashini.r@rareminds.in'::text, 'Business Analytics'::text, 'VoltEdge_V18'::text, 'Company Formation & Performance'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, '2026-09-10 00:00:00+00'::timestamptz),
+
+  ('e6f7a8b9-c0d1-5e2f-3a4b-5c6d7e8f9a0b'::uuid, 'subashini.r@rareminds.in'::text, 'Finance'::text, 'VoltEdge_V18'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, '2026-09-11 00:00:00+00'::timestamptz),
+  ('f7a8b9c0-d1e2-5f3a-4b5c-6d7e8f9a0b1c'::uuid, 'subashini.r@rareminds.in'::text, 'HR'::text, 'VoltEdge_V18'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, '2026-09-11 00:00:00+00'::timestamptz),
+  ('a8b9c0d1-e2f3-5a4b-5c6d-7e8f9a0b1c2d'::uuid, 'subashini.r@rareminds.in'::text, 'Marketing'::text, 'VoltEdge_V18'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, '2026-09-11 00:00:00+00'::timestamptz),
+  ('b9c0d1e2-f3a4-5b5c-6d7e-8f9a0b1c2d3e'::uuid, 'subashini.r@rareminds.in'::text, 'Business Analytics'::text, 'VoltEdge_V18'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, 'Business vocabulary, Decision Making, Group Discussion'::text, '2026-09-11 00:00:00+00'::timestamptz),
+
+  ('ca01b2c3-d4e5-5f6a-7b8c-9d0e1f2a3b4c'::uuid, 'subashini.r@rareminds.in'::text, 'Finance'::text, 'VoltEdge_V18'::text, 'COmmunication & Decision Making'::text, 'COmmunication & Decision Making'::text, 'COmmunication & Decision Making'::text, '2026-09-21 00:00:00+00'::timestamptz),
+  ('db12c3d4-e5f6-5a7b-8c9d-0e1f2a3b4c5d'::uuid, 'subashini.r@rareminds.in'::text, 'HR'::text, 'VoltEdge_V18'::text, 'COmmunication & Decision Making'::text, 'COmmunication & Decision Making'::text, 'COmmunication & Decision Making'::text, '2026-09-21 00:00:00+00'::timestamptz),
+  ('ec23d4e5-f6a7-5b8c-9d0e-1f2a3b4c5d6e'::uuid, 'subashini.r@rareminds.in'::text, 'Marketing'::text, 'VoltEdge_V18'::text, 'COmmunication & Decision Making'::text, 'COmmunication & Decision Making'::text, 'COmmunication & Decision Making'::text, '2026-09-21 00:00:00+00'::timestamptz),
+  ('fd34e5f6-a7b8-5c9d-0e1f-2a3b4c5d6e7f'::uuid, 'subashini.r@rareminds.in'::text, 'Business Analytics'::text, 'VoltEdge_V18'::text, 'COmmunication & Decision Making'::text, 'COmmunication & Decision Making'::text, 'COmmunication & Decision Making'::text, '2026-09-21 00:00:00+00'::timestamptz),
+
+  -- -------------------------------------------------------------------------
+  -- Course: MBA-HR-L1-ONBOARDING (HR Level 1 / Onboarding)
+  -- Educator: Poornima (HR only) on 2026-09-24, 2026-09-25, 2026-09-26
+  -- -------------------------------------------------------------------------
+  ('72bf99ff-518f-512b-b56c-f472bf1e8637'::uuid, 'poornima.du@gmail.com'::text, 'HR'::text, 'MBA-HR-L1-ONBOARDING'::text, 'Functional worksheet and practical output'::text, 'Functional worksheet and practical output'::text, 'Functional worksheet and practical output'::text, '2026-09-24 00:00:00+00'::timestamptz),
+  ('83ca00aa-629a-523c-c67d-0583ca2f9748'::uuid, 'poornima.du@gmail.com'::text, 'HR'::text, 'MBA-HR-L1-ONBOARDING'::text, 'Human resourse placement Bootcamp'::text, 'Stream activity and trainer evidence'::text, 'Stream activity and trainer evidence'::text, '2026-09-25 00:00:00+00'::timestamptz),
+  ('94db11bb-73ab-534d-d78e-1694db3a0859'::uuid, 'poornima.du@gmail.com'::text, 'HR'::text, 'MBA-HR-L1-ONBOARDING'::text, 'Evaluated practical exercise'::text, 'Evaluated practical exercise'::text, 'Evaluated practical exercise'::text, '2026-09-26 00:00:00+00'::timestamptz),
+
+  -- -------------------------------------------------------------------------
+  -- Course: MBA-BA-L1-SRILAKSHMI (MBA Business Analysis L1)
+  -- Educator: Sadiq (Business Analytics only) on 2026-09-30
+  -- -------------------------------------------------------------------------
+  ('9e8f7a6b-5c4d-5e3f-2a1b-0f9e8d7c6b5a'::uuid, 'msadiq.india@gmail.com'::text, 'Business Analytics'::text, 'MBA-BA-L1-SRILAKSHMI'::text, 'list will be shared'::text, 'list will be shared'::text, 'list will be shared'::text, '2026-09-30 00:00:00+00'::timestamptz)
 ) AS v(id, email, stream, course_code, title, description, instructions, due_date)
 JOIN public.organization_staff s ON lower(s.email) = v.email
   AND s.organization_id = '00000000-0000-0000-0000-000000000001' AND s.account_status = 'active'
@@ -201,14 +163,61 @@ JOIN public.courses co ON co.code = v.course_code AND co.deleted_at IS NULL AND 
 WHERE EXISTS (SELECT 1 FROM public.organization_staff_assignments a WHERE a.staff_id = s.id AND a.section_id = ps.id AND a.is_active)
 ON CONFLICT (assignment_id) DO NOTHING;
 
--- 2. One student-task row per student of the trainer's stream (same values the app's assign-task-to-learners action writes)
+-- 2. Student-task rows: assign every created task to ALL students of that stream
 INSERT INTO public.college_learner_assignments (assignment_id, learner_id, status, priority)
 SELECT t.assignment_id, l.user_id, 'todo', 'medium'
 FROM public.college_assignments t
 JOIN public.program_sections ps ON ps.id = t.program_section_id
 JOIN public.learners l ON l.college_id = t.college_id AND l.program_id = t.program_id
   AND l.semester = ps.semester AND l.section = ps.section AND NOT coalesce(l.is_deleted, false) AND l.user_id IS NOT NULL
-WHERE t.assignment_id IN ('bf52339f-7729-5e90-a12f-9e317c6814bb', '1de3f88a-8e66-5650-9d80-60942910698e', '8b493ccc-2212-54bf-a45b-825cdaf6bad0', '9d404df5-53c0-5cb5-9796-ae493e82b3d6', '324b1e82-411d-5f3b-bea7-d82591aa6066', '027f2140-33a3-5143-af5c-696842925bf0', '9679b4ca-dd0a-5b68-880f-9ee45ca7fc0c', 'abaf4fff-3699-5bfa-a85a-204e2019c501', '07557737-9239-5323-8b68-572d5512f525', 'cd63739d-dc89-52f0-9063-06997ed73654', '4e809ede-5fbf-535f-8d81-15f6ddfd0036', '47ca8147-21f4-5231-ac75-450b8500f409', '5e478042-f13b-5014-837d-7c0d10ee5804', '90c7f77e-8635-51d4-bbe1-c72752b6ad36', 'd31a9eac-a96d-5a68-b7f2-efdccef689e9', '549da7fc-1df2-5eb8-94e6-9102f54b3d16', 'd56e6f65-f909-5eea-b414-729aab518768', '0c3c9ecf-e062-5c38-ba91-e26940b44ffb', '9a48b70c-276a-5a69-89d7-fc7a3b173d98', '84da2e6b-0f0d-57fd-b858-a9fe2dfdee59', 'ef2c7a01-33e4-584a-82cd-920ba7528a75', '07213add-32e1-5950-a082-e7d12d9fb9bc', '8e89553c-0c79-50ab-a6e0-c424b51f8102', '2c82ab3c-7fed-5c83-917f-edfc4665c507', '6018c640-db7f-506f-9f44-492c86c0b1b7', 'efa8757a-c9ed-55e8-8b53-7f16b0daaa6e', '177520b6-2015-5d12-8c9e-25c2ff8caa92', '039f1044-6719-5b24-adbe-cfd4b5a5ebd4', '2c632669-2636-5088-bdfe-27917c661f17', '071e4340-d85e-5761-825e-ccc1b396cbf0', '672f6890-166e-53ad-ada8-100c0a1e8552', 'c56b5a7a-d613-5c30-84f7-33215d268188', 'e09e9290-66b2-55ca-8613-854890967b73', '402dd169-20e0-5a36-b644-884b4f79b29b', 'b0c5af57-5879-5301-85c2-f660759b0695', 'b55afe4e-e907-532f-aaf8-bedb454b4ed6', '67e21de2-9f92-5782-b9de-07edb8e135b3', '4cb3e25f-eb58-51f6-b293-c06af152a3cb', '1466c8c1-2ad6-5aa9-80b3-ebfc1cd1a35e', 'f6a07ce5-3e77-5424-bdf6-7770b1957c18', '94e0296e-cb3a-5c5f-a015-12b74144818b', '0b6ceb23-a26b-5bec-a59d-8ad1d545467a', 'df0b124f-b234-5c4d-a5d4-d4a0a202cb7e', 'e7a1c14b-8686-5720-864d-395571fa8dbd', '2da1e276-9d9f-5260-98b7-4e8f2f77b92a', 'c5309124-0d45-584a-918d-ede88caa8d4a', 'ba1b8aca-40d1-5882-a9a3-eeaf43472d95', '13f22870-8155-5815-80e6-815260d35471', 'b81bdb36-313a-5e8b-8fcb-5d99ff470d0a', '7abedf44-b208-5954-b0b1-ee5d64529db2', '9fdbe5a9-5f5c-51da-9c46-f936586509b7', '7547cae3-6bb9-50d0-aa3b-9a50c6a0b178', 'c59cb759-4940-5e99-9deb-4ac0386f24d2', 'fd790338-5a94-5401-92df-e3777a937b47', '4394d059-3991-5747-b303-420ee9f8a3b2', 'b6d70377-2d5a-598e-a415-91500a471f47', '3064c1aa-29d1-579e-84da-06ea70de2522', '12361868-94ab-52a0-aafe-e7a3354f84ab', '3a88e0f3-87a9-5cdf-a1f4-5ca2924809aa', '1064c0a7-6ecc-531a-ac2a-0e707db96edf', '9587ef96-87e7-5240-a152-ebe143f6218c', 'cc42570a-f046-5294-a641-c1603b22ef05', '5aacd7b2-aafb-5431-a9e6-a744a767d7f9', '4447719e-431e-58f9-9f3d-1fb1f86f9fd7', 'abac058d-e2d3-583d-8b84-18c866c41380', 'd4bc8456-6fd0-593b-a447-456d1cab739d', '670488e9-65e8-523c-81f4-c32dce81ed81', 'f243dd7a-e7b8-5d92-9e01-16ff7c9e6e5c', '72138bfe-a269-5dc4-9938-581b6138c3f8', '06677e2c-60d8-5803-8090-5f9eebde306c', 'be802d17-5b2a-54b1-8462-3650a76011db', '813592bd-7d70-568e-8ca3-b6dbf26a9fc8', 'e018bff3-29de-52ea-bb17-8e68eeee6f4c', '1000ccdf-32a2-5f21-baf3-ce13ae94571d', 'd0198f32-d2fb-5dcc-9846-d96b4417459f', 'b07e759d-0ce4-5329-a23f-7ff64041954f', '1cbeb9f8-6723-5c4f-8119-74d740703961', 'b77fc45c-77e6-55dd-a026-5da2c00369e4', '73d28b09-6679-5802-b5f1-a685f4c7eec9', '36177b98-31f5-5b80-8c1c-4395305ddd54', 'f7749a41-3e0a-5fe2-bde1-08b048162d46', '18d38bc9-0997-5b98-b205-d9fd58f3bfc4', '1a33cafa-b8a5-57c3-aa74-27e047833344', '413757e3-0a4c-5477-8944-d2ae60dbf6db', '8a827d01-5810-5f56-b3f7-fd9e17a66163', 'f740efda-47a5-5097-b48f-6f95ceb3826f', '206fefb8-5204-5472-8deb-42b52c975930', '4f848b48-48e1-5a8c-8a52-8946e77feb66', 'd9d96ec9-e6e4-5916-ace0-bb0f4b931804', '7d86efdb-bb01-5abe-9ba9-c7eb03e48c0d', '10870cff-9569-5299-a206-d4c62c5b5556', '6a2024d6-9b29-53de-98c9-54ce2b21bd13', '3ebc2f1b-5e21-59b3-8a69-bfd1c68476fd', 'c6755e63-dec4-5bb0-96e6-ae71c92bc96f', '0d945880-d238-5dc2-82ca-e4728c0b1279', '52d264bf-afc7-5e75-8286-3aa53438c1ac', 'bc735640-2cf2-530f-9971-d8f1d6b42048', '3b0298e5-fb1a-51ea-881c-0454aab6dafa', '369b06f2-b0c0-5d55-8e59-a410da122471', 'b3bc9d49-a37b-5b47-ad3f-6975f270b176', '65dda50a-bc7f-5e0f-9fb5-9e1db60cd5a5', '36199a3a-2fa3-5ecf-816c-2064aeb59da4', 'be600b8d-cfc9-5089-b618-6a65b9d5eb80', '3c5cdc2c-abd7-5393-be41-a4607d08d40f', 'a4557e25-5657-53be-8ebb-4dd899d86df4')
+WHERE t.assignment_id IN (
+  -- PRE-COUNSEL-INTRO
+  '3ebc2f1b-5e21-59b3-8a69-bfd1c68476fd', 'c6755e63-dec4-5bb0-96e6-ae71c92bc96f', '0d945880-d238-5dc2-82ca-e4728c0b1279', '5a3f1240-bc78-5e91-81df-9d0a1b2c3d4e',
+  '52d264bf-afc7-5e75-8286-3aa53438c1ac', 'bc735640-2cf2-530f-9971-d8f1d6b42048', '3b0298e5-fb1a-51ea-881c-0454aab6dafa', '6b4a2351-cd89-5fa2-92e0-ae1b2c3d4e5f',
+  -- VIDEO-RESUME-INTRO-2026
+  '369b06f2-b0c0-5d55-8e59-a410da122471', 'b3bc9d49-a37b-5b47-ad3f-6975f270b176', '65dda50a-bc7f-5e0f-9fb5-9e1db60cd5a5',
+  -- STUDENT-ASSESSMENT-INTRO-2026
+  '49a1bc2d-5310-53b3-82a1-e471d8a183b1', '7c5e3462-de9a-5f03-a3d1-bf0c2e4f6a87', '36199a3a-2fa3-5ecf-816c-2064aeb59da4', '3c5cdc2c-abd7-5393-be41-a4607d08d40f',
+  'a4557e25-5657-53be-8ebb-4dd899d86df4', 'be600b8d-cfc9-5089-b618-6a65b9d5eb80',
+  -- STUDENT-ASSESSMENT-INTRO-2026
+  '1de3f88a-8e66-5650-9d80-60942910698e', '13f22870-8155-5815-80e6-815260d35471', '6018c640-db7f-506f-9f44-492c86c0b1b7',
+  'be802d17-5b2a-54b1-8462-3650a76011db',
+  'a2d9c401-1b2c-5f3a-89a1-7c5d0e4b8190', 'b3e0d512-2c3d-5a4b-90b2-8d6e1f5c9201', 'c4f1e623-3d4e-5b5c-a1c3-9e7f2a6d0312',
+  'd5a2f734-4e5f-5c6d-b2d4-af8a3b7e1423',
+  -- POWERBI-CORE-FOUND-2026
+  '549da7fc-1df2-5eb8-94e6-9102f54b3d16', 'cc42570a-f046-5294-a641-c1603b22ef05', '1466c8c1-2ad6-5aa9-80b3-ebfc1cd1a35e',
+  '8a827d01-5810-5f56-b3f7-fd9e17a66163',
+  -- SKILL-ECOSYSTEM-ORIENTATION-2026
+  '84da2e6b-0f0d-57fd-b858-a9fe2dfdee59', 'd4bc8456-6fd0-593b-a447-456d1cab739d', 'df0b124f-b234-5c4d-a5d4-d4a0a202cb7e',
+  'd9d96ec9-e6e4-5916-ace0-bb0f4b931804',
+  -- SKILL-ECOSYSTEM-ORIENTATION-2026 (Subashini, Sep 28)
+  'e1b8c290-7d4e-5a1b-83c9-0a2b4c6e8f10', 'f2c9d301-8e5f-5b2c-94da-1b3c5d7f9a21',
+  '03dae412-9f60-5c3d-a5eb-2c4d6e80ab32', '14ebf523-a071-5d4e-b6fc-3d5e7f91bc43',
+  -- SKILL-ECOSYSTEM-ORIENTATION-2026 (Subashini, Oct 01)
+  'c7d8e9f0-a1b2-5c3d-4e5f-6a7b8c9d0e1f', 'd8e9f0a1-b2c3-5d4e-6f7a-8b9c0d1e2f3a',
+  'e9f0a1b2-c3d4-5e5f-7a8b-9c0d1e2f3a4b', 'f0a1b2c3-d4e5-5f6a-8b9c-0d1e2f3a4b5c',
+  -- PRES-EVAL-INT-SCREEN-INTRO (Subashini, Sep 12 & Visakh, Sep 29, all 4 streams)
+  'a1b2c3d4-e5f6-5a7b-8c9d-0e1f2a3b4c5d', 'b2c3d4e5-f6a7-5b8c-9d0e-1f2a3b4c5d6e', 'c3d4e5f6-a7b8-5c9d-0e1f-2a3b4c5d6e7f',
+  'd4e5f6a7-b8c9-5d0e-1f2a-3b4c5d6e7f8a',
+  'a3b4c5d6-e7f8-5a9b-0c1d-2e3f4a5b6c7d', 'b4c5d6e7-f8a9-5b0c-1d2e-3f4a5b6c7d8e',
+  'c5d6e7f8-a9b0-5c1d-2e3f-4a5b6c7d8e9f', 'd6e7f8a9-b0c1-5d2e-3f4a-5b6c7d8e9f0a',
+  -- VoltEdge_V18 (Sandhya, HR, Sep 07/08/09/15/16)
+  'e5f6a7b8-c9d0-5e1f-2a3b-4c5d6e7f8a9b', 'f6a7b8c9-d0e1-5f2a-3b4c-5d6e7f8a9b0c', 'a7b8c9d0-e1f2-5a3b-4c5d-6e7f8a9b0c1d',
+  'b8c9d0e1-f2a3-5b4c-5d6e-7f8a9b0c1d2e', 'c9d0e1f2-a3b4-5c5d-6e7f-8a9b0c1d2e3f',
+  -- VoltEdge_V18 (Subashini, all 4 streams, Sep 10 & 11)
+  'a2b3c4d5-e6f7-5a8b-9c0d-1e2f3a4b5c6d', 'b3c4d5e6-f7a8-5b9c-0d1e-2f3a4b5c6d7e',
+  'c4d5e6f7-a8b9-5c0d-1e2f-3a4b5c6d7e8f', 'd5e6f7a8-b9c0-5d1e-2f3a-4b5c6d7e8f9a',
+  'e6f7a8b9-c0d1-5e2f-3a4b-5c6d7e8f9a0b', 'f7a8b9c0-d1e2-5f3a-4b5c-6d7e8f9a0b1c',
+  'a8b9c0d1-e2f3-5a4b-5c6d-7e8f9a0b1c2d', 'b9c0d1e2-f3a4-5b5c-6d7e-8f9a0b1c2d3e',
+  -- VoltEdge_V18 (Subashini, all 4 streams, Sep 21)
+  'ca01b2c3-d4e5-5f6a-7b8c-9d0e1f2a3b4c', 'db12c3d4-e5f6-5a7b-8c9d-0e1f2a3b4c5d',
+  'ec23d4e5-f6a7-5b8c-9d0e-1f2a3b4c5d6e', 'fd34e5f6-a7b8-5c9d-0e1f-2a3b4c5d6e7f',
+  -- MBA-HR-L1-ONBOARDING (Poornima, HR, Sep 24, 25, 26)
+  '72bf99ff-518f-512b-b56c-f472bf1e8637', '83ca00aa-629a-523c-c67d-0583ca2f9748',
+  '94db11bb-73ab-534d-d78e-1694db3a0859',
+  -- MBA-BA-L1-SRILAKSHMI (Sadiq, Business Analytics, Sep 30)
+  '9e8f7a6b-5c4d-5e3f-2a1b-0f9e8d7c6b5a'
+)
 ON CONFLICT (assignment_id, learner_id) DO NOTHING;
 
 COMMIT;
