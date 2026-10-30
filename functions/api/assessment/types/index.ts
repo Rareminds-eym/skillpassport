@@ -32,6 +32,7 @@ export interface StudentProfile {
   stream_aptitude_details?: Record<string, any>; // full stream aptitude details (byDifficulty, correctCount, totalQuestions)
   stream?: string;
   degreeLevel?: string;                          // undergraduate | postgraduate | diploma (UG/PG)
+  specialization?: string;                       // free-text specialization within program (e.g. AI/ML, Finance)
 }
 
 /**
@@ -68,6 +69,7 @@ export interface CollegeMatchScores {
 export interface StartAssessmentOptions {
   gradeLevel: string;
   streamId?: string | null;
+  specialization?: string | null;
 }
 
 /**

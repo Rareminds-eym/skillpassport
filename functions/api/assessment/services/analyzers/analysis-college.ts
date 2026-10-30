@@ -616,6 +616,7 @@ export async function analyzeCollege(
         attempt.stream_id ||
         undefined,
       degreeLevel: (attempt.learner_context as any)?.degreeLevel || undefined,
+      specialization: (attempt.learner_context as any)?.specialization || (attempt.learner_context as any)?.Specialization || undefined,
     };
     // Extract knowledge insights from knowledge_details (strongTopics/weakTopics already in DB)
     const knowledgeInsights = streamMcq.knowledgeDetails?.strongTopics || streamMcq.knowledgeDetails?.weakTopics

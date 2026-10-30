@@ -24,7 +24,7 @@ export function validateStartAssessmentRequest(body: any): ValidationResult {
     return { isValid: false, message: 'Request body is required' };
   }
 
-  const { gradeLevel } = body as StartAssessmentOptions;
+  const { gradeLevel, specialization } = body as StartAssessmentOptions;
 
   if (!gradeLevel) {
     return { isValid: false, message: 'gradeLevel is required' };
@@ -35,6 +35,19 @@ export function validateStartAssessmentRequest(body: any): ValidationResult {
       isValid: false,
       message: `Invalid gradeLevel. Must be one of: ${VALID_GRADE_LEVELS.join(', ')}`
     };
+  }
+
+  if (specialization !== undefined && specialization !== null) {
+    if (typeof specialization !== 'string') {
+      return { isValid: false, message: 'specialization must be a string' };
+    }
+    const trimmed = specialization.trim();
+    if (trimmed.length > 150) {
+      return { isValid: false, message: 'specialization must be at most 150 characters' };
+    }
+    if (trimmed.length > 0 && trimmed.length < 2) {
+      return { isValid: false, message: 'specialization must be at least 2 characters if provided' };
+    }
   }
 
   return { isValid: true };
