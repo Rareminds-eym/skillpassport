@@ -27,6 +27,7 @@ dist-ssr
 *.kilocode
 
 # Environment files - DO NOT COMMIT REAL CREDENTIALS
+/vars/
 .env
 .env.local
 .env.development

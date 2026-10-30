@@ -30,6 +30,7 @@ import { createLogger } from '../../../lib/logger';
 import { WORKSHEET_ASSIGNMENT_FORMAT } from '../utils/worksheet-content';
 
 import { isPersona, PERSONAS, routeTeachingMessage, type Persona } from '../utils/teaching-conversation';
+import { enrichCourseResources } from '../utils/course-resource-analysis';
 
 const logger = createLogger('ai-tutor-chat');
 
@@ -236,6 +237,9 @@ export const handleAiTutorChat = async (context: TypedContext) => {
 
     // Build course context and system prompt (role-based + optional worksheet/lesson plan config)
     const courseContext = await buildCourseContext(supabase, courseId, lessonId || null, learnerId);
+    if (!teaching.assignmentReviewRequested && !await enrichCourseResources(courseContext, supabase, env, courseId, learnerId, educator, request.signal)) {
+      return apiError(403, 'FORBIDDEN', 'Course access is required to use lesson and resource context.', request);
+    }
     let systemPrompt = buildSystemPrompt(courseContext, conversationPhase, userRole, worksheetConfig, lessonPlanConfig);
     if (educator) {
       systemPrompt += '\n\nActive facilitator: ' + teaching.facilitator + '. ' + PERSONAS[teaching.facilitator];

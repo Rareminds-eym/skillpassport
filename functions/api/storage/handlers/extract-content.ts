@@ -1,149 +1,44 @@
-/**
- * PDF Content Extraction Handler
- *
- * Handles PDF content extraction for lesson resources:
- * - POST /extract-content - Extract content from PDF resources
- */
+import { z } from 'zod';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { PagesEnv } from '../../../lib/types';
+import { apiSuccess, apiError } from '../../../lib/response';
+import { buildCourseContext } from '../../ai-tutor/utils/course-context';
+import { enrichCourseResources, canAnalyzeCourseResources } from '../../ai-tutor/utils/course-resource-analysis';
 
-import type { PagesFunction } from '../../../lib/types';
-import { apiSuccess, apiError } from '../../../lib/response';;
-import { createSupabaseClient } from '../../../lib/supabase';
-
-interface ExtractContentRequestBody {
-  resourceId?: string;
-  resourceIds?: string[];
-  lessonId?: string;
-}
-
-interface ExtractionResult {
-  resourceId: string;
-  name?: string;
-  status: 'success' | 'skipped' | 'error';
-  contentLength?: number;
-  reason?: string;
-  error?: string;
-}
-
-/**
- * Extract content from PDF resources
- * Supports single resource, multiple resources, or all resources in a lesson
- */
-export const handleExtractContent: PagesFunction = async ({ request, env }) => {
-  if (request.method !== 'POST') {
-    return apiError(405, 'ERROR', 'Method not allowed', request);
-  }
-
+interface Context { request: Request; env: PagesEnv; user?: { id: string; roles?: string[] }; supabaseAdmin: SupabaseClient }
+const input = z.object({ resourceId: z.string().uuid().optional(), resourceIds: z.array(z.string().uuid()).min(1).max(3).optional(), lessonId: z.string().uuid().optional() })
+  .refine(body => !!(body.resourceId || body.resourceIds || body.lessonId));
+/** Authenticated resource processing; no caller-supplied URL can be fetched. */
+export async function handleExtractContent({ request, env, user, supabaseAdmin: db }: Context) {
+  if (request.method !== 'POST') return apiError(405, 'ERROR', 'Method not allowed', request);
+  if (!user) return apiError(401, 'UNAUTHORIZED', 'Authentication required', request);
   try {
-    // Parse request body
-    let body: ExtractContentRequestBody;
-    try {
-      body = (await request.json()) as ExtractContentRequestBody;
-    } catch (parseError) {
-      console.error('[ExtractContent] Failed to parse request body:', parseError);
-      return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON body', request);
+    const body = input.parse(await request.json());
+    let query = db.from('lesson_resources').select('resource_id,lesson_id,name');
+    if (body.resourceId) query = query.eq('resource_id', body.resourceId);
+    else if (body.resourceIds) query = query.in('resource_id', body.resourceIds);
+    else query = query.eq('lesson_id', body.lessonId!);
+    const { data: rows, error } = await query.limit(4);
+    if (error) throw error;
+    if (!rows?.length) return apiError(404, 'NOT_FOUND', 'Resources not found', request);
+    if (rows.length > 3) return apiError(400, 'VALIDATION_ERROR', 'Process at most three resource IDs per request.', request);
+    const results = [];
+    for (const row of rows) {
+      const { data: lesson, error: lessonError } = await db.from('lessons').select('module_id').eq('lesson_id', row.lesson_id).maybeSingle();
+      if (lessonError || !lesson) throw new Error('Lesson not found');
+      const { data: module, error: moduleError } = await db.from('course_modules').select('course_id').eq('module_id', lesson.module_id).maybeSingle();
+      if (moduleError || !module) throw new Error('Course not found');
+      const educator = user.roles?.some(role => role.includes('educator')) ?? false;
+      if (!await canAnalyzeCourseResources(db, module.course_id, user.id, educator)) return apiError(403, 'FORBIDDEN', 'Course resource access required', request);
+      const context = await buildCourseContext(db, module.course_id, row.lesson_id, user.id);
+      context.availableResources = context.availableResources.filter(resource => resource.resourceId === row.resource_id);
+      await enrichCourseResources(context, db, env, module.course_id, user.id, educator, request.signal);
+      const resource = context.availableResources[0];
+      results.push({ resourceId: row.resource_id, name: row.name, status: resource?.content ? 'success' : 'error', contentLength: resource?.content?.length ?? 0, ...(resource?.analysisError ? { error: resource.analysisError } : {}) });
     }
-
-    const { resourceId, resourceIds, lessonId } = body;
-
-    // Validate input - at least one parameter required
-    if (!resourceId && (!resourceIds || resourceIds.length === 0) && !lessonId) {
-      return apiError(400, 'VALIDATION_ERROR', 'Provide resourceId, resourceIds, or lessonId', request);
-    }
-
-    // Create Supabase client
-    const supabase = createSupabaseClient(env);
-
-    // Build query based on input parameters
-    let query = supabase.from('lesson_resources').select('*');
-
-    if (resourceId) {
-      query = query.eq('resource_id', resourceId);
-    } else if (resourceIds && resourceIds.length > 0) {
-      query = query.in('resource_id', resourceIds);
-    } else if (lessonId) {
-      query = query.eq('lesson_id', lessonId);
-    }
-
-    // Fetch resources
-    const { data: resources, error } = await query;
-
-    if (error || !resources) {
-      console.error('[ExtractContent] Failed to fetch resources:', error);
-      return apiError(404, 'NOT_FOUND', 'Resources not found', request);
-    }
-
-    console.log(`[ExtractContent] Processing ${resources.length} resources`);
-
-    // Process each resource
-    const results: ExtractionResult[] = [];
-
-    for (const resource of resources) {
-      // Skip non-PDF/document resources
-      if (!['pdf', 'document'].includes(resource.type)) {
-        results.push({
-          resourceId: resource.resource_id,
-          name: resource.name,
-          status: 'skipped',
-          reason: `Type ${resource.type} not supported`,
-        });
-        continue;
-      }
-
-      try {
-        // Fetch PDF content
-        const pdfUrl = resource.url;
-        console.log(`[ExtractContent] Fetching PDF from: ${pdfUrl}`);
-
-        const pdfResponse = await fetch(pdfUrl);
-
-        if (!pdfResponse.ok) {
-          throw new Error(`Failed to download: ${pdfResponse.status}`);
-        }
-
-        // Note: Full PDF extraction requires a library like pdf-parse
-        // For Cloudflare Workers/Pages Functions, we use a placeholder approach
-        // In production, this could call an external PDF processing service
-        const textContent = `[PDF Content from ${resource.name}]\nURL: ${pdfUrl}\n\nNote: Full PDF text extraction requires additional processing.`;
-
-        // Update resource with extracted content
-        const { error: updateError } = await supabase
-          .from('lesson_resources')
-          .update({ content: textContent })
-          .eq('resource_id', resource.resource_id);
-
-        if (updateError) {
-          throw new Error(`Failed to update: ${updateError.message}`);
-        }
-
-        console.log(
-          `[ExtractContent] Successfully processed: ${resource.name} (${textContent.length} chars)`
-        );
-
-        results.push({
-          resourceId: resource.resource_id,
-          name: resource.name,
-          status: 'success',
-          contentLength: textContent.length,
-        });
-      } catch (err) {
-        console.error(`[ExtractContent] Error processing ${resource.name}:`, err);
-        results.push({
-          resourceId: resource.resource_id,
-          name: resource.name,
-          status: 'error',
-          error: (err as Error).message,
-        });
-      }
-    }
-
-    console.log(`[ExtractContent] Completed: ${results.length} resources processed`);
-
-    return apiSuccess({
-      processed: results.length,
-      results,
-    }, request);
+    return apiSuccess({ processed: results.length, results }, request);
   } catch (error) {
-    console.error('[ExtractContent] Error:', error);
-    return apiError(500, 'INTERNAL_ERROR', 'Failed to extract content', request);
+    if (error instanceof z.ZodError || error instanceof SyntaxError) return apiError(400, 'VALIDATION_ERROR', 'Provide resourceId, up to three resourceIds, or lessonId.', request);
+    return apiError(500, 'INTERNAL_ERROR', 'Resource processing failed. Please retry.', request);
   }
-};
+}

@@ -40,7 +40,8 @@
     "db:backup:verify": "python3 scripts/backup_remote_db.py --verify latest",
     "pages:start": "wrangler pages dev dist --compatibility-date=2026-06-08 --port=8788 --live-reload=false --r2 R2_BUCKET --service PAYMENT_WORKER=razorpay-api --service SSO_SERVICE=sso-api#SsoWorker --service REALTIME_WORKER=realtime-worker --service EMBEDDING_SERVICE=embedding-api#EmbeddingService --service EMAIL_SERVICE=shared-email-api",
     "cleanup": "bash scripts/cleanup-ports.sh",
-    "lint:certificates": "eslint src/pages/verify src/__tests__/verify"
+    "lint:certificates": "eslint src/pages/verify src/__tests__/verify",
+    "test:resource-analysis:live": "node --import tsx scripts/test-resource-analysis.mjs --live"
   },
   "dependencies": {
     "@casl/ability": "6.8.0",
@@ -140,7 +141,8 @@
     "worker-mailer": "1.2.1",
     "xlsx": "0.18.5",
     "zod": "3.24.0",
-    "zustand": "5.0.8"
+    "zustand": "5.0.8",
+    "fflate": "0.8.3"
   },
   "devDependencies": {
     "@babel/parser": "7.29.2",

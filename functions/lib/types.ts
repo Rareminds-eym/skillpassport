@@ -73,6 +73,8 @@ export interface PagesEnv {
   // AI API keys
 
   OPENROUTER_API_KEY?: string;
+  /** Additional approved resource download hosts, comma-separated (no URLs). */
+  AI_RESOURCE_ALLOWED_HOSTS?: string;
 
 
   // R2 Storage configuration

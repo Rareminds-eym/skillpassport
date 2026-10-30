@@ -53,6 +53,8 @@ export const AI_MODELS = {
     GPT_4O_LATEST: 'openai/chatgpt-4o-latest',
     GPT_4O: 'openai/gpt-4o',
     GPT_4O_MINI: 'openai/gpt-4o-mini',
+    // Multimodal course resource analysis
+    GEMINI_3_1_FLASH_LITE: 'google/gemini-3.1-flash-lite',
     
     // Free Models - Fallback choices
     GEMINI_2_FLASH: 'google/gemini-2.0-flash-001',
