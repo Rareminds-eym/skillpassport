@@ -242,7 +242,7 @@ const MarkAttendance: React.FC = () => {
           class_section: grouped ? 'Combined' : session.section,
           total_learners: event.sessions.reduce((sum: number, s: any) => sum + (s.total_learners || 0), 0),
           attendance_marked: event.sessions.every((s: any) => s.status === 'completed'),
-          is_locked: isSlotLocked(selectedDate),
+          is_locked: isSlotLocked(selectedDate) && !assignedTeaching?.retainExpiredAssignments,
           version: grouped ? undefined : session.version,
           attendanceRevision: grouped ? undefined : session.attendance_revision,
           ...(grouped ? { combined_group_id: event.groupId as string, group_session_ids: event.sessions.map((s: any) => s.id) } : {}),
