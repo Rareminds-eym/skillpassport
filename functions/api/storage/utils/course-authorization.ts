@@ -35,11 +35,21 @@ export async function checkCourseEnrollment(
       return { authorized: false, error: 'Failed to verify enrollment' };
     }
 
-    if (!enrollment) {
-      return { authorized: false, error: 'Not enrolled in this course' };
-    }
+    if (enrollment) return { authorized: true, enrollment };
 
-    return { authorized: true, enrollment };
+    // Course enrollments normally reference learners.id, while authentication
+    // provides users.id. Resolve the authenticated user's learner record first.
+    const { data: learner, error: learnerError } = await supabase
+      .from('learners').select('id').eq('user_id', userId).maybeSingle();
+    if (learnerError) return { authorized: false, error: 'Failed to verify enrollment' };
+    if (!learner) return { authorized: false, error: 'Not enrolled in this course' };
+
+    const { data: learnerEnrollment, error: enrollmentError } = await supabase
+      .from('course_enrollments').select('*')
+      .eq('learner_id', learner.id).eq('course_id', courseId).maybeSingle();
+    if (enrollmentError) return { authorized: false, error: 'Failed to verify enrollment' };
+    if (!learnerEnrollment) return { authorized: false, error: 'Not enrolled in this course' };
+    return { authorized: true, enrollment: learnerEnrollment };
   } catch (error) {
     console.error('[Authorization] Exception:', error);
     return { authorized: false, error: 'Authorization check failed' };

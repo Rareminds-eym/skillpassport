@@ -44,7 +44,7 @@ export const handleMediaProxy: PagesFunction = async ({ request, env }) => {
       return apiError(401, 'UNAUTHORIZED', validation.error || 'Invalid or expired session', request);
     }
 
-    const { courseId, lessonId, fileKey, fingerprint, userAgent: tokenUserAgent } = validation.payload;
+    const { courseId, lessonId, fileKey, fingerprint, userAgent: tokenUserAgent, sharedCourseResource } = validation.payload;
 
     // Fingerprint and User-Agent validation
     const requestFingerprint = url.searchParams.get('fp');
@@ -85,7 +85,8 @@ export const handleMediaProxy: PagesFunction = async ({ request, env }) => {
       return apiError(403, 'FORBIDDEN', 'Invalid request origin', request);
     }
 
-    if (!validateFileKey(fileKey, courseId, lessonId)) {
+    const verifiedSharedResource = sharedCourseResource === true && !!lessonId && fileKey.startsWith('courses/resources/') && !fileKey.includes('..') && !fileKey.includes('\\');
+    if (!verifiedSharedResource && !validateFileKey(fileKey, courseId, lessonId)) {
       return apiError(403, 'FORBIDDEN', 'Invalid file access', request);
     }
 

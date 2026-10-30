@@ -1,4 +1,3 @@
-import { useAuthStore } from '@/shared/model/authStore';
 import { ssoClient } from '@/shared/api/ssoClient';
 /**
  * Authenticated Media Service
@@ -33,10 +32,6 @@ export async function getAuthenticatedMediaUrl(
   lessonId?: string
 ): Promise<string | null> {
   try {
-    // Get current session token
-    const user = useAuthStore.getState().user;
-    
-    
     // Get browser fingerprint and session ID
     const fingerprint = await getBrowserFingerprint();
     const deviceContext = getDeviceContext();
@@ -130,6 +125,10 @@ export async function getAuthenticatedMediaUrls(
  */
 export function needsAuthentication(url: string): boolean {
   if (!url) return false;
+  try {
+    const parsed = new URL(url, 'https://local.invalid');
+    if (parsed.pathname === '/api/courses/assets' && parsed.searchParams.get('key')?.startsWith('courses/resources/')) return true;
+  } catch { return false; }
   
   // Check if it's an R2 URL
   if (url.includes('.r2.cloudflarestorage.com') || url.includes('.r2.dev')) {

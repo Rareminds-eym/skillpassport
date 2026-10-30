@@ -27,6 +27,7 @@ import { handleExtractContent } from './handlers/extract-content';
 import { handleListFiles } from './handlers/list-files';
 import { handleGetAuthenticatedUrl } from './handlers/get-authenticated-url';
 import { handleMediaProxy } from './handlers/media-proxy';
+import { handleCourseResource } from './handlers/course-resource';
 import { handleVideoPortfolioUpload, handleVideoPortfolioDownload, handleVideoPortfolioDelete, handleVideoPortfolioPublicUrl } from './handlers/video-portfolio';
 
 // Extended context type with authentication
@@ -108,6 +109,8 @@ export const onRequest: PagesFunction = async (context) => {
 
       // Route to authenticated handlers
       switch (path) {
+        case '/course-resource':
+          return handleCourseResource(authenticatedContext);
         case '/upload':
           return handleUpload(authenticatedContext as Parameters<typeof handleUpload>[0]);
 

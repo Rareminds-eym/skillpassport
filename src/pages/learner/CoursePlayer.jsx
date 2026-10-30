@@ -8,8 +8,6 @@ import {
     Circle,
     Clock,
     FileText,
-    Image,
-    Link as LinkIcon,
     Menu,
     Video,
     X
@@ -18,7 +16,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { AITutorPanel, VideoLearningPanel } from '@/features/ai-tutor';
-import { RestoreProgressModal } from '@/features/courses';
+import { RestoreProgressModal, LessonMediaViewer } from '@/features/courses';
 import { Badge, Button, Card, CardContent } from '@/shared/ui';
 import CertificateNameModal from '@/shared/ui/CertificateNameModal';
 import { useUser } from '@/features/auth';
@@ -951,7 +949,7 @@ const CoursePlayer = () => {
 
         // Get all non-video resources (PDFs, documents, links, etc.)
         const otherResources = currentLesson.resources.filter(
-          r => r.type !== 'video' || r.type === 'youtube'
+          r => r.type !== 'video' && r.type !== 'youtube'
         );
 
         if (otherResources.length > 0) {
@@ -961,7 +959,12 @@ const CoursePlayer = () => {
               let url = r.url;
               
               // Get authenticated URL for R2 files
-              if (needsAuthentication(r.url) && r.type !== 'youtube' && r.type !== 'link') {
+              const resourceUrl = new URL(r.url, window.location.origin);
+              const dashboardKey = resourceUrl.pathname === '/api/courses/assets' ? resourceUrl.searchParams.get('key') : null;
+              if (dashboardKey?.startsWith('courses/resources/') && r.type !== 'video') {
+                const query = new URLSearchParams({ key: dashboardKey, courseId, lessonId: currentLesson.id });
+                url = `/api/storage/course-resource?${query}`;
+              } else if (needsAuthentication(r.url) && r.type !== 'youtube' && r.type !== 'link') {
                 try {
                   const authUrl = await getAuthenticatedMediaUrl(
                     r.url,
@@ -977,7 +980,10 @@ const CoursePlayer = () => {
               }
               
               return {
-                title: r.name,
+                title: r.name || r.title,
+                mimeType: r.mimeType || r.mime_type,
+                originalUrl: r.url,
+                order: r.order,
                 url: url,
                 type: r.type,
                 size: r.size
@@ -1045,7 +1051,8 @@ const CoursePlayer = () => {
                 url: resource.url,
                 size: resource.file_size,
                 thumbnailUrl: resource.thumbnail_url,
-                embedUrl: resource.embed_url
+                embedUrl: resource.embed_url,
+                order: resource.order_index ?? null
               }))
             };
           })
@@ -1478,26 +1485,6 @@ const CoursePlayer = () => {
     }
   };
 
-  // Get appropriate icon for resource type
-  const getResourceIcon = (type) => {
-    switch (type) {
-      case 'pdf':
-      case 'document':
-        return FileText;
-      case 'video':
-        return Video;
-      case 'image':
-        return Image;
-      case 'youtube':
-        return Video;
-      case 'link':
-      case 'drive':
-        return LinkIcon;
-      default:
-        return BookOpen;
-    }
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center">
@@ -1695,7 +1682,15 @@ const CoursePlayer = () => {
                       )}
                     </div>
 
-                    {/* Video Player */}
+                    <LessonMediaViewer
+                      key={`${currentModuleIndex}-${currentLessonIndex}`}
+                      videoUrl={lessonVideoUrl}
+                      videoLoading={videoLoading}
+                      videoOrder={currentLesson?.resources?.find(resource => resource.type === 'video' || resource.type === 'youtube')?.order}
+                      resources={lessonResources}
+                      onLeaveVideo={() => videoRef.current?.pause()}
+                    >
+
                     {videoLoading ? (
                       <div className="mb-8 aspect-video bg-gray-100 rounded-lg flex items-center justify-center">
                         <div className="text-center">
@@ -1744,6 +1739,12 @@ const CoursePlayer = () => {
                           </div>
                         )}
                         
+                      </div>
+                    ) : null}
+
+                    </LessonMediaViewer>
+
+                    <div className="mb-8">
                         {/* AI Video Learning Panel - Summary, Transcript, Chapters */}
                         {lessonVideoUrl && !lessonVideoUrl.includes('youtube.com') && (
                           <VideoLearningPanel
@@ -1760,49 +1761,7 @@ const CoursePlayer = () => {
                             }}
                           />
                         )}
-                      </div>
-                    ) : null}
-
-                    {/* Resources */}
-                    {lessonResources.length > 0 && (
-                      <div className="mb-8">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-3">
-                          📚 Course Resources
-                        </h3>
-                        <div className="space-y-2">
-                          {lessonResources.map((resource, index) => {
-                            const ResourceIcon = getResourceIcon(resource.type);
-                            return (
-                              <a
-                                key={`resource-${index}`}
-                                href={resource.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center justify-between p-3 bg-gray-50 hover:bg-indigo-50 border border-gray-200 hover:border-indigo-300 rounded-lg transition-all group"
-                              >
-                                <div className="flex items-center gap-3 flex-1 min-w-0">
-                                  <div className="p-2 bg-white rounded-lg group-hover:bg-indigo-100 transition-colors">
-                                    <ResourceIcon className="w-5 h-5 text-indigo-600" />
-                                  </div>
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium text-gray-900 truncate">
-                                      {resource.title}
-                                    </p>
-                                    <p className="text-xs text-gray-500 capitalize">
-                                      {resource.type}
-                                      {resource.size && ` • ${resource.size}`}
-                                    </p>
-                                  </div>
-                                </div>
-                                <div className="ml-3 flex-shrink-0">
-                                  <LinkIcon className="w-4 h-4 text-gray-400 group-hover:text-indigo-600" />
-                                </div>
-                              </a>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
+                    </div>
 
                     {/* Navigation Buttons */}
                     <div className="flex items-center justify-between pt-6 border-t border-gray-200">

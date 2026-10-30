@@ -15,6 +15,7 @@ interface TokenPayload {
   fingerprint?: string;
   userAgent?: string;
   sessionId?: string;
+  sharedCourseResource?: boolean;
 }
 
 /**
@@ -64,7 +65,8 @@ export async function generateMediaToken(
   lessonId?: string,
   fingerprint?: string,
   userAgent?: string,
-  sessionId?: string
+  sessionId?: string,
+  sharedCourseResource?: boolean
 ): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
   
@@ -78,6 +80,7 @@ export async function generateMediaToken(
     fingerprint,
     userAgent,
     sessionId,
+    sharedCourseResource,
   };
 
   const payloadStr = JSON.stringify(payload);
@@ -148,8 +151,8 @@ export function extractFileKey(url: string): string | null {
 
     // URL with key parameter
     if (url.includes('?key=')) {
-      const urlObj = new URL(url);
-      return decodeURIComponent(urlObj.searchParams.get('key') || '');
+      const urlObj = new URL(url, 'https://local.invalid');
+      return urlObj.searchParams.get('key') || null;
     }
 
     // R2 presigned URL

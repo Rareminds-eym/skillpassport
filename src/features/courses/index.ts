@@ -128,3 +128,5 @@ export type { Lesson } from './model/course-types';
 export { getAllTimetableConflicts } from './lib/timetableValidation';
 
 export { default as Course } from './ui/CourseCard';
+
+export { LessonMediaViewer } from "./ui/LessonMediaViewer";
