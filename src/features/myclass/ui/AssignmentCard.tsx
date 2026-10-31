@@ -202,24 +202,33 @@ const AssignmentCard: React.FC<AssignmentCardProps> = ({
     }
   };
 
+  // Helper function to check if URL is external (not R2)
+  const isExternalUrl = (url: string): boolean => {
+    try {
+      const parsedUrl = new URL(url);
+      // Check if it's a Google Drive or other external URL
+      return !url.includes('.r2.dev') && 
+             !url.includes('localhost') && 
+             (parsedUrl.hostname !== window.location.hostname);
+    } catch {
+      return false;
+    }
+  };
+
   // Helper function to open file with error handling
   const openFile = (fileUrl: string, fileName: string = 'file') => {
-    // If it's an external web link (GitHub, Figma, live demo, etc.), open directly
-    if (fileUrl.startsWith('http://') || fileUrl.startsWith('https://')) {
-      if (!fileUrl.includes('.r2.dev')) {
-        window.open(fileUrl, '_blank', 'noopener,noreferrer');
-        return;
-      }
+    // If it's an external URL (Google Drive, etc.), open directly
+    if (isExternalUrl(fileUrl)) {
+      window.open(fileUrl, '_blank');
+      return;
     }
-
-    const storageApiUrl = getApiUrl('storage');
     
-    // Generate proxy URL
+    // For R2 files, use the proxy
+    const storageApiUrl = getApiUrl('storage');
     const accessibleUrl = fileUrl.includes('/document-access') 
       ? fileUrl 
       : `${storageApiUrl}/document-access?url=${encodeURIComponent(fileUrl)}&mode=inline`;
     
-    // Open directly without testing
     window.open(accessibleUrl, '_blank');
   };
 

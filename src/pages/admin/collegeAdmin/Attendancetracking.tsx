@@ -1,4 +1,6 @@
 import { teaching } from '@/features/external-teaching/api/teachingApi';
+import CombinedClassSessionForm from '@/features/external-teaching/ui/CombinedClassSessionForm';
+import { combinedStudentTotal } from '@/features/external-teaching/model/combinedClass';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import toast from "react-hot-toast";
 import { Learner as ProfileLearner } from "@/entities/learner";
@@ -318,6 +320,7 @@ const AttendanceTracking: React.FC = () => {
     to: "",
   });
   const [showAddSessionModal, setShowAddSessionModal] = useState(false);
+  const [sessionType, setSessionType] = useState<'single' | 'combined'>('single');
   const [showBulkImportModal, setShowBulkImportModal] = useState(false);
 
   const handleBulkImportSuccess = () => {
@@ -1202,6 +1205,7 @@ const AttendanceTracking: React.FC = () => {
                 const today=new Date();
                 const date=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
                 setSessionFormData(prev=>({...prev,date:prev.date||date}));
+                setSessionType('single');
                 setShowAddSessionModal(true);
               }}
               className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors"
@@ -1747,6 +1751,18 @@ const AttendanceTracking: React.FC = () => {
         onClose={() => setShowAddSessionModal(false)}
         onCreateSession={()=>handleCreateSession()}
         onCreateAndStart={handleCreateAndStart}
+        sessionType={sessionType}
+        onSessionTypeChange={setSessionType}
+        combinedForm={
+          <CombinedClassSessionForm
+            collegeId={collegeId}
+            onClose={() => setShowAddSessionModal(false)}
+            onCreated={result => {
+              toast.success(`Combined session created for ${result.sessions.length} classes (${combinedStudentTotal(result.sessions)} students).`);
+              fetchSubjectGroups();
+            }}
+          />
+        }
         formData={sessionFormData}
         schedule={{ fixedDate: fixedTrainingDate, minDate: selectedTrainingMapping?.start_date,
           maxDate: selectedTrainingMapping?.end_date, slots: mappedTimeSlots }}
