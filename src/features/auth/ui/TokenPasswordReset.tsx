@@ -117,6 +117,12 @@ const TokenPasswordReset = () => {
           loading: false,
           error: 'Too many requests. Please try again in a few minutes.'
         }));
+      } else if (error instanceof AuthFetchError && error.status === 404) {
+        setState(prev => ({
+          ...prev,
+          loading: false,
+          error: 'No account found with this email. Please sign up first.'
+        }));
       } else {
         // The server handles account enumeration; request failures need a retry.
         setState(prev => ({
