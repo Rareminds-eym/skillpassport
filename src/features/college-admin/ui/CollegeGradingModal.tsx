@@ -147,8 +147,8 @@ export const CollegeGradingModal: React.FC<CollegeGradingModalProps> = ({
     e.preventDefault();
     if (!selectedSubmission || !assignment) return;
 
-    const numericGrade = parseFloat(gradeInput);
-    if (isNaN(numericGrade) || numericGrade < 0 || numericGrade > assignment.total_points) {
+    const numericGrade = Number.parseFloat(gradeInput);
+    if (Number.isNaN(numericGrade) || numericGrade < 0 || numericGrade > assignment.total_points) {
       toast.error(`Please enter a valid grade between 0 and ${assignment.total_points}`);
       return;
     }
@@ -313,7 +313,9 @@ export const CollegeGradingModal: React.FC<CollegeGradingModalProps> = ({
           </div>
 
           <button
+            type="button"
             onClick={onClose}
+            aria-label="Close"
             className="p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-xl transition-colors"
           >
             <X className="w-5 h-5" />
@@ -332,6 +334,7 @@ export const CollegeGradingModal: React.FC<CollegeGradingModalProps> = ({
                 <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
+                  aria-label="Search learners"
                   placeholder="Search by learner name or roll #..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -342,24 +345,28 @@ export const CollegeGradingModal: React.FC<CollegeGradingModalProps> = ({
               {/* Status Filter Tabs */}
               <div className="grid grid-cols-4 gap-1 p-1 bg-gray-100 rounded-xl text-xs font-medium text-gray-600">
                 <button
+                  type="button"
                   onClick={() => setFilterStatus('all')}
                   className={`py-1.5 rounded-lg transition-all text-center ${filterStatus === 'all' ? 'bg-white text-blue-700 shadow-sm font-semibold' : 'hover:text-gray-900'}`}
                 >
                   All ({stats.total})
                 </button>
                 <button
+                  type="button"
                   onClick={() => setFilterStatus('submitted')}
                   className={`py-1.5 rounded-lg transition-all text-center ${filterStatus === 'submitted' ? 'bg-white text-amber-700 shadow-sm font-semibold' : 'hover:text-gray-900'}`}
                 >
                   Submitted ({stats.submitted})
                 </button>
                 <button
+                  type="button"
                   onClick={() => setFilterStatus('graded')}
                   className={`py-1.5 rounded-lg transition-all text-center ${filterStatus === 'graded' ? 'bg-white text-emerald-700 shadow-sm font-semibold' : 'hover:text-gray-900'}`}
                 >
                   Graded ({stats.graded})
                 </button>
                 <button
+                  type="button"
                   onClick={() => setFilterStatus('pending')}
                   className={`py-1.5 rounded-lg transition-all text-center ${filterStatus === 'pending' ? 'bg-white text-gray-700 shadow-sm font-semibold' : 'hover:text-gray-900'}`}
                 >
@@ -388,6 +395,12 @@ export const CollegeGradingModal: React.FC<CollegeGradingModalProps> = ({
                     <div
                       key={sub.learner_assignment_id}
                       onClick={() => selectSubmission(sub)}
+                      onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        selectSubmission(sub);
+                        }
+                      }}
                       className={`p-3.5 cursor-pointer transition-all border-l-4 ${isSelected
                           ? 'bg-blue-50/70 border-blue-600 shadow-sm'
                           : 'border-transparent hover:bg-gray-50'
@@ -520,6 +533,36 @@ export const CollegeGradingModal: React.FC<CollegeGradingModalProps> = ({
                         </div>
                       )}
 
+                      {/* Submitted Project / Repository URL */}
+                      {selectedSubmission.submission_url && (
+                        <div>
+                          <p className="text-xs font-medium text-gray-500 mb-2">Submitted Project / Repository Link:</p>
+                          <div className="flex items-center justify-between p-3.5 bg-purple-50/70 border border-purple-200/80 rounded-xl hover:bg-purple-50 transition-colors">
+                            <div className="flex items-center gap-3 min-w-0 pr-3">
+                              <div className="p-2 bg-purple-600 text-white rounded-lg">
+                                <ExternalLink className="w-4 h-4" />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-sm font-semibold text-gray-900 truncate">
+                                  {selectedSubmission.submission_url}
+                                </p>
+                                <p className="text-xs text-purple-700">Project / Web URL</p>
+                              </div>
+                            </div>
+
+                            <a
+                              href={selectedSubmission.submission_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-medium transition-colors shadow-sm shrink-0"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                              Open Link
+                            </a>
+                          </div>
+                        </div>
+                      )}
+
                       {/* Uploaded Files */}
                       {selectedSubmission.submission_files && selectedSubmission.submission_files.length > 0 ? (
                         <div>
@@ -569,7 +612,9 @@ export const CollegeGradingModal: React.FC<CollegeGradingModalProps> = ({
                           </div>
                         </div>
                       ) : (
-                        <p className="text-xs text-gray-500 italic">No files attached with this submission.</p>
+                        !selectedSubmission.submission_url && (
+                          <p className="text-xs text-gray-500 italic">No files attached with this submission.</p>
+                        )
                       )}
                     </>
                   ) : (
@@ -591,10 +636,10 @@ export const CollegeGradingModal: React.FC<CollegeGradingModalProps> = ({
                   <form onSubmit={handleGradeSubmit} className="space-y-4">
                     <div>
                       <div className="flex items-center justify-between mb-1.5">
-                        <label className="text-sm font-semibold text-gray-800">
+                        <label htmlFor="grade-input" className="text-sm font-semibold text-gray-800">
                           Grade / Score (out of {assignment.total_points})
                         </label>
-                        {gradeInput && !isNaN(parseFloat(gradeInput)) && (
+                        {gradeInput && !Number.isNaN(parseFloat(gradeInput)) && (
                           <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
                             {assignment.total_points > 0
                               ? Math.round((parseFloat(gradeInput) / assignment.total_points) * 100)
@@ -604,6 +649,7 @@ export const CollegeGradingModal: React.FC<CollegeGradingModalProps> = ({
                         )}
                       </div>
                       <input
+                        id="grade-input"
                         type="number"
                         min="0"
                         max={assignment.total_points}
@@ -617,10 +663,11 @@ export const CollegeGradingModal: React.FC<CollegeGradingModalProps> = ({
                     </div>
 
                     <div>
-                      <label className="text-sm font-semibold text-gray-800 block mb-1.5">
+                      <label htmlFor="feedback-input" className="text-sm font-semibold text-gray-800 block mb-1.5">
                         Educator Feedback
                       </label>
                       <textarea
+                        id="feedback-input"
                         rows={3}
                         placeholder="Write constructive feedback for this learner..."
                         value={feedbackInput}

@@ -52,6 +52,8 @@ export async function handleGetAddonByFeatureKey(context: AuthenticatedContext):
       addon_price_annual: safeParseFloat(addon.price_annual, 0),
       price_annual: safeParseFloat(addon.price_annual, 0),
       icon_url: addon.icon,
+      benefits: addon.benefits || [],
+      billing_options: addon.billing_options || [],
     };
 
     return apiSuccess(transformedData, context.request, 200);

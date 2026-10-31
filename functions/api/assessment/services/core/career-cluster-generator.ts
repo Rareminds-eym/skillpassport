@@ -378,7 +378,7 @@ function buildStudentEmbeddingText(
   _gradeLevel: GradeLevel
 ): string {
   // Single source of truth: assessment-context-builder handles all RAG context
-  let ragContext = buildAssessmentRagContext(student, { degreeLevel: student.degreeLevel }, undefined);
+  let ragContext = buildAssessmentRagContext(student, { degreeLevel: student.degreeLevel, specialization: student.specialization }, undefined);
 
   // Add profileNarrative from college.ts synthesis if available (most domain-specific signal)
   if (context.profileNarrative) {
@@ -397,6 +397,7 @@ function buildStudentEmbeddingText(
 function buildKeywordQuery(student: StudentProfile): string {
   const parts: string[] = [];
   if (student.stream) parts.push(student.stream);
+  if (student.specialization) parts.push(student.specialization);
   for (const topic of student.knowledge_strengths || []) parts.push(topic);
   return parts.join(' ');
 }

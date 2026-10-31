@@ -1,42 +1,35 @@
+import './Opportunities.css';
+import { apiGet } from '@/shared/api';
+import { OpportunityDialog } from '@/features/opportunities/ui/OpportunityDialog';
+import { emptyOpportunityFilters, readOpportunitySearch } from '@/features/opportunities/lib/filters';
+import { opportunityText, jobSalary, applicationState } from '@/features/opportunities/lib/presentation';
+import { getOpportunityTabs, resolveOpportunityTab } from '@/features/opportunities/lib/navigation';
+import { ApplicationsPanel as MyApplicationsContent } from '@/features/opportunities';
+import { applicationUpdated } from '@/features/opportunities';
 import { useAuthStore } from '@/shared/model/authStore';
 import { useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import {
-  AlertCircle,
-  Award,
-  Bell,
-  Briefcase,
   Building2,
   Calendar,
   CheckCircle2,
   Clock,
-  Eye,
   Factory,
-  FileText,
-  Filter,
   Grid3x3,
   List,
-  Lock,
   MapPin,
-  MessageSquare,
-  RefreshCw,
   Search,
-  Sparkles,
-  Target,
-  ThumbsUp,
-  ThumbsDown,
-  TrendingUp,
-  Users,
-  Video,
   X,
   XCircle
 } from 'lucide-react';
-import React, { useCallback, useEffect, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import * as React from 'react';
+import { useEffect, useState } from 'react';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { opportunitiesService } from '@/features/opportunities/api/opportunitiesService';
+import { getMissingInstitutionFields } from '@/features/opportunities/lib/institutionDetails';
 import { getExternalApplicationUrl, openExternalApplication } from '@/features/opportunities/lib/externalApplication';
-import { AdvancedFilters, OpportunityCard, OpportunityListItem, OpportunityPreview, RecommendedJobs, IndustrialVisitPreview } from '@/widgets/learner-dashboard';
+import { AdvancedFilters, OpportunityCard, OpportunityListItem, OpportunityPreview, RecommendedJobs, IndustrialVisitPreview, IndustrialVisitRegistration } from '@/widgets/learner-dashboard';
 import {
   Pagination,
   PaginationContent,
@@ -44,13 +37,11 @@ import {
   PaginationItem
 } from '@/shared/ui';
 
-import { useOpportunities } from '@/features/opportunities';
-import { useLearnerProfile } from '@/features/learner-profile';
+import { useOpportunities, LearningMatches, useOpportunityPage } from '@/features/opportunities';
 import { useLearnerDataByEmail } from '@/entities/learner';
 import { getPageNumbers } from '@/shared/lib/pagination';
 import { useProfileCompletion } from '@/features/learner-profile';
 import { AppliedJobsService, SavedJobsService } from '@/features/opportunities';
-import offerManagementService from '@/features/opportunities/api/offerManagementService';
 import { factoryVisitsService } from '@/features/college-admin/api/factoryVisitsService';
 import { isSchoolLearner, isCollegeLearner, isLearner } from '@/entities/learner/lib/learnerType';
 import { getLogger } from '@/shared/config/logging';
@@ -63,219 +54,36 @@ const logger = getLogger('Opportunities');
 
 // Import Applications component content
 import { useMessageNotifications } from '@/features/messaging';
-import MessageService from '@/shared/api/messageService';
 import { learnerPipelineService as LearnerPipelineService } from '@/features/learner-profile/api';
 
-// Helper function to check if institution details are complete
-const checkInstitutionDetailsComplete = (learnerData) => {
-  if (!learnerData) return false;
+const MissingInstitutionFields = ({ fields }) => (
+  <div className="bg-blue-50 rounded-lg p-4 mb-6">
+    <p className="text-sm font-semibold text-gray-800 mb-2">Missing information:</p>
+    <ul className="text-sm text-gray-700 space-y-1 list-disc pl-5">
+      {fields.map((field) => <li key={field}>{field}</li>)}
+    </ul>
+  </div>
+);
 
-  // Learners don't need institution details
-  if (isLearner(learnerData)) return true;
-
-  logger.info('Checking institution details:', {
-    universityId: learnerData.universityId,
-    university: learnerData.university,
-    university_college_id: learnerData.university_college_id,
-    college_school_name: learnerData.college_school_name,
-    college: learnerData.college,
-    program_id: learnerData.program_id,
-    branch_field: learnerData.branch_field,
-    branch: learnerData.branch,
-    program_section_id: learnerData.program_section_id,
-    section: learnerData.section,
-    semester: learnerData.semester,
-    grade: learnerData.grade,
-    school_id: learnerData.school_id
-  });
-
-  const gradeStr = String(learnerData.grade || '').toUpperCase().trim();
-  const isSchool = gradeStr.match(/(\d+)/) || gradeStr.includes('DIPLOMA');
-  const isCollege = gradeStr.includes('UG') || gradeStr.includes('PG') ||
-    gradeStr.includes('YEAR') || gradeStr.includes('UNDERGRADUATE') ||
-    gradeStr.includes('POSTGRADUATE') || gradeStr.includes('BACHELOR') ||
-    gradeStr.includes('MASTER');
-
-  if (isSchool && !isCollege) {
-    // School learners need: school_id OR college/college_school_name (custom school)
-    const isComplete = !!(learnerData.school_id || learnerData.college || learnerData.college_school_name);
-
-    return isComplete;
-  } else if (isCollege) {
-    // College learners need: college + program (university is optional for custom entries)
-    const hasCollege = !!(learnerData.university_college_id || learnerData.college || learnerData.college_school_name);
-    const hasProgram = !!(learnerData.program_id || learnerData.branch_field || learnerData.branch);
-
-    // Consider complete if at least college and program are filled
-    const isComplete = hasCollege && hasProgram;
-    logger.info('College learner check:', {
-      isComplete,
-      hasCollege,
-      hasProgram,
-      universityId: learnerData.universityId,
-      university: learnerData.university,
-      university_college_id: learnerData.university_college_id,
-      college: learnerData.college,
-      college_school_name: learnerData.college_school_name,
-      program_id: learnerData.program_id,
-      branch_field: learnerData.branch_field,
-      branch: learnerData.branch
-    });
-    return isComplete;
-  }
-
-  return false;
-};
-
-// Empty state component with modal
-const EmptyOpportunitiesState = ({ learnerData, navigate }) => {
-  const [showModal, setShowModal] = useState(false);
-  const isComplete = checkInstitutionDetailsComplete(learnerData);
-
-  useEffect(() => {
-    // Show modal automatically if institution details are incomplete
-    if (!isComplete) {
-      setShowModal(true);
-    }
-  }, [isComplete]);
-
-  const handleCompleteDetails = () => {
-    navigate('/learner/settings', {
-      state: {
-        activeTab: 'profile',
-        activeSubTab: 'institution'
-      }
-    });
-  };
-
-  if (!isComplete && showModal) {
-    return (
-      <>
-        {/* Backdrop */}
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          {/* Modal */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 relative"
-          >
-            {/* Close button */}
-            <button
-              onClick={() => setShowModal(false)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            {/* Icon */}
-            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Briefcase className="w-8 h-8 text-blue-600" />
-            </div>
-
-            {/* Content */}
-            <h3 className="text-xl font-semibold text-gray-900 text-center mb-2">
-              Complete Your Institution Details
-            </h3>
-            <p className="text-gray-600 text-center mb-6">
-              To view relevant opportunities, please complete your institution information in your profile settings.
-            </p>
-
-            {/* Required fields info */}
-            <div className="bg-blue-50 rounded-lg p-4 mb-6">
-              <p className="text-sm font-semibold text-gray-800 mb-2">Required Information:</p>
-              {(() => {
-                const gradeStr = String(learnerData?.grade || '').toUpperCase().trim();
-                const isSchool = gradeStr.match(/(\d+)/) || gradeStr.includes('DIPLOMA');
-                const isCollege = gradeStr.includes('UG') || gradeStr.includes('PG') ||
-                  gradeStr.includes('YEAR') || gradeStr.includes('UNDERGRADUATE') ||
-                  gradeStr.includes('POSTGRADUATE') || gradeStr.includes('BACHELOR') ||
-                  gradeStr.includes('MASTER');
-
-                if (isSchool && !isCollege) {
-                  return (
-                    <ul className="text-sm text-gray-700 space-y-1">
-                      <li className="flex items-center gap-2">
-                        <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
-                        School Name
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
-                        Section (A, B, C, etc.)
-                      </li>
-                    </ul>
-                  );
-                } else if (isCollege) {
-                  return (
-                    <ul className="text-sm text-gray-700 space-y-1">
-                      <li className="flex items-center gap-2">
-                        <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
-                        University Name
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
-                        College Name
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
-                        Program/Course Name
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
-                        Current Semester & Section
-                      </li>
-                    </ul>
-                  );
-                }
-
-                return (
-                  <p className="text-sm text-gray-700">
-                    Please complete your institution details
-                  </p>
-                );
-              })()}
-            </div>
-
-            {/* Actions */}
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowModal(false)}
-                className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
-              >
-                Later
-              </button>
-              <button
-                onClick={handleCompleteDetails}
-                className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-              >
-                Complete Now
-              </button>
-            </div>
-          </motion.div>
-        </div>
-
-        {/* Background empty state */}
-        <div className="text-center py-20 bg-white rounded-2xl border border-gray-200">
-          <MapPin className="w-16 h-16 mx-auto text-gray-300 mb-4" />
-          <h3 className="text-xl font-semibold text-gray-600 mb-2">No opportunities found</h3>
-          <p className="text-gray-500 text-sm">Complete your profile to see relevant opportunities</p>
-        </div>
-      </>
-    );
-  }
-
-  // If details are complete, show regular empty state
-  return (
-    <div className="text-center py-20 bg-white rounded-2xl border border-gray-200">
-      <MapPin className="w-16 h-16 mx-auto text-gray-300 mb-4" />
-      <h3 className="text-xl font-semibold text-gray-600 mb-2">No opportunities found</h3>
-      <p className="text-gray-500 text-sm">Try adjusting your filters or search terms</p>
-    </div>
-  );
-};
+const formatLastUpdate = applicationUpdated;
 
 const Opportunities = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const setSearchParamsRef = React.useRef(setSearchParams);
+  setSearchParamsRef.current = setSearchParams;
+  const searchState = React.useMemo(() => readOpportunitySearch(searchParams), [searchParams]);
+  const updateSearch = (patch, { reset = false, replace = true } = {}) => setSearchParamsRef.current(previous => {
+    const next = new URLSearchParams(previous);
+    for (const [key,value] of Object.entries(patch)) {
+      next.delete(key);
+      if (Array.isArray(value)) value.forEach(item => next.append(key,item));
+      else if (value !== null && value !== undefined && value !== '') next.set(key,String(value));
+    }
+    if (reset) { next.delete('page'); next.delete('job'); }
+    return next;
+  }, { replace });
   const queryClient = useQueryClient();
   const user = useUser();
   const userEmail = (useAuthStore.getState().user?.email || localStorage.getItem("userEmail")) || user?.email;
@@ -284,26 +92,30 @@ const Opportunities = () => {
 
   // Feature gating for job applications
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
-  const { subscriptionData } = useSubscriptionQuery();
+  const { subscriptionData, loading: accessCheckLoading, error: subscriptionError, hasAccess: hasCurrentSubscriptionAccess, refreshSubscription } = useSubscriptionQuery();
   const userPlan = subscriptionData?.plan || PLAN_IDS.FREEMIUM;
 
   // Check feature access for job applications
   const accessResult = checkFeatureAccess(userPlan, 'opportunities_access', [], {}, user?.id);
   const canAccessOpportunities = accessResult.hasAccess;
+  // A background refetch failure does not revoke still-valid cached access.
+  // Initial failures and expired/invalid cached subscriptions remain blocked.
+  const accessCheckError = subscriptionData && hasCurrentSubscriptionAccess && canAccessOpportunities ? null : subscriptionError;
 
   // Check institution details completion
   const [showInstitutionModal, setShowInstitutionModal] = useState(false);
-  const isInstitutionComplete = checkInstitutionDetailsComplete(learnerData);
+  const missingInstitutionFields = getMissingInstitutionFields(learnerData);
+  const isInstitutionComplete = missingInstitutionFields.length === 0;
 
   // Show modal on mount if institution details are incomplete
   useEffect(() => {
     if (learnerData && !isInstitutionComplete) {
       setShowInstitutionModal(true);
     }
-  }, [learnerData, isInstitutionComplete]);
+  }, [learnerId, isInstitutionComplete]);
 
   // Check profile completion status
-  const { canApplyToJobs, needsProfileCompletion, isLoading: profileCheckLoading } = useProfileCompletion(learnerId, !!learnerId);
+  const { canApplyToJobs, needsProfileCompletion, missingFields, completionPercentage, error: profileCheckError, refreshProfileStatus, isLoading: profileCheckLoading } = useProfileCompletion(learnerId, !!learnerId);
 
   // Left sidebar tab state - Set default based on learner type
   const getDefaultTab = () => {
@@ -343,86 +155,6 @@ const Opportunities = () => {
     // College: Default to my-jobs
     return 'my-jobs';
   };
-
-  const [activeTab, setActiveTab] = useState(getDefaultTab()); // 'my-jobs', 'my-applications', 'industrial-visits', or 'history'
-
-  // Handle navigation state to set active tab
-  useEffect(() => {
-    if (location.state?.activeTab) {
-      setActiveTab(location.state.activeTab);
-    }
-  }, [location.state]);
-
-  // Update active tab when learner data loads
-  useEffect(() => {
-    // Don't override if we have a navigation state
-    if (location.state?.activeTab) return;
-
-    if (learnerData && learnerData.grade) {
-      const correctTab = getDefaultTab();
-      if (activeTab !== correctTab) {
-        setActiveTab(correctTab);
-      }
-    }
-  }, [learnerData, location.state]);
-
-  // My Jobs state (existing opportunities logic)
-  const [searchTerm, setSearchTerm] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [sortBy, setSortBy] = useState('newest');
-  const [viewMode, setViewMode] = useState('grid');
-  const [selectedOpportunity, setSelectedOpportunity] = useState(null);
-
-  useEffect(() => {
-    const selectedId = location.state?.selectedOpportunityId;
-    if (!selectedId) return;
-    let active = true;
-    opportunitiesService.getOpportunityById(selectedId).then(job => {
-      if (!active) return;
-      if (job) setSelectedOpportunity(job);
-      else toast.error('This opportunity is no longer available');
-      navigate(location.pathname, { replace: true, state: {} });
-    }).catch(() => { if (active) toast.error('Unable to load opportunity details'); });
-    return () => { active = false; };
-  }, [location.state?.selectedOpportunityId]);
-  const [appliedJobs, setAppliedJobs] = useState(new Set());
-  const [savedJobs, setSavedJobs] = useState(new Set());
-  const [isApplying, setIsApplying] = useState(false);
-  const [searchHistory, setSearchHistory] = useState([]);
-  const [showHistory, setShowHistory] = useState(false);
-  const [advancedFilters, setAdvancedFilters] = useState({
-    employmentType: [],
-    experienceLevel: [],
-    mode: [],
-    salaryMin: '',
-    salaryMax: '',
-    skills: [],
-    department: [],
-    postedWithin: '',
-  });
-  const [currentPage, setCurrentPage] = useState(1);
-  const opportunitiesPerPage = 6;
-
-  // My Applications state
-  const [applications, setApplications] = useState([]);
-  const [filteredApplications, setFilteredApplications] = useState([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [showPipelineStatus, setShowPipelineStatus] = useState({});
-  const [messagingApplicationId, setMessagingApplicationId] = useState(null);
-
-  // Industrial Visits state
-  const [industrialVisits, setIndustrialVisits] = useState([]);
-  const [industrialVisitsLoading, setIndustrialVisitsLoading] = useState(false);
-  const [selectedIndustrialVisit, setSelectedIndustrialVisit] = useState(null);
-  const [ivSearchTerm, setIvSearchTerm] = useState('');
-  const [ivSectorFilter, setIvSectorFilter] = useState('all');
-  const [ivLocationFilter, setIvLocationFilter] = useState('all');
-  const [ivViewMode, setIvViewMode] = useState('grid');
-  const [ivCurrentPage, setIvCurrentPage] = useState(1);
-  const ivItemsPerPage = 10;
-  const [registeredVisits, setRegisteredVisits] = useState(new Set());
-  const [isRegistering, setIsRegistering] = useState(false);
 
   // Memoize learner type to prevent unnecessary recalculations
   const learnerType = React.useMemo(() => {
@@ -472,7 +204,146 @@ const Opportunities = () => {
     };
   }, [learnerData]);
 
-  // Build server-side filters (excluding skills which needs client-side filtering)
+  const availableTabs = getOpportunityTabs(learnerType);
+  const activeTab = resolveOpportunityTab(searchState.tab, getDefaultTab(), availableTabs);
+  const setActiveTab = tab => updateSearch({ tab, job: null }, { replace: false }); // 'my-jobs', 'my-applications', 'industrial-visits', or 'history'
+
+  useEffect(() => {
+    if (activeTab !== 'industrial-visits') return;
+    const alreadyHidden = document.body.classList.contains('hide-zoho-widget');
+    document.body.classList.add('hide-zoho-widget', 'visit-browsing-active');
+    return () => {
+      document.body.classList.remove('visit-browsing-active');
+      if (!alreadyHidden) document.body.classList.remove('hide-zoho-widget');
+    };
+  }, [activeTab]);
+
+  // Handle navigation state to set active tab
+  useEffect(() => {
+    if (location.state?.activeTab) {
+      setActiveTab(location.state.activeTab);
+    }
+  }, [location.state]);
+
+  const [searchTerm, setSearchTerm] = useState(searchState.query);
+  const [debouncedSearch, setDebouncedSearch] = useState(searchState.query);
+  const sortBy = searchState.sort;
+  const setSortBy = sort => updateSearch({ sort }, { reset: true });
+  const viewMode = searchState.view;
+  const setViewMode = view => updateSearch({ view });
+  useEffect(() => { setSearchTerm(searchState.query); setDebouncedSearch(searchState.query); }, [searchState.query]);
+  const [selectedOpportunity, setSelectedOpportunity] = useState(null);
+  const [detailsOpen, setDetailsOpen] = useState(!!searchParams.get('job'));
+  const [applicationRequest, setApplicationRequest] = useState(null);
+  const selectOpportunity = job => { setApplicationRequest(null); setSelectedOpportunity(job); setDetailsOpen(true); updateSearch({ job: job.id }, { replace: false }); };
+  const requestApplication = job => {
+    setSelectedOpportunity(job);
+    setDetailsOpen(false);
+    setApplicationRequest({ jobId: job.id });
+    updateSearch({ job: null });
+  };
+  const changeDetailsOpen = open => { setDetailsOpen(open); if (!open) updateSearch({ job: null }); };
+
+
+  useEffect(() => {
+    const selectedId = location.state?.selectedOpportunityId || searchParams.get('job');
+    if (!selectedId) return;
+    let active = true;
+    opportunitiesService.getOpportunityById(selectedId).then(job => {
+      if (!active) return;
+      if (job) { setSelectedOpportunity(job); setDetailsOpen(true); }
+      else toast.error('This opportunity is no longer available');
+      if (location.state?.selectedOpportunityId) navigate(`${location.pathname}${location.search}`, { replace: true, state: {} });
+    }).catch(() => { if (active) toast.error('Unable to load opportunity details'); });
+    return () => { active = false; };
+  }, [location.state?.selectedOpportunityId, searchParams.get('job')]);
+  const [appliedJobs, setAppliedJobs] = useState(new Set());
+  const [savedJobs, setSavedJobs] = useState(new Set());
+  const [isApplying, setIsApplying] = useState(false);
+  const advancedFilters = searchState.filters;
+  const setAdvancedFilters = filters => updateSearch(filters, { reset: true });
+  const currentPage = searchState.page;
+  const setCurrentPage = page => updateSearch({ page, job: null }, { replace: false });
+  const opportunitiesPerPage = 6;
+
+  // My Applications state
+  const [recommendedJobIds, setRecommendedJobIds] = useState([]);
+  const [applicationsRevision, setApplicationsRevision] = useState(0);
+  const appPageValue = Number(searchParams.get('appPage') || 1);
+  const appPage = Number.isSafeInteger(appPageValue) && appPageValue > 0 && appPageValue <= 10001 ? appPageValue : 1;
+  const setAppPage = appPage => updateSearch({ appPage });
+  const appItemsPerPage = 10;
+  const searchQuery = (searchParams.get('appQ') || '').slice(0, 200);
+  const setSearchQuery = appQ => updateSearch({ appQ: appQ.slice(0,200), appPage: null });
+  const statusFilter = searchParams.get('appStatus') || 'all';
+  const setStatusFilter = appStatus => updateSearch({ appStatus, appPage: null });
+
+  const kindFilter = ['jobs','visits'].includes(searchParams.get('appKind')) ? searchParams.get('appKind') : 'all';
+  const setKindFilter = appKind => updateSearch({appKind,appStatus:null,appPage:null});
+  const resetApplicationFilters = () => updateSearch({appQ:null,appStatus:null,appKind:null,appPage:null});
+
+  // Industrial Visits state
+  const [visitFacets, setVisitFacets] = useState({ sectors: [], locations: [] });
+  const [visitFacetsError, setVisitFacetsError] = useState('');
+  const [visitFacetsLoading, setVisitFacetsLoading] = useState(false);
+  const [visitFacetsRevision, setVisitFacetsRevision] = useState(0);
+  const [visitsRevision, setVisitsRevision] = useState(0);
+  const [selectedIndustrialVisit, setSelectedIndustrialVisit] = useState(null);
+  const ivSearchTerm = (searchParams.get('visitQ') || '').slice(0, 200);
+  const setIvSearchTerm = value => updateSearch({ 'visitQ': value, visitPage: null });
+  const ivSectorFilter = searchParams.get('visitSector') || 'all';
+  const setIvSectorFilter = value => updateSearch({ 'visitSector': value, visitPage: null });
+  const ivLocationFilter = searchParams.get('visitLocation') || 'all';
+  const setIvLocationFilter = value => updateSearch({ 'visitLocation': value, visitPage: null });
+  const ivViewMode = searchParams.get('visitView') === 'list' ? 'list' : 'grid';
+  const setIvViewMode = value => updateSearch({ 'visitView': value });
+  const visitPageValue = Number(searchParams.get('visitPage') || 1);
+  const ivCurrentPage = Number.isSafeInteger(visitPageValue) && visitPageValue > 0 && visitPageValue <= 10001 ? visitPageValue : 1;
+  const setIvCurrentPage = value => updateSearch({ visitPage: typeof value === 'function' ? value(ivCurrentPage) : value });
+  const ivItemsPerPage = 10;
+  const [registeredVisits, setRegisteredVisits] = useState(new Set());
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [visitRegistrationError, setVisitRegistrationError] = useState(null);
+  const [visitDialogOpen,setVisitDialogOpen] = useState(false);
+  const [hasVisitPreview, setHasVisitPreview] = useState(() => window.matchMedia('(min-width: 1024px)').matches);
+  useEffect(() => {
+    const query = window.matchMedia('(min-width: 1024px)');
+    const update = () => {
+      setHasVisitPreview(query.matches);
+      if (query.matches) setVisitDialogOpen(false);
+    };
+    update();
+    query.addEventListener('change', update);
+    return () => query.removeEventListener('change', update);
+  }, []);
+  const openVisit = visit => {
+    setSelectedIndustrialVisit(visit);
+    setVisitDialogOpen(!hasVisitPreview);
+  };
+  const visitsParams = new URLSearchParams({ limit: String(ivItemsPerPage), offset: String((ivCurrentPage-1)*ivItemsPerPage), search: ivSearchTerm });
+  if (ivSectorFilter !== 'all') visitsParams.set('sector', ivSectorFilter);
+  if (ivLocationFilter !== 'all') visitsParams.set('location', ivLocationFilter);
+  const visitsFeed = useOpportunityPage(`/opportunities/visits?${visitsParams}`, 'visits', learnerId, activeTab === 'industrial-visits', visitsRevision);
+  const industrialVisitsLoading = visitsFeed.loading;
+  const industrialVisits = React.useMemo(() => visitsFeed.rows.map(visit => ({...visit,company_name:opportunityText(visit.company_name),description:opportunityText(visit.description),location:opportunityText(visit.location)})), [visitsFeed.rows]);
+  const filteredVisits = industrialVisits;
+  useEffect(() => {
+    if (visitsFeed.loading || visitsFeed.error || activeTab !== 'industrial-visits') return;
+    setSelectedIndustrialVisit(previous=>industrialVisits.find(visit=>visit.id===previous?.id)||industrialVisits[0]||null);
+    setVisitDialogOpen(false);
+    const pages=Math.max(1,Math.ceil(visitsFeed.total/ivItemsPerPage));
+    if(ivCurrentPage>pages)setIvCurrentPage(pages);
+  },[industrialVisits,visitsFeed.loading,visitsFeed.error,visitsFeed.total,ivCurrentPage,activeTab]);
+  const applicationParams = new URLSearchParams({limit:String(appItemsPerPage),offset:String((appPage-1)*appItemsPerPage),search:activeTab === 'history' ? '' : searchQuery,status:activeTab === 'history' ? 'all' : statusFilter,kind:activeTab === 'history'?'visits':kindFilter});
+  if (activeTab === 'history') applicationParams.set('kind','visits');
+  const applicationFeed = useOpportunityPage(`/opportunities/applications?${applicationParams}`, 'applications', learnerId, activeTab === 'my-applications' || activeTab === 'history', applicationsRevision);
+  const appTotalPages = Math.max(1, Math.ceil(applicationFeed.total/appItemsPerPage));
+  const fetchApplicationsData = React.useCallback(() => setApplicationsRevision(revision=>revision+1), []);
+  useEffect(() => {
+    if ((activeTab === 'my-applications' || activeTab === 'history') && !applicationFeed.loading && !applicationFeed.error && appPage>appTotalPages) setAppPage(appTotalPages);
+  },[applicationFeed.loading,applicationFeed.error,appPage,appTotalPages,activeTab]);
+
+  // All search predicates are applied before server pagination.
   const serverFilters = React.useMemo(() => {
     const filters = {};
 
@@ -523,6 +394,7 @@ const Opportunities = () => {
       filters.postedWithin = advancedFilters.postedWithin;
     }
 
+    if (advancedFilters.skills.length) filters.skills = advancedFilters.skills;
     return filters;
   }, [advancedFilters, learnerType.isMiddleSchool, learnerType.isHighSchool, learnerType.isUniversityLearner, learnerType.isLearner]);
 
@@ -538,11 +410,13 @@ const Opportunities = () => {
   const {
     opportunities,
     loading: dataLoading,
+    hasLoadedPage,
     error,
     totalCount,
-    totalPages
+    totalPages,
+    refreshOpportunities
   } = useOpportunities({
-    fetchOnMount: shouldFetchOpportunities,
+    fetchOnMount: shouldFetchOpportunities && !!learnerData,
     activeOnly: true,
     searchTerm: debouncedSearch,
     page: currentPage,
@@ -552,55 +426,28 @@ const Opportunities = () => {
     serverSidePagination: true
   });
 
-  // Client-side filter for skills (JSONB array filtering not supported well in Supabase)
-  const filteredOpportunities = React.useMemo(() => {
-    // Skills filter is applied client-side since server-side JSONB filtering is limited
-    if (advancedFilters.skills.length === 0) {
-      return opportunities;
-    }
-
-    return opportunities.filter(opp => {
-      const oppSkills = opp.required_skills || opp.skills_required || [];
-      return advancedFilters.skills.some(skill =>
-        oppSkills.some(oppSkill =>
-          oppSkill.toLowerCase().includes(skill.toLowerCase())
-        )
-      );
-    });
-  }, [opportunities, advancedFilters.skills]);
-
-  // Debounce search term
+  const filteredAndSortedOpportunities = opportunities;
+  // Keep typing responsive; the URL is the durable search/filter/page state.
   useEffect(() => {
     const timer = setTimeout(() => {
-      setDebouncedSearch(searchTerm);
-      // Reset to page 1 when search changes
       if (searchTerm !== debouncedSearch) {
-        setCurrentPage(1);
+        setDebouncedSearch(searchTerm);
+        updateSearch({ q: searchTerm }, { reset: true });
       }
-    }, 500);
-
+    }, 350);
     return () => clearTimeout(timer);
-  }, [searchTerm]);
-
-  // Reset to page 1 when filters or sort changes
+  }, [searchTerm, debouncedSearch]);
+  const resultKey = JSON.stringify([debouncedSearch, sortBy, advancedFilters, currentPage]);
+  useEffect(() => setApplicationRequest(null), [resultKey, activeTab]);
   useEffect(() => {
-    setCurrentPage(1);
-  }, [advancedFilters, sortBy]);
-
-  // Clamp current page to valid range when totalPages changes
-  useEffect(() => {
-    if (totalPages > 0 && currentPage > totalPages) {
-      setCurrentPage(Math.max(1, totalPages));
+    if (dataLoading || !hasLoadedPage || activeTab !== 'my-jobs') return;
+    if (error) { setSelectedOpportunity(null); setDetailsOpen(false); return; }
+    if (!searchParams.get('job')) {
+      setSelectedOpportunity(previous => applicationRequest?.jobId === previous?.id ? previous : opportunities.find(job => job.id === previous?.id) || opportunities[0] || null);
+      setDetailsOpen(false);
     }
-  }, [totalPages, currentPage, totalCount]);
-
-  // Pre-select opportunity from navigation state (from Dashboard) or auto-select first
-  useEffect(() => {
-    if (!location.state?.selectedOpportunityId && opportunities.length > 0 && !selectedOpportunity && activeTab === 'my-jobs') {
-      // Auto-select first opportunity if none selected
-      setSelectedOpportunity(opportunities[0]);
-    }
-  }, [location.state, opportunities, navigate, location.pathname, selectedOpportunity, activeTab]);
+    if (totalPages > 0 && currentPage > totalPages) setCurrentPage(totalPages);
+  }, [opportunities, dataLoading, hasLoadedPage, resultKey, activeTab, error, searchParams.get('job')]);
 
   // Set loading to false when data is ready (removed artificial 5-second delay)
   useEffect(() => {
@@ -628,59 +475,56 @@ const Opportunities = () => {
     enabled: !!learnerId
   });
 
-  // Load applied and saved jobs
+  const membershipIds = React.useMemo(() => {
+    const visibleIds = activeTab === 'industrial-visits'
+      ? industrialVisits.map(visit => visit.id)
+      : activeTab === 'my-jobs' ? [...opportunities.map(job => job.id), ...recommendedJobIds, selectedOpportunity?.id] : [];
+    return [...new Set(visibleIds.filter(Boolean))].sort();
+  }, [activeTab, opportunities, industrialVisits, recommendedJobIds, selectedOpportunity?.id]);
+  const membershipKey = membershipIds.join(',');
+  const membershipEpoch = React.useRef(0);
+  const membershipMutations = React.useRef(0);
+  const [membershipRevision, setMembershipRevision] = useState(0);
+  const beginMembershipMutation = () => { membershipEpoch.current += 1; membershipMutations.current += 1; };
+  const endMembershipMutation = () => {
+    membershipMutations.current -= 1;
+    membershipEpoch.current += 1;
+    setMembershipRevision(revision=>revision+1);
+  };
+  useEffect(()=>{setAppliedJobs(new Set());setSavedJobs(new Set());setRegisteredVisits(new Set());},[learnerId]);
   useEffect(() => {
-    const loadJobsData = async () => {
-      if (!learnerId) return;
+    if (!learnerId || !membershipKey || membershipMutations.current > 0) return;
+    const epoch = membershipEpoch.current;
+    const controller = new AbortController();let active=true;
+    apiGet(`/opportunities/membership?ids=${encodeURIComponent(membershipKey)}`,{signal:controller.signal}).then(response=>{
+      if(!active || epoch !== membershipEpoch.current)return;
+      const data=response.data;
+      if(!Array.isArray(data?.appliedIds)||!Array.isArray(data?.savedIds))return;
+      const requested=new Set(membershipKey.split(','));
+      setAppliedJobs(previous=>new Set([...previous].filter(id=>!requested.has(id)).concat(data.appliedIds)));
+      setSavedJobs(previous=>new Set([...previous].filter(id=>!requested.has(id)).concat(data.savedIds)));
+      setRegisteredVisits(previous=>new Set([...previous].filter(id=>!requested.has(id)).concat(data.appliedIds)));
+    }).catch(error=>{if(active)logger.error('Unable to load job membership',error);});
+    return ()=>{active=false;controller.abort();};
+  },[learnerId,membershipKey,membershipRevision]);
 
-      try {
-        const [applicationsData, savedIds] = await Promise.all([
-          AppliedJobsService.getlearnerApplications(learnerId),
-          SavedJobsService.getSavedJobIds(learnerId)
-        ]);
-
-        setAppliedJobs(new Set(applicationsData.map(app => app.opportunity_id)));
-        setSavedJobs(new Set(savedIds));
-      } catch (error) {
-        logger.error('Error loading jobs data:', error);
-      }
-    };
-
-    loadJobsData();
-  }, [learnerId]);
-
-  // Fetch applications with pipeline status - memoized to prevent duplicate fetches
-  const fetchApplicationsData = React.useCallback(async () => {
-    if (!learnerId) return;
-
-    try {
-      const applicationsData = await LearnerPipelineService.getlearnerApplicationsWithPipeline(
-        learnerId,
-        userEmail
-      );
-
-      // Ensure applicationsData is an array
-      if (!Array.isArray(applicationsData)) {
-        logger.error('applicationsData is not an array:', applicationsData);
-        setApplications([]);
-        setFilteredApplications([]);
-        return;
-      }
-
+  // Enrich only the backend application page for presentation.
+  const applications = React.useMemo(() => {
+      const applicationsData = applicationFeed.rows;
       const transformedApplications = applicationsData.map(app => ({
         id: app.id,
         learnerId: app.learner_id,
-        jobTitle: app.opportunity?.job_title || app.opportunity?.title || 'N/A',
-        company: app.opportunity?.company_name || 'N/A',
+        jobTitle: opportunityText(app.opportunity?.job_title || app.opportunity?.title || 'N/A'),
+        company: opportunityText(app.opportunity?.company_name || 'N/A'),
         location: app.opportunity?.location || 'N/A',
-        salary: app.opportunity?.salary_range_min && app.opportunity?.salary_range_max
-          ? `₹${(app.opportunity.salary_range_min / 1000).toFixed(0)}k - ₹${(app.opportunity.salary_range_max / 1000).toFixed(0)}k`
-          : 'Not specified',
-        appliedDate: app.applied_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+        salary: jobSalary(app.opportunity),
+        appliedDate: app.applied_at || null,
         status: app.application_status,
         logo: app.opportunity?.company_logo,
         type: app.opportunity?.employment_type || 'N/A',
-        level: app.opportunity?.experience_level || app.opportunity?.department || 'N/A',
+        level: app.opportunity?.experience_level || '',
+        industry: app.opportunity?.sector || app.opportunity?.department || '',
+        updatedAt: app.updated_at,
         lastUpdate: formatLastUpdate(app.updated_at || app.applied_at),
         opportunityId: app.opportunity_id,
         recruiterId: app.opportunity?.recruiter_id || app.pipeline_recruiter_id || app.pipeline_status?.assigned_to || null,
@@ -694,24 +538,8 @@ const Opportunities = () => {
         interviews: app.interviews || []
       }));
 
-      setApplications(transformedApplications);
-      setFilteredApplications(transformedApplications);
-    } catch (err) {
-      logger.error('Error fetching applications:', err);
-      // Show user-friendly error message
-      toast.error('Failed to load applications. Please try again.');
-      // Set empty arrays to prevent UI crashes
-      setApplications([]);
-      setFilteredApplications([]);
-    }
-  }, [learnerId, userEmail]);
-
-  // Fetch applications when tab changes to my-applications or history
-  useEffect(() => {
-    if (activeTab === 'my-applications' || activeTab === 'history') {
-      fetchApplicationsData();
-    }
-  }, [activeTab, fetchApplicationsData]);
+      return transformedApplications;
+  }, [applicationFeed.rows]);
 
   // Subscribe to real-time pipeline updates - reuse fetchApplicationsData
   useEffect(() => {
@@ -727,96 +555,35 @@ const Opportunities = () => {
     };
   }, [learnerId, activeTab, fetchApplicationsData]);
 
-  // Fetch industrial visits when tab is industrial-visits or on initial load for middle/high school
+  // Facets are aggregated in SQL; neither filters nor registration badges require the full catalog.
   useEffect(() => {
-    const fetchIndustrialVisits = async () => {
-      // Only fetch if on industrial-visits tab
-      // OR if middle/high school learner AND on their default view (not on my-applications)
-      const shouldFetch = activeTab === 'industrial-visits' ||
-        ((learnerType.isMiddleSchool || learnerType.isHighSchool) && activeTab !== 'my-applications');
-
-      if (shouldFetch) {
-        setIndustrialVisitsLoading(true);
-        try {
-          // Fetch visits and registrations in parallel
-          const promises = [factoryVisitsService.getAllFactoryVisits()];
-          if (learnerId) {
-            promises.push(factoryVisitsService.getlearnerRegistrations(learnerId));
-          }
-
-          const [data, registrations] = await Promise.all(promises);
-
-          setIndustrialVisits(data);
-          // Auto-select first visit if none selected
-          if (data && data.length > 0 && !selectedIndustrialVisit) {
-            setSelectedIndustrialVisit(data[0]);
-          }
-
-          // Set registered visits
-          if (registrations) {
-            const registeredIds = new Set(registrations.map(r => r.opportunity_id));
-            setRegisteredVisits(registeredIds);
-          }
-        } catch (error) {
-          logger.error('Error fetching industrial visits:', error);
-        } finally {
-          setIndustrialVisitsLoading(false);
-        }
-      }
-    };
-
-    fetchIndustrialVisits();
-  }, [activeTab, learnerType.isMiddleSchool, learnerType.isHighSchool, learnerId]);
+    if (activeTab !== 'industrial-visits' || !learnerId) return;
+    let active = true;
+    const controller = new AbortController();
+    setVisitFacetsLoading(true);
+    setVisitFacetsError('');
+    apiGet('/opportunities/visits?facets=true', {signal:controller.signal}).then(response=>{
+      if (!active) return;
+      if (!Array.isArray(response.data?.sectors) || !Array.isArray(response.data?.locations)) throw new Error('Invalid filter options response.');
+      setVisitFacets(response.data);
+    }).catch(()=>{
+      if(active) setVisitFacetsError('Visit filter options could not be loaded. Retry to restore all choices.');
+    }).finally(()=>{if(active) setVisitFacetsLoading(false);});
+    return ()=>{active=false;controller.abort();};
+  },[activeTab,learnerId,visitFacetsRevision]);
 
   // Pagination handlers with proper state management
-  const handleIvPageChange = useCallback((pageNum) => {
+  const handleIvPageChange = (pageNum) => {
     setIvCurrentPage(pageNum);
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, []);
-
-  const handleIvPreviousPage = useCallback(() => {
-    setIvCurrentPage(prev => Math.max(1, prev - 1));
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, []);
-
-  const handleIvNextPage = useCallback((totalPages) => {
-    setIvCurrentPage(prev => Math.min(totalPages, prev + 1));
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, []);
-
-  const formatLastUpdate = (dateString) => {
-    if (!dateString) return 'Recently';
-    const diffDays = Math.ceil(Math.abs(new Date() - new Date(dateString)) / (1000 * 60 * 60 * 24));
-    if (diffDays === 0) return 'Today';
-    if (diffDays === 1) return '1 day ago';
-    if (diffDays < 7) return `${diffDays} days ago`;
-    if (diffDays < 14) return '1 week ago';
-    if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
-    if (diffDays < 60) return '1 month ago';
-    return `${Math.floor(diffDays / 30)} months ago`;
   };
+  const handleIvPreviousPage = () => handleIvPageChange(Math.max(1, ivCurrentPage - 1));
+  const handleIvNextPage = (totalPages) => handleIvPageChange(Math.min(totalPages, ivCurrentPage + 1));
 
-  // Filter applications
-  useEffect(() => {
-    let filtered = applications;
-
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter(app => app.status === statusFilter);
-    }
-
-    if (searchQuery) {
-      filtered = filtered.filter(app =>
-        app.jobTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        app.company.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-
-    setFilteredApplications(filtered);
-  }, [searchQuery, statusFilter, applications]);
 
   // Filter and sort opportunities for My Jobs tab with advanced filters
-  // NOTE: Most filtering is now done server-side. Only skills filtering remains client-side.
-  const filteredAndSortedOpportunities = filteredOpportunities;
+  // Search, skills, filters, sorting and page counts are evaluated by the backend.
+
 
   const handleToggleSave = async (opportunity) => {
     if (!learnerId) {
@@ -824,6 +591,7 @@ const Opportunities = () => {
       return;
     }
 
+    beginMembershipMutation();
     try {
       const result = await SavedJobsService.toggleSaveJob(learnerId, opportunity.id);
 
@@ -846,6 +614,8 @@ const Opportunities = () => {
     } catch (error) {
       logger.error('Error toggling save:', error);
       toast.error('An error occurred while saving the job');
+    } finally {
+      endMembershipMutation();
     }
   };
 
@@ -878,11 +648,18 @@ const Opportunities = () => {
     }
 
     setIsApplying(true);
+    beginMembershipMutation();
 
     try {
       // Refresh authoritative action fields; ranker projections are not a job DTO.
       const currentOpportunity = await opportunitiesService.getOpportunityById(opportunity.id);
       if (!currentOpportunity) throw new Error('This opportunity is no longer available');
+      const currentState = applicationState(currentOpportunity, { learnerData });
+      if (currentState.disabled) {
+        setSelectedOpportunity(previous => previous?.id === currentOpportunity.id ? currentOpportunity : previous);
+        toast.error(currentState.label);
+        return false;
+      }
       // Keep Details/retry destination and confirmation wording aligned with the action.
       setSelectedOpportunity(previous => previous?.id === currentOpportunity.id ? currentOpportunity : previous);
       opportunity = currentOpportunity;
@@ -931,16 +708,20 @@ const Opportunities = () => {
       return false;
     } finally {
       setIsApplying(false);
+      endMembershipMutation();
     }
   };
 
   const handleRegisterForVisit = async (visit) => {
+    if (isRegistering || registeredVisits.has(visit.id)) return;
     if (!learnerId) {
       toast.error('Please log in to register for visits');
       return;
     }
 
+    setVisitRegistrationError(null);
     setIsRegistering(true);
+    beginMembershipMutation();
 
     try {
       const result = await factoryVisitsService.registerForVisit(learnerId, visit.id);
@@ -954,136 +735,27 @@ const Opportunities = () => {
         }
       } else {
         toast.error(result.message);
-        // Only navigate to settings if profile is incomplete (not if already registered)
-        if (result.message.includes('complete your profile')) {
-          setTimeout(() => navigate('/learner/settings'), 1500);
-        }
+        setVisitRegistrationError({ id: visit.id, message: result.message || 'Registration could not be completed. Please retry.' });
       }
     } catch (error) {
       logger.error('Error registering for visit:', error);
       toast.error('An error occurred while registering');
+      setVisitRegistrationError({ id: visit.id, message: 'Registration could not be completed. Please retry.' });
     } finally {
       setIsRegistering(false);
+      endMembershipMutation();
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Institution Details Modal - Shows on top of everything */}
-      {showInstitutionModal && !isInstitutionComplete && (
-        <>
-          {/* Full white background overlay */}
-          <div className="fixed inset-0 bg-white z-40"></div>
-
-          {/* Modal backdrop and content */}
-          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 relative"
-            >
-              <button
-                onClick={() => {
-                  setShowInstitutionModal(false);
-                }}
-                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-
-              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Briefcase className="w-8 h-8 text-blue-600" />
-              </div>
-
-              <h3 className="text-xl font-semibold text-gray-900 text-center mb-2">
-                Complete Your Institution Details
-              </h3>
-              <p className="text-gray-600 text-center mb-6">
-                To view relevant opportunities, please complete your institution information in your profile settings.
-              </p>
-
-              <div className="bg-blue-50 rounded-lg p-4 mb-6">
-                <p className="text-sm font-semibold text-gray-800 mb-2">Required Information:</p>
-                {(() => {
-                  const gradeStr = String(learnerData?.grade || '').toUpperCase().trim();
-                  const isSchool = gradeStr.match(/(\d+)/) || gradeStr.includes('DIPLOMA');
-                  const isCollege = gradeStr.includes('UG') || gradeStr.includes('PG') ||
-                    gradeStr.includes('YEAR') || gradeStr.includes('UNDERGRADUATE') ||
-                    gradeStr.includes('POSTGRADUATE') || gradeStr.includes('BACHELOR') ||
-                    gradeStr.includes('MASTER');
-
-                  if (isSchool && !isCollege) {
-                    return (
-                      <ul className="text-sm text-gray-700 space-y-1">
-                        <li className="flex items-center gap-2">
-                          <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
-                          School Name
-                        </li>
-                        <li className="flex items-center gap-2">
-                          <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
-                          Section (A, B, C, etc.)
-                        </li>
-                      </ul>
-                    );
-                  } else if (isCollege) {
-                    return (
-                      <ul className="text-sm text-gray-700 space-y-1">
-                        <li className="flex items-center gap-2">
-                          <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
-                          University Name
-                        </li>
-                        <li className="flex items-center gap-2">
-                          <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
-                          College Name
-                        </li>
-                        <li className="flex items-center gap-2">
-                          <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
-                          Program/Course Name
-                        </li>
-                        <li className="flex items-center gap-2">
-                          <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
-                          Current Semester & Section
-                        </li>
-                      </ul>
-                    );
-                  }
-
-                  return (
-                    <p className="text-sm text-gray-700">
-                      Please complete your institution details
-                    </p>
-                  );
-                })()}
-              </div>
-
-              <div className="flex gap-3">
-                <button
-                  onClick={() => {
-                    setShowInstitutionModal(false);
-                  }}
-                  className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
-                >
-                  Later
-                </button>
-                <button
-                  onClick={() => {
-                    navigate('/learner/settings', {
-                      state: {
-                        activeTab: 'profile',
-                        activeSubTab: 'institution'
-                      }
-                    });
-                  }}
-                  className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-                >
-                  Complete Now
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        </>
-      )}
-
+    <div className="opportunities-page min-h-screen bg-gray-50">
+      <OpportunityDialog variant="visit" open={visitDialogOpen} onOpenChange={setVisitDialogOpen} title={selectedIndustrialVisit?.company_name || 'Visit details'} description="Review the visit information and registration details."
+        footer={selectedIndustrialVisit && <IndustrialVisitRegistration visit={selectedIndustrialVisit} onRegister={handleRegisterForVisit} isRegistered={registeredVisits.has(selectedIndustrialVisit.id)} isRegistering={isRegistering} error={visitRegistrationError?.id === selectedIndustrialVisit.id ? visitRegistrationError.message : ''} onCompleteProfile={visitRegistrationError?.id === selectedIndustrialVisit.id && /complete your profile/i.test(visitRegistrationError.message) ? () => navigate('/learner/settings') : undefined} />}>
+        {selectedIndustrialVisit && <IndustrialVisitPreview inDialog visit={selectedIndustrialVisit} isRegistered={registeredVisits.has(selectedIndustrialVisit.id)} />}
+      </OpportunityDialog>
+      <OpportunityDialog variant="profile" open={showInstitutionModal && !isInstitutionComplete} onOpenChange={setShowInstitutionModal} title="Complete Your Institution Details" description="Complete the missing information in your profile settings." footer={<div className="flex justify-end gap-2"><button type="button" onClick={() => setShowInstitutionModal(false)} className="rounded-md border border-slate-300 px-4 py-2 text-sm">Later</button><button type="button" onClick={() => navigate('/learner/settings', { state: { activeTab: 'profile', activeSubTab: 'institution' } })} className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white">Complete Now</button></div>}>
+        <MissingInstitutionFields fields={missingInstitutionFields}/>
+      </OpportunityDialog>
       <div className="max-w-[1600px] mx-auto px-3 sm:px-6 py-3 sm:py-8">
         {/* Loading State */}
         {isLoading && (
@@ -1117,145 +789,20 @@ const Opportunities = () => {
           </div>
         )}
 
-        {/* Tab Switcher - Show different tabs based on learner level */}
-        {!isLoading&&<div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3"><div><p className="text-sm font-medium text-slate-900">Find jobs for your learning</p><p className="mt-1 text-xs text-slate-500">Reviewer-approved levels, clear requirements, and equivalent evidence.</p></div><button type="button" onClick={()=>navigate('/learner/learning-jobs')} className="rounded-md border border-slate-300 px-3 py-2 text-xs font-medium text-slate-700">Explore learning matches →</button></div>}
-        {!isLoading && (
-          <div className="mb-8">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-2 overflow-x-auto">
-              <div className={`grid ${learnerType.isMiddleSchool
-                ? 'grid-cols-2 md:grid-cols-2'
-                : learnerType.isHighSchool
-                  ? 'grid-cols-2 md:grid-cols-3'
-                  : learnerType.isLearner
-                    ? 'grid-cols-2 md:grid-cols-3'
-                    : 'grid-cols-2 md:grid-cols-3'
-                } gap-2 min-w-0`}>
-                {/* Industrial Visits Tab - Hide for learners */}
-                {!learnerType.isLearner && (
-                  <button
-                    onClick={() => setActiveTab('industrial-visits')}
-                    className={`relative text-left p-2 md:p-4 rounded-lg transition-all ${activeTab === 'industrial-visits'
-                      ? 'bg-gradient-to-r from-indigo-50 to-blue-50 shadow-md'
-                      : 'hover:bg-gray-50'
-                      }`}
-                  >
-                    <div className="flex items-start gap-2 md:gap-3">
-                      <div className={`p-2 rounded-lg flex-shrink-0 ${activeTab === 'industrial-visits' ? 'bg-indigo-600' : 'bg-gray-200'}`}>
-                        <Factory className={`w-5 h-5 md:w-6 md:h-6 ${activeTab === 'industrial-visits' ? 'text-white' : 'text-gray-600'}`} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h1 className={`font-bold text-sm md:text-lg truncate ${activeTab === 'industrial-visits' ? 'text-indigo-600' : 'text-gray-700'}`}>
-                          Visits
-                        </h1>
-                        <p className="hidden md:block text-sm text-gray-600 mt-1">
-                          Explore factory visits and learning opportunities
-                        </p>
-                      </div>
-                    </div>
-                  </button>
-                )}
-
-                {/* History Tab - Show for middle school only */}
-                {learnerType.isMiddleSchool && (
-                  <button
-                    onClick={() => setActiveTab('history')}
-                    className={`relative text-left p-2 md:p-4 rounded-lg transition-all ${activeTab === 'history'
-                      ? 'bg-gradient-to-r from-indigo-50 to-blue-50 shadow-md'
-                      : 'hover:bg-gray-50'
-                      }`}
-                  >
-                    <div className="flex items-start gap-2 md:gap-3">
-                      <div className={`p-2 rounded-lg flex-shrink-0 ${activeTab === 'history' ? 'bg-indigo-600' : 'bg-gray-200'}`}>
-                        <Clock className={`w-5 h-5 md:w-6 md:h-6 ${activeTab === 'history' ? 'text-white' : 'text-gray-600'}`} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h1 className={`font-bold text-sm md:text-lg truncate ${activeTab === 'history' ? 'text-indigo-600' : 'text-gray-700'}`}>
-                          History
-                        </h1>
-                        <p className="hidden md:block text-sm text-gray-600 mt-1">
-                          View your past activities and visits
-                        </p>
-                      </div>
-                    </div>
-                  </button>
-                )}
-
-                {/* My Jobs Tab - Show for high school, college, and learners */}
-                {(learnerType.isHighSchool || learnerType.isUniversityLearner || learnerType.isLearner) && (
-                  <button
-                    onClick={() => setActiveTab('my-jobs')}
-                    className={`relative text-left p-2 md:p-4 rounded-lg transition-all ${activeTab === 'my-jobs'
-                      ? 'bg-gradient-to-r from-indigo-50 to-blue-50 shadow-md'
-                      : 'hover:bg-gray-50'
-                      }`}
-                  >
-                    <div className="flex items-start gap-2 md:gap-3">
-                      <div className={`p-2 rounded-lg flex-shrink-0 ${activeTab === 'my-jobs' ? 'bg-indigo-600' : 'bg-gray-200'}`}>
-                        <Briefcase className={`w-5 h-5 md:w-6 md:h-6 ${activeTab === 'my-jobs' ? 'text-white' : 'text-gray-600'}`} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h1 className={`font-bold text-sm md:text-lg truncate ${activeTab === 'my-jobs' ? 'text-indigo-600' : 'text-gray-700'}`}>
-                          Jobs
-                        </h1>
-                        <p className="hidden md:block text-sm text-gray-600 mt-1">
-                          {learnerType.isUniversityLearner
-                            ? 'Browse internships and full-time opportunities'
-                            : learnerType.isLearner
-                              ? 'Explore job opportunities'
-                              : 'Explore internship opportunities'}
-                        </p>
-                      </div>
-                    </div>
-                  </button>
-                )}
-
-                {/* My Applications Tab - Show for high school, college, and learners */}
-                {(learnerType.isHighSchool || learnerType.isUniversityLearner || learnerType.isLearner) && (
-                  <button
-                    onClick={() => setActiveTab('my-applications')}
-                    className={`relative text-left p-2 md:p-4 rounded-lg transition-all ${activeTab === 'my-applications'
-                      ? 'bg-gradient-to-r from-indigo-50 to-blue-50 shadow-md'
-                      : 'hover:bg-gray-50'
-                      }`}
-                  >
-                    <div className="flex items-start gap-2 md:gap-3">
-                      <div className={`p-2 rounded-lg flex-shrink-0 ${activeTab === 'my-applications' ? 'bg-indigo-600' : 'bg-gray-200'}`}>
-                        <FileText className={`w-5 h-5 md:w-6 md:h-6 ${activeTab === 'my-applications' ? 'text-white' : 'text-gray-600'}`} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h1 className={`font-bold text-sm md:text-lg truncate ${activeTab === 'my-applications' ? 'text-indigo-600' : 'text-gray-700'}`}>
-                          Applications
-                        </h1>
-                        <p className="hidden md:block text-sm text-gray-600 mt-1">
-                          Track your application status and progress
-                        </p>
-                      </div>
-                    </div>
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
+        {!isLoading && <header className="mb-5">
+          <div className="mb-4 flex flex-wrap items-start justify-between gap-3"><div><h1 className="text-2xl font-semibold leading-8 text-slate-900">Opportunities</h1><p className="mt-1 text-base leading-6 text-slate-600">Explore jobs, learning matches, and your applications.</p></div></div>
+          <nav aria-label="Opportunity sections" className="flex flex-wrap gap-1 border-b border-slate-200">
+            {availableTabs.map(([value,label]) => <button type="button" key={value} onClick={() => setActiveTab(value)} aria-current={activeTab===value ? 'page' : undefined} className={`min-h-10 border-b-2 px-4 py-2 text-sm font-medium ${activeTab===value ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-600 hover:text-slate-900'}`}>{label}</button>)}
+          </nav>
+        </header>}
 
         {/* Main Content Area */}
         {!isLoading && (
           <div>
-            {/* AI Recommended Jobs - Show for high school, college, and learners only */}
-            {(learnerType.isHighSchool || learnerType.isUniversityLearner || learnerType.isLearner) && activeTab === 'my-jobs' && (
-              <RecommendedJobs
-                learnerProfile={{ ...learnerData, id: learnerId, profile: learnerData }}
-                onSelectJob={setSelectedOpportunity}
-                appliedJobs={appliedJobs}
-                savedJobs={savedJobs}
-                onToggleSave={handleToggleSave}
-                onApply={handleApply}
-              />
-            )}
-
             {/* My Jobs Tab - Show for high school, college, and learners */}
             {activeTab === 'my-jobs' && (learnerType.isHighSchool || learnerType.isUniversityLearner || learnerType.isLearner) && (
               <MyJobsContent
+                onRecommendationsChange={setRecommendedJobIds}
                 searchTerm={searchTerm}
                 setSearchTerm={setSearchTerm}
                 debouncedSearch={debouncedSearch}
@@ -1266,6 +813,21 @@ const Opportunities = () => {
                 setViewMode={setViewMode}
                 opportunities={filteredAndSortedOpportunities}
                 error={error}
+                loading={dataLoading}
+                onRetry={refreshOpportunities}
+                missingFields={missingFields}
+                completionPercentage={completionPercentage}
+                profileCheckLoading={profileCheckLoading}
+                profileCheckError={profileCheckError}
+                accessCheckLoading={accessCheckLoading}
+                accessCheckError={accessCheckError}
+                onRetryAccess={refreshSubscription}
+                onRetryProfile={refreshProfileStatus}
+                detailsOpen={detailsOpen}
+                onDetailsOpenChange={changeDetailsOpen}
+                onSelect={selectOpportunity}
+                onRequestApply={requestApplication}
+                applicationRequest={applicationRequest}
                 selectedOpportunity={selectedOpportunity}
                 setSelectedOpportunity={setSelectedOpportunity}
                 appliedJobs={appliedJobs}
@@ -1294,15 +856,21 @@ const Opportunities = () => {
             {/* My Applications Tab - Show for high school, college, and learners */}
             {activeTab === 'my-applications' && (learnerType.isHighSchool || learnerType.isUniversityLearner || learnerType.isLearner) && (
               <MyApplicationsContent
-                applications={filteredApplications}
+                applications={applications}
+                kindFilter={kindFilter}
+                setKindFilter={setKindFilter}
+                onResetFilters={resetApplicationFilters}
+                onBrowseJobs={()=>setActiveTab('my-jobs')}
+                loading={applicationFeed.loading}
+                error={applicationFeed.error}
+                total={applicationFeed.total}
+                page={appPage}
+                totalPages={appTotalPages}
+                onPageChange={setAppPage}
                 searchQuery={searchQuery}
                 setSearchQuery={setSearchQuery}
                 statusFilter={statusFilter}
                 setStatusFilter={setStatusFilter}
-                showPipelineStatus={showPipelineStatus}
-                setShowPipelineStatus={setShowPipelineStatus}
-                messagingApplicationId={messagingApplicationId}
-                setMessagingApplicationId={setMessagingApplicationId}
                 learnerId={learnerId}
                 navigate={navigate}
                 queryClient={queryClient}
@@ -1332,6 +900,8 @@ const Opportunities = () => {
                 {/* Registrations List */}
                 {(() => {
                   // Filter applications to only show factory visits
+                  if (applicationFeed.loading) return <p role="status">Loading your visit history…</p>;
+                  if (applicationFeed.error) return <div role="alert"><p>{applicationFeed.error}</p><button type="button" onClick={fetchApplicationsData}>Retry visit history</button></div>;
                   const visitRegistrations = applications.filter(app =>
                     app.type === 'factory_visit'
                   );
@@ -1381,7 +951,7 @@ const Opportunities = () => {
                                     <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 mb-3">
                                       <div className="flex items-center gap-1.5">
                                         <MapPin className="w-4 h-4" />
-                                        <span>{app.location}</span>
+                                        <span>{opportunityText(app.location)}</span>
                                       </div>
                                       <div className="flex items-center gap-1.5">
                                         <Calendar className="w-4 h-4" />
@@ -1419,51 +989,43 @@ const Opportunities = () => {
               </div>
             )}
 
+            {activeTab === 'history' && !applicationFeed.loading && !applicationFeed.error && appTotalPages>1 && <nav aria-label="Visit history pages" className="flex items-center justify-between gap-3 text-sm">
+              <button type="button" disabled={appPage===1} onClick={()=>setAppPage(appPage-1)}>Previous</button><span>Page {appPage} of {appTotalPages}</span><button type="button" disabled={appPage===appTotalPages} onClick={()=>setAppPage(appPage+1)}>Next</button>
+            </nav>}
+
             {/* Industrial Visits Tab - Show for all learners */}
             {activeTab === 'industrial-visits' && (() => {
-              // Filter logic
-              const filteredVisits = industrialVisits.filter(visit => {
-                const matchesSearch = ivSearchTerm === '' ||
-                  visit.company_name.toLowerCase().includes(ivSearchTerm.toLowerCase()) ||
-                  visit.location.toLowerCase().includes(ivSearchTerm.toLowerCase()) ||
-                  visit.sector.toLowerCase().includes(ivSearchTerm.toLowerCase());
-                const matchesSector = ivSectorFilter === 'all' || visit.sector === ivSectorFilter;
-                const matchesLocation = ivLocationFilter === 'all' || visit.location.includes(ivLocationFilter);
-                return matchesSearch && matchesSector && matchesLocation;
-              });
-
               // Pagination logic
-              const totalPages = Math.ceil(filteredVisits.length / ivItemsPerPage);
+              const totalPages = Math.max(1,Math.ceil(visitsFeed.total / ivItemsPerPage));
               const startIndex = (ivCurrentPage - 1) * ivItemsPerPage;
               const endIndex = startIndex + ivItemsPerPage;
-              const paginatedVisits = filteredVisits.slice(startIndex, endIndex);
+              const paginatedVisits = filteredVisits;
 
               return (
-                <div className="space-y-6">
+                <div className="opportunity-visits space-y-6" aria-labelledby="industrial-visits-heading">
+                  <h2 id="industrial-visits-heading" className="sr-only">Industrial visits</h2>
                   {/* Search and Filters - Matching Opportunities Style */}
                   <div className="space-y-4">
                     {/* Search Bar and Controls */}
-                    <div className="flex flex-col lg:flex-row gap-4 items-stretch lg:items-center">
+                    <div className="opportunity-controls flex flex-col lg:flex-row gap-4 items-stretch lg:items-center">
                       {/* Search Bar */}
                       <div className="relative flex-1">
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                         <input
-                          type="text"
-                          placeholder="Search company, location, or industry..."
+                          type="search" maxLength={200}
+                          aria-label="Search visits" placeholder="Search company, location, or industry..."
                           value={ivSearchTerm}
                           onChange={(e) => {
                             setIvSearchTerm(e.target.value);
-                            setIvCurrentPage(1);
                           }}
                           className="w-full h-12 pl-12 pr-12 bg-white border border-slate-200/60 rounded-2xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-300 shadow-sm"
                         />
                         {ivSearchTerm && (
                           <button
-                            onClick={() => {
+                            aria-label="Clear visit search" onClick={() => {
                               setIvSearchTerm('');
-                              setIvCurrentPage(1);
-                            }}
-                            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                              }}
+                            className="absolute right-1 top-1/2 -translate-y-1/2 flex h-9 w-9 items-center justify-center rounded-md text-slate-600 hover:bg-slate-100 transition-colors"
                           >
                             <X className="w-5 h-5" />
                           </button>
@@ -1474,45 +1036,47 @@ const Opportunities = () => {
                       <div className="flex flex-col sm:flex-row lg:flex-row items-stretch sm:items-center gap-3 lg:flex-shrink-0">
                         {/* Sector Filter */}
                         <select
-                          value={ivSectorFilter}
+                          aria-label="Visit industry" disabled={visitFacetsLoading}
+              value={ivSectorFilter}
                           onChange={(e) => {
                             setIvSectorFilter(e.target.value);
-                            setIvCurrentPage(1);
                           }}
                           className="flex-1 sm:flex-none lg:w-auto px-4 h-12 bg-white border border-slate-200/60 rounded-2xl text-slate-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-300 shadow-sm min-w-0 sm:min-w-[160px]"
                         >
                           <option value="all">All Industries</option>
-                          {[...new Set(industrialVisits.map(v => v.sector))].sort().map(sector => (
+                          {ivSectorFilter !== 'all' && !visitFacets.sectors.includes(ivSectorFilter) && <option value={ivSectorFilter}>{ivSectorFilter}</option>}
+                          {visitFacets.sectors.map(sector => (
                             <option key={sector} value={sector}>{sector}</option>
                           ))}
                         </select>
 
                         {/* Location Filter */}
                         <select
-                          value={ivLocationFilter}
+                          aria-label="Visit location" disabled={visitFacetsLoading}
+              value={ivLocationFilter}
                           onChange={(e) => {
                             setIvLocationFilter(e.target.value);
-                            setIvCurrentPage(1);
                           }}
                           className="flex-1 sm:flex-none lg:w-auto px-4 h-12 bg-white border border-slate-200/60 rounded-2xl text-slate-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-300 shadow-sm min-w-0 sm:min-w-[160px]"
                         >
                           <option value="all">All Locations</option>
-                          {[...new Set(industrialVisits.map(v => v.location.split(',')[0].trim()))].sort().map(location => (
+                          {ivLocationFilter !== 'all' && !visitFacets.locations.includes(ivLocationFilter) && <option value={ivLocationFilter}>{ivLocationFilter}</option>}
+                          {visitFacets.locations.map(location => (
                             <option key={location} value={location}>{location}</option>
                           ))}
                         </select>
 
                         {/* View Mode Toggle */}
-                        <div className="flex items-center bg-white border border-slate-200/60 rounded-2xl p-1 shadow-sm h-12">
+                        <div role="group" aria-label="Visit result layout" className="opportunity-view-toggle flex items-center bg-white border border-slate-200/60 rounded-2xl p-1 shadow-sm h-12">
                           <button
-                            onClick={() => setIvViewMode('grid')}
+                            aria-label="Visit grid view" title="Grid view" aria-pressed={ivViewMode==='grid'} onClick={() => setIvViewMode('grid')}
                             className={`flex-1 sm:flex-none p-2.5 rounded-xl transition-all duration-200 ${ivViewMode === 'grid' ? 'bg-blue-100 text-blue-600' : 'text-slate-400 hover:text-slate-600'
                               }`}
                           >
                             <Grid3x3 className="w-4 h-4 mx-auto" />
                           </button>
                           <button
-                            onClick={() => setIvViewMode('list')}
+                            aria-label="Visit list view" title="List view" aria-pressed={ivViewMode==='list'} onClick={() => setIvViewMode('list')}
                             className={`flex-1 sm:flex-none p-2.5 rounded-xl transition-all duration-200 ${ivViewMode === 'list' ? 'bg-blue-100 text-blue-600' : 'text-slate-400 hover:text-slate-600'
                               }`}
                           >
@@ -1524,21 +1088,16 @@ const Opportunities = () => {
 
                     {/* Results Count and Clear Filters */}
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                      <p className="text-xs md:text-sm text-gray-600">
-                        Showing {startIndex + 1}-{Math.min(endIndex, filteredVisits.length)} of {filteredVisits.length} visits
-                        {filteredVisits.length !== industrialVisits.length && (
-                          <span className="hidden sm:inline"> (filtered from {industrialVisits.length} total)</span>
-                        )}
+                      <p role="status" aria-live="polite" className="text-sm text-gray-600">
+                        {industrialVisitsLoading ? 'Loading visits…' : visitsFeed.error ? 'Visits could not be loaded' : `Showing ${filteredVisits.length ? startIndex + 1 : 0}–${Math.min(endIndex, visitsFeed.total)} of ${visitsFeed.total} visits`}
+
                       </p>
                       {(ivSearchTerm || ivSectorFilter !== 'all' || ivLocationFilter !== 'all') && (
                         <button
                           onClick={() => {
-                            setIvSearchTerm('');
-                            setIvSectorFilter('all');
-                            setIvLocationFilter('all');
-                            setIvCurrentPage(1);
+                            updateSearch({ visitQ: null, visitSector: null, visitLocation: null, visitPage: null });
                           }}
-                          className="text-xs md:text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1 self-start sm:self-auto"
+                          className="min-h-9 rounded-md px-2 text-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50 font-medium flex items-center gap-1 self-start sm:self-auto"
                         >
                           <X className="w-3 h-3 md:w-4 md:h-4" />
                           Clear filters
@@ -1547,16 +1106,28 @@ const Opportunities = () => {
                     </div>
                   </div>
 
+                  {visitFacetsLoading && <p role="status" className="sr-only">Loading visit filter options…</p>}
+                  {visitFacetsError && <div role="alert" className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                    <p>{visitFacetsError}</p>
+                    <button type="button" disabled={visitFacetsLoading} onClick={()=>setVisitFacetsRevision(value=>value+1)} className="mt-2 min-h-9 rounded-md px-2 font-medium text-blue-700 hover:bg-amber-100">Retry filter options</button>
+                  </div>}
+
+                  <section aria-label="Visit results" aria-busy={industrialVisitsLoading}>
                   {/* Industrial Visits Grid with Preview Panel */}
                   {industrialVisitsLoading ? (
-                    <div className="flex justify-center items-center py-20">
+                    <div aria-hidden="true" className="flex justify-center items-center py-20">
                       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                    </div>
+                  ) : visitsFeed.error ? (
+                    <div role="alert" className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+                      <p>{visitsFeed.error}</p><button type="button" onClick={()=>setVisitsRevision(value=>value+1)} className="mt-2 text-blue-700">Retry visits</button>
                     </div>
                   ) : filteredVisits.length === 0 ? (
                     <div className="text-center py-20 bg-white rounded-2xl border border-gray-200">
                       <Factory className="w-16 h-16 mx-auto text-gray-300 mb-4" />
                       <h3 className="text-xl font-semibold text-gray-600 mb-2">No industrial visits found</h3>
-                      <p className="text-gray-500 text-sm">Try adjusting your filters or search terms</p>
+                      <p className="text-gray-500 text-sm">Try another company, industry, or location.</p>
+                      {(ivSearchTerm || ivSectorFilter !== 'all' || ivLocationFilter !== 'all') && <button type="button" onClick={() => updateSearch({visitQ:null,visitSector:null,visitLocation:null,visitPage:null})} className="mt-4 min-h-10 rounded-md border border-slate-300 px-4 text-sm font-medium text-blue-700 hover:bg-blue-50">Reset search and filters</button>}
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -1567,22 +1138,22 @@ const Opportunities = () => {
                             {paginatedVisits.map((visit) => (
                               <div
                                 key={visit.id}
-                                className={`bg-white border rounded-2xl p-5 hover:shadow-lg transition-all cursor-pointer ${selectedIndustrialVisit?.id === visit.id
+                                className={`opportunity-card bg-white border rounded-2xl p-5 hover:shadow-lg transition-all cursor-pointer ${selectedIndustrialVisit?.id === visit.id
                                   ? 'border-blue-500 shadow-md ring-2 ring-blue-200'
                                   : 'border-gray-200 hover:border-blue-300'
                                   }`}
-                                onClick={() => setSelectedIndustrialVisit(visit)}
+                                role="button" tabIndex={0} aria-haspopup={hasVisitPreview ? undefined : 'dialog'} aria-controls={hasVisitPreview ? 'industrial-visit-preview' : undefined} aria-describedby={`visit-state-${visit.id}`} aria-current={selectedIndustrialVisit?.id === visit.id ? 'true' : undefined} aria-label={`View visit at ${visit.company_name}`} onKeyDown={event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();openVisit(visit);}}} onClick={() => openVisit(visit)}
                               >
                                 <div className="flex items-start justify-between mb-3">
                                   <div className="p-2 bg-blue-50 rounded-lg">
                                     <Factory className="w-6 h-6 text-blue-600" />
                                   </div>
-                                  <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-medium">
-                                    Visit
+                                  <span id={`visit-state-${visit.id}`} className={`visit-card-badge text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-medium ${registeredVisits.has(visit.id) ? 'is-registered' : ''}`}>
+                                    {registeredVisits.has(visit.id) ? 'Registered' : 'Visit'}
                                   </span>
                                 </div>
 
-                                <h3 className="font-bold text-lg text-gray-900 mb-2 line-clamp-2">
+                                <h3 className="font-semibold text-base text-gray-900 mb-2 line-clamp-2">
                                   {visit.company_name}
                                 </h3>
 
@@ -1604,11 +1175,11 @@ const Opportunities = () => {
                             {paginatedVisits.map((visit) => (
                               <div
                                 key={visit.id}
-                                className={`bg-white border rounded-2xl p-5 hover:shadow-md transition-all cursor-pointer ${selectedIndustrialVisit?.id === visit.id
+                                className={`opportunity-card bg-white border rounded-2xl p-5 hover:shadow-md transition-all cursor-pointer ${selectedIndustrialVisit?.id === visit.id
                                   ? 'border-blue-500 shadow-md ring-2 ring-blue-200'
                                   : 'border-gray-200 hover:border-blue-300'
                                   }`}
-                                onClick={() => setSelectedIndustrialVisit(visit)}
+                                role="button" tabIndex={0} aria-haspopup={hasVisitPreview ? undefined : 'dialog'} aria-controls={hasVisitPreview ? 'industrial-visit-preview' : undefined} aria-describedby={`visit-state-${visit.id}`} aria-current={selectedIndustrialVisit?.id === visit.id ? 'true' : undefined} aria-label={`View visit at ${visit.company_name}`} onKeyDown={event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();openVisit(visit);}}} onClick={() => openVisit(visit)}
                               >
                                 <div className="flex items-start gap-4">
                                   <div className="p-3 bg-blue-50 rounded-lg flex-shrink-0">
@@ -1617,11 +1188,11 @@ const Opportunities = () => {
 
                                   <div className="flex-1 min-w-0">
                                     <div className="flex items-start justify-between gap-4 mb-2">
-                                      <h3 className="font-bold text-lg text-gray-900">
+                                      <h3 className="font-semibold text-base text-gray-900">
                                         {visit.company_name}
                                       </h3>
-                                      <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-medium flex-shrink-0">
-                                        Visit
+                                      <span id={`visit-state-${visit.id}`} className={`visit-card-badge text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-medium flex-shrink-0 ${registeredVisits.has(visit.id) ? 'is-registered' : ''}`}>
+                                        {registeredVisits.has(visit.id) ? 'Registered' : 'Visit'}
                                       </span>
                                     </div>
 
@@ -1650,11 +1221,13 @@ const Opportunities = () => {
                       </div>
 
                       {/* Right: Fixed Preview Panel - Last in DOM and visually */}
-                      <div className="col-span-1 lg:col-span-1 lg:sticky lg:top-16 lg:self-start">
+                      <div id="industrial-visit-preview" className="opportunity-visit-preview hidden lg:block lg:col-span-1 lg:sticky lg:top-20 lg:self-start">
                         {selectedIndustrialVisit ? (
                           <IndustrialVisitPreview
                             visit={selectedIndustrialVisit}
                             onRegister={handleRegisterForVisit}
+                            registrationError={visitRegistrationError?.id === selectedIndustrialVisit.id ? visitRegistrationError.message : ''}
+                            onCompleteProfile={visitRegistrationError?.id === selectedIndustrialVisit.id && /complete your profile/i.test(visitRegistrationError.message) ? () => navigate('/learner/settings') : undefined}
                             isRegistered={selectedIndustrialVisit && registeredVisits.has(selectedIndustrialVisit.id)}
                             isRegistering={isRegistering}
                           />
@@ -1668,15 +1241,17 @@ const Opportunities = () => {
                     </div>
                   )}
 
+                  </section>
+
                   {/* Pagination */}
-                  {filteredVisits.length > ivItemsPerPage && (
+                  {visitsFeed.total > ivItemsPerPage && (
                     <motion.div
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.3 }}
                     >
                       <div className="bg-white rounded-xl md:rounded-2xl border border-gray-200 shadow-sm p-4 md:p-6">
-                        <Pagination>
+                        <Pagination aria-label="Visit result pages">
                           <PaginationContent className="flex flex-wrap items-center justify-center gap-1 md:gap-2">
                             <PaginationItem>
                               <button
@@ -1697,13 +1272,13 @@ const Opportunities = () => {
                               </button>
                             </PaginationItem>
 
-                            {getPageNumbers(ivCurrentPage, totalPages).map((pageNum) => (
-                              <PaginationItem key={`page-${pageNum}`}>
+                            {getPageNumbers(ivCurrentPage, totalPages).map((pageNum, index) => (
+                              <PaginationItem key={pageNum === '...' ? `gap-${index}` : `page-${pageNum}`}>
                                 {pageNum === '...' ? (
                                   <PaginationEllipsis className="text-xs md:text-sm" />
                                 ) : (
                                   <button
-                                    onClick={() => handleIvPageChange(pageNum)}
+                                    aria-label={`Page ${pageNum}`} onClick={() => handleIvPageChange(pageNum)}
                                     aria-current={ivCurrentPage === pageNum ? 'page' : undefined}
                                     className={`text-xs md:text-sm px-2 md:px-3 py-1.5 md:py-2 h-8 md:h-9 min-w-8 md:min-w-9 flex items-center justify-center rounded-md transition-colors ${
                                       ivCurrentPage === pageNum
@@ -1738,7 +1313,7 @@ const Opportunities = () => {
                           </PaginationContent>
                         </Pagination>
                         <div className="text-center text-sm text-gray-600 mt-4">
-                          Page {ivCurrentPage} of {totalPages} • {filteredVisits.length} total visits
+                          Page {ivCurrentPage} of {totalPages} • {visitsFeed.total} total visits
                         </div>
                       </div>
                     </motion.div>
@@ -1749,41 +1324,8 @@ const Opportunities = () => {
           </div>
         )}
 
-        {/* Upgrade Prompt Modal */}
-        {showUpgradePrompt && (
-          <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-[60] backdrop-blur-sm">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6"
-            >
-              <div className="flex items-center justify-center w-12 h-12 mx-auto bg-blue-100 rounded-full mb-4">
-                <Lock className="w-6 h-6 text-blue-600" />
-              </div>
-              <h3 className="text-xl font-semibold text-center mb-2">Upgrade Required</h3>
-              <p className="text-gray-600 text-center mb-6">
-                Job applications are not available on the Freemium plan. Upgrade to a paid plan to apply for opportunities.
-              </p>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setShowUpgradePrompt(false)}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => {
-                    setShowUpgradePrompt(false);
-                    navigate('/subscription/plans?type=learner');
-                  }}
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-                >
-                  View Plans
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
+        <OpportunityDialog variant="access" open={showUpgradePrompt} onOpenChange={setShowUpgradePrompt} title="Application access" description="Your current plan does not include job applications." footer={<div className="flex justify-end gap-2"><button type="button" onClick={()=>setShowUpgradePrompt(false)} className="rounded-md border px-4 py-2 text-sm">Cancel</button><button type="button" onClick={()=>navigate('/subscription/plans?type=learner')} className="rounded-md bg-blue-600 px-4 py-2 text-sm text-white">View Plans</button></div>}><p className="text-sm leading-6 text-slate-600">Compare the available plans to enable applications.</p></OpportunityDialog>
+
       </div>
     </div>
   );
@@ -1791,1147 +1333,39 @@ const Opportunities = () => {
 
 
 // My Jobs Content Component
-const MyJobsContent = ({
-  searchTerm,
-  setSearchTerm,
-  debouncedSearch,
-  setDebouncedSearch,
-  sortBy,
-  setSortBy,
-  viewMode,
-  setViewMode,
-  opportunities,
-  error,
-  selectedOpportunity,
-  setSelectedOpportunity,
-  appliedJobs,
-  savedJobs,
-  handleToggleSave,
-  handleApply,
-  isApplying,
-  advancedFilters,
-  setAdvancedFilters,
-  currentPage,
-  setCurrentPage,
-  opportunitiesPerPage,
-  recommendations,
-  recommendationsLoading,
-  recommendationsError,
-  refreshRecommendations,
-  cached,
-  fallback,
-  trackView,
-  learnerData,
-  totalCount = 0,
-  totalPages: serverTotalPages = 1,
-  isServerPaginated = false,
-  canApplyToJobs,
-  needsProfileCompletion,
-  navigate,
-  showUpgradePrompt,
-  setShowUpgradePrompt,
-  canAccessOpportunities
-}) => {
-  // Use server-side pagination values when available
-  const totalPages = isServerPaginated ? serverTotalPages : Math.max(1, Math.ceil(opportunities.length / opportunitiesPerPage));
-  const displayedOpportunities = isServerPaginated ? opportunities : (() => {
-    const startIndex = (currentPage - 1) * opportunitiesPerPage;
-    return opportunities.slice(startIndex, startIndex + opportunitiesPerPage);
-  })();
-  const displayCount = isServerPaginated ? totalCount : opportunities.length;
-
-  return (
-    <>
-      {/* AI Recommendations Section - Always show if loading or has data */}
-      {(recommendationsLoading || (recommendations && recommendations.length > 0)) && (
-        <div className="relative z-0 bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 rounded-xl shadow-sm p-6 mb-6 border border-indigo-100">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg">
-                <Sparkles className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                  AI-Powered Recommendations
-                  {cached && (
-                    <span className="text-xs font-normal text-gray-500 bg-white px-2 py-0.5 rounded-full">
-                      Cached
-                    </span>
-                  )}
-                  {fallback && (
-                    <span className="text-xs font-normal text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
-                      Popular Jobs
-                    </span>
-                  )}
-                </h3>
-                <p className="text-sm text-gray-600">
-                  {fallback
-                    ? 'Trending opportunities based on popularity'
-                    : 'Personalized matches based on your profile and skills'
-                  }
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={refreshRecommendations}
-              disabled={recommendationsLoading}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 hover:bg-white rounded-lg transition-colors disabled:opacity-50"
-            >
-              <RefreshCw className={`w-4 h-4 ${recommendationsLoading ? 'animate-spin' : ''}`} />
-              Refresh
-            </button>
-          </div>
-
-          {recommendationsLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-              <p className="ml-3 text-sm text-gray-600">Finding best matches...</p>
-            </div>
-          ) : recommendationsError ? (
-            <div className="p-4 rounded-lg bg-red-50 border border-red-200">
-              <p className="text-sm text-red-700">⚠️ {recommendationsError}</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-              {recommendations.slice(0, 5).map((rec, idx) => (
-                <div
-                  key={rec.id || idx}
-                  onClick={() => {
-                    trackView(rec.id);
-                    setSelectedOpportunity(rec);
-                  }}
-                  className="bg-white rounded-lg p-4 border border-indigo-100 hover:border-indigo-300 hover:shadow-md transition-all cursor-pointer group"
-                >
-                  {/* Match Score */}
-                  {rec.similarity && (
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-gradient-to-r from-green-500 to-emerald-500 text-white text-xs font-bold rounded-full">
-                        <Target className="w-3 h-3" />
-                        {Math.round(rec.similarity * 100)}% Match
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Job Title */}
-                  <h4 className="font-bold text-gray-900 text-sm mb-2 line-clamp-2 group-hover:text-indigo-600 transition-colors">
-                    {rec.job_title || rec.title}
-                  </h4>
-
-                  {/* Company */}
-                  <div className="flex items-center gap-1.5 text-xs text-gray-600 mb-2">
-                    <Building2 className="w-3.5 h-3.5 flex-shrink-0" />
-                    <span className="truncate">{rec.company_name || rec.company}</span>
-                  </div>
-
-                  {/* Details */}
-                  <div className="space-y-1 text-xs text-gray-500">
-                    {rec.location && (
-                      <div className="flex items-center gap-1.5">
-                        <MapPin className="w-3 h-3 flex-shrink-0" />
-                        <span className="truncate">{rec.location}</span>
-                      </div>
-                    )}
-                    {rec.employment_type && (
-                      <div className="flex items-center gap-1.5">
-                        <Briefcase className="w-3 h-3 flex-shrink-0" />
-                        <span className="truncate">{rec.employment_type}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Applied/Saved Status */}
-                  <div className="mt-3 pt-3 border-t border-gray-100">
-                    {appliedJobs.has(rec.id) ? (
-                      <span className="text-xs text-green-600 font-medium">✓ Applied</span>
-                    ) : savedJobs.has(rec.id) ? (
-                      <span className="text-xs text-blue-600 font-medium">★ Saved</span>
-                    ) : (
-                      <span className="text-xs text-indigo-600 font-medium group-hover:underline">
-                        View Details
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Search and Filters */}
-      <div className="mb-8 space-y-4">
-        {/* Search and Primary Controls - Responsive Layout */}
-        <div className="flex flex-col lg:flex-row gap-4 items-stretch lg:items-center">
-          {/* Search Bar */}
-          <div className="relative flex-1">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Search job title, company, or location..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full h-12 pl-12 pr-12 bg-white border border-slate-200/60 rounded-2xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-300 shadow-sm"
-            />
-            {searchTerm && (
-              <button
-                onClick={() => {
-                  setSearchTerm('');
-                  setDebouncedSearch('');
-                }}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            )}
-          </div>
-
-          {/* Control Buttons - Right side on desktop */}
-          <div className="flex flex-col sm:flex-row lg:flex-row items-stretch sm:items-center gap-3 lg:flex-shrink-0">
-            {/* Advanced Filters Button */}
-            <AdvancedFilters
-              onApplyFilters={setAdvancedFilters}
-              initialFilters={advancedFilters}
-            />
-
-            {/* View Mode Toggle */}
-            <div className="flex items-center bg-white border border-slate-200/60 rounded-2xl p-1 shadow-sm h-12">
-              <button
-                onClick={() => setViewMode('grid')}
-                className={`flex-1 sm:flex-none p-2.5 rounded-xl transition-all duration-200 ${viewMode === 'grid' ? 'bg-blue-100 text-blue-600' : 'text-slate-400 hover:text-slate-600'
-                  }`}
-              >
-                <Grid3x3 className="w-4 h-4 mx-auto" />
-              </button>
-              <button
-                onClick={() => setViewMode('list')}
-                className={`flex-1 sm:flex-none p-2.5 rounded-xl transition-all duration-200 ${viewMode === 'list' ? 'bg-blue-100 text-blue-600' : 'text-slate-400 hover:text-slate-600'
-                  }`}
-              >
-                <List className="w-4 h-4 mx-auto" />
-              </button>
-            </div>
-
-            {/* Sort Controls */}
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="flex-1 sm:flex-none lg:w-auto px-4 h-12 bg-white border border-slate-200/60 rounded-2xl text-slate-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-300 shadow-sm min-w-0 sm:min-w-[140px] lg:min-w-[140px]"
-            >
-              <option value="newest">Newest First</option>
-              <option value="oldest">Oldest First</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Results count and clear filters */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <p className="text-sm font-semibold text-slate-900">
-              Showing {displayCount} Jobs Results
-            </p>
-            {displayCount > 0 && (
-              <span className="text-xs text-slate-500">
-                (Page {currentPage} of {totalPages})
-              </span>
-            )}
-          </div>
-
-          {/* Active Filters Summary */}
-          {(advancedFilters.employmentType.length > 0 ||
-            advancedFilters.experienceLevel.length > 0 ||
-            advancedFilters.mode.length > 0 ||
-            advancedFilters.skills.length > 0 ||
-            advancedFilters.department.length > 0 ||
-            advancedFilters.salaryMin ||
-            advancedFilters.salaryMax ||
-            advancedFilters.postedWithin) && (
-              <button
-                onClick={() => setAdvancedFilters({
-                  employmentType: [],
-                  experienceLevel: [],
-                  mode: [],
-                  salaryMin: '',
-                  salaryMax: '',
-                  skills: [],
-                  department: [],
-                  postedWithin: '',
-                })}
-                className="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
-              >
-                <X className="w-3 h-3" />
-                Clear all filters
-              </button>
-            )}
-        </div>
+const MyJobsContent = ({ onRecommendationsChange, searchTerm, setSearchTerm, sortBy, setSortBy, viewMode, setViewMode, opportunities, error, loading, onRetry, selectedOpportunity, appliedJobs, savedJobs, handleToggleSave, handleApply, isApplying, advancedFilters, setAdvancedFilters, currentPage, setCurrentPage, totalCount, totalPages, needsProfileCompletion, navigate, learnerData, canAccessOpportunities, setShowUpgradePrompt, missingFields, completionPercentage, profileCheckLoading, profileCheckError, onRetryProfile, detailsOpen, onDetailsOpenChange, onSelect, onRequestApply, applicationRequest, accessCheckLoading, accessCheckError, onRetryAccess }) => {
+  const activeFilters = Object.values(advancedFilters).some(value=>Array.isArray(value)?value.length:!!value);
+  return <div className="grid min-w-0 grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_340px] 2xl:grid-cols-[minmax(0,1fr)_360px]"><div className="min-w-0">
+    <LearningMatches onSelectJob={onSelect}/>
+    <h2 className="mb-3 text-base font-semibold text-slate-900">All job openings</h2>
+    <section aria-label="Search jobs" className="mb-4 space-y-3">
+      <div className="opportunity-controls flex flex-wrap gap-2">
+        <label className="relative min-w-0 flex-[1_1_280px]"><span className="sr-only">Search jobs by title, company, or location</span><Search size={17} className="pointer-events-none absolute left-3 top-3 text-slate-400"/><input type="search" value={searchTerm} onChange={event=>setSearchTerm(event.target.value)} placeholder="Search job title, company, or location..." className="h-10 w-full rounded-md border border-slate-300 bg-white pl-9 pr-3 text-sm placeholder:text-slate-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"/></label>
+        <AdvancedFilters onApplyFilters={setAdvancedFilters} initialFilters={advancedFilters}/>
+        <label className="min-w-0"><span className="sr-only">Sort jobs</span><select value={sortBy} onChange={event=>setSortBy(event.target.value)} className="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700"><option value="newest">Newest first</option><option value="oldest">Oldest first</option></select></label>
+        <div aria-label="Result layout" role="group" className="flex h-10 rounded-md border border-slate-300 bg-white p-1">{[['grid',Grid3x3,'Grid view'],['list',List,'List view']].map(([value,Icon,label])=><button type="button" key={value} onClick={()=>setViewMode(value)} aria-label={label} title={label} aria-pressed={viewMode===value} className={`flex w-9 items-center justify-center rounded ${viewMode===value?'bg-blue-50 text-blue-700':'text-slate-500 hover:bg-slate-50'}`}><Icon size={16}/></button>)}</div>
       </div>
-
-      {/* Opportunities Grid/List */}
-      {error ? (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-          <p className="text-red-600 font-medium">Failed to load opportunities</p>
+      <div className="flex flex-wrap items-center justify-between gap-2"><p role="status" aria-live="polite" className="text-sm leading-5 text-slate-600">{loading ? 'Updating jobs…' : error ? 'Jobs could not be loaded' : `${totalCount} ${totalCount===1?'job':'jobs'}${totalCount>0?` · Page ${currentPage} of ${totalPages}`:''}`}</p>{activeFilters&&<button type="button" onClick={()=>setAdvancedFilters(emptyOpportunityFilters())} className="min-h-8 rounded px-2 text-sm font-medium text-blue-700 hover:bg-blue-50">Clear all filters</button>}</div>
+    </section>
+    {error ? <section role="alert" className="rounded-lg border border-red-200 bg-white p-6"><h2 className="text-base font-semibold text-slate-900">Unable to load jobs</h2><p className="mt-2 text-sm leading-5 text-slate-600">Your search and filters have been kept. Please try again.</p><button type="button" onClick={onRetry} className="mt-4 rounded-md bg-blue-600 px-4 py-2 text-sm text-white">Retry jobs</button></section> : <>
+      <div className="min-w-0">
+        <div aria-busy={loading} className="min-w-0">
+          {loading && !opportunities.length ? <div role="status" className="rounded-lg border bg-white p-6 text-sm text-slate-600">Loading jobs…</div> : opportunities.length ? <div className={viewMode==='grid'?'grid grid-cols-1 gap-3 sm:grid-cols-2 2xl:grid-cols-3':'space-y-3'}>{opportunities.map(job=>{const Card=viewMode==='grid'?OpportunityCard:OpportunityListItem;return <Card key={job.id} opportunity={job} isSelected={selectedOpportunity?.id===job.id} isApplied={appliedJobs.has(job.id)} isSaved={savedJobs.has(job.id)} isApplying={isApplying} learnerData={learnerData} onClick={()=>onSelect(job)} onApply={()=>onRequestApply(job)} onToggleSave={handleToggleSave}/>;})}</div> : <section className="rounded-lg border border-slate-200 bg-white p-8 text-center"><h2 className="text-base font-semibold text-slate-900">No jobs match your search</h2><p className="mt-2 text-sm leading-5 text-slate-600">Try another keyword or remove a filter.</p><button type="button" onClick={()=>{setSearchTerm('');setAdvancedFilters(emptyOpportunityFilters());}} className="mt-4 rounded-md border border-slate-300 px-4 py-2 text-sm">Reset search and filters</button></section>}
+          {totalPages>1&&<nav aria-label="Job result pages" className="mt-5 flex flex-wrap items-center justify-center gap-1">
+            <button type="button" aria-label="Previous page" disabled={currentPage===1||loading} onClick={()=>setCurrentPage(currentPage-1)} className="min-h-9 rounded-md border bg-white px-3 text-sm disabled:opacity-40">Previous</button>
+            {getPageNumbers(currentPage,totalPages).map((page,index)=>page==='...'?<span key={`gap-${index}`} className="px-2 text-slate-400">…</span>:<button type="button" key={page} aria-label={`Page ${page}`} aria-current={currentPage===page?'page':undefined} disabled={loading} onClick={()=>setCurrentPage(page)} className={`min-h-9 min-w-9 rounded-md border text-sm ${page===currentPage?'border-blue-600 bg-blue-600 text-white':'bg-white text-slate-600'}`}>{page}</button>)}
+            <button type="button" aria-label="Next page" disabled={currentPage===totalPages||loading} onClick={()=>setCurrentPage(currentPage+1)} className="min-h-9 rounded-md border bg-white px-3 text-sm disabled:opacity-40">Next</button>
+          </nav>}
         </div>
-      ) : (
-        <>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Opportunities List - First in DOM and visually */}
-            <div className="col-span-1 lg:col-span-2">
-              {opportunities.length > 0 ? (
-                <>
-                  {viewMode === 'grid' ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {displayedOpportunities.map((opp) => (
-                        <OpportunityCard
-                          key={opp.id}
-                          opportunity={opp}
-                          onClick={() => setSelectedOpportunity(opp)}
-                          isSelected={selectedOpportunity?.id === opp.id}
-                          isApplied={appliedJobs.has(opp.id)}
-                          isSaved={savedJobs.has(opp.id)}
-                          onToggleSave={handleToggleSave}
-                        />
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {displayedOpportunities.map((opp) => (
-                        <OpportunityListItem
-                          key={opp.id}
-                          opportunity={opp}
-                          onClick={() => setSelectedOpportunity(opp)}
-                          isSelected={selectedOpportunity?.id === opp.id}
-                          isApplied={appliedJobs.has(opp.id)}
-                          isSaved={savedJobs.has(opp.id)}
-                          onApply={() => handleApply(opp)}
-                          onToggleSave={handleToggleSave}
-                          learnerData={learnerData}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </>
-              ) : (
-                <EmptyOpportunitiesState
-                  learnerData={learnerData}
-                  navigate={navigate}
-                />
-              )}
-            </div>
 
-            {/* Preview Panel - Last in DOM and visually */}
-            <div className="col-span-1 lg:col-span-1 lg:sticky lg:top-16 lg:self-start">
-              {selectedOpportunity ? (
-                <OpportunityPreview
-                  opportunity={selectedOpportunity}
-                  onApply={handleApply}
-                  onToggleSave={handleToggleSave}
-                  isApplied={appliedJobs.has(selectedOpportunity?.id)}
-                  isSaved={savedJobs.has(selectedOpportunity?.id)}
-                  isApplying={isApplying}
-                  canApplyToJobs={canApplyToJobs}
-                  needsProfileCompletion={needsProfileCompletion}
-                  navigate={navigate}
-                  learnerData={learnerData}
-                  canAccessOpportunities={canAccessOpportunities}
-                  onShowUpgradePrompt={() => setShowUpgradePrompt(true)}
-                />
-              ) : (
-                <div className="bg-white rounded-2xl border border-gray-200 p-6 text-center sticky top-16">
-                  <Briefcase className="w-12 h-12 mx-auto text-gray-300 mb-3" />
-                  <p className="text-gray-600 font-medium">Select a job to view details</p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Pagination */}
-          {opportunities.length > 0 && totalPages > 1 && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-              className="mt-10 pt-6 border-t border-gray-200"
-            >
-              <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-4 md:p-6">
-                <Pagination>
-                  <PaginationContent className="flex flex-wrap items-center justify-center gap-1 md:gap-2">
-                    <PaginationItem>
-                      <button
-                        onClick={() => {
-                          if (currentPage > 1) {
-                            setCurrentPage(currentPage - 1);
-                            window.scrollTo({ top: 0, behavior: 'smooth' });
-                          }
-                        }}
-                        disabled={currentPage === 1}
-                        aria-label="Previous page"
-                        className="text-xs md:text-sm px-2 md:px-3 py-1.5 md:py-2 h-8 md:h-9 rounded-md transition-colors border border-gray-200 text-gray-700 hover:border-blue-300 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-gray-200 disabled:hover:text-gray-700"
-                      >
-                        ← Previous
-                      </button>
-                    </PaginationItem>
-
-                    {getPageNumbers(currentPage, totalPages).map((pageNum) => (
-                      <PaginationItem key={`page-${pageNum}`}>
-                        {pageNum === '...' ? (
-                          <PaginationEllipsis className="text-xs md:text-sm" />
-                        ) : (
-                          <button
-                            onClick={() => {
-                              setCurrentPage(pageNum);
-                              window.scrollTo({ top: 0, behavior: 'smooth' });
-                            }}
-                            aria-current={currentPage === pageNum ? 'page' : undefined}
-                            className={`text-xs md:text-sm px-2 md:px-3 py-1.5 md:py-2 h-8 md:h-9 min-w-8 md:min-w-9 flex items-center justify-center rounded-md transition-colors ${
-                              currentPage === pageNum
-                                ? 'bg-blue-500 text-white font-medium'
-                                : 'border border-gray-200 text-gray-700 hover:border-blue-300 hover:text-blue-600'
-                            }`}
-                          >
-                            {pageNum}
-                          </button>
-                        )}
-                      </PaginationItem>
-                    ))}
-
-                    <PaginationItem>
-                      <button
-                        onClick={() => {
-                          if (currentPage < totalPages) {
-                            setCurrentPage(currentPage + 1);
-                            window.scrollTo({ top: 0, behavior: 'smooth' });
-                          }
-                        }}
-                        disabled={currentPage === totalPages}
-                        aria-label="Next page"
-                        className="text-xs md:text-sm px-2 md:px-3 py-1.5 md:py-2 h-8 md:h-9 rounded-md transition-colors border border-gray-200 text-gray-700 hover:border-blue-300 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-gray-200 disabled:hover:text-gray-700"
-                      >
-                        Next →
-                      </button>
-                    </PaginationItem>
-                  </PaginationContent>
-                </Pagination>
-                <div className="text-center text-sm text-gray-600 mt-4">
-                  Page {currentPage} of {totalPages} • {displayCount} total opportunities
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </>
-      )}
-    </>
-  );
-};
-
-// My Applications Content Component (full-featured from Applications.jsx)
-const MyApplicationsContent = ({
-  applications,
-  searchQuery,
-  setSearchQuery,
-  statusFilter,
-  setStatusFilter,
-  showPipelineStatus,
-  setShowPipelineStatus,
-  messagingApplicationId,
-  setMessagingApplicationId,
-  learnerId,
-  navigate,
-  queryClient,
-  setActiveTab,
-  opportunities,
-  setSelectedOpportunity,
-  onApplicationsUpdate,
-  showUpgradePrompt,
-  setShowUpgradePrompt
-}) => {
-  const [respondingToOffer, setRespondingToOffer] = useState(null);
-  const [showRejectModal, setShowRejectModal] = useState(null);
-  const [rejectReason, setRejectReason] = useState('');
-
-  // Handle accept offer
-  const handleAcceptOffer = async (applicationId) => {
-    try {
-      setRespondingToOffer(applicationId);
-      const result = await offerManagementService.acceptOffer(applicationId);
-
-      if (result.success) {
-        toast.success('Offer accepted! Congratulations! 🎉');
-        // Refresh applications list
-        if (onApplicationsUpdate) {
-          onApplicationsUpdate();
-        }
-      } else {
-        toast.error(`Failed to accept offer: ${result.error}`);
-      }
-    } catch (error) {
-      logger.error('Error accepting offer:', error);
-      toast.error('Error accepting offer. Please try again.');
-    } finally {
-      setRespondingToOffer(null);
-    }
-  };
-
-  // Handle reject offer
-  const handleRejectOffer = async (applicationId) => {
-    try {
-      setRespondingToOffer(applicationId);
-      const result = await offerManagementService.rejectOffer(applicationId, rejectReason || null);
-
-      if (result.success) {
-        toast.success('Offer declined.');
-        setShowRejectModal(null);
-        setRejectReason('');
-        // Refresh applications list
-        if (onApplicationsUpdate) {
-          onApplicationsUpdate();
-        }
-      } else {
-        toast.error(`Failed to reject offer: ${result.error}`);
-      }
-    } catch (error) {
-      logger.error('Error rejecting offer:', error);
-      toast.error('Error rejecting offer. Please try again.');
-    } finally {
-      setRespondingToOffer(null);
-    }
-  };
-
-  // Helper function to get stage order
-  const getStageOrder = (stage) => {
-    const stageOrder = {
-      sourced: 1,
-      screened: 2,
-      interview_1: 3,
-      interview_2: 4,
-      offer: 5,
-      hired: 6,
-      rejected: -1
-    };
-    return stageOrder[stage] || 0;
-  };
-
-  const getStatusConfig = (status) => {
-    const configs = {
-      applied: {
-        label: 'Applied',
-        icon: Clock,
-        color: 'text-blue-700',
-        bg: 'bg-blue-50',
-        border: 'border-blue-300'
-      },
-      viewed: {
-        label: 'Viewed',
-        icon: Eye,
-        color: 'text-purple-700',
-        bg: 'bg-purple-50',
-        border: 'border-purple-300'
-      },
-      under_review: {
-        label: 'Under Review',
-        icon: Clock,
-        color: 'text-slate-700',
-        bg: 'bg-slate-50',
-        border: 'border-slate-300'
-      },
-      interview_scheduled: {
-        label: 'Interview Scheduled',
-        icon: Calendar,
-        color: 'text-indigo-700',
-        bg: 'bg-indigo-50',
-        border: 'border-indigo-200'
-      },
-      interviewed: {
-        label: 'Interviewed',
-        icon: CheckCircle2,
-        color: 'text-cyan-700',
-        bg: 'bg-cyan-50',
-        border: 'border-cyan-200'
-      },
-      offer_received: {
-        label: 'Offer Received',
-        icon: TrendingUp,
-        color: 'text-green-700',
-        bg: 'bg-green-50',
-        border: 'border-green-200'
-      },
-      accepted: {
-        label: 'Accepted',
-        icon: CheckCircle2,
-        color: 'text-emerald-700',
-        bg: 'bg-emerald-50',
-        border: 'border-emerald-200'
-      },
-      rejected: {
-        label: 'Rejected',
-        icon: XCircle,
-        color: 'text-gray-600',
-        bg: 'bg-gray-50',
-        border: 'border-gray-300'
-      },
-      withdrawn: {
-        label: 'Withdrawn',
-        icon: XCircle,
-        color: 'text-orange-600',
-        bg: 'bg-orange-50',
-        border: 'border-orange-300'
-      }
-    };
-    return configs[status] || configs.applied;
-  };
-
-  // Pipeline stage configuration
-  const getPipelineStageConfig = (stage) => {
-    const configs = {
-      sourced: {
-        label: 'Sourced',
-        icon: Users,
-        color: 'text-gray-700',
-        bg: 'bg-gray-100',
-        order: 1,
-        description: 'Your profile has been identified as a potential match!',
-        learnerAction: 'No action required - Wait for recruiter to review your profile'
-      },
-      screened: {
-        label: 'Screened',
-        icon: Eye,
-        color: 'text-blue-700',
-        bg: 'bg-blue-100',
-        order: 2,
-        description: 'Your profile is being reviewed by the hiring team!',
-        learnerAction: 'Be ready to respond to interview invitations quickly'
-      },
-      interview_1: {
-        label: 'Interview Round 1',
-        icon: Video,
-        color: 'text-indigo-700',
-        bg: 'bg-indigo-100',
-        order: 3,
-        description: 'First interview scheduled - Great progress!',
-        learnerAction: 'Prepare well and attend your scheduled interview'
-      },
-      interview_2: {
-        label: 'Interview Round 2',
-        icon: Video,
-        color: 'text-purple-700',
-        bg: 'bg-purple-100',
-        order: 4,
-        description: 'Advanced to second round - Excellent!',
-        learnerAction: 'Attend interview and follow up with thank you note'
-      },
-      offer: {
-        label: 'Offer Stage',
-        icon: Award,
-        color: 'text-green-700',
-        bg: 'bg-green-100',
-        order: 5,
-        description: 'Congratulations! Offer is being prepared 🎉',
-        learnerAction: 'Wait for formal offer letter and review terms'
-      },
-      hired: {
-        label: 'Hired',
-        icon: CheckCircle2,
-        color: 'text-emerald-700',
-        bg: 'bg-emerald-100',
-        order: 6,
-        description: 'You\'re hired! Welcome to the team! 🎊',
-        learnerAction: 'Prepare for your start date and complete all paperwork'
-      },
-      rejected: {
-        label: 'Not Selected',
-        icon: XCircle,
-        color: 'text-red-700',
-        bg: 'bg-red-100',
-        order: 7,
-        description: 'This position didn\'t work out, but don\'t give up!',
-        learnerAction: 'Learn from the experience and continue your job search'
-      }
-    };
-    return configs[stage] || configs.sourced;
-  };
-
-  // Toggle function for pipeline status visibility
-  const togglePipelineStatus = (applicationId) => {
-    setShowPipelineStatus(prev => ({
-      ...prev,
-      [applicationId]: !prev[applicationId]
-    }));
-  };
-
-  // Handle messaging
-  const handleMessage = async (app) => {
-    logger.info('handleMessage called with:', {
-      appId: app.id,
-      recruiterId: app.recruiterId,
-      opportunityId: app.opportunityId,
-      learnerId: learnerId,
-      jobTitle: app.jobTitle
-    });
-
-    if (!app.recruiterId) {
-      alert('Recruiter information not available for this application.');
-      return;
-    }
-
-    if (!learnerId) {
-      alert('Learner information not available. Please refresh the page.');
-      return;
-    }
-
-    setMessagingApplicationId(app.id);
-
-    try {
-      const conversation = await MessageService.getOrCreateConversation(
-        String(learnerId), // Ensure string
-        String(app.recruiterId), // Ensure string
-        app.id, // applicationId
-        app.opportunityId, // opportunityId
-        `Application: ${app.jobTitle}` // subject
-      );
-
-      navigate('/learner/messages', {
-        state: {
-          conversationId: conversation.id,
-          recipientId: app.recruiterId,
-          recipientName: app.company,
-          recipientType: 'recruiter'
-        }
-      });
-    } catch (error) {
-      logger.error('Error opening message:', error);
-      logger.error('Error details:', {
-        message: error.message,
-        code: error.code,
-        details: error.details,
-        hint: error.hint
-      });
-      alert(`Failed to open messaging: ${error.message || 'Please try again.'}`);
-    } finally {
-      setMessagingApplicationId(null);
-    }
-  };
-
-  return (
-    <>
-      {/* Reject Offer Modal */}
-      {showRejectModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-lg shadow-lg max-w-md w-full p-6"
-          >
-            <h3 className="text-lg font-bold text-gray-900 mb-4">Decline Offer</h3>
-            <p className="text-gray-600 mb-4">Would you like to provide a reason for declining this offer? (Optional)</p>
-
-            <textarea
-              value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
-              placeholder="e.g., Found another opportunity, Salary expectation not met, etc."
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent mb-4 resize-none"
-              rows="4"
-            />
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => {
-                  setShowRejectModal(null);
-                  setRejectReason('');
-                }}
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => handleRejectOffer(showRejectModal)}
-                disabled={respondingToOffer === showRejectModal}
-                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {respondingToOffer === showRejectModal ? 'Declining...' : 'Decline Offer'}
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      )}
-
-      {/* Filters */}
-      <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200 mb-6">
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search by job title or company..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-transparent transition-all"
-            />
-          </div>
-
-          <div className="relative">
-            <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-transparent transition-all appearance-none bg-white cursor-pointer min-w-[200px]"
-            >
-              <option value="all">All Status</option>
-              <option value="applied">Applied</option>
-              <option value="viewed">Viewed</option>
-              <option value="under_review">Under Review</option>
-              <option value="interview_scheduled">Interview Scheduled</option>
-              <option value="interviewed">Interviewed</option>
-              <option value="offer_received">Offer Received</option>
-              <option value="accepted">Accepted</option>
-              <option value="rejected">Rejected</option>
-              <option value="withdrawn">Withdrawn</option>
-            </select>
-          </div>
-        </div>
       </div>
-
-      {/* Applications List */}
-      <div className="space-y-4">
-        {applications.length === 0 ? (
-          <div className="bg-white rounded-lg shadow-sm p-12 text-center border border-gray-200">
-            <Briefcase className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">No applications found</h3>
-            <p className="text-gray-600">Try adjusting your search or filters</p>
-          </div>
-        ) : (
-          applications.map((app) => {
-            const statusConfig = getStatusConfig(app.status);
-            const StatusIcon = statusConfig.icon;
-            const currentStageConfig = app.pipelineStage ? getPipelineStageConfig(app.pipelineStage) : null;
-            const StageIcon = currentStageConfig?.icon;
-
-            return (
-              <div
-                key={app.id}
-                className="bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-200 border border-gray-200 overflow-hidden group"
-              >
-                <div className="p-6">
-                  <div className="flex flex-col lg:flex-row lg:items-center gap-6">
-                    {/* Job Details */}
-                    <div className="flex-1 space-y-3">
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <h3 className="text-xl font-bold text-gray-900 group-hover:text-slate-700 transition-colors">
-                            {app.jobTitle}
-                          </h3>
-                          <p className="text-gray-600 font-medium mt-1">{app.company}</p>
-                        </div>
-                        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${statusConfig.bg} ${statusConfig.border} border`}>
-                          <StatusIcon className={`w-4 h-4 ${statusConfig.color}`} />
-                          <span className={`text-sm font-semibold ${statusConfig.color}`}>
-                            {statusConfig.label}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
-                        <div className="flex items-center gap-1.5">
-                          <MapPin className="w-4 h-4" />
-                          <span>{app.location}</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <span>{app.salary}</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <Clock className="w-4 h-4" />
-                          <span>Applied {new Date(app.appliedDate).toLocaleDateString()}</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <TrendingUp className="w-4 h-4" />
-                          <span>Updated {app.lastUpdate}</span>
-                        </div>
-                      </div>
-
-                      <div className="flex flex-wrap gap-2">
-                        <span className="px-3 py-1 bg-slate-100 text-slate-700 rounded-full text-xs font-semibold">
-                          {app.type}
-                        </span>
-                        <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-semibold">
-                          {app.level}
-                        </span>
-                      </div>
-
-                      {/* Pipeline Status Section - Only show when View Details is clicked */}
-                      {app.hasPipelineStatus && app.pipelineStage && showPipelineStatus[app.id] && (
-                        <div className="mt-4 p-5 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 rounded-xl border-2 border-slate-200 shadow-sm">
-                          <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center gap-2">
-                              <div className="p-2 bg-white rounded-lg shadow-sm">
-                                <Users className="w-5 h-5 text-slate-700" />
-                              </div>
-                              <h4 className="font-bold text-slate-900">Recruitment Pipeline Status</h4>
-                            </div>
-                          </div>
-
-                          {/* Visual Pipeline Stepper */}
-                          <div className="relative mb-6">
-                            <div className="flex items-center justify-between">
-                              {Object.entries({
-                                sourced: 'Sourced',
-                                screened: 'Screened',
-                                interview_1: 'Interview 1',
-                                interview_2: 'Interview 2',
-                                offer: 'Offer',
-                                hired: 'Hired'
-                              }).map(([stageKey, stageLabel], index, array) => {
-                                const isCompleted = getStageOrder(app.pipelineStage) > getStageOrder(stageKey);
-                                const isCurrent = app.pipelineStage === stageKey;
-                                const isRejected = app.pipelineStage === 'rejected';
-
-                                return (
-                                  <div key={stageKey} className="flex flex-col items-center flex-1 relative">
-                                    {/* Stage Number Circle */}
-                                    <div className="relative z-10 mb-2">
-                                      <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all ${isCompleted
-                                        ? 'bg-green-500 text-white shadow-lg shadow-green-200'
-                                        : isCurrent
-                                          ? 'bg-blue-500 text-white shadow-lg shadow-blue-200 ring-4 ring-blue-200 animate-pulse'
-                                          : isRejected && index > getStageOrder('sourced')
-                                            ? 'bg-gray-200 text-gray-400'
-                                            : 'bg-white text-gray-400 border-2 border-gray-300'
-                                        }`}>
-                                        {isCompleted ? (
-                                          <CheckCircle2 className="w-6 h-6" />
-                                        ) : (
-                                          index + 1
-                                        )}
-                                      </div>
-                                    </div>
-
-                                    {/* Connecting Line */}
-                                    {index < array.length - 1 && (
-                                      <div className={`absolute top-5 left-1/2 w-full h-0.5 -z-0 transition-all ${isCompleted ? 'bg-green-500' : 'bg-gray-300'
-                                        }`} style={{ transform: 'translateY(-50%)' }} />
-                                    )}
-
-                                    {/* Stage Label */}
-                                    <div className={`text-xs font-medium text-center px-1 transition-all ${isCurrent
-                                      ? 'text-blue-700 font-bold'
-                                      : isCompleted
-                                        ? 'text-green-700'
-                                        : 'text-gray-500'
-                                      }`}>
-                                      {stageLabel}
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-
-                          {/* Current Status Info */}
-                          <div className="bg-white p-4 rounded-lg border border-blue-200 shadow-sm">
-                            <div className="flex items-center gap-3">
-                              <div className={`p-3 rounded-lg ${currentStageConfig?.bg || 'bg-gray-100'}`}>
-                                {StageIcon && <StageIcon className="w-6 h-6" />}
-                              </div>
-                              <div className="flex-1">
-                                <div className="text-sm text-gray-600">Current Stage</div>
-                                <div className="text-lg font-bold text-gray-900">{currentStageConfig?.label || app.pipelineStage}</div>
-                                {app.pipelineStageChangedAt && (
-                                  <div className="text-xs text-gray-500 mt-1">
-                                    <Clock className="w-3 h-3 inline mr-1" />
-                                    Updated {new Date(app.pipelineStageChangedAt).toLocaleDateString()}
-                                  </div>
-                                )}
-                              </div>
-                              <div className="text-right">
-                                <div className={`px-4 py-2 rounded-lg font-semibold ${currentStageConfig?.bg || 'bg-gray-100'} ${currentStageConfig?.color || 'text-gray-800'}`}>
-                                  Stage {getStageOrder(app.pipelineStage)} of 6
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Progress Message */}
-                            <div className="mt-3 pt-3 border-t border-gray-100">
-                              <p className="text-sm text-gray-700 font-medium">
-                                {currentStageConfig?.description}
-                              </p>
-                            </div>
-                          </div>
-
-                          {/* Expanded Details */}
-                          {showPipelineStatus[app.id] && currentStageConfig && (
-                            <div className="mt-4 space-y-3">
-                              {/* What You Need to Do */}
-                              <div className="bg-white rounded-lg p-4 shadow-sm border-l-4 border-blue-500">
-                                <div className="flex items-start gap-2">
-                                  <CheckCircle2 className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-                                  <div className="flex-1">
-                                    <h5 className="text-sm font-bold text-gray-900 mb-1">What You Need to Do:</h5>
-                                    <p className="text-sm text-blue-700 font-semibold bg-blue-50 px-3 py-2 rounded-lg">
-                                      {currentStageConfig.learnerAction}
-                                    </p>
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* Next Action */}
-                              {app.nextAction && (
-                                <div className="flex items-start gap-2 p-3 bg-blue-100 rounded-lg border-2 border-blue-300">
-                                  <Bell className="w-5 h-5 text-blue-700 mt-0.5 flex-shrink-0 animate-pulse" />
-                                  <div className="flex-1">
-                                    <p className="text-xs font-bold text-blue-900 uppercase tracking-wide">Upcoming Action:</p>
-                                    <p className="text-sm font-semibold text-blue-800 mt-1">{app.nextAction.replace(/_/g, ' ').toUpperCase()}</p>
-                                    {app.nextActionDate && (
-                                      <p className="text-xs text-blue-700 mt-1 flex items-center gap-1">
-                                        <Calendar className="w-3 h-3" />
-                                        Scheduled: {new Date(app.nextActionDate).toLocaleDateString()}
-                                      </p>
-                                    )}
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* Rejection Reason */}
-                              {app.rejectionReason && (
-                                <div className="flex items-start gap-2 p-3 bg-red-50 rounded-lg border-2 border-red-200">
-                                  <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
-                                  <div className="flex-1">
-                                    <p className="text-xs font-bold text-red-900 uppercase tracking-wide">Feedback from Recruiter:</p>
-                                    <p className="text-sm text-red-700 mt-1">{app.rejectionReason}</p>
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* Scheduled Interviews */}
-                              {app.interviews && app.interviews.length > 0 && (
-                                <div className="bg-white rounded-lg p-4 shadow-sm border-2 border-indigo-200">
-                                  <h5 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
-                                    <Video className="w-5 h-5 text-indigo-600" />
-                                    Scheduled Interviews ({app.interviews.length})
-                                  </h5>
-                                  <div className="space-y-2">
-                                    {app.interviews.map((interview, idx) => (
-                                      <div key={idx} className="flex items-center justify-between p-3 bg-indigo-50 rounded-lg border border-indigo-200 hover:bg-indigo-100 transition-colors">
-                                        <div className="flex-1">
-                                          <p className="font-semibold text-gray-900">{interview.type} Interview</p>
-                                          <p className="text-sm text-gray-600 mt-0.5">with {interview.interviewer}</p>
-                                          {interview.meeting_link && (
-                                            <a
-                                              href={interview.meeting_link}
-                                              target="_blank"
-                                              rel="noopener noreferrer"
-                                              className="text-xs text-blue-600 hover:text-blue-800 underline mt-1 inline-block"
-                                            >
-                                              Join Meeting →
-                                            </a>
-                                          )}
-                                        </div>
-                                        <div className="text-right ml-4">
-                                          <p className="font-bold text-indigo-700">
-                                            {new Date(interview.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                                          </p>
-                                          <p className="text-sm text-gray-600">
-                                            {new Date(interview.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                          </p>
-                                        </div>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div className="flex lg:flex-col gap-2">
-                      {/* Offer Response Buttons - Show only when status is offer_received */}
-                      {app.status === 'offer_received' && (
-                        <>
-                          <button
-                            onClick={() => handleAcceptOffer(app.id)}
-                            disabled={respondingToOffer === app.id}
-                            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            <ThumbsUp className="w-4 h-4" />
-                            {respondingToOffer === app.id ? 'Accepting...' : 'Accept'}
-                          </button>
-
-                          <button
-                            onClick={() => setShowRejectModal(app.id)}
-                            disabled={respondingToOffer === app.id}
-                            className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            <ThumbsDown className="w-4 h-4" />
-                            {respondingToOffer === app.id ? 'Declining...' : 'Decline'}
-                          </button>
-                        </>
-                      )}
-
-                      <button
-                        onClick={() => {
-                          // Toggle pipeline status visibility
-                          togglePipelineStatus(app.id);
-                        }}
-                        className="flex items-center gap-2 px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition-colors text-sm font-medium"
-                      >
-                        <Eye className="w-4 h-4" />
-                        {showPipelineStatus[app.id] ? 'Hide Details' : 'View Details'}
-                      </button>
-
-                      {app.recruiterId && (
-                        <button
-                          onClick={() => handleMessage(app)}
-                          disabled={messagingApplicationId === app.id}
-                          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          <MessageSquare className="w-4 h-4" />
-                          {messagingApplicationId === app.id ? 'Opening...' : 'Message'}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })
-        )}
-      </div>
-
-      {/* Upgrade Prompt Modal */}
-      {showUpgradePrompt && (
-        <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-[60] backdrop-blur-md">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6"
-          >
-            <div className="flex items-center justify-center w-12 h-12 mx-auto bg-blue-100 rounded-full mb-4">
-              <Lock className="w-6 h-6 text-blue-600" />
-            </div>
-            <h3 className="text-xl font-semibold text-center mb-2">Upgrade Required</h3>
-            <p className="text-gray-600 text-center mb-6">
-              Job applications are not available on the Freemium plan. Upgrade to a paid plan to apply for opportunities.
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowUpgradePrompt(false)}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  setShowUpgradePrompt(false);
-                  navigate('/subscription/plans?type=learner');
-                }}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-              >
-                View Plans
-              </button>
-            </div>
-          </motion.div>
+    </>}
+        <div className="contents">
+          <OpportunityPreview accessCheckLoading={accessCheckLoading} accessCheckError={accessCheckError} onRetryAccess={onRetryAccess} applicationRequest={applicationRequest} showSummary={false} opportunity={selectedOpportunity} onApply={handleApply} onToggleSave={handleToggleSave} isApplied={appliedJobs.has(selectedOpportunity?.id)} isSaved={savedJobs.has(selectedOpportunity?.id)} isApplying={isApplying} needsProfileCompletion={needsProfileCompletion} missingFields={missingFields} completionPercentage={completionPercentage} profileCheckLoading={profileCheckLoading} profileCheckError={profileCheckError} onRetryProfile={onRetryProfile} navigate={navigate} learnerData={learnerData} canAccessOpportunities={canAccessOpportunities} onShowUpgradePrompt={()=>setShowUpgradePrompt(true)} detailsOpen={detailsOpen} onDetailsOpenChange={onDetailsOpenChange}/>
         </div>
-      )}
-    </>
-  );
+  </div><aside aria-label="AI job matching" className="min-w-0 xl:sticky xl:top-24">
+    <RecommendedJobs sidebar onResultsChange={onRecommendationsChange} learnerProfile={{...learnerData, profile:learnerData}} onSelectJob={onSelect} appliedJobs={appliedJobs} savedJobs={savedJobs} onToggleSave={handleToggleSave} onApply={onRequestApply}/>
+  </aside></div>;
 };
 
 export default Opportunities;

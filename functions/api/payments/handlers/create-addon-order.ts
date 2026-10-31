@@ -1,87 +1,215 @@
-/**
- * Create Addon Order Handler
- *
- * POST /api/payments/create-addon-order
- *
- * Accepts a feature_key and billing_period, looks up the addon from
- * the SSO Auth DB (via SSO worker) to get the correct price (server-side),
- * then creates a Razorpay order via the payment-worker RPC binding.
- * Requires SSO authentication.
- */
-
-
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getContextUser } from '../../../lib/auth';
-import { createLogger } from '../../../lib/logger';
 import { apiError, apiSuccess } from '../../../lib/response';
-import { ssoGetAddonByFeatureKey } from '../../../lib/sso-client';
-import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../lib/paymentBinding';
-import { safeParseFloat } from '../../../lib/numbers';
+import { getServiceClient } from '../../../lib/supabase';
+import { getPaymentWorker } from '../lib/paymentBinding';
+import {
+  AddonCheckoutError,
+  addonFailure,
+  requireOffer,
+  resolveAddonPurchaser,
+  type AddonEnvironment,
+} from '../lib/addon-checkout';
 
-const logger = createLogger('payments:create-addon-order');
-
-export async function handleCreateAddonOrder(context: AuthenticatedContext): Promise<Response> {
+export async function handleCreateAddonOrder(
+  context: AuthenticatedContext,
+): Promise<Response> {
   const user = getContextUser(context);
-  const env = context.env as unknown as PaymentWorkerEnv & { SSO_SERVICE: Fetcher };
-
+  const env = context.env as unknown as AddonEnvironment;
+  let body: Record<string, unknown>;
   try {
-    let body: Record<string, unknown>;
-    try {
-      body = (await context.request.json()) as Record<string, unknown>;
-    } catch {
-      return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON body', context.request);
-    }
-
-    if (!body.feature_key || typeof body.feature_key !== 'string') {
-      return apiError(400, 'VALIDATION_ERROR', 'feature_key is required', context.request);
-    }
-
-    if (!body.billing_period || typeof body.billing_period !== 'string') {
-      return apiError(400, 'VALIDATION_ERROR', 'billing_period is required', context.request);
-    }
-
-    // Look up addon from SSO Auth DB to get server-side price using True RPC
-    let addon: Record<string, any>;
-    try {
-      addon = await ssoGetAddonByFeatureKey(env as any, body.feature_key as string);
-    } catch (err: any) {
-      logger.error('Addon lookup failed', { feature_key: body.feature_key, error: err });
-      return apiError(404, 'NOT_FOUND', 'Addon not found or inactive', context.request);
-    }
-
-    // DB stores prices in rupees (1999.00 = ₹1,999); Razorpay expects paise
-    const amount = Math.round((body.billing_period === 'annual'
-      ? safeParseFloat(addon.price_annual, 0)
-      : safeParseFloat(addon.price_monthly, 0)) * 100);
-
-    if (typeof amount !== 'number' || isNaN(amount) || amount <= 0) {
-      logger.error('Invalid addon price', { feature_key: body.feature_key, amount });
-      return apiError(400, 'VALIDATION_ERROR', 'Addon price is invalid', context.request);
-    }
-
+    body = (await context.request.json()) as Record<string, unknown>;
+  } catch {
+    return apiError(
+      400,
+      'VALIDATION_ERROR',
+      'Invalid JSON body',
+      context.request,
+    );
+  }
+  if (!body || typeof body !== 'object' || Array.isArray(body))
+    return apiError(
+      400,
+      'VALIDATION_ERROR',
+      'A JSON object is required',
+      context.request,
+    );
+  try {
+    if (
+      typeof body.feature_key !== 'string' ||
+      typeof body.billing_period !== 'string'
+    )
+      throw new AddonCheckoutError(
+        400,
+        'VALIDATION_ERROR',
+        'Select an add-on and billing option.',
+      );
+    const addon = await env.SSO_SERVICE.getAddonByFeatureKey(body.feature_key);
+    if (!addon.is_active || addon.feature_key !== body.feature_key)
+      throw new AddonCheckoutError(
+        400,
+        'ADDON_UNAVAILABLE',
+        'Select an active catalog add-on.',
+      );
+    const offer = addon.billing_options.find(
+      (o) => o.is_active && o.billing_period === body.billing_period,
+    );
+    requireOffer(offer);
+    const organizationId = await resolveAddonPurchaser(
+      env,
+      user.id,
+      addon,
+      offer,
+      typeof body.org_id === 'string' ? body.org_id : user.org_id || undefined,
+    );
+    const pending = await env.SSO_SERVICE.getPendingAddonPurchase(
+      user.id,
+      addon.feature_key,
+    );
     const worker = getPaymentWorker(env);
-    const order = await worker.createOrder({
-      amount,
-      currency: (body.currency as string) || undefined,
-      notes: {
-        feature_key: body.feature_key as string,
-        addon_id: addon.id,
-        addon_name: addon.feature_name,
-        user_id: user.id,
-        user_email: (body.user_email as string) || user.email || '',
-        billing_period: body.billing_period as string,
-        type: 'addon',
-      },
-    });
-
-    if (!order.key_id) {
-      logger.error('Payment worker did not return key_id');
-      return apiError(500, 'INTERNAL_ERROR', 'Payment worker configuration error', context.request);
+    if (pending) {
+      if (pending.razorpay_payment_id)
+        throw new AddonCheckoutError(
+          409,
+          'PAYMENT_RECONCILIATION_REQUIRED',
+          'An existing payment is awaiting activation. Retry verification instead of paying again.',
+          { recovery_order_id: pending.razorpay_order_id },
+        );
+      const orders = pending.razorpay_order_id
+        ? [await worker.getOrder(pending.razorpay_order_id)]
+        : (await worker.getOrdersByReceipt(pending.id)).items;
+      if (orders.length !== 1)
+        throw new AddonCheckoutError(
+          409,
+          'CHECKOUT_IN_PROGRESS',
+          'Your previous checkout is still being prepared. Please try again shortly.',
+        );
+      const previous = orders[0];
+      if (
+        previous.notes.user_id !== user.id ||
+        previous.notes.purchase_id !== pending.id
+      )
+        throw new AddonCheckoutError(
+          409,
+          'ORDER_MISMATCH',
+          'The original checkout could not be confirmed.',
+        );
+      if (previous.status === 'paid')
+        throw new AddonCheckoutError(
+          409,
+          'PAYMENT_RECONCILIATION_REQUIRED',
+          'An existing payment is awaiting activation. Retry verification instead of paying again.',
+          { recovery_order_id: previous.id },
+        );
+      if (
+        pending.billing_period !== offer.billing_period ||
+        Number(pending.amount_minor) !== Number(offer.amount_minor) ||
+        pending.currency !== offer.currency ||
+        pending.interval_months !== offer.interval_months
+      )
+        throw new AddonCheckoutError(
+          409,
+          'CHECKOUT_TERMS_PENDING',
+          'A checkout with different terms is already open. Resume its original billing option first.',
+        );
+      if (!pending.razorpay_order_id)
+        await env.SSO_SERVICE.bindAddonOrder(pending.id, previous.id);
+      return apiSuccess(
+        {
+          ...previous,
+          razorpay_key_id: previous.key_id,
+          addon_name: addon.feature_name,
+          billing_period: offer.billing_period,
+          resumed: true,
+        },
+        context.request,
+      );
     }
-
-    return apiSuccess({ ...order, razorpay_key_id: order.key_id }, context.request);
+    if (
+      !offer.allow_repeat_purchase &&
+      (await env.SSO_SERVICE.getActiveAddonPurchase(user.id, addon.feature_key))
+    )
+      throw new AddonCheckoutError(
+        409,
+        'ADDON_ALREADY_ACTIVE',
+        'This add-on is already active for your account.',
+      );
+    if (offer.fulfilment_kind === 'opportunity_visibility') {
+      if (
+        !Number.isSafeInteger(body.opportunity_id) ||
+        Number(body.opportunity_id) <= 0
+      )
+        throw new AddonCheckoutError(
+          400,
+          'OPPORTUNITY_REQUIRED',
+          'Select an opportunity for this offer.',
+        );
+      const { data, error } = await getServiceClient(env)
+        .from('opportunities')
+        .select('id')
+        .eq('id', body.opportunity_id)
+        .eq('organization_id', organizationId)
+        .neq('status', 'closed')
+        .maybeSingle();
+      if (error || !data)
+        throw new AddonCheckoutError(
+          403,
+          'OPPORTUNITY_UNAVAILABLE',
+          'This opportunity is not eligible in your organization.',
+        );
+    }
+    const checkout = await env.SSO_SERVICE.prepareAddonCheckout({
+      user_id: user.id,
+      addon_id: addon.id,
+      billing_period: offer.billing_period,
+      organization_id: organizationId,
+      opportunity_id:
+        offer.fulfilment_kind === 'opportunity_visibility'
+          ? body.opportunity_id
+          : null,
+    });
+    if (!checkout.checkout_created)
+      throw new AddonCheckoutError(
+        409,
+        'CHECKOUT_IN_PROGRESS',
+        'A checkout is already being prepared. Please try again shortly.',
+      );
+    const notes: Record<string, string> = {
+      type: 'addon',
+      purchase_id: checkout.id,
+      user_id: user.id,
+      feature_key: addon.feature_key,
+      addon_id: addon.id,
+      billing_period: offer.billing_period,
+    };
+    if (organizationId) notes.organization_id = organizationId;
+    if (offer.fulfilment_kind === 'opportunity_visibility')
+      notes.opportunity_id = String(body.opportunity_id);
+    let order;
+    try {
+      order = await worker.createOrder({
+        amount: Number(offer.amount_minor),
+        currency: offer.currency,
+        receipt: checkout.id,
+        notes,
+      });
+    } catch (error) {
+      await env.SSO_SERVICE.discardUnopenedAddonCheckout(checkout.id);
+      throw error;
+    }
+    await env.SSO_SERVICE.bindAddonOrder(checkout.id, order.id);
+    if (!order.key_id)
+      throw new Error('Payment provider did not return checkout configuration');
+    return apiSuccess(
+      {
+        ...order,
+        razorpay_key_id: order.key_id,
+        addon_name: addon.feature_name,
+        billing_period: offer.billing_period,
+      },
+      context.request,
+    );
   } catch (error) {
-    logger.error('Error creating addon order', error);
-    return rpcErrorResponse(error, context.request);
+    return addonFailure(error, context.request);
   }
 }

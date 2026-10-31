@@ -343,10 +343,15 @@ const AssessmentTestPage: React.FC = () => {
         }
       } else {
         // Create new assessment only if there's no matching in-progress one
+        // Pass pending specialization atomically (avoid separate update race)
+        let pendingSpec: string | undefined;
+        try { pendingSpec = sessionStorage.getItem('pending_specialization') || undefined; } catch {}
         const result: StartAssessmentResponse = await startAssessment({
           gradeLevel: gradeForAssessment,
           streamId,
+          specialization: pendingSpec,
         });
+        if (pendingSpec) { try { sessionStorage.removeItem('pending_specialization'); } catch {} }
 
         if (result.success && result.attemptId) {
           store.initializeAssessment(result.sections, result.attemptId, gradeForAssessment, streamId);

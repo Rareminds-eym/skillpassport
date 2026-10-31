@@ -34,6 +34,7 @@ export type EmbeddingErrorCode =
   | 'API_ERROR' 
   | 'RATE_LIMIT'
   | 'INSUFFICIENT_DATA'
+  | 'CONTEXT_CHANGED'
   | 'INVALID_RESPONSE';
 
 export class EmbeddingError extends Error {

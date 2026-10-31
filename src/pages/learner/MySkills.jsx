@@ -72,6 +72,7 @@ const MySkills = () => {
     matchedJobs,
     loading: matchingLoading,
     error: matchingError,
+    readiness: matchingReadiness,
   } = useAIJobMatching(learnerData, !matchingGate.isLoading && matchingGate.hasAccess, 3);
 
   const [activeModal, setActiveModal] = useState(null);
@@ -193,6 +194,7 @@ const MySkills = () => {
               {/* Suggested Next Steps */}
               <SuggestedNextSteps
                 matchedJobs={matchedJobs}
+                readiness={matchingReadiness}
                 loading={matchingLoading}
                 error={matchingError || (!matchingGate.isLoading && !matchingGate.hasAccess ? 'Job matching requires an active plan or matching add-on.' : null)}
                 fallbackSuggestions={suggestions}

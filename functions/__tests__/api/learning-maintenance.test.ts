@@ -15,20 +15,20 @@ async function signed(body='{}'){
 }
 it('requires a valid body-bound service signature before maintenance',async()=>{
  const request=await signed();
- const response=await onRequestPost({env:{LTE_CATALOG_SYNC_SECRET:secret},request});
+ const response=await onRequestPost({env:{LTE_INTERNAL_SECRET:secret},request});
  expect(response.status).toBe(200);expect(f.dispatch).toHaveBeenCalledOnce();
  expect(response.headers.get('Cache-Control')).toBe('no-store');
 });
 it('rejects forged or altered requests before reading private work',async()=>{
  const signedRequest=await signed();
  const altered=new Request(signedRequest.url,{method:'POST',headers:signedRequest.headers,body:'{"altered":true}'});
- expect((await onRequestPost({env:{LTE_CATALOG_SYNC_SECRET:secret},request:altered})).status).toBe(401);
- expect((await onRequestPost({env:{LTE_CATALOG_SYNC_SECRET:secret},request:new Request(signedRequest.url,{method:'POST',body:'{}'})})).status).toBe(401);
+ expect((await onRequestPost({env:{LTE_INTERNAL_SECRET:secret},request:altered})).status).toBe(401);
+ expect((await onRequestPost({env:{LTE_INTERNAL_SECRET:secret},request:new Request(signedRequest.url,{method:'POST',body:'{}'})})).status).toBe(401);
  expect(f.dispatch).not.toHaveBeenCalled();
 });
 
 it('notification continuations do not duplicate AI work',async()=>{
- const response=await onRequestPost({env:{LTE_CATALOG_SYNC_SECRET:secret},request:await signed(JSON.stringify({task:'notifications'}))});
+ const response=await onRequestPost({env:{LTE_INTERNAL_SECRET:secret},request:await signed(JSON.stringify({task:'notifications'}))});
  expect(response.status).toBe(200);expect(f.dispatch).toHaveBeenCalledOnce();expect(f.evaluate).not.toHaveBeenCalled();
 });
 it('lets notification maintenance finish even if AI maintenance fails',async()=>{
@@ -36,7 +36,7 @@ it('lets notification maintenance finish even if AI maintenance fails',async()=>
  const gate=new Promise<void>(resolve=>{finish=resolve;});
  f.dispatch.mockReturnValueOnce(gate.then(()=>({hasMore:false})));
  f.evaluate.mockRejectedValueOnce(new Error('AI queue unavailable'));
- const pending=onRequestPost({env:{LTE_CATALOG_SYNC_SECRET:secret},request:await signed()}).then(response=>{finished=true;return response;});
+ const pending=onRequestPost({env:{LTE_INTERNAL_SECRET:secret},request:await signed()}).then(response=>{finished=true;return response;});
  await vi.waitFor(()=>expect(f.dispatch).toHaveBeenCalledOnce());
  expect(finished).toBe(false);finish();expect((await pending).status).toBe(503);
 });

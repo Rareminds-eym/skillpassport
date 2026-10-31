@@ -119,99 +119,178 @@ export class WSRealtimeClient {
   private connecting = false;
   private connectionGen = 0;
 
-  // ─── Connect ────────────────────────────────────────────────────────────
+  private authReady = false;
+  private authIdentity: string | null = null;
+  private requestAbort: AbortController | null = null;
+  private readonly unsubscribeAuth: () => void;
+  private exhaustedReported = false;
+  private readonly onOnline = () => {
+    if (!this.authReady || !this.hasActiveSubscriptions()) return;
+    this.reconnectAttempts = 0;
+    this.exhaustedReported = false;
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+    this.connect();
+  };
 
-  /**
-   * Establishes a WebSocket connection to /api/realtime-stream.
-   * Auth token is passed via Sec-WebSocket-Protocol subprotocol.
-   */
+  constructor() {
+    this.unsubscribeAuth = ssoClient.onAuthStateChange(
+      (event) => {
+        const phase = event.state.phase;
+        if (phase !== 'authenticated' && phase !== 'refreshing') {
+          this.authReady = false;
+          if (
+            phase === 'unauthenticated' ||
+            phase === 'logging_out' ||
+            phase === 'destroyed'
+          )
+            this.disconnect();
+          else this.closeTransport();
+          return;
+        }
+        const identity = `${event.state.identity.subject}:${event.state.identity.organizationId}`;
+        const changed =
+          this.authIdentity !== null && this.authIdentity !== identity;
+        if (changed) this.disconnect();
+        const resume = !this.authReady || changed;
+        this.authIdentity = identity;
+        this.authReady = true;
+        if (resume) {
+          this.reconnectAttempts = 0;
+          this.exhaustedReported = false;
+        }
+        if (this.hasActiveSubscriptions()) this.connect();
+      },
+      { emitCurrent: true },
+    );
+    window.addEventListener('online', this.onOnline);
+  }
+
+  /** The SDK authenticates this HTTP request without exposing its private JWT. */
   connect(): void {
-    if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) {
-      return; // Already connected or connecting
-    }
-    if (this.connecting) return;
-
-    const token = ssoClient.getAccessToken();
-    if (!token) {
-      console.warn('[WS] No access token available, deferring connection');
-      this.scheduleReconnect();
+    if (!this.authReady || this.connecting || this.exhaustedReported) return;
+    if (
+      this.ws &&
+      (this.ws.readyState === WebSocket.OPEN ||
+        this.ws.readyState === WebSocket.CONNECTING)
+    )
       return;
-    }
-
+    if (!this.hasActiveSubscriptions()) return;
     this.connecting = true;
     this.intentionalDisconnect = false;
-    const gen = ++this.connectionGen;
-
-    const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    let host = location.host;
-    // In local development, bypass the Pages proxy and connect directly to the realtime-worker
-    // to avoid the known Miniflare Service Binding WebSocket crash.
-    if (import.meta.env.DEV || host.includes('localhost:8788')) {
-      const wsPort = import.meta.env.VITE_REALTIME_WS_PORT || '8790';
-      host = `localhost:${wsPort}`;
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
     }
-    const wsUrl = `${protocol}//${host}/api/realtime-stream`;
+    const gen = ++this.connectionGen;
+    this.requestAbort = new AbortController();
+    void this.connectWithTicket(gen, this.requestAbort.signal);
+  }
 
+  private async connectWithTicket(
+    gen: number,
+    signal: AbortSignal,
+  ): Promise<void> {
     try {
-      this.ws = new WebSocket(wsUrl, ['access_token', token]);
-    } catch (err) {
-      console.error('[WS] Failed to create WebSocket:', err);
+      const response = await ssoClient.fetch('/api/realtime-ticket', {
+        method: 'POST',
+        signal,
+      });
+      if (gen !== this.connectionGen || !this.authReady) return;
+      if (response.status === 401 || response.status === 403) {
+        this.authReady = false;
+        this.connecting = false;
+        return;
+      }
+      if (!response.ok) throw new Error('Connection ticket unavailable');
+      const body: { success?: boolean; data?: { ticket?: string } } =
+        await response.json();
+      const ticket = body.data?.ticket;
+      if (
+        body.success === false ||
+        typeof ticket !== 'string' ||
+        !/^\d+\.\d{13}\.[a-f0-9]{64}$/.test(ticket)
+      )
+        throw new Error('Invalid connection ticket');
+      if (
+        gen !== this.connectionGen ||
+        !this.authReady ||
+        !this.hasActiveSubscriptions()
+      )
+        return;
+      const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+      let host = location.host;
+      const localPort = import.meta.env.VITE_REALTIME_WS_PORT;
+      if (
+        localPort &&
+        (import.meta.env.DEV ||
+          ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname))
+      )
+        host = `${location.hostname}:${localPort}`;
+      const socket = new WebSocket(`${protocol}//${host}/api/realtime-stream`, [
+        'connection_ticket',
+        ticket,
+      ]);
+      this.ws = socket;
+      socket.onopen = () => {
+        if (gen !== this.connectionGen) return;
+        this.connecting = false;
+        this.resubscribeAll();
+      };
+      socket.onmessage = (event) => {
+        if (gen !== this.connectionGen) return;
+        try {
+          const data = JSON.parse(event.data as string) as WSEvent;
+          if (data.type === 'connected') {
+            this.connId = data.connId;
+            this.reconnectAttempts = 0;
+            this.exhaustedReported = false;
+          }
+          this.dispatchEvent(data);
+        } catch {
+          console.warn('[WS] Invalid realtime message');
+        }
+      };
+      socket.onclose = () => {
+        if (gen !== this.connectionGen) return;
+        this.connecting = false;
+        this.ws = null;
+        this.connId = null;
+        this.scheduleReconnect();
+      };
+      // Browsers dispatch close after an error; only one reconnect is scheduled.
+      socket.onerror = () => {};
+    } catch {
+      if (gen !== this.connectionGen) return;
       this.connecting = false;
       this.scheduleReconnect();
-      return;
     }
+  }
 
-    this.ws.onopen = () => {
-      if (gen !== this.connectionGen) return; // Stale connection
-      this.connecting = false;
-      // NOTE: Do NOT reset reconnectAttempts here. The TCP handshake succeeded
-      // but the server may immediately close (e.g. auth failure). We only reset
-      // after receiving the 'connected' event from the server, proving we have
-      // a stable, authenticated connection.
-      console.info('[WS] Connected');
-
-      // Re-subscribe to all tracked subscriptions
-      this.resubscribeAll();
-    };
-
-    this.ws.onmessage = (event) => {
-      if (gen !== this.connectionGen) return;
-      try {
-        const data = JSON.parse(event.data as string) as WSEvent;
-        if (data.type === 'connected') {
-          this.connId = (data as WSConnectedEvent).connId;
-          console.log(`[WS] Connection established | connectionId: ${this.connId}`);
-          // Server confirmed the connection — NOW it's safe to reset backoff.
-          this.reconnectAttempts = 0;
-        }
-        this.dispatchEvent(data);
-      } catch {
-        console.warn('[WS] Failed to parse message:', event.data);
-      }
-    };
-
-    this.ws.onclose = (ev) => {
-      if (gen !== this.connectionGen) return;
-      this.connecting = false;
+  private closeTransport(): void {
+    this.connectionGen++;
+    this.requestAbort?.abort();
+    this.requestAbort = null;
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+    if (this.ws) {
+      this.ws.onopen = null;
+      this.ws.onmessage = null;
+      this.ws.onclose = null;
+      this.ws.onerror = null;
+      if (
+        this.ws.readyState === WebSocket.OPEN ||
+        this.ws.readyState === WebSocket.CONNECTING
+      )
+        this.ws.close();
       this.ws = null;
-
-      // Log close details so we can diagnose server-side rejections
-      if (ev.code !== 1000) {
-        console.warn(`[WS] Closed: code=${ev.code} reason=${ev.reason || '(none)'}`);
-      }
-
-      this.connId = null;
-
-      if (!this.intentionalDisconnect) {
-        this.scheduleReconnect();
-      }
-    };
-
-    this.ws.onerror = () => {
-      if (gen !== this.connectionGen) return;
-      // onclose will fire after onerror, so reconnect is handled there
-      console.error('[WS] Connection error');
-    };
+    }
+    this.connId = null;
+    this.connecting = false;
   }
 
   // ─── Ensure Connected ─────────────────────────────────────────────────
@@ -226,7 +305,7 @@ export class WSRealtimeClient {
   private send(data: Record<string, unknown>): void {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(data));
-    } else {
+    } else if (this.authReady && data.action === 'broadcast') {
       console.warn('[WS] Dropping message (not connected):', data.action || 'unknown');
     }
   }
@@ -517,38 +596,82 @@ export class WSRealtimeClient {
   // ─── Reconnect ────────────────────────────────────────────────────────
 
   private scheduleReconnect(): void {
+    if (
+      !this.authReady ||
+      this.intentionalDisconnect ||
+      !this.hasActiveSubscriptions() ||
+      this.reconnectTimer
+    )
+      return;
     // Gated by ws-reconnect-heal flag (Vite env VITE_HEAL_MODE / VITE_HEAL_CATEGORIES)
     const viteFlagDisabled = (() => {
       try {
-        const mode = (import.meta as unknown as { env: Record<string, string> }).env?.VITE_HEAL_MODE;
-        const catsRaw = (import.meta as unknown as { env: Record<string, string> }).env?.VITE_HEAL_CATEGORIES;
-        if (mode === 'disabled') return catsRaw ? (() => { try { const cats = JSON.parse(catsRaw); return cats['ws-reconnect-heal'] !== 'enabled'; } catch { return true; } })() : true;
-        if (catsRaw) { try { const cats = JSON.parse(catsRaw); if (cats['ws-reconnect-heal'] === 'disabled') return true; } catch {} }
-      } catch {}
+        const mode = (import.meta as unknown as { env: Record<string, string> })
+          .env?.VITE_HEAL_MODE;
+        const catsRaw = (
+          import.meta as unknown as { env: Record<string, string> }
+        ).env?.VITE_HEAL_CATEGORIES;
+        if (mode === 'disabled')
+          return catsRaw
+            ? (() => {
+                try {
+                  const cats = JSON.parse(catsRaw);
+                  return cats['ws-reconnect-heal'] !== 'enabled';
+                } catch {
+                  return true;
+                }
+              })()
+            : true;
+        if (catsRaw) {
+          try {
+            const cats = JSON.parse(catsRaw);
+            if (cats['ws-reconnect-heal'] === 'disabled') return true;
+          } catch {
+            // Invalid optional flags retain the default reconnect policy.
+          }
+        }
+      } catch {
+            // Invalid optional flags retain the default reconnect policy.
+          }
       return false;
     })();
     if (viteFlagDisabled) {
       console.warn('[WS] Reconnect disabled by ws-reconnect-heal flag');
-      this.dispatchEvent({ type: 'error', message: 'Reconnect disabled by flag' });
+      this.dispatchEvent({
+        type: 'error',
+        message: 'Reconnect disabled by flag',
+      });
       return;
     }
     if (this.intentionalDisconnect) return;
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.error('[WS] Max reconnect attempts reached');
-      this.dispatchEvent({ type: 'error', message: 'Max reconnect attempts reached' });
+      if (!this.exhaustedReported) {
+        this.exhaustedReported = true;
+        this.dispatchEvent({
+          type: 'error',
+          message:
+            'Live updates could not reconnect. Reconnect to the network or sign in again.',
+        });
+      }
       return;
     }
 
     this.reconnectAttempts++;
     const baseDelay = 1000;
     const maxDelay = 30_000;
-    const delay = Math.min(baseDelay * Math.pow(2, this.reconnectAttempts - 1), maxDelay);
+    const delay = Math.min(
+      baseDelay * Math.pow(2, this.reconnectAttempts - 1),
+      maxDelay,
+    );
     // Add jitter to prevent thundering herd
     const jitter = delay * (0.5 + Math.random() * 0.5);
 
-    console.info(`[WS] Reconnecting in ${Math.round(jitter)}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+    console.info(
+      `[WS] Reconnecting in ${Math.round(jitter)}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`,
+    );
 
     this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null;
       if (!this.intentionalDisconnect && this.hasActiveSubscriptions()) {
         this.connect();
       }
@@ -597,42 +720,25 @@ export class WSRealtimeClient {
 
   // ─── Disconnect ───────────────────────────────────────────────────────
 
-  /**
-   * Intentionally disconnect and clean up all state.
-   */
+  /** Close transport and release subscriptions without leaking pending requests. */
   disconnect(): void {
     this.intentionalDisconnect = true;
-
-    if (this.reconnectTimer) {
-      clearTimeout(this.reconnectTimer);
-      this.reconnectTimer = null;
-    }
-
-    // Stop all heartbeats
-    for (const [channel] of this.heartbeatIntervals) {
-      this.stopHeartbeat(channel);
-    }
+    this.closeTransport();
+    for (const [channel] of this.heartbeatIntervals) this.stopHeartbeat(channel);
     this.presenceUserInfo.clear();
-
-    if (this.ws) {
-      this.ws.onopen = null;
-      this.ws.onmessage = null;
-      this.ws.onclose = null;
-      this.ws.onerror = null;
-      if (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING) {
-        this.ws.close();
-      }
-      this.ws = null;
-    }
-
-    this.connId = null;
     this.trackedSubs = [];
     this.changeHandlers.clear();
     this.broadcastHandlers.clear();
     this.presenceHandlers.clear();
     this.globalHandlers.clear();
     this.reconnectAttempts = 0;
-    this.connecting = false;
+    this.exhaustedReported = false;
+  }
+
+  destroy(): void {
+    this.disconnect();
+    this.unsubscribeAuth();
+    window.removeEventListener('online', this.onOnline);
   }
 
   // ─── Utilities ────────────────────────────────────────────────────────
@@ -675,7 +781,7 @@ export function getWSClient(): WSRealtimeClient {
 
 export function destroyWSClient(): void {
   if (wsClient) {
-    wsClient.disconnect();
+    wsClient.destroy();
     wsClient = null;
   }
 }

@@ -68,6 +68,7 @@ interface AssessmentData {
 interface StudentContext {
   stream?: string;
   degreeLevel?: string;
+  specialization?: string;
 }
 
 // ============================================================================
@@ -345,9 +346,10 @@ export function buildAssessmentRagContext(
   // Header
   const stream = student.stream ? student.stream.toUpperCase() : 'Student Program';
   const degree = studentContext?.degreeLevel || student.degreeLevel || 'college';
+  const specialization = studentContext?.specialization || student.specialization;
 
   sections.push(`LEARNER CAREER PROFILE
-Program: ${stream} | Education Level: ${degree}
+Program: ${stream}${specialization ? ` | Specialization: ${specialization}` : ''} | Education Level: ${degree}
 `);
 
   // RIASEC FIRST (Career orientation — primary matching signal for RAG)

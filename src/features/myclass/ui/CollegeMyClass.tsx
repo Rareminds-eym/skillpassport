@@ -1,6 +1,6 @@
 import { useAuthStore } from '@/shared/model/authStore';
 import React, { useState, useEffect } from 'react';
-import { Users, Target, FileText, Loader2, AlertCircle, X, Upload, Paperclip } from 'lucide-react';
+import { Users, Target, FileText, Loader2, AlertCircle, X, Upload, Paperclip, Link as LinkIcon } from 'lucide-react';
 
 import { useLearnerDataByEmail } from '@/entities/learner/model/useLearnerDataByEmail';
 import { ssoClient } from '@/shared/api/ssoClient';
@@ -79,6 +79,7 @@ const CollegeMyClass: React.FC = () => {
   const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [submissionUrl, setSubmissionUrl] = useState('');
   const fileUploadRef = React.useRef<{ getStagedFiles: () => File[]; clearStagedFiles: () => void }>(null);
 
   // Assignment details states
@@ -125,10 +126,10 @@ const CollegeMyClass: React.FC = () => {
 
       // Get the blob
       const blob = await response.blob();
-      
+
       // Create object URL
       const blobUrl = URL.createObjectURL(blob);
-      
+
       // Open in new tab or download
       if (mode === 'view') {
         window.open(blobUrl, '_blank');
@@ -141,7 +142,7 @@ const CollegeMyClass: React.FC = () => {
         link.click();
         document.body.removeChild(link);
       }
-      
+
       // Clean up blob URL after a delay
       setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
     } catch (error: any) {
@@ -265,6 +266,7 @@ const CollegeMyClass: React.FC = () => {
   // Assignment handlers
   const handleUploadClick = (assignment: Assignment) => {
     setSelectedAssignment(assignment);
+    setSubmissionUrl('');
     setShowUploadModal(true);
   };
 
@@ -272,6 +274,19 @@ const CollegeMyClass: React.FC = () => {
     if (!selectedAssignment || !learnerId || !fileUploadRef.current) return;
 
     const stagedFiles = fileUploadRef.current.getStagedFiles();
+    const trimmedUrl = submissionUrl.trim();
+
+    // Ensure at least one submission exists: either files or URL
+    if (stagedFiles.length === 0 && !trimmedUrl) {
+      showNotificationModal('warning', 'Submission Required', 'Please upload at least one file or provide a project URL.');
+      return;
+    }
+
+    // If URL is provided, validate that it starts with http:// or https://
+    if (trimmedUrl && !/^https?:\/\//i.test(trimmedUrl)) {
+      showNotificationModal('error', 'Invalid URL', 'Please enter a valid URL starting with http:// or https://');
+      return;
+    }
 
     setIsUploading(true);
     setUploadProgress(0);
@@ -281,11 +296,15 @@ const CollegeMyClass: React.FC = () => {
       setUploadProgress(10);
 
       const fileNames = stagedFiles.map(f => f.name).join(', ');
+      const content = fileNames || (trimmedUrl ? `URL: ${trimmedUrl}` : 'Submission');
 
-      // Submit assignment with files using college service
+      // Submit assignment with files and/or URL using college service
       const submitRes = await submitCollegeAssignment(
         selectedAssignment.learner_assignment_id,
-        { submission_content: fileNames || 'File submission' },
+        {
+          submission_content: content,
+          submission_url: trimmedUrl || undefined,
+        },
         stagedFiles
       );
 
@@ -298,7 +317,13 @@ const CollegeMyClass: React.FC = () => {
       // Update local state
       setAssignments(prev => prev.map(a =>
         a.assignment_id === selectedAssignment.assignment_id
-          ? { ...a, status: 'submitted', submission_date: new Date().toISOString(), submission_content: fileNames || 'File submission' }
+          ? {
+            ...a,
+            status: 'submitted',
+            submission_date: new Date().toISOString(),
+            submission_content: content,
+            submission_url: trimmedUrl || a.submission_url,
+          }
           : a
       ));
 
@@ -312,6 +337,7 @@ const CollegeMyClass: React.FC = () => {
 
       // Clear staged files and close modal
       fileUploadRef.current.clearStagedFiles();
+      setSubmissionUrl('');
 
       setTimeout(() => {
         setShowUploadModal(false);
@@ -347,7 +373,7 @@ const CollegeMyClass: React.FC = () => {
       // For now, use the assignment data we already have
       // In the future, you could create a getCollegeAssignmentWithFiles function
       const assignmentData = assignments.find(a => a.assignment_id === assignment.assignment_id);
-      setAssignmentDetails(assignmentData);
+      setAssignmentDetails(assignmentData ? { ...assignment, ...assignmentData } : assignment);
     } catch (error) {
       showNotificationModal('error', 'Load Error', 'Failed to load assignment details');
       setShowDetailsModal(false);
@@ -366,6 +392,7 @@ const CollegeMyClass: React.FC = () => {
       setShowUploadModal(false);
       setSelectedAssignment(null);
       setUploadProgress(0);
+      setSubmissionUrl('');
       if (fileUploadRef.current) {
         fileUploadRef.current.clearStagedFiles();
       }
@@ -463,15 +490,15 @@ const CollegeMyClass: React.FC = () => {
     .filter(assignment => {
       // If no available_from date, show the assignment
       if (!assignment.available_from) return true;
-      
+
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      
+
       // Parse available_from as local time
       const availableFromStr = assignment.available_from.replace('Z', '').replace('+00:00', '').replace('T', ' ');
       const availableDate = new Date(availableFromStr);
       availableDate.setHours(0, 0, 0, 0);
-      
+
       // Only show if available_from date has passed
       return availableDate <= today;
     })
@@ -543,6 +570,7 @@ const CollegeMyClass: React.FC = () => {
             {/* Mobile Tab Selector */}
             <div className="sm:hidden">
               <select
+                aria-label="Select tab"
                 value={activeTab}
                 onChange={(e) => setActiveTab(e.target.value as CollegeTabType)}
                 className="block w-full px-4 py-3 text-base border-0 bg-transparent focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -562,6 +590,7 @@ const CollegeMyClass: React.FC = () => {
               ].map(tab => (
                 <button
                   key={tab.id}
+                  type="button"
                   onClick={() => setActiveTab(tab.id as CollegeTabType)}
                   className={`flex items-center gap-2 px-4 lg:px-6 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeTab === tab.id
                     ? 'border-blue-600 text-blue-600'
@@ -621,15 +650,17 @@ const CollegeMyClass: React.FC = () => {
       {/* Assignment Upload Modal */}
       {showUploadModal && selectedAssignment && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full">
+          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full flex flex-col max-h-[90vh]">
             {/* Modal Header */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200 shrink-0">
               <div>
                 <h3 className="text-lg font-semibold text-gray-900">Submit Assignment</h3>
                 <p className="text-sm text-gray-500 mt-1">{selectedAssignment?.title}</p>
               </div>
               <button
+                type="button"
                 onClick={closeUploadModal}
+                aria-label="Close"
                 disabled={isUploading}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
               >
@@ -638,14 +669,31 @@ const CollegeMyClass: React.FC = () => {
             </div>
 
             {/* Modal Body */}
-            <div className="p-6">
+            <div className="p-6 overflow-y-auto flex-1">
               {/* File Upload Component */}
               <LearnerAssignmentFileUpload
                 ref={fileUploadRef}
                 maxFiles={3}
                 acceptedTypes={['.pdf', '.doc', '.docx', '.txt', '.jpg', '.png']}
-                className="mb-6"
+                className="mb-4"
               />
+
+              {/* Project / Submission URL Input */}
+              <div className="mb-6 p-4 bg-gray-50/70 border border-gray-200 rounded-xl">
+                <label htmlFor="submission-url" className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                  <LinkIcon className="w-3.5 h-3.5 text-blue-600" />
+                  Submission URL
+                </label>
+                <input
+                  id="submission-url"
+                  type="url"
+                  placeholder="https://github.com/... or https://..."
+                  value={submissionUrl}
+                  onChange={(e) => setSubmissionUrl(e.target.value)}
+                  disabled={isUploading}
+                  className="w-full px-3.5 py-2 text-sm bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors disabled:bg-gray-100 disabled:opacity-60"
+                />
+              </div>
 
               {/* Upload Progress */}
               {isUploading && (
@@ -683,15 +731,18 @@ const CollegeMyClass: React.FC = () => {
             </div>
 
             {/* Modal Footer */}
-            <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200">
+            <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200 shrink-0 bg-gray-50/50 rounded-b-xl">
               <button
+                type="button"
                 onClick={closeUploadModal}
+                aria-label="Close"
                 disabled={isUploading}
                 className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={handleUploadSubmit}
                 disabled={isUploading}
                 className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
@@ -728,6 +779,8 @@ const CollegeMyClass: React.FC = () => {
                 </p>
               </div>
               <button
+                type="button"
+                aria-label="Close"
                 onClick={closeDetailsModal}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
               >
@@ -797,6 +850,7 @@ const CollegeMyClass: React.FC = () => {
                               </div>
                             </div>
                             <button
+                              type="button"
                               onClick={() => handleFileAccess(file.url, file.name, 'view')}
                               className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
                             >
@@ -818,6 +872,34 @@ const CollegeMyClass: React.FC = () => {
                             <strong>Submitted on:</strong> {assignmentDetails.submission_date && new Date(assignmentDetails.submission_date).toLocaleDateString()}
                           </p>
 
+                          {/* Submitted URL (GitHub / Project Link) */}
+                          {assignmentDetails.submission_url && (
+                            <div className="mt-3">
+                              <p className="text-green-800 font-medium mb-2">Submitted Link:</p>
+                              <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-green-200">
+                                <div className="flex items-center gap-3 min-w-0 pr-3">
+                                  <LinkIcon className="w-4 h-4 text-green-600 shrink-0" />
+                                  <a
+                                    href={assignmentDetails.submission_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="font-medium text-blue-600 hover:underline truncate text-sm"
+                                  >
+                                    {assignmentDetails.submission_url}
+                                  </a>
+                                </div>
+                                <a
+                                  href={assignmentDetails.submission_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700 transition-colors shrink-0 font-medium"
+                                >
+                                  Open Link
+                                </a>
+                              </div>
+                            </div>
+                          )}
+
                           {/* Submitted Files */}
                           {assignmentDetails.submission_files && assignmentDetails.submission_files.length > 0 && (
                             <div className="mt-3">
@@ -835,6 +917,7 @@ const CollegeMyClass: React.FC = () => {
                                       </div>
                                     </div>
                                     <button
+                                      type="button"
                                       onClick={() => handleFileAccess(file.url, file.name, 'view')}
                                       className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
                                     >
@@ -888,6 +971,8 @@ const CollegeMyClass: React.FC = () => {
                         <p className="text-blue-600 text-sm">Upload your assignment files and submit for grading.</p>
                       </div>
                       <button
+                        type="button"
+                        aria-label="Close"
                         onClick={() => {
                           closeDetailsModal();
                           handleUploadClick(assignmentDetails);

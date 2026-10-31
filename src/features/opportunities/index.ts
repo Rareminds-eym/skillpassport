@@ -32,3 +32,11 @@ export { getAllPipelineCandidatesByStage } from '@/features/recruiter-pipeline/a
 export { createShortlist } from './api/shortlistService';
 export { default as SavedJobsService } from './api/savedJobsService';
 export { default as AppliedJobsService } from './api/appliedJobsService';
+
+export { LearningMatches } from './ui/LearningMatches';
+
+export { useOpportunityPage } from './model/useOpportunityPage';
+
+export { ApplicationsPanel } from './ui/ApplicationsPanel';
+
+export { applicationUpdated } from './lib/applicationPresentation';

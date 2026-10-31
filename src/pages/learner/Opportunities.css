@@ -1,0 +1,355 @@
+/* Shared visual system for Jobs, Visits, and Applications; retain their arrangements. */
+.opportunities-page {
+  --op-ink: #172b4d;
+  --op-muted: #52647c;
+  --op-accent: #2459c4;
+  --op-accent-hover: #1c469d;
+  --op-line: #dce4ee;
+  --op-tint: #edf3fc;
+  --op-control-height: 2.5rem;
+  --op-radius: 12px;
+  --op-card-shadow: 0 1px 3px rgb(23 43 77 / 4%), 0 4px 10px rgb(23 43 77 / 2%);
+  background: #f5f7fa;
+  color: var(--op-ink);
+}
+
+.opportunities-page h1 {
+  color: var(--op-ink);
+  font-weight: 700;
+  letter-spacing: -0.035em;
+}
+
+.opportunities-page :is(h2, h3) {
+  color: var(--op-ink);
+  letter-spacing: -0.015em;
+}
+
+.opportunities-page :is(.text-slate-600, .text-gray-600) {
+  color: var(--op-muted);
+}
+
+.opportunities-page > div > header > nav {
+  border-color: var(--op-line);
+}
+
+.opportunities-page nav[aria-label="Opportunity sections"] button {
+  border-radius: 6px 6px 0 0;
+  transition: color 160ms ease, background-color 160ms ease;
+}
+
+.opportunities-page nav[aria-label="Opportunity sections"] button[aria-current="page"] {
+  border-bottom-color: var(--op-accent);
+  background: var(--op-tint);
+  color: var(--op-accent);
+  font-weight: 600;
+}
+
+.opportunities-page nav[aria-label="Opportunity sections"] button:hover {
+  background: #eaf0f8;
+  color: var(--op-accent);
+}
+
+.opportunities-page :is(input[type="search"], input[type="text"], select),
+.opportunities-page section[aria-label="Search jobs"] > div > button,
+.opportunities-page [aria-label="Result layout"] {
+  border-color: #ced8e6;
+  border-radius: 8px;
+  color: var(--op-ink);
+  box-shadow: 0 1px 2px rgb(23 43 77 / 3%);
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.opportunities-page :is(input[type="search"], input[type="text"], select):hover {
+  border-color: #a7b8cf;
+}
+
+.opportunities-page :is(input[type="search"], input[type="text"])::placeholder {
+  color: #65758b;
+}
+
+.opportunities-page :is(button, a, input, select):focus-visible {
+  outline: 2px solid var(--op-accent);
+  outline-offset: 3px;
+}
+
+.opportunities-page [aria-pressed="true"] {
+  color: var(--op-accent);
+}
+
+.opportunities-page [aria-label="Result layout"] button[aria-pressed="true"] {
+  background: #e6eefb;
+  box-shadow: 0 1px 2px rgb(23 43 77 / 6%);
+}
+
+.opportunities-page #learning-matches,
+.opportunities-page aside[aria-label="AI job matching"] > section,
+.opportunities-page aside[aria-label="AI job matching"] section {
+  border-color: var(--op-line);
+  border-radius: 12px;
+  box-shadow: 0 2px 4px rgb(23 43 77 / 2%), 0 8px 24px rgb(23 43 77 / 3%);
+}
+
+.opportunities-page #learning-matches {
+  background: linear-gradient(115deg, #f9fbff, #fff 65%);
+}
+
+.opportunities-page #learning-matches > header > div > span {
+  background: #e7effd;
+  color: var(--op-accent);
+}
+
+.opportunities-page :is(article.group, .opportunity-card) {
+  border-color: var(--op-line);
+  border-radius: var(--op-radius);
+  box-shadow: var(--op-card-shadow);
+  transition: border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.opportunities-page :is(article.group, .opportunity-card):hover {
+  border-color: #a7bcdb;
+  box-shadow: 0 3px 6px rgb(23 43 77 / 4%), 0 8px 20px rgb(23 43 77 / 6%);
+}
+
+.opportunities-page article.group:has([aria-current="true"]) {
+  border-color: #7195d7;
+  box-shadow: 0 0 0 1px #d4e2fa, 0 4px 12px rgb(36 89 196 / 6%);
+}
+
+.opportunities-page article.group > div:first-child > div[aria-hidden="true"] {
+  border-radius: 10px;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 70%);
+}
+
+.opportunities-page article.group h3 button:hover {
+  color: var(--op-accent);
+}
+
+.opportunities-page article.group > div:last-child {
+  border-color: #e9eef5;
+}
+
+.opportunities-page article.group span.border-slate-100 {
+  border-color: #e3e9f1;
+  background: #f4f6f9;
+  color: #4a5c74;
+}
+
+.opportunities-page button:is(.bg-blue-600, .bg-indigo-600),
+.opportunities-page nav[aria-label="Job result pages"] [aria-current="page"] {
+  border-color: var(--op-accent);
+  background: var(--op-accent);
+  box-shadow: 0 1px 2px rgb(23 43 77 / 12%), inset 0 1px 0 rgb(255 255 255 / 12%);
+}
+
+.opportunities-page button:is(.bg-blue-600, .bg-indigo-600):hover:not(:disabled) {
+  background: var(--op-accent-hover);
+}
+
+.opportunities-page article.group button:disabled {
+  background: #eef2f7;
+  color: var(--op-muted);
+  box-shadow: none;
+}
+
+.opportunities-page aside[aria-label="AI job matching"] .bg-indigo-50 {
+  background: var(--op-tint);
+  color: var(--op-accent);
+}
+
+.opportunities-page nav[aria-label="Job result pages"] button:not([aria-current]):not(:disabled):hover {
+  border-color: #a7bcdb;
+  background: var(--op-tint);
+  color: var(--op-accent);
+}
+
+.opportunities-page .opportunity-controls :is(input, select) {
+  height: var(--op-control-height);
+  padding-top: 0;
+  padding-bottom: 0;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+.opportunities-page .opportunity-controls > div.relative > input {
+  padding-left: 36px;
+}
+
+.opportunities-page .opportunity-controls > div.relative > svg {
+  left: 12px;
+  width: 17px;
+  height: 17px;
+}
+
+.opportunities-page .opportunity-controls > div.relative > select {
+  padding-left: 36px;
+}
+
+.opportunities-page .opportunity-view-toggle {
+  height: var(--op-control-height);
+  border-color: #ced8e6;
+  border-radius: 8px;
+}
+
+.opportunities-page .opportunity-view-toggle button {
+  height: 30px;
+  min-width: 36px;
+  padding: 6px 10px;
+  border-radius: 4px;
+}
+
+.opportunities-page .opportunity-view-toggle button[aria-pressed="true"] {
+  background: #e6eefb;
+  color: var(--op-accent);
+  box-shadow: 0 1px 2px rgb(23 43 77 / 6%);
+}
+
+.opportunities-page .opportunity-toolbar {
+  border-color: var(--op-line);
+  border-radius: var(--op-radius);
+  box-shadow: var(--op-card-shadow);
+}
+
+.opportunities-page .opportunity-card h3 {
+  font-size: 1rem;
+  line-height: 1.5rem;
+  font-weight: 600;
+}
+
+.opportunities-page .opportunity-application h3 + p {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  font-weight: 400;
+}
+
+.opportunities-page :is(.opportunity-tags span, .opportunity-status) {
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+.opportunities-page .opportunity-tags span {
+  background: #f4f6f9;
+  color: #4a5c74;
+}
+
+.opportunities-page .opportunity-actions button {
+  min-height: 36px;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.opportunities-page .opportunity-actions button.bg-slate-700 {
+  background: var(--op-accent);
+}
+
+.opportunities-page .opportunity-actions button.bg-slate-700:hover {
+  background: var(--op-accent-hover);
+}
+
+.opportunities-page .opportunity-visits .cursor-pointer.ring-2 {
+  border-color: #7195d7;
+  box-shadow: 0 0 0 1px #d4e2fa, 0 4px 12px rgb(36 89 196 / 6%);
+}
+
+.opportunities-page .opportunity-visits .text-xs.bg-blue-100 {
+  border-radius: 6px;
+  background: var(--op-tint);
+  color: var(--op-accent);
+}
+
+.opportunities-page .opportunity-visits .visit-card-badge.is-registered {
+  background: #edf8f1;
+  color: #16643a;
+}
+.opportunities-page .opportunity-visits .opportunity-card {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.opportunities-page .opportunity-visits .opportunity-card :is(p, .text-sm) {
+  line-height: 1.5;
+}
+.opportunities-page .opportunity-visits input[type="search"]::-webkit-search-cancel-button {
+  display: none;
+}
+
+.opportunities-page :is(nav[aria-label="Application pages"], .opportunity-visits nav) button {
+  min-height: 36px;
+  line-height: 1.25rem;
+  border: 1px solid var(--op-line);
+  border-radius: 6px;
+  background: white;
+  color: var(--op-muted);
+  font-size: 0.875rem;
+}
+
+.opportunities-page .opportunity-visits nav button[aria-current="page"] {
+  border-color: var(--op-accent);
+  background: var(--op-accent);
+  color: white;
+}
+
+.opportunities-page :is(nav[aria-label="Application pages"], .opportunity-visits nav) button:hover:not(:disabled):not([aria-current="page"]) {
+  border-color: #a7bcdb;
+  background: var(--op-tint);
+  color: var(--op-accent);
+}
+
+.opportunities-page :is(nav[aria-label="Application pages"], .opportunity-visits nav) button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Facet option labels must not dictate dropdown width in the tablet toolbar. */
+@media (min-width: 640px) and (max-width: 1023px) {
+  .opportunities-page .opportunity-visits .opportunity-controls select {
+    flex: 1 1 0%;
+    min-width: 0;
+    width: 0;
+  }
+}
+
+@media (max-width: 767px) {
+  .opportunities-page .opportunity-visits .opportunity-controls :is(input, select) {
+    font-size: 1rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .opportunities-page *,
+  .opportunities-page *::before,
+  .opportunities-page *::after {
+    transition: none !important;
+  }
+}
+
+/* Submission tracking uses a compact toolbar and deliberate mobile stacking. */
+.opportunities-page .application-filters :is(input, select) {
+  min-height: 40px;
+  box-shadow: none;
+}
+.opportunities-page .application-filters :is(input, select):focus-visible {
+  outline: 2px solid var(--op-accent);
+  outline-offset: 2px;
+  box-shadow: none;
+}
+.opportunities-page .applications-panel .opportunity-application {
+  overflow: visible;
+}
+.opportunities-page .applications-panel .opportunity-application :is(p, dd, li) {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 1023px) {
+  body.application-tracking-active [data-tour="floating-ai-button"] {
+    display: none;
+  }
+}
+body.visit-browsing-active [data-tour="floating-ai-button"] {
+  display: none;
+}
+.applications-panel input[type="search"]::-webkit-search-cancel-button {
+  display: none;
+}
+.application-details-content :is(p, dt, dd, li, h4) {
+  font-size: 0.875rem;
+  line-height: 1.5;
+}

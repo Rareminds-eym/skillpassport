@@ -46,6 +46,8 @@ export async function handleGetAvailableAddons(context: AuthenticatedContext): P
       price_annual: safeParseFloat(addon.price_annual, 0),
       target_roles: addon.target_roles || [],
       icon_url: addon.icon,
+      benefits: addon.benefits || [],
+      billing_options: addon.billing_options || [],
     }));
 
     return apiSuccess(resultData, context.request, 200);

@@ -11,9 +11,23 @@ export function isEligibleJob(job: any, now = Date.now()): boolean {
     (job.deadline == null || (Number.isFinite(Date.parse(job.deadline)) && Date.parse(job.deadline) > now));
 }
 
+/** Job recommendations exclude visits; visits retain their own browsing/application flow. */
+export function recommendableJobs<T>(query: T, now = new Date().toISOString()): T {
+  return (eligibleJobs(query, now) as any).neq('employment_type', 'factory_visit');
+}
+
+export function isRecommendableJob(job: any, now = Date.now()): boolean {
+  return isEligibleJob(job, now) && job.employment_type !== 'factory_visit';
+}
+
 export function stringSkills(value: unknown): string[] {
   const list = typeof value === 'string' ? value.split(',') : value;
   return Array.isArray(list) ? list.filter((s): s is string => typeof s === 'string' && !!s.trim()).map(s => s.trim()) : [];
+}
+
+/** Exact normalized names only. Aliases require an explicit reviewed mapping. */
+export function canonicalSkillName(value: string): string {
+  return value.normalize('NFKC').trim().replace(/\s+/g, ' ').toLowerCase();
 }
 
 export function privateRecommendations(response: Response): Response {
@@ -28,9 +42,9 @@ export const JOB_FIELDS = 'id,title,job_title,company_name,company_logo,employme
 export async function hydrateJobs(db: SupabaseClient, ranks: any[], dismissedIds: string[]): Promise<any[]> {
   const ids = [...new Set(ranks.slice(0, 100).map(row => row?.id).filter(id => typeof id === 'string'))];
   if (!ids.length) return [];
-  const { data, error } = await eligibleJobs(db.from('opportunities').select(JOB_FIELDS).in('id', ids));
+  const { data, error } = await recommendableJobs(db.from('opportunities').select(JOB_FIELDS).in('id', ids));
   if (error) throw new Error('JOB_HYDRATION_FAILED');
-  const jobs = new Map((data || []).filter(job => isEligibleJob(job)).map(job => [job.id, job]));
+  const jobs = new Map((data || []).filter(job => isRecommendableJob(job)).map(job => [job.id, job]));
   const dismissed = new Set(dismissedIds);
   const seen = new Set<string>();
   return ranks.flatMap(rank => {

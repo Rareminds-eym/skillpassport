@@ -130,6 +130,7 @@ Weak topics: ${student.knowledge_details.weakTopics?.join(', ') || 'n/a'}`
   return `STUDENT ASSESSMENT DATA
 
 Program / stream: ${student.stream || 'Not specified'}
+Specialization: ${student.specialization || 'Not specified'}${student.specialization ? ' (use this focus area to tailor domain language and recommendations — it was provided by the learner and is part of their program identity)' : ''}
 Study level: ${student.degreeLevel || 'Not specified'} ${student.degreeLevel === 'postgraduate' ? '(postgraduate — frame around advanced/specialist roles)' : student.degreeLevel === 'undergraduate' ? '(undergraduate — frame around entry-level roles & internships)' : ''}
 
 PERSONALITY & INTERESTS:
