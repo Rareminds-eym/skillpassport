@@ -30,7 +30,7 @@ function escapeHtml(text: string): string {
     '/': '&#x2F;',
   };
   
-  return text.replace(/[&<>"'\/]/g, (char) => htmlEscapeMap[char]);
+  return text.replace(/[&<>"']/g, (char) => htmlEscapeMap[char]);
 }
 
 export function generateEducatorCertificateHTML(data: EducatorCertificateData, baseUrl: string = ''): string {
