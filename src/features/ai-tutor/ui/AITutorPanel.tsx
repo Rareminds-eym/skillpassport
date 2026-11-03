@@ -39,6 +39,8 @@ import { useTutorChat, type GenerationUsage } from '@/features/ai-tutor/model/us
 import WorksheetConfigPanel from './WorksheetConfigPanel';
 import LessonPlanConfigPanel from './LessonPlanConfigPanel';
 import WorksheetExportButton from './WorksheetExportButton';
+import SaveGeneratedMaterial from './SaveGeneratedMaterial';
+import SavedMaterialWorkspace from './SavedMaterialWorkspace';
 import AssignWorksheetButton from './AssignWorksheetButton';
 import FacilitatorHub from './FacilitatorHub';
 import FacilitatorWelcome from './FacilitatorWelcome';
@@ -551,7 +553,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
     );
   }
 
-  if (showWorksheets && !isEducator) {
+  if (showWorksheets) {
     return (
       <motion.section initial={{ x: 400, opacity: 0 }} animate={{ x: 0, opacity: 1 }}
         transition={{ type: 'spring', damping: 26, stiffness: 220 }}
@@ -562,7 +564,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
             className="p-1.5 hover:bg-slate-200/70 text-slate-600 rounded-lg transition-colors"><ChevronLeft className="w-4 h-4" /></button>
           <h3 className="font-semibold text-xs text-slate-900" title={courseName}>Course assignments</h3>
         </div>
-        <div className="flex-1 min-h-0 overflow-y-auto"><LearnerWorksheets key={courseId} courseId={courseId} /></div>
+        <div className="flex-1 min-h-0 overflow-y-auto"><><SavedMaterialWorkspace key={courseId} courseId={courseId} educator={isEducator} />{!isEducator && <LearnerWorksheets courseId={courseId} />}</></div>
       </motion.section>
     );
   }
@@ -744,6 +746,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
               <SquarePen className="w-3.5 h-3.5" />
             </button>
 
+            {isEducator && <button type="button" aria-label="Saved materials and learner progress" title="Saved materials and learner progress" onClick={() => setShowWorksheets(true)} className="rounded p-1.5 text-slate-500 hover:bg-blue-50"><ClipboardList className="h-3.5 w-3.5" /></button>}
             {/* History */}
             {!isEducator && (
               <button type="button" onClick={() => setShowWorksheets(true)}
@@ -1050,8 +1053,8 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
                               </div>
                             </div>
                             {!!msg.citations?.length && <details className="mt-2 text-xs text-slate-500"><summary>Course sources ({msg.citations.length})</summary>{msg.citations.map(citation => <p key={citation.chunkId} className="break-words">{String(citation.location.name || 'Lesson content')} ? reference {citation.chunkId}</p>)}</details>}
-                            {isEducator && (msg.worksheetAvailable || msg.assignmentSourceId) && conversationId && (
-                              <div className="w-full"><AssignWorksheetButton conversationId={conversationId} messageId={msg.assignmentSourceId || msg.id} initiallyOpen={!!msg.assignmentSourceId} courseTitle={courseName} /></div>
+                            {isEducator && (msg.materialAvailable || msg.worksheetAvailable || msg.assignmentSourceId) && conversationId && (
+                              <div className="w-full"><SaveGeneratedMaterial courseId={courseId} conversationId={conversationId} messageId={msg.assignmentSourceId || msg.id} fallback={msg.worksheetAvailable ? <AssignWorksheetButton conversationId={conversationId} messageId={msg.assignmentSourceId || msg.id} initiallyOpen={!!msg.assignmentSourceId} courseTitle={courseName} /> : undefined} /></div>
                             )}
                           </div>
                         )}

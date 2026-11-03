@@ -19,6 +19,7 @@ export interface ChatMessage {
   facilitatorMode?: string;
   assignmentSourceId?: string;
   worksheetAvailable?: boolean;
+  materialAvailable?: boolean;
   status?: 'streaming' | 'complete' | 'failed' | 'stopped';
   id: string;
   role: 'user' | 'assistant';
@@ -27,6 +28,7 @@ export interface ChatMessage {
 }
 
 interface MessageData {
+  lessonPlanConfig?: unknown;
   citations?: SourceCitation[];
   facilitator?: string;
   facilitatorMode?: string;
@@ -114,6 +116,7 @@ export interface StreamChunk {
   facilitatorMode?: string;
   assignmentSourceId?: string;
   worksheetAvailable?: boolean;
+  materialAvailable?: boolean;
   type: 'content' | 'reasoning' | 'done';
   content?: string;
   reasoning?: string;
@@ -203,6 +206,7 @@ export async function* sendMessage(request: ChatRequest, signal?: AbortSignal): 
               conversationId: parsed.conversationId,
               messageId: parsed.messageId,
               worksheetAvailable: parsed.worksheetAvailable,
+              materialAvailable: parsed.materialAvailable,
               citations: parsed.citations,
               facilitator: parsed.facilitator,
               facilitatorMode: parsed.facilitatorMode,
@@ -265,6 +269,7 @@ export async function getConversations(courseId: string): Promise<Conversation[]
         timestamp: new Date(m.timestamp),
         facilitator: m.facilitator, facilitatorMode: m.facilitatorMode, assignmentSourceId: m.assignmentSourceId,
         citations: m.citations,
+        materialAvailable: !!m.worksheetVariants?.length || !!m.lessonPlanConfig,
         worksheetAvailable: !!m.worksheetVariants?.length
       }))
     }));
@@ -296,6 +301,7 @@ export async function getConversation(conversationId: string): Promise<Conversat
         timestamp: new Date(m.timestamp),
         facilitator: m.facilitator, facilitatorMode: m.facilitatorMode, assignmentSourceId: m.assignmentSourceId,
         citations: m.citations,
+        materialAvailable: !!m.worksheetVariants?.length || !!m.lessonPlanConfig,
         worksheetAvailable: !!m.worksheetVariants?.length
       }))
     };

@@ -1,6 +1,6 @@
 /**
  * AI Tutor Chat Handler
- * 
+ *
  * Implements streaming AI tutor chat with:
  * - Conversation phases (opening, exploring, deep_dive)
  * - Course context integration
@@ -30,6 +30,7 @@ import { WORKSHEET_ASSIGNMENT_FORMAT } from '../utils/worksheet-content';
 
 import { isPersona, PERSONAS, routeTeachingMessage, type Persona } from '../utils/teaching-conversation';
 import { retrieveCourseEvidence, formatRetrievedEvidence, type EvidenceChunk } from '../utils/course-index';
+import { materialRequestFingerprint, materialContextFingerprint, savedAssignmentMarkdown } from '../utils/saved-materials';
 import { enrichCourseResources } from '../utils/course-resource-analysis';
 
 const logger = createLogger('ai-tutor-chat');
@@ -44,6 +45,9 @@ interface RequiredEnv extends PagesEnv {
 type TypedContext = { request: Request; env: RequiredEnv; data?: Parameters<typeof getContextUser>[0]['data'] };
 
 interface StoredMessage {
+  materialRequestFingerprint?: string;
+  materialContextFingerprint?: string;
+  materialChoice?: { state: string; kind: string; id: string };
   citations?: Array<{ chunkId: string; analysisId: string; lessonId: string; resourceId: string | null; location: Record<string, unknown> }>;
   assignmentDeferred?: boolean;
   assignmentDeferredAt?: string;
@@ -71,8 +75,8 @@ function isValidOpenRouterResponse(data: unknown): data is OpenRouterResponse {
   if (!data || typeof data !== 'object') return false;
   const obj = data as Record<string, unknown>;
   if (!Array.isArray(obj.choices)) return false;
-  return obj.choices.every(choice => 
-    typeof choice === 'object' && 
+  return obj.choices.every(choice =>
+    typeof choice === 'object' &&
     choice !== null &&
     (!('message' in choice) || typeof choice.message === 'object')
   );
@@ -215,16 +219,6 @@ export const handleAiTutorChat = async (context: TypedContext) => {
       | { limit: number; used: number; remaining: number }
       | undefined;
 
-    // Check generation limit for teacher-learners
-    if (isTeacherLearner && isGenerationRequest) {
-      const limitReached = await hasReachedLimit(supabase, learnerId);
-      
-      if (limitReached) {
-        logger.warn('Blocked: teacher learner reached generation limit');
-        return apiError(403, 'FORBIDDEN', 'You have reached your 2-generation limit for worksheet and lesson plan generation.', request);
-      }
-    }
-
     // Both typed commands and explicit tools use the same generation pipeline.
     // Discussion and assignment-status questions do not consume generation quota.
 
@@ -233,11 +227,11 @@ export const handleAiTutorChat = async (context: TypedContext) => {
     const isLessonPlanGeneration = lessonPlanConfig && userRole.toLowerCase().includes('educator');
     const maxTokens = (isWorksheetGeneration || isLessonPlanGeneration) ? 2000 : userRole.toLowerCase().includes('educator') ? 1000 : phaseParams.maxTokens;
 
-    logger.info('AI Tutor Chat started', { 
-      phase: conversationPhase, 
-      messageCount, 
-      userRole, 
-      maxTokens 
+    logger.info('AI Tutor Chat started', {
+      phase: conversationPhase,
+      messageCount,
+      userRole,
+      maxTokens
     });
 
     // Build course context and system prompt (role-based + optional worksheet/lesson plan config)
@@ -278,7 +272,7 @@ export const handleAiTutorChat = async (context: TypedContext) => {
       }
       systemPrompt += `\n\n${publicationContext}\nFor assignment-status questions, use only these verified records. recipients.count is the number of learners actually assigned. assignmentMode all-mapped means all eligible mapped learners at publication time, not every learner in the college or future joiners. includedDifficulties lists the delivered levels. If no record exists, say there is no verified published assignment here. Never claim you assigned anything through chat; only the Assign control publishes. Answer the question directly without creating a worksheet.`;
     }
-    
+
     // Assignment actions are application UI actions, never model-generated progress.
     const assignmentReply = educator && teaching.assignmentReviewRequested
       ? teaching.assignmentSourceId
@@ -286,6 +280,31 @@ export const handleAiTutorChat = async (context: TypedContext) => {
         : 'There is no assignable worksheet in this conversation yet. Ask me to generate a worksheet first, then use Yes, assign below the generated questions. No assignment has been published by this message.'
       : undefined;
     systemPrompt += educator ? '\nYou cannot execute assignment or publication actions. Never say you will publish, are publishing, or show simulated progress such as [Publishing the assignment...]. Direct the educator to the actual inline assignment review. Dates and recipient details in chat are drafts, not saved assignment settings.' : '';
+
+    let cachedMaterial: any = null;
+    let requestFingerprint: string | undefined, contextFingerprint: string | undefined;
+    const materialKind = isWorksheetGeneration ? 'assignment' : isLessonPlanGeneration ? 'lesson_plan' : null;
+    if (env.AI_ASSIGNMENTS_ENABLED === 'true' && materialKind) {
+      const revisionSource = /\b(revise|rewrite|change|adapt|simplify|replace|update|make it|make that)\b/i.test(message) ? [...existingMessages].reverse().find(m => m.worksheetVariants?.length || m.lessonPlanConfig)?.content || '' : '';
+      requestFingerprint = await materialRequestFingerprint(message + revisionSource, worksheetConfig || lessonPlanConfig, lessonId || null);
+      contextFingerprint = await materialContextFingerprint(supabase, courseId);
+      // Revisions depend on the previous output; never match those using an isolated short request.
+      if (!/\b(revise|rewrite|change|adapt|simplify|replace|update|make it|make that)\b/i.test(message)) {
+        const saved = await supabase.from(materialKind === 'assignment' ? 'ai_assignments' : 'ai_lesson_plans')
+          .select('*').eq('course_id', courseId).eq('request_fingerprint', requestFingerprint).eq('context_fingerprint', contextFingerprint).maybeSingle();
+        if (saved.error) throw new Error('Saved material lookup unavailable');
+        cachedMaterial = saved.data;
+      }
+    }
+    // Check generation limit for teacher-learners
+    if (isTeacherLearner && isGenerationRequest && !cachedMaterial) {
+      const limitReached = await hasReachedLimit(supabase, learnerId);
+
+      if (limitReached) {
+        logger.warn('Blocked: teacher learner reached generation limit');
+        return apiError(403, 'FORBIDDEN', 'You have reached your 2-generation limit for worksheet and lesson plan generation.', request);
+      }
+    }
 
     logger.info('System prompt built', { promptLength: systemPrompt.length });
 
@@ -330,17 +349,17 @@ export const handleAiTutorChat = async (context: TypedContext) => {
         try {
           generationAbort.signal.throwIfAborted();
           // Check if two-pass prompting is enabled for lesson plans
-          const useTwoPass = isLessonPlanGeneration && lessonPlanConfig?.useTwoPass;
+          const useTwoPass = !cachedMaterial && isLessonPlanGeneration && lessonPlanConfig?.useTwoPass;
 
           if (assignmentReply) {
             fullResponse = assignmentReply;
             controller.enqueue(encoder.encode(`event: token\ndata: ${JSON.stringify({ content: fullResponse })}\n\n`));
           } else if (useTwoPass) {
             logger.info('Two-Pass Mode: Starting outline generation...');
-            
+
             // FIRST PASS: Generate outline (non-streaming, silent)
             const outlinePrompt = buildLessonPlanPrompt(lessonPlanConfig!, courseContext, true) + retrievedContext;
-            
+
             const outlineResponse = await fetch(endpoint, {
               method: 'POST',
               headers: {
@@ -383,14 +402,14 @@ export const handleAiTutorChat = async (context: TypedContext) => {
               return;
             }
             const outline = outlineData.choices?.[0]?.message?.content || '';
-            
+
             logger.info('Outline generated', { outlineLength: outline.length });
 
             // SECOND PASS: Generate full lesson plan using outline
             logger.info('Two-Pass Mode: Generating full lesson plan...');
-            
+
             const finalPrompt = buildLessonPlanPrompt(lessonPlanConfig!, courseContext, true, outline) + retrievedContext + '\nEducator request: ' + message;
-            
+
             const finalResponse = await fetch(endpoint, {
               method: 'POST',
               headers: {
@@ -468,11 +487,17 @@ export const handleAiTutorChat = async (context: TypedContext) => {
               generationAbort.signal.throwIfAborted();
               const levelMessages = level ? [
                 { role: 'system', content: buildSystemPrompt(courseContext, conversationPhase, userRole,
-                  { ...worksheetConfig!, difficulty: level, difficultyLevels: undefined }, undefined) + '\nActive facilitator: ' + teaching.facilitator + '. ' + PERSONAS[teaching.facilitator] },
+                  { ...worksheetConfig!, difficulty: level, difficultyLevels: undefined }, undefined) + retrievedContext + '\nActive facilitator: ' + teaching.facilitator + '. ' + PERSONAS[teaching.facilitator] },
                 ...recentMessages.map(item => ({ role: item.role, content: item.content })),
                 { role: 'user', content: `${message}\nFor this section generate exactly ${worksheetConfig!.questionCount} questions at ${labels[level]} difficulty only. Other selected levels are generated separately. Produce the actual questions now, not an outline or clarification request. Use the provided course context and general coverage when the educator has not specified a subtopic.\n${WORKSHEET_ASSIGNMENT_FORMAT}` },
               ] : aiMessages;
-              const response = await fetch(endpoint, {
+              const cachedText = cachedMaterial ? (materialKind === 'lesson_plan' ? cachedMaterial.content.markdown : (() => {
+                const difficulty = level ? ({ low: 'beginner', medium: 'intermediate', high: 'advanced' } as const)[level] : undefined;
+                const questions = cachedMaterial.content.questions.filter((q: any) => !difficulty || q.difficulty === difficulty);
+                const ids = new Set(questions.map((q: any) => q.id));
+                return savedAssignmentMarkdown({ questions }, cachedMaterial.grading_rules.filter((r: any) => ids.has(r.questionId)));
+              })()) : null;
+              const response = cachedText ? new Response(`data: ${JSON.stringify({ choices: [{ delta: { content: cachedText }, finish_reason: 'stop' }] })}\n\ndata: [DONE]\n\n`) : await fetch(endpoint, {
                 method: 'POST',
                 headers: {
                   'Authorization': `Bearer ${openRouterKey}`,
@@ -544,6 +569,8 @@ export const handleAiTutorChat = async (context: TypedContext) => {
           // Create assistant message
           const assistantMessageId = crypto.randomUUID();
           const assistantMessage: StoredMessage = {
+            ...(requestFingerprint ? { materialRequestFingerprint: requestFingerprint, materialContextFingerprint: contextFingerprint } : {}),
+            ...(cachedMaterial ? { materialChoice: { state: 'saved', kind: materialKind!, id: cachedMaterial.id } } : {}),
             ...(educator ? { facilitator: teaching.facilitator, facilitatorMode: teaching.mode, assignmentSourceId: teaching.assignmentSourceId } : {}),
             ...(isLessonPlanGeneration ? { lessonPlanConfig } : {}),
             ...(worksheetVariants.length ? { worksheetVariants, worksheetConfig } : {}),
@@ -649,7 +676,7 @@ export const handleAiTutorChat = async (context: TypedContext) => {
           }
 
           // Increment generation count for teacher-learners
-          if (isTeacherLearner && isGenerationRequest) {
+          if (isTeacherLearner && isGenerationRequest && !cachedMaterial) {
             try {
               generationUsage = await incrementGenerationCount(supabase, learnerId);
               logger.info('Generation count incremented', { used: generationUsage.used, remaining: generationUsage.remaining });
@@ -665,6 +692,7 @@ export const handleAiTutorChat = async (context: TypedContext) => {
             messageId: assistantMessage.id,
             ...(educator ? { facilitator: teaching.facilitator, facilitatorMode: teaching.mode, assignmentSourceId: teaching.assignmentSourceId } : {}),
             worksheetAvailable: worksheetVariants.length > 0,
+            materialAvailable: worksheetVariants.length > 0 || !!isLessonPlanGeneration,
             citations: assistantMessage.citations,
             generationUsage
           })}\n\n`));

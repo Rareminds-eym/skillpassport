@@ -63,6 +63,7 @@ bucket_name = "skill-echosystem"
 # ============================================================================
 
 [vars]
+AI_ASSIGNMENTS_ENABLED = "false"
 # Enable after the index migration and a successful local course:index import.
 COURSE_INDEX_ENABLED = "false"
 ENVIRONMENT = "production"
