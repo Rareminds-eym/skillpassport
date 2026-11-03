@@ -14,7 +14,7 @@ import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../li
 import { createLogger } from '../../../lib/logger';
 import { getServiceClient } from '../../../lib/supabase';
 import { apiSuccess, apiError } from '../../../lib/response';
-import { requireSelfServePlan, catalogPlanErrorResponse } from '../lib/salesPlan';
+import { requireSelfServePlan, assertPlanPurchaseScope, catalogPlanErrorResponse } from '../lib/salesPlan';
 
 const logger = createLogger('payments:create-org-order');
 
@@ -50,20 +50,8 @@ export async function handleCreateOrgOrder(context: AuthenticatedContext): Promi
 
     const supabase = getServiceClient(env as unknown as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string });
 
-    // Guard: Verify user is an admin or owner of the organization
-    const { data: membership } = await supabase
-      .from('license_assignments')
-      .select('id, role')
-      .eq('user_id', user.id)
-      .eq('organization_id', body.org_id as string)
-      .limit(1)
-      .maybeSingle();
-
-    if (!membership || (membership.role !== 'admin' && membership.role !== 'owner')) {
-      return apiError(403, 'FORBIDDEN', 'Not authorized for this organization', context.request);
-    }
-
     const catalogPlan = await requireSelfServePlan(supabase, body);
+    await assertPlanPurchaseScope(supabase, catalogPlan, user, body.org_id as string);
 
     // Call payment-worker via Service Binding RPC
     const worker = getPaymentWorker(env);

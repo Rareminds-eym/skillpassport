@@ -1,6 +1,6 @@
-import { checkFeatureAccess } from '@/features/subscription/lib/featureGating';
-import { useSubscriptionPlansData, useSubscriptionQuery } from '@/features/subscription/model';
-import { ReactNode, useEffect, useState } from 'react';
+import { ReactNode, useState } from 'react';
+import { useFeatureEntitlement } from '@/features/subscription/model/useFeatureEntitlement';
+import { useSubscriptionPlansData } from '@/features/subscription/model';
 import { UpgradePrompt } from './UpgradePrompt';
 
 interface PlanFeatureGateProps {
@@ -9,55 +9,25 @@ interface PlanFeatureGateProps {
   children: ReactNode;
 }
 
-const FALLBACK_PLANS = [
-  { name: 'Basic', price: 499, duration: 'yearly', recommended: false },
-  { name: 'Professional', price: 749, duration: 'yearly', recommended: true },
-  { name: 'Premium', price: 999, duration: 'yearly', recommended: false },
-];
-
 /**
- * PlanFeatureGate Component — UX-ONLY AFFORDANCE (NOT a security boundary).
+ * PlanFeatureGate Component — Dynamic Entitlement-Driven Gate (UX Affordance).
  *
- * Conditionally renders `children` versus an upgrade prompt based on the user's
- * subscription plan and feature access. This is a PRESENTATION control only: it
- * decides what to SHOW, not what the user is allowed to DO.
+ * Uses the database-driven Entitlement Engine (via `useFeatureEntitlement`)
+ * to determine whether to render children or the UpgradePrompt.
+ * 
+ * Zero hardcoded plan codes or fallback prices.
  *
- * It MUST NEVER be treated as a security boundary:
- *   - The `checkFeatureAccess` call below returns a UX hint; a client can bypass
- *     this component (devtools, edited bundle, direct request) and it must not
- *     grant access to gated data or operations.
- *   - The AUTHORITATIVE entitlement gate is the Cloudflare Function serving the
- *     request — `requireFeatureAccess(featureKey, handler)` → `entitlementCheck`
- *     (`functions/lib/auth.ts` / `functions/lib/entitlements.ts`), enforced
- *     server-side behind the verified JWT.
- *   - This component SHALL NOT be the sole gate for protected functionality
- *     (bug §9.2/§9.3, requirement E9.3).
- *
- * Prices are sourced from the API via useSubscriptionPlansData.
- * FALLBACK_PLANS are ONLY used while the API call is in-flight.
- *
- * KNOWN GAP: server-side `requireFeatureAccess` is implemented (task 24.1) but
- * its application to LIVE handlers is deferred (task 24.2); see the note in
- * `functions/lib/auth.ts`.
- *
- * @param feature - The feature key to check access for
+ * @param feature - The feature key to check access for (e.g. 'advanced_skill_filters', 'contact_unlocks')
  * @param fallback - Optional custom component to render when access is denied
  * @param children - Content to render when user has access
  */
 export function PlanFeatureGate({ feature, fallback, children }: PlanFeatureGateProps) {
-  const { subscriptionData, loading, error } = useSubscriptionQuery();
-  const { plans: apiPlans, loading: plansLoading, error: plansError } = useSubscriptionPlansData();
+  const { enabled, displayName, loading: entitlementLoading, error: entitlementError } = useFeatureEntitlement(feature);
+  const { plans: apiPlans, loading: plansLoading } = useSubscriptionPlansData();
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
 
-  // Warn if using hardcoded fallback (should never happen in normal operation)
-  useEffect(() => {
-    if (!plansLoading && plansError) {
-      console.warn('[PlanFeatureGate] Failed to fetch plans from API, using hardcoded fallback');
-    }
-  }, [plansLoading, plansError]);
-
   // Handle loading state
-  if (loading) {
+  if (entitlementLoading) {
     return (
       <div className="flex items-center justify-center p-8">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900"></div>
@@ -65,79 +35,52 @@ export function PlanFeatureGate({ feature, fallback, children }: PlanFeatureGate
     );
   }
 
-  // Handle error state by denying access
-  if (error) {
-    console.error('FeatureGate: Error fetching subscription data', error);
-
-    // If custom fallback provided, use it
-    if (fallback) {
-      return <>{fallback}</>;
-    }
-
-    // Otherwise show default error message
-    return (
-      <div className="flex items-center justify-center p-8">
-        <div className="text-center">
-          <p className="text-slate-600 mb-4">
-            Unable to verify access. Please refresh the page.
-          </p>
-          <button
-            onClick={() => window.location.reload()}
-            className="px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-900 transition-colors"
-          >
-            Refresh Page
-          </button>
-        </div>
-      </div>
-    );
+  // Handle error state by gracefully falling back
+  if (entitlementError) {
+    console.warn(`[PlanFeatureGate] Error checking entitlement for '${feature}':`, entitlementError);
   }
 
-  // Check feature access
-  const planCode = subscriptionData?.plan || 'freemium';
-  const accessResult = checkFeatureAccess(planCode, feature);
-
-  // User has access - render children
-  if (accessResult.hasAccess) {
+  // User has access - render children directly
+  if (enabled) {
     return <>{children}</>;
   }
 
-  // User doesn't have access - render fallback or default UpgradePrompt
+  // User doesn't have access - render custom fallback if provided
   if (fallback) {
     return <>{fallback}</>;
   }
 
-  // Use API-fetched plans if loaded, fall back to static while loading
-  const availablePlans = apiPlans && apiPlans.length > 0
-    ? apiPlans.map((p: Record<string, unknown>) => ({
-      name: p.name as string,
-      price: p.price as number,
-      duration: p.duration as string,
-      recommended: p.recommended as boolean,
-    }))
-    : FALLBACK_PLANS;
+  // Map API-fetched plans for upgrade prompt
+  const availablePlans = (apiPlans || []).map((p: Record<string, unknown>) => ({
+    name: (p.name as string) || 'Subscription Plan',
+    price: (p.price as number) || 0,
+    duration: (p.duration as string) || 'yearly',
+    recommended: (p.recommended as boolean) || false,
+  }));
 
   return (
     <>
       {showUpgradePrompt && (
         <UpgradePrompt
-          featureName={feature.replace(/_/g, ' ')}
+          featureName={displayName || feature.replace(/_/g, ' ')}
           availablePlans={availablePlans}
           onClose={() => setShowUpgradePrompt(false)}
         />
       )}
       <div className="flex items-center justify-center p-8">
         <div className="text-center">
-          <p className="text-slate-600 mb-4">
-            {accessResult.reason || 'This feature requires a paid plan'}
+          <p className="text-slate-600 mb-4 font-medium">
+            Access to {displayName || feature.replace(/_/g, ' ')} requires an active plan with this entitlement.
           </p>
           <button
             onClick={() => setShowUpgradePrompt(true)}
-            className="px-6 py-3 bg-gradient-to-r from-slate-800 to-slate-900 text-white rounded-xl font-semibold hover:from-slate-900 hover:to-black transition-all shadow-lg"
+            className="px-6 py-3 bg-gradient-to-r from-slate-800 to-slate-900 text-white rounded-xl font-semibold hover:from-slate-900 hover:to-black transition-all shadow-lg hover:shadow-xl hover:scale-105"
           >
-            View Plans
+            {plansLoading ? 'Loading Plans...' : 'View Upgrade Options'}
           </button>
         </div>
       </div>
     </>
   );
 }
+export default PlanFeatureGate;

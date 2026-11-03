@@ -17,6 +17,7 @@ const DigitalProfileSettings = lazy(() => import('@/pages/digital-pp/settings/Pr
 const DigitalSharingSettings = lazy(() => import('@/pages/digital-pp/settings/SharingSettings'));
 const DigitalThemeSettings = lazy(() => import('@/pages/digital-pp/settings/ThemeSettings'));
 
+const CertificateVerify = lazy(() => import("@/pages/verify/CertificateVerify"));
 const Home = lazy(() => import("@/pages/homepage/Home"));
 const About = lazy(() => import("@/pages/AboutPage"));
 const Contact = lazy(() => import("@/pages/homepage/Contact"));
@@ -124,7 +125,9 @@ const OrganizationSetupPage = lazy(() =>
   import("@/pages/onboarding/OrganizationSetupPage")
 );
 
+const SharedShortlist = lazy(() => import('@/pages/recruiter/SharedShortlist'));
 export const publicRoutes = [
+ <Route key="shared-shortlist" path="/shared/shortlist" element={<SharedShortlist />} />,
   // Organization Setup (for admins without organization)
   <Route key="organization-setup" path="/organization-setup" element={<OrganizationSetupPage />} />,
 
@@ -167,6 +170,7 @@ export const publicRoutes = [
     <Route path="/signup/company" element={<GuestOnlyRoute><CompanySignup /></GuestOnlyRoute>} />
     <Route path="/forgot-password" element={<GuestOnlyRoute><UnifiedForgotPassword /></GuestOnlyRoute>} />
     <Route path="/reset-password" element={<TokenPasswordReset />} />
+    <Route path="/verify/:credentialId" element={<CertificateVerify />} />
     <Route path="/verify-email" element={<VerifyEmail />} />
     <Route path="/invite/accept" element={<AcceptInvite />} />
     <Route path="/invitation-error" element={<InvitationError />} />

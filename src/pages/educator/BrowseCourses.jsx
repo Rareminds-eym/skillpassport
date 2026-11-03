@@ -1,3 +1,5 @@
+import {useAssignedTeaching} from '@/features/external-teaching/model/teachingContext';
+import {teaching} from '@/features/external-teaching/api/teachingApi';
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle } from '@/shared/ui';
@@ -20,6 +22,7 @@ import { getLogger } from '@/shared/config/logging';
 const logger = getLogger('BrowseCourses');
 
 const BrowseCourses = () => {
+  const assignedTeaching=useAssignedTeaching();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [courses, setCourses] = useState([]);
@@ -52,6 +55,7 @@ const BrowseCourses = () => {
     try {
       setLoading(true);
 
+      if(assignedTeaching){setCourses((await teaching('courses')).map(course=>({...course,description:course.description||'',code:course.code||'',status:'Active'})));return;}
       // Fetch courses with status Active or Upcoming (learners shouldn't see Drafts)
       const coursesResult = await apiPost('/educator/actions', {
         action: 'list-courses',
@@ -209,7 +213,8 @@ const BrowseCourses = () => {
   };
 
   // Handle course card click - show detail modal
-  const handleCourseClick = (course) => {
+  const handleCourseClick = async (course) => {
+    if(assignedTeaching){try{course={...course,modules:await teaching('course_content',{courseId:course.course_id})};}catch(error){logger.error('Assigned course content unavailable',error);return;}}
     setSelectedCourse(course);
     setShowDetailModal(true);
   };
@@ -224,6 +229,7 @@ const BrowseCourses = () => {
     <>
       {/* Course Detail Modal */}
       <CourseDetailModal
+        readOnly={!!assignedTeaching}
         course={selectedCourse}
         isOpen={showDetailModal}
         onClose={() => setShowDetailModal(false)}

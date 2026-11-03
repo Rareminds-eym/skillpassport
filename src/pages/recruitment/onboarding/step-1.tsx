@@ -157,9 +157,9 @@ export default function OnboardingStep1() {
                     </label>
                     <div className="relative">
                         <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                            <Building2 className="h-5 w-5 text-slate-400" />
+                            <Building2 className="h-5 w-5 text-slate-600" />
                         </div>
-                        <input
+                        <input aria-label="Company Name"
                             type="text"
                             value={formData.companyName}
                             onChange={(e) => handleChange('companyName', e.target.value)}
@@ -178,7 +178,7 @@ export default function OnboardingStep1() {
                     <label className="block text-sm font-semibold text-slate-700 mb-2">
                         Industry <span className="text-red-500">*</span>
                     </label>
-                    <select
+                    <select aria-label="Industry *"
                         value={formData.industry}
                         onChange={(e) => handleChange('industry', e.target.value)}
                         className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all ${errors.industry ? 'border-red-300 bg-red-50' : 'border-slate-300'
@@ -201,7 +201,7 @@ export default function OnboardingStep1() {
                     <label className="block text-sm font-semibold text-slate-700 mb-2">
                         Company Size <span className="text-red-500">*</span>
                     </label>
-                    <select
+                    <select aria-label="Company Size *"
                         value={formData.companySize}
                         onChange={(e) => handleChange('companySize', e.target.value)}
                         className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all ${errors.companySize ? 'border-red-300 bg-red-50' : 'border-slate-300'
@@ -226,9 +226,9 @@ export default function OnboardingStep1() {
                     </label>
                     <div className="relative">
                         <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                            <MapPin className="h-5 w-5 text-slate-400" />
+                            <MapPin className="h-5 w-5 text-slate-600" />
                         </div>
-                        <input
+                        <input aria-label="Address"
                             type="text"
                             value={formData.address}
                             onChange={(e) => handleChange('address', e.target.value)}
@@ -249,9 +249,9 @@ export default function OnboardingStep1() {
                     </label>
                     <div className="relative">
                         <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                            <Phone className="h-5 w-5 text-slate-400" />
+                            <Phone className="h-5 w-5 text-slate-600" />
                         </div>
-                        <input
+                        <input aria-label="Phone"
                             type="tel"
                             value={formData.phone}
                             onChange={(e) => handleChange('phone', e.target.value)}
@@ -268,13 +268,13 @@ export default function OnboardingStep1() {
                 {/* Website (Optional) */}
                 <div>
                     <label className="block text-sm font-semibold text-slate-700 mb-2">
-                        Website <span className="text-slate-400 text-xs">(Optional)</span>
+                        Website <span className="text-slate-600 text-xs">(Optional)</span>
                     </label>
                     <div className="relative">
                         <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                            <Globe className="h-5 w-5 text-slate-400" />
+                            <Globe className="h-5 w-5 text-slate-600" />
                         </div>
-                        <input
+                        <input aria-label="Website"
                             type="url"
                             value={formData.website}
                             onChange={(e) => handleChange('website', e.target.value)}
@@ -286,7 +286,7 @@ export default function OnboardingStep1() {
 
                 {/* Actions */}
                 <div className="flex gap-4 pt-4">
-                    <button
+                    <button aria-label="Action"
                         type="submit"
                         disabled={loading}
                         className="flex-1 py-4 px-6 rounded-xl font-semibold bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"

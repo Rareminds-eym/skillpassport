@@ -13,7 +13,7 @@
  * Works with your actual learners table structure (profile JSONB column)
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import {
   getlearnerByEmail,
   updateCertificatesByEmail,
@@ -30,12 +30,35 @@ import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('learner-data-by-email');
 
-export const useLearnerDataByEmail = (email, fallbackToMock = true) => {
-  const [learnerData, setlearnerData] = useState(null);
+export const useLearnerDataByEmail = (email?: string, _fallbackToMock = true) => {
+  const [profileState, setProfileState] = useState<{email: string | undefined; data: any}>({ email, data: null });
+  const learnerData = profileState.email === email ? profileState.data : null;
+  const identity = useRef(email);
+  identity.current = email;
+  const sequence = useRef(0);
+  const revision = useRef(0);
+  const setlearnerData = (data: any, _notify = true) => {
+    if (identity.current !== email) return;
+    const value = data ? { ...data, recommendation_revision: ++revision.current } : null;
+    setProfileState({ email, data: value });
+  };
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const acceptSavedResult = (result: { data?: any; refreshError?: string }) => {
+    if (identity.current === email) {
+      // Keep the last complete profile if only the post-save read failed.
+      if (result.data && !result.refreshError) setlearnerData(result.data);
+      setError(result.refreshError ? `Changes were saved, but the profile could not be refreshed. ${result.refreshError}` : null);
+    }
+    return { success: true, ...(result.refreshError ? { refreshError: result.refreshError } : {}) };
+  };
 
   useEffect(() => {
+    const ticket = ++sequence.current;
+    const current = () => ticket === sequence.current && identity.current === email;
+    setlearnerData(null, false);
+    setError(null);
     const fetchData = async () => {
       if (!email) {
         setLoading(false);
@@ -48,33 +71,36 @@ export const useLearnerDataByEmail = (email, fallbackToMock = true) => {
 
 
         const result = await getlearnerByEmail(email);
+        if (!current()) return;
 
         if (result.success && result.data) {
-          setlearnerData(result.data);
+          setlearnerData(result.data, false);
           setError(null);
         } else {
           // Check if it's an RLS error
-          const errorMsg = typeof result.error === 'string' ? result.error : (result.error?.message || 'Learner not found');
+          const errorMsg = result.error || 'Learner not found';
           const lowerError = errorMsg.toLowerCase();
           if (lowerError.includes('row-level security') ||
             lowerError.includes('rls') ||
             lowerError.includes('permission denied')) {
-            setError('Database access blocked. Please disable RLS in Supabase.');
+            setError('Profile access could not be verified. Please contact support.');
           } else {
             setError(errorMsg);
           }
           setlearnerData(null); // No fallback to mock data
         }
-      } catch (err) {
+      } catch (err: any) {
+        if (!current()) return;
         logger.error('Error fetching learner data', err instanceof Error ? err : new Error(String(err)), { email });
         setError(err.message);
         setlearnerData(null);
       } finally {
-        setLoading(false);
+        if (current()) setLoading(false);
       }
     };
 
     fetchData();
+    return () => { sequence.current++; };
   }, [email]);
 
   const refresh = async () => {
@@ -82,171 +108,173 @@ export const useLearnerDataByEmail = (email, fallbackToMock = true) => {
       return;
     }
 
+    const ticket = ++sequence.current;
     setLoading(true);
+    try {
     const result = await getlearnerByEmail(email);
+    if (ticket !== sequence.current || identity.current !== email) return;
 
     if (result.success) {
-      setlearnerData(result.data);
+      setlearnerData(result.data, false);
       setError(null);
     } else {
       logger.error('Error loading data', new Error(result.error || 'Unknown error'), { email });
       setError(result.error);
     }
 
-    setLoading(false);
+    } catch {
+      if (ticket === sequence.current && identity.current === email) setError('Unable to refresh learner profile');
+    } finally {
+      if (ticket === sequence.current && identity.current === email) setLoading(false);
+    }
   };
 
   // Update functions that work with JSONB profile
-  const updateProfile = async (updates) => {
+  const updateProfile = async (updates: any) => {
+    if (!email) return {success:false,error:'Learner email is required'};
     try {
       const result = await updatelearnerByEmail(email, updates);
       if (result.success) {
-        setlearnerData(result.data);
-        // Embedding regeneration handled by database trigger
-        return { success: true };
+        return acceptSavedResult(result);
       } else {
-        throw new Error(result.error);
+        throw new Error(result.error || 'Profile update failed');
       }
-    } catch (err) {
+    } catch (err: any) {
       logger.error('Error updating profile', err instanceof Error ? err : new Error(String(err)), { email });
       return { success: false, error: err.message };
     }
   };
 
-  const updateEducation = async (educationData) => {
+  const updateEducation = async (educationData: any) => {
+    if (!email) return {success:false,error:'Learner email is required'};
     try {
       const result = await updateEducationByEmail(email, educationData);
       if (result.success) {
-        setlearnerData(result.data);
-        // Embedding regeneration handled by database trigger
-        return { success: true };
+        return acceptSavedResult(result);
       } else {
-        throw new Error(result.error);
+        throw new Error(result.error || 'Education update failed');
       }
-    } catch (err) {
+    } catch (err: any) {
       logger.error('Error updating education', err instanceof Error ? err : new Error(String(err)), { email });
       return { success: false, error: err.message };
     }
   };
 
-  const updateTraining = async (trainingData) => {
+  const updateTraining = async (trainingData: any) => {
+    if (!email) return {success:false,error:'Learner email is required'};
     try {
       const result = await updateTrainingByEmail(email, trainingData);
 
       if (result.success) {
-        setlearnerData(result.data);
-        // Embedding regeneration handled by database trigger
-        return { success: true };
+        return acceptSavedResult(result);
       } else {
-        throw new Error(result.error);
+        throw new Error(result.error || 'Training update failed');
       }
-    } catch (err) {
+    } catch (err: any) {
       logger.error('Error updating training', err instanceof Error ? err : new Error(String(err)), { email });
       return { success: false, error: err.message };
     }
   };
 
-  const updateSingleTraining = async (trainingId, updateData) => {
+  const updateSingleTraining = async (trainingId: any, updateData: any) => {
+    if (!email) return {success:false,error:'Learner email is required'};
     try {
       const result = await updateSingleTrainingById(trainingId, updateData);
 
       if (result.success) {
         // Refresh the entire learner data to get updated training list
-        const refreshResult = await getlearnerByEmail(email);
-        if (refreshResult.success) {
-          setlearnerData(refreshResult.data);
-          // Embedding regeneration handled by database trigger
+        try {
+          const refreshResult = await getlearnerByEmail(email);
+          return acceptSavedResult(refreshResult.success ? refreshResult : {
+            refreshError: refreshResult.error || 'Unable to refresh the saved learner profile',
+          });
+        } catch {
+          return acceptSavedResult({ refreshError: 'Unable to refresh the saved learner profile' });
         }
-        return { success: true };
       } else {
-        throw new Error(result.error);
+        throw new Error(result.error || 'Training update failed');
       }
-    } catch (err) {
+    } catch (err: any) {
       logger.error('Error updating single training', err instanceof Error ? err : new Error(String(err)), { email });
       return { success: false, error: err.message };
     }
   };
 
-  const updateExperience = async (experienceData) => {
+  const updateExperience = async (experienceData: any) => {
+    if (!email) return {success:false,error:'Learner email is required'};
     try {
       const result = await updateExperienceByEmail(email, experienceData);
       if (result.success) {
-        setlearnerData(result.data);
-        // Embedding regeneration handled by database trigger
-        return { success: true };
+        return acceptSavedResult(result);
       } else {
-        throw new Error(result.error);
+        throw new Error(result.error || 'Experience update failed');
       }
-    } catch (err) {
+    } catch (err: any) {
       logger.error('Error updating experience', err instanceof Error ? err : new Error(String(err)), { email });
       return { success: false, error: err.message };
     }
   };
 
-  const updateTechnicalSkills = async (skillsData) => {
+  const updateTechnicalSkills = async (skillsData: any) => {
+    if (!email) return {success:false,error:'Learner email is required'};
     try {
       const result = await updateTechnicalSkillsByEmail(email, skillsData);
       if (result.success) {
-        setlearnerData(result.data);
-        // Embedding regeneration handled by database trigger
-        return { success: true };
+        return acceptSavedResult(result);
       } else {
-        throw new Error(result.error);
+        throw new Error(result.error || 'Skills update failed');
       }
-    } catch (err) {
+    } catch (err: any) {
       logger.error('Error updating technical skills', err instanceof Error ? err : new Error(String(err)), { email });
       return { success: false, error: err.message };
     }
   };
 
-  const updateSoftSkills = async (skillsData) => {
+  const updateSoftSkills = async (skillsData: any) => {
+    if (!email) return {success:false,error:'Learner email is required'};
     try {
       const result = await updateSoftSkillsByEmail(email, skillsData);
       if (result.success) {
-        setlearnerData(result.data);
-        // Embedding regeneration handled by database trigger
-        return { success: true };
+        return acceptSavedResult(result);
       } else {
-        throw new Error(result.error);
+        throw new Error(result.error || 'Skills update failed');
       }
-    } catch (err) {
+    } catch (err: any) {
       logger.error('Error updating soft skills', err instanceof Error ? err : new Error(String(err)), { email });
       return { success: false, error: err.message };
     }
   };
 
-  const updateSkills = async (skillsData) => {
+  const updateSkills = async (skillsData: any) => {
+    if (!email) return {success:false,error:'Learner email is required'};
     try {
       // Since updateSkillsByEmail doesn't exist, we'll use the technical skills function
       const result = await updateTechnicalSkillsByEmail(email, skillsData);
       if (result.success) {
-        setlearnerData(result.data);
-        // Embedding regeneration handled by database trigger
-        return { success: true };
+        return acceptSavedResult(result);
       } else {
-        throw new Error(result.error);
+        throw new Error(result.error || 'Skills update failed');
       }
-    } catch (err) {
+    } catch (err: any) {
       logger.error('Error updating skills', err instanceof Error ? err : new Error(String(err)), { email });
       return { success: false, error: err.message };
     }
   };
 
-  const updateProjects = async (projectsData) => {
+  const updateProjects = async (projectsData: any) => {
+    if (!email) return {success:false,error:'Learner email is required'};
     const result = await updateProjectsByEmail(email, projectsData);
     if (result.success) {
-      // Refresh data after successful update
-      await refresh();
-      // Embedding regeneration handled by database trigger
+      acceptSavedResult(result);
     }
     return result;
   };
 
-  const updateCertificates = async (certificatesData) => {
+  const updateCertificates = async (certificatesData: any) => {
+    if (!email) return {success:false,error:'Learner email is required'};
     const result = await updateCertificatesByEmail(email, certificatesData);
     if (result.success) {
-      setlearnerData(result.data);
-      // Embedding regeneration handled by database trigger
+      acceptSavedResult(result);
     }
     return result;
   };

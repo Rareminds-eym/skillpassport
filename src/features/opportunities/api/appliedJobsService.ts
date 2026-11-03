@@ -1,6 +1,7 @@
 import { createlearnerNotification } from '@/features/notifications';
 import { getLogger } from '@/shared/config/logging';
 import { apiPost } from '@/shared/api/apiClient';
+import { recommendationSourceSaved } from '@/shared/model/recommendations/sourceSaved';
 
 const logger = getLogger('appliedJobsService');
 
@@ -18,6 +19,7 @@ export class AppliedJobsService {
     try {
       // Check if opportunity has available openings
       const response: any = await apiPost('/opportunities', { action: 'apply-to-job', learner_id: learnerId, opportunity_id: opportunityId });
+      if (response.data?.success === true) recommendationSourceSaved(learnerId);
       return response.data;
     } catch (error) {
       return {

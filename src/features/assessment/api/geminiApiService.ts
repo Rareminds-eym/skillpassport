@@ -239,7 +239,8 @@ export const analyzeAssessmentWithOpenRouter = async (
       rawGrade: gradeLevel || 'Learner',
       programName: null,
       programCode: null,
-      degreeLevel: null
+      degreeLevel: null,
+      specialization: null
     };
   }
 

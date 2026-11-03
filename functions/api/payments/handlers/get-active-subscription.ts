@@ -1,340 +1,38 @@
-/**
- * Get Active Subscription Handler
- *
- * GET /api/payments/get-active-subscription
- *
- * Queries subscription_cache (shadow table) for the user's active subscription.
- * Also checks license_assignments for org license holders.
- * Falls back to auth DB via SSO worker if cache is stale.
- *
- * Requires SSO authentication.
- */
-
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import { apiSuccess, apiError, apiDbError } from '../../../lib/response';
 import { getContextUser } from '../../../lib/auth';
-import { isHealEnabled } from '../../../lib/healConfig';
-import { createLogger } from '../../../lib/logger';
-import { withResilience } from '../../../lib/resilience';
+import { apiSuccess, apiError } from '../../../lib/response';
 import { getServiceClient } from '../../../lib/supabase';
+import { isHealEnabled } from '../../../lib/healConfig';
+import { withResilience } from '../../../lib/resilience';
+import { ssoSyncSubscription, type SsoEnv } from '../../../lib/sso-client';
 import { syncSubscriptionCache, syncUserShadow } from '../../../lib/sync-shadow';
+import { resolveUserEntitlement, subscriptionScope } from '../../../shared/lib/org-subscription';
 
-const logger = createLogger('get-active-subscription');
-
+/** Existing subscription gateway: validate every source with the same catalogue policy. */
 export async function handleGetActiveSubscription(context: AuthenticatedContext): Promise<Response> {
-  const startTime = Date.now();
   const user = getContextUser(context);
-  const env = context.env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string };
-
   try {
-    const supabase = getServiceClient(env);
-    const userId = user.id;
-
-    // =========================================================================
-    // STEP 1: Check for organization license assignment FIRST
-    // =========================================================================
-    const { data: licenseAssignment, error: licenseError } = await supabase
-      .from('license_assignments')
-      .select(`
-        id,
-        status,
-        expires_at,
-        assigned_at,
-        organization_subscription_id
-      `)
-      .eq('user_id', userId)
-      .eq('status', 'active')
-      .maybeSingle();
-
-    if (!licenseError && licenseAssignment && licenseAssignment.organization_subscription_id) {
-      // Look up the org subscription from subscription_cache
-      const { data: orgCache } = await supabase
-        .from('subscription_cache')
-        .select('*')
-        .eq('id', licenseAssignment.organization_subscription_id)
-        .maybeSingle();
-
-      if (orgCache && orgCache.status === 'active') {
-        const orgEndDate = new Date(orgCache.subscription_end_date);
-
-        if (orgEndDate > new Date()) {
-          const licenseExpiry = licenseAssignment.expires_at ? new Date(licenseAssignment.expires_at) : null;
-          const effectiveEndDate = licenseExpiry && licenseExpiry < orgEndDate ? licenseExpiry : orgEndDate;
-
-          if (effectiveEndDate > new Date()) {
-            const orgSubscriptionData = {
-              id: orgCache.id,
-              user_id: userId,
-              plan_id: orgCache.plan_id,
-              plan_type: orgCache.plan_name || orgCache.plan_type || 'Organization Plan',
-              plan_code: orgCache.plan_code,
-              status: 'active',
-              subscription_start_date: orgCache.subscription_start_date,
-              subscription_end_date: effectiveEndDate.toISOString(),
-              auto_renew: false,
-              features: orgCache.features || [],
-              is_organization_license: true,
-              organization_id: orgCache.organization_id,
-              organization_type: orgCache.organization_type,
-              license_assignment_id: licenseAssignment.id,
-              subscription_plans: {
-                id: orgCache.plan_id,
-                name: orgCache.plan_name || orgCache.plan_type,
-                plan_code: orgCache.plan_code,
-              },
-            };
-
-            return apiSuccess(orgSubscriptionData, context.request, { startTime });
-          }
-        }
+    const scope = subscriptionScope(user, new URL(context.request.url).searchParams.get('scope'));
+    const identity = { roles: user.roles, org_id: user.org_id, scope };
+    const supabase = getServiceClient(context.env as Parameters<typeof getServiceClient>[0]);
+    let subscription = await resolveUserEntitlement(supabase, user.id, identity);
+    if (!subscription && await isHealEnabled(context.env as Record<string, unknown>, 'subscription-cache-heal')) {
+      const synced = await withResilience('heal:syncSubscription',
+        () => ssoSyncSubscription(context.env as unknown as SsoEnv, user.id),
+        { env: context.env as Record<string, unknown> });
+      if (synced.subscription) {
+        await syncUserShadow(supabase, user.id, user.email);
+        await syncSubscriptionCache(supabase, synced.subscription, synced.plan);
+        // Never return an unvalidated RPC payload or manufacture access on sync failure.
+        subscription = await resolveUserEntitlement(supabase, user.id, identity);
       }
     }
-
-    // =========================================================================
-    // STEP 1.5: Check for revoked license assignments
-    // =========================================================================
-    const { data: revokedLicense } = await supabase
-      .from('license_assignments')
-      .select('id, status, revoked_at, organization_subscription_id')
-      .eq('user_id', userId)
-      .eq('status', 'revoked')
-      .order('revoked_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    // =========================================================================
-    // STEP 1.7: Check for recruitment org membership (invited recruiters)
-    // =========================================================================
-    const { data: orgMembership, error: orgMembershipError } = await supabase
-      .from('organization_members')
-      .select('organization_id, role, status')
-      .eq('user_id', userId)
-      .eq('status', 'active')
-      .maybeSingle();
-
-    // Handle database errors (not "no record found")
-    if (orgMembershipError) {
-      logger.error('STEP 1.7 organization_members query failed', {
-        userId,
-        error: orgMembershipError.message,
-        code: orgMembershipError.code,
-      });
-      // Return error response for unexpected DB failures
-      return apiError('Database error checking organization membership', context.request, { startTime });
-    }
-
-    logger.debug('STEP 1.7 organization_members result', {
-      userId,
-      found: !!orgMembership,
-      orgId: orgMembership?.organization_id,
-      orgRole: orgMembership?.role,
-    });
-
-    if (orgMembership?.organization_id) {
-      const { data: orgSub, error: orgSubError } = await supabase
-        .from('subscription_cache')
-        .select('*')
-        .eq('organization_id', orgMembership.organization_id)
-        .eq('status', 'active')
-        .order('updated_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      // Handle database errors (not "no record found")
-      if (orgSubError) {
-        logger.error('STEP 1.7 subscription_cache query by organization_id failed', {
-          userId,
-          orgId: orgMembership.organization_id,
-          error: orgSubError.message,
-          code: orgSubError.code,
-        });
-        // Return error response for unexpected DB failures
-        return apiError('Database error checking organization subscription', context.request, { startTime });
-      }
-
-      logger.debug('STEP 1.7 org subscription_cache by organization_id', {
-        userId,
-        orgId: orgMembership.organization_id,
-        orgSubFound: !!orgSub,
-        orgSubStatus: orgSub?.status,
-        orgSubEndDate: orgSub?.subscription_end_date,
-        orgSubPlanCode: orgSub?.plan_code,
-        orgSubOrgId: orgSub?.organization_id,
-        isExpired: orgSub && orgSub.subscription_end_date ? new Date(orgSub.subscription_end_date) <= new Date() : null,
-      });
-
-      if (orgSub && orgSub.subscription_end_date && new Date(orgSub.subscription_end_date) > new Date()) {
-        logger.debug('STEP 1.7 GRANTING ACCESS via org membership', {
-          userId,
-          orgId: orgMembership.organization_id,
-          planCode: orgSub.plan_code,
-        });
-
-        return apiSuccess({
-          id: orgSub.id,
-          user_id: userId,
-          plan_id: orgSub.plan_id,
-          plan_type: orgSub.plan_name || orgSub.plan_type || 'Organization Plan',
-          plan_code: orgSub.plan_code,
-          status: 'active',
-          subscription_start_date: orgSub.subscription_start_date,
-          subscription_end_date: orgSub.subscription_end_date,
-          auto_renew: false,
-          features: orgSub.features || [],
-          is_organization_license: true,
-          organization_id: orgSub.organization_id,
-          organization_type: orgSub.organization_type,
-          license_assignment_id: null,
-          subscription_plans: {
-            id: orgSub.plan_id,
-            name: orgSub.plan_name || orgSub.plan_type,
-            plan_code: orgSub.plan_code,
-          },
-        }, context.request, { startTime });
-      }
-
-      logger.debug('STEP 1.7 org membership found but no active org subscription', {
-        userId,
-        orgId: orgMembership.organization_id,
-      });
-    }
-
-    // =========================================================================
-    // STEP 2: Check for individual subscription via subscription_cache
-    // =========================================================================
-    const { data, error } = await supabase
-      .from('subscription_cache')
-      .select('*')
-      .eq('user_id', userId)
-      .in('status', ['active', 'paused', 'cancelled', 'grace_period'])
-      .order('updated_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (error) {
-      return apiDbError(error, context.request, { startTime });
-    }
-
-    if (!data) {
-      if (revokedLicense) {
-        // Look up the revoked org subscription from cache for plan details
-        let planName = 'Organization License';
-        let planCode: string | undefined;
-        if (revokedLicense.organization_subscription_id) {
-          const { data: revokedCache } = await supabase
-            .from('subscription_cache')
-            .select('plan_name, plan_code')
-            .eq('id', revokedLicense.organization_subscription_id)
-            .maybeSingle();
-          if (revokedCache) {
-            planName = revokedCache.plan_name || planName;
-            planCode = revokedCache.plan_code;
-          }
-        }
-
-        return apiSuccess({
-          id: revokedLicense.id,
-          user_id: userId,
-          status: 'expired',
-          plan_type: planName,
-          plan_code: planCode,
-          is_organization_license: true,
-          was_revoked: true,
-          revoked_at: revokedLicense.revoked_at,
-        }, context.request, { startTime });
-      }
-
-      // Get most recent subscription_cache entry for display purposes
-      const { data: recentSub } = await supabase
-        .from('subscription_cache')
-        .select('*')
-        .eq('user_id', userId)
-        .order('updated_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (recentSub) {
-        // Shape it like the old format for backward compatibility
-        return apiSuccess({
-          ...recentSub,
-          subscription_plans: {
-            id: recentSub.plan_id,
-            name: recentSub.plan_name || recentSub.plan_type,
-            plan_code: recentSub.plan_code,
-          },
-        }, context.request, { startTime });
-      }
-
-      // Self-healing fallback: cache miss → check SSO source-of-truth via service binding
-      // Gated by subscription-cache-heal flag (Flagship or env HEAL_MODE). Now wrapped with
-      // withResilience (breaker 5/30s) to avoid storm. Fail-soft: on SSO failure return null.
-      if (!await isHealEnabled(context.env as Record<string, unknown>, 'subscription-cache-heal')) {
-        logger.info('heal_metric', { metric: 'heal_cache_miss_total', status: 'heal_disabled', flag: 'subscription-cache-heal', userId } as any);
-      } else {
-      try {
-        const ssoRaw = (context.env as Record<string, unknown>).SSO_SERVICE;
-        if (ssoRaw && typeof ssoRaw === 'object') {
-          const sso = ssoRaw as {
-            syncSubscription?: (userId: string) => Promise<{ subscription: Record<string, unknown> | null; plan: Record<string, unknown> | null }>;
-            getUserSubscription?: (userId: string) => Promise<{ subscription: Record<string, unknown> | null; plan: Record<string, unknown> | null }>;
-          };
-          const fetcher = sso.syncSubscription ?? sso.getUserSubscription;
-          if (fetcher) {
-            const { subscription, plan } = await withResilience('heal:syncSubscription', () => fetcher.call(sso, userId), { env: context.env as Record<string, unknown> });
-            if (subscription) {
-              // Ensure FK users_shadow exists before cache upsert
-              await syncUserShadow(supabase, userId, (subscription as { email?: string }).email || user.email);
-              await syncSubscriptionCache(supabase, subscription as Record<string, unknown>, plan as Record<string, unknown> | null);
-              // Re-read the just-synced cache row to return canonical shape
-              const { data: synced } = await supabase
-                .from('subscription_cache')
-                .select('*')
-                .eq('user_id', userId)
-                .in('status', ['active', 'paused', 'cancelled', 'grace_period'])
-                .order('updated_at', { ascending: false })
-                .limit(1)
-                .maybeSingle();
-              if (synced) {
-                return apiSuccess({
-                  ...synced,
-                  subscription_plans: {
-                    id: synced.plan_id,
-                    name: synced.plan_name || synced.plan_type,
-                    plan_code: synced.plan_code,
-                  },
-                }, context.request, { startTime });
-              }
-              // Fallback: return SSO data directly if re-read fails
-              return apiSuccess({
-                ...(subscription as Record<string, unknown>),
-                subscription_plans: plan
-                  ? { id: (plan as { id?: string }).id, name: (plan as { name?: string }).name, plan_code: (plan as { plan_code?: string }).plan_code }
-                  : undefined,
-              }, context.request, { startTime });
-            }
-          }
-        }
-      } catch (e) {
-        logger.warn('SSO fallback failed (fail-soft, returning null)', { error: e instanceof Error ? e.message : String(e), userId });
-        logger.info('heal_metric', { metric: 'heal_cache_miss_total', status: 'fallback_null', userId } as any);
-      }
-      } // end flag enabled
-
-      return apiSuccess(null, context.request, { startTime });
-    }
-
-    // Shape response to match old format (backward compatible with formatSubscriptionData)
-    return apiSuccess({
-      ...data,
-      subscription_plans: {
-        id: data.plan_id,
-        name: data.plan_name || data.plan_type,
-        plan_code: data.plan_code,
-      },
-    }, context.request, { startTime });
+    return apiSuccess(subscription, context.request);
   } catch (error) {
-    logger.error('GetActiveSubscription error', { error: (error as Error).message, userId: (error as any)?.userId, stack: (error as Error).stack });
-    return apiError(500, 'INTERNAL_ERROR', 'An internal error occurred', context.request, { startTime });
+    if (error instanceof Error && error.message === 'SUBSCRIPTION_SCOPE_FORBIDDEN') {
+      return apiError(403, 'FORBIDDEN', 'The requested dashboard is not available for your role.', context.request);
+    }
+    console.error('[subscription-gateway] Verification failed:', error);
+    return apiError(503, 'SUBSCRIPTION_UNAVAILABLE', 'Unable to verify your subscription. Please retry.', context.request);
   }
 }
-

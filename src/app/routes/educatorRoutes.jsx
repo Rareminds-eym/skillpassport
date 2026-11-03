@@ -2,8 +2,12 @@ import { lazy } from "react";
 import { Navigate, Route } from "react-router-dom";
 import SubscriptionProtectedRoute from "@/features/subscription/ui/shared/SubscriptionProtectedRoute";
 import EducatorLayout from "../layouts/EducatorLayout";
+import ExternalEducatorGate from '@/features/external-teaching/ui/ExternalEducatorGate';
 
 const EDUCATOR_ROLES = ["educator", "school_educator", "college_educator"];
+
+const ArtifactReviews = lazy(() => import("@/features/artifact-review").then(module => ({ default: module.ReviewWorkspace })));
+const LearningEvidence = lazy(() => import('@/pages/learner/LearningEvidence'));
 
 const EducatorDashboard = lazy(() => import("@/pages/educator/Dashboard"));
 const EducatorLearners = lazy(() => import("@/pages/educator/LearnersPage"));
@@ -58,6 +62,7 @@ export const educatorRoutes = (
     key="educator-routes"
     path="/educator/*"
     element={
+      <ExternalEducatorGate>
       <SubscriptionProtectedRoute
         allowedRoles={EDUCATOR_ROLES}
         requireSubscription={true}
@@ -65,9 +70,14 @@ export const educatorRoutes = (
       >
         <EducatorLayout />
       </SubscriptionProtectedRoute>
+      </ExternalEducatorGate>
     }
   >
+    <Route path="reviews" element={<ArtifactReviews />} />
+    <Route path="learning-equivalencies" element={<LearningEvidence reviewMode />} />
+    <Route path="reviews/:id" element={<ArtifactReviews />} />
     <Route path="dashboard" element={<EducatorDashboard />} />
+    <Route path="account" element={<EducatorSettings />} />
     <Route path="ai-copilot" element={<EducatorAI />} />
     <Route path="learners" element={<EducatorLearners />} />
     <Route path="classes" element={<EducatorClasses />} />

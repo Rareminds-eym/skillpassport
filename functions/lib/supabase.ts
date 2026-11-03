@@ -17,10 +17,7 @@ export function createSupabaseClient(env: PagesEnv): SupabaseClient {
   }
 
   return createClient(supabaseUrl, supabaseKey, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    },
+    accessToken: async () => supabaseKey,
   });
 }
 
@@ -52,10 +49,7 @@ export function createSupabaseAdminClient(
   }
 
   return createClient(supabaseUrl, serviceRoleKey, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    },
+    accessToken: async () => serviceRoleKey,
   });
 }
 
@@ -67,8 +61,9 @@ export function createSupabaseAdminClient(
  * @deprecated Use createSupabaseAdminClient instead for better type safety and audit logging
  */
 export function getServiceClient(env: PagesEnv): SupabaseClient {
-  return createClient(env.SUPABASE_URL!, env.SUPABASE_SERVICE_ROLE_KEY!, {
-    auth: { persistSession: false, autoRefreshToken: false },
+  const serviceRoleKey = env.SUPABASE_SERVICE_ROLE_KEY!;
+  return createClient(env.SUPABASE_URL!, serviceRoleKey, {
+    accessToken: async () => serviceRoleKey,
   });
 }
 

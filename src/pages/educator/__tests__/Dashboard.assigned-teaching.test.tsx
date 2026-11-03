@@ -1,0 +1,24 @@
+import {it,expect,vi} from 'vitest';
+import '@testing-library/jest-dom/vitest';
+import {render,screen} from '@testing-library/react';
+import {MemoryRouter} from 'react-router-dom';
+const f=vi.hoisted(()=>({teaching:vi.fn(),legacy:vi.fn()}));
+vi.mock('@/features/external-teaching/api/teachingApi',()=>({teaching:f.teaching}));
+vi.mock('@/shared/model/authStore',()=>({useAuthStore:{getState:()=>({user:{id:'trainer'}})}}));
+vi.mock('@/shared/api/ssoClient',()=>({ssoClient:{onAuthStateChange:()=>()=>{}}}));
+vi.mock('@/features/educator-copilot',()=>({dashboardApi:{getKPIs:f.legacy,getRecentActivities:f.legacy,getSkillAnalytics:f.legacy,getAnnouncements:f.legacy}}));
+vi.mock('@/features/artifact-review',()=>({PendingReviewsWidget:()=> <p>Unrestricted reviews</p>}));
+vi.mock('react-apexcharts',()=>({default:()=>null}));
+vi.mock('@/features/analytics',()=>({KPICard:({title,value,loading}:any)=><p>{title}: {loading?'Loading':value}</p>}));
+import Dashboard from '../Dashboard';
+import {AssignedTeachingContext,type TeachingContext} from '@/features/external-teaching/model/teachingContext';
+it('reuses the existing dashboard with assigned counts and no general activity queries',async()=>{
+  f.teaching.mockImplementation(async action=>action==='learners'?[{id:'learner'}]:action==='courses'?[{course_id:'course'}]:[{status:'scheduled'},{status:'completed'}]);
+  const context={external:true,delegatedAccess:true,staff:{id:'staff'},mappings:[{id:'mapping',course_id:'course',course_title:'Analytics',college_name:'Soundarya',program_name:'MBA',semester:4,section:'A'}]} as TeachingContext;
+  render(<MemoryRouter><AssignedTeachingContext.Provider value={context}><Dashboard/></AssignedTeachingContext.Provider></MemoryRouter>);
+  expect(await screen.findByText('Assigned Courses: 1')).toBeInTheDocument();
+  expect(screen.queryByText('Assigned Courses and Classes')).not.toBeInTheDocument();
+  expect(screen.queryByText('Analytics')).not.toBeInTheDocument();
+  expect(screen.queryByText('Unrestricted reviews')).not.toBeInTheDocument();
+  expect(screen.queryByText('Mentor Notes')).not.toBeInTheDocument();expect(f.legacy).not.toHaveBeenCalled();
+});

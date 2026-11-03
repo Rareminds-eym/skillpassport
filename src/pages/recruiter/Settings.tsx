@@ -1,307 +1,317 @@
+import { useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Bell, KeyRound, ShieldCheck } from "lucide-react";
+import toast from "react-hot-toast";
+import { apiGet, apiPost } from "@/shared/api/apiClient";
+import { useUser } from "@/shared/model/authStore";
+import { useOrgContext } from "@/entities/recruitment/model/useOrgContext";
+import { SubscriptionSettingsSection } from "@/features/subscription";
+import { PASSWORD_MIN } from "@/shared/constants";
+import { Frame } from "./components/RequisitionDialogs";
 import {
-    Bell,
-    CheckCircle,
-    Globe,
-    KeyRound,
-    Lock,
-    Mail,
-    Phone,
-    RefreshCw,
-    User
-} from "lucide-react"
-import React, { useEffect, useId, useState } from "react"
-import { SubscriptionSettingsSection } from "@/features/subscription"
-import { PASSWORD_MIN } from '@/shared/constants';
-import { useAuth } from "@/features/auth"
-import { apiPost } from '@/shared/api/apiClient'
-import { getLogger } from '@/shared/config/logging'
-
-
-
-import { useUser } from '@/shared/model/authStore';
-const logger = getLogger('RecruiterSettings');
-
-/* ---------- UI Primitives ---------- */
-
-function SectionCard({
-  icon: Icon,
-  title,
-  subtitle,
-  children,
-  actions,
-}: {
-  icon?: React.ElementType
-  title: string
-  subtitle?: string
-  children: React.ReactNode
-  actions?: React.ReactNode
-}) {
-  return (
-    <section className="bg-white border rounded-2xl shadow-sm overflow-hidden">
-      <header className="flex items-start justify-between gap-4 p-6 border-b">
-        <div className="flex items-center gap-3">
-          {Icon ? <Icon className="w-5 h-5 text-blue-600 shrink-0" /> : null}
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
-            {subtitle && <p className="text-sm text-gray-500 mt-0.5">{subtitle}</p>}
-          </div>
-        </div>
-        {actions ? <div className="flex items-center gap-2">{actions}</div> : null}
-      </header>
-      <div className="p-6">{children}</div>
-    </section>
-  )
-}
-
-/** Accessible, controlled toggle button */
-function ToggleSwitch({
-  enabled,
-  onChange,
-  label,
-}: {
-  enabled: boolean
-  onChange: (next: boolean) => void
-  label: string
-}) {
-  const id = useId()
-  return (
-    <button
-      id={id}
-      type="button"
-      role="switch"
-      aria-checked={enabled}
-      aria-label={label}
-      onClick={() => onChange(!enabled)}
-      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-        enabled ? "bg-blue-600" : "bg-gray-300"
-      }`}
-    >
-      <span
-        className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
-          enabled ? "translate-x-5" : "translate-x-1"
-        }`}
-      />
-    </button>
-  )
-}
-
-function ToggleRow({
-  icon: Icon,
-  title,
-  desc,
-  defaultChecked = false,
-}: {
-  icon?: React.ElementType
-  title: string
-  desc?: string
-  defaultChecked?: boolean
-}) {
-  const [enabled, setEnabled] = useState(defaultChecked)
-
-  return (
-    <div className="flex items-center justify-between gap-6 p-4 border rounded-xl hover:bg-gray-50 transition">
-      <div className="flex items-center gap-3">
-        {Icon ? <Icon className="w-5 h-5 text-gray-500" /> : null}
-        <div className="flex flex-col">
-          <p className="font-medium text-gray-900 leading-tight">{title}</p>
-          {desc && <p className="text-sm text-gray-500 mt-0.5">{desc}</p>}
-        </div>
-      </div>
-      <ToggleSwitch enabled={enabled} onChange={setEnabled} label={title} />
-    </div>
-  )
-}
-
-/* ---------- Page ---------- */
-
+  LoadState,
+  inputClass,
+  buttonClass,
+  primaryClass,
+  useWorkspaceKey,
+} from "./shared/RecruitmentControls";
+type Preferences = {
+  emailNotifications: boolean;
+  realtimeAlerts: boolean;
+  weeklyReports: boolean;
+};
 export default function SettingsPage() {
-  const user = useUser()
-  const [recruiter, setRecruiter] = useState<any>(null)
-  const [loading, setLoading] = useState(false)
-
+  const user = useUser(),
+    { organizationName } = useOrgContext(),
+    key = useWorkspaceKey("preferences"),
+    client = useQueryClient();
+  const query = useQuery({
+    queryKey: key,
+    queryFn: async () => {
+      const r = await apiGet<{
+        data: {
+          preferences: Preferences;
+          security: { mfaAvailable: boolean; mfaManagedBy: string };
+        };
+      }>("/recruiter/preferences");
+      return r.data;
+    },
+  });
+  const [form, setForm] = useState<Preferences>({
+      emailNotifications: true,
+      realtimeAlerts: true,
+      weeklyReports: false,
+    }),
+    [busy, setBusy] = useState(false),
+    [error, setError] = useState(""),
+    [password, setPassword] = useState(false);
   useEffect(() => {
-    const fetchRecruiter = async () => {
-      if (!user?.email) return
-      setLoading(true)
-      try {
-        const result = await apiPost<any>('/recruiter/actions', { action: 'get-recruiter-profile', email: user.email })
-        setRecruiter(result.data)
-      } catch (err) {
-        logger.error("❌ Error fetching recruiter", err as Error)
-      }
-      setLoading(false)
+    if (query.data) setForm(query.data.preferences);
+  }, [query.data]);
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError("");
+    try {
+      await apiPost("/recruiter/preferences", form);
+      await client.invalidateQueries({ queryKey: key });
+      toast.success("Notification preferences saved");
+    } catch (e) {
+      setError(
+        e instanceof Error ? e.message : "Preferences could not be saved",
+      );
+    } finally {
+      setBusy(false);
     }
-
-    fetchRecruiter()
-  }, [user])
-
-  if (loading) {
-    return (
-      <main className="bg-gray-50 min-h-screen flex items-center justify-center">
-        <p className="text-gray-600">Loading recruiter info...</p>
-      </main>
-    )
   }
-
+  const fields = [
+    ["Full name", user?.name || "Not provided"],
+    ["Email", user?.email || "Not provided"],
+    ["Organization", organizationName || "Not available"],
+    ["Phone", "Not provided"],
+  ];
   return (
-    <main className="bg-gray-50 min-h-screen">
-      {/* Page Header */}
-      <div className="max-w-6xl mx-auto px-6 pt-10 pb-6">
-        <h1 className="text-3xl font-semibold text-gray-900">Settings</h1>
-        <p className="text-gray-600 mt-1">
-          View your recruiter details, notifications, and security preferences.
+    <div className="mx-auto max-w-5xl space-y-6">
+      <header>
+        <p className="text-xs font-semibold uppercase tracking-widest text-primary-700">
+          Workspace preferences
         </p>
-      </div>
-
-      <div className="max-w-6xl mx-auto px-6 pb-16 space-y-10">
-        {/* Recruiter Profile */}
-        <SectionCard
-          icon={User}
-          title="Recruiter Profile"
-          subtitle="View your recruiter details stored in the system."
-          actions={
-            recruiter?.verificationstatus === "approved" && (
-              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-700 border border-green-200">
-                <CheckCircle className="w-4 h-4" />
-                Verified
-              </span>
-            )
-          }
-        >
-          {!recruiter ? (
-            <p className="text-gray-500">No recruiter data found for {user?.email}</p>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Organization */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Organization Name
-                </label>
-                <input
-                  type="text"
-                  value={recruiter.name || ""}
-                  disabled
-                  className="w-full rounded-lg border px-4 py-2.5 bg-gray-50 text-gray-800"
-                />
-              </div>
-
-              {/* Email */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
-                <input
-                  type="email"
-                  value={recruiter.email || ""}
-                  disabled
-                  className="w-full rounded-lg border px-4 py-2.5 bg-gray-50 text-gray-800"
-                />
-              </div>
-
-              {/* Phone */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={recruiter.phone || ""}
-                    disabled
-                    className="w-full rounded-lg border pl-10 pr-4 py-2.5 bg-gray-50 text-gray-800"
-                  />
-                  <Phone className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                </div>
-              </div>
-
-              {/* State */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">State</label>
-                <input
-                  type="text"
-                  value={recruiter.state || "Not specified"}
-                  disabled
-                  className="w-full rounded-lg border px-4 py-2.5 bg-gray-50 text-gray-800"
-                />
-              </div>
-
-              {/* Website */}
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Website</label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={recruiter.website || ""}
-                    disabled
-                    className="w-full rounded-lg border pl-10 pr-4 py-2.5 bg-gray-50 text-gray-800"
-                  />
-                  <Globe className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                </div>
-              </div>
+        <h1 className="mt-2 text-2xl font-semibold text-gray-900">Settings</h1>
+        <p className="mt-2 text-sm text-gray-600">
+          Manage recruitment notifications and account security.
+        </p>
+      </header>
+      <section className="rounded-xl border border-gray-200 bg-white p-6">
+        <h2 className="text-lg font-semibold text-gray-900">
+          Recruiter profile
+        </h2>
+        <dl className="mt-5 grid gap-5 sm:grid-cols-2">
+          {fields.map(([label, value]) => (
+            <div key={label}>
+              <dt className="text-xs font-medium uppercase tracking-wide text-gray-600">
+                {label}
+              </dt>
+              <dd className="mt-2 break-words text-sm text-gray-900">
+                {value}
+              </dd>
             </div>
-          )}
-        </SectionCard>
-
-        {/* Notifications */}
-        <SectionCard
-          icon={Bell}
-          title="Notifications"
-          subtitle="Choose what you want to be notified about."
-        >
-          <div className="space-y-4">
-            <ToggleRow
-              icon={Mail}
-              title="Email notifications"
-              desc="Receive email updates about important activity."
-              defaultChecked
-            />
-            <ToggleRow
-              icon={Bell}
-              title="Real-time alerts"
-              desc="Get instant alerts for critical events."
-              defaultChecked
-            />
-            <ToggleRow
-              icon={RefreshCw}
-              title="Weekly reports"
-              desc="A summary of your week delivered every Monday."
-            />
-          </div>
-        </SectionCard>
-
-        {/* Security */}
-        <SectionCard
-          icon={Lock}
-          title="Security"
-          subtitle="Keep your account protected with these options."
-        >
-          <div className="space-y-6">
-            <div className="flex items-center justify-between p-4 border rounded-xl">
-              <div>
-                <p className="font-medium text-gray-900">Two-Factor Authentication (2FA)</p>
-                <p className="text-sm text-gray-600">
-                  Add a verification step using an authenticator app.
-                </p>
-              </div>
-              <button className="px-4 py-2 rounded-lg border bg-white hover:bg-gray-100 transition">
-                Enable
-              </button>
-            </div>
-
-            <div className="p-4 border rounded-xl">
-              <p className="font-medium text-gray-900 mb-2">Change Password</p>
-              <p className="text-sm text-gray-600 mb-4">
-                Use a strong password with at least {PASSWORD_MIN} characters, numbers & symbols.
+          ))}
+        </dl>
+      </section>
+      <section className="rounded-xl border border-gray-200 bg-white p-6">
+        <h2 className="flex items-center gap-2 text-lg font-semibold text-gray-900">
+          <Bell className="h-5 w-5" />
+          Notifications
+        </h2>
+        <LoadState
+          loading={query.isLoading}
+          error={query.error}
+          onRetry={() => void query.refetch()}
+        />
+        {query.data && (
+          <form className="mt-4 space-y-4" onSubmit={save}>
+            {(
+              [
+                [
+                  "emailNotifications",
+                  "Email notifications",
+                  "Updates about your recruitment activity.",
+                ],
+                [
+                  "realtimeAlerts",
+                  "Real-time alerts",
+                  "New activity and candidate updates.",
+                ],
+                [
+                  "weeklyReports",
+                  "Weekly reports",
+                  "A summary of your recruitment activity.",
+                ],
+              ] as const
+            ).map(([field, label, description]) => (
+              <label
+                key={field}
+                className="flex cursor-pointer items-center justify-between gap-5 rounded-lg border border-gray-200 p-4"
+              >
+                <span>
+                  <span className="block text-sm font-medium text-gray-900">
+                    {label}
+                  </span>
+                  <span className="mt-1 block text-sm text-gray-600">
+                    {description}
+                  </span>
+                </span>
+                <input
+                  type="checkbox"
+                  role="switch"
+                  className="h-5 w-5 shrink-0 accent-primary-700"
+                  checked={form[field]}
+                  disabled={busy}
+                  onChange={(e) =>
+                    setForm({ ...form, [field]: e.target.checked })
+                  }
+                />
+              </label>
+            ))}
+            {error && (
+              <p role="alert" className="text-sm text-red-700">
+                {error}
               </p>
-              <button className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border bg-white hover:bg-gray-100 transition">
-                <KeyRound className="w-4 h-4" />
-                Update Password
+            )}
+            <div className="flex justify-end">
+              <button
+                disabled={
+                  busy ||
+                  JSON.stringify(form) ===
+                    JSON.stringify(query.data.preferences)
+                }
+                className={primaryClass}
+              >
+                {busy ? "Saving…" : "Save preferences"}
               </button>
             </div>
+          </form>
+        )}
+      </section>
+      <section className="space-y-5 rounded-xl border border-gray-200 bg-white p-6">
+        <h2 className="flex items-center gap-2 text-lg font-semibold text-gray-900">
+          <ShieldCheck className="h-5 w-5" />
+          Security
+        </h2>
+        <div className="rounded-lg border border-gray-200 p-4">
+          <h3 className="text-sm font-medium text-gray-900">
+            Two-factor authentication
+          </h3>
+          <p className="mt-2 text-sm leading-6 text-gray-600">
+            Additional sign-in verification is managed by your identity
+            provider. This sign-in service does not currently expose
+            authenticator enrollment in the recruitment workspace.
+          </p>
+          <p className="mt-2 text-xs font-medium text-gray-700">
+            Provider-managed · enrollment unavailable here
+          </p>
+        </div>
+        <div className="flex flex-col gap-4 rounded-lg border border-gray-200 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h3 className="text-sm font-medium text-gray-900">Password</h3>
+            <p className="mt-1 text-sm text-gray-600">
+              Change your password using your current credentials.
+            </p>
           </div>
-        </SectionCard>
-
-        {/* Subscription & Billing */}
-        <SubscriptionSettingsSection />
-
-
-      </div>
-    </main>
-  )
+          <button
+            type="button"
+            className={buttonClass}
+            onClick={() => setPassword(true)}
+          >
+            <KeyRound className="h-4 w-4" />
+            Update password
+          </button>
+        </div>
+      </section>
+      <SubscriptionSettingsSection />
+      {password && <PasswordDialog close={() => setPassword(false)} />}
+    </div>
+  );
+}
+function PasswordDialog({ close }: { close: () => void }) {
+  const [current, setCurrent] = useState(""),
+    [next, setNext] = useState(""),
+    [confirm, setConfirm] = useState(""),
+    [busy, setBusy] = useState(false),
+    [error, setError] = useState("");
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    if (next !== confirm) {
+      setError("The new passwords do not match");
+      return;
+    }
+    if (next === current) {
+      setError("Choose a password different from your current password");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    try {
+      await apiPost("/auth/change-password", {
+        current_password: current,
+        new_password: next,
+      });
+      setCurrent("");
+      setNext("");
+      setConfirm("");
+      toast.success("Password updated");
+      close();
+    } catch (e) {
+      setError(
+        e instanceof Error ? e.message : "Password could not be changed",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <Frame
+      title="Update password"
+      description={`Use at least ${PASSWORD_MIN} characters. Your identity provider verifies the current password.`}
+      onClose={close}
+      busy={busy}
+      small
+    >
+      <form onSubmit={save} className="space-y-5 p-6">
+        <label className="block text-sm font-medium text-gray-800">
+          Current password
+          <input
+            autoComplete="current-password"
+            type="password"
+            required
+            className={inputClass + " mt-2"}
+            value={current}
+            onChange={(e) => setCurrent(e.target.value)}
+          />
+        </label>
+        <label className="block text-sm font-medium text-gray-800">
+          New password
+          <input
+            autoComplete="new-password"
+            type="password"
+            required
+            minLength={PASSWORD_MIN}
+            maxLength={128}
+            className={inputClass + " mt-2"}
+            value={next}
+            onChange={(e) => setNext(e.target.value)}
+          />
+        </label>
+        <label className="block text-sm font-medium text-gray-800">
+          Confirm new password
+          <input
+            autoComplete="new-password"
+            type="password"
+            required
+            className={inputClass + " mt-2"}
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
+          />
+        </label>
+        {error && (
+          <p role="alert" className="text-sm text-red-700">
+            {error}
+          </p>
+        )}
+        <div className="flex justify-end gap-3">
+          <button
+            type="button"
+            disabled={busy}
+            className={buttonClass}
+            onClick={close}
+          >
+            Cancel
+          </button>
+          <button className={primaryClass} disabled={busy}>
+            {busy ? "Updating…" : "Update password"}
+          </button>
+        </div>
+      </form>
+    </Frame>
+  );
 }

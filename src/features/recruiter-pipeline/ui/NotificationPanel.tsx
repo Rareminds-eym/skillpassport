@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from "react";
+import * as React from 'react';
+import { useState, useEffect, useRef } from "react";
 import { useUser } from '@/shared/model/authStore';
 import {
   BellIcon,
@@ -9,7 +10,6 @@ import {
   CheckCircleIcon,
   ClockIcon,
   EyeIcon,
-  TrashIcon,
 } from "@heroicons/react/24/outline";
 import {
   useNotifications,
@@ -40,7 +40,6 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
     unreadCount,
     markRead,
     markAllRead,
-    remove,
     hasMore,
     loadMore,
     loading,
@@ -210,11 +209,12 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
         </div>
       )}
 
-      <div className="absolute right-0 mt-2 w-[calc(100vw-2rem)] max-w-sm sm:w-96 bg-white rounded-xl shadow-xl border border-gray-200 z-50 overflow-hidden">
+      <div id="recruiter-notifications" role="region" aria-label="Notifications" className="fixed left-4 right-4 top-[4.5rem] max-h-[calc(100dvh-10rem)] overflow-y-auto sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-96 sm:max-w-sm bg-white rounded-xl shadow-xl border border-gray-200 z-50 overflow-hidden">
         {/* Header */}
         <div className="px-5 py-3 border-b border-gray-100">
-          <div className="flex justify-between items-center">
+          <div className="flex justify-between items-center gap-2">
             <h3 className="text-sm font-semibold text-gray-900">Notifications</h3>
+            <button type="button" onClick={onClose} aria-label="Close notifications" className="ml-auto rounded-lg p-2 text-gray-500 hover:bg-gray-100 focus-visible:ring-2 focus-visible:ring-primary-500"><XMarkIcon className="h-5 w-5" aria-hidden="true" /></button>
             {unreadCount > 0 && (
               <button
                 onClick={markAllRead}
@@ -232,14 +232,15 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
         </div>
 
         {/* Filters */}
-        <div className="flex gap-2 px-4 py-2 border-b border-gray-100">
+        <div className="flex gap-2 overflow-x-auto px-4 py-2 border-b border-gray-100">
           {(["all", "unread", "offers", "interviews", "pipeline"] as FilterKey[]).map((key) => {
             const count = getFilterCount(key);
             return (
               <button
                 key={key}
+                aria-pressed={selectedFilter === key}
                 onClick={() => setSelectedFilter(key)}
-                className={`text-xs px-2.5 py-1 rounded-full transition ${selectedFilter === key
+                className={`min-h-10 shrink-0 text-xs px-2.5 py-1 rounded-full focus-visible:ring-2 focus-visible:ring-primary-500 transition ${selectedFilter === key
                   ? "bg-blue-100 text-blue-700 font-medium"
                   : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                   }`}
@@ -278,9 +279,9 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
                     <p className="text-xs text-gray-500 mt-0.5">{n.message}</p>
                     <div className="flex items-center justify-between mt-2">
                       <span className="text-[11px] text-gray-400">{formatRelativeTime(n.created_at)}</span>
-                      <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition">
+                      <div className="flex gap-2">
                         {!n.read && (
-                          <button onClick={() => markRead(n.id)} className="text-gray-400 hover:text-blue-600">
+                          <button type="button" aria-label={`Mark ${n.title} as read`} onClick={() => markRead(n.id)} className="rounded-lg p-2 text-gray-500 hover:text-blue-600 focus-visible:ring-2 focus-visible:ring-primary-500">
                             <EyeIcon className="h-4 w-4" />
                           </button>
                         )}

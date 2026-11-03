@@ -1,8 +1,9 @@
+import { useUser } from '@/shared/model/authStore';
 import type { FunnelRangePreset } from '@/features/analytics';
 import { getWSClient } from '@/shared/api/wsRealtimeClient';
 import { queryKeys } from '@/shared/lib/queryKeys';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { getCoursePerformance } from '../api/coursePerformanceService';
 
 interface UseCoursePerformanceOptions {
@@ -18,13 +19,14 @@ export const useCoursePerformance = ({
   endDate,
   limit = 4
 }: UseCoursePerformanceOptions) => {
+  const user = useUser();
   const queryClient = useQueryClient();
-  const channelRef = useRef<any>(null);
 
   const query = useQuery({
-    queryKey: queryKeys.courses.performance.byPreset(preset, { startDate, endDate, limit }),
+    queryKey: [...queryKeys.courses.performance.byPreset(preset, { startDate, endDate, limit }), user?.id],
     queryFn: async () => {
-      const { data } = await getCoursePerformance(preset, startDate, endDate, limit);
+      const { data, error } = await getCoursePerformance(preset, startDate, endDate, limit);
+      if (error) throw error;
       return data;
     },
     refetchOnWindowFocus: false,
@@ -63,6 +65,7 @@ export const useCoursePerformance = ({
   return {
     data: query.data,
     isLoading: query.isLoading,
+    isFetching: query.isFetching,
     isError: query.isError,
     refetch: query.refetch,
   };

@@ -1,0 +1,546 @@
+{
+  "numTotalTestSuites": 5,
+  "numPassedTestSuites": 5,
+  "numFailedTestSuites": 0,
+  "numPendingTestSuites": 0,
+  "numTotalTests": 46,
+  "numPassedTests": 46,
+  "numFailedTests": 0,
+  "numPendingTests": 0,
+  "numTodoTests": 0,
+  "snapshot": {
+    "added": 0,
+    "failure": false,
+    "filesAdded": 0,
+    "filesRemoved": 0,
+    "filesRemovedList": [],
+    "filesUnmatched": 0,
+    "filesUpdated": 0,
+    "matched": 0,
+    "total": 0,
+    "unchecked": 0,
+    "uncheckedKeysByFile": [],
+    "unmatched": 0,
+    "updated": 0,
+    "didUpdate": false
+  },
+  "startTime": 1792056831199,
+  "success": true,
+  "testResults": [
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            "recommend-opportunities ownership boundary"
+          ],
+          "fullName": "recommend-opportunities ownership boundary rejects foreignId before work with cacheMiss=false",
+          "status": "passed",
+          "title": "rejects foreignId before work with cacheMiss=false",
+          "duration": 5.886348999999996,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": [
+            "recommend-opportunities ownership boundary"
+          ],
+          "fullName": "recommend-opportunities ownership boundary rejects unknownId before work with cacheMiss=false",
+          "status": "passed",
+          "title": "rejects unknownId before work with cacheMiss=false",
+          "duration": 1.116393999999957,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": [
+            "recommend-opportunities ownership boundary"
+          ],
+          "fullName": "recommend-opportunities ownership boundary rejects foreignId before work with cacheMiss=true",
+          "status": "passed",
+          "title": "rejects foreignId before work with cacheMiss=true",
+          "duration": 0.7038369999999645,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": [
+            "recommend-opportunities ownership boundary"
+          ],
+          "fullName": "recommend-opportunities ownership boundary rejects unknownId before work with cacheMiss=true",
+          "status": "passed",
+          "title": "rejects unknownId before work with cacheMiss=true",
+          "duration": 0.5376559999999699,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": [
+            "recommend-opportunities ownership boundary"
+          ],
+          "fullName": "recommend-opportunities ownership boundary allows self with distinct user and learner IDs, after checking the owner mapping",
+          "status": "passed",
+          "title": "allows self with distinct user and learner IDs, after checking the owner mapping",
+          "duration": 1.9565979999999854,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": [
+            "recommend-opportunities ownership boundary"
+          ],
+          "fullName": "recommend-opportunities ownership boundary does not accept client identity or role claims as authorization",
+          "status": "passed",
+          "title": "does not accept client identity or role claims as authorization",
+          "duration": 0.7269670000000019,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": [
+            "recommend-opportunities ownership boundary"
+          ],
+          "fullName": "recommend-opportunities ownership boundary returns 404 instead of generic matching when the caller has no learner mapping",
+          "status": "passed",
+          "title": "returns 404 instead of generic matching when the caller has no learner mapping",
+          "duration": 0.6013159999999971,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": [
+            "recommend-opportunities ownership boundary"
+          ],
+          "fullName": "recommend-opportunities ownership boundary fails closed without leaking internals on lookupError",
+          "status": "passed",
+          "title": "fails closed without leaking internals on lookupError",
+          "duration": 0.8697460000000206,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": [
+            "recommend-opportunities ownership boundary"
+          ],
+          "fullName": "recommend-opportunities ownership boundary fails closed without leaking internals on lookupThrows",
+          "status": "passed",
+          "title": "fails closed without leaking internals on lookupThrows",
+          "duration": 1.076974000000007,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": [
+            "recommend ownership boundary"
+          ],
+          "fullName": "recommend ownership boundary rejects foreignId before work with cacheMiss=false",
+          "status": "passed",
+          "title": "rejects foreignId before work with cacheMiss=false",
+          "duration": 0.6979550000000359,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": [
+            "recommend ownership boundary"
+          ],
+          "fullName": "recommend ownership boundary rejects unknownId before work with cacheMiss=false",
+          "status": "passed",
+          "title": "rejects unknownId before work with cacheMiss=false",
+          "duration": 0.5489339999999743,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": [
+            "recommend ownership boundary"
+          ],
+          "fullName": "recommend ownership boundary rejects foreignId before work with cacheMiss=true",
+          "status": "passed",
+          "title": "rejects foreignId before work with cacheMiss=true",
+          "duration": 0.5380809999999769,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": [
+            "recommend ownership boundary"
+          ],
+          "fullName": "recommend ownership boundary rejects unknownId before work with cacheMiss=true",
+          "status": "passed",
+          "title": "rejects unknownId before work with cacheMiss=true",
+          "duration": 0.5092219999999656,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": [
+            "recommend ownership boundary"
+          ],
+          "fullName": "recommend ownership boundary allows self with distinct user and learner IDs, after checking the owner mapping",
+          "status": "passed",
+          "title": "allows self with distinct user and learner IDs, after checking the owner mapping",
+          "duration": 0.739167000000009,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": [
+            "recommend ownership boundary"
+          ],
+          "fullName": "recommend ownership boundary does not accept client identity or role claims as authorization",
+          "status": "passed",
+          "title": "does not accept client identity or role claims as authorization",
+          "duration": 0.40081300000002784,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": [
+            "recommend ownership boundary"
+          ],
+          "fullName": "recommend ownership boundary returns 404 instead of generic matching when the caller has no learner mapping",
+          "status": "passed",
+          "title": "returns 404 instead of generic matching when the caller has no learner mapping",
+          "duration": 0.414496999999983,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": [
+            "recommend ownership boundary"
+          ],
+          "fullName": "recommend ownership boundary fails closed without leaking internals on lookupError",
+          "status": "passed",
+          "title": "fails closed without leaking internals on lookupError",
+          "duration": 0.37703500000003487,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": [
+            "recommend ownership boundary"
+          ],
+          "fullName": "recommend ownership boundary fails closed without leaking internals on lookupThrows",
+          "status": "passed",
+          "title": "fails closed without leaking internals on lookupThrows",
+          "duration": 0.4237290000000371,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": [
+            "canonical identifiers and authorized execution"
+          ],
+          "fullName": "canonical identifiers and authorized execution uses learner primary IDs for profile/ranking/cache and user IDs for feedback",
+          "status": "passed",
+          "title": "uses learner primary IDs for profile/ranking/cache and user IDs for feedback",
+          "duration": 1.7110179999999673,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": [
+            "canonical identifiers and authorized execution"
+          ],
+          "fullName": "canonical identifiers and authorized execution only builds and persists the authorized learner vector on a cache miss",
+          "status": "passed",
+          "title": "only builds and persists the authorized learner vector on a cache miss",
+          "duration": 0.6607140000000413,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": [
+            "canonical identifiers and authorized execution"
+          ],
+          "fullName": "canonical identifiers and authorized execution supports self when learner and user UUID values happen to coincide",
+          "status": "passed",
+          "title": "supports self when learner and user UUID values happen to coincide",
+          "duration": 0.4880890000000022,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": [
+            "canonical identifiers and authorized execution"
+          ],
+          "fullName": "canonical identifiers and authorized execution accepts an uppercase spelling of the same learner UUID but uses the resolved value",
+          "status": "passed",
+          "title": "accepts an uppercase spelling of the same learner UUID but uses the resolved value",
+          "duration": 0.425186999999994,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": [
+            "canonical identifiers and authorized execution"
+          ],
+          "fullName": "canonical identifiers and authorized execution fails closed if the identity lookup returns an inconsistent owner",
+          "status": "passed",
+          "title": "fails closed if the identity lookup returns an inconsistent owner",
+          "duration": 0.42336699999998473,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": [
+            "canonical identifiers and authorized execution"
+          ],
+          "fullName": "canonical identifiers and authorized execution uses the actor key and stops before cache/provider work when rate limited",
+          "status": "passed",
+          "title": "uses the actor key and stops before cache/provider work when rate limited",
+          "duration": 0.5101410000000328,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": [
+            "canonical identifiers and authorized execution"
+          ],
+          "fullName": "canonical identifiers and authorized execution force refresh still authorizes self and reuses an existing valid vector",
+          "status": "passed",
+          "title": "force refresh still authorizes self and reuses an existing valid vector",
+          "duration": 0.4786980000000085,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": [
+            "request contract"
+          ],
+          "fullName": "request contract rejects malformed body null before any database operation",
+          "status": "passed",
+          "title": "rejects malformed body null before any database operation",
+          "duration": 0.4116580000000454,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": [
+            "request contract"
+          ],
+          "fullName": "request contract rejects malformed body %j before any database operation",
+          "status": "passed",
+          "title": "rejects malformed body %j before any database operation",
+          "duration": 0.35710299999999506,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": [
+            "request contract"
+          ],
+          "fullName": "request contract rejects malformed body \"text\" before any database operation",
+          "status": "passed",
+          "title": "rejects malformed body \"text\" before any database operation",
+          "duration": 0.41859300000004396,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": [
+            "request contract"
+          ],
+          "fullName": "request contract rejects malformed body false before any database operation",
+          "status": "passed",
+          "title": "rejects malformed body false before any database operation",
+          "duration": 0.36072300000000723,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": [
+            "request contract"
+          ],
+          "fullName": "request contract rejects malformed body {} before any database operation",
+          "status": "passed",
+          "title": "rejects malformed body {} before any database operation",
+          "duration": 0.4495310000000359,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": [
+            "request contract"
+          ],
+          "fullName": "request contract rejects malformed body {\"learnerId\":\"invalid\"} before any database operation",
+          "status": "passed",
+          "title": "rejects malformed body {\"learnerId\":\"invalid\"} before any database operation",
+          "duration": 0.4231250000000273,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": [
+            "request contract"
+          ],
+          "fullName": "request contract rejects malformed body {\"learnerId\":\"33333333-3333-4333-8333-333333333333\",\"limit\":\"3\"} before any database operation",
+          "status": "passed",
+          "title": "rejects malformed body {\"learnerId\":\"33333333-3333-4333-8333-333333333333\",\"limit\":\"3\"} before any database operation",
+          "duration": 0.3600230000000124,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": [
+            "request contract"
+          ],
+          "fullName": "request contract rejects malformed body {\"learnerId\":\"33333333-3333-4333-8333-333333333333\",\"limit\":null} before any database operation",
+          "status": "passed",
+          "title": "rejects malformed body {\"learnerId\":\"33333333-3333-4333-8333-333333333333\",\"limit\":null} before any database operation",
+          "duration": 0.3827220000000011,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": [
+            "request contract"
+          ],
+          "fullName": "request contract rejects malformed body {\"learnerId\":\"33333333-3333-4333-8333-333333333333\",\"limit\":0} before any database operation",
+          "status": "passed",
+          "title": "rejects malformed body {\"learnerId\":\"33333333-3333-4333-8333-333333333333\",\"limit\":0} before any database operation",
+          "duration": 0.9370549999999866,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": [
+            "request contract"
+          ],
+          "fullName": "request contract rejects malformed body {\"learnerId\":\"33333333-3333-4333-8333-333333333333\",\"limit\":-1} before any database operation",
+          "status": "passed",
+          "title": "rejects malformed body {\"learnerId\":\"33333333-3333-4333-8333-333333333333\",\"limit\":-1} before any database operation",
+          "duration": 0.3822810000000345,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": [
+            "request contract"
+          ],
+          "fullName": "request contract rejects malformed body {\"learnerId\":\"33333333-3333-4333-8333-333333333333\",\"limit\":51} before any database operation",
+          "status": "passed",
+          "title": "rejects malformed body {\"learnerId\":\"33333333-3333-4333-8333-333333333333\",\"limit\":51} before any database operation",
+          "duration": 0.4040130000000204,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": [
+            "request contract"
+          ],
+          "fullName": "request contract rejects malformed body {\"learnerId\":\"33333333-3333-4333-8333-333333333333\",\"limit\":1.5} before any database operation",
+          "status": "passed",
+          "title": "rejects malformed body {\"learnerId\":\"33333333-3333-4333-8333-333333333333\",\"limit\":1.5} before any database operation",
+          "duration": 0.34932800000001407,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": [
+            "request contract"
+          ],
+          "fullName": "request contract rejects malformed body {\"learnerId\":\"33333333-3333-4333-8333-333333333333\",\"forceRefresh\":\"false\"} before any database operation",
+          "status": "passed",
+          "title": "rejects malformed body {\"learnerId\":\"33333333-3333-4333-8333-333333333333\",\"forceRefresh\":\"false\"} before any database operation",
+          "duration": 0.3515390000000025,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": [
+            "request contract"
+          ],
+          "fullName": "request contract rejects malformed body {\"learnerId\":\"33333333-3333-4333-8333-333333333333\",\"forceRefresh\":null} before any database operation",
+          "status": "passed",
+          "title": "rejects malformed body {\"learnerId\":\"33333333-3333-4333-8333-333333333333\",\"forceRefresh\":null} before any database operation",
+          "duration": 0.30104299999999284,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": [
+            "request contract"
+          ],
+          "fullName": "request contract rejects invalid JSON before database work",
+          "status": "passed",
+          "title": "rejects invalid JSON before database work",
+          "duration": 0.34875799999997525,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": [
+            "request contract"
+          ],
+          "fullName": "request contract retains supported limit 1",
+          "status": "passed",
+          "title": "retains supported limit 1",
+          "duration": 0.5853690000000142,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": [
+            "request contract"
+          ],
+          "fullName": "request contract retains supported limit 3",
+          "status": "passed",
+          "title": "retains supported limit 3",
+          "duration": 0.4205220000000054,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": [
+            "request contract"
+          ],
+          "fullName": "request contract retains supported limit 50",
+          "status": "passed",
+          "title": "retains supported limit 50",
+          "duration": 0.35644300000001294,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": [
+            "request contract"
+          ],
+          "fullName": "request contract retains the default limit of 20",
+          "status": "passed",
+          "title": "retains the default limit of 20",
+          "duration": 0.3587009999999964,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": [
+            "request contract"
+          ],
+          "fullName": "request contract rejects unsupported method without database work",
+          "status": "passed",
+          "title": "rejects unsupported method without database work",
+          "duration": 0.28487799999999197,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": [
+            "request contract"
+          ],
+          "fullName": "request contract cannot be called without an authenticated actor supplied by the router",
+          "status": "passed",
+          "title": "cannot be called without an authenticated actor supplied by the router",
+          "duration": 0.24696900000003552,
+          "failureMessages": [],
+          "meta": {}
+        }
+      ],
+      "startTime": 1792056831728,
+      "endTime": 1792056831760.285,
+      "status": "passed",
+      "message": "",
+      "name": "/mnt/E230EB0F30EAEA0D/Rareminds/skill-echosystem/skillpassport/functions/__tests__/api/career-recommend-ownership.test.ts"
+    }
+  ]
+}

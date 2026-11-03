@@ -1,3 +1,4 @@
+import {useAssignedTeaching} from '@/features/external-teaching/model/teachingContext';
 import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -30,6 +31,7 @@ const Header: React.FC<HeaderProps> = ({
   const [educatorProfile, setEducatorProfile] = useState<any>(null)
   const [educatorEmail, setEducatorEmail] = useState<string | null>(null)
   const navigate = useNavigate()
+  const assignedTeaching=useAssignedTeaching()
   const profileRef = useRef<HTMLDivElement>(null)
   const notificationRef = useRef<HTMLDivElement>(null)
 
@@ -63,6 +65,7 @@ const Header: React.FC<HeaderProps> = ({
 
   // Load educator profile for header
   const loadEducatorProfile = async () => {
+    if(assignedTeaching){setEducatorProfile({name:assignedTeaching.staff.name,specialization:'Trainer'});setEducatorEmail(null);return;}
     try {
       // Get email from localStorage (same method as ProfileFixed)
       const storedUser = (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user"))
@@ -130,7 +133,7 @@ const Header: React.FC<HeaderProps> = ({
 
   const handleProfile = () => {
     setShowProfileMenu(false)
-    navigate('/educator/profile')
+    navigate(assignedTeaching?'/educator/settings':'/educator/profile')
   }
 
   const handleSettings = () => {
@@ -193,7 +196,7 @@ const Header: React.FC<HeaderProps> = ({
           {/* Right side */}
           <div className="flex items-center gap-2 sm:gap-4">
             {/* Notifications Button */}
-            <div ref={notificationRef} className="relative">
+            {!assignedTeaching&&<div ref={notificationRef} className="relative">
               <button
                 onClick={handleNotificationClick}
                 className="relative p-2 text-gray-400 hover:text-gray-500 hover:bg-gray-100 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
@@ -215,7 +218,7 @@ const Header: React.FC<HeaderProps> = ({
                 />
               )}
 
-            </div>
+            </div>}
 
             {/* Profile Menu */}
             <div ref={profileRef} className="relative">

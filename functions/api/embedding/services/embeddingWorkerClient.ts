@@ -13,6 +13,7 @@
 import { EmbeddingError } from '../types';
 import { EMBEDDING_CONFIG, EMBEDDING_TASK_TYPES } from '../config/constants';
 import { getEmbeddingWorker, type EmbeddingWorkerEnv } from '../lib/embeddingBinding';
+import { validateEmbeddingVector } from './embeddingValidation';
 
 /**
  * Call the embedding worker to generate an embedding from text.
@@ -42,7 +43,7 @@ export async function callEmbeddingWorker(
     : text;
 
   if (text.length > EMBEDDING_CONFIG.MAX_TEXT_LENGTH) {
-    logger.warn('Text truncated for embedding', {
+    console.warn('Text truncated for embedding', {
       originalLength: text.length,
       truncatedLength: EMBEDDING_CONFIG.MAX_TEXT_LENGTH,
     });
@@ -56,12 +57,9 @@ export async function callEmbeddingWorker(
     const data = await worker.embedText(truncatedText, taskType);
 
     // Validate response
-    if (!data || !Array.isArray(data.embedding) || data.embedding.length === 0) {
-      throw new EmbeddingError(
-        'Invalid embedding response from worker',
-        'INVALID_RESPONSE',
-        { response: embedding }
-      );
+    validateEmbeddingVector(data?.embedding);
+    if (env.MATCHING_EMBEDDING_MODEL && data.model !== env.MATCHING_EMBEDDING_MODEL) {
+      throw new EmbeddingError('Embedding model does not match configured vector space', 'INVALID_RESPONSE');
     }
 
     return data.embedding;
@@ -69,7 +67,7 @@ export async function callEmbeddingWorker(
   } catch (error) {
     // Re-throw EmbeddingError as-is
     if (error instanceof EmbeddingError) {
-      logger.error('Embedding error', error, { code: error.code });
+      console.error('Embedding dependency error', { code: error.code });
       throw error;
     }
 

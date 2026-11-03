@@ -41,14 +41,15 @@ const AssignmentUploadModal: React.FC<AssignmentUploadModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-xl max-w-lg w-full">
+      <div className="bg-white rounded-xl shadow-xl max-w-lg w-full flex flex-col max-h-[90vh]">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200 shrink-0">
           <div>
             <h3 className="text-lg font-semibold text-gray-900">Submit Assignment</h3>
             <p className="text-sm text-gray-500 mt-1">{assignment.title}</p>
           </div>
           <button
+            type="button"
             onClick={handleClose}
             disabled={isUploading}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
@@ -58,7 +59,7 @@ const AssignmentUploadModal: React.FC<AssignmentUploadModalProps> = ({
         </div>
 
         {/* Body */}
-        <div className="p-6">
+        <div className="p-6 overflow-y-auto flex-1">
           <LearnerAssignmentFileUpload
             ref={fileUploadRef}
             maxFiles={3}
@@ -100,8 +101,9 @@ const AssignmentUploadModal: React.FC<AssignmentUploadModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200">
+        <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200 shrink-0 bg-gray-50/50 rounded-b-xl">
           <button
+            type="button"
             onClick={handleClose}
             disabled={isUploading}
             className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
@@ -109,6 +111,7 @@ const AssignmentUploadModal: React.FC<AssignmentUploadModalProps> = ({
             Cancel
           </button>
           <button
+            type="button"
             onClick={handleSubmit}
             disabled={isUploading}
             className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"

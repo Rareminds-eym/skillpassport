@@ -250,7 +250,7 @@ export const onRequest: PagesFunction = async (context) => {
         }
 
         // Security: Users can only access their own streak data
-        // learnerId comes from the URL (learners.id), user.sub from the JWT (auth.users.id).
+        // learnerId comes from the URL (learners.id), user.sub from the JWT (SSO subject).
         // Look up the learner's user_id to verify ownership.
         const { data: learner } = await supabase
           .from('learners')

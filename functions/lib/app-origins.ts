@@ -10,6 +10,8 @@
  */
 export const APPROVED_ORIGINS: readonly string[] = Object.freeze([
   'https://skillpassport.rareminds.in',
+  'https://skillpassport-dev-bcp.pages.dev',
+  'https://skillpassport-qa.pages.dev',
   'http://localhost:3000',
   'http://localhost:8787',
   'http://localhost:8788',

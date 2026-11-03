@@ -77,8 +77,9 @@ function makeSupabaseMock(opts: {
             single() { return chain.maybeSingle(); },
             maybeSingle() {
                 if (table === 'subscription_cache') {
+                    const subscription = opts.subscription && (!inStatus.length || inStatus.includes(opts.subscription.status)) ? opts.subscription : null;
                     return Promise.resolve({
-                        data: opts.subscription ?? null,
+                        data: subscription,
                         error: opts.subscriptionError ?? null,
                     });
                 }
@@ -120,7 +121,7 @@ const FRESH = new Date().toISOString();
 
 describe('hasActiveAddonEntitlement', () => {
     it('grants when an active add-on row exists', async () => {
-        const supabase = makeSupabaseMock({ addon: { id: 'ent-1' } });
+        const supabase = makeSupabaseMock({ addon: { id: 'ent-1', status: 'active' } });
         expect(await hasActiveAddonEntitlement(supabase, 'user-1', 'career_ai')).toBe(true);
     });
 

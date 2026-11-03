@@ -9,6 +9,8 @@ const COLLEGE_ADMIN_ROLES = ["college_admin"];
 const SCHOOL_ADMIN_ROLES = ["school_admin"];
 const UNIVERSITY_ADMIN_ROLES = ["university_admin"];
 
+const ReviewOperations = lazy(() => import("@/features/artifact-review").then(module => ({ default: module.ReviewOperations })));
+
 // Shared imports
 const CoursePlayer = lazy(() => import("@/pages/learner/CoursePlayer"));
 const SubscriptionManage = lazy(() =>
@@ -109,6 +111,9 @@ const CollegeAdminAssessmentResults = lazy(() =>
 );
 const LessonPlanManagement = lazy(() =>
   import("@/pages/admin/collegeAdmin/LessonPlanManagement")
+);
+const CollegeAdminTasksAssignments = lazy(() =>
+  import("@/pages/admin/collegeAdmin/TasksAssignments")
 );
 const MentorAllocation = lazy(() =>
   import("@/pages/admin/collegeAdmin/MentorAllocation")
@@ -343,6 +348,7 @@ export const collegeAdminRoutes = (
     }
   >
     <Route path="dashboard" element={<CollegeDashboard />} />
+    <Route path="artifact-reviews" element={<ReviewOperations />} />
     <Route path="departments/management" element={<DepartmentManagement />} />
     <Route path="departments/mapping" element={<CourseMapping />} />
     <Route path="departments/educators" element={<FacultyManagement />} />
@@ -362,6 +368,7 @@ export const collegeAdminRoutes = (
     <Route path="courses/:courseId/learn" element={<CoursePlayer />} />
     <Route path="academics/curriculum" element={<CollegeCurriculumBuilder />} />
     <Route path="academics/lesson-plans" element={<LessonPlanManagement />} />
+    <Route path="academics/assignments" element={<CollegeAdminTasksAssignments />} />
     <Route path="academics/coverage-tracker" element={<AcademicCoverageTracker />} />
     <Route path="academics/programs" element={<ProgramManagement />} />
     <Route path="academics/program-sections" element={<ProgramSectionManagement />} />
@@ -408,6 +415,7 @@ export const schoolAdminRoutes = (
     }
   >
     <Route path="dashboard" element={<SchoolAdminDashboard />} />
+    <Route path="artifact-reviews" element={<ReviewOperations />} />
     <Route path="learners/admissions" element={<LearnerAdmissions />} />
     <Route path="learners/attendance-reports" element={<AttendanceReports />} />
     <Route path="learners/assessment-results" element={<SchoolAdminAssessmentResults />} />

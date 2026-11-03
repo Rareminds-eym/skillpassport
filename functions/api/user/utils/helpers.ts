@@ -59,32 +59,3 @@ export function calculateAge(dateOfBirth: string): number | null {
   return age;
 }
 
-/**
- * Check if email exists in Supabase Auth
- */
-export async function checkEmailExists(supabase: any, email: string): Promise<boolean> {
-  try {
-    const { data, error } = await supabase.auth.admin.listUsers();
-    
-    if (error) {
-      console.error('Error listing users:', error);
-      return false;
-    }
-    
-    return data.users.some((user: any) => user.email === email.toLowerCase());
-  } catch (error) {
-    console.error('Check email exists error:', error);
-    return false;
-  }
-}
-
-/**
- * Delete auth user (for rollback on error)
- */
-export async function deleteAuthUser(supabase: any, userId: string): Promise<void> {
-  try {
-    await supabase.auth.admin.deleteUser(userId);
-  } catch (error) {
-    console.error('Failed to delete auth user:', error);
-  }
-}

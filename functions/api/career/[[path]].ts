@@ -27,7 +27,7 @@ import { handleCorsPreflightRequest } from '../../lib/cors';
 import { withAuth, getContextUser } from '../../lib/auth';
 import { getServiceClient } from '../../lib/supabase';
 import { hasFeatureEntitlement } from '../../lib/entitlements';
-import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import { privateRecommendations } from '../../lib/job-recommendations';
 import { getAPIKeys } from '../shared/ai-config';
 import { handleCareerChat } from './handlers/chat';
 import { handleRecommendOpportunities } from './handlers/recommend';
@@ -77,7 +77,7 @@ export const onRequest: PagesFunction = async (context) => {
     }
 
     // All other endpoints require authentication
-    return withAuth(async (authContext: AuthenticatedContext) => {
+    return withAuth(async (authContext: Parameters<PagesFunction>[0]) => {
       env = authContext.env as Record<string, string>;
       request = authContext.request;
       const user = getContextUser(authContext);
@@ -102,7 +102,11 @@ export const onRequest: PagesFunction = async (context) => {
     }
 
     if (path === '/recommend-opportunities' || path === '/recommend') {
-      return await handleRecommendOpportunities(request, env as any);
+      const supabase = getServiceClient(env as any);
+      if (!await hasFeatureEntitlement(supabase, userId, 'ai_job_matching')) {
+        return privateRecommendations(apiError(403, 'FEATURE_ACCESS_DENIED', 'Job matching requires an active plan or matching add-on.', request));
+      }
+      return privateRecommendations(await handleRecommendOpportunities(request, env as any, userId));
     }
 
     if (path === '/analyze-assessment') {

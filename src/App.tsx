@@ -1,5 +1,5 @@
 import { Toaster as HotToaster } from 'react-hot-toast';
-import { BrowserRouter, useLocation, Navigate } from 'react-router-dom';
+import { createBrowserRouter, RouterProvider, useLocation, Navigate } from 'react-router-dom';
 import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { TourWrapper } from './app/providers/tour-wrapper';
@@ -119,46 +119,50 @@ function App() {
     );
   }
 
-  return (
+  return <RouterProvider router={appRouter} />;
+}
 
-    <BrowserRouter>
-      <AnalyticsWrapper>
-        <TourWrapper>
-          <EmailVerificationGuard>
-            <MaintenanceGuard>
-              <TokenRefreshErrorNotification />
-              <AppRoutes />
-            </MaintenanceGuard>
-          </EmailVerificationGuard>
-          <HotToaster
-            position="top-right"
-            toastOptions={{
-              duration: 5000,
-              style: {
-                background: '#fff',
-                color: '#363636',
+function AppShell() {
+  return (
+    <AnalyticsWrapper>
+      <TourWrapper>
+        <EmailVerificationGuard>
+          <MaintenanceGuard>
+            <TokenRefreshErrorNotification />
+            <AppRoutes />
+          </MaintenanceGuard>
+        </EmailVerificationGuard>
+        <HotToaster
+          position="top-right"
+          toastOptions={{
+            duration: 5000,
+            style: {
+              background: '#fff',
+              color: '#363636',
+            },
+            success: {
+              duration: 3000,
+              iconTheme: {
+                primary: '#10b981',
+                secondary: '#fff',
               },
-              success: {
-                duration: 3000,
-                iconTheme: {
-                  primary: '#10b981',
-                  secondary: '#fff',
-                },
+            },
+            error: {
+              duration: 4000,
+              iconTheme: {
+                primary: '#ef4444',
+                secondary: '#fff',
               },
-              error: {
-                duration: 4000,
-                iconTheme: {
-                  primary: '#ef4444',
-                  secondary: '#fff',
-                },
-              },
-            }}
-          />
-        </TourWrapper>
-      </AnalyticsWrapper>
-    </BrowserRouter>
+            },
+          }}
+        />
+      </TourWrapper>
+    </AnalyticsWrapper>
 
   );
 }
+
+// Keep one history listener across renders and StrictMode initializations.
+const appRouter = createBrowserRouter([{ path: '*', element: <AppShell /> }]);
 
 export default App;

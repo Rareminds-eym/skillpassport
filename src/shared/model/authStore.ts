@@ -45,6 +45,7 @@ interface AuthState {
   session: Session | null;
   loading: boolean;
   isAuthenticated: boolean;
+  signupInProgress: boolean;
 
   role: string | null;
   isLearner: boolean;
@@ -133,6 +134,7 @@ export const useAuthStore = create<AuthState>()(
       session: null,
       loading: true,
       isAuthenticated: false,
+      signupInProgress: false,
       role: null,
       isLearner: false,
       isEducator: false,

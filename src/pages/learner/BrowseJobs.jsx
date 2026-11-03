@@ -56,7 +56,7 @@ const BrowseJobs = () => {
     <div>
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Browse Jobs</h1>
-        <p className="text-gray-600 mt-2">Discover new opportunities that match your skills</p>
+        <p className="text-gray-600 mt-2">Sample listings for demonstration only. Visit Opportunities for live jobs.</p>
       </div>
 
       <div className="bg-white rounded-xl shadow-md p-6 mb-6">
@@ -129,7 +129,7 @@ const BrowseJobs = () => {
                 <Button size="sm" variant="outline">
                   View Details
                 </Button>
-                <Button size="sm">Apply Now</Button>
+                <Button size="sm" disabled>Sample — applications unavailable</Button>
               </div>
             </div>
           </div>

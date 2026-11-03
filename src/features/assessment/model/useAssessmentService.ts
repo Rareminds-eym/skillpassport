@@ -32,16 +32,27 @@ export function useAssessmentService(options?: UseAssessmentServiceOptions) {
   // ========================================================================
 
   const startAssessment = useCallback(
-    async (gradeLevel: string, streamId?: string | null) => {
+    async (gradeLevel: string, streamId?: string | null, specialization?: string | null) => {
       try {
-        logger.info('Starting assessment', { gradeLevel, streamId });
+        // Prefer explicit param, fallback to pending_specialization from modal atomic path
+        let specToSend = specialization || null;
+        if (!specToSend) {
+          try {
+            const pending = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('pending_specialization') : null;
+            if (pending) specToSend = pending;
+          } catch {}
+        }
+        logger.info('Starting assessment', { gradeLevel, streamId, hasSpecialization: !!specToSend });
         store.setLoading(true);
         store.setError(null);
 
         const response = await assessmentApi.startAssessment({
           gradeLevel,
           streamId: streamId || undefined,
+          specialization: specToSend || undefined,
         });
+        // Clear pending after consume (single-use)
+        if (specToSend) { try { sessionStorage.removeItem('pending_specialization'); } catch {} }
 
         if (!response.success) {
           const error = response.error || 'Failed to start assessment';

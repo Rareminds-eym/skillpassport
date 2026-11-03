@@ -10,7 +10,7 @@ const logger = getLogger('user-settings');
 
 /**
  * Get or create user settings
- * @param {string} userId - User ID from auth.users
+ * @param {string} userId - SSO user ID
  * @returns {Promise<Object>} User settings
  */
 export const getUserSettings = async (userId) => {

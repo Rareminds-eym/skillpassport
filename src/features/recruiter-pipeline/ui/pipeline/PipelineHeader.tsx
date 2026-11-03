@@ -7,7 +7,7 @@ import {
 } from '@heroicons/react/24/outline';
 
 interface Opportunity {
-  id: number;
+  id: string;
   job_title?: string;
   title?: string;
   company_name?: string;
@@ -19,8 +19,8 @@ interface PipelineHeaderProps {
   globalSearch: string;
   setGlobalSearch: (value: string) => void;
   opportunities: Opportunity[];
-  selectedJob: number | null;
-  setSelectedJob: (id: number) => void;
+  selectedJob: string | null;
+  setSelectedJob: (id: string) => void;
   getTotalCandidates: () => number;
   onAddCandidates: () => void;
   onExportPipeline: () => void;
@@ -40,24 +40,24 @@ export const PipelineHeader: React.FC<PipelineHeaderProps> = ({
 }) => {
   return (
     <div className="bg-white border-b border-gray-200 px-6 py-4">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between mb-4">
         <h1 className="text-2xl font-bold text-gray-900">Pipeline Management</h1>
         
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           {/* Global Search */}
           <div className="relative">
-            <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-            <input
+            <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-600" />
+            <input aria-label="Search pipeline candidates"
               type="text"
               value={globalSearch}
               onChange={(e) => setGlobalSearch(e.target.value)}
               placeholder="Search candidates..."
-              className="pl-10 pr-4 py-2 w-64 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="pl-10 pr-4 py-2 w-full sm:w-64 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             />
             {globalSearch && (
-              <button
+              <button aria-label="Clear pipeline search"
                 onClick={() => setGlobalSearch('')}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-600 hover:text-gray-600"
               >
                 <XMarkIcon className="h-4 w-4" />
               </button>
@@ -81,7 +81,7 @@ export const PipelineHeader: React.FC<PipelineHeaderProps> = ({
           </button>
           <button
             onClick={onRefresh}
-            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 text-gray-600 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
             title="Refresh"
           >
             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -114,9 +114,9 @@ export const PipelineHeader: React.FC<PipelineHeaderProps> = ({
           </button>
         ))}
         {opportunities.length > 5 && (
-          <select
+          <select aria-label="More jobs"
             value={selectedJob || ''}
-            onChange={(e) => setSelectedJob(Number(e.target.value))}
+            onChange={(e) => setSelectedJob(e.target.value)}
             className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary-500"
           >
             <option value="">More jobs...</option>

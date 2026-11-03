@@ -53,10 +53,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       env.SUPABASE_URL,
       env.SUPABASE_SERVICE_ROLE_KEY,
       {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false,
-        },
+        accessToken: async () => env.SUPABASE_SERVICE_ROLE_KEY,
       }
     );
 

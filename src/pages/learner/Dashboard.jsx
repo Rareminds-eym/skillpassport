@@ -1,3 +1,4 @@
+import RecommendationProfilePrompt, { RecommendationReadinessGate } from '@/widgets/learner-dashboard/ui/RecommendationProfilePrompt';
 import {
   ChartBarIcon,
   LockClosedIcon,
@@ -88,6 +89,7 @@ import { isSchoolLearner, isCollegeLearner, isLearner } from '@/entities/learner
 import { useUserRole } from '@/shared/model/authStore';
 import { useSubscriptionQuery } from '@/features/subscription/model';
 import { PLAN_IDS } from '@/shared/config/subscriptionPlans';
+import { isFreemiumPlan } from '@/shared/lib/isFreemiumPlan';
 import { checkFeatureAccess } from '@/features/subscription/lib/featureGating';
 import { apiPost } from '@/shared/api/apiClient';
 import { getWSClient } from '@/shared/api/wsRealtimeClient';
@@ -104,9 +106,11 @@ import {
 // Import Tour Components - Now handled globally
 // Tours are managed by GlobalTourManager in App.tsx
 
-const OpportunitiesCardContent = ({ opportunities, learnerData, navigate, matchedJobs = [] }) => {
+const OpportunitiesCardContent = ({ opportunities, learnerData, navigate, matchedJobs = [], readiness }) => {
   const [selectedOpportunity, setSelectedOpportunity] = useState(null);
   const [showModal, setShowModal] = useState(false);
+
+  if (readiness?.state === 'needs_profile' || readiness?.state === 'limited_context') return <RecommendationProfilePrompt readiness={readiness} />;
 
   // Check if user is a learner
   const isLearnerUser = isLearner(learnerData);
@@ -130,8 +134,8 @@ const OpportunitiesCardContent = ({ opportunities, learnerData, navigate, matche
           posted_date: match.posted_date || match.created_at,
           sector: match.sector || match.department,
           // Use match_percentage which is already calculated
-          matchScore: match.match_percentage || (match.final_score ? Math.round(match.final_score * 100) : null),
-          isAIRecommended: true
+          matchScore: match.match_percentage ?? (Number.isFinite(match.final_score) ? Math.round(match.final_score * 100) : null),
+          isAIRecommended: match.isAIRecommended === true
         };
       })
     : [];
@@ -149,8 +153,8 @@ const OpportunitiesCardContent = ({ opportunities, learnerData, navigate, matche
           location: match.location,
           posted_date: match.posted_date || match.created_at,
           sector: match.sector || match.department,
-          matchScore: match.match_percentage || (match.final_score ? Math.round(match.final_score * 100) : null),
-          isAIRecommended: true
+          matchScore: match.match_percentage ?? (Number.isFinite(match.final_score) ? Math.round(match.final_score * 100) : null),
+          isAIRecommended: match.isAIRecommended === true
         };
       })
     : opportunities.filter(opp => opp.employment_type !== 'factory_visit');
@@ -243,7 +247,7 @@ const OpportunitiesCardContent = ({ opportunities, learnerData, navigate, matche
         <div className="flex items-start justify-between mb-2">
           <h4 className="text-base font-bold text-gray-900 flex-1">{opp.company_name}</h4>
           <div className="flex items-center gap-2">
-            {isAIRecommended && matchScore && (
+            {isAIRecommended && Number.isFinite(matchScore) && (
               <Badge className="text-xs !bg-purple-100 !text-purple-700 font-semibold">
                 {Math.round(matchScore)}% Match
               </Badge>
@@ -327,7 +331,7 @@ const OpportunitiesCardContent = ({ opportunities, learnerData, navigate, matche
                   </h2>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  {isAIRecommended && matchScore && (
+                  {isAIRecommended && Number.isFinite(matchScore) && (
                     <Badge className="text-xs !bg-purple-100 !text-purple-700 font-semibold">
                       {Math.round(matchScore)}% Match
                     </Badge>
@@ -660,7 +664,7 @@ const LearnerDashboard = () => {
   const { subscriptionData, loading: subscriptionLoading } = useSubscriptionQuery();
 
   // Check if user is on Freemium plan
-  const isFreemium = subscriptionData?.plan === PLAN_IDS.FREEMIUM;
+  const isFreemium = isFreemiumPlan(subscriptionData?.plan);
   const userPlan = subscriptionData?.plan || PLAN_IDS.FREEMIUM;
 
   // State for upgrade prompt
@@ -889,8 +893,13 @@ const LearnerDashboard = () => {
     loading: aiLoading,
     cached: aiCached,
     fallback: aiFallback,
+    readiness: aiReadiness,
+    error: aiError,
+    processing: aiProcessing,
+    refreshRecommendations: refreshAIRecommendations,
   } = useLearnerAIRecommendations({
     enabled: !isViewingOthersProfile,
+    learnerId: learnerData?.id,
     autoFetch: true
   });
 
@@ -2142,6 +2151,7 @@ const LearnerDashboard = () => {
           </div>
         </CardHeader>
         <CardContent className="pt-4 p-6 space-y-4">
+          <RecommendationReadinessGate readiness={aiReadiness} error={aiError} processing={aiProcessing} onRetry={refreshAIRecommendations}>
           {opportunitiesLoading ? (
             <div className="flex justify-center items-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -2171,8 +2181,10 @@ const LearnerDashboard = () => {
               learnerData={learnerData}
               navigate={navigate}
               matchedJobs={matchedJobs}
+              readiness={aiReadiness}
             />
           )}
+          </RecommendationReadinessGate>
         </CardContent>
       </Card>
     ),

@@ -78,6 +78,13 @@ export class ProfileValidationService {
 
     requiredFields.forEach((field: string) => {
       let value = learner[field];
+
+      // Settings stores phone as contactNumber; imported learners may use contact_number.
+      if (field === 'phone') {
+        value = [learner.contactNumber, learner.contact_number, learner.phone].find(
+          candidate => typeof candidate === 'string' && candidate.trim() !== ''
+        );
+      }
       
       // Special handling for flexible college fields
       if (field === 'university_college_id' && (!value || value === '')) {

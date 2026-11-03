@@ -55,6 +55,6 @@ export async function handleHasFeatureAccess(context: AuthenticatedContext): Pro
     return apiSuccess({ hasAccess: false, accessSource: null }, context.request, 200);
   } catch (error) {
     console.error('[HasFeatureAccess] Error:', error);
-    return apiError(200, 'ERROR', error instanceof Error ? error.message : 'Unknown error', context.request);
+    return apiError(500, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Unknown error', context.request);
   }
 }

@@ -18,7 +18,7 @@ ENVIRONMENT=development
 
 # ==================== LTE INTERNAL GATEWAY ====================
 # Shared HMAC secret for the LTE ↔ SkillPassport internal gateway
-# (POST /api/internal/lte/v1). MUST match LTE's SKILLPASSPORT_INTERNAL_SECRET.
+# (POST /api/internal/lte/v1). MUST match LTE's LTE_INTERNAL_SECRET.
 # Server-only — never expose via VITE_* or to the frontend. Min 32 chars.
 LTE_INTERNAL_SECRET=your_lte_internal_secret_here_min_32_chars
 
@@ -70,3 +70,11 @@ GOOGLE_CLIENT_ID=your_google_oauth_client_id.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=your_google_client_secret
 # Optional dedicated HMAC key for state cookies; falls back to GOOGLE_CLIENT_SECRET.
 OAUTH_STATE_SECRET=
+
+# Catalogue gateway: authoritative SP-Dash origin and server-only shared secret.
+# SP_DASH_CATALOG_URL=http://localhost:3000
+# Use the LTE_INTERNAL_SECRET configured above on LTE and SP-Dash too (at least 32 characters).
+
+# AI-only job matching: use the exact model returned by EMBEDDING_SERVICE.
+# Build the verified local catalog with npm run index:job-matching before use.
+MATCHING_EMBEDDING_MODEL=google/gemini-embedding-2-preview

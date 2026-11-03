@@ -357,15 +357,6 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         return apiSuccess({ alerts: data }, context.request, { startTime });
       }
 
-      case 'storage-upload': {
-        const { bucket, path, file_base64, content_type } = params;
-        const buffer = Uint8Array.from(atob(file_base64), c => c.charCodeAt(0));
-        const { data: uploadData, error: uploadError } = await supabase.storage.from(bucket).upload(path, buffer, { contentType: content_type, upsert: true });
-        if (uploadError) return apiError(500, 'STORAGE_ERROR', uploadError.message, context.request, { startTime });
-        const { data: { publicUrl } } = supabase.storage.from(bucket).getPublicUrl(path);
-        return apiSuccess({ url: publicUrl, path }, context.request, { startTime });
-      }
-
       case 'check-duplicate-learner': {
         if (!isAdmin) return apiError(403, 'FORBIDDEN', 'Admin only', context.request, { startTime });
         const { name, dateOfBirth, parentPhone } = params;

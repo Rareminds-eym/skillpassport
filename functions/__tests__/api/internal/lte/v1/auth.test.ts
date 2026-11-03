@@ -138,6 +138,25 @@ describe('Gateway Authentication System', () => {
       await expect(verifyUserClaim(secret, claim, sig)).rejects.toThrow('User claim expired');
     });
 
+    it.each([
+      ['version 4', '59dc759d-45ff-4d14-b7f3-34c435cbf4ae'],
+      ['version 5 (imported / seeded accounts)', '783d8431-a034-5369-ae47-3aca2c4ec618'],
+      ['version 1', '6ba7b810-9dad-11d1-80b4-00c04fd430c8'],
+    ])('should accept a %s user id as the acting user', async (_name, sub) => {
+      const { claim, sig } = await signUserClaim(secret, sub);
+      await expect(verifyUserClaim(secret, claim, sig)).resolves.toMatchObject({ sub });
+    });
+
+    it.each([
+      'not-a-uuid',
+      '783d8431-a034-5369-ae47-3aca2c4ec61',
+      "783d8431-a034-5369-ae47-3aca2c4ec618'; drop table users;--",
+      '783d8431-a034-9369-ae47-3aca2c4ec618', // version 9 does not exist
+      '783d8431-a034-5369-1e47-3aca2c4ec618', // invalid variant
+    ])('should still reject a malformed subject %s', async (sub) => {
+      await expect(signUserClaim(secret, sub)).rejects.toThrow('User claim subject must be a UUID');
+    });
+
     it('should throw if subject is not a valid UUID', async () => {
       await expect(signUserClaim(secret, 'not-a-uuid')).rejects.toThrow('User claim subject must be a UUID');
     });

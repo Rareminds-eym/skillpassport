@@ -1,8 +1,9 @@
+import { useUser } from '@/shared/model/authStore';
 import { FunnelRangePreset, getGeographicDistribution, getTopHiringColleges } from '@/features/educator-copilot';
 import { getWSClient } from '@/shared/api/wsRealtimeClient';
 import { queryKeys } from '@/shared/lib/queryKeys';
 import { useQueries, useQueryClient } from '@tanstack/react-query';
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect } from 'react';
 
 interface UseDiversityDataOptions {
   preset: FunnelRangePreset;
@@ -26,8 +27,8 @@ export const useDiversityData = ({
   collegesLimit = 4,
   enabled = true
 }: UseDiversityDataOptions) => {
+  const user = useUser();
   const queryClient = useQueryClient();
-  const channelRef = useRef<any>(null);
 
   // Memoized invalidation callback
   const invalidateQueries = useCallback(() => {
@@ -46,7 +47,7 @@ export const useDiversityData = ({
   const queries = useQueries({
     queries: [
       {
-        queryKey: queryKeys.analytics.geographic.distribution(preset, { startDate, endDate, limit: geoLimit }),
+        queryKey: [...queryKeys.analytics.geographic.distribution(user?.id || ''), { preset, startDate, endDate, limit: geoLimit }],
         queryFn: async () => {
           const { data, error } = await getGeographicDistribution(preset, startDate, endDate, geoLimit);
           if (error) throw error;
@@ -59,10 +60,9 @@ export const useDiversityData = ({
         gcTime: 5 * 60 * 1000,
         retry: 2,
         retryDelay: (attemptIndex: number) => Math.min(1000 * 2 ** attemptIndex, 10000),
-        placeholderData: (previousData: any) => previousData,
       },
       {
-        queryKey: queryKeys.analytics.hiring.topColleges(preset, { startDate, endDate, limit: collegesLimit }),
+        queryKey: [...queryKeys.analytics.hiring.topColleges(user?.id || '', collegesLimit), { preset, startDate, endDate }],
         queryFn: async () => {
           const { data, error } = await getTopHiringColleges(preset, startDate, endDate, collegesLimit);
           if (error) throw error;
@@ -75,7 +75,6 @@ export const useDiversityData = ({
         gcTime: 5 * 60 * 1000,
         retry: 2,
         retryDelay: (attemptIndex: number) => Math.min(1000 * 2 ** attemptIndex, 10000),
-        placeholderData: (previousData: any) => previousData,
       },
     ],
   });

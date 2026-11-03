@@ -1,3 +1,4 @@
+import { getPaymentWorker, type PaymentWorkerEnv } from '../../payments/lib/paymentBinding';
 /**
  * Internal Webhook Receiver for Payments (Multi-Flow Router)
  * 
@@ -107,7 +108,8 @@ export const onRequestPost: PagesFunction<PagesEnv> = async (context) => {
     const razorpay_payment_id = paymentEntity.id;
     const razorpay_order_id = paymentEntity.order_id;
     const amount = paymentEntity.amount; // In paise
-    const notes = paymentEntity.notes || {};
+    const providerOrder = await getPaymentWorker(env as unknown as PaymentWorkerEnv).getOrder(razorpay_order_id);
+    const notes = providerOrder.notes || {};
     const orderType = notes.type || 'subscription'; // Default to subscription for backward compat
 
     const userId = notes.user_id;
@@ -143,6 +145,8 @@ export const onRequestPost: PagesFunction<PagesEnv> = async (context) => {
 
         const result = await fulfillLearnerSubscription(fulfillmentEnv, {
           user_id: userId,
+          org_id: notes.org_id || undefined,
+          organization_type: notes.organization_type || undefined,
           plan_id: planId,
           plan_name: planName || validPlan.name,
           plan_code: validPlan.plan_code,
@@ -172,27 +176,10 @@ export const onRequestPost: PagesFunction<PagesEnv> = async (context) => {
       }
 
       case 'addon': {
-        if (!userId || !notes.feature_key) {
-          logger.warn('Missing user_id or feature_key for addon', notes);
-          return apiSuccess({ ignored: true, reason: 'missing_notes_data' }, request);
-        }
-
         const result = await fulfillAddonPurchase(fulfillmentEnv, {
-          user_id: userId,
-          feature_key: notes.feature_key,
-          billing_period: notes.billing_period || 'monthly',
-          price_at_purchase: amount / 100,
-          razorpay_order_id,
-          razorpay_payment_id,
-          razorpay_signature: '',
-          payment_method: paymentEntity.method,
-          currency: paymentEntity.currency || 'INR',
+          razorpay_order_id, razorpay_payment_id, providerOrder,
         });
-
-        if (result.already_fulfilled) {
-          return apiSuccess({ already_fulfilled: true }, request);
-        }
-        return apiSuccess({ fulfilled: true, type: 'addon' }, request);
+        return apiSuccess({ fulfilled: true, already_fulfilled: result.already_fulfilled, type:'addon' },request);
       }
 
       case 'bundle': {

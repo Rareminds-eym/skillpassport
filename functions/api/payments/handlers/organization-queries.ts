@@ -106,6 +106,6 @@ export async function handleOrganizationQueries(context: AuthenticatedContext): 
     return apiError(400, 'VALIDATION_ERROR', 'Invalid action', context.request);
   } catch (error) {
     console.error('[OrganizationQueries] Error:', error);
-    return apiError(200, 'ERROR', error instanceof Error ? error.message : 'Unknown error', context.request);
+    return apiError(500, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Unknown error', context.request);
   }
 }

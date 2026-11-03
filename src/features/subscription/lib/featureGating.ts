@@ -34,6 +34,7 @@
  */
 
 import { FREEMIUM_FEATURES, PLAN_IDS } from '@/shared/config/subscriptionPlans';
+import { isFreemiumPlan } from '@/shared/lib/isFreemiumPlan';
 import { createFeatureAccessErrorLog, logError } from '@/shared/lib/error-logging';
 
 /**
@@ -66,7 +67,7 @@ export function checkFeatureAccess(
 ): FeatureAccessResult {
   try {
     // Handle Freemium tier
-    if (userPlan === PLAN_IDS.FREEMIUM) {
+    if (isFreemiumPlan(userPlan) || userPlan?.trim().toLowerCase() === PLAN_IDS.RECRUITER_FREE) {
       return checkFreemiumAccess(feature);
     }
 
@@ -107,7 +108,7 @@ export function checkFeatureAccess(
 
     // Graceful degradation: fail open for paid plans, fail closed for freemium
     // This prevents legitimate users from being locked out due to transient errors
-    const shouldFailOpen = userPlan !== PLAN_IDS.FREEMIUM;
+    const shouldFailOpen = !isFreemiumPlan(userPlan) && userPlan?.trim().toLowerCase() !== PLAN_IDS.RECRUITER_FREE;
 
     return {
       hasAccess: shouldFailOpen,

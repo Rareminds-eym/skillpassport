@@ -23,8 +23,9 @@ export interface PagesEnv {
   SSO_SERVICE?: SsoWorkerRpc;
   /** LTE app base URL used for cross-app SSO callback redirects. */
   LTE_APP_URL?: string;
-  /** Shared HMAC secret for the LTE ↔ SkillPassport internal gateway (server-only). */
+  /** Shared server-only signing secret for LTE gateway, catalogue and learning requests. */
   LTE_INTERNAL_SECRET?: string;
+  SP_DASH_CATALOG_URL?: string;
   /**
    * Cookie domain for refresh-token scoping across subdomains.
    * Production: ".rareminds.in"  →  __Secure-refresh_token; Domain=.rareminds.in
@@ -59,11 +60,20 @@ export interface PagesEnv {
   // Embedding Worker configuration
   /** Cloudflare Service Binding to the Embedding worker */
   EMBEDDING_SERVICE?: EmbeddingWorkerRpc;
+  /** Explicit rollout kill switch. "false" disables both matching aliases. */
+  JOB_MATCHING_ENABLED?: string;
+  /** Verified worker model and catalog/entity vector-space attestation. */
+  MATCHING_EMBEDDING_MODEL?: string;
+  MATCHING_CATALOG_MODEL?: string;
+  /** Enable personalization only after ALL retained entity/job writers are fenced or disabled. */
+  MATCHING_VECTOR_PIPELINE_VERIFIED?: string;
 
   // Email Worker configuration
   /** Cloudflare Service Binding to the Email worker */
   EMAIL_SERVICE?: EmailWorkerRpc;
   ADMIN_EMAIL?: string;
+  /** Trusted public frontend URL for email links. */
+  APP_URL?: string;
 
 
   // AI API keys

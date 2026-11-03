@@ -438,6 +438,7 @@ function mapToUICandidate(row: LearnerRow): UICandidate {
 }
 
 interface UseLearnersOptions {
+  loadRows?:()=>Promise<LearnerRow[]>;
   schoolId?: string | null;
   collegeId?: string | null;
   classIds?: string[]; // Add class IDs for filtering
@@ -451,6 +452,7 @@ export function useLearners(options?: UseLearnersOptions) {
   const [data, setData] = useState<UICandidate[]>([])
   const [loading, setLoading] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
+  const loadRows=options?.loadRows
   const schoolId = options?.schoolId
   const collegeId = options?.collegeId
   const classIds = options?.classIds
@@ -464,6 +466,7 @@ export function useLearners(options?: UseLearnersOptions) {
     setError(null)
     
     try {
+      if(loadRows){setData((await loadRows()).map(mapToUICandidate));return;}
       // For college lecturers, use program-based learner fetching
       if (educatorType === 'college' && userId) {
         const { data: programlearners, error: programError } = await getProgramSectionlearners(userId)
@@ -505,7 +508,7 @@ export function useLearners(options?: UseLearnersOptions) {
     const wrappedFetch = async () => {
       if (!isMounted) return
       // Only fetch if we have filtering criteria
-      if (options !== undefined && !schoolId && !collegeId && (!classIds || classIds.length === 0)) {
+      if (!loadRows && options !== undefined && !schoolId && !collegeId && (!classIds || classIds.length === 0)) {
         return
       }
       await fetchlearners()
@@ -515,7 +518,7 @@ export function useLearners(options?: UseLearnersOptions) {
       isMounted = false
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [schoolId, collegeId, classIds, educatorType, userId, sortBy, sortOrder])
+  }, [schoolId, collegeId, classIds, educatorType, userId, sortBy, sortOrder,loadRows])
 
   const stats = useMemo(() => ({ count: data.length }), [data])
 

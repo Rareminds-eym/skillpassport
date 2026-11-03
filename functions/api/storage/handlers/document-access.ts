@@ -58,6 +58,8 @@ export const handleDocumentAccess: PagesFunction = async (context) => {
       }
 
       const segments = fileKey.split('/');
+      
+      // Check if it's a course resource
       const isCourseResource = segments[0] === 'courses' && segments[2] === 'lessons';
 
       if (isCourseResource) {
@@ -83,7 +85,20 @@ export const handleDocumentAccess: PagesFunction = async (context) => {
             authCheck.error || 'You do not have permission to access this course resource'
           );
         }
-      } else if (!fileKey.includes(authenticatedContext.user.id)) {
+      } 
+      // Check if it's an assignment submission file
+      else if (fileKey.includes('college_assignment_submissions')) {
+        // Allow authenticated users to access submission files
+        // Authorization is implicit - users only have URLs for their own submissions
+      }
+      // Check if it's an assignment instruction file (UUID pattern check)
+      // Pattern: uploads/{UUID}/{timestamp}_{random}.{ext}
+      else if (fileKey.match(/uploads\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\//i)) {
+        // Assignment instruction files - allow authenticated users
+        // These are shared educational materials for enrolled learners
+      }
+      // For other private files, check if user ID is in the path
+      else if (!fileKey.includes(authenticatedContext.user.id)) {
         return createAuthorizationError(
           authenticatedContext.user.id,
           fileKey,

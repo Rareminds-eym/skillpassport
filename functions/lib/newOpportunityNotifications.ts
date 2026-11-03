@@ -26,6 +26,7 @@ interface OpportunityForNotification {
   salary_range_min: number | null;
   salary_range_max: number | null;
   is_active: boolean | null;
+  learning_requirements?: unknown[];
 }
 
 /**
@@ -40,6 +41,9 @@ export async function notifyLearnersOfNewOpportunity(
   opportunity: OpportunityForNotification
 ): Promise<void> {
   if (opportunity.is_active !== true) return;
+  // Structured openings use the durable, qualification-aware outbox instead of
+  // broadcasting to every learner. The DB trigger enqueues the work atomically.
+  if(opportunity.learning_requirements?.length)return;
 
   const title = `${opportunity.job_title || ''} at ${opportunity.company_name || ''}`;
   let message = `${opportunity.title || ''} - ${opportunity.location || ''}`;

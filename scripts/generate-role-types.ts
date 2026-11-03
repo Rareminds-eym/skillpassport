@@ -3,7 +3,7 @@
  * generate-role-types.ts — emit the canonical role module from the app DB.
  *
  * Spec: rbac-architecture-violations-fix | Phase: P3 | Task: 18.1
- * Property 4 / FC-7: the generator exists and (task 18.2) CI fails on drift
+ * Property 4 / FC-7: the generator and local pre-commit check detect drift
  * between the DB and the generated file.
  *
  * WHAT
@@ -47,23 +47,22 @@
  *   npx tsx scripts/generate-role-types.ts
  *   npx tsx scripts/generate-role-types.ts --check   (print would-be output to stdout, do not write)
  *   npx tsx scripts/generate-role-types.ts --verify  (drift check: compare committed file vs DB,
- *                                                     exit non-zero on drift; alias: --ci)
+ *                                                     exit non-zero on drift)
  *
  * DRIFT CHECK (task 18.2 — FC-7)
- *   `--verify` (alias `--ci`) regenerates the module in memory and compares it
+ *   `--verify` regenerates the module in memory and compares it
  *   BYTE-FOR-BYTE against the committed `src/shared/types/generated/roles.ts`.
  *     - identical            → prints OK, exits 0.
  *     - differs / missing    → prints a diff + remediation, exits 1 (stale).
- *   Wired into CI (`.github/workflows/roles-drift.yml`) and the pre-commit hook
- *   (`.githooks/pre-commit`) via the `check:roles` / `check:roles:precommit`
- *   npm scripts.
+ *   Run locally via `check:roles`, or via the `.githooks/pre-commit` hook
+ *   using `check:roles:precommit`.
  *
  *   DB AVAILABILITY (never false-green):
  *     The check needs the app DB to read from. If the DB is UNREACHABLE the
  *     check FAILS (exit 1) by default — it must never pass silently. Pass
  *     `--allow-db-unavailable` (used by the local pre-commit hook only) to
  *     downgrade an unreachable DB to an explicit skip-with-warning (exit 0).
- *     CI does NOT pass this flag, so in CI an unreachable DB is a hard failure.
+ *     `check:roles` does NOT pass this flag, so an unreachable DB is a hard failure.
  *     A real drift (DB reachable, file stale) ALWAYS fails regardless of flags.
  */
 
@@ -187,8 +186,8 @@ function renderModule(ssoRoles: string[], categories: Map<string, string[]>): st
  *
  * Source of truth: the app-DB shadow \`public.roles\` table (synced from the
  * sso-worker) and the app-owned \`public.role_categories\` table. The generator
- * reads both (READ-ONLY) and emits this file. A CI / pre-commit drift check
- * (task 18.2) re-runs the generator and fails if this file is stale.
+ * reads both (READ-ONLY) and emits this file. The local pre-commit drift check
+ * re-runs the generator and fails if this file is stale.
  *
  * Ordering is alphabetical for determinism (stable diffs for drift detection);
  * no runtime code depends on the order. Runtime authorization is enforced in
@@ -257,7 +256,7 @@ function isDbUnavailable(message: string): boolean {
 /** Generate the module contents from the DB (READ-ONLY). */
 async function generateContents(): Promise<string> {
     const supabase = createClient(SUPABASE_URL, SERVICE_KEY, {
-        auth: { persistSession: false, autoRefreshToken: false },
+        accessToken: async () => SERVICE_KEY,
     });
     const [ssoRoles, categories] = await Promise.all([
         readRoleNames(supabase),
@@ -304,7 +303,7 @@ async function main(): Promise<void> {
             console.warn(
                 `⚠️  roles drift check SKIPPED — app DB unavailable (${SUPABASE_URL}).\n` +
                 '   Start it with `npm run supabase:start` to enable the check. ' +
-                '(CI runs this check with a live DB and will catch any drift.)',
+                'Run `npm run check:roles` once the database is available.',
             );
             process.exit(0);
         }

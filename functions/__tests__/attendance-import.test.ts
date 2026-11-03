@@ -243,3 +243,23 @@ describe('validateAttendanceImport (session-first)', () => {
     expect(r.fatal?.message).toMatch(/have no roll numbers/);
   });
 });
+
+
+describe('trainer session roster import', () => {
+ it('validates the snapshotted roster rather than everyone in the program', async () => {
+  const body = baseBody(); body.rows = [body.rows[0]];
+  const result = await validateAttendanceImport(stubSupabase(), body, [ROSTER[0]]);
+  expect(result.ok).toBe(true);
+  expect(result.summary?.rosterSize).toBe(1);
+ });
+ it('requires every snapshotted trainer-session learner', async () => {
+  const body = baseBody(); body.rows = [body.rows[0]];
+  const result = await validateAttendanceImport(stubSupabase(), body, ROSTER);
+  expect(result.ok).toBe(false);
+  expect(result.errors.some(error => error.message.includes('MCA002'))).toBe(true);
+ });
+ it('rejects already marked attendance in trainer sessions', async () => {
+  const result = await validateAttendanceImport(stubSupabase({existingCount:1}), baseBody(), ROSTER);
+  expect(result.fatal?.code).toBe('CONFLICT');
+ });
+});

@@ -1,5 +1,6 @@
+import { AccessibleModal } from './shared/RecruitmentControls';
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   PlusIcon,
   ShareIcon,
@@ -21,9 +22,10 @@ import {
   ChevronDownIcon
 } from '@heroicons/react/24/outline';
 import { apiPost } from '@/shared/api/apiClient';
-import { 
-  getShortlists, 
-  getShortlistCandidates, 
+import { EmptyStateWithQuote } from '@/components/EmptyStateWithQuote';
+import {
+  getShortlists,
+  getShortlistCandidates,
   createShortlist,
   updateShortlist,
   deleteShortlist,
@@ -90,7 +92,7 @@ const StatusBadge = ({ status, shared, expiry }) => {
   };
 
   const statusInfo = getStatusInfo();
-  
+
   return (
     <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${statusInfo.color}`}>
       {statusInfo.label}
@@ -102,10 +104,10 @@ const ViewCandidatesModal = ({ shortlist, candidates, isOpen, onClose }) => {
   if (!isOpen || !shortlist) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+    <AccessibleModal title="Recruitment dialog" onClose={onClose}><div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
         <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
-        
+
         <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full sm:p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex-1">
@@ -117,18 +119,17 @@ const ViewCandidatesModal = ({ shortlist, candidates, isOpen, onClose }) => {
                 {shortlist.created_by && (
                   <span className="text-xs text-gray-500">by {shortlist.created_by}</span>
                 )}
-                <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                  shortlist.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                }`}>
+                <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${shortlist.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                  }`}>
                   {shortlist.status || 'active'}
                 </span>
               </div>
             </div>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <button aria-label="Close dialog" onClick={onClose} className="text-gray-400 hover:text-gray-600">
               <XMarkIcon className="h-6 w-6" />
             </button>
           </div>
-          
+
           {shortlist.description && (
             <div className="mb-4 p-3 bg-gray-50 rounded-lg">
               <p className="text-sm text-gray-700">{shortlist.description}</p>
@@ -268,7 +269,7 @@ const ViewCandidatesModal = ({ shortlist, candidates, isOpen, onClose }) => {
           </div>
         </div>
       </div>
-    </div>
+    </div></AccessibleModal>
   );
 };
 
@@ -284,37 +285,13 @@ const ShareModal = ({ shortlist, isOpen, onClose, onShare }) => {
 
   const generateLinkIfNeeded = async () => {
     if (shareLink) return shareLink;
-    
+
     try {
       setIsGenerating(true);
-      const shareToken = Math.random().toString(36).substr(2, 9);
-      const generatedLink = `https://recruiterhub.com/shared/${shortlist.id}?token=${shareToken}`;
-      const expiryDate = new Date();
-      expiryDate.setDate(expiryDate.getDate() + shareSettings.expiry_days);
-      
-      // Update the shortlist in Supabase using the service function
-      const { error } = await updateShortlist(shortlist.id, {
-        shared: true,
-        share_link: generatedLink,
-        share_expiry: expiryDate.toISOString(),
-        watermark: shareSettings.watermark,
-        include_pii: shareSettings.include_pii,
-        notify_on_access: shareSettings.notify_on_access
-      });
-
-      if (error) throw error;
-
-      // Call the onShare callback with updated data
-      onShare({
-        ...shortlist,
-        shared: true,
-        share_link: generatedLink,
-        share_expiry: expiryDate.toISOString(),
-        watermark: shareSettings.watermark,
-        include_pii: shareSettings.include_pii,
-        notify_on_access: shareSettings.notify_on_access
-      });
-      
+      const response = await apiPost<any>('/recruiter/shortlist-sharing', { action:'generate', id:shortlist.id, expiryDays:shareSettings.expiry_days });
+      if(!response.success)throw new Error(response.error?.message||'Sharing failed');
+      const generatedLink=response.data.link;
+      onShare({...shortlist, shared:true, share_expiry:response.data.expiry});
       setShareLink(generatedLink);
       return generatedLink;
     } catch (error) {
@@ -329,7 +306,7 @@ const ShareModal = ({ shortlist, isOpen, onClose, onShare }) => {
   const handleCopyLink = async () => {
     const link = await generateLinkIfNeeded();
     if (!link) return;
-    
+
     try {
       // Try modern clipboard API first
       if (navigator.clipboard && window.isSecureContext) {
@@ -345,7 +322,7 @@ const ShareModal = ({ shortlist, isOpen, onClose, onShare }) => {
         document.body.appendChild(textArea);
         textArea.focus();
         textArea.select();
-        
+
         try {
           document.execCommand('copy');
           textArea.remove();
@@ -367,7 +344,7 @@ const ShareModal = ({ shortlist, isOpen, onClose, onShare }) => {
   const handleShareTelegram = async () => {
     const link = await generateLinkIfNeeded();
     if (!link) return;
-    
+
     const text = `Check out this shortlist: ${shortlist.name}`;
     const url = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`;
     window.open(url, '_blank');
@@ -376,11 +353,11 @@ const ShareModal = ({ shortlist, isOpen, onClose, onShare }) => {
   const handleShareWhatsApp = async () => {
     const link = await generateLinkIfNeeded();
     if (!link) return;
-    
+
     const text = `Check out this shortlist: ${shortlist.name}\n${link}`;
     // Check if on mobile device
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    const url = isMobile 
+    const url = isMobile
       ? `whatsapp://send?text=${encodeURIComponent(text)}`
       : `https://wa.me/?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank');
@@ -389,7 +366,7 @@ const ShareModal = ({ shortlist, isOpen, onClose, onShare }) => {
   const handleShareEmail = async () => {
     const link = await generateLinkIfNeeded();
     if (!link) return;
-    
+
     const subject = `Shortlist: ${shortlist.name}`;
     const body = `Hi,\n\nI'd like to share this shortlist with you: ${shortlist.name}\n\nAccess it here: ${link}\n\nBest regards`;
     const mailtoLink = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
@@ -399,18 +376,18 @@ const ShareModal = ({ shortlist, isOpen, onClose, onShare }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+    <AccessibleModal title="Share Shortlist" onClose={onClose} busy={isGenerating}><div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
         <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
-        
+
         <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-medium text-gray-900">Share Shortlist</h3>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <button aria-label="Close dialog" onClick={onClose} className="text-gray-400 hover:text-gray-600">
               <XMarkIcon className="h-6 w-6" />
             </button>
           </div>
-          
+
           <div className="mb-4">
             <h4 className="font-medium text-gray-900">{shortlist.name}</h4>
             <p className="text-sm text-gray-500">{shortlist.candidate_count || 0} candidates</p>
@@ -419,6 +396,9 @@ const ShareModal = ({ shortlist, isOpen, onClose, onShare }) => {
 
           {/* Share Options */}
           <div className="mt-6">
+            <p className="mb-3 text-sm text-gray-600">Links exclude contact details and internal notes. Generating a new link revokes the previous link.</p>
+            <label className="block mb-4 text-sm font-medium text-gray-700">Expires in days<input aria-label="Share expiry in days" type="number" min="1" max="90" value={shareSettings.expiry_days} onChange={e=>{setShareLink(null);setShareSettings({...shareSettings,expiry_days:Number(e.target.value)})}} className="ml-3 w-20 rounded border border-gray-300 p-2"/></label>
+            {shortlist.shared&&<button type="button" disabled={isGenerating} className="mb-4 text-red-700 underline" onClick={async()=>{setIsGenerating(true);try{const response=await apiPost<any>('/recruiter/shortlist-sharing',{action:'revoke',id:shortlist.id});if(!response.success)throw new Error(response.error?.message);setShareLink(null);onShare({...shortlist,shared:false});onClose()}catch(error){alert(error.message||'Could not revoke link')}finally{setIsGenerating(false)}}}>Revoke shared link</button>}
             <p className="text-sm font-medium text-gray-700 mb-3">Share via:</p>
             <div className="grid grid-cols-2 gap-3">
               {/* Copy Link Button */}
@@ -435,7 +415,7 @@ const ShareModal = ({ shortlist, isOpen, onClose, onShare }) => {
                 ) : (
                   <LinkIcon className="h-4 w-4 mr-2" />
                 )}
-                Copy Link
+                Manage link
               </button>
 
               {/* Email Button */}
@@ -509,7 +489,7 @@ const ShareModal = ({ shortlist, isOpen, onClose, onShare }) => {
           </div>
         </div>
       </div>
-    </div>
+    </div></AccessibleModal>
   );
 };
 
@@ -528,18 +508,18 @@ const ExportModal = ({ shortlist, isOpen, onClose, onExport }) => {
   const generateCSV = (shortlist: Shortlist, settings: any) => {
     // Determine what to include based on export type
     const isFullProfile = settings.type === 'full_profile';
-    
+
     // Build headers based on export type
     const headers = ['Name', 'Department', 'University', 'CGPA', 'Year of Passing'];
-    
+
     if (isFullProfile) {
       headers.push('Email', 'Phone');
     }
-    
+
     headers.push('Employability Score', 'Verified');
-    
+
     let csvContent = headers.join(',') + '\n';
-    
+
     (shortlist.candidates || []).forEach(candidate => {
       const row = [
         `"${candidate.name || 'N/A'}"`,
@@ -548,18 +528,18 @@ const ExportModal = ({ shortlist, isOpen, onClose, onExport }) => {
         `"${candidate.cgpa || 'N/A'}"`,
         `"${candidate.year_of_passing || 'N/A'}"`
       ];
-      
+
       if (isFullProfile) {
         row.push(`"${candidate.email || 'N/A'}"`);
         row.push(`"${candidate.phone || 'N/A'}"`);
       }
-      
+
       row.push(`"${candidate.employability_score || 'N/A'}"`);
       row.push(`"${candidate.verified ? 'Yes' : 'No'}"`);
-      
+
       csvContent += row.join(',') + '\n';
     });
-    
+
     return csvContent;
   };
 
@@ -567,13 +547,13 @@ const ExportModal = ({ shortlist, isOpen, onClose, onExport }) => {
   const generatePDF = async (shortlist: Shortlist, settings: any) => {
     const isFullProfile = settings.type === 'full_profile';
     const doc = new jsPDF();
-    
+
     // Set font
     doc.setFont('helvetica');
-    
+
     const pageWidth = doc.internal.pageSize.width;
     const pageHeight = doc.internal.pageSize.height;
-    
+
     // Add watermark logos if enabled
     if (settings.watermark) {
       try {
@@ -585,7 +565,7 @@ const ExportModal = ({ shortlist, isOpen, onClose, onExport }) => {
           rareMindsLogo.onload = resolve;
           rareMindsLogo.onerror = reject;
         });
-        
+
         // Convert to canvas with transparency
         const canvas1 = document.createElement('canvas');
         const ctx1 = canvas1.getContext('2d');
@@ -593,11 +573,11 @@ const ExportModal = ({ shortlist, isOpen, onClose, onExport }) => {
         canvas1.height = rareMindsLogo.height;
         ctx1.drawImage(rareMindsLogo, 0, 0);
         const rareMindsData = canvas1.toDataURL('image/png');
-        
+
         const topLeftWidth = 50;
         const topLeftHeight = (rareMindsLogo.height / rareMindsLogo.width) * topLeftWidth;
         doc.addImage(rareMindsData, 'PNG', 14, 10, topLeftWidth, topLeftHeight, undefined, 'FAST');
-        
+
         // Load and add RMLogo at center
         const rmLogo = new Image();
         rmLogo.crossOrigin = 'anonymous';
@@ -606,7 +586,7 @@ const ExportModal = ({ shortlist, isOpen, onClose, onExport }) => {
           rmLogo.onload = resolve;
           rmLogo.onerror = reject;
         });
-        
+
         // Convert to canvas with transparency
         const canvas2 = document.createElement('canvas');
         const ctx2 = canvas2.getContext('2d');
@@ -614,12 +594,12 @@ const ExportModal = ({ shortlist, isOpen, onClose, onExport }) => {
         canvas2.height = rmLogo.height;
         ctx2.drawImage(rmLogo, 0, 0);
         const rmLogoData = canvas2.toDataURL('image/png');
-        
+
         const centerWidth = 80;
         const centerHeight = (rmLogo.height / rmLogo.width) * centerWidth;
         const centerX = (pageWidth - centerWidth) / 2;
         const centerY = (pageHeight - centerHeight) / 2;
-        
+
         doc.addImage(rmLogoData, 'PNG', centerX, centerY, centerWidth, centerHeight, undefined, 'FAST');
       } catch (error) {
         logger.error('Failed to load watermark images', error);
@@ -630,22 +610,22 @@ const ExportModal = ({ shortlist, isOpen, onClose, onExport }) => {
         doc.setTextColor(0, 0, 0);
       }
     }
-    
+
     // Title (on next line after logo)
     doc.setFontSize(24);
     doc.setFont('helvetica', 'bold');
     doc.text(`EXPORT - ${shortlist.name}`, 14, 30);
-    
+
     // Metadata
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
     doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 40);
     doc.text(`Total Candidates: ${shortlist.candidates?.length || 0}`, 14, 46);
     doc.text(`Export Type: ${isFullProfile ? 'Full Profile' : 'Mini-Profile'}`, 14, 52);
-    
+
     let yPos = 62;
     const lineHeight = 6;
-    
+
     // Candidates
     doc.setFontSize(10);
     (shortlist.candidates || []).forEach((candidate, index) => {
@@ -654,12 +634,12 @@ const ExportModal = ({ shortlist, isOpen, onClose, onExport }) => {
         doc.addPage();
         yPos = 20;
       }
-      
+
       // Candidate header
       doc.setFont('helvetica', 'bold');
       doc.text(`Candidate ${index + 1}:`, 14, yPos);
       yPos += lineHeight;
-      
+
       // Candidate details
       doc.setFont('helvetica', 'normal');
       doc.text(`Name: ${candidate.name || 'N/A'}`, 20, yPos);
@@ -672,20 +652,20 @@ const ExportModal = ({ shortlist, isOpen, onClose, onExport }) => {
       yPos += lineHeight;
       doc.text(`Year of Passing: ${candidate.year_of_passing || 'N/A'}`, 20, yPos);
       yPos += lineHeight;
-      
+
       if (isFullProfile) {
         doc.text(`Email: ${candidate.email || 'N/A'}`, 20, yPos);
         yPos += lineHeight;
         doc.text(`Phone: ${candidate.phone || 'N/A'}`, 20, yPos);
         yPos += lineHeight;
       }
-      
+
       doc.text(`Employability Score: ${candidate.employability_score || 'N/A'}`, 20, yPos);
       yPos += lineHeight;
       doc.text(`Verified: ${candidate.verified ? 'Yes' : 'No'}`, 20, yPos);
       yPos += lineHeight + 3;
     });
-    
+
     // Footer
     const pageCount = doc.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
@@ -696,14 +676,14 @@ const ExportModal = ({ shortlist, isOpen, onClose, onExport }) => {
       doc.text(`Page ${i} of ${pageCount}`, 105, pageHeight - 5, { align: 'center' });
       doc.setTextColor(0, 0, 0);
     }
-    
+
     return doc;
   };
 
   // Helper function to trigger file download
   const downloadFile = (content: string, filename: string, format: string) => {
-    const blob = new Blob([content], { 
-      type: format === 'csv' ? 'text/csv' : 'application/pdf' 
+    const blob = new Blob([content], {
+      type: format === 'csv' ? 'text/csv' : 'application/pdf'
     });
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -718,13 +698,13 @@ const ExportModal = ({ shortlist, isOpen, onClose, onExport }) => {
   const handleExport = async () => {
     try {
       // Fetch candidates for this shortlist
-      
+
       const { data: candidates, error: candidatesError } = await getShortlistCandidates(shortlist.id);
       if (candidatesError) {
         logger.error('Error fetching candidates', candidatesError);
         throw candidatesError;
       }
-      
+
 
       // Check if there are no candidates
       if (!candidates || candidates.length === 0) {
@@ -762,7 +742,7 @@ const ExportModal = ({ shortlist, isOpen, onClose, onExport }) => {
         // Save the PDF
         pdfDoc.save(filename);
       }
-      
+
       // Log export activity
       await logExportActivity({
         shortlist_id: shortlist.id,
@@ -782,14 +762,14 @@ const ExportModal = ({ shortlist, isOpen, onClose, onExport }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+    <AccessibleModal title="Export Shortlist" onClose={onClose}><div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
         <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
-        
+
         <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-medium text-gray-900">Export Shortlist</h3>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <button aria-label="Close dialog" onClick={onClose} className="text-gray-400 hover:text-gray-600">
               <XMarkIcon className="h-6 w-6" />
             </button>
           </div>
@@ -804,7 +784,7 @@ const ExportModal = ({ shortlist, isOpen, onClose, onExport }) => {
                     name="format"
                     value="csv"
                     checked={exportSettings.format === 'csv'}
-                    onChange={(e) => setExportSettings({...exportSettings, format: e.target.value})}
+                    onChange={(e) => setExportSettings({ ...exportSettings, format: e.target.value })}
                     className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300"
                   />
                   <span className="ml-2 text-sm text-gray-700">CSV</span>
@@ -815,7 +795,7 @@ const ExportModal = ({ shortlist, isOpen, onClose, onExport }) => {
                     name="format"
                     value="pdf"
                     checked={exportSettings.format === 'pdf'}
-                    onChange={(e) => setExportSettings({...exportSettings, format: e.target.value})}
+                    onChange={(e) => setExportSettings({ ...exportSettings, format: e.target.value })}
                     className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300"
                   />
                   <span className="ml-2 text-sm text-gray-700">PDF</span>
@@ -832,7 +812,7 @@ const ExportModal = ({ shortlist, isOpen, onClose, onExport }) => {
                     name="type"
                     value="mini_profile"
                     checked={exportSettings.type === 'mini_profile'}
-                    onChange={(e) => setExportSettings({...exportSettings, type: e.target.value})}
+                    onChange={(e) => setExportSettings({ ...exportSettings, type: e.target.value })}
                     className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300"
                   />
                   <div className="ml-2">
@@ -846,7 +826,7 @@ const ExportModal = ({ shortlist, isOpen, onClose, onExport }) => {
                     name="type"
                     value="full_profile"
                     checked={exportSettings.type === 'full_profile'}
-                    onChange={(e) => setExportSettings({...exportSettings, type: e.target.value})}
+                    onChange={(e) => setExportSettings({ ...exportSettings, type: e.target.value })}
                     className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300"
                   />
                   <div className="ml-2">
@@ -875,7 +855,7 @@ const ExportModal = ({ shortlist, isOpen, onClose, onExport }) => {
           </div>
         </div>
       </div>
-    </div>
+    </div></AccessibleModal>
   );
 };
 
@@ -904,7 +884,7 @@ const EditShortlistModal = ({ shortlist, isOpen, onClose, onUpdate }) => {
         description: formData.description,
         tags: formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag)
       };
-      
+
       // Update in Supabase using service function
       const { data: updatedShortlist, error } = await updateShortlist(shortlist.id, updatedData);
 
@@ -921,14 +901,14 @@ const EditShortlistModal = ({ shortlist, isOpen, onClose, onUpdate }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+    <AccessibleModal title="Edit Shortlist" onClose={onClose}><div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
         <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
-        
+
         <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-medium text-gray-900">Edit Shortlist</h3>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <button aria-label="Close dialog" onClick={onClose} className="text-gray-400 hover:text-gray-600">
               <XMarkIcon className="h-6 w-6" />
             </button>
           </div>
@@ -936,10 +916,10 @@ const EditShortlistModal = ({ shortlist, isOpen, onClose, onUpdate }) => {
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Shortlist Name</label>
-              <input
+              <input aria-label="Shortlist Name"
                 type="text"
                 value={formData.name}
-                onChange={(e) => setFormData({...formData, name: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500"
                 placeholder="e.g., FSQM Q4 Plant Quality Interns"
               />
@@ -947,9 +927,9 @@ const EditShortlistModal = ({ shortlist, isOpen, onClose, onUpdate }) => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
-              <textarea
+              <textarea aria-label="Description"
                 value={formData.description}
-                onChange={(e) => setFormData({...formData, description: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 rows={3}
                 className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500"
                 placeholder="Brief description of this shortlist..."
@@ -958,10 +938,10 @@ const EditShortlistModal = ({ shortlist, isOpen, onClose, onUpdate }) => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Tags (comma-separated)</label>
-              <input
+              <input aria-label="Tags (comma-separated)"
                 type="text"
                 value={formData.tags}
-                onChange={(e) => setFormData({...formData, tags: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
                 className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500"
                 placeholder="FSQM, Q4, Plant Quality"
               />
@@ -985,7 +965,7 @@ const EditShortlistModal = ({ shortlist, isOpen, onClose, onUpdate }) => {
           </div>
         </div>
       </div>
-    </div>
+    </div></AccessibleModal>
   );
 };
 
@@ -1004,7 +984,7 @@ const CreateShortlistModal = ({ isOpen, onClose, onCreate }) => {
         description: formData.description,
         tags: formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag)
       };
-      
+
       // Insert into Supabase using service function
       const { data: newShortlist, error } = await createShortlist(newShortlistData);
 
@@ -1022,14 +1002,14 @@ const CreateShortlistModal = ({ isOpen, onClose, onCreate }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+    <AccessibleModal title="Create New Shortlist" onClose={onClose}><div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
         <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
-        
+
         <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-medium text-gray-900">Create New Shortlist</h3>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <button aria-label="Close dialog" onClick={onClose} className="text-gray-400 hover:text-gray-600">
               <XMarkIcon className="h-6 w-6" />
             </button>
           </div>
@@ -1037,10 +1017,10 @@ const CreateShortlistModal = ({ isOpen, onClose, onCreate }) => {
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Shortlist Name</label>
-              <input
+              <input aria-label="Shortlist Name"
                 type="text"
                 value={formData.name}
-                onChange={(e) => setFormData({...formData, name: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500"
                 placeholder="e.g., FSQM Q4 Plant Quality Interns"
               />
@@ -1048,9 +1028,9 @@ const CreateShortlistModal = ({ isOpen, onClose, onCreate }) => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
-              <textarea
+              <textarea aria-label="Description"
                 value={formData.description}
-                onChange={(e) => setFormData({...formData, description: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 rows={3}
                 className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500"
                 placeholder="Brief description of this shortlist..."
@@ -1059,10 +1039,10 @@ const CreateShortlistModal = ({ isOpen, onClose, onCreate }) => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Tags (comma-separated)</label>
-              <input
+              <input aria-label="Tags (comma-separated)"
                 type="text"
                 value={formData.tags}
-                onChange={(e) => setFormData({...formData, tags: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
                 className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500"
                 placeholder="FSQM, Q4, Plant Quality"
               />
@@ -1086,14 +1066,14 @@ const CreateShortlistModal = ({ isOpen, onClose, onCreate }) => {
           </div>
         </div>
       </div>
-    </div>
+    </div></AccessibleModal>
   );
 };
 
 const ShortlistCard = ({ shortlist, onShare, onExport, onView, onEdit, onDelete }) => {
   const candidateCount = shortlist.candidate_count || 0;
   const isExpired = shortlist.share_expiry && new Date(shortlist.share_expiry) < new Date();
-  
+
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between mb-4">
@@ -1112,10 +1092,10 @@ const ShortlistCard = ({ shortlist, onShare, onExport, onView, onEdit, onDelete 
             <span>by {shortlist.created_by}</span>
           </div>
         </div>
-        <StatusBadge 
-          status={shortlist.status} 
-          shared={shortlist.shared} 
-          expiry={shortlist.share_expiry} 
+        <StatusBadge
+          status={shortlist.status}
+          shared={shortlist.shared}
+          expiry={shortlist.share_expiry}
         />
       </div>
 
@@ -1145,11 +1125,11 @@ const ShortlistCard = ({ shortlist, onShare, onExport, onView, onEdit, onDelete 
               </span>
             </div>
             {!isExpired && (
-              <button 
-                onClick={() => navigator.clipboard.writeText(shortlist.share_link)}
+              <button
+                onClick={() => onShare(shortlist)}
                 className="text-sm text-green-700 hover:text-green-800 font-medium"
               >
-                Copy Link
+                Manage link
               </button>
             )}
           </div>
@@ -1199,13 +1179,13 @@ const ShortlistCard = ({ shortlist, onShare, onExport, onView, onEdit, onDelete 
           </button>
         </div>
         <div className="flex space-x-1">
-          <button
+          <button aria-label="Pencil"
             onClick={() => onEdit(shortlist)}
             className="p-1 text-gray-400 hover:text-gray-600"
           >
             <PencilIcon className="h-4 w-4" />
           </button>
-          <button
+          <button aria-label="Trash"
             onClick={() => onDelete(shortlist.id)}
             className="p-1 text-gray-400 hover:text-red-600"
           >
@@ -1228,8 +1208,9 @@ const Shortlists = () => {
   const [showExportModal, setShowExportModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  
+  const [searchParams] = useSearchParams();
+  const [searchQuery, setSearchQuery] = useState(() => searchParams.get('q') || '');
+
   // Advanced Filters
   const [advancedFilters, setAdvancedFilters] = useState<ShortlistFilters>({
     dateRange: {},
@@ -1270,32 +1251,16 @@ const Shortlists = () => {
     fetchShortlists();
   }, [searchQuery, advancedFilters, sortField, sortDirection]);
 
-  const handleShare = async (updatedShortlist: Shortlist) => {
-    try {
-      // Refresh the shortlists to get the latest data
-      await fetchShortlists();
-      
-      // Find the updated shortlist to get the share link
-      const freshShortlist = shortlists.find(sl => sl.id === updatedShortlist.id);
-      
-      if (freshShortlist?.share_link) {
-        await navigator.clipboard.writeText(freshShortlist.share_link);
-        alert('Share link copied to clipboard!');
-      }
-    } catch (error) {
-      logger.error('Error handling share', error);
-      alert('Share link generated but failed to copy to clipboard.');
-    }
-  };
+  const handleShare = async (_updatedShortlist: Shortlist) => { await fetchShortlists(); };
 
   const handleExport = async (shortlist: Shortlist, settings: any) => {
     try {
       // Show loading or processing state
       const processingMessage = `Preparing ${settings.format.toUpperCase()} export for "${shortlist.name}"...`;
-      
+
       // The actual export logic is handled in the ExportModal
       // This function just logs the activity
-      
+
       // Log the export activity using service function
       await logExportActivity({
         shortlist_id: shortlist.id,
@@ -1303,7 +1268,7 @@ const Shortlists = () => {
         export_type: settings.type,
         include_pii: settings.include_pii
       });
-      
+
     } catch (error) {
       logger.error('Error logging export activity', error);
     }
@@ -1314,7 +1279,7 @@ const Shortlists = () => {
   };
 
   const handleUpdateShortlist = (updatedShortlist: Shortlist) => {
-    setShortlists(prev => prev.map(sl => 
+    setShortlists(prev => prev.map(sl =>
       sl.id === updatedShortlist.id ? { ...sl, ...updatedShortlist } : sl
     ));
   };
@@ -1337,7 +1302,7 @@ const Shortlists = () => {
   // Filter shortlists based on search query
   const filteredShortlists = shortlists.filter(shortlist => {
     if (!searchQuery.trim()) return true;
-    
+
     const query = searchQuery.toLowerCase();
     return (
       shortlist.name?.toLowerCase().includes(query) ||
@@ -1385,7 +1350,7 @@ const Shortlists = () => {
             />
             {/* Sorting Dropdown */}
             <div className="relative">
-              <select
+              <select aria-label="`$sort Field $sort Direction`"
                 value={`${sortField}-${sortDirection}`}
                 onChange={(e) => {
                   const [field, direction] = e.target.value.split('-');
@@ -1463,7 +1428,7 @@ const Shortlists = () => {
               onApply={fetchShortlists}
             />
             <div className="relative">
-              <select
+              <select aria-label="`$sort Field $sort Direction`"
                 value={`${sortField}-${sortDirection}`}
                 onChange={(e) => {
                   const [field, direction] = e.target.value.split('-');
@@ -1589,20 +1554,23 @@ const Shortlists = () => {
               className="inline-flex items-center px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-200"
             >
               Clear search
-          </button>
-        </div>
+            </button>
+          </div>
         ) : shortlists.length === 0 ? (
-          <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
-          <UserGroupIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No shortlists yet</h3>
-          <p className="text-gray-600 mb-4">Create your first shortlist to get started</p>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="inline-flex items-center px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700"
-          >
-            <PlusIcon className="h-4 w-4 mr-2" />
-            Create Shortlist
-          </button>
+          <div className="bg-white rounded-lg border border-gray-200 p-12">
+            <EmptyStateWithQuote
+              page="shortlists"
+              icon={UserGroupIcon}
+              actionButton={
+                <button
+                  onClick={() => setShowCreateModal(true)}
+                  className="inline-flex items-center px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700"
+                >
+                  <PlusIcon className="h-4 w-4 mr-2" />
+                  Create Shortlist
+                </button>
+              }
+            />
           </div>
         ) : null
       ) : (
@@ -1622,20 +1590,20 @@ const Shortlists = () => {
               onView={async (sl) => {
                 // Fetch candidates for this shortlist
                 try {
-                  
+
                   const { data: candidates, error } = await getShortlistCandidates(sl.id);
-                  
+
                   if (error) {
                     logger.error('Database error', error);
-                    const errorMsg = typeof error === 'object' && error !== null && 'message' in error 
-                      ? (error as { message: string }).message 
+                    const errorMsg = typeof error === 'object' && error !== null && 'message' in error
+                      ? (error as { message: string }).message
                       : String(error);
-                    
+
                     alert(`Failed to load candidates: ${errorMsg}\n\nPlease check:\n1. Database tables exist\n2. RLS policies are configured\n3. Foreign keys are set up correctly`);
                     return;
                   }
-                  
-                  
+
+
                   // Open modal even if there are no candidates (empty state handled in modal)
                   setSelectedShortlist(sl);
                   setSelectedCandidates(candidates || []);

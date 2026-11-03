@@ -1,0 +1,651 @@
+{
+  "auditId": "LJR-2026-10-12",
+  "suite": "source-characterization",
+  "generatedAt": "2026-10-12T09:44:52.960Z",
+  "fixedFixtureTime": "2026-10-12T00:00:00.000Z",
+  "passed": 22,
+  "failed": 0,
+  "scope": "Actual application source; real app auth wrapper validation and client factory; SSO transport database provider and response envelopes isolated",
+  "assurance": "Source-level only; passing assertions characterize known defects and controls, not production readiness",
+  "environment": {
+    "node": "v22.22.3",
+    "typescript": "5.5.3",
+    "zod": "3.24.0",
+    "supabase": "2.57.4"
+  },
+  "sources": [
+    {
+      "path": "embedding-worker/src/providers.ts",
+      "sha256": "556319adb2159b141948e261cceca4cc23ed2413139fa8ba54539dcf224b1856"
+    },
+    {
+      "path": "skillpassport/functions/_middleware.ts",
+      "sha256": "902acd472d12203635992e6d1aca8ca2aae755ab652848a5c29afd5ab665bc29"
+    },
+    {
+      "path": "skillpassport/functions/api/ai-tutor/handlers/actions.ts",
+      "sha256": "b82a6fdfdef88dc25df41938cfccf52aae524a01d6cb446845e9d4d0ecefaeec"
+    },
+    {
+      "path": "skillpassport/functions/api/career/[[path]].ts",
+      "sha256": "37462131af5c74faecc569e12674ee6104cd0ed7c5e2fa003ea2828975eeed45"
+    },
+    {
+      "path": "skillpassport/functions/api/career/ai/prompts/enhanced-system-prompt.ts",
+      "sha256": "9c713436af0575d5a61fe0790c60d0ed03745b0c109e07f6e2682271625ebcaf"
+    },
+    {
+      "path": "skillpassport/functions/api/career/context/smart-opportunities.ts",
+      "sha256": "9eff51b2c40f13b326e7b8455fce2b530dc7aaab38608d680da3ba0aebe83094"
+    },
+    {
+      "path": "skillpassport/functions/api/career/handlers/chat.ts",
+      "sha256": "ab654435b53622062d1d020c28ddfb6f8447bc9ab5e4f8208ec4f05ddc3d1034"
+    },
+    {
+      "path": "skillpassport/functions/api/career/handlers/recommend.ts",
+      "sha256": "71edb898624895b51cb044546371efd30874d13209bbcedb86233ce491d74407"
+    },
+    {
+      "path": "skillpassport/functions/api/career/utils/rate-limit.ts",
+      "sha256": "f0e48a13cf1b598926b1f439dab4932bbc998195ff811279abbe3665ba615c83"
+    },
+    {
+      "path": "skillpassport/functions/api/embedding/config/constants.ts",
+      "sha256": "ee9a466ea66a61ef745cb356520756f4e91a311fca7583119d4ea3269da7e75b"
+    },
+    {
+      "path": "skillpassport/functions/api/embedding/lib/embeddingBinding.ts",
+      "sha256": "91113574741cfdea253b48ddc18fc83a287ec97e08d872deb6bb983e3e3f2ede"
+    },
+    {
+      "path": "skillpassport/functions/api/embedding/services/databaseUpdater.ts",
+      "sha256": "6f818075c5599a6fb73256547363236dd8952c1132b774ece9817277bfd1f354"
+    },
+    {
+      "path": "skillpassport/functions/api/embedding/services/embeddingWorkerClient.ts",
+      "sha256": "e7aa5d3feb323d4a9482f4cfd3c1cf756bfcddf92ba1d6226287af523cd656c6"
+    },
+    {
+      "path": "skillpassport/functions/api/embedding/services/textBuilder.ts",
+      "sha256": "f40658a294674b2873b362455b2de7a8836c7570c86b5f933f747e00aff50f5e"
+    },
+    {
+      "path": "skillpassport/functions/api/embedding/types/index.ts",
+      "sha256": "40de2c642e959e943846237d12275922d90c4d8ba77736abc20054308fd335d5"
+    },
+    {
+      "path": "skillpassport/functions/api/learners/ai-recommendations.ts",
+      "sha256": "57b8219bca25a13e6af49941ea859244f7a6654e119beb4aff410ed5e94a4955"
+    },
+    {
+      "path": "skillpassport/functions/api/learners/data/[[path]].ts",
+      "sha256": "e623c60c371e03236609f679a1275be540563ed324a2213e0379cf0ec240e2a8"
+    },
+    {
+      "path": "skillpassport/functions/api/recruiter/actions.ts",
+      "sha256": "0389912f2be205cd79b28a92b91afe7510e93cc01110981391d8c26c521925b1"
+    },
+    {
+      "path": "skillpassport/functions/lib/auth.ts",
+      "sha256": "0ed662881e5a82b958c90e047b5deb2e8b9bab4bd255b5b5a27dd8bba09453d0"
+    },
+    {
+      "path": "skillpassport/functions/lib/entitlements.ts",
+      "sha256": "ef67606341537210bb09d48f2ee5d5246c2a7cc73cb070b7deddb229409abd3f"
+    },
+    {
+      "path": "skillpassport/functions/lib/response.ts",
+      "sha256": "738b1214979c8d51c3d47c58f91ee507c9f53060aa391b1167b67ca3b8eeb2e3"
+    },
+    {
+      "path": "skillpassport/functions/lib/supabase.ts",
+      "sha256": "a7c7fb51ffaea0414905686ef9c157dc1f2affddf6ed93ad53fb418f51175ecb"
+    },
+    {
+      "path": "skillpassport/functions/lib/validation.ts",
+      "sha256": "fc63fd44ff435aab0642260ee6871a6d8ca73506dc13817fe8017e5d2021af61"
+    },
+    {
+      "path": "skillpassport/src/app/routes/learnerRoutes.jsx",
+      "sha256": "bd303b480199be2d0e54073a607f2605bb88154db4f0b39cfb755897a1ce2037"
+    },
+    {
+      "path": "skillpassport/src/entities/learner/api/learnerService.ts",
+      "sha256": "6f8660bd5c58082149805ecc98645b1b0d0fc8bd527405f581f60935ab60cfae"
+    },
+    {
+      "path": "skillpassport/src/features/ai-tutor/api/aiRecommendationService.ts",
+      "sha256": "b47089fc4d3db80984a96b772fd6b1af74dbbd930e934a2efa5e45cd81745915"
+    },
+    {
+      "path": "skillpassport/src/features/ai-tutor/model/useAIRecommendations.ts",
+      "sha256": "802e528e5a2e0aa2f4d0cd4111e2d1b750429b939ac2d4da406639d1d1944e7d"
+    },
+    {
+      "path": "skillpassport/src/features/career-assistant/api/careerWorkerService.ts",
+      "sha256": "4e9cc1eb06d082ccba4504cb8d453b49fed90bc3e8c85f7a7e603303695b9b77"
+    },
+    {
+      "path": "skillpassport/src/features/counselling/api/careerApiService.ts",
+      "sha256": "ac5e96862ec0568079ebb025d09bb2844900bd9feb75b6b4d1cc3cac8b161720"
+    },
+    {
+      "path": "skillpassport/src/features/learner-profile/api/learnerAIRecommendationsService.ts",
+      "sha256": "8c821f5d3730114a2c539e6c2edeed57781db11cba4b82bbb44fa6aecb5f1564"
+    },
+    {
+      "path": "skillpassport/src/features/learner-profile/model/useLearnerAIRecommendations.ts",
+      "sha256": "f02a55feb461d5c051f158b7fe48e655ca019113859bf55f10327347398efc1e"
+    },
+    {
+      "path": "skillpassport/src/features/opportunities/api/aiJobMatchingService.ts",
+      "sha256": "dfe7f07441e23aaff5ed46a54b65711e67d82917a6c78814d4c149ff1362b39e"
+    },
+    {
+      "path": "skillpassport/src/features/opportunities/model/useAIJobMatching.ts",
+      "sha256": "635f9a6efa69cf7e1070f821ae2f1943996a04c577b89e509b1cb5eefd725617"
+    },
+    {
+      "path": "skillpassport/src/features/opportunities/model/useOpportunities.ts",
+      "sha256": "aec99f167e981c7642d42ce6ce60b9621d4565b5d131e32e2fff54feb84576d0"
+    },
+    {
+      "path": "skillpassport/src/features/subscription/ui/shared/FeatureGate.jsx",
+      "sha256": "80fe4f07c402cf651c152853e67ce93f86ee8ca2a169958e4282809d5c85c6b5"
+    },
+    {
+      "path": "skillpassport/src/pages/learner/BrowseJobs.jsx",
+      "sha256": "62c769fff1fa1bcddf7f714a67958eebd25b67505491693a745ea215a9b2b7fe"
+    },
+    {
+      "path": "skillpassport/src/pages/learner/CareerAI.tsx",
+      "sha256": "7f31094ff210ab7b65455e579a56c32d55def3dd4ca6aa642f1e3c8225bef522"
+    },
+    {
+      "path": "skillpassport/src/pages/learner/Dashboard.jsx",
+      "sha256": "88c8d4b98ac1c57c3a9e5f4ddf68fb9342d4d6e5a3626462d3388d8ed7397203"
+    },
+    {
+      "path": "skillpassport/src/pages/learner/MySkills.jsx",
+      "sha256": "eaddb0e75f7ae840b78b85927dcdf8de066935c7830a210c1c1adfbe4dc1b760"
+    },
+    {
+      "path": "skillpassport/src/pages/learner/Opportunities.jsx",
+      "sha256": "e9c968a9b110878b50810be4afe9546643278edd370716047edc739c998d21e3"
+    },
+    {
+      "path": "skillpassport/src/shared/model/authStore.ts",
+      "sha256": "3b2ddb637ad7196e9eb6f851b8c16cba12220af553c4c6884586f8cade9ecaca"
+    },
+    {
+      "path": "skillpassport/src/widgets/learner-dashboard/ui/LearnerDashboardWidget.tsx",
+      "sha256": "c7ae59fd330ccf93dd7398f06a7480c4f3546cf4805a1f0f367abe835d47c017"
+    },
+    {
+      "path": "skillpassport/src/widgets/learner-dashboard/ui/RecommendedJobs.jsx",
+      "sha256": "86761a50f05d536d8e35e0a6e6ff79dc82e4226caaa86c009c0bbee2f8d6c257"
+    },
+    {
+      "path": "skillpassport/supabase/backups/latest/manifest.json",
+      "sha256": "c34d98b924931fccdb42f17b49625ea7ceacfd1f1f913da0fc02359fb2cb23e4"
+    },
+    {
+      "path": "skillpassport/supabase/backups/latest/migration_schema.sql",
+      "sha256": "bf70d6a4c2e7a8e3b9ac52e79b53cf436e12d27e994474d87a5709d4b684ee56"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260526000000_schema.sql",
+      "sha256": "7a8b73b1687e80242e85da4b775f5488c338ba51b62bb4ae0cddbb5df26a283c"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260526000001_add_strength_scores_column.sql",
+      "sha256": "c23c07dd8ae51d44b20b81deef5843bc3afa8bba94cf23c6c2b6f12346a02ccf"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260526000011_create_org_settings_function.sql",
+      "sha256": "606ec78584fe41f719b77b9cd2e733a850922695730119a593aebb3e7155287a"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260526000014_fix_org_recruitment_context.sql",
+      "sha256": "a741108cc2cefe25d9729990b562414f265e1e32f6ad1d8ca495a5bb2acc73c3"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260526000015_ensure_role_mapping_data.sql",
+      "sha256": "78ce333ad6fc7a4bf44c4004db4d1364ce7c3ccd46bb60c01f6ccadc247b8d1d"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260527105616_add_learning_preferences_column.sql",
+      "sha256": "958ef1275d25054032edf378301ad7544671644835007506422656d6aa2126b4"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260528000000_add_viewer_role_to_invitations.sql",
+      "sha256": "0170d937d0996e6c68f811f35f0f80bef18a0f31a4d3b2f405b385feaee8773b"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260528000001_create_recruitment_settings_function.sql",
+      "sha256": "d1373a21d52bd649ddcc8ccc05a1b8b8c92021fe5f9b1cee505ee51cc7c7da8a"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260528000002_fix_invitation_fk_constraints.sql",
+      "sha256": "5e5e8a305865ae9828ce79d3d160d8a8b3805d7851369122962f40dd8ee50fbf"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260528000117_create_occupation_tables.sql",
+      "sha256": "863d50c8f2a3feae85433a72d31064077225da2af1a18fdf26db6e470f46f15a"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260529000001_check_user_exists_function.sql",
+      "sha256": "9297649e7fc25b369ec0bf5e130f9846315955cbb1a4a2417e241a37fde346e1"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260529000002_fix_aptitude_trigger_adaptive.sql",
+      "sha256": "254d67c9ddf924b44dc1886e1f3d2f18fa6d092b969034347034c30684782dd3"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260531000001_add_stream_aptitude_score.sql",
+      "sha256": "0c8c2b57e2669cf9a18dd941e7b684c4e83ebdf548bbc0d230afde77ba6d1d9e"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260531000118_hybrid_search_occupations.sql",
+      "sha256": "980630493e0b9ebbc2ac4cce2da1cc99f1a9cd75396c2241ed324c64edfa5180"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260602000100_add_notifications_updated_at.sql",
+      "sha256": "41d7e16935b6c65d5adc3035c9eeea3d6ccaf15733c1d9e464ca532d1479cdcb"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260602000200_add_updated_at_realtime_tables.sql",
+      "sha256": "822567bf4851d10335874afe50beb64b8fd11566f36ab55f3adf73bd8efa1ccf"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260603000000_replace_roles_shadow.sql",
+      "sha256": "e4f42daf256c7784ad5e89dafe615b20afa548bda9ee48ed947856da3b7e5517"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260603000001_create_role_categories.sql",
+      "sha256": "8e612705f9efc72f0a07c26e9add1f9992b42a359c9b4bb45b4719efba121f8e"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260603000002_create_school_internal_roles.sql",
+      "sha256": "64d4c1db83552647d48e71807673d4d5a091ec3653155a1ec3bead1bf6cfb685"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260603000003_add_role_code_to_college_permission_tables.sql",
+      "sha256": "eeaf19dd99552457db32218910cd2f5e8ba5729a6a5293d6d0a55f6157e15119"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260603000004_signup_trigger_stop_writing_role.sql",
+      "sha256": "acc800fbbbf6b910b30d181e424a396feff7d080ebf6b1f519daccb2176c3ecc"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260603000005_reconcile_users_role_rls_policies.sql",
+      "sha256": "407282de3b8ca1b3daad15af56f15c85ef83aa57292f7d4670f5433684875f8a"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260603000006_retype_users_role_to_text.sql",
+      "sha256": "71a37583e4ff50748f47c10c343dba3db7771b9673ccdf74c886e464b2310069"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260603000007_drop_role_type_columns_and_user_role_enum.sql",
+      "sha256": "db2cc3d264fb080a4103b826b41349a6cecb882312a758147e72a80f55d70861"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260607220401_fix_org_context_type_cast.sql",
+      "sha256": "c5189940594fa45bbd6b0d24c9c7577ae8ba9cd203d31e7055e2e38f249bc9a3"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260608000001_replace_fdw_with_organization_members.sql",
+      "sha256": "c855874581489d8573d843359c84c5fbd58792a50d6079858f1dedd51e378db1"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260608000002_fix_remaining_fdw_references.sql",
+      "sha256": "d7d222c48b552c3ec468e3241192b99f039131e35ecc20638ccba90f0300d5db"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260609000000_create_email_templates_table.sql",
+      "sha256": "b92b9ff3588937a71d9ec0cd75cc98681d8555a7c0ce2618ed5302547b93092b"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260609000001_fix_dup_org_recruitment_settings.sql",
+      "sha256": "e61b59a094a7ff100854fe31882a077471be47edc43db90df8a41d28f62a201b"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260609000002_add_is_demo_to_courses.sql",
+      "sha256": "1b8ab5c1ad3fde7c14a54e0014f1ee5a7e9b0000ede14f2d07c72e13e132d3b0"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260614000000_add_payment_idempotency.sql",
+      "sha256": "d996cbe5873dfadcd1f10408ec1c81ee807354783835b43a5430ffb2e87a202e"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260615055357_add_column_school_name.sql",
+      "sha256": "3d59f4ecb4ed718d1b5d2a2109530295f664b8423839a8eba242f4341ddede58"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260616105500_create_achievements_table.sql",
+      "sha256": "8db9afe21494b091cbef2a79018d4b88d32a5dca322210c71e52a6b8ac28ca7f"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260617000000_add_user_metadata.sql",
+      "sha256": "54cc50394ae24010fe99e37f862e569be0ea64077939c6bafe199f07378003f6"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260624000000_add_maintenance_mode_config.sql",
+      "sha256": "565afc1b2e012ccf38fb99cc3e971c19872a03a0c8cf892c2ff069b9fb5b3a30"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260627000000_add_receipt_url_to_subscription_cache.sql",
+      "sha256": "ad3c185a349f3b103d2f4cc57581f3da34996f7d43a69448b88c2e6739448f66"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260629000000_add_approval_tracking_columns.sql",
+      "sha256": "f672149e165a78d7472b73f09a533beb4a0823cfa4614395ac82ebab1df1bab8"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260701000001_make_org_name_nullable.sql",
+      "sha256": "9d8c0968af6163af2230329db9ce5b181a41538a94a7e545e274947689edb446"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260702000001_fix_create_local_organization.sql",
+      "sha256": "f25f22ed4dadfa3277a2ef774e23f9ed4ab94782eb4f488efe9376113e1cbbc4"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260702000002_make_org_name_unique.sql",
+      "sha256": "6c6ad20625bc5225f252faf30c0e961b7141f7883d907618fcda9ffb212cdd4d"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260702000003_fix_create_local_org_no_slug.sql",
+      "sha256": "d7225ddd77401d35a7bfabf859177c977f25b887f162d814e188e8c2d4624b44"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260702000004_fix_get_user_org_context.sql",
+      "sha256": "73f0c2753cb94c8dc6cf80962d95e2005611b846f9761e21e5a6bfdf68439dac"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260703000001_add_organization_id_to_opportunities.sql",
+      "sha256": "256a053a7dd8ca9d9b0b86b2d85d9fe805ea4ebdd6cfe1fd1d718818ed80448e"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260703013529_add_growth_map_column.sql",
+      "sha256": "9c1370ba583c8d3ad5d24cb85a5693f572e3bd663fe31b5dfe6ddcac46927e6d"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260707000001_add_company_details_to_org_settings.sql",
+      "sha256": "1c75bdc7bfb2f58c30131d45a83029e08ea64d0ccddb313c1ea19ee262588b0d"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260707000002_add_company_names_to_organizations.sql",
+      "sha256": "3e5be0dbaacd38eda0704bdef26d9ac5dfbeafe3144f9caad271ffb1ee5f2c5a"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260707000003_create_organization_verification_table.sql",
+      "sha256": "4afcea064e6a1076476e6dc365eaad465bc98e73032a5c58faece8072674a007"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260708000001_add_verification_documents_columns.sql",
+      "sha256": "4801949e7f3a3895ee5b6c3174f720556e6c9f87236a04d8dd3819f91a645c56"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260708000002_add_offer_template_type.sql",
+      "sha256": "f7b55656ae90b12a538e2c7174d20ba83e1b56ccdda1fcd160f1a1a72e70f91f"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260721084047_add_role_id_and_capability_tracking.sql",
+      "sha256": "de98acef538256e3b5a3ac8529648de0dc44187393f4571ed61441597347283d"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260723062056_add_capability_columns_to_recommendations.sql",
+      "sha256": "71e1771e22e7cbdc158463c353220dc511bd4b143e14084f7cc9892f57f09d1b"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260724122500_add_course_unique_constraint_to_recommendations.sql",
+      "sha256": "88b59c0947e36e4f68da803854bda03728c19be3b485aab2169c55395a878bf4"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260727112434_create_learner_course_interests.sql",
+      "sha256": "3bbf53cda7471006b0c4c756d840d02c3821becd52e9fb35094ef9a93e135f50"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260730000000_career_ai_quota.sql",
+      "sha256": "3a3a447279bdeaf610d9398e13b579e4b2121b8b6162300c1f933ad6d3635020"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260731000000_career_ai_entitlement_sync.sql",
+      "sha256": "4ee15a43b85bd51ca4d26a3210cb0d576812d6f07581bae0e8be871aa0abd8b4"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260811000000_create_demo_course_access.sql",
+      "sha256": "8793de934e02a81b4c74b532d839df92562e3352c04787e0387001ad77349471"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260811000011_lte_course_sync.sql",
+      "sha256": "61a4795df8e4426e1b07bead0f585f382017a0dde78cf779723ec83f00ddff5b"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260813000000_add_trainings_lte_levels.sql",
+      "sha256": "7a66aea76a759f1779fb49dbe04ca0454cc5a8f720af35d800f4025d545b3a9d"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260817000000_add_trainings_lte_detail_columns.sql",
+      "sha256": "caf92ff5b660c55d53a9b89e617436ed697ccec397c757e941947d0baab30a7c"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260817120000_add_skills_lte_sync_columns.sql",
+      "sha256": "ff22ac9dcdf3ede2915e7bb211ebb4cef80276cc472f599338b99031cbea8aba"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260825053347_add_recruiting_messages_preference_check.sql",
+      "sha256": "49c31b524ed4916cd4069c3f6a21a7948025d2664234fab299f1e70f627c8366"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260830000000_reconcile_recruitment_schema_and_cleanup_fdw.sql",
+      "sha256": "c0daa05f61e7d0d5646bbe3643e63a2e4d8f71a1063fa6a98f88fe2c1ec50673"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260903000000_fix_sync_pool_assigned_seats_trigger.sql",
+      "sha256": "5be2eca80480a303abe6372d3d7020010ea795a813da7abc7c23a3332c93eb4f"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260907044042_get_or_create_shared_questions.sql",
+      "sha256": "baba5f5cc5e72dd0957433e0c3bd8e13948d0ecd82c0004535a726df783c5de3"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260907051140_update_calculate_assessment_scores_for_shared_questions.sql",
+      "sha256": "59c5aa4f1eed829b4a954523f3979ab23d27cf3a2759f8bbc4d7c457f65d198f"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260910000000_drop_learner_reports_school_id.sql",
+      "sha256": "d4a76a83e6686739190a9c7db65e2ded49f92b0c839ba189d19bf1a99118fbd4"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260918000000_create_video_portfolio.sql",
+      "sha256": "123148caa0150eb0212b3df4e46fa446e63cb683869e6441d3514207fad362d1"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260922084634_add_specialization_to_learners.sql",
+      "sha256": "6627f14a1706e2fc2f32b3bcbb57efa3a4526ea5f707d33ca826425b65d333c0"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260924000000_add_thumbnail_type_value.sql",
+      "sha256": "824b46287e910100e2e3068ccb9b57f6f60768e4289c2a483a5489a56f999896"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260924115415_add_specializations_to_programs.sql",
+      "sha256": "c49eeb136987c8de5444983ccffef639d3a5b8f148dfeb93ba0506a411edeb8e"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260925045648_allow_same_program_code_different_specializations.sql",
+      "sha256": "73e9227e641b8f2903072f25f5debc1f74dd005995fef6a01a316fafc0720df8"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260925050000_create_feature_keys_cache.sql",
+      "sha256": "29b690aef151b7ce74b95ea4d569617e63f3adce460563a796154f427ce843d6"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260925060000_refresh_feature_catalog.sql",
+      "sha256": "fecb5947e685a1543520996a8a07d0e237abc8f9a268d402c4079e8c1bc25536"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260925114032_attendance_bulk_import.sql",
+      "sha256": "93d86a875e6a94d17a827e9a933950b920bc4c52b039cd4e33c81fddc5c09cf7"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20260929131500_create_college_placement_companies.sql",
+      "sha256": "ac54dbc8e420565391a7bd81ac67fd89122245ad363e0d73958a0644beca9e76"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20261001090200_lte_review_scope_settings.sql",
+      "sha256": "cefaf27d2ee8a3db0ce79f2cf70396d7c3d4b258b70855e59852e1f3bdf3146c"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20261001090400_lte_review_delivery.sql",
+      "sha256": "51bf7b6a67a59116e5c76a3c8ce25a2de6f939502ca411642a4d232d4e9af0c0"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20261001090800_lte_review_email.sql",
+      "sha256": "4a8d63deffef388d84c063c8d6ec3e4b5ee205a0c42cbd5ad6e8616eb51fa86d"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20261001091100_review_access_without_rls.sql",
+      "sha256": "2469b9ec37add95ae28af613c36ec07d6df0663418bb1c43f563f244ddb758fb"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20261001091300_remove_review_count_projection.sql",
+      "sha256": "c007e11fc0f392f6cde95de7d46b440d4a9ab5fb9b80151b97f3c2b49094653a"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20261005100000_lte_review_scope_reviewers.sql",
+      "sha256": "f3361874168af2032032c51e2b08d6c7987146d5038559b0b2c509bc448812e9"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20261005110000_lte_review_org_settings.sql",
+      "sha256": "3025c95420e073f5ba42d64afe25fc4931a6464d7b86be89309e82bbb5eae568"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20261005130000_lte_review_default_human.sql",
+      "sha256": "968c143ed23f23f44204f1675270cea5bceb8242140b013f6f0e7f36fe1c0305"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20261006100000_lte_review_optional_scope.sql",
+      "sha256": "698c40550fadd2f0921e7f76d40f9f025ec74c344b3f2aa1850383f8e0360db9"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20261007120000_faculty_credentials_email.sql",
+      "sha256": "326011b316016f6faf983b5ec8f7689bf062276d9b912c5e0bf10b006967571e"
+    }
+  ],
+  "harnessSha256": "1f5bffeb50d2e35ab6f1327ae17462d2f1c1f7f7d812bcef8077da1212b85436",
+  "results": [
+    {
+      "id": "T01",
+      "result": "PASS",
+      "description": "Dashboard excludes open job and retains expired inactive active-status job"
+    },
+    {
+      "id": "T02",
+      "result": "PASS",
+      "description": "Disabled pending skill contributes 40 points; absent preferences yield 45 with recency"
+    },
+    {
+      "id": "T03",
+      "result": "PASS",
+      "description": "45 percent is conditional: populated preference and experience fields can produce 100"
+    },
+    {
+      "id": "T04",
+      "result": "PASS",
+      "description": "Actual dashboard mapping overrides false recommendation flag on 5 percent result"
+    },
+    {
+      "id": "T05",
+      "result": "PASS",
+      "description": "Weighted 49 percent is transformed to raw similarity 90 percent"
+    },
+    {
+      "id": "T06",
+      "result": "PASS",
+      "description": "Fallback without similarity receives 50 percent and loses fallback flag"
+    },
+    {
+      "id": "T07",
+      "result": "PASS",
+      "description": "Expired cached job is returned before learner or dismissal queries"
+    },
+    {
+      "id": "T08",
+      "result": "PASS",
+      "description": "Real auth wrapper and career route accept another learner ID without entitlement call"
+    },
+    {
+      "id": "T09",
+      "result": "PASS",
+      "description": "Email verification guard still blocks an unverified authenticated user"
+    },
+    {
+      "id": "T10",
+      "result": "PASS",
+      "description": "Force refresh reuses existing learner embedding"
+    },
+    {
+      "id": "T11",
+      "result": "PASS",
+      "description": "Returned cache RPC error is ignored while handler logs CACHE SAVE"
+    },
+    {
+      "id": "T12",
+      "result": "PASS",
+      "description": "Embedding text above 10000 characters throws undefined logger"
+    },
+    {
+      "id": "T13",
+      "result": "PASS",
+      "description": "Malformed embedding response references undefined embedding variable"
+    },
+    {
+      "id": "T14",
+      "result": "PASS",
+      "description": "Legacy track-interaction handler rejects frontend interaction_type payload"
+    },
+    {
+      "id": "T15",
+      "result": "PASS",
+      "description": "Well-formed short input returns worker vector without undefined-identifier failure"
+    },
+    {
+      "id": "T16",
+      "result": "PASS",
+      "description": "Invalid learner UUID is rejected before matching"
+    },
+    {
+      "id": "T17",
+      "result": "PASS",
+      "description": "Recommendation handler rejects GET method"
+    },
+    {
+      "id": "T18",
+      "result": "PASS",
+      "description": "Missing learner vector invokes builder worker and persistence when dependencies succeed"
+    },
+    {
+      "id": "T19",
+      "result": "PASS",
+      "description": "Self-target fixture remains allowed under current route"
+    },
+    {
+      "id": "T20",
+      "result": "PASS",
+      "description": "Actual local limiter permits five requests and rejects sixth for same key"
+    },
+    {
+      "id": "T21",
+      "result": "PASS",
+      "description": "V2 empty result and V1 RPC error invoke explicit generic fallback"
+    },
+    {
+      "id": "T22",
+      "result": "PASS",
+      "description": "Missing service binding is reported as API error rather than false matching success"
+    }
+  ]
+}

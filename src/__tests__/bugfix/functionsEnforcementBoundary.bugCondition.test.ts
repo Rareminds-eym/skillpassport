@@ -299,8 +299,8 @@ describe('Bug Condition: Functions enforcement-boundary violations (static analy
         // Spot-check known hosts from bugfix.md §7.1 to anchor the evidence.
         const found = inlineCheckFiles.map((f) => f.file);
         const expectedHosts = [
-            'functions/api/storage/upload-url.ts',
-            'functions/api/storage/download-url.ts',
+            // storage/upload-url.ts and storage/download-url.ts were deleted together with
+            // Supabase Storage support (file storage is Cloudflare R2 only).
             'functions/api/learners/management.ts',
             'functions/api/educator/dashboard/[[path]].ts',
         ];

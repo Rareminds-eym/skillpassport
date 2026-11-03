@@ -1,6 +1,5 @@
-import { useAuthStore } from '@/shared/model/authStore';
 import { AlertCircle, CheckCircle, FileText, Loader2, Upload, X } from "lucide-react";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 import { apiPost } from '@/shared/api/apiClient';
 import { ssoClient } from '@/shared/api/ssoClient';
@@ -9,7 +8,6 @@ import { uploadFile, uploadMultipleFiles, validateFile } from '@/shared/api';
 // @ts-ignore - userApiService is a .js file
 import { userApiService } from '@/entities/user';
 
-import { useUser } from '@/shared/model/authStore';
 
 const logger = getLogger('college-admin:FacultyOnboarding');
 
@@ -21,10 +19,10 @@ interface SubjectExpertise {
 
 interface FacultyOnboardingProps {
   collegeId: string | null;
+  onChanged?: () => void;
 }
 
-const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
-  const user = useUser();
+const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId, onChanged }) => {
   const [formData, setFormData] = useState({
     first_name: "",
     last_name: "",
@@ -44,31 +42,36 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
   const [documents, setDocuments] = useState({
     degree_certificate: null as File | null,
     id_proof: null as File | null,
-    experience_letters: [] as File[],
   });
+
+  const [experienceLetters, setExperienceLetters] = useState<Array<{ file: File; url: string }>>([]);
+  const formRef = useRef<HTMLFormElement>(null);
 
   const [uploadStatus, setUploadStatus] = useState({
     degree_certificate: { uploading: false, uploaded: false, url: null as string | null, error: null as string | null },
     id_proof: { uploading: false, uploaded: false, url: null as string | null, error: null as string | null },
-    experience_letters: { uploading: false, uploaded: false, urls: [] as string[], error: null as string | null },
+    experience_letters: { uploading: false, error: null as string | null },
   });
 
   const [subjects, setSubjects] = useState<SubjectExpertise[]>([]);
-  
+
   const [currentSubject, setCurrentSubject] = useState<SubjectExpertise>({
     name: "",
     proficiency: "intermediate",
     years_experience: 0,
   });
 
+  const [createdEmailStatus, setCreatedEmailStatus] = useState<'sent' | 'failed' | null>(null);
+  const [createdFacultyId, setCreatedFacultyId] = useState<string | null>(null);
+  const messageRef = useRef<HTMLDivElement>(null);
+  const uploading = Object.values(uploadStatus).some(status => status.uploading);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
-  // Cleanup effect placeholder (global bypass removed for security)
   useEffect(() => {
-    return () => {};
-  }, []);
+    if (message?.type === 'error') messageRef.current?.focus();
+  }, [message]);
 
   const departments = [
     "Computer Science & Engineering",
@@ -84,18 +87,18 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
     "Other",
   ];
 
-  const handleFileChange = async (field: keyof typeof documents, files: FileList | null) => {
-    if (!files) return;
+  const handleFileChange = async (field: keyof typeof documents | "experience_letters", files: FileList | null) => {
+    if (loading || uploadStatus[field].uploading || !files?.length) return;
 
     const fileArray = Array.from(files);
-    
+
     // Validate files
     for (const file of fileArray) {
       const validation = validateFile(file, {
         maxSize: 10, // 10MB
         allowedTypes: ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx']
       });
-      
+
       if (!validation.valid) {
         setMessage({ type: "error", text: `${file.name}: ${validation.error}` });
         return;
@@ -103,11 +106,6 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
     }
 
     if (field === "experience_letters") {
-      setDocuments((prev) => ({
-        ...prev,
-        experience_letters: [...prev.experience_letters, ...fileArray],
-      }));
-      
       // Upload files immediately
       setUploadStatus(prev => ({
         ...prev,
@@ -116,31 +114,28 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
 
       try {
         const results = await uploadMultipleFiles(fileArray, 'teachers/experience-letters');
-        const successfulUploads = results.filter(r => r.success);
-        const failedUploads = results.filter(r => !r.success);
-
-        if (failedUploads.length > 0) {
-          throw new Error(`Failed to upload ${failedUploads.length} files`);
-        }
-
-        setUploadStatus(prev => ({
-          ...prev,
-          experience_letters: {
-            uploading: false,
-            uploaded: true,
-            urls: [...prev.experience_letters.urls, ...successfulUploads.map(r => r.url!)],
-            error: null
-          }
-        }));
-
-        // Clear validation error for experience letters
-        setValidationErrors(prev => {
-          const newErrors = { ...prev };
-          delete newErrors.experience_letters;
-          return newErrors;
+        // Keep each filename with its URL so a partial failure cannot shift indices.
+        const successful = fileArray.flatMap((file, index) => {
+          const result = results[index];
+          return result?.success && result.url ? [{ file, url: result.url }] : [];
         });
-
-        setMessage({ type: "success", text: `Successfully uploaded ${successfulUploads.length} experience letters` });
+        const failed = fileArray.filter((_, index) => !results[index]?.success || !results[index]?.url);
+        setExperienceLetters(previous => [...previous, ...successful]);
+        const error = failed.length ? `Could not upload: ${failed.map(file => file.name).join(', ')}. Choose these files again to retry. Successful uploads are kept.` : null;
+        setUploadStatus(previous => ({
+          ...previous,
+          experience_letters: { uploading: false, error },
+        }));
+        if (successful.length) {
+          setValidationErrors(previous => {
+            const next = { ...previous };
+            delete next.experience_letters;
+            return next;
+          });
+        }
+        setMessage(error
+          ? { type: 'error', text: error }
+          : { type: 'success', text: `Successfully uploaded ${successful.length} experience letters` });
       } catch (error) {
         setUploadStatus(prev => ({
           ...prev,
@@ -150,7 +145,7 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
       }
     } else {
       setDocuments((prev) => ({ ...prev, [field]: fileArray[0] }));
-      
+
       // Upload file immediately
       setUploadStatus(prev => ({
         ...prev,
@@ -164,8 +159,8 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
         };
 
         const result = await uploadFile(fileArray[0], folderMap[field]);
-        
-        if (!result.success) {
+
+        if (!result.success || !result.url) {
           throw new Error(result.error || 'Upload failed');
         }
 
@@ -198,19 +193,8 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
   };
 
   const removeExperienceLetter = (index: number) => {
-    setDocuments((prev) => ({
-      ...prev,
-      experience_letters: prev.experience_letters.filter((_, i) => i !== index),
-    }));
-    
-    // Also remove from upload status
-    setUploadStatus(prev => ({
-      ...prev,
-      experience_letters: {
-        ...prev.experience_letters,
-        urls: prev.experience_letters.urls.filter((_, i) => i !== index)
-      }
-    }));
+    if (loading || uploadStatus.experience_letters.uploading) return;
+    setExperienceLetters(previous => previous.filter((_, i) => i !== index));
   };
 
   const addSubject = () => {
@@ -225,6 +209,7 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading || uploading) return;
     setLoading(true);
     setMessage(null);
     setValidationErrors({});
@@ -244,10 +229,10 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
     if (!formData.employee_id.trim()) errors.employee_id = "Employee ID is required";
     if (!formData.department.trim()) errors.department = "Department is required";
     if (subjects.length === 0) errors.subjects = "At least one subject expertise is required";
-    
+
     // Document validation - mandatory in production, optional in development
     // const isProduction = process.env.NODE_ENV === 'production';
-    
+
     // if (isProduction) {
       if (!uploadStatus.degree_certificate.uploaded) {
         errors.degree_certificate = "Degree certificate is required";
@@ -255,7 +240,7 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
       if (!uploadStatus.id_proof.uploaded) {
         errors.id_proof = "ID proof is required";
       }
-      if (uploadStatus.experience_letters.urls.length === 0) {
+      if (formData.experience_years > 0 && experienceLetters.length === 0) {
         errors.experience_letters = "At least one experience letter is required";
       }
     // }
@@ -267,35 +252,35 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
       return;
     }
 
-    // Check for duplicate employee ID
-    try {
-      const duplicateResult = await apiPost('/college-admin/faculty', {
-        action: 'check-duplicate-employee-id',
-        college_id: collegeId,
-        employee_id: formData.employee_id.trim(),
-      });
+    // An already-created account only needs its remaining profile fields saved.
+    if (!createdFacultyId) {
+      try {
+        const duplicateResult = await apiPost<{ data?: { exists?: boolean } }>('/college-admin/faculty', {
+          action: 'check-duplicate-employee-id',
+          college_id: collegeId,
+          employee_id: formData.employee_id.trim(),
+        });
 
-      if (duplicateResult.data?.exists) {
-        setValidationErrors({ employee_id: "This Employee ID already exists in your college" });
-        setMessage({ type: "error", text: "Employee ID already exists. Please choose a different ID." });
+        if (duplicateResult.data?.exists) {
+          setValidationErrors({ employee_id: "This Employee ID already exists in your college" });
+          setMessage({ type: "error", text: "Employee ID already exists. Please choose a different ID." });
+          setLoading(false);
+          return;
+        }
+      } catch (error: any) {
+        setMessage({ type: "error", text: error.message || "Failed to validate employee ID" });
         setLoading(false);
         return;
       }
-    } catch (error: any) {
-      setMessage({ type: "error", text: error.message || "Failed to validate employee ID" });
-      setLoading(false);
-      return;
     }
 
     try {
       // Use uploaded file URLs from upload status
       const degreeUrl = uploadStatus.degree_certificate.url;
       const idProofUrl = uploadStatus.id_proof.url;
-      const experienceUrls = uploadStatus.experience_letters.urls;
+      const experienceUrls = experienceLetters.map(letter => letter.url);
 
-      // Get auth token for worker API
-      const user = useAuthStore.getState().user;
-      
+
       // Map role to display format for worker API
       const roleDisplayMap: Record<string, string> = {
         'college_admin': 'College Admin',
@@ -308,7 +293,7 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
 
       // Use Worker API to create faculty with proper rollback
       // Note: Worker expects data wrapped in a 'staff' object
-      const staffResult = await userApiService.createCollegeStaff({
+      const staffResult = createdFacultyId ? { success: true, data: { staffId: createdFacultyId } } : await userApiService.createCollegeStaff({
         staff: {
           name: `${formData.first_name} ${formData.last_name}`.trim(),
           email: formData.email,
@@ -321,47 +306,17 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
           experience_years: formData.experience_years,
         },
         collegeId: collegeId,
-      }, ssoClient.getAccessToken());
+      }, ssoClient.getAccessToken() ?? undefined);
 
       if (!staffResult.success) {
         throw new Error(staffResult.error || "Failed to create faculty member");
       }
 
-      const userId = staffResult.data.authUserId;
+      const emailStatus = createdFacultyId ? createdEmailStatus : staffResult.data.emailStatus;
+      if (!createdFacultyId) setCreatedEmailStatus(emailStatus ?? null);
       const facultyId = staffResult.data.staffId;
-      const tempPassword = staffResult.data.password;
-
-      // Step 2: Upload documents if any exist and update the faculty record
-      let uploadedDegreeUrl: string | null = degreeUrl || null;
-      let uploadedIdProofUrl: string | null = idProofUrl || null;
-      let uploadedExperienceUrls: string[] = (experienceUrls || []).filter((url): url is string => url !== undefined);
-
-      if (documents.degree_certificate && !uploadedDegreeUrl) {
-        try {
-          const result = await uploadFile(documents.degree_certificate, `faculty/${facultyId}/degree`);
-          uploadedDegreeUrl = result.url || null;
-        } catch (err) {
-          logger.warn('Failed to upload degree certificate', err as Error);
-        }
-      }
-
-      if (documents.id_proof && !uploadedIdProofUrl) {
-        try {
-          const result = await uploadFile(documents.id_proof, `faculty/${facultyId}/id_proof`);
-          uploadedIdProofUrl = result.url || null;
-        } catch (err) {
-          logger.warn('Failed to upload ID proof', err as Error);
-        }
-      }
-
-      if (documents.experience_letters.length > 0 && uploadedExperienceUrls.length === 0) {
-        try {
-          const results = await uploadMultipleFiles(documents.experience_letters, `faculty/${facultyId}/experience`);
-          uploadedExperienceUrls = results.map(r => r.url).filter((url): url is string => url !== undefined);
-        } catch (err) {
-          logger.warn('Failed to upload experience letters', err as Error);
-        }
-      }
+      setCreatedFacultyId(facultyId);
+      if (!createdFacultyId) onChanged?.();
 
       // Step 3: Update faculty record with document URLs and additional fields
       try {
@@ -369,28 +324,36 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
           action: 'update-lecturer',
           id: facultyId,
           subject_expertise: subjects,
-          degree_certificate_url: uploadedDegreeUrl,
-          id_proof_url: uploadedIdProofUrl,
-          experience_letters_url: uploadedExperienceUrls.length > 0 ? uploadedExperienceUrls : [],
+          dateOfJoining: formData.date_of_joining || null,
+          degree_certificate_url: degreeUrl,
+          id_proof_url: idProofUrl,
+          experience_letters_url: experienceUrls,
         });
       } catch (err) {
-        logger.warn('Failed to update faculty record with documents', err as Error);
+        logger.warn('Failed to update faculty record with documents', { error: err });
+        throw new Error('The faculty account was created, but its documents and profile details could not be saved. Your entries are kept. Select Retry saving details to finish; no new account will be created.');
       }
 
       setMessage({
-        type: "success",
-        text: `Faculty member onboarded successfully! Login credentials sent to ${formData.email}. Temporary password: ${tempPassword}`,
+        type: emailStatus === 'sent' ? 'success' : 'error',
+        text: emailStatus === 'sent'
+          ? `Faculty member ${formData.first_name} ${formData.last_name} created successfully. Login credentials were emailed to ${formData.email}.`
+          : `Faculty member ${formData.first_name} ${formData.last_name} created successfully, but credential email delivery could not be confirmed. Open Faculty → Resend credentials to generate and email a new password.`,
       });
 
-      // Reset form
-      setFormData({ 
-        first_name: "", 
-        last_name: "", 
-        email: "", 
-        phone: "", 
-        date_of_birth: "", 
-        address: "", 
-        qualification: "", 
+      setCreatedFacultyId(null);
+      setCreatedEmailStatus(null);
+      onChanged?.();
+      // Clear native file controls as well as React state for the next faculty member.
+      formRef.current?.reset();
+      setFormData({
+        first_name: "",
+        last_name: "",
+        email: "",
+        phone: "",
+        date_of_birth: "",
+        address: "",
+        qualification: "",
         department: "",
         specialization: "",
         experience_years: 0,
@@ -398,13 +361,15 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
         role: "lecturer",
         employee_id: ""
       });
-      setDocuments({ degree_certificate: null, id_proof: null, experience_letters: [] });
+      setDocuments({ degree_certificate: null, id_proof: null });
+      setExperienceLetters([]);
       setUploadStatus({
         degree_certificate: { uploading: false, uploaded: false, url: null, error: null },
         id_proof: { uploading: false, uploaded: false, url: null, error: null },
-        experience_letters: { uploading: false, uploaded: false, urls: [], error: null },
+        experience_letters: { uploading: false, error: null },
       });
       setSubjects([]);
+      setCurrentSubject({ name: "", proficiency: "intermediate", years_experience: 0 });
     } catch (error: any) {
       setMessage({ type: "error", text: error.message || "Failed to onboard faculty member" });
     } finally {
@@ -413,7 +378,7 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
   };
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6 p-4 sm:p-6">
       {/* Header */}
       <div className="bg-gray-50 rounded-lg p-6">
         <h1 className="text-2xl font-bold text-gray-900 mb-1">
@@ -428,6 +393,9 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
 
       {message && (
         <div
+          ref={messageRef}
+          tabIndex={-1}
+          role={message.type === 'error' ? 'alert' : 'status'}
           className={`mb-6 p-4 rounded-lg ${
             message.type === "success"
               ? "bg-green-50 text-green-800 border border-green-200"
@@ -457,52 +425,58 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form ref={formRef} onSubmit={handleSubmit} aria-busy={loading}>
+        <fieldset disabled={loading} className="min-w-0 space-y-6">
+        <legend className="sr-only">Faculty onboarding details</legend>
         {/* Personal Information */}
         <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Personal Information</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="faculty-field-0" className="block text-sm font-medium text-gray-700 mb-2">
                 First Name *
               </label>
-              <input
+              <input id="faculty-field-0"
                 type="text"
                 required
+                disabled={!!createdFacultyId}
                 value={formData.first_name}
                 onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="faculty-field-1" className="block text-sm font-medium text-gray-700 mb-2">
                 Last Name *
               </label>
-              <input
+              <input id="faculty-field-1"
                 type="text"
                 required
+                disabled={!!createdFacultyId}
                 value={formData.last_name}
                 onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Email *</label>
-              <input
+              <label htmlFor="faculty-field-2" className="block text-sm font-medium text-gray-700 mb-2">Email *</label>
+              <input id="faculty-field-2"
                 type="email"
                 required
+                disabled={!!createdFacultyId}
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="faculty-field-3" className="block text-sm font-medium text-gray-700 mb-2">
                 Employee ID *
               </label>
-              <input
+              <input id="faculty-field-3"
                 type="text"
                 required
+                disabled={!!createdFacultyId}
                 value={formData.employee_id}
                 onChange={(e) => setFormData({ ...formData, employee_id: e.target.value })}
                 placeholder="e.g., FAC001, EMP123"
@@ -515,20 +489,22 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
               )}
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
-              <input
+              <label htmlFor="faculty-field-4" className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
+              <input id="faculty-field-4"
                 type="tel"
+                disabled={!!createdFacultyId}
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="faculty-field-5" className="block text-sm font-medium text-gray-700 mb-2">
                 Department *
               </label>
-              <select
+              <select id="faculty-field-5"
                 required
+                disabled={!!createdFacultyId}
                 value={formData.department}
                 onChange={(e) => setFormData({ ...formData, department: e.target.value })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
@@ -542,11 +518,12 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="faculty-field-6" className="block text-sm font-medium text-gray-700 mb-2">
                 Faculty Role *
               </label>
-              <select
+              <select id="faculty-field-6"
                 required
+                disabled={!!createdFacultyId}
                 value={formData.role}
                 onChange={(e) => setFormData({ ...formData, role: e.target.value as any })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
@@ -560,9 +537,10 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Qualification</label>
-              <input
+              <label htmlFor="faculty-field-7" className="block text-sm font-medium text-gray-700 mb-2">Qualification</label>
+              <input id="faculty-field-7"
                 type="text"
+                disabled={!!createdFacultyId}
                 value={formData.qualification}
                 onChange={(e) => setFormData({ ...formData, qualification: e.target.value })}
                 placeholder="e.g., Ph.D. in Computer Science"
@@ -570,9 +548,10 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Specialization</label>
-              <input
+              <label htmlFor="faculty-field-8" className="block text-sm font-medium text-gray-700 mb-2">Specialization</label>
+              <input id="faculty-field-8"
                 type="text"
+                disabled={!!createdFacultyId}
                 value={formData.specialization}
                 onChange={(e) => setFormData({ ...formData, specialization: e.target.value })}
                 placeholder="e.g., Artificial Intelligence"
@@ -580,18 +559,19 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Experience (Years)</label>
-              <input
+              <label htmlFor="faculty-field-9" className="block text-sm font-medium text-gray-700 mb-2">Experience (Years)</label>
+              <input id="faculty-field-9"
                 type="number"
                 min="0"
+                disabled={!!createdFacultyId}
                 value={formData.experience_years}
                 onChange={(e) => setFormData({ ...formData, experience_years: parseInt(e.target.value) || 0 })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Date of Joining</label>
-              <input
+              <label htmlFor="faculty-field-10" className="block text-sm font-medium text-gray-700 mb-2">Date of Joining</label>
+              <input id="faculty-field-10"
                 type="date"
                 value={formData.date_of_joining}
                 onChange={(e) => setFormData({ ...formData, date_of_joining: e.target.value })}
@@ -611,9 +591,9 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
                 Degree Certificate *
               </label>
               <div className="flex items-center gap-3">
-                <label className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed rounded-lg cursor-pointer transition ${
-                  uploadStatus.degree_certificate.uploaded 
-                    ? 'border-green-300 bg-green-50' 
+                <label className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed rounded-lg cursor-pointer focus-within:ring-2 focus-within:ring-indigo-600 transition ${
+                  uploadStatus.degree_certificate.uploaded
+                    ? 'border-green-300 bg-green-50'
                     : uploadStatus.degree_certificate.uploading
                     ? 'border-blue-300 bg-blue-50'
                     : validationErrors.degree_certificate
@@ -630,17 +610,17 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
                     <Upload className="h-5 w-5 text-gray-400" />
                   )}
                   <span className={`text-sm ${
-                    uploadStatus.degree_certificate.uploaded 
-                      ? 'text-green-700' 
+                    uploadStatus.degree_certificate.uploaded
+                      ? 'text-green-700'
                       : uploadStatus.degree_certificate.uploading
                       ? 'text-blue-700'
                       : 'text-gray-600'
                   }`}>
-                    {uploadStatus.degree_certificate.uploading 
-                      ? "Uploading..." 
+                    {uploadStatus.degree_certificate.uploading
+                      ? "Uploading..."
                       : uploadStatus.degree_certificate.uploaded
-                      ? `${documents.degree_certificate?.name ? 
-                          (documents.degree_certificate.name.length > 25 
+                      ? `${documents.degree_certificate?.name ?
+                          (documents.degree_certificate.name.length > 25
                             ? `${documents.degree_certificate.name.substring(0, 20)}...${documents.degree_certificate.name.substring(documents.degree_certificate.name.lastIndexOf('.'))}`
                             : documents.degree_certificate.name
                           ) : "Uploaded"}`
@@ -650,8 +630,12 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
                   <input
                     type="file"
                     accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                    onChange={(e) => handleFileChange("degree_certificate", e.target.files)}
-                    className="hidden"
+                    aria-label="Upload degree certificate"
+                    onChange={event => {
+                      void handleFileChange("degree_certificate", event.currentTarget.files);
+                      event.currentTarget.value = "";
+                    }}
+                    className="sr-only"
                     disabled={uploadStatus.degree_certificate.uploading}
                   />
                 </label>
@@ -668,9 +652,9 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">ID Proof *</label>
               <div className="flex items-center gap-3">
-                <label className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed rounded-lg cursor-pointer transition ${
-                  uploadStatus.id_proof.uploaded 
-                    ? 'border-green-300 bg-green-50' 
+                <label className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed rounded-lg cursor-pointer focus-within:ring-2 focus-within:ring-indigo-600 transition ${
+                  uploadStatus.id_proof.uploaded
+                    ? 'border-green-300 bg-green-50'
                     : uploadStatus.id_proof.uploading
                     ? 'border-blue-300 bg-blue-50'
                     : validationErrors.id_proof
@@ -687,17 +671,17 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
                     <Upload className="h-5 w-5 text-gray-400" />
                   )}
                   <span className={`text-sm ${
-                    uploadStatus.id_proof.uploaded 
-                      ? 'text-green-700' 
+                    uploadStatus.id_proof.uploaded
+                      ? 'text-green-700'
                       : uploadStatus.id_proof.uploading
                       ? 'text-blue-700'
                       : 'text-gray-600'
                   }`}>
-                    {uploadStatus.id_proof.uploading 
-                      ? "Uploading..." 
+                    {uploadStatus.id_proof.uploading
+                      ? "Uploading..."
                       : uploadStatus.id_proof.uploaded
-                      ? `${documents.id_proof?.name ? 
-                          (documents.id_proof.name.length > 25 
+                      ? `${documents.id_proof?.name ?
+                          (documents.id_proof.name.length > 25
                             ? `${documents.id_proof.name.substring(0, 20)}...${documents.id_proof.name.substring(documents.id_proof.name.lastIndexOf('.'))}`
                             : documents.id_proof.name
                           ) : "Uploaded"}`
@@ -707,8 +691,12 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
                   <input
                     type="file"
                     accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                    onChange={(e) => handleFileChange("id_proof", e.target.files)}
-                    className="hidden"
+                    aria-label="Upload ID proof"
+                    onChange={event => {
+                      void handleFileChange("id_proof", event.currentTarget.files);
+                      event.currentTarget.value = "";
+                    }}
+                    className="sr-only"
                     disabled={uploadStatus.id_proof.uploading}
                   />
                 </label>
@@ -724,10 +712,10 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
             {/* Experience Letters */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Experience Letters *
+                Experience Letters {formData.experience_years > 0 ? '*' : '(optional for new faculty)'}
               </label>
               <div className="space-y-2">
-                <label className={`flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed rounded-lg cursor-pointer transition ${
+                <label className={`flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed rounded-lg cursor-pointer focus-within:ring-2 focus-within:ring-indigo-600 transition ${
                   uploadStatus.experience_letters.uploading
                     ? 'border-blue-300 bg-blue-50'
                     : validationErrors.experience_letters
@@ -748,8 +736,12 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
                     type="file"
                     multiple
                     accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                    onChange={(e) => handleFileChange("experience_letters", e.target.files)}
-                    className="hidden"
+                    aria-label="Upload experience letters"
+                    onChange={event => {
+                      void handleFileChange("experience_letters", event.currentTarget.files);
+                      event.currentTarget.value = "";
+                    }}
+                    className="sr-only"
                     disabled={uploadStatus.experience_letters.uploading}
                   />
                 </label>
@@ -759,37 +751,38 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
                 {validationErrors.experience_letters && (
                   <p className="text-sm text-red-600">{validationErrors.experience_letters}</p>
                 )}
-                {documents.experience_letters.map((file, index) => {
+                {experienceLetters.map(({ file }, index) => {
                   // Truncate long filenames for better display
-                  const displayName = file.name.length > 40 
+                  const displayName = file.name.length > 40
                     ? `${file.name.substring(0, 20)}...${file.name.substring(file.name.lastIndexOf('.'))}`
                     : file.name;
-                  
+
                   return (
                     <div
                       key={index}
                       className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200"
                     >
                       <div className="flex items-center gap-2 flex-1 min-w-0">
-                        {uploadStatus.experience_letters.urls[index] ? (
+                        {experienceLetters[index].url ? (
                           <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
                         ) : (
                           <FileText className="h-4 w-4 text-gray-400 flex-shrink-0" />
                         )}
                         <div className="flex-1 min-w-0">
-                          <span 
-                            className="text-sm text-gray-700 block truncate" 
+                          <span
+                            className="text-sm text-gray-700 block truncate"
                             title={file.name}
                           >
                             {displayName}
                           </span>
-                          {uploadStatus.experience_letters.urls[index] && (
+                          {experienceLetters[index].url && (
                             <span className="text-xs text-green-600">Uploaded</span>
                           )}
                         </div>
                       </div>
                       <button
                         type="button"
+                        aria-label={`Remove experience letter ${file.name}`}
                         onClick={() => removeExperienceLetter(index)}
                         className="text-red-500 hover:text-red-700 flex-shrink-0 ml-2"
                         disabled={uploadStatus.experience_letters.uploading}
@@ -812,16 +805,17 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
               <span className="text-sm text-red-600 font-medium">{validationErrors.subjects}</span>
             )}
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
             <input
               type="text"
+              aria-label="Subject name"
               placeholder="Subject name"
               value={currentSubject.name}
               onChange={(e) => setCurrentSubject({ ...currentSubject, name: e.target.value })}
               className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
             />
-            <select
+            <select aria-label="Subject proficiency"
               value={currentSubject.proficiency}
               onChange={(e) =>
                 setCurrentSubject({
@@ -838,6 +832,7 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
             </select>
             <input
               type="number"
+              aria-label="Years of subject experience"
               placeholder="Years"
               min="0"
               value={currentSubject.years_experience}
@@ -864,13 +859,14 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
                 key={index}
                 className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200"
               >
-                <div className="flex items-center gap-4">
+                <div className="flex min-w-0 flex-wrap items-center gap-2">
                   <span className="font-medium text-gray-900">{subject.name}</span>
                   <span className="text-sm text-gray-600 capitalize">{subject.proficiency}</span>
                   <span className="text-sm text-gray-500">{subject.years_experience} years</span>
                 </div>
                 <button
                   type="button"
+                  aria-label={`Remove ${subject.name}`}
                   onClick={() => removeSubject(index)}
                   className="text-red-500 hover:text-red-700"
                 >
@@ -885,12 +881,13 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
         <div className="flex justify-end">
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || uploading}
             className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition font-medium"
           >
-            {loading ? "Processing..." : "Create Faculty Member"}
+            {loading ? "Saving…" : uploading ? "Waiting for uploads…" : createdFacultyId ? "Retry saving details" : "Create Faculty Member"}
           </button>
         </div>
+        </fieldset>
       </form>
       </div>
     </div>

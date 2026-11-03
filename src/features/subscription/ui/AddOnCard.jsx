@@ -101,7 +101,7 @@ export function AddOnCard({
 
           {/* Category & Title */}
           <div className="flex-1 min-w-0">
-            <span className="text-xs text-amber-600 uppercase tracking-wider font-bold">
+            <span className="text-xs text-amber-800 uppercase tracking-wider font-bold">
               {addOn.category?.replace(/_/g, ' ')}
             </span>
             <h3 className="font-light text-xl text-slate-900" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>

@@ -85,25 +85,28 @@ describe('learnerType utilities', () => {
             });
         });
 
-        // Priority 3: Grade-based fallback
-        describe('grade-based fallback', () => {
-            it('returns higher_secondary for grade 12', () => {
+        // Grade text alone does not establish institutional affiliation.
+        describe('unaffiliated profiles with grade text', () => {
+            it('does not infer school affiliation from grade 12', () => {
                 const result = determinelearnerType({ grade: '12' });
-                // Grade 12 is higher secondary - still a school learner
+                // A recorded grade is not an institution link.
                 expect(result.isCollegeLearner).toBe(false);
-                expect(result.isSchoolLearner).toBe(true);
-                expect(result.educationLevel).toBe('higher_secondary');
+                expect(result.isSchoolLearner).toBe(false);
+                expect(result.isLearner).toBe(true);
+                expect(result.educationLevel).toBeNull();
             });
-            it('returns school for highschool grades', () => {
+            it('does not infer school affiliation from highschool grades', () => {
                 const result = determinelearnerType({ grade: '10' });
-                expect(result.isSchoolLearner).toBe(true);
-                expect(result.educationLevel).toBe('highschool');
+                expect(result.isSchoolLearner).toBe(false);
+                expect(result.isLearner).toBe(true);
+                expect(result.educationLevel).toBeNull();
             });
 
-            it('returns school for middle school grades', () => {
+            it('does not infer school affiliation from middle school grades', () => {
                 const result = determinelearnerType({ grade: '6' });
-                expect(result.isSchoolLearner).toBe(true);
-                expect(result.educationLevel).toBe('middle');
+                expect(result.isSchoolLearner).toBe(false);
+                expect(result.isLearner).toBe(true);
+                expect(result.educationLevel).toBeNull();
             });
 
             it('returns independent learner for no data', () => {
@@ -151,7 +154,8 @@ describe('learnerType utilities', () => {
                 isSchoolLearner: false,
                 isLearner: false,
                 educationLevel: null,
-                institutionId: null
+                institutionId: null,
+                category: 'professional'
             };
 
             expect(determinelearnerType(null)).toEqual(expected);
@@ -190,9 +194,10 @@ describe('learnerType utilities', () => {
     describe('getlearnerEducationLevel helper', () => {
         it('returns correct education levels', () => {
             expect(getlearnerEducationLevel({ role: 'learner', university_college_id: 'uuid' })).toBe(EducationLevel.COLLEGE);
-            expect(getlearnerEducationLevel({ grade: '10' })).toBe('highschool');
-            expect(getlearnerEducationLevel({ grade: '6' })).toBe('middle');
-            expect(getlearnerEducationLevel({ grade: '11' })).toBe('higher_secondary');
+            expect(getlearnerEducationLevel({ school_id: 'school', grade: '10' })).toBe('highschool');
+            expect(getlearnerEducationLevel({ school_id: 'school', grade: '6' })).toBe('middle');
+            expect(getlearnerEducationLevel({ school_id: 'school', grade: '11' })).toBe('higher_secondary');
+            expect(getlearnerEducationLevel({ grade: '11' })).toBeNull();
         });
     });
 });

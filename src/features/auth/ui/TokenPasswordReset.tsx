@@ -1,3 +1,5 @@
+import {useAuthStore,useUser} from '@/shared/model/authStore';
+import {updatePassword} from '@/entities/user';
 import { useState, FormEvent, ChangeEvent, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { 
@@ -17,6 +19,8 @@ import { AuthClientError } from '@rareminds-eym/auth-client';
 interface TokenPasswordResetState {
   step: 'loading' | 'email-input' | 'reset' | 'success' | 'error';
   token: string;
+  currentPassword: string;
+  passwordChanged: boolean;
   email: string;
   newPassword: string;
   confirmPassword: string;
@@ -30,10 +34,14 @@ const TokenPasswordReset = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const tokenFromUrl = searchParams.get('token') || '';
+  const user=useUser();
+  const temporarySetup=searchParams.get('setup')==='educator' && !!user && (user.user_metadata?.first_login_setup_required===true || user.user_metadata?.must_change_password===true);
   
   const [state, setState] = useState<TokenPasswordResetState>({
     step: 'loading',
     token: tokenFromUrl,
+    currentPassword: "",
+    passwordChanged: false,
     email: '',
     newPassword: '',
     confirmPassword: '',
@@ -45,6 +53,7 @@ const TokenPasswordReset = () => {
 
   // Validate token on component mount
   useEffect(() => {
+    if(temporarySetup){setState(prev=>({...prev,step:'reset',token:''}));return;}
     if (!tokenFromUrl) {
       // No token provided - show email input form instead of error
       setState(prev => ({
@@ -70,7 +79,7 @@ const TokenPasswordReset = () => {
       step: 'reset',
       token: tokenFromUrl
     }));
-  }, [tokenFromUrl]);
+  }, [tokenFromUrl,temporarySetup]);
 
   const handleInputChange = (field: keyof TokenPasswordResetState) => (e: ChangeEvent<HTMLInputElement>) => {
     setState(prev => ({
@@ -147,6 +156,13 @@ const TokenPasswordReset = () => {
     setState(prev => ({ ...prev, loading: true, error: '' }));
 
     try {
+      if(temporarySetup){
+        if(!state.currentPassword)throw new Error('Enter your temporary password.');
+        await updatePassword(state.newPassword,state.currentPassword);
+        setState(prev=>({...prev,currentPassword:'',newPassword:'',confirmPassword:'',passwordChanged:true,loading:false,step:'success'}));
+        await useAuthStore.getState().logout();
+        navigate('/login',{replace:true});return;
+      }
       await ssoClient.resetPassword({
         token: state.token,
         password: state.newPassword,
@@ -189,14 +205,14 @@ const TokenPasswordReset = () => {
             {state.step === 'loading' && 'Validating Reset Link'}
             {state.step === 'email-input' && 'Reset Your Password'}
             {state.step === 'reset' && 'Create New Password'}
-            {state.step === 'success' && (state.token ? 'Password Updated' : 'Check Your Email')}
+            {state.step === 'success' && ((state.token || state.passwordChanged) ? 'Password Updated' : 'Check Your Email')}
             {state.step === 'error' && 'Invalid Reset Link'}
           </h1>
           <p className="text-gray-600">
             {state.step === 'loading' && 'Please wait while we validate your reset link...'}
             {state.step === 'email-input' && 'Enter your email to receive a password reset link'}
             {state.step === 'reset' && 'Enter your new password below'}
-            {state.step === 'success' && (state.token ? 'You can now sign in with your new password' : 'If an account exists, you will receive a password reset link')}
+            {state.step === 'success' && ((state.token || state.passwordChanged) ? 'You can now sign in with your new password' : 'If an account exists, you will receive a password reset link')}
             {state.step === 'error' && 'This reset link is invalid or has expired'}
           </p>
         </div>
@@ -318,6 +334,7 @@ const TokenPasswordReset = () => {
                 </div>
               )}
 
+              {temporarySetup&&<div><label htmlFor="currentPassword" className="block text-sm font-medium text-gray-700 mb-2">Temporary Password</label><input id="currentPassword" name="currentPassword" type="password" autoComplete="current-password" required value={state.currentPassword} onChange={handleInputChange('currentPassword')} disabled={state.loading} className="block w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"/></div>}
               {/* New Password */}
               <div>
                 <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700 mb-2">
@@ -411,7 +428,7 @@ const TokenPasswordReset = () => {
               <div className="p-4 bg-green-50 border border-green-200 rounded-lg flex items-start gap-3">
                 <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
                 <div>
-                  {state.token ? (
+                  {(state.token || state.passwordChanged) ? (
                     // Password reset success
                     <>
                       <p className="text-sm text-green-800 font-medium">Password updated successfully!</p>
@@ -435,7 +452,7 @@ const TokenPasswordReset = () => {
                 onClick={handleBackToLogin}
                 className="w-full flex items-center justify-center gap-2 py-3 px-4 border border-transparent rounded-lg shadow-sm text-white bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all duration-200"
               >
-                <span>{state.token ? 'Continue to Login' : 'Back to Login'}</span>
+                <span>{(state.token || state.passwordChanged) ? 'Continue to Login' : 'Back to Login'}</span>
               </button>
             </div>
           )}

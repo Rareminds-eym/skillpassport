@@ -30,12 +30,12 @@ const logger = getLogger('subscription-service');
  * Includes cancelled subscriptions that haven't expired yet (user retains access until end date).
  * @returns {Promise<{ success: boolean, data: Object | null, error: string | null }>}
  */
-export const getActiveSubscription = async () => {
+export const getActiveSubscription = async (scope?: string) => {
   try {
     logger.info('Fetching active subscription via API');
 
     const result = await apiGet<{ success: boolean; data: any; error: string | null }>(
-      '/payments/get-active-subscription'
+      `/payments/get-active-subscription${scope ? `?scope=${encodeURIComponent(scope)}` : ''}`
     );
 
     logger.info('Active subscription API response', { success: result.success, hasData: !!result.data });
@@ -46,12 +46,17 @@ export const getActiveSubscription = async () => {
       error: result.error ?? null,
     };
   } catch (error: any) {
-    // If the API call fails (e.g. 401, network error), return a safe fallback
+    // If the API call fails (e.g. 401, network error), return a safe fallback.
+    // Preserve the HTTP status / error code so callers (e.g. the graded
+    // fail-open vs fail-closed classification in SubscriptionProtectedRoute)
+    // can distinguish auth failures from transient 5xx/network outages.
     logger.error('Failed to fetch active subscription via API', error);
     return {
       success: false,
       data: null,
       error: error.message || 'Failed to fetch subscription',
+      status: error.status ?? null,
+      code: error.code ?? null,
     };
   }
 };

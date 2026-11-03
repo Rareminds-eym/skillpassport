@@ -79,7 +79,7 @@ export function createOptimisticSubscriptionHandler(
           email: '', 
           amount: 0, 
           planId: planCode,
-          planName: 'freemium'
+          planName: planCode || 'freemium'
         }), 
       });
 

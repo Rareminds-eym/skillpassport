@@ -2,7 +2,9 @@
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { withAuth, getContextUser } from '../../lib/auth';
 import { apiDbError, apiError, apiMethodNotAllowed, apiSuccess } from '../../lib/response';
-import { getServiceClient } from '../../lib/supabase';
+import { getServiceClient as getUnscopedServiceClient } from '../../lib/supabase';
+import { legacyTeachingClient } from '../../lib/legacy-teaching-client';
+const getServiceClient=(env:Parameters<typeof getUnscopedServiceClient>[0])=>legacyTeachingClient(getUnscopedServiceClient(env));
 import { createLogger } from '../../lib/logger';
 
 const logger = createLogger('college-admin-attendance');
@@ -28,7 +30,7 @@ interface ImportRowError { row: number; field?: string; message: string; }
  * so duplicate program names cannot misroute an import.
  * Never writes — the import action reuses this, then calls the atomic RPC.
  */
-export async function validateAttendanceImport(supabase: any, body: any): Promise<{
+export async function validateAttendanceImport(supabase: any, body: any, trainingRoster?: any[]): Promise<{
   ok: boolean;
   fatal?: { status: number; code: string; message: string };
   errors: ImportRowError[];
@@ -58,6 +60,7 @@ export async function validateAttendanceImport(supabase: any, body: any): Promis
   if (!session) return fail(404, 'NOT_FOUND', 'Attendance session not found');
 
   // ── Session state: single-write-once, re-upload is never allowed ──
+  if (session.locked_at) return fail(409, 'CONFLICT', 'This attendance session is locked');
   if (session.status === 'cancelled') {
     return fail(400, 'VALIDATION_ERROR', 'This session is cancelled — attendance cannot be imported into it');
   }
@@ -65,11 +68,13 @@ export async function validateAttendanceImport(supabase: any, body: any): Promis
     return fail(409, 'CONFLICT', 'Attendance already marked for this session — re-upload is not allowed');
   }
   {
-    const { count: existingCount, error: existingError } = await supabase
+    let existingQuery = supabase
       .from('college_attendance_records')
       .select('id', { count: 'exact', head: true })
       .eq('session_id', session.id)
       .eq('date', session.date);
+    if (trainingRoster) existingQuery = existingQuery.not('status', 'is', null);
+    const { count: existingCount, error: existingError } = await existingQuery;
     if (existingError) return fail(503, 'CATALOG_UNAVAILABLE', 'Unable to check existing attendance');
     if ((existingCount || 0) > 0) {
       return fail(409, 'CONFLICT', 'Attendance already exists for this session — re-upload is not allowed');
@@ -135,7 +140,7 @@ export async function validateAttendanceImport(supabase: any, body: any): Promis
   }
 
   // ── Roster ──
-  const { data: roster, error: rosterError } = await supabase
+  const { data: roster, error: rosterError } = trainingRoster ? { data: trainingRoster, error: null } : await supabase
     .from('learners')
     .select('id, name, roll_number, email')
     .eq('is_deleted', false)
@@ -282,6 +287,34 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const startTime = Date.now();
 
   try {
+    // Bulk operations alone may include trainer sessions after an explicit college-admin check.
+    // Other legacy routes retain their existing delegated-session isolation.
+    let importDb = supabase;
+    let trainingSession: any = null;
+    let trainingRoster: any[] | undefined;
+    if (['get-import-sessions', 'download-attendance-template', 'validate-attendance-import', 'import-attendance'].includes(action)) {
+      if (!body.college_id) return apiError(400, 'VALIDATION_ERROR', 'Missing college_id', context.request);
+      const raw = getUnscopedServiceClient(env as any);
+      const actor = getContextUser(context);
+      const permission = await raw.rpc('external_teaching_college_admin', { p_actor: actor.id, p_college: body.college_id });
+      if (permission.error || permission.data !== true) return apiError(403, 'FORBIDDEN', 'College administration required', context.request);
+      importDb = raw;
+      if (body.session_id) {
+        const found = await raw.from('college_attendance_sessions').select('*').eq('id', body.session_id).eq('college_id', body.college_id).maybeSingle();
+        if (found.error) return apiDbError(found.error, context.request);
+        if (!found.data) return apiError(404, 'NOT_FOUND', 'Attendance session not found', context.request);
+        if (found.data.instructor_source === 'platform_staff') {
+          trainingSession = found.data;
+          const snapshot = await raw.from('college_attendance_records').select('learner_id,learner_name,roll_number').eq('session_id', found.data.id);
+          if (snapshot.error) return apiDbError(snapshot.error, context.request);
+          const ids = (snapshot.data || []).map((row: any) => row.learner_id);
+          const emails = ids.length ? await raw.from('learners').select('id,email').in('id', ids) : { data: [], error: null };
+          if (emails.error) return apiDbError(emails.error, context.request);
+          const byId = new Map((emails.data || []).map((row: any) => [row.id, row.email]));
+          trainingRoster = (snapshot.data || []).map((row: any) => ({ id: row.learner_id, name: row.learner_name, roll_number: row.roll_number, email: byId.get(row.learner_id) || '' }));
+        }
+      }
+    }
     switch (action) {
       // ─────────────────────────────────────────────────
       // Resolve college ID from authenticated user
@@ -679,6 +712,8 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
         const sessions = (data || []).map((session: any) => ({
           id: session.id,
+          instructorSource: session.instructor_source,
+          program_id: session.program_id,
           date: session.date,
           startTime: session.start_time,
           endTime: session.end_time,
@@ -780,6 +815,28 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       case 'delete-sessions': {
         const { subjectGroup } = body;
 
+        // Educator attendance history is retained separately: refusing here
+        // beats a raw FK violation from ON DELETE RESTRICT.
+        const { data: doomed, error: lookupError } = await supabase
+          .from('college_attendance_sessions')
+          .select('id')
+          .eq('subject_name', subjectGroup.subject)
+          .eq('department_name', subjectGroup.department)
+          .eq('program_name', subjectGroup.course)
+          .eq('semester', subjectGroup.semester)
+          .eq('section', subjectGroup.section);
+        if (lookupError) return apiDbError(lookupError, context.request, { startTime });
+        if ((doomed || []).length > 0) {
+          const { count: guarded, error: guardError } = await supabase
+            .from('organization_staff_attendence')
+            .select('id', { count: 'exact', head: true })
+            .in('session_id', doomed.map((s: any) => s.id));
+          if (guardError) return apiDbError(guardError, context.request, { startTime });
+          if ((guarded || 0) > 0) {
+            return apiError(409, 'CONFLICT', 'These sessions have recorded educator attendance which is retained for history — cancel the sessions instead of deleting them', context.request, { startTime });
+          }
+        }
+
         const { error } = await supabase
           .from('college_attendance_sessions')
           .delete()
@@ -830,7 +887,12 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       // Create a new attendance session
       // ─────────────────────────────────────────────────
       case 'create-session': {
-        const { sessionData, departmentName, programName, subjectName, facultyName, collegeId, createdBy } = body;
+        const { sessionData, departmentName, programName, subjectName, facultyName, collegeId } = body;
+        const actor=getContextUser(context);
+        const authority=await supabase.rpc('external_teaching_college_admin',{p_actor:actor.id,p_college:collegeId});
+        if(authority.error||authority.data!==true)return apiError(403,'FORBIDDEN','College administration required',context.request,{startTime});
+        const faculty=await supabase.from('college_lecturers').select('id').eq('id',sessionData?.faculty).eq('collegeId',collegeId).maybeSingle();
+        if(faculty.error||!faculty.data)return apiError(400,'VALIDATION_ERROR','Faculty must belong to the selected college',context.request,{startTime});
 
         const { error } = await supabase
           .from('college_attendance_sessions')
@@ -851,7 +913,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
             remarks: sessionData.remarks,
             status: 'scheduled',
             college_id: collegeId,
-            created_by: createdBy,
+            created_by: actor.id,
           })
           .select()
           .single();
@@ -870,7 +932,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
         // select * (never the new program_id by name): this list must keep
         // working on DBs where the bulk-import migration hasn't applied yet.
-        let query = supabase
+        let query = importDb
           .from('college_attendance_sessions')
           .select('*')
           .eq('college_id', college_id)
@@ -898,7 +960,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         )) as string[];
         let byId: Record<string, any> = {};
         if (ids.length > 0) {
-          const { data: progs, error: progError } = await supabase
+          const { data: progs, error: progError } = await importDb
             .from('programs')
             .select('id, name, code, specializations')
             .in('id', ids);
@@ -922,7 +984,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           return apiError(400, 'VALIDATION_ERROR', 'college_id and session_id are required', context.request, { startTime });
         }
 
-        const { data: session, error: sessionError } = await supabase
+        const { data: session, error: sessionError } = await importDb
           .from('college_attendance_sessions')
           .select('*')
           .eq('id', session_id)
@@ -933,7 +995,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
         let programId = session.program_id;
         if (!programId) {
-          const { data: byName } = await supabase
+          const { data: byName } = await importDb
             .from('programs')
             .select('id')
             .eq('name', session.program_name)
@@ -944,7 +1006,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           programId = (byName as any[])[0].id;
         }
 
-        const { data: roster, error } = await supabase
+        const { data: roster, error } = trainingRoster ? { data: trainingRoster, error: null } : await importDb
           .from('learners')
           .select('roll_number, name, email')
           .eq('is_deleted', false)
@@ -979,7 +1041,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       // Bulk import: dry-run validation (no writes)
       // ─────────────────────────────────────────────────
       case 'validate-attendance-import': {
-        const result = await validateAttendanceImport(supabase, body);
+        const result = await validateAttendanceImport(importDb, body, trainingRoster);
         if (!result.ok) {
           if (result.fatal) return apiError(result.fatal.status, result.fatal.code, result.fatal.message, context.request, { startTime });
           return apiSuccess({ valid: false, errors: result.errors, summary: result.summary }, context.request, { startTime });
@@ -991,14 +1053,15 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       // Bulk import: all-or-nothing write via atomic RPC
       // ─────────────────────────────────────────────────
       case 'import-attendance': {
-        const result = await validateAttendanceImport(supabase, body);
+        const result = await validateAttendanceImport(importDb, body, trainingRoster);
         if (!result.ok) {
           if (result.fatal) return apiError(result.fatal.status, result.fatal.code, result.fatal.message, context.request, { startTime });
           return apiError(422, 'VALIDATION_ERROR', `Import blocked: ${result.errors.length} row error(s). Fix the file and retry — nothing was written.`, context.request, { startTime });
         }
 
         const user = getContextUser(context);
-        const { error: rpcError, data: rpcData } = await supabase.rpc('import_college_attendance_records', {
+        const { error: rpcError, data: rpcData } = await importDb.rpc(trainingSession ? 'import_training_attendance_records' : 'import_college_attendance_records', {
+          ...(trainingSession ? { p_version: result.session.version, p_attendance_revision: result.session.attendance_revision } : {}),
           p_session_id: result.session?.id,
           p_records: result.recordsJson,
           p_marked_by: user?.id || null,

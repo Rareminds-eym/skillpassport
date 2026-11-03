@@ -14,6 +14,7 @@ const logger = getLogger('faculty-bulk-import');
 
 interface FacultyBulkImportProps {
   collegeId: string | null;
+  onChanged?: () => void;
 }
 
 interface ParsedRow {
@@ -81,7 +82,7 @@ function validateRow(row: Record<string, unknown>, rowNumber: number): ParsedRow
   return base;
 }
 
-const FacultyBulkImport: React.FC<FacultyBulkImportProps> = ({ collegeId }) => {
+const FacultyBulkImport: React.FC<FacultyBulkImportProps> = ({ collegeId, onChanged }) => {
   const [rows, setRows] = useState<ParsedRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -89,11 +90,68 @@ const FacultyBulkImport: React.FC<FacultyBulkImportProps> = ({ collegeId }) => {
   const [finalStatus, setFinalStatus] = useState<BulkUploadStatus | null>(null);
   const [errorRows, setErrorRows] = useState<BulkUploadError[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const pollAliveRef = useRef(true);
+  const userId = useAuthStore(state => state.user?.id);
+  const storageKey = `faculty-import:${userId ?? 'anonymous'}:${collegeId ?? ''}`;
+  const [batchId, setBatchId] = useState<string | null>(() => {
+    try { return sessionStorage.getItem(storageKey); } catch { return null; }
+  });
+  const [checkVersion, setCheckVersion] = useState(0);
+  const onChangedRef = useRef(onChanged);
+  onChangedRef.current = onChanged;
 
-  useEffect(() => () => {
-    pollAliveRef.current = false;
-  }, []);
+  useEffect(() => {
+    if (!batchId) return;
+    let alive = true;
+    let timer: ReturnType<typeof setTimeout>;
+    let attempts = 0;
+    let failures = 0;
+    setUploading(true);
+    setError(null);
+    const poll = async () => {
+      if (!alive) return;
+      if (++attempts > 90) {
+        setError('This import is still processing. Check its status again in a few minutes.');
+        setUploading(false);
+        return;
+      }
+      try {
+        const result = await facultyBulkImportService.getBulkStatus(batchId);
+        if (!alive) return;
+        if (!result.success) throw new Error(result.error?.message || 'Status unavailable');
+        failures = 0;
+        const status = result.data;
+        setUploadProgress({ current: status.processed_rows, total: status.total_rows });
+        if (status.status === 'completed' || status.status === 'failed') {
+          setFinalStatus(status);
+          setUploading(false);
+          setUploadProgress(null);
+          onChangedRef.current?.();
+          // Keep the batch ID until the administrator dismisses the result.
+          if (status.failed_count > 0) {
+            try {
+              const errors = await facultyBulkImportService.getBulkErrors(batchId);
+              if (!alive) return;
+              if (!errors.success) throw new Error('Could not load failed rows.');
+              setErrorRows(errors.data.errors);
+            } catch {
+              if (alive) setError('The import finished, but failed-row details could not be loaded. Check status to retry.');
+            }
+          }
+          return;
+        }
+      } catch (err) {
+        if (!alive) return;
+        if (++failures >= 5) {
+          setError(`Could not check import status. The job may still be running. ${err instanceof Error ? err.message : ''}`);
+          setUploading(false);
+          return;
+        }
+      }
+      if (alive) timer = setTimeout(poll, 2000);
+    };
+    void poll();
+    return () => { alive = false; clearTimeout(timer); };
+  }, [batchId, checkVersion]);
 
   const { validRows, invalidRows } = useMemo(() => {
     if (!rows) return { validRows: 0, invalidRows: 0 };
@@ -104,6 +162,8 @@ const FacultyBulkImport: React.FC<FacultyBulkImportProps> = ({ collegeId }) => {
   }, [rows]);
 
   const resetState = useCallback(() => {
+    try { sessionStorage.removeItem(storageKey); } catch { /* Storage may be unavailable. */ }
+    setBatchId(null);
     setRows(null);
     setError(null);
     setUploading(false);
@@ -111,7 +171,7 @@ const FacultyBulkImport: React.FC<FacultyBulkImportProps> = ({ collegeId }) => {
     setFinalStatus(null);
     setErrorRows([]);
     if (fileInputRef.current) fileInputRef.current.value = '';
-  }, []);
+  }, [storageKey]);
 
   const downloadTemplate = useCallback(async () => {
     try {
@@ -186,7 +246,7 @@ const FacultyBulkImport: React.FC<FacultyBulkImportProps> = ({ collegeId }) => {
   }, []);
 
   const submitImport = useCallback(async () => {
-    if (!rows || rows.length === 0) return;
+    if (batchId || uploading || !rows || rows.length === 0) return;
 
     const validRowsOnly = rows.filter((r) => !r.error);
     if (validRowsOnly.length === 0) {
@@ -256,83 +316,14 @@ const FacultyBulkImport: React.FC<FacultyBulkImportProps> = ({ collegeId }) => {
         return;
       }
 
-      const MAX_POLL_ATTEMPTS = 90;
-      const MAX_CONSECUTIVE_POLL_FAILURES = 5;
-      let pollAttempts = 0;
-      let consecutiveFailures = 0;
-
-      const poll = async () => {
-        if (!pollAliveRef.current) return;
-        if (pollAttempts >= MAX_POLL_ATTEMPTS) {
-          setError('Upload is still processing in the background. Please wait a few minutes and check again.');
-          setUploading(false);
-          setUploadProgress(null);
-          return;
-        }
-        pollAttempts++;
-
-        try {
-          const statusResult = await facultyBulkImportService.getBulkStatus(batchId);
-          if (!statusResult.success) {
-            consecutiveFailures++;
-            if (consecutiveFailures >= MAX_CONSECUTIVE_POLL_FAILURES) {
-              setError(`Failed to check upload status: ${statusResult.error?.message || 'Unknown error'}`);
-              setUploading(false);
-              setUploadProgress(null);
-            } else {
-              setTimeout(poll, 2000);
-            }
-            return;
-          }
-          consecutiveFailures = 0;
-
-          const s = statusResult.data;
-          if (s.status === 'processing' && s.total_rows > 0) {
-            setUploadProgress({ current: s.processed_rows, total: s.total_rows });
-          }
-
-          if (s.status === 'completed' || s.status === 'failed') {
-            setFinalStatus(s);
-            let errList: BulkUploadError[] = [];
-            if (s.failed_count > 0) {
-              const errResult = await facultyBulkImportService.getBulkErrors(batchId);
-              if (errResult.success) {
-                errList = errResult.data.errors;
-              } else {
-                logger.warn('Failed to fetch bulk import errors', errResult.error);
-                setError(
-                  `${s.failed_count} row(s) failed but the error details could not be loaded: ${errResult.error?.message || 'Unknown error'}`,
-                );
-              }
-            }
-            setErrorRows(errList);
-            setUploading(false);
-            setUploadProgress(null);
-            return;
-          }
-
-          setTimeout(poll, 2000);
-        } catch (err) {
-          consecutiveFailures++;
-          if (consecutiveFailures >= MAX_CONSECUTIVE_POLL_FAILURES) {
-            setError(
-              `Failed to check upload status: ${err instanceof Error ? err.message : String(err)}`,
-            );
-            setUploading(false);
-            setUploadProgress(null);
-          } else {
-            setTimeout(poll, 2000);
-          }
-        }
-      };
-
-      void poll();
+      try { sessionStorage.setItem(storageKey, batchId); } catch { /* Keep tracking in memory. */ }
+      setBatchId(batchId);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to upload CSV');
       setUploading(false);
       setUploadProgress(null);
     }
-  }, [rows, collegeId]);
+  }, [rows, collegeId, batchId, uploading, storageKey]);
 
   const downloadErrors = useCallback(() => {
     if (errorRows.length === 0) return;
@@ -358,12 +349,13 @@ const FacultyBulkImport: React.FC<FacultyBulkImportProps> = ({ collegeId }) => {
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-3 text-sm whitespace-pre-line">
+        <div role="alert" className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-3 text-sm whitespace-pre-line">
           {error}
         </div>
       )}
 
-      {!rows && !uploading && !finalStatus && (
+      {batchId && !uploading && (!finalStatus || error) && <div className="rounded-lg border border-indigo-200 p-4"><p className="mb-2 text-sm">Your existing import is saved. Checking status will not submit it again.</p><button type="button" className="rounded-lg bg-indigo-600 px-4 py-2 text-white" onClick={() => { setError(null); setCheckVersion(value => value + 1); }}>Check status</button></div>}
+      {!batchId && !rows && !uploading && !finalStatus && (
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
             <div>
@@ -393,18 +385,18 @@ const FacultyBulkImport: React.FC<FacultyBulkImportProps> = ({ collegeId }) => {
                 Max {MAX_ROWS} rows.
               </p>
             </div>
-            <label className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-100 cursor-pointer transition">
+            <label className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-100 cursor-pointer focus-within:ring-2 focus-within:ring-indigo-600 transition">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
               </svg>
               Choose CSV File
-              <input ref={fileInputRef} type="file" accept=".csv,text/csv" onChange={onFileChange} className="hidden" />
+              <input ref={fileInputRef} type="file" accept=".csv,text/csv" onChange={onFileChange} className="sr-only" />
             </label>
           </div>
         </div>
       )}
 
-      {rows && !uploading && !finalStatus && (
+      {!batchId && rows && !uploading && !finalStatus && (
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
           <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
             <h2 className="text-lg font-semibold text-gray-900">
@@ -486,7 +478,7 @@ const FacultyBulkImport: React.FC<FacultyBulkImportProps> = ({ collegeId }) => {
 
       {finalStatus && (
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Import complete</h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">{finalStatus.status === 'failed' ? 'Import failed' : finalStatus.failed_count > 0 ? 'Import finished with errors' : 'Import complete'}</h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
             <div className="rounded-xl bg-green-50 border border-green-200 p-4">
               <p className="text-2xl font-bold text-green-700">{finalStatus.success_count}</p>

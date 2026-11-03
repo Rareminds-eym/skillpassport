@@ -22,6 +22,8 @@ export interface AttendanceRecord {
 
 export interface AttendanceSession {
   id: string;
+  instructorSource?: 'legacy_college' | 'platform_staff';
+  program_id?: string;
   date: string;
   startTime: string;
   endTime: string;

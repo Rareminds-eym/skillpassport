@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 
 import { getActiveSubscription } from '@/features/subscription/api/subscriptionService';
 import { queryLogger } from '@/shared/lib/debug/queryLogger';
@@ -79,6 +80,12 @@ const computeAccessState = (sub) => {
   }
 
   const status = sub.status;
+  const now = Date.now();
+  const end = sub.endDate ? Date.parse(sub.endDate) : null;
+  if ((sub.startDate && !(Date.parse(sub.startDate) <= now)) ||
+      (end !== null && !(end + (status === 'grace_period' ? 7 * 86400000 : 0) > now))) {
+    return { hasAccess: false, accessReason: 'expired', showWarning: false, daysUntilExpiry: 0 };
+  }
   let accessReason = 'no_subscription';
   let hasAccess = false;
   let showWarning = false;
@@ -137,13 +144,19 @@ const computeAccessState = (sub) => {
  * Fetch subscription data
  * Returns null if no subscription exists (user should be redirected to subscription page)
  */
-const fetchSubscription = async (userId) => {
+const fetchSubscription = async (userId, scope) => {
   if (!userId) return null;
 
-  const result = await getActiveSubscription();
+  const result = await getActiveSubscription(scope);
 
   if (!result.success) {
-    throw new Error(result.error || 'Failed to fetch subscription');
+    // Carry the HTTP status / error code on the thrown error so the graded
+    // fail-open/fail-closed classification in SubscriptionProtectedRoute can
+    // distinguish 4xx (auth — fail closed) from 5xx/network (fail open).
+    const fetchError = new Error(result.error || 'Failed to fetch subscription');
+    if (result.status != null) fetchError.status = result.status;
+    if (result.code != null) fetchError.code = result.code;
+    throw fetchError;
   }
 
   if (result.data) {
@@ -159,22 +172,32 @@ const fetchSubscription = async (userId) => {
  * Main hook for subscription data with React Query
  * @returns {Object} Subscription query result
  */
-export const useSubscriptionQuery = () => {
+export const useSubscriptionQuery = (options = {}) => {
   const user = useUser();
+  const { pathname } = useLocation();
+  const scope = pathname.startsWith('/college-admin') ? 'college_admin'
+    : pathname.startsWith('/school-admin') ? 'school_admin'
+      : pathname.startsWith('/university-admin') ? 'university_admin'
+        : pathname.startsWith('/learner') ? 'learner'
+          : pathname.startsWith('/educator') ? 'educator'
+            : pathname.startsWith('/recruitment') ? 'recruiter' : undefined;
   const queryClient = useQueryClient();
 
   // Check if the query can run
   const isQueryEnabled = !!user;
-  const queryKey = user?.id ? queryKeys.subscription.data.byOrganization(user.id) : queryKeys.subscription.data.all;
+  const queryKey = user?.id ? [...queryKeys.subscription.data.byOrganization(user.id), scope ?? 'default'] : queryKeys.subscription.data.all;
 
   const query = useQuery({
     queryKey,
-    queryFn: () => fetchSubscription(user?.id),
+    queryFn: () => fetchSubscription(user?.id, scope),
     enabled: isQueryEnabled,
     staleTime: STALE_TIME,
     gcTime: CACHE_TIME,
-    refetchOnWindowFocus: false,
-    refetchOnMount: false, // ponytail: Only fetch once per session, not on every component mount
+    // Re-verify on window focus / mount so an open page notices subscription
+    // upgrades (e.g. after payment) silently in the background. Bounded by
+    // staleTime (2 min) — no more than one background re-check per 2 minutes.
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
     retry: (failureCount, error) => {
       // ponytail: Only retry if no data exists (initial sync after login)
       // If we have data, don't retry - it's cached and fresh
@@ -207,17 +230,19 @@ export const useSubscriptionQuery = () => {
     if (!user?.id) return;
 
     await queryClient.prefetchQuery({
-      queryKey: queryKeys.subscription.data.byOrganization(user.id),
-      queryFn: () => fetchSubscription(user.id),
+      queryKey,
+      queryFn: () => fetchSubscription(user.id, scope),
       staleTime: STALE_TIME,
     });
   };
 
   // Invalidate and refetch subscription
-  const refreshSubscription = () => {
-    return queryClient.invalidateQueries({
+  const refreshSubscription = async () => {
+    await queryClient.invalidateQueries({
       queryKey: user?.id ? queryKeys.subscription.data.byOrganization(user.id) : queryKeys.subscription.data.all
     });
+    if (!user?.id) return null;
+    return queryClient.fetchQuery({ queryKey, queryFn: () => fetchSubscription(user.id, scope), staleTime: 0 });
   };
 
   // Clear subscription cache
@@ -260,9 +285,10 @@ export const useSubscriptionQuery = () => {
     // loading is true if:
     // 1. The query is loading (initial fetch)
     // 2. The query is pending (not yet enabled - waiting for user)
-    // 3. Query is fetching/retrying (covers queue sync delay after login)
-    // This prevents premature redirects when subscription is still syncing
-    loading: query.isLoading || query.isPending || !isQueryEnabled || query.isFetching,
+    // 3. Query is fetching/retrying without any cached data (covers queue sync delay after login)
+    // Background refetches with cached data (window focus / mount) stay silent so an
+    // open page is never blocked by a full-screen loader while re-checking quota.
+    loading: query.isLoading || query.isPending || !isQueryEnabled || (query.isFetching && !query.data),
     error: query.error,
     isRefetching: query.isRefetching,
     hasActiveSubscription,

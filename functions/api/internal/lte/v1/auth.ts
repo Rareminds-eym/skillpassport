@@ -20,7 +20,9 @@
  */
 
 import type { PagesEnv } from '../../../../lib/types';
-import { isValidUUID } from '../../../../lib/validation';
+// RFC 4122 (versions 1-5). The stricter version-4-only check in lib/validation rejected
+// every user whose id is a v5 UUID (imported/seeded accounts), locking them out of the gateway.
+import { isValidUUID } from '../../../../shared/lib/validation';
 
 export class GatewayAuthError extends Error {
   constructor(

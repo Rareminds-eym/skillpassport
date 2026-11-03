@@ -17,17 +17,6 @@ function managementPost(action: string, payload?: Record<string, unknown>) {
   return apiPost<any>('/learners/management', { action, ...payload });
 }
 
-function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      resolve(result.split(',')[1]);
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
 
 // ============= ADMISSION WORKFLOW =============
 
@@ -181,23 +170,6 @@ export const admissionService = {
       const response = await managementPost('update-application-status', { applicationId, status, verifiedBy, remarks });
       const data = response?.data ?? response;
       return { data: data.application, error: null };
-    } catch (error) {
-      return { data: null, error };
-    }
-  },
-
-  // Upload documents
-  async uploadDocument(file: File, applicationId: string, documentType: string) {
-    try {
-      const file_base64 = await fileToBase64(file);
-      const response = await managementPost('storage-upload', {
-        bucket: 'admission-documents',
-        path: `${applicationId}/${documentType}/${Date.now()}_${file.name}`,
-        file_base64,
-        content_type: file.type,
-      });
-      const data = response?.data ?? response;
-      return { data: { url: data.url, path: data.path }, error: null };
     } catch (error) {
       return { data: null, error };
     }

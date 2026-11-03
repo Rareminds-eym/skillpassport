@@ -109,7 +109,7 @@ export async function ensureAppUserAndLearner(
 
     // Check existing — after blocked check so active→blocked transition heals
     const { data: existingLearner } = await supabase.from('learners').select('id').eq('user_id', userId).maybeSingle();
-    const { data: existingUser } = await supabase.from('users').select('id').eq('id', userId).maybeSingle();
+    const { data: existingUser } = await supabase.from('users').select('id, metadata').eq('id', userId).maybeSingle();
     const { data: existingMember } = await supabase
       .from('organization_members')
       .select('id')
@@ -216,7 +216,11 @@ export async function ensureAppUserAndLearner(
         phone,
         organizationId: orgId,
         isActive: true,
-        metadata: meta || {},
+        metadata: {
+          ...(meta || {}),
+          ...(typeof existingUser?.metadata?.subscription_selection_required === 'boolean'
+            ? { subscription_selection_required: existingUser.metadata.subscription_selection_required } : {}),
+        },
         updatedAt: new Date().toISOString(),
       };
       // Only include optional fields that exist in schema to avoid PGRST204

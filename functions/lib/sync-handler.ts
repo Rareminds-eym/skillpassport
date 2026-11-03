@@ -40,7 +40,7 @@ export async function handleSyncRequest(
   try {
     const result = await handler(service, data);
     if (!result.success) {
-      const status = result.errorCode === 'NOT_FOUND' ? 404 : 400;
+      const status = result.retryable ? 503 : result.errorCode === 'NOT_FOUND' ? 404 : 400;
       return apiError(status, result.errorCode ?? 'UNKNOWN', result.error, context.request);
     }
     return apiSuccess(result, context.request);

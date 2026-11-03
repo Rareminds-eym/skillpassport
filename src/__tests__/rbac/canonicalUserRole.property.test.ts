@@ -26,7 +26,7 @@
  * This test PASSES on the post-6.1–6.3 source and must stay green going
  * forward. It is a durable regression guard, NOT an exploration test: any
  * future reintroduction of a second `UserRole` declaration (re-fragmentation)
- * will turn it red. The CI drift check (task 18.2) provides a second line of
+ * will turn it red. The local pre-commit drift check (task 18.2) provides a second line of
  * defence once the generator lands.
  */
 

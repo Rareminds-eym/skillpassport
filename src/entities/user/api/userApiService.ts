@@ -122,21 +122,6 @@ export async function checkSchoolCode(code: string): Promise<any> {
   return result;
 }
 
-export async function checkEmail(email: string): Promise<any> {
-  const response = await fetch(`${API_URL}/check-email`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email }),
-  });
-
-  const result = await response.json();
-
-  if (!response.ok) {
-    throw new Error(result.error || 'Failed to check email');
-  }
-
-  return result;
-}
 
 // ==================== COLLEGE SIGNUP ENDPOINTS ====================
 
@@ -386,28 +371,6 @@ export async function createTeacher(teacherData: any, token?: string): Promise<a
   return response.json();
 }
 
-interface ResetPasswordParams {
-  userId?: string;
-  newPassword?: string;
-  action?: string;
-  email?: string;
-  otp?: string;
-}
-
-export async function resetPassword(params: ResetPasswordParams, token?: string): Promise<any> {
-  const response = await ssoClient.fetch(`${API_URL}/reset-password`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(params),
-  });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(error.error || 'Failed to reset password');
-  }
-
-  return response.json();
-}
 
 interface CreateEventUserParams {
   email: string;
@@ -555,7 +518,6 @@ export default {
   signupLearner,
   getSchools,
   checkSchoolCode,
-  checkEmail,
   signupCollegeAdmin,
   signupCollegeEducator,
   getColleges,
@@ -573,7 +535,6 @@ export default {
   createCollegeStaff,
   createEventUser,
   sendInterviewReminder,
-  resetPassword,
   updatelearnerDocuments,
   updateTeacherDocuments,
 };

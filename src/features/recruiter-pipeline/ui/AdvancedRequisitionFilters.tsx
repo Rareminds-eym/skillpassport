@@ -770,7 +770,6 @@ import {
   CurrencyDollarIcon,
   ClockIcon,
   CheckCircleIcon,
-  ChatBubbleLeftRightIcon,
   EyeIcon,
   BuildingOfficeIcon
 } from '@heroicons/react/24/outline';
@@ -784,6 +783,15 @@ interface AdvancedRequisitionFiltersProps {
   onFiltersChange: (filters: RequisitionFilters) => void;
   onReset: () => void;
   onApply: () => void;
+  /**
+   * Optional callback notified when the applied filters include Status chips.
+   * The page header's status <select> and these chips constrain the same
+   * `opportunities.status` column, so when a user applies status chips the
+   * header filter must be reset to 'all' — otherwise the two AND-joined
+   * filters can silently contradict each other and return zero rows.
+   * Wired by Requisitions.tsx to `() => setStatusFilter('all')`.
+   */
+  onHeaderStatusReset?: () => void;
 }
 
 // Static filter options data
@@ -819,33 +827,42 @@ const EXPERIENCE_REQUIRED_OPTIONS = [
 ];
 
 // Date Range Presets
+// Local-date formatting: toISOString().split('T')[0] re-bases to UTC and can
+// shift the visible day near midnight (e.g. IST evenings yield the previous
+// UTC day). Always compute preset bounds from the LOCAL calendar date.
+const toLocalYYYYMMDD = (d: Date) => {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+};
+
 const getDatePreset = (preset: string) => {
   const today = new Date();
   const startDate = new Date();
-  
+
   switch (preset) {
     case '7d':
       startDate.setDate(today.getDate() - 7);
-      return { startDate: startDate.toISOString().split('T')[0], endDate: today.toISOString().split('T')[0] };
+      return { startDate: toLocalYYYYMMDD(startDate), endDate: toLocalYYYYMMDD(today) };
     case '30d':
       startDate.setDate(today.getDate() - 30);
-      return { startDate: startDate.toISOString().split('T')[0], endDate: today.toISOString().split('T')[0] };
+      return { startDate: toLocalYYYYMMDD(startDate), endDate: toLocalYYYYMMDD(today) };
     case '90d':
       startDate.setDate(today.getDate() - 90);
-      return { startDate: startDate.toISOString().split('T')[0], endDate: today.toISOString().split('T')[0] };
+      return { startDate: toLocalYYYYMMDD(startDate), endDate: toLocalYYYYMMDD(today) };
     case 'ytd':
       startDate.setMonth(0, 1); // January 1st of current year
-      return { startDate: startDate.toISOString().split('T')[0], endDate: today.toISOString().split('T')[0] };
+      return { startDate: toLocalYYYYMMDD(startDate), endDate: toLocalYYYYMMDD(today) };
     default:
       return { startDate: undefined, endDate: undefined };
   }
 };
 
-const AdvancedRequisitionFilters: React.FC<AdvancedRequisitionFiltersProps> = ({ 
-  filters, 
-  onFiltersChange, 
+const AdvancedRequisitionFilters: React.FC<AdvancedRequisitionFiltersProps> = ({
+  filters,
+  onFiltersChange,
   onReset,
-  onApply 
+  onApply,
+  onHeaderStatusReset
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [activeSection, setActiveSection] = useState<string | null>(null);
@@ -854,7 +871,9 @@ const AdvancedRequisitionFilters: React.FC<AdvancedRequisitionFiltersProps> = ({
   const [titles, setTitles] = useState<string[]>([]);
   const [loadingDepartments, setLoadingDepartments] = useState(false);
   const [loadingLocations, setLoadingLocations] = useState(false);
-  const [loadingTitles, setLoadingTitles] = useState(false);
+  // `loadingTitles` state is written but never read yet (no title-pill spinner);
+  // keep the setter, drop the unread binding to satisfy noUnusedLocals.
+  const [, setLoadingTitles] = useState(false);
   // Fetch unique departments, locations, and titles from backend
   useEffect(() => {
     const fetchFilterOptions = async () => {
@@ -925,9 +944,31 @@ const AdvancedRequisitionFilters: React.FC<AdvancedRequisitionFiltersProps> = ({
   };
 
   const handleApply = () => {
+    // Filter-boundary contract: Status chips in the advanced panel and the
+    // header status <select> both constrain `opportunities.status`. When the
+    // user applies status chips, notify the page (via the optional
+    // onHeaderStatusReset prop, wired by Requisitions.tsx to reset the header
+    // select to 'all') so the two filters cannot silently contradict each
+    // other — the backend AND-joins them and conflicting values would return
+    // an empty result set instead of the intended one.
+    if ((filters.status?.length ?? 0) > 0 && onHeaderStatusReset) {
+      onHeaderStatusReset();
+    }
+
+    // Range sanity: block Apply while a salary range is inverted (min > max).
+    // applicationCountRange is a fixed preset (string), so custom
+    // min > max inversion is not possible there — only the salary range has
+    // editable bounds.
+    if (salaryRangeInverted) return;
+
     onApply();
     setIsExpanded(false);
   };
+
+  const salaryRangeInverted =
+    filters.salaryRange?.min != null &&
+    filters.salaryRange?.max != null &&
+    filters.salaryRange.min > filters.salaryRange.max;
 
   const FilterSection = ({ 
     title, 
@@ -1062,9 +1103,6 @@ const AdvancedRequisitionFilters: React.FC<AdvancedRequisitionFiltersProps> = ({
             </div>
 
             <div className="border-t border-gray-200 pt-3">
-              <label className="block text-xs font-medium text-gray-700 mb-2">Mode</label>
-              </div>
-            <div className="border-t border-gray-200 pt-3">
               <label className="block text-xs font-medium text-gray-700 mb-2">Custom Range</label>
               <div className="space-y-2">
                 <div>
@@ -1093,6 +1131,11 @@ const AdvancedRequisitionFilters: React.FC<AdvancedRequisitionFiltersProps> = ({
                     className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                   />
                 </div>
+                {salaryRangeInverted && (
+                  <p className="text-xs text-red-600">
+                    Salary range is invalid — the minimum must be less than or equal to the maximum.
+                  </p>
+                )}
               </div>
             </div>
 
@@ -1450,7 +1493,9 @@ const AdvancedRequisitionFilters: React.FC<AdvancedRequisitionFiltersProps> = ({
               </button>
               <button
                 onClick={handleApply}
-                className="flex-1 px-4 py-2.5 text-sm font-medium bg-primary-600 text-white hover:bg-primary-700 rounded-lg transition-colors shadow-sm"
+                disabled={salaryRangeInverted}
+                title={salaryRangeInverted ? 'Fix the invalid salary range before applying' : undefined}
+                className="flex-1 px-4 py-2.5 text-sm font-medium bg-primary-600 text-white hover:bg-primary-700 rounded-lg transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Apply Filters
               </button>
@@ -1514,13 +1559,20 @@ const AdvancedRequisitionFilters: React.FC<AdvancedRequisitionFiltersProps> = ({
             </span>
           ))}
           {(filters.experienceRequired || []).map(exp => {
-     const option = EXPERIENCE_REQUIRED_OPTIONS.find(o => o.value === exp);
-     return (
-       <span key={exp} className="...">
-         {option?.label || exp} {/* Show label, not value */}
-       </span>
-     );
-   })}
+            const option = EXPERIENCE_REQUIRED_OPTIONS.find(o => o.value === exp);
+            return (
+              <span key={exp} className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
+                {option?.label || exp}
+                <button
+                  onClick={() => toggleFilter('experienceRequired', exp)}
+                  className="hover:bg-blue-200 rounded-full p-0.5"
+                  aria-label={`Remove ${option?.label || exp} filter`}
+                >
+                  <XMarkIcon className="h-3 w-3" />
+                </button>
+              </span>
+            );
+          })}
           {(filters.workModes || []).map(mode => (
             <span key={mode} className="inline-flex items-center gap-1 px-3 py-1 bg-teal-100 text-teal-800 text-xs font-medium rounded-full">
               <MapPinIcon className="h-3 w-3" />

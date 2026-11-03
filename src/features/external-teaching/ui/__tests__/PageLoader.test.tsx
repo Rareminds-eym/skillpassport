@@ -1,0 +1,2 @@
+import {describe,expect,it} from 'vitest';import '@testing-library/jest-dom/vitest';import {render,screen} from '@testing-library/react';import PageLoader from '../PageLoader';
+describe('accessible scoped loading state',()=>{it('announces what is being verified while sensitive routes load',()=>{render(<PageLoader message="Verifying educator access"/>);expect(screen.getByRole('status')).toHaveTextContent('Verifying educator access');expect(screen.getByRole('status')).toHaveAttribute('aria-live','polite');});});

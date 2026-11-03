@@ -1,12 +1,62 @@
 import { useState, FormEvent, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { CheckCircle, AlertCircle, Loader2, Eye, EyeOff, Lock, Users } from 'lucide-react';
-import { ssoClient } from '@/shared/api/ssoClient';
+import { SsoWorkflowError, ssoClient } from '@/shared/api/ssoClient';
+import { getRouteForRole, resolveRouteRole } from '@/features/auth/lib/roleBasedRouter';
 import { useAuthStore } from '@/shared/model/authStore';
 import { AuthClientError } from '@rareminds-eym/auth-client';
 import { PASSWORD_MIN } from '@/shared/constants';
 
 type InviteState = 'validating' | 'form' | 'loading' | 'success' | 'error';
+
+// 'sso' = the token is not a SkillPassport invitation; it is accepted through the SSO service.
+type InviteKind = 'standard' | 'sso';
+
+// SkillPassport only hands a token to SSO when it is UUID-shaped. The legacy school/college
+// invitation tokens are 64 characters and never match, so they keep the immediate error.
+const UUID_TOKEN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+const SSO_PASSWORD_RULES =
+  'choose a password of at least 10 characters with 3 of: uppercase, lowercase, numbers, symbols';
+const SSO_PASSWORD_HINT = `We could not accept this invitation. If this is your first time, ${SSO_PASSWORD_RULES}, then try again. Otherwise contact your administrator.`;
+
+/** Same rules as the SSO service (validatePassword): length 10-72 and 3 of 4 character classes. */
+function ssoPasswordProblem(password: string): string | null {
+  if (password.length < PASSWORD_MIN) return `Password must be at least ${PASSWORD_MIN} characters`;
+  if (password.length > 72) return 'Password must be at most 72 characters';
+  const classes = [/[A-Z]/, /[a-z]/, /[0-9]/, /[^a-zA-Z0-9]/].filter((re) => re.test(password)).length;
+  return classes < 3 ? 'Password must contain at least 3 of: uppercase letters, lowercase letters, numbers, symbols' : null;
+}
+
+type SsoFailure = { message: string; stay: boolean } | null;
+
+/** Maps an SSO rejection code to a message. Raw SSO text is never shown. `null` = say nothing. */
+function ssoFailure(code: string): SsoFailure {
+  switch (code) {
+    case 'not_authorized':
+    case 'invalid_input':
+      return { message: SSO_PASSWORD_HINT, stay: true };
+    case 'not_found':
+      return { message: 'This invitation link is invalid or was already used.', stay: false };
+    case 'expired':
+      return { message: 'This invitation has expired. Ask your administrator to send a new one.', stay: false };
+    case 'blocked':
+      return { message: 'This account is blocked. Contact your administrator.', stay: false };
+    case 'rate_limited':
+      return { message: 'Too many attempts. Wait a minute and try again.', stay: true };
+    case 'timeout':
+    case 'network_failure':
+    case 'upstream_unavailable':
+      return {
+        message: 'We could not confirm the result. Try again; if it says the link was already used, sign in with your email and password.',
+        stay: true,
+      };
+    case 'cancelled':
+      return null;
+    default:
+      return { message: 'Failed to accept invitation.', stay: false };
+  }
+}
 
 interface ValidationData {
   valid: boolean;
@@ -33,6 +83,9 @@ const AcceptInvite = () => {
   const [error, setError] = useState(token ? '' : 'No invitation token provided.');
   const [loading, setLoading] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState({ score: 0, label: '', color: '' });
+  const [inviteKind, setInviteKind] = useState<InviteKind>('standard');
+  const [redirectPath, setRedirectPath] = useState('/');
+  const signedInEmail = useAuthStore((s) => s.user?.email);
 
   // Validate token on page load
   useEffect(() => {
@@ -56,13 +109,20 @@ const AcceptInvite = () => {
         });
 
         if (!response.ok) {
-          const errorData = await response.json();
+          const errorData = (await response.json()) as { error?: string; code?: string };
+          // Unknown UUID token with the explicit "not found" code: it may be an SSO invitation.
+          // Every other non-ok response (409, 410, 500, 404 without the code) keeps its own error.
+          if (response.status === 404 && errorData.code === 'INVITATION_NOT_FOUND' && UUID_TOKEN.test(token)) {
+            setInviteKind('sso');
+            setState('form');
+            return;
+          }
           setState('error');
           setError(errorData.error || 'Invalid invitation token');
           return;
         }
 
-        const data: ValidationData = await response.json();
+        const data = (await response.json()) as ValidationData;
         setValidationData(data);
 
         // STEP 3: Handle session conflicts
@@ -187,6 +247,19 @@ const AcceptInvite = () => {
     e.preventDefault();
     if (!token) return;
 
+    if (inviteKind === 'sso') {
+      // Both empty is allowed (existing account). Otherwise they must match and meet the SSO rules.
+      if ((password || confirmPassword) && password !== confirmPassword) {
+        setError('Passwords do not match');
+        return;
+      }
+      const problem = password ? ssoPasswordProblem(password) : null;
+      if (problem) {
+        setError(problem);
+        return;
+      }
+    }
+
     // For recruitment invites, enforce stricter validation
     if (isRecruitmentInvite) {
       if (!password || password.length < PASSWORD_MIN) {
@@ -262,8 +335,17 @@ const AcceptInvite = () => {
         role: me.roles[0] ?? null,
       });
 
+      if (inviteKind === 'sso') setRedirectPath(getRouteForRole(resolveRouteRole(me.roles)));
       setState('success');
     } catch (err) {
+      if (inviteKind === 'sso' && err instanceof SsoWorkflowError) {
+        const failure = ssoFailure(err.code);
+        if (failure) {
+          setError(failure.message);
+          setState(failure.stay ? 'form' : 'error');
+        }
+        return;
+      }
       let errorMessage = 'Failed to accept invitation.';
       if (err instanceof AuthClientError) {
         if (err.httpStatus === 400) errorMessage = 'This invitation has expired or already been used.';
@@ -462,6 +544,13 @@ const AcceptInvite = () => {
               ) : (
                 <>
                   {/* Standard form for other organization types */}
+                  {inviteKind === 'sso' && signedInEmail && (
+                    <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg" role="status">
+                      <p className="text-sm text-amber-800">
+                        You are signed in as {signedInEmail}. Accepting replaces this session with the invited account.
+                      </p>
+                    </div>
+                  )}
                   <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
                     <p className="text-sm text-blue-800">
                       <strong>New user?</strong> Set a password below to create your account.
@@ -504,6 +593,24 @@ const AcceptInvite = () => {
                     </div>
                   </div>
 
+                  {inviteKind === 'sso' && (
+                    <div>
+                      <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
+                        Confirm password
+                      </label>
+                      <input
+                        id="confirmPassword"
+                        type={showPassword ? 'text' : 'password'}
+                        value={confirmPassword}
+                        onChange={(e) => { setConfirmPassword(e.target.value); setError(''); }}
+                        disabled={loading}
+                        autoComplete="new-password"
+                        className="block w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50 transition-colors"
+                        placeholder="Re-enter your password"
+                      />
+                    </div>
+                  )}
+
                   <button
                     type="submit"
                     disabled={loading}
@@ -533,7 +640,7 @@ const AcceptInvite = () => {
                   : "You've successfully joined the organization."}
               </p>
               <button
-                onClick={() => navigate(isRecruitmentInvite ? '/recruitment/overview' : '/')}
+                onClick={() => navigate(inviteKind === 'sso' ? redirectPath : isRecruitmentInvite ? '/recruitment/overview' : '/')}
                 className="w-full py-3 px-4 rounded-lg text-white bg-green-600 hover:bg-green-700 transition-colors"
               >
                 Go to Dashboard
@@ -557,7 +664,7 @@ const AcceptInvite = () => {
                     Sign out and continue
                   </button>
                 )}
-                {token && !error.includes('signed in as') && (
+                {token && inviteKind === 'standard' && !error.includes('signed in as') && (
                   <button
                     onClick={handleRequestResend}
                     disabled={loading}

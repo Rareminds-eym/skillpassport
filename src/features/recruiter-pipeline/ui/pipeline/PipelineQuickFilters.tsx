@@ -1,89 +1,105 @@
-import React from 'react';
-import toast from 'react-hot-toast';
 import {
   CheckIcon,
-  MagnifyingGlassIcon,
-  XMarkIcon,
   ClockIcon,
   ExclamationTriangleIcon,
   StarIcon,
-  SparklesIcon
-} from '@heroicons/react/24/outline';
-
-interface PipelineQuickFiltersProps {
+  SparklesIcon,
+  XMarkIcon,
+} from "@heroicons/react/24/outline";
+export type QuickFilter = "overdue" | "attention" | "priority" | null;
+interface Props {
   showAIRecommendedOnly: boolean;
   setShowAIRecommendedOnly: (value: boolean) => void;
   totalCandidates: number;
   totalAIRecommended: number;
   globalSearch: string;
   setGlobalSearch: (value: string) => void;
-  onShowToast?: (type: 'success' | 'error' | 'warning' | 'info', title: string, message?: string) => void;
+  activeQuickFilter: QuickFilter;
+  onQuickFilterChange: (value: QuickFilter) => void;
 }
-
-export const PipelineQuickFilters: React.FC<PipelineQuickFiltersProps> = ({
+export const PipelineQuickFilters = ({
   showAIRecommendedOnly,
   setShowAIRecommendedOnly,
   totalCandidates,
   totalAIRecommended,
   globalSearch,
   setGlobalSearch,
-}) => {
+  activeQuickFilter,
+  onQuickFilterChange,
+}: Props) => {
+  const style = (active: boolean) =>
+    `inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium focus-visible:ring-2 focus-visible:ring-primary-500 ${active ? "border-primary-200 bg-primary-100 text-primary-800" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"}`;
   return (
-    <div className="bg-white border-b border-gray-200 px-6 py-2">
-      <div className="flex items-center space-x-2">
-        <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Quick Filters:</span>
+    <div className="border-b border-gray-200 bg-white px-6 py-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs font-medium uppercase tracking-wide text-gray-600">
+          Quick filters:
+        </span>
         <button
+          type="button"
+          className={style(!activeQuickFilter && !showAIRecommendedOnly)}
+          aria-pressed={!activeQuickFilter && !showAIRecommendedOnly}
           onClick={() => {
             setShowAIRecommendedOnly(false);
-            toast('Showing all candidates');
+            onQuickFilterChange(null);
           }}
-          className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-            !showAIRecommendedOnly
-              ? 'bg-primary-100 text-primary-700 border border-primary-200'
-              : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50'
-          }`}
         >
-          <CheckIcon className="h-3 w-3 mr-1" />
-          All Candidates ({totalCandidates})
+          <CheckIcon className="h-3.5 w-3.5" />
+          All candidates ({totalCandidates})
         </button>
-        <div className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-purple-100 to-indigo-100 text-purple-700 border border-purple-200">
-          <SparklesIcon className="h-3 w-3 mr-1 text-purple-500" />
-          AI Recommended ({totalAIRecommended})
-        </div>
-        <button
-          onClick={() => toast('Coming Soon: Overdue actions filter will be available soon')}
-          className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-white text-gray-600 border border-gray-300 hover:bg-gray-50 transition-colors"
-        >
-          <ClockIcon className="h-3 w-3 mr-1 text-orange-500" />
-          Overdue Actions
-        </button>
-        <button
-          onClick={() => toast('Coming Soon: Needs attention filter will be available soon')}
-          className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-white text-gray-600 border border-gray-300 hover:bg-gray-50 transition-colors"
-        >
-          <ExclamationTriangleIcon className="h-3 w-3 mr-1 text-yellow-500" />
-          Needs Attention
-        </button>
-        <button
-          onClick={() => toast('Coming Soon: High priority filter will be available soon')}
-          className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-white text-gray-600 border border-gray-300 hover:bg-gray-50 transition-colors"
-        >
-          <StarIcon className="h-3 w-3 mr-1 text-red-500" />
-          High Priority
-        </button>
+        <span className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-purple-200 bg-purple-100 px-3 text-xs font-medium text-purple-800">
+          <SparklesIcon className="h-3.5 w-3.5" />
+          AI recommendations ({totalAIRecommended})
+        </span>
+        {(
+          [
+            {
+              value: "overdue",
+              label: "Overdue actions",
+              hint: "Next action date is in the past",
+              icon: ClockIcon,
+            },
+            {
+              value: "attention",
+              label: "Needs attention",
+              hint: "No next action has been set",
+              icon: ExclamationTriangleIcon,
+            },
+            {
+              value: "priority",
+              label: "High priority",
+              hint: "Recruiter rating is 4 or 5",
+              icon: StarIcon,
+            },
+          ] as const
+        ).map(({ value, label, hint, icon: Icon }) => (
+          <button
+            type="button"
+            key={value}
+            aria-pressed={activeQuickFilter === value}
+            title={hint}
+            className={style(activeQuickFilter === value)}
+            onClick={() =>
+              onQuickFilterChange(activeQuickFilter === value ? null : value)
+            }
+          >
+            <Icon className="h-3.5 w-3.5" />
+            {label}
+          </button>
+        ))}
         {globalSearch && (
           <button
-            onClick={() => setGlobalSearch('')}
-            className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200"
+            type="button"
+            onClick={() => setGlobalSearch("")}
+            className={style(false)}
+            aria-label="Clear candidate search"
           >
-            <MagnifyingGlassIcon className="h-3 w-3 mr-1" />
-            Search: "{globalSearch}"
-            <XMarkIcon className="h-3 w-3 ml-1" />
+            Search: {globalSearch}
+            <XMarkIcon className="h-3.5 w-3.5" />
           </button>
         )}
       </div>
     </div>
   );
 };
-
 export default PipelineQuickFilters;

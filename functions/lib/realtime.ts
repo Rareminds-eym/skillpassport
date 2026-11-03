@@ -20,7 +20,7 @@
  */
 
 interface RealtimeEnv {
-  REALTIME_EVENTS_QUEUE?: Queue<unknown>;
+  REALTIME_EVENTS_QUEUE?: { send(message: unknown): Promise<unknown> };
 }
 
 /**

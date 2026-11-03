@@ -2,6 +2,79 @@ import { getServiceClient } from '../../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import type { Env } from '../../../lib/types';
 import { apiSuccess, apiError } from '../../../lib/response';
+import { fetchLteRoleCapabilities } from '../../../lib/lte-client';
+
+const trimmed = (value: unknown): string => (typeof value === 'string' ? value.trim() : '');
+
+/** The columns this handler reads from learner_course_recommendations. */
+interface CachedRecommendationRow {
+  course_id: string | null;
+  capability_id: string | null;
+  capability_name: string | null;
+  capability_code: string | null;
+  capability_description: string | null;
+  match_reasons?: string[] | null;
+  skill_gaps_addressed?: string[] | null;
+}
+
+/**
+ * Resolves cached capability rows to learner-facing names at read time.
+ *
+ * The cached `capability_name` (original LTE name) is never read for display and never
+ * modified. Each capability row is matched to an LTE capability by `capability_code`
+ * (unique in LTE) and shown with LTE's `displayName`. There is no fallback to the original
+ * name: a row with no match, a blank code, or no display name is omitted, and so are all
+ * capability rows when LTE cannot be reached.
+ *
+ * Rows without a `capability_id` are not LTE capabilities (older course-recommendation rows)
+ * and keep their existing shape.
+ */
+async function resolveCachedCapabilities(env: Env, roleId: string, cachedCaps: CachedRecommendationRow[]) {
+  const isCapabilityRow = (row: CachedRecommendationRow) => Boolean(row.capability_id);
+
+  let displayNameByCode: Map<string, string> | null = null;
+  if (cachedCaps.some(isCapabilityRow)) {
+    const lte = await fetchLteRoleCapabilities(env, roleId);
+    if (lte.ok) {
+      displayNameByCode = new Map();
+      for (const cap of lte.capabilities) {
+        const code = trimmed(cap.code);
+        const displayName = trimmed(cap.displayName);
+        if (code && displayName) displayNameByCode.set(code, displayName);
+      }
+    } else {
+      console.error(`[get-role-capabilities] LTE fetch failed (${lte.reason}) - cached capability rows omitted`);
+    }
+  }
+
+  const results: Array<{ id: string | null; name: string; code: string; description: string }> = [];
+  for (const row of cachedCaps) {
+    if (!isCapabilityRow(row)) {
+      results.push({
+        id: row.capability_id || row.course_id,
+        name: row.capability_name || row.match_reasons?.[0] || 'Learning Path',
+        code: row.capability_code || '',
+        description: row.capability_description || row.match_reasons?.[1] || row.skill_gaps_addressed?.[0] || ''
+      });
+      continue;
+    }
+
+    const displayName = displayNameByCode?.get(trimmed(row.capability_code));
+    if (!displayName) {
+      if (displayNameByCode) {
+        console.warn(`[get-role-capabilities] No display name from LTE for cached capability code="${row.capability_code ?? ''}" - omitted`);
+      }
+      continue;
+    }
+    results.push({
+      id: row.capability_id,
+      name: displayName,
+      code: row.capability_code || '',
+      description: row.capability_description || row.match_reasons?.[1] || row.skill_gaps_addressed?.[0] || ''
+    });
+  }
+  return results;
+}
 
 export async function getRoleCapabilitiesHandler(context: AuthenticatedContext<Env>) {
   const env = context.env;
@@ -35,16 +108,11 @@ export async function getRoleCapabilitiesHandler(context: AuthenticatedContext<E
       .eq('status', 'active')
       .order('relevance_score', { ascending: false });
 
-    // If found in cache, return immediately
+    // If found in cache, show LTE display names (cached rows are read, never modified)
     if (!cacheError && cachedCaps && cachedCaps.length > 0) {
       console.log(`[get-role-capabilities] Found ${cachedCaps.length} cached capabilities`);
       return apiSuccess(
-        cachedCaps.map((cap: any) => ({
-          id: cap.capability_id || cap.course_id,
-          name: cap.capability_name || cap.match_reasons?.[0] || 'Learning Path',
-          code: cap.capability_code || '',
-          description: cap.capability_description || cap.match_reasons?.[1] || cap.skill_gaps_addressed?.[0] || ''
-        })),
+        await resolveCachedCapabilities(env, roleId, cachedCaps),
         context.request,
         { startTime }
       );
@@ -53,44 +121,17 @@ export async function getRoleCapabilitiesHandler(context: AuthenticatedContext<E
     console.log(`[get-role-capabilities] Cache miss - fetching from LTE`);
 
     // Step 2: Not cached - fetch from LTE (with timeout + graceful fallback, never 502 to browser)
-    const lteUrl = (env.LTE_APP_URL as string) || '';
-    if (!lteUrl) {
-      console.error('[get-role-capabilities] LTE_APP_URL not configured - returning empty, frontend will RAG fallback');
-      return apiSuccess([], context.request, { startTime });
-    }
-    let response: Response;
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000);
-      try {
-        response = await fetch(`${lteUrl}/api/v1/capabilities`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ roleId }),
-          signal: controller.signal,
-        });
-      } finally {
-        clearTimeout(timeoutId);
-      }
-    } catch (fetchError: any) {
-      console.error(`[get-role-capabilities] LTE fetch failed (timeout/network): ${fetchError?.message || fetchError} - returning empty for RAG fallback`);
+    const lteResult = await fetchLteRoleCapabilities(env, roleId);
+    if (!lteResult.ok) {
+      console.error(`[get-role-capabilities] LTE fetch failed (${lteResult.reason}) - returning empty for RAG fallback`);
       return apiSuccess([], context.request, { startTime });
     }
 
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => '');
-      console.error(`[get-role-capabilities] LTE error ${response.status}: ${errorText.substring(0, 200)} - returning empty for RAG fallback`);
-      return apiSuccess([], context.request, { startTime });
-    }
-
-    const lteResponse = await response.json() as any;
-
-    if (!lteResponse.success || !lteResponse.capabilities || !Array.isArray(lteResponse.capabilities)) {
+    const capabilities = lteResult.capabilities;
+    if (capabilities.length === 0) {
       console.log(`[get-role-capabilities] No capabilities found from LTE for role=${roleId}`);
       return apiSuccess([], context.request, { startTime });
     }
-
-    const capabilities = lteResponse.capabilities;
     console.log(`[get-role-capabilities] Got ${capabilities.length} capabilities from LTE`);
 
     // Step 3: Save to DB for future caching
@@ -125,14 +166,22 @@ export async function getRoleCapabilitiesHandler(context: AuthenticatedContext<E
       console.log(`[get-role-capabilities] Successfully cached ${recommendations.length} capabilities`);
     }
 
-    // Step 4: Return to frontend
+    // Step 4: Return to frontend with LTE's display name. The original name stays in the cache above.
+    // A capability with no display name is omitted - never shown with the original name.
     return apiSuccess(
-      capabilities.map((cap: any) => ({
-        id: cap.id,
-        name: cap.name,
-        code: cap.code,
-        description: cap.description
-      })),
+      capabilities.flatMap((cap) => {
+        const displayName = trimmed(cap.displayName);
+        if (!displayName) {
+          console.warn(`[get-role-capabilities] No display name from LTE for capability code="${cap.code ?? ''}" - omitted`);
+          return [];
+        }
+        return [{
+          id: cap.id,
+          name: displayName,
+          code: cap.code,
+          description: cap.description
+        }];
+      }),
       context.request,
       { startTime }
     );

@@ -1,84 +1,35 @@
-/**
- * Learner AI Recommendations Hook
- * 
- * Fetches AI-powered job recommendations from backend API using user_id from JWT
- * No parameters needed - backend uses authenticated user's ID
- */
-
-import { useState, useEffect, useCallback } from 'react';
-import { getLearnerAIRecommendations, type AIRecommendationsData, type AIRecommendation } from '../api/learnerAIRecommendationsService';
-import { getLogger } from '@/shared/config/logging';
-
-const logger = getLogger('use-learner-ai-recommendations');
+import { recommendationPending } from '../../../../shared/contracts/job-recommendations';
+import { useUser } from '@/shared/model/authStore';
+import { useRecommendationQuery } from '@/shared/model/recommendations/useRecommendationQuery';
+import { getLearnerRecommendationEnvelope } from '../api/learnerAIRecommendationsService';
 
 export interface UseLearnerAIRecommendationsOptions {
   enabled?: boolean;
   autoFetch?: boolean;
+  learnerId?: string;
 }
 
-export const useLearnerAIRecommendations = ({ 
-  enabled = true,
-  autoFetch = true 
-}: UseLearnerAIRecommendationsOptions = {}) => {
-  const [data, setData] = useState<AIRecommendationsData | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [refreshKey, setRefreshKey] = useState(0);
-
-  // Fetch AI recommendations
-  const fetchRecommendations = useCallback(async () => {
-    if (!enabled) {
-      setLoading(false);
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setError(null);
-
-      const result = await getLearnerAIRecommendations();
-
-      if (result.success && result.data) {
-        setData(result.data);
-      } else {
-        throw new Error(result.error || 'Failed to fetch AI recommendations');
-      }
-    } catch (err: any) {
-      logger.error('Error fetching AI recommendations', err);
-      setError(err.message || 'Failed to fetch AI recommendations');
-    } finally {
-      setLoading(false);
-    }
-  }, [enabled]);
-
-  // Trigger refresh
-  const refresh = useCallback(() => {
-    setRefreshKey(prev => prev + 1);
-  }, []);
-
-  // Load data on mount if autoFetch is enabled
-  useEffect(() => {
-    if (autoFetch && enabled) {
-      fetchRecommendations();
-    }
-  }, [autoFetch, enabled, fetchRecommendations, refreshKey]);
-
+export const useLearnerAIRecommendations = ({ enabled = true, autoFetch = true, learnerId = '' }: UseLearnerAIRecommendationsOptions = {}) => {
+  const user = useUser();
+  const query = useRecommendationQuery<Awaited<ReturnType<typeof getLearnerRecommendationEnvelope>>>({
+    actorId: user?.id || '', orgId: user?.orgId || '', learnerId, surface: 'dashboard',
+    enabled, autoFetch,
+    pending: value => recommendationPending(value),
+    load: signal => getLearnerRecommendationEnvelope(signal),
+  });
+  const data = query.data || null;
   return {
-    // Recommendations data
     recommendations: data?.recommendations || [],
     cached: data?.cached || false,
-    fallback: data?.fallback || false,
+    fallback: data?.fallback === true,
     learnerProfile: data?.learnerProfile || null,
-    
-    // State
-    loading,
-    error,
-    
-    // Actions
-    fetchRecommendations,
-    refreshRecommendations: refresh,
-    
-    // Raw data
-    data
+    readiness: data?.readiness || null,
+    state: data?.state || null,
+    loading: query.loading,
+    processing: query.processing,
+    error: query.error,
+    fetchRecommendations: query.refresh,
+    refreshRecommendations: query.refresh,
+    data,
   };
 };

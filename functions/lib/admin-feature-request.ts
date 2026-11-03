@@ -3,6 +3,7 @@ import { ADMIN_FEATURE_POLICIES } from './admin-feature-policies';
 import { ADMIN_TABLE_FEATURES } from './admin-table-features';
 import { requireHybridFeature, type AdminOrganizationType } from './hybrid-features';
 import { apiError } from './response';
+import { resolveUserEntitlement, type SubscriptionScope } from '../shared/lib/org-subscription';
 
 // Shared college-admin handlers are also used by school/university dashboards.
 const ROLE_KEYS: Record<string, Record<string, string>> = {
@@ -78,10 +79,12 @@ export async function requireAdminRequestFeature(
 ): Promise<Response | null> {
   const url = new URL(request.url);
   if (!/^\/api\/(college-admin|school-admin|university-admin)(\/|$)/.test(url.pathname)) return null;
-  const type = (['college', 'school', 'university'] as const).find(t => user.roles?.includes(`${t}_admin`));
+  const types = ['college', 'school', 'university'] as const;
+  const type = types.find(t => url.pathname.startsWith(`/api/${t}-admin`) && user.roles?.includes(`${t}_admin`))
+    ?? types.find(t => user.roles?.includes(`${t}_admin`));
   // These legacy endpoints also serve learners/educators. Admin nav grants
   // apply to admin callers, without changing the other roles' entitlements.
-  if (!type) return null;
+  if (!type || !user.roles?.includes(`${type}_admin`)) return null;
   let body: Record<string, any> = {};
   try {
     if (['GET', 'HEAD'].includes(request.method)) {
@@ -100,6 +103,14 @@ export async function requireAdminRequestFeature(
   }
   const policy = resolveAdminFeaturePolicy(url.pathname, body.action, body, type);
   if (policy === null) return null;
+  try {
+    const subscription = await resolveUserEntitlement(supabase, user.sub, {
+      roles: user.roles, org_id: user.org_id, scope: `${type}_admin` as SubscriptionScope,
+    });
+    if (!subscription) return apiError(403, 'SUBSCRIPTION_REQUIRED', 'An applicable organization subscription is required.', request);
+  } catch {
+    return apiError(503, 'SUBSCRIPTION_UNAVAILABLE', 'Unable to verify organization coverage. Please retry.', request);
+  }
   for (const keys of policy) {
     const denied = await requireHybridFeature(supabase, request, type, keys, user.sub, user.org_id);
     if (denied) return denied;

@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import {useAssignedTeaching} from '@/features/external-teaching/model/teachingContext';
+import { useState, useEffect,useMemo } from 'react';
 import { apiPost } from '@/shared/api/apiClient';
 import { useUser } from '@/shared/model/authStore';
 
@@ -32,6 +33,8 @@ interface EducatorSchoolData {
 
 export function useEducatorSchool(): EducatorSchoolData {
   const user = useUser();
+  const teaching=useAssignedTeaching();
+  const externalClassIds=useMemo(()=>teaching?.mappings.map(m=>m.section_id)||[],[teaching]);
   const [school, setSchool] = useState<School | null>(null);
   const [college, setCollege] = useState<College | null>(null);
   const [educatorType, setEducatorType] = useState<'school' | 'college' | null>(null);
@@ -42,6 +45,7 @@ export function useEducatorSchool(): EducatorSchoolData {
 
   useEffect(() => {
     const fetchEducatorInfo = async () => {
+      if(teaching){setLoading(false);return;}
       if (!user?.email) {
         setLoading(false);
         return;
@@ -98,7 +102,8 @@ export function useEducatorSchool(): EducatorSchoolData {
     };
 
     fetchEducatorInfo();
-  }, [user?.email, user?.id]);
+  }, [user?.email, user?.id,teaching]);
 
+  if(teaching)return {school:null,college:null,educatorType:null,educatorRole:'trainer',assignedClassIds:externalClassIds,loading:false,error:null};
   return { school, college, educatorType, educatorRole, assignedClassIds, loading, error };
 }

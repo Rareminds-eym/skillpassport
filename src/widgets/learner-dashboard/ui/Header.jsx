@@ -33,6 +33,7 @@ import { useUser, useAuthActions } from '@/shared/model/authStore';
 import { useSubscriptionQuery } from '@/features/subscription/model/useSubscriptionQuery';
 import { checkFeatureAccess } from '@/features/subscription/lib/featureGating';
 import { PLAN_IDS } from '@/shared/config/subscriptionPlans';
+import { isFreemiumPlan } from '@/shared/lib/isFreemiumPlan';
 const ICON_MAP = {
   BookmarkIcon,
   Cog6ToothIcon,
@@ -63,12 +64,12 @@ const Header = ({ activeTab }) => {
   const { unreadCount } = useNotifications(userEmail);
 
   const { learnerData, loading: learnerDataLoading } = useLearnerDataByEmail(userEmail);
-  const isPartOfSchoolOrCollege = !learnerDataLoading && (learnerData?.school_id || learnerData?.university_college_id) && !isLearner(learnerData);
+  const isPartOfSchoolOrCollege = !learnerDataLoading && (learnerData?.school_id || learnerData?.college_id) && !isLearner(learnerData);
 
   // Get subscription data for feature gating
   const { subscriptionData } = useSubscriptionQuery();
   const userPlan = subscriptionData?.plan || PLAN_IDS.FREEMIUM;
-  const isFreemium = userPlan === PLAN_IDS.FREEMIUM;
+  const isFreemium = isFreemiumPlan(userPlan);
 
   // Map navigation items to feature keys
   const featureKeyMap = {
@@ -277,7 +278,7 @@ const Header = ({ activeTab }) => {
               {/* Notifications */}
               <div className="relative" ref={notificationRef}>
                 <button
-                  onClick={toggleNotifications}
+                  aria-label="Notifications" title="Notifications" aria-expanded={activeModal === 'notifications'} onClick={toggleNotifications}
                   className="relative flex items-center justify-center w-8 h-8 md:w-9 md:h-9 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-full transition-all duration-200"
                 >
                   <BellIcon className="w-5 h-5 md:w-6 md:h-6" />
@@ -302,7 +303,7 @@ const Header = ({ activeTab }) => {
               {/* Profile Dropdown */}
               <div className="relative" ref={profileRef}>
                 <button
-                  onClick={toggleProfile}
+                  aria-label="Account menu" title="Account menu" aria-expanded={activeModal === 'profile'} onClick={toggleProfile}
                   className="flex items-center justify-center w-8 h-8 md:w-9 md:h-9 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-full transition-all duration-200"
                 >
                   <UserCircleIcon className="w-5 h-5 md:w-6 md:h-6" />
@@ -342,7 +343,7 @@ const Header = ({ activeTab }) => {
 
               {/* Mobile Menu Button */}
               <button
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                aria-label="Navigation menu" aria-expanded={mobileMenuOpen} onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                 className="lg:hidden flex items-center justify-center w-8 h-8 md:w-9 md:h-9 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-full transition-all duration-200"
               >
                 {mobileMenuOpen ? (

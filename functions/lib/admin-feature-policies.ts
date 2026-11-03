@@ -537,6 +537,8 @@ export const ADMIN_FEATURE_POLICIES: Record<string, Record<string, readonly stri
     "fetch-learner-assignments": ["program_sections"],
     "get-learner-assignment-stats": ["program_sections"],
     "update-learner-assignment-status": ["program_sections"],
+    "get-college-assignment-submissions": ["program_sections"],
+    "grade-college-assignment": ["program_sections"],
     "get-learner-class-info": ["program_sections"],
     "get-learner-type-info": ["program_sections"],
     "is-college-learner": ["program_sections"],
@@ -619,11 +621,6 @@ export const ADMIN_FEATURE_POLICIES: Record<string, Record<string, readonly stri
   },
   "college-admin/recruiter-pipeline": {
     "shortlist-tags-creators": ["placement_status"],
-  },
-  "college-admin/storage": {
-    "upload": null,
-    "get-url": null,
-    "delete": null,
   },
   "college-admin/verifications": {
     "resolve-college-id": ["learner_verifications"],

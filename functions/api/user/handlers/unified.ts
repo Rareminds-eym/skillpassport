@@ -53,20 +53,27 @@ export async function handleUnifiedSignup(request: Request, env: PagesEnv, authe
       return apiError(400, 'VALIDATION_ERROR', 'Invalid email format', request);
     }
 
-    const email = body.email.toLowerCase();
+    const email = body.email.trim().toLowerCase();
     const firstName = capitalizeFirstLetter(body.firstName);
     const lastName = capitalizeFirstLetter(body.lastName);
     const fullName = `${firstName} ${lastName}`.trim();
     const userId = body.userId;
 
     // Check if profile already exists by SSO user ID (idempotency)
-    const { data: existingUser } = await supabaseAdmin
+    const { data: existingUser, error: profileLookupError } = await supabaseAdmin
       .from('users')
-      .select('id, role')
+      .select('id, role, metadata')
       .eq('id', userId)
       .maybeSingle();
+    if (profileLookupError) throw new Error('Unable to verify profile synchronization. Please retry.');
 
-    if (existingUser) {
+    async function completeExistingProfile(existingUser: { id: string; role?: string | null; metadata?: Record<string, unknown> | null }): Promise<Response> {
+      if (body.role === 'learner' && existingUser.metadata?.subscription_selection_required === undefined) {
+        const { error } = await supabaseAdmin.from('users').update({
+          metadata: { ...existingUser.metadata, subscription_selection_required: true },
+        }).eq('id', userId);
+        if (error) throw new Error('Unable to initialize plan selection');
+      }
       if (body.referralCode) {
         const { data: existingMetadataRow } = await supabaseAdmin
           .from('users')
@@ -128,47 +135,15 @@ export async function handleUnifiedSignup(request: Request, env: PagesEnv, authe
       }
     }
 
-    // Check if profile exists with same email but different ID (legacy Supabase Auth user)
-    // Link the existing profile to the new SSO user ID
-    const { data: existingByEmail } = await supabaseAdmin
-      .from('users')
-      .select('id, role')
-      .eq('email', email)
-      .maybeSingle();
+    if (existingUser) return completeExistingProfile(existingUser);
 
-    if (existingByEmail && existingByEmail.id !== userId) {
-      const oldId = existingByEmail.id;
-
-      // Update role-specific records FIRST (child tables) before updating the parent
-      await supabaseAdmin.from('learners').update({ user_id: userId }).eq('user_id', oldId);
-      await supabaseAdmin.from('recruiters').update({ user_id: userId }).eq('user_id', oldId);
-      await supabaseAdmin.from('school_educators').update({ user_id: userId }).eq('user_id', oldId);
-      await supabaseAdmin.from('college_educators').update({ user_id: userId }).eq('user_id', oldId);
-
-      // Now delete the old users row and create a new one with the SSO user ID
-      // (UPDATE on PK with FK references is problematic, so delete + insert is safer)
-      const { data: oldUser } = await supabaseAdmin
-        .from('users')
-        .select('*')
-        .eq('id', oldId)
-        .single();
-
-      if (oldUser) {
-        await supabaseAdmin.from('users').delete().eq('id', oldId);
-        const { error: insertError } = await supabaseAdmin.from('users').insert({
-          ...oldUser,
-          id: userId,
-          updatedAt: new Date().toISOString(),
-        });
-        if (insertError) {
-          throw new Error(`Failed to link existing profile to SSO user: ${insertError.message}`);
-        }
-      }
-
-      return apiSuccess(
-        { message: 'Existing profile linked to SSO account', data: { userId, linked: true, previousId: oldId } },
-        request
-      );
+    // Email alone is not authority to delete or reassign an existing identity.
+    const { data: existingByEmail, error: emailLookupError } = await supabaseAdmin
+      .from('users').select('id, role, metadata').eq('email', email).maybeSingle();
+    if (emailLookupError) throw new Error('Unable to verify the existing profile. Please retry.');
+    if (existingByEmail) {
+      if (existingByEmail.id === userId) return completeExistingProfile(existingByEmail);
+      return apiError(409, 'PROFILE_IDENTITY_CONFLICT', 'This email is linked to another application account. Please contact support to reconcile it; your SSO account has been preserved.', request);
     }
 
     try {
@@ -192,12 +167,21 @@ export async function handleUnifiedSignup(request: Request, env: PagesEnv, authe
           referralCode: body.referralCode,
           registrationDate: new Date().toISOString(),
           source: 'sso_signup',
+          ...(body.role === 'learner' ? { subscription_selection_required: true } : {}),
         },
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       });
 
       if (userError) {
+        if (userError.code === '23505') {
+          // Sync or a parallel signup request can win after both existence reads.
+          const { data: winner, error: winnerError } = await supabaseAdmin.from('users')
+            .select('id, role, metadata, email').eq('id', userId).maybeSingle();
+          if (winnerError) throw new Error('Unable to verify profile synchronization. Please retry.');
+          if (winner && winner.email?.trim().toLowerCase() === email) return completeExistingProfile(winner);
+          return apiError(409, 'PROFILE_IDENTITY_CONFLICT', 'A profile with these details already exists. Your account is preserved; please retry or contact support.', request);
+        }
         throw new Error(`Failed to create user record: ${userError.message}`);
       }
 
@@ -205,8 +189,7 @@ export async function handleUnifiedSignup(request: Request, env: PagesEnv, authe
       try {
         await createRoleSpecificRecord(supabaseAdmin, userId, email, fullName, body);
       } catch (roleError) {
-        // Rollback: delete the users row if role-specific record fails
-        await supabaseAdmin.from('users').delete().eq('id', userId);
+        // Preserve the committed profile; a retry repairs its missing role record.
         throw roleError;
       }
 

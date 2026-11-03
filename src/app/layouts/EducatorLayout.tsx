@@ -1,3 +1,4 @@
+import {useAssignedTeaching} from '@/features/external-teaching/model/teachingContext';
 import React, { useState, useEffect, lazy, Suspense } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import Header from "@/features/educator/ui/Header";
@@ -8,10 +9,11 @@ import { useEducatorSchool } from '@/features/educator/model/useEducatorSchool';
 
 const EducatorLayout: React.FC = () => {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
-  const [activeTab, setActiveTab] = useState("dashboard");
+  const [, setActiveTab] = useState("dashboard");
   const [selectedLearner, setSelectedLearner] = useState<any>(null);
   const [showLearnerDrawer, setShowLearnerDrawer] = useState(false);
   const location = useLocation();
+  const assignedTeaching=useAssignedTeaching();
 
   // Get educator information to determine type
   const { school: educatorSchool, college: educatorCollege, educatorType } = useEducatorSchool();
@@ -25,6 +27,7 @@ const EducatorLayout: React.FC = () => {
   };
 
   const handleViewProfile = (learner: any) => {
+    if(assignedTeaching)return;
     setSelectedLearner(learner);
     setShowLearnerDrawer(true);
   };
@@ -49,7 +52,6 @@ const EducatorLayout: React.FC = () => {
         {/* Sidebar (fixed for desktop) */}
         <div className="hidden md:flex md:flex-col md:w-64 bg-white border-r fixed top-16 bottom-0 left-0 z-20">
           <Sidebar
-            activeTab={activeTab}
             setActiveTab={setActiveTab}
             showMobileMenu={false}
           />
@@ -64,7 +66,6 @@ const EducatorLayout: React.FC = () => {
             />
             <div className="fixed left-0 top-16 bottom-0 w-64 bg-white shadow-lg overflow-y-auto z-50 md:hidden">
               <Sidebar
-                activeTab={activeTab}
                 setActiveTab={setActiveTab}
                 showMobileMenu={true}
                 onMobileMenuClose={handleMobileMenuClose}
@@ -76,7 +77,7 @@ const EducatorLayout: React.FC = () => {
         {/* Scrollable Content Area */}
         <main className="flex-1 md:ml-64 overflow-auto flex flex-col">
           <div className="flex-1 w-full">
-            <Outlet context={{ onViewProfile: handleViewProfile }} />
+            <Outlet context={{ onViewProfile: assignedTeaching?undefined:handleViewProfile }} />
           </div>
           <footer className="bg-white border-t border-gray-200 py-4 px-6">
             <div className="flex items-center justify-between text-sm text-gray-500">
@@ -106,7 +107,7 @@ const EducatorLayout: React.FC = () => {
       )}
 
       {/* Floating AI Button */}
-      <FloatingEducatorAIButton />
+      {!assignedTeaching&&<FloatingEducatorAIButton />}
     </div>
   );
 };

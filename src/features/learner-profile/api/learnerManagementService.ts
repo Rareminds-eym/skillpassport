@@ -11,14 +11,6 @@ import { getFileSizeLimit } from '@/shared/config';
 
 // ============= ADMISSION WORKFLOW =============
 
-async function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => { const result = reader.result as string; resolve(result.split(',')[1] || result); };
-    reader.onerror = () => reject(new Error('Failed to read file'));
-    reader.readAsDataURL(file);
-  });
-}
 
 export const admissionService = {
   // US-SM-03: Create new admission application
@@ -125,20 +117,6 @@ export const admissionService = {
   async updateApplicationStatus(applicationId: string, status: string, verifiedBy?: string, remarks?: string) {
     const result: any = await apiPost('/learners/management', { action: 'update-application-status', applicationId, status, verifiedBy, remarks });
     return { data: result?.data?.application ?? null, error: result?.error ?? null };
-  },
-
-  // Upload documents
-  async uploadDocument(file: File, applicationId: string, documentType: string) {
-    const fileName = `${applicationId}/${documentType}/${Date.now()}_${file.name}`;
-    
-    const base64 = await fileToBase64(file);
-    const result: any = await apiPost('/college-admin/storage', {
-      action: 'upload', bucket: 'admission-documents', path: fileName, file_base64: base64, content_type: file.type || 'application/octet-stream',
-    });
-
-    if (!result?.data?.publicUrl) return { data: null, error: result?.error };
-
-    return { data: { url: result.data.publicUrl, path: fileName }, error: null };
   },
 
   // Approve and generate enrollment

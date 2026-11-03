@@ -211,7 +211,9 @@ export async function verifyPayment({ razorpay_order_id, razorpay_payment_id, ra
     throw new Error(extractErrorMessage(error) || 'Payment verification failed');
   }
 
-  return response.json();
+  const result = await response.json();
+  if (result.success === false) throw new Error(extractErrorMessage(result));
+  return result.data ?? result;
 }
 
 // ==================== SUBSCRIPTION ENDPOINTS ====================

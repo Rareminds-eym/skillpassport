@@ -1,3 +1,4 @@
+import { useUser } from '@/shared/model/authStore';
 import { useQuery } from '@tanstack/react-query';
 import { FunnelRangePreset, getQualityMetrics } from '@/features/educator-copilot';
 import { queryKeys } from '@/shared/lib/queryKeys';
@@ -19,8 +20,9 @@ export const useQualityMetrics = ({
     endDate,
     enabled = true
 }: UseQualityMetricsOptions) => {
+    const user = useUser();
     return useQuery({
-        queryKey: queryKeys.analytics.quality.metrics(preset, { startDate, endDate }),
+        queryKey: [...queryKeys.analytics.quality.metrics(user?.id || ''), { preset, startDate, endDate }],
         queryFn: async () => {
             const { data, error } = await getQualityMetrics(preset, startDate, endDate);
             if (error) throw error;
@@ -33,6 +35,5 @@ export const useQualityMetrics = ({
         gcTime: 5 * 60 * 1000, // 5 minutes
         retry: 2,
         retryDelay: (attemptIndex: number) => Math.min(1000 * 2 ** attemptIndex, 10000),
-        placeholderData: (previousData: any) => previousData,
     });
 };

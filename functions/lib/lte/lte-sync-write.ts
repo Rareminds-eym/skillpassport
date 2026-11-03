@@ -116,23 +116,25 @@ export async function upsertSingleProgressPayload(
     }
   }
 
-  if (Array.isArray(payload.earnedSkills) && payload.earnedSkills.length > 0) {
-    for (const item of payload.earnedSkills) {
+  const earnedSkills = Array.isArray(payload.earnedSkillsDetail) ? payload.earnedSkillsDetail : payload.earnedSkills;
+  if (Array.isArray(earnedSkills) && earnedSkills.length > 0) {
+    for (const item of earnedSkills) {
       const obj = item && typeof item === 'object' ? (item as Record<string, unknown>) : null;
       const skillName = typeof item === 'string' ? item.trim() : (obj?.name && typeof obj.name === 'string') ? obj.name.trim() : '';
       if (!skillName) continue;
 
       const explicitLevel = obj && typeof obj.level === 'number' ? obj.level : 0;
-      const computedSkillLevel = explicitLevel > 0 ? explicitLevel : Math.max(1, currentLevelNum);
+      const completedLevels = Array.isArray(payload.levels) ? (payload.levels as Array<{status?:string}>).filter(l=>l.status==='completed').length : 0;
+      const computedSkillLevel = explicitLevel > 0 ? explicitLevel : Math.max(1, completedLevels);
       const lteSkillId = obj && typeof obj.id === 'string' ? obj.id : obj && typeof obj.lteSkillId === 'string' ? obj.lteSkillId : null;
 
       try {
         const queryByLteId = lteSkillId
-          ? `skills?learner_id=eq.${encodeURIComponent(learnerId)}&lte_skill_id=eq.${encodeURIComponent(lteSkillId)}&select=id`
+          ? `skills?learner_id=eq.${encodeURIComponent(learnerId)}&lte_skill_id=eq.${encodeURIComponent(lteSkillId)}&select=id,source,level`
           : null;
-        const existingSkill = (queryByLteId ? await db.queryOne<{ id: string }>(queryByLteId) : null)
-          || await db.queryOne<{ id: string }>(
-            `skills?learner_id=eq.${encodeURIComponent(learnerId)}&name=eq.${encodeURIComponent(skillName)}&select=id`
+        const existingSkill = (queryByLteId ? await db.queryOne<{ id: string;source?:string;level?:number }>(queryByLteId) : null)
+          || await db.queryOne<{ id: string;source?:string;level?:number }>(
+            `skills?learner_id=eq.${encodeURIComponent(learnerId)}&source=eq.lte&name=eq.${encodeURIComponent(skillName)}&select=id,source,level`
           );
         if (!existingSkill) {
           await db.insert('skills', {
@@ -146,9 +148,12 @@ export async function upsertSingleProgressPayload(
             source: 'lte',
             ...(lteSkillId ? { lte_skill_id: lteSkillId } : {}),
           });
+        } else {
+          await db.update('skills',existingSkill.id,{level:Math.max(existingSkill.level||0,computedSkillLevel),training_id:targetTrainingId,...(lteSkillId?{lte_skill_id:lteSkillId}:{})});
         }
       } catch (skillErr) {
         logger.warn('[lte-sync-write] Skill insert fail-soft', { skillName, lteSkillId, error: skillErr });
+        throw skillErr; // Queue delivery must retry an incomplete projection.
       }
     }
   }

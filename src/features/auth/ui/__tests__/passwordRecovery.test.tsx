@@ -1,10 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter,Routes,Route } from 'react-router-dom';
 import UnifiedForgotPassword from '../UnifiedForgotPassword';
 import TokenPasswordReset from '../TokenPasswordReset';
 
 const client = vi.hoisted(() => ({ forgotPassword: vi.fn(), resetPassword: vi.fn() }));
+const setup = vi.hoisted(() => ({user:null as any,change:vi.fn(),logout:vi.fn()}));
+vi.mock('@/shared/model/authStore',()=>({useUser:()=>setup.user,useAuthStore:{getState:()=>({logout:setup.logout})}}));
+vi.mock('@/entities/user',()=>({updatePassword:setup.change}));
 vi.mock('@/shared/api/authClient', () => ({ authClient: client }));
 
 const token = '12345678-1234-1234-1234-123456789abc';
@@ -18,9 +21,19 @@ function enterPassword(password: string) {
   fireEvent.change(screen.getByLabelText('Confirm New Password'), { target: { value: password } });
   fireEvent.click(screen.getByRole('button', { name: 'Update Password' }));
 }
-beforeEach(() => { cleanup(); vi.resetAllMocks(); });
+beforeEach(() => { cleanup(); vi.resetAllMocks(); setup.user=null; });
 
 describe('password recovery with real SSO wrapper', () => {
+  it('reuses this page for a temporary-password login and signs out after changing it',async()=>{
+    setup.user={id:'trainer',user_metadata:{first_login_setup_required:true}};
+    setup.change.mockResolvedValue(undefined);setup.logout.mockResolvedValue(undefined);
+    render(<MemoryRouter initialEntries={['/reset-password?setup=educator']}><Routes><Route path="/reset-password" element={<TokenPasswordReset/>}/><Route path="/login" element={<p>Sign in with your new password</p>}/></Routes></MemoryRouter>);
+    fireEvent.change(await screen.findByLabelText('Temporary Password'),{target:{value:'temporary-secret'}});
+    enterPassword('ValidPassword123!');
+    await screen.findByText('Sign in with your new password');
+    expect(setup.change).toHaveBeenCalledWith('ValidPassword123!','temporary-secret');
+    expect(setup.logout).toHaveBeenCalledOnce();expect(client.resetPassword).not.toHaveBeenCalled();
+  });
   it.each(['rate_limited', 'upstream_unavailable', 'network_error'])('does not claim delivery for %s', async code => {
     client.forgotPassword.mockResolvedValue({ status: 'transient_unconfirmed', code });
     mount();

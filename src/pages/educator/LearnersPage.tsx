@@ -1,3 +1,6 @@
+import {useAssignedTeaching} from '@/features/external-teaching/model/teachingContext';
+import {teaching} from '@/features/external-teaching/api/teachingApi';
+const loadAssignedLearners=()=>teaching('learners');
 import React, { useState, useEffect, useMemo } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import {
@@ -104,14 +107,15 @@ const BadgeComponent = ({ badges }: { badges: string[] }) => {
 const LearnerCard = ({ learner, onViewProfile, onEdit, onDelete, onMessage, isSelected, onToggleSelect, educatorType }: {
   learner: UICandidate;
   onViewProfile: (learner: UICandidate) => void;
-  onEdit: (learner: UICandidate) => void;
-  onDelete: (learner: UICandidate) => void;
+  onEdit?: (learner: UICandidate) => void;
+  onDelete?: (learner: UICandidate) => void;
   onMessage: (learner: UICandidate) => void;
   isSelected?: boolean;
   onToggleSelect?: (learnerId: string) => void;
   educatorType?: 'school' | 'college' | null;
 }) => {
 
+  const assignedTeaching=useAssignedTeaching();
   return (
     <div 
       className={`bg-white border rounded-lg p-4 hover:shadow-md transition-all duration-200 flex flex-col h-full relative group ${
@@ -119,7 +123,7 @@ const LearnerCard = ({ learner, onViewProfile, onEdit, onDelete, onMessage, isSe
       }`}
     >
       {/* Professional Checkbox - Top Right Corner - Hidden for college lecturers */}
-      {onToggleSelect && educatorType !== 'college' && (
+      {onToggleSelect && !assignedTeaching&&educatorType !== 'college' && (
         <div className="absolute top-3 right-3 z-10">
           <label className="relative inline-flex items-center cursor-pointer">
             <input
@@ -207,7 +211,7 @@ const LearnerCard = ({ learner, onViewProfile, onEdit, onDelete, onMessage, isSe
           </button>
           
           <button
-            onClick={() => onMessage(learner)}
+            disabled={!!assignedTeaching} onClick={() => onMessage(learner)}
             className="inline-flex items-center px-3 py-1.5 border border-green-300 rounded-md text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 hover:border-green-400 transition-colors whitespace-nowrap"
           >
             <ChatBubbleLeftRightIcon className="h-3 w-3 mr-1.5" />
@@ -215,7 +219,7 @@ const LearnerCard = ({ learner, onViewProfile, onEdit, onDelete, onMessage, isSe
           </button>
           
           <button
-            onClick={() => onEdit(learner)}
+            disabled={!onEdit} onClick={() => onEdit?.(learner)}
             className="inline-flex items-center px-3 py-1.5 border border-blue-300 rounded-md text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 hover:border-blue-400 transition-colors whitespace-nowrap"
           >
             <PencilSquareIcon className="h-3 w-3 mr-1.5" />
@@ -223,9 +227,9 @@ const LearnerCard = ({ learner, onViewProfile, onEdit, onDelete, onMessage, isSe
           </button>
           
           {/* Delete button - Hidden for college lecturers */}
-          {educatorType !== 'college' && (
+          {!assignedTeaching&&educatorType !== 'college' && (
             <button
-              onClick={() => onDelete(learner)}
+            onClick={() => onDelete?.(learner)}
               className="inline-flex items-center px-3 py-1.5 border border-red-300 rounded-md text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 hover:border-red-400 transition-colors whitespace-nowrap"
             >
               <TrashIcon className="h-3 w-3 mr-1.5" />
@@ -243,6 +247,7 @@ type EducatorOutletContext = {
 }
 
 const LearnersPage = () => {
+  const assignedTeaching=useAssignedTeaching();
   const { onViewProfile } = useOutletContext<EducatorOutletContext>()
   const { searchQuery, setSearchQuery } = useSearch();
   const navigate = useNavigate();
@@ -282,7 +287,8 @@ const LearnersPage = () => {
   });
 
   // Fetch learners filtered by educator's assigned classes or institution
-  const { learners, loading, error, refetch } = useLearners({ 
+  const { learners, loading, error, refetch } = useLearners({
+    loadRows:assignedTeaching?loadAssignedLearners:undefined,
     schoolId: educatorSchool?.id,
     collegeId: educatorCollege?.id,
     classIds: (educatorType === 'school' && educatorRole !== 'admin') || (educatorType === 'college' && educatorRole !== 'admin') ? assignedClassIds : undefined,
@@ -450,7 +456,7 @@ const LearnersPage = () => {
 
   const handleDeleteClick = (learner: UICandidate) => {
     // Disable delete functionality for college lecturers
-    if (educatorType === 'college') {
+    if (assignedTeaching || educatorType === 'college') {
       logger.info('Delete functionality disabled for college lecturers');
       return;
     }
@@ -466,7 +472,7 @@ const LearnersPage = () => {
   // Bulk selection handlers
   const handleSelectAll = () => {
     // Disable selection functionality for college lecturers (since they can't delete)
-    if (educatorType === 'college') {
+    if (assignedTeaching || educatorType === 'college') {
       return;
     }
     const allIds = new Set(paginatedlearners.map(s => s.id));
@@ -480,7 +486,7 @@ const LearnersPage = () => {
 
   const handleToggleLearner = (learnerId: string) => {
     // Disable selection functionality for college lecturers (since they can't delete)
-    if (educatorType === 'college') {
+    if (assignedTeaching || educatorType === 'college') {
       return;
     }
     const newSelected = new Set(selectedLearnerIds);
@@ -494,7 +500,7 @@ const LearnersPage = () => {
 
   const handleBulkDelete = () => {
     // Disable bulk delete functionality for college lecturers
-    if (educatorType === 'college') {
+    if (assignedTeaching || educatorType === 'college') {
       logger.info('Bulk delete functionality disabled for college lecturers');
       return;
     }
@@ -541,13 +547,13 @@ const LearnersPage = () => {
           <h1 className="text-xl md:text-3xl font-bold text-gray-900">Learners Management</h1>
           <p className="text-base md:text-lg mt-2 text-gray-600">Manage your learners and their profiles.</p>
         </div>
-        <button
+        {!assignedTeaching && <button
           onClick={handleAddlearnerClick}
           className="mt-3 sm:mt-0 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 transition-colors"
         >
           <UserPlusIcon className="h-5 w-5 mr-2" />
           Add Learner
-        </button>
+        </button>}
       </div>
 
       <div className="px-4 sm:px-6 lg:px-8 hidden lg:flex items-center p-4 bg-white border-b border-gray-200">
@@ -656,7 +662,7 @@ const LearnersPage = () => {
         {/* Main Content */}
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Bulk Actions Bar - Hidden for college lecturers */}
-          {selectedLearnerIds.size > 0 && educatorType !== 'college' && (
+          {selectedLearnerIds.size > 0 && !assignedTeaching&&educatorType !== 'college' && (
             <div className="px-4 sm:px-6 lg:px-8 py-3 bg-primary-50 border-b border-primary-200">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
@@ -688,7 +694,7 @@ const LearnersPage = () => {
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
                 {/* Select All checkbox - Hidden for college lecturers */}
-                {educatorType !== 'college' && (
+                {!assignedTeaching&&educatorType !== 'college' && (
                   <label className="flex items-center cursor-pointer">
                     <input
                       type="checkbox"
@@ -734,8 +740,8 @@ const LearnersPage = () => {
                     key={learner.id}
                     learner={learner}
                     onViewProfile={onViewProfile}
-                    onEdit={handleEditClick}
-                    onDelete={handleDeleteClick}
+                    onEdit={assignedTeaching?undefined:handleEditClick}
+                    onDelete={assignedTeaching?undefined:handleDeleteClick}
                     onMessage={handleMessageLearner}
                     isSelected={selectedLearnerIds.has(learner.id)}
                     onToggleSelect={handleToggleLearner}
@@ -846,14 +852,14 @@ const LearnersPage = () => {
                               Message
                             </button>
                             <button
-                              onClick={() => handleEditClick(learner)}
+                              disabled={!!assignedTeaching} onClick={() => handleEditClick(learner)}
                               className="text-orange-600 hover:text-orange-900 transition-colors"
                               title="Edit Learner"
                             >
                               Edit
                             </button>
                             {/* Delete button - Hidden for college lecturers */}
-                            {educatorType !== 'college' && (
+                            {!assignedTeaching&&educatorType !== 'college' && (
                               <button
                                 onClick={() => handleDeleteClick(learner)}
                                 className="text-red-600 hover:text-red-900 transition-colors"
@@ -885,17 +891,17 @@ const LearnersPage = () => {
         </div>
       </div>
 
-      <AddLearnerModal
+      {!assignedTeaching && <AddLearnerModal
         isOpen={showAddlearnerModal}
         onClose={() => setShowAddlearnerModal(false)}
         onSuccess={() => {
           setShowAddlearnerModal(false);
           refetch();
         }}
-      />
+      />}
 
       {/* Edit Learner Modal */}
-      <EditLearnerModal
+      {!assignedTeaching && <EditLearnerModal
         isOpen={showEditModal}
         onClose={() => {
           setShowEditModal(false);
@@ -903,10 +909,10 @@ const LearnersPage = () => {
         }}
         learner={learnerToEdit}
         onSuccess={handleEditSuccess}
-      />
+      />}
 
       {/* Delete Learner Modal - Hidden for college lecturers */}
-      {educatorType !== 'college' && (
+      {!assignedTeaching&&educatorType !== 'college' && (
         <DeleteLearnerModal
           isOpen={showDeleteModal}
           onClose={() => {
@@ -919,7 +925,7 @@ const LearnersPage = () => {
       )}
 
       {/* Bulk Delete Learners Modal - Hidden for college lecturers */}
-      {educatorType !== 'college' && (
+      {!assignedTeaching&&educatorType !== 'college' && (
         <BulkDeleteLearnersModal
           isOpen={showBulkDeleteModal}
           onClose={() => setShowBulkDeleteModal(false)}

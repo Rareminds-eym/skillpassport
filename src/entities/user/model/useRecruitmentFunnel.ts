@@ -1,7 +1,10 @@
-import { useEffect, useRef } from 'react';
+import { useUser } from '@/shared/model/authStore';
+import { useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getWSClient } from '@/shared/api/wsRealtimeClient';
 import { queryKeys } from '@/shared/lib/queryKeys';
+type FunnelRangePreset = '7d' | '30d' | '90d' | 'ytd' | 'custom';
+
 interface UseRecruitmentFunnelOptions {
   preset: FunnelRangePreset;
   startDate?: string;
@@ -17,17 +20,18 @@ interface UseRecruitmentFunnelOptions {
  * Usage: Import the required functions from the feature layer and pass them to this hook.
  */
 
-export const useRecruitmentFunnel = (
+export const useRecruitmentFunnel = <T,>(
   { preset, startDate, endDate }: UseRecruitmentFunnelOptions,
-  getRecruitmentFunnelStats: (preset: FunnelRangePreset, startDate?: string, endDate?: string) => Promise<{ data: any }>
+  getRecruitmentFunnelStats: (preset: FunnelRangePreset, startDate?: string, endDate?: string) => Promise<{ data: T | null; error?: unknown }>
 ) => {
+  const user = useUser();
   const queryClient = useQueryClient();
-  const channelRef = useRef<any>(null);
 
   const query = useQuery({
-    queryKey: queryKeys.analytics.recruitment.funnel(preset, { startDate, endDate }),
+    queryKey: [...queryKeys.analytics.recruitment.funnel(user?.id || ''), { preset, startDate, endDate }],
     queryFn: async () => {
-      const { data } = await getRecruitmentFunnelStats(preset, startDate, endDate);
+      const { data, error } = await getRecruitmentFunnelStats(preset, startDate, endDate);
+      if (error) throw error;
       return data;
     },
     refetchOnWindowFocus: false,
@@ -66,6 +70,7 @@ export const useRecruitmentFunnel = (
   return {
     data: query.data,
     isLoading: query.isLoading,
+    isFetching: query.isFetching,
     isError: query.isError,
     refetch: query.refetch,
   };

@@ -1,4 +1,6 @@
+import RecommendationProfilePrompt from './RecommendationProfilePrompt';
 import React from "react";
+import { useNavigate } from 'react-router-dom';
 import {
   Card,
   CardContent,
@@ -23,10 +25,12 @@ import {
  */
 const SuggestedNextSteps = ({
   matchedJobs = [],
+  readiness = null,
   loading = false,
   error = null,
   fallbackSuggestions = [],
 }) => {
+  const navigate = useNavigate();
   return (
     <Card
       className="bg-white rounded-xl border border-gray-200 shadow-sm"
@@ -44,7 +48,7 @@ const SuggestedNextSteps = ({
               </span>
               <p className="text-xs text-gray-500 font-normal mt-0.5">
                 {matchedJobs.length > 0
-                  ? "AI-matched job opportunities for you"
+                  ? matchedJobs.every(job => job.fallback) ? "Recent opportunities — not personalized matches" : "Job recommendations for you"
                   : "Recommendations to enhance your profile"}
               </p>
             </div>
@@ -63,6 +67,8 @@ const SuggestedNextSteps = ({
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-600"></div>
             <p className="ml-3 text-sm text-gray-500">Finding best job matches for you...</p>
           </div>
+        ) : readiness?.state === 'needs_profile' || readiness?.state === 'limited_context' ? (
+          <RecommendationProfilePrompt readiness={readiness} />
         ) : error ? (
           <div className="p-4 rounded-lg bg-red-50 border border-red-200">
             <p className="text-sm text-red-700">⚠️ {error}</p>
@@ -76,15 +82,13 @@ const SuggestedNextSteps = ({
                 data-testid={`matched-job-${idx}`}
                 onClick={() => {
                   // Navigate to opportunities page or show details
-                  if (match.opportunity?.application_link) {
-                    window.open(match.opportunity.application_link, '_blank');
-                  }
+                  navigate('/learner/opportunities', { state: { selectedOpportunityId: match.job_id || match.opportunity?.id } });
                 }}
               >
                 {/* Match Score Badge */}
                 <div className="flex items-start justify-between mb-2">
                   <Badge className="bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0 text-xs font-semibold">
-                    {match.match_score}% Match
+                    {Number.isFinite(match.match_score) ? `${match.match_score}% ${match.score_label || 'Match index'}` : 'Opportunity'}
                   </Badge>
                   <ExternalLink className="w-4 h-4 text-amber-600 opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>

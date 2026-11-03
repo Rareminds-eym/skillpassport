@@ -44,7 +44,7 @@ function getUserTypeFromPath(pathname) {
  * Centralized Subscription Route Guard
  * Handles all subscription-related routing logic in one place for smooth transitions
  */
-const SubscriptionRouteGuard = ({ children, mode, showSkeleton = false }) => {
+const SubscriptionRouteGuard = ({ children, mode, showSkeleton = false, paymentInProgress = false }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const user = useUser();
@@ -78,7 +78,7 @@ const SubscriptionRouteGuard = ({ children, mode, showSkeleton = false }) => {
 
   useEffect(() => {
     // Wait for both auth and subscription to load
-    if (isLoading) {
+    if (isLoading || (mode === 'payment' && paymentInProgress)) {
       return;
     }
 
@@ -130,7 +130,7 @@ const SubscriptionRouteGuard = ({ children, mode, showSkeleton = false }) => {
       default:
         break;
     }
-  }, [user, subscriptionData, hasActiveSubscription, hasManageableSubscription, isLoading, navigate, mode, location, managePath]);
+  }, [user, subscriptionData, hasActiveSubscription, hasManageableSubscription, isLoading, navigate, mode, location, managePath, paymentInProgress]);
 
   // Show loading state while checking or redirecting
   if (isLoading || redirecting) {

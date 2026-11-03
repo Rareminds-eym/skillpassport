@@ -1,0 +1,22 @@
+import {it,expect,vi} from 'vitest';
+import '@testing-library/jest-dom/vitest';
+import {render,screen} from '@testing-library/react';
+import {MemoryRouter,Routes,Route} from 'react-router-dom';
+const api=vi.hoisted(()=>vi.fn());
+vi.mock('@/shared/api/apiClient',()=>({apiPost:api}));
+vi.mock('@/shared/model/authStore',()=>({useAuthStore:{getState:()=>({user:{id:'trainer'},logout:vi.fn()})}}));
+vi.mock('@/features/educator/model/useEducatorSchool',()=>({useEducatorSchool:()=>({school:null,college:null,educatorType:null,loading:false})}));
+vi.mock('@/features/notifications',()=>({useNotifications:()=>({unreadCount:0})}));
+vi.mock('@/features/educator/ui/NotificationPanel',()=>({default:()=>null}));
+vi.mock('@/shared/ui/FloatingEducatorAIButton',()=>({default:()=> <p>General educator AI</p>}));
+import EducatorLayout from '../EducatorLayout';
+import {AssignedTeachingContext,type TeachingContext} from '@/features/external-teaching/model/teachingContext';
+it('preserves the existing branded header/sidebar and renders the existing child route',async()=>{
+  const context={external:true,delegatedAccess:true,staff:{id:'staff',name:'Hari Trainer'},mappings:[]} as TeachingContext;
+  render(<MemoryRouter initialEntries={['/educator/dashboard']}><AssignedTeachingContext.Provider value={context}><Routes><Route path="/educator" element={<EducatorLayout/>}><Route path="dashboard" element={<p>Existing dashboard route</p>}/></Route></Routes></AssignedTeachingContext.Provider></MemoryRouter>);
+  expect(await screen.findByText('Hari Trainer')).toBeInTheDocument();
+  expect(screen.getByAltText('RareMinds Logo')).toBeInTheDocument();
+  expect(screen.getByText('Existing dashboard route')).toBeInTheDocument();
+  expect(screen.getByText('Mark Attendance')).toBeInTheDocument();
+  expect(screen.queryByText('General educator AI')).not.toBeInTheDocument();expect(api).not.toHaveBeenCalled();
+});

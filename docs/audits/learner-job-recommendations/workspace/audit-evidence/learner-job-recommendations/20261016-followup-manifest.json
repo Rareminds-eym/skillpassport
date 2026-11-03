@@ -1,0 +1,235 @@
+{
+  "generatedAt": "2026-10-16T04:00:57.807Z",
+  "baseCommit": "1a9c21575b303b838831e35670f5d338966342f7",
+  "scope": "October 16 current working-tree application changes and follow-up evidence/docs. Not a deployed or staged-index snapshot; historical October 15 evidence remains unchanged.",
+  "sources": [
+    {
+      "path": "LEARNER_JOB_RECOMMENDATION_FIX_PLAN.md",
+      "sha256": "a0cf3843d18f59ffea18404dc88e9fb86e70949487262f1b9d46719b77691ed2"
+    },
+    {
+      "path": "LEARNER_JOB_RECOMMENDATION_IMPLEMENTATION.md",
+      "sha256": "b0b5fc83c74ccdde1b93198067eaf36a9060f4e799ce06cd6cf4281a3f4a6a24"
+    },
+    {
+      "path": "audit-evidence/learner-job-recommendations/20261016-followup-boundaries.json",
+      "sha256": "07b78b9dc3ea55187606f0f5dd41f1284ae0030b7dbe16351dd8fe6bcee5ad62"
+    },
+    {
+      "path": "audit-evidence/learner-job-recommendations/20261016-followup-sql.json",
+      "sha256": "a9697384a9434c2e9bdd0b498fb932e66f1337b63185d8bec1ec6b17599a3258"
+    },
+    {
+      "path": "audit-evidence/learner-job-recommendations/20261016-followup-tests.json",
+      "sha256": "433abdf8c61bf2befb211ad82977c7c84827e5f59a0ca0ae28aec23da8b1811d"
+    },
+    {
+      "path": "audit-evidence/learner-job-recommendations/20261016-followup-types.json",
+      "sha256": "ad1a33cd97b305240769dad203af76608396a671698ba14ea677058c4bde930c"
+    },
+    {
+      "path": "audit-evidence/learner-job-recommendations/README.md",
+      "sha256": "67458fed38d9791ffeb5d2102b64552cb6755d63040e86ae8ecddb13e060fb13"
+    },
+    {
+      "path": "audit-evidence/learner-job-recommendations/post-remediation-read-only-preflight.sql",
+      "sha256": "c426f7a45a6564874b0ccbbfb7432b7c86c8d5b682f77e6032493e27170b81f9"
+    },
+    {
+      "path": "audit-evidence/learner-job-recommendations/verify-boundaries.cjs",
+      "sha256": "33df676a80375044b13a43cbc3d0c7b5af26e3a5e945bc76d4546b05aba2db29"
+    },
+    {
+      "path": "audit-evidence/learner-job-recommendations/verify-followup-types.cjs",
+      "sha256": "cb02db7c7a2cdd40c0c6edb8d018f7fe54a4a5d02d765c424cfac662b60c57c6"
+    },
+    {
+      "path": "skillpassport/functions/__tests__/api/career-recommend-ownership.test.ts",
+      "sha256": "b4fddf47fb9b2e785436e7cbf1b09bb6b399b150452178b5866b1dc7647b15a0"
+    },
+    {
+      "path": "skillpassport/functions/__tests__/api/recommendation-embedding.test.ts",
+      "sha256": "6b317a3a16bf3072b361fdcbaa772ed94b5ffd86bbf75ff6a1bd93a59897bd05"
+    },
+    {
+      "path": "skillpassport/functions/__tests__/api/recommendation-surfaces.test.ts",
+      "sha256": "5925fad318a4a87cc430c13d28df23c348c4f354170e9cc785a6dd788e42f617"
+    },
+    {
+      "path": "skillpassport/functions/__tests__/sql/recommendation-fixture.sql",
+      "sha256": "b3e5b80f05e69983602ccf233e5015b1af0b80cfb175e0c3f0f1d8f8223611ef"
+    },
+    {
+      "path": "skillpassport/functions/__tests__/sql/recommendation-revisions.sql",
+      "sha256": "7dad678a7ff5acbe71defe4d3c09856da619836c485c3a45fa80544166623eb1"
+    },
+    {
+      "path": "skillpassport/functions/api/ai-tutor/handlers/actions.ts",
+      "sha256": "3ca88b7e3871add2ce6c79aa4a41d42bdd39ba669da567157facf028e04b5a79"
+    },
+    {
+      "path": "skillpassport/functions/api/career/[[path]].ts",
+      "sha256": "57888dcee51c7adb3998d00b7ed67a11405673cca1f6a9b556de1dd4184d6d14"
+    },
+    {
+      "path": "skillpassport/functions/api/career/context/smart-opportunities.ts",
+      "sha256": "c9c8288ffdcfc38bfb88653f3bede28fc49e15e82dddd89288ae7b25a1eee729"
+    },
+    {
+      "path": "skillpassport/functions/api/career/handlers/recommend.ts",
+      "sha256": "bb28f239661a49e197ac19b4029e8fce4d6a8215d23e960dfa61f2321fded7b4"
+    },
+    {
+      "path": "skillpassport/functions/api/career/utils/recommendation-state.ts",
+      "sha256": "a2dcc67e3d5675f2fa17c115c8f5db5d44e335d25a74ca01d5ef1bb2a391f249"
+    },
+    {
+      "path": "skillpassport/functions/api/career/utils/recommendation-versions.ts",
+      "sha256": "0b096c72846f836203004c6978fe93ffab8b2d34382456ed7f0b52c38e01f365"
+    },
+    {
+      "path": "skillpassport/functions/api/embedding/handlers/generateEmbedding.ts",
+      "sha256": "ab23f2ee217ede23d7314b33bc3f05b10deea7471bd6b963d195e41fa0d91ef3"
+    },
+    {
+      "path": "skillpassport/functions/api/embedding/services/databaseUpdater.ts",
+      "sha256": "91f9465b1dc28fb48d11582a803b91165e7b0e63e11e2721f404bd2cdf872604"
+    },
+    {
+      "path": "skillpassport/functions/api/embedding/services/embeddingValidation.ts",
+      "sha256": "faab5b4bd583fe1df363014bd9147bb44eb5223382bbb1f9ec016d58ec8a7a46"
+    },
+    {
+      "path": "skillpassport/functions/api/embedding/services/embeddingWorkerClient.ts",
+      "sha256": "0ea8d11c5ba4bc5e499cc7de28358bd41fb09c39de196009828e177f0cb222b4"
+    },
+    {
+      "path": "skillpassport/functions/api/embedding/services/textBuilder.ts",
+      "sha256": "d216455890e9de1dcb7659ed29f5a65a4de6fe262dfeb0dbd307abfa166c1829"
+    },
+    {
+      "path": "skillpassport/functions/api/learners/ai-recommendations.ts",
+      "sha256": "1d4342db592a40a8bfdf609c3156691d58cdbf437a15e2d5f84f1df4d93f9da5"
+    },
+    {
+      "path": "skillpassport/functions/api/opportunities/index.ts",
+      "sha256": "2323467a087dfe156f6abe42e0c2a319b204c34a48c1bbebfb2bffc66027eb07"
+    },
+    {
+      "path": "skillpassport/functions/lib/__tests__/entitlements.test.ts",
+      "sha256": "ed2a88734ff7443a5e6dd338aa78552019f278d48acc592cdbb723829a7f562c"
+    },
+    {
+      "path": "skillpassport/functions/lib/job-recommendations.ts",
+      "sha256": "349c450350031dbc3a675d399ced511ca5d1cd5e30393e8fb318681ae09fbc40"
+    },
+    {
+      "path": "skillpassport/functions/lib/types.ts",
+      "sha256": "d3ce13f2a391ee0abb6689f2aee062e1dc5d4b0b8d27123414c9c0823be54298"
+    },
+    {
+      "path": "skillpassport/functions/shared/lib/server-feature-gating.ts",
+      "sha256": "f73af50357e2459d4c59bde2e02e200d991c7d810c185515cb6e035e7303c55c"
+    },
+    {
+      "path": "skillpassport/src/entities/learner/api/__tests__/mutation-invalidation.test.tsx",
+      "sha256": "b35d91ffa345705adc88290baaea889bdb484f2cc43fcca800accaefcf98fab1"
+    },
+    {
+      "path": "skillpassport/src/entities/learner/api/learnerService.ts",
+      "sha256": "fa54139002bc718916e80c847e8e8b3a02c64ed96a0a551dcc7ebd20558764ac"
+    },
+    {
+      "path": "skillpassport/src/entities/learner/model/useLearnerDataByEmail.ts",
+      "sha256": "88d14cb91e1e4871d1d63aa52d3823bf9baf96ceaf0f8a1cd9bc5dbec532a28c"
+    },
+    {
+      "path": "skillpassport/src/features/ai-tutor/api/aiRecommendationService.ts",
+      "sha256": "b9c80312409f5781324451d4253b728b41a657462d7d5ee122cb00e7d2deea61"
+    },
+    {
+      "path": "skillpassport/src/features/learner-profile/api/learnerAIRecommendationsService.ts",
+      "sha256": "81b87da08e3a2c6b20a67686b64cd41e2f901a30c1f664efb384e6731fea6bcc"
+    },
+    {
+      "path": "skillpassport/src/features/learner-profile/model/useLearnerAIRecommendations.ts",
+      "sha256": "640ddc23822ac573247bf013a10c0890c09e3bb35c6fbc1af711a8ac273401af"
+    },
+    {
+      "path": "skillpassport/src/features/opportunities/api/__tests__/aiJobMatchingService.test.ts",
+      "sha256": "85770a46b0c5b4ca4ba1878a501d76464e84f6229a0702c8713fc77f380e5628"
+    },
+    {
+      "path": "skillpassport/src/features/opportunities/api/aiJobMatchingService.ts",
+      "sha256": "74117641440a42f3e62192d7d36009a38cd68a91dce0544760d11bfc6ef86b51"
+    },
+    {
+      "path": "skillpassport/src/features/opportunities/lib/__tests__/externalApplication.test.tsx",
+      "sha256": "dcab62c99fce61bdd521c9680b437d8acec638743ccb36223f67fac2e32e0eb4"
+    },
+    {
+      "path": "skillpassport/src/features/opportunities/lib/externalApplication.ts",
+      "sha256": "489fd142057577183b1daa06d69f1cac011d8d8a0185d806ce7c30a467f4990a"
+    },
+    {
+      "path": "skillpassport/src/features/opportunities/model/__tests__/recommendation-lifecycle.test.tsx",
+      "sha256": "538059c6890af5e72ce1e6059e9589ce4cfec75ce65384bc57e45107091628da"
+    },
+    {
+      "path": "skillpassport/src/features/opportunities/model/__tests__/saved-job-application.test.tsx",
+      "sha256": "5d1348164aa899e0a51503faab07bad198642d00012aac20fbf0d82f97ea8153"
+    },
+    {
+      "path": "skillpassport/src/features/opportunities/model/useAIJobMatching.ts",
+      "sha256": "53f7b58948c0c3e85a3a14b42e4d708e4cb45e6e4f0793f2892c306d10503a61"
+    },
+    {
+      "path": "skillpassport/src/features/opportunities/model/useSavedJobs.ts",
+      "sha256": "197a6e6227464b854732c45e347e6f13605d017b58d2d9ac95f5894130103997"
+    },
+    {
+      "path": "skillpassport/src/pages/learner/BrowseJobs.jsx",
+      "sha256": "9283a3574305e12b569a3fba653c90e1d0566bdcfccd9f8271be5945a29a4ff4"
+    },
+    {
+      "path": "skillpassport/src/pages/learner/Dashboard.jsx",
+      "sha256": "fe85bf5c67b496f653ce67e5ae272ff03f90f36688304e8ac1369a1faed55bf2"
+    },
+    {
+      "path": "skillpassport/src/pages/learner/MySkills.jsx",
+      "sha256": "f9fcab4108ced06fa7cf34d5cf395171587c7a4cf0e0dcb32d1dce69e8ab7721"
+    },
+    {
+      "path": "skillpassport/src/pages/learner/Opportunities.jsx",
+      "sha256": "5498cf6f3c7a2443669677961353678be2d23f9bf6e02c411efbaf7a92465129"
+    },
+    {
+      "path": "skillpassport/src/test/setup.js",
+      "sha256": "d464ff390fec1e4cb01998bf9e55a217e345ca970efbe54dd5b5386d46c1dd7d"
+    },
+    {
+      "path": "skillpassport/src/widgets/learner-dashboard/ui/OpportunityPreview.jsx",
+      "sha256": "ac127f4bf8da707bcf95f406fccc6a57f0e3073b80f2faa56e23f26d0c9f338e"
+    },
+    {
+      "path": "skillpassport/src/widgets/learner-dashboard/ui/RecommendedJobs.jsx",
+      "sha256": "61a573b63a039bb8f9040d662dafb5a6f9447a64939a0d246bab40774e81314a"
+    },
+    {
+      "path": "skillpassport/src/widgets/learner-dashboard/ui/SuggestedNextSteps.jsx",
+      "sha256": "82c98db6542af811e4202d9873386fa02719b543960630176df280df5ab9bd5d"
+    },
+    {
+      "path": "skillpassport/supabase/migrations/20261015090000_recommendation_boundaries_and_revisions.sql",
+      "sha256": "c55a950d429f174c331f8ddfe07d6582c21c33b05f9e701da776385b83384764"
+    },
+    {
+      "path": "skillpassport/tsconfig.app.json",
+      "sha256": "ffe369dabfb6d7cfdd44d3a10ac99543599b58aba779deedc021f87115ede21f"
+    },
+    {
+      "path": "skillpassport/tsconfig.functions.json",
+      "sha256": "1153a03fd0b15f4455b3c9476a30ef5927a02f4fd5fb4007a5db1f5f8bc42f52"
+    }
+  ]
+}

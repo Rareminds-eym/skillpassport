@@ -6,6 +6,12 @@ import { apiPost } from '@/shared/api/apiClient';
 
 // Badge definitions with criteria
 export const BADGE_DEFINITIONS = {
+  REVIEWED_ARTIFACT: {
+    id: 'reviewed_artifact', name: 'Staff-reviewed evidence',
+    description: 'An LTE artifact passed a rubric-based staff review', icon: '✓', color: '#047857', category: 'projects',
+    criteriaText: 'Pass a staff artifact review',
+    criteria: (userData: { reviewedArtifactCount?: number }) => Number(userData.reviewedArtifactCount ?? 0) > 0,
+  },
   // Education Badges
   DEGREE_COMPLETED: {
     id: 'degree_completed',

@@ -103,6 +103,7 @@ const AttendanceBulkImportModal = ({
   const [filters, setFilters] = useState({ department: '', program: '', subject: '', date: '' });
   const [sessions, setSessions] = useState<ImportSession[]>([]);
   const [sessionsLoading, setSessionsLoading] = useState(false);
+  const [sessionsError, setSessionsError] = useState('');
   const [selectedId, setSelectedId] = useState('');
   const [busy, setBusy] = useState(false);
   const [fatal, setFatal] = useState('');
@@ -121,7 +122,7 @@ const AttendanceBulkImportModal = ({
     if (!isOpen) return;
     setStep('session'); setFatal(''); setTemplateInfo(''); setFileName('');
     setParsedRows([]); setErrors([]); setSummary(null); setSessionInfo(null);
-    setResult(null);
+    setResult(null); setSessionsError('');
     setFilters({ department: '', program: '', subject: '', date: '' });
     setSelectedId(''); setSessions([]);
     curriculumService.getDepartments()
@@ -146,8 +147,10 @@ const AttendanceBulkImportModal = ({
 
   // Session list refreshes on every filter change.
   useEffect(() => {
-    if (!isOpen || !collegeId) return;
+    if (!isOpen) return;
+    if (!collegeId) { setSessions([]); setSessionsError(''); setSessionsLoading(false); return; }
     setSessionsLoading(true);
+    setSessionsError('');
     apiPost<any>('/college-admin/attendance', {
       action: 'get-import-sessions',
       college_id: collegeId,
@@ -167,6 +170,7 @@ const AttendanceBulkImportModal = ({
       .catch((err: any) => {
         logger.error('Failed to load sessions:', err as Error);
         setSessions([]);
+        setSessionsError(err?.message || 'Could not load sessions — check your connection and retry.');
       })
       .finally(() => setSessionsLoading(false));
   }, [isOpen, collegeId, filters, departments]);
@@ -310,8 +314,16 @@ const AttendanceBulkImportModal = ({
                   </div>
                 </div>
 
-                {sessionsLoading ? (
+                {!collegeId ? (
+                  <p className="text-sm text-gray-600 bg-gray-50 border border-gray-200 rounded-lg p-3">
+                    Resolving your college… if this persists, close and reopen the import.
+                  </p>
+                ) : sessionsLoading ? (
                   <p className="text-sm text-gray-500">Loading sessions…</p>
+                ) : sessionsError ? (
+                  <p className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg p-3">
+                    {sessionsError}
+                  </p>
                 ) : sessions.length === 0 ? (
                   <p className="text-sm text-gray-600 bg-gray-50 border border-gray-200 rounded-lg p-3">
                     No sessions found — create one via New Session first, then import into it.
