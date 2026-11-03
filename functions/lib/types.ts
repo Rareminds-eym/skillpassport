@@ -19,7 +19,6 @@ import type {
  */
 export interface PagesEnv {
   AI_ASSIGNMENTS_ENABLED?: string;
-  AI_ASSIGNMENT_FILES?: R2Bucket;
   COURSE_INDEX_ENABLED?: string;
   // SSO / Auth configuration
   /** Cloudflare Service Binding to the SSO worker (sso-api) */

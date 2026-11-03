@@ -4,7 +4,7 @@ import {afterEach,it,expect,vi} from 'vitest';
 const mocks=vi.hoisted(()=>({action:vi.fn()}));
 vi.mock('@/shared/model',()=>({useUser:()=>({id:'teacher'})}));
 vi.mock('../../api/materialService',()=>({materialAction:mocks.action}));
-import SaveGeneratedMaterial from '../SaveGeneratedMaterial';
+import SaveGeneratedMaterial, { AllocateSavedMaterial } from '../SaveGeneratedMaterial';
 afterEach(()=>{cleanup();vi.clearAllMocks();});
 function show(){return render(<QueryClientProvider client={new QueryClient({defaultOptions:{queries:{retry:false},mutations:{retry:false}}})}><SaveGeneratedMaterial courseId="course" conversationId="conversation" messageId="message"/></QueryClientProvider>);}
 it('does not save on generation and confirms only an explicit successful save',async()=>{
@@ -20,4 +20,13 @@ it('persists Not now and never turns that choice into a material record',async()
  fireEvent.click(screen.getByRole('button',{name:'Not now'}));
  await waitFor(()=>expect(screen.getByText('Not saved to the library.')).toBeInTheDocument());
  expect(mocks.action.mock.calls.some(([action])=>action==='save')).toBe(false);
+});
+
+it('explains incomplete class/section mappings instead of offering unusable recipients',async()=>{
+ mocks.action.mockImplementation(async(action:string)=>action==='allocation-learners'?{learners:[],blockedCount:2}:{content:{questions:[]},grading_rules:[]});
+ render(<QueryClientProvider client={new QueryClient()}><AllocateSavedMaterial courseId="course" assignmentId="assignment"/></QueryClientProvider>);
+ fireEvent.click(screen.getByRole('button',{name:'Assign to learners'}));
+ expect(await screen.findByText(/No learners have the required class/)).toBeInTheDocument();
+ expect(screen.getByRole('button',{name:'Confirm assignment'})).toBeDisabled();
+ expect(mocks.action.mock.calls.some(([action])=>action==='allocate')).toBe(false);
 });

@@ -39,6 +39,24 @@ export async function handleSavedMaterials(context: Context) {
       return apiSuccess(rows, request);
     }
     if (!educator || !await requireCourseAccess(db, user.id, courseId)) return fail(403, 'Educator course access required');
+    if (body.action === 'allocation-learners') {
+      const scope = await db.rpc('ai_worksheet_context', { p_user_id: user.id });
+      const org = scope.data?.organization?.id;
+      if (scope.error || !org) return fail(409, 'An active school or college teaching mapping is required');
+      const mapped = await db.rpc('ai_worksheet_eligible_learners', { p_user_id: user.id }).order('name').order('id').range(0,499);
+      if (mapped.error) throw mapped.error;
+      const rows = mapped.data || [];
+      const school = await db.from('school_educators').select('id').eq('user_id', user.id).eq('school_id', org).eq('account_status', 'active').maybeSingle();
+      if (school.error) throw school.error;
+      const ids = [...new Set(rows.map((row: any) => school.data ? row.school_class_id : row.program_section_id).filter(Boolean))];
+      const groups = !ids.length ? { data: [], error: null } : school.data
+        ? await db.from('school_classes').select('id').eq('school_id', org).in('id', ids)
+        : await db.from('program_sections').select('id,department:departments!inner(college_id)').eq('status', 'active').eq('department.college_id', org).in('id', ids);
+      if (groups.error) throw groups.error;
+      const valid = new Set((groups.data || []).map((group: any) => group.id));
+      const learners = rows.filter((row: any) => valid.has(school.data ? row.school_class_id : row.program_section_id));
+      return apiSuccess({ learners, blockedCount: rows.length - learners.length }, request);
+    }
     if (body.action === 'library') {
       const table = body.kind === 'lesson_plan' ? 'ai_lesson_plans' : 'ai_assignments';
       const result = await db.from(table).select('id,title,content,generation_config,created_at').eq('course_id', courseId).order('created_at', { ascending: false }).limit(100);
@@ -65,7 +83,7 @@ export async function handleSavedMaterials(context: Context) {
       if (owned.error) return fail(403, 'Assigned educator access required');
       if (body.action === 'retry') {
         if (owned.data.status === 'evaluating' && Date.parse(owned.data.updated_at) < Date.now() - 300000) await db.from('ai_assignment_results').update({ status: 'failed' }).eq('id', resultId).eq('updated_at', owned.data.updated_at);
-        await evaluateSavedSubmission(db, owned.data.submission_id, env.OPENROUTER_API_KEY, undefined, env.AI_ASSIGNMENT_FILES);
+        await evaluateSavedSubmission(db, owned.data.submission_id, env.OPENROUTER_API_KEY, undefined, env.R2_BUCKET);
       } else {
         const results = z.array(z.object({ questionId: uuid, marks: z.number().nonnegative().max(100), reason: z.string().trim().min(1).max(2000) })).min(1).max(90).parse(body.results);
         const released = await db.rpc('release_saved_ai_result', { p_user: user.id, p_result: resultId, p_results: results, p_feedback: z.string().max(10000).parse(body.feedback ?? '') });

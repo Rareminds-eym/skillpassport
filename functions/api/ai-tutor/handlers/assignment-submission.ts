@@ -10,14 +10,14 @@ export async function handleAssignmentSubmission(context: Context) {
   const { request, env } = context;
   const user = getContextUser(context), db = getServiceClient(env);
   const fail = (status: number, message: string) => apiError(status, 'SUBMISSION_ERROR', message, request);
-  if (env.AI_ASSIGNMENTS_ENABLED !== 'true' || !env.AI_ASSIGNMENT_FILES) return fail(503, 'Private assignment storage is not configured');
+  if (env.AI_ASSIGNMENTS_ENABLED !== 'true' || !env.R2_BUCKET) return fail(503, 'Assignment storage is not configured');
   try {
     if (request.method === 'GET') {
       const id = z.string().uuid().parse(new URL(request.url).searchParams.get('submissionId'));
       const row = await db.from('ai_assignment_submissions').select('file_key,file_name,mime_type,recipient:ai_assignment_learners!inner(assigned_by,learner:learners!inner(user_id))').eq('id', id).single();
       const owner = row.data?.recipient as unknown as { assigned_by: string; learner: { user_id: string } } | undefined;
       if (row.error || !row.data || !owner || (owner.assigned_by !== user.id && owner.learner.user_id !== user.id)) return fail(403, 'Submission access denied');
-      const object = await env.AI_ASSIGNMENT_FILES.get(row.data.file_key);
+      const object = await env.R2_BUCKET.get(row.data.file_key);
       if (!object) return fail(404, 'Document not found');
       const name = row.data.file_name.replace(/[\r\n"\\]/g, '_').replace(/[^\x20-\x7e]/g, '_');
       return new Response(object.body, { headers: { 'Content-Type': row.data.mime_type, 'Content-Disposition': `attachment; filename="${name}"`, 'Cache-Control': 'private, no-store', 'X-Content-Type-Options': 'nosniff' } });
@@ -51,16 +51,22 @@ export async function handleAssignmentSubmission(context: Context) {
     try { type = validateSubmissionDocument(file.name, file.type, bytes); } catch (error) { return fail(400, error instanceof Error ? error.message : 'Invalid document'); }
     const submissionId = crypto.randomUUID();
     const key = submissionPath((recipient.data.assignment as unknown as { course_id: string }).course_id, recipient.data.assignment_id, id, submissionId, type.ext);
-    await env.AI_ASSIGNMENT_FILES.put(key, bytes, { httpMetadata: { contentType: type.mime, contentDisposition: 'attachment' } });
+    await env.R2_BUCKET.put(key, bytes, { httpMetadata: { contentType: type.mime, contentDisposition: 'attachment' } });
     const saved = await db.rpc('commit_ai_submission', { p_user: user.id, p_recipient: id, p_id: submissionId, p_key: key, p_name: file.name.slice(0,255), p_mime: type.mime });
-    if (saved.error) {
-      await env.AI_ASSIGNMENT_FILES.delete(key);
-      const duplicate = await db.from('ai_assignment_submissions').select('id').eq('assignment_learner_id', id).maybeSingle();
-      if (duplicate.data) return apiSuccess({ submissionId: duplicate.data.id, alreadySubmitted: true }, request);
-      return fail(409, 'Submission was not saved. Check deadline and try again.');
+    if (saved.error || saved.data !== submissionId) {
+      // A lost RPC response may follow a successful commit. Verify before deleting the uploaded object.
+      const duplicate = await db.from('ai_assignment_submissions').select('id,file_key').eq('assignment_learner_id', id).maybeSingle();
+      if (duplicate.error) return fail(503, 'Unable to verify submission status. Refresh before retrying.');
+      if (duplicate.data) {
+        if (duplicate.data.file_key !== key) await env.R2_BUCKET.delete(key);
+        return apiSuccess({ submissionId: duplicate.data.id, alreadySubmitted: true }, request);
+      }
+      // An explicit PostgreSQL error confirms rollback. Transport failures are ambiguous: preserve bytes.
+      if (saved.error?.code && /^[0-9A-Z]{5}$/.test(saved.error.code) && !saved.error.code.startsWith('08')) await env.R2_BUCKET.delete(key);
+      return fail(409, 'Submission was not confirmed. Refresh status and check the deadline before retrying.');
     }
     // Evaluation failures never roll back the successfully submitted document.
-    try { await evaluateSavedSubmission(db, submissionId, env.OPENROUTER_API_KEY, bytes, env.AI_ASSIGNMENT_FILES); } catch { /* The saved pending result remains visible to the educator for retry. */ }
+    try { await evaluateSavedSubmission(db, submissionId, env.OPENROUTER_API_KEY, bytes, env.R2_BUCKET); } catch { /* The saved pending result remains visible to the educator for retry. */ }
     return apiSuccess({ submissionId, alreadySubmitted: false }, request);
   } catch (error) {
     if (error instanceof z.ZodError || error instanceof TypeError) return fail(400, 'Invalid submission request');

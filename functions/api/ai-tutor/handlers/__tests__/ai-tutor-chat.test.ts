@@ -26,6 +26,10 @@ vi.mock('../../utils/course-index', async importOriginal => ({
   ...await importOriginal<typeof import('../../utils/course-index')>(),
   retrieveCourseEvidence: mocks.retrieve,
 }));
+vi.mock('../../utils/saved-materials', async original => ({
+  ...await original<typeof import('../../utils/saved-materials')>(),
+  materialContextFingerprint: vi.fn().mockResolvedValue('context-hash'),
+}));
 import { handleAiTutorChat } from '../ai-tutor-chat';
 
 describe('tutor conversation persistence', () => {
@@ -242,6 +246,21 @@ describe('tutor conversation persistence', () => {
     expect(mocks.retrieve).toHaveBeenCalledWith(mocks.client, expect.objectContaining({ COURSE_INDEX_ENABLED: 'true' }), 'educator-id', 'course-id', 'Explain the lesson', undefined, false);
     const savedQuery = mocks.client.from.mock.results.find(result => result.value.insert.mock.calls.length)?.value;
     expect(savedQuery.insert.mock.calls[0][0].messages.at(-1).citations[0].chunkId).toBe('chunk-1');
+  });
+
+  it('reuses a saved worksheet without making a new generation call', async () => {
+    const original = mocks.client.from.getMockImplementation()!;
+    mocks.client.rpc.mockImplementation(async (name: string) => name==='ai_worksheet_context' ? {data:{gradeLevel:'College/University'},error:null}:{error:null});
+    mocks.client.from.mockImplementation((table:string)=>{
+      const query:any=original(table);
+      if(table==='ai_assignments')query.maybeSingle=vi.fn().mockResolvedValue({data:{id:'saved-material',content:{questions:[{id:'q1',position:1,prompt:'Saved question',options:['Plan','Delay'],difficulty:'beginner'}]},grading_rules:[{questionId:'q1',acceptedAnswers:['Plan'],rubric:'Correct'}]},error:null});
+      return query;
+    });
+    const response=await handleAiTutorChat({request:new Request('https://example.test/chat',{method:'POST',body:JSON.stringify({courseId:'course-id',conversationId:'existing',message:'Generate a worksheet',worksheetConfig:{templateType:'multiple_choice',difficulty:'low',difficultyLevels:['low'],questionCount:5}})}),env:{SUPABASE_URL:'https://example.test',SUPABASE_SERVICE_ROLE_KEY:'test',AI_ASSIGNMENTS_ENABLED:'true'}} as Parameters<typeof handleAiTutorChat>[0]);
+    const stream=await response.text();
+    expect(stream).toContain('Saved question');expect(stream).toContain('event: done');
+    expect(fetch).not.toHaveBeenCalled();
+    expect(mocks.increment).not.toHaveBeenCalled();
   });
 
 });

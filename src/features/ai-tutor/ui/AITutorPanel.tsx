@@ -564,7 +564,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
             className="p-1.5 hover:bg-slate-200/70 text-slate-600 rounded-lg transition-colors"><ChevronLeft className="w-4 h-4" /></button>
           <h3 className="font-semibold text-xs text-slate-900" title={courseName}>Course assignments</h3>
         </div>
-        <div className="flex-1 min-h-0 overflow-y-auto"><><SavedMaterialWorkspace key={courseId} courseId={courseId} educator={isEducator} />{!isEducator && <LearnerWorksheets courseId={courseId} />}</></div>
+        <div className="flex-1 min-h-0 overflow-y-auto"><><SavedMaterialWorkspace key={courseId} courseId={courseId} educator={isEducator} onFollowup={prompt => { setInput(prompt); setShowWorksheets(false); }} />{!isEducator && <LearnerWorksheets courseId={courseId} />}</></div>
       </motion.section>
     );
   }
