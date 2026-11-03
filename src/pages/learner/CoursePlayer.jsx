@@ -1876,12 +1876,18 @@ const CoursePlayer = () => {
             onClose={certificateModal.closeModal}
             fullName={certificateModal.fullName}
             onFullNameChange={certificateModal.setFullName}
+            collegeName={certificateModal.collegeName}
+            onCollegeNameChange={certificateModal.setCollegeName}
+            learnerType={certificateModal.learnerType}
             onConfirm={certificateModal.showConfirmationDialog}
             onGenerate={certificateModal.generateCertificate}
             isGenerating={certificateModal.isGenerating}
             showConfirmation={certificateModal.showConfirmation}
             onCancelConfirmation={certificateModal.cancelConfirmation}
             validationError={certificateModal.validationError}
+            generatedCertificateUrl={certificateModal.generatedUrl}
+            onView={() => viewCertificate(certificateModal.generatedUrl)}
+            onDownload={certificateModal.downloadGeneratedCertificate}
           />
         )}
       </AnimatePresence>

@@ -8,9 +8,15 @@ import { getApiUrl } from '@/shared/api/apiUtils';
 import { getLogger } from '@/shared/config/logging';
 import { ssoClient } from '@/shared/api/ssoClient';
 import { generateCertificateHTML } from '../lib/certificateTemplate';
+import { generateEducatorCertificateHTML } from '../lib/educatorCertificateTemplate';
 import html2canvas from 'html2canvas';
 
 const logger = getLogger('certificate-service');
+
+const isEducatorLearnerType = (learnerType: string): boolean => {
+  const normalizedType = learnerType.trim().toLowerCase();
+  return normalizedType === 'educator' || normalizedType === 'teacher';
+};
 
 const STORAGE_API_URL = getApiUrl('storage');
 
@@ -62,20 +68,45 @@ const generateCertificateImage = async (
   completionDate: string,
   credentialId: string,
   learnerIdText: string | null,
-  courseType: 'course' | 'webinar' = 'course'
+  courseType: 'course' | 'webinar' = 'course',
+  learnerType: string = 'learner', // NEW: learner type from database
+  collegeName?: string // NEW: college/institution name for educator certificates
 ): Promise<string> => {
-  // Generate the certificate HTML using the template
-  const certificateHTML = generateCertificateHTML(
-    {
-      studentName: learnerName,
-      studentId: learnerIdText || 'N/A',
-      courseName: courseName,
-      completionDate: completionDate,
-      credentialId: credentialId,
-      courseType: courseType,
-    },
-    window.location.origin // Use current origin as base URL for assets
-  );
+  // Generate the certificate HTML using the appropriate template based on learner_type
+  // Check for both 'educator' and 'teacher' as they both should use the educator template
+  const isEducatorOrTeacher = isEducatorLearnerType(learnerType);
+  
+  logger.info('Certificate template selection', {
+    learnerType,
+    isEducatorOrTeacher,
+    templateUsed: isEducatorOrTeacher ? 'EDUCATOR (GOLD)' : 'STANDARD (BLUE)',
+    collegeName
+  });
+  
+  const certificateHTML = isEducatorOrTeacher
+    ? generateEducatorCertificateHTML(
+        {
+          studentName: learnerName,
+          studentId: learnerIdText || 'N/A',
+          courseName: courseName,
+          completionDate: completionDate,
+          credentialId: credentialId,
+          courseType: courseType,
+          collegeName: collegeName,
+        },
+        window.location.origin // Use current origin as base URL for assets
+      )
+    : generateCertificateHTML(
+        {
+          studentName: learnerName,
+          studentId: learnerIdText || 'N/A',
+          courseName: courseName,
+          completionDate: completionDate,
+          credentialId: credentialId,
+          courseType: courseType,
+        },
+        window.location.origin // Use current origin as base URL for assets
+      );
 
   // Create a temporary container to render the HTML
   const container = document.createElement('div');
@@ -112,17 +143,42 @@ const generateCertificateImage = async (
 
     // Wait for all images to load
     const images = Array.from(certificateElement.querySelectorAll('img'));
+    logger.info(`Found ${images.length} images to load for certificate`);
+    
+    // Convert relative URLs to absolute URLs to help with CORS
+    images.forEach((img, index) => {
+      if (img.src && !img.src.startsWith('data:')) {
+        const absoluteUrl = new URL(img.src, window.location.origin).href;
+        logger.info(`Image ${index + 1} URL: ${absoluteUrl}`);
+        img.src = absoluteUrl;
+        // For external/cross-origin SVGs, add crossorigin attribute
+        const isSameOrigin = new URL(absoluteUrl).origin === window.location.origin;
+        if (!isSameOrigin && absoluteUrl.endsWith('.svg')) {
+          img.crossOrigin = 'anonymous';
+        }
+      }
+    });
+    
     await Promise.all(
-      images.map(img => {
-        if (img.complete && img.naturalHeight !== 0) return Promise.resolve();
+      images.map((img, index) => {
+        if (img.complete && img.naturalHeight !== 0) {
+          logger.info(`Image ${index + 1} already loaded: ${img.src.substring(0, 100)}`);
+          return Promise.resolve();
+        }
         return new Promise<void>((resolve) => {
-          img.onload = () => resolve();
-          img.onerror = () => {
-            logger.warn(`Failed to load image: ${img.src}`);
+          img.onload = () => {
+            logger.info(`Image ${index + 1} loaded successfully: ${img.src.substring(0, 100)}`);
+            resolve();
+          };
+          img.onerror = (error) => {
+            logger.error(`Failed to load image ${index + 1}: ${img.src}`, error instanceof Error ? error : new Error('Image load error'));
             resolve(); // Continue even if some images fail
           };
           // Set a timeout for image loading
-          setTimeout(() => resolve(), 5000);
+          setTimeout(() => {
+            logger.warn(`Image ${index + 1} timed out after 10s: ${img.src.substring(0, 100)}`);
+            resolve();
+          }, 10000);
         });
       })
     );
@@ -156,10 +212,10 @@ const generateCertificateImage = async (
       windowHeight: CERTIFICATE_HEIGHT,
       scale: 1,
       useCORS: true,
-      allowTaint: false,
+      allowTaint: true, // Allow tainted canvas for same-origin images
       backgroundColor: '#ffffff',
-      logging: false,
-      imageTimeout: 10000,
+      logging: true, // Enable logging to debug image loading issues
+      imageTimeout: 15000, // Increase timeout for slow-loading SVGs
       removeContainer: false,
       foreignObjectRendering: false, // Disable foreign object rendering for better compatibility
       x: 0,
@@ -231,9 +287,14 @@ const uploadToR2 = async (
   blob: Blob,
   learnerId: string,
   courseId: string,
-  credentialId: string
+  credentialId: string,
+  learnerType: string
 ): Promise<string> => {
-  const filename = `certificates/${learnerId}/${courseId}/${credentialId}.png`;
+  // Keep the template variant in the object key. Besides making stored files
+  // self-describing, this lets the UI distinguish new educator certificates
+  // from legacy learner certificates and regenerate only the legacy ones.
+  const templateVariant = isEducatorLearnerType(learnerType) ? 'educator' : 'learner';
+  const filename = `certificates/${learnerId}/${courseId}/${templateVariant}/${credentialId}.png`;
   
   logger.info('Starting R2 upload', { filename, blobSize: blob.size });
   
@@ -328,7 +389,9 @@ export const generateCourseCertificate = async (
   educatorName: string,
   learnerIdText: string | null = null,
   courseType: 'course' | 'webinar' = 'course',
-  issuedOnDate: string | null = null
+  issuedOnDate: string | null = null,
+  learnerType: string = 'learner', // NEW: learner type from learners table
+  collegeName?: string // NEW: college/institution name for educator certificates
 ): Promise<CertificateResult> => {
   try {
     if (!learnerId?.trim() || !courseId?.trim()) {
@@ -375,7 +438,16 @@ export const generateCourseCertificate = async (
       ? `Certificate of Participation for "${courseName}"` 
       : `Certificate of Completion for "${courseName}"`;
 
-    const certificateDataUrl = await generateCertificateImage(learnerName, courseName, completionDate, credentialId, learnerIdText, courseType);
+    const certificateDataUrl = await generateCertificateImage(
+      learnerName, 
+      courseName, 
+      completionDate, 
+      credentialId, 
+      learnerIdText, 
+      courseType,
+      learnerType, // Pass learner type to select appropriate template
+      collegeName // Pass college name for educator certificates
+    );
     // FIX 3: Declare certificateUrl without misleading fallback assignment
     // The only path that continues past R2 upload is success (failures return early)
     let certificateUrl: string;
@@ -394,7 +466,7 @@ export const generateCourseCertificate = async (
     }
 
     try {
-      certificateUrl = await uploadToR2(blob, learnerId, courseId, credentialId);
+      certificateUrl = await uploadToR2(blob, learnerId, courseId, credentialId, learnerType);
       logger.info('Certificate uploaded to R2 successfully', { certificateUrl });
     } catch (err) {
       logger.error('Failed to upload certificate to R2 storage', err instanceof Error ? err : new Error('Unknown error'));
