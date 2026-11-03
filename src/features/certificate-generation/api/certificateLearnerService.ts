@@ -11,6 +11,7 @@
 import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 import { generateCourseCertificate } from './certificateService';
+import { supabase } from '@/shared/api/supabaseClient';
 
 const logger = getLogger('certificate-learner-service');
 
@@ -187,6 +188,31 @@ export async function generateCertificateWithNameUpdate(
     issuedOnDate 
   });
   
+  // Fetch learner_type from database to determine certificate template
+  logger.info('Fetching learner type from database', { learnerId });
+  const { data: learnerData, error: learnerError } = await supabase
+    .from('learners')
+    .select('learner_type, college_school_name')
+    .eq('id', learnerId)
+    .single();
+
+  if (learnerError) {
+    logger.warn('Could not fetch learner type, using default', { 
+      error: learnerError.message,
+      learnerId 
+    });
+  }
+
+  // Normalize imported values so variants such as "Teacher" or values with
+  // surrounding whitespace still select the educator certificate.
+  const learnerType = learnerData?.learner_type?.trim().toLowerCase() || 'learner';
+  const collegeName = learnerData?.college_school_name || undefined;
+  
+  logger.info('Learner type for certificate generation', { 
+    learnerType, 
+    collegeName 
+  });
+  
   const result = await generateCourseCertificate(
     learnerId,
     learnerName,
@@ -195,7 +221,9 @@ export async function generateCertificateWithNameUpdate(
     educatorName,
     learnerIdText,
     courseType,
-    issuedOnDate
+    issuedOnDate,
+    learnerType, // Pass learner type for template selection
+    collegeName // Pass college/school name for educator certificates
   );
   
   // Check if aborted after certificate generation

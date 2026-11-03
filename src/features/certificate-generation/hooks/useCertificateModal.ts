@@ -9,6 +9,7 @@ import {
 } from '../api/certificateLearnerService';
 import { downloadCertificate } from '../api/certificateService';
 import { getLogger } from '@/shared/config/logging';
+import { supabase } from '@/shared/api/supabaseClient';
 
 const logger = getLogger('useCertificateModal');
 
@@ -25,6 +26,8 @@ interface CertificateData {
   learnerId: string;
   learnerIdText: string;
   prefillName?: string;
+  learnerType?: string; // NEW: learner type to determine if educator
+  collegeName?: string; // NEW: pre-filled college name
 }
 
 interface CertificateResult {
@@ -45,6 +48,8 @@ interface UseCertificateModalOptions {
 interface UseCertificateModalReturn {
   showModal: boolean;
   fullName: string;
+  collegeName: string; // NEW: college name state
+  learnerType: string; // NEW: learner type state
   isGenerating: boolean;
   isLoadingName: boolean;
   pendingData: CertificateData | null;
@@ -52,6 +57,7 @@ interface UseCertificateModalReturn {
   showConfirmation: boolean;
   validationError: string;
   setFullName: (name: string) => void;
+  setCollegeName: (name: string) => void; // NEW: college name setter
   openModal: (data: CertificateData) => Promise<void>;
   closeModal: () => void;
   showConfirmationDialog: () => void;
@@ -140,6 +146,8 @@ export const useCertificateModal = ({
 }: UseCertificateModalOptions = {}): UseCertificateModalReturn => {
   const [showModal, setShowModal] = useState(false);
   const [fullName, setFullName] = useState('');
+  const [collegeName, setCollegeName] = useState(''); // NEW: college name state
+  const [learnerType, setLearnerType] = useState('learner'); // NEW: learner type state
   const [isGenerating, setIsGenerating] = useState(false);
   const [isLoadingName, setIsLoadingName] = useState(false);
   const [pendingData, setPendingData] = useState<CertificateData | null>(null);
@@ -200,6 +208,37 @@ export const useCertificateModal = ({
     setIsLoadingName(true);
     
     try {
+      // Fetch learner data (name, type, college) from database
+      const learnerId = data.learnerId;
+      
+      // Fetch learner info from database
+      const { data: learnerData, error: learnerError } = await supabase
+        .from('learners')
+        .select('learner_type, college_school_name')
+        .eq('id', learnerId)
+        .single();
+
+      if (learnerError) {
+        logger.warn('Could not fetch learner data', { 
+          error: learnerError.message,
+          learnerId 
+        });
+      }
+
+      // Set learner type and college name
+      const fetchedLearnerType = learnerData?.learner_type?.trim().toLowerCase() || 'learner';
+      const fetchedCollegeName = learnerData?.college_school_name || '';
+      
+      setLearnerType(fetchedLearnerType);
+      setCollegeName(fetchedCollegeName);
+      
+      logger.info('Fetched learner data for certificate modal', { 
+        rawLearnerType: learnerData?.learner_type,
+        fetchedLearnerType, 
+        collegeName: fetchedCollegeName,
+        willShowCollegeField: fetchedLearnerType === 'educator' || fetchedLearnerType === 'teacher'
+      });
+      
       // Fetch name from database if not provided
       const nameToUse = data.prefillName || (await fetchLearnerName(user, abortController.signal));
       
@@ -251,6 +290,8 @@ export const useCertificateModal = ({
     setShowConfirmation(false);
     setPendingData(null);
     setFullName('');
+    setCollegeName(''); // NEW: reset college name
+    setLearnerType('learner'); // NEW: reset learner type
     setGeneratedUrl(null);
     setValidationError('');
     setIsLoadingName(false);
@@ -266,6 +307,13 @@ export const useCertificateModal = ({
   }, []);
 
   /**
+   * Handle college name change
+   */
+  const handleCollegeNameChange = useCallback((name: string): void => {
+    setCollegeName(name);
+  }, []);
+
+  /**
    * Show confirmation dialog
    */
   const showConfirmationDialog = useCallback((): void => {
@@ -273,8 +321,16 @@ export const useCertificateModal = ({
       return;
     }
     
+    // NEW: For educators, validate college name as well
+    const isEducator = learnerType === 'educator' || learnerType === 'teacher';
+    if (isEducator && !collegeName.trim()) {
+      setValidationError('Please enter your college/institution name');
+      toast.error('Please enter your college/institution name');
+      return;
+    }
+    
     setShowConfirmation(true);
-  }, [fullName, validateAndSet]);
+  }, [fullName, learnerType, collegeName, validateAndSet]);
 
   /**
    * Cancel confirmation and go back to edit
@@ -291,6 +347,16 @@ export const useCertificateModal = ({
     const trimmedName = fullName.trim();
     
     if (!validateAndSet(trimmedName)) {
+      return;
+    }
+
+    // NEW: For educators, validate college name
+    const isEducator = learnerType === 'educator' || learnerType === 'teacher';
+    const trimmedCollegeName = collegeName.trim();
+    
+    if (isEducator && !trimmedCollegeName) {
+      setValidationError('Please enter your college/institution name');
+      toast.error('Please enter your college/institution name');
       return;
     }
 
@@ -326,6 +392,29 @@ export const useCertificateModal = ({
         issuedOnDate,
         courseId
       } = pendingData;
+
+      // NEW: Update college_school_name in database for educators
+      if (isEducator && trimmedCollegeName) {
+        logger.info('Updating college_school_name for educator', { 
+          learnerId, 
+          collegeName: trimmedCollegeName 
+        });
+        
+        const { error: updateError } = await supabase
+          .from('learners')
+          .update({ college_school_name: trimmedCollegeName })
+          .eq('id', learnerId);
+
+        if (updateError) {
+          logger.warn('Failed to update college_school_name', { 
+            error: updateError.message,
+            learnerId 
+          });
+          toast.error('Warning: Could not save college name, but certificate will still be generated.');
+        } else {
+          logger.info('College name updated successfully', { learnerId });
+        }
+      }
 
       // Prepare certificate generation parameters
       const params: CertificateGenerationParams = {
@@ -405,7 +494,7 @@ export const useCertificateModal = ({
         setIsGenerating(false);
       }
     }
-  }, [fullName, pendingData, userId, userEmail, validateAndSet]);
+  }, [fullName, collegeName, learnerType, pendingData, userId, userEmail, validateAndSet]);
 
   /**
    * Download the generated certificate
@@ -427,6 +516,8 @@ export const useCertificateModal = ({
     // State
     showModal,
     fullName,
+    collegeName, // NEW: expose college name
+    learnerType, // NEW: expose learner type
     isGenerating,
     isLoadingName,
     pendingData,
@@ -436,6 +527,7 @@ export const useCertificateModal = ({
     
     // Setters
     setFullName: handleNameChange,
+    setCollegeName: handleCollegeNameChange, // NEW: expose college name setter
     
     // Actions
     openModal,
