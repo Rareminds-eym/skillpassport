@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "course:index": "node --import tsx scripts/index-course.ts",
     "db:reset:dev": "npx supabase db reset --sql-paths \"./seed/dev/*.sql\"",
     "db:reset:prod": "node scripts/db-reset-prod-local.mjs",
     "start": " npm run build:dev && concurrently -n \"workers,pages\" -c \"yellow,magenta\" \"npm run workers:dev\" \"npm run pages:dev\"",

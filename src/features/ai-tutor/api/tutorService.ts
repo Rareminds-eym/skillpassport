@@ -12,7 +12,9 @@ const API_URL = getApiUrl('ai-tutor');
 
 // ==================== TYPES ====================
 
+export interface SourceCitation { chunkId: string; analysisId: string; lessonId: string; resourceId: string | null; location: Record<string, unknown> }
 export interface ChatMessage {
+  citations?: SourceCitation[];
   facilitator?: string;
   facilitatorMode?: string;
   assignmentSourceId?: string;
@@ -25,6 +27,7 @@ export interface ChatMessage {
 }
 
 interface MessageData {
+  citations?: SourceCitation[];
   facilitator?: string;
   facilitatorMode?: string;
   assignmentSourceId?: string;
@@ -106,6 +109,7 @@ export interface CourseProgress {
 let lastConversationId: string | null = null;
 
 export interface StreamChunk {
+  citations?: SourceCitation[];
   facilitator?: string;
   facilitatorMode?: string;
   assignmentSourceId?: string;
@@ -199,6 +203,7 @@ export async function* sendMessage(request: ChatRequest, signal?: AbortSignal): 
               conversationId: parsed.conversationId,
               messageId: parsed.messageId,
               worksheetAvailable: parsed.worksheetAvailable,
+              citations: parsed.citations,
               facilitator: parsed.facilitator,
               facilitatorMode: parsed.facilitatorMode,
               assignmentSourceId: parsed.assignmentSourceId,
@@ -259,6 +264,7 @@ export async function getConversations(courseId: string): Promise<Conversation[]
         content: m.content,
         timestamp: new Date(m.timestamp),
         facilitator: m.facilitator, facilitatorMode: m.facilitatorMode, assignmentSourceId: m.assignmentSourceId,
+        citations: m.citations,
         worksheetAvailable: !!m.worksheetVariants?.length
       }))
     }));
@@ -289,6 +295,7 @@ export async function getConversation(conversationId: string): Promise<Conversat
         content: m.content,
         timestamp: new Date(m.timestamp),
         facilitator: m.facilitator, facilitatorMode: m.facilitatorMode, assignmentSourceId: m.assignmentSourceId,
+        citations: m.citations,
         worksheetAvailable: !!m.worksheetVariants?.length
       }))
     };

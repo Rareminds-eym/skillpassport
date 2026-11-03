@@ -208,7 +208,7 @@ export function useTutorChat({
             )
           );
         } else if (chunk.type === 'done') {
-          setMessages(prev => prev.map(msg => msg.id === assistantMessageId ? { ...msg, id: chunk.messageId || msg.id, worksheetAvailable: chunk.worksheetAvailable, facilitator: chunk.facilitator, facilitatorMode: chunk.facilitatorMode, assignmentSourceId: chunk.assignmentSourceId, status: 'complete' } : msg));
+          setMessages(prev => prev.map(msg => msg.id === assistantMessageId ? { ...msg, id: chunk.messageId || msg.id, worksheetAvailable: chunk.worksheetAvailable, citations: chunk.citations, facilitator: chunk.facilitator, facilitatorMode: chunk.facilitatorMode, assignmentSourceId: chunk.assignmentSourceId, status: 'complete' } : msg));
           // Stream complete
           if (chunk.generationUsage) {
             onGenerationUsageUpdate?.(chunk.generationUsage);
@@ -351,7 +351,7 @@ export function useTutorChat({
             )
           );
         } else if (chunk.type === 'done') {
-          setMessages(prev => prev.map(msg => msg.id === assistantMessageId ? { ...msg, id: chunk.messageId || msg.id, worksheetAvailable: chunk.worksheetAvailable, facilitator: chunk.facilitator, facilitatorMode: chunk.facilitatorMode, assignmentSourceId: chunk.assignmentSourceId, status: 'complete' } : msg));
+          setMessages(prev => prev.map(msg => msg.id === assistantMessageId ? { ...msg, id: chunk.messageId || msg.id, worksheetAvailable: chunk.worksheetAvailable, citations: chunk.citations, facilitator: chunk.facilitator, facilitatorMode: chunk.facilitatorMode, assignmentSourceId: chunk.assignmentSourceId, status: 'complete' } : msg));
           if (chunk.generationUsage) {
             onGenerationUsageUpdate?.(chunk.generationUsage);
           }

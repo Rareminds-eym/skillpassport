@@ -27,6 +27,8 @@ export interface EmailWorkerRpc {
 }
 
 export interface EmbeddingWorkerRpc {
+  embedText(input: unknown, taskType?: string): Promise<{ embedding: number[]; model: string; dimensions: number }>;
+  embedTexts?(input: string[]): Promise<{ embeddings: Array<{ index: number; embedding: number[]; dimensions: number }>; model: string; dimensions: number }>;
   [key: string]: (...args: any[]) => Promise<any>;
 }
 

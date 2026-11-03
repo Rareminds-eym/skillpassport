@@ -9,7 +9,6 @@
  * - Title generation for new conversations
  */
 
-import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { apiError } from '../../../lib/response';
 import type { PagesEnv } from '../../../lib/types';
 import { getContextUser, getServiceClient } from '../../../lib/auth';
@@ -30,20 +29,22 @@ import { createLogger } from '../../../lib/logger';
 import { WORKSHEET_ASSIGNMENT_FORMAT } from '../utils/worksheet-content';
 
 import { isPersona, PERSONAS, routeTeachingMessage, type Persona } from '../utils/teaching-conversation';
+import { retrieveCourseEvidence, formatRetrievedEvidence, type EvidenceChunk } from '../utils/course-index';
 import { enrichCourseResources } from '../utils/course-resource-analysis';
 
 const logger = createLogger('ai-tutor-chat');
 
 // ==================== TYPES ====================
 
-interface RequiredEnv {
+interface RequiredEnv extends PagesEnv {
   SUPABASE_URL: string;
   SUPABASE_SERVICE_ROLE_KEY: string;
 }
 
-type TypedContext = AuthenticatedContext<PagesEnv> & { env: RequiredEnv };
+type TypedContext = { request: Request; env: RequiredEnv; data?: Parameters<typeof getContextUser>[0]['data'] };
 
 interface StoredMessage {
+  citations?: Array<{ chunkId: string; analysisId: string; lessonId: string; resourceId: string | null; location: Record<string, unknown> }>;
   assignmentDeferred?: boolean;
   assignmentDeferredAt?: string;
   facilitator?: Persona;
@@ -78,6 +79,7 @@ function isValidOpenRouterResponse(data: unknown): data is OpenRouterResponse {
 }
 
 interface AiTutorChatRequest {
+  contextScope?: 'course' | 'lesson' | 'all-lessons';
   facilitatorMode?: Persona | 'auto';
   conversationId?: string;
   courseId?: string;
@@ -151,6 +153,7 @@ export const handleAiTutorChat = async (context: TypedContext) => {
         .from('tutor_conversations')
         .select('messages')
         .eq('id', conversationId)
+        .eq('course_id', courseId)
         .eq('learner_id', learnerId)
         .maybeSingle();
 
@@ -185,7 +188,7 @@ export const handleAiTutorChat = async (context: TypedContext) => {
     if (userRole === 'learner') {
       if (isTeacherLearner) {
         userRole = 'educator';
-        logger.info('User role override: learner_type="teacher" → treating as educator');
+        logger.info('User role override: learner_type="teacher" â†’ treating as educator');
       }
     }
 
@@ -239,10 +242,21 @@ export const handleAiTutorChat = async (context: TypedContext) => {
 
     // Build course context and system prompt (role-based + optional worksheet/lesson plan config)
     const courseContext = await buildCourseContext(supabase, courseId, lessonId || null, learnerId);
-    if (!teaching.assignmentReviewRequested && !await enrichCourseResources(courseContext, supabase, env, courseId, learnerId, educator, request.signal)) {
+    let evidence: EvidenceChunk[] = [];
+    if (env.COURSE_INDEX_ENABLED === 'true') {
+      if (body.contextScope && !['course', 'lesson', 'all-lessons'].includes(body.contextScope)) return apiError(400, 'VALIDATION_ERROR', 'Invalid context scope', request);
+      evidence = await retrieveCourseEvidence(supabase, env, learnerId, courseId, message,
+        body.contextScope === 'lesson' && lessonId ? [lessonId] : undefined,
+        body.contextScope === 'all-lessons' || /\b(all|every|entire)\b.{0,30}\b(lessons?|course|modules?)\b/i.test(message));
+      courseContext.availableResources = [];
+    } else if (!await enrichCourseResources(courseContext, supabase, env, courseId, learnerId, educator, request.signal)) {
       return apiError(403, 'FORBIDDEN', 'Course access is required to use lesson and resource context.', request);
     }
     let systemPrompt = buildSystemPrompt(courseContext, conversationPhase, userRole, worksheetConfig, lessonPlanConfig);
+    const retrievedContext = env.COURSE_INDEX_ENABLED === 'true'
+      ? formatRetrievedEvidence(evidence) + (evidence.length ? '' : '\nNo indexed evidence is available yet. Say that indexing is needed; do not claim to have read course resources.')
+      : '';
+    systemPrompt += retrievedContext;
     const latestWorksheet = [...existingMessages].reverse().find(item => item.worksheetVariants?.length);
     if (educator && latestWorksheet?.assignmentDeferred) {
       systemPrompt += `\nThe educator previously chose Not now for worksheet message ${JSON.stringify(latestWorksheet.id)}. Respect that preference and do not repeatedly offer assignment unless requested. This is a historical choice, not proof of current publication status; use verified assignment records for status questions. The actual Assign control is still available.`;
@@ -325,7 +339,7 @@ export const handleAiTutorChat = async (context: TypedContext) => {
             logger.info('Two-Pass Mode: Starting outline generation...');
             
             // FIRST PASS: Generate outline (non-streaming, silent)
-            const outlinePrompt = buildLessonPlanPrompt(lessonPlanConfig, courseContext, true);
+            const outlinePrompt = buildLessonPlanPrompt(lessonPlanConfig!, courseContext, true) + retrievedContext;
             
             const outlineResponse = await fetch(endpoint, {
               method: 'POST',
@@ -375,7 +389,7 @@ export const handleAiTutorChat = async (context: TypedContext) => {
             // SECOND PASS: Generate full lesson plan using outline
             logger.info('Two-Pass Mode: Generating full lesson plan...');
             
-            const finalPrompt = buildLessonPlanPrompt(lessonPlanConfig, courseContext, true, outline) + '\nEducator request: ' + message;
+            const finalPrompt = buildLessonPlanPrompt(lessonPlanConfig!, courseContext, true, outline) + retrievedContext + '\nEducator request: ' + message;
             
             const finalResponse = await fetch(endpoint, {
               method: 'POST',
@@ -533,6 +547,7 @@ export const handleAiTutorChat = async (context: TypedContext) => {
             ...(educator ? { facilitator: teaching.facilitator, facilitatorMode: teaching.mode, assignmentSourceId: teaching.assignmentSourceId } : {}),
             ...(isLessonPlanGeneration ? { lessonPlanConfig } : {}),
             ...(worksheetVariants.length ? { worksheetVariants, worksheetConfig } : {}),
+            citations: evidence.map(item => ({ chunkId: item.chunk_id, analysisId: item.analysis_id, lessonId: item.lesson_id, resourceId: item.resource_id, location: item.source_location })),
             id: assistantMessageId,
             role: 'assistant',
             content: fullResponse,
@@ -650,6 +665,7 @@ export const handleAiTutorChat = async (context: TypedContext) => {
             messageId: assistantMessage.id,
             ...(educator ? { facilitator: teaching.facilitator, facilitatorMode: teaching.mode, assignmentSourceId: teaching.assignmentSourceId } : {}),
             worksheetAvailable: worksheetVariants.length > 0,
+            citations: assistantMessage.citations,
             generationUsage
           })}\n\n`));
 

@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   client: { from: vi.fn(), rpc: vi.fn() },
-  increment: vi.fn(), roles: ['college_educator'],
+  retrieve: vi.fn(), increment: vi.fn(), roles: ['college_educator'],
 }));
 vi.mock('../../../../lib/auth', () => ({
   getContextUser: () => ({ id: 'educator-id', roles: mocks.roles }),
@@ -21,6 +21,10 @@ vi.mock('../../utils/course-context', () => ({
 vi.mock('../../utils/generation-limit', () => ({
   hasReachedLimit: vi.fn().mockResolvedValue(false),
   incrementGenerationCount: mocks.increment,
+}));
+vi.mock('../../utils/course-index', async importOriginal => ({
+  ...await importOriginal<typeof import('../../utils/course-index')>(),
+  retrieveCourseEvidence: mocks.retrieve,
 }));
 import { handleAiTutorChat } from '../ai-tutor-chat';
 
@@ -223,6 +227,21 @@ describe('tutor conversation persistence', () => {
     expect(eq).toHaveBeenCalledWith('source_conversation_id', 'existing-conversation');
     expect(eq).toHaveBeenCalledWith('course_id', 'course-id');
     expect(mocks.increment).not.toHaveBeenCalled();
+  });
+
+  it('passes retrieved course passages to the chat model and persists source references', async () => {
+    const evidence = { chunk_id: 'chunk-1', analysis_id: 'analysis-1', lesson_id: 'lesson-2', resource_id: 'resource-1', content: 'Verified lesson evidence', source_location: { name: 'Course PDF' }, similarity: .9 };
+    mocks.retrieve.mockResolvedValue([evidence]);
+    const response = await handleAiTutorChat({ request: new Request('https://example.test/chat', { method: 'POST', body: JSON.stringify({ courseId: 'course-id', message: 'Explain the lesson' }) }), env: { SUPABASE_URL: 'https://example.test', SUPABASE_SERVICE_ROLE_KEY: 'test', COURSE_INDEX_ENABLED: 'true' } } as Parameters<typeof handleAiTutorChat>[0]);
+    const stream = await response.text();
+    expect(stream).toContain('event: done');
+    expect(stream).toContain('"chunkId":"chunk-1"');
+    const payload = vi.mocked(fetch).mock.calls.map(([, init]) => JSON.parse(String(init?.body))).find(body => body.stream);
+    expect(payload.messages[0].content).toContain('Verified lesson evidence');
+    expect(payload.messages[0].content).toContain('Course PDF');
+    expect(mocks.retrieve).toHaveBeenCalledWith(mocks.client, expect.objectContaining({ COURSE_INDEX_ENABLED: 'true' }), 'educator-id', 'course-id', 'Explain the lesson', undefined, false);
+    const savedQuery = mocks.client.from.mock.results.find(result => result.value.insert.mock.calls.length)?.value;
+    expect(savedQuery.insert.mock.calls[0][0].messages.at(-1).citations[0].chunkId).toBe('chunk-1');
   });
 
 });

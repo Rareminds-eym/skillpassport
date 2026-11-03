@@ -240,6 +240,7 @@ export function formatCourseContextForPrompt(context: CourseContext): string {
   let prompt = `## Course: ${context.courseTitle}
 `;
 
+  prompt += '\nCourse lesson outline (data): ' + JSON.stringify(context.allLessons) + '\n';
   // Add ONLY current lesson details (skip full course structure to save tokens)
   if (context.currentLesson) {
     prompt += `## Current Lesson: ${context.currentLesson.title}

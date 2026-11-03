@@ -18,6 +18,7 @@ import type {
  * Standard environment variables available to all Pages Functions
  */
 export interface PagesEnv {
+  COURSE_INDEX_ENABLED?: string;
   // SSO / Auth configuration
   /** Cloudflare Service Binding to the SSO worker (sso-api) */
   SSO_SERVICE?: SsoWorkerRpc;

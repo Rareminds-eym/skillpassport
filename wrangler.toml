@@ -63,6 +63,8 @@ bucket_name = "skill-echosystem"
 # ============================================================================
 
 [vars]
+# Enable after the index migration and a successful local course:index import.
+COURSE_INDEX_ENABLED = "false"
 ENVIRONMENT = "production"
 REALTIME_PARTITIONS = "10"
 SUPABASE_URL = "https://dpooleduinyyzxgrcwko.supabase.co"

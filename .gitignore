@@ -104,3 +104,6 @@ supabase/backups/*
 !supabase/backups/README.md
 !supabase/backups/latest/
 !supabase/backups/latest/**
+
+# Local course importer credentials
+.env.course-index

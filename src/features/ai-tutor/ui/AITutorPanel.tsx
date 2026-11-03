@@ -46,6 +46,7 @@ import TutorOrb from './TutorOrb';
 import { FACILITATORS, type FacilitatorRole } from '../config/facilitators';
 import { useWorksheetContext } from '../model/worksheetQueries';
 import LearnerWorksheets from './LearnerWorksheets';
+import CourseIndexStatus from './CourseIndexStatus';
 import type { WorksheetConfig } from '../types/worksheet';
 import { DEFAULT_WORKSHEET_CONFIG } from '../types/worksheet';
 import type { LessonPlanConfig } from '../types';
@@ -783,6 +784,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
 
       {/* 5. Messages Stream Area */}
       <div aria-label="Conversation" aria-busy={isStreaming} className={`flex-1 min-h-0 overflow-y-auto overscroll-contain ${isWelcome ? 'bg-white/90' : 'bg-slate-50/80'} px-4 py-6 sm:px-5 space-y-6`}>
+        {isEducator && isConfigExpanded && <CourseIndexStatus courseId={courseId} />}
         {isEducator && isConfigExpanded ? (
           <section aria-label={configTool === 'worksheet' ? 'Create a worksheet' : 'Plan a lesson'} className="rounded-xl border border-slate-200 bg-white p-4">
             <div className="flex items-center justify-between gap-3">
@@ -1047,6 +1049,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
                                 </button>
                               </div>
                             </div>
+                            {!!msg.citations?.length && <details className="mt-2 text-xs text-slate-500"><summary>Course sources ({msg.citations.length})</summary>{msg.citations.map(citation => <p key={citation.chunkId} className="break-words">{String(citation.location.name || 'Lesson content')} ? reference {citation.chunkId}</p>)}</details>}
                             {isEducator && (msg.worksheetAvailable || msg.assignmentSourceId) && conversationId && (
                               <div className="w-full"><AssignWorksheetButton conversationId={conversationId} messageId={msg.assignmentSourceId || msg.id} initiallyOpen={!!msg.assignmentSourceId} courseTitle={courseName} /></div>
                             )}

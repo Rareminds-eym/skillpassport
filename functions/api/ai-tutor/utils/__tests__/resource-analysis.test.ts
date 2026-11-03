@@ -7,6 +7,18 @@ const env = { OPENROUTER_API_KEY: 'test-key', CLOUDFLARE_R2_PUBLIC_URL: 'https:/
 afterEach(() => vi.unstubAllGlobals());
 
 describe('Gemini resource analysis', () => {
+  it('indexes every PDF page in bounded segments rather than one capped summary', async () => {
+    const { PDFDocument } = await import('pdf-lib');
+    const document = await PDFDocument.create(); for (let i=0;i<3;i++) document.addPage();
+    const fetcher = vi.fn().mockResolvedValueOnce(new Response(await document.save()))
+      .mockResolvedValueOnce(Response.json({ choices:[{finish_reason:'stop',message:{content:'Original pages 1-2 evidence'}}] }))
+      .mockResolvedValueOnce(Response.json({ choices:[{finish_reason:'stop',message:{content:'Original page 3 evidence'}}] }));
+    vi.stubGlobal('fetch',fetcher);
+    const result=await analyzeResource(resource,env,undefined,true);
+    expect(fetcher).toHaveBeenCalledTimes(3);
+    expect(result.indexText).toContain('Original page 3');
+    expect(result.contentHash).toHaveLength(64);
+  });
   it('sends native PDF input to Flash Lite and saves reusable evidence', async () => {
     const fetcher = vi.fn().mockResolvedValueOnce(new Response('%PDF-fixture')).mockResolvedValueOnce(Response.json({ choices: [{ finish_reason: 'stop', message: { content: 'Page 1: Prioritize important tasks.' } }] }));
     vi.stubGlobal('fetch', fetcher);
