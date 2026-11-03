@@ -13,6 +13,7 @@ interface EducatorCertificateData {
   credentialId: string;
   courseType?: 'course' | 'webinar';
   collegeName?: string;
+  issuedDate?: string; // NEW: Separate issue date (defaults to completionDate if not provided)
 }
 
 /**
@@ -50,6 +51,11 @@ export function generateEducatorCertificateHTML(data: EducatorCertificateData, b
     : 'successfully completed the course on';
   const dateLabel = isWebinar ? 'conducted by Rareminds on' : 'completed on';
   const college = data.collegeName || 'Rareminds Skill Ecosystem';
+  
+  // NEW: Use separate issue date if provided, otherwise use completion date
+  // For webinars: completionDate = event date, issuedDate = certificate generation date
+  // For courses: both dates are the same (generation date)
+  const issueDate = data.issuedDate || data.completionDate;
 
   return `<!doctype html>
 <html lang="en">
@@ -319,10 +325,10 @@ export function generateEducatorCertificateHTML(data: EducatorCertificateData, b
 </head>
 <body style="width: 3579px; height: 2551px; min-height: 2551px; margin: 0; padding: 0; overflow: visible;">
     <section class="background">
-        <img class="pattern" src="${baseUrl}/certificate/educator/Rareminds_Transparent_Gold_Design.svg" alt="" aria-hidden="true">
+        <img class="pattern" src="${baseUrl}/assets/svg/certificate/educator/Rareminds_Transparent_Gold_Design.svg" alt="" aria-hidden="true">
         <header class="top">
             <div class="brand">
-                <img class="brand-logo" src="${baseUrl}/certificate/educator/RM_Logo.svg" alt="Rareminds - Applied Learning. Transforming Work." width="895" height="226">
+                <img class="brand-logo" src="${baseUrl}/assets/svg/certificate/educator/RM_Logo.svg" alt="Rareminds - Applied Learning. Transforming Work." width="895" height="226">
             </div>
             <div class="motto">LET'S BUILD<br>THE FUTURE.<br>TOGETHER.</div>
         </header>
@@ -339,23 +345,23 @@ export function generateEducatorCertificateHTML(data: EducatorCertificateData, b
             <p class="description" style="margin-top: 20px;">Participants were encouraged to identify a teaching strength and a capability to develop next, taking a meaningful step towards reflective, adaptable and future-ready teaching practice.</p>
             <div class="pillars">
                 <div class="pillar">
-                    <img src="${baseUrl}/certificate/educator/01_Discover_Your_Strengths.svg" alt="">
+                    <img src="${baseUrl}/assets/svg/certificate/educator/01_Discover_Your_Strengths.svg" alt="">
                     <span>Discover<br>Your Strengths</span>
                 </div>
                 <div class="pillar">
-                    <img src="${baseUrl}/certificate/educator/02_Understand_Your_Learners.svg" alt="">
+                    <img src="${baseUrl}/assets/svg/certificate/educator/02_Understand_Your_Learners.svg" alt="">
                     <span>Understand<br>Your Learners</span>
                 </div>
                 <div class="pillar">
-                    <img src="${baseUrl}/certificate/educator/03_Build_Your_Next_Capability.svg" alt="">
+                    <img src="${baseUrl}/assets/svg/certificate/educator/03_Build_Your_Next_Capability.svg" alt="">
                     <span>Build Your<br>Next Capability</span>
                 </div>
             </div>
         </main>
         <footer class="footer">
-            <div class="date">Date of Issue:<strong>${formatDate(data.completionDate)}</strong></div>
+            <div class="date">Date of Issue:<strong>${formatDate(issueDate)}</strong></div>
             <div class="signature">
-                <img src="${baseUrl}/certificate/educator/sign.svg" alt="Subashini Ramaswamy signature" width="228" height="180">
+                <img src="${baseUrl}/assets/svg/certificate/educator/sign.svg" alt="Subashini Ramaswamy signature" width="228" height="180">
                 <div class="sigline"></div>
                 <div>Subashini Ramaswamy</div>
                 <div class="role">Founder | Rareminds</div>

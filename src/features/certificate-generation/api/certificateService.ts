@@ -83,16 +83,20 @@ const generateCertificateImage = async (
     collegeName
   });
   
+  // Calculate issue date: always current date (when certificate is generated)
+  const issueDate = new Date().toISOString();
+  
   const certificateHTML = isEducatorOrTeacher
     ? generateEducatorCertificateHTML(
         {
           studentName: learnerName,
           studentId: learnerIdText || 'N/A',
           courseName: courseName,
-          completionDate: completionDate,
+          completionDate: completionDate, // Event date (webinar date or course completion)
           credentialId: credentialId,
           courseType: courseType,
           collegeName: collegeName,
+          issuedDate: issueDate, // Certificate generation date (always today)
         },
         window.location.origin // Use current origin as base URL for assets
       )
