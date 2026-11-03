@@ -19,6 +19,10 @@ export interface Injected {
 export interface Access { table: string; op: Op; values?: unknown; filters: Array<[string, unknown]> }
 
 export class FakeSupabase {
+  async rpc(name: string) {
+    if (name !== 'zoho_generic_identity_sync_policy') throw new Error('Unexpected test RPC');
+    return { data: { version: 1, genericSyncAllowed: true, requiresCanonicalPolicy: false }, error: null };
+  }
   tables: Record<string, Row[]> = {};
   accesses: Access[] = [];
   injected: Injected[] = [];

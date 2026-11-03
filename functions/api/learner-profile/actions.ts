@@ -1,4 +1,5 @@
-import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import type { AuthenticatedPagesContext } from '../../lib/types';
+import {authorizeProfileAction, ProfileAccessError} from '../../lib/learner-profile-access';
 
 import { getContextUser, withAuth } from '../../lib/auth';
 import { createLogger } from '../../lib/logger';
@@ -11,19 +12,21 @@ const logger = createLogger('learner-profile-actions');
 const REPORT_TYPE_SKILL_ASSESSMENT = 'skill_assessment';
 const REPORT_TITLE_CAREER_ASSESSMENT = 'Career Assessment Report';
 
-export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
+const handleProfileAction = async (context: AuthenticatedPagesContext) => {
   const env = context.env as Record<string, string>;
-  const supabase = getServiceClient(env as any);
+  const database = getServiceClient(env as any);
 
   let body: Record<string, any>;
   try { body = await context.request.json() as any; } catch { return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON', context.request); }
 
-  const { action, ...params } = body;
-  if (!action) return apiError(400, 'VALIDATION_ERROR', 'Missing action', context.request);
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return apiError(400, 'VALIDATION_ERROR', 'Invalid request', context.request);
+  const { action, ...input } = body;
+  if (typeof action !== 'string' || !action) return apiError(400, 'VALIDATION_ERROR', 'Missing action', context.request);
 
   const startTime = Date.now();
 
   try {
+    const {client: supabase, params} = await authorizeProfileAction(database, getContextUser(context), action, input);
     switch (action) {
 
       // ──────────────────────────────────────────────
@@ -230,7 +233,11 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       case 'fetch-personal-assessment-results': {
         const { learnerId } = params;
         if (!learnerId) return apiError(400, 'VALIDATION_ERROR', 'Missing learnerId', context.request, { startTime });
-        const { data, error } = await supabase.from('personal_assessment_results').select('*').eq('learner_id', learnerId).order('created_at', { ascending: false });
+        let query = supabase.from('personal_assessment_results').select('*').eq('learner_id', learnerId);
+        if (params.completedOnly === true) query = query.eq('status', 'completed');
+        query = query.order('created_at', { ascending: false }).order('id', {ascending: false});
+        if (params.completedOnly === true) query = query.limit(1);
+        const { data, error } = await query;
         if (error) return apiDbError(error, context.request, { startTime });
         return apiSuccess(data || [], context.request, { startTime });
       }
@@ -1234,7 +1241,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const { data: classLearner, error: classLearnerErr } = await supabase.from('learners').select('school_class_id, school_id').eq('id', classLearnerId).single();
         if (classLearnerErr || !classLearner) return apiSuccess({ learner: null, classmates: [], timetable: [], educatorAssignments: [] }, context.request, { startTime });
         const [classmatesRes, assignmentsRes, timetableSlotsRes] = await Promise.allSettled([
-          classLearner.school_class_id ? supabase.from('learners').select('id, name, email, profilePicture').eq('school_class_id', classLearner.school_class_id) : Promise.resolve({ data: [] }),
+          classLearner.school_class_id ? supabase.from('zoho_recruiter_learners').select('id, name, email, profilePicture').eq('school_class_id', classLearner.school_class_id) : Promise.resolve({ data: [] }),
           classLearner.school_id ? supabase.from('school_educator_class_assignments').select('*, school_educators!inner(id, user_id, name, email)').eq('school_id', classLearner.school_id) : Promise.resolve({ data: [] }),
           classLearner.school_class_id ? supabase.from('timetable_slots').select('*, school_educators!inner(id, user_id, name)').eq('class_id', classLearner.school_class_id) : Promise.resolve({ data: [] }),
         ]);
@@ -1301,7 +1308,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       }
 
       case 'get-institutions': {
-        const queries: Record<string, any> = [
+        const queries: Array<Record<string, any>> = [
           { key: 'schools', table: 'organizations', select: 'id, name, city, state, code', filters: { organization_type: 'school', account_status: ['active', 'pending'] }, order: 'name' },
           { key: 'colleges', table: 'organizations', select: 'id, name, city, state, code', filters: { organization_type: 'college', account_status: ['active', 'pending'] }, order: 'name' },
           { key: 'universities', table: 'organizations', select: 'id, name, city, state, code', filters: { organization_type: 'university', account_status: ['active', 'pending'] }, order: 'name' },
@@ -1417,7 +1424,14 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         return apiError(400, 'VALIDATION_ERROR', `Unknown action: ${action}`, context.request, { startTime });
     }
   } catch (error: any) {
+    if (error instanceof ProfileAccessError) return apiError(error.status, 'FORBIDDEN', error.message, context.request);
     console.error(`[learner-profile/actions] action=${action}:`, error?.message || error);
     return apiDbError(error, context.request, { startTime });
   }
+};
+
+export const onRequestPost = withAuth(async (context: AuthenticatedPagesContext) => {
+  const response = await handleProfileAction(context);
+  response.headers.set('Cache-Control', 'no-store');
+  return response;
 });

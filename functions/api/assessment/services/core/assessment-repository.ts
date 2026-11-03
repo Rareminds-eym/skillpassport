@@ -69,6 +69,7 @@ export async function getSavedQuestionsForLearner(
       .eq('stream_id', streamId)
       .eq('grade_level', gradeLevel)
       .eq('question_type', questionType)
+      .is('learner_id', null)
       .eq('is_active', true)
       .order('created_at', { ascending: true })
       .limit(1)

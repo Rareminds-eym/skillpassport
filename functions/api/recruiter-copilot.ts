@@ -38,7 +38,7 @@ async function maskLockedContacts(supabase: any, orgId: string | null | undefine
   let aliasIdByUserId = new Map<string, string>();
   if (userIds.length) {
     const { data: aliasRows } = await supabase
-      .from('learners')
+      .from('zoho_recruiter_learners')
       .select('id, user_id')
       .in('user_id', userIds);
     aliasIdByUserId = new Map((aliasRows || []).map((r: any) => [r.user_id, r.id]));
@@ -317,7 +317,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       // ── Learners ──
       case 'fetch-learners': {
         const { learner_ids, name_filter, limit = 50 } = params;
-        let query = supabase.from('learners').select('*');
+        let query = supabase.from('zoho_recruiter_learners').select('*');
         if (learner_ids) query = query.in('user_id', learner_ids);
         if (name_filter) query = query.ilike('name', `%${name_filter}%`);
         query = query.not('name', 'is', null).limit(limit);
@@ -332,7 +332,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       case 'fetch-learners-basic': {
         const { learner_ids, name_filter, limit = 50 } = params;
         let query = supabase
-          .from('learners')
+          .from('zoho_recruiter_learners')
           .select('id, user_id, name, email, university, branch_field, city, state, currentCgpa, expectedGraduationDate, updated_at, resumeUrl');
         if (learner_ids) query = query.in('user_id', learner_ids);
         if (name_filter) query = query.ilike('name', `%${name_filter}%`);
@@ -346,7 +346,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
       case 'fetch-learners-with-location': {
         const { data, error } = await supabase
-          .from('learners')
+          .from('zoho_recruiter_learners')
           .select('city, state')
           .not('city', 'is', null);
         if (error) return apiDbError(error, context.request, { startTime });
@@ -355,7 +355,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
       case 'fetch-learners-university': {
         const { data, error } = await supabase
-          .from('learners')
+          .from('zoho_recruiter_learners')
           .select('university')
           .not('university', 'is', null);
         if (error) return apiDbError(error, context.request, { startTime });
@@ -364,7 +364,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
       case 'fetch-learners-grad-years': {
         const { data, error } = await supabase
-          .from('learners')
+          .from('zoho_recruiter_learners')
           .select('expectedGraduationDate');
         if (error) return apiDbError(error, context.request, { startTime });
         return apiSuccess(data || [], context.request, { startTime });
@@ -373,7 +373,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       case 'fetch-learners-enriched': {
         const { limit = 50 } = params;
         const { data, error } = await supabase
-          .from('learners')
+          .from('zoho_recruiter_learners')
           .select(`
             id, user_id, name, email, university, branch_field,
             currentCgpa, expectedGraduationDate, city, state, country,
@@ -391,7 +391,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
       case 'count-learners': {
         const { error, count } = await supabase
-          .from('learners')
+          .from('zoho_recruiter_learners')
           .select('user_id', { count: 'exact', head: true })
           .not('name', 'is', null);
         if (error) return apiDbError(error, context.request, { startTime });
@@ -400,7 +400,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
       case 'count-learners-with-location': {
         const { error, count } = await supabase
-          .from('learners')
+          .from('zoho_recruiter_learners')
           .select('user_id', { count: 'exact', head: true })
           .not('name', 'is', null)
           .not('city', 'is', null);
@@ -410,7 +410,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
       case 'count-learners-with-cgpa': {
         const { error, count } = await supabase
-          .from('learners')
+          .from('zoho_recruiter_learners')
           .select('user_id', { count: 'exact', head: true })
           .not('name', 'is', null)
           .not('currentCgpa', 'is', null);
@@ -421,7 +421,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       // ── Skills ──
       case 'fetch-skills': {
         const { learner_ids, skill_name_filter, limit = 100 } = params;
-        let query = supabase.from('skills').select('*').eq('enabled', true);
+        let query = supabase.from('zoho_recruiter_skills').select('*').eq('enabled', true);
         if (learner_ids) query = query.in('learner_id', learner_ids);
         if (skill_name_filter) query = query.ilike('name', `%${skill_name_filter}%`);
         if (limit) query = query.limit(limit);
@@ -432,7 +432,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
       case 'fetch-skills-learner-ids': {
         const { data, error } = await supabase
-          .from('skills')
+          .from('zoho_recruiter_skills')
           .select('learner_id')
           .eq('enabled', true);
         if (error) return apiDbError(error, context.request, { startTime });
@@ -441,7 +441,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
       case 'fetch-skills-names': {
         const { data, error } = await supabase
-          .from('skills')
+          .from('zoho_recruiter_skills')
           .select('name')
           .eq('enabled', true);
         if (error) return apiDbError(error, context.request, { startTime });
@@ -450,7 +450,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
       case 'count-skills': {
         const { error, count } = await supabase
-          .from('skills')
+          .from('zoho_recruiter_skills')
           .select('id', { count: 'exact', head: true })
           .eq('enabled', true);
         if (error) return apiDbError(error, context.request, { startTime });
@@ -460,7 +460,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       case 'count-skill-by-name': {
         const { skill_name } = params;
         const { count } = await supabase
-          .from('skills')
+          .from('zoho_recruiter_skills')
           .select('id', { count: 'exact', head: true })
           .eq('enabled', true)
           .ilike('name', `%${skill_name}%`);
@@ -470,7 +470,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       // ── Trainings ──
       case 'fetch-trainings': {
         const { learner_ids } = params;
-        let query = supabase.from('trainings').select('learner_id, trainingName, organization, completedDate');
+        let query = supabase.from('zoho_recruiter_trainings').select('learner_id, trainingName, organization, completedDate');
         if (learner_ids) query = query.in('learner_id', learner_ids);
         const { data, error } = await query;
         if (error) return apiDbError(error, context.request, { startTime });
@@ -480,7 +480,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       case 'count-trainings': {
         const { learner_id } = params;
         const { count } = await supabase
-          .from('trainings')
+          .from('zoho_recruiter_trainings')
           .select('id', { count: 'exact', head: true })
           .eq('learner_id', learner_id);
         return apiSuccess(count || 0, context.request, { startTime });
@@ -489,7 +489,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       // ── Certificates ──
       case 'fetch-certificates': {
         const { learner_ids } = params;
-        let query = supabase.from('certificates').select('learner_id, title, issuer, issued_on, level, enabled');
+        let query = supabase.from('zoho_recruiter_certificates').select('learner_id, title, issuer, issued_on, level, enabled');
         if (learner_ids) query = query.in('learner_id', learner_ids);
         const { data, error } = await query;
         if (error) return apiDbError(error, context.request, { startTime });
@@ -499,7 +499,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       case 'count-certificates': {
         const { learner_id } = params;
         const { count } = await supabase
-          .from('certificates')
+          .from('zoho_recruiter_certificates')
           .select('id', { count: 'exact', head: true })
           .eq('learner_id', learner_id)
           .eq('enabled', true);
@@ -602,7 +602,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const { opportunity_ids, learner_ids, stage, status, days_stuck } = params;
         const orgIds = await getOrgOpportunityScope(supabase, user);
         if (!orgIds || orgIds.length === 0) return apiSuccess([], context.request, { startTime });
-        let query = supabase.from('pipeline_candidates').select('*');
+        let query = supabase.from('zoho_recruiter_pipeline_candidates').select('*');
         if (opportunity_ids) query = query.in('opportunity_id', opportunity_ids);
         if (learner_ids) query = query.in('learner_id', learner_ids);
         if (stage) query = query.eq('stage', stage);
@@ -623,7 +623,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const orgIds = await getOrgOpportunityScope(supabase, user);
         if (!orgIds || orgIds.length === 0) return apiSuccess([], context.request, { startTime });
         const { data, error } = await supabase
-          .from('pipeline_candidates')
+          .from('zoho_recruiter_pipeline_candidates')
           .select('*, learners:learner_id ( name, email, university, currentCgpa )')
           .in('opportunity_id', opportunity_ids)
           .in('opportunity_id', orgIds) // org gate
@@ -638,7 +638,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const orgIds = await getOrgOpportunityScope(supabase, user);
         if (!orgIds || orgIds.length === 0) return apiSuccess([], context.request, { startTime });
         let query = supabase
-          .from('pipeline_candidates')
+          .from('zoho_recruiter_pipeline_candidates')
           .select('*, opportunities:opportunity_id ( job_title, company_name )');
         if (opportunity_ids) query = query.in('opportunity_id', opportunity_ids);
         if (learner_ids) query = query.in('learner_id', learner_ids);
@@ -656,7 +656,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         if (!orgIds || orgIds.length === 0) return apiSuccess([], context.request, { startTime });
         const today = new Date().toISOString().split('T')[0];
         const { data, error } = await supabase
-          .from('pipeline_candidates')
+          .from('zoho_recruiter_pipeline_candidates')
           .select('*, opportunities:opportunity_id ( job_title, company_name )')
           .eq('status', 'active')
           .in('opportunity_id', orgIds) // org gate
@@ -672,7 +672,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const orgIds = await getOrgOpportunityScope(supabase, user);
         if (!orgIds || orgIds.length === 0) return apiSuccess([], context.request, { startTime });
         let query = supabase
-          .from('applied_jobs')
+          .from('zoho_recruiter_applied_jobs')
           .select('*, learners:learner_id ( user_id, name, email, university, currentCgpa, city, state, resumeUrl )');
         if (opportunity_ids) query = query.in('opportunity_id', opportunity_ids);
         if (learner_ids) query = query.in('learner_id', learner_ids);

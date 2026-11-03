@@ -8,6 +8,7 @@ import { Card, CardContent, Button } from '@/shared/ui';
 
 // Store
 import { useAssessmentStore } from '../model/assessmentStore';
+import {resumeAssessmentSnapshot} from '../model/assessmentSession';
 
 // Services
 import {
@@ -119,6 +120,32 @@ const AssessmentTestPage: React.FC = () => {
   // This persists even when isAdaptiveCompleted path goes through section-complete → Continue
   const resumeTargetRef = useRef<{ sectionIndex: number; questionIndex: number; answers: Record<string, any> } | null>(null);
 
+  const activeOwnerRef=useRef(user?.id);
+  activeOwnerRef.current=user?.id;
+  const operationRef=useRef(0);
+  const previousSectionIndexRef=useRef<number|null>(null);
+  const timerPositionRef=useRef<string|null>(null);
+  const resumeTimerRef=useRef<{section:number;question:number;remaining:number|null}|null>(null);
+  useEffect(()=>{
+    useAssessmentStore.getState().bindOwner(user?.id??null);
+    operationRef.current++;
+    setResumeData(null);
+    setSelectedGrade(null);
+    setSelectedStream(null);
+    setSelectedCategory(null);
+    setSelectedAnswer(null);
+    setElapsedTime(0);
+    setAdaptiveElapsedTime(0);
+    setIsLoadingResume(false);
+    resumeTimerRef.current=null;
+    timerPositionRef.current=null;
+    setIsResumingAdaptive(false);
+    pendingAIResumeRef.current=null;
+    resumeTargetRef.current=null;
+    setCurrentScreen('loading');
+    return ()=>{operationRef.current++;};
+  },[user?.id]);
+
   // Learner grade hook - get complete profile data
   const {
     learnerId,
@@ -152,6 +179,9 @@ const AssessmentTestPage: React.FC = () => {
     learnerId: learnerId || '',
     gradeLevel: getAdaptiveGradeLevel(selectedGrade),
     onTestComplete: async (results) => {
+      const generation=store.generation;
+      const current=()=>useAssessmentStore.getState().generation===generation && activeOwnerRef.current===user?.id;
+      if(!current())return;
       // WHY: The adaptive session ID is the only link the backend (save-results)
       // uses to derive aptitude_scores/aptitude_overall via the adaptive results.
       // It must survive a page reload/resume between finishing the adaptive section
@@ -180,6 +210,7 @@ const AssessmentTestPage: React.FC = () => {
         logger.warn('[onTestComplete] Missing sessionId or attemptId for adaptive link');
       }
 
+      if(!current())return;
       // Show section-complete screen; user clicks "Submit Assessment" to submit.
       setCurrentScreen('section-complete');
     },
@@ -191,8 +222,9 @@ const AssessmentTestPage: React.FC = () => {
   // Initialize AI questions hook for aptitude and knowledge sections
   // Use store.streamId as the primary source since it's set during initializeAssessment
   // Also use store.gradeLevel as it's more reliable than selectedGrade
-  const effectiveStream = store.streamId || selectedStream;
-  const effectiveGrade = store.gradeLevel || selectedGrade;
+  const ownsCurrentState=store.ownerId===(user?.id??null);
+  const effectiveStream = ownsCurrentState?(store.attemptId?store.streamId:selectedStream):null;
+  const effectiveGrade = ownsCurrentState?(store.gradeLevel || selectedGrade):null;
 
   // Per-question time limit for the adaptive aptitude test.
   // Middle school students get 5 minutes (300s) per question; all other grades get 60s.
@@ -201,8 +233,8 @@ const AssessmentTestPage: React.FC = () => {
   const aiQuestionsHook = useAIQuestions({
     gradeLevel: effectiveGrade as any,
     learnerStream: effectiveStream,
-    learnerId: learnerId,
-    attemptId: store.attemptId,
+    learnerId: ownsCurrentState?learnerId:null,
+    attemptId: ownsCurrentState?store.attemptId:null,
     learnerProgram: learnerProgram,
     isResuming: !!resumeData || isResumingAdaptive // Flag to indicate resume operation
   });
@@ -279,7 +311,11 @@ const AssessmentTestPage: React.FC = () => {
   }, [aiQuestionsHook.loading, aiQuestionsHook.aiQuestions, aiQuestionsHook.error, store.sections, store, currentScreen]);
 
   // Initialize assessment on mount
-  useEffect((): void => {
+  useEffect(() => {
+    let cancelled=false;
+    const operation=operationRef.current;
+    const generation=useAssessmentStore.getState().generation;
+    const current=()=>!cancelled&&operationRef.current===operation&&useAssessmentStore.getState().generation===generation;
     const initAssessment = async (): Promise<void> => {
       if (!user?.id) return;
 
@@ -290,6 +326,7 @@ const AssessmentTestPage: React.FC = () => {
       try {
         // Check if there's an in-progress assessment to resume
         const inProgressResponse = await checkInProgress();
+        if(!current())return;
 
         if (inProgressResponse.success && inProgressResponse.hasInProgress) {
           // Show resume prompt; sections are fetched on Resume click
@@ -299,11 +336,13 @@ const AssessmentTestPage: React.FC = () => {
           setCurrentScreen('grade-selection');
         }
       } catch {
+        if(!current())return;
         setCurrentScreen('grade-selection');
       }
     };
 
     initAssessment();
+    return ()=>{cancelled=true;};
   }, [user?.id, learnerId, loadingLearnerGrade]);
 
   // Handle stream/category selection (defined first so it can be used by handleGradeSelect)
@@ -311,64 +350,49 @@ const AssessmentTestPage: React.FC = () => {
     const gradeForAssessment = gradeOverride || selectedGrade;
     if (!gradeForAssessment) return;
 
+    if(user?.id!==activeOwnerRef.current)return;
+    const operation=++operationRef.current;
+    const owner=user?.id;
+    let generation=useAssessmentStore.getState().generation;
+    const current=()=>operation===operationRef.current&&owner===activeOwnerRef.current&&generation===useAssessmentStore.getState().generation;
     setSelectedStream(streamId);
     store.setLoading(true);
     store.setStatus('loading');
 
     try {
-      // Check if there's already an in-progress assessment for this grade/stream
-      // to avoid creating duplicate attempts
-      const resumeStreamId = resumeData?.streamId || resumeData?.stream_id;
-      if (resumeData?.gradeLevel === gradeForAssessment && resumeStreamId === streamId) {
-        // Resume existing attempt instead of creating a new one
-        const { gradeLevel, streamId: resumeStreamId, currentSectionIndex, currentQuestionIndex, answers, elapsedTime, attemptId, sections } = resumeData;
-
-        if (sections) {
-          store.initializeAssessment(sections, attemptId, gradeLevel, resumeStreamId);
-          store.setCurrentQuestion(currentSectionIndex || 0, currentQuestionIndex || 0);
-
-          if (answers && Object.keys(answers).length > 0) {
-            Object.entries(answers).forEach(([questionId, answer]) => {
-              store.saveAnswer(questionId, answer);
-            });
-          }
-
-          if (elapsedTime) {
-            setElapsedTime(elapsedTime);
-          }
-
-          setShowSectionIntro(false);
-          setCurrentScreen('assessment');
-          setResumeData(null); // Clear resume data after resuming
-        }
-      } else {
-        // Create new assessment only if there's no matching in-progress one
-        const result: StartAssessmentResponse = await startAssessment({
-          gradeLevel: gradeForAssessment,
-          streamId,
-        });
-
-        if (result.success && result.attemptId) {
-          store.initializeAssessment(result.sections, result.attemptId, gradeForAssessment, streamId);
-          setShowSectionIntro(true); // Show section intro before questions
-          setCurrentScreen('section-intro');
-          setResumeData(null); // Clear any old resume data
-          // Reset timers for fresh start
-          setElapsedTime(0);
-          setAdaptiveElapsedTime(0);
-        } else {
-          store.setError(result.error || 'Failed to start assessment');
-          setCurrentScreen('error');
-        }
+      const result:StartAssessmentResponse=await startAssessment({gradeLevel:gradeForAssessment,streamId});
+      if(!current())return;
+      if(!result.success||!result.attempt||!result.sections)throw new Error(result.error||'Failed to start assessment');
+      setSelectedGrade(result.attempt.grade_level);
+      setSelectedStream(result.attempt.stream_id);
+      if(result.isResumed){
+        if(!result.resume)throw new Error('Assessment resume unavailable');
+        // Reuse follows the same reviewed resume flow, including owned adaptive state.
+        setResumeData(result.resume);
+        setCurrentScreen('resume-prompt');
+      }else{
+        pendingAIResumeRef.current=null;
+        resumeTargetRef.current=null;
+        previousSectionIndexRef.current=0;
+        timerPositionRef.current=null;
+        resumeTimerRef.current=null;
+        store.initializeAssessment(result.sections,result.attempt.id,result.attempt.grade_level,result.attempt.stream_id);
+        generation=useAssessmentStore.getState().generation;
+        setShowSectionIntro(true);
+        setCurrentScreen('section-intro');
+        setResumeData(null);
+        setElapsedTime(0);
+        setAdaptiveElapsedTime(0);
       }
     } catch (err: unknown) {
+      if(!current())return;
       const error = err instanceof Error ? err.message : 'Unknown error';
       store.setError(error);
       setCurrentScreen('error');
     } finally {
-      store.setLoading(false);
+      if(current())store.setLoading(false);
     }
-  }, [selectedGrade, resumeData, store]);
+  }, [selectedGrade, store, user?.id]);
 
   // Handle grade selection
   const handleGradeSelect = useCallback((gradeLevel: string): void => {
@@ -400,7 +424,11 @@ const AssessmentTestPage: React.FC = () => {
   // Handle resume assessment from resume prompt screen
   const handleResumeAssessment = useCallback(async (): Promise<void> => {
     if (!resumeData) return;
-
+    if(user?.id!==activeOwnerRef.current)return;
+    const operation=++operationRef.current;
+    const owner=user?.id;
+    let generation=useAssessmentStore.getState().generation;
+    const current=()=>operation===operationRef.current&&owner===activeOwnerRef.current&&generation===useAssessmentStore.getState().generation;
     setIsLoadingResume(true);
     // Set flag immediately to prevent startTest() from being called during resume
     const isAdaptiveInProgress = resumeData.isAdaptiveInProgress;
@@ -412,20 +440,22 @@ const AssessmentTestPage: React.FC = () => {
 
     try {
       const gradeLevel = resumeData.gradeLevel;
-      const streamId = resumeData.streamId || resumeData.stream_id;
-      const { currentSectionIndex, currentQuestionIndex, answers, elapsedTime, attemptId, sections } = resumeData;
+      const streamId = resumeData.streamId ?? resumeData.stream_id ?? null;
+      const { currentSectionIndex, currentQuestionIndex, answers, sections } = resumeData;
 
       // sections are loaded by checkInProgress and stored in resumeData
       const sectionsToUse = sections;
 
       if (sectionsToUse) {
-        // Initialize store with sections
-        store.initializeAssessment(
-          sectionsToUse,
-          attemptId,
-          gradeLevel,
-          streamId
-        );
+        const snapshot=resumeAssessmentSnapshot(resumeData);
+        previousSectionIndexRef.current=snapshot.currentSectionIndex;
+        timerPositionRef.current=null;
+        resumeTimerRef.current=null;
+        resumeTimerRef.current={section:snapshot.currentSectionIndex,question:snapshot.currentQuestionIndex,remaining:snapshot.timerRemaining};
+        store.hydrateAssessment(snapshot);
+        generation=useAssessmentStore.getState().generation;
+        setElapsedTime(snapshot.elapsedTime);
+        setAdaptiveElapsedTime(isAdaptiveInProgress?snapshot.elapsedTime:0);
 
         // Set selectedGrade and selectedStream to trigger AI questions loading
         setSelectedGrade(gradeLevel);
@@ -443,11 +473,6 @@ const AssessmentTestPage: React.FC = () => {
           store.setCurrentQuestion(currentSectionIndex || 0, currentQuestionIndex || 0);
 
           // Restore all previous answers
-          if (answers && Object.keys(answers).length > 0) {
-            Object.entries(answers).forEach(([questionId, answer]) => {
-              store.saveAnswer(questionId, answer);
-            });
-          }
 
           // Check if user was in a post-adaptive section (AI section)
           if (currentSectionIndex > adaptiveSectionIndex) {
@@ -495,7 +520,7 @@ const AssessmentTestPage: React.FC = () => {
               ? adaptiveSectionMinutes * 60
               : (resumeData.elapsedTime || 0);
             // Set after tick so the section-change effect (which resets to 0) fires first
-            setTimeout(() => setElapsedTime(restoredElapsed), 0);
+            setTimeout(() => {if(current())setElapsedTime(restoredElapsed);}, 0);
 
             setShowSectionIntro(false);
             setCurrentScreen('section-complete');
@@ -509,6 +534,7 @@ const AssessmentTestPage: React.FC = () => {
         if (isAdaptiveInProgress && resumeData.adaptiveSession) {
           // Find the adaptive section
           const adaptiveSection = sectionsToUse.find((s: any) => s.isAdaptive || s.name === 'adaptive_aptitude');
+          if(!adaptiveSection)throw new Error('Adaptive resume unavailable');
           if (adaptiveSection) {
             const adaptiveSectionIndex = sectionsToUse.indexOf(adaptiveSection);
 
@@ -520,8 +546,9 @@ const AssessmentTestPage: React.FC = () => {
               const resumedSessionData = await AdaptiveAptitudeApiService.resumeTest(
                 resumeData.adaptiveSession.sessionId
               );
+              if(!current())return;
 
-              if (resumedSessionData.session && resumedSessionData.currentQuestion) {
+              if (resumedSessionData.session?.id === resumeData.adaptiveSession.sessionId && resumedSessionData.currentQuestion) {
                 // Initialize both store AND hook with resumed session data
                 store.initializeAdaptiveSession(
                   resumedSessionData.session,
@@ -541,6 +568,7 @@ const AssessmentTestPage: React.FC = () => {
                 throw new Error('Failed to resume adaptive test');
               }
             } catch (resumeError) {
+              if(!current())return;
               store.setError('Failed to resume adaptive test');
               setCurrentScreen('error');
               setIsResumingAdaptive(false);
@@ -553,16 +581,8 @@ const AssessmentTestPage: React.FC = () => {
           store.setCurrentQuestion(currentSectionIndex || 0, currentQuestionIndex || 0);
 
           // Restore all previous answers
-          if (answers && Object.keys(answers).length > 0) {
-            Object.entries(answers).forEach(([questionId, answer]) => {
-              store.saveAnswer(questionId, answer);
-            });
-          }
 
           // Set elapsed time for non-timed sections
-          if (elapsedTime) {
-            setElapsedTime(elapsedTime);
-          }
 
           // Check if resuming to an AI section (aptitude or knowledge)
           const currentSection = sectionsToUse[currentSectionIndex || 0];
@@ -597,23 +617,35 @@ const AssessmentTestPage: React.FC = () => {
         setCurrentScreen('error');
       }
     } catch (error) {
+      if(!current())return;
       const err = error instanceof Error ? error.message : 'Unknown error';
       store.setError(err);
       setCurrentScreen('error');
     } finally {
-      setIsLoadingResume(false);
+      if(current()){setIsLoadingResume(false);setIsResumingAdaptive(false);}
     }
-  }, [resumeData, store, adaptiveHook]);
+  }, [resumeData, store, adaptiveHook, user?.id]);
 
   // Handle start fresh - abandon previous attempt
   const handleStartFresh = useCallback(async (): Promise<void> => {
+    if(user?.id!==activeOwnerRef.current)return;
+    const operation=++operationRef.current;
+    const owner=user?.id;
+    let generation=useAssessmentStore.getState().generation;
+    const current=()=>operation===operationRef.current&&owner===activeOwnerRef.current&&generation===useAssessmentStore.getState().generation;
     setIsLoadingResume(true);
     try {
       if (resumeData?.attemptId) {
-        await abandonAttempt(resumeData.attemptId);
+        const response=await abandonAttempt(resumeData.attemptId);
+        if(!current())return;
+        if(!response.success)throw new Error(response.error||'Could not abandon assessment');
       }
       // Reset store to clear all old state
       store.reset();
+      generation=useAssessmentStore.getState().generation;
+      pendingAIResumeRef.current=null;
+      resumeTimerRef.current=null;
+      timerPositionRef.current=null;
       // Clear resume data and show grade selection
       setResumeData(null);
       setSelectedGrade(null);
@@ -624,11 +656,11 @@ const AssessmentTestPage: React.FC = () => {
       setShowSectionIntro(true);
       setCurrentScreen('grade-selection');
     } catch (error) {
-      // Silently fail on abandon
+      if(current()){store.setError(error instanceof Error?error.message:'Could not abandon assessment');setCurrentScreen('error');}
     } finally {
-      setIsLoadingResume(false);
+      if(current())setIsLoadingResume(false);
     }
-  }, [resumeData, store]);
+  }, [resumeData, store,user?.id]);
 
   // Handle answer submission
   const handleAnswerSubmit = useCallback((questionId: string, answer: unknown): void => {
@@ -847,14 +879,17 @@ const AssessmentTestPage: React.FC = () => {
     }
   }, [store.currentSectionIndex, currentScreen, showSectionIntro, adaptiveHook.currentQuestion, store.sections]);
 
-  // Reset AI section timer to 59 when question changes
-  useEffect(() => {
-    if (store.sections.length === 0) return;
-    const currentSection = store.sections[store.currentSectionIndex];
-    if (isAISection(currentSection)) {
-      setAiSectionTimer(59);
-    }
-  }, [store.currentQuestionIndex, store.currentSectionIndex, store.sections]);
+  // Restore a saved remaining value once per position; list hydration must not reset it.
+  useEffect(()=>{
+    const section=store.sections[store.currentSectionIndex];
+    if(!isAISection(section))return;
+    const key=`${store.generation}:${store.attemptId}:${store.currentSectionIndex}:${store.currentQuestionIndex}`;
+    if(timerPositionRef.current===key)return;
+    timerPositionRef.current=key;
+    const saved=resumeTimerRef.current;
+    setAiSectionTimer(saved?.section===store.currentSectionIndex&&saved?.question===store.currentQuestionIndex?(saved.remaining??59):59);
+    resumeTimerRef.current=null;
+  },[store.generation,store.attemptId,store.currentSectionIndex,store.currentQuestionIndex,store.sections]);
 
   // AI section per-question countdown (59 → 0, loops back to 59)
   useEffect(() => {
@@ -869,17 +904,7 @@ const AssessmentTestPage: React.FC = () => {
     return () => clearInterval(timer);
   }, [store.currentSectionIndex, store.currentQuestionIndex, currentScreen, showSectionIntro, store.sections]);
 
-  // Reset AI section timer to 59 when question changes
-  useEffect(() => {
-    if (store.sections.length === 0) return;
-    const currentSection = store.sections[store.currentSectionIndex];
-    if (isAISection(currentSection)) {
-      setAiSectionTimer(59);
-    }
-  }, [store.currentQuestionIndex, store.currentSectionIndex, store.sections]);
-
   // Reset elapsed time when section changes
-  const previousSectionIndexRef = useRef<number | null>(null);
   useEffect(() => {
     if (previousSectionIndexRef.current !== null && previousSectionIndexRef.current !== store.currentSectionIndex) {
       setElapsedTime(0);
@@ -1130,8 +1155,9 @@ const AssessmentTestPage: React.FC = () => {
                 canGoPrevious={false}
                 onNext={async () => {
                   if (selectedAnswer) {
+                    const generation=store.generation;
                     await adaptiveHook.submitAnswer(selectedAnswer);
-                    setSelectedAnswer(null);
+                    if(useAssessmentStore.getState().generation===generation)setSelectedAnswer(null);
                   }
                 }}
                 onPrevious={() => {}}

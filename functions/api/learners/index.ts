@@ -8,7 +8,7 @@
  */
 import { withAuth, getContextUser } from '../../lib/auth';
 import { getServiceClient } from '../../lib/supabase';
-import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import type { AuthenticatedPagesContext } from '../../lib/types';
 import { apiSuccess, apiError, apiDbError, apiMethodNotAllowed } from '../../lib/response';
 
 export const onRequest = async (context: any) => {
@@ -24,10 +24,13 @@ const onRequestGet = async (context: any) => {
   const learnerId = url.searchParams.get('id');
 
   // Public endpoint: allow unauthenticated access to single learner profile
-  // (privacy is enforced on frontend)
+  // Private imports are excluded by a server-owned predicate, without RLS.
   if (learnerId) {
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(learnerId)) {
+      return apiError(400, 'VALIDATION_ERROR', 'Invalid learner ID', context.request);
+    }
     const { data, error } = await supabase
-      .from('learners')
+      .from('zoho_recruiter_learners')
       .select('*')
       .or(`id.eq.${learnerId},user_id.eq.${learnerId}`)
       .maybeSingle();
@@ -38,7 +41,7 @@ const onRequestGet = async (context: any) => {
   }
 
   // All other GETs require authentication
-  return withAuth(async (context: AuthenticatedContext) => {
+  return withAuth(async (context: AuthenticatedPagesContext) => {
     const user = getContextUser(context);
     const orgFilter = `college_id.eq.${user.org_id},school_id.eq.${user.org_id},universityId.eq.${user.org_id}`;
 
@@ -79,7 +82,7 @@ const onRequestGet = async (context: any) => {
 /**
  * POST /api/learners — Create or update learner record
  */
-export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
+export const onRequestPost = withAuth(async (context: AuthenticatedPagesContext) => {
   const user = getContextUser(context);
   const env = context.env as Record<string, string>;
   const supabase = getServiceClient(env as any);

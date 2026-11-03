@@ -14,7 +14,9 @@ import { analyzeAssessmentWithGemini } from '../api/geminiAssessmentService';
 import * as assessmentService from '../api/assessmentApiService';
 import type { GradeLevel } from '../model/types';
 import { useAssessmentStore } from './assessmentStore';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
+import { fetchOwnAssessmentRecord, patchOwnAssessment } from '../api/assessmentRecords';
+import {getOwnAssessmentLearner} from '../api/learnerContext';
 
 // Import static question banks for fallback
 // @ts-ignore - JS exports
@@ -78,15 +80,8 @@ interface UseAssessmentSubmissionResult {
  */
 const getlearnerRecordId = async (authUserId: string): Promise<string | null> => {
   try {
-    const { data: learner, error } = await supabase
-      .from('learners')
-      .select('id')
-      .eq('user_id', authUserId)
-      .maybeSingle();
-
-    if (error || !learner) {
-      return null;
-    }
+    const learner = await getOwnAssessmentLearner(authUserId);
+    if (!learner) return null;
 
     return learner.id;
   } catch (err) {
@@ -389,29 +384,9 @@ const buildlearnerContext = async (
   try {
     // Fetch learner record
     console.log('[LEARNER-CONTEXT] Fetching learner record for user_id:', userId);
-    const { data: learner, error: learnerError } = await supabase
-      .from('learners')
-      .select(`
-        grade,
-        branch_field,
-        course_name,
-        program_id,
-        learner_type,
-        school_id,
-        college_id,
-        programs (
-          name,
-          code,
-          degree_level
-        )
-      `)
-      .eq('user_id', userId)
-      .maybeSingle();
-
-    console.log('[LEARNER-CONTEXT] Learner query result:', { learner, learnerError });
-
-    if (learnerError || !learner) {
-      console.warn('⚠️ Could not fetch learner record:', learnerError?.message);
+    const learner = await getOwnAssessmentLearner(userId);
+    if (!learner) {
+      console.warn('Learner context unavailable');
       console.warn('⚠️ Falling back to fallback context');
       return buildFallbackContext(learnerStream, gradeLevel, selectedCategory, learnerProgram);
     }
@@ -516,66 +491,15 @@ const buildFallbackContext = (
  * Store learner context in assessment attempt
  */
 const storelearnerContext = async (attemptId: string, context: LearnerContext): Promise<void> => {
-  try {
-    // Check if context has meaningful data
-    const hasMeaningfulData = context.rawGrade && context.rawGrade.trim() !== '';
-
-    if (!hasMeaningfulData) {
-      console.warn('⚠️ [LEARNER-CONTEXT] Skipping update - no meaningful data');
-      return;
-    }
-
-    console.log('📝 [LEARNER-CONTEXT] Storing context:', {
-      attemptId,
-      contextData: JSON.stringify(context, null, 2),
-    });
-
-    const { data, error } = await supabase
-      .from('personal_assessment_attempts')
-      .update({ learner_context: context })
-      .eq('id', attemptId)
-      .select();
-
-    if (error) {
-      console.error('❌ [LEARNER-CONTEXT] Failed to store:', error);
-    } else {
-      console.log('✅ [LEARNER-CONTEXT] Successfully stored');
-      console.log('✅ [LEARNER-CONTEXT] Updated record:', data);
-    }
-  } catch (err) {
-    console.error('❌ [LEARNER-CONTEXT] Exception:', err);
-  }
+  if (!context.rawGrade?.trim()) return;
+  const confirmation = await apiPost<{ success: boolean; attemptId: string }>('/assessment-context', { attemptId, context });
+  if (confirmation.success !== true || confirmation.attemptId !== attemptId.toLowerCase()) throw new Error('Assessment context confirmation unavailable');
 };
 
 /**
  * Fetch adaptive aptitude results
  */
-const fetchAdaptiveResults = async (sessionId: string): Promise<any | null> => {
-  try {
-    const { data, error } = await supabase
-      .from('adaptive_aptitude_results')
-      .select('*')
-      .eq('session_id', sessionId)
-      .maybeSingle();
 
-    if (error || !data) {
-      console.warn('⚠️ No adaptive results found:', error?.message);
-      return null;
-    }
-
-    console.log('✅ Adaptive results fetched:', {
-      level: data.aptitude_level,
-      accuracy: data.overall_accuracy,
-      totalQuestions: data.total_questions,
-      totalCorrect: data.total_correct,
-    });
-
-    return data;
-  } catch (err) {
-    console.error('❌ Error fetching adaptive results:', err);
-    return null;
-  }
-};
 
 /**
  * Computes the Stream Knowledge score from the knowledge section's questions and
@@ -692,14 +616,7 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
 
         if (!attemptId) {
           try {
-            const { data: latestAttempt } = await supabase
-              .from('personal_assessment_attempts')
-              .select('id, stream_id, grade_level')
-              .eq('learner_id', learnerRecordId)
-              .eq('status', 'in_progress')
-              .order('created_at', { ascending: false })
-              .limit(1)
-              .single();
+            const latestAttempt = await fetchOwnAssessmentRecord('in-progress', learnerRecordId);
 
             if (latestAttempt) {
               attemptId = latestAttempt.id;
@@ -723,11 +640,7 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
         let finalLearnerContext: LearnerContext | null = null;
         
         try {
-          const { data: attemptData } = await supabase
-            .from('personal_assessment_attempts')
-            .select('learner_context')
-            .eq('id', attemptId)
-            .single();
+          const attemptData = await fetchOwnAssessmentRecord('attempt', learnerRecordId, attemptId);
           
           if (attemptData?.learner_context) {
             console.log('✅ Using existing learner context from attempt:', attemptData.learner_context);
@@ -790,33 +703,14 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
         if (sessionIdFromAnswers && attemptId) {
           console.log('🔗 [Preparing] Ensuring session ID is saved to attempt table...');
           try {
-            const { error: updateError } = await supabase
-              .from('personal_assessment_attempts')
-              .update({ adaptive_aptitude_session_id: sessionIdFromAnswers })
-              .eq('id', attemptId);
-            
-            if (updateError) {
-              console.error('❌ [Preparing] Failed to save session ID to attempt:', updateError);
-            } else {
-              console.log('✅ [Preparing] Session ID saved to attempt table');
-            }
+            await patchOwnAssessment(attemptId, { adaptiveAptitudeSessionId: sessionIdFromAnswers });
           } catch (saveErr) {
             console.error('❌ [Preparing] Error saving session ID:', saveErr);
           }
         }
         
         // Refetch attempt to verify session ID is saved
-        const { data: latestAttempt, error: attemptError } = await supabase
-          .from('personal_assessment_attempts')
-          .select('adaptive_aptitude_session_id, grade_level')
-          .eq('id', attemptId)
-          .maybeSingle();
-        
-        if (attemptError) {
-          console.error('❌ [Preparing] Error refetching attempt:', attemptError);
-        } else {
-          console.log('✅ [Preparing] Latest attempt data:', latestAttempt);
-        }
+        const latestAttempt = await fetchOwnAssessmentRecord('attempt', learnerRecordId, attemptId);
         
         // Use session ID from answers, fallback to attempt's saved session ID
         // (for high school/simplified assessments that might have adaptive linked from elsewhere)

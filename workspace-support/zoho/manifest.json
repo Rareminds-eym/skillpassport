@@ -1,0 +1,13 @@
+[
+  "ZOHO_RECRUIT_INTEGRATION_PLAN.md",
+  "ZOHO_LOCAL_TESTING.md",
+  "scripts/__tests__/zoho-dashboard-ui.test.mjs",
+  "scripts/__tests__/zoho-local-config.test.mjs",
+  "scripts/__tests__/zoho-local-migrations.test.mjs",
+  "scripts/__tests__/zoho-operator-ui.test.mjs",
+  "scripts/__tests__/zoho-policy-ui.test.mjs",
+  "scripts/lib/zoho-local-config.mjs",
+  "scripts/lib/zoho-local-migrations.mjs",
+  "scripts/zoho-local-migrations.mjs",
+  "scripts/zoho-local-runtime.mjs"
+]

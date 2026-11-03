@@ -10,6 +10,7 @@
 
 import { useCallback } from 'react';
 import { useAssessmentStore } from './assessmentStore';
+import {resumeAssessmentSnapshot} from './assessmentSession';
 import * as assessmentApi from '../api/assessmentApiService';
 import { getLogger } from '@/shared/config/logging';
 
@@ -33,6 +34,9 @@ export function useAssessmentService(options?: UseAssessmentServiceOptions) {
 
   const startAssessment = useCallback(
     async (gradeLevel: string, streamId?: string | null) => {
+      const generation=store.generation;
+      const current=()=>useAssessmentStore.getState().generation===generation;
+      if(!current())return {success:false,error:'Assessment session changed'};
       try {
         logger.info('Starting assessment', { gradeLevel, streamId });
         store.setLoading(true);
@@ -42,6 +46,7 @@ export function useAssessmentService(options?: UseAssessmentServiceOptions) {
           gradeLevel,
           streamId: streamId || undefined,
         });
+        if(!current())return {success:false,error:'Assessment session changed'};
 
         if (!response.success) {
           const error = response.error || 'Failed to start assessment';
@@ -51,24 +56,26 @@ export function useAssessmentService(options?: UseAssessmentServiceOptions) {
         }
 
         // Initialize store with assessment data
-        store.initializeAssessment(
-          response.sections || [],
-          response.attemptId || '',
-          gradeLevel,
-          streamId || ''
-        );
+        if(!response.attempt||!response.sections)throw new Error('Assessment start unavailable');
+        if(response.isResumed){
+          if(!response.resume)throw new Error('Assessment resume unavailable');
+          store.hydrateAssessment(resumeAssessmentSnapshot(response.resume));
+        }else{
+          store.initializeAssessment(response.sections,response.attempt.id,response.attempt.grade_level,response.attempt.stream_id);
+        }
 
         logger.info('Assessment started successfully', { attemptId: response.attemptId });
         options?.onSuccess?.('Assessment started');
-        return { success: true, attemptId: response.attemptId };
+        return { success: true, attemptId: response.attemptId,isResumed:response.isResumed };
       } catch (err: any) {
+        if(!current())return {success:false,error:'Assessment session changed'};
         const error = err.message || 'Unexpected error starting assessment';
         store.setError(error);
         options?.onError?.(error);
         logger.error('Error starting assessment', err);
         return { success: false, error };
       } finally {
-        store.setLoading(false);
+        if(current())store.setLoading(false);
       }
     },
     [store, options]

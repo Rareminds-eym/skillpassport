@@ -150,9 +150,32 @@ type EducatorPreflight =
 
 export class SyncService {
   private db: DbClient;
+  private env: PagesEnv;
 
   constructor(env: PagesEnv) {
+    this.env = env;
     this.db = createDb(env);
+  }
+
+  /** Obsolete generic replay must never reconstruct a private imported identity. */
+  private async genericIdentitySyncAllowed(userId: string): Promise<boolean> {
+    const { data, error } = await this.db.rpc('zoho_generic_identity_sync_policy', { p_user: userId });
+    if (error || !data || typeof data !== 'object' || Array.isArray(data) || Object.keys(data).length !== 3 ||
+        data.version !== 1 || typeof data.genericSyncAllowed !== 'boolean' || typeof data.requiresCanonicalPolicy !== 'boolean')
+      throw new Error('Identity synchronization policy unavailable');
+    if (!data.genericSyncAllowed) return false;
+    const source = this.env.ZOHO_CANDIDATE_SOURCE;
+    if (!data.requiresCanonicalPolicy && !source && this.env.ZOHO_PROJECTION_DELIVERY_ENABLED !== 'true') return true;
+    if (typeof source?.getSubjectSyncPolicy !== 'function') throw new Error('Canonical identity policy unavailable');
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      const result = await Promise.race([Promise.resolve().then(() => source.getSubjectSyncPolicy!({ userId })),
+        new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error('Canonical identity policy unavailable')), 5000); })]);
+      if (!result || typeof result !== 'object' || Array.isArray(result) || Object.keys(result).length !== 2 ||
+          !('version' in result) || result.version !== 1 || !('genericSyncAllowed' in result) || typeof result.genericSyncAllowed !== 'boolean')
+        throw new Error('Canonical identity policy unavailable');
+      return result.genericSyncAllowed;
+    } finally { if (timer !== undefined) clearTimeout(timer); }
   }
 
   async syncUser(data: unknown): Promise<SyncResult> {
@@ -162,6 +185,7 @@ export class SyncService {
     } catch (err) {
       return fail('VALIDATION_ERROR', err instanceof Error ? err.message : 'Invalid user data', false);
     }
+    if (!await this.genericIdentitySyncAllowed(parsed.id)) return ok();
     const userMetadata = parsed.user_metadata ?? {};
 
     const updatePayload: Record<string, unknown> = { id: parsed.id };
@@ -328,6 +352,7 @@ export class SyncService {
     let parsed: z.infer<typeof MembershipPayloadSchema>;
     try { parsed = MembershipPayloadSchema.parse(data); }
     catch (err) { return fail('VALIDATION_ERROR', err instanceof Error ? err.message : 'Invalid membership data', false); }
+    if (!await this.genericIdentitySyncAllowed(parsed.user_id)) return ok();
     const roles = parsed.roles ?? ['member'];
 
     const inviteEducator = parsed.source === 'invite'

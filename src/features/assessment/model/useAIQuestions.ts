@@ -105,23 +105,33 @@ export const useAIQuestions = ({
   // Use ref to track loading state synchronously to prevent race conditions
   const isLoadingRef = useRef(false);
 
-  // Cleanup function to reset state on unmount
-  useEffect(() => {
-    return () => {
-      setLoading(false);
-      isLoadingRef.current = false;
-      setError(null);
-      setProgress({
-        stage: 'idle',
-        aptitudeProgress: 0,
-        knowledgeProgress: 0,
-        estimatedTimeRemaining: 0,
-        message: ''
-      });
+  const scope=JSON.stringify([gradeLevel,learnerStream,learnerId,attemptId,learnerProgram]);
+  const questionsScope=useRef<string|null>(null);
+  const activeScope=useRef(scope);
+  activeScope.current=scope;
+  const requestGeneration=useRef(0);
+  const intervals=useRef<Set<ReturnType<typeof setInterval>>>(new Set());
+  useEffect(()=>{
+    requestGeneration.current++;
+    questionsScope.current=null;
+    isLoadingRef.current=false;
+    setAiQuestions({aptitude:null,knowledge:null});
+    setLoading(false);
+    setError(null);
+    setProgress({stage:'idle',aptitudeProgress:0,knowledgeProgress:0,estimatedTimeRemaining:0,message:''});
+    return ()=>{
+      requestGeneration.current++;
+      intervals.current.forEach(clearInterval);
+      intervals.current.clear();
     };
-  }, []);
+  },[scope]);
 
   const loadQuestions = useCallback(async () => {
+    const generation=requestGeneration.current;
+    const current=()=>generation===requestGeneration.current&&scope===activeScope.current;
+    if(!current())return;
+    let aptitudeProgressInterval:ReturnType<typeof setInterval>|undefined;
+    let knowledgeProgressInterval:ReturnType<typeof setInterval>|undefined;
     // Prevent duplicate calls
     if (isLoadingRef.current) {
       return;
@@ -142,7 +152,7 @@ export const useAIQuestions = ({
     // It is a dep of this useCallback so the hook re-fires automatically once it
     // becomes available. Returning here (without setting isLoadingRef) keeps the
     // mutex free so the subsequent valid call is never blocked.
-    if (!learnerId) {
+    if (!learnerId || !attemptId) {
       console.log('⏳ learnerId not yet available, deferring question load');
       return;
     }
@@ -170,7 +180,8 @@ export const useAIQuestions = ({
       });
 
       // Simulate progress updates for aptitude (every 500ms)
-      const aptitudeProgressInterval = setInterval(() => {
+      aptitudeProgressInterval = setInterval(() => {
+        if(!current())return;
         setProgress(prev => {
           if (prev.stage !== 'aptitude') return prev;
           const elapsed = (Date.now() - startTime) / 1000;
@@ -185,6 +196,7 @@ export const useAIQuestions = ({
         });
       }, 500);
 
+      intervals.current.add(aptitudeProgressInterval);
       const questions = await loadCareerAssessmentQuestions(
         effectiveStream,
         gradeLevel,
@@ -193,6 +205,7 @@ export const useAIQuestions = ({
         learnerProgram || null
       );
 
+      if(!current())return;
       // Clear aptitude progress interval
       clearInterval(aptitudeProgressInterval);
 
@@ -207,7 +220,8 @@ export const useAIQuestions = ({
       });
 
       // Simulate progress updates for knowledge (every 500ms)
-      const knowledgeProgressInterval = setInterval(() => {
+      knowledgeProgressInterval = setInterval(() => {
+        if(!current())return;
         setProgress(prev => {
           if (prev.stage !== 'knowledge') return prev;
           const elapsed = (Date.now() - aptitudeCompleteTime) / 1000;
@@ -222,9 +236,11 @@ export const useAIQuestions = ({
         });
       }, 500);
 
+      intervals.current.add(knowledgeProgressInterval);
       // Wait a bit to show knowledge progress (questions are already loaded)
       await new Promise(resolve => setTimeout(resolve, 500));
 
+      if(!current())return;
       // Clear knowledge progress interval
       clearInterval(knowledgeProgressInterval);
 
@@ -234,6 +250,7 @@ export const useAIQuestions = ({
         knowledge: questions.knowledge?.map(normalizeAIQuestion) || null
       };
 
+      questionsScope.current=scope;
       setAiQuestions(normalizedQuestions);
 
       // Stage 3: Complete
@@ -246,6 +263,7 @@ export const useAIQuestions = ({
       });
 
     } catch (err) {
+      if(!current())return;
       console.warn('Failed to load AI questions:', err);
 
       // Set user-friendly error message based on error type
@@ -275,17 +293,17 @@ export const useAIQuestions = ({
       });
     } finally {
       // Set loading state to false when generation completes
-      setLoading(false);
-      isLoadingRef.current = false;
+      for(const timer of [aptitudeProgressInterval,knowledgeProgressInterval]){if(timer){clearInterval(timer);intervals.current.delete(timer);}}
+      if(current()){setLoading(false);isLoadingRef.current = false;}
     }
-  }, [gradeLevel, learnerStream, learnerId, attemptId, learnerProgram]);
+  }, [gradeLevel, learnerStream, learnerId, attemptId, learnerProgram,scope]);
 
   useEffect(() => {
     loadQuestions();
   }, [loadQuestions]);
 
   return {
-    aiQuestions,
+    aiQuestions:questionsScope.current===scope?aiQuestions:{aptitude:null,knowledge:null},
     loading,
     error,
     progress,

@@ -93,13 +93,13 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   // learners.id so unlock ledger rows stay unique per candidate (H2 alias double-charge).
   const resolveCanonicalCandidate = async (candidateId: string) => {
     let { data, error } = await supabase
-      .from('learners')
+      .from('zoho_recruiter_learners')
       .select('id, name, email, contact_number')
       .eq('id', candidateId)
       .maybeSingle();
     if (!error && !data) {
       const res = await supabase
-        .from('learners')
+        .from('zoho_recruiter_learners')
         .select('id, name, email, contact_number')
         .eq('user_id', candidateId)
         .maybeSingle();
@@ -350,7 +350,7 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       if (!orgId) return apiError(403, 'FORBIDDEN', 'An active organization is required', context.request);
       const access = await verifyOrgAccess(supabase, user.id, orgId, PERMISSIONS.VIEW_CANDIDATES);
       if (!access.allowed) return apiError(403, 'FORBIDDEN', 'You cannot view interviews', context.request);
-      const { data, error } = await supabase.from('interviews').select('*').eq('organization_id', orgId).order('date');
+      const { data, error } = await supabase.from('zoho_recruiter_interviews').select('*').eq('organization_id', orgId).order('date');
       if (error) return apiDbError(error, context.request);
       return apiSuccess(data || [], context.request);
     }
@@ -377,7 +377,7 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       const permission = iOrgId && await verifyOrgAccess(supabase, user.id, iOrgId, PERMISSIONS.MANAGE_CANDIDATES);
       if (!permission || !permission.allowed) return apiError(403, 'FORBIDDEN', 'You cannot update interviews', context.request);
       const { data, error } = await supabase
-        .from('interviews')
+        .from('zoho_recruiter_interviews')
         .update({ ...updates, updated_at: new Date().toISOString() })
         .eq('id', String(id))
         .select()
@@ -387,7 +387,7 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     }
 
     if (action === 'list-learners') {
-      const { data, error } = await supabase.from('learners').select('*');
+      const { data, error } = await supabase.from('zoho_recruiter_learners').select('*');
       if (error) return apiDbError(error, context.request);
 
       // Spec §6/§9: contact details are unlocked, not included by default (C4 — the
@@ -421,11 +421,12 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
       // Whole row minus the gated contact fields; only surfaced for unlocked candidates
       const { data, error } = await supabase
-        .from('learners')
+        .from('zoho_recruiter_learners')
         .select('*')
         .eq('id', learnerId)
-        .single();
+        .maybeSingle();
       if (error) return apiDbError(error, context.request);
+      if (!data) return apiError(404, 'NOT_FOUND', 'Candidate not found', context.request);
 
       if (orgId) {
         const { data: unlock, error: unlockErr } = await supabase
@@ -836,7 +837,7 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       if (!owns) return apiError(403, 'FORBIDDEN', 'You do not have access to this opportunity', context.request);
 
       const { data, error } = await supabase
-        .from('applied_jobs')
+        .from('zoho_recruiter_applied_jobs')
         .select(`
         id,
         application_status,
@@ -1319,7 +1320,7 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       const { data: opportunity, error: opportunityError } = await supabase.from('opportunities').select('id').eq('id', input.opportunityId).eq('organization_id', orgId).maybeSingle();
       if (opportunityError) return apiDbError(opportunityError, context.request);
       if (!opportunity) return apiError(404, 'NOT_FOUND', 'Requisition not found', context.request);
-      const { data: application, error: fetchError } = await supabase.from('applied_jobs').select('id, application_status, updated_at, notes, viewed_at').eq('id', input.id).eq('opportunity_id', opportunity.id).maybeSingle();
+      const { data: application, error: fetchError } = await supabase.from('zoho_recruiter_applied_jobs').select('id, application_status, updated_at, notes, viewed_at').eq('id', input.id).eq('opportunity_id', opportunity.id).maybeSingle();
       if (fetchError) return apiDbError(fetchError, context.request);
       if (!application) return apiError(404, 'NOT_FOUND', 'Application not found', context.request);
       if (application.application_status !== input.expectedStatus || application.updated_at !== input.expectedUpdatedAt) return apiError(409, 'APPLICATION_CHANGED', 'This application changed. Close the status editor and refresh applications before retrying.', context.request);
@@ -1332,7 +1333,7 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         notes: [application.notes, entry].filter(Boolean).join('\n'),
         ...(input.status === 'viewed' && !application.viewed_at ? { viewed_at: now } : {}),
       };
-      const { data, error } = await supabase.from('applied_jobs').update(updates).eq('id', application.id).eq('opportunity_id', opportunity.id).eq('application_status', input.expectedStatus).eq('updated_at', application.updated_at).select('id, application_status, updated_at, notes, viewed_at').maybeSingle();
+      const { data, error } = await supabase.from('zoho_recruiter_applied_jobs').update(updates).eq('id', application.id).eq('opportunity_id', opportunity.id).eq('application_status', input.expectedStatus).eq('updated_at', application.updated_at).select('id, application_status, updated_at, notes, viewed_at').maybeSingle();
       if (error) return apiDbError(error, context.request);
       if (!data) return apiError(409, 'APPLICATION_CHANGED', 'This application changed. Close the status editor and refresh applications before retrying.', context.request);
       return apiSuccess(data, context.request);
@@ -1360,7 +1361,7 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         if (!access.allowed) return apiError(403, 'FORBIDDEN', 'You do not have permission to view applications', context.request);
       }
       const { data, error } = await supabase
-        .from('applied_jobs')
+        .from('zoho_recruiter_applied_jobs')
         .select(`
         id,
         learner_id,
