@@ -1,8 +1,8 @@
 # Zoho Recruit → Skill Ecosystem Integration Plan
 
-**Date:** 3 November 2026 (initial plan: 29 October)\
-**Revision:** 54 — section 71 records fixes for five reproduced follow-up console defects.\
-**Status:** Local OAuth and real candidate discovery are verified against the India tenant. The full local acceptance passes 747 automated tests plus all disposable SQL suites. Console controls were verified in the browser, including pause/resume of the same discovery run and cancellation without destination effects. Reviewed additive migrations were backed up and applied locally. Real destination approvals, job/provider export acceptance and tenant no-email evidence remain separate checks. Release, production changes and B1 environment isolation are excluded.\
+**Date:** 4 November 2026 (initial plan: 29 October)\
+**Revision:** 58 — section 75 fixes URL fallback compatibility, environment types and runtime regression coverage.\
+**Status:** Local OAuth and real candidate discovery are verified against the India tenant. The full local acceptance passes 772 automated tests plus all disposable SQL suites. Console controls were verified in the browser, including pause/resume of the same discovery run and cancellation without destination effects. Reviewed additive migrations were backed up and applied locally. Real destination approvals, job/provider export acceptance and tenant no-email evidence remain separate checks. Release, production changes and B1 environment isolation are excluded.\
 **Scope:** Zoho Recruit → private staging → explicit approval in sp-dash → candidate learner accounts with Discover access / SkillPassport job postings. Ongoing changes are staged for approval as well.\
 **Architecture:** Existing sp-dash runtime for background discovery/staging and approval dispatch; existing SSO for identity/Discover; existing auth-sync transport and SkillPassport for projections/jobs. One-way, tenant-scoped, version-bound, approval-gated, with no email side effects and no new Worker deployment. Authorization uses the existing server-side SSO/RBAC model and explicit data-access controls; this integration must not introduce a dependency on Supabase RLS.
 
@@ -4904,3 +4904,148 @@ cancelled. No emails, release or remote database changes were performed. Missing
 legacy local review sources remain explicitly unavailable; they are not treated as
 Zoho discovery failures. Backend revision/state fences continue to reject stale or
 empty decisions; the reproduced UI defects did not demonstrate an approval bypass.
+
+
+## 72. Server configuration ownership — revision 55
+
+Each owning service now normalizes Zoho flags through one server module:
+[dashboard](./sp-dash/lib/zoho/config.js),
+[SSO](./sso-worker/src/lib/zoho-config.ts) and
+[application projection](./skillpassport/functions/lib/zoho-config.ts).
+These modules expose immutable mandatory policy and explicit deployment flags,
+without copying credentials or runtime capability objects. Auth-sync adds no Zoho
+configuration module because it has no Zoho-specific environment variables.
+
+Transport timeout, response-size, retry-delay and recovery-cadence defaults are
+code constants. Durable SQL limits, leases and quota transactions remain owned by
+the database; no migration is needed. Quotas, retention, mapping policies and pause
+controls already have database-backed operator controls and remain there.
+
+Only exact string true enables an operation. Provisioning, execution, job writing,
+discovery, source operations, projection delivery, cleanup and background work keep
+independent deployment controls. Missing/malformed flags disable their operation.
+Dashboard preview values other than absent or exact string false block all flags.
+No flag can override human approval requirements or the no-email prohibition.
+
+The obsolete ZOHO_RECOVERY_CRON variable was removed from tracked configuration and
+local setup generation; one existing local copy was removed without revealing or
+altering secret values. The application cadence constant remains two minutes and
+actual scheduled events are checked against it. Tests assert all three existing
+Wrangler schedules match. The missing source-operations flag is now explicitly
+false in production, development, preview and QA declarations. No checked-in
+operation was enabled and no deployed settings were changed.
+
+OAuth client ID/callback, environment identity, service URLs and encryption active
+key ID remain deployment-specific configuration. Client IDs and key IDs are not
+secrets. OAuth secrets, encryption keyring/legacy read key, restricted database
+reader token and internal/database credentials stay external. Existing credential,
+keyring and independent runtime-readiness validators remain authoritative. Queue,
+service and R2 resources stay in Wrangler as platform bindings. No new worker,
+RLS dependency or environment-isolation work was introduced.
+
+Final full local acceptance passed **756 automated tests** plus all six disposable
+SQL suites. Added tests cover independent controls, strict parsing, preview gates,
+immutable policy, exclusion of secrets/bindings, environment changes and deployment
+schedule/flag consistency. Local runtime probes passed without data writes. SSO
+full type-check still reports the same six diagnostics as a separately extracted
+committed baseline; this refactor introduces no new diagnostics. The diagnostics
+concern pre-existing test ExecutionContext fixtures and an OAuth-test property type.
+No database migrations, real approvals, emails, deployments or releases were run.
+
+See [dashboard configuration ownership](./sp-dash/lib/zoho/README.md#configuration-ownership-3-november-2026)
+for the maintenance matrix. The versioned workspace-support copies are synchronized
+with the root documentation and local setup scripts.
+
+
+## 73. Configuration follow-up fixes and inventory — revision 56
+
+Three verified gaps from the refactor audit are fixed:
+
+- Operator source readiness and start-action guards now share the consumer's
+  background/discovery/source-operation/preview gates and require a working queue
+  producer capability. Disabled starts are rejected before credential parsing or
+  mutation. The existing storage, OAuth, source-state and SQL checks remain.
+- Discovery and approved-execution retry paths use the same retry constant as the
+  source-operation consumer. A regression substitutes a different default and
+  verifies both queues use it, rather than repeating the old literal.
+- Local schedule generation and manual tick URLs use pure helpers importing the
+  application recovery cadence. Root tooling no longer repeats the cron literal.
+  Production/development/QA schedules stay explicitly declared and tested.
+
+[Environment inventory](./sp-dash/lib/zoho/ENVIRONMENT.md) documents all 17 active
+Zoho-specific string variables: eight deployment switches, five nonsecret
+settings and four secret/credential names. Shared projection delivery is counted
+once even though three services configure it independently. The inventory lists
+six externally bound Zoho capabilities, two internal adapter objects and existing
+shared database, auth-sync transport and SSO dependencies separately. Code
+constants and the removed cron variable are explicitly excluded from active vars.
+No secret values are recorded and no additional deployment is introduced.
+
+Full local acceptance passed **766 automated tests** plus all six disposable SQL
+suites. New coverage verifies the operator/consumer gate under disabled background,
+discovery/source flags, preview and missing queue; disabled API actions perform no
+DB work. Positive readiness, substituted retry defaults and generated local
+schedule/manual tick consistency also pass. Existing no-email and exact-approval
+boundary tests remain green. The prior six baseline SSO type diagnostics remain
+outside this follow-up's code changes. No new migration, real approval, email,
+release or deployment was performed. Workspace-support copies were synchronized.
+
+
+## 74. Code-owned nonsecret configuration — revision 57
+
+Supersedes the environment ownership described in sections 72–73. Nonsecret Zoho
+switches, callback URLs, queue identity and preview behavior now live in immutable
+application profiles. Dashboard, SSO and SkillPassport retain their independent
+policy modules. Production/development/QA defaults stay disabled; the existing
+local loopback setup selects the enabled local profile. Local preparation remains
+review-only until dependency verification selects the enabled local context.
+Existing platform `ENVIRONMENT`, infrastructure URLs and Cloudflare bindings retain
+their shared platform ownership. No additional worker or database change is needed.
+
+Only six Zoho-specific credential/key names remain external: OAuth client ID and
+secret, encryption keyring and active key ID, legacy/single encryption key and
+restricted discovery DB token. Key identifiers remain alongside their key
+management configuration. [Current inventory](./sp-dash/lib/zoho/ENVIRONMENT.md)
+lists every remaining name, retired setting, binding and shared dependency.
+Obsolete local settings were removed without changing credential values.
+
+The known local OAuth callback is a constant. Remote callbacks remain unset until
+actual dev/QA/production dashboard origins are supplied; remote OAuth is therefore
+unavailable until those constants and the corresponding Zoho registrations are
+completed. Unknown/preview profiles stay disabled. Retired environment variables
+cannot override code profiles. Global background disablement also fences nested
+processing adapters. No-email and exact human approval checks remain mandatory.
+
+Full local acceptance passed **766 automated tests** and all six disposable SQL
+suites, including the two-database candidate flow with actual code-owned profiles.
+Unit policy matrices inject test-only policies rather than enabling production
+environment overrides. Pages Functions build passes. SSO type checking retains
+six existing baseline diagnostics; no new diagnostics remain. Local dependency
+probes and versioned workspace support synchronization are checked separately.
+No real approval, email, deployment, release or database migration was performed.
+
+
+## 75. Configuration audit fixes — revision 58
+
+The application profile selector now honors the existing `VITE_SUPABASE_URL`
+fallback with exactly the admin database client's precedence: a truthy primary
+`SUPABASE_URL` wins. It does not treat a local fallback as permission to use a
+remote or malformed primary. Preview, review-only and remote deployment profiles
+remain disabled. SSO and application environment contracts now explicitly declare
+the shared platform context; the application also declares its existing URL fallback.
+
+Permanent dashboard regression tests use the real config module and real narrow
+runtime adapters, with synthetic provider/storage dependencies. They verify
+local discovery reaches staging without identity/email effects, disabled profiles
+avoid storage/recovery and malformed/mixed aliases cannot enable processing.
+The application regression checks the actual admin client's outgoing RPC URL and
+profile selection agree; precedence, unsafe URLs and deployment gates are covered.
+Existing mocked policy matrices remain useful for isolated consumer branches and
+are not claimed as standalone verification of the real profile wiring.
+
+Validation: **772 automated tests**, all six disposable SQL suites and the Pages
+Functions build pass. SSO type checking retains the same six committed baseline
+diagnostics, with no new diagnostics. Workspace-support documentation is synchronized.
+No database migration, real approval, email, release or deployment is required.
+Remote callback constants still need confirmed dev/QA/production origins; no URLs
+were guessed and those profiles remain disabled.

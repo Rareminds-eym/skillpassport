@@ -1,3 +1,4 @@
+import { readZohoProjectionConfig, ZOHO_PROJECTION_DEFAULTS } from './zoho-config';
 import { verifyWebhookSecret } from './sync-auth';
 import { createDb } from './db';
 import type { PagesEnv } from './types';
@@ -12,14 +13,14 @@ export function candidateProjectionReference(v: unknown): v is { operationId: st
 async function bounded<T>(work: () => Promise<T>): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   try { return await Promise.race([Promise.resolve().then(work), new Promise<never>((_, reject) => {
-    timer=setTimeout(() => reject(new Error('Dependency unavailable')),5000);
+    timer=setTimeout(() => reject(new Error('Dependency unavailable')),ZOHO_PROJECTION_DEFAULTS.dependencyTimeoutMs);
   })]); } finally { if (timer !== undefined) clearTimeout(timer); }
 }
 async function body(request: Request): Promise<unknown> {
   const reader=request.body?.getReader(); if (!reader) throw new Error('Body required');
   let size=0; const chunks: Uint8Array[]=[];
   try { for (;;) { const {done,value}=await reader.read(); if(done) break;
-    size+=value.byteLength; if(size>4096) { await reader.cancel(); throw new Error('Body limit'); } chunks.push(value);
+    size+=value.byteLength; if(size>ZOHO_PROJECTION_DEFAULTS.maxRequestBytes) { await reader.cancel(); throw new Error('Body limit'); } chunks.push(value);
   } } finally { reader.releaseLock(); }
   const bytes=new Uint8Array(size); let offset=0;
   for (const chunk of chunks) { bytes.set(chunk,offset); offset+=chunk.length; }
@@ -44,14 +45,14 @@ export async function handleCandidateProjectionReadiness(context: {request: Requ
         typeof policy.genericSyncAllowed!=='boolean' || projection.error || projection.data!==true)
       throw new Error('Projection dependencies unavailable');
     return reply(200,{version:1,dependenciesReady:true,readOnly:true,emailPolicy:'forbidden',
-      deliveryEnabled:env.ZOHO_PROJECTION_DELIVERY_ENABLED==='true'});
+      deliveryEnabled:readZohoProjectionConfig(env).projectionDelivery});
   } catch { return reply(503,{success:false}); }
 }
 /** No generic sync/admission, notification, email or caller-selected data capabilities. */
 export async function handleCandidateProjection(context: {request: Request; env: PagesEnv}, database=createDb): Promise<Response> {
   const {request,env}=context;
   const reply=(status: number, value: unknown) => Response.json(value,{status,headers:{'Cache-Control':'no-store'}});
-  if (env.ZOHO_PROJECTION_DELIVERY_ENABLED !== 'true') return reply(503,{success:false});
+  if (!readZohoProjectionConfig(env).projectionDelivery) return reply(503,{success:false});
   const auth=await verifyWebhookSecret(request,env.INTERNAL_WEBHOOK_SECRET);
   if (!auth.ok) return reply(auth.status,{success:false});
   let reference: {operationId:string;sourceHash:string;emailPolicy:'forbidden'};

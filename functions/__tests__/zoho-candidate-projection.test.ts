@@ -1,3 +1,4 @@
+vi.mock('../lib/zoho-config',async original=>{const module=await original<typeof import('../lib/zoho-config')>();return {...module,readZohoProjectionConfig:(env:Record<string,unknown>)=>({...module.readZohoProjectionConfig(env),projectionDelivery:env.ZOHO_PROJECTION_DELIVERY_ENABLED==='true'})};});
 import {beforeEach,describe,it,expect,vi} from 'vitest';
 vi.mock('../lib/db',()=>({createDb:vi.fn()}));
 import {handleCandidateProjection,handleCandidateProjectionReadiness} from '../lib/zoho-candidate-projection';

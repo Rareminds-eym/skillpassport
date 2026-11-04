@@ -1,5 +1,15 @@
 import { readFileSync, writeFileSync, renameSync, unlinkSync, existsSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
+import { ZOHO_DEFAULTS } from '../../sp-dash/lib/zoho/config.js';
+
+export function localRecoverySchedule() {
+  return `[triggers]\ncrons=[${JSON.stringify(ZOHO_DEFAULTS.recoveryCron)}]\n`;
+}
+export function localRecoveryTickUrl() {
+  const url=new URL('http://127.0.0.1:8896/__scheduled');
+  url.searchParams.set('cron',ZOHO_DEFAULTS.recoveryCron);
+  return url.href;
+}
 
 /** Dotenv quotes are delimiters, not JSON string escapes. Preserve JSON and PEM
  * values literally rather than leaving backslashes before their inner quotes. */
@@ -35,8 +45,8 @@ export function planLocalEnable(configurations) {
   return Object.fromEntries(['sp-dash', 'sso-worker', 'skillpassport'].map(repo => {
     if (!configurations[repo]) throw new Error('Missing local configuration: ' + repo);
     const env = { ...configurations[repo] };
-    for (const key of Object.keys(env)) if (/^ZOHO_.*_ENABLED$/.test(key)) env[key] = 'true';
-    if (repo === 'sp-dash' && (!env.ZOHO_CLIENT_ID || !env.ZOHO_CLIENT_SECRET)) env.ZOHO_DISCOVERY_ENABLED = 'false';
+    for (const key of Object.keys(env)) if (/^ZOHO_.*_ENABLED$/.test(key) || ['ZOHO_ENVIRONMENT','ZOHO_PREVIEW','ZOHO_REDIRECT_URI','ZOHO_RECOVERY_CRON'].includes(key)) delete env[key];
+    env.ENVIRONMENT = 'development'; // Selects the code-owned local profile after the loopback checks above.
     return [repo, env];
   }));
 }

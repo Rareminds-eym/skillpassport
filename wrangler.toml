@@ -68,7 +68,6 @@ bucket_name = "skill-echosystem"
 # ============================================================================
 
 [vars]
-ZOHO_PROJECTION_DELIVERY_ENABLED = "false"
 # Must match EMBEDDING_SERVICE output; each job vector is independently verified.
 MATCHING_EMBEDDING_MODEL = "google/gemini-embedding-2-preview"
 ENVIRONMENT = "production"

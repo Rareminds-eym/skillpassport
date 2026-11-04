@@ -1,10 +1,24 @@
 # Zoho integration local testing
 
-## Current persistent local setup — 3 November 2026
+## Current persistent local setup — 4 November 2026
 
-**Latest update — revision 54:** The console audit fixes in
-[section 71](./ZOHO_RECRUIT_INTEGRATION_PLAN.md#71-five-reproduced-follow-up-console-fixes--revision-54)
-pass 747 automated tests plus all disposable SQL suites. Mobile review now retains the selected candidate after dismissal and offers
+**Latest update — revision 58:** [Section 75](./ZOHO_RECRUIT_INTEGRATION_PLAN.md#75-configuration-audit-fixes--revision-58)
+completes the nonsecret configuration audit fixes. Local
+acceptance passes 772 automated tests and all six disposable SQL suites. The
+[current inventory](./sp-dash/lib/zoho/ENVIRONMENT.md) lists six remaining
+credential/key names and separates shared infrastructure settings and bindings.
+Retired Zoho flags, callback, environment, preview and cron variables are no
+longer read. Historical instructions below naming those flags are superseded.
+
+Local preparation selects the disabled `local-review` profile. The existing enable
+command validates loopback database/service wiring before selecting the code-owned
+local profile through the platform's existing `ENVIRONMENT` context. Restart
+runtimes after configuration changes, then run verification. Mandatory approval,
+source pause and no-email policy remain enforced. Production/dev/QA profiles stay
+disabled; their callback constants need confirmed deployment origins before remote
+OAuth can work. The local callback is already defined in code.
+
+Mobile review now retains the selected candidate after dismissal and offers
 a direct route to candidate administration. Record refresh revalidates loaded
 pages and search shows an explicit loading state. The console-controls
 application migration is applied locally after backup; reviewed pending migrations

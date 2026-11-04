@@ -19,7 +19,8 @@ import type {
  * Standard environment variables available to all Pages Functions
  */
 export interface PagesEnv {
-  ZOHO_PROJECTION_DELIVERY_ENABLED?: string;
+  /** Existing platform context used to select code-owned integration profiles. */
+  ENVIRONMENT?: string;
   ZOHO_CANDIDATE_SOURCE?: {
     getSubjectSyncPolicy?(input: { userId: string }): Promise<unknown>;
     getProjectionSnapshot(reference: unknown): Promise<unknown>;
@@ -50,6 +51,8 @@ export interface PagesEnv {
 
   // Supabase configuration
   SUPABASE_URL?: string;
+  /** Existing database URL fallback; SUPABASE_URL takes precedence. */
+  VITE_SUPABASE_URL?: string;
   SUPABASE_ANON_KEY?: string;
   SUPABASE_SERVICE_ROLE_KEY?: string;
 

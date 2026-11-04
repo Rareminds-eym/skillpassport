@@ -70,16 +70,15 @@ suite('opt-in canonical SSO → existing auth-sync → Pages → independent SQL
     bridge.rpc.mockImplementation((fn, args = {}) => fixture.canonical.rpc(fn, args));
     bridge.appDb.mockImplementation(applicationDb);
     canonicalEnv = {
-      ZOHO_CANDIDATE_PROVISIONING_ENABLED: 'true', SUPABASE_URL: 'https://canonical.fixture.example', SUPABASE_SERVICE_ROLE_KEY: 'synthetic',
-      ZOHO_PROJECTION_DELIVERY_ENABLED: 'true',
+      ENVIRONMENT:'development', SUPABASE_URL: 'http://127.0.0.1:1', SUPABASE_SERVICE_ROLE_KEY: 'synthetic',
       SYNC_QUEUE: { send: async (event: { type: string; payload: Reference }) => { events.push(event); } },
       ZOHO_CONTROL_PLANE: { validateProjectionReceipt: readback, validateOperation: async () => ({ allowed: true }),
-        candidateProjectionCapabilities: () => candidateProjectionCapabilities({ ZOHO_PROJECTION_DELIVERY_ENABLED: 'true',
-          SUPABASE_URL: 'https://application.fixture.example', SUPABASE_SERVICE_ROLE_KEY: 'synthetic' }, applicationDb) },
+        candidateProjectionCapabilities: () => candidateProjectionCapabilities({ ENVIRONMENT:'development',
+          SUPABASE_URL: 'http://127.0.0.1:1', SUPABASE_SERVICE_ROLE_KEY: 'synthetic' }, applicationDb) },
       EMAIL_QUEUE: { send: emailTrap }, EMAIL_SERVICE: { sendEmail: emailTrap }, EMAIL_WORKER: { fetch: emailTrap },
     } as unknown as SsoEnv;
     applicationEnv = {
-      ZOHO_PROJECTION_DELIVERY_ENABLED: 'true', INTERNAL_WEBHOOK_SECRET: secret,
+      ENVIRONMENT:'development',SUPABASE_URL:'http://127.0.0.1:1', INTERNAL_WEBHOOK_SECRET: secret,
       ZOHO_CANDIDATE_SOURCE: {
         getSubjectSyncPolicy: (input: unknown) => candidateSubjectSyncPolicy(canonicalEnv, input),
         getProjectionSnapshot: (reference: Reference) => candidateProjectionSnapshot(canonicalEnv, reference),

@@ -5,7 +5,8 @@ import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import { randomBytes, createHmac } from 'node:crypto';
 import { execFileSync, spawn } from 'node:child_process';
-import { isLocalDatabaseUrl, planLocalEnable, replaceLocalFiles, requireDashboardRuntime, verifyLocalProjection, serializeLocalVars } from './lib/zoho-local-config.mjs';
+import { zohoProfileName } from '../sp-dash/lib/zoho/config.js';
+import { isLocalDatabaseUrl, planLocalEnable, replaceLocalFiles, requireDashboardRuntime, verifyLocalProjection, serializeLocalVars, localRecoverySchedule, localRecoveryTickUrl } from './lib/zoho-local-config.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const require = createRequire(resolve(root, 'sp-dash/package.json'));
@@ -56,14 +57,13 @@ if (action === 'prepare') {
   const unsigned = encode({alg:'HS256',typ:'JWT'})+'.'+encode({role:'zoho_discovery',iat:Math.floor(Date.now()/1000),exp:Math.floor(Date.now()/1000)+7*86400});
   const readerToken = unsigned+'.'+createHmac('sha256',jwtSecret).update(unsigned).digest('base64url');
   const origins = 'http://localhost:3010,http://localhost:8898,http://127.0.0.1:3010,http://127.0.0.1:8898';
-  vars('sso-worker', {...pick(sso,['SUPABASE_URL','SUPABASE_SERVICE_ROLE_KEY','JWT_PRIVATE_KEY','JWT_PUBLIC_KEY','JWT_KID','SERVICE_AUTH_SECRET']), ENVIRONMENT:'development', ALLOWED_ORIGINS:origins, ALLOWED_APP_URLS:origins+',http://localhost:3010/auth/callback,http://localhost:8898/auth/callback',SKILLPASSPORT_URL:'http://localhost:8898',INTERNAL_WEBHOOK_SECRET:secret.sync,ZOHO_CANDIDATE_PROVISIONING_ENABLED:'false',ZOHO_PROJECTION_DELIVERY_ENABLED:'false'});
-  const dashboard = {...pick(dash,['ZOHO_CLIENT_ID','ZOHO_CLIENT_SECRET']),NEXT_PUBLIC_SUPABASE_URL:app.SUPABASE_URL,SKILLPASSPORT_SUPABASE_URL:app.SUPABASE_URL,NEXT_PUBLIC_SUPABASE_ANON_KEY:app.SUPABASE_ANON_KEY,SKILLPASSPORT_SERVICE_ROLE_KEY:app.SUPABASE_SERVICE_ROLE_KEY,SUPABASE_SERVICE_ROLE_KEY:app.SUPABASE_SERVICE_ROLE_KEY,SSO_WORKER_URL:'http://localhost:8897',NEXT_PUBLIC_SSO_URL:'http://localhost:8897',ZOHO_TOKEN_ENCRYPTION_KEY:secret.vault,ZOHO_TOKEN_ENCRYPTION_KEYS:JSON.stringify({'local-v1':secret.vault,'local-v2':secret.activeVault}),ZOHO_TOKEN_ENCRYPTION_ACTIVE_KEY_ID:'local-v2',ZOHO_DISCOVERY_DB_TOKEN:readerToken,ZOHO_REDIRECT_URI:'http://localhost:3010/api/integrations/zoho-recruit/oauth/callback',ZOHO_ENVIRONMENT:'dev',ZOHO_PREVIEW:'false',ZOHO_RECOVERY_CRON:'*/2 * * * *'};
-  for (const key of ['BACKGROUND','SOURCE_OPERATIONS','DISCOVERY','EXECUTION','JOB_PUBLISHER','PROJECTION_DELIVERY','PRIVACY_CLEANUP']) dashboard[`ZOHO_${key}_ENABLED`]='false';
+  vars('sso-worker', {...pick(sso,['SUPABASE_URL','SUPABASE_SERVICE_ROLE_KEY','JWT_PRIVATE_KEY','JWT_PUBLIC_KEY','JWT_KID','SERVICE_AUTH_SECRET']), ENVIRONMENT:'local-review', ALLOWED_ORIGINS:origins, ALLOWED_APP_URLS:origins+',http://localhost:3010/auth/callback,http://localhost:8898/auth/callback',SKILLPASSPORT_URL:'http://localhost:8898',INTERNAL_WEBHOOK_SECRET:secret.sync});
+  const dashboard = {...pick(dash,['ZOHO_CLIENT_ID','ZOHO_CLIENT_SECRET']),NEXT_PUBLIC_SUPABASE_URL:app.SUPABASE_URL,SKILLPASSPORT_SUPABASE_URL:app.SUPABASE_URL,NEXT_PUBLIC_SUPABASE_ANON_KEY:app.SUPABASE_ANON_KEY,SKILLPASSPORT_SERVICE_ROLE_KEY:app.SUPABASE_SERVICE_ROLE_KEY,SUPABASE_SERVICE_ROLE_KEY:app.SUPABASE_SERVICE_ROLE_KEY,SSO_WORKER_URL:'http://localhost:8897',NEXT_PUBLIC_SSO_URL:'http://localhost:8897',ZOHO_TOKEN_ENCRYPTION_KEY:secret.vault,ZOHO_TOKEN_ENCRYPTION_KEYS:JSON.stringify({'local-v1':secret.vault,'local-v2':secret.activeVault}),ZOHO_TOKEN_ENCRYPTION_ACTIVE_KEY_ID:'local-v2',ZOHO_DISCOVERY_DB_TOKEN:readerToken,ENVIRONMENT:'local-review'};
   vars('sp-dash',dashboard);
-  vars('skillpassport',{...pick(app,['SUPABASE_URL','SUPABASE_ANON_KEY','SUPABASE_SERVICE_ROLE_KEY']),ENVIRONMENT:'development',SSO_DOMAIN:'http://localhost:8897',SKILLPASSPORT_URL:'http://localhost:8898',INTERNAL_WEBHOOK_SECRET:secret.sync,ZOHO_PROJECTION_DELIVERY_ENABLED:'false',GOOGLE_OAUTH_ENABLED:'false',HEAL_MODE:'disabled'});
+  vars('skillpassport',{...pick(app,['SUPABASE_URL','SUPABASE_ANON_KEY','SUPABASE_SERVICE_ROLE_KEY']),ENVIRONMENT:'local-review',SSO_DOMAIN:'http://localhost:8897',SKILLPASSPORT_URL:'http://localhost:8898',INTERNAL_WEBHOOK_SECRET:secret.sync,GOOGLE_OAUTH_ENABLED:'false',HEAL_MODE:'disabled'});
   vars('auth-sync-consumer',{ENVIRONMENT:'development',SKILLPASSPORT_SYNC_URL:'http://127.0.0.1:8898',SYNC_API_SECRET:secret.sync});
   worker('sso-worker','sso-api-zoho-local','../../src/index.ts', services([['ZOHO_CONTROL_PLANE','sp-dash-zoho-local','ZohoExecutionAuthority']])+producer('SYNC_QUEUE','auth-db-sync-queue-zoho-local')+'\n[[kv_namespaces]]\nbinding="RATE_LIMIT_KV"\nid="local-rate-limit"\n[[durable_objects.bindings]]\nname="AUTH_CODE_STORE"\nclass_name="AuthorizationCodeStore"\n[[migrations]]\ntag="v1_authorization_code_store"\nnew_sqlite_classes=["AuthorizationCodeStore"]\n');
-  worker('sp-dash','sp-dash-zoho-local','./dashboard-runtime.mjs', services([['SSO','sso-api-zoho-local','SsoWorker'],['ZOHO_APPROVER_AUTHORITY','sso-api-zoho-local','ZohoApproverAuthority'],['ZOHO_CANDIDATE_DESTINATION','sso-api-zoho-local','ZohoCandidateProvisioner'],['WORKER_SELF_REFERENCE','sp-dash-zoho-local']])+producer('ZOHO_DISCOVERY_QUEUE','zoho-recruit-discovery-dev')+producer('ZOHO_APPROVED_QUEUE','zoho-recruit-approved-dev')+consumer('zoho-recruit-discovery-dev','zoho-recruit-discovery-dev-dlq')+consumer('zoho-recruit-approved-dev','zoho-recruit-approved-dev-dlq')+'\n[[r2_buckets]]\nbinding="SKILLPASSPORT_ASSETS"\nbucket_name="skill-echosystem-zoho-local"\n[triggers]\ncrons=["*/2 * * * *"]\n');
+  worker('sp-dash','sp-dash-zoho-local','./dashboard-runtime.mjs', services([['SSO','sso-api-zoho-local','SsoWorker'],['ZOHO_APPROVER_AUTHORITY','sso-api-zoho-local','ZohoApproverAuthority'],['ZOHO_CANDIDATE_DESTINATION','sso-api-zoho-local','ZohoCandidateProvisioner'],['WORKER_SELF_REFERENCE','sp-dash-zoho-local']])+producer('ZOHO_DISCOVERY_QUEUE','zoho-recruit-discovery-dev')+producer('ZOHO_APPROVED_QUEUE','zoho-recruit-approved-dev')+consumer('zoho-recruit-discovery-dev','zoho-recruit-discovery-dev-dlq')+consumer('zoho-recruit-approved-dev','zoho-recruit-approved-dev-dlq')+`\n[[r2_buckets]]\nbinding="SKILLPASSPORT_ASSETS"\nbucket_name="skill-echosystem-zoho-local"\n${localRecoverySchedule()}`);
   worker('auth-sync-consumer','auth-sync-consumer-zoho-local','../../src/index.ts', consumer('auth-db-sync-queue-zoho-local','auth-db-sync-queue-zoho-local-dlq')+consumer('auth-db-sync-queue-zoho-local-dlq')+'\n[[r2_buckets]]\nbinding="REVIEW_DLQ_BUCKET"\nbucket_name="local-zoho-deadletters"\n');
   write('sp-dash','proxy.toml',readFileSync(config('sp-dash'),'utf8').replace('name = "sp-dash-zoho-local"','name = "sp-dash-zoho-ui-local"'));
   write('skillpassport','wrangler.toml','name="skill-passport-portal"\ncompatibility_date="2026-09-25"\ncompatibility_flags=["nodejs_compat"]\npages_build_output_dir="./public"\n'+services([['SSO_SERVICE','sso-api-zoho-local','SsoWorker'],['ZOHO_CANDIDATE_SOURCE','sso-api-zoho-local','ZohoCandidateProvisioner']]));
@@ -114,7 +114,7 @@ export default dashboardRuntime({
   // dev's automatic config search must not load the default mail-enabled stack.
   run('skillpassport','node_modules/wrangler/bin/wrangler.js',['dev','--local','-c',resolve(dir('skillpassport'),'runtime.toml'),'--ip','127.0.0.1','--port','8898','--inspector-port','9243']);
 } else if(action === 'tick') {
-  const response=await fetch('http://127.0.0.1:8896/__scheduled?cron='+encodeURIComponent('*/2 * * * *'),{signal:AbortSignal.timeout(30000)});
+  const response=await fetch(localRecoveryTickUrl(),{signal:AbortSignal.timeout(30000)});
   if(!response.ok) throw new Error('Existing dashboard recovery failed: '+response.status);
   console.log('Existing local dashboard recovery schedule invoked.');
 } else {
@@ -137,9 +137,9 @@ export default dashboardRuntime({
       const capability=await proxy.env.ZOHO_CANDIDATE_DESTINATION.capabilities();
       if (capability?.version!==1 || capability.ready!==true || capability.emailPolicy!=='forbidden')
         throw new Error('Restarted canonical execution dependencies unavailable');
-      for (const [repo,desired] of Object.entries(enabledConfigurations)) for (const [key,value] of Object.entries(desired))
-        if (/^ZOHO_.*_ENABLED$/.test(key) && configurations[repo][key]!==value)
-          throw new Error('Local flags not enabled: '+repo);
+      for (const repo of Object.keys(enabledConfigurations))
+        if (zohoProfileName(configurations[repo]) !== 'local')
+          throw new Error('Local code profile not selected: '+repo);
     }
     const dash=configurations['sp-dash'];
     const reader=await fetch(dash.SKILLPASSPORT_SUPABASE_URL+'/rest/v1/rpc/zoho_due_discovery',{method:'POST',headers:{apikey:dash.NEXT_PUBLIC_SUPABASE_ANON_KEY,Authorization:'Bearer '+dash.ZOHO_DISCOVERY_DB_TOKEN,'Content-Type':'application/json'},body:'{}',signal:AbortSignal.timeout(5000)});
@@ -150,5 +150,5 @@ export default dashboardRuntime({
     process.exit(0);
   }
   replaceLocalFiles(Object.entries(enabledConfigurations).map(([repo,env])=>({path:resolve(dir(repo),'.dev.vars'),contents:serializedVars(env)})));
-  console.log('Local execution/delivery flags enabled after database probes. Discovery stays off when OAuth credentials are absent. Restart local runtimes. Production configurations unchanged.');
+  console.log('Local code profile selected after database probes. OAuth/readiness checks still gate discovery and destination writes. Restart local runtimes. Production configurations unchanged.');
 }

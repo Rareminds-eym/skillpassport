@@ -1,3 +1,4 @@
+import { readZohoProjectionConfig } from './zoho-config';
 import { z } from 'zod';
 import { createDb, type DbClient } from './db';
 import { LEARNER_SSO_ROLES, mapRolesToOrgMemberRole } from './role-mapper';
@@ -165,7 +166,7 @@ export class SyncService {
       throw new Error('Identity synchronization policy unavailable');
     if (!data.genericSyncAllowed) return false;
     const source = this.env.ZOHO_CANDIDATE_SOURCE;
-    if (!data.requiresCanonicalPolicy && !source && this.env.ZOHO_PROJECTION_DELIVERY_ENABLED !== 'true') return true;
+    if (!data.requiresCanonicalPolicy && !source && !readZohoProjectionConfig(this.env).projectionDelivery) return true;
     if (typeof source?.getSubjectSyncPolicy !== 'function') throw new Error('Canonical identity policy unavailable');
     let timer: ReturnType<typeof setTimeout> | undefined;
     try {

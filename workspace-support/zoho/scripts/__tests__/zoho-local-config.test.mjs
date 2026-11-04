@@ -4,7 +4,16 @@ import * as fs from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {createRequire} from 'node:module';
-import { isLocalDatabaseUrl, planLocalEnable, replaceLocalFiles, requireDashboardRuntime, verifyLocalProjection, serializeLocalVars } from '../lib/zoho-local-config.mjs';
+import { isLocalDatabaseUrl, planLocalEnable, replaceLocalFiles, requireDashboardRuntime, verifyLocalProjection, serializeLocalVars, localRecoverySchedule, localRecoveryTickUrl } from '../lib/zoho-local-config.mjs';
+import { ZOHO_DEFAULTS } from '../../sp-dash/lib/zoho/config.js';
+
+test('local schedule generation and manual ticking use the application cadence',()=>{
+  const schedule=localRecoverySchedule();
+  assert.deepEqual(JSON.parse(schedule.split('crons=')[1].trim()),[ZOHO_DEFAULTS.recoveryCron]);
+  const url=new URL(localRecoveryTickUrl());
+  assert.equal(url.origin,'http://127.0.0.1:8896');assert.equal(url.pathname,'/__scheduled');
+  assert.equal(url.searchParams.get('cron'),ZOHO_DEFAULTS.recoveryCron);
+});
 
 test('local variables preserve JSON keyrings and multiline credentials through dotenv parsing', () => {
   const require = createRequire(new URL('../../sp-dash/package.json',import.meta.url));
@@ -33,10 +42,12 @@ test('checks every database alias, not only the first valid URL', () => {
   assert.throws(()=>planLocalEnable(input),/Nonlocal database/);
   for(const url of ['ftp://localhost','http://user:pass@localhost','http://localhost/other','http://localhost?target=remote']) assert.equal(isLocalDatabaseUrl(url),false);
 });
-test('keeps discovery off without OAuth credentials and preserves unrelated settings', () => {
+test('selects the local code profile and removes obsolete settings without altering secrets', () => {
   const input=configurations(), result=planLocalEnable(input);
-  assert.equal(result['sp-dash'].ZOHO_DISCOVERY_ENABLED,'false');
-  assert.equal(result['sso-worker'].ZOHO_CANDIDATE_PROVISIONING_ENABLED,'true');
+  assert.equal(result['sp-dash'].ZOHO_DISCOVERY_ENABLED,undefined);
+  assert.equal(result['sp-dash'].ENVIRONMENT,'development');
+  assert.equal(result['sso-worker'].ZOHO_CANDIDATE_PROVISIONING_ENABLED,undefined);
+  assert.equal(result['sso-worker'].ENVIRONMENT,'development');
   assert.equal(result.skillpassport.GOOGLE_OAUTH_ENABLED,'false');
   assert.equal(result.skillpassport.INTERNAL_WEBHOOK_SECRET,'local-test');
   assert.equal(input.skillpassport.ZOHO_PROJECTION_DELIVERY_ENABLED,'false');
