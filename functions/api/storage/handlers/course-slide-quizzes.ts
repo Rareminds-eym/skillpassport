@@ -64,6 +64,7 @@ export async function handleCourseSlideQuizzes(context: any): Promise<Response> 
       course_id: courseId,
       lesson_id: lessonId,
       quiz_id: quiz.id,
+      attempt_number: (existing?.attempt_number || 0) + 1,
       answers,
       current_question_index: quiz.questions.length,
       total_questions: quiz.questions.length,
@@ -75,7 +76,7 @@ export async function handleCourseSlideQuizzes(context: any): Promise<Response> 
     };
     const { error: saveError } = existing
       ? await supabaseAdmin.from('learner_quiz_progress').update(progress).eq('id', existing.id)
-      : await supabaseAdmin.from('learner_quiz_progress').insert({ ...progress, attempt_number: 1, started_at: now });
+      : await supabaseAdmin.from('learner_quiz_progress').insert({ ...progress, started_at: now });
     if (saveError) return apiError(500, 'INTERNAL_ERROR', 'Could not save answers', request);
     return Response.json({ success: true }, { headers: { 'Cache-Control': 'private, no-store' } });
   }
