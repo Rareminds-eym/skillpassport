@@ -1,3 +1,4 @@
+import {fetchAssessmentRoster} from './assessmentRoster';
 import { useAuthStore } from '@/shared/model/authStore';
 
 // Helper function to get current user ID
@@ -229,18 +230,7 @@ class ExamsService {
       return [];
     }
 
-    const { data, error } = await supabase
-      .from('learners')
-      .select('id, name, email, roll_number, admission_number, grade, section, school_id, college_id')
-      .in('school_class_id', targetClasses.class_ids)
-      .or('is_deleted.is.null,is_deleted.eq.false');
-
-    if (error) {
-      console.error('Error loading learners by target classes:', error);
-      throw error;
-    }
-
-    return data || [];
+    return fetchAssessmentRoster({classIds:targetClasses.class_ids});
   }
 
   // Helper function to get class room from grade/section
@@ -364,46 +354,13 @@ class ExamsService {
 
   // Learners
   async getLearners(schoolId?: string, collegeId?: string, grade?: string, section?: string) {
-    let query = supabase
-      .from('learners')
-      .select('id, name, email, roll_number, admission_number, grade, section, school_id, college_id')
-      .or('is_deleted.is.null,is_deleted.eq.false'); // Handle null values properly
-    
-    if (schoolId) {
-      query = query.eq('school_id', schoolId);
-    } else if (collegeId) {
-      query = query.eq('college_id', collegeId);
-    }
-    
-    if (grade) {
-      query = query.eq('grade', grade);
-    }
-    
-    // Handle section filtering with fallback logic
-    if (section && section.trim() !== '') {
-      // Use OR condition to match either the exact section OR null section
-      // This handles cases where exam has section "A" but learners have section null
-      query = query.or(`section.eq.${section},section.is.null`);
-    }
-    
-    const { data, error } = await query.order('roll_number');
-    
-    if (error) throw error;
-    
-    return data as Learner[];
+    return fetchAssessmentRoster({...(schoolId?{schoolId}:{}),...(collegeId?{collegeId}:{}),
+      ...(grade?{grade}:{}),...(section?.trim()?{section:section.trim()}:{} )});
   }
 
-  // Get learners by class_id (better approach)
+  // The API verifies class ownership against the active SSO organization.
   async getlearnersByClassId(classId: string) {
-    const { data, error } = await supabase
-      .from('learners')
-      .select('id, name, email, roll_number, admission_number, grade, section, school_id, college_id')
-      .eq('school_class_id', classId) // Assuming learners table has school_class_id field
-      .or('is_deleted.is.null,is_deleted.eq.false')
-      .order('roll_number');
-    
-    if (error) throw error;
-    return data as Learner[];
+    return fetchAssessmentRoster({classIds:[classId]});
   }
 
   // Get all available rooms for a school (from multiple sources)

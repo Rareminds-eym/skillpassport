@@ -8,14 +8,14 @@
  * 
  * Falls back to simpler queries if the complex JOIN fails.
  */
-import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import type { AuthenticatedPagesContext } from '../../lib/types';
 import { getContextUser, withAuth } from '../../lib/auth';
 import { ensureAppUserAndLearner } from '../../lib/heal-user';
 import { apiError, apiSuccess } from '../../lib/response';
 import { ADMIN_ROLES } from '../../lib/roleCategories';
 import { getServiceClient } from '../../lib/supabase';
 
-export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
+export const onRequestGet = withAuth(async (context: AuthenticatedPagesContext) => {
   const startTime = Date.now();
   const env = context.env as Record<string, string>;
   const supabase = getServiceClient(env);
@@ -24,6 +24,8 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   const url = new URL(context.request.url);
   const email = url.searchParams.get('email');
   const publicProfileLearnerId = url.searchParams.get('learnerId');
+  const ownProfile = user.email === email;
+  const learnerSource = ownProfile ? 'learners' : 'zoho_recruiter_learners';
 
   if (!email) {
     return apiError(400, 'INVALID_INPUT', 'Email is required', context.request, { startTime });
@@ -35,33 +37,30 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   const isAdmin = user.roles?.some((r: string) => ADMIN_ROLES.includes(r));
   if (!isAdmin && user.email !== email) {
     if (!publicProfileLearnerId) {
-      console.log(`[LearnersByEmail] BLOCKED: JWT email="${user.email}" tried to access "${email}"`);
       return apiError(403, 'FORBIDDEN', 'You can only access your own data', context.request, { startTime });
     }
 
     const { data: publicProfileLearner, error: publicProfileError } = await supabase
-      .from('learners')
+      .from(learnerSource)
       .select('id')
       .eq('id', publicProfileLearnerId)
       .eq('email', email)
       .maybeSingle();
 
     if (publicProfileError) {
-      console.error('[LearnersByEmail] Public profile verification error:', JSON.stringify(publicProfileError));
+      console.error('[LearnersByEmail] Public profile verification error:', publicProfileError.code);
       return apiError(500, 'INTERNAL_ERROR', 'Unable to verify profile access', context.request, { startTime });
     }
 
     if (!publicProfileLearner) {
-      console.log(`[LearnersByEmail] BLOCKED: learnerId="${publicProfileLearnerId}" does not match requested email="${email}"`);
       return apiError(403, 'FORBIDDEN', 'You can only access your own data', context.request, { startTime });
     }
   }
 
   try {
     // Strategy 1: Try full query with all relations by email
-    console.log(`[LearnersByEmail] Trying full query for email="${email}"`);
     const { data: fullData, error: fullError } = await supabase
-      .from('learners')
+      .from(learnerSource)
       .select(`
         *,
         skill_passports (
@@ -81,14 +80,14 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
         education (*)
       `)
       .eq('email', email)
+      .eq(ownProfile ? 'user_id' : 'email', ownProfile ? user.id : email)
       .maybeSingle();
 
     if (fullError) {
-      console.error('[LearnersByEmail] Full query error:', JSON.stringify(fullError));
+      console.error('[LearnersByEmail] Full query error:', fullError.code);
     }
 
     if (fullData) {
-      console.log(`[LearnersByEmail] Full query success for "${email}", learner id="${fullData.id}"`);
 
       // Fetch privacy settings
       let privacySettings = { profileVisibility: 'public' };
@@ -110,19 +109,18 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
     }
 
     // Strategy 2: Try simple query without joins
-    console.log(`[LearnersByEmail] Full query returned null, trying simple query for email="${email}"`);
     const { data: simpleData, error: simpleError } = await supabase
-      .from('learners')
+      .from(learnerSource)
       .select('*')
       .eq('email', email)
+      .eq(ownProfile ? 'user_id' : 'email', ownProfile ? user.id : email)
       .maybeSingle();
 
     if (simpleError) {
-      console.error('[LearnersByEmail] Simple query error:', JSON.stringify(simpleError));
+      console.error('[LearnersByEmail] Simple query error:', simpleError.code);
     }
 
     if (simpleData) {
-      console.log(`[LearnersByEmail] Simple query found learner id="${simpleData.id}" — JOINs were the problem`);
       const learnerId = simpleData.id;
       const [skillPassports, projects, certificates, experience, skills, trainings, educationData] = await Promise.all([
         supabase.from('skill_passports').select('*').eq('learner_id', learnerId),
@@ -162,21 +160,21 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
       return apiSuccess(mergedData, context.request, { startTime });
     }
 
+    if (!ownProfile) return apiError(404, 'NOT_FOUND', 'Learner not found', context.request, { startTime });
+
     // Strategy 3: Try by user_id from JWT
     const userId = user.id;
-    console.log(`[LearnersByEmail] No learner found by email, trying user_id="${userId}"`);
     const { data: byUserData, error: byUserError } = await supabase
-      .from('learners')
+      .from(learnerSource)
       .select('*')
       .eq('user_id', userId)
       .maybeSingle();
 
     if (byUserError) {
-      console.error('[LearnersByEmail] user_id query error:', JSON.stringify(byUserError));
+      console.error('[LearnersByEmail] user_id query error:', byUserError.code);
     }
 
     if (byUserData) {
-      console.log(`[LearnersByEmail] Found learner by user_id! id="${byUserData.id}", learner_email="${byUserData.email}"`);
       const learnerId = byUserData.id;
       const [skillPassports, projects, certificates, experience, skills, trainings, educationData, userSettings] = await Promise.all([
         supabase.from('skill_passports').select('*').eq('learner_id', learnerId),
@@ -210,21 +208,20 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
     }
 
     // Strategy 4: Try case-insensitive search
-    console.log(`[LearnersByEmail] Trying case-insensitive search for "${email}"`);
     const { data: ilikeData } = await supabase
-      .from('learners')
+      .from(learnerSource)
       .select('id, email, name, user_id')
       .ilike('email', email)
+      .eq('user_id', user.id)
       .limit(1)
       .maybeSingle();
 
     if (ilikeData) {
-      console.log(`[LearnersByEmail] Found by ILIKE! Actual email="${ilikeData.email}"`);
       return apiError(404, 'CASE_MISMATCH', `Email case mismatch. DB has "${ilikeData.email}" but requested "${email}".`, context.request, { startTime });
     }
 
     // Self-heal: try to create from SSO before final 404 (gated by heal-user flag, skip for admin viewing others)
-    if (!isAdmin || user.email === email) {
+    if (ownProfile) {
       const { isHealEnabled } = await import('../../lib/healConfig');
       let heal: { healed: boolean; reason: string } = { healed: false, reason: 'flag_disabled' };
       if (await isHealEnabled(context.env as Record<string, unknown>, 'heal-user')) {
@@ -234,9 +231,8 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
         createLogger('heal-user').info('heal_metric', { metric: 'heal_cache_miss_total', status: 'heal_disabled', flag: 'heal-user', userId } as any);
       }
       if (heal.healed) {
-        const { data: healed } = await supabase.from('learners').select('*').eq('user_id', userId).maybeSingle();
+        const { data: healed } = await supabase.from(learnerSource).select('*').eq('user_id', userId).maybeSingle();
         if (healed) {
-          console.log(`[LearnersByEmail] Healed on read-repair for user_id="${userId}"`);
           // Return healed via strategy 3 path
           const learnerId = healed.id;
           const [skillPassports, projects, certificates, experience, skills, trainings, educationData, userSettings] = await Promise.all([
@@ -257,11 +253,10 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
     }
 
     // Nothing found
-    console.log(`[LearnersByEmail] No learner record found anywhere for email="${email}" or user_id="${userId}"`);
     return apiError(404, 'NOT_FOUND', `No learner record found for email "${email}".`, context.request, { startTime });
 
   } catch (err) {
-    console.error('[LearnersByEmail] Error:', err);
+    console.error('[LearnersByEmail] Read failed');
     return apiError(500, 'INTERNAL_ERROR', 'An internal error occurred', context.request, { startTime });
   }
 });

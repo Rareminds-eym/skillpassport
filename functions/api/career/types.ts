@@ -86,6 +86,7 @@ export interface SoftSkill {
 }
 
 export interface AssessmentResults {
+  gradingProvenance?: { objective: 'server_graded' | 'unavailable'; subjective: 'advisory_unverified'; status?: string };
   hasAssessment: boolean;
   riasecCode: string;
   riasecScores: Record<string, number>;

@@ -6,84 +6,81 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import type {MutableRefObject, SetStateAction} from 'react';
 
 import * as assessmentService from '../api/assessmentService';
+import {getOwnAssessmentLearner} from '../api/learnerContext';
 
 import { useUser } from '@/shared/model/authStore';
+type AssessmentOwner = { id: string | null };
+
+/** State and retained callbacks are valid only for this exact owner generation. */
+function useOwnerState<T>(initialValue:T, owner:AssessmentOwner, liveOwner:MutableRefObject<AssessmentOwner>, mounted:MutableRefObject<boolean>) {
+  const initial=useRef(initialValue);
+  const [stored,setStored]=useState({owner,value:initial.current});
+  const setValue=useCallback((next:SetStateAction<T>)=>{
+    if(!mounted.current||liveOwner.current!==owner)return;
+    setStored(previous=>{
+      if(!mounted.current||liveOwner.current!==owner)return previous;
+      const value=previous.owner===owner?previous.value:initial.current;
+      return {owner,value:typeof next==='function'?(next as (previous:T)=>T)(value):next};
+    });
+  },[owner,liveOwner,mounted]);
+  return [stored.owner===owner?stored.value:initial.current,setValue] as const;
+}
+
 export const useAssessment = () => {
   const user = useUser();
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [sections, setSections] = useState([]);
-  const [streams, setStreams] = useState([]);
-  const [currentAttempt, setCurrentAttempt] = useState(null);
-  const [questions, setQuestions] = useState({});
-  const [responses, setResponses] = useState({});
-  const [learnerRecordId, setlearnerRecordId] = useState(null);
-  
-  // Track if initial load is complete
-  const initialLoadComplete = useRef(false);
+  const ownerId=user?.id||null;
+  const liveOwner=useRef<AssessmentOwner>({id:ownerId});
+  // Compare identity during rendering, so old state is never exposed while an
+  // effect is waiting to reset. A -> B -> A gets a fresh generation as well.
+  if(liveOwner.current.id!==ownerId)liveOwner.current={id:ownerId};
+  const owner=liveOwner.current;
+  const mounted=useRef(true);
+  useEffect(()=>{mounted.current=true;return ()=>{mounted.current=false;};},[]);
+  const isCurrentOwner=()=>mounted.current&&owner.id!==null&&liveOwner.current===owner;
+  const assertCurrentOwner=()=>{if(!isCurrentOwner())throw new Error('Assessment owner changed');};
+  const [loading,setLoading]=useOwnerState(true,owner,liveOwner,mounted);
+  const [error,setError]=useOwnerState<string|null>(null,owner,liveOwner,mounted);
+  const [sections,setSections]=useOwnerState<Array<{id:string;name:string}>>([],owner,liveOwner,mounted);
+  const [streams,setStreams]=useOwnerState<unknown[]>([],owner,liveOwner,mounted);
+  const [currentAttempt,setCurrentAttempt]=useOwnerState<Record<string,any>|null>(null,owner,liveOwner,mounted);
+  const [questions,setQuestions]=useOwnerState<Record<string,any>>({},owner,liveOwner,mounted);
+  const [responses,setResponses]=useOwnerState<Record<string,unknown>>({},owner,liveOwner,mounted);
+  const [learnerRecordId,setlearnerRecordId]=useOwnerState<string|null>(null,owner,liveOwner,mounted);
 
-  // OPTIMIZED: Load ALL initial data in parallel (sections, streams, learner ID)
-  useEffect(() => {
-    const loadAllInitialData = async () => {
-      // Skip if no user or already loaded
-      if (!user?.id || initialLoadComplete.current) {
-        if (!user?.id) setLoading(false);
-        return;
-      }
-      
-      try {
-        setLoading(true);
-        console.log('🚀 useAssessment: Loading all initial data in parallel...');
-        const startTime = performance.now();
-        
-        // Run ALL queries in parallel for maximum speed
-        const [sectionsData, streamsData, learnerData] = await Promise.all([
-          // 1. Fetch sections
-          assessmentService.fetchSections(),
-          // 2. Fetch streams
-          assessmentService.fetchStreams(),
-          // 3. Fetch learner ID (optimized single query with OR condition)
-          supabase
-            .from('learners')
-            .select('id')
-            .or(`user_id.eq.${user.id},id.eq.${user.id}`)
-            .maybeSingle()
+  useEffect(()=>{
+    let cancelled=false;
+    if(!owner.id){setLoading(false);return;}
+    const load=async()=>{
+      setLoading(true);
+      setError(null);
+      try{
+        const [sectionsData,streamsData,learnerData]=await Promise.all([
+          assessmentService.fetchSections(),assessmentService.fetchStreams(),getOwnAssessmentLearner(owner.id!),
         ]);
-        
-        const endTime = performance.now();
-        console.log(`✅ useAssessment: All data loaded in ${Math.round(endTime - startTime)}ms`);
-        
-        // Set all state at once
-        setSections(sectionsData || []);
-        setStreams(streamsData || []);
-        
-        if (learnerData.data?.id) {
-          console.log('useAssessment: Found learner record:', learnerData.data.id);
-          setlearnerRecordId(learnerData.data.id);
-        } else {
-          console.log('useAssessment: No learner record found for user:', user.id);
-        }
-        
-        initialLoadComplete.current = true;
-      } catch (err) {
-        console.error('Error loading assessment data:', err);
-        setError(err.message);
-      } finally {
-        setLoading(false);
+        if(cancelled||!isCurrentOwner())return;
+        setSections(sectionsData||[]);
+        setStreams(streamsData||[]);
+        setlearnerRecordId(learnerData?.id??null);
+      }catch(err){
+        if(!cancelled&&isCurrentOwner())setError(err instanceof Error?err.message:'Assessment context unavailable');
+      }finally{
+        if(!cancelled&&isCurrentOwner())setLoading(false);
       }
     };
-
-    loadAllInitialData();
-  }, [user?.id]);
+    void load();
+    return ()=>{cancelled=true;};
+  },[owner]);
 
   // Check for in-progress attempt
   const checkInProgressAttempt = useCallback(async () => {
-    if (!learnerRecordId) return null;
+    if (!isCurrentOwner() || !learnerRecordId) return null;
     
     try {
       const attempt = await assessmentService.getInProgressAttempt(learnerRecordId);
+      assertCurrentOwner();
       if (attempt) {
         setCurrentAttempt(attempt);
         // Restore responses from the attempt
@@ -102,6 +99,7 @@ export const useAssessment = () => {
         let sectionIdToName = {};
         try {
           const sectionsData = await assessmentService.fetchSections();
+          assertCurrentOwner();
           sectionsData.forEach(s => {
             sectionIdToName[s.id] = s.name;
           });
@@ -109,6 +107,8 @@ export const useAssessment = () => {
           console.warn('Could not fetch sections for response restoration:', e);
         }
         
+        assertCurrentOwner();
+
         // Then restore AI-generated question responses from personal_assessment_responses table
         attempt.responses?.forEach(r => {
           if (r.question_id && r.response_value !== null) {
@@ -128,10 +128,11 @@ export const useAssessment = () => {
       console.error('Error checking in-progress attempt:', err);
       return null;
     }
-  }, [learnerRecordId]);
+  }, [learnerRecordId, owner]);
 
   // Start a new assessment
   const startAssessment = useCallback(async (streamId, gradeLevel) => {
+    assertCurrentOwner();
     console.log('useAssessment.startAssessment called with:', { streamId, gradeLevel, learnerRecordId });
     
     if (!learnerRecordId) throw new Error('Learner record not found');
@@ -143,11 +144,13 @@ export const useAssessment = () => {
       // Create new attempt using learner record ID (not auth user ID)
       console.log('Creating attempt with learnerRecordId:', learnerRecordId);
       const attempt = await assessmentService.createAttempt(learnerRecordId, streamId, gradeLevel);
+      assertCurrentOwner();
       console.log('Attempt created:', attempt);
       setCurrentAttempt(attempt);
 
       // Load all questions for this stream and grade level
-      const allQuestions = await assessmentService.fetchAllQuestions(streamId, gradeLevel);
+      const allQuestions = await assessmentService.fetchAllQuestions(attempt.stream_id, attempt.grade_level, attempt.id);
+      assertCurrentOwner();
       setQuestions(allQuestions);
       setResponses({});
 
@@ -159,17 +162,20 @@ export const useAssessment = () => {
     } finally {
       setLoading(false);
     }
-  }, [learnerRecordId]);
+  }, [learnerRecordId, owner]);
 
   // Resume an existing attempt
   const resumeAssessment = useCallback(async (attemptId) => {
+    assertCurrentOwner();
     try {
       setLoading(true);
       const attempt = await assessmentService.getAttemptWithResults(attemptId);
+      assertCurrentOwner();
       setCurrentAttempt(attempt);
 
       // Load questions for this stream and grade level
-      const allQuestions = await assessmentService.fetchAllQuestions(attempt.stream_id, attempt.grade_level);
+      const allQuestions = await assessmentService.fetchAllQuestions(attempt.stream_id, attempt.grade_level, attempt.id);
+      assertCurrentOwner();
       setQuestions(allQuestions);
 
       // Restore responses
@@ -201,10 +207,11 @@ export const useAssessment = () => {
     } finally {
       setLoading(false);
     }
-  }, [sections]);
+  }, [sections, owner]);
 
   // Save a response
   const saveResponse = useCallback(async (sectionName, questionId, value, isCorrect = null) => {
+    assertCurrentOwner();
     if (!currentAttempt?.id) {
       console.warn('⚠️ No active attempt, skipping save');
       return { success: false, error: 'No active attempt' };
@@ -226,6 +233,7 @@ export const useAssessment = () => {
         value,
         isCorrect
       );
+      assertCurrentOwner();
       return { success: true };
     } catch (err) {
       console.error('❌ Error saving response:', err);
@@ -247,10 +255,11 @@ export const useAssessment = () => {
         code: err.code
       };
     }
-  }, [currentAttempt?.id]);
+  }, [currentAttempt?.id, owner]);
 
   // Update progress
   const updateProgress = useCallback(async (sectionIndex, questionIndex, sectionTimings, timerRemaining = null, elapsedTime = null, allResponses = null, aptitudeQuestionTimer = null) => {
+    assertCurrentOwner();
     if (!currentAttempt?.id) {
       console.warn('⚠️ No active attempt, skipping progress update');
       return { success: false, error: 'No active attempt' };
@@ -266,6 +275,7 @@ export const useAssessment = () => {
         allResponses,
         aptitudeQuestionTimer
       });
+      assertCurrentOwner();
       return { success: true };
     } catch (err) {
       console.error('❌ Error updating progress:', err);
@@ -287,10 +297,11 @@ export const useAssessment = () => {
         code: err.code
       };
     }
-  }, [currentAttempt?.id]);
+  }, [currentAttempt?.id, owner]);
 
   // Complete the assessment
   const completeAssessment = useCallback(async (geminiResults, sectionTimings) => {
+    assertCurrentOwner();
     if (!currentAttempt?.id || !learnerRecordId) {
       throw new Error('No active attempt or learner record');
     }
@@ -305,6 +316,7 @@ export const useAssessment = () => {
         geminiResults,
         sectionTimings
       );
+      assertCurrentOwner();
 
       setCurrentAttempt(prev => ({
         ...prev,
@@ -320,49 +332,55 @@ export const useAssessment = () => {
     } finally {
       setLoading(false);
     }
-  }, [currentAttempt, learnerRecordId]);
+  }, [currentAttempt, learnerRecordId, owner]);
 
   // Abandon current attempt
   const abandonAssessment = useCallback(async () => {
+    assertCurrentOwner();
     if (!currentAttempt?.id) return;
 
     try {
       await assessmentService.abandonAttempt(currentAttempt.id);
+      assertCurrentOwner();
       setCurrentAttempt(null);
       setResponses({});
       setQuestions({});
     } catch (err) {
       console.error('Error abandoning assessment:', err);
     }
-  }, [currentAttempt?.id]);
+  }, [currentAttempt?.id, owner]);
 
   // Get assessment history
   const getHistory = useCallback(async () => {
-    if (!learnerRecordId) return [];
+    if (!isCurrentOwner() || !learnerRecordId) return [];
 
     try {
-      return await assessmentService.getlearnerAttempts(learnerRecordId);
+      const history=await assessmentService.getlearnerAttempts(learnerRecordId);
+      assertCurrentOwner();
+      return history;
     } catch (err) {
       console.error('Error fetching history:', err);
       return [];
     }
-  }, [learnerRecordId]);
+  }, [learnerRecordId, owner]);
 
   // Get latest result
   const getLatestResult = useCallback(async () => {
-    if (!learnerRecordId) return null;
+    if (!isCurrentOwner() || !learnerRecordId) return null;
 
     try {
-      return await assessmentService.getLatestResult(learnerRecordId);
+      const result=await assessmentService.getLatestResult(learnerRecordId);
+      assertCurrentOwner();
+      return result;
     } catch (err) {
       console.error('Error fetching latest result:', err);
       return null;
     }
-  }, [learnerRecordId]);
+  }, [learnerRecordId, owner]);
 
   return {
     // State
-    loading,
+    loading: ownerId ? loading : false,
     error,
     sections,
     streams,

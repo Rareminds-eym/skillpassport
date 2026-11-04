@@ -125,7 +125,7 @@ async function handleAction(context: AuthenticatedContext, supabase: any, params
       if (opportunityId && !orgOppIds.includes(String(opportunityId))) {
         return apiSuccess({ candidates: [] }, context.request);
       }
-      let query = supabase.from('pipeline_candidates_detailed').select('*').in('opportunity_id', orgOppIds);
+      let query = supabase.from('zoho_recruiter_pipeline_candidates_detailed').select('*').in('opportunity_id', orgOppIds);
       if (opportunityId) query = query.eq('opportunity_id', opportunityId);
       const { data, error } = await query.order('added_at', { ascending: false });
       if (error) return apiDbError(error, context.request);
@@ -145,7 +145,7 @@ async function handleAction(context: AuthenticatedContext, supabase: any, params
         return apiError(403, 'FORBIDDEN', 'This opportunity does not belong to your organization', context.request);
       }
       const { data: pipelineCandidates, error: pcError } = await supabase
-        .from('pipeline_candidates')
+        .from('zoho_recruiter_pipeline_candidates')
         .select('*')
         .eq('opportunity_id', opportunityId)
         .eq('organization_id', orgId)
@@ -158,7 +158,7 @@ async function handleAction(context: AuthenticatedContext, supabase: any, params
       }
       const learnerIds = [...new Set(pipelineCandidates.map((pc: any) => pc.learner_id))];
       const { data: learners } = await supabase
-        .from('learners')
+        .from('zoho_recruiter_learners')
         .select(`
           user_id, id, name, email, contact_number,
           college_school_name, university, branch_field, course_name, district_name,
@@ -212,7 +212,7 @@ async function handleAction(context: AuthenticatedContext, supabase: any, params
       const sortDirection = params.sort_direction || 'desc';
 
       let query = supabase
-        .from('pipeline_candidates')
+        .from('zoho_recruiter_pipeline_candidates')
         .select('*')
         .eq('opportunity_id', opportunityId)
         .eq('organization_id', orgId)
@@ -256,7 +256,7 @@ async function handleAction(context: AuthenticatedContext, supabase: any, params
 
       const learnerIds = [...new Set(pipelineCandidates.map((pc: any) => pc.learner_id))];
       const { data: learners } = await supabase
-        .from('learners')
+        .from('zoho_recruiter_learners')
         .select(`
           user_id, id, name, email, contact_number,
           college_school_name, university, branch_field, course_name, district_name,
@@ -297,7 +297,7 @@ async function handleAction(context: AuthenticatedContext, supabase: any, params
       if (opportunityId && !orgOppIds.includes(String(opportunityId))) {
         return apiSuccess({ grouped: { sourced: [], screened: [], interview_1: [], interview_2: [], offer: [], hired: [] } }, context.request);
       }
-      let query = supabase.from('pipeline_candidates_detailed').select('*').in('opportunity_id', orgOppIds);
+      let query = supabase.from('zoho_recruiter_pipeline_candidates_detailed').select('*').in('opportunity_id', orgOppIds);
       if (opportunityId) query = query.eq('opportunity_id', opportunityId);
       const { data, error } = await query.order('added_at', { ascending: false });
       if (error) return apiDbError(error, context.request);
@@ -319,7 +319,7 @@ async function handleAction(context: AuthenticatedContext, supabase: any, params
       const orgId = await getActiveOrgId(supabase, user);
       if (!orgId) return apiError(400, 'VALIDATION_ERROR', 'Organization ID is required', context.request);
       const { data: candidate, error: candError } = await supabase
-        .from('pipeline_candidates')
+        .from('zoho_recruiter_pipeline_candidates')
         .select('id')
         .eq('id', String(candidateId))
         .eq('organization_id', orgId)
@@ -455,7 +455,7 @@ async function handleAction(context: AuthenticatedContext, supabase: any, params
       const learnerId = params.learnerId;
       if (!learnerId) return apiError(400, 'VALIDATION_ERROR', 'learnerId required', context.request);
       const { data, error } = await supabase
-        .from('certificates')
+        .from('zoho_recruiter_certificates')
         .select('*')
         .eq('learner_id', learnerId)
         .eq('enabled', true)
@@ -493,7 +493,7 @@ async function handleAction(context: AuthenticatedContext, supabase: any, params
         return apiSuccess({ stats: { total: 0, by_stage: {}, by_status: {} } }, context.request);
       }
       const opportunityId = params.opportunity_id;
-      let query = supabase.from('pipeline_candidates_detailed').select('*').in('opportunity_id', orgOppIds);
+      let query = supabase.from('zoho_recruiter_pipeline_candidates_detailed').select('*').in('opportunity_id', orgOppIds);
       if (opportunityId) {
         if (!orgOppIds.includes(String(opportunityId))) return apiSuccess({ stats: { total: 0, by_stage: {}, by_status: {} } }, context.request);
         query = query.eq('opportunity_id', opportunityId);
@@ -542,7 +542,7 @@ async function handleAction(context: AuthenticatedContext, supabase: any, params
       }
 
       const { data: existingCandidate } = await supabase
-        .from('pipeline_candidates')
+        .from('zoho_recruiter_pipeline_candidates')
         .select('id, stage, status')
         .eq('opportunity_id', opportunityIdStr)
         .eq('learner_id', learner_id)
@@ -560,7 +560,7 @@ async function handleAction(context: AuthenticatedContext, supabase: any, params
           }, context.request);
         }
         const { data: reactivated, error: reactivateError } = await supabase
-          .from('pipeline_candidates')
+          .from('zoho_recruiter_pipeline_candidates')
           .update({ status: 'active', stage: stage || 'sourced', updated_at: new Date().toISOString() })
           .eq('id', existingCandidate.id)
           .select()
@@ -572,7 +572,7 @@ async function handleAction(context: AuthenticatedContext, supabase: any, params
       let aiScore = null;
       let employabilityScore = null;
       const { data: learnerData } = await supabase
-        .from('learners')
+        .from('zoho_recruiter_learners')
         .select('ai_score_overall, employability_score')
         .eq('id', learner_id)
         .single();
@@ -589,7 +589,7 @@ async function handleAction(context: AuthenticatedContext, supabase: any, params
 
       const candidateStage = stage || 'sourced';
       const { data, error } = await supabase
-        .from('pipeline_candidates')
+        .from('zoho_recruiter_pipeline_candidates')
         .insert([{
           opportunity_id: opportunityIdStr,
           learner_id,
@@ -625,14 +625,14 @@ async function handleAction(context: AuthenticatedContext, supabase: any, params
       const applicationStatus = stageToStatusMap[candidateStage];
       if (applicationStatus && learner_id && opportunityIdStr) {
         const { data: existingApp } = await supabase
-          .from('applied_jobs')
+          .from('zoho_recruiter_applied_jobs')
           .select('id')
           .eq('learner_id', learner_id)
           .eq('opportunity_id', opportunityIdStr)
           .maybeSingle();
         if (existingApp) {
           await supabase
-            .from('applied_jobs')
+            .from('zoho_recruiter_applied_jobs')
             .update({ application_status: applicationStatus, updated_at: new Date().toISOString() })
             .eq('id', existingApp.id);
         }
@@ -667,7 +667,7 @@ async function handleAction(context: AuthenticatedContext, supabase: any, params
       const orgId = await getActiveOrgId(supabase, user);
       if (!orgId) return apiError(400, 'VALIDATION_ERROR', 'Organization ID is required', context.request);
       const { data: fetched, error: fetchScopedErr } = await supabase
-        .from('pipeline_candidates')
+        .from('zoho_recruiter_pipeline_candidates')
         .select('id, stage, learner_id, candidate_name, candidate_email, opportunity_id')
         .eq('id', candidateIdStr)
         .eq('organization_id', orgId)
@@ -692,7 +692,7 @@ async function handleAction(context: AuthenticatedContext, supabase: any, params
 
       const previousStage = currentData.stage;
       const { data, error } = await supabase
-        .from('pipeline_candidates')
+        .from('zoho_recruiter_pipeline_candidates')
         .update({
           stage: newStage,
           previous_stage: previousStage,
@@ -713,7 +713,7 @@ async function handleAction(context: AuthenticatedContext, supabase: any, params
         const updateData: any = { application_status: applicationStatus, updated_at: new Date().toISOString() };
         if (applicationStatus === 'interview_scheduled') updateData.interview_scheduled_at = new Date().toISOString();
         await supabase
-          .from('applied_jobs')
+          .from('zoho_recruiter_applied_jobs')
           .update(updateData)
           .eq('learner_id', currentData.learner_id)
           .eq('opportunity_id', currentData.opportunity_id)
@@ -768,7 +768,7 @@ async function handleAction(context: AuthenticatedContext, supabase: any, params
       const orgId = await getActiveOrgId(supabase, user);
       if (!orgId) return apiError(400, 'VALIDATION_ERROR', 'Organization ID is required', context.request);
       const { data: target, error: targetErr } = await supabase
-        .from('pipeline_candidates')
+        .from('zoho_recruiter_pipeline_candidates')
         .select('id')
         .eq('id', candidateIdStr)
         .eq('organization_id', orgId)
@@ -777,7 +777,7 @@ async function handleAction(context: AuthenticatedContext, supabase: any, params
       if (targetErr) return apiDbError(targetErr, context.request);
       if (!target) return apiError(404, 'NOT_FOUND', 'Candidate not found', context.request);
       const { data, error } = await supabase
-        .from('pipeline_candidates')
+        .from('zoho_recruiter_pipeline_candidates')
         .update({ next_action, next_action_date: next_action_date || null, next_action_notes: notes || null })
         .eq('id', target.id)
         .select()
@@ -795,7 +795,7 @@ async function handleAction(context: AuthenticatedContext, supabase: any, params
       const orgId = await getActiveOrgId(supabase, user);
       if (!orgId) return apiError(400, 'VALIDATION_ERROR', 'Organization ID is required', context.request);
       const { data: currentData, error: fetchError } = await supabase
-        .from('pipeline_candidates')
+        .from('zoho_recruiter_pipeline_candidates')
         .select('id, previous_stage, learner_id')
         .eq('id', candidateIdStr)
         .eq('organization_id', orgId)
@@ -805,7 +805,7 @@ async function handleAction(context: AuthenticatedContext, supabase: any, params
       if (!currentData) return apiError(404, 'NOT_FOUND', 'Candidate not found', context.request);
 
       const { data, error } = await supabase
-        .from('pipeline_candidates')
+        .from('zoho_recruiter_pipeline_candidates')
         .update({
           status: 'rejected', stage: 'rejected',
           rejection_reason: rejection_reason || null,
@@ -851,7 +851,7 @@ async function handleAction(context: AuthenticatedContext, supabase: any, params
       const orgId = await getActiveOrgId(supabase, user);
       if (!orgId) return apiError(400, 'VALIDATION_ERROR', 'Organization ID is required', context.request);
       const { data: target, error: targetErr } = await supabase
-        .from('pipeline_candidates')
+        .from('zoho_recruiter_pipeline_candidates')
         .select('id')
         .eq('id', candidateIdStr)
         .eq('organization_id', orgId)
@@ -860,7 +860,7 @@ async function handleAction(context: AuthenticatedContext, supabase: any, params
       if (targetErr) return apiDbError(targetErr, context.request);
       if (!target) return apiError(404, 'NOT_FOUND', 'Candidate not found', context.request);
       const { data, error } = await supabase
-        .from('pipeline_candidates')
+        .from('zoho_recruiter_pipeline_candidates')
         .update({ recruiter_rating: rating, recruiter_notes: notes || null })
         .eq('id', target.id)
         .select()
@@ -883,7 +883,7 @@ async function handleAction(context: AuthenticatedContext, supabase: any, params
         return apiError(403, 'FORBIDDEN', 'Assignee must be an active member of your organization', context.request);
       }
       const { data: target, error: targetErr } = await supabase
-        .from('pipeline_candidates')
+        .from('zoho_recruiter_pipeline_candidates')
         .select('id, learner_id')
         .eq('id', candidateIdStr)
         .eq('organization_id', orgId)
@@ -892,7 +892,7 @@ async function handleAction(context: AuthenticatedContext, supabase: any, params
       if (targetErr) return apiDbError(targetErr, context.request);
       if (!target) return apiError(404, 'NOT_FOUND', 'Candidate not found', context.request);
       const { data, error } = await supabase
-        .from('pipeline_candidates')
+        .from('zoho_recruiter_pipeline_candidates')
         .update({ assigned_to })
         .eq('id', target.id)
         .select()
@@ -921,7 +921,7 @@ async function handleAction(context: AuthenticatedContext, supabase: any, params
       const orgId = await getActiveOrgId(supabase, user);
       if (!orgId) return apiError(400, 'VALIDATION_ERROR', 'Organization ID is required', context.request);
       const { data: target, error: targetErr } = await supabase
-        .from('pipeline_candidates')
+        .from('zoho_recruiter_pipeline_candidates')
         .select('id')
         .eq('id', candidateIdStr)
         .eq('organization_id', orgId)
@@ -930,7 +930,7 @@ async function handleAction(context: AuthenticatedContext, supabase: any, params
       if (targetErr) return apiDbError(targetErr, context.request);
       if (!target) return apiError(404, 'NOT_FOUND', 'Candidate not found', context.request);
       const { error } = await supabase
-        .from('pipeline_candidates')
+        .from('zoho_recruiter_pipeline_candidates')
         .delete()
         .eq('id', target.id); // scoped delete: verified row only
       if (error) return apiDbError(error, context.request);
@@ -958,7 +958,7 @@ async function handleAction(context: AuthenticatedContext, supabase: any, params
         let inOrgScope = false;
         if (orgOppIds.length > 0) {
           const { data: appRow } = await supabase
-            .from('applied_jobs')
+            .from('zoho_recruiter_applied_jobs')
             .select('id')
             .eq('learner_id', learner_id)
             .in('opportunity_id', orgOppIds)
@@ -1009,7 +1009,7 @@ async function handleAction(context: AuthenticatedContext, supabase: any, params
       const orgId = await getActiveOrgId(supabase, user);
       if (!orgId) return apiError(400, 'VALIDATION_ERROR', 'Organization ID is required', context.request);
       const { data: orgRows, error: scopeErr } = await supabase
-        .from('pipeline_candidates')
+        .from('zoho_recruiter_pipeline_candidates')
         .select('id, stage, learner_id, opportunity_id')
         .in('id', candidate_ids.map((id: any) => String(id)))
         .eq('organization_id', orgId);
@@ -1026,7 +1026,7 @@ async function handleAction(context: AuthenticatedContext, supabase: any, params
           const candidateIdStr = String(scoped.id);
           const previousStage = scoped.stage;
           const { data: updated, error: updateError } = await supabase
-            .from('pipeline_candidates')
+            .from('zoho_recruiter_pipeline_candidates')
             .update({ stage: newStage, previous_stage: previousStage, stage_changed_at: new Date().toISOString(), stage_changed_by: user.id }) // 🔒 server-forced actor
             .eq('id', candidateIdStr)
             .select()
