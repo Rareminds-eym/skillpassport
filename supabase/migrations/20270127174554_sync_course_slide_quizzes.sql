@@ -14,10 +14,10 @@ BEGIN
       IF EXISTS (SELECT 1 FROM jsonb_array_elements_text(q->'options') AS o(value) WHERE length(trim(value)) = 0) THEN RAISE EXCEPTION 'Empty answer option'; END IF;
     END LOOP;
     slides := array_append(slides,slide);
-    INSERT INTO ppt_slide_quizzes(resource_id,slide_number,questions) VALUES(p_resource_id,slide,item->'questions')
+    INSERT INTO quizzes(lesson_id,title,resource_id,slide_number,questions) SELECT lesson_id, 'Slide ' || slide || ' quiz', p_resource_id, slide, item->'questions' FROM lesson_resources WHERE resource_id=p_resource_id
       ON CONFLICT (resource_id,slide_number) DO UPDATE SET questions=EXCLUDED.questions,updated_at=now();
   END LOOP;
-  DELETE FROM ppt_slide_quizzes WHERE resource_id=p_resource_id AND NOT (slide_number=ANY(slides));
+  DELETE FROM quizzes WHERE resource_id=p_resource_id AND NOT (slide_number=ANY(slides));
 END; $$;
 REVOKE ALL ON FUNCTION public.sync_ppt_slide_quizzes(uuid,jsonb) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.sync_ppt_slide_quizzes(uuid,jsonb) TO service_role;

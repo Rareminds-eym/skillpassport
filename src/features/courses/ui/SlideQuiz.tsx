@@ -15,6 +15,7 @@ export function SlideQuiz({ courseId, lessonId, resourceId, slide, ready }: { co
   const [questionIndex, setQuestionIndex] = useState(0);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
+  const [results, setResults] = useState<Record<number, boolean>>({});
   const [fullscreenTarget, setFullscreenTarget] = useState<Element | null>(() => typeof document === 'undefined' ? null : document.fullscreenElement);
   useEffect(() => {
     const update = () => setFullscreenTarget(document.fullscreenElement);
@@ -38,11 +39,26 @@ export function SlideQuiz({ courseId, lessonId, resourceId, slide, ready }: { co
     setAnswers(quiz?.answers || {});
     setQuestionIndex(0);
     setSaveError('');
-    if (ready && quiz && !shown.includes(slide)) {
+    setResults({});
+    const isComplete = quiz && quiz.questions.every((_, index) => quiz.answers[index] !== undefined);
+    if (ready && quiz && !isComplete && !shown.includes(slide)) {
       setShown(previous => [...previous, slide]);
       setOpen(true);
     }
   }, [slide, ready, quiz]); // Shown is checked when entering a slide or receiving its quiz.
+  const submitAnswer = async () => {
+    if (!quiz || saving || answers[questionIndex] === undefined) return;
+    setSaving(true);
+    setSaveError('');
+    try {
+      const params = new URLSearchParams({ courseId: courseId!, lessonId: lessonId!, resourceId: resourceId! });
+      const response = await ssoClient.fetch(`/api/storage/course-slide-quizzes?${params}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'check-answer', quizId: quiz.id, version: quiz.version, questionIndex, answers: { [questionIndex]: answers[questionIndex] } }) });
+      if (!response.ok) throw new Error('Could not check your answer. Please try again.');
+      const result = await response.json();
+      setResults(previous => ({ ...previous, [questionIndex]: result.correct }));
+    } catch (err) { setSaveError(err instanceof Error ? err.message : 'Could not check your answer.'); }
+    finally { setSaving(false); }
+  };
   const saveAnswers = async () => {
     if (!quiz || !courseId || !lessonId || !resourceId || saving) return;
     const firstUnanswered = quiz.questions.findIndex((_, index) => answers[index] === undefined);
@@ -75,9 +91,10 @@ export function SlideQuiz({ courseId, lessonId, resourceId, slide, ready }: { co
         <div className="flex items-start justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-wide text-indigo-600">Slide {slide} · Practice</p><h2 id="slide-quiz-title" className="mt-1 text-xl font-semibold">Check your understanding</h2><p className="mt-1 text-sm text-gray-500">No pass or fail. Your answers are saved when you finish.</p></div><button autoFocus type="button" disabled={saving} onClick={() => setOpen(false)} aria-label="Close slide questions" className="rounded-md px-2 text-xl text-gray-500 hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-600">×</button></div>
         <div className="mt-6 flex items-center justify-between text-xs font-medium text-gray-500"><span>Question {questionIndex + 1} of {quiz.questions.length}</span><span>{Object.keys(answers).length} answered</span></div>
         <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-gray-100" aria-hidden="true"><div className="h-full rounded-full bg-indigo-600 transition-all" style={{ width: `${((questionIndex + 1) / quiz.questions.length) * 100}%` }} /></div>
-        {quiz.questions[questionIndex] && <fieldset disabled={saving} className="mt-6"><legend className="text-base font-semibold leading-relaxed text-gray-900">{quiz.questions[questionIndex].question}</legend><div className="mt-4 space-y-2">{quiz.questions[questionIndex].options.map((option, oi) => <label key={oi} className={`flex cursor-pointer items-center gap-3 rounded-lg border px-4 py-3 text-sm transition-colors ${answers[questionIndex] === oi ? 'border-indigo-500 bg-indigo-50 text-indigo-900' : 'border-gray-200 text-gray-700 hover:border-indigo-300 hover:bg-gray-50'}`}><input type="radio" name={`slide-${slide}-question-${questionIndex}`} checked={answers[questionIndex] === oi} onChange={() => setAnswers(previous => ({ ...previous, [questionIndex]: oi }))} className="h-4 w-4 accent-indigo-600" /><span>{option}</span></label>)}</div></fieldset>}
+        {quiz.questions[questionIndex] && <fieldset disabled={saving || results[questionIndex] !== undefined} className="mt-6"><legend className="text-base font-semibold leading-relaxed text-gray-900">{quiz.questions[questionIndex].question}</legend><div className="mt-4 space-y-2">{quiz.questions[questionIndex].options.map((option, oi) => <label key={oi} className={`flex cursor-pointer items-center gap-3 rounded-lg border px-4 py-3 text-sm transition-colors ${answers[questionIndex] === oi ? 'border-indigo-500 bg-indigo-50 text-indigo-900' : 'border-gray-200 text-gray-700 hover:border-indigo-300 hover:bg-gray-50'}`}><input type="radio" name={`slide-${slide}-question-${questionIndex}`} checked={answers[questionIndex] === oi} onChange={() => setAnswers(previous => ({ ...previous, [questionIndex]: oi }))} className="h-4 w-4 accent-indigo-600" /><span>{option}</span></label>)}</div></fieldset>}
         {saveError && <p role="alert" className="mt-3 text-sm text-red-700">{saveError}</p>}
-        <div className="mt-7 flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 pt-4"><button type="button" disabled={saving} onClick={() => setOpen(false)} className="text-sm text-gray-500 hover:text-gray-800">Close without saving</button><div className="flex gap-2"><button type="button" disabled={saving || questionIndex === 0} onClick={() => setQuestionIndex(index => index - 1)} className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 disabled:opacity-40">Previous</button>{questionIndex < quiz.questions.length - 1 ? <button type="button" disabled={answers[questionIndex] === undefined} onClick={() => setQuestionIndex(index => index + 1)} className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-40">Next</button> : <button type="button" disabled={saving || answers[questionIndex] === undefined} onClick={() => void saveAnswers()} className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-40">{saving ? 'Saving...' : 'Save answers'}</button>}</div></div>
+        {results[questionIndex] !== undefined && <p role="status" className={`mt-4 rounded-lg border p-3 text-sm font-medium ${results[questionIndex] ? 'border-green-200 bg-green-50 text-green-800' : 'border-red-200 bg-red-50 text-red-800'}`}>{results[questionIndex] ? 'Correct answer. Well done!' : 'Incorrect answer. You can continue to the next question.'}</p>}
+        <div className="mt-7 flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 pt-4"><button type="button" disabled={saving} onClick={() => setOpen(false)} className="text-sm text-gray-500 hover:text-gray-800">Close without saving</button><div className="flex gap-2"><button type="button" disabled={saving || questionIndex === 0} onClick={() => setQuestionIndex(index => index - 1)} className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 disabled:opacity-40">Previous</button>{results[questionIndex] === undefined ? <button type="button" disabled={saving || answers[questionIndex] === undefined} onClick={() => void submitAnswer()} className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-40">{saving ? 'Checking...' : 'Submit answer'}</button> : questionIndex < quiz.questions.length - 1 ? <button type="button" disabled={answers[questionIndex] === undefined} onClick={() => setQuestionIndex(index => index + 1)} className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-40">Next</button> : <button type="button" disabled={saving || answers[questionIndex] === undefined} onClick={() => void saveAnswers()} className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-40">{saving ? 'Saving...' : 'Save answers'}</button>}</div></div>
       </section>
     </div>, fullscreenTarget || document.body)}
   </>;
