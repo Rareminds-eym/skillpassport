@@ -1,3 +1,4 @@
+import PanelLoadingSkeleton from './PanelLoadingSkeleton';
 import { useQuery } from '@tanstack/react-query';
 import { apiPost } from '@/shared/api/apiClient';
 import { useUser } from '@/shared/model';
@@ -18,11 +19,14 @@ export default function CourseIndexStatus({ courseId }: { courseId: string }) {
   }
   const rows = [...latest.values()];
   const failed = rows.filter(row => row.status === 'failed').length;
-  return <details className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs">
-    <summary className="cursor-pointer text-slate-600">Course knowledge - {rows.filter(row => row.status === 'ready').length}/{rows.length} sources ready</summary>
-    <p className="my-2 text-slate-500">Course content is indexed with the local course:index script. Rerun it after updating course resources.</p>
+  if (query.isPending) return <PanelLoadingSkeleton label="Loading course knowledge"/>;
+  const ready = rows.filter(row => row.status === 'ready').length;
+  const processing = rows.some(row => ['queued','extracting','embedding'].includes(row.status));
+  return <details className="group rounded-xl border border-slate-200/80 bg-white px-3 py-2.5 font-sans text-xs leading-5 [&_p]:text-[11px] [&_p]:leading-5">
+    <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded text-xs text-slate-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 [&::-webkit-details-marker]:hidden"><span className="inline-flex items-center gap-2"><span aria-hidden="true" className="text-slate-400 transition-transform group-open:rotate-90 motion-reduce:transition-none">&#8250;</span>Course knowledge</span><span className="text-[10px] tabular-nums text-slate-400">{query.isPending?'Checking sources':query.isError?'Unavailable':rows.length?`${ready}/${rows.length} sources ready`:'No indexed sources'}</span></summary>
+    {!query.isPending && !query.isError && <p className="mb-0 mt-2 text-slate-500">{!rows.length?'Course resources are not indexed yet. Responses may not include evidence from your materials.':processing?'Course resources are being processed. More source material will be available when indexing finishes.':ready?'Indexed course resources can be used to support responses with source references.':'No course sources are ready to support responses yet.'}</p>}
     {query.isError && <p role="alert" className="my-2 text-red-700">{query.error?.message || 'Course indexing unavailable.'}</p>}
-    {failed > 0 && <p role="status" className="my-2 text-amber-700">{failed} sources failed. Check source format/access and rerun the local script with --force.</p>}
+    {failed > 0 && <p role="status" className="my-2 text-amber-700">{failed} {failed===1?'source could':'sources could'} not be indexed. Check that the files are accessible and in a supported format.</p>}
 
   </details>;
 }

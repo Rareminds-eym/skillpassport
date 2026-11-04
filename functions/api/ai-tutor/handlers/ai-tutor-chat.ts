@@ -348,6 +348,7 @@ export const handleAiTutorChat = async (context: TypedContext) => {
       async start(controller) {
         try {
           generationAbort.signal.throwIfAborted();
+          if (educator) controller.enqueue(encoder.encode(`event: metadata\ndata: ${JSON.stringify({ facilitator: teaching.facilitator, facilitatorMode: teaching.mode, assignmentSourceId: teaching.assignmentSourceId })}\n\n`));
           // Check if two-pass prompting is enabled for lesson plans
           const useTwoPass = !cachedMaterial && isLessonPlanGeneration && lessonPlanConfig?.useTwoPass;
 

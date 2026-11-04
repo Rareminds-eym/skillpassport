@@ -1,3 +1,4 @@
+import PanelLoadingSkeleton from './PanelLoadingSkeleton';
 import { useRef, useState } from 'react';
 import { Check, Loader2, X } from 'lucide-react';
 import { motion, useReducedMotion } from 'framer-motion';
@@ -51,7 +52,7 @@ export default function AssignWorksheetButton({ conversationId, messageId, cours
     </motion.span>
     <div className="min-w-0"><p className="!m-0 !text-xs !font-medium !leading-5 text-slate-800">{published ? `Assigned to ${assignedCount} ${assignedCount === 1 ? 'learner' : 'learners'}` : 'Assigning worksheet...'}</p><p className="!m-0 !text-[11px] !leading-4 text-slate-500">{published ? 'All included levels are available in course assignments.' : 'Sending all included levels to your mapped learners.'}</p></div>
   </div>;
-  if (statusQuery.isPending) return <p role="status" className="mt-2 text-xs text-slate-500">Checking assignment status...</p>;
+  if (statusQuery.isPending) return <PanelLoadingSkeleton label="Checking assignment status"/>;
   if (statusQuery.isError) return <p role="alert" className="mt-2 text-xs text-red-700">Unable to verify assignment status. <button type="button" onClick={() => { void statusQuery.refetch(); }} className="underline">Retry status</button></p>;
   return <div className="min-w-0">
     {!open && !dismissed ? <div className="mt-2 border-t border-slate-100 pt-3 text-left">
@@ -64,7 +65,7 @@ export default function AssignWorksheetButton({ conversationId, messageId, cours
     {deferral.error && <p role="alert" className="mt-2 text-xs text-red-700">Could not save your choice. Please try Not now again.</p>}
     {open && <section aria-label="Assign generated worksheet" className="mt-3 rounded-xl border border-blue-100 bg-blue-50/50 p-3 text-left text-xs text-slate-700">
       <div className="flex items-center justify-between gap-2"><h3 className="!m-0 !text-sm !font-semibold">Assign to my learners</h3><button type="button" disabled={busy} aria-label="Close assignment" onClick={() => setOpen(false)} className="rounded p-1 hover:bg-blue-100"><X className="h-3.5 w-3.5" /></button></div>
-      {loading ? <p role="status" className="mt-2 flex items-center gap-2"><Loader2 className="h-3.5 w-3.5 animate-spin" />Checking worksheet and mapped learners...</p> : <>
+      {loading ? <PanelLoadingSkeleton label="Loading worksheet and learners" variant="form"/> : <>
         {context && <p className="mt-2 !text-xs !leading-5">{context.organization.name}<br />{context.learnerCount} active learners in your mapped programs/classes.</p>}
         {source && <p className="mt-2 !text-xs !leading-5">One assignment includes {source.variants.map(v => v.difficulty).join(', ')}. Every learner receives all included levels in one PDF. Answer keys stay private.</p>}
         {source?.assignmentReady === false && <p role="alert" className="mt-2 text-amber-800">{source.readinessMessage || 'Regenerate this worksheet before assigning.'}</p>}

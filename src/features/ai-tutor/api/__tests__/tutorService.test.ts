@@ -17,6 +17,13 @@ describe('tutor streaming errors', () => {
     await stream.return();
   });
 
+  it('delivers the selected facilitator before the first response token', async () => {
+    mocks.fetch.mockResolvedValue(new Response('event: metadata\ndata: {"facilitator":"resource-provider","facilitatorMode":"auto"}\n\nevent: token\ndata: {"content":"Questions"}\n\n'));
+    const stream=sendMessage({courseId:'course',message:'Generate questions'});
+    expect((await stream.next()).value).toMatchObject({type:'metadata',facilitator:'resource-provider'});
+    expect((await stream.next()).value).toEqual({type:'content',content:'Questions'});
+    await stream.return();
+  });
   it('forwards cancellation and stops consuming the response', async () => {
     const abort = new AbortController();
     const cancel = vi.fn();

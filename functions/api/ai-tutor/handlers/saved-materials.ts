@@ -35,11 +35,21 @@ export async function handleSavedMaterials(context: Context) {
       const result = await query;
       if (result.error) throw result.error;
       const rows = result.data || [];
-      if (!educator) for (const row of rows) for (const submission of row.submissions || []) submission.results = (submission.results || []).map((r: any) => r.status === 'released' ? r : { id: r.id, status: r.status });
+      for (const row of rows) {
+        row.submissions = !row.submissions ? [] : Array.isArray(row.submissions) ? row.submissions : [row.submissions];
+        for (const submission of row.submissions) {
+          // Unique foreign keys make PostgREST return these relations as objects.
+          const results = !submission.results ? [] : Array.isArray(submission.results) ? submission.results : [submission.results];
+          submission.results = educator ? results : results.map((r: any) => r.status === 'released' ? r : { id: r.id, status: r.status });
+        }
+      }
       return apiSuccess(rows, request);
     }
     if (!educator || !await requireCourseAccess(db, user.id, courseId)) return fail(403, 'Educator course access required');
     if (body.action === 'allocation-learners') {
+      const assignmentId = uuid.parse(body.assignmentId);
+      const material = await db.from('ai_assignments').select('id').eq('id', assignmentId).eq('course_id', courseId).single();
+      if (material.error || !material.data) return fail(404, 'Saved assignment not found');
       const scope = await db.rpc('ai_worksheet_context', { p_user_id: user.id });
       const org = scope.data?.organization?.id;
       if (scope.error || !org) return fail(409, 'An active school or college teaching mapping is required');
@@ -55,7 +65,12 @@ export async function handleSavedMaterials(context: Context) {
       if (groups.error) throw groups.error;
       const valid = new Set((groups.data || []).map((group: any) => group.id));
       const learners = rows.filter((row: any) => valid.has(school.data ? row.school_class_id : row.program_section_id));
-      return apiSuccess({ learners, blockedCount: rows.length - learners.length }, request);
+      const allocated = await db.from('ai_assignment_learners').select('learner_id,due_at,assigned_by').eq('assignment_id', assignmentId);
+      if (allocated.error) throw allocated.error;
+      const assigned = new Set((allocated.data || []).map(row => row.learner_id));
+      return apiSuccess({ learners: learners.filter(row => !assigned.has(row.id)), blockedCount: rows.length - learners.length,
+        assignedCount: learners.filter(row => assigned.has(row.id)).length,
+        existingDueAt: allocated.data?.find(row => row.assigned_by === user.id)?.due_at ?? null }, request);
     }
     if (body.action === 'library') {
       const table = body.kind === 'lesson_plan' ? 'ai_lesson_plans' : 'ai_assignments';
@@ -68,6 +83,9 @@ export async function handleSavedMaterials(context: Context) {
       const material = await db.from('ai_assignments').select('id').eq('id', id).eq('course_id', courseId).single();
       if (material.error) return fail(404, 'Saved assignment not found');
       if (body.reviewed !== true) return fail(400, 'Review questions and grading rules before assigning');
+      const existing = await db.from('ai_assignment_learners').select('learner_id').eq('assignment_id', id).in('learner_id', learners).limit(1);
+      if (existing.error) throw existing.error;
+      if (existing.data?.length) return fail(409, 'This assignment is already assigned to a selected learner. Refresh the learner list.');
       const result = await db.rpc('allocate_saved_ai_assignment', { p_user: user.id, p_assignment: id, p_learners: learners, p_due: due });
       if (result.error) return fail(409, 'Unable to assign. Verify mapped learners, deadline, and existing allocations.');
       return apiSuccess({ learnerCount: result.data }, request);
@@ -132,6 +150,7 @@ export async function handleSavedMaterials(context: Context) {
     if (saved.error || !saved.data) throw new Error('Material saved; refresh and retry to link the message');
     return apiSuccess(choice, request);
   } catch (error) {
+    if (error instanceof Error && error.message === 'Worksheet conversion failed validation') return fail(503, 'The worksheet could not be converted into saved questions. Your conversation is retained. Retry saving; no assignment was created.');
     if (error instanceof z.ZodError || error instanceof SyntaxError) return fail(400, 'Invalid material request');
     return fail(503, 'Unable to complete this operation. Verify migration, model and storage configuration, then retry.');
   }

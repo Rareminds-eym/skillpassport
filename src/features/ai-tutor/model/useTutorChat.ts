@@ -193,7 +193,9 @@ export function useTutorChat({
 
       for await (const chunk of generator) {
         requestController.signal.throwIfAborted();
-        if (chunk.type === 'reasoning' && chunk.reasoning) {
+        if (chunk.type === 'metadata') {
+          setMessages(prev => prev.map(msg => msg.id === assistantMessageId ? { ...msg, facilitator: chunk.facilitator, facilitatorMode: chunk.facilitatorMode, assignmentSourceId: chunk.assignmentSourceId } : msg));
+        } else if (chunk.type === 'reasoning' && chunk.reasoning) {
           // AI is thinking/reasoning
           setIsReasoning(true);
           setCurrentReasoning(prev => prev + chunk.reasoning);
@@ -338,7 +340,9 @@ export function useTutorChat({
 
       for await (const chunk of generator) {
         requestController.signal.throwIfAborted();
-        if (chunk.type === 'reasoning' && chunk.reasoning) {
+        if (chunk.type === 'metadata') {
+          setMessages(prev => prev.map(msg => msg.id === assistantMessageId ? { ...msg, facilitator: chunk.facilitator, facilitatorMode: chunk.facilitatorMode, assignmentSourceId: chunk.assignmentSourceId } : msg));
+        } else if (chunk.type === 'reasoning' && chunk.reasoning) {
           setIsReasoning(true);
           setCurrentReasoning(prev => prev + chunk.reasoning);
         } else if (chunk.type === 'content' && chunk.content) {

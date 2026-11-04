@@ -117,7 +117,7 @@ export interface StreamChunk {
   assignmentSourceId?: string;
   worksheetAvailable?: boolean;
   materialAvailable?: boolean;
-  type: 'content' | 'reasoning' | 'done';
+  type: 'metadata' | 'content' | 'reasoning' | 'done';
   content?: string;
   reasoning?: string;
   conversationId?: string;
@@ -191,7 +191,10 @@ export async function* sendMessage(request: ChatRequest, signal?: AbortSignal): 
           const parsed = JSON.parse(data);
 
           // Handle reasoning events (from grok/reasoning models)
-          if (currentEventType === 'reasoning' && parsed.reasoning) {
+          if (currentEventType === 'metadata') {
+            yield { type: 'metadata', facilitator: parsed.facilitator, facilitatorMode: parsed.facilitatorMode, assignmentSourceId: parsed.assignmentSourceId };
+          }
+          else if (currentEventType === 'reasoning' && parsed.reasoning) {
             yield { type: 'reasoning', reasoning: parsed.reasoning };
           }
           // Handle content events

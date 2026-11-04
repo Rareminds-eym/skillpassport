@@ -6,6 +6,8 @@ vi.mock('@/shared/api/apiClient', () => ({ apiPost: async () => ({ data: [{ id: 
 import CourseIndexStatus from '../CourseIndexStatus';
 it('shows source readiness without web indexing controls', async () => {
   render(<QueryClientProvider client={new QueryClient()}><CourseIndexStatus courseId="course" /></QueryClientProvider>);
-  expect(await screen.findByText('Course knowledge - 1/1 sources ready')).toBeInTheDocument();
+  expect(await screen.findByText('1/1 sources ready')).toBeInTheDocument();
+  expect(screen.getByText('Course knowledge')).toBeInTheDocument();
+  expect(screen.queryByText(/course:index/)).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Index course', hidden: true })).not.toBeInTheDocument();
 });

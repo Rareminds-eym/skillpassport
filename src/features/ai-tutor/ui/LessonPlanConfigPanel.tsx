@@ -1,3 +1,4 @@
+import PanelLoadingSkeleton from './PanelLoadingSkeleton';
 import { BookOpen, Loader2, Sparkles, Check } from 'lucide-react';
 import type { LessonPlanConfig, LessonPlanTemplateType } from '../types';
 import { LESSON_PLAN_TEMPLATES } from '../types';
@@ -43,7 +44,7 @@ const LessonPlanConfigPanel = ({
           <label htmlFor="lesson-plan-grade" className="block text-xs font-medium text-slate-700 mb-1">
             Grade / Level
           </label>
-          {automaticGrade ? <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-700" aria-label="Automatic grade level">{config.gradeLevel || 'Loading teaching level...'}</p> : (
+          {automaticGrade ? <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-700" aria-label="Automatic grade level">{config.gradeLevel || <PanelLoadingSkeleton label="Loading teaching level"/>}</div> : (
           <select
             id="lesson-plan-grade"
             value={config.gradeLevel || ''}
@@ -160,10 +161,7 @@ const LessonPlanConfigPanel = ({
           className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium text-xs shadow-xs hover:shadow transition-all disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
         >
           {isUsageLoading ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin text-white" />
-              <span>Checking Availability...</span>
-            </>
+            <PanelLoadingSkeleton label="Checking availability"/>
           ) : isGenerating ? (
             <>
               <Loader2 className="w-4 h-4 animate-spin text-white" />

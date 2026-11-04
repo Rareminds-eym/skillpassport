@@ -145,14 +145,14 @@ describe('AI facilitator workspace', () => {
     fireEvent.click(screen.getByTitle('Copy content'));
     expect(writeText).toHaveBeenCalledWith('\nQuestions\n\nAnswers\n');
   });
-  it('opens course-specific assignments from the learner tutor header', () => {
+  it('opens course-specific assignments from the learner tutor header', async () => {
     mocks.educator = false;
     showPanel();
     expect(screen.queryByText('Assignments for course')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'View course assignments' }));
     expect(screen.getByRole('region', { name: 'Course assignments' })).toBeInTheDocument();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    expect(screen.getByText('Assignments for course')).toBeInTheDocument();
+    expect(await screen.findByText('Assignments for course')).toBeInTheDocument();
     fireEvent.click(screen.getByLabelText('Back to AI tutor'));
     expect(screen.queryByRole('region', { name: 'Course assignments' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'View course assignments' })).toBeInTheDocument();

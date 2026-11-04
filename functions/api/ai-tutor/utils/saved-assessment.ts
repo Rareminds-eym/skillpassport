@@ -53,7 +53,18 @@ export async function evaluateQuestions(questions: GradingQuestion[], apiKey?: s
 
 
 export async function structureSavedWorksheet(variants: Array<{difficulty:string;studentContent:string;solutions:string}>, config: Record<string,unknown>, apiKey?:string) {
- const parsed=structuredWorksheetSchema.parse(await modelJson('Convert the supplied worksheet and PRIVATE keys into {questions:[{kind,prompt,options,maxMarks,difficulty,skills,acceptedAnswers,rubric,explanation}]}. Preserve every question and its difficulty; do not solve missing keys or invent questions. MCQ acceptedAnswers must be exact option text. Return questions:[] if a reliable supplied key/rubric is missing.',{variants,config},apiKey));
+ const prompt='Convert the supplied worksheet and PRIVATE keys into {questions:[{kind,prompt,options,maxMarks,difficulty,skills,acceptedAnswers,rubric,explanation}]}. Preserve every question and its difficulty; never invent questions or solve missing keys. kind must be exactly multiple_choice, fill_blank, short_answer, or descriptive. difficulty must be exactly beginner, intermediate, or advanced. options and skills must be arrays of strings (use [] when absent). maxMarks must be a number greater than zero and at most 100. acceptedAnswers must be an array of strings; MCQ answers must match exact option text, not option letters. rubric must be a nonempty string derived from the supplied key, including for objective questions. explanation must be a string. For descriptive questions preserve the supplied sample answer in acceptedAnswers and derive the rubric from it. Return questions:[] if a reliable supplied key/rubric is missing.';
+ let parsed: z.infer<typeof structuredWorksheetSchema> | undefined;
+ for(let attempt=0;attempt<2;attempt++) {
+   try {
+     parsed=structuredWorksheetSchema.parse(await modelJson(prompt,{variants,config},apiKey));
+     break;
+   } catch(error) {
+     if(!(error instanceof z.ZodError||error instanceof SyntaxError))throw error;
+     if(attempt===1)throw new Error('Worksheet conversion failed validation');
+   }
+ }
+ if(!parsed)throw new Error('Worksheet conversion failed validation');
  const expected=Number(config.questionCount)*variants.length;
  if(Number.isFinite(expected)&&expected>0&&parsed.questions.length!==expected)throw new Error('Question count mismatch');
  const questions=parsed.questions.map((q,index)=>({id:crypto.randomUUID(),position:index+1,kind:q.kind,prompt:q.prompt,options:q.options,maxMarks:q.maxMarks,difficulty:q.difficulty,skills:q.skills}));

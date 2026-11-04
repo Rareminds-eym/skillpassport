@@ -9,14 +9,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('@/shared/model', () => ({ useUser: () => ({ id: 'test-user' }) }));
 const mocks = vi.hoisted(() => ({ action: vi.fn(), pdf: vi.fn() }));
 vi.mock('../../api/worksheetService', () => ({ worksheetAction: mocks.action }));
-vi.mock('../../model/exportToPDF', () => ({ exportToPDF: mocks.pdf }));
+vi.mock('../../model/exportToDOCX', () => ({ exportToDOCX: mocks.pdf }));
 import LearnerWorksheets from '../LearnerWorksheets';
 describe('learner worksheets', () => {
   beforeEach(() => { vi.clearAllMocks(); mocks.pdf.mockResolvedValue(undefined); });
-  it('downloads the authorized worksheet as PDF without opening a preview', async () => {
+  it('downloads the authorized worksheet as Word document without opening a preview', async () => {
     mocks.action.mockImplementation(async (action: string) => action === 'list' ? [{ id: 'recipient', worksheet: { title: 'Time management', difficulty: 'beginner' } }] : { title: 'Time management', difficulty: 'beginner', student_content: 'What is prioritization?', instructions: 'Answer each question.' });
     render(<LearnerWorksheets courseId="course-a" />);
-    fireEvent.click(await screen.findByRole('button', { name: 'Download Time management as PDF' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Download Time management as Word document' }));
     await waitFor(() => expect(mocks.pdf).toHaveBeenCalledWith(expect.objectContaining({ content: 'Answer each question.\n\nWhat is prioritization?', courseTitle: 'Time management', lessonTitle: 'beginner worksheet' })));
     expect(screen.queryByText('What is prioritization?')).toBeNull();
     expect(screen.queryByRole('dialog')).toBeNull();
@@ -25,30 +25,30 @@ describe('learner worksheets', () => {
     expect(mocks.action).toHaveBeenCalledWith('open', { recipientId: 'recipient', courseId: 'course-a' });
     expect(screen.getByRole('region', { name: 'Assigned AI worksheets' })).toBeTruthy();
   });
-  it('does not generate a PDF when the assignment access check fails', async () => {
+  it('does not generate a Word document when the assignment access check fails', async () => {
     mocks.action.mockImplementation(async (action: string) => {
       if (action === 'list') return [{ id: 'recipient', worksheet: { title: 'Time management', difficulty: 'beginner' } }];
       throw new Error('Assignment access denied');
     });
     render(<LearnerWorksheets courseId="course-a" />);
-    fireEvent.click(await screen.findByRole('button', { name: 'Download Time management as PDF' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Download Time management as Word document' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Assignment access denied');
     expect(mocks.pdf).not.toHaveBeenCalled();
   });
-  it('reports PDF failures and lets the learner retry', async () => {
+  it('reports Word export failures and lets the learner retry', async () => {
     mocks.action.mockImplementation(async (action: string) => action === 'list' ? [{ id: 'recipient', worksheet: { title: 'Time management', difficulty: 'beginner' } }] : { title: 'Time management', difficulty: 'beginner', student_content: 'Question' });
-    mocks.pdf.mockRejectedValueOnce(new Error('PDF failed'));
+    mocks.pdf.mockRejectedValueOnce(new Error('Word export failed'));
     render(<LearnerWorksheets courseId="course-a" />);
-    fireEvent.click(await screen.findByRole('button', { name: 'Download Time management as PDF' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('PDF failed');
-    fireEvent.click(screen.getByRole('button', { name: 'Download Time management as PDF' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Download Time management as Word document' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Word export failed');
+    fireEvent.click(screen.getByRole('button', { name: 'Download Time management as Word document' }));
     await waitFor(() => expect(mocks.pdf).toHaveBeenCalledTimes(2));
   });
-  it('downloads all difficulty sections as one combined PDF', async () => {
+  it('downloads all difficulty sections as one combined Word document', async () => {
     mocks.action.mockImplementation(async (action: string) => action === 'list' ? [{ id: 'recipient', worksheet: { title: 'Combined worksheet', difficulty: 'mixed' } }] : { title: 'Combined worksheet', difficulty: 'mixed', student_content: '## Beginner\nQuestions\n## Advanced\nMore questions' });
     render(<LearnerWorksheets courseId="course-a" />);
     expect(await screen.findByText('Multiple difficulty levels')).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Download Combined worksheet as PDF' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Download Combined worksheet as Word document' }));
     await waitFor(() => expect(mocks.pdf).toHaveBeenCalledWith(expect.objectContaining({ lessonTitle: 'Multiple difficulty levels', filename: 'Combined_worksheet_all-levels' })));
     expect(screen.queryByText('More questions')).toBeNull();
   });
