@@ -10,7 +10,7 @@ import {
     Star,
     Users,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import educatorIllustration from "/login/yyu.png";
 
@@ -26,6 +26,12 @@ export default function LoginEducator() {
 
   const navigate = useNavigate();
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("reason") === "account_inactive") {
+      setError("Your account has been deactivated. Please contact your administrator.");
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

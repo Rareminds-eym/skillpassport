@@ -3,6 +3,7 @@ import { Navigate, Route } from "react-router-dom";
 import SubscriptionProtectedRoute from "@/features/subscription/ui/shared/SubscriptionProtectedRoute";
 import EducatorLayout from "../layouts/EducatorLayout";
 import ExternalEducatorGate from '@/features/external-teaching/ui/ExternalEducatorGate';
+import EducatorStatusGate from '@/features/educator/ui/EducatorStatusGate';
 
 const EDUCATOR_ROLES = ["educator", "school_educator", "college_educator"];
 
@@ -62,15 +63,17 @@ export const educatorRoutes = (
     key="educator-routes"
     path="/educator/*"
     element={
-      <ExternalEducatorGate>
-      <SubscriptionProtectedRoute
-        allowedRoles={EDUCATOR_ROLES}
-        requireSubscription={true}
-        subscriptionFallbackPath="/subscription/plans?type=educator"
-      >
-        <EducatorLayout />
-      </SubscriptionProtectedRoute>
-      </ExternalEducatorGate>
+      <EducatorStatusGate>
+        <ExternalEducatorGate>
+          <SubscriptionProtectedRoute
+            allowedRoles={EDUCATOR_ROLES}
+            requireSubscription={true}
+            subscriptionFallbackPath="/subscription/plans?type=educator"
+          >
+            <EducatorLayout />
+          </SubscriptionProtectedRoute>
+        </ExternalEducatorGate>
+      </EducatorStatusGate>
     }
   >
     <Route path="reviews" element={<ArtifactReviews />} />
