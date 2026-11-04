@@ -10,10 +10,10 @@ const context = (body: unknown, sub = owner) => ({ request: new Request('https:/
 beforeEach(() => { vi.clearAllMocks(); mocks.rpc.mockResolvedValue({ data: { attemptId: attempt } }); });
 describe('self-described assessment context owner capability', () => {
   it('forwards only the verified subject and bounded self-described fields', async () => {
-    const response = await onRequestPost(context({ attemptId: attempt, context: { rawGrade: 'College', selectedStream: 'bca' } }));
+    const response = await onRequestPost(context({ attemptId: attempt, context: { rawGrade: 'College', selectedStream: 'bca', specialization: 'Data Science' } }));
     expect(response.status).toBe(200); expect(response.headers.get('Cache-Control')).toBe('no-store');
     expect(mocks.rpc).toHaveBeenCalledWith('patch_owned_assessment_context', { p_owner: owner, p_attempt: attempt,
-      p_context: { rawGrade: 'College', selectedStream: 'bca' } });
+      p_context: { rawGrade: 'College', selectedStream: 'bca', specialization: 'Data Science' } });
   });
   it.each([null, [], '{', { attemptId: attempt, owner, context: { rawGrade: 'College' } },
     { attemptId: attempt, context: { rawGrade: 'College', aptitude_scores: 100 } },

@@ -33,6 +33,14 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
   userEmail,
   profileData: initialProfileData
 }) => {
+  // Allow parent to pass specialization through onComplete for atomic start
+  const handleCompleteWithSpec = () => {
+    const spec = (typeof specialization === 'string' ? specialization.trim() : '') || null;
+    // Expose via sessionStorage for start caller and via detail event
+    if (spec) { try { sessionStorage.setItem('pending_specialization', spec); } catch {} }
+    window.dispatchEvent(new CustomEvent('pending_specialization', { detail: { specialization: spec } }));
+    onComplete();
+  };
   const [isSaving, setIsSaving] = useState(false);
 
   // Use the same complete profile data structure as Settings page
@@ -417,6 +425,7 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
 
       logger.debug('Saving profile data (institution fields only)', dataToSave);
 
+      // Pass only the fields being updated
       const result = await updateProfile(dataToSave);
 
       logger.debug('Profile update result', result);
@@ -435,9 +444,9 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
         detail: { type: 'profile_updated', data: dataToSave }
       }));
 
-      // Delay to ensure database is updated before assessment start
+      // Delay reload to ensure database is updated
       setTimeout(() => {
-        onComplete();
+        handleCompleteWithSpec();
       }, 500);
     } catch (error) {
       logger.error('Error updating profile', error);
@@ -740,14 +749,15 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
                     <div className="space-y-2">
                       <label className="text-sm font-semibold text-gray-700" htmlFor="specialization">Specialization <span className="text-gray-400 text-xs font-normal">(e.g., AI/ML, Finance)</span></label>
                       <input
+                        id="specialization"
                         type="text"
                         value={specialization}
                         onChange={(e) => setSpecialization(e.target.value)}
-                        placeholder="Enter specialization (e.g., Artificial Intelligence)"
+                        placeholder="e.g., Artificial Intelligence, Data Science"
                         className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
                         maxLength={150}
                       />
-                      <p className="text-xs text-gray-400">Optional — your focus area within the program</p>
+                      <p className="text-xs text-gray-400">Optional — separate multiple specializations with commas</p>
                     </div>
                   )}
 

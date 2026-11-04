@@ -1,9 +1,7 @@
 BEGIN;
 -- Stable keysets prevent mutable recovery timestamps moving pending work between
 -- pages. Existing rows use their last known timestamp once at upgrade time.
-ALTER TABLE public.zoho_candidate_administration_progress ADD COLUMN created_at timestamptz;
-UPDATE public.zoho_candidate_administration_progress SET created_at=updated_at;
-ALTER TABLE public.zoho_candidate_administration_progress ALTER COLUMN created_at SET DEFAULT now(),ALTER COLUMN created_at SET NOT NULL;
+ALTER TABLE public.zoho_candidate_administration_progress ADD COLUMN created_at timestamptz NOT NULL DEFAULT now();
 CREATE INDEX zoho_administration_pending_history ON public.zoho_candidate_administration_progress(source_org_id,created_at DESC,request_id DESC)
  WHERE NOT(completed AND artifacts_confirmed);
 CREATE INDEX zoho_administration_actor_history ON public.zoho_candidate_administration_progress(source_org_id,actor_id,created_at DESC,request_id DESC);

@@ -146,6 +146,7 @@ function setupApplication(db) {
     candidateAdministrationTables(read),
     read('supabase/migrations/20270217040000_zoho_candidate_context_privacy.sql'),
     read('supabase/migrations/20270218020000_zoho_operator_history.sql'),
+    read('supabase/seed/dev/20270218020000_seed_zoho_operator_history.sql'),
     read('supabase/migrations/20270218030000_zoho_administration_order.sql'),
     'REVOKE ALL ON public.users,public.learners,public.users_shadow,public.learner_applications_with_pipeline FROM PUBLIC,anon,authenticated;',
     "DO $$ DECLARE f record; BEGIN FOR f IN SELECT p.oid::regprocedure signature FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.prosecdef LOOP EXECUTE format('REVOKE ALL ON FUNCTION %s FROM PUBLIC,anon,authenticated',f.signature); END LOOP; END $$;",

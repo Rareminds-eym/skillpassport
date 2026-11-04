@@ -186,8 +186,8 @@ export function buildCollegePrompt(assessmentData: AssessmentData, answersHash: 
     : '';
 
   // Learner context for program-specific recommendations
-  const learnerContext = assessmentData.learnerContext;
-  const haslearnerContext = learnerContext && (learnerContext.rawGrade || learnerContext.programName || learnerContext.degreeLevel);
+  const learnerContext = assessmentData.learnerContext as any;
+  const haslearnerContext = learnerContext && (learnerContext.rawGrade || learnerContext.programName || learnerContext.degreeLevel || learnerContext.specialization);
 
   // 🔍 DEBUG: Log learner context
   console.log('[COLLEGE-PROMPT] === LEARNER CONTEXT DEBUG ===');
@@ -204,6 +204,7 @@ export function buildCollegePrompt(assessmentData: AssessmentData, answersHash: 
 
 **Current Academic Level**: ${learnerContext.rawGrade || 'Not specified'}
 **Program/Course**: ${learnerContext.programName || 'Not specified'}
+**Specialization**: ${learnerContext.specialization || 'Not specified'}
 **Program Code**: ${learnerContext.programCode || 'Not specified'}
 **Degree Level**: ${learnerContext.degreeLevel || 'Not specified'}
 

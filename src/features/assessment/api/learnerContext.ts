@@ -6,6 +6,7 @@ export interface AssessmentLearnerContext {
   grade: string | null;
   branch_field: string | null;
   course_name: string | null;
+  specialization?: string | null;
   program_id: string | null;
   learner_type: string | null;
   school_id: string | null;

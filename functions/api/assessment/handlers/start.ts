@@ -48,13 +48,14 @@ function buildLearnerContext(
       learner?.grade
     );
 
-  if (!programName && !streamId && !learner?.grade) return null;
+  if (!programName && !streamId && !learner?.grade && !learner?.specialization) return null;
 
   return {
     rawGrade: learner?.grade || null,
     programName: programName || null,
     programCode,
     degreeLevel,
+    specialization: learner?.specialization || null,
     selectedStream: streamId || null,
   };
 }
@@ -75,6 +76,7 @@ export async function startHandler(context: AuthenticatedPagesContext) {
         grade,
         course_name,
         branch_field,
+        specialization,
         program_id,
         programs ( name, code, degree_level )
       `)
@@ -88,6 +90,16 @@ export async function startHandler(context: AuthenticatedPagesContext) {
     const learnerValidation = validateLearnerData(learnerData);
     if (!learnerValidation.isValid) {
       return startJson({error:learnerValidation.message},404);
+    }
+
+    // Resolve the authenticated owner before persisting the optional specialization.
+    // Keep upstream start-and-context behavior without accepting a client target.
+    if(body.specialization){
+      const {error:specError}=await supabase.from('learners')
+        .update({specialization:body.specialization,updated_at:new Date().toISOString()})
+        .eq('id',learnerData!.id).eq('user_id',user.sub);
+      if(specError)logger.warn('Failed to persist specialization on start');
+      else learnerData!.specialization=body.specialization;
     }
 
     const response=await createOwnedAttempt(context,{...body,reference:learnerData!.id},buildLearnerContext(learnerData,streamId),true);

@@ -106,6 +106,7 @@ try{
   administrationMigration.slice('BEGIN;'.length,-'COMMIT;'.length),
   read('functions/__tests__/sql/zoho-candidate-context-privacy.sql'),
   read('supabase/migrations/20270218020000_zoho_operator_history.sql').trim().slice('BEGIN;'.length,-'COMMIT;'.length),
+  read('supabase/seed/dev/20270218020000_seed_zoho_operator_history.sql').trim().slice('BEGIN;'.length,-'COMMIT;'.length),
   read('functions/__tests__/sql/zoho-operator-history.sql'),
   read('supabase/migrations/20270218030000_zoho_administration_order.sql').trim().slice('BEGIN;'.length,-'COMMIT;'.length),
   read('functions/__tests__/sql/zoho-administration-order.sql'),'ROLLBACK;'].join('\n'));

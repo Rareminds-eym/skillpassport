@@ -21,15 +21,18 @@ import AssessmentTestPage from '../AssessmentTestPage';
 import {useAssessmentStore as store} from '../../model/assessmentStore';
 const sections=(name='interest')=>[{id:name,name,title:name,questions:[{id:'q1'},{id:'q2'},{id:'q3'}]}];
 const snapshot=(name='interest')=>({success:true,hasInProgress:true,attemptId:'owned',gradeLevel:'after12',streamId:null,sections:sections(name),answers:{q2:'B'},currentSectionIndex:0,currentQuestionIndex:1,elapsedTime:91,timerRemaining:0,sectionTimings:{interest:20}});
-beforeEach(()=>{vi.clearAllMocks();mocks.user={id:'owner',email:'owner@example.test'};store.getState().reset();store.getState().bindOwner('owner');mocks.check.mockResolvedValue({success:true,hasInProgress:false});});
+beforeEach(()=>{sessionStorage.clear();vi.clearAllMocks();mocks.user={id:'owner',email:'owner@example.test'};store.getState().reset();store.getState().bindOwner('owner');mocks.check.mockResolvedValue({success:true,hasInProgress:false});});
 afterEach(cleanup);
 describe('active assessment page session integration',()=>{
  it('starts fresh from canonical grade and clears old answers and results',async()=>{
+  sessionStorage.setItem('pending_specialization','Data Science');
   render(<AssessmentTestPage/>);await screen.findByText('Choose college');
   act(()=>{store.getState().initializeAssessment(sections() as any,'old','college','bca');store.getState().saveAnswer('old','A');store.setState({adaptiveSessionId:'old-session',resultId:'old-result'});});
   mocks.start.mockResolvedValue({success:true,isResumed:false,attemptId:'new',attempt:{id:'new',grade_level:'after12',stream_id:null},sections:sections()});
   fireEvent.click(screen.getByText('Choose college'));await screen.findByText('Start after12');
   expect(store.getState()).toMatchObject({attemptId:'new',gradeLevel:'after12',streamId:null,answers:{},adaptiveSessionId:null,resultId:null});
+  expect(mocks.start).toHaveBeenCalledWith({gradeLevel:'college',streamId:'bca',specialization:'Data Science'});
+  expect(sessionStorage.getItem('pending_specialization')).toBeNull();
   expect(mocks.ai).toHaveBeenLastCalledWith(expect.objectContaining({gradeLevel:'after12',attemptId:'new'}));
  });
  it('routes reused starts through resume and restores answers, position and elapsed time',async()=>{
@@ -47,12 +50,21 @@ describe('active assessment page session integration',()=>{
   expect(screen.getByTestId('timer')).toHaveTextContent('59');
  });
  it('ignores a start response after switching users',async()=>{
+  sessionStorage.setItem('pending_specialization','Data Science');
   let resolve:any;mocks.start.mockReturnValue(new Promise(yes=>resolve=yes));
   const page=render(<AssessmentTestPage/>);fireEvent.click(await screen.findByText('Choose college'));
   mocks.user={id:'other',email:'other@example.test'};page.rerender(<AssessmentTestPage/>);
   await screen.findByText('Choose college');
   await act(async()=>resolve({success:true,isResumed:false,attempt:{id:'late',grade_level:'after12',stream_id:null},sections:sections()}));
   expect(store.getState()).toMatchObject({ownerId:'other',attemptId:null,answers:{}});
+  expect(sessionStorage.getItem('pending_specialization')).toBe('Data Science');
+ });
+ it('retains specialization when start fails',async()=>{
+  sessionStorage.setItem('pending_specialization','Data Science');
+  mocks.start.mockResolvedValue({success:false,error:'Unavailable'});
+  render(<AssessmentTestPage/>);fireEvent.click(await screen.findByText('Choose college'));
+  await screen.findByText('Assessment error');
+  expect(sessionStorage.getItem('pending_specialization')).toBe('Data Science');
  });
  it('ignores an adaptive resume response after replacing the attempt',async()=>{
   let resolve:any;mocks.resume.mockReturnValue(new Promise(yes=>resolve=yes));

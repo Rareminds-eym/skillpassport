@@ -38,6 +38,7 @@ interface LearnerContext {
   programName?: string;
   programCode?: string | null;
   degreeLevel?: string | null;
+  specialization?: string | null;
   selectedStream?: string | null;
   selectedCategory?: string | null;
   learnerType?: 'school' | 'college' | 'general';
@@ -428,6 +429,7 @@ const buildlearnerContext = async (
       programName: programName || undefined,
       programCode: programCode,
       degreeLevel: degreeLevel,
+      specialization: learner.specialization || null,
       selectedStream: learnerStream,
       selectedCategory: category,
       learnerType: learnerType,

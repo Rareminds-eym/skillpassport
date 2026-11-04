@@ -1,6 +1,6 @@
 // @vitest-environment node
 import {beforeEach,expect,it,vi} from 'vitest';
-const mocks=vi.hoisted(()=>({rpc:vi.fn(),from:vi.fn(),sections:vi.fn(),eq:vi.fn(),profileError:null as any}));
+const mocks=vi.hoisted(()=>({rpc:vi.fn(),from:vi.fn(),sections:vi.fn(),eq:vi.fn(),profileError:null as any,update:vi.fn(),updateError:null as any}));
 vi.mock('../lib/auth',()=>({withAuth:(handler:any)=>handler}));
 vi.mock('../lib/supabase',()=>({getServiceClient:()=>({rpc:mocks.rpc,from:mocks.from})}));
 vi.mock('../lib/logger',()=>({createLogger:()=>({info:vi.fn(),warn:vi.fn(),error:vi.fn()})}));
@@ -12,11 +12,11 @@ const attempt={id:'30000000-0000-4000-8000-000000000001',learner_id:learner,stat
 const ctx=(body:unknown,sub=owner)=>({request:new Request('https://fixture.invalid/api/assessment-attempts',{
  method:'POST',body:typeof body==='string'?body:JSON.stringify(body)}),env:{},data:{user:{sub}}}) as any;
 beforeEach(()=>{
- vi.clearAllMocks();mocks.profileError=null;mocks.rpc.mockResolvedValue({data:{attempt,created:true},error:null});
+ vi.clearAllMocks();mocks.profileError=null;mocks.updateError=null;mocks.rpc.mockResolvedValue({data:{attempt,created:true},error:null});
  mocks.sections.mockResolvedValue([{name:'Section'}]);
  mocks.from.mockImplementation((table:string)=>{
   if(table!=='learners')throw new Error('Unexpected direct database access');
-  const q:any={select:()=>q,eq:(...args:any[])=>{mocks.eq(...args);return q;},
+  const q:any={error:mocks.updateError,update:(data:any)=>{mocks.update(data);return q;},select:()=>q,eq:(...args:any[])=>{mocks.eq(...args);return q;},
    maybeSingle:async()=>({data:{id:learner,course_name:'Bachelor of Computer Applications'},error:mocks.profileError})};return q;
  });
 });
@@ -79,4 +79,27 @@ it('requires the authenticated subject',async()=>{
 });
 it('bounds creation input',async()=>{
  expect((await onRequestPost(ctx(' '.repeat(65537)))).status).toBe(413);expect(mocks.rpc).not.toHaveBeenCalled();
+});
+
+it('persists bounded specialization only on the authenticated learner before creating context',async()=>{
+ const response=await startHandler(ctx({gradeLevel:'college',streamId:'bca',specialization:'  Data Science  '}));
+ expect(response.status).toBe(201);
+ expect(mocks.update).toHaveBeenCalledWith({specialization:'Data Science',updated_at:expect.any(String)});
+ expect(mocks.eq).toHaveBeenCalledWith('id',learner);expect(mocks.eq).toHaveBeenCalledWith('user_id',owner);
+ expect(mocks.rpc.mock.calls[0][1].p_context.specialization).toBe('Data Science');
+ expect(mocks.update.mock.invocationCallOrder[0]).toBeLessThan(mocks.rpc.mock.invocationCallOrder[0]);
+});
+it.each([42,{},'x','x'.repeat(151)])('rejects invalid specialization before accessing storage: %j',async specialization=>{
+ expect((await startHandler(ctx({gradeLevel:'college',specialization}))).status).toBe(400);
+ expect(mocks.from).not.toHaveBeenCalled();expect(mocks.rpc).not.toHaveBeenCalled();
+});
+it('does not claim a failed specialization write was persisted',async()=>{
+ mocks.updateError={message:'private database error'};
+ const response=await startHandler(ctx({gradeLevel:'college',streamId:'bca',specialization:'Data Science'}));
+ expect(response.status).toBe(201);expect(mocks.rpc.mock.calls[0][1].p_context.specialization).toBeNull();
+ expect(await response.text()).not.toContain('private database error');
+});
+it('keeps the legacy creation contract closed to specialization updates',async()=>{
+ expect((await onRequestPost(ctx({gradeLevel:'college',specialization:'Data Science'}))).status).toBe(400);
+ expect(mocks.update).not.toHaveBeenCalled();expect(mocks.rpc).not.toHaveBeenCalled();
 });

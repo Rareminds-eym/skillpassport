@@ -2,8 +2,8 @@
 
 ## Current persistent local setup — 4 November 2026
 
-**Latest update — revision 58:** [Section 75](./ZOHO_RECRUIT_INTEGRATION_PLAN.md#75-configuration-audit-fixes--revision-58)
-completes the nonsecret configuration audit fixes. Local
+**Latest update — revision 59:** [Section 76](./ZOHO_RECRUIT_INTEGRATION_PLAN.md#76-dev-merge-compatibility-and-database-validation--revision-59)
+preserves upstream specialization and session/owner boundaries during the dev merge. Local
 acceptance passes 772 automated tests and all six disposable SQL suites. The
 [current inventory](./sp-dash/lib/zoho/ENVIRONMENT.md) lists six remaining
 credential/key names and separates shared infrastructure settings and bindings.
@@ -461,3 +461,16 @@ selection, schema metadata validation and context-isolated progress.
 
 A completed inventory is still pending; review records before any account/job
 creation. Earlier zero-record/disabled observations above describe prior checkpoints.
+
+
+## Dev merge upgrade note — revision 59
+
+The new assessment-specialization context migration is reviewed and included in
+the local migration planner; this merge task does not apply it to persistent or
+shared databases. Before testing that new context field against a persistent local
+DB, run the existing backed-up local migration procedure. Apply the SSO
+`20270218010000_seed_zoho_administration_recovery.sql` and application
+`20270218020000_seed_zoho_operator_history.sql` upgrade seeds after schema migrations
+and before enabling processing. These seeds are idempotent for existing upgraded
+rows and are supplied separately for dev and production. No remote configuration
+or database change is implied by merging source branches into dev.

@@ -8,7 +8,7 @@ export const localMigrationTargets = [
     '20270217050000_assessment_owned_context.sql', '20270217060000_assessment_grading_provenance.sql',
     '20270217070000_adaptive_owned_answer_commit.sql',
     '20270218020000_zoho_operator_history.sql', '20270218030000_zoho_administration_order.sql',
-    '20270219010000_zoho_console_controls.sql',
+    '20270219010000_zoho_console_controls.sql', '20270219020000_assessment_specialization_context.sql',
   ] },
 ];
 export function requireLocalDocker(endpoint, override) {

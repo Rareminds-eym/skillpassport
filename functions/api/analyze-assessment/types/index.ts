@@ -7,6 +7,7 @@ export interface LearnerContext {
   programName?: string;
   programCode?: string;
   degreeLevel?: 'postgraduate' | 'undergraduate' | 'diploma' | null;
+  specialization?: string | null;
 }
 
 export interface LearnerProfileData {

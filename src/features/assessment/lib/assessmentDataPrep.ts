@@ -423,12 +423,14 @@ export const prepareAssessmentData = (
       rawGrade: learnerContext.rawGrade || null,
       programName: learnerContext.programName || null,
       programCode: learnerContext.programCode || null,
-      degreeLevel: learnerContext.degreeLevel || null
+      degreeLevel: learnerContext.degreeLevel || null,
+      specialization: learnerContext.specialization || null
     } : {
       rawGrade: null,
       programName: null,
       programCode: null,
-      degreeLevel: null
+      degreeLevel: null,
+      specialization: null
     }
   };
 };

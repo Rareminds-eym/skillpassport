@@ -119,6 +119,7 @@ try {
     ${read('functions/__tests__/sql/assessment-owner-finalization.sql')}
     ${read('functions/__tests__/sql/assessment-owner-start.sql')}
     ${read('supabase/migrations/20270217050000_assessment_owned_context.sql')}
+    ${read('supabase/migrations/20270219020000_assessment_specialization_context.sql')}
     ${read('supabase/migrations/20270217060000_assessment_grading_provenance.sql')}
     ${read('functions/__tests__/sql/assessment-adaptive-private-grants.sql')}
     ${read('functions/__tests__/sql/assessment-grading-provenance.sql')}`);

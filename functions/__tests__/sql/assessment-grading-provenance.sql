@@ -15,6 +15,9 @@ BEGIN
  PERFORM public.patch_owned_assessment_progress(owner_id,attempt_ref,'progress',
   '{"all_responses":{"62000000-0000-4000-8000-000000000001":"A","62000000-0000-4000-8000-000000000002":{"answer":"A","correct_answer":"A","is_correct":true}}}');
  ASSERT public.patch_owned_assessment_context(owner_id,attempt_ref,'{"rawGrade":"After 12","selectedStream":"bca"}')->>'attemptId'=attempt_ref::text;
+ ASSERT public.patch_owned_assessment_context(owner_id,attempt_ref,'{"rawGrade":"After 12","specialization":"Data Science"}')->>'attemptId'=attempt_ref::text;
+ ASSERT (SELECT learner_context->>'specialization'='Data Science' FROM public.personal_assessment_attempts WHERE id=attempt_ref);
+ PERFORM pg_temp.expect_failure(format('SELECT public.patch_owned_assessment_context(%L,%L,%L)',owner_id,attempt_ref,'{"rawGrade":"After12","specialization":100}'),'22023');
  ASSERT public.patch_owned_assessment_context('10000000-0000-4000-8000-000000000002',attempt_ref,'{"rawGrade":"Spoofed"}') IS NULL;
  PERFORM pg_temp.expect_failure(format('SELECT public.patch_owned_assessment_context(%L,%L,%L)',owner_id,attempt_ref,'{"rawGrade":"After12","aptitude_scores":100}'),'22023');
  result:=public.finalize_owned_assessment(owner_id,attempt_ref,'results','{"learnerId":"20000000-0000-4000-8000-000000000001","streamId":"bca","gradeLevel":"after12","geminiResults":{"knowledge":{"score":100},"aptitude":{"overallScore":100},"riasec":{"scores":{"R":100}}}}');

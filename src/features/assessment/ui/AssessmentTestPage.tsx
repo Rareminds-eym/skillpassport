@@ -360,9 +360,12 @@ const AssessmentTestPage: React.FC = () => {
     store.setStatus('loading');
 
     try {
-      const result:StartAssessmentResponse=await startAssessment({gradeLevel:gradeForAssessment,streamId});
+      let pendingSpec:string|undefined;
+      try{pendingSpec=sessionStorage.getItem('pending_specialization')||undefined;}catch{}
+      const result:StartAssessmentResponse=await startAssessment({gradeLevel:gradeForAssessment,streamId,specialization:pendingSpec});
       if(!current())return;
       if(!result.success||!result.attempt||!result.sections)throw new Error(result.error||'Failed to start assessment');
+      if(pendingSpec){try{if(sessionStorage.getItem('pending_specialization')===pendingSpec)sessionStorage.removeItem('pending_specialization');}catch{}}
       setSelectedGrade(result.attempt.grade_level);
       setSelectedStream(result.attempt.stream_id);
       if(result.isResumed){

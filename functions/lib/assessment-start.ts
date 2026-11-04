@@ -3,18 +3,21 @@ import type {AuthenticatedPagesContext} from './types';
 const uuid = (v: unknown): v is string => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
 const grades = ['middle','highschool','higher_secondary','after10','after12','college'];
 export const startJson = (body: unknown,status=200) => Response.json(body,{status,headers:{'Cache-Control':'no-store'}});
-export interface AttemptStartInput {gradeLevel: string; streamId: string|null; reference?: string}
+export interface AttemptStartInput {gradeLevel: string; streamId: string|null; reference?: string; specialization?: string|null}
 export async function readAttemptStart(request: Request, legacy=false): Promise<AttemptStartInput|Response> {
   try {
     const raw=await request.text();
     if(new TextEncoder().encode(raw).byteLength>65536)return startJson({error:'Request too large'},413);
     const body=JSON.parse(raw);
     if(!body||typeof body!=='object'||Array.isArray(body)
-      ||Object.keys(body).some(key=>!(legacy?['gradeLevel','streamId','reference']:['gradeLevel','streamId']).includes(key))
+      ||Object.keys(body).some(key=>!(legacy?['gradeLevel','streamId','reference']:['gradeLevel','streamId','specialization']).includes(key))
       ||!grades.includes(body.gradeLevel)
       ||(body.streamId!=null&&(typeof body.streamId!=='string'||!body.streamId.length||body.streamId.length>50))
-      ||(body.reference!==undefined&&!uuid(body.reference)))return startJson({error:'Invalid start request'},400);
-    return {gradeLevel:body.gradeLevel,streamId:body.streamId??null,...(body.reference?{reference:body.reference.toLowerCase()}:{})};
+      ||(body.reference!==undefined&&!uuid(body.reference))
+      ||(body.specialization!=null&&(typeof body.specialization!=='string'||body.specialization.trim().length>150
+        ||(body.specialization.trim().length>0&&body.specialization.trim().length<2))))return startJson({error:'Invalid start request'},400);
+    return {gradeLevel:body.gradeLevel,streamId:body.streamId??null,...(body.reference?{reference:body.reference.toLowerCase()}:{}),
+      ...(body.specialization===undefined?{}:{specialization:body.specialization?.trim()||null})};
   }catch{return startJson({error:'Invalid JSON'},400);}
 }
 export async function createOwnedAttempt(context:AuthenticatedPagesContext,body:AttemptStartInput,learnerContext:Record<string,unknown>|null=null,reuse=false) {

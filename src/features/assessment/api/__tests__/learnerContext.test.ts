@@ -3,7 +3,7 @@ const mocks=vi.hoisted(()=>({fetch:vi.fn()}));
 vi.mock('@/shared/api/ssoClient',()=>({ssoClient:{fetch:mocks.fetch}}));
 import {getOwnAssessmentLearner} from '../learnerContext';
 import {fetchAssessmentRoster} from '../assessmentRoster';
-const learner={id:'learner',user_id:'owner',program:{name:'Engineering',code:'BE',degree_level:'undergraduate'}};
+const learner={id:'learner',user_id:'owner',specialization:'Data Science',program:{name:'Engineering',code:'BE',degree_level:'undergraduate'}};
 beforeEach(()=>{vi.clearAllMocks();mocks.fetch.mockResolvedValue(Response.json({success:true,learner}));});
 describe('authenticated assessment learner context',()=>{
  it('uses the owner API without a client-selected target or database call',async()=>{

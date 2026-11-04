@@ -33,18 +33,27 @@ export function useAssessmentService(options?: UseAssessmentServiceOptions) {
   // ========================================================================
 
   const startAssessment = useCallback(
-    async (gradeLevel: string, streamId?: string | null) => {
+    async (gradeLevel: string, streamId?: string | null, specialization?: string | null) => {
       const generation=store.generation;
       const current=()=>useAssessmentStore.getState().generation===generation;
       if(!current())return {success:false,error:'Assessment session changed'};
       try {
-        logger.info('Starting assessment', { gradeLevel, streamId });
+        // Prefer explicit param, fallback to pending_specialization from modal atomic path
+        let specToSend = specialization || null;
+        if (!specToSend) {
+          try {
+            const pending = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('pending_specialization') : null;
+            if (pending) specToSend = pending;
+          } catch {}
+        }
+        logger.info('Starting assessment', { gradeLevel, streamId, hasSpecialization: !!specToSend });
         store.setLoading(true);
         store.setError(null);
 
         const response = await assessmentApi.startAssessment({
           gradeLevel,
           streamId: streamId || undefined,
+          specialization: specToSend || undefined,
         });
         if(!current())return {success:false,error:'Assessment session changed'};
 
@@ -54,6 +63,9 @@ export function useAssessmentService(options?: UseAssessmentServiceOptions) {
           options?.onError?.(error);
           return { success: false, error };
         }
+
+        // Consume only after a successful response for the same session.
+        if(specToSend){try{if(sessionStorage.getItem('pending_specialization')===specToSend)sessionStorage.removeItem('pending_specialization');}catch{}}
 
         // Initialize store with assessment data
         if(!response.attempt||!response.sections)throw new Error('Assessment start unavailable');

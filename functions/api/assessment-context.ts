@@ -2,7 +2,7 @@ import { withAuth } from '../lib/auth';
 import { getServiceClient } from '../lib/supabase';
 import type { AuthenticatedPagesContext } from '../lib/types';
 const uuid = (value: unknown): value is string => typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
-const fields = new Set(['rawGrade', 'grade', 'programName', 'programCode', 'degreeLevel', 'selectedStream', 'selectedCategory', 'learnerType']);
+const fields = new Set(['rawGrade', 'grade', 'programName', 'programCode', 'degreeLevel', 'selectedStream', 'selectedCategory', 'learnerType', 'specialization']);
 const json = (body: unknown, status = 200) => Response.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
 /** Self-described report context only. This capability cannot write scores,
  * achievements, identity, ownership, result status or adaptive links. */

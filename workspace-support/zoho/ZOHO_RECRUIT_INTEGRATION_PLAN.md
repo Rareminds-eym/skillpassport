@@ -1,7 +1,7 @@
 # Zoho Recruit → Skill Ecosystem Integration Plan
 
 **Date:** 4 November 2026 (initial plan: 29 October)\
-**Revision:** 58 — section 75 fixes URL fallback compatibility, environment types and runtime regression coverage.\
+**Revision:** 59 — section 76 records dev merge compatibility and database CI corrections.\
 **Status:** Local OAuth and real candidate discovery are verified against the India tenant. The full local acceptance passes 772 automated tests plus all disposable SQL suites. Console controls were verified in the browser, including pause/resume of the same discovery run and cancellation without destination effects. Reviewed additive migrations were backed up and applied locally. Real destination approvals, job/provider export acceptance and tenant no-email evidence remain separate checks. Release, production changes and B1 environment isolation are excluded.\
 **Scope:** Zoho Recruit → private staging → explicit approval in sp-dash → candidate learner accounts with Discover access / SkillPassport job postings. Ongoing changes are staged for approval as well.\
 **Architecture:** Existing sp-dash runtime for background discovery/staging and approval dispatch; existing SSO for identity/Discover; existing auth-sync transport and SkillPassport for projections/jobs. One-way, tenant-scoped, version-bound, approval-gated, with no email side effects and no new Worker deployment. Authorization uses the existing server-side SSO/RBAC model and explicit data-access controls; this integration must not introduce a dependency on Supabase RLS.
@@ -5049,3 +5049,38 @@ diagnostics, with no new diagnostics. Workspace-support documentation is synchro
 No database migration, real approval, email, release or deployment is required.
 Remote callback constants still need confirmed dev/QA/production origins; no URLs
 were guessed and those profiles remain disabled.
+
+
+## 76. Dev merge compatibility and database validation — revision 59
+
+Latest dev changes are integrated without rewriting feature commits. Assessment
+specialization remains supported through bounded modern start input, an
+owner-filtered profile update and the authenticated learner-context endpoint.
+Session generation guards, canonical grade/resume state and server ownership
+remain intact; failed or stale starts do not consume pending specialization.
+The additive `20270219020000_assessment_specialization_context.sql` migration
+extends the existing context RPC field list without changing its owner, state or
+service-role-only grant boundary. It is tested only in disposable local databases
+in this merge task, not applied to any shared or persistent project database.
+
+Historical administration version/fence initialization and operator-history
+backfill move from migrations into explicit matching dev/production upgrade seeds:
+- SSO: `20270218010000_seed_zoho_administration_recovery.sql`.
+- Application: `20270218020000_seed_zoho_operator_history.sql`.
+
+Apply upgrade seeds after schema changes and before enabling processing. The SSO
+seed leaves current versioned receipts/fences unchanged on rerun and rejects mixed
+unreconciled state. Candidate readiness and administration entrypoints reject
+legacy zero-version operations until initialized. Existing installations where the
+old migration already performed these updates are compatible with the idempotent
+seeds. Operator timestamps preserve historical update time without modifying
+newer records. No migration checks are bypassed.
+
+The database validator now recognizes catalog-driven GRANT/REVOKE and index DDL
+inside executed blocks, while tests continue rejecting real DML, unknown dynamic
+SQL, concatenated commands and opaque procedure calls. This fixes actual DDL false
+positives; real data-changing statements remain forbidden in schema migrations.
+Auth-sync retains the newer upstream worker type dependency alongside the Zoho
+transport tests. Full local acceptance, specialization/session regressions and CI
+SQL/encoding checks are rerun against the integrated branches before merging.
+Merging source does not apply these migrations/seeds or enable remote profiles.

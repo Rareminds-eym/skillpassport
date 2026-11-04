@@ -45,6 +45,7 @@ export const onRequestGet = withAuth(async (context: AuthenticatedPagesContext) 
         program_id,
         course_name,
         branch_field,
+        specialization,
         university,
         college_school_name,
         school_name,
