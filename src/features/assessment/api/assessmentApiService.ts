@@ -7,6 +7,7 @@
  */
 
 import { ssoClient } from '@/shared/api/ssoClient';
+import {assessmentGrades,resumeAssessmentSnapshot} from '../model/assessmentSession';
 
 const API_BASE = '/api/assessment';
 
@@ -25,6 +26,14 @@ export interface StartAssessmentResponse {
   attemptId?: string;
   sections?: any[];
   error?: string;
+  existingAttemptId?:string;
+  isResumed?:boolean;
+  attempt?:{
+    id:string;status:string;grade_level:string;stream_id:string|null;all_responses:Record<string,any>;
+    current_section_index:number;current_question_index:number;elapsed_time:number;timer_remaining:number|null;
+    section_timings:Record<string,number>;
+  };
+  resume?:CheckInProgressResponse;
 }
 
 export interface SaveResponseRequest {
@@ -74,8 +83,8 @@ export interface CheckInProgressResponse {
   currentSectionIndex?: number;
   currentQuestionIndex?: number;
   gradeLevel?: string;
-  streamId?: string;
-  stream_id?: string;
+  streamId?: string|null;
+  stream_id?: string|null;
   sectionTimings?: Record<string, number>;
   timerRemaining?: number | null;
   elapsedTime?: number;
@@ -143,12 +152,26 @@ export async function startAssessment(request: StartAssessmentRequest): Promise<
       };
     }
 
-    const data = await response.json();
+    const data = await response.json() as Record<string,any>;
+    if(data.success!==true||typeof data.isResumed!=='boolean'||!data.attempt||data.attempt.id!==data.attemptId
+      ||typeof data.attemptId!=='string'||data.attempt.status!=='in_progress'||!assessmentGrades.includes(data.attempt.grade_level)
+      ||(data.attempt.stream_id!==null&&typeof data.attempt.stream_id!=='string')
+      ||!Array.isArray(data.sections)||!data.sections.length)throw new Error('Assessment start confirmation unavailable');
+    let resume:CheckInProgressResponse|undefined;
+    if(data.isResumed){
+      resume=await checkInProgress();
+      if(!resume.success||!resume.hasInProgress||resume.attemptId!==data.attemptId||resume.gradeLevel!==data.attempt.grade_level
+        ||(resume.streamId??resume.stream_id??null)!==data.attempt.stream_id)throw new Error('Assessment resume changed or is unavailable');
+      resume={...resume,sections:resume.sections??data.sections};
+      resumeAssessmentSnapshot(resume);
+    }
     return {
       success: true,
       attemptId: data.attemptId,
       sections: data.sections,
-      isResumed: data.isResumed || false
+      isResumed: data.isResumed,
+      attempt:data.attempt,
+      resume,
     };
   } catch (err: any) {
     return {
@@ -401,21 +424,13 @@ export async function saveGrowthMapProgress(
  * Get the latest completed assessment result for a learner
  */
 export async function getLatestResult(learnerId: string) {
-  try {
-    const { apiPost } = await import('@/shared/api/apiClient');
-    const response = await apiPost('/learner-profile/actions', {
-      action: 'fetch-personal-assessment-results',
-      learnerId
-    });
-    
-    if (response?.data && response.data.length > 0) {
-      return response.data[0];
-    }
-    return null;
-  } catch (error) {
-    console.error('Failed to get latest result:', error);
-    return null;
-  }
+  if (!learnerId) return null;
+  const { apiPost } = await import('@/shared/api/apiClient');
+  const response = await apiPost<{data: any[]}>('/learner-profile/actions', {
+    action: 'fetch-personal-assessment-results', learnerId, completedOnly: true,
+  });
+  if (!Array.isArray(response.data)) throw new Error('Assessment result unavailable');
+  return response.data[0] ?? null;
 }
 
 /**

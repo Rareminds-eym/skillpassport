@@ -42,8 +42,16 @@ export function useAdaptiveAptitude(options: UseAdaptiveAptitudeOptions) {
   // Track question start time for response time calculation
   const questionStartTimeRef = useRef<number | null>(null);
 
+  const mounted=useRef(true);
+  useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;};},[]);
+  const isCurrent = () => {
+    const live=useAssessmentStore.getState();
+    return mounted.current && live.generation===store.generation && live.attemptId===store.attemptId;
+  };
+
   // START TEST
   const startTest = useCallback(async () => {
+      if(!isCurrent())return null;
     try {
       logger.info('🚀 [startTest] Starting test initialization', {
         learnerId,
@@ -61,6 +69,7 @@ export function useAdaptiveAptitude(options: UseAdaptiveAptitudeOptions) {
         learnerCourse,
       });
 
+      if(!isCurrent())return null;
       logger.info('✅ [startTest] API response received', {
         sessionId: result.session?.id,
         firstQuestionId: result.firstQuestion?.id,
@@ -103,6 +112,7 @@ export function useAdaptiveAptitude(options: UseAdaptiveAptitudeOptions) {
         });
       }
     } catch (error) {
+      if(!isCurrent())return null;
       const err = error instanceof Error ? error : new Error('Failed to start test');
       logger.error('❌ [startTest] Test initialization failed', {
         error: err.message,
@@ -111,12 +121,13 @@ export function useAdaptiveAptitude(options: UseAdaptiveAptitudeOptions) {
       store.setError(err.message);
       onError?.(err);
     } finally {
-      store.setLoading(false);
+      if(isCurrent())store.setLoading(false);
     }
   }, [learnerId, gradeLevel, learnerCourse, onError, store]);
 
   // COMPLETE TEST (define before submitAnswer to avoid circular dependency)
   const completeTest = useCallback(async () => {
+      if(!isCurrent())return null;
     try {
       if (!store.adaptiveSessionId) {
         throw new Error('No active session');
@@ -130,6 +141,7 @@ export function useAdaptiveAptitude(options: UseAdaptiveAptitudeOptions) {
         store.adaptiveSessionId
       );
 
+      if(!isCurrent())return null;
       logger.info('✅ [completeTest] Test results received', {
         aptitudeLevel: results.aptitudeLevel,
         confidenceTag: results.confidenceTag,
@@ -142,6 +154,7 @@ export function useAdaptiveAptitude(options: UseAdaptiveAptitudeOptions) {
 
       return results;
     } catch (error) {
+      if(!isCurrent())return null;
       const err = error instanceof Error ? error : new Error('Failed to complete test');
       logger.error('❌ [completeTest] Failed to complete test', {
         error: err.message,
@@ -155,6 +168,7 @@ export function useAdaptiveAptitude(options: UseAdaptiveAptitudeOptions) {
 
   // LOAD NEXT QUESTION (define before submitAnswer)
   const loadNextQuestion = useCallback(async () => {
+      if(!isCurrent())return null;
     try {
       if (!store.adaptiveSessionId) {
         throw new Error('No active session');
@@ -168,6 +182,7 @@ export function useAdaptiveAptitude(options: UseAdaptiveAptitudeOptions) {
         store.adaptiveSessionId
       );
 
+      if(!isCurrent())return null;
       logger.info('✅ [loadNextQuestion] Next question result received', {
         hasQuestion: !!result.question,
         isTestComplete: result.isTestComplete,
@@ -191,6 +206,7 @@ export function useAdaptiveAptitude(options: UseAdaptiveAptitudeOptions) {
 
       return result;
     } catch (error) {
+      if(!isCurrent())return null;
       const err = error instanceof Error ? error : new Error('Failed to load next question');
       logger.error('❌ [loadNextQuestion] Failed to load question', {
         error: err.message,
@@ -205,6 +221,7 @@ export function useAdaptiveAptitude(options: UseAdaptiveAptitudeOptions) {
   // SUBMIT ANSWER
   const submitAnswer = useCallback(
     async (selectedAnswer: 'A' | 'B' | 'C' | 'D'): Promise<AnswerResult | null> => {
+      if(!isCurrent())return null;
       try {
         if (!store.adaptiveSessionId || !store.adaptiveCurrentQuestion) {
           throw new Error('No active session or question');
@@ -231,6 +248,7 @@ export function useAdaptiveAptitude(options: UseAdaptiveAptitudeOptions) {
           responseTimeMs,
         });
 
+      if(!isCurrent())return null;
         logger.info('✅ [submitAnswer] Answer submitted successfully', {
           isCorrect: result.isCorrect,
           newDifficulty: result.newDifficulty,
@@ -266,6 +284,8 @@ export function useAdaptiveAptitude(options: UseAdaptiveAptitudeOptions) {
 
         return result;
       } catch (error) {
+        if(!isCurrent())return null;
+      if(!isCurrent())return null;
         const err = error instanceof Error ? error : new Error('Failed to submit answer');
         logger.error('❌ [submitAnswer] Answer submission failed', {
           error: err.message,
@@ -275,7 +295,7 @@ export function useAdaptiveAptitude(options: UseAdaptiveAptitudeOptions) {
         onError?.(err);
         return null;
       } finally {
-        store.setLoading(false);
+        if(isCurrent())store.setLoading(false);
       }
     },
     [store, onError, completeTest, loadNextQuestion]

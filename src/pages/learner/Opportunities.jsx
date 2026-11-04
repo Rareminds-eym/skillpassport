@@ -264,7 +264,7 @@ const Opportunities = () => {
   const setAdvancedFilters = filters => updateSearch(filters, { reset: true });
   const currentPage = searchState.page;
   const setCurrentPage = page => updateSearch({ page, job: null }, { replace: false });
-  const opportunitiesPerPage = 6;
+  const opportunitiesPerPage = 12;
 
   // My Applications state
   const [recommendedJobIds, setRecommendedJobIds] = useState([]);

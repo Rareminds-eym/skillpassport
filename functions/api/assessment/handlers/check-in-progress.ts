@@ -17,9 +17,15 @@
  */
 
 import { getServiceClient } from '../../../lib/supabase';
-import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import type { AuthenticatedPagesContext } from '../../../lib/types';
 import type { CheckInProgressResult } from '../types';
 import { loadSectionsWithQuestions } from '../utils/question-loader';
+
+const resumeJson = (body: unknown, init: ResponseInit = {}) => {
+  const headers = new Headers(init.headers);
+  headers.set('Cache-Control', 'no-store');
+  return Response.json(body, {...init, headers});
+};
 
 const createEmptyResponse = (): CheckInProgressResult => ({
   success: true,
@@ -38,7 +44,7 @@ const createEmptyResponse = (): CheckInProgressResult => ({
   isAdaptiveInProgress: false
 });
 
-export async function checkInProgressHandler(context: AuthenticatedContext) {
+export async function checkInProgressHandler(context: AuthenticatedPagesContext) {
   const user = context.data.user;
   const env = context.env as Record<string, string>;
   const supabase = getServiceClient(env as any);
@@ -48,11 +54,12 @@ export async function checkInProgressHandler(context: AuthenticatedContext) {
     const { data: learnerData, error: learnerError } = await supabase
       .from('learners')
       .select('id')
-      .or(`user_id.eq.${user.sub},id.eq.${user.sub}`)
+      .eq('user_id', user.sub)
       .maybeSingle();
 
-    if (learnerError || !learnerData?.id) {
-      return Response.json(createEmptyResponse());
+    if (learnerError) return resumeJson({error: 'Owner lookup unavailable'}, {status: 503});
+    if (!learnerData?.id) {
+      return resumeJson(createEmptyResponse());
     }
 
     const learnerId = learnerData.id;
@@ -83,57 +90,8 @@ export async function checkInProgressHandler(context: AuthenticatedContext) {
 
     attempts = initialAttempts;
 
-    if (attemptError || !attempts || attempts.length === 0) {
-      // If no in-progress attempts found, check if there are any recent attempts that might have been incorrectly abandoned
-      // This is specifically for AI sections where users might navigate away before answering questions
-      const { data: recentAttempts, error: recentError } = await supabase
-        .from('personal_assessment_attempts')
-        .select(
-          `id,
-           all_responses,
-           current_section_index,
-           current_question_index,
-           timer_remaining,
-           elapsed_time,
-           grade_level,
-           stream_id,
-           section_timings,
-           started_at,
-           adaptive_aptitude_session_id,
-           status`
-        )
-        .eq('learner_id', learnerId)
-        .in('status', ['abandoned', 'in_progress'])
-        .order('started_at', { ascending: false })
-        .limit(1);
-
-      if (recentError || !recentAttempts || recentAttempts.length === 0) {
-        return Response.json(createEmptyResponse());
-      }
-
-      const recentAttempt = recentAttempts[0];
-
-      // Check if this attempt should be considered resumable (AI sections logic)
-      const usesAISections = ['after10', 'after12', 'higher_secondary', 'college'].includes(recentAttempt.grade_level);
-      const hasReachedAISection = recentAttempt.current_section_index > 0;
-      const isRecentAttempt = new Date(recentAttempt.started_at).getTime() > Date.now() - (24 * 60 * 60 * 1000); // Within 24 hours
-
-      if (usesAISections && hasReachedAISection && isRecentAttempt) {
-        console.log('[checkInProgress] Restoring abandoned attempt as in_progress:', recentAttempt.id);
-        
-        // Restore this attempt as in_progress
-        await supabase
-          .from('personal_assessment_attempts')
-          .update({ status: 'in_progress' })
-          .eq('id', recentAttempt.id);
-        
-        // Use this attempt for the rest of the function
-        attempts = [{ ...recentAttempt, status: 'in_progress' }];
-      } else {
-        console.log('[checkInProgress] Recent attempt not suitable for restoration');
-        return Response.json(createEmptyResponse());
-      }
-    }
+    if (attemptError) return resumeJson({error: 'Resume lookup unavailable'}, {status: 503, headers: {'Cache-Control': 'no-store'}});
+    if (!attempts || attempts.length === 0) return resumeJson(createEmptyResponse(), {headers: {'Cache-Control': 'no-store'}});
 
     const attempt = attempts[0];
 
@@ -156,7 +114,11 @@ export async function checkInProgressHandler(context: AuthenticatedContext) {
            current_difficulty`
         )
         .eq('id', attempt.adaptive_aptitude_session_id)
+        .eq('learner_id', learnerId)
         .maybeSingle();
+
+      if (sessionError) return resumeJson({error: 'Adaptive resume unavailable'}, {status: 503});
+      if (!sessionData) return resumeJson({error: 'Adaptive ownership mismatch'}, {status: 409});
 
       if (sessionData) {
         adaptiveSessionData = {
@@ -224,8 +186,8 @@ export async function checkInProgressHandler(context: AuthenticatedContext) {
       } : undefined
     };
 
-    return Response.json(result);
+    return resumeJson(result, {headers: {'Cache-Control': 'no-store'}});
   } catch (error) {
-    return Response.json(createEmptyResponse());
+    return resumeJson({error: 'Resume lookup unavailable'}, {status: 503, headers: {'Cache-Control': 'no-store'}});
   }
 }

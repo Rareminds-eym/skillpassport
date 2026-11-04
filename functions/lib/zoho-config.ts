@@ -1,0 +1,17 @@
+/** Nonsecret Zoho policy is code-owned. Only credentials and platform bindings stay external. */
+export const ZOHO_PROJECTION_DEFAULTS = Object.freeze({ dependencyTimeoutMs: 5000, maxRequestBytes: 4096 });
+const disabled=Object.freeze({emailPolicy:'forbidden' as const,requiresApproval:true as const,projectionDelivery: false});
+export const ZOHO_PROFILES=Object.freeze({
+  production:disabled,dev:disabled,qa:disabled,preview:disabled,'local-review':disabled,blocked:disabled,
+  local:Object.freeze({...disabled,projectionDelivery: true}),
+});
+export function readZohoProjectionConfig(env: {ENVIRONMENT?: unknown;SUPABASE_URL?: unknown;VITE_SUPABASE_URL?: unknown}) {
+  const name=env.ENVIRONMENT;
+  if(name==='preview'||name==='local-review')return ZOHO_PROFILES[name];
+  let local=false;
+  // Match createSupabaseAdminClient: a truthy primary URL always wins.
+  const databaseUrl=env.SUPABASE_URL||env.VITE_SUPABASE_URL;
+  try{const url=new URL(String(databaseUrl));local=['http:','https:'].includes(url.protocol)&&['127.0.0.1','localhost','[::1]'].includes(url.hostname)&&!url.username&&!url.password&&url.pathname==='/'&&!url.search&&!url.hash;}catch{}
+  if(local&&(name===undefined||name==='local'||name==='development'||name==='dev'))return ZOHO_PROFILES.local;
+  return name==='production'?ZOHO_PROFILES.production:name==='qa'?ZOHO_PROFILES.qa:name==='development'||name==='dev'?ZOHO_PROFILES.dev:ZOHO_PROFILES.blocked;
+}

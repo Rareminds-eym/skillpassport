@@ -8,11 +8,11 @@
 import type { RequestContext } from '../types';
 import {
   getSavedQuestionsForLearner,
-  saveAptitudeQuestions,
-  saveKnowledgeQuestions,
   clearSavedQuestionsForLearner,
 } from '../services/core/assessment-repository';
 import { getServiceClient } from '../../../lib/supabase';
+import { ownQuestionLearner } from '../../../lib/assessment-question-owner';
+import { sanitizeLearnerQuestions } from '../../../lib/assessment-question-safety';
 
 // Matches personal_assessment_streams' grade_level CHECK constraint - the column can
 // only ever contain one of these 6 values at the database level.
@@ -72,6 +72,9 @@ export async function handleGetSavedQuestions(request: Request, ctx: RequestCont
     );
   }
 
+  try { await ownQuestionLearner(ctx, learnerId); }
+  catch { return Response.json({ success: false, error: 'Question cache access denied' }, { status: 403 }); }
+
   const streamGradeCheck = await validateStreamGrade(ctx.env, streamId);
   if (!streamGradeCheck.valid) {
     return new Response(
@@ -87,7 +90,7 @@ export async function handleGetSavedQuestions(request: Request, ctx: RequestCont
     return new Response(
       JSON.stringify({
         success: true,
-        questions: questions || [],
+        questions: sanitizeLearnerQuestions(questions || []),
         cached: questions !== null,
       }),
       {
@@ -114,75 +117,8 @@ export async function handleGetSavedQuestions(request: Request, ctx: RequestCont
  * POST /api/assessment/questions/save
  * Saves generated questions to cache
  */
-export async function handleSaveQuestions(request: Request, ctx: RequestContext) {
-  try {
-    const body = await request.json();
-    const { learnerId, streamId, questionType, attemptId, questions, gradeLevel } = body;
-
-    if (!learnerId || !streamId || !questionType || !questions || !gradeLevel) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: 'Missing required fields: learnerId, streamId, questionType, questions, gradeLevel',
-        }),
-        {
-          status: 400,
-          headers: { 'Content-Type': 'application/json' },
-        }
-      );
-    }
-
-    const streamGradeCheck = await validateStreamGrade(ctx.env, streamId);
-    if (!streamGradeCheck.valid) {
-      return new Response(
-        JSON.stringify({ success: false, error: streamGradeCheck.error }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
-    }
-    const effectiveGradeLevel = streamGradeCheck.effectiveGradeLevel!;
-
-    let success = false;
-
-    if (questionType === 'aptitude') {
-      success = await saveAptitudeQuestions(ctx.env, learnerId, streamId, attemptId, questions, effectiveGradeLevel);
-    } else if (questionType === 'knowledge') {
-      success = await saveKnowledgeQuestions(ctx.env, learnerId, streamId, attemptId, questions, effectiveGradeLevel);
-    } else {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: 'Invalid questionType. Must be "aptitude" or "knowledge"',
-        }),
-        {
-          status: 400,
-          headers: { 'Content-Type': 'application/json' },
-        }
-      );
-    }
-
-    return new Response(
-      JSON.stringify({
-        success,
-        message: success ? 'Questions saved successfully' : 'Failed to save questions',
-      }),
-      {
-        status: success ? 200 : 500,
-        headers: { 'Content-Type': 'application/json' },
-      }
-    );
-  } catch (error) {
-    console.error('[handleSaveQuestions] Error:', error);
-    return new Response(
-      JSON.stringify({
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to save questions',
-      }),
-      {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      }
-    );
-  }
+export async function handleSaveQuestions(_request: Request, _ctx: RequestContext) {
+  return Response.json({ success: false, error: 'Question keys must be created by the server generation endpoint' }, { status: 409 });
 }
 
 /**
@@ -207,7 +143,10 @@ export async function handleClearQuestions(request: Request, ctx: RequestContext
       );
     }
 
-    await clearSavedQuestionsForLearner(ctx.env, learnerId, streamId);
+    let ownedLearner: string;
+    try { ownedLearner = await ownQuestionLearner(ctx, learnerId); }
+    catch { return Response.json({ success: false, error: 'Question cache access denied' }, { status: 403 }); }
+    await clearSavedQuestionsForLearner(ctx.env, ownedLearner, streamId);
 
     return new Response(
       JSON.stringify({

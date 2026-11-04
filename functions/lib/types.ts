@@ -1,4 +1,5 @@
 /// <reference types="@cloudflare/workers-types" />
+import type { VerifiedAuthUser } from '@rareminds-eym/auth-core';
 import type { R2Bucket } from '@cloudflare/workers-types';
 import type {
   EmailWorkerRpc,
@@ -18,6 +19,13 @@ import type {
  * Standard environment variables available to all Pages Functions
  */
 export interface PagesEnv {
+  /** Existing platform context used to select code-owned integration profiles. */
+  ENVIRONMENT?: string;
+  ZOHO_CANDIDATE_SOURCE?: {
+    getSubjectSyncPolicy?(input: { userId: string }): Promise<unknown>;
+    getProjectionSnapshot(reference: unknown): Promise<unknown>;
+    confirmProjection(proof: unknown): Promise<unknown>;
+  };
   // SSO / Auth configuration
   /** Cloudflare Service Binding to the SSO worker (sso-api) */
   SSO_SERVICE?: SsoWorkerRpc;
@@ -43,6 +51,8 @@ export interface PagesEnv {
 
   // Supabase configuration
   SUPABASE_URL?: string;
+  /** Existing database URL fallback; SUPABASE_URL takes precedence. */
+  VITE_SUPABASE_URL?: string;
   SUPABASE_ANON_KEY?: string;
   SUPABASE_SERVICE_ROLE_KEY?: string;
 
@@ -151,3 +161,10 @@ export type PagesFunction<Env = PagesEnv> = (context: {
   next: () => Promise<Response>;
   data: Record<string, any>;
 }) => Response | Promise<Response>;
+
+
+/** The Pages request envelope plus the user installed by withAuth. */
+export type AuthenticatedPagesContext<Env = PagesEnv> =
+  Omit<Parameters<PagesFunction<Env>>[0], 'data'> & {
+    data: Record<string, unknown> & { user: VerifiedAuthUser };
+  };

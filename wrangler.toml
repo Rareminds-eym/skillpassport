@@ -37,6 +37,11 @@ service = "sso-api"
 entrypoint = "SsoWorker"
 
 [[services]]
+binding = "ZOHO_CANDIDATE_SOURCE"
+service = "sso-api"
+entrypoint = "ZohoCandidateProvisioner"
+
+[[services]]
 binding = "EMBEDDING_SERVICE"
 service = "embedding-api"
 entrypoint = "EmbeddingService"
