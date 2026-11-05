@@ -30,7 +30,7 @@ try{
  GRANT USAGE ON SCHEMA public TO service_role;
  ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO service_role;
  `);
- for(const migration of ['20270128000000_zoho_recruit_approval_control_plane.sql','20270129000000_zoho_recruit_execution_ledger.sql','20270130000000_zoho_recruit_discovery_authority.sql','20270131000000_zoho_recruit_record_recovery.sql','20270201000000_zoho_recruit_live_execution_authority.sql','20270202000000_zoho_recruit_decision_recovery.sql','20270209000000_zoho_candidate_review_binding.sql','20270210000000_zoho_job_publisher.sql','20270211000000_zoho_job_no_effect_receipts.sql','20270212000000_zoho_discovery_incremental.sql','20270214000000_zoho_source_privacy.sql','20270215000000_zoho_payload_retention_fences.sql','20270217010000_zoho_source_lifecycle.sql','20270217011000_zoho_bulk_read.sql','20270217012000_zoho_deleted_scan_cursor.sql']){
+ for(const migration of ['20270128000001_zoho_recruit_approval_control_plane.sql','20270129000000_zoho_recruit_execution_ledger.sql','20270130000000_zoho_recruit_discovery_authority.sql','20270131000000_zoho_recruit_record_recovery.sql','20270201000000_zoho_recruit_live_execution_authority.sql','20270202000000_zoho_recruit_decision_recovery.sql','20270209000000_zoho_candidate_review_binding.sql','20270210000000_zoho_job_publisher.sql','20270211000000_zoho_job_no_effect_receipts.sql','20270212000000_zoho_discovery_incremental.sql','20270214000000_zoho_source_privacy.sql','20270215000000_zoho_payload_retention_fences.sql','20270217010000_zoho_source_lifecycle.sql','20270217011000_zoho_bulk_read.sql','20270217012000_zoho_deleted_scan_cursor.sql','20270221000000_zoho_operator_audit_fixes.sql','20270217030000_zoho_source_quota_key_rotation.sql','20270220000000_zoho_dynamic_source_allocation.sql','20270222000000_zoho_retry_visibility.sql']){
   if(existsSync(new URL(`supabase/migrations/${migration}`,root)))docker(args,read(`supabase/migrations/${migration}`));
  }
  docker(args,read('functions/__tests__/sql/zoho-job-publisher.sql'));
@@ -47,5 +47,7 @@ try{
  docker(args,`DO $$ BEGIN ASSERT (SELECT count(*)=1 FROM public.opportunities WHERE status='open' AND is_active); ASSERT (SELECT count(*)=3 FROM public.zoho_job_receipts); ASSERT NOT EXISTS(SELECT 1 FROM public.learning_job_notification_work); END $$;`);
  docker(args,read('functions/__tests__/sql/zoho-job-no-effect.sql'));
  docker(args,read('functions/__tests__/sql/zoho-bulk-source-lifecycle.sql'));
+ docker(args,read('functions/__tests__/sql/zoho-operator-audit-fixes.sql'));
+ docker(args,read('functions/__tests__/sql/zoho-retry-visibility.sql'));
  console.log('Zoho job publisher SQL: approval/receipt/version/ownership/quota/no-email and cross-connection quota-race assertions passed.');
 }finally{if(created)docker(['dropdb','-U','postgres','--force',name]);}

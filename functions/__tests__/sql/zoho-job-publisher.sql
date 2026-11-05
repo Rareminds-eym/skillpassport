@@ -42,15 +42,15 @@ BEGIN
  ASSERT (SELECT jsonb_array_length(validation_errors)=1 FROM public.zoho_staged_records WHERE connection_id=connection AND external_id='99');
  g:=public.fixture_job_grant(connection,'1');
  oldfp:=public.zoho_job_trigger_fingerprint();
- ASSERT EXISTS(SELECT 1 FROM jsonb_array_elements(public.zoho_read_job_policy(connection)->'triggerSurface') surface
-  WHERE surface->>'name' LIKE 'routine: fixture_job_helpers.noop%'),'Non-public helper missing from operator review';
+ ASSERT EXISTS(SELECT 1 FROM public.zoho_job_executable_surface() surface
+  WHERE surface.kind='routine' AND surface.name LIKE 'fixture_job_helpers.noop%'),'Non-public helper missing from operator review';
  -- Installing a new DEFAULT that calls an already existing marker must fail
  -- before either the marker or target job is written.
  EXECUTE 'ALTER TABLE public.opportunities ALTER COLUMN company_logo SET DEFAULT public.fixture_job_default_marker()';
  ASSERT oldfp IS DISTINCT FROM public.zoho_job_trigger_fingerprint(),'DEFAULT drift left review valid';
  ASSERT NOT public.zoho_job_publisher_ready();
- ASSERT EXISTS(SELECT 1 FROM jsonb_array_elements(public.zoho_read_job_policy(connection)->'triggerSurface') surface
-  WHERE surface->>'name'='default: opportunities.company_logo' AND surface->>'definition' LIKE '%fixture_job_default_marker%'),'DEFAULT missing from operator review';
+ ASSERT EXISTS(SELECT 1 FROM public.zoho_job_executable_surface() surface
+  WHERE surface.kind='default' AND surface.name='opportunities.company_logo' AND surface.definition LIKE '%fixture_job_default_marker%'),'DEFAULT missing from operator review';
  failed:=false; BEGIN PERFORM public.zoho_apply_job_operation_effect(g); EXCEPTION WHEN SQLSTATE 'ZJ001' THEN failed:=true; END;
  ASSERT failed AND NOT EXISTS(SELECT 1 FROM public.fixture_job_side_effect_markers),'Unreviewed DEFAULT executed';
  EXECUTE 'ALTER TABLE public.opportunities ALTER COLUMN company_logo DROP DEFAULT';
