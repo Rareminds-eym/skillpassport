@@ -11,7 +11,6 @@
 import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 import { generateCourseCertificate } from './certificateService';
-import { supabase } from '@/shared/api/supabaseClient';
 
 const logger = getLogger('certificate-learner-service');
 
@@ -49,7 +48,7 @@ export async function fetchLearnerName(user: User | undefined, signal?: AbortSig
     }
 
     // Try to fetch from backend API using user_id or email
-    const response = await apiPost('/user/actions', {
+    const response = await apiPost<{ success: boolean; data?: { name: string } }>('/user/actions', {
       action: 'get-learner-name',
       id: user.id,
       email: user.email
@@ -93,7 +92,7 @@ export async function updateLearnerName(user: User, fullName: string, signal?: A
     }
 
     // Update through backend API
-    const response = await apiPost('/user/actions', {
+    const response = await apiPost<{ success: boolean; error?: string }>('/user/actions', {
       action: 'update-learner-name',
       id: user.id,
       email: user.email,
@@ -188,30 +187,45 @@ export async function generateCertificateWithNameUpdate(
     issuedOnDate 
   });
   
-  // Fetch learner_type from database to determine certificate template
-  logger.info('Fetching learner type from database', { learnerId });
-  const { data: learnerData, error: learnerError } = await supabase
-    .from('learners')
-    .select('learner_type, college_school_name')
-    .eq('id', learnerId)
-    .single();
-
-  if (learnerError) {
-    logger.warn('Could not fetch learner type, using default', { 
-      error: learnerError.message,
+  // Fetch learner_type from backend API to determine certificate template
+  logger.info('Fetching learner type from API', { learnerId });
+  
+  let learnerType = 'learner'; // Default fallback
+  let collegeName: string | undefined = undefined;
+  
+  try {
+    const response = await apiPost<{ 
+      success: boolean; 
+      data?: { learner_type: string | null; college_school_name: string | null };
+      error?: string;
+    }>('/user/actions', {
+      action: 'get-learner-data',
+      learnerId: learnerId
+    });
+    
+    if (response.success && response.data) {
+      // Normalize imported values so variants such as "Teacher" or values with
+      // surrounding whitespace still select the educator certificate.
+      learnerType = response.data.learner_type?.trim().toLowerCase() || 'learner';
+      collegeName = response.data.college_school_name || undefined;
+      
+      logger.info('Fetched learner data for certificate generation', { 
+        rawLearnerType: response.data.learner_type,
+        learnerType, 
+        collegeName 
+      });
+    } else {
+      logger.warn('Could not fetch learner type from API, using default', { 
+        error: response.error,
+        learnerId 
+      });
+    }
+  } catch (error) {
+    logger.warn('Error fetching learner data from API, using default', { 
+      error: error instanceof Error ? error.message : String(error),
       learnerId 
     });
   }
-
-  // Normalize imported values so variants such as "Teacher" or values with
-  // surrounding whitespace still select the educator certificate.
-  const learnerType = learnerData?.learner_type?.trim().toLowerCase() || 'learner';
-  const collegeName = learnerData?.college_school_name || undefined;
-  
-  logger.info('Learner type for certificate generation', { 
-    learnerType, 
-    collegeName 
-  });
   
   const result = await generateCourseCertificate(
     learnerId,
@@ -235,7 +249,7 @@ export async function generateCertificateWithNameUpdate(
   }
 
   // Transform CertificateResult to CertificateServiceResult
-  if (result.success && result.certificateUrl) {
+  if (result.success && result.certificateUrl && result.credentialId) {
     return {
       success: true,
       certificateUrl: result.certificateUrl,

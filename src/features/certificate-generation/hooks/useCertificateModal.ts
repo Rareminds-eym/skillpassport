@@ -9,6 +9,7 @@ import {
 } from '../api/certificateLearnerService';
 import { downloadCertificate } from '../api/certificateService';
 import { getLogger } from '@/shared/config/logging';
+import { apiPost } from '@/shared/api/apiClient';
 import { supabase } from '@/shared/api/supabaseClient';
 
 const logger = getLogger('useCertificateModal');
@@ -208,36 +209,52 @@ export const useCertificateModal = ({
     setIsLoadingName(true);
     
     try {
-      // Fetch learner data (name, type, college) from database
+      // Fetch learner data (name, type, college) from backend API
       const learnerId = data.learnerId;
       
-      // Fetch learner info from database
-      const { data: learnerData, error: learnerError } = await supabase
-        .from('learners')
-        .select('learner_type, college_school_name')
-        .eq('id', learnerId)
-        .single();
+      // Fetch learner info from API instead of direct database query
+      try {
+        const response = await apiPost<{
+          success: boolean;
+          data?: { learner_type: string | null; college_school_name: string | null };
+          error?: string;
+        }>('/user/actions', {
+          action: 'get-learner-data',
+          learnerId: learnerId
+        });
 
-      if (learnerError) {
-        logger.warn('Could not fetch learner data', { 
-          error: learnerError.message,
+        if (response.success && response.data) {
+          // Set learner type and college name
+          const fetchedLearnerType = response.data.learner_type?.trim().toLowerCase() || 'learner';
+          const fetchedCollegeName = response.data.college_school_name || '';
+          
+          setLearnerType(fetchedLearnerType);
+          setCollegeName(fetchedCollegeName);
+          
+          logger.info('Fetched learner data for certificate modal', { 
+            rawLearnerType: response.data.learner_type,
+            fetchedLearnerType, 
+            collegeName: fetchedCollegeName,
+            willShowCollegeField: fetchedLearnerType === 'educator' || fetchedLearnerType === 'teacher'
+          });
+        } else {
+          logger.warn('Could not fetch learner data from API', { 
+            error: response.error,
+            learnerId 
+          });
+          // Set defaults
+          setLearnerType('learner');
+          setCollegeName('');
+        }
+      } catch (error) {
+        logger.warn('Error fetching learner data from API', { 
+          error: error instanceof Error ? error.message : String(error),
           learnerId 
         });
+        // Set defaults
+        setLearnerType('learner');
+        setCollegeName('');
       }
-
-      // Set learner type and college name
-      const fetchedLearnerType = learnerData?.learner_type?.trim().toLowerCase() || 'learner';
-      const fetchedCollegeName = learnerData?.college_school_name || '';
-      
-      setLearnerType(fetchedLearnerType);
-      setCollegeName(fetchedCollegeName);
-      
-      logger.info('Fetched learner data for certificate modal', { 
-        rawLearnerType: learnerData?.learner_type,
-        fetchedLearnerType, 
-        collegeName: fetchedCollegeName,
-        willShowCollegeField: fetchedLearnerType === 'educator' || fetchedLearnerType === 'teacher'
-      });
       
       // Fetch name from database if not provided
       const nameToUse = data.prefillName || (await fetchLearnerName(user, abortController.signal));
