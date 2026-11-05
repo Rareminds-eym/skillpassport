@@ -1,0 +1,2 @@
+-- Slide-quiz answers and progress are stored in public.learner_quiz_progress.
+-- This file intentionally creates no separate response table.

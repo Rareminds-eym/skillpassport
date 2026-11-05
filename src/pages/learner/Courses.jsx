@@ -674,7 +674,6 @@ const Courses = () => {
           setShowDetailModal(false);
         }}
       />
-      
       {/* Certificate Generation Modal */}
       <CertificateNameModal
         isOpen={certificateModal.showModal}
