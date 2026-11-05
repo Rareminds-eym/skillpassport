@@ -14,7 +14,7 @@ const mocks = vi.hoisted(() => ({
 }));
 vi.mock('@/shared/model', () => ({ useUser: () => mocks.user, useUserRole: () => ({ isEducator: mocks.educator }) }));
 vi.mock('../../api/worksheetService', () => ({ worksheetAction: vi.fn().mockResolvedValue({ organization: { name: 'Mapped College' }, gradeLevel: 'College/University', learnerCount: 8 }) }));
-vi.mock('../../api/materialService', () => ({ materialAction: async () => ({ enabled: false }) }));
+vi.mock('../../api/materialService', () => ({ materialAction: async (action:string) => action==='deliveries'?[]:({ enabled: false }) }));
 vi.mock('../LearnerWorksheets', () => ({ default: ({ courseId }: { courseId: string }) => <div>Assignments for {courseId}</div> }));
 vi.mock('@/features/ai-tutor/model', () => ({ useLearnerType: () => ({ isTeacher: false, loading: false }) }));
 vi.mock('@/features/ai-tutor/model/useTutorChat', () => ({ useTutorChat: () => ({
@@ -299,8 +299,9 @@ describe('AI facilitator workspace', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Explore six facilitators' }));
     fireEvent.click(screen.getByRole('button', { name: /Mentor and Guide/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Review a learner response' }));
-    expect((screen.getByRole('textbox', { name: 'Message the AI facilitator' }) as HTMLTextAreaElement).value).toContain('Ask me to share the response');
+    expect(screen.getByRole('region',{name:'Guide a learner response'})).toBeInTheDocument();
     expect(mocks.sendMessage).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button',{name:'Close learner selection'}));
     expect(screen.getByRole('heading', { name: 'Learning objectives' })).toBeInTheDocument();
   });
 
@@ -309,8 +310,7 @@ describe('AI facilitator workspace', () => {
     showPanel();
     fireEvent.click(screen.getByRole('button', { name }));
     const input = screen.getByRole('textbox', { name: 'Message the AI facilitator' }) as HTMLTextAreaElement;
-    expect(input.value).toContain(name === 'Guide' ? 'review a learner response' : 'work through a misconception');
-    expect(input).toHaveFocus();
+    if(name==='Guide')expect(screen.getByRole('region',{name:'Guide a learner response'})).toBeInTheDocument();else {expect(input.value).toContain('work through a misconception');expect(input).toHaveFocus();}
     expect(mocks.sendMessage).not.toHaveBeenCalled();
     expect(screen.queryByRole('region', { name: 'Six AI facilitators' })).not.toBeInTheDocument();
   });

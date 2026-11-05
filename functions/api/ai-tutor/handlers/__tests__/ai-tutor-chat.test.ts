@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   client: { from: vi.fn(), rpc: vi.fn() },
-  retrieve: vi.fn(), increment: vi.fn(), roles: ['college_educator'],
+  retrieve: vi.fn(), increment: vi.fn(), guide:vi.fn(), roles: ['college_educator'],
 }));
 vi.mock('../../../../lib/auth', () => ({
   getContextUser: () => ({ id: 'educator-id', roles: mocks.roles }),
@@ -30,6 +30,7 @@ vi.mock('../../utils/saved-materials', async original => ({
   ...await original<typeof import('../../utils/saved-materials')>(),
   materialContextFingerprint: vi.fn().mockResolvedValue('context-hash'),
 }));
+vi.mock('../../utils/guide-evidence',async original=>({...await original<typeof import('../../utils/guide-evidence')>(),loadGuideEvidence:mocks.guide}));
 import { handleAiTutorChat } from '../ai-tutor-chat';
 
 describe('tutor conversation persistence', () => {
@@ -67,6 +68,47 @@ describe('tutor conversation persistence', () => {
     } as Parameters<typeof handleAiTutorChat>[0]);
     return response.text();
   }
+
+  it('adds server-loaded submission evidence to the model prompt and persists only its reference',async()=>{
+    mocks.guide.mockResolvedValue('\nVERIFIED RESPONSE: Learner wrote Plan tasks. Rubric: prioritize.');
+    const id='00000000-0000-4000-8000-000000000001';
+    const response=await handleAiTutorChat({request:new Request('https://example.test/chat',{method:'POST',body:JSON.stringify({courseId:'course-id',message:'Give feedback on this response',guideSubmissionId:id,facilitatorMode:'mentor-and-guide'})}),env:{SUPABASE_URL:'https://example.test',SUPABASE_SERVICE_ROLE_KEY:'test'}} as Parameters<typeof handleAiTutorChat>[0]);
+    await response.text();
+    expect(mocks.guide).toHaveBeenCalledWith(mocks.client,expect.anything(),'educator-id','course-id',id);
+    const call=vi.mocked(fetch).mock.calls.find(([,init])=>String(init?.body).includes('VERIFIED RESPONSE'));
+    expect(call).toBeDefined();
+    const request=JSON.parse(String(call![1]!.body));expect(request.messages[0].content).toContain('Learner wrote Plan tasks');
+    const query=mocks.client.from.mock.results.find(result=>result.value.insert.mock.calls.length)?.value;
+    const saved=query.insert.mock.calls[0][0].messages;
+    expect(saved[0]).toMatchObject({guideSubmissionId:id,role:'user'});
+    expect(saved[0].content).not.toContain('VERIFIED RESPONSE');
+  });
+  it('rejects learner attempts to fetch another learner evidence through chat',async()=>{
+    mocks.roles=['learner'];
+    const response=await handleAiTutorChat({request:new Request('https://example.test/chat',{method:'POST',body:JSON.stringify({courseId:'course-id',message:'Guide',guideSubmissionId:'00000000-0000-4000-8000-000000000001'})}),env:{SUPABASE_URL:'https://example.test',SUPABASE_SERVICE_ROLE_KEY:'test'}} as Parameters<typeof handleAiTutorChat>[0]);
+    expect(response.status).toBe(403);expect(mocks.guide).not.toHaveBeenCalled();
+  });
+  it('reloads the selected submission for a mentor follow-up',async()=>{
+    const id='00000000-0000-4000-8000-000000000001';mocks.guide.mockResolvedValue('\nVERIFIED FOLLOW-UP EVIDENCE');
+    const original=mocks.client.from.getMockImplementation()!;
+    mocks.client.from.mockImplementation((table:string)=>{const query=original(table);if(table==='tutor_conversations')query.maybeSingle.mockResolvedValue({data:{messages:[{id:'prior',role:'user',content:'Guide this learner',guideSubmissionId:id}]},error:null});return query;});
+    const response=await handleAiTutorChat({request:new Request('https://example.test/chat',{method:'POST',body:JSON.stringify({conversationId:'existing',courseId:'course-id',message:'What should they practise next?',facilitatorMode:'mentor-and-guide'})}),env:{SUPABASE_URL:'https://example.test',SUPABASE_SERVICE_ROLE_KEY:'test'}} as Parameters<typeof handleAiTutorChat>[0]);
+    await response.text();expect(mocks.guide).toHaveBeenCalledWith(mocks.client,expect.anything(),'educator-id','course-id',id);
+  });
+  it('treats the actual Guide prompt containing an assignment title as feedback, never worksheet generation',async()=>{
+    mocks.guide.mockResolvedValue('\nVERIFIED learner response and rubric');
+    const response=await handleAiTutorChat({request:new Request('https://example.test/chat',{method:'POST',body:JSON.stringify({courseId:'course-id',message:'Guide me on Anusha — Intermediate - 10 questions. Use the saved learner response and grading criteria to give targeted feedback and one next step.',guideSubmissionId:'00000000-0000-4000-8000-000000000001',facilitatorMode:'mentor-and-guide',worksheetConfig:{templateType:'multiple_choice',difficulty:'medium',difficultyLevels:['medium'],questionCount:10}})}),env:{SUPABASE_URL:'https://example.test',SUPABASE_SERVICE_ROLE_KEY:'test',AI_ASSIGNMENTS_ENABLED:'true'}} as Parameters<typeof handleAiTutorChat>[0]);
+    const stream=await response.text();
+    expect(stream).toContain('"facilitator":"mentor-and-guide"');
+    expect(stream).not.toContain('"worksheetAvailable":true');
+    expect(mocks.guide).toHaveBeenCalled();
+    expect(mocks.client.rpc.mock.calls.some(([name])=>name==='ai_worksheet_context')).toBe(false);
+    const call=vi.mocked(fetch).mock.calls.find(([,init])=>String(init?.body).includes('VERIFIED learner'));
+    const prompt=JSON.parse(String(call![1]!.body)).messages[0].content;
+    expect(prompt).toContain('Do not reproduce the worksheet');
+    const query=mocks.client.from.mock.results.find(result=>result.value.insert.mock.calls.length)?.value;
+    expect(query.insert.mock.calls[0][0].messages.at(-1).worksheetConfig).toBeUndefined();
+  });
 
   it('routes a typed generation request and persists its selected persona', async () => {
     mocks.client.rpc.mockImplementation(async name => name === 'ai_worksheet_context' ? { data: { gradeLevel: 'College/University' }, error: null } : { error: null });

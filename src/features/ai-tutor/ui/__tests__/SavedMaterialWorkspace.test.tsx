@@ -1,4 +1,4 @@
-import {render,screen,cleanup,fireEvent,within} from '@testing-library/react';
+import {render,screen,cleanup,fireEvent,within,waitFor} from '@testing-library/react';
 import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
 import {afterEach,it,expect,vi} from 'vitest';
 const exports=vi.hoisted(()=>({exportAs:vi.fn()}));
@@ -7,8 +7,40 @@ vi.mock('@/shared/model',()=>({useUser:()=>({id:'student'})}));
 vi.mock('../../api/materialService',()=>({materialAction:async(action:string,data?:{kind?:string})=>action==='capabilities'?{enabled:true}:action==='library'?(data?.kind==='lesson_plan'?[{id:'plan',title:'Saved time management plan',content:{markdown:'Lesson objectives and teaching activities'}}]:[{id:'assignment',title:'Worksheet one',content:{questions:[]}},{id:'other',title:'Worksheet two',content:{questions:[]}}]):[{id:'recipient',due_at:'2099-01-01',learner:{name:'Student'},assignment:{id:'assignment',title:'Time management',content:{questions:[]}},submissions:[{id:'submission',file_name:'answer.pdf',results:[{id:'result',status:'review_required'}]}]}]}));
 vi.mock('../SaveGeneratedMaterial',()=>({AllocateSavedMaterial:()=> <span>Assigned</span>}));
 vi.mock('../LearnerWorksheets',()=>({default:()=> <div>Legacy download list</div>}));
-import SavedMaterialWorkspace, {LearnerProgressBrowser} from '../SavedMaterialWorkspace';
+import SavedMaterialWorkspace, {LearnerProgressBrowser,AssignmentOverview,SubmissionCard} from '../SavedMaterialWorkspace';
 afterEach(cleanup);
+it('opens learner details as a separate modal screen and preserves the learner search on return',()=>{
+ const rows=[{id:'one',due_at:'2099-01-01',learner:{name:'Alex'},assignment:{id:'a',title:'Planning',content:{questions:[]}},submissions:[]},{id:'two',due_at:'2099-01-01',learner:{name:'Bea'},assignment:{id:'a',title:'Planning',content:{questions:[]}},submissions:[]}];
+ render(<QueryClientProvider client={new QueryClient()}><AssignmentOverview cardTrigger rows={rows} courseId="course" title="Planning" loading={false} error={null}/></QueryClientProvider>);
+ expect(screen.queryByRole('button',{name:'Overview'})).not.toBeInTheDocument();
+ fireEvent.click(screen.getByRole('button',{name:'View progress for Planning'}));
+ fireEvent.change(screen.getByRole('textbox',{name:'Search learners'}),{target:{value:'Alex'}});
+ fireEvent.click(screen.getByRole('button',{name:'View Alex'}));
+ expect(screen.getByRole('region',{name:'Alex submission page'})).toBeInTheDocument();
+ expect(screen.queryByRole('table')).not.toBeInTheDocument();
+ expect(screen.queryByRole('region',{name:'Progress summary'})).not.toBeInTheDocument();
+ fireEvent.click(screen.getByRole('button',{name:'Back to learners'}));
+ expect(screen.getByRole('textbox',{name:'Search learners'})).toHaveValue('Alex');
+ expect(screen.getByRole('table')).toBeInTheDocument();
+ expect(screen.queryByRole('region',{name:'Alex submission page'})).not.toBeInTheDocument();
+ expect(screen.queryByRole('button',{name:'View Bea'})).not.toBeInTheDocument();
+});
+it('keeps learners above collapsed insights and explains the evaluated sample size',()=>{
+ const row={id:'one',due_at:'2099-01-01',learner:{name:'Alex'},assignment:{id:'a',title:'Planning',content:{questions:[{id:'q',position:7,prompt:'Explain prioritization',maxMarks:10}]}},submissions:[{results:[{status:'released',total_marks:5,maximum_marks:10,question_results:{review:[{questionId:'q',marks:5}]}}]}]};
+ const followup=vi.fn();render(<QueryClientProvider client={new QueryClient()}><AssignmentOverview rows={[row,{...row,id:'two',learner:{name:'Bea'},submissions:[]}]} courseId="course" title="Planning" loading={false} error={null} onFollowup={followup}/></QueryClientProvider>);
+ fireEvent.click(screen.getByRole('button',{name:'Overview'}));
+ const modal=screen.getByRole('dialog',{name:'Planning'});
+ expect(within(modal).getByText('Average based on 1 evaluated learner')).toBeInTheDocument();
+ expect(within(modal).getByRole('progressbar',{name:'Submission progress'})).toHaveAttribute('value','1');
+ expect(within(modal).getByRole('progressbar',{name:'Submission progress'})).toHaveAttribute('max','2');
+ const insights=within(modal).getByText('Question insights').closest('details')!;
+ expect(insights).not.toHaveAttribute('open');
+ expect(within(modal).getByRole('table').compareDocumentPosition(insights)&Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+ fireEvent.click(within(modal).getByText('Question insights'));
+ expect(within(insights).getByText('Question 7')).toBeInTheDocument();
+ fireEvent.click(within(insights).getByRole('button',{name:'Draft follow-up activity'}));
+ expect(followup).toHaveBeenCalled();expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+});
 it('handles 79 learners with paging, search, status filters, grid view and on-demand details',()=>{
  const rows=Array.from({length:79},(_,i)=>({id:`recipient-${i}`,due_at:'2099-01-01',learner:{name:`Learner ${String(i+1).padStart(2,'0')}`},assignment:{id:'assignment',title:'Worksheet',content:{questions:[]}},submissions:i===78?[{id:'submission',file_name:'answer.pdf',results:[{status:'review_required'}]}]:[]}));
  render(<QueryClientProvider client={new QueryClient()}><LearnerProgressBrowser rows={rows} courseId="course"/></QueryClientProvider>);
@@ -78,7 +110,7 @@ it('shows saved lesson plans without assignment evaluation or submission status'
  expect(screen.queryByText('No assignments allocated yet.')).not.toBeInTheDocument();
  fireEvent.click(screen.getByRole('button',{name:'Assignments'}));
  expect(await screen.findByText('Worksheet one')).toBeInTheDocument();
- const overviews=screen.getAllByText('Overview');
+ const overviews=screen.getAllByRole('button',{name:/View progress for/});
  expect(overviews).toHaveLength(2);
  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
  fireEvent.click(overviews[0]);
@@ -86,8 +118,28 @@ it('shows saved lesson plans without assignment evaluation or submission status'
  expect(within(first).getByText('Student')).toBeInTheDocument();
  fireEvent.click(within(first).getByRole('button',{name:'Close overview'}));
  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
- fireEvent.click(screen.getAllByText('Overview')[1]);
+ fireEvent.click(screen.getAllByRole('button',{name:/View progress for/})[1]);
  const second=await screen.findByRole('dialog',{name:'Worksheet two'});
  expect(within(second).queryByText('Student')).not.toBeInTheDocument();
  expect(within(second).getByText('No learners assigned yet.')).toBeInTheDocument();
+});
+
+it('aligns evaluated feedback and removes automatic wording from saved results',async()=>{
+ const row={id:'evaluated',due_at:'2099-01-01',learner:{name:'Alex'},assignment:{id:'a',title:'Planning',content:{questions:[{id:'q',position:1,prompt:'How do you plan?',maxMarks:10}]}},submissions:[{id:'s',results:[{status:'released',total_marks:8,maximum_marks:10,feedback:'Automatic evaluation complete.',question_results:{review:[{questionId:'q',marks:8,reason:'Automatically evaluated'}],ai:[{questionId:'q',feedback:'Good planning.'}]}}]}]};
+ render(<QueryClientProvider client={new QueryClient()}><LearnerProgressBrowser rows={[row]} courseId="course"/></QueryClientProvider>);
+ fireEvent.click(screen.getByRole('button',{name:'View Alex'}));
+ expect(screen.queryByRole('button',{name:'View result'})).not.toBeInTheDocument();
+ const feedback=screen.getByRole('region',{name:'Evaluation feedback'});
+ expect(within(feedback).getByText('Evaluation complete')).toBeInTheDocument();
+ expect(within(feedback).getByText('8/10')).toBeInTheDocument();
+ expect(within(feedback).getByText('Good planning.')).toBeInTheDocument();
+ expect(feedback.textContent).not.toMatch(/automatic/i);
+ expect(screen.queryByText('Evaluation: released')).not.toBeInTheDocument();
+ cleanup();
+ render(<QueryClientProvider client={new QueryClient()}><SubmissionCard row={row} courseId="course" educator={false}/></QueryClientProvider>);
+ expect(screen.queryByRole('region',{name:'Evaluation feedback'})).not.toBeInTheDocument();
+ fireEvent.click(screen.getByRole('button',{name:'View result'}));
+ expect(screen.getByRole('region',{name:'Evaluation feedback'})).toBeInTheDocument();
+ fireEvent.click(screen.getByRole('button',{name:'Close result'}));
+ await waitFor(()=>expect(screen.getByRole('button',{name:'View result'})).toHaveFocus());
 });

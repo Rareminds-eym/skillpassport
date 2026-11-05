@@ -49,7 +49,7 @@ export interface UseTutorChatReturn {
   conversationId: string | null;
   conversations: Conversation[];
   suggestedQuestions: string[];
-  sendMessage: (content: string, options?: { generate: boolean }) => Promise<void>;
+  sendMessage: (content: string, options?: { generate?: boolean; guideSubmissionId?: string }) => Promise<void>;
   stopGeneration: () => void;
   editMessage: (messageId: string, newContent: string) => Promise<void>;
   loadConversation: (conversationId: string) => Promise<void>;
@@ -149,7 +149,7 @@ export function useTutorChat({
 
 
   // Send a message to the AI tutor
-  const handleSendMessage = useCallback(async (content: string, options?: { generate: boolean }) => {
+  const handleSendMessage = useCallback(async (content: string, options?: { generate?: boolean; guideSubmissionId?: string }) => {
     if (!content.trim() || isStreaming) return;
 
     const requestController = new AbortController();
@@ -185,7 +185,8 @@ export function useTutorChat({
         courseId,
         lessonId,
         message: content.trim(),
-        ...(isEducator ? { facilitatorMode } : {}),
+        ...(options?.guideSubmissionId ? { guideSubmissionId: options.guideSubmissionId } : {}),
+        ...(isEducator ? { facilitatorMode: options?.guideSubmissionId ? 'mentor-and-guide' : facilitatorMode } : {}),
         ...(options?.generate ? { worksheetConfig, lessonPlanConfig } : {}),
       }, requestController.signal);
 

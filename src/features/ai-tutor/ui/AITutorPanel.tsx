@@ -1,3 +1,4 @@
+import GuideSubmissionPicker from './GuideSubmissionPicker';
 import PanelLoadingSkeleton from './PanelLoadingSkeleton';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
@@ -111,6 +112,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
   const [facilitatorPreviewOpen, setFacilitatorPreviewOpen] = useState(false);
   const [previewRoleId, setPreviewRoleId] = useState<string | undefined>();
   const [input, setInput] = useState('');
+  const [showGuidePicker,setShowGuidePicker] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showWorksheets, setShowWorksheets] = useState(false);
   const [feedbackGiven, setFeedbackGiven] = useState<Record<number, 1 | -1>>({});
@@ -264,6 +266,8 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
   const handleFacilitatorAction = (role: FacilitatorRole) => {
     setFacilitatorMode(role.id);
     setShowFacilitators(false);
+    if (role.id === 'mentor-and-guide') { setInput(''); setIsConfigExpanded(false); setShowGuidePicker(true); return; }
+    setShowGuidePicker(false);
     if (role.action === 'chat') {
       setInput(`${role.prompt}\n\nCourse: ${courseName}.`);
       inputRef.current?.focus();
@@ -311,13 +315,14 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
         setIsExpanded(prev => !prev);
       }
       if (e.key === 'Escape' && isExpanded) {
-        if (isConfigExpanded) setIsConfigExpanded(false);
+        if (showGuidePicker) setShowGuidePicker(false);
+        else if (isConfigExpanded) setIsConfigExpanded(false);
         else setIsExpanded(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isExpanded, isConfigExpanded]);
+  }, [isExpanded, isConfigExpanded, showGuidePicker]);
 
   // Reveal a new message once; streaming never moves the reader away.
   useEffect(() => {
@@ -787,8 +792,9 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
 
       {/* 5. Messages Stream Area */}
       <div aria-label="Conversation" aria-busy={isStreaming} className={`flex-1 min-h-0 overflow-y-auto overscroll-contain ${isWelcome ? 'bg-white/90' : 'bg-slate-50/80'} px-4 py-6 sm:px-5 space-y-6`}>
+        {isEducator && showGuidePicker && <GuideSubmissionPicker key={courseId} courseId={courseId} disabled={isStreaming} onClose={()=>setShowGuidePicker(false)} onSelect={(id,label)=>{setShowGuidePicker(false);setInput('');void sendMessage(`Guide me on ${label}. Use the saved learner response and grading criteria to give targeted feedback and one next step.`,{guideSubmissionId:id});}}/>}
         {isEducator && isConfigExpanded && <CourseIndexStatus courseId={courseId} />}
-        {isEducator && isConfigExpanded ? (
+        {showGuidePicker ? null : isEducator && isConfigExpanded ? (
           <section aria-label={configTool === 'worksheet' ? 'Create a worksheet' : 'Plan a lesson'} className="rounded-xl border border-slate-200 bg-white p-4">
             <div className="flex items-center justify-between gap-3">
               <h3 className="!m-0 !text-sm !font-semibold text-slate-900">{configTool === 'worksheet' ? 'Create a worksheet' : 'Plan a lesson'}</h3>

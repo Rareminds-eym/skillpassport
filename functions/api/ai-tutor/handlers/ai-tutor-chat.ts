@@ -1,3 +1,4 @@
+import { loadGuideEvidence, GuideEvidenceError } from '../utils/guide-evidence';
 /**
  * AI Tutor Chat Handler
  *
@@ -45,6 +46,7 @@ interface RequiredEnv extends PagesEnv {
 type TypedContext = { request: Request; env: RequiredEnv; data?: Parameters<typeof getContextUser>[0]['data'] };
 
 interface StoredMessage {
+  guideSubmissionId?: string;
   materialRequestFingerprint?: string;
   materialContextFingerprint?: string;
   materialChoice?: { state: string; kind: string; id: string };
@@ -83,6 +85,7 @@ function isValidOpenRouterResponse(data: unknown): data is OpenRouterResponse {
 }
 
 interface AiTutorChatRequest {
+  guideSubmissionId?: string;
   contextScope?: 'course' | 'lesson' | 'all-lessons';
   facilitatorMode?: Persona | 'auto';
   conversationId?: string;
@@ -197,11 +200,25 @@ export const handleAiTutorChat = async (context: TypedContext) => {
     }
 
     const educator = userRole.toLowerCase().includes('educator');
-    const teaching = routeTeachingMessage(message, existingMessages, body.facilitatorMode);
+    const inheritedGuide = [...existingMessages].reverse().find(m => m.guideSubmissionId)?.guideSubmissionId;
+    const guideSubmissionId = body.guideSubmissionId ?? (body.facilitatorMode === 'mentor-and-guide' ? inheritedGuide : undefined);
+    if (guideSubmissionId !== undefined && (!educator || typeof guideSubmissionId !== 'string')) return apiError(403, 'FORBIDDEN', 'Educator access and a valid submission are required.', request);
+    const teaching = routeTeachingMessage(message, existingMessages, guideSubmissionId ? 'mentor-and-guide' : body.facilitatorMode);
+    // Submission guidance is a distinct feedback operation. Assignment titles and
+    // learner names must never be interpreted as generation/publication commands.
+    if (guideSubmissionId) {
+      worksheetConfig = undefined;
+      lessonPlanConfig = undefined;
+      teaching.worksheetConfig = undefined;
+      teaching.lessonPlanConfig = undefined;
+      teaching.assignmentReviewRequested = false;
+      teaching.assignmentSourceId = undefined;
+      isGenerationRequest = false;
+    }
     if (!educator && (worksheetConfig || lessonPlanConfig || body.facilitatorMode)) {
       return apiError(403, 'FORBIDDEN', 'Educator access required for teaching tools.', request);
     }
-    if (educator && !worksheetConfig && !lessonPlanConfig) {
+    if (educator && !guideSubmissionId && !worksheetConfig && !lessonPlanConfig) {
       worksheetConfig = teaching.worksheetConfig;
       lessonPlanConfig = teaching.lessonPlanConfig;
       isGenerationRequest = Boolean(worksheetConfig || lessonPlanConfig);
@@ -251,13 +268,17 @@ export const handleAiTutorChat = async (context: TypedContext) => {
       ? formatRetrievedEvidence(evidence) + (evidence.length ? '' : '\nNo indexed evidence is available yet. Say that indexing is needed; do not claim to have read course resources.')
       : '';
     systemPrompt += retrievedContext;
+    if (guideSubmissionId) {
+      systemPrompt += await loadGuideEvidence(supabase, env, learnerId, courseId, guideSubmissionId);
+      systemPrompt += '\nThis is feedback on an existing submission, not material generation. Do not reproduce the worksheet or generate another question set. Briefly identify demonstrated strengths, specific gaps tied to submitted answers and the saved rubric, and one actionable next step. Quote question text only when needed to explain feedback. Do not invent learning objectives or change the saved grade.';
+    }
     const latestWorksheet = [...existingMessages].reverse().find(item => item.worksheetVariants?.length);
     if (educator && latestWorksheet?.assignmentDeferred) {
       systemPrompt += `\nThe educator previously chose Not now for worksheet message ${JSON.stringify(latestWorksheet.id)}. Respect that preference and do not repeatedly offer assignment unless requested. This is a historical choice, not proof of current publication status; use verified assignment records for status questions. The actual Assign control is still available.`;
     }
     if (educator) {
       systemPrompt += '\n\nActive facilitator: ' + teaching.facilitator + '. ' + PERSONAS[teaching.facilitator];
-      systemPrompt += '\nContinue the same conversation through discussion, creation and revision. Preserve the latest material unless the educator requests a change. Ask one clarification when intent is ambiguous. Never invent submissions, marks or evaluation results; these are not connected yet.';
+      systemPrompt += '\nContinue the same conversation through discussion, creation and revision. Preserve the latest material unless the educator requests a change. Ask one clarification when intent is ambiguous. Never invent submissions, marks or evaluation results; use only server-verified evidence when supplied; otherwise say evidence is unavailable.';
     }
     if (!isGenerationRequest && educator) {
       let publicationContext = 'No verified assignment data is available for this conversation.';
@@ -317,6 +338,7 @@ export const handleAiTutorChat = async (context: TypedContext) => {
     const userMessage: StoredMessage = {
       id: userMessageId,
       role: 'user',
+      ...(guideSubmissionId ? { guideSubmissionId } : {}),
       content: message,
       timestamp: new Date().toISOString()
     };
@@ -727,6 +749,7 @@ export const handleAiTutorChat = async (context: TypedContext) => {
     });
 
   } catch (error: unknown) {
+    if (error instanceof GuideEvidenceError) return apiError(error.status, 'GUIDE_EVIDENCE_ERROR', error.message, request);
     logger.error('AI Tutor Chat error', error instanceof Error ? error : new Error(String(error)));
     const errorMessage = error instanceof Error ? error.message : 'Internal server error';
     return apiError(500, 'INTERNAL_ERROR', errorMessage, request);

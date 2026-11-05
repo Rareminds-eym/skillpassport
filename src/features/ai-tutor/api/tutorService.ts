@@ -78,6 +78,7 @@ export interface Conversation {
 }
 
 export interface ChatRequest {
+  guideSubmissionId?: string;
   facilitatorMode?: string;
   conversationId?: string;
   courseId: string;

@@ -8,7 +8,11 @@ export async function materialAction<T = any>(action: string, data: Record<strin
 export async function submitMaterialDocument(recipientId: string, file: File) {
   const form = new FormData(); form.set('recipientId', recipientId); form.set('file', file);
   const response = await ssoClient.fetch(`${getApiUrl('ai-tutor')}/assignment-submission`, { method: 'POST', body: form });
-  if (!response.ok) throw new Error('Submission could not complete. Refresh status before retrying.');
+  if (!response.ok) {
+    const body=await response.json().catch(()=>null) as {error?:{code?:string;message?:string}}|null;
+    const safeCodes=['INVALID_SUBMISSION_DOCUMENT','SUBMISSION_ERROR'];
+    throw new Error(body?.error?.code&&safeCodes.includes(body.error.code)&&body.error.message?body.error.message:'Submission could not complete. Refresh status before retrying.');
+  }
   return response.json();
 }
 export async function downloadMaterialDocument(submissionId: string, filename: string) {

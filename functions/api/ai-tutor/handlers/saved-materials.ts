@@ -95,17 +95,13 @@ export async function handleSavedMaterials(context: Context) {
       if (result.error) return fail(404, 'Assignment not found');
       return apiSuccess(result.data, request);
     }
-    if (body.action === 'retry' || body.action === 'release') {
+    if (body.action === 'retry') {
       const resultId = uuid.parse(body.resultId);
       const owned = await db.from('ai_assignment_results').select('id,status,updated_at,submission_id,submission:ai_assignment_submissions!inner(recipient:ai_assignment_learners!inner(assigned_by,assignment:ai_assignments!inner(course_id)))').eq('id', resultId).eq('submission.recipient.assigned_by', user.id).eq('submission.recipient.assignment.course_id', courseId).single();
       if (owned.error) return fail(403, 'Assigned educator access required');
       if (body.action === 'retry') {
         if (owned.data.status === 'evaluating' && Date.parse(owned.data.updated_at) < Date.now() - 300000) await db.from('ai_assignment_results').update({ status: 'failed' }).eq('id', resultId).eq('updated_at', owned.data.updated_at);
         await evaluateSavedSubmission(db, owned.data.submission_id, env.OPENROUTER_API_KEY, undefined, env.R2_BUCKET);
-      } else {
-        const results = z.array(z.object({ questionId: uuid, marks: z.number().nonnegative().max(100), reason: z.string().trim().min(1).max(2000) })).min(1).max(90).parse(body.results);
-        const released = await db.rpc('release_saved_ai_result', { p_user: user.id, p_result: resultId, p_results: results, p_feedback: z.string().max(10000).parse(body.feedback ?? '') });
-        if (released.error) return fail(409, 'Review all question marks and reasons before releasing');
       }
       return apiSuccess({ success: true }, request);
     }

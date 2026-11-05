@@ -89,7 +89,7 @@ export async function enqueueCourseIndex(db: SupabaseClient, userId: string | nu
 }
 
 /** Durable DB leases allow scheduled retries without adding a separate jobs table. */
-export async function processCourseIndexBatch(db: SupabaseClient, env: CourseIndexEnv, limit = 2, courseId?: string) {
+export async function processCourseIndexBatch(db: SupabaseClient, env: CourseIndexEnv, limit = 2, courseId?: string, localTextOnly = false) {
   if (!env.EMBEDDING_SERVICE) throw new Error('Embedding service is not configured');
   let processed = 0;
   let claimed = 0;
@@ -110,9 +110,16 @@ export async function processCourseIndexBatch(db: SupabaseClient, env: CourseInd
         const resource = source.data;
         const fingerprint = await textHash(JSON.stringify({ url: resource.url, name: resource.name, type: resource.type, content: resource.content?.startsWith('[COURSE_RESOURCE_ANALYSIS_') ? null : resource.content }));
         if (!row.source_fingerprint.startsWith('db:') && fingerprint !== row.source_fingerprint) throw new Error('Source changed; request reindex');
-        const result = await analyzeResource({ resourceId: resource.resource_id, name: resource.name, type: resource.type, url: resource.url, content: resource.content }, env, undefined, true);
-        text = result.indexText ?? result.text; hash = result.contentHash ?? await textHash(text); name = resource.name;
-        limitations = 'PDF/media evidence is model extracted; page/slide/timestamp coverage may be incomplete. Offsets refer to extracted text.';
+        const localHosts = ['127.0.0.1', 'localhost'];
+        if (localTextOnly && localHosts.includes(new URL(resource.url).hostname) && localHosts.includes(new URL(env.SUPABASE_URL || '').hostname)) {
+          if (!resource.content?.trim() || resource.content.startsWith('[COURSE_RESOURCE_ANALYSIS_')) throw new Error('No extracted local text available');
+          text = resource.content; hash = await textHash(text); name = resource.name;
+          limitations = 'Local text-only extraction. Images, diagrams, embedded media and speaker notes are not indexed. Offsets refer to extracted text.';
+        } else {
+          const result = await analyzeResource({ resourceId: resource.resource_id, name: resource.name, type: resource.type, url: resource.url, content: resource.content }, env, undefined, true);
+          text = result.indexText ?? result.text; hash = result.contentHash ?? await textHash(text); name = resource.name;
+          limitations = 'PDF/media evidence is model extracted; page/slide/timestamp coverage may be incomplete. Offsets refer to extracted text.';
+        }
       } else {
         const source = await db.from('lessons').select('title,content').eq('lesson_id', row.lesson_id).single();
         if (source.error || !source.data) throw new Error('Lesson content no longer exists');

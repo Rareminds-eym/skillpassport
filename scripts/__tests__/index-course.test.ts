@@ -15,8 +15,9 @@ describe('local course index', () => {
     expect(() => parseOptions(['--course-id', 'bad'])).toThrow();
     expect(() => parseOptions(['--course-id'])).toThrow('Missing');
     expect(() => parseOptions(['--unknown'])).toThrow('Unknown');
-    expect(parseOptions(['--course-id', id, '--force', '--env-file', 'local.env'])).toEqual({ courseId: id, force: true, envFile: 'local.env', help: false });
+    expect(parseOptions(['--course-id', id, '--force', '--env-file', 'local.env'])).toEqual({ courseId: id, force: true, envFile: 'local.env', help: false, localText: false });
     expect(parseOptions(['--help']).help).toBe(true);
+    expect(parseOptions(['--course-id', id, '--local-text']).localText).toBe(true);
   });
   it('claims only the requested course and stops when no work remains', async () => {
     const query: any = { select: () => query, eq: () => query, is: () => query, maybeSingle: async () => ({ data: { course_id: id } }), order: () => query, range: async () => ({ data: [{ lesson_id: 'lesson', resource_id: null, version: 1, status: 'ready', is_current: true }] }) };
@@ -26,7 +27,7 @@ describe('local course index', () => {
     expect(await indexCourse(db, {}, id, false, vi.fn())).toEqual({ sources: 1, completed: 1 });
     expect(mocks.enqueue).toHaveBeenCalledWith(db, null, id, false);
     expect(mocks.process).toHaveBeenCalledTimes(2);
-    expect(mocks.process).toHaveBeenCalledWith(db, {}, 1, id);
+    expect(mocks.process).toHaveBeenCalledWith(db, {}, 1, id, false);
   });
   it('fails rather than reporting a successful import for failed or stale records', async () => {
     const query: any = { select: () => query, eq: () => query, is: () => query, maybeSingle: async () => ({ data: { course_id: id } }), order: () => query, range: async () => ({ data: [{ lesson_id: 'lesson', version: 1, status: 'failed', is_current: false }] }) };

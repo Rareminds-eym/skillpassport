@@ -7,11 +7,12 @@ import { enqueueCourseIndex, processCourseIndexBatch, validateCourseEmbedding, t
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export function parseOptions(args: string[]) {
-  let courseId = '', envFile = '.env.course-index', force = false, help = false;
+  let courseId = '', envFile = '.env.course-index', force = false, help = false, localText = false;
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
     if (arg === '--help') help = true;
     else if (arg === '--force') force = true;
+    else if (arg === '--local-text') localText = true;
     else if (arg === '--course-id' || arg === '--env-file') {
       const value = args[++i];
       if (!value || value.startsWith('--')) throw new Error(`Missing value for ${arg}`);
@@ -19,7 +20,7 @@ export function parseOptions(args: string[]) {
     } else throw new Error(`Unknown option: ${arg}`);
   }
   if (!help && !UUID.test(courseId)) throw new Error('Provide --course-id with a valid course UUID.');
-  return { courseId, envFile, force, help };
+  return { courseId, envFile, force, help, localText };
 }
 
 /** Reuse the existing embedding-worker provider, without starting a Worker server. */
@@ -42,7 +43,7 @@ export function localEmbeddingService(key: string): CourseEmbeddingService {
   };
 }
 
-export async function indexCourse(db: SupabaseClient, env: CourseIndexEnv, courseId: string, force: boolean, log: (message: string) => void = console.log) {
+export async function indexCourse(db: SupabaseClient, env: CourseIndexEnv, courseId: string, force: boolean, log: (message: string) => void = console.log, localText = false) {
   if (!UUID.test(courseId)) throw new Error('Invalid course UUID');
   const course = await db.from('courses').select('course_id').eq('course_id', courseId).is('deleted_at', null).maybeSingle();
   if (course.error || !course.data) throw new Error('Course not found or unavailable.');
@@ -51,7 +52,7 @@ export async function indexCourse(db: SupabaseClient, env: CourseIndexEnv, cours
   log(`Course ${courseId}: discovered ${queued.sources} sources.`);
   let completed = 0;
   for (let batch = 0; batch < 10000; batch++) {
-    const result = await processCourseIndexBatch(db, env, 1, courseId);
+    const result = await processCourseIndexBatch(db, env, 1, courseId, localText);
     completed += result.processed;
     if (!result.claimed) break;
     log(`Completed ${completed} sources in this run.`);
@@ -75,13 +76,14 @@ export async function indexCourse(db: SupabaseClient, env: CourseIndexEnv, cours
 async function main() {
   const options = parseOptions(process.argv.slice(2));
   if (options.help) {
-    console.log('npm run course:index -- --course-id <UUID> [--env-file .env.course-index] [--force]');
+    console.log('npm run course:index -- --course-id <UUID> [--env-file .env.course-index] [--force] [--local-text]');
     return;
   }
   config({ path: resolve(options.envFile), quiet: true });
   for (const key of ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'OPENROUTER_API_KEY']) {
     if (!process.env[key]) throw new Error(`Missing ${key}; configure the local environment file.`);
   }
+  if (options.localText && !['localhost', '127.0.0.1'].includes(new URL(process.env.SUPABASE_URL!).hostname)) throw new Error('Local text mode requires a local Supabase database.');
   const env: CourseIndexEnv = {
     SUPABASE_URL: process.env.SUPABASE_URL, OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
     AI_RESOURCE_ALLOWED_HOSTS: process.env.AI_RESOURCE_ALLOWED_HOSTS,
@@ -89,7 +91,7 @@ async function main() {
     EMBEDDING_SERVICE: localEmbeddingService(process.env.OPENROUTER_API_KEY!),
   };
   const db = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false, autoRefreshToken: false } });
-  await indexCourse(db, env, options.courseId, options.force);
+  await indexCourse(db, env, options.courseId, options.force, console.log, options.localText);
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {

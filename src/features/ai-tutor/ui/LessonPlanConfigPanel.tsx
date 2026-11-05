@@ -44,7 +44,7 @@ const LessonPlanConfigPanel = ({
           <label htmlFor="lesson-plan-grade" className="block text-xs font-medium text-slate-700 mb-1">
             Grade / Level
           </label>
-          {automaticGrade ? <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-700" aria-label="Automatic grade level">{config.gradeLevel || <PanelLoadingSkeleton label="Loading teaching level"/>}</div> : (
+          {automaticGrade ? <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-700" aria-label="Grade level">{config.gradeLevel || <PanelLoadingSkeleton label="Loading teaching level"/>}</div> : (
           <select
             id="lesson-plan-grade"
             value={config.gradeLevel || ''}

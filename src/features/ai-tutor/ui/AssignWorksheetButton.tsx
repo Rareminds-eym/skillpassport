@@ -70,7 +70,7 @@ export default function AssignWorksheetButton({ conversationId, messageId, cours
         {source && <p className="mt-2 !text-xs !leading-5">One assignment includes {source.variants.map(v => v.difficulty).join(', ')}. Every learner receives all included levels in one PDF. Answer keys stay private.</p>}
         {source?.assignmentReady === false && <p role="alert" className="mt-2 text-amber-800">{source.readinessMessage || 'Regenerate this worksheet before assigning.'}</p>}
         {context?.learnerCount === 0 && <p role="alert" className="mt-2 text-amber-800">No active learners are mapped to you.</p>}
-        <p className="mt-2 !text-xs !leading-5">Not assigned yet. Confirm the settings here; details mentioned in chat are not saved automatically.</p>
+        <p className="mt-2 !text-xs !leading-5">Not assigned yet. Confirm the settings here; details mentioned in chat must be confirmed here.</p>
         <label className="mt-3 block !text-xs">Due date and time (optional, your local time)
           <input type="datetime-local" value={dueDate} onChange={event => setDueDate(event.target.value)} disabled={busy} className="mt-1 block w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs" />
         </label>

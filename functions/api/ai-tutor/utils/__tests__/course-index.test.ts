@@ -3,6 +3,18 @@ import { describe, it, expect, vi } from 'vitest';
 import { chunkCourseText, validateCourseEmbedding, COURSE_EMBEDDING_MODEL, retrieveCourseEvidence, processCourseIndexBatch, textHash } from '../course-index';
 
 describe('course index contracts', () => {
+  it.each([true,false])('uses extracted local text only with a local database (%s)',async(local)=>{
+    const resource={resource_id:'resource',lesson_id:'lesson',name:'Manual.docx',type:'document',url:'http://localhost:3000/api/storage/document-access?key=manual',content:'Locally extracted course text.'};
+    const source_fingerprint=await textHash(JSON.stringify({url:resource.url,name:resource.name,type:resource.type,content:resource.content}));
+    const row={id:'analysis',resource_id:'resource',lesson_id:'lesson',lease_token:'lease',source_fingerprint,attempt_count:1};
+    const rpc=vi.fn().mockResolvedValueOnce({data:[row]}).mockResolvedValue({data:true});
+    const query:any={select:()=>query,eq:()=>query,single:async()=>({data:resource}),update:vi.fn(()=>query),then:(resolve:any)=>resolve({error:null})};
+    const embedText=vi.fn().mockResolvedValue({embedding:Array(1536).fill(.1),dimensions:1536,model:COURSE_EMBEDDING_MODEL});
+    const result=await processCourseIndexBatch({rpc,from:()=>query} as never,{SUPABASE_URL:local?'http://127.0.0.1:54321':'https://example.supabase.co',EMBEDDING_SERVICE:{embedText}},1,'course',true);
+    expect(result.processed).toBe(local?1:0);
+    if(local){expect(embedText).toHaveBeenCalledWith(resource.content,'RETRIEVAL_DOCUMENT');expect(rpc).toHaveBeenLastCalledWith('finish_course_source',expect.objectContaining({p_text:resource.content,p_metadata:expect.objectContaining({limitations:expect.stringContaining('text-only')})}));}
+    else expect(embedText).not.toHaveBeenCalled();
+  });
   it('covers all source characters even when a paragraph exceeds chunk size', () => {
     const text = 'a'.repeat(15000) + '\nEnd';
     const chunks = chunkCourseText(text);

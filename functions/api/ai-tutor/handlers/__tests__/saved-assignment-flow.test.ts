@@ -9,7 +9,7 @@ const teacher='00000000-0000-4000-8000-000000000001', student='00000000-0000-400
 const course='00000000-0000-4000-8000-000000000003', conversation='00000000-0000-4000-8000-000000000004', message='00000000-0000-4000-8000-000000000005', learner='00000000-0000-4000-8000-000000000006';
 let tables: Record<string,any[]>, objects: Map<string,Uint8Array>, failModel: boolean;
 function at(row:any,path:string) { return path.split('.').reduce((value,key)=>value?.[key],row); }
-function joined(table:string,row:any) {
+function joined(table:string,row:any):any {
   if(table==='ai_assignment_learners') {
     const assignment=tables.ai_assignments.find(a=>a.id===row.assignment_id);
     return {...row,assignment:{id:assignment.id,title:assignment.title,course_id:assignment.course_id,content:assignment.content},learner:tables.learners.find(l=>l.id===row.learner_id),submissions:tables.ai_assignment_submissions.filter(s=>s.assignment_learner_id===row.id).map(s=>joined('ai_assignment_submissions',s))};
@@ -64,9 +64,11 @@ beforeEach(()=>{
       tables.ai_assignment_submissions.push({id:p.p_id,assignment_learner_id:p.p_recipient,file_key:p.p_key,file_name:p.p_name,mime_type:p.p_mime});
       tables.ai_assignment_results.push({id:crypto.randomUUID(),submission_id:p.p_id,status:'pending',question_results:[]});return {data:p.p_id,error:null};
     }
-    if(name==='release_saved_ai_result'){
+    if(name==='complete_ai_assignment_evaluation'){
       const result=tables.ai_assignment_results.find(r=>r.id===p.p_result);
-      result.question_results={ai:result.question_results,review:p.p_results};result.total_marks=p.p_results.reduce((sum:number,r:any)=>sum+r.marks,0);result.status='released';result.feedback=p.p_feedback;result.released_at=new Date().toISOString();return {data:null,error:null};
+      if(result.status!=='evaluating'||result.updated_at!==p.p_claim)return {data:false,error:null};
+      result.question_results={ai:p.p_results,review:p.p_results.map((r:any)=>({questionId:r.questionId,marks:r.marks,reason:'Automatically evaluated'}))};
+      result.total_marks=p.p_results.reduce((sum:number,r:any)=>sum+r.marks,0);result.maximum_marks=4;result.status='released';result.feedback='Automatic evaluation complete.';result.released_at=new Date().toISOString();return {data:true,error:null};
     }
     throw new Error(`Unexpected RPC ${name}`);
   })};
@@ -74,8 +76,8 @@ beforeEach(()=>{
     const body=JSON.parse(String(init?.body)),prompt=body.messages[0].content,input=JSON.parse(body.messages[1].content);
     let result:any;
     if(prompt.startsWith('Convert'))result={questions:[{kind:'multiple_choice',prompt:'Choose a strategy',options:['Plan','Delay'],maxMarks:2,difficulty:'beginner',skills:['Planning'],acceptedAnswers:['Plan'],rubric:'Plan earns two',explanation:'Planning is effective'},{kind:'descriptive',prompt:'Explain planning',options:[],maxMarks:2,difficulty:'beginner',skills:['Planning'],acceptedAnswers:[],rubric:'Prioritizing and allocating time',explanation:'Both help'}]};
-    else if(prompt.startsWith('Copy')){if(failModel)return new Response('Unavailable',{status:503});result={answers:input.questions.map((q:any,i:number)=>({questionId:q.id,answer:i===0?'A':'Prioritize tasks and allocate time'}))};}
-    else if(prompt.startsWith('Evaluate'))result={results:input.map((q:any)=>({questionId:q.id,marks:1,feedback:'Add detail',needsReview:true}))};
+    else if(prompt.startsWith('Validate')){result={matchesAssignment:!input.document.includes('Different worksheet'),evidence:[{questionId:input.questions[0].id,excerpt:'1. A'}],answers:input.questions.map((q:any,i:number)=>({questionId:q.id,answer:i===0?'A':'Prioritize tasks and allocate time'}))};}
+    else if(prompt.startsWith('Evaluate')){if(failModel)return new Response('Unavailable',{status:503});result={results:input.map((q:any)=>({questionId:q.id,marks:1,feedback:'Add detail',needsReview:true}))};}
     else throw new Error('Unexpected model request');
     return Response.json({choices:[{finish_reason:'stop',message:{content:JSON.stringify(result)}}]});
   }));
@@ -93,19 +95,15 @@ async function submit(recipientId:string) {
   const form=new FormData();form.set('recipientId',recipientId);form.set('file',new File(['1. A\n2. Prioritize tasks and allocate time'],'completed.txt',{type:'text/plain'}));
   return handleAssignmentSubmission(context(student,new Request('https://test/submission',{method:'POST',body:form})));
 }
-it('persists generated material, allocation, R2 file reference and evaluation, then releases reviewed feedback',async()=>{
+it('persists generated material, allocation, R2 file reference and evaluation, automatically releases feedback without educator approval',async()=>{
   const recipientId=await saveAndAllocate();
   const response=await submit(recipientId);expect(response.status).toBe(200);
   expect(tables.ai_assignment_submissions).toHaveLength(1);expect(objects.size).toBe(1);
   expect(tables.ai_assignment_submissions[0].file_name).toBe('completed.txt');
   expect(objects.has(tables.ai_assignment_submissions[0].file_key)).toBe(true);
-  expect(tables.ai_assignment_results[0]).toMatchObject({status:'review_required',total_marks:3,maximum_marks:4});
-  expect(tables.ai_assignment_results[0].question_results).toHaveLength(2);
-  const hidden=await action(student,'deliveries');expect(hidden.body.data[0].submissions[0].results[0]).not.toHaveProperty('total_marks');
-  const result=tables.ai_assignment_results[0];
-  const release=await action(teacher,'release',{resultId:result.id,results:tables.ai_assignments[0].content.questions.map((q:any)=>({questionId:q.id,marks:2,reason:'Reviewed original document'})),feedback:'Well done'});
-  expect(release.response.status).toBe(200);
-  const visible=await action(student,'deliveries');expect(visible.body.data[0].submissions[0].results[0]).toMatchObject({status:'released',total_marks:4,feedback:'Well done'});
+  expect(tables.ai_assignment_results[0]).toMatchObject({status:'released',total_marks:3,maximum_marks:4});
+  expect(tables.ai_assignment_results[0].question_results.ai).toHaveLength(2);
+  const visible=await action(student,'deliveries');expect(visible.body.data[0].submissions[0].results[0]).toMatchObject({status:'released',total_marks:3,feedback:'Automatic evaluation complete.'});
   expect((await submit(recipientId)).status).toBe(200);expect(tables.ai_assignment_submissions).toHaveLength(1);expect(objects.size).toBe(1);
 });
 it('stores failed evaluation state and keeps the submitted document when the model fails',async()=>{
@@ -113,4 +111,17 @@ it('stores failed evaluation state and keeps the submitted document when the mod
   expect((await submit(recipientId)).status).toBe(200);
   expect(tables.ai_assignment_results[0].status).toBe('failed');
   expect(tables.ai_assignment_submissions).toHaveLength(1);expect(objects.size).toBe(1);
+});
+
+it('rejects another worksheet before storage and accepts the correct document on the next attempt',async()=>{
+ const recipientId=await saveAndAllocate();
+ const allocationBefore=JSON.stringify(tables.ai_assignment_learners);
+ const form=new FormData();form.set('recipientId',recipientId);form.set('file',new File(['Different worksheet: algebra questions'],'completed.txt',{type:'text/plain'}));
+ const response=await handleAssignmentSubmission(context(student,new Request('https://test/submission',{method:'POST',body:form})));
+ expect(response.status).toBe(422);
+ expect(await response.json()).toMatchObject({error:{code:'INVALID_SUBMISSION_DOCUMENT'}});
+ expect(tables.ai_assignment_submissions).toHaveLength(0);expect(tables.ai_assignment_results).toHaveLength(0);expect(objects.size).toBe(0);
+ expect(JSON.stringify(tables.ai_assignment_learners)).toBe(allocationBefore);
+ expect((await submit(recipientId)).status).toBe(200);
+ expect(tables.ai_assignment_submissions).toHaveLength(1);expect(tables.ai_assignment_results[0].status).toBe('released');
 });
