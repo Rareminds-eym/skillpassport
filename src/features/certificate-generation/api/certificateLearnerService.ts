@@ -117,16 +117,72 @@ export async function updateLearnerName(user: User, fullName: string, signal?: A
   }
 }
 
+/**
+ * Update learner college/institution name in database
+ * 
+ * @param learnerId Learner UUID
+ * @param collegeName College/institution name to update
+ * @param signal Optional AbortSignal for cancellation
+ * @returns Success status
+ */
+async function updateLearnerCollegeName(
+  learnerId: string,
+  collegeName: string,
+  signal?: AbortSignal
+): Promise<boolean> {
+  if (!learnerId) {
+    logger.warn('Cannot update college name: no learner id provided');
+    return false;
+  }
+
+  if (!collegeName?.trim()) {
+    logger.warn('Cannot update college name: empty value provided');
+    return false;
+  }
+
+  try {
+    // Check if aborted before starting
+    if (signal?.aborted) {
+      return false;
+    }
+
+    const { supabase } = await import('@/shared/api/supabaseClient');
+    
+    const { error: updateError } = await supabase
+      .from('learners')
+      .update({ college_school_name: collegeName.trim() })
+      .eq('id', learnerId);
+    
+    // Check if aborted after API call
+    if (signal?.aborted) {
+      return false;
+    }
+    
+    if (updateError) {
+      logger.error('Failed to update college name', new Error(updateError.message));
+      return false;
+    }
+    
+    logger.info('College name updated successfully', { learnerId, collegeName });
+    return true;
+  } catch (error) {
+    logger.error('Error updating college name', error instanceof Error ? error : new Error(String(error)));
+    return false;
+  }
+}
+
 export type CertificateServiceResult =
-  | { success: true; certificateUrl: string; credentialId: string; nameUpdateFailed?: boolean }
+  | { success: true; certificateUrl: string; credentialId: string; nameUpdateFailed?: boolean; collegeNameUpdateFailed?: boolean }
   | { success: false; error: string };
 
 /**
- * Generate certificate with user name update
+ * Generate certificate with user name and college name updates
  * Orchestrates the full certificate generation flow:
  * 1. Update user name in database (if provided)
- * 2. Generate certificate
- * 3. Return result with appropriate warnings
+ * 2. Update college name in database (if provided for educators)
+ * 3. Fetch fresh learner data from database
+ * 4. Generate certificate with updated data
+ * 5. Return result with appropriate warnings
  * 
  * @param user User object for name updates
  * @param params Certificate generation parameters
@@ -159,8 +215,9 @@ export async function generateCertificateWithNameUpdate(
   }
 
   let nameUpdateFailed = false;
+  let collegeNameUpdateFailed = false;
   
-  // Update user name in database if user object is provided
+  // Step 1: Update user name in database if user object is provided
   if (user?.id || user?.email) {
     const nameUpdated = await updateLearnerName(user, learnerName, signal);
     if (!nameUpdated) {
@@ -180,13 +237,34 @@ export async function generateCertificateWithNameUpdate(
     };
   }
 
-  // Generate certificate
-  logger.info('Generating certificate', { 
+  // Step 2: Update college name in database if provided (for educators)
+  if (passedCollegeName && learnerId) {
+    const collegeNameUpdated = await updateLearnerCollegeName(learnerId, passedCollegeName, signal);
+    if (!collegeNameUpdated) {
+      collegeNameUpdateFailed = true;
+      logger.warn('College name update failed but continuing with certificate generation', {
+        learnerId,
+        collegeName: passedCollegeName
+      });
+    }
+  }
+  
+  // Check if aborted after college name update
+  if (signal?.aborted) {
+    return {
+      success: false,
+      error: 'Operation was cancelled'
+    };
+  }
+
+  // Step 3: Generate certificate (this will fetch fresh data from database)
+  logger.info('Generating certificate after database updates', { 
     learnerId, 
     learnerName,
     courseName, 
     courseType, 
-    issuedOnDate 
+    issuedOnDate,
+    hadCollegeName: !!passedCollegeName
   });
   
   // Fetch learner_type from backend API to determine certificate template
@@ -214,7 +292,8 @@ export async function generateCertificateWithNameUpdate(
       logger.info('Fetched learner data for certificate generation', { 
         rawLearnerType: response.data.learner_type,
         learnerType, 
-        collegeName 
+        collegeName,
+        collegeNameSource: 'database (post-update)'
       });
     } else {
       logger.warn('Could not fetch learner type from API, using default', { 
@@ -256,7 +335,8 @@ export async function generateCertificateWithNameUpdate(
       success: true,
       certificateUrl: result.certificateUrl,
       credentialId: result.credentialId,
-      nameUpdateFailed
+      nameUpdateFailed,
+      collegeNameUpdateFailed
     };
   } else {
     return {

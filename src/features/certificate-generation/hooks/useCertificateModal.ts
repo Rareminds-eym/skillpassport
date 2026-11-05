@@ -10,7 +10,6 @@ import {
 import { downloadCertificate } from '../api/certificateService';
 import { getLogger } from '@/shared/config/logging';
 import { apiPost } from '@/shared/api/apiClient';
-import { supabase } from '@/shared/api/supabaseClient';
 
 const logger = getLogger('useCertificateModal');
 
@@ -410,30 +409,8 @@ export const useCertificateModal = ({
         courseId
       } = pendingData;
 
-      // NEW: Update college_school_name in database for educators
-      if (isEducator && trimmedCollegeName) {
-        logger.info('Updating college_school_name for educator', { 
-          learnerId, 
-          collegeName: trimmedCollegeName 
-        });
-        
-        const { error: updateError } = await supabase
-          .from('learners')
-          .update({ college_school_name: trimmedCollegeName })
-          .eq('id', learnerId);
-
-        if (updateError) {
-          logger.warn('Failed to update college_school_name', { 
-            error: updateError.message,
-            learnerId 
-          });
-          toast.error('Warning: Could not save college name, but certificate will still be generated.');
-        } else {
-          logger.info('College name updated successfully', { learnerId });
-        }
-      }
-
       // Prepare certificate generation parameters
+      // The service will handle updating both name and college name to database
       const params: CertificateGenerationParams = {
         learnerId,
         learnerName: trimmedName,
@@ -442,10 +419,12 @@ export const useCertificateModal = ({
         courseName,
         educatorName,
         courseType,
-        issuedOnDate
+        issuedOnDate,
+        collegeName: trimmedCollegeName // Pass college name - will be saved by service
       };
 
       // Delegate to features layer for business logic
+      // This will: 1) Update name in DB, 2) Update college name in DB, 3) Generate certificate
       const result = await generateCertificateWithNameUpdate(
         user, 
         params, 
@@ -460,6 +439,11 @@ export const useCertificateModal = ({
       // Show warning if name update failed but certificate generation succeeded
       if (result.success && result.nameUpdateFailed) {
         toast.error('Warning: Your name was not saved. The certificate will still be generated.');
+      }
+      
+      // Show warning if college name update failed but certificate generation succeeded
+      if (result.success && result.collegeNameUpdateFailed) {
+        toast.error('Warning: College name was not saved. The certificate will still be generated.');
       }
 
       // Handle success
