@@ -30,6 +30,7 @@ export interface CertificateGenerationParams {
   educatorName: string;
   courseType: CourseType;
   issuedOnDate?: string;
+  collegeName?: string; // College/school name for educator certificates
 }
 
 /**
@@ -145,7 +146,8 @@ export async function generateCertificateWithNameUpdate(
     courseName,
     educatorName,
     courseType,
-    issuedOnDate
+    issuedOnDate,
+    collegeName: passedCollegeName // College name passed from the modal
   } = params;
   
   // Check if aborted before starting
