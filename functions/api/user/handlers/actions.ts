@@ -422,6 +422,20 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         return apiSuccess({ success: true }, context.request, { startTime });
       }
 
+      case 'update-learner-college': {
+        const { learnerId, collegeName } = params;
+        if (!learnerId || !collegeName) return apiError(400, 'VALIDATION_ERROR', 'Missing required fields', context.request, { startTime });
+
+        const { error: learnerError } = await supabase
+          .from('learners')
+          .update({ college_school_name: collegeName })
+          .eq('id', learnerId);
+
+        if (learnerError) return apiDbError(learnerError, context.request, { startTime });
+
+        return apiSuccess({ success: true }, context.request, { startTime });
+      }
+
       case 'get-recent-updates': {
         const { learnerId } = params;
         if (!learnerId) return apiError(400, 'VALIDATION_ERROR', 'Missing learnerId', context.request, { startTime });

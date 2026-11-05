@@ -119,6 +119,7 @@ export async function updateLearnerName(user: User, fullName: string, signal?: A
 
 /**
  * Update learner college/institution name in database
+ * Uses backend API for consistency with name update pattern
  * 
  * @param learnerId Learner UUID
  * @param collegeName College/institution name to update
@@ -146,20 +147,20 @@ async function updateLearnerCollegeName(
       return false;
     }
 
-    const { supabase } = await import('@/shared/api/supabaseClient');
-    
-    const { error: updateError } = await supabase
-      .from('learners')
-      .update({ college_school_name: collegeName.trim() })
-      .eq('id', learnerId);
+    // Update through backend API (same pattern as updateLearnerName)
+    const response = await apiPost<{ success: boolean; error?: string }>('/user/actions', {
+      action: 'update-learner-college',
+      learnerId,
+      collegeName: collegeName.trim()
+    });
     
     // Check if aborted after API call
     if (signal?.aborted) {
       return false;
     }
     
-    if (updateError) {
-      logger.error('Failed to update college name', new Error(updateError.message));
+    if (!response.success) {
+      logger.error('Failed to update college name', new Error(response.error || 'API Error'));
       return false;
     }
     
