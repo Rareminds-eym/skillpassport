@@ -59,6 +59,10 @@ export {
   generateCertificateHTML          // ✅ Verified
 } from './lib/certificateTemplate';
 
+export {
+  generateEducatorCertificateHTML  // ✅ NEW: Educator certificate template
+} from './lib/educatorCertificateTemplate';
+
 // Hooks - UI logic with business feature integration
 export { 
   useCertificateModal              // ✅ Verified

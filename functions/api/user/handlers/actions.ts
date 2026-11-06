@@ -336,6 +336,50 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         return apiSuccess({ name: null }, context.request, { startTime });
       }
 
+      case 'get-learner-data': {
+        /**
+         * Fetch learner type and college/school name for certificate generation
+         * Used to determine which certificate template to use (learner vs educator)
+         * 
+         * Request: { action: 'get-learner-data', learnerId: 'uuid' }
+         * Response: { success: true, data: { learner_type: string, college_school_name: string } }
+         */
+        const { learnerId } = params;
+        if (!learnerId) return apiError(400, 'VALIDATION_ERROR', 'Missing learnerId', context.request, { startTime });
+
+        try {
+          // Query learners table for learner_type and college_school_name
+          const { data: learnerData, error: learnerError } = await supabase
+            .from('learners')
+            .select('learner_type, college_school_name')
+            .eq('id', learnerId)
+            .maybeSingle();
+
+          // Handle database errors (excluding not found)
+          if (learnerError && learnerError.code !== 'PGRST116') {
+            console.error('[user/actions] get-learner-data: Database error', {
+              error: learnerError.message,
+              code: learnerError.code,
+              learnerId
+            });
+            return apiDbError(learnerError, context.request, { startTime });
+          }
+
+          // Return learner data (or nulls if not found)
+          return apiSuccess({
+            learner_type: learnerData?.learner_type || null,
+            college_school_name: learnerData?.college_school_name || null
+          }, context.request, { startTime });
+
+        } catch (error: any) {
+          console.error('[user/actions] get-learner-data: Exception', {
+            error: error?.message || error,
+            learnerId
+          });
+          return apiError(500, 'INTERNAL_ERROR', 'Failed to fetch learner data', context.request, { startTime });
+        }
+      }
+
       case 'update-learner-name': {
         const { id, email, fullName } = params;
         if (!fullName || (!id && !email)) return apiError(400, 'VALIDATION_ERROR', 'Missing required fields', context.request, { startTime });
@@ -374,6 +418,20 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
             console.error(`[user/actions] Failed to emit reverse sync event for user ${id}:`, syncErr);
           }
         }
+
+        return apiSuccess({ success: true }, context.request, { startTime });
+      }
+
+      case 'update-learner-college': {
+        const { learnerId, collegeName } = params;
+        if (!learnerId || !collegeName) return apiError(400, 'VALIDATION_ERROR', 'Missing required fields', context.request, { startTime });
+
+        const { error: learnerError } = await supabase
+          .from('learners')
+          .update({ college_school_name: collegeName })
+          .eq('id', learnerId);
+
+        if (learnerError) return apiDbError(learnerError, context.request, { startTime });
 
         return apiSuccess({ success: true }, context.request, { startTime });
       }

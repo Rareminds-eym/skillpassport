@@ -35,6 +35,12 @@ export interface CertificateNameModalProps {
   // Required props - name handling
   fullName: string;
   onFullNameChange: (name: string) => void;
+  
+  // NEW: College name handling for educators
+  collegeName?: string;
+  onCollegeNameChange?: (name: string) => void;
+  learnerType?: string;
+  
   onConfirm: () => void;
   onGenerate: () => void;
   
@@ -62,6 +68,9 @@ export const CertificateNameModal = ({
   onClose,
   fullName,
   onFullNameChange,
+  collegeName = '',                  // NEW: Default empty string
+  onCollegeNameChange,               // NEW: Optional handler
+  learnerType = 'learner',           // NEW: Default 'learner'
   onConfirm,
   onGenerate,
   isGenerating = false,              // ✅ Default: false
@@ -74,13 +83,20 @@ export const CertificateNameModal = ({
 }: CertificateNameModalProps) => {
   if (!isOpen) return null;
 
+  // NEW: Check if user is an educator
+  const isEducator = learnerType === 'educator' || learnerType === 'teacher';
+
   const handleConfirm = () => {
     if (!fullName.trim()) return;
+    // NEW: For educators, also check college name
+    if (isEducator && !collegeName.trim()) return;
     onConfirm();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && !isGenerating && fullName.trim() && !showConfirmation) {
+      // NEW: For educators, also check college name before submitting
+      if (isEducator && !collegeName.trim()) return;
       handleConfirm();
     }
   };
@@ -124,7 +140,7 @@ export const CertificateNameModal = ({
                 </div>
 
                 <p className="text-sm text-gray-600 mb-4">
-                  Please enter your full name as you want it to appear on your certificate.
+                  Please enter your full name{isEducator ? ' and college/institution name' : ''} as you want {isEducator ? 'them' : 'it'} to appear on your certificate.
                 </p>
 
                 <div className="space-y-4">
@@ -149,6 +165,24 @@ export const CertificateNameModal = ({
                     )}
                   </div>
 
+                  {/* NEW: College Name Input for Educators */}
+                  {isEducator && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        College/Institution Name
+                      </label>
+                      <input
+                        type="text"
+                        value={collegeName}
+                        onChange={(e) => onCollegeNameChange?.(e.target.value)}
+                        placeholder="Enter your college or institution name"
+                        disabled={isGenerating}
+                        className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed border-gray-300`}
+                        onKeyDown={handleKeyDown}
+                      />
+                    </div>
+                  )}
+
                   <div className="flex gap-3">
                     <Button
                       onClick={onClose}
@@ -160,7 +194,7 @@ export const CertificateNameModal = ({
                     </Button>
                     <Button
                       onClick={handleConfirm}
-                      disabled={isGenerating || !fullName.trim()}
+                      disabled={isGenerating || !fullName.trim() || (isEducator && !collegeName.trim())}
                       className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
                     >
                       Continue
@@ -191,16 +225,18 @@ export const CertificateNameModal = ({
 
                 <div className="mb-6">
                   <p className="text-sm text-gray-700 font-medium mb-4">
-                    Please carefully review your name. This is exactly how it will appear on your official certificate.
+                    Please carefully review your {isEducator ? 'details' : 'name'}. This is exactly how {isEducator ? 'they' : 'it'} will appear on your official certificate.
                   </p>
                   
                   <motion.div 
                     initial={{ scale: 0.95, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ delay: 0.2 }}
-                    className="relative"
+                    className="relative space-y-3"
                   >
                     <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-indigo-500 rounded-xl blur opacity-20 animate-pulse"></div>
+                    
+                    {/* Name Display */}
                     <div className="relative bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-300 rounded-xl p-5 shadow-md">
                       <div className="flex items-start gap-3">
                         <div className="flex-shrink-0 mt-1">
@@ -218,6 +254,27 @@ export const CertificateNameModal = ({
                         </div>
                       </div>
                     </div>
+                    
+                    {/* College Name Display for Educators */}
+                    {isEducator && collegeName && (
+                      <div className="relative bg-gradient-to-br from-amber-50 to-yellow-50 border-2 border-amber-300 rounded-xl p-5 shadow-md">
+                        <div className="flex items-start gap-3">
+                          <div className="flex-shrink-0 mt-1">
+                            <div className="w-10 h-10 bg-amber-500 rounded-full flex items-center justify-center">
+                              <Award className="w-6 h-6 text-white" />
+                            </div>
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide mb-1">
+                              Institution
+                            </p>
+                            <p className="text-xl font-bold text-gray-900 break-words leading-tight">
+                              {collegeName}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </motion.div>
                   
                   <motion.div

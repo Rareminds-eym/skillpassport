@@ -9,12 +9,6 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const env = context.env as Record<string, string>;
   const supabase = getServiceClient(env as any);
 
-  //  Feature Gate: Lock Curriculum Builder
-  const isEntitled = await hasFeatureEntitlement(supabase, user.id, 'curriculum_builder');
-  if (!isEntitled) {
-    return apiError(403, 'FEATURE_ACCESS_DENIED', 'Curriculum Builder requires an active plan or Curriculum Builder add-on.', context.request);
-  }
-
   let body: Record<string, any>;
   try {
     body = await context.request.json() as any;
@@ -24,6 +18,25 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
   const { action, ...params } = body;
   if (!action) return apiError(400, 'VALIDATION_ERROR', 'Missing action parameter', context.request);
+
+  // Common academic lookup actions are shared across features (e.g. attendance tracking, bulk import)
+  // and do not require the paid Curriculum Builder add-on.
+  const LOOKUP_ACTIONS = [
+    'get-departments',
+    'get-programs',
+    'get-courses',
+    'get-semesters',
+    'get-assessment-types',
+    'get-academic-years',
+  ];
+
+  if (!LOOKUP_ACTIONS.includes(action)) {
+    // 🔒 Feature Gate: Lock Curriculum Builder features
+    const isEntitled = await hasFeatureEntitlement(supabase, user.id, 'curriculum_builder');
+    if (!isEntitled) {
+      return apiError(403, 'FEATURE_ACCESS_DENIED', 'Curriculum Builder requires an active plan or Curriculum Builder add-on.', context.request);
+    }
+  }
 
   const startTime = Date.now();
 
