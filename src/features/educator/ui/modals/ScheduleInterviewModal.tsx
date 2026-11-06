@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { XMarkIcon, CheckIcon, CalendarIcon, VideoCameraIcon, PhoneIcon } from '@heroicons/react/24/outline'
+import { XMarkIcon, CalendarIcon } from '@heroicons/react/24/outline'
 import { createInterview } from '@/features/opportunities'
 import { getLogger } from '@/shared/config/logging'
 
@@ -15,9 +15,12 @@ interface Props {
 const ScheduleInterviewModal: React.FC<Props> = ({ isOpen, onClose, candidate, onSuccess }) => {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<{ date?: string; interviewer?: string; job_title?: string }>({})
   const [formData, setFormData] = useState({
-    scheduled_at: '',
-    duration_minutes: 30,
+    date: '',
+    duration: 30,
+    interviewer: '',
+    job_title: '',
     type: 'Technical',
     meeting_type: 'meet',
     meeting_link: '',
@@ -27,29 +30,51 @@ const ScheduleInterviewModal: React.FC<Props> = ({ isOpen, onClose, candidate, o
   useEffect(() => {
     if (!isOpen) return
     setError(null)
+    setFieldErrors({})
     setLoading(false)
   }, [isOpen])
 
+  const validate = () => {
+    const errs: { date?: string; interviewer?: string; job_title?: string } = {}
+    if (!formData.date) errs.date = 'Please select a date and time'
+    if (!formData.interviewer.trim()) errs.interviewer = 'Please enter the interviewer name'
+    if (!formData.job_title.trim()) errs.job_title = 'Please enter the job title'
+    setFieldErrors(errs)
+    return Object.keys(errs).length === 0
+  }
+
   const handleSchedule = async () => {
-    if (!formData.scheduled_at) {
-      setError('Please select a date and time')
-      return
-    }
+    if (!validate()) return
 
     setLoading(true)
     setError(null)
     try {
-      const payload = {
-        candidate_id: candidate.id,
-        candidate_name: candidate.name,
-        candidate_email: candidate.email,
-        scheduled_at: new Date(formData.scheduled_at).toISOString(),
-        duration_minutes: formData.duration_minutes,
+      // interviews table contract (supabase/migrations/20260526000000_schema.sql):
+      // date (timestamptz NOT NULL), duration (int), interviewer (text NOT NULL),
+      // job_title (text NOT NULL), candidate_* contact columns, type /
+      // meeting_type / meeting_link / meeting_notes. `candidate_id` is NOT a
+      // real column — the candidate link is `learner_id` (uuid); only send it
+      // when the candidate id actually is a uuid, otherwise the insert fails.
+      const isUuid = (v: any) =>
+        typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v)
+      const learnerId = candidate?.learner_id ?? candidate?.id
+
+      const payload: any = {
+        id: `int_${Date.now()}`,
+        candidate_name: candidate?.name,
+        candidate_email: candidate?.email || null,
+        candidate_phone: candidate?.phone_number || candidate?.phone || null,
+        job_title: formData.job_title.trim(),
+        interviewer: formData.interviewer.trim(),
+        date: new Date(formData.date).toISOString(),
+        duration: formData.duration,
+        status: 'scheduled',
         type: formData.type,
         meeting_type: formData.meeting_type,
         meeting_link: formData.meeting_link || null,
         meeting_notes: formData.meeting_notes || null,
       }
+      if (isUuid(learnerId)) payload.learner_id = learnerId
 
       const { error } = await createInterview(payload)
       if (error) throw new Error(error.message)
@@ -89,19 +114,24 @@ const ScheduleInterviewModal: React.FC<Props> = ({ isOpen, onClose, candidate, o
             {/* Date & time */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Date & Time</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Date & Time <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="datetime-local"
-                  value={formData.scheduled_at}
-                  onChange={(e) => setFormData({ ...formData, scheduled_at: e.target.value })}
+                  value={formData.date}
+                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                   className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
+                {fieldErrors.date && (
+                  <p className="mt-1 text-xs text-red-600">{fieldErrors.date}</p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Duration</label>
                 <select
-                  value={formData.duration_minutes}
-                  onChange={(e) => setFormData({ ...formData, duration_minutes: parseInt(e.target.value) })}
+                  value={formData.duration}
+                  onChange={(e) => setFormData({ ...formData, duration: parseInt(e.target.value) })}
                   className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
                   <option value={15}>15 minutes</option>
@@ -111,6 +141,36 @@ const ScheduleInterviewModal: React.FC<Props> = ({ isOpen, onClose, candidate, o
                   <option value={90}>1.5 hours</option>
                   <option value={120}>2 hours</option>
                 </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Job Title <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.job_title}
+                  onChange={(e) => setFormData({ ...formData, job_title: e.target.value })}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="e.g., Senior Full Stack Developer"
+                />
+                {fieldErrors.job_title && (
+                  <p className="mt-1 text-xs text-red-600">{fieldErrors.job_title}</p>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Interviewer <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.interviewer}
+                  onChange={(e) => setFormData({ ...formData, interviewer: e.target.value })}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="e.g., Jane Smith"
+                />
+                {fieldErrors.interviewer && (
+                  <p className="mt-1 text-xs text-red-600">{fieldErrors.interviewer}</p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Interview Type</label>

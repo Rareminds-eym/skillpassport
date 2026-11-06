@@ -3,7 +3,7 @@
  * Manages billing information and subscription details (Admin-only)
  */
 
-import { withAuth } from '../../../lib/auth';
+import { withAuth, getContextUser } from '../../../lib/auth';
 import { getServiceClient } from '../../../lib/supabase';
 import { verifyOrgAccess, PERMISSIONS } from '../../../lib/permissions';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
@@ -13,7 +13,7 @@ import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
  * Fetch company billing information (Admin-only)
  */
 export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
-    const user = context.data.user;
+    const user = getContextUser(context);
     const env = context.env as Record<string, string>;
     const supabase = getServiceClient(env as any);
 
@@ -27,7 +27,7 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
     }
 
     // Verify user has admin access (only admins can view billing)
-    const access = await verifyOrgAccess(supabase, user.sub, orgId, PERMISSIONS.MANAGE_ORG_SETTINGS);
+    const access = await verifyOrgAccess(supabase, user.id, orgId, PERMISSIONS.MANAGE_TEAM);
     if (!access.allowed) {
         console.error('[billing API] Admin access required');
         return access.error!;
@@ -93,7 +93,7 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
  * Update company billing information (Admin-only)
  */
 export const onRequestPut = withAuth(async (context: AuthenticatedContext) => {
-    const user = context.data.user;
+    const user = getContextUser(context);
     const env = context.env as Record<string, string>;
     const supabase = getServiceClient(env as any);
 
@@ -115,7 +115,7 @@ export const onRequestPut = withAuth(async (context: AuthenticatedContext) => {
     }
 
     // Verify user has admin access
-    const access = await verifyOrgAccess(supabase, user.sub, org_id, PERMISSIONS.MANAGE_ORG_SETTINGS);
+    const access = await verifyOrgAccess(supabase, user.id, org_id, PERMISSIONS.MANAGE_TEAM);
     if (!access.allowed) {
         console.error('[billing API] Admin access required');
         return access.error!;
@@ -215,7 +215,7 @@ export const onRequestPut = withAuth(async (context: AuthenticatedContext) => {
  * This is a placeholder for future invoice generation functionality
  */
 export const onRequest_generateInvoice = withAuth(async (context: AuthenticatedContext) => {
-    const user = context.data.user;
+    const user = getContextUser(context);
     const env = context.env as Record<string, string>;
     const supabase = getServiceClient(env as any);
 
@@ -237,7 +237,7 @@ export const onRequest_generateInvoice = withAuth(async (context: AuthenticatedC
     }
 
     // Verify user has admin access
-    const access = await verifyOrgAccess(supabase, user.sub, org_id, PERMISSIONS.MANAGE_ORG_SETTINGS);
+    const access = await verifyOrgAccess(supabase, user.id, org_id, PERMISSIONS.MANAGE_TEAM);
     if (!access.allowed) {
         return access.error!;
     }

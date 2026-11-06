@@ -28,75 +28,31 @@ import { getResultsHandler, getlearnerResultsHandler } from './handlers/results'
 import { resumeHandler, findInProgressHandler } from './handlers/resume';
 import { abandonHandler } from './handlers/abandon';
 import { onRequestPost as linkToAttemptHandler } from './link-to-attempt';
+import {authorizeAdaptiveSession,privateAdaptiveResponse} from '../../lib/adaptive-session-boundary';
 
 export const onRequest: PagesFunction = async (context) => {
-  const { request } = context;
-  const url = new URL(request.url);
-  const path = url.pathname.replace('/api/adaptive-session', '');
-  const method = request.method;
-
-  try {
-    // All endpoints require authentication.
-    // withAuth passes the AUTHENTICATED context (with data.user) to this callback —
-    // we must forward THAT to handlers that read getContextUser (e.g. link-to-attempt),
-    // not the outer un-authenticated `context`.
-    return withAuth(async (authContext: typeof context) => {
-    // POST /initialize - Start new test session
-    if (method === 'POST' && path === '/initialize') {
-      return initializeHandler(context);
-    }
-
-    // GET /next-question/:sessionId - Get next question
-    if (method === 'GET' && path.startsWith('/next-question/')) {
-      return nextQuestionHandler(context);
-    }
-
-    // POST /submit-answer - Submit answer and update session
-    if (method === 'POST' && path === '/submit-answer') {
-      return submitAnswerHandler(context);
-    }
-
-    // POST /complete/:sessionId - Complete test and calculate results
-    if (method === 'POST' && path.startsWith('/complete/')) {
-      return completeHandler(context);
-    }
-
-    // GET /results/:sessionId - Get test results
-    if (method === 'GET' && path.startsWith('/results/') && !path.startsWith('/results/learner/')) {
-      return getResultsHandler(context);
-    }
-
-    // GET /results/learner/:learnerId - Get all results for learner
-    if (method === 'GET' && path.startsWith('/results/learner/')) {
-      return getlearnerResultsHandler(context);
-    }
-
-    // GET /resume/:sessionId - Resume in-progress test
-    if (method === 'GET' && path.startsWith('/resume/')) {
-      return resumeHandler(context);
-    }
-
-    // GET /find-in-progress/:learnerId - Find in-progress session
-    if (method === 'GET' && path.startsWith('/find-in-progress/')) {
-      return findInProgressHandler(context);
-    }
-
-    // POST /abandon/:sessionId - Abandon session
-    if (method === 'POST' && path.startsWith('/abandon/')) {
-      return abandonHandler(context);
-    }
-
-    // POST /link-to-attempt - Link adaptive session to assessment attempt
-    // Uses getContextUser → needs the authenticated context.
-    if (method === 'POST' && path === '/link-to-attempt') {
-      return linkToAttemptHandler(authContext);
-    }
-
-    // 404 for unknown routes
-    return apiError(404, 'NOT_FOUND', 'Not found', request);
+ const request=context.request,url=new URL(request.url),path=url.pathname.replace('/api/adaptive-session',''),method=request.method;
+ const routes:[string,RegExp,any][]=[
+  ['POST',/^\/initialize$/,initializeHandler],
+  ['GET',/^\/next-question\/[^/]+$/,nextQuestionHandler],
+  ['POST',/^\/submit-answer$/,submitAnswerHandler],
+  ['POST',/^\/complete\/[^/]+$/,completeHandler],
+  ['GET',/^\/results\/learner\/[^/]+$/,getlearnerResultsHandler],
+  ['GET',/^\/results\/[^/]+$/,getResultsHandler],
+  ['GET',/^\/resume\/[^/]+$/,resumeHandler],
+  ['GET',/^\/find-in-progress\/[^/]+$/,findInProgressHandler],
+  ['POST',/^\/abandon\/[^/]+$/,abandonHandler],
+ ];
+ try{
+  return await withAuth(async(authContext:any)=>{
+   if(method==='POST'&&path==='/link-to-attempt')return linkToAttemptHandler(authContext);
+   const route=routes.find(([verb,pattern])=>verb===method&&pattern.test(path));
+   if(!route)return apiError(404,'NOT_FOUND','Not found',request);
+   const authorized=await authorizeAdaptiveSession(authContext,path,method);
+   if(authorized instanceof Response)return authorized;
+   return privateAdaptiveResponse(await route[2](authorized.context));
   })(context);
-  } catch (error) {
-    console.error('Adaptive Session API Error:', error);
-    return apiError(500, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Unknown error', request);
-  }
+ }catch{
+  return apiError(503,'SESSION_UNAVAILABLE','Session authority unavailable',request);
+ }
 };

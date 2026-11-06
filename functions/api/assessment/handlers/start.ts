@@ -6,9 +6,10 @@
  */
 
 import { getServiceClient } from '../../../lib/supabase';
-import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import type { StartAssessmentOptions, StartAssessmentResult } from '../types';
-import { validateStartAssessmentRequest, validateLearnerData, validateAttemptData } from '../utils/validation';
+import type {AuthenticatedPagesContext} from '../../../lib/types';
+import {readAttemptStart,createOwnedAttempt,startJson} from '../../../lib/assessment-start';
+import type { StartAssessmentResult } from '../types';
+import { validateLearnerData, validateAttemptData } from '../utils/validation';
 import { dbAttemptToAssessmentAttempt } from '../utils/converters';
 import { loadSectionsWithQuestions } from '../utils/question-loader';
 import { createLogger } from '../../../lib/logger';
@@ -47,41 +48,27 @@ function buildLearnerContext(
       learner?.grade
     );
 
-  if (!programName && !streamId && !learner?.grade) return null;
+  if (!programName && !streamId && !learner?.grade && !learner?.specialization) return null;
 
   return {
     rawGrade: learner?.grade || null,
     programName: programName || null,
     programCode,
     degreeLevel,
+    specialization: learner?.specialization || null,
     selectedStream: streamId || null,
   };
 }
 
-export async function startHandler(context: AuthenticatedContext) {
+export async function startHandler(context: AuthenticatedPagesContext) {
   const user = context.data.user;
   const env = context.env as Record<string, string>;
   const supabase = getServiceClient(env as any);
 
   try {
-    const body = (await context.request.json()) as StartAssessmentOptions;
-
-    const validation = validateStartAssessmentRequest(body);
-    if (!validation.isValid) {
-      return Response.json({ error: validation.message }, { status: 400 });
-    }
-
-    const { streamId } = body;
-    let gradeLevel = body.gradeLevel;
-
-    logger.info('Starting assessment', {
-      userId: user.sub,
-      gradeLevel,
-      streamId,
-      hasEnv: !!env,
-      hasQuestionGenUrl: !!env?.QUESTION_GENERATION_API_URL
-    });
-
+    const body=await readAttemptStart(context.request);
+    if(body instanceof Response)return body;
+    const {streamId}=body;
     const { data: learnerData, error: learnerError } = await supabase
       .from('learners')
       .select(`
@@ -89,123 +76,37 @@ export async function startHandler(context: AuthenticatedContext) {
         grade,
         course_name,
         branch_field,
+        specialization,
         program_id,
         programs ( name, code, degree_level )
       `)
-      .or(`user_id.eq.${user.sub},id.eq.${user.sub}`)
+      .eq('user_id', user.sub)
       .maybeSingle();
 
     if (learnerError) {
-      return Response.json({ error: 'Learner lookup failed', message: learnerError.message }, { status: 400 });
+      return startJson({error:'Learner lookup unavailable'},503);
     }
 
     const learnerValidation = validateLearnerData(learnerData);
     if (!learnerValidation.isValid) {
-      return Response.json({ error: learnerValidation.message }, { status: 400 });
+      return startJson({error:learnerValidation.message},404);
     }
 
-    const learnerId = learnerData!.id;
-
-    // Validate the requested streamId against personal_assessment_streams before using
-    // it as part of the shared canonical question set identity
-    // (stream_id + grade_level + question_type). Client-supplied streamId must resolve
-    // to a real, active row - never silently fall back to the generic 'college' stream,
-    // since that would let an unresolvable request pool onto (and potentially create) a
-    // shared question set that doesn't actually belong to it.
-    //
-    // The stream's OWN registered grade_level is authoritative for the assessment
-    // content tier - the client-supplied gradeLevel is only ever a UI/enrollment-category
-    // selection (which grade-selection button the learner clicked) and is NOT
-    // independently trusted once a real streamId is known. A learner's UI-selected grade
-    // (e.g. 'college', because they are enrolled as a college_student) and the catalog
-    // tier a specific stream's content was authored for (e.g. 'bca' -> 'after12', a
-    // generic program name whose specialized siblings like 'bca_ds' ARE 'college') are
-    // two different concepts that both happen to use the same string values - they are
-    // never guaranteed to match, and mismatching does not mean the request is invalid.
-    // Reassigning gradeLevel here (rather than rejecting) ensures every downstream use
-    // - attempt creation, section loading, generation, and the shared canonical key -
-    // consistently uses the one authoritative value.
-    const effectiveStreamId: string | null = streamId || null;
-    if (effectiveStreamId) {
-      const { data: streamRow } = await supabase
-        .from('personal_assessment_streams')
-        .select('id, grade_level')
-        .eq('id', effectiveStreamId)
-        .eq('is_active', true)
-        .maybeSingle();
-
-      if (!streamRow) {
-        logger.warn('Unknown or inactive stream_id rejected', { requestedStreamId: effectiveStreamId });
-        return Response.json({ error: 'Invalid streamId' }, { status: 400 });
-      }
-
-      if (streamRow.grade_level !== gradeLevel) {
-        logger.info('streamId/gradeLevel mismatch - using stream catalog grade as authoritative', {
-          requestedStreamId: effectiveStreamId,
-          requestedGradeLevel: gradeLevel,
-          effectiveGradeLevel: streamRow.grade_level,
-        });
-      }
-      gradeLevel = streamRow.grade_level;
+    // Resolve the authenticated owner before persisting the optional specialization.
+    // Keep upstream start-and-context behavior without accepting a client target.
+    if(body.specialization){
+      const {error:specError}=await supabase.from('learners')
+        .update({specialization:body.specialization,updated_at:new Date().toISOString()})
+        .eq('id',learnerData!.id).eq('user_id',user.sub);
+      if(specError)logger.warn('Failed to persist specialization on start');
+      else learnerData!.specialization=body.specialization;
     }
 
-    // **CRITICAL: Check for existing in-progress attempt BEFORE creating new one**
-    const { data: existingAttempts, error: existingError } = await supabase
-      .from('personal_assessment_attempts')
-      .select('id, grade_level, stream_id, status, all_responses, current_section_index, current_question_index')
-      .eq('learner_id', learnerId)
-      .eq('status', 'in_progress')
-      .order('started_at', { ascending: false })
-      .limit(1);
-
-    let attempt = null;
-
-    // If in-progress attempt exists for same grade/stream, reuse it
-    if (existingAttempts && existingAttempts.length > 0) {
-      const existingAttempt = existingAttempts[0];
-      const sameGrade = existingAttempt.grade_level === gradeLevel;
-      const sameStream = existingAttempt.stream_id === effectiveStreamId || (effectiveStreamId === null && existingAttempt.stream_id === null);
-
-      if (sameGrade && sameStream) {
-        attempt = existingAttempt;
-      } else {
-        return Response.json(
-          {
-            error: 'You have an in-progress assessment for a different grade/stream level. Please abandon it first or resume it.',
-            existingAttemptId: existingAttempt.id,
-            existingGradeLevel: existingAttempt.grade_level,
-            existingStreamId: existingAttempt.stream_id
-          },
-          { status: 409 } // 409 Conflict
-        );
-      }
-    }
-
-    // Only create NEW attempt if no matching in-progress one exists
-    if (!attempt) {
-      const { data: newAttempt, error: insertError } = await supabase
-        .from('personal_assessment_attempts')
-        .insert({
-          learner_id: learnerId,
-          grade_level: gradeLevel,
-          stream_id: effectiveStreamId,
-          learner_context: buildLearnerContext(learnerData, effectiveStreamId),
-          status: 'in_progress',
-          all_responses: {},
-          timer_remaining: null,
-          elapsed_time: 0,
-          current_section_index: 0,
-          current_question_index: 0
-        })
-        .select('*')
-        .single();
-
-      if (insertError || !newAttempt) {
-        return Response.json({ error: 'Failed to create assessment attempt', message: insertError?.message }, { status: 500 });
-      }
-
-      attempt = newAttempt;
-    }
+    const response=await createOwnedAttempt(context,{...body,reference:learnerData!.id},buildLearnerContext(learnerData,streamId),true);
+    if(!response.ok)return response;
+    const {attempt,created}=await response.json() as {attempt:any;created:boolean};
+    const gradeLevel=attempt.grade_level;
+    const effectiveStreamId=attempt.stream_id;
 
     let sections;
     try {
@@ -216,20 +117,20 @@ export async function startHandler(context: AuthenticatedContext) {
       });
     } catch (loadError) {
       logger.error('Failed to load sections', { error: loadError, gradeLevel, streamId });
-      return Response.json(
-        { error: 'Failed to load assessment sections', message: loadError instanceof Error ? loadError.message : 'Unknown error' },
-        { status: 500 }
+      return startJson(
+        { error: 'Failed to load assessment sections', message: 'Assessment sections unavailable' },
+        500
       );
     }
 
     if (!sections || sections.length === 0) {
       logger.warn('No sections available', { gradeLevel, streamId });
-      return Response.json({ error: 'No assessment sections available for this grade level' }, { status: 404 });
+      return startJson({ error: 'No assessment sections available for this grade level' }, 404);
     }
 
     const attemptValidation = validateAttemptData(attempt);
     if (!attemptValidation.isValid) {
-      return Response.json({ error: attemptValidation.message }, { status: 400 });
+      return startJson({ error: attemptValidation.message }, 400);
     }
 
     const result: StartAssessmentResult = {
@@ -246,15 +147,15 @@ export async function startHandler(context: AuthenticatedContext) {
       streamId
     });
 
-    return Response.json(result, { status: 201 });
+    return startJson({...result,isResumed:!created},created?201:200);
   } catch (error) {
     logger.error('Failed to start assessment', { error });
-    return Response.json(
+    return startJson(
       {
         error: 'Failed to start assessment',
-        message: error instanceof Error ? error.message : 'Unknown error'
+        message: 'Assessment start unavailable'
       },
-      { status: 500 }
+      500
     );
   }
 }

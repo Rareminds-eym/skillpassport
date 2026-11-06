@@ -1,5 +1,6 @@
 import {useAssignedTeaching} from '@/features/external-teaching/model/teachingContext';
-import { teaching } from '@/features/external-teaching/api/teachingApi';
+import { markCombinedLearners, teaching } from '@/features/external-teaching/api/teachingApi';
+import { combinedMarkPayload, groupSessionEvents, type GroupClassRoster } from '@/features/external-teaching/model/combinedClass';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useAuthStore } from '@/shared/model/authStore';
 import {
@@ -42,6 +43,10 @@ interface TimetableSlot {
   // Assigned-training (platform) sessions carry revisions for mark_learners.
   version?: number;
   attendanceRevision?: number;
+  // Combined class session: the sibling rows (one per class) are shown as one event.
+  combined_group_id?: string;
+  group_session_ids?: string[];
+  group_classes?: GroupClassRoster[];
 }
 
 interface Learner {
@@ -216,26 +221,33 @@ const MarkAttendance: React.FC = () => {
     setLoading(true);
     try {
       const rows: any[] = await teaching('sessions');
-      const slots: TimetableSlot[] = (rows || [])
-        .filter((session: any) => session.date === selectedDate && session.status !== 'cancelled')
-        .map((session: any, index: number) => ({
-          id: session.id,
+      // The sibling rows of a combined class session become one event; single-class sessions are unchanged.
+      const events = groupSessionEvents((rows || []).filter((session: any) => session.date === selectedDate && session.status !== 'cancelled'));
+      const slots: TimetableSlot[] = events.map((event, index: number) => {
+        const session: any = event.representative;
+        const grouped = Boolean(event.groupId);
+        return {
+          id: event.key,
           day_of_week: new Date(selectedDate).getDay(),
           period_number: index + 1,
           start_time: session.start_time,
           end_time: session.end_time,
           subject_name: session.subject_name,
           room_number: session.room_number || '',
-          class_id: `${session.department_name}-${session.program_name}-${session.semester}-${session.section}`,
-          class_name: `${session.program_name} - Sem ${session.semester} ${session.section}`,
+          class_id: grouped ? `combined-${event.groupId}` : `${session.department_name}-${session.program_name}-${session.semester}-${session.section}`,
+          class_name: grouped
+            ? `${session.program_name} - Sem ${session.semester} · Combined (${event.sessions.length} classes)`
+            : `${session.program_name} - Sem ${session.semester} ${session.section}`,
           class_grade: `Semester ${session.semester}`,
-          class_section: session.section,
-          total_learners: session.total_learners || 0,
-          attendance_marked: session.status === 'completed',
-          is_locked: isSlotLocked(selectedDate),
-          version: session.version,
-          attendanceRevision: session.attendance_revision,
-        }));
+          class_section: grouped ? 'Combined' : session.section,
+          total_learners: event.sessions.reduce((sum: number, s: any) => sum + (s.total_learners || 0), 0),
+          attendance_marked: event.sessions.every((s: any) => s.status === 'completed'),
+          is_locked: isSlotLocked(selectedDate) && !assignedTeaching?.retainExpiredAssignments,
+          version: grouped ? undefined : session.version,
+          attendanceRevision: grouped ? undefined : session.attendance_revision,
+          ...(grouped ? { combined_group_id: event.groupId as string, group_session_ids: event.sessions.map((s: any) => s.id) } : {}),
+        };
+      });
       setTodaySlots(slots);
     } catch (error) {
       logger.error('Error loading assigned schedule', error);
@@ -422,6 +434,7 @@ const MarkAttendance: React.FC = () => {
 
   // Same MarkingView as other educators, backed by the assigned session roster.
   const startAssignedAttendanceSession = async (slot: TimetableSlot) => {
+    if (slot.group_session_ids) return startAssignedGroupSession(slot);
     try {
       const roster: any = await teaching('session_roster', { sessionId: slot.id });
       const session = roster?.session;
@@ -455,6 +468,51 @@ const MarkAttendance: React.FC = () => {
       setViewMode("marking");
     } catch (error) {
       logger.error('Error starting assigned attendance session', error);
+      alert("Failed to load learners. Please try again.");
+    }
+  };
+
+  // Combined class session: one merged roster, one marking screen. Each class keeps its own session, version and students.
+  const startAssignedGroupSession = async (slot: TimetableSlot) => {
+    try {
+      const ids = slot.group_session_ids || [];
+      const rosters: any[] = await Promise.all(ids.map((sessionId) => teaching('session_roster', { sessionId })));
+      if (rosters.some((roster) => !roster?.session)) throw new Error('Session roster unavailable');
+      const formattedlearners: Learner[] = [];
+      const recordsMap = new Map<string, AttendanceRecord>();
+      const classes: GroupClassRoster[] = rosters.map((roster, index) => {
+        const submitted = roster.session.status === 'completed';
+        (roster.learners || []).forEach((s: any) => {
+          formattedlearners.push({
+            id: s.learner_id,
+            name: s.learner_name,
+            roll_number: s.roll_number || "N/A",
+            grade: String(s.semester ?? slot.class_grade),
+            section: `Class ${index + 1}`,
+          });
+          recordsMap.set(s.learner_id, {
+            learner_id: s.learner_id,
+            status: submitted && s.status ? s.status : "present",
+            time_in: undefined,
+            remarks: "",
+          });
+        });
+        return {
+          sessionId: ids[index],
+          version: roster.session.version,
+          attendanceRevision: roster.session.attendance_revision,
+          learnerIds: (roster.learners || []).map((s: any) => s.learner_id),
+        };
+      });
+      setActiveSession({
+        slot: { ...slot, group_classes: classes },
+        learners: formattedlearners,
+        records: recordsMap,
+        isSubmitted: rosters.every((roster) => roster.session.status === 'completed'),
+      });
+      setViewMode("marking");
+    } catch (error) {
+      logger.error('Error starting combined attendance session', error);
       alert("Failed to load learners. Please try again.");
     }
   };
@@ -683,6 +741,24 @@ const MarkAttendance: React.FC = () => {
 
   const submitAssignedAttendance = async () => {
     if (!activeSession) return;
+    if (activeSession.slot.combined_group_id && activeSession.slot.group_classes) {
+      // One all-or-nothing request for every class of the combined session.
+      const statuses = Object.fromEntries(Array.from(activeSession.records.values()).filter((record) => record.status).map((record) => [record.learner_id, record.status]));
+      const payload = combinedMarkPayload(activeSession.slot.combined_group_id, activeSession.slot.group_classes, statuses);
+      if (!payload) {
+        alert("Select at least one learner attendance status.");
+        return;
+      }
+      await markCombinedLearners(payload);
+      setActiveSession({
+        ...activeSession,
+        isSubmitted: true,
+        submittedAt: new Date().toISOString(),
+      });
+      setViewMode("schedule");
+      loadAssignedSchedule();
+      return;
+    }
     const version = activeSession.slot.version;
     const attendanceRevision = activeSession.slot.attendanceRevision;
     if (!version && version !== 0) {

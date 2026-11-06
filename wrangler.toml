@@ -37,6 +37,11 @@ service = "sso-api"
 entrypoint = "SsoWorker"
 
 [[services]]
+binding = "ZOHO_CANDIDATE_SOURCE"
+service = "sso-api"
+entrypoint = "ZohoCandidateProvisioner"
+
+[[services]]
 binding = "EMBEDDING_SERVICE"
 service = "embedding-api"
 entrypoint = "EmbeddingService"
@@ -63,6 +68,8 @@ bucket_name = "skill-echosystem"
 # ============================================================================
 
 [vars]
+# Must match EMBEDDING_SERVICE output; each job vector is independently verified.
+MATCHING_EMBEDDING_MODEL = "google/gemini-embedding-2-preview"
 AI_ASSIGNMENTS_ENABLED = "false"
 # Enable after the index migration and a successful local course:index import.
 COURSE_INDEX_ENABLED = "false"

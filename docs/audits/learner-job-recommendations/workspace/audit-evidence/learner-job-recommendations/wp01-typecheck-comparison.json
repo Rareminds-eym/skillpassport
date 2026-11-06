@@ -1,0 +1,27 @@
+{
+  "baseline": {
+    "total": 6994,
+    "touched": [
+      {
+        "file": "functions/api/career/[[path]].ts",
+        "code": 2339,
+        "message": "Property 'env' does not exist on type 'AuthenticatedContext'."
+      },
+      {
+        "file": "functions/api/career/[[path]].ts",
+        "code": 2339,
+        "message": "Property 'request' does not exist on type 'AuthenticatedContext'."
+      },
+      {
+        "file": "functions/api/career/[[path]].ts",
+        "code": 2559,
+        "message": "Type 'AuthenticatedContext' has no properties in common with type '{ data?: { user?: VerifiedAuthUser<Record<string, unknown>, Record<string, unknown>> | undefined; } | undefined; }'."
+      }
+    ]
+  },
+  "current": {
+    "total": 6991,
+    "touched": []
+  },
+  "addedTouchedDiagnostics": []
+}

@@ -76,7 +76,7 @@ export function useOptimisticSubscription({
             email, 
             amount: 0, 
             planId: planCode,
-            planName: 'freemium'
+            planName: planCode || 'freemium'
           }),
           signal: abortControllerRef.current.signal,
         });

@@ -19,7 +19,7 @@ describe.each(['freemium', 'discover'])('%s free-tier compatibility', plan => {
     expect(checkFeatureAccess(plan, 'unknown_feature').hasAccess).toBe(false);
   });
   it('keeps server-side free locks even when a cached feature list contains premium keys', async () => {
-    const query: any = { select: () => query, eq: () => query, in: () => query,
+    const query: any = { select: () => query, eq: () => query, in: () => query, order: () => query, limit: () => query,
       maybeSingle: async () => ({ data: { plan_code: plan, status: 'active', features: ['analytics', 'portfolio'], synced_at: new Date().toISOString() }, error: null }) };
     const db = { from: () => query } as unknown as SupabaseClient;
     expect((await checkServerFeatureAccess(db, 'user', 'analytics')).hasAccess).toBe(false);

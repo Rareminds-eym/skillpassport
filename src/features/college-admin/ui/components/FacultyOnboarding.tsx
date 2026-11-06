@@ -591,7 +591,7 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId, onChan
                 Degree Certificate *
               </label>
               <div className="flex items-center gap-3">
-                <label className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed rounded-lg cursor-pointer focus-within:ring-2 focus-within:ring-indigo-600 transition ${
+                <label className={`relative flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed rounded-lg cursor-pointer focus-within:ring-2 focus-within:ring-indigo-600 transition ${
                   uploadStatus.degree_certificate.uploaded
                     ? 'border-green-300 bg-green-50'
                     : uploadStatus.degree_certificate.uploading
@@ -635,7 +635,7 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId, onChan
                       void handleFileChange("degree_certificate", event.currentTarget.files);
                       event.currentTarget.value = "";
                     }}
-                    className="sr-only"
+                    className="absolute inset-0 h-full w-full cursor-pointer opacity-0 disabled:cursor-wait"
                     disabled={uploadStatus.degree_certificate.uploading}
                   />
                 </label>
@@ -652,7 +652,7 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId, onChan
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">ID Proof *</label>
               <div className="flex items-center gap-3">
-                <label className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed rounded-lg cursor-pointer focus-within:ring-2 focus-within:ring-indigo-600 transition ${
+                <label className={`relative flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed rounded-lg cursor-pointer focus-within:ring-2 focus-within:ring-indigo-600 transition ${
                   uploadStatus.id_proof.uploaded
                     ? 'border-green-300 bg-green-50'
                     : uploadStatus.id_proof.uploading
@@ -696,7 +696,7 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId, onChan
                       void handleFileChange("id_proof", event.currentTarget.files);
                       event.currentTarget.value = "";
                     }}
-                    className="sr-only"
+                    className="absolute inset-0 h-full w-full cursor-pointer opacity-0 disabled:cursor-wait"
                     disabled={uploadStatus.id_proof.uploading}
                   />
                 </label>
@@ -715,7 +715,7 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId, onChan
                 Experience Letters {formData.experience_years > 0 ? '*' : '(optional for new faculty)'}
               </label>
               <div className="space-y-2">
-                <label className={`flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed rounded-lg cursor-pointer focus-within:ring-2 focus-within:ring-indigo-600 transition ${
+                <label className={`relative flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed rounded-lg cursor-pointer focus-within:ring-2 focus-within:ring-indigo-600 transition ${
                   uploadStatus.experience_letters.uploading
                     ? 'border-blue-300 bg-blue-50'
                     : validationErrors.experience_letters
@@ -741,7 +741,7 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId, onChan
                       void handleFileChange("experience_letters", event.currentTarget.files);
                       event.currentTarget.value = "";
                     }}
-                    className="sr-only"
+                    className="absolute inset-0 h-full w-full cursor-pointer opacity-0 disabled:cursor-wait"
                     disabled={uploadStatus.experience_letters.uploading}
                   />
                 </label>

@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactNode } from 'react';
+import { useRecommendationSaveBridge } from '@/shared/model/recommendations/useRecommendationQuery';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -19,6 +20,7 @@ interface QueryProviderProps {
 }
 
 export const QueryProvider = ({ children }: QueryProviderProps) => {
+  useRecommendationSaveBridge(queryClient);
   return (
     <QueryClientProvider client={queryClient}>
       {children}

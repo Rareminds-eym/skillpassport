@@ -1,3 +1,5 @@
+import { AccessibleModal } from './shared/RecruitmentControls';
+import { apiPost } from '@/shared/api/apiClient';
 import { useState, useEffect, useMemo } from 'react';
 import toast from 'react-hot-toast';
 import {
@@ -82,7 +84,7 @@ const OfferDetailsDrawer = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex">
+    <AccessibleModal title="Offer Details" onClose={onClose}><div className="fixed inset-0 z-50 flex">
       {/* Overlay */}
       <div
         className="absolute inset-0 bg-black bg-opacity-40"
@@ -101,7 +103,7 @@ const OfferDetailsDrawer = ({
               Full details for {offer.candidate_name}
             </p>
           </div>
-          <button
+          <button aria-label="Close dialog"
             onClick={onClose}
             className="p-2 rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600"
           >
@@ -288,7 +290,7 @@ const OfferDetailsDrawer = ({
           </button>
         </div>
       </div>
-    </div>
+    </div></AccessibleModal>
   );
 };
 
@@ -340,7 +342,7 @@ const ConfirmationModal = ({
   const { icon, confirmBg, iconBg } = getIconAndColors();
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+    <AccessibleModal title="Recruitment dialog" onClose={onClose}><div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
         <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
 
@@ -378,7 +380,7 @@ const ConfirmationModal = ({
           </div>
         </div>
       </div>
-    </div>
+    </div></AccessibleModal>
   );
 };
 
@@ -506,7 +508,7 @@ const Calendar = ({
     <div className="bg-white rounded-lg border border-gray-200 p-4">
       {/* Calendar Header */}
       <div className="flex items-center justify-between mb-4">
-        <button
+        <button aria-label="Previous month"
           type="button"
           onClick={() => navigateMonth('prev')}
           className="p-1 hover:bg-gray-100 rounded-full transition-colors"
@@ -518,7 +520,7 @@ const Calendar = ({
           {monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}
         </h3>
 
-        <button
+        <button aria-label="Next month"
           type="button"
           onClick={() => navigateMonth('next')}
           className="p-1 hover:bg-gray-100 rounded-full transition-colors"
@@ -670,13 +672,13 @@ const ExtendOfferModal = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+    <AccessibleModal title="Extend Offer Expiry" onClose={onClose}><div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
         <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
 
         <div className="inline-block align-bottom bg-white rounded-xl px-6 pt-6 pb-6 text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
           {/* Header */}
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
             <div className="flex items-center">
               <div className="flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-gradient-to-r from-blue-500 to-indigo-600">
                 <CalendarDaysIcon className="h-6 w-6 text-white" />
@@ -690,7 +692,7 @@ const ExtendOfferModal = ({
                 </p>
               </div>
             </div>
-            <button
+            <button aria-label="Close dialog"
               onClick={onClose}
               className="text-gray-400 hover:text-gray-600 transition-colors"
             >
@@ -708,7 +710,7 @@ const ExtendOfferModal = ({
                 </label>
                 <div className="grid grid-cols-2 gap-3">
                   {presetOptions.map((preset) => (
-                    <button
+                    <button aria-label="Div"
                       key={preset.days}
                       onClick={() => handlePresetSelect(preset.days)}
                       className={`p-3 rounded-lg border-2 transition-all ${selectedPreset === preset.days
@@ -730,7 +732,7 @@ const ExtendOfferModal = ({
                 <label className="block text-sm font-medium text-gray-700 mb-3">
                   Custom Date Selection
                 </label>
-                <button
+                <button aria-label="Div"
                   onClick={() => setUseCalendar(!useCalendar)}
                   className={`w-full p-3 rounded-lg border-2 transition-all ${useCalendar
                     ? 'border-blue-500 bg-blue-50 text-blue-700'
@@ -823,7 +825,7 @@ const ExtendOfferModal = ({
           </div>
         </div>
       </div>
-    </div>
+    </div></AccessibleModal>
   );
 };
 
@@ -868,6 +870,7 @@ const CreateOfferModal = ({ isOpen, onClose, onCreate }: {
 }) => {
   const [formData, setFormData] = useState({
     candidate_id: '',
+    job_id: '',
     candidate_name: '',
     job_title: '',
     template: 'Full-time Offer - Standard',
@@ -878,9 +881,19 @@ const CreateOfferModal = ({ isOpen, onClose, onCreate }: {
     notes: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [jobs, setJobs] = useState<{ id: string; job_title?: string; title?: string }[]>([]);
+  const [jobsError, setJobsError] = useState('');
+  useEffect(() => {
+    if (!isOpen) return;
+    let active = true;
+    setJobsError('');
+    apiPost<any>('/recruiter/actions', { action: 'list-opportunities', statusFilter: 'all', currentPage: 1, itemsPerPage: 200 }).then(result => { if (active) setJobs(result.data?.data || []); }).catch(error => { if (active) setJobsError(error.message || 'Jobs could not be loaded'); });
+    return () => { active = false; };
+  }, [isOpen]);
+
 
   const handleCreate = async () => {
-    if (!formData.candidate_name || !formData.job_title || !formData.offered_ctc) {
+    if (!formData.candidate_name || !formData.job_id || !formData.job_title || !formData.offered_ctc) {
       return;
     }
 
@@ -890,6 +903,7 @@ const CreateOfferModal = ({ isOpen, onClose, onCreate }: {
       expiryDate.setDate(expiryDate.getDate() + formData.expiry_days);
 
       const newOfferData = {
+        job_id: formData.job_id,
         candidate_name: formData.candidate_name,
         job_title: formData.job_title,
         template: formData.template,
@@ -909,6 +923,7 @@ const CreateOfferModal = ({ isOpen, onClose, onCreate }: {
       if (result.success) {
         setFormData({
           candidate_id: '',
+    job_id: '',
           candidate_name: '',
           job_title: '',
           template: 'Full-time Offer - Standard',
@@ -943,22 +958,24 @@ const CreateOfferModal = ({ isOpen, onClose, onCreate }: {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+    <AccessibleModal title="Create New Offer" onClose={onClose} busy={isSubmitting}><div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
         <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
 
         <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full sm:p-6">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
             <h3 className="text-lg font-medium text-gray-900">Create New Offer</h3>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <button aria-label="Close dialog" onClick={onClose} className="text-gray-400 hover:text-gray-600">
               <XMarkIcon className="h-6 w-6" />
             </button>
           </div>
 
+          {jobsError && <p role="alert" className="mb-4 text-sm text-red-700">{jobsError}</p>}
+          <label className="mb-5 block text-sm font-medium text-gray-800">Job requisition<select aria-label="Job requisition" required className="mt-2 w-full rounded-md border border-gray-300 px-3 py-2" value={formData.job_id} onChange={event => { const job = jobs.find(j => j.id === event.target.value); setFormData(previous => ({ ...previous, job_id: event.target.value, job_title: job?.job_title || job?.title || '' })); }}><option value="">Choose an organization-owned job</option>{jobs.map(job => <option key={job.id} value={job.id}>{job.job_title || job.title}</option>)}</select></label>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Candidate Name</label>
-              <input
+              <input aria-label="Candidate Name"
                 type="text"
                 value={formData.candidate_name}
                 onChange={(e) => setFormData({ ...formData, candidate_name: e.target.value })}
@@ -974,13 +991,13 @@ const CreateOfferModal = ({ isOpen, onClose, onCreate }: {
                 value={formData.job_title}
                 onChange={(e) => setFormData({ ...formData, job_title: e.target.value })}
                 className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500"
-                placeholder="e.g., Software Developer"
+                placeholder="Selected job title" readOnly aria-label="Selected job title"
               />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Offer Template</label>
-              <select
+              <select aria-label="Offer Template"
                 value={formData.template}
                 onChange={(e) => setFormData({ ...formData, template: e.target.value })}
                 className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500"
@@ -994,7 +1011,7 @@ const CreateOfferModal = ({ isOpen, onClose, onCreate }: {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">CTC Band</label>
-              <select
+              <select aria-label="CTC Band"
                 value={formData.ctc_band}
                 onChange={(e) => setFormData({ ...formData, ctc_band: e.target.value })}
                 className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500"
@@ -1009,7 +1026,7 @@ const CreateOfferModal = ({ isOpen, onClose, onCreate }: {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Offered CTC</label>
-              <input
+              <input aria-label="Offered CTC"
                 type="text"
                 value={formData.offered_ctc}
                 onChange={(e) => setFormData({ ...formData, offered_ctc: e.target.value })}
@@ -1020,7 +1037,7 @@ const CreateOfferModal = ({ isOpen, onClose, onCreate }: {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Expiry (Days)</label>
-              <select
+              <select aria-label="Expiry (Days)"
                 value={formData.expiry_days}
                 onChange={(e) => setFormData({ ...formData, expiry_days: parseInt(e.target.value) })}
                 className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500"
@@ -1038,7 +1055,7 @@ const CreateOfferModal = ({ isOpen, onClose, onCreate }: {
             <div className="grid grid-cols-2 gap-2">
               {benefitOptions.map(benefit => (
                 <label key={benefit} className="flex items-center">
-                  <input
+                  <input aria-label="Includes(benefit)"
                     type="checkbox"
                     checked={formData.benefits.includes(benefit)}
                     onChange={(e) => {
@@ -1058,7 +1075,7 @@ const CreateOfferModal = ({ isOpen, onClose, onCreate }: {
 
           <div className="mt-4">
             <label className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
-            <textarea
+            <textarea aria-label="Notes"
               value={formData.notes}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               rows={3}
@@ -1076,7 +1093,7 @@ const CreateOfferModal = ({ isOpen, onClose, onCreate }: {
             </button>
             <button
               onClick={handleCreate}
-              disabled={!formData.candidate_name || !formData.job_title || !formData.offered_ctc || isSubmitting}
+              disabled={!formData.job_id || !formData.candidate_name || !formData.job_title || !formData.offered_ctc || isSubmitting}
               className="px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md hover:bg-primary-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
             >
               {isSubmitting ? 'Creating...' : 'Create Offer'}
@@ -1084,7 +1101,7 @@ const CreateOfferModal = ({ isOpen, onClose, onCreate }: {
           </div>
         </div>
       </div>
-    </div>
+    </div></AccessibleModal>
   );
 };
 
@@ -1355,6 +1372,7 @@ const OffersDecisions = () => {
         showToast(`Offer withdrawn for ${selectedOffer.candidate_name}`, 'success');
       } else {
         showToast(`Error withdrawing offer: ${result.error}`, 'error');
+        return;
       }
       setShowWithdrawModal(false);
       setSelectedOffer(null);
@@ -1373,6 +1391,7 @@ const OffersDecisions = () => {
         showToast(`Offer extended by ${days} days for ${selectedOffer.candidate_name}`, 'success');
       } else {
         showToast(`Error extending offer: ${result.error}`, 'error');
+        return;
       }
       setShowExtendModal(false);
       setSelectedOffer(null);
@@ -1413,9 +1432,8 @@ const OffersDecisions = () => {
   };
 
   const acceptanceRate = stats.acceptanceRate;
-  const avgTimeToOffer = offers.filter(o => o.status === 'accepted').length > 0
-    ? 5.2
-    : 0;
+  const responseTimes = offers.filter(o => o.response_date && o.offer_date).map(o => (Date.parse(o.response_date!) - Date.parse(o.offer_date!)) / 86400000).filter(value => Number.isFinite(value) && value >= 0);
+  const avgTimeToOffer = responseTimes.length ? (responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length).toFixed(1) : '—';
 
   if (loading) {
     return (
@@ -1452,12 +1470,12 @@ const OffersDecisions = () => {
   return (
     <div className="p-6 pb-20 md:pb-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Offers & Decisions</h1>
           <p className="text-gray-600 mt-1">Manage job offers and candidate responses</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <OfferAdvancedFilters
             filters={filters}
             sort={sort}
@@ -1579,9 +1597,9 @@ const OffersDecisions = () => {
         <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg border border-blue-200 p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-blue-800">Avg Time-to-Offer</p>
-              <p className="text-3xl font-bold text-blue-900">{avgTimeToOffer} days</p>
-              <p className="text-xs text-blue-600 mt-1">From interview to offer</p>
+              <p className="text-sm font-medium text-blue-800">Avg Response Time</p>
+              <p className="text-3xl font-bold text-blue-900">{avgTimeToOffer === '—' ? '—' : `${avgTimeToOffer} days`}</p>
+              <p className="text-xs text-blue-600 mt-1">From offer date to recorded response</p>
             </div>
             <ClockIcon className="h-12 w-12 text-blue-600" />
           </div>
@@ -1629,7 +1647,7 @@ const OffersDecisions = () => {
 
           <div className="flex items-center gap-2">
             <span className="text-sm text-gray-700">Show:</span>
-            <select
+            <select aria-label="Items Per Page"
               value={itemsPerPage}
               onChange={(e) => handleItemsPerPageChange(Number(e.target.value))}
               className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -1685,7 +1703,7 @@ const OffersDecisions = () => {
           </div>
 
           <div className="flex items-center gap-2">
-            <button
+            <button aria-label="Previous page"
               onClick={() => handlePageChange(currentPage - 1)}
               disabled={currentPage === 1}
               className="p-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
@@ -1729,7 +1747,7 @@ const OffersDecisions = () => {
               })}
             </div>
 
-            <button
+            <button aria-label="Next page"
               onClick={() => handlePageChange(currentPage + 1)}
               disabled={currentPage === totalPages}
               className="p-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"

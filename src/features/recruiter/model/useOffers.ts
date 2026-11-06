@@ -157,6 +157,7 @@ export const useOffers = (filters?: OfferFilters, sort?: OfferSortOptions) => {
     try {
       const response: any = await apiPost('/recruiter/offers', {
         id, ...updates,
+        expectedUpdatedAt: offers.find(offer => offer.id === id)?.updated_at,
         updated_at: new Date().toISOString(),
       });
       const data = response?.data?.offer;
@@ -224,7 +225,7 @@ export const useOffers = (filters?: OfferFilters, sort?: OfferSortOptions) => {
     try {
       const response: any = await apiGet(`/recruiter/offers?id=${encodeURIComponent(id)}`);
       const offersList: Offer[] = response?.data?.offers ?? [];
-      const offer = offersList[0];
+      const offer = offersList.find(offer => offer.id === id);
       if (!offer) throw new Error('Offer not found');
 
       const currentExpiry = new Date(offer.expiry_date);
@@ -235,7 +236,7 @@ export const useOffers = (filters?: OfferFilters, sort?: OfferSortOptions) => {
         response_deadline: currentExpiry.toISOString(),
       });
 
-      if (user) {
+      if (result.success && user) {
         await createNotification(
           user.email ?? user.id,
           "offer_expiring",

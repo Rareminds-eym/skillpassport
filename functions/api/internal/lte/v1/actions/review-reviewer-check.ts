@@ -1,3 +1,4 @@
+import {resolveReviewCollege} from "../review-affiliation";
 import { z } from "zod";
 import { listOrgEducators } from "../review-educators";
 import type { GatewayAction } from "../types";
@@ -17,6 +18,7 @@ const payloadSchema = z.object({ reviewerId: z.string().uuid() }).strict();
 interface Learner {
   school_id: string | null;
   college_id: string | null;
+  university_college_id?: string | null;
   program_id: string | null;
   school_class_id: string | null;
 }
@@ -28,10 +30,10 @@ export const handleReviewerCheck: GatewayAction = async (ctx, payload) => {
   // Nobody reviews their own work.
   if (parsed.data.reviewerId === ctx.userId) return { ok: true, data: null };
   const learners = await ctx.db.query<Learner>(
-    `learners?user_id=eq.${ctx.userId}&is_deleted=is.false&select=school_id,college_id,program_id,school_class_id&limit=2`,
+    `learners?user_id=eq.${ctx.userId}&is_deleted=is.false&select=school_id,college_id,university_college_id,program_id,school_class_id&limit=2`,
   );
   if (learners.length !== 1) return { ok: true, data: null };
-  const learner = learners[0]!;
+  const learner = {...learners[0]!,college_id:await resolveReviewCollege(ctx.db,learners[0]!)};
   // A learner tied to both a school and a college is ambiguous: no scope, and
   // eligibility in either of their organisations.
   const candidates = [

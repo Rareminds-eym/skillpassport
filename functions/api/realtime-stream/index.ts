@@ -33,6 +33,20 @@ export const onRequestGet: PagesFunction<RealtimeStreamEnv> = async (context) =>
   }
 
   try {
+    // Connection tickets are authenticated, single-use capabilities consumed
+    // by the realtime worker. No browser-readable access JWT is required.
+    const offered = (context.request.headers.get('Sec-WebSocket-Protocol') || '').split(',').map(value=>value.trim());
+    if (offered.includes('connection_ticket')) {
+      const ticket=offered[offered.indexOf('connection_ticket')+1] || '';
+      const match=/^(\d+)\.\d{13}\.[a-f0-9]{64}$/.exec(ticket);
+      const partition=match ? Number(match[1]) : -1;
+      const partitions=Number(context.env.REALTIME_PARTITIONS) || 10;
+      if(partition<0 || partition>=partitions)return jsonError(401,'Invalid connection ticket',requestId);
+      if(!context.env.REALTIME_HUB)return jsonError(503,'Realtime service unavailable',requestId);
+      const id=context.env.REALTIME_HUB.idFromName(`partition-${partition}`);
+      return context.env.REALTIME_HUB.get(id).fetch(new Request('http://do/connect',{headers:context.request.headers}));
+    }
+
     // Extract JWT from Sec-WebSocket-Protocol header.
     // The client sends subprotocols as a comma-separated list, e.g.:
     //   "access_token, eyJhbG..."

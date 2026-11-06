@@ -802,6 +802,11 @@ async function getOrganizationByAdminIdHandler(context: AuthenticatedContext) {
     return apiError(400, 'VALIDATION_ERROR', 'adminId is required', context.request);
   }
 
+  const actor = getContextUser(context);
+  if (adminId !== actor.id) {
+    return apiError(403, 'FORBIDDEN', 'Only your own administrator organization may be requested.', context.request);
+  }
+
   try {
     // Try direct admin_id lookup first (fastest path)
     let query = supabase.from('organizations').select('*').eq('admin_id', adminId);
@@ -817,6 +822,32 @@ async function getOrganizationByAdminIdHandler(context: AuthenticatedContext) {
     // Found via direct lookup - success
     if (data) {
       return apiSuccess(data, context.request);
+    }
+
+    // Additional administrators share the college through SSO memberships.
+    // Never replace the original owner's admin_id or trust a client-supplied org.
+    if (actor.org_id) {
+      let memberships;
+      try {
+        memberships = await (context.env as PagesEnv).SSO_SERVICE.getUserMemberships(actor.id);
+      } catch {
+        return apiError(503, 'MEMBERSHIP_UNAVAILABLE', 'Your administrator membership could not be verified. Please retry.', context.request);
+      }
+      if (!Array.isArray(memberships?.memberships)) {
+        return apiError(503, 'MEMBERSHIP_UNAVAILABLE', 'Your administrator membership could not be verified. Please retry.', context.request);
+      }
+      const membership = memberships.memberships.find((m: { org_id: string; status: string; roles?: string[] }) =>
+        m.org_id === actor.org_id && m.status === 'active');
+      const adminRoles: Record<string, string> = { college: 'college_admin', school: 'school_admin', university: 'university_admin' };
+      if (membership && Array.isArray(membership.roles) &&
+          (orgType ? membership.roles.includes(adminRoles[orgType]) : Object.values(adminRoles).some(role => membership.roles.includes(role)))) {
+        let memberQuery = supabase.from('organizations').select('*').eq('id', actor.org_id);
+        if (orgType) memberQuery = memberQuery.eq('organization_type', orgType);
+        const { data: memberOrg, error: memberError } = await memberQuery.maybeSingle();
+        if (memberError) return apiError(500, 'DATABASE_ERROR', 'Failed to query your organization.', context.request);
+        if (!memberOrg) return apiError(503, 'ORGANIZATION_UNAVAILABLE', 'Your organization is not available yet. Please retry.', context.request);
+        if (membership.roles.includes(adminRoles[memberOrg.organization_type])) return apiSuccess(memberOrg, context.request);
+      }
     }
     
     // Try metadata lookup: auth-sync-consumer populates metadata->admin_id but may not

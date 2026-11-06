@@ -422,7 +422,7 @@ const Messages = () => {
                 />
               </svg>
               <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-[13px] font-bold text-green-600 tabular-nums w-3 text-center">
+                <span className="text-[13px] font-bold text-green-700 tabular-nums w-3 text-center">
                   {Math.ceil(displayTime)}
                 </span>
               </div>
@@ -597,8 +597,8 @@ const Messages = () => {
 
   const renderStatusIcon = useCallback((status: string) => (
     <div className="flex">
-      <CheckIcon className={`w-3 h-3 ${status === 'read' ? 'text-blue-500' : 'text-gray-400'}`} />
-      {status !== 'sent' && <CheckIcon className={`w-3 h-3 -ml-1 ${status === 'read' ? 'text-blue-500' : 'text-gray-400'}`} />}
+      <CheckIcon className={`w-3 h-3 ${status === 'read' ? 'text-blue-500' : 'text-gray-600'}`} />
+      {status !== 'sent' && <CheckIcon className={`w-3 h-3 -ml-1 ${status === 'read' ? 'text-blue-500' : 'text-gray-600'}`} />}
     </div>
   ), []);
 
@@ -638,7 +638,7 @@ const Messages = () => {
               </h1>
             </div>
             <div className="relative">
-              <MagnifyingGlassIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <MagnifyingGlassIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-600" />
               <input
                 type="text"
                 placeholder="Search conversations..."
@@ -672,7 +672,7 @@ const Messages = () => {
                     </p>
                   </div>
                 </div>
-                <ChevronRightIcon className="w-5 h-5 text-gray-400 group-hover:text-gray-600" />
+                <ChevronRightIcon className="w-5 h-5 text-gray-600 group-hover:text-gray-600" />
               </button>
             )}
 
@@ -687,9 +687,9 @@ const Messages = () => {
               <div className="flex flex-col items-center justify-center h-full p-8 text-center">
                 <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
                   {showArchived ? (
-                    <ArchiveBoxIcon className="w-10 h-10 text-gray-400" />
+                    <ArchiveBoxIcon className="w-10 h-10 text-gray-600" />
                   ) : (
-                    <MagnifyingGlassIcon className="w-10 h-10 text-gray-400" />
+                    <MagnifyingGlassIcon className="w-10 h-10 text-gray-600" />
                   )}
                 </div>
                 <p className="text-gray-600 text-sm font-medium">
@@ -700,7 +700,7 @@ const Messages = () => {
                       : 'No conversations yet'
                   }
                 </p>
-                <p className="text-gray-400 text-xs mt-2">
+                <p className="text-gray-600 text-xs mt-2">
                   {showArchived
                     ? 'Archived conversations will appear here'
                     : searchQuery
@@ -740,7 +740,7 @@ const Messages = () => {
                         <h3 className="font-bold text-gray-900 text-base truncate">
                           {contact.name}
                         </h3>
-                        <span className="text-xs text-gray-400 ml-2 flex-shrink-0">
+                        <span className="text-xs text-gray-600 ml-2 flex-shrink-0">
                           {contact.time}
                         </span>
                       </div>
@@ -785,7 +785,7 @@ const Messages = () => {
                       className="p-2 hover:bg-red-100 rounded-full transition-colors"
                       title="Delete conversation"
                     >
-                      <TrashIcon className="w-5 h-5 text-red-600" />
+                      <TrashIcon className="w-5 h-5 text-red-700" />
                     </button>
                   </div>
                 </div>
@@ -853,12 +853,12 @@ const Messages = () => {
                 ) : displayMessages.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-full">
                     <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                      <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-10 h-10 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
                       </svg>
                     </div>
                     <p className="text-gray-600 font-semibold">No messages yet</p>
-                    <p className="text-gray-400 text-sm mt-2">Start the conversation!</p>
+                    <p className="text-gray-600 text-sm mt-2">Start the conversation!</p>
                   </div>
                 ) : (
                   displayMessages.map((message) => (
@@ -878,7 +878,7 @@ const Messages = () => {
                           </p>
                           <div className="flex items-center justify-end gap-2 mt-2">
                             <span
-                              className={`text-xs ${message.sender === 'me' ? 'text-blue-600' : 'text-gray-400'
+                              className={`text-xs ${message.sender === 'me' ? 'text-blue-600' : 'text-gray-600'
                                 }`}
                             >
                               {message.time}
@@ -942,7 +942,7 @@ const Messages = () => {
                       className="absolute right-4 bottom-3.5 p-2 hover:bg-gray-100 rounded-full transition-colors"
                       title="Emoji"
                     >
-                      <FaceSmileIcon className="w-6 h-6 text-gray-400" />
+                      <FaceSmileIcon className="w-6 h-6 text-gray-600" />
                     </button>
                   </div>
                   <button

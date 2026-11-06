@@ -1,5 +1,6 @@
 import { careerApiService } from '@/features/counselling';
 import { apiPost } from '@/shared/api/apiClient';
+import { recommendationSourceSaved } from '@/shared/model/recommendations/sourceSaved';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('ai-recommendation-service');
@@ -30,9 +31,10 @@ class AIRecommendationService {
       }
 
       // Generate fresh recommendations via Cloudflare Worker (falls back to edge function)
-      let data, error;
+      let data;
       try {
-        data = await careerApiService.getRecommendations(learnerId, { forceRefresh: true });
+        const envelope = await careerApiService.getRecommendations(learnerId, { forceRefresh });
+        data = envelope?.data || envelope;
       } catch (err: unknown) {
         logger.error('Error fetching recommendations', err instanceof Error ? err : new Error(String(err)));
         throw err;
@@ -46,7 +48,7 @@ class AIRecommendationService {
       return {
         success: true,
         recommendations: data?.recommendations || [],
-        cached: false,
+        cached: data?.cached === true,
         fallback: data?.fallback || false,
         reason: data?.reason
       };
@@ -180,7 +182,8 @@ class AIRecommendationService {
    */
   async trackInteraction(learnerId, opportunityId, action) {
     try {
-      await apiPost('/ai-tutor/actions', { action: 'track-interaction', learner_id: learnerId, opportunity_id: opportunityId, interaction_type: action });
+      const acknowledged: any = await apiPost('/ai-tutor/actions', { action: 'track-interaction', learner_id: learnerId, opportunity_id: opportunityId, interaction_type: action });
+      if ((action === 'apply' || action === 'dismiss') && acknowledged.data?.learnerId) recommendationSourceSaved(acknowledged.data.learnerId);
 
       // Increment view count if viewing
       if (action === 'view') {

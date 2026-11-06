@@ -63,7 +63,7 @@ import { handlePauseSubscription } from './handlers/pause-subscription';
 import { handleResumeSubscription } from './handlers/resume-subscription';
 import { handleUpdateEventPaymentStatus } from './handlers/update-event-payment-status';
 import { handleCreateAddonOrder } from './handlers/create-addon-order';
-import { handleVerifyAddonPayment } from './handlers/verify-addon-payment';
+import { handleVerifyAddonPayment, handleReconcileAddonPayment } from './handlers/verify-addon-payment';
 import { handleCreateBundleOrder } from './handlers/create-bundle-order';
 import { handleVerifyBundlePayment } from './handlers/verify-bundle-payment';
 import { handleCreateEventOrder } from './handlers/create-event-order';
@@ -218,6 +218,11 @@ const handleAuthenticatedRequest = withAuth(async (context: AuthenticatedContext
   if (path === '/toggle-addon-autorenew') {
     if (method !== 'POST') return methodNotAllowed(context.request);
     return handleToggleAddonAutoRenew(context);
+  }
+
+  if (path === '/reconcile-addon-payment') {
+    if (method !== 'POST') return methodNotAllowed(context.request);
+    return handleReconcileAddonPayment(context);
   }
 
   if (path === '/verify-addon-payment') {

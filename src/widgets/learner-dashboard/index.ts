@@ -20,7 +20,7 @@ export { default as EmployabilityScoreCard } from './ui/EmployabilityScoreCard';
 export { default as Footer } from './ui/Footer';
 export { default as Header } from './ui/Header';
 export { default as HeroSection } from './ui/HeroSection';
-export { default as IndustrialVisitPreview } from './ui/IndustrialVisitPreview';
+export { default as IndustrialVisitPreview, IndustrialVisitRegistration } from './ui/IndustrialVisitPreview';
 export { default as IndustrialVisitsSection } from './ui/IndustrialVisitsSection';
 export { default as LearningAnalyticsDashboard } from './ui/LearningAnalyticsDashboard';
 export { default as LearningCoursesSection } from './ui/LearningCoursesSection';

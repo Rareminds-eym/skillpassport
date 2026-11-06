@@ -32,7 +32,7 @@ const FilterSection = ({ title, children, defaultOpen = false }) => {
 
   return (
     <div className="border-b border-gray-200 py-4">
-      <button
+      <button aria-label="Span"
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center justify-between w-full text-left"
       >
@@ -49,7 +49,7 @@ const CheckboxGroup = ({ options, selectedValues, onChange }) => {
     <div className="space-y-2">
       {options.map((option) => (
         <label key={option.value} className="flex items-center">
-          <input
+          <input aria-label="Value)"
             type="checkbox"
             checked={selectedValues.includes(option.value)}
             onChange={(e) => {
@@ -137,7 +137,7 @@ const AddToShortlistModal = ({ isOpen, onClose, candidate, onSuccess }) => {
         <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-medium text-gray-900">Add to Shortlist</h3>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <button aria-label="Close dialog" onClick={onClose} className="text-gray-600 hover:text-gray-600">
               <XMarkIcon className="h-6 w-6" />
             </button>
           </div>
@@ -165,7 +165,7 @@ const AddToShortlistModal = ({ isOpen, onClose, candidate, onSuccess }) => {
                 <p className="text-sm text-gray-600">No shortlists available. Create one first.</p>
               </div>
             ) : (
-              <select
+              <select aria-label="Selected Shortlist Id"
                 value={selectedShortlistId}
                 onChange={(e) => setSelectedShortlistId(e.target.value)}
                 className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -310,7 +310,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, candidate, onSuccess }) => {
               <h3 className="text-lg font-medium text-gray-900">Schedule Interview</h3>
               <p className="text-sm text-gray-500">Schedule an interview with {candidate?.name}</p>
             </div>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <button aria-label="Close dialog" onClick={onClose} className="text-gray-600 hover:text-gray-600">
               <XMarkIcon className="h-6 w-6" />
             </button>
           </div>
@@ -327,7 +327,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, candidate, onSuccess }) => {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Job Title <span className="text-red-500">*</span>
               </label>
-              <input
+              <input aria-label="Job Title *"
                 type="text"
                 value={formData.job_title}
                 onChange={(e) => setFormData({ ...formData, job_title: e.target.value })}
@@ -342,7 +342,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, candidate, onSuccess }) => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Interviewer Name <span className="text-red-500">*</span>
                 </label>
-                <input
+                <input aria-label="Interviewer Name *"
                   type="text"
                   value={formData.interviewer}
                   onChange={(e) => setFormData({ ...formData, interviewer: e.target.value })}
@@ -354,7 +354,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, candidate, onSuccess }) => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Interviewer Email
                 </label>
-                <input
+                <input aria-label="Interviewer Email"
                   type="email"
                   value={formData.interviewer_email}
                   onChange={(e) => setFormData({ ...formData, interviewer_email: e.target.value })}
@@ -370,7 +370,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, candidate, onSuccess }) => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Interview Date <span className="text-red-500">*</span>
                 </label>
-                <input
+                <input aria-label="Interview Date *"
                   type="date"
                   value={formData.date}
                   onChange={(e) => setFormData({ ...formData, date: e.target.value })}
@@ -382,7 +382,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, candidate, onSuccess }) => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Time <span className="text-red-500">*</span>
                 </label>
-                <input
+                <input aria-label="Time *"
                   type="time"
                   value={formData.time}
                   onChange={(e) => setFormData({ ...formData, time: e.target.value })}
@@ -397,7 +397,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, candidate, onSuccess }) => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Duration (minutes)
                 </label>
-                <select
+                <select aria-label="Duration (minutes)"
                   value={formData.duration}
                   onChange={(e) => setFormData({ ...formData, duration: parseInt(e.target.value) })}
                   className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -413,7 +413,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, candidate, onSuccess }) => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Interview Type
                 </label>
-                <select
+                <select aria-label="Interview Type"
                   value={formData.type}
                   onChange={(e) => setFormData({ ...formData, type: e.target.value })}
                   className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -433,7 +433,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, candidate, onSuccess }) => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Meeting Platform
                 </label>
-                <select
+                <select aria-label="Meeting Platform"
                   value={formData.meeting_type}
                   onChange={(e) => setFormData({ ...formData, meeting_type: e.target.value })}
                   className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -449,7 +449,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, candidate, onSuccess }) => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Meeting Link
                 </label>
-                <input
+                <input aria-label="Meeting Link"
                   type="url"
                   value={formData.meeting_link}
                   onChange={(e) => setFormData({ ...formData, meeting_link: e.target.value })}
@@ -464,7 +464,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, candidate, onSuccess }) => {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Notes (Optional)
               </label>
-              <textarea
+              <textarea aria-label="Notes (Optional)"
                 value={formData.meeting_notes}
                 onChange={(e) => setFormData({ ...formData, meeting_notes: e.target.value })}
                 rows={3}
@@ -598,7 +598,7 @@ const SaveSearchModal = ({ isOpen, onClose, searchQuery, filters, onSuccess }) =
               <h3 className="text-lg font-medium text-gray-900">Save Search</h3>
               <p className="text-sm text-gray-500 mt-1">Save your current search and filters for quick access</p>
             </div>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <button aria-label="Close dialog" onClick={onClose} className="text-gray-600 hover:text-gray-600">
               <XMarkIcon className="h-6 w-6" />
             </button>
           </div>
@@ -641,7 +641,7 @@ const SaveSearchModal = ({ isOpen, onClose, searchQuery, filters, onSuccess }) =
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Search Name <span className="text-red-500">*</span>
             </label>
-            <input
+            <input aria-label="Search Name *"
               type="text"
               value={searchName}
               onChange={(e) => setSearchName(e.target.value)}
@@ -719,7 +719,7 @@ const CandidateCard = ({ candidate, onViewProfile, onShortlist, onScheduleInterv
         <div>
           <h3 className="font-medium text-gray-900">{candidate.name}</h3>
           <p className="text-sm text-gray-500">{candidate.dept}</p>
-          <p className="text-xs text-gray-400">{candidate.college} • {candidate.location}</p>
+          <p className="text-xs text-gray-600">{candidate.college} • {candidate.location}</p>
         </div>
         <div className="flex flex-col items-end">
           <div className="flex items-center mb-1">
@@ -1317,7 +1317,7 @@ type RecruiterOutletContext = {
 //             {viewMode === 'grid' ? (
 //               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 //                 {loading && <div className="text-sm text-gray-500">Loading learners...</div>}
-//                 {error && <div className="text-sm text-red-600">{error}</div>}
+//                 {error && <div className="text-sm text-red-600">{error}</div>}>}
 //                 {!loading && filteredAndSortedlearners.map((candidate) => (
 //                   <CandidateCard
 //                     key={candidate.id}
@@ -1334,7 +1334,7 @@ type RecruiterOutletContext = {
 //                         ? 'No candidates match your current filters' 
 //                         : 'No learners found.'}
 //                     </p>
-//                     <p className="text-xs text-gray-400 mt-2">
+//                     <p className="text-xs text-gray-400 mt-2">">
 //                       Try adjusting your search terms or filters.
 //                     </p>
 //                     {(filters.skills.length > 0 || filters.locations.length > 0 || filters.courses.length > 0) && (
@@ -1428,7 +1428,7 @@ type RecruiterOutletContext = {
 //                             </button>
 //                             <button 
 //                               onClick={() => handleScheduleInterviewClick(candidate)}
-//                               className="text-green-600 hover:text-green-900"
+//                               className="text-green-600 hover:text-green-900"0"
 //                             >
 //                               Schedule
 //                             </button>
@@ -2152,7 +2152,7 @@ type RecruiterOutletContext = {
 //             {viewMode === 'grid' ? (
 //               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 //                 {loading && <div className="text-sm text-gray-500">Loading learners...</div>}
-//                 {error && <div className="text-sm text-red-600">{error}</div>}
+//                 {error && <div className="text-sm text-red-600">{error}</div>}>}
 //                 {!loading && filteredAndSortedlearners.map((candidate) => (
 //                   <CandidateCard
 //                     key={candidate.id}
@@ -2169,7 +2169,7 @@ type RecruiterOutletContext = {
 //                         ? 'No candidates match your current filters' 
 //                         : 'No learners found.'}
 //                     </p>
-//                     <p className="text-xs text-gray-400 mt-2">
+//                     <p className="text-xs text-gray-400 mt-2">">
 //                       Try adjusting your search terms or filters.
 //                     </p>
 //                     {(filters.skills.length > 0 || filters.locations.length > 0 || filters.courses.length > 0) && (
@@ -2263,7 +2263,7 @@ type RecruiterOutletContext = {
 //                             </button>
 //                             <button 
 //                               onClick={() => handleScheduleInterviewClick(candidate)}
-//                               className="text-green-600 hover:text-green-900"
+//                               className="text-green-600 hover:text-green-900"0"
 //                             >
 //                               Schedule
 //                             </button>
@@ -3056,7 +3056,7 @@ type RecruiterOutletContext = {
 //             {viewMode === 'grid' ? (
 //               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 //                 {loading && <div className="text-sm text-gray-500">Loading learners...</div>}
-//                 {error && <div className="text-sm text-red-600">{error}</div>}
+//                 {error && <div className="text-sm text-red-600">{error}</div>}>}
 //                 {!loading && filteredAndSortedlearners.map((candidate) => (
 //                   <CandidateCard
 //                     key={candidate.id}
@@ -3073,7 +3073,7 @@ type RecruiterOutletContext = {
 //                         ? 'No candidates match your current filters' 
 //                         : 'No learners found.'}
 //                     </p>
-//                     <p className="text-xs text-gray-400 mt-2">
+//                     <p className="text-xs text-gray-400 mt-2">">
 //                       Try adjusting your search terms or filters.
 //                     </p>
 //                     {(filters.skills.length > 0 || filters.locations.length > 0 || filters.courses.length > 0) && (
@@ -3167,7 +3167,7 @@ type RecruiterOutletContext = {
 //                             </button>
 //                             <button 
 //                               onClick={() => handleScheduleInterviewClick(candidate)}
-//                               className="text-green-600 hover:text-green-900"
+//                               className="text-green-600 hover:text-green-900"0"
 //                             >
 //                               Schedule
 //                             </button>
@@ -3778,7 +3778,7 @@ const TalentPoolContent = () => {
             )}
           </button>
           <div className="flex rounded-md shadow-sm">
-            <button
+            <button aria-label="Grid view"
               onClick={() => setViewMode('grid')}
               className={`px-3 py-2 text-sm font-medium rounded-l-md border ${viewMode === 'grid'
                 ? 'bg-primary-50 border-primary-300 text-primary-700'
@@ -3787,7 +3787,7 @@ const TalentPoolContent = () => {
             >
               <Squares2X2Icon className="h-4 w-4" />
             </button>
-            <button
+            <button aria-label="Table Cells"
               onClick={() => setViewMode('table')}
               className={`px-3 py-2 text-sm font-medium rounded-r-md border-t border-r border-b ${viewMode === 'table'
                 ? 'bg-primary-50 border-primary-300 text-primary-700'
@@ -3839,7 +3839,7 @@ const TalentPoolContent = () => {
             )}
           </button>
           <div className="flex rounded-md shadow-sm">
-            <button
+            <button aria-label="Grid view"
               onClick={() => setViewMode('grid')}
               className={`px-3 py-2 text-sm font-medium rounded-l-md border ${viewMode === 'grid'
                 ? 'bg-primary-50 border-primary-300 text-primary-700'
@@ -3848,7 +3848,7 @@ const TalentPoolContent = () => {
             >
               <Squares2X2Icon className="h-4 w-4" />
             </button>
-            <button
+            <button aria-label="Table Cells"
               onClick={() => setViewMode('table')}
               className={`px-3 py-2 text-sm font-medium rounded-r-md border-t border-r border-b ${viewMode === 'table'
                 ? 'bg-primary-50 border-primary-300 text-primary-700'
@@ -3934,7 +3934,7 @@ const TalentPoolContent = () => {
                       <label className="block text-sm text-gray-700 mb-1">
                         Min Score: {filters.minScore}
                       </label>
-                      <input
+                      <input aria-label="Min Score:"
                         type="range"
                         min="0"
                         max="100"
@@ -3986,7 +3986,7 @@ const TalentPoolContent = () => {
                     marginPagesDisplayed={1}
                   />
                 )}
-                <select
+                <select aria-label="Sort By"
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
                   className="text-sm border border-gray-300 rounded-md px-3 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -4006,7 +4006,7 @@ const TalentPoolContent = () => {
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {loading && <div className="text-sm text-gray-500">Loading learners...</div>}
-                  {error && <div className="text-sm text-red-600">{error}</div>}
+                  {error && <div className="text-sm text-red-700">{error}</div>}
                   {!loading && paginatedlearners.map((candidate) => (
                     <CandidateCard
                       key={candidate.id}
@@ -4023,7 +4023,7 @@ const TalentPoolContent = () => {
                           <p className="text-sm text-gray-500">
                             No candidates match your current filters
                           </p>
-                          <p className="text-xs text-gray-400 mt-2">
+                          <p className="text-xs text-gray-600 mt-2">
                             Try adjusting your search terms or filters.
                           </p>
                           {(filters.skills.length > 0 || filters.locations.length > 0 || filters.courses.length > 0) && (
@@ -4154,7 +4154,7 @@ const TalentPoolContent = () => {
                               </button>
                               <button
                                 onClick={() => handleScheduleInterviewClick(candidate)}
-                                className="text-green-600 hover:text-green-900"
+                                className="text-green-700 hover:text-green-900"
                               >
                                 Schedule
                               </button>

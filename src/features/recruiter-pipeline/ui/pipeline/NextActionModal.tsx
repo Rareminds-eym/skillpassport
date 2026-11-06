@@ -81,7 +81,7 @@ export const NextActionModal: React.FC<NextActionModalProps> = ({
               <h3 className="text-lg font-medium text-gray-900">Set Next Action</h3>
               <p className="text-sm text-gray-500">{candidate?.name}</p>
             </div>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <button onClick={onClose} className="text-gray-600 hover:text-gray-600">
               <XMarkIcon className="h-6 w-6" />
             </button>
           </div>

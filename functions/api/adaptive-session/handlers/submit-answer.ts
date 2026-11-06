@@ -11,7 +11,6 @@ import { createSupabaseAdminClient } from '../../../lib/supabase';
 import { getContextUser } from '../../../lib/auth';
 import type { 
   SubmitAnswerOptions, 
-  AnswerResult, 
   TestPhase, 
   DifficultyLevel, 
   Question,
@@ -29,6 +28,19 @@ import { AdaptiveEngine } from '../utils/adaptive-engine';
  * - Checks phase completion and stop conditions
  * - Requires authentication and session ownership verification
  */
+async function committedAnswerResponse(supabase:any,request:Request,committed:any,metadata:Record<string,unknown>={}) {
+ const session=committed.session;
+ if(!session||!committed.recorded)return apiError(503,'ANSWER_UNAVAILABLE','Answer confirmation unavailable',request);
+ const responses=await supabase.from('adaptive_aptitude_responses').select('*').eq('session_id',session.id).order('sequence_number',{ascending:true});
+ if(responses.error)return apiError(503,'ANSWER_UNAVAILABLE','Recorded answer recovery unavailable',request);
+ const previousDifficulty=committed.previousDifficulty,newDifficulty=session.current_difficulty;
+ return apiSuccess({previousDifficulty,newDifficulty,difficultyChange:newDifficulty-previousDifficulty,
+  phaseComplete:false,nextPhase:null,testComplete:session.status==='completed',stopCondition:null,...metadata,
+  isCorrect:committed.isCorrect,replayed:committed.replayed===true,
+  updatedSession:dbSessionToTestSession(session,(responses.data||[]).map(dbResponseToResponse),session.current_phase_questions||[]),
+ },request);
+}
+
 export const submitAnswerHandler: PagesFunction = async (context) => {
   const { request, env } = context;
 
@@ -45,6 +57,9 @@ export const submitAnswerHandler: PagesFunction = async (context) => {
     if (!sessionId || !questionId || !selectedAnswer || responseTimeMs === undefined) {
       return apiError(400, 'VALIDATION_ERROR', 'Missing required fields: sessionId, questionId, selectedAnswer, responseTimeMs', request);
     }
+
+    if(typeof questionId!=='string'||questionId.length>200||!Number.isInteger(responseTimeMs)||responseTimeMs<0||responseTimeMs>3600000)
+      return apiError(400,'VALIDATION_ERROR','Invalid question or response time',request);
 
     // Validate selectedAnswer
     if (!['A', 'B', 'C', 'D'].includes(selectedAnswer)) {
@@ -92,6 +107,13 @@ export const submitAnswerHandler: PagesFunction = async (context) => {
       return apiError(403, 'FORBIDDEN', 'Unauthorized: You do not own this session', request);
     }
 
+    const replay=await supabase.rpc('commit_owned_adaptive_answer',{p_owner:userId,p_session:sessionId,p_question:questionId,
+      p_answer:selectedAnswer,p_response_time:responseTimeMs,p_read_only:true});
+    if(replay.error)return apiError(replay.error.code==='40001'?409:503,'ANSWER_UNAVAILABLE','Answer could not be confirmed',request);
+    if(!replay.data)return apiError(404,'NOT_FOUND','Session not found',request);
+    if(replay.data.recorded)return committedAnswerResponse(supabase,request,replay.data);
+    if(sessionData.status!=='in_progress')return apiError(409,'SESSION_CHANGED','Session is not accepting answers',request);
+
     console.log('📊 [SubmitAnswerHandler] Session state before update:', {
       currentQuestionIndex: sessionData.current_question_index,
       questionsAnswered: sessionData.questions_answered,
@@ -105,9 +127,9 @@ export const submitAnswerHandler: PagesFunction = async (context) => {
     const difficultyPath = (sessionData.difficulty_path as number[]).map(d => d as DifficultyLevel);
 
     // Find the current question
-    const currentQuestion = currentPhaseQuestions.find(q => q.id === questionId);
+    const currentQuestion = currentPhaseQuestions[currentQuestionIndex];
 
-    if (!currentQuestion) {
+    if (!currentQuestion || currentQuestion.id!==questionId) {
       return apiError(404, 'NOT_FOUND', 'Question not found in current phase', request);
     }
 
@@ -174,35 +196,8 @@ export const submitAnswerHandler: PagesFunction = async (context) => {
       explanation: currentQuestion.explanation || null,
     };
 
-    // Insert into adaptive_aptitude_responses table
-    const { error: responseError } = await supabase
-      .from('adaptive_aptitude_responses')
-      .insert(responseData)
-      .select()
-      .single();
-
-    if (responseError) {
-      console.error('❌ [SubmitAnswerHandler] Failed to record response:', responseError);
-      throw new Error(`Failed to record response: ${responseError.message}`);
-    }
-
-    // Also update all_responses JSONB column in session
-    const existingResponses = (sessionData.all_responses as any[]) || [];
-    const updatedResponses = [...existingResponses, {
-      question_id: questionId,
-      selected_answer: selectedAnswer,
-      is_correct: isCorrect,
-      response_time_ms: responseTimeMs,
-      difficulty_at_time: currentDifficulty,
-      subtag: currentQuestion.subtag,
-      phase: currentPhase,
-      sequence_number: sequenceNumber,
-      timestamp: new Date().toISOString(),
-    }];
-
     // Update session
     const newQuestionsAnswered = sessionData.questions_answered + 1;
-    const newCorrectAnswers = sessionData.correct_answers + (isCorrect ? 1 : 0);
     const newQuestionIndex = currentQuestionIndex + 1;
 
     console.log('📈 [SubmitAnswerHandler] Updating session:', {
@@ -263,7 +258,7 @@ export const submitAnswerHandler: PagesFunction = async (context) => {
         .select('*')
         .eq('session_id', sessionId);
 
-      const responses = (allResponses || []).map(dbResponseToResponse);
+      const responses = [...(allResponses || []).map(dbResponseToResponse),dbResponseToResponse({...responseData,id:crypto.randomUUID(),answered_at:new Date().toISOString()})];
       stopCondition = AdaptiveEngine.checkStopConditions(
         newQuestionsAnswered,
         newDifficultyPath,
@@ -298,73 +293,14 @@ export const submitAnswerHandler: PagesFunction = async (context) => {
       console.log('🔄 [SubmitAnswerHandler] Phase transition pending, test NOT complete yet');
     }
 
-    // Update session in database
-    const updateData: Record<string, unknown> = {
-      questions_answered: newQuestionsAnswered,
-      correct_answers: newCorrectAnswers,
-      current_question_index: newQuestionIndex,
-      current_difficulty: newDifficulty,
-      difficulty_path: newDifficultyPath,
-      provisional_band: provisionalBand,
-      all_responses: updatedResponses,
-      updated_at: new Date().toISOString(),
-    };
-
-    if (testComplete) {
-      updateData.status = 'completed';
-      updateData.completed_at = new Date().toISOString();
-    }
-
-    const { error: updateError } = await supabase
-      .from('adaptive_aptitude_sessions')
-      .update(updateData)
-      .eq('id', sessionId);
-
-    if (updateError) {
-      console.error('❌ [SubmitAnswerHandler] Failed to update session:', updateError);
-      throw new Error(`Failed to update session: ${updateError.message}`);
-    }
-
-    console.log('✅ [SubmitAnswerHandler] Session updated in database');
-
-    // Fetch updated session
-    const { data: updatedSessionData } = await supabase
-      .from('adaptive_aptitude_sessions')
-      .select('*')
-      .eq('id', sessionId)
-      .single();
-
-    console.log('📊 [SubmitAnswerHandler] Session state after update:', {
-      currentQuestionIndex: updatedSessionData?.current_question_index,
-      questionsAnswered: updatedSessionData?.questions_answered,
+    const committed=await supabase.rpc('commit_owned_adaptive_answer',{
+      p_owner:userId,p_session:sessionId,p_question:questionId,p_answer:selectedAnswer,p_response_time:responseTimeMs,p_read_only:false,
+      p_expected_index:currentQuestionIndex,p_expected_answered:sessionData.questions_answered,p_expected_phase:currentPhase,
+      p_new_difficulty:newDifficulty,p_provisional_band:provisionalBand,p_test_complete:testComplete,
     });
-
-    // Fetch all responses for the session
-    const { data: allSessionResponses } = await supabase
-      .from('adaptive_aptitude_responses')
-      .select('*')
-      .eq('session_id', sessionId)
-      .order('sequence_number', { ascending: true });
-
-    const updatedSession = dbSessionToTestSession(
-      updatedSessionData!,
-      (allSessionResponses || []).map(dbResponseToResponse),
-      currentPhaseQuestions
-    );
-
-    const result: AnswerResult = {
-      isCorrect,
-      previousDifficulty: currentDifficulty,
-      newDifficulty,
-      difficultyChange,
-      phaseComplete,
-      nextPhase,
-      testComplete,
-      stopCondition,
-      updatedSession,
-    };
-
-    return apiSuccess(result, request);
+    if(committed.error)return apiError(committed.error.code==='40001'?409:committed.error.code==='22023'?400:503,'ANSWER_UNAVAILABLE','Adaptive answer was not applied',request);
+    if(!committed.data)return apiError(404,'NOT_FOUND','Session not found',request);
+    return committedAnswerResponse(supabase,request,committed.data,{previousDifficulty:currentDifficulty,newDifficulty,difficultyChange,phaseComplete,nextPhase,testComplete,stopCondition});
 
   } catch (error) {
     console.error('❌ [SubmitAnswerHandler] Error:', error);

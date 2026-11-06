@@ -117,67 +117,44 @@ export function useFeatureGate(featureKey) {
         return;
       }
 
-      let fetchedAddOn = null;
-      try {
-        const addOnResult = await addOnCatalogService.getAddOnByFeatureKey(featureKey);
-        if (addOnResult.success && addOnResult.data) {
-          fetchedAddOn = addOnResult.data;
-        }
-      } catch (addOnErr) {
-        // Silently handle add-on fetch errors
-      }
+      let access = false;
+      let source = null;
 
       if (userId) {
         const result = await entitlementService.hasFeatureAccess(userId, featureKey);
 
         if (result.success) {
-          const { hasAccess: access, accessSource: source } = result.data;
-
-          setHasAccess(access);
-          setAccessSource(source);
-
-          if (!access) {
-            setRequiredAddOn(fetchedAddOn);
-          } else {
-            setRequiredAddOn(null);
-            fetchedAddOn = null;
-          }
-
-          accessCache.set(cacheKey, {
-            hasAccess: access,
-            accessSource: source,
-            requiredAddOn: access ? null : fetchedAddOn,
-            timestamp: Date.now()
-          });
+          access = result.data.hasAccess;
+          source = result.data.accessSource;
         } else {
           setError(result.error);
-          setHasAccess(false);
-          setAccessSource(null);
-          setRequiredAddOn(fetchedAddOn);
-
-          // Log feature access error
-          if (userId) {
-            const errorLog = createFeatureAccessErrorLog(
-              userId,
-              featureKey,
-              planCode,
-              result.error || 'Feature access check failed'
-            );
-            logError(errorLog);
-          }
         }
-      } else {
-        setHasAccess(false);
-        setAccessSource(null);
-        setRequiredAddOn(fetchedAddOn);
-
-        accessCache.set(cacheKey, {
-          hasAccess: false,
-          accessSource: null,
-          requiredAddOn: fetchedAddOn,
-          timestamp: Date.now()
-        });
       }
+
+      setHasAccess(access);
+      setAccessSource(source);
+
+      // Only query add-on catalog if the user does NOT already have plan access AND is authenticated
+      let fetchedAddOn = null;
+      if (!access && userId) {
+        try {
+          const addOnResult = await addOnCatalogService.getAddOnByFeatureKey(featureKey);
+          if (addOnResult.success && addOnResult.data) {
+            fetchedAddOn = addOnResult.data;
+          }
+        } catch {
+          // No add-on pack exists for this feature (core plan capability)
+        }
+      }
+
+      setRequiredAddOn(fetchedAddOn);
+
+      accessCache.set(cacheKey, {
+        hasAccess: access,
+        accessSource: source,
+        requiredAddOn: fetchedAddOn,
+        timestamp: Date.now()
+      });
     } catch (err) {
       setError(err.message);
       setHasAccess(false);

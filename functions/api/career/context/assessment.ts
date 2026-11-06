@@ -9,6 +9,7 @@ export async function buildAssessmentContext(
   learnerId: string
 ): Promise<AssessmentResults> {
   const defaultResult: AssessmentResults = {
+    gradingProvenance: { objective: 'unavailable', subjective: 'advisory_unverified' },
     hasAssessment: false,
     riasecCode: '',
     riasecScores: {},
@@ -44,14 +45,22 @@ export async function buildAssessmentContext(
     const bigFiveScores = assessment.bigfive_scores || {};
     const geminiResults = assessment.gemini_results || {};
     const coursesByType = geminiResults.coursesByType || { technical: [], soft: [] };
+    let receipt: any = null;
+    if (assessment.grading_receipt_id) {
+      const graded = await supabase.from('assessment_grading_receipts').select('id,attempt_id,learner_id,status,objective_scores')
+        .eq('id', assessment.grading_receipt_id).eq('attempt_id', assessment.attempt_id).eq('learner_id', learnerId).maybeSingle();
+      if (!graded.error) receipt = graded.data;
+    }
+    const objective = receipt?.status !== 'unavailable' ? receipt?.objective_scores?.aptitude : null;
 
     return {
       hasAssessment: true,
+      gradingProvenance: { objective: objective ? 'server_graded' : 'unavailable', subjective: 'advisory_unverified', status: receipt?.status },
       riasecCode: assessment.riasec_code || '',
       riasecScores,
       riasecInterpretation: interpretRIASEC(assessment.riasec_code, riasecScores),
-      aptitudeScores: assessment.aptitude_scores || {},
-      aptitudeOverall: assessment.aptitude_overall || 0,
+      aptitudeScores: objective || {},
+      aptitudeOverall: objective?.percentage || 0,
       bigFiveScores,
       personalityInterpretation: interpretBigFive(bigFiveScores),
       employabilityScores: assessment.employability_scores || {},

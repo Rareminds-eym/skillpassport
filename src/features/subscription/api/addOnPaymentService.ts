@@ -1,13 +1,12 @@
 /**
  * Add-on Payment Service
  * Handles all add-on specific payment operations.
- * 
+ *
  * Authentication is handled automatically by ssoClient.fetch() from @rareminds-eym/auth-client.
  * No manual token management required.
  */
 
 import { ssoClient } from '@/shared/api/ssoClient';
-import { apiGet } from '@/shared/api/apiClient';
 import { extractErrorMessage } from './paymentsApiService';
 
 // Use Pages Functions for payments (not direct worker access)
@@ -32,22 +31,36 @@ export const addOnPaymentService = {
    * @param {string} params.userName - User name for Razorpay prefill
    * @returns {Promise<Object>} - Order result with Razorpay data
    */
-  async createAddOnOrder({ featureKey, userId, billingPeriod, userEmail, userName }) {
+  async createAddOnOrder({
+    featureKey,
+    userId,
+    billingPeriod,
+    userEmail,
+    userName,
+  }) {
     try {
-      const response = await ssoClient.fetch(`${getBaseUrl()}/create-addon-order`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user_id: userId,
-          feature_key: featureKey,
-          billing_period: billingPeriod,
-        }),
-      });
+      const response = await ssoClient.fetch(
+        `${getBaseUrl()}/create-addon-order`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_id: userId,
+            feature_key: featureKey,
+            billing_period: billingPeriod,
+          }),
+        },
+      );
 
       const data = await response.json();
 
       if (!response.ok) {
-        return { success: false, error: extractErrorMessage(data) || 'Failed to create addon order' };
+        return {
+          success: false,
+          error: extractErrorMessage(data) || 'Failed to create addon order',
+          code: data.error?.code,
+          recoveryOrderId: data.data?.recovery_order_id,
+        };
       }
 
       // apiSuccess wraps payload at { success, data: { ... } }
@@ -62,10 +75,14 @@ export const addOnPaymentService = {
           razorpayKeyId: addonPayload?.razorpay_key_id,
           userEmail,
           userName,
-        }
+        },
       };
     } catch (error) {
-      return { success: false, error: error instanceof Error ? error.message : 'Failed to create order' };
+      return {
+        success: false,
+        error:
+          error instanceof Error ? error.message : 'Failed to create order',
+      };
     }
   },
 
@@ -80,22 +97,34 @@ export const addOnPaymentService = {
    * @param {string} params.userName - User name for Razorpay prefill
    * @returns {Promise<Object>} - Order result with Razorpay data
    */
-  async createBundleOrder({ bundleId, userId, billingPeriod, userEmail, userName }) {
+  async createBundleOrder({
+    bundleId,
+    userId,
+    billingPeriod,
+    userEmail,
+    userName,
+  }) {
     try {
-      const response = await ssoClient.fetch(`${getBaseUrl()}/create-bundle-order`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user_id: userId,
-          bundle_id: bundleId,
-          billing_period: billingPeriod,
-        }),
-      });
+      const response = await ssoClient.fetch(
+        `${getBaseUrl()}/create-bundle-order`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_id: userId,
+            bundle_id: bundleId,
+            billing_period: billingPeriod,
+          }),
+        },
+      );
 
       const data = await response.json();
 
       if (!response.ok) {
-        return { success: false, error: extractErrorMessage(data) || 'Failed to create bundle order' };
+        return {
+          success: false,
+          error: extractErrorMessage(data) || 'Failed to create bundle order',
+        };
       }
 
       // apiSuccess wraps payload at { success, data: { ... } }
@@ -109,13 +138,20 @@ export const addOnPaymentService = {
           bundleName: bundlePayload?.bundle_name,
           bundleId: bundleId,
           billingPeriod: billingPeriod,
-          razorpayKeyId: bundlePayload?.razorpay_key_id || bundlePayload?.key || import.meta.env.VITE_RAZORPAY_KEY_ID,
+          razorpayKeyId:
+            bundlePayload?.razorpay_key_id ||
+            bundlePayload?.key ||
+            import.meta.env.VITE_RAZORPAY_KEY_ID,
           userEmail,
           userName,
-        }
+        },
       };
     } catch (error) {
-      return { success: false, error: error instanceof Error ? error.message : 'Failed to create order' };
+      return {
+        success: false,
+        error:
+          error instanceof Error ? error.message : 'Failed to create order',
+      };
     }
   },
 
@@ -130,7 +166,7 @@ export const addOnPaymentService = {
     const result = await this.createAddOnOrder({
       featureKey,
       userId,
-      billingPeriod
+      billingPeriod,
     });
 
     if (!result.success) {
@@ -150,91 +186,137 @@ export const addOnPaymentService = {
    * Verify add-on payment after Razorpay callback with retry logic
    * Auth is handled automatically by ssoClient.fetch().
    */
-  async verifyAddonPayment(razorpayOrderId, razorpayPaymentId, razorpaySignature, featureKey, amount, billingPeriod, retries = 3) {
-    const attemptVerification = async (attempt) => {
+  async verifyAddonPayment(
+    razorpayOrderId,
+    razorpayPaymentId,
+    razorpaySignature,
+    featureKey,
+    _amount,
+    billingPeriod,
+    retries = 3,
+  ) {
+    return this.completeAddonVerification(
+      'verify-addon-payment',
+      {
+        razorpay_order_id: razorpayOrderId,
+        razorpay_payment_id: razorpayPaymentId,
+        razorpay_signature: razorpaySignature,
+        feature_key: featureKey,
+        billing_period: billingPeriod,
+      },
+      retries,
+    );
+  },
+
+  async reconcileAddonPayment(orderId: string) {
+    return this.completeAddonVerification(
+      'reconcile-addon-payment',
+      { razorpay_order_id: orderId },
+      3,
+    );
+  },
+
+  async completeAddonVerification(
+    path: string,
+    payload: Record<string, unknown>,
+    retries: number,
+  ) {
+    for (let attempt = 1; attempt <= retries; attempt += 1) {
       try {
-        const response = await ssoClient.fetch(`${getBaseUrl()}/verify-addon-payment`, {
+        const response = await ssoClient.fetch(`${getBaseUrl()}/${path}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            razorpay_order_id: razorpayOrderId,
-            razorpay_payment_id: razorpayPaymentId,
-            razorpay_signature: razorpaySignature,
-            feature_key: featureKey,
-            amount: amount,
-            billing_period: billingPeriod
-          }),
+          body: JSON.stringify(payload),
         });
-
         const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(extractErrorMessage(data) || 'Payment verification failed');
-        }
-
-        return {
-          success: true,
-          verified: true,
-          data
-        };
+        if (response.ok && data.data?.verified === true)
+          return { success: true, verified: true, data: data.data };
+        const retryable = response.status >= 500 || response.status === 429;
+        if (!retryable || attempt === retries)
+          return {
+            success: false,
+            verified: false,
+            error: extractErrorMessage(data) || 'Access activation is pending.',
+            code: data.error?.code,
+            retryable,
+          };
       } catch (error) {
-        if (attempt < retries) {
-          // Exponential backoff: 1s, 2s, 4s
-          const delay = Math.pow(2, attempt - 1) * 1000;
-          await new Promise(resolve => setTimeout(resolve, delay));
-          return attemptVerification(attempt + 1);
-        }
-        return {
-          success: false,
-          verified: false,
-          error: error.message
-        };
+        if (attempt === retries)
+          return {
+            success: false,
+            verified: false,
+            error:
+              error instanceof Error
+                ? error.message
+                : 'Verification unavailable.',
+            retryable: true,
+          };
       }
+      await new Promise((resolve) =>
+        setTimeout(resolve, 2 ** (attempt - 1) * 1000),
+      );
+    }
+    return {
+      success: false,
+      verified: false,
+      error: 'Verification unavailable.',
+      retryable: true,
     };
-
-    return attemptVerification(1);
   },
 
   /**
    * Verify bundle payment after Razorpay callback
    */
-  async verifyBundlePayment(razorpayOrderId, razorpayPaymentId, razorpaySignature, bundleId, amount, billingPeriod, retries = 3) {
+  async verifyBundlePayment(
+    razorpayOrderId,
+    razorpayPaymentId,
+    razorpaySignature,
+    bundleId,
+    amount,
+    billingPeriod,
+    retries = 3,
+  ) {
     const attemptVerification = async (attempt) => {
       try {
-        const response = await ssoClient.fetch(`${getBaseUrl()}/verify-bundle-payment`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            razorpay_order_id: razorpayOrderId,
-            razorpay_payment_id: razorpayPaymentId,
-            razorpay_signature: razorpaySignature,
-            bundle_id: bundleId,
-            amount: amount,
-            billing_period: billingPeriod
-          }),
-        });
+        const response = await ssoClient.fetch(
+          `${getBaseUrl()}/verify-bundle-payment`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              razorpay_order_id: razorpayOrderId,
+              razorpay_payment_id: razorpayPaymentId,
+              razorpay_signature: razorpaySignature,
+              bundle_id: bundleId,
+              amount: amount,
+              billing_period: billingPeriod,
+            }),
+          },
+        );
 
         const data = await response.json();
 
         if (!response.ok) {
-          throw new Error(extractErrorMessage(data) || 'Bundle payment verification failed');
+          throw new Error(
+            extractErrorMessage(data) || 'Bundle payment verification failed',
+          );
         }
 
         return {
           success: true,
           verified: true,
-          data
+          data,
         };
       } catch (error) {
         if (attempt < retries) {
           const delay = Math.pow(2, attempt - 1) * 1000;
-          await new Promise(resolve => setTimeout(resolve, delay));
+          await new Promise((resolve) => setTimeout(resolve, delay));
           return attemptVerification(attempt + 1);
         }
         return {
           success: false,
           verified: false,
-          error: error.message
+          error: error.message,
         };
       }
     };

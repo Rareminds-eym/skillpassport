@@ -4,7 +4,7 @@
  * Path structure: logo/company/{organizationId}/logo_{timestamp}.{ext}
  */
 
-import { withAuth } from '../../../lib/auth';
+import { withAuth, getContextUser } from '../../../lib/auth';
 import { getServiceClient } from '../../../lib/supabase';
 import { verifyOrgAccess, PERMISSIONS } from '../../../lib/permissions';
 import { R2Client } from '../../storage/utils/r2-client';
@@ -27,7 +27,7 @@ const MAX_LOGO_SIZE = 5 * 1024 * 1024;
  * Upload company logo to Cloudflare R2 storage
  */
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
-    const user = context.data.user;
+    const user = getContextUser(context);
     const env = context.env as PagesEnv;
     const supabase = getServiceClient(env as any);
 
@@ -44,7 +44,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         }
 
         // Verify user has admin access
-        const access = await verifyOrgAccess(supabase, user.sub, orgId, PERMISSIONS.MANAGE_ORG_SETTINGS);
+        const access = await verifyOrgAccess(supabase, user.id, orgId, PERMISSIONS.MANAGE_TEAM);
         if (!access.allowed) {
             return access.error!;
         }
@@ -125,7 +125,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
  * Delete company logo from Cloudflare R2 storage
  */
 export const onRequestDelete = withAuth(async (context: AuthenticatedContext) => {
-    const user = context.data.user;
+    const user = getContextUser(context);
     const env = context.env as PagesEnv;
     const supabase = getServiceClient(env as any);
 
@@ -140,7 +140,7 @@ export const onRequestDelete = withAuth(async (context: AuthenticatedContext) =>
     }
 
     // Verify user has admin access
-    const access = await verifyOrgAccess(supabase, user.sub, orgId, PERMISSIONS.MANAGE_ORG_SETTINGS);
+    const access = await verifyOrgAccess(supabase, user.id, orgId, PERMISSIONS.MANAGE_TEAM);
     if (!access.allowed) {
         return access.error!;
     }

@@ -19,7 +19,8 @@ import {
   ExternalLink,
   Download,
   X,
-  Sparkles
+  Sparkles,
+  Link as LinkIcon
 } from "lucide-react";
 import { useUser } from "@/shared/model/authStore";
 import { apiPost } from "@/shared/api/apiClient";
@@ -151,6 +152,27 @@ function ReadOnlyLearnerList({
                       </button>
                     );
                   })}
+                </div>
+              </div>
+            )}
+
+            {/* Submitted Link / URL if any */}
+            {learner.submission_url && (
+              <div className="pt-1">
+                <p className="text-[11px] font-medium text-gray-500 mb-1">
+                  Submitted Link:
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <a
+                    href={learner.submission_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-purple-700 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 transition cursor-pointer"
+                  >
+                    <LinkIcon className="h-3.5 w-3.5 text-purple-600" />
+                    <span className="truncate max-w-[280px]">{learner.submission_url}</span>
+                    <ExternalLink className="h-3 w-3 text-purple-400" />
+                  </a>
                 </div>
               </div>
             )}

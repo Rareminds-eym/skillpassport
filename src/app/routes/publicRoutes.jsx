@@ -125,7 +125,9 @@ const OrganizationSetupPage = lazy(() =>
   import("@/pages/onboarding/OrganizationSetupPage")
 );
 
+const SharedShortlist = lazy(() => import('@/pages/recruiter/SharedShortlist'));
 export const publicRoutes = [
+ <Route key="shared-shortlist" path="/shared/shortlist" element={<SharedShortlist />} />,
   // Organization Setup (for admins without organization)
   <Route key="organization-setup" path="/organization-setup" element={<OrganizationSetupPage />} />,
 

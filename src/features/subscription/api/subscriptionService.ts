@@ -46,12 +46,17 @@ export const getActiveSubscription = async (scope?: string) => {
       error: result.error ?? null,
     };
   } catch (error: any) {
-    // If the API call fails (e.g. 401, network error), return a safe fallback
+    // If the API call fails (e.g. 401, network error), return a safe fallback.
+    // Preserve the HTTP status / error code so callers (e.g. the graded
+    // fail-open vs fail-closed classification in SubscriptionProtectedRoute)
+    // can distinguish auth failures from transient 5xx/network outages.
     logger.error('Failed to fetch active subscription via API', error);
     return {
       success: false,
       data: null,
       error: error.message || 'Failed to fetch subscription',
+      status: error.status ?? null,
+      code: error.code ?? null,
     };
   }
 };

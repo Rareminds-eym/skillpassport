@@ -139,7 +139,7 @@ describe('upsertSingleProgressPayload', () => {
     expect(skills[0]).toMatchObject({
       learner_id: 'learner-1',
       type: 'technical',
-      level: 2,
+      level: 1,
       training_id: 'tr-1',
       verified: true,
       approval_status: 'approved',

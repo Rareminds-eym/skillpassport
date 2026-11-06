@@ -24,10 +24,12 @@ import { showProfileUpdateToast, showProfileErrorToast, PROFILE_UPDATE_MESSAGES 
 
 import { useUser } from '@/shared/model/authStore';
 import { useTheme } from '@/shared/model/themeStore';
+import { useFeatureGate } from '@/features/subscription/model/useFeatureGate';
 const MySkills = () => {
   const user = useUser();
   const { theme } = useTheme();
   const userEmail = user?.email;
+  const matchingGate = useFeatureGate('ai_job_matching');
   const { learnerData, updateTechnicalSkills, updateSoftSkills } = useLearnerDataByEmail(userEmail, false);
 
   const technicalSkills = learnerData?.technicalSkills || [];
@@ -70,7 +72,8 @@ const MySkills = () => {
     matchedJobs,
     loading: matchingLoading,
     error: matchingError,
-  } = useAIJobMatching(learnerData, true, 3);
+    readiness: matchingReadiness,
+  } = useAIJobMatching(learnerData, !matchingGate.isLoading && matchingGate.hasAccess, 3);
 
   const [activeModal, setActiveModal] = useState(null);
   const [showAllRecentUpdates, setShowAllRecentUpdates] = useState(false);
@@ -191,8 +194,9 @@ const MySkills = () => {
               {/* Suggested Next Steps */}
               <SuggestedNextSteps
                 matchedJobs={matchedJobs}
+                readiness={matchingReadiness}
                 loading={matchingLoading}
-                error={matchingError}
+                error={matchingError || (!matchingGate.isLoading && !matchingGate.hasAccess ? 'Job matching requires an active plan or matching add-on.' : null)}
                 fallbackSuggestions={suggestions}
               />
             </div>

@@ -1,0 +1,29 @@
+{
+  "date": "2026-10-16",
+  "result": "PASS",
+  "exitCode": 0,
+  "engineImage": "public.ecr.aws/supabase/postgres:17.6.1.143",
+  "executionRole": "supabase_admin",
+  "scope": "Actual revised migration and SQL assertions against the representative minimal prior-schema fixture in a new disposable PostgreSQL/pgvector container. Not staging, production, a full-schema upgrade, or a load test.",
+  "isolation": "network none; memory 768 MiB; no published ports; no host mounts; existing user containers not modified",
+  "inputsInOrder": [
+    "skillpassport/functions/__tests__/sql/recommendation-fixture.sql",
+    "skillpassport/supabase/migrations/20261015090000_recommendation_boundaries_and_revisions.sql",
+    "skillpassport/functions/__tests__/sql/recommendation-revisions.sql"
+  ],
+  "psqlOptions": "-U supabase_admin -d postgres -v ON_ERROR_STOP=1",
+  "assertions": [
+    "actor, learner revision, catalog revision, model, expiry, ownership transfer and deletion fencing",
+    "preprocessing mismatch hides both vector and matches",
+    "ranking-policy mismatch hides matches but retains compatible vector",
+    "wrong-preprocessing cache publication rejected",
+    "missing ranking policy and unknown algorithm rejected",
+    "V1 and V2 algorithm provenance retained",
+    "generic availability and user-keyed dismissals filtered before LIMIT",
+    "generic foreign owner and invalid limit rejected; legitimate empty catalog remains empty",
+    "dirty legacy vectors cleared; view-count changes retain job vectors",
+    "effective anon/authenticated execution denied and service-role execution retained"
+  ],
+  "terminalNotice": "PASS: ownership, preprocessing/ranking/model isolation, algorithm provenance, generic pre-limit filtering, invalidation, stale publication, catalog change, feedback key, clock expiry, deletion, and effective privileges",
+  "sourceFingerprints": "20261016-followup-manifest.json"
+}

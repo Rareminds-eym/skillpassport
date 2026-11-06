@@ -135,6 +135,75 @@ export function withAuth(handler: (context: any) => Promise<Response>) {
         const featureDenied = await requireAdminRequestFeature(getServiceClient(env as unknown as PagesEnv), context.request, authedContext.user);
         if (featureDenied) return featureDenied;
       }
+
+      // LAYER 1: Check college_educator accountStatus on every authenticated request
+      if (authedContext.user.roles?.includes('college_educator')) {
+        try {
+          const supabase = getServiceClient(env as unknown as PagesEnv);
+          const { data: lecturer, error } = await supabase
+            .from('college_lecturers')
+            .select('accountStatus')
+            .eq('user_id', authedContext.user.sub)
+            .maybeSingle();
+
+          if (error) {
+            console.error('[Auth] Layer 1 college_educator status check failed:', error);
+            return new Response(
+              JSON.stringify({
+                error: 'Authentication service temporarily unavailable. Please try again.',
+                message: 'Authentication service temporarily unavailable. Please try again.',
+                code: 'AUTH_SERVICE_UNAVAILABLE'
+              }),
+              { status: 503, headers: { 'Content-Type': 'application/json', 'X-Error-Code': 'AUTH_SERVICE_UNAVAILABLE' } }
+            );
+          }
+
+          if (!lecturer) {
+            // User has college_educator role but no lecturer record - fail closed
+            console.error('[Auth] Layer 1 college_educator has no lecturer record:', authedContext.user.sub);
+            return new Response(
+              JSON.stringify({
+                error: 'Account configuration error. Please contact your administrator.',
+                message: 'Account configuration error. Please contact your administrator.',
+                code: 'ACCOUNT_DATA_MISSING'
+              }),
+              { status: 403, headers: { 'Content-Type': 'application/json', 'X-Error-Code': 'ACCOUNT_DATA_MISSING' } }
+            );
+          }
+
+          if (lecturer.accountStatus !== 'active') {
+            console.log('[Auth] Layer 1 blocked college_educator request:', {
+              userId: authedContext.user.sub,
+              accountStatus: lecturer.accountStatus
+            });
+            const messages = {
+              'deactivated': 'Your account has been deactivated. Please contact your administrator.',
+              'suspended': 'Your account has been suspended. Please contact your administrator.',
+              'pending': 'Your account is pending approval. Please contact your administrator.',
+            };
+            const message = messages[lecturer.accountStatus] || 'Your account is not active. Please contact your administrator.';
+            return new Response(
+              JSON.stringify({
+                error: message,
+                message: message,
+                code: 'ACCOUNT_INACTIVE'
+              }),
+              { status: 403, headers: { 'Content-Type': 'application/json', 'X-Error-Code': 'ACCOUNT_INACTIVE' } }
+            );
+          }
+        } catch (err) {
+          console.error('[Auth] Layer 1 exception:', err);
+          return new Response(
+            JSON.stringify({
+              error: 'Authentication service temporarily unavailable. Please try again.',
+              message: 'Authentication service temporarily unavailable. Please try again.',
+              code: 'AUTH_SERVICE_UNAVAILABLE'
+            }),
+            { status: 503, headers: { 'Content-Type': 'application/json', 'X-Error-Code': 'AUTH_SERVICE_UNAVAILABLE' } }
+          );
+        }
+      }
+
       return handler(context);
     });
 

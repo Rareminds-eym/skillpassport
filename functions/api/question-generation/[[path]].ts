@@ -23,6 +23,8 @@ import { withAuth } from '../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { createLogger } from '../../lib/logger';
 import { createSupabaseAdminClient } from '../../lib/supabase';
+import { ownQuestionLearner } from '../../lib/assessment-question-owner';
+import { deliverGeneratedQuestions, sanitizeLearnerQuestions } from '../../lib/assessment-question-safety';
 
 const logger = createLogger('question-generation');
 
@@ -128,10 +130,15 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
           console.log(`ℹ️ gradeLevel reconciled to stream catalog value: requested=${requestedGradeLevel}, effective=${gradeLevel}`);
         }
 
+        try { await ownQuestionLearner(authContext,learnerId,attemptId); }
+        catch { return apiError(403,'ACCESS_DENIED','Question attempt access denied',request); }
         const result = await generateAptitudeQuestions(env as unknown as PagesEnv, streamId, questionsPerCategory, learnerId, attemptId, gradeLevel);
         console.log(`✅ Aptitude generation complete: ${result?.length || 0} questions`);
         // Wrap in {questions: [...]} format for frontend compatibility
-        return apiSuccess({ questions: result }, request);
+        let questions;
+        try { questions=await deliverGeneratedQuestions(authContext,{attemptId,streamId,questionType:'aptitude',questions:result}); }
+        catch { return apiError(503,'QUESTION_BINDING_UNAVAILABLE','Question version binding unavailable',request); }
+        return apiSuccess({ questions }, request);
       } catch (error: any) {
         console.error('❌ Aptitude generation error:', error);
         return apiError(500, 'INTERNAL_ERROR', error.message || 'Failed to generate aptitude questions', request);
@@ -140,7 +147,7 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
 
     if (path === '/career-assessment/generate-aptitude/stream' && request.method === 'POST') {
       try {
-        return await handleStreamingAptitude(request, env as unknown as PagesEnv);
+        return await handleStreamingAptitude(request, env as unknown as PagesEnv, authContext);
       } catch (error: any) {
         console.error('❌ Streaming aptitude error:', error);
         return apiError(500, 'INTERNAL_ERROR', error.message || 'Failed to stream aptitude questions', request);
@@ -180,10 +187,15 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
           return apiError(400, 'VALIDATION_ERROR', 'Topics are required for learners below 11th grade', request);
         }
 
+        try { await ownQuestionLearner(authContext,learnerId,attemptId); }
+        catch { return apiError(403,'ACCESS_DENIED','Question attempt access denied',request); }
         const result = await generateKnowledgeQuestions(env as unknown as PagesEnv, streamId, streamName, topics, questionCount, learnerId, attemptId, gradeLevel, isCollegeLearner);
         console.log(`✅ Knowledge generation complete: ${result?.length || 0} questions`);
         // Wrap in {questions: [...]} format for frontend compatibility
-        return apiSuccess({ questions: result }, request);
+        let questions;
+        try { questions=await deliverGeneratedQuestions(authContext,{attemptId,streamId,questionType:'knowledge',questions:result}); }
+        catch { return apiError(503,'QUESTION_BINDING_UNAVAILABLE','Question version binding unavailable',request); }
+        return apiSuccess({ questions }, request);
       } catch (error: any) {
         console.error('❌ Knowledge generation error:', error);
         return apiError(500, 'INTERNAL_ERROR', error.message || 'Failed to generate knowledge questions', request);
@@ -219,7 +231,7 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
         const body = await request.json() as any;
         const { gradeLevel, excludeQuestionIds } = body;
         const result = await generateDiagnosticScreenerQuestions(env as unknown as PagesEnv, gradeLevel, excludeQuestionIds);
-        return apiSuccess(result, request);
+        return apiSuccess(sanitizeLearnerQuestions(result), request);
       } catch (error: any) {
         console.error('❌ Diagnostic generation error:', error);
         return apiError(500, 'INTERNAL_ERROR', error.message, request);
@@ -231,7 +243,7 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
         const body = await request.json() as any;
         const { gradeLevel, startingDifficulty, excludeQuestionIds } = body;
         const result = await generateAdaptiveCoreQuestions(env as unknown as PagesEnv, gradeLevel, startingDifficulty, excludeQuestionIds);
-        return apiSuccess(result, request);
+        return apiSuccess(sanitizeLearnerQuestions(result), request);
       } catch (error: any) {
         console.error('❌ Adaptive generation error:', error);
         return apiError(500, 'INTERNAL_ERROR', error.message, request);
@@ -243,7 +255,7 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
         const body = await request.json() as any;
         const { gradeLevel, provisionalBand, excludeQuestionIds } = body;
         const result = await generateStabilityConfirmationQuestions(env as unknown as PagesEnv, gradeLevel, provisionalBand, excludeQuestionIds);
-        return apiSuccess(result, request);
+        return apiSuccess(sanitizeLearnerQuestions(result), request);
       } catch (error: any) {
         console.error('❌ Stability generation error:', error);
         return apiError(500, 'INTERNAL_ERROR', error.message, request);
@@ -258,7 +270,7 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
         const result = await generateSingleQuestion(env as unknown as PagesEnv, gradeLevel, phase || 'adaptive_core', difficulty, subtag, excludeQuestionIds);
         console.log('✅ [Router] Single question generated:', { questionId: result.id, difficulty: result.difficulty });
         // Wrap in array format expected by next-question handler
-        return apiSuccess({ questions: [result] }, request);
+        return apiSuccess({ questions: sanitizeLearnerQuestions([result]) }, request);
       } catch (error: any) {
         console.error('❌ Single question generation error:', error);
         return apiError(500, 'INTERNAL_ERROR', error.message, request);

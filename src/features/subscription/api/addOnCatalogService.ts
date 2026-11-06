@@ -34,6 +34,10 @@ class AddOnCatalogService {
       );
       return { success: result.success ?? true, data: result.data, error: result.error };
     } catch (error: any) {
+      if (error?.status === 404 || error?.statusCode === 404 || error?.message?.toLowerCase().includes('not found')) {
+        return { success: false, data: null, error: 'Not found', isNotFound: true };
+      }
+      console.error(`[addOnCatalogService] Error fetching add-on for feature '${featureKey}':`, error);
       return { success: false, error: error.message };
     }
   }

@@ -108,6 +108,10 @@ export async function ssoCreateSubscription(env: SsoEnv, data: any): Promise<any
   return env.SSO_SERVICE.createSubscription(data);
 }
 
+export async function ssoGetSubscriptionByPayment(env: SsoEnv, paymentId: string): Promise<any> {
+  return env.SSO_SERVICE.getSubscriptionByPayment(paymentId);
+}
+
 export async function ssoCreateFreemiumSubscription(env: SsoEnv, data: any): Promise<any> {
   return env.SSO_SERVICE.createFreemiumSubscription(data);
 }

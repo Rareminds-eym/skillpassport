@@ -19,25 +19,34 @@ export class ApiError extends Error {
 // Helper to extract error message safely from varying response shapes
 function extractError(body: any): { message: string, code?: string } {
   if (!body) return { message: 'Request failed' };
-  if (typeof body.error === 'string') return { message: body.error };
+  if (typeof body.error === 'string') return { message: body.error, code: body.code };
   if (body.error && typeof body.error === 'object') {
     return { 
       message: typeof body.error.message === 'string' && body.error.message.trim() ? body.error.message : 'Request failed',
-      code: body.error.code 
+      code: body.error.code || body.code
     };
   }
-  return { message: 'Request failed' };
+  return { message: body.message || 'Request failed', code: body.code };
+}
+
+function notifyIfDeactivated(status: number, err: { message: string, code?: string }) {
+  if (status === 403 && (err.code === 'ACCOUNT_INACTIVE' || err.code === 'ACCOUNT_DATA_MISSING')) {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('account_deactivated', { detail: err.message }));
+    }
+  }
 }
 
 /**
  * Authenticated GET request via Pages Functions.
  * Uses ssoClient.fetch() for automatic token attachment and 401 retry.
  */
-export async function apiGet<T>(path: string): Promise<T> {
-  const res = await ssoClient.fetch(`${API_BASE}${path}`);
+export async function apiGet<T>(path: string, options?: { signal?: AbortSignal }): Promise<T> {
+  const res = await ssoClient.fetch(`${API_BASE}${path}`, options);
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     const err = extractError(body);
+    notifyIfDeactivated(res.status, err);
     throw new ApiError(res.status, err.message, err.code);
   }
   return res.json() as Promise<T>;
@@ -58,6 +67,7 @@ export async function apiPost<T>(path: string, data?: unknown): Promise<T> {
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     const err = extractError(body);
+    notifyIfDeactivated(res.status, err);
     throw new ApiError(res.status, err.message, err.code);
   }
   return res.json() as Promise<T>;
@@ -75,6 +85,7 @@ export async function apiPut<T>(path: string, data?: unknown): Promise<T> {
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     const err = extractError(body);
+    notifyIfDeactivated(res.status, err);
     throw new ApiError(res.status, err.message, err.code);
   }
   return res.json() as Promise<T>;
@@ -92,6 +103,7 @@ export async function apiPatch<T>(path: string, data?: unknown): Promise<T> {
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     const err = extractError(body);
+    notifyIfDeactivated(res.status, err);
     throw new ApiError(res.status, err.message, err.code);
   }
   return res.json() as Promise<T>;
@@ -107,6 +119,7 @@ export async function apiDelete<T>(path: string): Promise<T> {
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     const err = extractError(body);
+    notifyIfDeactivated(res.status, err);
     throw new ApiError(res.status, err.message, err.code);
   }
   return res.json() as Promise<T>;

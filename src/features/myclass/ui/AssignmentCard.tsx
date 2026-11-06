@@ -202,16 +202,33 @@ const AssignmentCard: React.FC<AssignmentCardProps> = ({
     }
   };
 
+  // Helper function to check if URL is external (not R2)
+  const isExternalUrl = (url: string): boolean => {
+    try {
+      const parsedUrl = new URL(url);
+      // Check if it's a Google Drive or other external URL
+      return !url.includes('.r2.dev') && 
+             !url.includes('localhost') && 
+             (parsedUrl.hostname !== window.location.hostname);
+    } catch {
+      return false;
+    }
+  };
+
   // Helper function to open file with error handling
   const openFile = (fileUrl: string, fileName: string = 'file') => {
-    const storageApiUrl = getApiUrl('storage');
+    // If it's an external URL (Google Drive, etc.), open directly
+    if (isExternalUrl(fileUrl)) {
+      window.open(fileUrl, '_blank');
+      return;
+    }
     
-    // Generate proxy URL
+    // For R2 files, use the proxy
+    const storageApiUrl = getApiUrl('storage');
     const accessibleUrl = fileUrl.includes('/document-access') 
       ? fileUrl 
       : `${storageApiUrl}/document-access?url=${encodeURIComponent(fileUrl)}&mode=inline`;
     
-    // Open directly without testing
     window.open(accessibleUrl, '_blank');
   };
 
@@ -361,8 +378,11 @@ const AssignmentCard: React.FC<AssignmentCardProps> = ({
                   <Clock className="w-4 h-4 text-blue-600" />
                 </div>
                 <div className="flex-1">
-                  <label className="text-sm font-medium text-blue-800 block mb-2">Update Status</label>
+                  <label 
+                  htmlFor={`status-${assignment.learner_assignment_id}`}
+                  className="text-sm font-medium text-blue-800 block mb-2">Update Status</label>
                   <select
+                    id={`status-${assignment.learner_assignment_id}`}
                     value={assignment.status}
                     onChange={(e) => onStatusChange(assignment.assignment_id, assignment.learner_assignment_id, e.target.value)}
                     className="w-full px-3 py-2 text-sm border border-blue-200 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
@@ -392,6 +412,7 @@ const AssignmentCard: React.FC<AssignmentCardProps> = ({
         <div className="flex flex-wrap gap-3">
           {/* View Details Button */}
           <button
+            type="button"
             onClick={() => onViewDetails(assignment)}
             className="flex items-center gap-2 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-colors text-sm font-medium"
           >
@@ -402,6 +423,7 @@ const AssignmentCard: React.FC<AssignmentCardProps> = ({
           {/* Upload Button */}
           {canSubmitAssignment(assignment) && (
             <button
+              type="button"
               onClick={() => onUploadClick(assignment)}
               className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors text-sm font-medium"
             >
@@ -416,17 +438,6 @@ const AssignmentCard: React.FC<AssignmentCardProps> = ({
               <AlertCircle className="w-4 h-4" />
               Late submission not allowed
             </div>
-          )}
-          
-          {/* View Submission Button */}
-          {(assignment.status === 'submitted' || assignment.status === 'graded') && assignment.submission_url && (
-            <button
-              onClick={() => openFile(assignment.submission_url, assignment.submission_content || 'submission')}
-              className="flex items-center gap-2 px-4 py-2.5 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors text-sm font-medium"
-            >
-              <FileText className="w-4 h-4" />
-              View Submission
-            </button>
           )}
         </div>
       </div>

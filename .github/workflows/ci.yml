@@ -24,6 +24,9 @@ jobs:
         with:
           node-version: 22.x
 
+      - name: Validate SQL Encoding (no mojibake)
+        run: npm run lint:sql-encoding
+
       - name: Validate Database Rules
         env:
           EVENT_NAME: ${{ github.event_name }}

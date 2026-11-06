@@ -1,4 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import {useUser} from '@/shared/model/authStore';
+import {useOrgContext} from '@/entities/recruitment/model/useOrgContext';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   getPipelineCandidatesByStage,
   getPipelineCandidatesWithFilters
@@ -12,34 +14,8 @@ import { apiPost } from '@/shared/api/apiClient';
 
 const logger = getLogger('usePipelineData');
 
-export interface PipelineCandidate {
-  id: number;
-  name: string;
-  email: string;
-  phone: string;
-  dept: string;
-  college: string;
-  location: string;
-  skills: string[];
-  ai_score_overall: number;
-  last_updated: string;
-  created_at?: string;
-  learner_id: number;
-  stage: string;
-  source: string;
-  next_action?: string;
-  next_action_date?: string;
-  added_at?: string;
-}
-
-export interface PipelineData {
-  sourced: PipelineCandidate[];
-  screened: PipelineCandidate[];
-  interview_1: PipelineCandidate[];
-  interview_2: PipelineCandidate[];
-  offer: PipelineCandidate[];
-  hired: PipelineCandidate[];
-}
+import type {PipelineCandidate,PipelineData} from '@/features/recruiter-pipeline/ui/pipeline/types';
+export type {PipelineCandidate,PipelineData};
 
 const AI_CACHE_KEY = 'pipelines_ai_recommendations_cache_v2'; // Updated cache key to invalidate old cache
 const AI_CACHE_DURATION = 10 * 60 * 1000; // 10 minutes
@@ -54,10 +30,13 @@ const initialPipelineData: PipelineData = {
 };
 
 export const usePipelineData = (
-  selectedJob: number | null,
+  selectedJob: string | null,
   filters: PipelineFilters,
   sortOptions: PipelineSortOptions
 ) => {
+  const user=useUser(),{organizationId}=useOrgContext();
+  const cacheKey=`${AI_CACHE_KEY}:${user?.id||'none'}:${organizationId||user?.orgId||'none'}`;
+  const currentScope=useRef(cacheKey),pendingRecommendations=useRef(new Set<string>());currentScope.current=cacheKey;
   const [pipelineData, setPipelineData] = useState<PipelineData>(initialPipelineData);
   const [loading, setLoading] = useState(false);
   const [aiRecommendations, setAiRecommendations] = useState<any>(null);
@@ -66,6 +45,7 @@ export const usePipelineData = (
 
   const mapPipelineCandidate = (pc: any): PipelineCandidate => ({
     id: pc.id,
+    recruiter_rating: pc.recruiter_rating,
     name: pc.candidate_name || 'N/A',
     email: pc.candidate_email || '',
     phone: pc.candidate_phone || '',
@@ -110,7 +90,7 @@ export const usePipelineData = (
         if (!error && data) {
           stages.forEach(stage => {
             newData[stage as keyof PipelineData] = data
-              .filter(pc => pc.stage === stage)
+              .filter((pc:any) => pc.stage === stage)
               .map(mapPipelineCandidate);
           });
         }
@@ -123,21 +103,21 @@ export const usePipelineData = (
         }
       }
 
-      setPipelineData(newData);
+      if(currentScope.current===cacheKey)setPipelineData(newData);
     } catch (error) {
       logger.error('Failed to load pipeline candidates', error as Error);
     } finally {
       setLoading(false);
     }
-  }, [selectedJob, filters, sortOptions]);
+  }, [selectedJob, filters, sortOptions,cacheKey]);
 
   const fetchAIRecommendations = useCallback(async (forceRefresh = false) => {
-    if (loadingRecommendations) return;
+    if (!user?.id||!organizationId||pendingRecommendations.current.has(cacheKey)) return;
     
     // Check cache
     if (!forceRefresh) {
       try {
-        const cached = sessionStorage.getItem(AI_CACHE_KEY);
+        const cached = sessionStorage.getItem(cacheKey);
         if (cached) {
           const { data, timestamp, applicantsData: cachedApplicants } = JSON.parse(cached);
           const isExpired = Date.now() - timestamp > AI_CACHE_DURATION;
@@ -155,9 +135,11 @@ export const usePipelineData = (
       }
     }
 
+    pendingRecommendations.current.add(cacheKey);
     setLoadingRecommendations(true);
     try {
       const applicantsData = await AppliedJobsService.getAllApplicants();
+      if(currentScope.current!==cacheKey)return;
       
       if (!applicantsData || applicantsData.length === 0) {
         setAiRecommendations({ 
@@ -254,14 +236,16 @@ export const usePipelineData = (
           verified: app.learner?.verified || false
         };
       });
+      if(currentScope.current!==cacheKey)return;
       setAllPipelineCandidatesForAI(applicantsForPanel);
       
       const recommendations = await recruiterInsights.analyzeApplicantsForRecommendation(enrichedApplicants);
+      if(currentScope.current!==cacheKey)return;
       setAiRecommendations(recommendations);
       
       // Cache results
       try {
-        sessionStorage.setItem(AI_CACHE_KEY, JSON.stringify({
+        sessionStorage.setItem(cacheKey, JSON.stringify({
           data: recommendations,
           applicantsData: applicantsForPanel,
           timestamp: Date.now()
@@ -271,11 +255,12 @@ export const usePipelineData = (
       }
     } catch (error) {
       logger.error('Failed to fetch AI recommendations', error as Error);
-      setAiRecommendations(null);
+      if(currentScope.current===cacheKey)setAiRecommendations(null);
     } finally {
-      setLoadingRecommendations(false);
+      pendingRecommendations.current.delete(cacheKey);
+      if(currentScope.current===cacheKey)setLoadingRecommendations(false);
     }
-  }, [loadingRecommendations]);
+  }, [cacheKey,user?.id,organizationId]);
 
   // Load pipeline candidates when job/filters/sort changes
   useEffect(() => {
@@ -286,8 +271,10 @@ export const usePipelineData = (
 
   // Fetch AI recommendations on mount
   useEffect(() => {
+    sessionStorage.removeItem(AI_CACHE_KEY);
+    setPipelineData(initialPipelineData);setAiRecommendations(null);setAllPipelineCandidatesForAI([]);
     fetchAIRecommendations();
-  }, []);
+  }, [cacheKey,fetchAIRecommendations]);
 
   const getTotalCandidates = useCallback(() => {
     return Object.values(pipelineData).reduce((total, stage) => total + stage.length, 0);

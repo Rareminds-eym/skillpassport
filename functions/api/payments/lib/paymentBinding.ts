@@ -55,6 +55,8 @@ export interface RazorpayPayment {
   order_id: string;
   method: string;
   captured: boolean;
+  amount_refunded?: number;
+  refund_status?: string | null;
   email?: string;
   contact?: string;
   created_at: number;
@@ -80,6 +82,9 @@ export interface PaymentWorkerBinding {
   createOrder(params: CreateOrderParams): Promise<RazorpayOrder>;
   verifyPaymentSignature(orderId: string, paymentId: string, signature: string): Promise<VerifyPaymentResult>;
   getPayment(paymentId: string): Promise<RazorpayPayment>;
+  getOrder(orderId: string): Promise<RazorpayOrder>;
+  getOrdersByReceipt(receipt: string): Promise<{ items: RazorpayOrder[] }>;
+  getOrderPayments(orderId: string): Promise<{ items: RazorpayPayment[] }>;
   cancelSubscription(subscriptionId: string): Promise<RazorpaySubscription>;
   verifyWebhookSignature(body: string, signature: string): Promise<VerifyWebhookResult>;
 }

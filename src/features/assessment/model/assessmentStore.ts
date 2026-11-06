@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { devtools } from 'zustand/middleware';
+import {validateAssessmentSnapshot,type AssessmentSessionSnapshot} from './assessmentSession';
 import type { TestSession, TestResults, TestPhase, DifficultyLevel, Question } from '@/shared/types/adaptiveAptitude';
 
 export type AssessmentStatus = 'idle' | 'loading' | 'inProgress' | 'submitting' | 'completed' | 'error';
@@ -23,6 +24,12 @@ export interface AssessmentSection {
 }
 
 export interface AssessmentState {
+  ownerId:string|null;
+  bindOwner:(ownerId:string|null)=>void;
+  generation:number;
+  elapsedTime:number;
+  timerRemaining:number|null;
+  sectionTimings:Record<string,number>;
   // Assessment metadata
   attemptId: string | null;
   gradeLevel: string | null;
@@ -63,7 +70,8 @@ export interface AssessmentState {
   analysisMaxRetries: number;
 
   // Actions - Regular Assessment
-  initializeAssessment: (sections: AssessmentSection[], attemptId: string, gradeLevel: string, streamId: string) => void;
+  initializeAssessment: (sections: AssessmentSection[], attemptId: string, gradeLevel: string, streamId: string|null) => void;
+  hydrateAssessment:(snapshot:AssessmentSessionSnapshot)=>void;
   setSections: (sections: AssessmentSection[]) => void;
   setCurrentQuestion: (sectionIdx: number, questionIdx: number) => void;
   saveAnswer: (questionId: string, answer: any) => void;
@@ -100,6 +108,11 @@ export interface AssessmentState {
 }
 
 const initialState = {
+  ownerId:null,
+  generation:0,
+  elapsedTime:0,
+  timerRemaining:null,
+  sectionTimings:{},
   attemptId: null,
   gradeLevel: null,
   streamId: null,
@@ -134,14 +147,32 @@ export const useAssessmentStore = create<AssessmentState>()(
     immer((set, get) => ({
       ...initialState,
 
+      bindOwner:(ownerId)=>{
+        set(state=>{
+          if(state.ownerId===ownerId)return;
+          const generation=state.generation+1;
+          Object.assign(state,initialState,{ownerId,generation});
+        });
+      },
+
       initializeAssessment: (sections, attemptId, gradeLevel, streamId) => {
         set((state) => {
+          const generation=state.generation+1;
+          Object.assign(state,initialState,{generation,ownerId:state.ownerId});
           state.sections = sections;
           state.attemptId = attemptId;
           state.gradeLevel = gradeLevel;
           state.streamId = streamId;
           state.status = 'inProgress';
           state.loading = false;
+        });
+      },
+
+      hydrateAssessment:(input)=>{
+        const snapshot=validateAssessmentSnapshot(input);
+        set(state=>{
+          const generation=state.generation+1;
+          Object.assign(state,initialState,snapshot,{generation,ownerId:state.ownerId,status:'inProgress',loading:false});
         });
       },
 
@@ -213,7 +244,7 @@ export const useAssessmentStore = create<AssessmentState>()(
       },
 
       reset: () => {
-        set(initialState);
+        set(state=>{const generation=state.generation+1;Object.assign(state,initialState,{generation,ownerId:state.ownerId});});
       },
 
       // Adaptive Aptitude Actions
@@ -271,6 +302,7 @@ export const useAssessmentStore = create<AssessmentState>()(
 
       resetAdaptive: () => {
         set((state) => {
+          state.generation+=1;
           state.adaptiveSessionId = null;
           state.adaptivePhase = null;
           state.adaptiveCurrentQuestion = null;

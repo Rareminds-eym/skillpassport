@@ -1,3 +1,5 @@
+import { recruitmentScope, scopedRecruitmentQuery, RecruitmentAccessError } from '../../lib/recruitment-scope';
+import { PERMISSIONS } from '../../lib/permissions';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 
 import { getContextUser, withAuth } from '../../lib/auth';
@@ -95,14 +97,14 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const startTime = Date.now();
 
   try {
+    const scope = ['get-funnel-stats', 'get-kpi-metrics', 'debug-opportunities'].includes(action) ? await recruitmentScope(supabase, user, PERMISSIONS.VIEW_ANALYTICS) : null;
     switch (action) {
 
       // ─── Recruitment Funnel Stats ────────────────────────
       case 'get-funnel-stats': {
         const { startDate, endDate } = buildDateRange(params.preset, params.startDate, params.endDate);
 
-        const { data: candidates, error: snapErr } = await supabase
-          .from('pipeline_candidates').select('stage, status');
+        const { data: candidates, error: snapErr } = await scopedRecruitmentQuery(supabase, scope!, 'pipeline_candidates', 'stage, status');
         if (snapErr) throw snapErr;
 
         let sourced = 0, screened = 0, interviewed = 0, offered = 0, hired = 0;
@@ -116,8 +118,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           else if (s === 'hired') hired++;
         });
 
-        const { data: activities, error: actErr } = await supabase
-          .from('pipeline_activities').select('to_stage, created_at')
+        const { data: activities, error: actErr } = await scopedRecruitmentQuery(supabase, scope!, 'pipeline_activities', 'to_stage, created_at')
           .eq('activity_type', 'stage_change').eq('to_stage', 'hired')
           .gte('created_at', startDate).lte('created_at', endDate);
         if (actErr) throw actErr;
@@ -138,14 +139,12 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const prevStartDate = new Date(startMs - periodLength).toISOString();
         const prevEndDate = new Date(endMs - periodLength).toISOString();
 
-        const { data: currentCandidates } = await supabase
-          .from('pipeline_candidates').select('id, stage, status, added_at, learner_id')
+        const { data: currentCandidates } = await scopedRecruitmentQuery(supabase, scope!, 'pipeline_candidates', 'id, stage, status, added_at, learner_id')
           .gte('added_at', startDate).lte('added_at', endDate);
 
         const totalCandidates = (currentCandidates || []).length;
 
-        const { data: currentHires } = await supabase
-          .from('pipeline_activities').select('pipeline_candidate_id, created_at')
+        const { data: currentHires } = await scopedRecruitmentQuery(supabase, scope!, 'pipeline_activities', 'pipeline_candidate_id:candidate_uuid, created_at')
           .eq('activity_type', 'stage_change').eq('to_stage', 'hired')
           .gte('created_at', startDate).lte('created_at', endDate);
 
@@ -154,8 +153,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
         let timeToHire = 23;
         if (hiredCandidateIds.length > 0) {
-          const { data: hiredDetails } = await supabase
-            .from('pipeline_candidates').select('id, added_at').in('id', hiredCandidateIds);
+          const { data: hiredDetails } = await scopedRecruitmentQuery(supabase, scope!, 'pipeline_candidates', 'id, added_at').in('id', hiredCandidateIds);
 
           if (hiredDetails) {
             const durations: number[] = [];
@@ -171,8 +169,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
         let qualityScore = 85.2;
         if (hiredCandidateIds.length > 0) {
-          const { data: hiredCands } = await supabase
-            .from('pipeline_candidates').select('learner_id').in('id', hiredCandidateIds);
+          const { data: hiredCands } = await scopedRecruitmentQuery(supabase, scope!, 'pipeline_candidates', 'learner_id').in('id', hiredCandidateIds);
           const learnerIds = (hiredCands || []).map((c: any) => c.learner_id).filter(Boolean);
           if (learnerIds.length > 0) {
             const { data: learners } = await supabase
@@ -182,12 +179,10 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           }
         }
 
-        const { data: prevCandidates } = await supabase
-          .from('pipeline_candidates').select('id').gte('added_at', prevStartDate).lte('added_at', prevEndDate);
+        const { data: prevCandidates } = await scopedRecruitmentQuery(supabase, scope!, 'pipeline_candidates', 'id').gte('added_at', prevStartDate).lte('added_at', prevEndDate);
         const prevTotalCandidates = (prevCandidates || []).length;
 
-        const { data: prevHires } = await supabase
-          .from('pipeline_activities').select('pipeline_candidate_id, created_at')
+        const { data: prevHires } = await scopedRecruitmentQuery(supabase, scope!, 'pipeline_activities', 'pipeline_candidate_id:candidate_uuid, created_at')
           .eq('activity_type', 'stage_change').eq('to_stage', 'hired')
           .gte('created_at', prevStartDate).lte('created_at', prevEndDate);
         const prevSuccessfulHires = (prevHires || []).length;
@@ -195,7 +190,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
         let prevTimeToHire = timeToHire;
         if (prevHiredIds.length > 0) {
-          const { data: prevHiredDetails } = await supabase.from('pipeline_candidates').select('id, added_at').in('id', prevHiredIds);
+          const { data: prevHiredDetails } = await scopedRecruitmentQuery(supabase, scope!, 'pipeline_candidates', 'id, added_at').in('id', prevHiredIds);
           if (prevHiredDetails) {
             const prevDurations: number[] = [];
             for (const cand of prevHiredDetails) {
@@ -208,7 +203,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
         let prevQualityScore = qualityScore;
         if (prevHiredIds.length > 0) {
-          const { data: prevHiredCands } = await supabase.from('pipeline_candidates').select('learner_id').in('id', prevHiredIds);
+          const { data: prevHiredCands } = await scopedRecruitmentQuery(supabase, scope!, 'pipeline_candidates', 'learner_id').in('id', prevHiredIds);
           const prevLearnerIds = (prevHiredCands || []).map((c: any) => c.learner_id).filter(Boolean);
           if (prevLearnerIds.length > 0) {
             const { data: prevLearners } = await supabase.from('learners').select('employability_score').in('id', prevLearnerIds);
@@ -418,7 +413,8 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
       // ─── Get Active Subscription ──────────────────────────
       case 'get-active-subscription': {
-        const userId = params.userId || user.id;
+        const userId = user.id;
+        if(params.userId&&params.userId!==user.id)return apiError(403,'FORBIDDEN','Subscription access is restricted to your own account',context.request);
 
         const { data } = await supabase
           .from('subscription_cache').select('*')
@@ -430,9 +426,9 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
       // ─── Debug Opportunities ──────────────────────────────
       case 'debug-opportunities': {
-        const { data: samples } = await supabase.from('opportunities').select('*').limit(5);
-        const { count: totalCount } = await supabase.from('opportunities').select('*', { count: 'exact', head: true });
-        const { count: activeCount } = await supabase.from('opportunities').select('*', { count: 'exact', head: true }).eq('is_active', true);
+        const { data: samples } = await scopedRecruitmentQuery(supabase,scope!,'opportunities').limit(5);
+        const { count: totalCount } = await scopedRecruitmentQuery(supabase,scope!,'opportunities','*',{ count:'exact',head:true });
+        const { count: activeCount } = await scopedRecruitmentQuery(supabase,scope!,'opportunities','*',{ count:'exact',head:true }).eq('is_active', true);
 
         return apiSuccess({ samples: samples || [], totalCount: totalCount || 0, activeCount: activeCount || 0 }, context.request, { startTime });
       }
@@ -460,6 +456,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         return apiError(400, 'INVALID_ACTION', `Unknown action: ${action}`, context.request, { startTime });
     }
   } catch (error: any) {
+    if (error instanceof RecruitmentAccessError) return apiError(403, 'FORBIDDEN', error.message, context.request);
     return apiDbError(error, context.request, { startTime });
   }
 });

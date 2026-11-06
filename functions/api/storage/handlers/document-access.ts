@@ -41,6 +41,24 @@ export const handleDocumentAccess: PagesFunction = async (context) => {
     // Also support extracting key from full URL
     const fileUrl = url.searchParams.get('url');
     if (!fileKey && fileUrl) {
+      // Check if it's an external URL (Google Drive, etc.)
+      try {
+        const parsedFileUrl = new URL(fileUrl);
+        const isExternalUrl = 
+          parsedFileUrl.hostname !== 'localhost' && 
+          parsedFileUrl.hostname !== '127.0.0.1' &&
+          !parsedFileUrl.hostname.includes('cloudflare') &&
+          !parsedFileUrl.hostname.includes('r2.dev') &&
+          parsedFileUrl.protocol.startsWith('http');
+        
+        if (isExternalUrl) {
+          // For external URLs (Google Drive, etc.), redirect directly
+          return Response.redirect(fileUrl, 302);
+        }
+      } catch (e) {
+        // If URL parsing fails, continue with normal flow
+      }
+      
       fileKey = R2Client.extractKeyFromUrl(fileUrl);
     }
 

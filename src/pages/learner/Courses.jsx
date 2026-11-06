@@ -378,14 +378,6 @@ const Courses = () => {
     }
     
     try {
-      // Check if certificate already exists - read directly from state
-      const existingCertUrl = certificateUrls[courseId];
-      if (existingCertUrl) {
-        // Certificate already exists, show it directly
-        viewCertificate(existingCertUrl);
-        return;
-      }
-      
       // Mark this certificate as being prepared
       preparingCertificateRef.current.add(courseId);
       setPreparingCertificate(courseId);
@@ -417,6 +409,21 @@ const Courses = () => {
       if (!learnerData?.id) {
         logger.error('Learner profile response missing required id field', { learnerData, learnerResponse });
         toast.error('Learner profile is incomplete. Please refresh and try again.');
+        return;
+      }
+
+      const normalizedLearnerType = learnerData.learner_type?.trim().toLowerCase();
+      const isEducator = normalizedLearnerType === 'teacher' || normalizedLearnerType === 'educator';
+      const existingCertUrl = certificateUrls[courseId];
+      const hasEducatorTemplate = existingCertUrl
+        ? decodeURIComponent(existingCertUrl).includes('/educator/')
+        : false;
+
+      // Existing standard certificates can be viewed immediately. Educators
+      // with a legacy certificate must pass through generation once so their
+      // stored enrollment URL is replaced with the educator template.
+      if (existingCertUrl && (!isEducator || hasEducatorTemplate)) {
+        viewCertificate(existingCertUrl);
         return;
       }
       
@@ -584,7 +591,7 @@ const Courses = () => {
 
   // Handle start course - navigate to course player
   /**
-   * Records the learner's interest instead of opening the course.
+   * Opens courses locally in development; otherwise records learner interest.
    *
    * The request is awaited so the confirmation is shown only after the record
    * has been persisted. On failure no confirmation is shown and the learner can
@@ -598,6 +605,15 @@ const Courses = () => {
     isCapturingRef.current = true;
 
     try {
+      // Support both Vite dev and build:dev served by local Wrangler Pages.
+      const isLocalDevelopment = import.meta.env.MODE === 'development' &&
+        ['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname);
+      if (isLocalDevelopment) {
+        setShowDetailModal(false);
+        navigate(`/learner/courses/${courseId}/learn`);
+        return;
+      }
+
       // Webinars/live events bypass interest capture entirely and open directly,
       // exactly as all courses did before this feature was introduced.
       if (course.course_type === 'webinar') {
@@ -658,13 +674,15 @@ const Courses = () => {
           setShowDetailModal(false);
         }}
       />
-      
       {/* Certificate Generation Modal */}
       <CertificateNameModal
         isOpen={certificateModal.showModal}
         onClose={certificateModal.closeModal}
         fullName={certificateModal.fullName}
         onFullNameChange={certificateModal.setFullName}
+        collegeName={certificateModal.collegeName}
+        onCollegeNameChange={certificateModal.setCollegeName}
+        learnerType={certificateModal.learnerType}
         onConfirm={certificateModal.showConfirmationDialog}
         onGenerate={certificateModal.generateCertificate}
         isGenerating={certificateModal.isGenerating}

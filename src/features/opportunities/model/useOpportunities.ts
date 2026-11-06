@@ -1,5 +1,19 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { opportunitiesService } from '@/features/opportunities';
+import type { Opportunity } from '../api/opportunitiesService';
+
+interface OpportunityPageOptions {
+  fetchOnMount?: boolean;
+  filters?: Record<string, unknown>;
+  learnerSkills?: unknown[];
+  activeOnly?: boolean;
+  searchTerm?: string;
+  page?: number;
+  pageSize?: number;
+  sortBy?: string;
+  serverSidePagination?: boolean;
+  includeFactoryVisits?: boolean;
+}
 
 /**
  * Custom hook for managing opportunities data with server-side pagination
@@ -16,7 +30,7 @@ import { opportunitiesService } from '@/features/opportunities';
  * @param {boolean} options.includeFactoryVisits - Include industrial visits in results
  * @returns {Object} Hook state and methods
  */
-export const useOpportunities = (options = {}) => {
+export const useOpportunities = (options: OpportunityPageOptions = {}) => {
   const {
     fetchOnMount = true,
     filters = {},
@@ -30,16 +44,24 @@ export const useOpportunities = (options = {}) => {
     includeFactoryVisits = false
   } = options;
 
-  const [opportunities, setOpportunities] = useState([]);
+  const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   const [totalCount, setTotalCount] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
+  const pageKey = JSON.stringify([filters, activeOnly, searchTerm, page, pageSize, sortBy, serverSidePagination, includeFactoryVisits]);
+  const [resolvedPageKey, setResolvedPageKey] = useState('');
 
   /**
    * Fetch opportunities with pagination support
    */
+  const requestVersion = useRef(0);
+  const pendingRequest = useRef<AbortController | null>(null);
   const fetchOpportunities = async () => {
+    const version = ++requestVersion.current;
+    pendingRequest.current?.abort();
+    const controller = new AbortController();
+    pendingRequest.current = controller;
     setLoading(true);
     setError(null);
 
@@ -64,7 +86,8 @@ export const useOpportunities = (options = {}) => {
           searchTerm,
           sortBy,
           filters,
-          activeOnly
+          activeOnly,
+          signal: controller.signal
         });
         data = result.data || [];
         count = result.count || 0;
@@ -81,6 +104,7 @@ export const useOpportunities = (options = {}) => {
         count = data.length;
       }
 
+      if (version !== requestVersion.current) return;
       // Format opportunities for display
       const formattedOpportunities = data.map(opp => 
         opportunitiesService.formatOpportunityForDisplay(opp)
@@ -91,15 +115,18 @@ export const useOpportunities = (options = {}) => {
       setOpportunities(formattedOpportunities);
       setTotalCount(count);
       setTotalPages(calculatedTotalPages);
+      setResolvedPageKey(pageKey);
     } catch (err) {
-      setError(err.message || 'Failed to fetch opportunities');
+      if (version !== requestVersion.current) return;
+      setError(err instanceof Error ? err.message : 'Failed to fetch opportunities');
+      setResolvedPageKey(pageKey);
 
       // Fallback to empty array on error
       setOpportunities([]);
       setTotalCount(0);
       setTotalPages(1);
     } finally {
-      setLoading(false);
+      if (version === requestVersion.current) setLoading(false);
     }
   };
 
@@ -113,7 +140,7 @@ export const useOpportunities = (options = {}) => {
   /**
    * Filter opportunities by employment type
    */
-  const filterByEmploymentType = async (employmentType) => {
+  const filterByEmploymentType = async (employmentType: string) => {
     setLoading(true);
     setError(null);
 
@@ -131,7 +158,7 @@ export const useOpportunities = (options = {}) => {
       setTotalCount(formattedOpportunities.length);
       setTotalPages(Math.max(1, Math.ceil(formattedOpportunities.length / pageSize)));
     } catch (err) {
-      setError(err.message || 'Failed to filter opportunities');
+      setError(err instanceof Error ? err.message : 'Failed to filter opportunities');
     } finally {
       setLoading(false);
     }
@@ -140,7 +167,7 @@ export const useOpportunities = (options = {}) => {
   /**
    * Search opportunities by title or company
    */
-  const searchOpportunities = async (term) => {
+  const searchOpportunities = async (term: string) => {
     if (!term.trim()) {
       fetchOpportunities();
       return;
@@ -166,7 +193,7 @@ export const useOpportunities = (options = {}) => {
       setTotalCount(formattedOpportunities.length);
       setTotalPages(Math.max(1, Math.ceil(formattedOpportunities.length / pageSize)));
     } catch (err) {
-      setError(err.message || 'Failed to search opportunities');
+      setError(err instanceof Error ? err.message : 'Failed to search opportunities');
     } finally {
       setLoading(false);
     }
@@ -177,11 +204,13 @@ export const useOpportunities = (options = {}) => {
     if (fetchOnMount) {
       fetchOpportunities();
     }
-  }, [JSON.stringify(filters), JSON.stringify(learnerSkills), activeOnly, searchTerm, page, pageSize, sortBy, serverSidePagination, includeFactoryVisits]);
+    return () => { requestVersion.current += 1; pendingRequest.current?.abort(); };
+  }, [fetchOnMount, JSON.stringify(filters), JSON.stringify(learnerSkills), activeOnly, searchTerm, page, pageSize, sortBy, serverSidePagination, includeFactoryVisits]);
 
   return {
     opportunities,
-    loading,
+    loading: loading || (fetchOnMount && resolvedPageKey !== pageKey),
+    hasLoadedPage: resolvedPageKey === pageKey,
     error,
     totalCount,
     totalPages,

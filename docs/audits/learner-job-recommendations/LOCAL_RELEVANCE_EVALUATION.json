@@ -1,0 +1,217 @@
+{
+  "schemaVersion": 1,
+  "rankingPolicy": "evidence-order-4",
+  "evaluatedAt": "2026-10-29T07:30:56.680Z",
+  "provenance": "Synthetic agent-authored diagnostic labels; not a blinded human-labelled holdout.",
+  "releaseAcceptance": false,
+  "limitations": [
+    "12 synthetic diagnostic personas, not representative outcome data.",
+    "No threshold calibration, provider latency, hiring probability or production-quality claim.",
+    "Blinded human-labelled holdout and signed-in end-to-end validation remain required."
+  ],
+  "aggregate": {
+    "baselineNdcgAt3": 0.6904648767857287,
+    "sharedNdcgAt3": 1,
+    "baselinePrecisionOfReturnedAt3": 0.34722222222222215,
+    "sharedPrecisionOfReturnedAt3": 0.4444444444444444,
+    "baselineNoMatchAccuracy": 0,
+    "sharedNoMatchAccuracy": 1
+  },
+  "localPureRankingMilliseconds": {
+    "sampleCount": 2400,
+    "p50": 0.01648500000001718,
+    "p95": 0.04471699999999146
+  },
+  "results": [
+    {
+      "id": "javascript-is-not-java",
+      "baseline": {
+        "ndcgAt3": 0.5,
+        "noMatchCorrect": null,
+        "precisionOfReturnedAt3": 0.3333333333333333
+      },
+      "shared": {
+        "ndcgAt3": 1,
+        "noMatchCorrect": null,
+        "precisionOfReturnedAt3": 0.3333333333333333
+      },
+      "returnedIds": [
+        "javascript",
+        "java",
+        "python"
+      ]
+    },
+    {
+      "id": "sparse-fresher-retains-semantic-retrieval",
+      "baseline": {
+        "ndcgAt3": 1,
+        "noMatchCorrect": null,
+        "precisionOfReturnedAt3": 0.5
+      },
+      "shared": {
+        "ndcgAt3": 1,
+        "noMatchCorrect": null,
+        "precisionOfReturnedAt3": 0.5
+      },
+      "returnedIds": [
+        "marine",
+        "other"
+      ]
+    },
+    {
+      "id": "required-city-and-work-mode",
+      "baseline": {
+        "ndcgAt3": 0.5,
+        "noMatchCorrect": null,
+        "precisionOfReturnedAt3": 0.3333333333333333
+      },
+      "shared": {
+        "ndcgAt3": 1,
+        "noMatchCorrect": null,
+        "precisionOfReturnedAt3": 1
+      },
+      "returnedIds": [
+        "valid"
+      ]
+    },
+    {
+      "id": "single-letter-skill",
+      "baseline": {
+        "ndcgAt3": 0.6309297535714574,
+        "noMatchCorrect": null,
+        "precisionOfReturnedAt3": 0.5
+      },
+      "shared": {
+        "ndcgAt3": 1,
+        "noMatchCorrect": null,
+        "precisionOfReturnedAt3": 0.5
+      },
+      "returnedIds": [
+        "r",
+        "rust"
+      ]
+    },
+    {
+      "id": "unicode-normalized-skill",
+      "baseline": {
+        "ndcgAt3": 0.6309297535714574,
+        "noMatchCorrect": null,
+        "precisionOfReturnedAt3": 0.5
+      },
+      "shared": {
+        "ndcgAt3": 1,
+        "noMatchCorrect": null,
+        "precisionOfReturnedAt3": 0.5
+      },
+      "returnedIds": [
+        "python",
+        "java"
+      ]
+    },
+    {
+      "id": "soft-location-keeps-supported-job",
+      "baseline": {
+        "ndcgAt3": 0.6309297535714574,
+        "noMatchCorrect": null,
+        "precisionOfReturnedAt3": 0.5
+      },
+      "shared": {
+        "ndcgAt3": 1,
+        "noMatchCorrect": null,
+        "precisionOfReturnedAt3": 0.5
+      },
+      "returnedIds": [
+        "mumbai",
+        "chennai"
+      ]
+    },
+    {
+      "id": "location-alone-is-not-career-relevance",
+      "baseline": {
+        "ndcgAt3": null,
+        "noMatchCorrect": false,
+        "precisionOfReturnedAt3": 0
+      },
+      "shared": {
+        "ndcgAt3": null,
+        "noMatchCorrect": true,
+        "precisionOfReturnedAt3": 0
+      },
+      "returnedIds": []
+    },
+    {
+      "id": "general-skill-alone-is-not-specialist-relevance",
+      "baseline": {
+        "ndcgAt3": null,
+        "noMatchCorrect": false,
+        "precisionOfReturnedAt3": 0
+      },
+      "shared": {
+        "ndcgAt3": null,
+        "noMatchCorrect": true,
+        "precisionOfReturnedAt3": 0
+      },
+      "returnedIds": []
+    },
+    {
+      "id": "approved-soft-skill-metadata-is-not-specialist-relevance",
+      "baseline": {
+        "ndcgAt3": null,
+        "noMatchCorrect": false,
+        "precisionOfReturnedAt3": 0
+      },
+      "shared": {
+        "ndcgAt3": null,
+        "noMatchCorrect": true,
+        "precisionOfReturnedAt3": 0
+      },
+      "returnedIds": []
+    },
+    {
+      "id": "learning-opt-out-does-not-admit-candidate",
+      "baseline": {
+        "ndcgAt3": null,
+        "noMatchCorrect": false,
+        "precisionOfReturnedAt3": 0
+      },
+      "shared": {
+        "ndcgAt3": null,
+        "noMatchCorrect": true,
+        "precisionOfReturnedAt3": 0
+      },
+      "returnedIds": []
+    },
+    {
+      "id": "learning-opt-in-can-admit-evaluated-candidate",
+      "baseline": {
+        "ndcgAt3": 1,
+        "noMatchCorrect": null,
+        "precisionOfReturnedAt3": 1
+      },
+      "shared": {
+        "ndcgAt3": 1,
+        "noMatchCorrect": null,
+        "precisionOfReturnedAt3": 1
+      },
+      "returnedIds": [
+        "learning-only"
+      ]
+    },
+    {
+      "id": "general-skill-only-role-remains-discoverable",
+      "baseline": {
+        "ndcgAt3": 0.6309297535714574,
+        "noMatchCorrect": null,
+        "precisionOfReturnedAt3": 0.5
+      },
+      "shared": {
+        "ndcgAt3": 1,
+        "noMatchCorrect": null,
+        "precisionOfReturnedAt3": 1
+      },
+      "returnedIds": [
+        "support"
+      ]
+    }
+  ]
+}

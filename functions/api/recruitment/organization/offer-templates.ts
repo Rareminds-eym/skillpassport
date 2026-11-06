@@ -4,7 +4,7 @@
  * Template type: 'offer'
  */
 
-import { withAuth } from '../../../lib/auth';
+import { withAuth, getContextUser } from '../../../lib/auth';
 import { getServiceClient } from '../../../lib/supabase';
 import { verifyOrgAccess, PERMISSIONS } from '../../../lib/permissions';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
@@ -16,7 +16,7 @@ const TEMPLATE_TYPE = 'offer';
  * Fetch all offer letter templates for an organization
  */
 export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
-    const user = context.data.user;
+    const user = getContextUser(context);
     const env = context.env as Record<string, string>;
     const supabase = getServiceClient(env as any);
 
@@ -31,7 +31,7 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
     }
 
     // Verify user has access
-    const access = await verifyOrgAccess(supabase, user.sub, orgId, undefined);
+    const access = await verifyOrgAccess(supabase, user.id, orgId, undefined);
     if (!access.allowed) {
         return access.error!;
     }
@@ -100,7 +100,7 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
  * Create a new offer letter template
  */
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
-    const user = context.data.user;
+    const user = getContextUser(context);
     const env = context.env as Record<string, string>;
     const supabase = getServiceClient(env as any);
 
@@ -128,7 +128,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     }
 
     // Verify user has admin access
-    const access = await verifyOrgAccess(supabase, user.sub, org_id, PERMISSIONS.MANAGE_ORG_SETTINGS);
+    const access = await verifyOrgAccess(supabase, user.id, org_id, PERMISSIONS.MANAGE_TEAM);
     if (!access.allowed) {
         return access.error!;
     }
@@ -177,7 +177,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
  * Update an existing offer letter template
  */
 export const onRequestPut = withAuth(async (context: AuthenticatedContext) => {
-    const user = context.data.user;
+    const user = getContextUser(context);
     const env = context.env as Record<string, string>;
     const supabase = getServiceClient(env as any);
 
@@ -199,7 +199,7 @@ export const onRequestPut = withAuth(async (context: AuthenticatedContext) => {
     }
 
     // Verify user has admin access
-    const access = await verifyOrgAccess(supabase, user.sub, org_id, PERMISSIONS.MANAGE_ORG_SETTINGS);
+    const access = await verifyOrgAccess(supabase, user.id, org_id, PERMISSIONS.MANAGE_TEAM);
     if (!access.allowed) {
         return access.error!;
     }
@@ -269,7 +269,7 @@ export const onRequestPut = withAuth(async (context: AuthenticatedContext) => {
  * Delete an offer letter template
  */
 export const onRequestDelete = withAuth(async (context: AuthenticatedContext) => {
-    const user = context.data.user;
+    const user = getContextUser(context);
     const env = context.env as Record<string, string>;
     const supabase = getServiceClient(env as any);
 
@@ -284,7 +284,7 @@ export const onRequestDelete = withAuth(async (context: AuthenticatedContext) =>
     }
 
     // Verify user has admin access
-    const access = await verifyOrgAccess(supabase, user.sub, orgId, PERMISSIONS.MANAGE_ORG_SETTINGS);
+    const access = await verifyOrgAccess(supabase, user.id, orgId, PERMISSIONS.MANAGE_TEAM);
     if (!access.allowed) {
         return access.error!;
     }

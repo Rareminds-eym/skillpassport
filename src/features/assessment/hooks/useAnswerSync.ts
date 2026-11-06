@@ -18,7 +18,7 @@ export interface SyncStatus {
  * 
  * Flow:
  * 1. User answers question → Saved to Zustand (instant)
- * 2. Zustand persist middleware → Saves to localStorage automatically
+ * 2. In-memory state remains available while this page is mounted (no browser persistence)
  * 3. Hook detects answer change → Queues for backend sync
  * 4. Debounce 2s → Batch answers
  * 5. Check network → If offline, block next question
@@ -35,9 +35,16 @@ export const useAnswerSync = (attemptId: string | null, showSectionIntro: boolea
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [canProceedToNextQuestion, setCanProceedToNextQuestion] = useState(false);
 
+  const [hasPendingAnswers,setHasPendingAnswers]=useState(false);
+
   // Refs for tracking
   const isSyncing = useRef(false);
-  const pendingAnswers = useRef<Map<string, any>>(new Map());
+  const pendingAnswers = useRef<Map<string, {value: any}>>(new Map());
+  const syncGeneration = useRef(0);
+  const activeAttempt = useRef(attemptId);
+  activeAttempt.current = attemptId;
+  const latestStore = useRef(store);
+  latestStore.current = store;
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
   const previousAnswersRef = useRef<Record<string, any>>({});
   const sectionStartTimeRef = useRef<Record<number, number>>({});
@@ -47,10 +54,11 @@ export const useAnswerSync = (attemptId: string | null, showSectionIntro: boolea
 
   // ===== BUILD SECTION TIMINGS =====
   const buildSectionTimings = (currentSectionIndex: number): Record<string, number> => {
-    const currentSection = store.sections[currentSectionIndex];
+    const currentSection = latestStore.current.sections[currentSectionIndex];
     if (!currentSection) return {};
 
     const sectionName = currentSection.name;
+    if (typeof sectionName !== 'string') return {};
 
     // Calculate elapsed time for this section
     const sectionStartTime = sectionStartTimeRef.current[currentSectionIndex];
@@ -61,87 +69,103 @@ export const useAnswerSync = (attemptId: string | null, showSectionIntro: boolea
     const elapsedSeconds = Math.round((Date.now() - sectionStartTime) / 1000);
 
     return {
-      [sectionName]: elapsedSeconds
+      [sectionName]: (latestStore.current.sectionTimings?.[sectionName]??0)+elapsedSeconds
     };
   };
 
   // ===== SYNC TO BACKEND =====
   const syncPendingAnswers = useCallback(async (retries = 3): Promise<boolean> => {
+    if (attemptId !== activeAttempt.current || store.generation !== latestStore.current.generation) return false;
     if (isSyncing.current || pendingAnswers.current.size === 0 || !attemptId) {
       return true;
     }
 
     // Check network first
     if (!isOnline) {
-      const offlineMsg = 'No internet connection. Answers saved locally.';
+      const offlineMsg = 'No internet connection. Answers are held in this page; keep it open.';
       logger.warn('Sync blocked: offline', { attemptId, pendingCount: pendingAnswers.current.size });
       setErrorMessage(offlineMsg);
       setCanProceedToNextQuestion(false);
       return false;
     }
 
+    const generation = syncGeneration.current;
+    const isCurrent = () => generation === syncGeneration.current && attemptId === activeAttempt.current && store.generation === latestStore.current.generation;
     isSyncing.current = true;
 
-    for (let attempt = 0; attempt < retries; attempt++) {
-      try {
-        const answers = Object.fromEntries(pendingAnswers.current);
-        // Use the captured section/question index (set when answers were added, not current navigation state)
-        const syncSectionIndex = pendingSectionIndexRef.current;
-        const syncQuestionIndex = pendingQuestionIndexRef.current;
-        const sectionTimings = buildSectionTimings(syncSectionIndex);
+    try {
+      // Drain batches added while an earlier request is in flight. Each map entry
+      // is a version token, so changing the same question cannot be acknowledged
+      // accidentally by an older save (even if its value changes back again).
+      while (pendingAnswers.current.size > 0 && isCurrent()) {
+        let saved = false;
+        for (let attempt = 0; attempt < retries; attempt++) {
+          if (!isCurrent()) return false;
+          const batch = new Map(pendingAnswers.current);
+          const answers = Object.fromEntries([...batch].map(([key, entry]) => [key, entry.value]));
+          const syncSectionIndex = pendingSectionIndexRef.current;
+          const syncQuestionIndex = pendingQuestionIndexRef.current;
+          const sectionTimings = buildSectionTimings(syncSectionIndex);
+          try {
+            const response = await updateProgress({
+              attemptId,
+              sectionIndex: syncSectionIndex,
+              questionIndex: syncQuestionIndex,
+              sectionTimings,
+              answers,
+            });
+            if (!isCurrent()) return false;
+            if (!response.success) throw new Error(response.error || 'Sync failed');
 
-        // Call backend API
-        const response = await updateProgress({
-          attemptId,
-          sectionIndex: syncSectionIndex,
-          questionIndex: syncQuestionIndex,
-          sectionTimings,
-          answers,
-        });
-
-        if (!response.success) {
-          throw new Error(response.error || 'Sync failed');
+            for (const [key, entry] of batch) {
+              if (pendingAnswers.current.get(key) === entry) pendingAnswers.current.delete(key);
+            }
+            setHasPendingAnswers(pendingAnswers.current.size>0);
+            saved = true;
+            break;
+          } catch (error) {
+            if (!isCurrent()) return false;
+            logger.warn(`Sync attempt ${attempt + 1}/${retries} failed`, {
+              attemptId,
+              error: error instanceof Error ? error.message : 'Unknown error',
+              pendingCount: pendingAnswers.current.size,
+            });
+            if (attempt < retries - 1) {
+              await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempt)));
+            }
+          }
         }
-
-        // Success: clear pending answers
-        pendingAnswers.current.clear();
-        setErrorMessage(null);
-        setCanProceedToNextQuestion(true);
-        isSyncing.current = false;
-        return true;
-
-      } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-        logger.warn(`Sync attempt ${attempt + 1}/${retries} failed`, {
-          attemptId,
-          error: errorMsg,
-          pendingCount: pendingAnswers.current.size,
-        });
-
-        if (attempt < retries - 1) {
-          // Exponential backoff: 1s, 2s, 4s
-          const delay = 1000 * Math.pow(2, attempt);
-          await new Promise(r => setTimeout(r, delay));
-        } else {
-          // All retries failed
-          const errorMsg = 'Unable to save your answer. Please check your internet connection and try again.';
-          logger.error('All sync retries failed', {
-            attemptId,
-            totalAttempts: retries,
-            pendingCount: pendingAnswers.current.size,
-          });
-          
-          setErrorMessage(errorMsg);
+        if (!saved) {
+          setErrorMessage('Unable to save your answer. Please check your internet connection and try again.');
           setCanProceedToNextQuestion(false);
-          isSyncing.current = false;
           return false;
         }
       }
+      if (!isCurrent()) return false;
+      setErrorMessage(null);
+      setCanProceedToNextQuestion(true);
+      return true;
+    } finally {
+      // An old attempt's completion must not release a newer attempt's sync lock.
+      if (isCurrent()) isSyncing.current = false;
     }
+  }, [attemptId, isOnline,store.generation]);
 
+  useEffect(() => {
+    syncGeneration.current++;
+    pendingAnswers.current.clear();
+    setHasPendingAnswers(false);
+    previousAnswersRef.current = {...store.answers};
+    sectionStartTimeRef.current = {};
     isSyncing.current = false;
-    return false;
-  }, [attemptId, isOnline]);
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    setCanProceedToNextQuestion(false);
+    setErrorMessage(null);
+    return () => {
+      syncGeneration.current++;
+      if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    };
+  }, [attemptId,store.generation]);
 
   // ===== TRACK SECTION ENTRY TIME (after intro dismissed) =====
   useEffect(() => {
@@ -149,7 +173,7 @@ export const useAnswerSync = (attemptId: string | null, showSectionIntro: boolea
     if (!showSectionIntro && !sectionStartTimeRef.current[store.currentSectionIndex]) {
       sectionStartTimeRef.current[store.currentSectionIndex] = Date.now();
     }
-  }, [store.currentSectionIndex, showSectionIntro]);
+  }, [store.currentSectionIndex, showSectionIntro, attemptId,store.generation]);
 
   // ===== DETECT ANSWER CHANGES =====
   useEffect(() => {
@@ -159,7 +183,7 @@ export const useAnswerSync = (attemptId: string | null, showSectionIntro: boolea
     // Find new or changed answers
     Object.entries(currentAnswers).forEach(([questionId, answer]) => {
       if (previousAnswersRef.current[questionId] !== answer) {
-        pendingAnswers.current.set(questionId, answer);
+        pendingAnswers.current.set(questionId, {value: answer});
         hasNewAnswers = true;
         // Reset canProceed when new answer is detected
         setCanProceedToNextQuestion(false);
@@ -167,6 +191,7 @@ export const useAnswerSync = (attemptId: string | null, showSectionIntro: boolea
     });
 
     previousAnswersRef.current = { ...currentAnswers };
+    setHasPendingAnswers(pendingAnswers.current.size>0);
 
     // Capture current position when new answers arrive (before any section navigation)
     if (hasNewAnswers) {
@@ -185,7 +210,7 @@ export const useAnswerSync = (attemptId: string | null, showSectionIntro: boolea
       }, 2000);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [store.answers]);
+  }, [store.answers, attemptId,store.generation]);
 
   // ===== NETWORK MONITORING =====
   useEffect(() => {
@@ -202,7 +227,7 @@ export const useAnswerSync = (attemptId: string | null, showSectionIntro: boolea
 
     const handleOffline = () => {
       setIsOnline(false);
-      const offlineMsg = 'No internet connection. Answers saved locally.';
+      const offlineMsg = 'No internet connection. Answers are held in this page; keep it open.';
       setErrorMessage(offlineMsg);
       setCanProceedToNextQuestion(false);
       toast.error(offlineMsg, {
@@ -242,7 +267,7 @@ export const useAnswerSync = (attemptId: string | null, showSectionIntro: boolea
         
         const synced = await syncPendingAnswers();
         if (!synced) {
-          logger.error('Failed to sync before unload', { attemptId });
+          logger.error('Failed to sync before unload', undefined, { attemptId });
           e.preventDefault();
           e.returnValue = 'You have unsaved answers. Are you sure you want to leave?';
         }
@@ -255,15 +280,16 @@ export const useAnswerSync = (attemptId: string | null, showSectionIntro: boolea
 
   const getElapsedSecondsForSection = (sectionIndex: number): number => {
     const startTime = sectionStartTimeRef.current[sectionIndex];
-    if (!startTime) return 0;
-    return Math.round((Date.now() - startTime) / 1000);
+    const name=store.sections[sectionIndex]?.name;
+    const saved=name?(store.sectionTimings?.[name]??0):0;
+    return saved+(startTime?Math.round((Date.now() - startTime) / 1000):0);
   };
 
   return {
     isOnline,
     errorMessage,
     canProceedToNextQuestion,
-    hasPendingAnswers: pendingAnswers.current.size > 0,
+    hasPendingAnswers,
     getElapsedSecondsForSection,
   } as SyncStatus & { getElapsedSecondsForSection: (sectionIndex: number) => number };
 };

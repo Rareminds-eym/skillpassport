@@ -61,7 +61,7 @@ class FactoryVisitsService {
     }
   }
 
-  async registerForVisit(learnerId: number, visitId: string): Promise<{ success: boolean; message: string }> {
+  async registerForVisit(learnerId: string, visitId: string): Promise<{ success: boolean; message: string }> {
     try {
       const result = await apiPost<any>('/college-admin/events', {
         action: 'register-for-factory-visit',

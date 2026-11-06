@@ -18,7 +18,8 @@ import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('RecruiterProfile');
 
-function formatDate(isoLike: string) {
+function formatDate(isoLike: string | null) {
+  if (!isoLike) return "Not available";
   try {
     const d = new Date(isoLike);
     return d.toLocaleDateString(undefined, {
@@ -80,8 +81,8 @@ const RecruiterProfile: React.FC = () => {
       logger.info('[RecruiterProfile] Loading organization context...');
     } else if (orgContext) {
       logger.info('[RecruiterProfile] Organization context loaded', {
-        organizationId: orgContext.organizationId,
-        organizationName: orgContext.organizationName,
+        organizationId: orgContext.orgId,
+        organizationName: orgContext.orgName,
         isAdmin: orgContext.isAdmin,
         ssoRoleName: orgContext.ssoRoleName,
       });
@@ -126,14 +127,14 @@ const RecruiterProfile: React.FC = () => {
       name: user?.name || `${user?.email?.split('@')[0]}`,
       email: user?.email || '',
       phone: user?.phone || null,
-      organizationName: orgContext?.organizationName || 'Organization',
-      organizationId: orgContext?.organizationId || '',
+      organizationName: orgContext?.orgName || 'Organization',
+      organizationId: orgContext?.orgId || '',
       role: userDisplayRole,
       state: null, // Can be added later if needed
       website: null,
       verificationstatus: user?.isEmailVerified ? 'approved' : 'pending',
       isactive: true,
-      createdat: new Date().toISOString(), // Use current date as fallback
+      createdat: (user as unknown as { createdAt?: string; created_at?: string })?.createdAt || (user as unknown as { created_at?: string })?.created_at || null,
     };
 
     logger.info('[RecruiterProfile] Recruiter profile data constructed', {
@@ -185,7 +186,7 @@ const RecruiterProfile: React.FC = () => {
                   {recruiter.name || 'Unknown User'}
                 </h1>
                 <p className="text-sm text-slate-500 mt-1 flex items-center gap-2">
-                  <Mail className="w-4 h-4 text-slate-400" />
+                  <Mail className="w-4 h-4 text-slate-600" />
                   <span className="truncate">{recruiter.email || 'No email available'}</span>
                 </p>
 
@@ -216,7 +217,7 @@ const RecruiterProfile: React.FC = () => {
                   <div
                     className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs ${recruiter.isactive
                       ? "bg-white border border-slate-100 text-emerald-700"
-                      : "bg-white border border-slate-100 text-rose-600"
+                      : "bg-white border border-slate-100 text-rose-700"
                       }`}
                   >
                     {recruiter.isactive ? (
@@ -231,7 +232,7 @@ const RecruiterProfile: React.FC = () => {
 
                   {/* Member Since Badge */}
                   <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs bg-white border border-slate-100 text-slate-600">
-                    <Calendar className="w-4 h-4 text-slate-400" />
+                    <Calendar className="w-4 h-4 text-slate-600" />
                     <span>Member since {formatDate(recruiter.createdat)}</span>
                   </div>
                 </div>
@@ -253,7 +254,7 @@ const RecruiterProfile: React.FC = () => {
               </a>
             )}
 
-            <button
+            <button aria-label="Copy"
               onClick={() => handleCopy(recruiter.email, "email")}
               className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-white border border-gray-200 text-slate-700 hover:shadow-sm transition"
             >
@@ -289,7 +290,7 @@ const RecruiterProfile: React.FC = () => {
                     <Globe className="w-4 h-4" /> Visit website
                   </a>
                 )}
-                <div className="text-xs text-slate-400 mt-1">
+                <div className="text-xs text-slate-600 mt-1">
                   ID: {recruiter.id.slice(0, 8)}…
                 </div>
               </div>
@@ -297,12 +298,12 @@ const RecruiterProfile: React.FC = () => {
 
             <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="p-4 bg-white rounded-lg border border-gray-100 shadow-sm">
-                <div className="text-xs text-slate-400">Email</div>
+                <div className="text-xs text-slate-600">Email</div>
                 <div className="mt-1 text-sm font-medium text-slate-800 flex items-center gap-3">
                   <span className="truncate">{recruiter.email}</span>
-                  <button
+                  <button aria-label="Copy"
                     onClick={() => handleCopy(recruiter.email, "email")}
-                    className="text-slate-400 hover:text-slate-600"
+                    className="text-slate-600 hover:text-slate-600"
                   >
                     <Copy className="w-4 h-4" />
                   </button>
@@ -310,13 +311,13 @@ const RecruiterProfile: React.FC = () => {
               </div>
 
               <div className="p-4 bg-white rounded-lg border border-gray-100 shadow-sm">
-                <div className="text-xs text-slate-400">Phone</div>
+                <div className="text-xs text-slate-600">Phone</div>
                 <div className="mt-1 text-sm font-medium text-slate-800 flex items-center gap-3">
                   <span>{recruiter.phone || "—"}</span>
                   {recruiter.phone && (
-                    <button
+                    <button aria-label="Copy"
                       onClick={() => handleCopy(recruiter.phone, "phone")}
-                      className="text-slate-400 hover:text-slate-600"
+                      className="text-slate-600 hover:text-slate-600"
                     >
                       <Copy className="w-4 h-4" />
                     </button>
@@ -325,9 +326,9 @@ const RecruiterProfile: React.FC = () => {
               </div>
 
               <div className="p-4 bg-white rounded-lg border border-gray-100 shadow-sm">
-                <div className="text-xs text-slate-400">Location</div>
+                <div className="text-xs text-slate-600">Location</div>
                 <div className="mt-1 text-sm font-medium text-slate-800 flex items-center gap-2">
-                  <MapPin className="w-4 h-4 text-slate-400" />
+                  <MapPin className="w-4 h-4 text-slate-600" />
                   <span>{recruiter.state || "—"}</span>
                 </div>
               </div>
@@ -344,7 +345,7 @@ const RecruiterProfile: React.FC = () => {
 
             <div className="flex items-center gap-3">
               <div className="flex-shrink-0 p-3 rounded-lg bg-green-50">
-                <CheckCircle className="w-5 h-5 text-green-600" />
+                <CheckCircle className="w-5 h-5 text-green-700" />
               </div>
               <div>
                 <div className="text-sm font-medium text-slate-800">
@@ -367,7 +368,7 @@ const RecruiterProfile: React.FC = () => {
                   Account status
                 </div>
                 <div
-                  className={`text-xs font-medium ${recruiter.isactive ? "text-emerald-600" : "text-rose-600"
+                  className={`text-xs font-medium ${recruiter.isactive ? "text-emerald-700" : "text-rose-700"
                     }`}
                 >
                   {recruiter.isactive ? "Active" : "Inactive"}
@@ -383,7 +384,7 @@ const RecruiterProfile: React.FC = () => {
             <div className="text-sm text-slate-600 space-y-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <MapPin className="w-4 h-4 text-slate-400" /> Location
+                  <MapPin className="w-4 h-4 text-slate-600" /> Location
                 </div>
                 <div className="text-slate-800 font-medium">
                   {recruiter.state || "—"}
@@ -391,7 +392,7 @@ const RecruiterProfile: React.FC = () => {
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-slate-400" /> Created
+                  <Calendar className="w-4 h-4 text-slate-600" /> Created
                 </div>
                 <div className="text-slate-800 font-medium">
                   {formatDate(recruiter.createdat)}
@@ -399,7 +400,7 @@ const RecruiterProfile: React.FC = () => {
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Mail className="w-4 h-4 text-slate-400" /> Contact
+                  <Mail className="w-4 h-4 text-slate-600" /> Contact
                 </div>
                 <div className="text-slate-800 font-medium">
                   {recruiter.email}

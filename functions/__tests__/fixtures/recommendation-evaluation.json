@@ -1,0 +1,342 @@
+{
+  "schemaVersion": 1,
+  "provenance": "Synthetic agent-authored diagnostic labels; not a blinded human-labelled holdout.",
+  "cases": [
+    {
+      "id": "javascript-is-not-java",
+      "skills": [
+        "JavaScript"
+      ],
+      "jobs": [
+        {
+          "id": "java",
+          "title": "Java engineer",
+          "skills_required": [
+            "Java"
+          ],
+          "similarity": 0.95,
+          "relevance": 0
+        },
+        {
+          "id": "javascript",
+          "title": "Web developer",
+          "skills_required": [
+            "JavaScript"
+          ],
+          "similarity": 0.7,
+          "relevance": 2
+        },
+        {
+          "id": "python",
+          "title": "Python engineer",
+          "skills_required": [
+            "Python"
+          ],
+          "similarity": 0.8,
+          "relevance": 0
+        }
+      ]
+    },
+    {
+      "id": "sparse-fresher-retains-semantic-retrieval",
+      "skills": [],
+      "jobs": [
+        {
+          "id": "marine",
+          "title": "Marine research assistant",
+          "skills_required": [],
+          "similarity": 0.8,
+          "relevance": 2
+        },
+        {
+          "id": "other",
+          "title": "Sales assistant",
+          "skills_required": [],
+          "similarity": 0.4,
+          "relevance": 0
+        }
+      ]
+    },
+    {
+      "id": "required-city-and-work-mode",
+      "skills": [
+        "Python"
+      ],
+      "preferences": {
+        "locations": [
+          "Chennai"
+        ],
+        "workModes": [
+          "remote"
+        ],
+        "strictLocations": true,
+        "strictWorkModes": true
+      },
+      "jobs": [
+        {
+          "id": "substring",
+          "title": "Python developer",
+          "skills_required": [
+            "Python"
+          ],
+          "location": "Chennaiville",
+          "mode": "remote",
+          "similarity": 0.95,
+          "relevance": 0
+        },
+        {
+          "id": "valid",
+          "title": "Python developer",
+          "skills_required": [
+            "Python"
+          ],
+          "location": "Chennai, India",
+          "mode": "remote",
+          "similarity": 0.75,
+          "relevance": 2
+        },
+        {
+          "id": "unknown",
+          "title": "Python developer",
+          "skills_required": [
+            "Python"
+          ],
+          "similarity": 0.85,
+          "relevance": 0
+        }
+      ]
+    },
+    {
+      "id": "single-letter-skill",
+      "skills": [
+        "R"
+      ],
+      "jobs": [
+        {
+          "id": "r",
+          "title": "Statistical analyst",
+          "skills_required": [
+            "R"
+          ],
+          "similarity": 0.6,
+          "relevance": 2
+        },
+        {
+          "id": "rust",
+          "title": "Rust developer",
+          "skills_required": [
+            "Rust"
+          ],
+          "similarity": 0.9,
+          "relevance": 0
+        }
+      ]
+    },
+    {
+      "id": "unicode-normalized-skill",
+      "skills": [
+        "\uff30\uff59\uff54\uff48\uff4f\uff4e"
+      ],
+      "jobs": [
+        {
+          "id": "python",
+          "title": "Python developer",
+          "skills_required": [
+            "Python"
+          ],
+          "similarity": 0.6,
+          "relevance": 2
+        },
+        {
+          "id": "java",
+          "title": "Java developer",
+          "skills_required": [
+            "Java"
+          ],
+          "similarity": 0.9,
+          "relevance": 0
+        }
+      ]
+    },
+    {
+      "id": "soft-location-keeps-supported-job",
+      "skills": [
+        "Python"
+      ],
+      "preferences": {
+        "locations": [
+          "Chennai"
+        ]
+      },
+      "jobs": [
+        {
+          "id": "mumbai",
+          "title": "Python developer",
+          "skills_required": [
+            "Python"
+          ],
+          "location": "Mumbai",
+          "similarity": 0.8,
+          "relevance": 2
+        },
+        {
+          "id": "chennai",
+          "title": "Unrelated developer",
+          "skills_required": [
+            "Java"
+          ],
+          "location": "Chennai",
+          "similarity": 0.9,
+          "relevance": 0
+        }
+      ]
+    },
+    {
+      "id": "location-alone-is-not-career-relevance",
+      "skills": [
+        "Python"
+      ],
+      "preferences": {
+        "locations": [
+          "Chennai"
+        ]
+      },
+      "jobs": [
+        {
+          "id": "cardiologist",
+          "title": "Consultant cardiologist",
+          "skills_required": [
+            "Cardiology"
+          ],
+          "location": "Chennai, India",
+          "similarity": 0,
+          "relevance": 0
+        }
+      ]
+    },
+    {
+      "id": "general-skill-alone-is-not-specialist-relevance",
+      "skills": [
+        "Communication"
+      ],
+      "jobs": [
+        {
+          "id": "specialist",
+          "title": "Consultant cardiologist",
+          "skills_required": [
+            "Cardiology",
+            "Communication"
+          ],
+          "similarity": 0,
+          "relevance": 0
+        }
+      ]
+    },
+    {
+      "id": "approved-soft-skill-metadata-is-not-specialist-relevance",
+      "skills": [
+        "Customer empathy"
+      ],
+      "softSkills": [
+        "Customer empathy"
+      ],
+      "jobs": [
+        {
+          "id": "specialist",
+          "title": "Consultant cardiologist",
+          "skills_required": [
+            "Cardiology",
+            "Customer empathy"
+          ],
+          "similarity": 0,
+          "relevance": 0
+        }
+      ]
+    },
+    {
+      "id": "learning-opt-out-does-not-admit-candidate",
+      "skills": [
+        "Python"
+      ],
+      "preferences": {
+        "useVerifiedLearning": false
+      },
+      "jobs": [
+        {
+          "id": "learning-only",
+          "title": "Spreadsheet assistant",
+          "skills_required": [
+            "Excel"
+          ],
+          "similarity": 0,
+          "learning_eligibility": {
+            "state": "eligible",
+            "canApply": true,
+            "criteria": [
+              {
+                "status": "eligible"
+              }
+            ]
+          },
+          "relevance": 0
+        }
+      ]
+    },
+    {
+      "id": "learning-opt-in-can-admit-evaluated-candidate",
+      "skills": [
+        "Python"
+      ],
+      "preferences": {
+        "useVerifiedLearning": true
+      },
+      "jobs": [
+        {
+          "id": "learning-only",
+          "title": "Spreadsheet assistant",
+          "skills_required": [
+            "Excel"
+          ],
+          "similarity": 0,
+          "learning_eligibility": {
+            "state": "eligible",
+            "canApply": true,
+            "criteria": [
+              {
+                "status": "eligible"
+              }
+            ]
+          },
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "general-skill-only-role-remains-discoverable",
+      "skills": [
+        "Communication"
+      ],
+      "jobs": [
+        {
+          "id": "specialist",
+          "title": "Consultant cardiologist",
+          "skills_required": [
+            "Cardiology",
+            "Communication"
+          ],
+          "similarity": 0,
+          "relevance": 0
+        },
+        {
+          "id": "support",
+          "title": "Customer support assistant",
+          "skills_required": [
+            "Communication"
+          ],
+          "similarity": 0,
+          "relevance": 2
+        }
+      ]
+    }
+  ]
+}

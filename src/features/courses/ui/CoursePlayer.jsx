@@ -26,6 +26,7 @@ import { apiGet, apiPost } from '@/shared/api/apiClient';
 import { enrollmentService } from '@/features/courses';
 import { courseProgressService as progressService } from '@/features/courses';
 import { getAuthenticatedMediaUrl, needsAuthentication } from '@/shared/api/authenticatedMediaService';
+import { supabase } from '@/shared/api/supabaseClient';
 
 const CoursePlayer = () => {
   const { courseId } = useParams();
@@ -967,13 +968,36 @@ const CoursePlayer = () => {
       const courseName = course?.title || 'Course';
       const educatorName = course?.educator_name || enrollment?.educator_name || 'Skill Ecosystem Platform';
 
+      // Fetch learner_type from database to determine certificate template
+      console.log('📋 Fetching learner type from database...');
+      const { data: learnerData, error: learnerError } = await supabase
+        .from('learners')
+        .select('learner_type, college_school_name, school_name')
+        .eq('id', user.id)
+        .single();
+
+      if (learnerError) {
+        console.warn('Could not fetch learner type, using default:', learnerError);
+      }
+
+      const learnerType = learnerData?.learner_type || 'learner';
+      const collegeName = learnerData?.college_school_name || learnerData?.school_name || null;
+      
+      console.log('👤 Learner type:', learnerType);
+      console.log('🏫 College/School:', collegeName);
+
       console.log('📜 Generating certificate...');
       const certResult = await generateCourseCertificate(
         user.id,
         learnerName,
         courseId,
         courseName,
-        educatorName
+        educatorName,
+        null, // learnerIdText
+        'course', // courseType
+        null, // issuedOnDate
+        learnerType, // Pass learner type for template selection
+        collegeName // Pass college/school name for educator certificates
       );
 
       if (certResult.success) {

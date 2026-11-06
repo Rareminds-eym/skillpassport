@@ -132,6 +132,7 @@ export const CandidateCard: React.FC<CandidateCardProps> = ({
         {/* Checkbox */}
         <div className={`flex-shrink-0 transition-opacity ${isSelected || isHovered ? 'opacity-100' : 'opacity-0'}`}>
           <input
+            aria-label={`Select ${candidate.name}`}
             type="checkbox"
             checked={isSelected}
             onChange={(e) => {
@@ -145,12 +146,12 @@ export const CandidateCard: React.FC<CandidateCardProps> = ({
 
         {/* Menu Button */}
         <div className="flex-shrink-0 relative" onClick={(e) => e.stopPropagation()}>
-          <button
+          <button aria-label={`Actions for ${candidate.name}`} title={`Actions for ${candidate.name}`}
             onClick={(e) => {
               e.stopPropagation();
               setShowMoveMenu(!showMoveMenu);
             }}
-            className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors"
+            className="p-1 text-gray-600 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors"
           >
             <EllipsisVerticalIcon className="h-5 w-5" />
           </button>
@@ -209,7 +210,7 @@ export const CandidateCard: React.FC<CandidateCardProps> = ({
                 <div className="border-t border-gray-100 my-1"></div>
                 <button 
                   onClick={(e) => e.stopPropagation()}
-                  className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center"
+                  className="w-full text-left px-4 py-2 text-sm text-red-700 hover:bg-red-50 flex items-center"
                 >
                   <XCircleIcon className="h-4 w-4 mr-2" />
                   Reject
@@ -241,7 +242,7 @@ export const CandidateCard: React.FC<CandidateCardProps> = ({
               )}
             </>
           ) : (
-            <span className="text-xs text-gray-400 italic">No skills listed</span>
+            <span className="text-xs text-gray-600 italic">No skills listed</span>
           )}
         </div>
       </div>

@@ -113,6 +113,7 @@ ${profile.projects.slice(0, 2).map((p: any) => `- ${p.title}: ${(p.tech_stack ||
 }
 
 export function buildAssessmentXML(assessment: AssessmentResults): string {
+  const escape = (value: unknown) => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]!));
   if (!assessment.hasAssessment) {
     return `
 <assessment status="not_completed">
@@ -123,17 +124,19 @@ export function buildAssessmentXML(assessment: AssessmentResults): string {
 
   return `
 <assessment status="completed">
-<riasec code="${assessment.riasecCode}">${assessment.riasecInterpretation}</riasec>
-<personality>${assessment.personalityInterpretation}</personality>
-<aptitude_score>${assessment.aptitudeOverall}%</aptitude_score>
-<employability>${assessment.employabilityReadiness}</employability>
+<provenance objective="${assessment.gradingProvenance?.objective === 'server_graded' ? 'server_graded' : 'unavailable'}" subjective="advisory_unverified" />
+<trust_note>Subjective ratings, AI narratives, career suggestions and inferred gaps are advisory, unverified context. They never establish skills, eligibility or certified achievements. Objective grading checks saved responses against server question keys; it is not proctoring or a job qualification.</trust_note>
+<riasec provenance="advisory_unverified" code="${escape(assessment.riasecCode)}">${escape(assessment.riasecInterpretation)}</riasec>
+<personality provenance="advisory_unverified">${escape(assessment.personalityInterpretation)}</personality>
+<aptitude_score>${assessment.gradingProvenance?.objective === 'server_graded' ? `${assessment.aptitudeOverall}%` : 'unavailable'}</aptitude_score>
+<employability provenance="advisory_unverified">${escape(assessment.employabilityReadiness)}</employability>
 
 ${assessment.careerFit && assessment.careerFit.length > 0 ? `<recommended_careers>
-${assessment.careerFit.slice(0, 5).map((c: any) => `- ${c.title || c.career || c}`).join('\n')}
+${assessment.careerFit.slice(0, 5).map((c: any) => `- ${escape(c.title || c.career || c)}`).join('\n')}
 </recommended_careers>` : ''}
 
 ${assessment.skillGaps && assessment.skillGaps.length > 0 ? `<identified_gaps>
-${assessment.skillGaps.slice(0, 5).map((g: any) => `- ${g.skill || g}`).join('\n')}
+${assessment.skillGaps.slice(0, 5).map((g: any) => `- ${escape(g.skill || g)}`).join('\n')}
 </identified_gaps>` : ''}
 </assessment>`;
 }

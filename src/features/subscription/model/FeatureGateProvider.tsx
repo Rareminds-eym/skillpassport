@@ -37,7 +37,8 @@ export function FeatureGateProvider({ children }: FeatureGateProviderProps) {
     const { subscriptionData, isLoading: subscriptionLoading } = useSubscriptionQuery();
     const [featureCache, setFeatureCache] = useState<Record<string, FeatureAccessResult>>({});
 
-    const planCode = subscriptionData?.plan || 'freemium';
+    const isRecruiter = user?.role === 'recruiter' || (Array.isArray(user?.roles) && user.roles.some((r: string) => r.includes('recruiter')));
+    const planCode = subscriptionData?.plan || (isRecruiter ? 'recruiter_free' : 'freemium');
     const userId = user?.id;
 
     // Clear cache when subscription changes
