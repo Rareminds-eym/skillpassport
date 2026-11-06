@@ -439,11 +439,7 @@ const AttendanceTracking: React.FC = () => {
       const response: any = await apiPost('/college-admin/attendance', {
         action: 'get-subject-groups',
         collegeId,
-        searchQuery,
-        filters,
-        dateRange,
-        currentPage,
-        itemsPerPage,
+        // Fetch the complete group list; filter and paginate it once below.
       });
 
       const transformedGroups = (response.data?.groups || []).map((item: any) => ({
@@ -639,7 +635,9 @@ const AttendanceTracking: React.FC = () => {
     if (collegeId) {
       fetchSubjectGroups();
     }
-  }, [collegeId, searchQuery, filters, dateRange, currentPage]);
+  }, [collegeId]);
+
+  useEffect(() => { setCurrentPage(1); }, [searchQuery, filters, dateRange]);
 
   useEffect(() => {
     if (collegeId) {
@@ -726,17 +724,30 @@ const AttendanceTracking: React.FC = () => {
   ];
 
   const facultyFilterOptions = useMemo(() => {
-    return filterOptions.faculty.map(fac => ({
-      value: fac.value, // Use the faculty ID
-      label: fac.label, // Use the formatted name
-      count: subjectGroups.filter(g => g.faculty === fac.label).length,
+    return [...new Set(subjectGroups.map(group => group.faculty).filter(Boolean))].map(name => ({
+      value: name,
+      label: name,
+      count: subjectGroups.filter(group => group.faculty === name).length,
     }));
-  }, [filterOptions.faculty, subjectGroups]);
-
-  // Filtered subject groups (now using API data)
-  const filteredSubjectGroups = useMemo(() => {
-    return subjectGroups; // Filtering is now done on the server side
   }, [subjectGroups]);
+
+  const filteredSubjectGroups = useMemo(() => {
+    const query = searchQuery.trim().toLocaleLowerCase();
+    const matches = (selected: (string | number)[], value: string | number) =>
+      selected.length === 0 || selected.some(item => String(item) === String(value));
+    return subjectGroups.filter(group =>
+      (!query || [group.subject, group.faculty, group.department, group.course, group.section]
+        .some(value => String(value || '').toLocaleLowerCase().includes(query))) &&
+      matches(filters.departments, group.department) &&
+      matches(filters.courses, group.course) &&
+      matches(filters.semesters, group.semester) &&
+      matches(filters.sections, group.section) &&
+      matches(filters.statuses, group.latestStatus) &&
+      matches(filters.faculty, group.faculty) &&
+      (!dateRange.from || group.dateRange.last >= dateRange.from) &&
+      (!dateRange.to || group.dateRange.first <= dateRange.to)
+    );
+  }, [subjectGroups, searchQuery, filters, dateRange]);
 
   const totalItems = filteredSubjectGroups.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
@@ -784,6 +795,12 @@ const AttendanceTracking: React.FC = () => {
           id: row.id, date: row.date, startTime: row.start_time, endTime: row.end_time,
           subject: row.subject_name, faculty: row.faculty_name, department: row.department_name,
           course: row.program_name, program_id: row.program_id, semester: row.semester, section: row.section,
+          specializations: row.specializations || [],
+          combinedGroupId: row.combined_group_id || undefined,
+          combinedSpecializations: row.combined_group_id
+            ? [...new Set(trainingRows.filter((peer: any) => peer.combined_group_id === row.combined_group_id)
+              .flatMap((peer: any) => peer.specializations || []))]
+            : [],
           totallearners: row.total_learners, presentCount: row.present_count, absentCount: row.absent_count,
           lateCount: row.late_count, excusedCount: row.excused_count, attendancePercentage: row.attendance_percentage,
           status: row.status, instructorSource: 'platform_staff',
@@ -793,12 +810,12 @@ const AttendanceTracking: React.FC = () => {
           department: trainingRows[index].department_name, course: trainingRows[index].program_name,
           semester: trainingRows[index].semester, section: trainingRows[index].section,
         })));
-        const scopedRecords = rosters.flatMap((roster: any, index: number) => roster.learners.filter((learner: any) => learner.status).map((learner: any) => ({
+        const scopedRecords = rosters.flatMap((roster: any, index: number) => roster.learners.map((learner: any) => ({
           id: `${trainingRows[index].id}-${learner.learner_id}`, sessionId: trainingRows[index].id,
           learnerId: learner.learner_id, learnerName: learner.learner_name, rollNumber: learner.roll_number,
           department: trainingRows[index].department_name, course: trainingRows[index].program_name,
           semester: trainingRows[index].semester, section: trainingRows[index].section, date: trainingRows[index].date,
-          status: learner.status, subject: trainingRows[index].subject_name, facultyId: '', facultyName: trainingRows[index].faculty_name,
+          status: learner.status || 'not-marked', subject: trainingRows[index].subject_name, facultyId: '', facultyName: trainingRows[index].faculty_name,
         })));
         setSelectedSubjectGroup({ ...subjectGroup, sessions: [...trainingSessions, ...(sessionsResponse.data?.sessions || [])], totalSessions: trainingSessions.length + (sessionsResponse.data?.sessions?.length || 0) });
         setLearners(Array.from(new Map(scopedLearners.map((learner: any) => [learner.id, learner])).values()) as any[]);
@@ -1541,7 +1558,7 @@ const AttendanceTracking: React.FC = () => {
             <p className="text-sm text-gray-700">
               Showing{" "}
               <span className="font-medium">
-                {startIndex + 1}-{Math.min(endIndex, totalItems)}
+                {totalItems ? startIndex + 1 : 0}-{Math.min(endIndex, totalItems)}
               </span>{" "}
               of <span className="font-medium">{totalItems}</span> subject
               {totalItems !== 1 ? "s" : ""}

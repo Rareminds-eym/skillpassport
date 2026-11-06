@@ -3,8 +3,12 @@
 -- exported/provided 2026-10-30. This is not a live production synchronization.
 -- Do not run against production. Run after local organization, academic and learner seeds.
 -- Copies exported academic fields exactly, including NULLs and incomplete mappings.
+-- Except five user-confirmed local corrections below: Manjushree/Nageshwari -> Business Analytics,
+-- Santhosh CP -> Finance, ppavan50559@gmail.com -> Marketing (semester 4, section A).
 -- Does not insert learners, change identity/email, or modify attendance/licenses.
-BEGIN;
+-- One statement keeps temporary-table creation and use ordered in Supabase seed batches.
+DO $soundarya_local_sync$
+BEGIN
 -- Sync the two production departments; learners reach departments through programs.
 -- Keep local audit ownership intact; do not copy production user references.
 DO $department_guard$
@@ -103,7 +107,7 @@ INSERT INTO soundarya_production_learner_snapshot VALUES
   ('df630f8a-5f7e-4d05-a5f9-44dd5cb002a0', 'bhoomika19503@gmail.com', '284c9ed9-cd13-584d-b5bc-e198866b917b', '7a600558-ebc0-4084-8a6b-1e580bf2c385', '4', 'A', NULL, NULL, NULL, 'Master Of Computer Application'),
   ('e07adffb-1260-5c19-9b1d-26af96b291bd', 'sanjanakumarmesthakumarmestha@gmail.com', '284c9ed9-cd13-584d-b5bc-e198866b917b', '6fd1362b-614f-4b2a-b7f3-e774c0c56c24', '4', 'A', NULL, NULL, 'HR', NULL),
   ('e10a439c-1725-5301-944f-79bcec5cf169', 'likhib612@gmail.com', '284c9ed9-cd13-584d-b5bc-e198866b917b', '6fd1362b-614f-4b2a-b7f3-e774c0c56c24', '4', 'A', NULL, NULL, 'HR', NULL),
-  ('e180eacc-144a-5129-8a43-37833d561941', 'sanjay299sanju@gmail.com', '284c9ed9-cd13-584d-b5bc-e198866b917b', '7a600558-ebc0-4084-8a6b-1e580bf2c385', '4', '4th', NULL, NULL, 'Computer application', 'Master Of Computer Application'),
+  ('e180eacc-144a-5129-8a43-37833d561941', 'sanjay299sanju@gmail.com', '284c9ed9-cd13-584d-b5bc-e198866b917b', '7a600558-ebc0-4084-8a6b-1e580bf2c385', '4', 'A', '60d2225b-b761-4d34-9cb9-ac644a8c15e3', NULL, 'Computer application', 'Master Of Computer Application'),
   ('e309e516-1d55-4e12-a223-6a05b168025b', 'nayanaks1233@gmail.com', '284c9ed9-cd13-584d-b5bc-e198866b917b', '7a600558-ebc0-4084-8a6b-1e580bf2c385', '4', 'A', NULL, NULL, NULL, NULL),
   ('e79beba4-09e2-467c-a9a2-fbb73726bfe0', 'meghanamv347@gmail.com', '284c9ed9-cd13-584d-b5bc-e198866b917b', '7a600558-ebc0-4084-8a6b-1e580bf2c385', '4', 'A', NULL, NULL, NULL, 'Master Of Computer Application'),
   ('f37a38ff-ee5f-4836-93e6-6fdc10116ad8', 'rajeshin2003@gmail.com', '284c9ed9-cd13-584d-b5bc-e198866b917b', '908a00ad-5a12-477c-a4a5-518ca88f4b3a', '4', 'A', NULL, NULL, 'Marketing', 'Master of Business Administration'),
@@ -117,6 +121,45 @@ INSERT INTO soundarya_production_program_check VALUES
   ('7a600558-ebc0-4084-8a6b-1e580bf2c385', '6bf040f0-70d4-5b10-ae17-acde09b23d61', '284c9ed9-cd13-584d-b5bc-e198866b917b'),
   ('908a00ad-5a12-477c-a4a5-518ca88f4b3a', 'e61f768c-b51e-57c7-a600-96161edaf0bd', '284c9ed9-cd13-584d-b5bc-e198866b917b'),
   ('f9a7f695-5625-4a7b-a691-6aaa86308f1a', 'e61f768c-b51e-57c7-a600-96161edaf0bd', '284c9ed9-cd13-584d-b5bc-e198866b917b');
+-- User-confirmed corrections to the snapshot, local only. Match exact email; do not rename accounts.
+-- Local DB identifies Pavan Kumar K L (P03KU24M015048) as ppavan50559@gmail.com;
+-- use that existing account instead of the supplied ppavan50776@gmail.com.
+CREATE TEMP TABLE soundarya_local_mapping_corrections (
+ email text PRIMARY KEY, program_id uuid NOT NULL, specialization text NOT NULL
+) ON COMMIT DROP;
+INSERT INTO soundarya_local_mapping_corrections VALUES
+ ('manjushreegowda778@gmail.com', '25e1410b-bb26-40fe-abda-79a4a03925a0', 'Business Analytics'),
+ ('santhoshgowda2102@gmail.com', 'f9a7f695-5625-4a7b-a691-6aaa86308f1a', 'Finance'),
+ ('nageshwari1922@gmail.com', '25e1410b-bb26-40fe-abda-79a4a03925a0', 'Business Analytics'),
+ ('gowdachethu83@gmail.com', 'f9a7f695-5625-4a7b-a691-6aaa86308f1a', 'Finance'),
+ ('ppavan50559@gmail.com', '908a00ad-5a12-477c-a4a5-518ca88f4b3a', 'Marketing');
+DO $corrections$
+BEGIN
+ IF EXISTS (
+  SELECT 1 FROM soundarya_local_mapping_corrections x
+  WHERE (SELECT count(*) FROM public.learners l WHERE lower(l.email)=x.email
+   AND NOT coalesce(l.is_deleted,false)
+   AND l.college_id='284c9ed9-cd13-584d-b5bc-e198866b917b'::uuid) <> 1
+ ) THEN RAISE EXCEPTION 'Expected one existing active Soundarya learner for each correction email; reconcile local identities first'; END IF;
+ IF EXISTS (
+  SELECT 1 FROM soundarya_local_mapping_corrections x
+  WHERE (SELECT count(*) FROM public.program_sections s WHERE s.program_id=x.program_id
+   AND s.semester=4 AND s.section='A' AND s.status='active') <> 1
+ ) THEN RAISE EXCEPTION 'Expected one active semester 4 section A for each corrected program'; END IF;
+ INSERT INTO soundarya_production_learner_snapshot
+  (id,email,college_id,program_id,semester,section,program_section_id,college_class_id,specialization,course_name)
+ SELECT l.id,x.email,l.college_id,x.program_id,4,'A',s.id,NULL,x.specialization,'Master of Business Administration'
+ FROM soundarya_local_mapping_corrections x
+ JOIN public.learners l ON lower(l.email)=x.email AND NOT coalesce(l.is_deleted,false)
+  AND l.college_id='284c9ed9-cd13-584d-b5bc-e198866b917b'::uuid
+ JOIN public.program_sections s ON s.program_id=x.program_id
+  AND s.semester=4 AND s.section='A' AND s.status='active'
+ ON CONFLICT (id) DO UPDATE SET
+  program_id=EXCLUDED.program_id,semester=EXCLUDED.semester,section=EXCLUDED.section,
+  program_section_id=EXCLUDED.program_section_id,college_class_id=EXCLUDED.college_class_id,
+  specialization=EXCLUDED.specialization,course_name=EXCLUDED.course_name;
+END;
+$corrections$;
 DO $sync$
 DECLARE n integer;
 BEGIN
@@ -151,7 +194,8 @@ BEGIN
  IS DISTINCT FROM ROW(x.college_id,x.program_id,x.semester,x.section,
   x.program_section_id,x.college_class_id,x.specialization,x.course_name);
  GET DIAGNOSTICS n = ROW_COUNT;
- RAISE NOTICE 'Synchronized % local learner mappings to production snapshot (77 checked)', n;
+ RAISE NOTICE 'Synchronized % local learner mappings to production snapshot plus 5 user-confirmed corrections (% checked)', n, (SELECT count(*) FROM soundarya_production_learner_snapshot);
 END;
 $sync$;
-COMMIT;
+END;
+$soundarya_local_sync$;
