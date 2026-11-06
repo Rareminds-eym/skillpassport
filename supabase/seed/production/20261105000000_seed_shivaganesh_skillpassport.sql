@@ -51,11 +51,11 @@ BEGIN
     ('f8182d23-28f3-5d54-b610-dc82f2470d4d'::uuid,v_org_id,'member','active',NOW(),NOW())
   ON CONFLICT (user_id,organization_id) DO NOTHING;
 
-  -- 4. Insert learner profile
+  -- 4. Insert learner profile with grade, section, semester, roll_number, program_id, and program_section_id
   INSERT INTO public.learners
-    (id,user_id,email,name,contact_number,college_id,learner_type,approval_status,metadata,created_at,updated_at)
+    (id,user_id,email,name,contact_number,college_id,learner_type,approval_status,grade,section,semester,roll_number,program_id,program_section_id,metadata,created_at,updated_at)
   VALUES
-    ('f8182d23-28f3-5d54-b610-dc82f2470d4d'::uuid,'f8182d23-28f3-5d54-b610-dc82f2470d4d'::uuid,'shivaganesh2046@gmail.com','Shivaganesh',NULL,v_org_id,'college_student','approved','{"role":"learner","lastName":"","firstName":"Shivaganesh","contact_number":""}'::jsonb,NOW(),NOW())
+    ('f8182d23-28f3-5d54-b610-dc82f2470d4d'::uuid,'f8182d23-28f3-5d54-b610-dc82f2470d4d'::uuid,'shivaganesh2046@gmail.com','Shivaganesh',NULL,v_org_id,'college_student','approved','PG','A',4,'P03KU24M015038','25e1410b-bb26-40fe-abda-79a4a03925a0'::uuid,'05b3a656-a3f1-47dc-ae51-ea9d6229427d'::uuid,'{"role":"learner","lastName":"","firstName":"Shivaganesh","contact_number":""}'::jsonb,NOW(),NOW())
   ON CONFLICT (id) DO NOTHING;
 
   -- 5. Assign license from pool
