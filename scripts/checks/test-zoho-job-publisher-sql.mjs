@@ -30,10 +30,11 @@ try{
  GRANT USAGE ON SCHEMA public TO service_role;
  ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO service_role;
  `);
- for(const migration of ['20270128000001_zoho_recruit_approval_control_plane.sql','20270129000000_zoho_recruit_execution_ledger.sql','20270130000000_zoho_recruit_discovery_authority.sql','20270131000000_zoho_recruit_record_recovery.sql','20270201000000_zoho_recruit_live_execution_authority.sql','20270202000000_zoho_recruit_decision_recovery.sql','20270209000000_zoho_candidate_review_binding.sql','20270210000000_zoho_job_publisher.sql','20270211000000_zoho_job_no_effect_receipts.sql','20270212000000_zoho_discovery_incremental.sql','20270214000000_zoho_source_privacy.sql','20270215000000_zoho_payload_retention_fences.sql','20270217010000_zoho_source_lifecycle.sql','20270217011000_zoho_bulk_read.sql','20270217012000_zoho_deleted_scan_cursor.sql','20270221000000_zoho_operator_audit_fixes.sql','20270217030000_zoho_source_quota_key_rotation.sql','20270220000000_zoho_dynamic_source_allocation.sql','20270222000000_zoho_retry_visibility.sql']){
+ for(const migration of ['20270128000001_zoho_recruit_approval_control_plane.sql','20270129000000_zoho_recruit_execution_ledger.sql','20270130000000_zoho_recruit_discovery_authority.sql','20270131000000_zoho_recruit_record_recovery.sql','20270201000000_zoho_recruit_live_execution_authority.sql','20270202000000_zoho_recruit_decision_recovery.sql','20270209000000_zoho_candidate_review_binding.sql','20270210000000_zoho_job_publisher.sql','20270211000000_zoho_job_no_effect_receipts.sql','20270212000000_zoho_discovery_incremental.sql','20270214000000_zoho_source_privacy.sql','20270215000000_zoho_payload_retention_fences.sql','20270217010000_zoho_source_lifecycle.sql','20270217011000_zoho_bulk_read.sql','20270217012000_zoho_deleted_scan_cursor.sql','20270221000000_zoho_operator_audit_fixes.sql','20270217030000_zoho_source_quota_key_rotation.sql','20270220000000_zoho_dynamic_source_allocation.sql','20270222000000_zoho_retry_visibility.sql','20270227000000_zoho_job_payload_budget.sql']){
   if(existsSync(new URL(`supabase/migrations/${migration}`,root)))docker(args,read(`supabase/migrations/${migration}`));
  }
  docker(args,read('functions/__tests__/sql/zoho-job-publisher.sql'));
+ docker(args,read('functions/__tests__/sql/zoho-job-payload-budget.sql'));
  const race=async n=>new Promise((resolve,reject)=>{
   const child=spawn('docker',['exec',container,...args,'-t','-A','-c',`BEGIN; SET LOCAL ROLE service_role; SELECT public.zoho_apply_job_operation(grant_value) FROM public.fixture_concurrent_job_grants WHERE n=${n}; SELECT pg_sleep(0.1); COMMIT;`]);
   let stderr='';let stdout='';const timer=setTimeout(()=>{child.kill();reject(new Error('Quota race timed out'));},15000);
@@ -49,5 +50,23 @@ try{
  docker(args,read('functions/__tests__/sql/zoho-bulk-source-lifecycle.sql'));
  docker(args,read('functions/__tests__/sql/zoho-operator-audit-fixes.sql'));
  docker(args,read('functions/__tests__/sql/zoho-retry-visibility.sql'));
+ for(const migration of ['20270219010000_zoho_console_controls.sql','20270226000000_zoho_discovery_batch_pages.sql','20270228000000_zoho_sync_coordinator.sql','20270301000000_zoho_bulk_capture_coverage.sql']) docker(args,read(`supabase/migrations/${migration}`));
+ docker(args,read('functions/__tests__/sql/zoho-sync-coordinator.sql'));
+ const syncRace=(table='zoho_sync_race_fixture')=>new Promise((resolve,reject)=>{
+  const child=spawn('docker',['exec',container,...args,'-t','-A','-c',`BEGIN; SELECT public.zoho_plan_discovery(connection_id,'Candidates',actor_id,true) FROM public.${table}; SELECT pg_sleep(0.1); COMMIT;`]);
+  let out='',err='';const timer=setTimeout(()=>{child.kill();reject(new Error('Sync planner race timed out'));},15000);
+  child.stdout.on('data',x=>out+=x);child.stderr.on('data',x=>err+=x);child.on('error',e=>{clearTimeout(timer);reject(e);});
+  child.on('close',code=>{clearTimeout(timer);if(code!==0)return reject(new Error(err));try{resolve(JSON.parse(out.split('\n').find(x=>x.startsWith('{'))));}catch(e){reject(e);}});
+ });
+ const syncPlans=await Promise.all([syncRace(),syncRace()]);
+ if(syncPlans[0].runId!==syncPlans[1].runId||syncPlans[0].bulkRunId!==syncPlans[1].bulkRunId)throw new Error('Concurrent planners created duplicate work');
+ docker(args,`DO $$ BEGIN ASSERT (SELECT count(*)=1 FROM public.zoho_discovery_runs WHERE connection_id=(SELECT connection_id FROM public.zoho_sync_race_fixture)); ASSERT (SELECT count(*)=1 FROM public.zoho_bulk_read_runs WHERE connection_id=(SELECT connection_id FROM public.zoho_sync_race_fixture)); END $$;`);
+ docker(args,read('supabase/migrations/20270302000000_zoho_sync_recovery_fences.sql'));
+ docker(args,read('functions/__tests__/sql/zoho-sync-recovery-fences.sql'));
+ const repairedPlans=await Promise.all([syncRace('zoho_sync_recovery_race_fixture'),syncRace('zoho_sync_recovery_race_fixture')]);
+ if(repairedPlans[0].runId!==repairedPlans[1].runId||repairedPlans[0].bulkRunId!==repairedPlans[1].bulkRunId)throw new Error('Repaired planners created duplicate work');
+ docker(args,`DO $$ BEGIN ASSERT (SELECT count(*)=1 FROM public.zoho_discovery_runs WHERE connection_id=(SELECT connection_id FROM public.zoho_sync_recovery_race_fixture)); ASSERT (SELECT count(*)=1 FROM public.zoho_bulk_read_runs WHERE connection_id=(SELECT connection_id FROM public.zoho_sync_recovery_race_fixture)); END $$;`);
+ docker(args,read('supabase/migrations/20270303000000_zoho_bulk_index_upgrade.sql'));
+ docker(args,read('functions/__tests__/sql/zoho-bulk-index-upgrade.sql'));
  console.log('Zoho job publisher SQL: approval/receipt/version/ownership/quota/no-email and cross-connection quota-race assertions passed.');
 }finally{if(created)docker(['dropdb','-U','postgres','--force',name]);}

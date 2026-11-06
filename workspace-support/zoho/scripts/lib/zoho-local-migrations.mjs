@@ -1,14 +1,14 @@
 import { createHash } from 'node:crypto';
 
 export const localMigrationTargets = [
-  { repository: 'sso-worker', container: 'supabase_db_sso-auth', files: ['20270217020000_zoho_candidate_administration.sql','20270218010000_zoho_administration_recovery.sql'] },
+  { repository: 'sso-worker', container: 'supabase_db_sso-auth', files: ['20270217020000_zoho_candidate_administration.sql','20270218010000_zoho_administration_recovery.sql','20270226010000_zoho_publication_batch.sql'] },
   { repository: 'skillpassport', container: 'supabase_db_skillpassport', files: [
     '20270217010000_zoho_source_lifecycle.sql', '20270217011000_zoho_bulk_read.sql', '20270217012000_zoho_deleted_scan_cursor.sql',
     '20270217030000_zoho_source_quota_key_rotation.sql', '20270217040000_zoho_candidate_context_privacy.sql',
     '20270217050000_assessment_owned_context.sql', '20270217060000_assessment_grading_provenance.sql',
     '20270217070000_adaptive_owned_answer_commit.sql',
     '20270218020000_zoho_operator_history.sql', '20270218030000_zoho_administration_order.sql',
-    '20270219010000_zoho_console_controls.sql', '20270219020000_assessment_specialization_context.sql', '20270220000000_zoho_dynamic_source_allocation.sql', '20270221000000_zoho_operator_audit_fixes.sql', '20270222000000_zoho_retry_visibility.sql', '20270223000000_zoho_overview_module_counts.sql',
+    '20270219010000_zoho_console_controls.sql', '20270219020000_assessment_specialization_context.sql', '20270220000000_zoho_dynamic_source_allocation.sql', '20270221000000_zoho_operator_audit_fixes.sql', '20270222000000_zoho_retry_visibility.sql', '20270223000000_zoho_overview_module_counts.sql', '20270224000000_zoho_execution_progress.sql', '20270225000000_zoho_recovery_throughput.sql', '20270226000000_zoho_discovery_batch_pages.sql', '20270227000000_zoho_job_payload_budget.sql', '20270228000000_zoho_sync_coordinator.sql', '20270301000000_zoho_bulk_capture_coverage.sql', '20270302000000_zoho_sync_recovery_fences.sql', '20270303000000_zoho_bulk_index_upgrade.sql',
   ] },
 ];
 export function requireLocalDocker(endpoint, override) {
