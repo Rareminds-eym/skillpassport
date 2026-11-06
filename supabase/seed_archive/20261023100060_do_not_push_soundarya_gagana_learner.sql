@@ -1,3 +1,5 @@
+-- Local run order: this learner prerequisite, then 20261023101050 combined rosters, then 20261023101100 attendance.
+-- Archived files are not run automatically by db:reset:prod. Run this prerequisite manually for local testing.
 -- DO NOT PUSH. Manual development/local database seed only.
 -- Development database only: Soundarya learner needed for attendance imports.
 -- Creates the learner profile only; does not provision SSO/login accounts.
