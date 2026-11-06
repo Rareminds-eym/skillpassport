@@ -3,7 +3,7 @@
 -- Run AFTER the SSO production seed (sso-worker/supabase/seed/production/20261105000000_seed_shivaganesh_sso_auth.sql)
 -- The application user id MUST equal the SSO user id: f8182d23-28f3-5d54-b610-dc82f2470d4d
 -- Same execution flow as the supplied Soundarya reference seed package.
--- Insert-only: existing Soundarya organization, subscription, license pool and existing learner records are not modified.
+-- Existing organization, subscription and license pool are preserved; correct this learner academic mapping on rerun.
 -- Safe and idempotent: can be re-run safely, uses fixed IDs with ON CONFLICT DO NOTHING
 
 BEGIN;
@@ -53,10 +53,22 @@ BEGIN
 
   -- 4. Insert learner profile with grade, section, semester, roll_number, program_id, and program_section_id
   INSERT INTO public.learners
-    (id,user_id,email,name,contact_number,college_id,learner_type,approval_status,grade,section,semester,roll_number,program_id,program_section_id,metadata,created_at,updated_at)
+    (id,user_id,email,name,contact_number,college_id,learner_type,approval_status,grade,section,semester,roll_number,program_id,program_section_id,specialization,metadata,created_at,updated_at)
   VALUES
-    ('f8182d23-28f3-5d54-b610-dc82f2470d4d'::uuid,'f8182d23-28f3-5d54-b610-dc82f2470d4d'::uuid,'shivaganesh2046@gmail.com','Shivaganesh',NULL,v_org_id,'college_student','approved','PG','A',4,'P03KU24M015038','25e1410b-bb26-40fe-abda-79a4a03925a0'::uuid,'05b3a656-a3f1-47dc-ae51-ea9d6229427d'::uuid,'{"role":"learner","lastName":"","firstName":"Shivaganesh","contact_number":""}'::jsonb,NOW(),NOW())
-  ON CONFLICT (id) DO NOTHING;
+    ('f8182d23-28f3-5d54-b610-dc82f2470d4d'::uuid,'f8182d23-28f3-5d54-b610-dc82f2470d4d'::uuid,'shivaganesh2046@gmail.com','Shivaganesh',NULL,v_org_id,'college_student','approved','PG','A',4,'P03KU24M015038','908a00ad-5a12-477c-a4a5-518ca88f4b3a'::uuid,'89714926-cdae-41c0-b948-c82d96b4281f'::uuid,'Marketing','{"role":"learner","lastName":"","firstName":"Shivaganesh","contact_number":""}'::jsonb,NOW(),NOW())
+  ON CONFLICT (id) DO UPDATE
+  SET program_id = EXCLUDED.program_id,
+      program_section_id = EXCLUDED.program_section_id,
+      specialization = EXCLUDED.specialization,
+      roll_number = EXCLUDED.roll_number,
+      semester = EXCLUDED.semester,
+      section = EXCLUDED.section,
+      updated_at = NOW()
+  WHERE learners.email = EXCLUDED.email AND learners.college_id = EXCLUDED.college_id
+    AND (learners.program_id, learners.program_section_id, learners.specialization,
+         learners.roll_number, learners.semester, learners.section)
+      IS DISTINCT FROM (EXCLUDED.program_id, EXCLUDED.program_section_id, EXCLUDED.specialization,
+                        EXCLUDED.roll_number, EXCLUDED.semester, EXCLUDED.section);
 
   -- 5. Assign license from pool
   INSERT INTO public.license_assignments
