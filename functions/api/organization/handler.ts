@@ -845,7 +845,24 @@ async function getOrganizationByAdminIdHandler(context: AuthenticatedContext) {
         if (orgType) memberQuery = memberQuery.eq('organization_type', orgType);
         const { data: memberOrg, error: memberError } = await memberQuery.maybeSingle();
         if (memberError) return apiError(500, 'DATABASE_ERROR', 'Failed to query your organization.', context.request);
-        if (!memberOrg) return apiError(503, 'ORGANIZATION_UNAVAILABLE', 'Your organization is not available yet. Please retry.', context.request);
+        if (!memberOrg) {
+          // Signup creates an owner membership before the institution setup form
+          // supplies organization_type/admin_id. That owner needs onboarding,
+          // unlike an additional admin whose configured college has not synced.
+          if (membership.roles.includes('owner')) {
+            let canonicalOrg;
+            try {
+              canonicalOrg = await (context.env as PagesEnv).SSO_SERVICE.getOrganizationById(actor.org_id);
+            } catch {
+              return apiError(503, 'ORGANIZATION_UNAVAILABLE', 'Your organization could not be verified. Please retry.', context.request);
+            }
+            if (canonicalOrg?.id === actor.org_id &&
+                !canonicalOrg.metadata?.organization_type && !canonicalOrg.metadata?.admin_id) {
+              return apiSuccess(null, context.request);
+            }
+          }
+          return apiError(503, 'ORGANIZATION_UNAVAILABLE', 'Your organization is not available yet. Please retry.', context.request);
+        }
         if (membership.roles.includes(adminRoles[memberOrg.organization_type])) return apiSuccess(memberOrg, context.request);
       }
     }
