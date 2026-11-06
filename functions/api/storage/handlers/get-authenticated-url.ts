@@ -12,12 +12,14 @@
 import { apiError } from '../../../lib/response';
 import { checkCourseEnrollment, checkRateLimit } from '../utils/course-authorization';
 import { extractFileKey, generateMediaToken } from '../utils/token-crypto';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 interface StorageHandlerContext {
   request: Request;
   env: any;
   user?: { id: string };
   supabase?: any;
+  supabaseAdmin?: SupabaseClient;
 }
 
 interface RequestBody {
@@ -81,9 +83,35 @@ export const handleGetAuthenticatedUrl = async (context: StorageHandlerContext) 
     }
 
     // Check course enrollment
-    const authCheck = await checkCourseEnrollment(supabase, userId, courseId);
+    // The default storage client uses the anonymous key and carries no user JWT.
+    // The request is already authenticated; check this user's enrollment with
+    // the server-side client rather than relying on anonymous RLS access.
+    const authCheck = await checkCourseEnrollment(context.supabaseAdmin || supabase, userId, courseId);
     if (!authCheck.authorized) {
       return apiError(403, 'FORBIDDEN', authCheck.error || 'Access denied', request);
+    }
+
+    // Dashboard uploads have shared keys rather than course-specific paths.
+    // Only issue a token after verifying the stored resource belongs to the lesson.
+    const sharedCourseResource = fileKey.startsWith('courses/resources/');
+    if (sharedCourseResource) {
+      if (!lessonId || fileKey.includes('..') || fileKey.includes('\\')) {
+        return apiError(403, 'FORBIDDEN', 'Invalid course resource', request);
+      }
+      const db = context.supabaseAdmin || supabase;
+      const { data: lesson, error: lessonError } = await db.from('lessons')
+        .select('lesson_id, course_modules!inner(course_id)')
+        .eq('lesson_id', lessonId).eq('course_modules.course_id', courseId).maybeSingle();
+      if (lessonError || !lesson) return apiError(403, 'FORBIDDEN', 'Lesson not found in this course', request);
+      const { data: resources, error: resourceError } = await db.from('lesson_resources').select('url').eq('lesson_id', lessonId);
+      const matches = !resourceError && resources?.some((resource: { url?: string }) => {
+        if (!resource.url) return false;
+        try {
+          const stored = new URL(resource.url, 'https://local.invalid');
+          return stored.pathname === '/api/courses/assets' && stored.searchParams.get('key') === fileKey;
+        } catch { return false; }
+      });
+      if (!matches) return apiError(403, 'FORBIDDEN', 'Resource not found in this lesson', request);
     }
 
     // Generate authenticated token with fingerprint
@@ -104,7 +132,8 @@ export const handleGetAuthenticatedUrl = async (context: StorageHandlerContext) 
       lessonId,
       fingerprint,
       userAgent,
-      sessionId
+      sessionId,
+      sharedCourseResource
     );
 
     const baseUrl = new URL(request.url).origin;

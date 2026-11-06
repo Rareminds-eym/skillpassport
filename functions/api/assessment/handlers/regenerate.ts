@@ -32,7 +32,7 @@ export async function regenerateHandler(context: AuthenticatedContext) {
     const { data: learnerData, error: learnerError } = await supabase
       .from('learners')
       .select('id')
-      .or(`user_id.eq.${user.sub},id.eq.${user.sub}`)
+      .eq('user_id', user.sub)
       .maybeSingle();
 
     if (learnerError || !learnerData?.id) {

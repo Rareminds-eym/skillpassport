@@ -198,7 +198,7 @@ const ModernLearningCard = ({
           setCertificateUrl(data.certificate_url);
         }
       } catch (error) {
-        console.error('Error fetching certificate URL:', error);
+        // Silently fail - certificate URL will remain empty
       }
     };
 
@@ -238,12 +238,6 @@ const ModernLearningCard = ({
   const handleGetCertificate = async (e) => {
     e?.stopPropagation();
     
-    // If certificate already exists, view it directly
-    if (certificateUrl) {
-      viewCertificate(certificateUrl);
-      return;
-    }
-    
     // Prepare certificate data from item
     const courseName = item.course || item.title;
     const educatorName = item.educator_name || 'Course Instructor';
@@ -282,6 +276,19 @@ const ModernLearningCard = ({
       if (!freshLearnerData.id) {
         logger.error('Learner profile response missing id', { hasResponse: !!learnerResponse, responseType: typeof learnerResponse });
         toast.error('Learner profile is incomplete. Please refresh and try again.');
+        return;
+      }
+
+      const normalizedLearnerType = freshLearnerData.learner_type?.trim().toLowerCase();
+      const isEducator = normalizedLearnerType === 'teacher' || normalizedLearnerType === 'educator';
+      const hasEducatorTemplate = certificateUrl
+        ? decodeURIComponent(certificateUrl).includes('/educator/')
+        : false;
+
+      // Do not keep opening a legacy learner certificate for educators. The
+      // first click regenerates it; later clicks recognize the educator marker.
+      if (certificateUrl && (!isEducator || hasEducatorTemplate)) {
+        viewCertificate(certificateUrl);
         return;
       }
     
@@ -685,6 +692,9 @@ const ModernLearningCard = ({
           onClose={certificateModal.closeModal}
           fullName={certificateModal.fullName}
           onFullNameChange={certificateModal.setFullName}
+          collegeName={certificateModal.collegeName}
+          onCollegeNameChange={certificateModal.setCollegeName}
+          learnerType={certificateModal.learnerType}
           onConfirm={certificateModal.showConfirmationDialog}
           onGenerate={certificateModal.generateCertificate}
           isGenerating={certificateModal.isGenerating}
@@ -1063,6 +1073,9 @@ const ModernLearningCard = ({
         onClose={certificateModal.closeModal}
         fullName={certificateModal.fullName}
         onFullNameChange={certificateModal.setFullName}
+        collegeName={certificateModal.collegeName}
+        onCollegeNameChange={certificateModal.setCollegeName}
+        learnerType={certificateModal.learnerType}
         onConfirm={certificateModal.showConfirmationDialog}
         onGenerate={certificateModal.generateCertificate}
         isGenerating={certificateModal.isGenerating}

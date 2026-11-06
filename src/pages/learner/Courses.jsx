@@ -378,14 +378,6 @@ const Courses = () => {
     }
     
     try {
-      // Check if certificate already exists - read directly from state
-      const existingCertUrl = certificateUrls[courseId];
-      if (existingCertUrl) {
-        // Certificate already exists, show it directly
-        viewCertificate(existingCertUrl);
-        return;
-      }
-      
       // Mark this certificate as being prepared
       preparingCertificateRef.current.add(courseId);
       setPreparingCertificate(courseId);
@@ -417,6 +409,21 @@ const Courses = () => {
       if (!learnerData?.id) {
         logger.error('Learner profile response missing required id field', { learnerData, learnerResponse });
         toast.error('Learner profile is incomplete. Please refresh and try again.');
+        return;
+      }
+
+      const normalizedLearnerType = learnerData.learner_type?.trim().toLowerCase();
+      const isEducator = normalizedLearnerType === 'teacher' || normalizedLearnerType === 'educator';
+      const existingCertUrl = certificateUrls[courseId];
+      const hasEducatorTemplate = existingCertUrl
+        ? decodeURIComponent(existingCertUrl).includes('/educator/')
+        : false;
+
+      // Existing standard certificates can be viewed immediately. Educators
+      // with a legacy certificate must pass through generation once so their
+      // stored enrollment URL is replaced with the educator template.
+      if (existingCertUrl && (!isEducator || hasEducatorTemplate)) {
+        viewCertificate(existingCertUrl);
         return;
       }
       
@@ -667,13 +674,15 @@ const Courses = () => {
           setShowDetailModal(false);
         }}
       />
-      
       {/* Certificate Generation Modal */}
       <CertificateNameModal
         isOpen={certificateModal.showModal}
         onClose={certificateModal.closeModal}
         fullName={certificateModal.fullName}
         onFullNameChange={certificateModal.setFullName}
+        collegeName={certificateModal.collegeName}
+        onCollegeNameChange={certificateModal.setCollegeName}
+        learnerType={certificateModal.learnerType}
         onConfirm={certificateModal.showConfirmationDialog}
         onGenerate={certificateModal.generateCertificate}
         isGenerating={certificateModal.isGenerating}

@@ -302,6 +302,63 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         return apiSuccess(data, context.request, { startTime });
       }
 
+      case 'update-faculty-status': {
+        // Layer 2: Admin-initiated accountStatus update with session revocation
+        const { id, account_status, reason } = params;
+        if (!id) return apiError(400, 'VALIDATION_ERROR', 'Missing id', context.request, { startTime });
+        if (!account_status) return apiError(400, 'VALIDATION_ERROR', 'Missing account_status', context.request, { startTime });
+        
+        // Get lecturer's user_id and current status
+        const { data: lecturer, error: fetchError } = await supabase
+          .from('college_lecturers')
+          .select('user_id, accountStatus, metadata')
+          .eq('id', id)
+          .maybeSingle();
+        
+        if (fetchError) return apiDbError(fetchError, context.request, { startTime });
+        if (!lecturer) return apiError(404, 'NOT_FOUND', 'Lecturer not found', context.request, { startTime });
+        
+        const updatedMeta = { ...(lecturer.metadata || {}), ...(reason ? { status_reason: reason, status_reason_history: [...(Array.isArray(lecturer.metadata?.status_reason_history) ? lecturer.metadata.status_reason_history : []), { status: account_status, reason, updated_at: new Date().toISOString(), updated_by: user.id }] } : {}) };
+        const { data, error } = await supabase
+          .from('college_lecturers')
+          .update({ accountStatus: account_status, ...(typeof updatedMeta !== 'undefined' ? { metadata: updatedMeta } : {}) })
+          .eq('id', id)
+          .select()
+          .single();
+        
+        if (error) return apiDbError(error, context.request, { startTime });
+        
+        // If deactivating and user_id exists, revoke all sessions via SSO RPC
+        if ((account_status === 'deactivated' || account_status === 'suspended') && lecturer.user_id) {
+          if (!env.SSO_SERVICE) {
+            logger.warn('faculty_status_update_no_sso', { lecturerId: id, userId: lecturer.user_id });
+            // Continue - Layer 1 still protects
+          } else {
+            try {
+              const revokeResult = await env.SSO_SERVICE.revokeAllSessionsForUser({
+                correlationId: crypto.randomUUID(),
+                targetUserId: lecturer.user_id,
+                reason: reason || `Faculty status updated to ${account_status}`,
+              });
+              logger.info('faculty_sessions_revoked', {
+                lecturerId: id,
+                userId: lecturer.user_id,
+                outcome: revokeResult.outcome,
+                sessionsRevoked: revokeResult.data?.sessionsRevoked || 0
+              });
+            } catch (err) {
+              logger.error('faculty_session_revoke_failed', err instanceof Error ? err : new Error(String(err)), {
+                lecturerId: id,
+                userId: lecturer.user_id
+              });
+              // Continue - Layer 1 still protects
+            }
+          }
+        }
+        
+        return apiSuccess(data, context.request, { startTime });
+      }
+
       // ── Bulk Faculty Import ──
       case 'bulk-upload-faculty-csv': {
         // Bulk faculty CSV upload — queues processing job via SSO RPC
@@ -1157,19 +1214,6 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           .maybeSingle();
         if (error) return apiDbError(error, context.request, { startTime });
         return apiSuccess({ exists: !!data }, context.request, { startTime });
-      }
-
-      case 'update-faculty-status': {
-        const { id, account_status } = params;
-        if (!id) return apiError(400, 'VALIDATION_ERROR', 'Missing id', context.request, { startTime });
-        const { data, error } = await supabase
-          .from('college_lecturers')
-          .update({ accountStatus: account_status })
-          .eq('id', id)
-          .select()
-          .single();
-        if (error) return apiDbError(error, context.request, { startTime });
-        return apiSuccess(data, context.request, { startTime });
       }
 
       case 'get-school-educators': {

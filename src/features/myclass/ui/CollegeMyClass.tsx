@@ -94,6 +94,25 @@ const CollegeMyClass: React.FC = () => {
   // Helper function to download/view file with authentication
   const handleFileAccess = async (fileUrl: string, fileName: string, mode: 'view' | 'download' = 'view') => {
     try {
+      // Check if it's an external URL (Google Drive, etc.)
+      const isExternalUrl = (url: string): boolean => {
+        try {
+          const parsedUrl = new URL(url);
+          return !url.includes('.r2.dev') && 
+                 !url.includes('localhost') && 
+                 (parsedUrl.hostname !== window.location.hostname);
+        } catch {
+          return false;
+        }
+      };
+
+      // If it's an external URL, open directly
+      if (isExternalUrl(fileUrl)) {
+        window.open(fileUrl, '_blank');
+        return;
+      }
+
+      // For R2 files, use authenticated proxy
       const STORAGE_API_URL = getApiUrl('storage');
       const encodedUrl = encodeURIComponent(fileUrl);
       const accessUrl = `${STORAGE_API_URL}/document-access?url=${encodedUrl}&mode=inline`;

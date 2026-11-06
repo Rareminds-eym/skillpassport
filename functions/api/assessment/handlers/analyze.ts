@@ -40,7 +40,7 @@ export async function analyzeHandler(context: AuthenticatedContext) {
     const { data: learnerData, error: learnerError } = await supabase
       .from('learners')
       .select('id, user_id')
-      .or(`user_id.eq.${user.sub},id.eq.${user.sub}`)
+      .eq('user_id', user.sub)
       .maybeSingle();
 
     if (learnerError || !learnerData?.id) {
@@ -50,21 +50,20 @@ export async function analyzeHandler(context: AuthenticatedContext) {
     const learnerId = learnerData.id;
     const userId = learnerData.user_id;
 
-    // If gradeLevel not provided, fetch it from attempt
-    if (!gradeLevel) {
-      const { data: attempt } = await supabase
-        .from('personal_assessment_attempts')
-        .select('grade_level')
-        .eq('id', attemptId)
-        .eq('learner_id', learnerId)
-        .single();
-
-      if (!attempt) {
-        return Response.json({ error: 'Attempt not found' }, { status: 404 });
-      }
-
-      gradeLevel = attempt.grade_level;
-    }
+    // Ownership and the canonical grade are required even when the caller
+    // supplies a grade. A request field cannot redirect another attempt.
+    const { data: ownedAttempt, error: attemptError } = await supabase.from('personal_assessment_attempts')
+      .select('id,grade_level').eq('id', attemptId).eq('learner_id', learnerId).maybeSingle();
+    if (attemptError || !ownedAttempt) return Response.json({ error: 'Attempt not found' }, { status: 404 });
+    if (gradeLevel && gradeLevel !== ownedAttempt.grade_level) return Response.json({ error: 'Assessment grade mismatch' }, { status: 400 });
+    gradeLevel = ownedAttempt.grade_level;
+    const withGrading = async (analysis: Promise<Response>) => {
+      const response = await analysis;
+      if (!response.ok) return response;
+      const grading = await supabase.rpc('grade_owned_assessment', { p_owner: user.sub, p_attempt: attemptId });
+      if (grading.error || !grading.data) return Response.json({ error: 'Assessment grading unavailable' }, { status: 503 });
+      return response;
+    };
 
     // Validate grade level (from database constraints)
     const supportedGradeLevels = ['middle', 'highschool', 'higher_secondary', 'after10', 'after12', 'college'];
@@ -81,7 +80,7 @@ export async function analyzeHandler(context: AuthenticatedContext) {
     // Route to appropriate handler based on grade level
     switch (gradeLevel) {
       case 'middle':
-        return analyzeMiddleSchool(context, supabase, attemptId, learnerId);
+        return withGrading(analyzeMiddleSchool(context, supabase, attemptId, learnerId));
 
       // DEPRECATED (highschool, higher_secondary, after10, after12): the frontend
       // no longer calls this endpoint for these grade levels. Their submissions were
@@ -89,19 +88,19 @@ export async function analyzeHandler(context: AuthenticatedContext) {
       // Gemini report → completeAttempt), so these analyzers are kept only for direct
       // API callers. Middle school and college still use this endpoint.
       case 'highschool':
-        return analyzeHighSchool(context, supabase, attemptId, learnerId);
+        return withGrading(analyzeHighSchool(context, supabase, attemptId, learnerId));
 
       case 'higher_secondary':
-        return analyzeHigherSecondary(context, supabase, attemptId, learnerId);
+        return withGrading(analyzeHigherSecondary(context, supabase, attemptId, learnerId));
 
       case 'after10':
-        return analyzeAfter10(context, supabase, attemptId, learnerId);
+        return withGrading(analyzeAfter10(context, supabase, attemptId, learnerId));
 
       case 'after12':
-        return analyzeAfter12(context, supabase, attemptId, learnerId);
+        return withGrading(analyzeAfter12(context, supabase, attemptId, learnerId));
 
       case 'college':
-        return analyzeCollege(context, supabase, attemptId, learnerId, userId);
+        return withGrading(analyzeCollege(context, supabase, attemptId, learnerId, userId));
 
       default:
         return Response.json(

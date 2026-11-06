@@ -59,7 +59,7 @@ export async function resultHandler(context: AuthenticatedContext) {
       college_id, school_id, universityId, university_college_id, universityCollegeId,
       programs ( name, code, degree_level )
     `)
-    .or(`user_id.eq.${user.sub},id.eq.${user.sub}`)
+    .eq('user_id', user.sub)
     .maybeSingle();
 
   if (learnerError || !learner?.id) {
@@ -109,6 +109,7 @@ export async function resultHandler(context: AuthenticatedContext) {
     .from('personal_assessment_results')
     .select('*')
     .eq('attempt_id', attemptId)
+    .eq('learner_id', learner.id)
     .maybeSingle();
 
   if (resultError) {

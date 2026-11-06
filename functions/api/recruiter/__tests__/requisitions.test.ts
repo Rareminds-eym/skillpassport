@@ -101,7 +101,7 @@ describe('Application review API', () => {
     applicationChain = Object.fromEntries(['select', 'eq', 'update', 'maybeSingle'].map(key => [key, vi.fn()]));
     for (const key of ['select', 'eq', 'update']) applicationChain[key].mockReturnValue(applicationChain);
     applicationChain.maybeSingle.mockResolvedValueOnce({ data: { id: applicationId, application_status: 'applied', updated_at: updatedAt, notes: 'Prior review', viewed_at: null }, error: null }).mockResolvedValue({ data: { id: applicationId, application_status: 'under_review', updated_at: '2026-10-19T10:00:00Z' }, error: null });
-    mocks.from.mockImplementation(table => table === 'applied_jobs' ? applicationChain : chain);
+    mocks.from.mockImplementation(table => table === 'zoho_recruiter_applied_jobs' ? applicationChain : chain);
   });
   it('requires candidate-management permission and preserves history with a server-stamped entry', async () => {
     const response = await request(input);

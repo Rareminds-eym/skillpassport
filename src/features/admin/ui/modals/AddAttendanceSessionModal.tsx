@@ -2,7 +2,7 @@
 import { Learner } from '@/features/college-admin';
 import { XMarkIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { BookOpenIcon, CalendarIcon, ClockIcon } from 'lucide-react';
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef, useEffect, type ReactNode } from 'react';
 
 // Add Attendance Session Modal
 const AddAttendanceSessionModal = ({
@@ -28,8 +28,15 @@ const AddAttendanceSessionModal = ({
   saving = false,
   subjectsLoading = false,
   schedule = { slots: [] },
+  sessionType = 'single',
+  onSessionTypeChange,
+  combinedForm,
 }: {
   schedule?: { fixedDate?: string; minDate?: string; maxDate?: string; slots: { start_time: string; end_time: string }[] };
+  // Optional session-type switch. Without onSessionTypeChange the modal is exactly the single-class form.
+  sessionType?: 'single' | 'combined';
+  onSessionTypeChange?: (type: 'single' | 'combined') => void;
+  combinedForm?: ReactNode;
   isOpen: boolean;
   onClose: () => void;
   onCreateSession: () => void;
@@ -196,6 +203,27 @@ const AddAttendanceSessionModal = ({
             </button>
           </div>
 
+          {onSessionTypeChange && (
+            <div role="radiogroup" aria-label="Session type" className="flex gap-2 border-b border-gray-200 bg-white px-6 py-3">
+              {([['single', 'Single Class'], ['combined', 'Combined Class']] as const).map(([type, label]) => (
+                <button
+                  key={type}
+                  type="button"
+                  role="radio"
+                  aria-checked={sessionType === type}
+                  onClick={() => onSessionTypeChange(type)}
+                  className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+                    sessionType === type ? 'bg-indigo-600 text-white' : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {onSessionTypeChange && sessionType === 'combined' ? combinedForm : (
+          <>
           {/* Form */}
           <div className="max-h-[70vh] overflow-y-auto">
             <div className="p-6">
@@ -744,6 +772,8 @@ const AddAttendanceSessionModal = ({
               </div>
             </div>
           </div>
+          </>
+          )}
         </div>
       </div>
     </div>

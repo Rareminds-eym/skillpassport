@@ -17,7 +17,7 @@ export function dbAttemptToAssessmentAttempt(dbAttempt: any): AssessmentAttempt 
     stream_id: dbAttempt.stream_id || null,
     status: dbAttempt.status,
     all_responses: dbAttempt.all_responses || {},
-    timer_remaining: dbAttempt.timer_remaining || null,
+    timer_remaining: dbAttempt.timer_remaining ?? null,
     elapsed_time: dbAttempt.elapsed_time || 0,
     current_section_index: dbAttempt.current_section_index || 0,
     current_question_index: dbAttempt.current_question_index || 0,

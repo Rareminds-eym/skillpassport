@@ -10,19 +10,24 @@
 
 import { withAuth } from '../../lib/auth';
 import { getServiceClient } from '../../lib/supabase';
-import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import type { AuthenticatedPagesContext } from '../../lib/types';
 
 /**
  * GET /api/learners/profile
  * Fetch complete learner profile with all assessment-relevant fields
  */
-export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
+export const onRequestGet = withAuth(async (context: AuthenticatedPagesContext) => {
   const user = context.data.user;
   const env = context.env as Record<string, string>;
   const supabase = getServiceClient(env as any);
 
   const url = new URL(context.request.url);
-  const userId = url.searchParams.get('user_id') || user.sub;
+  const requestedUser = url.searchParams.get('user_id');
+  if (requestedUser !== null && requestedUser !== user.sub) {
+    return Response.json({ error: 'You can only access your own profile' },
+      { status: 403, headers: { 'Cache-Control': 'no-store' } });
+  }
+  const userId = user.sub;
 
   try {
     const { data: learner, error: fetchError } = await supabase
@@ -34,17 +39,19 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
         grade_start_date,
         school_class_id,
         school_id,
+        college_id,
         universityId,
         university_college_id,
         program_id,
         course_name,
         branch_field,
+        specialization,
         university,
         college_school_name,
         school_name,
         learner_type,
         school_classes:school_class_id(grade, academic_year),
-        program:program_id(name, code),
+        program:program_id(name, code, degree_level),
         users!inner(role)
       `)
       .eq('user_id', userId)
@@ -53,7 +60,7 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
     if (fetchError) {
       console.error('Error fetching learner profile:', fetchError);
       return Response.json(
-        { error: 'Failed to fetch learner profile', details: fetchError.message },
+        { error: 'Failed to fetch learner profile' },
         { status: 500 }
       );
     }
@@ -75,11 +82,11 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
         ...learner,
         role: userRole
       }
-    });
+    }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     console.error('Error fetching learner profile:', error);
     return Response.json(
-      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }
@@ -89,7 +96,7 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
  * PUT /api/learners/profile
  * Update learner profile with institution and educational information
  */
-export const onRequestPut = withAuth(async (context: AuthenticatedContext) => {
+export const onRequestPut = withAuth(async (context: AuthenticatedPagesContext) => {
   const user = context.data.user;
   const env = context.env as Record<string, string>;
   const supabase = getServiceClient(env as any);
@@ -204,7 +211,7 @@ export const onRequestPut = withAuth(async (context: AuthenticatedContext) => {
   } catch (error) {
     console.error('Error in profile endpoint:', error);
     return Response.json(
-      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

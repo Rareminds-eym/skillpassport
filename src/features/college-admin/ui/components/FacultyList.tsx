@@ -1,6 +1,6 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import React, { useState, useEffect, useRef } from "react";
-import { Search, Eye, CheckCircle, Clock, XCircle, FileText } from "lucide-react";
+import { Search, Eye, CheckCircle, Clock, XCircle, FileText, AlertTriangle } from "lucide-react";
 import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 
@@ -77,6 +77,13 @@ const FacultyList: React.FC<FacultyListProps> = ({ collegeId, revision, onChange
   const [credentialsError, setCredentialsError] = useState("");
   const [notice, setNotice] = useState("");
   const [selectedFaculty, setSelectedFaculty] = useState<Faculty | null>(null);
+  const [statusConfirmModal, setStatusConfirmModal] = useState<{
+    targetStatus: 'deactivated' | 'suspended' | 'pending' | 'active';
+    facultyId: string;
+    facultyName: string;
+  } | null>(null);
+  const [statusReason, setStatusReason] = useState("");
+  const [reasonError, setReasonError] = useState("");
 
   useEffect(() => {
     const timer = window.setInterval(() => setClockNow(Date.now()), 1000);
@@ -181,7 +188,7 @@ const FacultyList: React.FC<FacultyListProps> = ({ collegeId, revision, onChange
     );
   };
 
-  const updateFacultyStatus = async (facultyId: string, newStatus: string) => {
+  const updateFacultyStatus = async (facultyId: string, newStatus: string, reason?: string) => {
     if (saving) return;
     setSaving(true);
     setStatusError("");
@@ -190,10 +197,14 @@ const FacultyList: React.FC<FacultyListProps> = ({ collegeId, revision, onChange
         action: 'update-faculty-status',
         id: facultyId,
         account_status: newStatus,
+        reason: reason || undefined,
       });
       await loadFaculty();
       onChanged?.();
-      setNotice("Faculty status updated.");
+      setNotice(`Faculty status updated to ${newStatus}.`);
+      setStatusConfirmModal(null);
+      setStatusReason("");
+      setReasonError("");
       setSelectedFaculty(null);
     } catch (err) {
       logger.error('Error updating faculty status', err as Error);
@@ -563,6 +574,12 @@ const FacultyList: React.FC<FacultyListProps> = ({ collegeId, revision, onChange
               {/* Status Update */}
               <div>
                 <h4 className="font-semibold text-gray-900 mb-3">Update Status</h4>
+                {selectedFaculty.metadata?.status_reason && (
+                  <div className="mb-3 rounded-lg bg-gray-50 p-3 border border-gray-200">
+                    <p className="text-xs font-semibold text-gray-500 uppercase">Reason for {selectedFaculty.accountStatus}</p>
+                    <p className="text-sm text-gray-800 mt-1">{selectedFaculty.metadata.status_reason}</p>
+                  </div>
+                )}
                 {statusError && <p role="alert" className="mb-3 text-red-700">{statusError}</p>}
                 {saving && <p role="status">Saving status…</p>}
                 <div className="flex flex-wrap gap-2">
@@ -571,7 +588,15 @@ const FacultyList: React.FC<FacultyListProps> = ({ collegeId, revision, onChange
                       key={status}
                       disabled={saving || credentialsSending || selectedFaculty.accountStatus === status}
                       aria-pressed={selectedFaculty.accountStatus === status}
-                      onClick={() => updateFacultyStatus(selectedFaculty.id, status)}
+                      onClick={() => {
+                        setStatusReason('');
+                        setReasonError('');
+                        setStatusConfirmModal({
+                          targetStatus: status as 'deactivated' | 'suspended' | 'pending' | 'active',
+                          facultyId: selectedFaculty.id,
+                          facultyName: `${selectedFaculty.first_name || ''} ${selectedFaculty.last_name || ''}`.trim() || 'this lecturer',
+                        });
+                      }}
                       className={`px-4 py-2 rounded-lg font-medium transition ${
                         selectedFaculty.accountStatus === status
                           ? "bg-indigo-600 text-white"
@@ -585,6 +610,148 @@ const FacultyList: React.FC<FacultyListProps> = ({ collegeId, revision, onChange
               </div>
             </div>
           </Dialog.Content>
+          </Dialog.Portal>
+        </Dialog.Root>
+      )}
+
+      {/* Reason Confirmation Modal */}
+      {statusConfirmModal && (
+        <Dialog.Root open onOpenChange={(open) => { if (!open && !saving) setStatusConfirmModal(null); }}>
+          <Dialog.Portal>
+            <Dialog.Overlay className="fixed inset-0 z-[110] bg-black/50" />
+            <Dialog.Content
+              aria-modal="true"
+              aria-describedby={undefined}
+              className="fixed left-1/2 top-1/2 z-[111] max-h-[90dvh] w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl bg-white p-6 shadow-xl"
+            >
+              <div className="flex justify-between items-start mb-4">
+                <div className="flex items-center gap-3">
+                  <div className={`flex h-10 w-10 items-center justify-center rounded-full ${
+                    statusConfirmModal.targetStatus === 'active' ? 'bg-green-100 text-green-600' :
+                    statusConfirmModal.targetStatus === 'pending' ? 'bg-yellow-100 text-yellow-600' :
+                    'bg-red-100 text-red-600'
+                  }`}>
+                    <AlertTriangle className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <Dialog.Title className="text-lg font-bold text-gray-900">
+                      {statusConfirmModal.targetStatus === 'active' ? 'Reactivate Lecturer' :
+                       statusConfirmModal.targetStatus === 'pending' ? 'Set to Pending' :
+                       statusConfirmModal.targetStatus === 'suspended' ? 'Suspend Lecturer' :
+                       'Deactivate Lecturer'}
+                    </Dialog.Title>
+                    <p className="text-sm text-gray-500">
+                      {statusConfirmModal.facultyName}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={() => setStatusConfirmModal(null)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <XCircle className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div className={`rounded-lg p-3 border ${
+                  statusConfirmModal.targetStatus === 'active' ? 'bg-green-50 border-green-200' :
+                  statusConfirmModal.targetStatus === 'pending' ? 'bg-yellow-50 border-yellow-200' :
+                  'bg-amber-50 border-amber-200'
+                }`}>
+                  <p className={`text-sm ${
+                    statusConfirmModal.targetStatus === 'active' ? 'text-green-800' :
+                    statusConfirmModal.targetStatus === 'pending' ? 'text-yellow-800' :
+                    'text-amber-800'
+                  }`}>
+                    <strong>Notice:</strong>{' '}
+                    {statusConfirmModal.targetStatus === 'active'
+                      ? 'Reactivating this lecturer will restore their access to teaching modules and all college resources.'
+                      : statusConfirmModal.targetStatus === 'pending'
+                      ? 'Setting this lecturer to Pending will place their account in a review state. They will not have full teaching access until reactivated.'
+                      : statusConfirmModal.targetStatus === 'suspended'
+                      ? 'Suspending this lecturer will immediately revoke all active sessions and temporarily block access to teaching modules.'
+                      : 'Deactivating this lecturer will immediately revoke all active sessions and block access to teaching modules.'}
+                  </p>
+                </div>
+
+                <div>
+                  <label htmlFor="status-reason-input" className="block text-sm font-medium text-gray-700 mb-1">
+                    Reason for {
+                      statusConfirmModal.targetStatus === 'active' ? 'reactivation' :
+                      statusConfirmModal.targetStatus === 'pending' ? 'status change' :
+                      statusConfirmModal.targetStatus === 'suspended' ? 'suspension' :
+                      'deactivation'
+                    } <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    id="status-reason-input"
+                    rows={3}
+                    value={statusReason}
+                    onChange={(e) => {
+                      setStatusReason(e.target.value);
+                      if (reasonError) setReasonError('');
+                    }}
+                    placeholder={
+                      statusConfirmModal.targetStatus === 'active'
+                        ? 'Enter reason for reactivation (e.g., issue resolved, reinstated, contract renewed)...'
+                        : statusConfirmModal.targetStatus === 'pending'
+                        ? 'Enter reason for pending (e.g., awaiting document verification, under review)...'
+                        : statusConfirmModal.targetStatus === 'suspended'
+                        ? 'Enter reason for suspension (e.g., investigation ongoing, policy violation)...'
+                        : 'Enter reason for deactivation (e.g., contract ended, resignation, transfer)...'
+                    }
+                    className={`w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 ${
+                      statusConfirmModal.targetStatus === 'active' ? 'focus:ring-green-500 focus:border-green-500' :
+                      statusConfirmModal.targetStatus === 'pending' ? 'focus:ring-yellow-500 focus:border-yellow-500' :
+                      'focus:ring-red-500 focus:border-red-500'
+                    }`}
+                  />
+                  {reasonError && (
+                    <p className="mt-1 text-xs text-red-600">{reasonError}</p>
+                  )}
+                </div>
+
+                {statusError && (
+                  <p role="alert" className="text-sm text-red-600">{statusError}</p>
+                )}
+
+                <div className="flex justify-end gap-3 pt-2">
+                  <button
+                    type="button"
+                    disabled={saving}
+                    onClick={() => setStatusConfirmModal(null)}
+                    className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    disabled={saving}
+                    onClick={() => {
+                      if (!statusReason.trim()) {
+                        setReasonError('Please provide a reason before proceeding.');
+                        return;
+                      }
+                      void updateFacultyStatus(statusConfirmModal.facultyId, statusConfirmModal.targetStatus, statusReason.trim());
+                    }}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium text-white disabled:opacity-50 flex items-center gap-2 ${
+                      statusConfirmModal.targetStatus === 'active' ? 'bg-green-600 hover:bg-green-700' :
+                      statusConfirmModal.targetStatus === 'pending' ? 'bg-yellow-500 hover:bg-yellow-600' :
+                      'bg-red-600 hover:bg-red-700'
+                    }`}
+                  >
+                    {saving ? 'Processing…' :
+                      statusConfirmModal.targetStatus === 'active' ? 'Confirm Reactivation' :
+                      statusConfirmModal.targetStatus === 'pending' ? 'Confirm Pending' :
+                      statusConfirmModal.targetStatus === 'suspended' ? 'Confirm Suspension' :
+                      'Confirm Deactivation'}
+                  </button>
+                </div>
+              </div>
+            </Dialog.Content>
           </Dialog.Portal>
         </Dialog.Root>
       )}
