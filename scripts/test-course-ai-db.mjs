@@ -28,7 +28,7 @@ CREATE TABLE college_lecturers(user_id uuid,"collegeId" uuid,"accountStatus" tex
 CREATE TABLE organization_staff(user_id uuid,organization_id uuid,account_status text);
 CREATE TABLE course_enrollments(course_id uuid,learner_id uuid,educator_id uuid,status text);
 `);
-  sql(readFileSync(new URL('../supabase/migrations/20261103090000_course_content_index.sql', import.meta.url), 'utf8'));
+  sql(readFileSync(new URL('../supabase/migrations/20270219021100_course_content_index.sql', import.meta.url), 'utf8'));
   sql(`DO $$
 DECLARE u uuid:=gen_random_uuid(); outsider uuid:=gen_random_uuid(); student uuid:=gen_random_uuid(); learner uuid:=gen_random_uuid();
  c uuid:=gen_random_uuid(); module uuid:=gen_random_uuid(); lesson uuid:=gen_random_uuid(); analysis uuid; lease uuid; embedding text;

@@ -47,31 +47,18 @@ $$;
 REVOKE ALL ON FUNCTION public.ai_worksheet_educator_scope(uuid),public.ai_worksheet_eligible_learners(uuid) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.ai_worksheet_educator_scope(uuid),public.ai_worksheet_eligible_learners(uuid) TO service_role;
 
--- Keep the existing atomic implementation behind a mapping-checked entry point.
-DO $$ BEGIN
- IF to_regprocedure('public.publish_ai_worksheets_unscoped(uuid,uuid,uuid,uuid,uuid,text,text,timestamptz,jsonb)') IS NULL THEN
-  ALTER FUNCTION public.publish_ai_worksheets(uuid,uuid,uuid,uuid,uuid,text,text,timestamptz,jsonb) RENAME TO publish_ai_worksheets_unscoped;
- END IF;
-END $$;
-REVOKE ALL ON FUNCTION public.publish_ai_worksheets_unscoped(uuid,uuid,uuid,uuid,uuid,text,text,timestamptz,jsonb) FROM PUBLIC,anon,authenticated,service_role;
-CREATE OR REPLACE FUNCTION public.publish_ai_worksheets(p_user_id uuid,p_organization_id uuid,
- p_conversation_id uuid,p_message_id uuid,p_group_id uuid,p_title text,p_instructions text,
- p_due_at timestamptz,p_variants jsonb) RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER
-SET search_path=public,pg_temp AS $$
-DECLARE scope uuid; recipient uuid; variant jsonb;
-BEGIN
- SELECT organization_id INTO scope FROM ai_worksheet_educator_scope(p_user_id);
- IF scope IS DISTINCT FROM p_organization_id THEN RAISE EXCEPTION 'Educator college mismatch'; END IF;
- FOR variant IN SELECT * FROM jsonb_array_elements(p_variants) LOOP
-  FOR recipient IN SELECT value::uuid FROM jsonb_array_elements_text(variant->'learnerIds') LOOP
-   IF NOT EXISTS(SELECT 1 FROM ai_worksheet_eligible_learners(p_user_id) eligible WHERE eligible.id=recipient) THEN
-    RAISE EXCEPTION 'Learner is not in an educator mapped program or class';
-   END IF;
-  END LOOP;
- END LOOP;
- RETURN publish_ai_worksheets_unscoped(p_user_id,scope,p_conversation_id,p_message_id,p_group_id,p_title,p_instructions,p_due_at,p_variants);
-END $$;
-REVOKE ALL ON FUNCTION public.publish_ai_worksheets(uuid,uuid,uuid,uuid,uuid,text,text,timestamptz,jsonb) FROM PUBLIC,anon,authenticated;
-GRANT EXECUTE ON FUNCTION public.publish_ai_worksheets(uuid,uuid,uuid,uuid,uuid,text,text,timestamptz,jsonb) TO service_role;
+
+CREATE OR REPLACE FUNCTION public.ai_worksheet_context(p_user_id uuid)
+RETURNS jsonb LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public,pg_temp AS $$
+ SELECT jsonb_build_object('organization',jsonb_build_object('id',s.organization_id,'name',s.organization_name),
+  'learnerCount',(SELECT count(*) FROM ai_worksheet_eligible_learners(p_user_id)),
+  'gradeLevel',COALESCE((SELECT string_agg(DISTINCT CASE WHEN l.college_id=s.organization_id THEN 'College/University'
+    ELSE 'Grade '||sc.grade::text END, ', ' ORDER BY CASE WHEN l.college_id=s.organization_id THEN 'College/University' ELSE 'Grade '||sc.grade::text END)
+   FROM ai_worksheet_eligible_learners(p_user_id) e JOIN learners l ON l.id=e.id LEFT JOIN school_classes sc ON sc.id=l.school_class_id),''))
+ FROM ai_worksheet_educator_scope(p_user_id) s;
+$$;
+REVOKE ALL ON FUNCTION public.ai_worksheet_context(uuid) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.ai_worksheet_context(uuid) TO service_role;
+
 NOTIFY pgrst,'reload schema';
 COMMIT;

@@ -43,7 +43,6 @@ import LessonPlanConfigPanel from './LessonPlanConfigPanel';
 import WorksheetExportButton from './WorksheetExportButton';
 import SaveGeneratedMaterial from './SaveGeneratedMaterial';
 import SavedMaterialWorkspace from './SavedMaterialWorkspace';
-import AssignWorksheetButton from './AssignWorksheetButton';
 import FacilitatorHub from './FacilitatorHub';
 import FacilitatorWelcome from './FacilitatorWelcome';
 import TutorOrb from './TutorOrb';
@@ -1060,7 +1059,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
                             </div>
                             {!!msg.citations?.length && <details className="mt-2 text-xs text-slate-500"><summary>Course sources ({msg.citations.length})</summary>{msg.citations.map(citation => <p key={citation.chunkId} className="break-words">{String(citation.location.name || 'Lesson content')} ? reference {citation.chunkId}</p>)}</details>}
                             {isEducator && (msg.materialAvailable || msg.worksheetAvailable || msg.assignmentSourceId) && conversationId && (
-                              <div className="w-full"><SaveGeneratedMaterial canAssign={!!(msg.worksheetAvailable || msg.assignmentSourceId)} courseId={courseId} conversationId={conversationId} messageId={msg.assignmentSourceId || msg.id} fallback={msg.worksheetAvailable ? <AssignWorksheetButton conversationId={conversationId} messageId={msg.assignmentSourceId || msg.id} initiallyOpen={!!msg.assignmentSourceId} courseTitle={courseName} /> : undefined} /></div>
+                              <div className="w-full"><SaveGeneratedMaterial canAssign={!!(msg.worksheetAvailable || msg.assignmentSourceId)} courseId={courseId} conversationId={conversationId} messageId={msg.assignmentSourceId || msg.id} /></div>
                             )}
                           </div>
                         )}

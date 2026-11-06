@@ -1,7 +1,6 @@
 import PanelLoadingSkeleton from './PanelLoadingSkeleton';
 import * as Dialog from '@radix-ui/react-dialog';
 import { X, Search, LayoutGrid, List, ArrowLeft } from 'lucide-react';
-import LearnerWorksheets from './LearnerWorksheets';
 import SubmissionPreview from './SubmissionPreview';
 import ReactMarkdown from 'react-markdown';
 import { summarizeAssignmentProgress } from '../model/savedProgress';
@@ -103,7 +102,7 @@ export function AssignmentOverview({rows,courseId,onFollowup,loading,error,title
 }
 
 export default function SavedMaterialWorkspace({courseId,educator,onFollowup}:{courseId:string;educator:boolean;onFollowup?:(prompt:string)=>void}) {
-  const user=useUser(); const [kind,setKind]=useState('assignment'); const [showPrevious,setShowPrevious]=useState(false);
+  const user=useUser(); const [kind,setKind]=useState('assignment');
   const capability=useQuery({queryKey:['saved-material-capability',user?.id],queryFn:()=>materialAction<{enabled:boolean}>('capabilities'),enabled:!!user?.id,retry:false});
   const enabled=!!user?.id&&capability.data?.enabled===true;
   const deliveries=useQuery({queryKey:['saved-deliveries',user?.id,courseId],queryFn:()=>materialAction<any[]>('deliveries',{courseId}),enabled:enabled&&(!educator||kind==='assignment'),retry:false,refetchInterval:(!educator||kind==='assignment')?10000:false});
@@ -112,7 +111,7 @@ export default function SavedMaterialWorkspace({courseId,educator,onFollowup}:{c
   const showAssignments=!educator;
   if(capability.isError)return <p role="alert" className="p-3 text-xs text-red-700">Unable to load saved assignments. <button type="button" onClick={()=>{void capability.refetch();}}>Retry</button></p>;
   if(capability.isPending)return <PanelLoadingSkeleton label="Loading course assignments" variant="cards"/>;
-  if(!enabled)return !educator&&capability.data?.enabled===false?<LearnerWorksheets courseId={courseId}/>:null;
+  if(!enabled)return null;
   return <section className="space-y-4 p-3 font-sans text-xs leading-5 text-slate-600" aria-label={educator?'Saved materials and learner progress':'Document assignments'}>
     {educator&&<><div className="flex flex-wrap items-center justify-between gap-3"><h3 className="text-sm font-semibold tracking-tight text-slate-900">Saved course materials</h3><div role="group" aria-label="Saved material type" className="ml-auto inline-flex shrink-0 items-center gap-0.5 rounded-full border border-slate-200/80 bg-slate-50 p-1">{[{value:'assignment',label:'Assignments'},{value:'lesson_plan',label:'Lesson plans'}].map(option=><button key={option.value} type="button" aria-pressed={kind===option.value} onClick={()=>setKind(option.value)} className={`rounded-full border px-3 py-1.5 text-[11px] font-medium leading-4 transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 motion-reduce:transition-none ${kind===option.value?'border-slate-200/80 bg-white text-slate-900 shadow-sm':'border-transparent text-slate-500 hover:text-slate-800'}`}>{option.label}</button>)}</div></div>{kind==='lesson_plan'&&<div className="flex items-baseline justify-between border-b border-slate-100 pb-2"><h4 className="text-xs font-medium text-slate-700">Lesson plans</h4><span className="text-[11px] tabular-nums text-slate-400">{library.data?.length??0} saved</span></div>}
       {kind!=='overview'&&library.data?.map(item=><article key={item.id} className="group/material relative overflow-hidden rounded-xl border border-slate-200/80 bg-white p-4 transition-colors hover:border-slate-300 focus-within:border-slate-300 motion-reduce:transition-none">
@@ -129,7 +128,7 @@ export default function SavedMaterialWorkspace({courseId,educator,onFollowup}:{c
     {deliveries.isPending&&<PanelLoadingSkeleton label="Loading assignments" variant="cards"/>}
     {deliveries.data?.map(row=><SubmissionCard key={row.id} row={row} courseId={courseId} educator={educator}/>)}
     {deliveries.data?.length===0&&<div className="rounded-xl border border-dashed border-slate-200 px-4 py-6 text-center font-sans"><p className="text-sm font-medium text-slate-700">No assignments allocated yet.</p><p className="mt-1 text-xs leading-5 text-slate-500">{educator?'Saved assignments will appear here after you assign them to learners.':'When your educator assigns a document task, you can upload your completed work here and view released feedback.'}</p></div>}
-    {!educator&&<div className="border-t border-slate-100 pt-3"><button type="button" aria-expanded={showPrevious} aria-controls="previous-course-worksheets" onClick={()=>setShowPrevious(value=>!value)} className="flex w-full items-center justify-between rounded-lg px-1 py-2 text-xs font-medium text-blue-600 transition-colors hover:text-blue-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600"><span>Previous worksheets</span><span aria-hidden="true">{showPrevious?'-':'+'}</span></button>{showPrevious&&<div id="previous-course-worksheets"><p className="px-1 pb-2 text-xs leading-5 text-slate-500">Earlier download-only worksheets. These do not use document submission or AI evaluation.</p><LearnerWorksheets courseId={courseId}/></div>}</div>}
+
     </>}
     {educator&&kind!=='overview'&&library.isPending&&<PanelLoadingSkeleton label="Loading saved materials" variant="cards"/>}
     {educator&&kind==='lesson_plan'&&library.data?.length===0&&<div className="rounded-xl border border-dashed border-slate-200 px-4 py-8 text-center font-sans"><p className="text-sm font-medium text-slate-700">No saved lesson plans yet.</p><p className="mt-1 text-xs leading-5 text-slate-500">Save a generated lesson plan in your conversation to find it here.</p></div>}

@@ -32,18 +32,16 @@ CREATE TABLE school_classes(id uuid PRIMARY KEY,school_id uuid);
 CREATE TABLE departments(id uuid PRIMARY KEY,college_id uuid);
 CREATE TABLE program_sections(id uuid PRIMARY KEY,department_id uuid,program_id uuid,status text);
 CREATE TABLE organization_members(organization_id uuid,user_id uuid,status text);
-CREATE TABLE ai_worksheet_sets(id uuid PRIMARY KEY,course_id uuid,organization_id uuid,educator_user_id uuid,status text,due_at timestamptz,source_message_id uuid,title text DEFAULT 'Worksheet',instructions text DEFAULT '');
 CREATE TABLE assignments(assignment_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),title text,instructions text,course_name text,course_code text,educator_id uuid,total_points numeric,assignment_type text,school_class_id uuid,assign_classes text,due_date timestamptz,available_from timestamptz,allow_late_submission boolean);
 CREATE TABLE college_assignments(assignment_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),title text,instructions text,course_name text,course_code text,college_id uuid,college_educator_id uuid,program_section_id uuid,department_id uuid,program_id uuid,total_points numeric,assignment_type text,due_date timestamptz,available_from timestamptz,allow_late_submission boolean);
 CREATE TABLE learner_assignments(learner_assignment_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),assignment_id uuid,learner_id uuid REFERENCES learners(user_id),status text DEFAULT 'todo',grade_received numeric,grade_percentage numeric,instructor_feedback text,graded_by uuid,graded_date timestamptz,feedback_date timestamptz,started_date timestamptz,submission_date timestamptz,completed_date timestamptz,is_late boolean,updated_date timestamptz,UNIQUE(assignment_id,learner_id));
 CREATE TABLE college_learner_assignments(LIKE learner_assignments INCLUDING ALL);
 CREATE TABLE notifications(id uuid DEFAULT gen_random_uuid(),recipient_id uuid,type text,title text,message text);
 CREATE FUNCTION ai_worksheet_eligible_learners(p_user uuid) RETURNS TABLE(id uuid) LANGUAGE sql AS $$ SELECT l.id FROM learners l JOIN organization_members om ON om.user_id=l.user_id WHERE om.organization_id IN (SELECT organization_id FROM organization_members WHERE user_id=p_user AND status='active') AND om.status='active' $$;
-CREATE TABLE ai_worksheet_recipients(id uuid PRIMARY KEY,worksheet_id uuid,learner_id uuid);
 `);
 
   sql(`CREATE FUNCTION ai_worksheet_educator_scope(p_user uuid) RETURNS TABLE(organization_id uuid) LANGUAGE sql AS $$ SELECT organization_id FROM organization_members WHERE user_id=p_user AND status='active' LIMIT 1 $$;`);
-  for(const file of ['20261103090000_course_content_index.sql','20261103150000_ai_saved_assignments.sql']) sql(readFileSync(new URL(`../supabase/migrations/${file}`,import.meta.url),'utf8'));
+  for(const file of ['20270219021100_course_content_index.sql','20270219021200_ai_saved_assignments.sql']) sql(readFileSync(new URL(`../supabase/migrations/${file}`,import.meta.url),'utf8'));
   sql(`DO $$
 DECLARE teacher uuid:=gen_random_uuid(); student uuid:=gen_random_uuid(); outsider uuid:=gen_random_uuid(); school uuid:=gen_random_uuid(); class_id uuid:=gen_random_uuid(); learner uuid:=gen_random_uuid(); course uuid:=gen_random_uuid(); material uuid; recipient uuid; submission uuid:=gen_random_uuid(); result uuid; question uuid:=gen_random_uuid(); conv uuid:=gen_random_uuid(); msg uuid:=gen_random_uuid(); amount integer; deadline timestamptz:=now()+interval '1 day'; storage text;
 BEGIN

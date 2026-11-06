@@ -14,8 +14,7 @@ const mocks = vi.hoisted(() => ({
 }));
 vi.mock('@/shared/model', () => ({ useUser: () => mocks.user, useUserRole: () => ({ isEducator: mocks.educator }) }));
 vi.mock('../../api/worksheetService', () => ({ worksheetAction: vi.fn().mockResolvedValue({ organization: { name: 'Mapped College' }, gradeLevel: 'College/University', learnerCount: 8 }) }));
-vi.mock('../../api/materialService', () => ({ materialAction: async (action:string) => action==='deliveries'?[]:({ enabled: false }) }));
-vi.mock('../LearnerWorksheets', () => ({ default: ({ courseId }: { courseId: string }) => <div>Assignments for {courseId}</div> }));
+vi.mock('../../api/materialService', () => ({ materialAction: async (action:string) => action==='capabilities'?{enabled:true}:action==='choice'?{state:'unanswered'}:[] }));
 vi.mock('@/features/ai-tutor/model', () => ({ useLearnerType: () => ({ isTeacher: false, loading: false }) }));
 vi.mock('@/features/ai-tutor/model/useTutorChat', () => ({ useTutorChat: () => ({
   facilitatorMode: 'auto', setFacilitatorMode: mocks.setFacilitatorMode, activeFacilitator: 'organizer',
@@ -148,11 +147,11 @@ describe('AI facilitator workspace', () => {
   it('opens course-specific assignments from the learner tutor header', async () => {
     mocks.educator = false;
     showPanel();
-    expect(screen.queryByText('Assignments for course')).not.toBeInTheDocument();
+    expect(screen.queryByText('Your assignments')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'View course assignments' }));
     expect(screen.getByRole('region', { name: 'Course assignments' })).toBeInTheDocument();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    expect(await screen.findByText('Assignments for course')).toBeInTheDocument();
+    expect(await screen.findByText('Your assignments')).toBeInTheDocument();
     fireEvent.click(screen.getByLabelText('Back to AI tutor'));
     expect(screen.queryByRole('region', { name: 'Course assignments' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'View course assignments' })).toBeInTheDocument();
@@ -219,7 +218,8 @@ describe('AI facilitator workspace', () => {
     mocks.worksheet = true;
     showPanel();
     expect(screen.getByRole('button', { name: 'Export material' })).toBeInTheDocument();
-    expect(await screen.findByText('Would you like to assign these questions to your learners?')).toBeInTheDocument();
+    expect(await screen.findByRole('button',{name:'Assign to learners'})).toBeInTheDocument();
+    expect(screen.queryByRole('button',{name:'Yes, assign'})).not.toBeInTheDocument();
   });
   it('announces generation and disables sending while streaming', () => {
     mocks.streaming = true;

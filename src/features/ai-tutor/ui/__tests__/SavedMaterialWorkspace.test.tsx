@@ -1,12 +1,12 @@
 import {render,screen,cleanup,fireEvent,within,waitFor} from '@testing-library/react';
 import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
 import {afterEach,it,expect,vi} from 'vitest';
+vi.mock('@/shared/ui',async()=>({...await import('@/shared/ui/DropdownMenu'),toast:{error:vi.fn()}}));
 const exports=vi.hoisted(()=>({exportAs:vi.fn()}));
 vi.mock('../../model/useExport',()=>({useExport:()=>({exportAs:exports.exportAs,isExporting:false})}));
 vi.mock('@/shared/model',()=>({useUser:()=>({id:'student'})}));
 vi.mock('../../api/materialService',()=>({materialAction:async(action:string,data?:{kind?:string})=>action==='capabilities'?{enabled:true}:action==='library'?(data?.kind==='lesson_plan'?[{id:'plan',title:'Saved time management plan',content:{markdown:'Lesson objectives and teaching activities'}}]:[{id:'assignment',title:'Worksheet one',content:{questions:[]}},{id:'other',title:'Worksheet two',content:{questions:[]}}]):[{id:'recipient',due_at:'2099-01-01',learner:{name:'Student'},assignment:{id:'assignment',title:'Time management',content:{questions:[]}},submissions:[{id:'submission',file_name:'answer.pdf',results:[{id:'result',status:'review_required'}]}]}]}));
 vi.mock('../SaveGeneratedMaterial',()=>({AllocateSavedMaterial:()=> <span>Assigned</span>}));
-vi.mock('../LearnerWorksheets',()=>({default:()=> <div>Legacy download list</div>}));
 import SavedMaterialWorkspace, {LearnerProgressBrowser,AssignmentOverview,SubmissionCard} from '../SavedMaterialWorkspace';
 afterEach(cleanup);
 it('opens learner details as a separate modal screen and preserves the learner search on return',()=>{
@@ -78,14 +78,11 @@ it('shows submission status without exposing unreleased marks or a second submis
  expect(screen.queryByText(/Score:/)).not.toBeInTheDocument();expect(screen.queryByRole('button',{name:'Submit document'})).not.toBeInTheDocument();
 });
 
-it('keeps old download-only worksheets collapsed separately from document assignments',async()=>{
+it('does not expose the retired worksheet flow',async()=>{
  render(<QueryClientProvider client={new QueryClient()}><SavedMaterialWorkspace courseId="course" educator={false}/></QueryClientProvider>);
- const previous=await screen.findByRole('button',{name:'Previous worksheets'});
- expect(previous).toHaveAttribute('aria-expanded','false');
- expect(screen.queryByText('Legacy download list')).not.toBeInTheDocument();
- fireEvent.click(previous);
- expect(screen.getByText('Legacy download list')).toBeInTheDocument();
- expect(previous).toHaveAttribute('aria-expanded','true');
+ await screen.findByText('Your assignments');
+ expect(screen.queryByRole('button',{name:'Previous worksheets'})).not.toBeInTheDocument();
+ expect(screen.queryByText('Assigned worksheets')).not.toBeInTheDocument();
 });
 
 it('switches saved material types with accessible pill buttons instead of a dropdown',async()=>{

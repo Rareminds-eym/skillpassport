@@ -154,6 +154,21 @@ describe('tutor conversation persistence', () => {
     expect(stream).toContain('"worksheetAvailable":false');
     expect(mocks.client.rpc.mock.calls.map(call => call[0])).toEqual(['append_tutor_messages']);
   });
+  it.each([
+    ['learner','college_educator'],
+    ['college_admin','school_educator'],
+    ['college_admin','educator'],
+  ])('accepts verified educator roles regardless of order: %j', async (...roles) => {
+    mocks.roles = roles;
+    const stream = await generate('existing-conversation');
+    expect(stream).toContain('event: done');
+    expect(fetch).toHaveBeenCalled();
+  });
+  it.each(['learner','college_admin','not_an_educator'])('denies teaching generation for non-educator role %s', async role => {
+    mocks.roles=[role];
+    const response=await handleAiTutorChat({request:new Request('https://example.test/chat',{method:'POST',body:JSON.stringify({courseId:'course-id',message:'Generate a worksheet',worksheetConfig:{difficulty:'medium',difficultyLevels:['medium'],questionCount:5}})}),env:{SUPABASE_URL:'https://example.test',SUPABASE_SERVICE_ROLE_KEY:'test'}} as Parameters<typeof handleAiTutorChat>[0]);
+    expect(response.status).toBe(403);expect(fetch).not.toHaveBeenCalled();
+  });
   it('blocks learner access to educator persona controls', async () => {
     mocks.roles = ['learner'];
     const response = await handleAiTutorChat({ request: new Request('https://example.test/chat', { method: 'POST', body: JSON.stringify({ courseId: 'course-id', message: 'Hello', facilitatorMode: 'organizer' }) }), env: { SUPABASE_URL: 'https://example.test', SUPABASE_SERVICE_ROLE_KEY: 'test' } } as Parameters<typeof handleAiTutorChat>[0]);
@@ -255,10 +270,10 @@ describe('tutor conversation persistence', () => {
     const original = mocks.client.from.getMockImplementation()!;
     const eq = vi.fn();
     mocks.client.from.mockImplementation((table: string) => {
-      if (table !== 'ai_worksheet_sets') return original(table);
+      if (table !== 'ai_assignment_learners') return original(table);
       const query: Record<string, ReturnType<typeof vi.fn>> = {};
       query.select = vi.fn(() => query); query.eq = eq.mockImplementation(() => query); query.order = vi.fn(() => query);
-      query.limit = vi.fn().mockResolvedValue({ data: [{ title: 'Time worksheet', recipients: [{ count: 8 }], generation_config: { assignmentMode: 'all-mapped', includedDifficulties: ['beginner', 'intermediate', 'advanced'] } }], error: null });
+      query.limit = vi.fn().mockResolvedValue({ data: [...Array.from({length:8},()=>({assignment_id:'saved-material',assignment:{title:'Time worksheet',generation_config:{difficultyLevels:['beginner','intermediate','advanced']}}}))], error: null });
       return query;
     });
     const stream = await generate('existing-conversation', ['medium'], 10, true);
@@ -267,11 +282,11 @@ describe('tutor conversation persistence', () => {
     expect(stream).not.toContain('Intermediate -');
     const payload = vi.mocked(fetch).mock.calls.map(([, init]) => JSON.parse(String(init?.body))).find(body => body.stream);
     expect(payload.messages[0].content).toContain('"count":8');
-    expect(payload.messages[0].content).toContain('Verified published assignments');
+    expect(payload.messages[0].content).toContain('Verified course assignments');
     expect(payload.messages.at(-1).content).toBe('Is that assigned to all the learners?');
-    expect(eq).toHaveBeenCalledWith('educator_user_id', 'educator-id');
-    expect(eq).toHaveBeenCalledWith('source_conversation_id', 'existing-conversation');
-    expect(eq).toHaveBeenCalledWith('course_id', 'course-id');
+    expect(eq).toHaveBeenCalledWith('assigned_by', 'educator-id');
+    expect(eq).toHaveBeenCalledWith('assignment.course_id', 'course-id');
+    expect(mocks.client.from).not.toHaveBeenCalledWith('ai_worksheet_sets');
     expect(mocks.increment).not.toHaveBeenCalled();
   });
 

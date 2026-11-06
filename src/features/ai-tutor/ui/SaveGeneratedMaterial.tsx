@@ -33,7 +33,7 @@ export function AllocateSavedMaterial({ courseId, assignmentId, initiallyOpen = 
   </section>;
 }
 
-export default function SaveGeneratedMaterial({ courseId, conversationId, messageId, fallback, canAssign = false }: { courseId: string; conversationId: string; messageId: string; fallback?: React.ReactNode; canAssign?: boolean }) {
+export default function SaveGeneratedMaterial({ courseId, conversationId, messageId, canAssign = false }: { courseId: string; conversationId: string; messageId: string; canAssign?: boolean }) {
   const user = useUser(), client = useQueryClient();
   const [assignAfterSave, setAssignAfterSave] = useState(false);
   const capability = useQuery({ queryKey: ['saved-material-capability',user?.id], queryFn: () => materialAction<{enabled:boolean}>('capabilities'), enabled: !!user?.id, retry: false });
@@ -42,7 +42,7 @@ export default function SaveGeneratedMaterial({ courseId, conversationId, messag
   const mutation = useMutation({ mutationFn: (action: string) => materialAction(action,{courseId,conversationId,messageId}), retry: false, onSuccess: async data => { await client.cancelQueries({queryKey:key}); client.setQueryData(key,data); void client.invalidateQueries({queryKey:['material-library',user?.id,courseId]}); } });
   if (capability.isPending) return <PanelLoadingSkeleton label="Checking material controls"/>;
   if (capability.isError) return <p role="alert" className="mt-2 text-xs text-red-700">Unable to verify material controls. <button type="button" onClick={() => { void capability.refetch(); }} className="underline">Retry</button></p>;
-  if (!capability.data?.enabled) return <>{fallback}</>;
+  if (!capability.data?.enabled) return null;
   const data = choice.data;
   return <div className="mt-3 border-t border-slate-100 pt-3 font-sans text-xs leading-5 text-slate-600">
     {choice.isPending ? <PanelLoadingSkeleton label="Checking saved material"/> : data?.id ? <>
