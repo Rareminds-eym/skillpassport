@@ -245,6 +245,10 @@ const AttendanceDetailsModal = ({
     // Get the selected session (sessions guaranteed non-empty above)
     const session = subjectGroup.sessions.find(s => s.id === selectedSessionId) || subjectGroup.sessions[0];
 
+    const specializationLabel = (item: AttendanceSession) => item.combinedGroupId
+        ? `Combined${item.combinedSpecializations?.length ? ' - ' + item.combinedSpecializations.join(' + ') : ''} (${item.specializations?.join(', ') || 'Specialization unavailable'})`
+        : item.specializations?.join(', ') || 'Specialization unavailable';
+
     // Get class learners for this subject
     const classlearners = learners.filter(
         (learner) =>
@@ -256,11 +260,11 @@ const AttendanceDetailsModal = ({
 
     // Get today's records (for selected session) with full learner list
     const sessionRecords = allRecords.filter(r => {
-        const matches = r.sessionId === selectedSessionId;
+        const matches = r.sessionId === session.id;
         return matches;
     });
 
-    const todaysRecords = classlearners.map((learner) => {
+    const todaysRecords = session.instructorSource === 'platform_staff' ? sessionRecords : classlearners.map((learner) => {
         const record = sessionRecords.find((r) => r.learnerId === learner.id);
         return record || {
             id: `not-marked-${learner.id}`,
@@ -405,7 +409,7 @@ const AttendanceDetailsModal = ({
                                 >
                                     {subjectGroup.sessions.map((sess, index) => (
                                         <option key={sess.id} value={sess.id}>
-                                            Session {subjectGroup.sessions.length - index} - {formatDate(sess.date)} ({formatTime(sess.startTime)} - {formatTime(sess.endTime)}) - {sess.attendancePercentage.toFixed(1)}% attendance
+                                            Session {subjectGroup.sessions.length - index} - {formatDate(sess.date)} ({formatTime(sess.startTime)} - {formatTime(sess.endTime)}) - {specializationLabel(sess)} - {sess.attendancePercentage.toFixed(1)}% attendance
                                         </option>
                                     ))}
                                 </select>
@@ -468,6 +472,7 @@ const AttendanceDetailsModal = ({
 
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
                             <div><strong>Course:</strong> {subjectGroup.course} - Sem {subjectGroup.semester} ({subjectGroup.section})</div>
+                            <div><strong>Specialization:</strong> {specializationLabel(session)}</div>
                             <div><strong>Duration:</strong> {(() => {
                                 const start = new Date(`2000-01-01T${session.startTime}`);
                                 const end = new Date(`2000-01-01T${session.endTime}`);
