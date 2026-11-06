@@ -8,7 +8,7 @@ vi.mock('@/features/admin',async()=>({AddAttendanceSessionModal:(await import('@
 vi.mock('@/features/college-admin',()=>({curriculumService:{getDepartments:async()=>[{id:'department',name:'Business'}],getPrograms:async()=>[{id:'program',name:'MBA'}],getCourses:f.courses}}));
 vi.mock('@/shared/api/apiClient',()=>({apiPost:f.api}));
 vi.mock('@/shared/lib',()=>({formatProgramLabel:(name:string)=>name}));
-vi.mock('@/shared/ui',()=>({Pagination:()=>null,SearchBar:()=>null}));
+vi.mock('@/shared/ui',()=>({Pagination:()=>null,SearchBar:({value,onChange}:any)=><input aria-label="Search attendance" value={value} onChange={event=>onChange(event.target.value)}/>}));
 vi.mock('@/features/analytics',()=>({KPICard:()=>null}));
 vi.mock('react-apexcharts',()=>({default:()=>null}));
 import AttendanceTracking from '../Attendancetracking';
@@ -93,4 +93,26 @@ it('opens training card sessions through their scoped roster when the legacy API
  expect(await screen.findByText('Existing attendance details')).toBeInTheDocument();
  expect(f.teaching).toHaveBeenCalledWith('session_roster',{sessionId:'session'});
  expect(f.api.mock.calls.some(([,params])=>params.action==='get-subject-learners')).toBe(false);
+});
+
+it('searches the complete attendance groups without sending a second paginated request', async()=>{
+ const base=f.api.getMockImplementation()!;
+ const group=(subject:string,faculty:string)=>({subject,faculty,department:'Business',course:'MBA',semester:4,section:'A',totalSessions:1,avgAttendancePercentage:100,totallearners:13,totalPresentCount:13,totalAbsentCount:0,totalLateCount:0,totalExcusedCount:0,dateRange:{first:'2026-09-10',last:'2026-09-10'},latestStatus:'completed'});
+ f.api.mockImplementation(async(path,params)=>params.action==='get-subject-groups'?{data:{groups:[group('Company Formation','Subashini'),group('Data Analysis','Ajay')],totalCount:2}}:base(path,params));
+ render(<AttendanceTracking/>);
+ await screen.findByText('Company Formation');
+ const before=f.api.mock.calls.filter(call=>call[1].action==='get-subject-groups').length;
+ await act(async()=>{fireEvent.change(screen.getAllByLabelText('Search attendance')[0],{target:{value:'  SUBASHINI  '}});});
+ await waitFor(()=>expect(screen.queryByText('Data Analysis')).not.toBeInTheDocument());
+ expect(screen.getByText('Company Formation')).toBeInTheDocument();
+ expect(f.api.mock.calls.filter(call=>call[1].action==='get-subject-groups')).toHaveLength(before);
+ await act(async()=>{fireEvent.change(screen.getAllByLabelText('Search attendance')[0],{target:{value:''}});});
+ await act(async()=>{fireEvent.click(screen.getAllByRole('button',{name:'Filters',exact:true})[0]);});
+ await act(async()=>{fireEvent.click(screen.getByRole('button',{name:'Faculty',exact:true}));});
+ await act(async()=>{fireEvent.click(screen.getByRole('checkbox',{name:/Subashini/}));});
+ await waitFor(()=>expect(screen.queryByText('Data Analysis')).not.toBeInTheDocument());
+ expect(screen.getByText('Company Formation')).toBeInTheDocument();
+
+ await act(async()=>{fireEvent.change(screen.getAllByLabelText('Search attendance')[0],{target:{value:'no match'}});});
+ await waitFor(()=>expect(screen.queryByText('Company Formation')).not.toBeInTheDocument());
 });

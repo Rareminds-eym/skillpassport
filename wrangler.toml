@@ -1,9 +1,8 @@
-# Wrangler configuration for Cloudflare Pages Functions
-# Production vars are configured in Cloudflare dashboard.
-# For local dev: wrangler pages dev ./dist
+# Wrangler configuration for the separate SkillPassport dev Pages project.
+# Use by copying this file to wrangler.toml before deploying skillpassport-dev.
 
-name = "skill-passport-portal"
-compatibility_date = "2026-09-04"
+name = "skillpassport-dev"
+compatibility_date = "2026-06-08"
 compatibility_flags = ["nodejs_compat"]
 
 # Flagship feature flags (Cloudflare native, KV+DO backed, sub-ms edge eval)
@@ -14,66 +13,66 @@ compatibility_flags = ["nodejs_compat"]
 # app_id = "<FILL_FROM_DASHBOARD>"
 
 # ============================================================================
-# DURABLE OBJECT BINDINGS
+# DEV DURABLE OBJECT BINDINGS
 # ============================================================================
 
 [[durable_objects.bindings]]
 name = "REALTIME_HUB"
 class_name = "RealtimeHub"
-script_name = "realtime-worker"
+script_name = "realtime-worker-dev"
 
 # ============================================================================
-# SERVICE BINDINGS
+# DEV SERVICE BINDINGS
 # ============================================================================
 
 [[services]]
 binding = "PAYMENT_WORKER"
-service = "razorpay-api"
+service = "razorpay-api-dev"
 entrypoint = "PaymentService"
 
 [[services]]
 binding = "SSO_SERVICE"
-service = "sso-api"
+service = "sso-api-dev"
 entrypoint = "SsoWorker"
 
 [[services]]
 binding = "ZOHO_CANDIDATE_SOURCE"
-service = "sso-api"
+service = "sso-api-dev"
 entrypoint = "ZohoCandidateProvisioner"
 
 [[services]]
 binding = "EMBEDDING_SERVICE"
-service = "embedding-api"
+service = "embedding-api-dev"
 entrypoint = "EmbeddingService"
-
-[[queues.producers]]
-binding = "REALTIME_EVENTS_QUEUE"
-queue = "realtime-events-queue"
-
-[[queues.producers]]
-binding = "SSO_REVERSE_SYNC_QUEUE"
-queue = "sso-reverse-sync-queue"
 
 [[services]]
 binding = "EMAIL_SERVICE"
-service = "shared-email-api"
+service = "shared-email-api-dev"
 entrypoint = "EmailService"
 
 [[r2_buckets]]
 binding = "R2_BUCKET"
-bucket_name = "skill-echosystem"
+bucket_name = "skill-echosystem-dev"
+
+[[queues.producers]]
+binding = "REALTIME_EVENTS_QUEUE"
+queue = "realtime-events-queue-dev"
+
+[[queues.producers]]
+binding = "SSO_REVERSE_SYNC_QUEUE"
+queue = "sso-reverse-sync-queue-dev"
 
 # ============================================================================
-# VARIABLES
+# DEV VARIABLES
 # ============================================================================
 
 [vars]
 # Must match EMBEDDING_SERVICE output; each job vector is independently verified.
 MATCHING_EMBEDDING_MODEL = "google/gemini-embedding-2-preview"
-ENVIRONMENT = "production"
+ENVIRONMENT = "development"
 REALTIME_PARTITIONS = "10"
-SUPABASE_URL = "https://dpooleduinyyzxgrcwko.supabase.co"
-LTE_APP_URL = "https://lte.rareminds.in"
+SUPABASE_URL = "https://qidmndjtlbajwswufghf.supabase.co"
+LTE_APP_URL = "https://lte-dev-b42.pages.dev/"
 COOKIE_DOMAIN = ".rareminds.in"
 GOOGLE_CLIENT_ID = "775729170329-s95ebosv3kj0b844ol87uhcjsgocq2mk.apps.googleusercontent.com"
 GOOGLE_OAUTH_ENABLED = "true"
