@@ -3,8 +3,8 @@ LANGUAGE plpgsql AS $$
 DECLARE r jsonb; staged public.zoho_staged_records; operation uuid; actor uuid:='10000000-0000-4000-8000-000000000002';
 BEGIN
  r:=public.zoho_stage_record(p_connection,'Job_Openings',p_external,clock_timestamp(),jsonb_build_object(
- 'title',p_title,'company_name','Fixture Company','department','Engineering','location','Bengaluru','employment_type','Full time',
- 'description','Fixture description','application_link','https://fixture.example/apply','source_status',p_status),'["Job publication and status mapping requires review."]');
+ 'title',p_title,'company_name','Fixture Company','department','','location','Bengaluru','employment_type','Full time',
+ 'description','Fixture description','application_link','https://fixture.example/apply','source_status',p_status),'["department mapping is required.","Job publication and status mapping requires review."]');
  SELECT * INTO STRICT staged FROM public.zoho_staged_records WHERE id=(r->>'id')::uuid;
  PERFORM public.zoho_decide_records(p_connection,jsonb_build_array(jsonb_build_object('id',staged.id,'revision',staged.revision,
  'sourceHash',staged.source_hash,'configRevision',staged.config_revision,'targetId',staged.target_id)),
@@ -31,6 +31,8 @@ BEGIN
  connection:=(public.zoho_register_connection('Job fixture','88888888888888888881','in',
  '10000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000002')->>'id')::uuid;
  UPDATE public.zoho_connections SET status='connected' WHERE id=connection;
+ ASSERT (public.zoho_job_publishing_preflight(connection)->>'entitlementReady')::boolean;
+ ASSERT (public.zoho_job_publishing_preflight(connection)->>'remainingSlots')::numeric=1;
  ASSERT NOT public.zoho_job_publisher_ready(),'Publisher defaults ready';
  ASSERT (public.zoho_read_job_policy(connection)->'policy')='null'::jsonb;
  failed:=false;BEGIN PERFORM public.zoho_configure_job_policy(connection,'10000000-0000-4000-8000-000000000002',1,'{"Open":"open"}','{"Full time":"job"}',true,false,public.zoho_job_trigger_fingerprint(),'Missing review'); EXCEPTION WHEN OTHERS THEN failed:=true;END;ASSERT failed;
@@ -77,6 +79,7 @@ BEGIN
  INSERT INTO public.subscription_cache(plan_id,organization_id,status,created_at) VALUES('10000000-0000-4000-8000-000000000010','10000000-0000-4000-8000-000000000001','active',now());
  INSERT INTO public.plan_entitlements VALUES('10000000-0000-4000-8000-000000000010','10000000-0000-4000-8000-000000000003',10,true);
  UPDATE public.tenant_entitlement_overrides SET is_enabled=false;
+ ASSERT NOT (public.zoho_job_publishing_preflight(connection)->>'entitlementReady')::boolean;
  failed:=false;BEGIN PERFORM public.zoho_apply_job_operation_effect(g);EXCEPTION WHEN OTHERS THEN failed:=true;END;ASSERT failed,'Disabled override fell through to enabled plan';
  UPDATE public.tenant_entitlement_overrides SET is_enabled=true,expires_at=now()-interval '1 second';
  INSERT INTO public.plans_cache(id,plan_code) VALUES('10000000-0000-4000-8000-000000000011','recruiter_parent_fixture');
@@ -85,9 +88,11 @@ BEGIN
  INSERT INTO public.plan_entitlements VALUES('10000000-0000-4000-8000-000000000011','10000000-0000-4000-8000-000000000003',1,true);
  result:=public.zoho_apply_job_operation(g);target:=(result->>'targetId')::uuid;
  UPDATE public.tenant_entitlement_overrides SET expires_at=NULL;
+ ASSERT (public.zoho_job_publishing_preflight(connection)->>'remainingSlots')::numeric=0;
+ ASSERT (public.zoho_job_publishing_preflight(connection)->>'pendingOpenJobs')::bigint=0;
  ASSERT result=public.zoho_apply_job_operation(g),'Replay changed receipt';
  ASSERT (SELECT count(*)=1 FROM public.opportunities);
- ASSERT (SELECT title='Engineer' AND employment_type='job' AND status='open' AND is_active FROM public.opportunities WHERE id=target);
+ ASSERT (SELECT title='Engineer' AND department='' AND employment_type='job' AND status='open' AND is_active FROM public.opportunities WHERE id=target);
  ASSERT NOT EXISTS(SELECT 1 FROM public.learning_job_notification_work),'Job triggered notification queue';
  PERFORM public.zoho_complete_operation((g->>'operationId')::uuid,(g->>'lease')::uuid,target,(result->>'receiptId')::uuid);
  ASSERT public.zoho_find_job_operation_receipt((g->>'operationId')::uuid,g->>'sourceHash')=result,'Completed receipt not recoverable';
