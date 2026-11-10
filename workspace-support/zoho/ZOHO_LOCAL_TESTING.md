@@ -1,5 +1,56 @@
 # Zoho integration local testing
 
+## Normal sp-dash BFF startup
+
+For normal dashboard use, run `npm run dev` from `sp-dash/`. It starts the UI on
+port 3010 and the existing dashboard Worker runtime together, using standard
+`.env.local` / `.dev.vars` settings and canonical local SSO bindings. See
+[local dashboard development](./sp-dash/LOCAL_DEVELOPMENT.md).
+
+Discovery, queue execution, recovery and approval authority remain inside the
+existing sp-dash BFF; there is no extra Zoho deployment. The UI binding proxy is
+producer-only, and one dashboard runtime consumes the existing dev queues.
+Existing OAuth encryption keys and the restricted reader credential must be kept
+in the standard private settings. Startup does not regenerate them or change the
+database. Existing platform services still run normally.
+
+The dashboard launcher drives the existing local scheduled recovery endpoint at
+UTC cron boundaries with bounded, non-overlapping requests. The application's
+normal `pages:dev` and `pages:start` commands explicitly select the development
+context; local database checks and remote deployment gates remain independent.
+The live local projection probe now attests `dependenciesReady: true` and
+`deliveryEnabled: true`. Conflicting local database endpoints are rejected, and
+IPv6 UI bindings use an IPv6 loopback forwarding address.
+
+Candidate approval now lists the selected records needing validation, account
+checks, acknowledgement or refreshed reviews, with a direct review action.
+Review expiry updates approval controls while idle and on returning to the tab;
+expired checks require a fresh check and acknowledgement. OAuth failure and
+consent-denial redirects retain the source only after actor-bound, one-use state
+validation. Invalid state and caller-supplied source parameters cannot select it.
+
+If a source is paused or a staged record belongs to an earlier configuration
+revision, canonical checks remain disabled with an inline recovery explanation.
+Resume the source explicitly in Source privacy, run fresh discovery, then check
+and acknowledge the refreshed candidates. A normal refresh does not update staged
+source revisions. Concurrent review conflicts refresh the source view once and
+retain an inline error rather than repeatedly issuing the same failing request.
+Expiry while confirmation is open is explained inside the modal, with an action
+to return to review. Desktop and mobile review actions move keyboard focus into
+the panel and restore it on dismissal. No source is resumed automatically.
+
+Source privacy now keeps Resume connection and Pause connection as separate,
+explicit actions. Resume never changes into a pause button after success. The
+panel shows the current connection state, follows parent status/revision refreshes,
+and offers Go to discovery when active. Resuming does not restart an old scan;
+start fresh discovery explicitly. Concurrent source changes refresh controls
+without automatically resubmitting the rejected command.
+
+The workspace launcher documented below remains an **isolated acceptance harness**.
+Do not run both dashboard launchers together. It is no longer required for normal
+dashboard startup. Remote profiles, approval requirements and email prohibition
+are unchanged.
+
 ## Current persistent local setup — 4 November 2026
 
 **Latest update — revision 59:** [Section 76](./ZOHO_RECRUIT_INTEGRATION_PLAN.md#76-dev-merge-compatibility-and-database-validation--revision-59)

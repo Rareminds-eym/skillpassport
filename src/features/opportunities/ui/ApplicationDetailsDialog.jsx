@@ -1,3 +1,4 @@
+import JobDescription from './JobDescription';
 import { useEffect, useState } from 'react';
 import { apiGet } from '@/shared/api';
 import {
@@ -139,10 +140,7 @@ export function ApplicationDetailsDialog({ application, onClose }) {
                 <h4 className="text-sm font-semibold leading-5 text-slate-900">
                   {visit ? 'About this visit' : 'About this opening'}
                 </h4>
-                <p className="whitespace-pre-wrap break-words text-sm leading-6">
-                  {opportunityText(job.description) ||
-                    'No description provided.'}
-                </p>
+                <JobDescription value={job.description} fallback="No description provided." />
               </div>
               {textItems(job.requirements).length > 0 && (
                 <div>

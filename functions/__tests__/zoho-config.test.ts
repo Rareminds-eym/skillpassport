@@ -2,6 +2,17 @@ import {it,expect,vi} from 'vitest';
 import {readZohoProjectionConfig,ZOHO_PROFILES} from '../lib/zoho-config';
 import {createSupabaseAdminClient} from '../lib/supabase';
 import type {PagesEnv} from '../lib/types';
+import {readFileSync} from 'node:fs';
+it('normal Pages development commands select the local profile without changing deployment policy',()=>{
+ const scripts=JSON.parse(readFileSync(new URL('../../package.json',import.meta.url),'utf8')).scripts;
+ for(const command of ['pages:dev','pages:start']){
+  const match=scripts[command].match(/--binding\s+ENVIRONMENT=([^\s]+)/);
+  expect(match?.[1]).toBe('development');
+  expect(readZohoProjectionConfig({ENVIRONMENT:match?.[1],SUPABASE_URL:'http://127.0.0.1:54321'}).projectionDelivery).toBe(true);
+  expect(readZohoProjectionConfig({ENVIRONMENT:match?.[1],SUPABASE_URL:'https://remote.invalid'}).projectionDelivery).toBe(false);
+ }
+ expect(readZohoProjectionConfig({ENVIRONMENT:'production',SUPABASE_URL:'http://127.0.0.1:54321'}).projectionDelivery).toBe(false);
+});
 it('uses the same local fallback URL as the application database client',async()=>{
  const env:PagesEnv={ENVIRONMENT:'development',VITE_SUPABASE_URL:'http://127.0.0.1:54321',SUPABASE_SERVICE_ROLE_KEY:'synthetic'};
  const fetcher=vi.fn(async(_input:unknown,_init?:unknown)=>Response.json(true));

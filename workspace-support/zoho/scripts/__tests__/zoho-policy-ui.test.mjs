@@ -8,7 +8,7 @@ const require=createRequire(resolve(root,'sp-dash/package.json'));
 const {build}=require('esbuild');
 const {JSDOM}=createRequire(resolve(root,'skillpassport/package.json'))('jsdom');
 test('a saved policy reloads and retains its refresh warning when related records fail',async()=>{
- const built=await build({stdin:{contents:`import React,{act} from 'react';import{createRoot}from'react-dom/client';import Panel from './components/zoho/JobPolicyPanel.jsx';window.act=act;window.root=createRoot(document.getElementById('root'));window.mount=()=>window.root.render(React.createElement(Panel,{connectionId:'10000000-0000-4000-8000-000000000001',onSaved:async()=>{throw new Error('Related records unavailable')}}));`,resolveDir:resolve(root,'sp-dash'),loader:'jsx'},bundle:true,write:false,format:'iife',platform:'browser',jsx:'automatic',alias:{'@':resolve(root,'sp-dash')},define:{'process.env.NODE_ENV':'"development"'}});
+ const built=await build({stdin:{contents:`import React,{act} from 'react';import{createRoot}from'react-dom/client';import Panel from './components/zoho/JobPolicyPanel.jsx';window.act=act;window.root=createRoot(document.getElementById('root'));window.mount=(refreshVersion=0)=>window.root.render(React.createElement(Panel,{refreshVersion,connectionId:'10000000-0000-4000-8000-000000000001',onSaved:async()=>{throw new Error('Related records unavailable')}}));`,resolveDir:resolve(root,'sp-dash'),loader:'jsx'},bundle:true,write:false,format:'iife',platform:'browser',jsx:'automatic',alias:{'@':resolve(root,'sp-dash')},define:{'process.env.NODE_ENV':'"development"'}});
  const dom=new JSDOM('<div id="root"></div>',{url:'http://localhost/',runScripts:'outside-only',pretendToBeVisual:true});
  const w=dom.window;w.IS_REACT_ACT_ENVIRONMENT=true;
  w.MessageChannel=class{constructor(){this.port1={onmessage:null};this.port2={postMessage:()=>setTimeout(()=>this.port1.onmessage?.(),0)};}};
@@ -24,5 +24,8 @@ test('a saved policy reloads and retains its refresh warning when related record
   assert.match(w.document.querySelector('[role="alert"]').textContent,/Policy saved.*Related records unavailable/);
   assert.ok(w.document.querySelector('form'),'Current policy must reload after the successful mutation');
   assert.equal(w.document.querySelector('textarea').value,'');
+  await act(()=>w.mount(1));
+  assert.equal(gets,3,'Settings refresh must reload policy even with an unchanged connection');
+  assert.equal(posts,1,'Settings refresh must never submit a policy');
  }finally{await act(()=>w.root.unmount());w.close();}
 });
