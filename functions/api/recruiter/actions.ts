@@ -1,3 +1,4 @@
+import { wakeJobIndex } from '../../lib/wake-job-index';
 import { withAuth, getContextUser } from '../../lib/auth';
 import { getServiceClient } from '../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
@@ -696,6 +697,7 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         .select()
         .single();
       if (error) return apiDbError(error, context.request);
+      context.waitUntil(wakeJobIndex(context.env));
       return apiSuccess(data, context.request);
     }
 
@@ -795,6 +797,7 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         .select()
         .single();
       if (error) return apiDbError(error, context.request);
+      context.waitUntil(wakeJobIndex(context.env));
       return apiSuccess(data, context.request);
     }
 

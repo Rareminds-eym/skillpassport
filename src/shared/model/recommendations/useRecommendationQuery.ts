@@ -203,6 +203,7 @@ export function useRecommendationQuery<T>({ actorId, orgId, learnerId, surface, 
   const waiting = !error ? pending?.(query.data) : null;
   const denied = [401, 403].includes((error as { status?: number } | null)?.status || 0);
   return {
+    pollingExhausted: allowed && exhausted && !query.error && !revision.error && !coolingDown,
     data: allowed && !denied ? query.data : undefined,
     loading: allowed && (query.isFetching || Boolean(waiting)),
     processing: allowed ? waiting?.state || null : null,

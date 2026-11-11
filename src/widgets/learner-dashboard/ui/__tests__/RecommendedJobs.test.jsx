@@ -135,3 +135,43 @@ it('keeps a usable loading state and prevents repeated refresh requests', () => 
   fireEvent.click(refresh);
   expect(f.refresh).not.toHaveBeenCalled();
 });
+
+it('describes durable baseline preparation after bounded polling ends', () => {
+  f.result = { matchedJobs: [], loading: false, error: 'Recommendations are taking longer than expected.', indexingInBackground:true, envelope: {state:'index_building',indexing:{pending:20}} };
+  render(<RecommendedJobs {...props} sidebar />);
+  expect(screen.getByRole('status').textContent).toContain('background');
+  expect(screen.queryByRole('alert')).toBeNull();
+  fireEvent.click(screen.getByRole('button',{name:'Check progress'}));
+  expect(f.refresh).toHaveBeenCalledTimes(1);
+});
+
+it('keeps genuine service errors visible during baseline preparation', () => {
+  f.result = { matchedJobs: [], loading: false, error: 'Service unavailable', indexingInBackground:false, envelope: {state:'index_building',indexing:{pending:20}} };
+  render(<RecommendedJobs {...props} sidebar />);
+  expect(screen.getByRole('alert').textContent).toContain('Service unavailable');
+});
+
+it('does not imply the whole catalog was searched when new jobs are unindexed', () => {
+  f.result = { matchedJobs: [], loading: false, error: null, envelope: {state:'no_matches',indexing:{pending:20}} };
+  render(<RecommendedJobs {...props} sidebar />);
+  expect(screen.getByText(/jobs indexed so far/)).toBeTruthy();
+  expect(screen.queryByText(/No matching jobs found for your current profile/)).toBeNull();
+});
+
+it('keeps verified cards and describes terminal indexing failures without claiming active work', () => {
+  f.result = { matchedJobs: [{ opportunity: { id: 'job', title: 'Engineer' } }], loading: false, error: null,
+    envelope: { state: 'ready', indexing: { pending: 8, failed: 8 } } };
+  render(<RecommendedJobs {...props} sidebar />);
+  expect(screen.getByRole('status').textContent).toContain('could not be prepared');
+  expect(screen.queryByText(/still being prepared/)).toBeNull();
+  expect(screen.getByRole('article')).toBeTruthy();
+});
+
+it('does not claim failed indexing is still running when there are no matches', () => {
+  f.result = { matchedJobs: [], loading: false, error: null,
+    envelope: { state: 'no_matches', indexing: { pending: 8, failed: 8 } } };
+  render(<RecommendedJobs {...props} sidebar />);
+  expect(screen.getByText(/Some jobs could not be prepared/)).toBeTruthy();
+  expect(screen.queryByText(/still being prepared/)).toBeNull();
+  expect(screen.getByText(/jobs indexed so far/)).toBeTruthy();
+});

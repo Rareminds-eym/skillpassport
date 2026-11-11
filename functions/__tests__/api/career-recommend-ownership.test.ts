@@ -32,6 +32,7 @@ const fixture = vi.hoisted(() => ({
   rateLimit: vi.fn(async (_key: string, _env?: unknown) => true),
   buildText: vi.fn(async (_db?: unknown, _learner?: string, _user?: string) => ({ text: 'Controlled profile input', inputRevision: '1', readiness: { state: 'ready' as string, policyVersion: 'career-readiness-4', coverage: ['skills'], suggestedActions: [] as string[] } })),
   embed: vi.fn(async () => Array(1536).fill(0.01)),
+  wakeIndex: vi.fn(async () => undefined),
   persist: vi.fn(async () => ({ success: true, rowsAffected: 1 })),
 }));
 
@@ -45,6 +46,7 @@ vi.mock('../../lib/supabase', () => ({
   createSupabaseAdminClient: () => ({ from: fixture.from, rpc: fixture.rpc }),
   getServiceClient: () => ({ from: fixture.from, rpc: fixture.rpc }),
 }));
+vi.mock('../../lib/wake-job-index', () => ({ wakeJobIndex: fixture.wakeIndex }));
 vi.mock('../../api/career/utils/rate-limit', () => ({ checkRateLimit: fixture.rateLimit, getRateLimitInfo: () => ({remaining:0,resetAt:Date.now()+10000}) }));
 vi.mock('../../api/embedding/services/textBuilder', () => ({ buildLearnerRecommendationContext: fixture.buildText }));
 vi.mock('../../api/embedding/services/embeddingWorkerClient', () => ({ callEmbeddingWorker: fixture.embed }));
@@ -537,6 +539,90 @@ describe('release boundary regressions', () => {
     const original=fixture.rpc.getMockImplementation()!;
     fixture.rpc.mockImplementation(async(name,args)=>name==='job_matching_index_status'?{data:counts,error:null}:original(name,args));
     const response=await request();expect(response.status).toBe(503);expect((await response.json() as any).error.code).toBe('MATCHING_INDEX_UNAVAILABLE');expect(fixture.embed).not.toHaveBeenCalled();
+  });
+  it('serves verified recommendations while a managed import is indexing', async () => {
+    const original=fixture.rpc.getMockImplementation()!;
+    fixture.rpc.mockImplementation(async(name,args)=>name==='job_matching_index_status'
+      ?{data:{total:797,verified:661,managed:true,baseline_ready:true,failed:2},error:null}:original(name,args));
+    const response=await request();expect(response.status).toBe(200);
+    expect((await response.json() as any).data).toMatchObject({state:'ready',indexing:{total:797,verified:661,pending:136,failed:2}});
+    expect(fixture.wakeIndex).toHaveBeenCalledOnce();
+    expect(fixture.rpc.mock.calls.some(([name])=>name==='get_job_matching_index_batch')).toBe(false);
+    expect(fixture.embed).not.toHaveBeenCalled();
+  });
+  it('reports initial baseline preparation without indexing jobs in the request', async () => {
+    const original=fixture.rpc.getMockImplementation()!;
+    fixture.rpc.mockImplementation(async(name,args)=>name==='job_matching_index_status'
+      ?{data:{total:797,verified:100,managed:true,baseline_ready:false,failed:0},error:null}:original(name,args));
+    const response=await request();expect(response.status).toBe(202);
+    expect((await response.json() as any).data).toMatchObject({state:'index_building',indexing:{pending:697},retry_after_seconds:15});
+    expect(fixture.wakeIndex).toHaveBeenCalledOnce();
+    expect(fixture.rpc.mock.calls.some(([name])=>name==='get_job_matching_index_batch')).toBe(false);
+    expect(fixture.embed).not.toHaveBeenCalled();
+  });
+  it('reports blocked initial preparation instead of claiming active background work', async () => {
+    const original = fixture.rpc.getMockImplementation()!;
+    fixture.rpc.mockImplementation(async (name, args) => name === 'job_matching_index_status'
+      ? { data: { total: 20, verified: 5, managed: true, baseline_ready: false, failed: 0 }, error: null } : original(name, args));
+    const dispose = vi.fn();
+    const getIndexingStatus = vi.fn(async () => ({ state: 'blocked', errorCode: 'JOB_INDEX_MODEL_MISMATCH', [Symbol.dispose]: dispose }));
+    const response = await handleRecommendOpportunities(new Request('https://fixture.invalid/api/career/recommend', {
+      method: 'POST', body: JSON.stringify({ learnerId: fixture.learnerId }),
+    }), { ...env, JOB_INDEX_SERVICE: { getIndexingStatus } } as any, fixture.userId);
+    expect(response.status).toBe(503);
+    expect((await response.json() as any).error.code).toBe('MATCHING_INDEX_NEEDS_ATTENTION');
+    expect(getIndexingStatus).toHaveBeenCalledOnce(); expect(dispose).toHaveBeenCalledOnce();
+    expect(fixture.wakeIndex).toHaveBeenCalledOnce();
+    expect(fixture.embed).not.toHaveBeenCalled();
+    expect(fixture.rpc.mock.calls.some(([name]) => name === 'get_job_matching_index_batch')).toBe(false);
+  });
+  it('keeps verified postbaseline suggestions available during processor interruption', async () => {
+    const original = fixture.rpc.getMockImplementation()!;
+    fixture.rpc.mockImplementation(async (name, args) => name === 'job_matching_index_status'
+      ? { data: { total: 20, verified: 5, managed: true, baseline_ready: true, failed: 0 }, error: null } : original(name, args));
+    const getIndexingStatus = vi.fn(async () => ({ state: 'stale' }));
+    const response = await handleRecommendOpportunities(new Request('https://fixture.invalid/api/career/recommend', {
+      method: 'POST', body: JSON.stringify({ learnerId: fixture.learnerId }),
+    }), { ...env, JOB_INDEX_SERVICE: { getIndexingStatus } } as any, fixture.userId);
+    expect(response.status).toBe(200);
+    expect((await response.json() as any).data).toMatchObject({ state: 'ready', indexing: { total: 20, verified: 5, pending: 15 } });
+    expect(getIndexingStatus).not.toHaveBeenCalled();
+    expect(fixture.embed).not.toHaveBeenCalled();
+  });
+  it.each([{baselineReady:false,verified:0}, {baselineReady:false,verified:5}, {baselineReady:true,verified:0}])('reports terminal baseline failure honestly with baseline_ready=$baselineReady and verified=$verified', async ({baselineReady, verified}) => {
+    const original = fixture.rpc.getMockImplementation()!;
+    fixture.rpc.mockImplementation(async (name, args) => name === 'job_matching_index_status'
+      ? { data: { total: 20, verified, managed: true, baseline_ready: baselineReady, failed: 20 - verified }, error: null } : original(name, args));
+    const response = await request();
+    expect(response.status).toBe(503);
+    expect((await response.json() as any).error.code).toBe('MATCHING_INDEX_NEEDS_ATTENTION');
+    expect(response.headers.get('Retry-After')).toBeNull();
+    expect(fixture.wakeIndex).not.toHaveBeenCalled();
+    expect(fixture.embed).not.toHaveBeenCalled();
+  });
+  it('keeps verified recommendations available when the rest of an import needs operator retry', async () => {
+    const original = fixture.rpc.getMockImplementation()!;
+    fixture.rpc.mockImplementation(async (name, args) => name === 'job_matching_index_status'
+      ? { data: { total: 20, verified: 12, managed: true, baseline_ready: true, failed: 8 }, error: null } : original(name, args));
+    const response = await request();
+    expect(response.status).toBe(200);
+    expect((await response.json() as any).data).toMatchObject({ state: 'ready', indexing: { pending: 8, failed: 8 } });
+    expect(fixture.wakeIndex).not.toHaveBeenCalled();
+  });
+  it('does not report no matches when a later import leaves no verified vectors', async () => {
+    const original=fixture.rpc.getMockImplementation()!;
+    fixture.rpc.mockImplementation(async(name,args)=>name==='job_matching_index_status'
+      ?{data:{total:797,verified:0,managed:true,baseline_ready:true,failed:0},error:null}:original(name,args));
+    const response=await request();expect(response.status).toBe(202);
+    expect((await response.json() as any).data.state).toBe('index_building');
+    expect(fixture.embed).not.toHaveBeenCalled();
+  });
+  it('does not silently repair an index using the wrong configured model', async () => {
+    const original=fixture.rpc.getMockImplementation()!;
+    fixture.rpc.mockImplementation(async(name,args)=>name==='job_matching_index_status'
+      ?{data:{total:797,verified:0,managed:false,baseline_ready:false,failed:0},error:null}:original(name,args));
+    expect((await request()).status).toBe(503);expect(fixture.embed).not.toHaveBeenCalled();
+    expect(fixture.rpc.mock.calls.some(([name])=>name==='get_job_matching_index_batch')).toBe(false);
   });
   it('repairs changed jobs through the guarded publisher before ranking', async () => {
     const original=fixture.rpc.getMockImplementation()!;let repaired=false;

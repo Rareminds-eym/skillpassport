@@ -12,9 +12,16 @@ function RecommendedJobsContent({ learnerProfile, onSelectJob, appliedJobs = new
   const key = `recommendations_dismissed:${user?.id || 'anonymous'}:${user?.orgId || ''}:${learnerProfile?.id || learnerProfile?.learner_id || 'none'}`;
   const [dismissed, setDismissed] = useState(() => localStorage.getItem(key) === 'true');
   useEffect(() => { setDismissed(localStorage.getItem(key) === 'true'); }, [key]);
-  const { matchedJobs = [], loading, processing, error, readiness, refreshMatches } = useAIJobMatching(learnerProfile, !dismissed, 3);
+  const { matchedJobs = [], loading, processing, error, readiness, envelope, indexingInBackground, refreshMatches } = useAIJobMatching(learnerProfile, !dismissed, 3);
+  const preparingIndex = envelope?.state === 'index_building' && Boolean(envelope?.indexing) && (!error || indexingInBackground);
   const profileNeeded = readiness?.state === 'needs_profile' || readiness?.state === 'limited_context';
   const matches = matchedJobs.slice(0, 3);
+  const indexing = envelope?.indexing;
+  const indexingActive = indexing?.pending > (indexing?.failed || 0);
+  const indexingFailed = indexing?.failed > 0;
+  const indexingNotice = indexingActive
+    ? `Some new jobs are still being prepared.${indexingFailed ? ' Some jobs could not be prepared.' : ''} These suggestions use jobs already verified.`
+    : 'Some jobs could not be prepared for recommendations. These suggestions use jobs already verified.';
   const resultIds = matches.map(match => (match.opportunity || match).id).filter(Boolean).join(',');
   useEffect(() => {
     onResultsChange?.(dismissed || loading || error || !resultIds ? [] : resultIds.split(','));
@@ -33,10 +40,12 @@ function RecommendedJobsContent({ learnerProfile, onSelectJob, appliedJobs = new
       <p>Suggestions based on your profile.</p>
     </header>
     {loading ? <div className="recommended-jobs-loading"><p role="status">{processing ? 'Preparing job recommendations…' : 'Finding AI recommendations…'}</p><div aria-hidden="true" className="recommended-jobs-skeleton"><span /><span /><span /></div></div>
+      : preparingIndex ? <div role="status" className="recommended-jobs-state"><p>New jobs are being prepared in the background. You can browse all openings while this finishes.</p><button type="button" onClick={refreshMatches} className="recommended-jobs-secondary">Check progress</button></div>
       : error ? <div role="alert" className="recommended-jobs-state"><p>{opportunityText(error) || 'Recommendations could not be loaded.'}</p><button type="button" onClick={refreshMatches} className="recommended-jobs-secondary">Retry suggestions</button></div>
       : profileNeeded ? <RecommendationProfilePrompt readiness={readiness} />
-      : !matches.length ? <div className="recommended-jobs-state"><Briefcase size={24} aria-hidden="true" /><p>No matching jobs found for your current profile. Keep your skills and learning achievements up to date.</p><button type="button" onClick={refreshMatches} className="recommended-jobs-secondary">Refresh recommendations</button></div>
+      : !matches.length ? <div className="recommended-jobs-state"><Briefcase size={24} aria-hidden="true" /><p>{indexing?.pending > 0 ? `${indexingActive ? 'New jobs are still being prepared.' : 'Some jobs could not be prepared for recommendations.'} No matching suggestions are available from the jobs indexed so far.` : 'No matching jobs found for your current profile. Keep your skills and learning achievements up to date.'}</p><button type="button" onClick={refreshMatches} className="recommended-jobs-secondary">Refresh recommendations</button></div>
       : <>
+        {indexing?.pending > 0 && <p role="status" className="recommended-jobs-state">{indexingNotice}</p>}
         <div className={`recommended-jobs-list ${sidebar ? 'is-sidebar' : 'is-inline'}`}>
           {matches.map((match, index) => {
             const job = match.opportunity || match;

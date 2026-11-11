@@ -28,6 +28,8 @@ import {
   RECOMMENDATION_PREPROCESSING_VERSION,
   RECOMMENDATION_RANKING_POLICY_VERSION,
 } from '../utils/recommendation-versions';
+import { wakeJobIndex } from '../../../lib/wake-job-index';
+import { indexingBlocked } from '../../../lib/job-index-health';
 import { refreshJobMatchingIndex } from '../utils/job-matching-index';
 import { rankRecommendationCandidates } from '../../../lib/recommendation-ranking';
 import { prepareRecommendationLearning } from '../../../lib/recommendation-learning';
@@ -38,9 +40,13 @@ const RECOMMEND_CONFIG = {
   DEFAULT_LIMIT: 20,
 };
 
-function validIndexStatus(value: unknown): value is { total: number; verified: number } {
+function validIndexStatus(value: unknown): value is { total: number; verified: number; managed?: boolean; baseline_ready?: boolean; failed?: number } {
   if (!value || typeof value !== 'object') return false;
-  const counts = value as { total: number; verified: number };
+  const counts = value as { total: number; verified: number; managed?: unknown; baseline_ready?: unknown; failed?: unknown };
+  if (counts.managed !== undefined && typeof counts.managed !== 'boolean') return false;
+  if (counts.managed === true && (typeof counts.baseline_ready !== 'boolean'
+    || !Number.isInteger(counts.failed) || (counts.failed as number) < 0
+    || (counts.failed as number) > counts.total - counts.verified)) return false;
   return Number.isInteger(counts.total) && Number.isInteger(counts.verified)
     && counts.total >= 0 && counts.verified >= 0 && counts.verified <= counts.total;
 }
@@ -245,7 +251,39 @@ export async function handleRecommendOpportunities(
         'The AI job index is temporarily unavailable. Please retry.',
         request,
       );
-    if (indexStatus.verified < indexStatus.total) {
+    if (indexStatus.managed === false) return apiError(503, 'MATCHING_MODEL_UNCONFIGURED', 'The job index model configuration needs attention.', request);
+    const managed = indexStatus.managed === true;
+    const indexing = managed ? { total: indexStatus.total, verified: indexStatus.verified,
+      pending: indexStatus.total - indexStatus.verified, failed: indexStatus.failed ?? 0 } : undefined;
+    const baselineRequired = managed && (indexStatus.baseline_ready !== true || (indexStatus.total > 0 && indexStatus.verified === 0));
+    const indexingStopped = indexing && indexing.pending > 0 && indexing.failed === indexing.pending;
+    if (baselineRequired && indexingStopped) return apiError(
+      503, 'MATCHING_INDEX_NEEDS_ATTENTION',
+      'Job recommendations are unavailable because search preparation needs administrator attention. You can still browse all openings.', request,
+    );
+    if (baselineRequired && indexing && indexing.pending > 0 && await indexingBlocked(env)) {
+      // A heartbeat/configuration failure is not active preparation. Existing
+      // verified recommendations after baseline remain available below.
+      await wakeJobIndex(env);
+      return apiError(503, 'MATCHING_INDEX_NEEDS_ATTENTION',
+        'Job search preparation is temporarily blocked. Please retry later.', request);
+    }
+    // Terminal failures need an explicit operator retry, not another wake signal.
+    if (indexing && indexing.pending > indexing.failed) await wakeJobIndex(env);
+    if (baselineRequired) {
+      const latest = await readRecommendationState(supabase, learnerId, learnerUserId, model);
+      if (latest.revision !== context.inputRevision) return apiError(409, 'RECOMMENDATIONS_CHANGED', 'Profile changed; please refresh recommendations', request);
+      const response = apiSuccess(recommendationEnvelopeSchema.parse({
+        schemaVersion: 2, state: 'index_building', readiness: context.readiness,
+        recommendations: [], provenance: 'none', cached: false, indexing,
+        input_revision: context.inputRevision, catalog_revision: latest.catalog_revision,
+        retry_after_seconds: 15,
+      }), request, 202);
+      response.headers.set('Retry-After', '15');
+      return response;
+    }
+    // Compatibility for an application rolled out before the outbox migration.
+    if (!managed && indexStatus.verified < indexStatus.total) {
       try {
         await refreshJobMatchingIndex(supabase, env, model);
       } catch {
@@ -271,7 +309,7 @@ export async function handleRecommendOpportunities(
         );
       indexStatus = refreshed.data;
     }
-    if (indexStatus.verified < indexStatus.total && indexStatus.total === initialIndex.data.total && indexStatus.verified > initialIndex.data.verified) {
+    if (!managed && indexStatus.verified < indexStatus.total && indexStatus.total === initialIndex.data.total && indexStatus.verified > initialIndex.data.verified) {
       // A bounded repair batch made verified progress. Subsequent ordinary
       // requests can advance it; no background job or learner vector is claimed.
       const latest = await readRecommendationState(supabase, learnerId, learnerUserId, model);
@@ -285,7 +323,7 @@ export async function handleRecommendOpportunities(
       response.headers.set('Retry-After', '3');
       return response;
     }
-    if (indexStatus.verified < indexStatus.total)
+    if (!managed && indexStatus.verified < indexStatus.total)
       return apiError(
         503,
         'MATCHING_INDEX_BUILDING',
@@ -325,7 +363,7 @@ export async function handleRecommendOpportunities(
       // await as well, including both profile and catalogue revision changes.
       if (!(await current(true))) return obsolete();
       return apiSuccess(recommendationEnvelopeSchema.parse({ ...data, schemaVersion: 2,
-        state: data.recommendations.length ? 'ready' : 'no_matches', readiness: context.readiness,
+        indexing, state: data.recommendations.length ? 'ready' : 'no_matches', readiness: context.readiness,
         input_revision: context.inputRevision, catalog_revision: state.catalog_revision, cached: data.cached === true, source_status: context.sourceStatus,
       }), request);
     };

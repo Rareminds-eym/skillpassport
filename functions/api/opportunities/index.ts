@@ -1,3 +1,4 @@
+import { wakeJobIndex } from '../../lib/wake-job-index';
 import { paginationParams, integerParam, readPage } from '../../lib/opportunity-pagination';
 import { opportunitySearchPredicate, workModeVariants, skillsPredicate, parseSalaryBound } from '../../lib/opportunity-search';
 /**
@@ -751,6 +752,7 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
       const { data, error } = await supabase.from('opportunities').insert([opportunity]).select().single();
       if (error) return apiDbError(error, context.request);
+      context.waitUntil(wakeJobIndex(context.env));
       await notifyLearnersOfNewOpportunity(supabase, data);
       return apiSuccess({ opportunity: data }, context.request);
     }
@@ -846,6 +848,7 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
       const { data, error } = await supabase.from('opportunities').update(updates).eq('id', existing.data.id).select().single();
       if (error) return apiDbError(error, context.request);
+      context.waitUntil(wakeJobIndex(context.env));
       return apiSuccess({ opportunity: data }, context.request);
     }
 

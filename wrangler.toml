@@ -46,6 +46,13 @@ binding = "EMBEDDING_SERVICE"
 service = "embedding-api"
 entrypoint = "EmbeddingService"
 
+# Job indexing orchestration belongs to the application; embeddings stay a pure
+# provider RPC. Environment-specific deployments must target their dashboard.
+[[services]]
+binding = "JOB_INDEX_SERVICE"
+service = "sp-dash-2"
+entrypoint = "JobIndexService"
+
 [[queues.producers]]
 binding = "REALTIME_EVENTS_QUEUE"
 queue = "realtime-events-queue"

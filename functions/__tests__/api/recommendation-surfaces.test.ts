@@ -28,7 +28,7 @@ function query(table:string){
     maybeSingle:async()=>{const r=result();return {...r,data:r.data?.[0]||null};},single:async()=>{const r=result();return {...r,data:r.data?.[0]||null};},
     then:(resolve:any,reject:any)=>Promise.resolve(result()).then(resolve,reject)};return q;
 }
-function context(path:string,body?:any){return {request:new Request('https://fixture.invalid'+path,{method:body?'POST':'GET',...(body?{body:JSON.stringify(body)}:{})}),env:{},data:{}} as any;}
+function context(path:string,body?:any){return {request:new Request('https://fixture.invalid'+path,{method:body?'POST':'GET',...(body?{body:JSON.stringify(body)}:{})}),env:{},data:{},waitUntil:vi.fn()} as any;}
 beforeEach(()=>{f.entitled=true;f.user.roles=['learner'];f.writes=[];f.skillError=false;f.tables={learners:[{id:learner,user_id:f.user.id,name:'Own fixture'}],skills:[{learner_id:learner,name:'Python',type:'technical',training_id:null,enabled:true,approval_status:'approved'}],opportunities:[{id:job,title:'Open job',company_name:'Fixture',status:'open',is_active:true,deadline:null,skills_required:['Python']}],applied_jobs:[],pipeline_candidates:[],learner_career_preferences:[{learner_id:learner,preferences:{useAssessmentRecommendations:false,useVerifiedLearning:false}}]};});
 it('dashboard includes open jobs and excludes expired/inactive jobs',async()=>{
   f.tables.opportunities.push({...f.tables.opportunities[0],id:'closed',status:'closed'},{...f.tables.opportunities[0],id:'expired',deadline:'2000-01-01'},{...f.tables.opportunities[0],id:'inactive',is_active:false});
@@ -107,6 +107,9 @@ it('validates required-skill arrays on writes',async()=>{
 it('normalizes the existing comma-separated skill write contract',async()=>{
   f.user.roles=['recruiter'];
   f.tables.organization_members=[{user_id:f.user.id,organization_id:'88888888-8888-4888-8888-888888888888',status:'active'}];
-  expect((await opportunities(context('/api/opportunities',{action:'create-opportunity',opportunity:{skills_required:'Python, SQL'}}))).status).toBe(200);
+  const ctx=context('/api/opportunities',{action:'create-opportunity',opportunity:{skills_required:'Python, SQL'}});
+  expect((await opportunities(ctx)).status).toBe(200);
+  expect(ctx.waitUntil).toHaveBeenCalledOnce();
+  await ctx.waitUntil.mock.calls[0][0];
   expect(f.writes[0].value.skills_required).toEqual(['Python','SQL']);
 });
