@@ -117,7 +117,7 @@ describe('tutor conversation persistence', () => {
     expect(stream).toContain('"facilitator":"organizer"');
     expect(stream).toContain('"worksheetAvailable":true');
     const query = mocks.client.from.mock.results.find(result => result.value.insert.mock.calls.length)?.value;
-    expect(query.insert.mock.calls[0][0].messages.at(-1)).toMatchObject({ facilitatorMode: 'organizer', worksheetConfig: { questionCount: 15, gradeLevel: 'College/University' } });
+    expect(query.insert.mock.calls[0][0].messages.at(-1)).toMatchObject({ facilitatorMode: 'organizer', worksheetConfig: { questionCount: 15 } });
   });
   it('generates assignable question variants after a clarification reply', async () => {
     const original = mocks.client.from.getMockImplementation()!;
@@ -175,11 +175,18 @@ describe('tutor conversation persistence', () => {
     expect(response.status).toBe(403);
     expect(fetch).not.toHaveBeenCalled();
   });
-  it('requires a verified teaching level for typed generation', async () => {
-    mocks.client.rpc.mockResolvedValue({ data: null, error: null });
-    const response = await handleAiTutorChat({ request: new Request('https://example.test/chat', { method: 'POST', body: JSON.stringify({ courseId: 'course-id', message: 'Create a worksheet' }) }), env: { SUPABASE_URL: 'https://example.test', SUPABASE_SERVICE_ROLE_KEY: 'test' } } as Parameters<typeof handleAiTutorChat>[0]);
-    expect(response.status).toBe(400);
-    expect(fetch).not.toHaveBeenCalled();
+  it('allows typed generation without a mapped teaching level', async () => {
+    mocks.client.rpc.mockResolvedValue({data:null,error:null});
+    const response=await handleAiTutorChat({request:new Request('https://example.test/chat',{method:'POST',body:JSON.stringify({courseId:'course-id',message:'Create a worksheet'})}),env:{SUPABASE_URL:'https://example.test',SUPABASE_SERVICE_ROLE_KEY:'test'}} as Parameters<typeof handleAiTutorChat>[0]);
+    expect(response.status).toBe(200);await response.text();
+    expect(mocks.client.rpc.mock.calls.some(([name])=>name==='ai_worksheet_context')).toBe(false);
+  });
+  it('preserves the selected grade when generating a worksheet',async()=>{
+    const response=await handleAiTutorChat({request:new Request('https://example.test/chat',{method:'POST',body:JSON.stringify({courseId:'course-id',message:'Generate a worksheet',worksheetConfig:{difficulty:'medium',difficultyLevels:['medium'],questionCount:5,gradeLevel:'Grade 3'}})}),env:{SUPABASE_URL:'https://example.test',SUPABASE_SERVICE_ROLE_KEY:'test'}} as Parameters<typeof handleAiTutorChat>[0]);
+    expect(response.status).toBe(200);await response.text();
+    const query=mocks.client.from.mock.results.find(result=>result.value.insert.mock.calls.length)?.value;
+    expect(query.insert.mock.calls[0][0].messages.at(-1).worksheetConfig.gradeLevel).toBe('Grade 3');
+    expect(mocks.client.rpc.mock.calls.some(([name])=>name==='ai_worksheet_context')).toBe(false);
   });
   it('rejects invalid persona IDs before calling the provider', async () => {
     const response = await handleAiTutorChat({ request: new Request('https://example.test/chat', { method: 'POST', body: JSON.stringify({ courseId: 'course-id', message: 'Hello', facilitatorMode: '__proto__' }) }), env: { SUPABASE_URL: 'https://example.test', SUPABASE_SERVICE_ROLE_KEY: 'test' } } as Parameters<typeof handleAiTutorChat>[0]);

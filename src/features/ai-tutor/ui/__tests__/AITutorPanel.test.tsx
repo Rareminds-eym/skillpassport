@@ -10,13 +10,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   setFacilitatorMode: vi.fn(), sendMessage: vi.fn(), stopGeneration: vi.fn(), refreshSuggestions: vi.fn(), refreshConversations: vi.fn(),
-  worksheet: false, streaming: false, educator: true, empty: false, content: '## Learning objectives\nPractise time management.', user: { id: 'educator' },
+  tutorOptions:null as any, worksheet: false, streaming: false, educator: true, empty: false, content: '## Learning objectives\nPractise time management.', user: { id: 'educator' },
 }));
 vi.mock('@/shared/model', () => ({ useUser: () => mocks.user, useUserRole: () => ({ isEducator: mocks.educator }) }));
 vi.mock('../../api/worksheetService', () => ({ worksheetAction: vi.fn().mockResolvedValue({ organization: { name: 'Mapped College' }, gradeLevel: 'College/University', learnerCount: 8 }) }));
 vi.mock('../../api/materialService', () => ({ materialAction: async (action:string) => action==='capabilities'?{enabled:true}:action==='choice'?{state:'unanswered'}:[] }));
 vi.mock('@/features/ai-tutor/model', () => ({ useLearnerType: () => ({ isTeacher: false, loading: false }) }));
-vi.mock('@/features/ai-tutor/model/useTutorChat', () => ({ useTutorChat: () => ({
+vi.mock('@/features/ai-tutor/model/useTutorChat', () => ({ useTutorChat: (options:unknown) => (mocks.tutorOptions=options, {
   facilitatorMode: 'auto', setFacilitatorMode: mocks.setFacilitatorMode, activeFacilitator: 'organizer',
   messages: mocks.empty ? [] : [{ id: '1', role: 'assistant', content: mocks.content, worksheetAvailable: mocks.worksheet, timestamp: new Date() }],
   conversationId: 'saved-conversation', conversations: [], suggestedQuestions: [], isStreaming: mocks.streaming, isLoading: false,
@@ -27,7 +27,7 @@ vi.mock('@/features/ai-tutor/model/useTutorChat', () => ({ useTutorChat: () => (
 vi.mock('@/shared/ui', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 vi.mock('@/shared/config', () => ({ getLogger: () => ({ error: vi.fn(), warn: vi.fn() }) }));
 vi.mock('@/shared/api/ssoClient', () => ({ ssoClient: { fetch: vi.fn() } }));
-vi.mock('../WorksheetConfigPanel', () => ({ default: ({ onGenerate, config }: { onGenerate: () => void; config: { difficultyLevels?: string[] } }) => <div>Worksheet controls<span>Levels: {config.difficultyLevels?.join(', ')}</span><button onClick={onGenerate}>Generate worksheet</button></div> }));
+vi.mock('../WorksheetConfigPanel', () => ({ default: ({ onGenerate, config, onChange }: { onGenerate: () => void; config: { difficultyLevels?: string[];gradeLevel?:string };onChange:(value:any)=>void }) => <div>Worksheet controls<span>Levels: {config.difficultyLevels?.join(', ')}</span><select aria-label="Grade / Level" value={config.gradeLevel||''} onChange={e=>onChange({...config,gradeLevel:e.target.value})}><option value="">Choose grade</option><option value="Grade 3">Grade 3</option></select><button onClick={onGenerate}>Generate worksheet</button></div> }));
 vi.mock('../LessonPlanConfigPanel', () => ({ default: () => <div>Lesson plan controls</div> }));
 vi.mock('../WorksheetExportButton', () => ({ default: () => <button>Export material</button> }));
 import AITutorPanel from '../AITutorPanel';
@@ -189,7 +189,7 @@ describe('AI facilitator workspace', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Worksheet' }));
     expect(screen.getByRole('region', { name: 'Create a worksheet' })).toBeInTheDocument();
     expect(screen.getByText('Worksheet controls')).toBeInTheDocument();
-    await screen.findByText(/Mapped College/);
+    await screen.findByText('Choose a grade and customize your material.');
   });
   it('keeps only worksheet and lesson-plan tools with expandable labels', () => {
     showPanel();
@@ -202,7 +202,9 @@ describe('AI facilitator workspace', () => {
   it('closes settings and generates into the conversation', async () => {
     showPanel();
     fireEvent.click(screen.getByRole('button', { name: 'Worksheet' }));
-    await screen.findByText(/Mapped College/);
+    await screen.findByText('Choose a grade and customize your material.');
+    fireEvent.change(screen.getByRole('combobox',{name:'Grade / Level'}),{target:{value:'Grade 3'}});
+    expect(mocks.tutorOptions.worksheetConfig.gradeLevel).toBe('Grade 3');
     fireEvent.click(screen.getByRole('button', { name: 'Generate worksheet' }));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     await waitFor(() => expect(mocks.sendMessage).toHaveBeenCalledWith(expect.stringContaining('worksheet'), { generate: true }));
@@ -271,7 +273,7 @@ describe('AI facilitator workspace', () => {
     showPanel();
     fireEvent.click(screen.getByRole('button', { name: label }));
     expect(screen.getByRole('region', { name: label === 'Plan' ? 'Plan a lesson' : 'Create a worksheet' })).toBeInTheDocument();
-    await screen.findByText(/Mapped College/);
+    await screen.findByText('Choose a grade and customize your material.');
     expect(mocks.sendMessage).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: 'Close settings' }));
     expect(screen.getByText('What would you like to do?')).toBeInTheDocument();
@@ -282,7 +284,7 @@ describe('AI facilitator workspace', () => {
     fireEvent.click(screen.getByRole('button', { name: /Organizer/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Plan this lesson' }));
     expect(screen.getByRole('region', { name: 'Plan a lesson' })).toBeInTheDocument();
-    await screen.findByText(/Mapped College/);
+    await screen.findByText('Choose a grade and customize your material.');
     expect(mocks.sendMessage).not.toHaveBeenCalled();
   });
   it('selects all three levels from Individualized Support', async () => {
@@ -291,7 +293,7 @@ describe('AI facilitator workspace', () => {
     fireEvent.click(screen.getByRole('button', { name: /Individualized Support/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Create three difficulty levels' }));
     expect(screen.getByText('Levels: low, medium, high')).toBeInTheDocument();
-    await screen.findByText(/Mapped College/);
+    await screen.findByText('Choose a grade and customize your material.');
     expect(mocks.sendMessage).not.toHaveBeenCalled();
   });
   it('prepares a guidance question for review instead of generating material', () => {

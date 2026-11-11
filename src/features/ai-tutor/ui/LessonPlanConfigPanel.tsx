@@ -4,7 +4,6 @@ import type { LessonPlanConfig, LessonPlanTemplateType } from '../types';
 import { LESSON_PLAN_TEMPLATES } from '../types';
 
 interface LessonPlanConfigPanelProps {
-  automaticGrade?: boolean;
   config: LessonPlanConfig;
   onChange: (_config: LessonPlanConfig) => void;
   onGenerate: () => void;
@@ -17,7 +16,6 @@ interface LessonPlanConfigPanelProps {
 
 const LessonPlanConfigPanel = ({
   config,
-  automaticGrade = false,
   onChange,
   onGenerate,
   isGenerating,
@@ -26,7 +24,7 @@ const LessonPlanConfigPanel = ({
   isGenerationLimitReached = false,
   isUsageLoading = false
 }: LessonPlanConfigPanelProps) => {
-  const isGenerateDisabled = isGenerating || isUsageLoading || isGenerationLimitReached;
+  const isGenerateDisabled = !config.gradeLevel?.trim() || isGenerating || isUsageLoading || isGenerationLimitReached;
 
   const handleChange = <K extends keyof LessonPlanConfig>(
     key: K,
@@ -44,7 +42,6 @@ const LessonPlanConfigPanel = ({
           <label htmlFor="lesson-plan-grade" className="block text-xs font-medium text-slate-700 mb-1">
             Grade / Level
           </label>
-          {automaticGrade ? <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-700" aria-label="Grade level">{config.gradeLevel || <PanelLoadingSkeleton label="Loading teaching level"/>}</div> : (
           <select
             id="lesson-plan-grade"
             value={config.gradeLevel || ''}
@@ -55,6 +52,11 @@ const LessonPlanConfigPanel = ({
             <option value="Elementary (1-5)">Elementary (1-5)</option>
             <option value="Middle School (6-8)">Middle School (6-8)</option>
             <option value="High School (9-12)">High School (9-12)</option>
+            <option value="Grade 1">Grade 1</option>
+            <option value="Grade 2">Grade 2</option>
+            <option value="Grade 3">Grade 3</option>
+            <option value="Grade 4">Grade 4</option>
+            <option value="Grade 5">Grade 5</option>
             <option value="Grade 6">Grade 6</option>
             <option value="Grade 7">Grade 7</option>
             <option value="Grade 8">Grade 8</option>
@@ -64,7 +66,6 @@ const LessonPlanConfigPanel = ({
             <option value="Grade 12">Grade 12</option>
             <option value="College/University">College / University</option>
           </select>
-          )}
         </div>
 
         {/* Template Type */}

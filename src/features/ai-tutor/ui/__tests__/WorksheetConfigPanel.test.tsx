@@ -25,10 +25,16 @@ describe('worksheet difficulty selection', () => {
     expect(screen.getByRole('button', { name: 'Generate Worksheet' })).toBeDisabled();
     expect(screen.getByText('Select at least one difficulty level.')).toBeInTheDocument();
   });
-  it('shows the mapped grade read-only when used inside the facilitator', () => {
-    render(<WorksheetConfigPanel automaticGrade config={{ ...DEFAULT_WORKSHEET_CONFIG, gradeLevel: 'College/University' }} onChange={vi.fn()} onGenerate={vi.fn()} isGenerating={false} />);
-    expect(screen.getByLabelText('Grade level')).toHaveTextContent('College/University');
-    expect(screen.queryByRole('combobox', { name: 'Grade / Level' })).not.toBeInTheDocument();
+  it('allows every grade and college level without teaching mappings', () => {
+    render(<Settings />);
+    const select=screen.getByRole('combobox',{name:'Grade / Level'});
+    for(let i=1;i<=12;i++)expect(screen.getByRole('option',{name:`Grade ${i}`,exact:true})).toBeInTheDocument();
+    expect(screen.getByRole('button',{name:'Generate Worksheet'})).toBeDisabled();
+    fireEvent.change(select,{target:{value:'Grade 3'}});
+    expect(select).toHaveValue('Grade 3');
+    expect(screen.getByRole('button',{name:'Generate Worksheet'})).toBeEnabled();
+    fireEvent.change(select,{target:{value:'College/University'}});
+    expect(select).toHaveValue('College/University');
   });
 
 });

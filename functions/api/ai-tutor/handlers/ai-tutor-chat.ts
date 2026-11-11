@@ -224,14 +224,7 @@ export const handleAiTutorChat = async (context: TypedContext) => {
       worksheetConfig = teaching.worksheetConfig;
       lessonPlanConfig = teaching.lessonPlanConfig;
       isGenerationRequest = Boolean(worksheetConfig || lessonPlanConfig);
-      if (isGenerationRequest) {
-        const { data: teachingContext, error: teachingError } = await supabase.rpc('ai_worksheet_context', { p_user_id: learnerId });
-        if (teachingError || typeof teachingContext?.gradeLevel !== 'string' || !teachingContext.gradeLevel) {
-          return apiError(400, 'VALIDATION_ERROR', 'Your teaching level could not be resolved. Check your active teaching mappings before generating material.', request);
-        }
-        if (worksheetConfig) worksheetConfig.gradeLevel = teachingContext.gradeLevel;
-        if (lessonPlanConfig) lessonPlanConfig.gradeLevel = teachingContext.gradeLevel;
-      }
+
     }
 
     let generationUsage:
