@@ -140,3 +140,16 @@ it('aligns evaluated feedback and removes automatic wording from saved results',
  fireEvent.click(screen.getByRole('button',{name:'Close result'}));
  await waitFor(()=>expect(screen.getByRole('button',{name:'View result'})).toHaveFocus());
 });
+
+it('opens educator learner details directly from an assignment notification',()=>{
+ const row={id:'recipient',learner:{name:'Alex'},assignment:{id:'a',title:'Planning',content:{questions:[]}},submissions:[],due_at:'2099-01-01'};
+ render(<QueryClientProvider client={new QueryClient()}><AssignmentOverview rows={[row]} courseId="course" title="Planning" loading={false} error={null} initialOpen initialAllocationId="recipient"/></QueryClientProvider>);
+ expect(screen.getByRole('dialog',{name:'Planning'})).toBeInTheDocument();
+ expect(screen.getByRole('region',{name:'Alex submission page'})).toBeInTheDocument();
+});
+it('opens released feedback directly from a result notification',()=>{
+ const row={id:'recipient',learner:{name:'Alex'},assignment:{id:'a',title:'Planning',content:{questions:[]}},submissions:[{id:'s',results:[{status:'released',total_marks:8,maximum_marks:10}]}],due_at:'2099-01-01'};
+ render(<QueryClientProvider client={new QueryClient()}><SubmissionCard row={row} courseId="course" educator={false} openResult/></QueryClientProvider>);
+ expect(screen.getByRole('dialog',{name:'Planning'})).toBeInTheDocument();
+ expect(screen.getByRole('region',{name:'Evaluation feedback'})).toBeInTheDocument();
+});

@@ -5,6 +5,7 @@ import { apiError, apiSuccess } from '../../../lib/response';
 import { submissionPath, SUBMISSION_MAX_BYTES, validateSubmissionDocument } from '../utils/assignment-document';
 import { InvalidSubmissionDocument, validateAssignmentSubmission, type SubmissionAnswers, type SubmissionQuestion } from '../utils/submission-validation';
 import { evaluateSavedSubmission } from '../utils/assignment-evaluation';
+import { broadcastAssignmentNotifications } from '../utils/assignment-notifications';
 
 type Context = { request: Request; env: PagesEnv; data?: Parameters<typeof getContextUser>[0]['data'] };
 export async function handleAssignmentSubmission(context: Context) {
@@ -60,6 +61,7 @@ export async function handleAssignmentSubmission(context: Context) {
     const submissionId = crypto.randomUUID();
     const key = submissionPath((recipient.data.assignment as unknown as { course_id: string }).course_id, recipient.data.assignment_id, id, submissionId, type.ext);
     await env.R2_BUCKET.put(key, bytes, { httpMetadata: { contentType: type.mime, contentDisposition: 'attachment' } });
+    const notificationStart = new Date().toISOString();
     const saved = await db.rpc('commit_ai_submission', { p_user: user.id, p_recipient: id, p_id: submissionId, p_key: key, p_name: file.name.slice(0,255), p_mime: type.mime });
     if (saved.error || saved.data !== submissionId) {
       // A lost RPC response may follow a successful commit. Verify before deleting the uploaded object.
@@ -73,8 +75,10 @@ export async function handleAssignmentSubmission(context: Context) {
       if (saved.error?.code && /^[0-9A-Z]{5}$/.test(saved.error.code) && !saved.error.code.startsWith('08')) await env.R2_BUCKET.delete(key);
       return fail(409, 'Submission was not confirmed. Refresh status and check the deadline before retrying.');
     }
+    await broadcastAssignmentNotifications(db, env, 'submission_id', submissionId, notificationStart);
     // Evaluation failures never roll back the successfully submitted document.
     try { await evaluateSavedSubmission(db, submissionId, env.OPENROUTER_API_KEY, bytes, env.R2_BUCKET, answers); } catch { /* The saved pending result remains visible to the educator for retry. */ }
+    await broadcastAssignmentNotifications(db, env, 'submission_id', submissionId, notificationStart);
     return apiSuccess({ submissionId, alreadySubmitted: false }, request);
   } catch (error) {
     if (error instanceof z.ZodError || error instanceof TypeError) return fail(400, 'Invalid submission request');

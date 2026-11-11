@@ -1,0 +1,22 @@
+import { act, cleanup, renderHook } from '@testing-library/react';
+import { afterEach, expect, it, vi } from 'vitest';
+const mocks = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), receive: null as any }));
+vi.mock('@/shared/api/apiClient', () => ({apiGet: mocks.get, apiPost: mocks.post}));
+vi.mock('@/shared/api/wsRealtimeClient', () => ({ getWSClient: () => ({subscribe: (_table: string, _filter: unknown, receive: any) => {mocks.receive = receive; return () => {};}}) }));
+import { useNotifications } from '../useNotifications';
+afterEach(() => {cleanup(); vi.useRealTimers(); vi.clearAllMocks();});
+it('deduplicates realtime redelivery and recovers persisted events by polling', async () => {
+  vi.useFakeTimers();
+  const original = {id:'one',type:'assignment_assigned',recipient_id:'user',title:'New assignment',message:'Task',read:false,created_at:'2026-11-11'};
+  mocks.post.mockResolvedValue({data:{resolved:{user:'user'}}});
+  mocks.get.mockResolvedValue({data:{notifications:[original]}});
+  const {result} = renderHook(() => useNotifications('user'));
+  await act(async () => {});
+  expect(result.current.items).toHaveLength(1);
+  await act(async () => {mocks.receive({type:'change',event:'INSERT',payload:original});});
+  expect(result.current.items).toHaveLength(1);
+  mocks.get.mockResolvedValue({data:{notifications:[{...original,id:'two',type:'assignment_evaluated'},original]}});
+  await act(async () => {await vi.advanceTimersByTimeAsync(30000);});
+  expect(result.current.items.map(row => row.id)).toEqual(['two','one']);
+  expect(result.current.unreadCount).toBe(2);
+});

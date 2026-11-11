@@ -114,6 +114,19 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
   const [showGuidePicker,setShowGuidePicker] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showWorksheets, setShowWorksheets] = useState(false);
+  const [notificationNavigation, setNotificationNavigation] = useState(0);
+  useEffect(() => {
+    const openAssignments = () => {
+      if (new URLSearchParams(window.location.search).get('panel') !== 'assignments') return;
+      setShowWorksheets(true);
+      setNotificationNavigation(value => value + 1);
+      setIsExpanded(true);
+    };
+    openAssignments();
+    window.addEventListener('open-ai-assignments', openAssignments);
+    return () => window.removeEventListener('open-ai-assignments', openAssignments);
+  }, [courseId]);
+
   const [feedbackGiven, setFeedbackGiven] = useState<Record<number, 1 | -1>>({});
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -568,7 +581,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
             className="p-1.5 hover:bg-slate-200/70 text-slate-600 rounded-lg transition-colors"><ChevronLeft className="w-4 h-4" /></button>
           <h3 className="font-semibold text-xs text-slate-900" title={courseName}>Course assignments</h3>
         </div>
-        <div className="flex-1 min-h-0 overflow-y-auto"><SavedMaterialWorkspace key={courseId} courseId={courseId} educator={isEducator} onFollowup={prompt => { setInput(prompt); setShowWorksheets(false); }} /></div>
+        <div className="flex-1 min-h-0 overflow-y-auto"><SavedMaterialWorkspace key={`${courseId}:${notificationNavigation}`} courseId={courseId} educator={isEducator} onFollowup={prompt => { setInput(prompt); setShowWorksheets(false); }} /></div>
       </motion.section>
     );
   }

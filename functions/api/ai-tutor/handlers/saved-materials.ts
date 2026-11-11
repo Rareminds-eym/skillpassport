@@ -7,6 +7,7 @@ import { splitWorksheetContent } from '../utils/worksheet-content';
 import { materialRequestFingerprint, materialContextFingerprint } from '../utils/saved-materials';
 import { structureSavedWorksheet } from '../utils/saved-assessment';
 import { evaluateSavedSubmission } from '../utils/assignment-evaluation';
+import { broadcastAssignmentNotifications } from '../utils/assignment-notifications';
 
 type Context = { request: Request; env: PagesEnv; data?: Parameters<typeof getContextUser>[0]['data'] };
 const uuid = z.string().uuid();
@@ -86,8 +87,10 @@ export async function handleSavedMaterials(context: Context) {
       const existing = await db.from('ai_assignment_learners').select('learner_id').eq('assignment_id', id).in('learner_id', learners).limit(1);
       if (existing.error) throw existing.error;
       if (existing.data?.length) return fail(409, 'This assignment is already assigned to a selected learner. Refresh the learner list.');
+      const notificationStart = new Date().toISOString();
       const result = await db.rpc('allocate_saved_ai_assignment', { p_user: user.id, p_assignment: id, p_learners: learners, p_due: due });
       if (result.error) return fail(409, 'Unable to assign. Verify mapped learners, deadline, and existing allocations.');
+      await broadcastAssignmentNotifications(db, env, 'assignment_id', id, notificationStart);
       return apiSuccess({ learnerCount: result.data }, request);
     }
     if (body.action === 'review-detail') {
@@ -101,7 +104,9 @@ export async function handleSavedMaterials(context: Context) {
       if (owned.error) return fail(403, 'Assigned educator access required');
       if (body.action === 'retry') {
         if (owned.data.status === 'evaluating' && Date.parse(owned.data.updated_at) < Date.now() - 300000) await db.from('ai_assignment_results').update({ status: 'failed' }).eq('id', resultId).eq('updated_at', owned.data.updated_at);
+        const notificationStart = new Date().toISOString();
         await evaluateSavedSubmission(db, owned.data.submission_id, env.OPENROUTER_API_KEY, undefined, env.R2_BUCKET);
+        await broadcastAssignmentNotifications(db, env, 'submission_id', owned.data.submission_id, notificationStart);
       }
       return apiSuccess({ success: true }, request);
     }

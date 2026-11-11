@@ -11,3 +11,4 @@ export type { NotificationType } from './model/useNotifications';
 
 // API
 export { createlearnerNotification, createNotification } from './api/notificationService';
+export { assignmentNotificationTarget, assignmentNotificationTypes } from './model/assignmentNotificationTarget';

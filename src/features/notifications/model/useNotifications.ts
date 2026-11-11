@@ -38,6 +38,7 @@ export type Notification = {
   recipient_id: string;
   opportunity_id?: string | null;
   learning_requirements_version?: number | null;
+  metadata?: { course_id?: string; assignment_id?: string; allocation_id?: string; submission_id?: string; result_id?: string } | null;
   type: NotificationType;
   title: string;
   message: string;
@@ -142,7 +143,7 @@ export function useNotifications(
           const row = event.payload as Notification;
 
           if (event.event === 'INSERT') {
-            setItems((prev) => [row, ...prev]);
+            setItems((prev) => [row, ...prev.filter(item => item.id !== row.id)]);
           } else if (event.event === 'UPDATE') {
             setItems((prev) =>
               prev.map((n) => (n.id === row.id ? row : n))
@@ -169,6 +170,21 @@ export function useNotifications(
 
   useEffect(() => {
     if (userId) fetchNotifications(true);
+  }, [userId]);
+
+  // Persisted database-trigger notifications also arrive when realtime is unavailable.
+  useEffect(() => {
+    if (!userId) return;
+    let active = true;
+    const timer = setInterval(async () => {
+      if (document.visibilityState === 'hidden') return;
+      try {
+        const response: any = await apiGet(`/notifications?limit=${PAGE_SIZE}`);
+        const rows: Notification[] = response?.data?.notifications ?? response?.notifications ?? [];
+        if (active) setItems(previous => [...rows, ...previous.filter(item => !rows.some(row => row.id === item.id))]);
+      } catch { /* Keep existing notifications during temporary network failures. */ }
+    }, 30000);
+    return () => { active = false; clearInterval(timer); };
   }, [userId]);
 
   const markRead = async (id: string) => {

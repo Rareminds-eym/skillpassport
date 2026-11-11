@@ -27,7 +27,7 @@ CREATE TABLE college_lecturers(user_id uuid,"collegeId" uuid,"accountStatus" tex
 CREATE TABLE organization_staff(user_id uuid,organization_id uuid,account_status text);
 CREATE TABLE course_enrollments(course_id uuid,learner_id uuid,educator_id uuid,status text);
 CREATE TABLE tutor_conversations(id uuid PRIMARY KEY,learner_id uuid,course_id uuid,messages jsonb);
-CREATE TABLE learners(id uuid PRIMARY KEY,user_id uuid UNIQUE,school_class_id uuid,program_section_id uuid);
+CREATE TABLE learners(id uuid PRIMARY KEY,name text DEFAULT 'Test learner',user_id uuid UNIQUE,school_class_id uuid,program_section_id uuid);
 CREATE TABLE school_classes(id uuid PRIMARY KEY,school_id uuid);
 CREATE TABLE departments(id uuid PRIMARY KEY,college_id uuid);
 CREATE TABLE program_sections(id uuid PRIMARY KEY,department_id uuid,program_id uuid,status text);
@@ -36,12 +36,12 @@ CREATE TABLE assignments(assignment_id uuid PRIMARY KEY DEFAULT gen_random_uuid(
 CREATE TABLE college_assignments(assignment_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),title text,instructions text,course_name text,course_code text,college_id uuid,college_educator_id uuid,program_section_id uuid,department_id uuid,program_id uuid,total_points numeric,assignment_type text,due_date timestamptz,available_from timestamptz,allow_late_submission boolean);
 CREATE TABLE learner_assignments(learner_assignment_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),assignment_id uuid,learner_id uuid REFERENCES learners(user_id),status text DEFAULT 'todo',grade_received numeric,grade_percentage numeric,instructor_feedback text,graded_by uuid,graded_date timestamptz,feedback_date timestamptz,started_date timestamptz,submission_date timestamptz,completed_date timestamptz,is_late boolean,updated_date timestamptz,UNIQUE(assignment_id,learner_id));
 CREATE TABLE college_learner_assignments(LIKE learner_assignments INCLUDING ALL);
-CREATE TABLE notifications(id uuid DEFAULT gen_random_uuid(),recipient_id uuid,type text,title text,message text);
+CREATE TABLE notifications(id uuid DEFAULT gen_random_uuid(),recipient_id uuid,type text,title text,message text,read boolean DEFAULT false,created_at timestamptz DEFAULT now());
 CREATE FUNCTION ai_worksheet_eligible_learners(p_user uuid) RETURNS TABLE(id uuid) LANGUAGE sql AS $$ SELECT l.id FROM learners l JOIN organization_members om ON om.user_id=l.user_id WHERE om.organization_id IN (SELECT organization_id FROM organization_members WHERE user_id=p_user AND status='active') AND om.status='active' $$;
 `);
 
   sql(`CREATE FUNCTION ai_worksheet_educator_scope(p_user uuid) RETURNS TABLE(organization_id uuid) LANGUAGE sql AS $$ SELECT organization_id FROM organization_members WHERE user_id=p_user AND status='active' LIMIT 1 $$;`);
-  for(const file of ['20270219021100_course_content_index.sql','20270219021200_ai_saved_assignments.sql']) sql(readFileSync(new URL(`../supabase/migrations/${file}`,import.meta.url),'utf8'));
+  for(const file of ['20270219021100_course_content_index.sql','20270219021200_ai_saved_assignments.sql','20270219021500_ai_assignment_notifications.sql']) sql(readFileSync(new URL(`../supabase/migrations/${file}`,import.meta.url),'utf8'));
   sql(`DO $$
 DECLARE teacher uuid:=gen_random_uuid(); student uuid:=gen_random_uuid(); outsider uuid:=gen_random_uuid(); school uuid:=gen_random_uuid(); class_id uuid:=gen_random_uuid(); learner uuid:=gen_random_uuid(); course uuid:=gen_random_uuid(); material uuid; recipient uuid; submission uuid:=gen_random_uuid(); result uuid; question uuid:=gen_random_uuid(); conv uuid:=gen_random_uuid(); msg uuid:=gen_random_uuid(); amount integer; deadline timestamptz:=now()+interval '1 day'; storage text;
 BEGIN
@@ -93,5 +93,56 @@ BEGIN
  PERFORM release_saved_ai_result(teacher,result,jsonb_build_array(jsonb_build_object('questionId',question,'marks',2,'reason','Manually checked after extraction failed')),'Reviewed');
  IF (SELECT grade_received FROM college_learner_assignments WHERE learner_id=student)<>2 THEN RAISE EXCEPTION 'College grade not synchronized'; END IF;
 END $$;`);
+  sql(`DO $$
+DECLARE kind text; teacher uuid; school_class uuid; material uuid; first_learner uuid:=gen_random_uuid(); second_learner uuid:=gen_random_uuid(); first_user uuid:=gen_random_uuid(); second_user uuid:=gen_random_uuid(); org uuid; baseline integer; event_count integer;
+BEGIN
+ FOREACH kind IN ARRAY ARRAY['assignment_assigned','assignment_allocation_complete','assignment_submission_received','assignment_submitted','assignment_evaluated'] LOOP
+  IF (SELECT count(*) FROM notifications WHERE type=kind)<>2 THEN RAISE EXCEPTION 'Expected two events for %',kind; END IF;
+ END LOOP;
+ IF EXISTS(SELECT 1 FROM notifications WHERE type='assignment_evaluation_complete') THEN RAISE EXCEPTION 'Unwanted educator result notification'; END IF;
+ IF EXISTS(SELECT 1 FROM notifications WHERE type='assignment_evaluated' AND recipient_id IN (SELECT id FROM users WHERE role<>'learner')) THEN RAISE EXCEPTION 'Result delivered to educator'; END IF;
+ UPDATE ai_assignment_results SET status='released';
+ IF (SELECT count(*) FROM notifications WHERE type='assignment_evaluated')<>2 THEN RAISE EXCEPTION 'Duplicate result notification'; END IF;
+ SELECT a.id,s.assigned_by,l.school_class_id INTO material,teacher,school_class FROM ai_assignments a JOIN ai_assignment_learners s ON s.assignment_id=a.id JOIN learners l ON l.id=s.learner_id WHERE l.school_class_id IS NOT NULL LIMIT 1;
+ SELECT organization_id INTO org FROM organization_members WHERE user_id=teacher LIMIT 1;
+ INSERT INTO users VALUES(first_user,'learner'),(second_user,'learner');
+ INSERT INTO learners(id,user_id,school_class_id) VALUES(first_learner,first_user,school_class),(second_learner,second_user,school_class);
+ INSERT INTO organization_members VALUES(org,first_user,'active'),(org,second_user,'active');
+ PERFORM allocate_saved_ai_assignment(teacher,material,ARRAY[first_learner,second_learner],(SELECT due_at FROM ai_assignment_learners WHERE assignment_id=material LIMIT 1));
+ IF (SELECT count(*) FROM notifications WHERE type='assignment_allocation_complete' AND (metadata->>'learner_count')::int=2)<>1 THEN RAISE EXCEPTION 'Batch summary not aggregated'; END IF;
+ SELECT count(*) INTO baseline FROM notifications;
+ PERFORM allocate_saved_ai_assignment(teacher,material,ARRAY[first_learner,second_learner],(SELECT due_at FROM ai_assignment_learners WHERE assignment_id=material LIMIT 1));
+ IF (SELECT count(*) FROM notifications)<>baseline THEN RAISE EXCEPTION 'Duplicate allocation notification'; END IF;
+ BEGIN
+  UPDATE ai_assignment_results SET status='failed';
+  UPDATE ai_assignment_results SET status='released';
+  RAISE EXCEPTION 'rollback test';
+ EXCEPTION WHEN OTHERS THEN IF SQLERRM<>'rollback test' THEN RAISE; END IF;
+ END;
+ IF (SELECT count(*) FROM notifications)<>baseline THEN RAISE EXCEPTION 'Rolled back notification persisted'; END IF;
+END $$;`);
+  sql(readFileSync(new URL('../supabase/migrations/20270219021400_auto_release_ai_assignment_results.sql',import.meta.url),'utf8'));
+  sql(`DO $$
+DECLARE allocation ai_assignment_learners; submission uuid:=gen_random_uuid(); result uuid; question uuid; claim timestamptz:=clock_timestamp(); baseline int; recipient_user uuid; path text; course uuid;
+BEGIN
+ SELECT al.* INTO allocation FROM ai_assignment_learners al WHERE NOT EXISTS(SELECT 1 FROM ai_assignment_submissions s WHERE s.assignment_learner_id=al.id) LIMIT 1;
+ SELECT user_id INTO recipient_user FROM learners WHERE id=allocation.learner_id;
+ SELECT course_id,(content->'questions'->0->>'id')::uuid INTO course,question FROM ai_assignments WHERE id=allocation.assignment_id;
+ path:='courses/'||course||'/ai-assignments/'||allocation.assignment_id||'/submissions/'||allocation.id||'/'||submission||'/answer.txt';
+ PERFORM commit_ai_submission(recipient_user,allocation.id,submission,path,'answer.txt','text/plain');
+ SELECT id INTO result FROM ai_assignment_results WHERE submission_id=submission;
+ SELECT count(*) INTO baseline FROM notifications WHERE type='assignment_evaluated';
+ UPDATE ai_assignment_results SET status='failed' WHERE id=result;
+ IF (SELECT count(*) FROM notifications WHERE type='assignment_evaluated')<>baseline THEN RAISE EXCEPTION 'Failed evaluation announced'; END IF;
+ UPDATE ai_assignment_results SET status='evaluating',updated_at=claim WHERE id=result;
+ IF complete_ai_assignment_evaluation(result,claim-interval '1 second',jsonb_build_array(jsonb_build_object('questionId',question,'marks',1)),'test') THEN RAISE EXCEPTION 'Stale evaluator committed'; END IF;
+ IF NOT complete_ai_assignment_evaluation(result,claim,jsonb_build_array(jsonb_build_object('questionId',question,'marks',1)),'test') THEN RAISE EXCEPTION 'Evaluation did not auto release'; END IF;
+ IF (SELECT count(*) FROM notifications WHERE type='assignment_evaluated')<>baseline+1 THEN RAISE EXCEPTION 'Missing learner auto-release notification'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM notifications WHERE event_key='ai:evaluated:'||result AND recipient_id=recipient_user) THEN RAISE EXCEPTION 'Wrong result recipient'; END IF;
+ IF complete_ai_assignment_evaluation(result,claim,jsonb_build_array(jsonb_build_object('questionId',question,'marks',1)),'test') THEN RAISE EXCEPTION 'Duplicate evaluator committed'; END IF;
+ IF (SELECT count(*) FROM notifications WHERE type='assignment_evaluated')<>baseline+1 THEN RAISE EXCEPTION 'Duplicate auto-release event'; END IF;
+END $$;`);
+  console.log('PASS: automatic result release, failed/stale evaluator suppression and result retries.');
+  console.log('PASS: all five notification types, school/college delivery, learner-only results, batch summaries, idempotency and rollback.');
   console.log('PASS: five-table migration, immutable materials, idempotent school/college allocation, owned file submission, grade guards, review/release, regular task synchronization and privacy.');
 } finally { docker(['exec',container,'dropdb','-U','postgres',database]); }
