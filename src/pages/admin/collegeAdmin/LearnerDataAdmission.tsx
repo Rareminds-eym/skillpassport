@@ -29,6 +29,7 @@ import { apiPost } from '@/shared/api/apiClient';
 import { AssessmentReportDrawer } from '@/features/assessment';
 // @ts-ignore - JS file without types
 import { getLatestResult } from '@/features/assessment';
+import { getAllCourseMappings, getCourseMappingPrograms, getCourseMappingDepartments } from '@/features/college-admin/api/courseMappingService';
 
 const FilterSection = ({ title, children, defaultOpen = false }: any) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
@@ -77,7 +78,7 @@ const CheckboxGroup = ({ options, selectedValues, onChange, emptyHint }: {
             className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
           />
           <span className="ml-2 text-sm text-gray-700">{option.label}</span>
-          {option.count && (
+          {option.count !== undefined && (
             <span className="ml-auto text-xs text-gray-500">({option.count})</span>
           )}
         </label>
@@ -92,25 +93,40 @@ const getFilterValue = (value?: unknown): string | null => {
   return trimmed ? trimmed.toLowerCase() : null;
 };
 
+// Words that should stay lowercase (connecting words)
+const LOWERCASE_WORDS = new Set(['of', 'in', 'and', 'or', 'the', 'a', 'an', 'for', 'to', 'by', 'at', 'on', 'with']);
+
 const getDisplayLabel = (value: string): string =>
   value
     .split(/\s+/)
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
 
-const getAcademicDisplayLabel = (value: string): string =>
-  value
-    .trim()
-    .split(/\s+/)
-    .map((word) => {
-      if (/^[a-z]{2,3}$/i.test(word)) return word.toUpperCase();
+const getAcademicDisplayLabel = (value: string): string => {
+  const words = value.trim().split(/\s+/);
+  return words
+    .map((word, index) => {
+      // Handle abbreviations like "B.Tech", "M.Sc"
       if (/^[a-z]\.[a-z]+$/i.test(word)) {
         const [prefix, suffix] = word.split('.');
         return `${prefix.toUpperCase()}.${suffix.charAt(0).toUpperCase()}${suffix.slice(1).toLowerCase()}`;
       }
+      // Known academic acronyms: all-caps short words like MBA, MCA, BBA, BSC, PHD etc.
+      // Only uppercase if it looks like a pure acronym (all same-case letters, no vowel pattern of a real word)
+      if (/^[A-Z]{2,4}$/.test(word)) return word.toUpperCase();
+      if (/^[a-z]{2,4}$/.test(word) && !LOWERCASE_WORDS.has(word.toLowerCase())) {
+        // Could be an acronym typed in lowercase - uppercase it only if first word
+        if (index === 0) return word.toUpperCase();
+      }
+      // Connecting words stay lowercase (unless first word)
+      if (index > 0 && LOWERCASE_WORDS.has(word.toLowerCase())) {
+        return word.toLowerCase();
+      }
+      // Everything else: Title Case
       return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
     })
     .join(' ');
+};
 
 const getSemesterFilterValue = (learner: any): string | null => {
   if (!learner.semester || learner.semester <= 0) return null;
@@ -239,9 +255,21 @@ const LearnerDataAdmission = () => {
     semester: [] as string[],
     academicYear: [] as string[],
     status: [] as string[],
+    mappedCourse: [] as string[],
+    trainerCourse: [] as string[],
     minScore: 0,
     maxScore: 100
   });
+
+  // ── Course Mapping filter data ──────────────────────────────────────────
+  // courseMappings: all entries from college_course_mappings joined with college_courses
+  // programMap: program_id → { name, specializations }
+  const [courseMappings, setCourseMappings] = useState<any[]>([]);
+  const [programMap, setProgramMap] = useState<Record<string, { name: string; specializations: string[] }>>();
+
+  // ── Trainer Courses filter data ─────────────────────────────────────────
+  // trainerCourseData: courses assigned by SP trainers to this college's programs
+  const [trainerCourseData, setTrainerCourseData] = useState<any[]>([]);
 
   const user = useUser();
   const [collegeId, setCollegeId] = useState<string | null>(null);
@@ -259,13 +287,62 @@ const LearnerDataAdmission = () => {
     fetchCollegeId();
   }, [user?.id, user?.email]);
 
+  // Fetch course mappings + programs for the Course Mapping filter
+  useEffect(() => {
+    if (!collegeId) return;
+    const fetchCourseMappingData = async () => {
+      try {
+        // Step 1: get departments scoped to THIS college (get-mapping-departments uses getUserCollegeId)
+        const departments = await getCourseMappingDepartments();
+        const collegeDeptIds = new Set(departments.map((d: any) => d.id));
+
+        // Step 2: get programs for each dept (scoped via department_id)
+        const programArrays = await Promise.all(
+          departments.map((d: any) => getCourseMappingPrograms(d.id))
+        );
+        const collegePrograms = programArrays.flat();
+        const collegeProgramIds = new Set(collegePrograms.map((p: any) => p.id));
+
+        // Step 3: get all mappings then keep only those belonging to this college's programs
+        const allMappings = await getAllCourseMappings();
+        const scopedMappings = allMappings.filter((m: any) => collegeProgramIds.has(m.program_id));
+
+        setCourseMappings(scopedMappings);
+
+        // Build program_id → { name, specializations } lookup (only for this college)
+        const map: Record<string, { name: string; specializations: string[] }> = {};
+        collegePrograms.forEach((p: any) => {
+          const specs = Array.isArray(p.specializations)
+            ? p.specializations.map((s: string) => s.trim().toLowerCase()).filter(Boolean)
+            : typeof p.specializations === 'string'
+            ? p.specializations.split(',').map((s: string) => s.trim().toLowerCase()).filter(Boolean)
+            : [];
+          map[p.id] = { name: p.name, specializations: specs };
+        });
+        setProgramMap(map);
+
+        // Fetch trainer (external educator) courses for this college
+        const trainerRes: any = await apiPost('/college-admin/assignments', {
+          action: 'get-trainer-courses',
+          college_id: collegeId,
+        });
+        if (trainerRes?.data) {
+          setTrainerCourseData(trainerRes.data);
+        }
+      } catch (err) {
+        logger.warn('Could not load course mapping data for filter', err as Error);
+      }
+    };
+    fetchCourseMappingData();
+  }, [collegeId]);
+
   const { learners, loading, error } = useLearners({
     collegeId,
   });
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, sortBy, filters.degree.length, filters.course.length, filters.specialization.length, filters.semester.length, filters.academicYear.length, filters.status.length, filters.minScore, filters.maxScore]);
+  }, [searchQuery, sortBy, filters.degree.length, filters.course.length, filters.specialization.length, filters.semester.length, filters.academicYear.length, filters.status.length, filters.mappedCourse.length, filters.trainerCourse.length, filters.minScore, filters.maxScore]);
 
   const degreeOptions = useMemo(() => {
     const degreeCounts: any = {};
@@ -284,9 +361,21 @@ const LearnerDataAdmission = () => {
       .sort((a, b) => (b.count as number) - (a.count as number));
   }, [learners]);
 
+  // ── Cascading filter bases ───────────────────────────────────────────────
+  // Each level filters the learner pool based on selections made above it.
+  // This makes lower filter options automatically narrow when upper ones are selected.
+
+  const learnersAfterDegree = useMemo(() => {
+    if (filters.degree.length === 0) return learners;
+    return learners.filter(learner => {
+      const degree = getFilterValue(learner.branch_field || learner.dept);
+      return Boolean(degree && filters.degree.includes(degree));
+    });
+  }, [learners, filters.degree]);
+
   const courseOptions = useMemo(() => {
     const courseCounts: any = {};
-    learners.forEach(learner => {
+    learnersAfterDegree.forEach(learner => {
       const normalizedCourse = getFilterValue(learner.course_name);
       if (normalizedCourse) {
         courseCounts[normalizedCourse] = (courseCounts[normalizedCourse] || 0) + 1;
@@ -300,11 +389,19 @@ const LearnerDataAdmission = () => {
       }))
       .sort((a, b) => (b.count as number) - (a.count as number))
       .slice(0, 15);
-  }, [learners]);
+  }, [learnersAfterDegree]);
+
+  const learnersAfterCourse = useMemo(() => {
+    if (filters.course.length === 0) return learnersAfterDegree;
+    return learnersAfterDegree.filter(learner => {
+      const course = getFilterValue(learner.course_name);
+      return Boolean(course && filters.course.includes(course));
+    });
+  }, [learnersAfterDegree, filters.course]);
 
   const specializationOptions = useMemo(() => {
     const specializationCounts: any = {};
-    learners.forEach(learner => {
+    learnersAfterCourse.forEach(learner => {
       const raw = (learner as any).specialization;
       const parts = Array.isArray(raw) ? raw : typeof raw === 'string' ? raw.split(',') : [];
       parts.forEach((part: string) => {
@@ -321,27 +418,23 @@ const LearnerDataAdmission = () => {
         count: count as number
       }))
       .sort((a, b) => (b.count as number) - (a.count as number));
-  }, [learners]);
+  }, [learnersAfterCourse]);
 
-  const statusOptions = useMemo(() => {    const statusCounts: any = {};
-    learners.forEach(learner => {
-      if (learner.approval_status) {
-        const status = learner.approval_status.toLowerCase();
-        statusCounts[status] = (statusCounts[status] || 0) + 1;
-      }
+  const learnersAfterSpecialization = useMemo(() => {
+    if (filters.specialization.length === 0) return learnersAfterCourse;
+    return learnersAfterCourse.filter(learner => {
+      const raw = (learner as any).specialization;
+      const parts = Array.isArray(raw) ? raw : typeof raw === 'string' ? raw.split(',') : [];
+      return parts.some((part: string) => {
+        const value = getFilterValue(part);
+        return Boolean(value && filters.specialization.includes(value));
+      });
     });
-    return Object.entries(statusCounts)
-      .map(([status, count]) => ({
-        value: status,
-        label: getDisplayLabel(status),
-        count: count as number
-      }))
-      .sort((a, b) => (b.count as number) - (a.count as number));
-  }, [learners]);
+  }, [learnersAfterCourse, filters.specialization]);
 
   const semesterOptions = useMemo(() => {
     const semesterCounts: any = {};
-    learners.forEach(learner => {
+    learnersAfterSpecialization.forEach(learner => {
       const value = getSemesterFilterValue(learner);
       if (value) {
         semesterCounts[value] = (semesterCounts[value] || 0) + 1;
@@ -354,11 +447,36 @@ const LearnerDataAdmission = () => {
         count: count as number
       }))
       .sort((a, b) => Number(a.value) - Number(b.value));
-  }, [learners]);
+  }, [learnersAfterSpecialization]);
+
+  const learnersAfterSemester = useMemo(() => {
+    if (filters.semester.length === 0) return learnersAfterSpecialization;
+    return learnersAfterSpecialization.filter(learner => {
+      const semester = getSemesterFilterValue(learner);
+      return Boolean(semester && filters.semester.includes(semester));
+    });
+  }, [learnersAfterSpecialization, filters.semester]);
+
+  const statusOptions = useMemo(() => {
+    const statusCounts: any = {};
+    learnersAfterSemester.forEach(learner => {
+      if (learner.approval_status) {
+        const status = learner.approval_status.toLowerCase();
+        statusCounts[status] = (statusCounts[status] || 0) + 1;
+      }
+    });
+    return Object.entries(statusCounts)
+      .map(([status, count]) => ({
+        value: status,
+        label: getDisplayLabel(status),
+        count: count as number
+      }))
+      .sort((a, b) => (b.count as number) - (a.count as number));
+  }, [learnersAfterSemester]);
 
   const academicYearOptions = useMemo(() => {
     const academicYearCounts: any = {};
-    learners.forEach(learner => {
+    learnersAfterSemester.forEach(learner => {
       const value = getFilterValue(learner.admission_academic_year);
       if (value) {
         academicYearCounts[value] = (academicYearCounts[value] || 0) + 1;
@@ -371,9 +489,135 @@ const LearnerDataAdmission = () => {
         count: count as number
       }))
       .sort((a, b) => b.label.localeCompare(a.label));
-  }, [learners]);
+  }, [learnersAfterSemester]);
 
-  const activeFilterCount = filters.degree.length + filters.course.length + filters.specialization.length + filters.semester.length + filters.academicYear.length + filters.status.length;
+  // ── Mapped Course filter options ─────────────────────────────────────────
+  // For each course mapping, resolve the program name and count how many
+  // learners (by course_name + specialization + semester) would match.
+  const mappedCourseOptions = useMemo(() => {
+    if (!courseMappings.length || !programMap || !Object.keys(programMap).length) return [];
+
+    // Helper: does a learner belong to this program?
+    // Match by: learner.course_name loosely matches program.name
+    //           AND learner.specialization matches one of program.specializations (if any)
+    const learnerMatchesProgram = (learner: any, prog: { name: string; specializations: string[] }) => {
+      const learnerCourse = getFilterValue(learner.course_name);
+      const progName = getFilterValue(prog.name);
+      if (!learnerCourse || !progName) return false;
+
+      // Check course_name contains the base program name or vice versa
+      const courseMatches = progName.includes(learnerCourse) || learnerCourse.includes(progName);
+      if (!courseMatches) return false;
+
+      // If program has specializations, learner.specialization must match one
+      if (prog.specializations.length > 0) {
+        const learnerSpec = getFilterValue((learner as any).specialization);
+        if (!learnerSpec) return false;
+        return prog.specializations.some(s => s === learnerSpec || learnerSpec.includes(s) || s.includes(learnerSpec));
+      }
+
+      // No specializations on program → match by course name alone
+      return true;
+    };
+
+    // Count learners per program+semester combo using cascaded base
+    const learnerCounts: Record<string, number> = {};
+    learnersAfterSemester.forEach(learner => {
+      const sem = learner.semester && learner.semester > 0 ? String(learner.semester) : null;
+      if (!sem) return;
+      Object.entries(programMap).forEach(([progId, prog]) => {
+        if (learnerMatchesProgram(learner, prog)) {
+          const key = `${progId}__${sem}`;
+          learnerCounts[key] = (learnerCounts[key] || 0) + 1;
+        }
+      });
+    });
+
+    // Build unique mapped-course options
+    const seen = new Set<string>();
+    const options: Array<{ value: string; label: string; count: number }> = [];
+
+    courseMappings.forEach(mapping => {
+      const rawCourseName = mapping.course_name || mapping.course?.course_name;
+      if (!rawCourseName) return;
+
+      const normCourse = rawCourseName.trim().toLowerCase();
+      if (seen.has(normCourse)) return;
+      seen.add(normCourse);
+
+      // Count learners across all mappings with this course name
+      let count = 0;
+      courseMappings
+        .filter(m => {
+          const cn = m.course_name || m.course?.course_name;
+          return cn && cn.trim().toLowerCase() === normCourse;
+        })
+        .forEach(m => {
+          const key = `${m.program_id}__${String(m.semester)}`;
+          count += learnerCounts[key] || 0;
+        });
+
+      options.push({
+        value: normCourse,
+        label: getAcademicDisplayLabel(rawCourseName.trim()),
+        count,
+      });
+    });
+
+    return options.sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+  }, [courseMappings, programMap, learnersAfterSemester]);
+
+  const activeFilterCount = filters.degree.length + filters.course.length + filters.specialization.length + filters.semester.length + filters.academicYear.length + filters.status.length + filters.mappedCourse.length + filters.trainerCourse.length;
+
+  // ── Trainer Courses filter options ──────────────────────────────────────
+  // Builds checkbox options from courses assigned by external SP trainers.
+  // Counts how many learners match each course's program+semester+specialization.
+  const trainerCourseOptions = useMemo(() => {
+    if (!trainerCourseData.length) return [];
+
+    return trainerCourseData
+      .map((tc: any) => {
+        // Use a Set to count UNIQUE learners across all assignments for this course
+        const matchedLearnerIds = new Set<string>();
+
+        (tc.assignments || []).forEach((assignment: any) => {
+          learnersAfterSemester.forEach((learner: any) => {
+            const learnerCourse  = getFilterValue(learner.course_name);
+            const learnerSpec    = getFilterValue(learner.specialization);
+            const learnerSem     = learner.semester && learner.semester > 0 ? String(learner.semester) : null;
+            const progName       = getFilterValue(assignment.program_name);
+
+            if (!learnerCourse || !progName || !learnerSem) return;
+
+            // Program name partial match
+            const courseMatches = progName.includes(learnerCourse) || learnerCourse.includes(progName);
+            if (!courseMatches) return;
+
+            // Semester match
+            if (String(assignment.semester) !== learnerSem) return;
+
+            // Specialization match (if the assignment has specializations)
+            if (assignment.specializations && assignment.specializations.length > 0) {
+              if (!learnerSpec) return;
+              const specMatches = assignment.specializations.some((s: string) =>
+                s === learnerSpec || learnerSpec.includes(s) || s.includes(learnerSpec)
+              );
+              if (!specMatches) return;
+            }
+
+            // Add learner id to Set — duplicates are ignored automatically
+            matchedLearnerIds.add(learner.id);
+          });
+        });
+
+        return {
+          value: tc.course_name.trim().toLowerCase(),
+          label: getAcademicDisplayLabel(tc.course_name.trim()),
+          count: matchedLearnerIds.size,
+        };
+      })
+      .sort((a: any, b: any) => b.count - a.count || a.label.localeCompare(b.label));
+  }, [trainerCourseData, learnersAfterSemester]);
   const hasActiveFilters = activeFilterCount > 0 || filters.minScore > 0 || filters.maxScore < 100;
 
   const filteredAndSortedlearners = useMemo(() => {
@@ -440,6 +684,88 @@ const LearnerDataAdmission = () => {
       );
     }
 
+    // ── Course Mapping filter ─────────────────────────────────────────────
+    // A learner matches if at least one of the selected mapped course names
+    // is mapped to the program (by name + specialization) + semester the learner belongs to.
+    if (filters.mappedCourse.length > 0 && programMap && Object.keys(programMap).length > 0) {
+      result = result.filter(learner => {
+        const learnerSem = learner.semester && learner.semester > 0 ? String(learner.semester) : null;
+        if (!learnerSem) return false;
+
+        const learnerCourse = getFilterValue(learner.course_name);
+        const learnerSpec = getFilterValue((learner as any).specialization);
+
+        return courseMappings.some(mapping => {
+          // Check the mapped course name matches one of the selected filters
+          const rawCourseName = mapping.course_name || mapping.course?.course_name;
+          if (!rawCourseName) return false;
+          const normCourse = rawCourseName.trim().toLowerCase();
+          if (!filters.mappedCourse.includes(normCourse)) return false;
+
+          // Check semester matches
+          if (String(mapping.semester) !== learnerSem) return false;
+
+          // Get the program for this mapping
+          const prog = programMap[mapping.program_id];
+          if (!prog) return false;
+
+          const progName = getFilterValue(prog.name);
+          if (!progName || !learnerCourse) return false;
+
+          // Check course name matches (partial — base program name)
+          const courseMatches = progName.includes(learnerCourse) || learnerCourse.includes(progName);
+          if (!courseMatches) return false;
+
+          // If program has specializations, learner.specialization must match
+          if (prog.specializations.length > 0) {
+            if (!learnerSpec) return false;
+            return prog.specializations.some(s =>
+              s === learnerSpec || learnerSpec.includes(s) || s.includes(learnerSpec)
+            );
+          }
+
+          // Program has no specializations — course name match is enough
+          return true;
+        });
+      });
+    }
+
+    // ── Trainer Courses filter ────────────────────────────────────────────
+    // A learner matches if they belong to a program+semester+specialization
+    // that has the selected trainer course assigned to it.
+    if (filters.trainerCourse.length > 0 && trainerCourseData.length > 0) {
+      result = result.filter(learner => {
+        const learnerCourse = getFilterValue(learner.course_name);
+        const learnerSpec   = getFilterValue((learner as any).specialization);
+        const learnerSem    = learner.semester && learner.semester > 0 ? String(learner.semester) : null;
+        if (!learnerCourse || !learnerSem) return false;
+
+        return trainerCourseData.some((tc: any) => {
+          const normCourse = tc.course_name?.trim().toLowerCase();
+          if (!normCourse || !filters.trainerCourse.includes(normCourse)) return false;
+
+          return (tc.assignments || []).some((assignment: any) => {
+            const progName = getFilterValue(assignment.program_name);
+            if (!progName) return false;
+
+            const courseMatches = progName.includes(learnerCourse) || learnerCourse.includes(progName);
+            if (!courseMatches) return false;
+
+            if (String(assignment.semester) !== learnerSem) return false;
+
+            if (assignment.specializations && assignment.specializations.length > 0) {
+              if (!learnerSpec) return false;
+              return assignment.specializations.some((s: string) =>
+                s === learnerSpec || learnerSpec.includes(s) || s.includes(learnerSpec)
+              );
+            }
+
+            return true;
+          });
+        });
+      });
+    }
+
     result = result.filter(learner => {
       const score = learner.ai_score_overall || 0;
       return score >= filters.minScore && score <= filters.maxScore;
@@ -502,6 +828,8 @@ const LearnerDataAdmission = () => {
       semester: [],
       academicYear: [],
       status: [],
+      mappedCourse: [],
+      trainerCourse: [],
       minScore: 0,
       maxScore: 100
     });
@@ -713,7 +1041,7 @@ const LearnerDataAdmission = () => {
                   />
                 </FilterSection>
 
-                <FilterSection title="Program / Course">
+                <FilterSection title="Program">
                   <CheckboxGroup
                     options={courseOptions}
                     selectedValues={filters.course}
@@ -733,6 +1061,24 @@ const LearnerDataAdmission = () => {
                     options={semesterOptions}
                     selectedValues={filters.semester}
                     onChange={(values) => setFilters({ ...filters, semester: values })}
+                  />
+                </FilterSection>
+
+                <FilterSection title="Academic Courses">
+                  <CheckboxGroup
+                    options={mappedCourseOptions}
+                    selectedValues={filters.mappedCourse}
+                    onChange={(values) => setFilters({ ...filters, mappedCourse: values })}
+                    emptyHint="No course mappings found. Add mappings in the Course Mapping module."
+                  />
+                </FilterSection>
+
+                <FilterSection title="Trainer Courses">
+                  <CheckboxGroup
+                    options={trainerCourseOptions}
+                    selectedValues={filters.trainerCourse}
+                    onChange={(values) => setFilters({ ...filters, trainerCourse: values })}
+                    emptyHint="No trainer courses found. Assign trainers via the SP dashboard."
                   />
                 </FilterSection>
 

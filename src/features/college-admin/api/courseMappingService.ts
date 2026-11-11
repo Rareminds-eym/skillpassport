@@ -55,6 +55,7 @@ export interface Program {
   code: string;
   department_id: string;
   degree_level: string;
+  specializations?: string[];
 }
 
 export interface Faculty {
