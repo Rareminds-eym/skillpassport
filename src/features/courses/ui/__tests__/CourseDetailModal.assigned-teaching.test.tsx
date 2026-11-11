@@ -15,3 +15,17 @@ it('lets assigned teaching educators start learning without a personal subscript
   fireEvent.click(start);
   expect(onStartCourse).toHaveBeenCalled();
 });
+it('keeps fifteen skills compact until expanded and resets when another course opens',()=>{
+  const skills=Array.from({length:15},(_,index)=>`Skill ${index+1}`);
+  const props={isOpen:true,readOnly:true,course:{course_id:'many-skills',title:'Analytics',status:'Active',skills_covered:skills},onClose:vi.fn(),onStartCourse:vi.fn()};
+  const {rerender}=render(<MemoryRouter><CourseDetailModal {...props}/></MemoryRouter>);
+  expect(screen.getByText('Skill 6')).toBeInTheDocument();
+  expect(screen.queryByText('Skill 7')).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button',{name:'Show all 15 skills'}));
+  expect(screen.getByText('Skill 15')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button',{name:'Show fewer skills'}));
+  expect(screen.queryByText('Skill 7')).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button',{name:'Show all 15 skills'}));
+  rerender(<MemoryRouter><CourseDetailModal {...props} course={{...props.course,course_id:'another-course'}}/></MemoryRouter>);
+  expect(screen.queryByText('Skill 7')).not.toBeInTheDocument();
+});

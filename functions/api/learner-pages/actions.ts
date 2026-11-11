@@ -2,6 +2,7 @@ import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getContextUser, withAuth } from '../../lib/auth';
 import { apiDbError, apiError, apiSuccess, } from '../../lib/response';
 import { getServiceClient } from '../../lib/supabase';
+import { COURSE_CATALOG_SELECT, presentCatalogCourse } from '../../lib/course-catalog';
 
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
@@ -482,7 +483,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         // Parallel Task 2: Build and execute course catalog query
         let query = supabase
           .from('courses')
-          .select('*', { count: 'exact' })
+          .select(COURSE_CATALOG_SELECT, { count: 'exact' })
           .is('deleted_at', null);
 
         // Status filter
@@ -576,7 +577,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         }
 
         return apiSuccess({
-          courses: coursesResult.data || [],
+          courses: (coursesResult.data || []).map(presentCatalogCourse),
           total: coursesResult.count || 0,
           assignedCourseIds: serverAllowedCourseIds,
         }, context.request, { startTime });

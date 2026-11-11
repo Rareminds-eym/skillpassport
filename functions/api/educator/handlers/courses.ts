@@ -1,19 +1,20 @@
 ﻿import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getServiceClient } from '../../../lib/supabase';
 import { apiSuccess, apiDbError, apiError } from '../../../lib/response';
+import { COURSE_CATALOG_SELECT, presentCatalogCourse } from '../../../lib/course-catalog';
 
 const getSub = (context: AuthenticatedContext) => getServiceClient(context.env as any);
 
 export async function handleGetAllCourses(params: any, context: AuthenticatedContext, startTime: number) {
   const supabase = getSub(context);
   const { status } = params;
-  let coursesQuery = supabase.from('courses').select('*').is('deleted_at', null);
+  let coursesQuery = supabase.from('courses').select(COURSE_CATALOG_SELECT).is('deleted_at', null);
   if (status?.in) {
     coursesQuery = coursesQuery.in('status', status.in);
   }
   const { data, error } = await coursesQuery.order('created_at', { ascending: false });
   if (error) return apiDbError(error, context.request, { startTime });
-  return apiSuccess(data || [], context.request, { startTime });
+  return apiSuccess((data || []).map(presentCatalogCourse), context.request, { startTime });
 }
 
 export async function handleGetCoursesBySchool(params: any, context: AuthenticatedContext, startTime: number) {

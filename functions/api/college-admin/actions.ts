@@ -2,6 +2,7 @@ import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getContextUser, withAuth } from '../../lib/auth';
 import { apiDbError, apiError, apiSuccess } from '../../lib/response';
 import { getServiceClient } from '../../lib/supabase';
+import { COURSE_CATALOG_SELECT, presentCatalogCourse } from '../../lib/course-catalog';
 
 interface AssessmentLearnerRow {
   id: string;
@@ -723,13 +724,13 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       case 'get-browse-courses': {
         const { data, error } = await supabase
           .from('courses')
-          .select('*')
+          .select(COURSE_CATALOG_SELECT)
           .in('status', ['Active', 'Upcoming'])
           .is('deleted_at', null)
           .order('created_at', { ascending: false });
 
         if (error) return apiDbError(error, context.request, { startTime });
-        return apiSuccess(data, context.request, { startTime });
+        return apiSuccess((data || []).map(presentCatalogCourse), context.request, { startTime });
       }
 
       case 'get-curriculum-courses': {
