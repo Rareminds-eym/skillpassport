@@ -393,7 +393,7 @@ const BrowseCourses = () => {
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex gap-2 flex-wrap">
-                        <Badge className={`${getStatusColor(course.status)} border`}>
+                        <Badge variant="outline" className={`${getStatusColor(course.status)} border`}>
                           {course.status}
                         </Badge>
                       </div>
@@ -479,7 +479,7 @@ const BrowseCourses = () => {
                           <div>
                             <div className="flex items-center gap-3 mb-2 flex-wrap">
                               <h3 className="text-xl font-bold text-gray-900">{course.title}</h3>
-                              <Badge className={`${getStatusColor(course.status)} border`}>
+                              <Badge variant="outline" className={`${getStatusColor(course.status)} border`}>
                                 {course.status}
                               </Badge>
                             </div>
