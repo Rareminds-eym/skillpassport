@@ -2,7 +2,7 @@
 import type { VerifiedAuthUser as SSOAuthUser, VerifiedAuthContext } from "@rareminds-eym/auth-core";
 import { createAuth } from "@rareminds-eym/auth-core";
 import { createSsoGateway } from "@rareminds-eym/sso-gateway";
-import { APPROVED_ORIGINS } from "./app-origins";
+import { getApprovedOrigins } from "./app-origins";
 import { hasAnyFeature } from "./entitlements";
 import { requireAdminRequestFeature } from './admin-feature-request';
 import { ADMIN_ROLES } from "./roleCategories";
@@ -28,9 +28,9 @@ export function getAuthInstance(env: Record<string, unknown>): ReturnType<typeof
       sso: ssoRpcRaw as any,
       issuer: "sso-api",
       audience: "sso-client",
-      approvedOrigins: [...APPROVED_ORIGINS],
+      approvedOrigins: [...getApprovedOrigins(env)],
       credentialedCors: {
-        origins: [...APPROVED_ORIGINS],
+        origins: [...getApprovedOrigins(env)],
       },
       csrf: { name: "X-RM-CSRF", value: "1" },
       cookieMaxAgeSeconds: 604800,
@@ -56,7 +56,7 @@ export function getSsoGatewayInstance(env: Record<string, unknown>): ReturnType<
     issuer: "sso-api",
     audience: "sso-client",
     basePath: "/api/auth",
-    approvedOrigins: [...APPROVED_ORIGINS],
+    approvedOrigins: [...getApprovedOrigins(env)],
     csrf: { name: "X-RM-CSRF", value: "1" },
     cookieMaxAgeSeconds: 604800,
     ssoRequestTimeoutMs: 5000,

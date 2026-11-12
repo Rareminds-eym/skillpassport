@@ -43,6 +43,21 @@ function listening(port) {
   });
 }
 
+async function cloudflaredCommand() {
+  if (process.env.CLOUDFLARED_PATH) {
+    await access(process.env.CLOUDFLARED_PATH);
+    return process.env.CLOUDFLARED_PATH;
+  }
+  if (process.platform === 'win32') {
+    for (const directory of [process.env.ProgramFiles, process.env['ProgramFiles(x86)']]) {
+      if (!directory) continue;
+      const candidate = path.join(directory, 'cloudflared', 'cloudflared.exe');
+      try { await access(candidate); return candidate; } catch { /* Try the next installation directory. */ }
+    }
+  }
+  return 'cloudflared';
+}
+
 async function start(origin) {
   const appPath = path.join(root, '.dev.vars');
   const ssoPath = path.resolve(root, '../sso-worker/.dev.vars');
@@ -76,7 +91,7 @@ try {
   console.log('Basic site preview: Quick Tunnels do not support AI SSE streaming. LTE is not started.');
   // Keep the upstream host local so Wrangler does not downgrade the public
   // HTTPS Origin header to HTTP while proxying into its development runtime.
-  const tunnel = launch('cloudflared', ['tunnel', '--url', 'http://127.0.0.1:8788', '--http-host-header', 'localhost:8788', '--no-autoupdate'], { stdio: ['ignore', 'pipe', 'pipe'] });
+  const tunnel = launch(await cloudflaredCommand(), ['tunnel', '--url', 'http://127.0.0.1:8788', '--http-host-header', 'localhost:8788', '--no-autoupdate'], { stdio: ['ignore', 'pipe', 'pipe'] });
   let output = '';
   const onOutput = chunk => {
     const text = chunk.toString();

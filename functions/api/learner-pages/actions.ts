@@ -465,14 +465,15 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
             }
             if (!learner?.id) return [];
 
-            const { data: accessRows, error: accessError } = await supabase
-              .from('demo_course_access')
-              .select('course_id')
-              .eq('learner_id', learner.id)
-              .eq('is_enabled', true);
-
-            if (accessError) throw accessError;
-            return (accessRows || []).map((row: any) => row.course_id);
+            const [access, enrollments] = await Promise.all([
+              supabase.from('demo_course_access').select('course_id')
+                .eq('learner_id', learner.id).eq('is_enabled', true),
+              supabase.from('course_enrollments').select('course_id')
+                .eq('learner_id', learner.id).in('status', ['active', 'in_progress', 'completed']),
+            ]);
+            if (access.error || enrollments.error) throw access.error || enrollments.error;
+            return [...new Set([...(access.data || []), ...(enrollments.data || [])]
+              .map((row: any) => row.course_id))];
           } catch (err) {
             console.error('[fetch-courses-query] Error fetching learner demo access:', err);
             return [];
@@ -496,9 +497,12 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           query = query.in('status', ['Active', 'Upcoming']);
         }
 
-        // Classification filter (middle_school, high_school, higher_secondary, college)
+        // Explicitly assigned/enrolled courses remain visible across grade categories.
+        const serverAllowedCourseIds = await learnerAccessPromise;
         if (filters?.classification) {
-          query = query.or(`classification.eq.${filters.classification},classification.is.null`);
+          const assignedIds = serverAllowedCourseIds.filter((id: string) => /^[0-9a-f-]{36}$/i.test(id));
+          const assignedFilter = assignedIds.length ? `,course_id.in.(${assignedIds.join(',')})` : '';
+          query = query.or(`classification.eq.${filters.classification},classification.is.null${assignedFilter}`);
         }
 
         // Search filter with strict sanitization (strip PostgREST control characters to prevent syntax errors / injection)
@@ -566,10 +570,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         query = query.range(offset, offset + limit - 1).order(sortConfig.column, { ascending: sortConfig.ascending });
 
         // Execute course catalog query and learner demo access lookup concurrently
-        const [coursesResult, serverAllowedCourseIds] = await Promise.all([
-          query,
-          learnerAccessPromise,
-        ]);
+        const coursesResult = await query;
 
         if (coursesResult.error) {
           return apiDbError(coursesResult.error, context.request, { startTime });
