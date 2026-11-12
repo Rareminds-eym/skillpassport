@@ -68,5 +68,38 @@ try{
  docker(args,`DO $$ BEGIN ASSERT (SELECT count(*)=1 FROM public.zoho_discovery_runs WHERE connection_id=(SELECT connection_id FROM public.zoho_sync_recovery_race_fixture)); ASSERT (SELECT count(*)=1 FROM public.zoho_bulk_read_runs WHERE connection_id=(SELECT connection_id FROM public.zoho_sync_recovery_race_fixture)); END $$;`);
  docker(args,read('supabase/migrations/20270303000000_zoho_bulk_index_upgrade.sql'));
  docker(args,read('functions/__tests__/sql/zoho-bulk-index-upgrade.sql'));
- console.log('Zoho job publisher SQL: approval/receipt/version/ownership/quota/no-email and cross-connection quota-race assertions passed.');
+ docker(args,read('functions/__tests__/sql/zoho-platform-job-ownership-setup.sql'));
+ const ownershipMigration=read('supabase/migrations/20270309000000_zoho_platform_job_ownership.sql');
+ let blocked=false;
+ try{docker(args,ownershipMigration);}catch(error){if(!error.message.includes('Reconcile in-flight'))throw error;blocked=true;}
+ if(!blocked)throw new Error('Ownership migration ignored in-flight operations');
+ docker(args,`UPDATE public.zoho_approved_operations SET state='queued'; UPDATE public.opportunities SET company_name='Unreviewed change' WHERE id=(SELECT target_id FROM public.fixture_platform_ownership);`);
+ blocked=false;
+ try{docker(args,ownershipMigration);}catch(error){if(!error.message.includes('changed outside the import'))throw error;blocked=true;}
+ if(!blocked)throw new Error('Ownership migration accepted an unreviewed target change');
+ docker(args,`UPDATE public.opportunities SET company_name='Fixture Company' WHERE id=(SELECT target_id FROM public.fixture_platform_ownership);`);
+ docker(args,ownershipMigration);
+ docker(args,read('functions/__tests__/sql/zoho-platform-job-ownership.sql'));
+ const ownershipQuery=(sql,onOutput=()=>{})=>new Promise((resolve,reject)=>{
+  const child=spawn('docker',['exec',container,...args,'-At','-c',sql]);
+  let stdout='',stderr='';const timer=setTimeout(()=>{child.kill();reject(new Error('Ownership race timed out'));},15000);
+  child.stdout.on('data',value=>{stdout+=value;onOutput(stdout);});child.stderr.on('data',value=>stderr+=value);
+  child.on('error',error=>{clearTimeout(timer);reject(error);});
+  child.on('close',code=>{clearTimeout(timer);resolve({code,stdout,stderr});});
+ });
+ let signalLocked;const locked=new Promise(resolve=>{signalLocked=resolve;});
+ const linking=ownershipQuery(`BEGIN;
+  INSERT INTO public.zoho_job_links(record_id,target_id,publisher_id,source_revision,source_hash,target_fingerprint)
+   SELECT f.race_record_id,j.id,'00000000-0000-0000-0000-000000000001',1,repeat('b',64),public.zoho_job_target_fingerprint(j)
+   FROM public.fixture_platform_ownership f JOIN public.opportunities j ON j.id=f.race_target_id;
+  SELECT 'OWNER_LINK_LOCKED'; SELECT pg_sleep(0.5); COMMIT;`,out=>{if(out.includes('OWNER_LINK_LOCKED'))signalLocked();});
+ await Promise.race([locked,linking.then(()=>{throw new Error('Link transaction exited before locking its target');})]);
+ const reparenting=ownershipQuery(`UPDATE public.opportunities SET organization_id='10000000-0000-4000-8000-000000000001'
+  WHERE id=(SELECT race_target_id FROM public.fixture_platform_ownership);`);
+ const ownershipResults=await Promise.all([linking,reparenting]);
+ if(ownershipResults[0].code!==0||ownershipResults[1].code===0||!ownershipResults[1].stderr.includes('must belong to SkillPassport Platform'))
+  throw new Error('Concurrent link creation allowed reparenting: '+JSON.stringify(ownershipResults));
+ docker(args,`DO $$ BEGIN ASSERT NOT EXISTS(SELECT 1 FROM public.zoho_job_links l JOIN public.opportunities j ON j.id=l.target_id
+  WHERE l.publisher_id<>'00000000-0000-0000-0000-000000000001' OR j.organization_id IS DISTINCT FROM l.publisher_id); END $$;`);
+ console.log('Zoho job publisher SQL: approval/receipt/version/Platform-only ownership/quota/no-email and cross-connection quota-race assertions passed.');
 }finally{if(created)docker(['dropdb','-U','postgres','--force',name]);}

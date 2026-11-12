@@ -57,3 +57,11 @@ secret checklist in [the dashboard Wrangler file](../../sp-dash/wrangler.toml).
 The OAuth callback and processing controls are configured in
 [the dashboard policy](../../sp-dash/lib/zoho/config.js). Adding the Pages bindings
 does not enable imports, approvals, or account creation by itself.
+
+All Zoho-imported jobs are owned by **SkillPassport Platform**
+(`00000000-0000-0000-0000-000000000001`). The registration API fixes this owner;
+operators do not enter a publisher UUID. Database constraints and ownership
+triggers enforce the same rule. The displayed company remains the Zoho client
+name. Ownership changes invalidate old approvals and require publisher policy
+review and fresh discovery before new execution. Existing non-Zoho jobs are not
+reassigned by the ownership migration.
