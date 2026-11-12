@@ -1,0 +1,130 @@
+# Wrangler configuration for Cloudflare Pages Functions
+# QA Pages project. Selected by npm run build:pages:qa.
+# For local dev: wrangler pages dev ./dist
+
+name = "skillpassport-qa"
+pages_build_output_dir = "dist"
+compatibility_date = "2026-09-04"
+compatibility_flags = ["nodejs_compat"]
+
+# Flagship feature flags (Cloudflare native, KV+DO backed, sub-ms edge eval)
+# Public beta 2026-05-26 — Worker binding replaces env-var toggles for DORA elite MTTR
+# Requires app created in Cloudflare dashboard → flagship app_id
+# [[flagship]]
+# binding = "FLAGS"
+# app_id = "<FILL_FROM_DASHBOARD>"
+
+# ============================================================================
+# DURABLE OBJECT BINDINGS
+# ============================================================================
+
+[[durable_objects.bindings]]
+name = "REALTIME_HUB"
+class_name = "RealtimeHub"
+script_name = "realtime-worker-qa"
+
+# ============================================================================
+# SERVICE BINDINGS
+# ============================================================================
+
+[[services]]
+binding = "PAYMENT_WORKER"
+service = "razorpay-api-qa"
+entrypoint = "PaymentService"
+
+[[services]]
+binding = "SSO_SERVICE"
+service = "sso-api-qa"
+entrypoint = "SsoWorker"
+
+[[services]]
+binding = "ZOHO_CANDIDATE_SOURCE"
+service = "sso-api-qa"
+entrypoint = "ZohoCandidateProvisioner"
+
+[[services]]
+binding = "EMBEDDING_SERVICE"
+service = "embedding-api-qa"
+entrypoint = "EmbeddingService"
+
+# Job indexing orchestration belongs to the application; embeddings stay a pure
+# provider RPC. Environment-specific deployments must target their dashboard.
+[[services]]
+binding = "JOB_INDEX_SERVICE"
+service = "sp-dash-2-qa"
+entrypoint = "JobIndexService"
+
+[[queues.producers]]
+binding = "REALTIME_EVENTS_QUEUE"
+queue = "realtime-events-queue-qa"
+
+[[queues.producers]]
+binding = "SSO_REVERSE_SYNC_QUEUE"
+queue = "sso-reverse-sync-queue-qa"
+
+[[services]]
+binding = "EMAIL_SERVICE"
+service = "shared-email-api-qa"
+entrypoint = "EmailService"
+
+[[r2_buckets]]
+binding = "R2_BUCKET"
+bucket_name = "skill-echosystem-qa"
+
+# ============================================================================
+# VARIABLES
+# ============================================================================
+
+[vars]
+# Must match EMBEDDING_SERVICE output; each job vector is independently verified.
+MATCHING_EMBEDDING_MODEL = "google/gemini-embedding-2-preview"
+ENVIRONMENT = "qa"
+REALTIME_PARTITIONS = "10"
+APP_URL = "https://skillpassport-qa.pages.dev"
+SUPABASE_URL = "https://qidmndjtlbajwswufghf.supabase.co"
+LTE_APP_URL = "https://lte-qa.pages.dev"
+# Host-only cookies: do not set COOKIE_DOMAIN for pages.dev projects.
+GOOGLE_CLIENT_ID = "775729170329-s95ebosv3kj0b844ol87uhcjsgocq2mk.apps.googleusercontent.com"
+GOOGLE_OAUTH_ENABLED = "true"
+CLOUDFLARE_R2_PUBLIC_URL = "https://pub-176f337757224f949d0424ba3b13223f.r2.dev"
+# Self-healing toggles — Flagship (env.FLAGS) primary, env fallback when Flagship not provisioned
+# Safe defaults: heal enabled (true). Set to "disabled" to turn off a heal without redeploy (after Flagship) or via dashboard env var.
+HEAL_MODE = "enabled"
+# HEAL_CATEGORIES = '{"heal-user":"enabled","subscription-cache-heal":"enabled","cron-reconcile-heal":"enabled","resilience-breaker":"enabled","ws-reconnect-heal":"enabled"}'
+
+# ============================================================================
+# SECRETS (DO NOT COMMIT VALUES)
+# ============================================================================
+# For local development: Add these to .dev.vars file (gitignored)
+# For production: Set using `wrangler secret put <KEY_NAME>` or dashboard
+#
+# Required secrets:
+# - SUPABASE_ANON_KEY
+# - SUPABASE_SERVICE_ROLE_KEY
+# - CLOUDFLARE_R2_SECRET_ACCESS_KEY
+# - EMAIL_API_KEY
+# - SIGNING_SECRET (for media access tokens)
+# - GOOGLE_CLIENT_SECRET (Google OAuth token exchange)
+# - LTE_INTERNAL_SECRET
+# - INTERNAL_WEBHOOK_SECRET (authenticated internal callbacks)
+#
+# Required plain vars (set via dashboard):
+# - CLOUDFLARE_R2_ACCESS_KEY_ID
+# - CLOUDFLARE_ACCOUNT_ID
+#
+# Optional secrets (set only if using the feature):
+# - OAUTH_STATE_SECRET (Google OAuth state-cookie HMAC; falls back to GOOGLE_CLIENT_SECRET)
+# - OPENROUTER_API_KEY (AI features)
+# - CLAUDE_API_KEY (AI features)
+# - DEEPGRAM_API_KEY (audio transcription)
+# - GROQ_API_KEY (audio transcription, fallback)
+# - SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS (direct SMTP email)
+# - ADMIN_EMAIL (admin notification recipient)
+# - APP_URL (public app base URL for email links)
+# - FROM_EMAIL, FROM_NAME (default sender identity)
+# - MATCHING_CATALOG_MODEL (only for a separately attested catalog model)
+# - MATCHING_VECTOR_PIPELINE_VERIFIED (enable only after vector-writer verification)
+# - JOB_MATCHING_ENABLED (set false to disable matching)
+# - SP_DASH_CATALOG_URL (optional catalog endpoint override)
+# - FLAGS (Flagship binding) app_id — see [[flagship]] above
+# - HEAL_MODE / HEAL_CATEGORIES — self-healing flags (enabled|disabled|log-only), see [vars] HEAL_*
