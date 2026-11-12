@@ -101,5 +101,19 @@ try{
   throw new Error('Concurrent link creation allowed reparenting: '+JSON.stringify(ownershipResults));
  docker(args,`DO $$ BEGIN ASSERT NOT EXISTS(SELECT 1 FROM public.zoho_job_links l JOIN public.opportunities j ON j.id=l.target_id
   WHERE l.publisher_id<>'00000000-0000-0000-0000-000000000001' OR j.organization_id IS DISTINCT FROM l.publisher_id); END $$;`);
- console.log('Zoho job publisher SQL: approval/receipt/version/Platform-only ownership/quota/no-email and cross-connection quota-race assertions passed.');
+ docker(args,`CREATE VIEW public.job_browser_write_fixture AS SELECT id,title FROM public.opportunities;
+  GRANT SELECT,INSERT,UPDATE,DELETE ON public.opportunities,public.job_browser_write_fixture TO anon,authenticated;
+  GRANT UPDATE(title) ON public.opportunities,public.job_browser_write_fixture TO anon,authenticated;
+  GRANT SELECT,INSERT,UPDATE,DELETE ON public.opportunities TO service_role;`);
+ docker(args,read('supabase/migrations/20270310000000_zoho_job_server_write_boundary.sql'));
+ docker(args,`DO $$ BEGIN
+  ASSERT has_table_privilege('anon','public.opportunities','SELECT');
+  ASSERT has_table_privilege('authenticated','public.job_browser_write_fixture','SELECT');
+  ASSERT has_table_privilege('service_role','public.opportunities','INSERT,UPDATE,DELETE');
+  ASSERT NOT has_table_privilege('anon','public.opportunities','INSERT,UPDATE,DELETE');
+  ASSERT NOT has_any_column_privilege('authenticated','public.opportunities','INSERT,UPDATE');
+  ASSERT NOT has_table_privilege('authenticated','public.job_browser_write_fixture','INSERT,UPDATE,DELETE');
+  ASSERT NOT has_any_column_privilege('anon','public.job_browser_write_fixture','INSERT,UPDATE');
+ END $$;`);
+ console.log('Zoho job publisher SQL: approval/receipt/version/Platform-only ownership/quota/no-email/browser-write boundary and cross-connection quota-race assertions passed.');
 }finally{if(created)docker(['dropdb','-U','postgres','--force',name]);}
