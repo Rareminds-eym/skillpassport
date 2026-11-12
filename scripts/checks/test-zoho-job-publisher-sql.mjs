@@ -115,5 +115,23 @@ try{
   ASSERT NOT has_table_privilege('authenticated','public.job_browser_write_fixture','INSERT,UPDATE,DELETE');
   ASSERT NOT has_any_column_privilege('anon','public.job_browser_write_fixture','INSERT,UPDATE');
  END $$;`);
- console.log('Zoho job publisher SQL: approval/receipt/version/Platform-only ownership/quota/no-email/browser-write boundary and cross-connection quota-race assertions passed.');
+ docker(args,read('supabase/migrations/20270311000000_zoho_job_staging_deadline.sql'));
+ docker(args,`DO $$ DECLARE c uuid;r uuid;claim jsonb;actor uuid:=gen_random_uuid(); BEGIN
+  c:=(public.zoho_register_connection('Job deadline fixture','77777777777777777770','in','00000000-0000-0000-0000-000000000001',actor)->>'id')::uuid;
+  PERFORM public.zoho_complete_connection(c,'{"version":1,"iv":"AAAAAAAAAAAAAAAA","ciphertext":"AAAAAAAAAAAAAAAAAAAAAAAA"}',actor);
+  r:=(public.zoho_start_discovery(c,'Job_Openings',actor)->>'runId')::uuid;
+  claim:=public.zoho_claim_discovery_batch(r);
+  ASSERT claim->>'claimed'='true' AND claim->'run'->>'page_size'='5';
+  PERFORM public.zoho_commit_claimed_discovery(r,(claim->>'lease')::uuid,1,'[]','[]',true);
+  claim:=public.zoho_claim_discovery_batch(r);
+  ASSERT claim->'run'->>'next_page'='2' AND claim->'run'->>'page_size'='5';
+  UPDATE public.zoho_discovery_runs SET page_size=20,next_page=3,lease_token=NULL,lease_expires_at=NULL WHERE id=r;
+  claim:=public.zoho_claim_discovery_batch(r);
+  ASSERT claim->'run'->>'next_page'='3' AND claim->'run'->>'page_size'='20','Existing page geometry changed';
+  PERFORM public.zoho_control_discovery(c,r,'pause','Deadline fixture pause',actor);
+  ASSERT public.zoho_claim_discovery_batch(r)->>'claimed'='false';
+  ASSERT NOT has_function_privilege('service_role','public.zoho_claim_discovery_batch(uuid)','EXECUTE');
+  ASSERT has_function_privilege('zoho_discovery','public.zoho_claim_discovery_batch(uuid)','EXECUTE');
+ END $$;`);
+ console.log('Zoho job publisher SQL: approval/receipt/version/Platform-only ownership/quota/no-email/browser-write boundary/deadline paging and cross-connection quota-race assertions passed.');
 }finally{if(created)docker(['dropdb','-U','postgres','--force',name]);}
