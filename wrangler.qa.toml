@@ -3,6 +3,8 @@
 # For local dev: wrangler pages dev ./dist
 
 name = "skillpassport-qa"
+# Pages does not accept account_id in TOML. Direct CLI deployments must set
+# CLOUDFLARE_ACCOUNT_ID=d10c2b1a3d702c710a036bc5a6d0902e (the QA account).
 pages_build_output_dir = "dist"
 compatibility_date = "2026-09-04"
 compatibility_flags = ["nodejs_compat"]

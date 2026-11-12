@@ -1,6 +1,6 @@
 /** Actual owned table contracts for projection/privacy fixtures. No global roles or unrelated domain RPCs. */
 export function candidateAdministrationTables(read) {
-  const control = read('supabase/migrations/20270128000000_zoho_recruit_approval_control_plane.sql');
+  const control = read('supabase/migrations/20270128000001_zoho_recruit_approval_control_plane.sql');
   const recovery = read('supabase/migrations/20270131000000_zoho_recruit_record_recovery.sql');
   const bulk = read('supabase/migrations/20270217011000_zoho_bulk_read.sql');
   const privacy = read('supabase/migrations/20270214000000_zoho_source_privacy.sql');
