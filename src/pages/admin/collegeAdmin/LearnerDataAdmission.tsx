@@ -564,7 +564,7 @@ const LearnerDataAdmission = () => {
       });
     });
 
-    return options.sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+    return options.filter(o => o.count > 0).sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
   }, [courseMappings, programMap, learnersAfterSemester]);
 
   const activeFilterCount = filters.degree.length + filters.course.length + filters.specialization.length + filters.semester.length + filters.academicYear.length + filters.status.length + filters.mappedCourse.length + filters.trainerCourse.length;
@@ -616,6 +616,7 @@ const LearnerDataAdmission = () => {
           count: matchedLearnerIds.size,
         };
       })
+      .filter((a: any) => a.count > 0)
       .sort((a: any, b: any) => b.count - a.count || a.label.localeCompare(b.label));
   }, [trainerCourseData, learnersAfterSemester]);
   const hasActiveFilters = activeFilterCount > 0 || filters.minScore > 0 || filters.maxScore < 100;
