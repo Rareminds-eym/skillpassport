@@ -18,6 +18,7 @@ export interface EnrolledLearnerView {
   program_code: string;
   section: string;
   semester: number;
+  specialization?: string | null;
   enrollment_date: string;
   created_at: string;
   updated_at: string;

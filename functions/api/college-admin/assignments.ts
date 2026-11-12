@@ -622,6 +622,114 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         return apiSuccess(result, context.request, { startTime });
       }
 
+      case 'get-trainer-courses': {
+        // Fetch all external educator (trainer) assignments for this college,
+        // then resolve the course names from the `courses` table.
+        // Returns unique courses with the program/semester/specialization they cover
+        // — used by the Admissions & Data "Trainer Courses" filter.
+        const { college_id } = params;
+        if (!college_id) {
+          return apiError(400, 'VALIDATION_ERROR', 'Missing college_id', context.request, { startTime });
+        }
+
+        // 1. Fetch all active assignments for this college
+        const { data: assignments, error: aErr } = await supabase
+          .from('organization_staff_assignments')
+          .select(`
+            id,
+            program_id,
+            section_id,
+            assigned_courses,
+            metadata,
+            programs:program_id(id, name, code, specializations),
+            sections:section_id(id, semester, section)
+          `)
+          .eq('college_id', college_id)
+          .eq('is_active', true);
+
+        if (aErr) return apiDbError(aErr, context.request, { startTime });
+        if (!assignments || assignments.length === 0) {
+          return apiSuccess([], context.request, { startTime });
+        }
+
+        // 2. Collect all unique course IDs across all assignments
+        const allCourseIds: string[] = Array.from(new Set(
+          (assignments || [])
+            .flatMap((a: any) => Array.isArray(a.assigned_courses) ? a.assigned_courses : [])
+            .filter(Boolean)
+        ));
+
+        if (allCourseIds.length === 0) {
+          return apiSuccess([], context.request, { startTime });
+        }
+
+        // 3. Fetch course details from the `courses` table (SP platform courses)
+        const { data: courses, error: cErr } = await supabase
+          .from('courses')
+          .select('course_id, title, code')
+          .in('course_id', allCourseIds)
+          .is('deleted_at', null);
+
+        if (cErr) return apiDbError(cErr, context.request, { startTime });
+
+        // 4. Build a courseId → {title, code} map
+        const courseMap = new Map<string, { title: string; code: string }>(
+          (courses || []).map((c: any) => [c.course_id, { title: c.title, code: c.code }])
+        );
+
+        // 5. Build result: for each unique course, collect which
+        //    program + semester + specialization it covers
+        const resultMap = new Map<string, {
+          course_id: string;
+          course_name: string;
+          course_code: string;
+          assignments: Array<{
+            program_id: string;
+            program_name: string;
+            semester: number;
+            section: string;
+            specializations: string[];
+          }>;
+        }>();
+
+        (assignments || []).forEach((a: any) => {
+          const prog = Array.isArray(a.programs) ? a.programs[0] : a.programs;
+          const sec  = Array.isArray(a.sections)  ? a.sections[0]  : a.sections;
+          const specs: string[] = Array.isArray(prog?.specializations)
+            ? prog.specializations.map((s: string) => s.trim().toLowerCase()).filter(Boolean)
+            : Array.isArray(a.metadata?.specializations)
+            ? a.metadata.specializations.map((s: string) => s.trim().toLowerCase()).filter(Boolean)
+            : [];
+          const programName: string = prog?.name || '';
+          const programId: string   = a.program_id || '';
+          const semester: number    = sec?.semester || 0;
+          const section: string     = sec?.section  || '';
+
+          (Array.isArray(a.assigned_courses) ? a.assigned_courses : []).forEach((courseId: string) => {
+            const courseInfo = courseMap.get(courseId);
+            if (!courseInfo) return;
+
+            if (!resultMap.has(courseId)) {
+              resultMap.set(courseId, {
+                course_id:   courseId,
+                course_name: courseInfo.title,
+                course_code: courseInfo.code,
+                assignments: [],
+              });
+            }
+            resultMap.get(courseId)!.assignments.push({
+              program_id:    programId,
+              program_name:  programName,
+              semester,
+              section,
+              specializations: specs,
+            });
+          });
+        });
+
+        return apiSuccess(Array.from(resultMap.values()), context.request, { startTime });
+      }
+
       default:
         return apiError(400, 'VALIDATION_ERROR', `Unknown action: ${action}`, context.request, { startTime });
     }
