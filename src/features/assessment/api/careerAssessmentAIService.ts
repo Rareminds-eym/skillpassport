@@ -119,6 +119,8 @@ export async function loadCareerAssessmentQuestions(
 
       if (aiAptitude && aiAptitude.length > 0) {
         questions.aptitude = aiAptitude;
+      } else {
+        throw new Error('Failed to load aptitude questions. Please try again.');
       }
     }
     
@@ -134,6 +136,8 @@ export async function loadCareerAssessmentQuestions(
 
       if (aiKnowledge && aiKnowledge.length > 0) {
         questions.knowledge = aiKnowledge;
+      } else {
+        throw new Error('Failed to load knowledge questions. Please try again.');
       }
     }
   }

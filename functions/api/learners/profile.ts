@@ -111,6 +111,7 @@ export const onRequestPut = withAuth(async (context: AuthenticatedPagesContext) 
   // Define type-safe interface for learner profile updates
   interface LearnerUpdateData {
     school_id?: string | null;
+    college_id?: string | null;
     school_class_id?: string | null;
     universityId?: string | null;
     university_college_id?: string | null;
@@ -125,6 +126,7 @@ export const onRequestPut = withAuth(async (context: AuthenticatedPagesContext) 
     school_name?: string | null;
     branch_field?: string | null;
     course_name?: string | null;
+    specialization?: string | null;
   }
 
   // Type-safe helper function for consistent empty-string-to-null conversion
@@ -168,6 +170,7 @@ export const onRequestPut = withAuth(async (context: AuthenticatedPagesContext) 
     const updateData: LearnerUpdateData = {};
 
     if (body.schoolId !== undefined) updateData.school_id = toNullIfEmpty(body.schoolId);
+    if (body.collegeId !== undefined) updateData.college_id = toNullIfEmpty(body.collegeId);
     if (body.schoolClassId !== undefined) updateData.school_class_id = toNullIfEmpty(body.schoolClassId);
     if (body.universityId !== undefined) updateData.universityId = toNullIfEmpty(body.universityId);
     if (body.universityCollegeId !== undefined) updateData.university_college_id = toNullIfEmpty(body.universityCollegeId);
@@ -180,12 +183,23 @@ export const onRequestPut = withAuth(async (context: AuthenticatedPagesContext) 
     if (body.university !== undefined) updateData.university = toNullIfEmpty(body.university);
     if (body.college !== undefined) updateData.college_school_name = toNullIfEmpty(body.college);
     if (body.school_name !== undefined) updateData.school_name = toNullIfEmpty(body.school_name);
+    if (body.specialization !== undefined) updateData.specialization = toNullIfEmpty(body.specialization);
     
     // Handle branch field with proper validation to avoid overwriting with undefined
     if (body.branch !== undefined) {
       const branchValue = toNullIfEmpty(body.branch);
       updateData.branch_field = branchValue;
       updateData.course_name = branchValue;
+    }
+    if (body.branch === undefined && body.courseName !== undefined) updateData.course_name = toNullIfEmpty(body.courseName);
+
+    if (updateData.program_id) {
+      const { data: program, error: programError } = await supabase.from('programs')
+        .select('name,code').eq('id', updateData.program_id).maybeSingle();
+      if (programError) return Response.json({ error: 'Program lookup unavailable' }, { status: 503 });
+      if (!program) return Response.json({ error: 'Selected program not found' }, { status: 400 });
+      updateData.branch_field = program.name || program.code;
+      updateData.course_name = program.name || program.code;
     }
 
     // Update learner profile

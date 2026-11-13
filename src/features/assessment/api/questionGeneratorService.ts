@@ -76,7 +76,7 @@ export async function generateWithValidation(
         break;
       }
       
-      const validation = validateQuestionBatch(questions, questionType, expectedCount - allValidQuestions.length);
+      const validation = validateQuestionBatch(questions, questionType, expectedCount - allValidQuestions.length, { requireCorrectAnswer: false });
       allValidQuestions = [...allValidQuestions, ...validation.valid];
       
       
@@ -207,7 +207,8 @@ export async function generateStreamKnowledgeQuestions(
         return null;
       }
       
-      const validation = validateQuestionBatch(data.questions, 'knowledge', questionCount);
+      // Learner responses intentionally omit server-owned answer keys.
+      const validation = validateQuestionBatch(data.questions, 'knowledge', questionCount, { requireCorrectAnswer: false });
       let validQuestions = validation.valid;
       
       if (validation.invalid.length > 0) {
@@ -336,7 +337,7 @@ export async function generateAptitudeQuestions(
       }
       
       
-      const validation = validateQuestionBatch(data.questions, 'aptitude', questionCount);
+      const validation = validateQuestionBatch(data.questions, 'aptitude', questionCount, { requireCorrectAnswer: false });
       const newValidQuestions = validation.valid;
       allValidQuestions = [...allValidQuestions, ...newValidQuestions];
       

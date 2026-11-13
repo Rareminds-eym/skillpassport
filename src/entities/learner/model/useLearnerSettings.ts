@@ -21,6 +21,7 @@ import { useState, useEffect } from 'react';
 import {
   getlearnerSettingsByEmail,
   updatelearnerSettings,
+  updatelearnerInstitutionSettings,
   updatelearnerPassword
 } from '@/entities/learner/api/learnerSettingsService';
 import { getLogger } from '@/shared/config/logging';
@@ -76,6 +77,12 @@ export const useLearnerSettings = (email) => {
     }
   };
 
+  const updateInstitutionProfile = async (updates) => {
+    const result = await updatelearnerInstitutionSettings(email, updates);
+    if (result.success) setlearnerData(result.data);
+    return result;
+  };
+
   // Update password
   const updatePassword = async (currentPassword, newPassword) => {
     try {
@@ -107,6 +114,7 @@ export const useLearnerSettings = (email) => {
     loading,
     error,
     updateProfile,
+    updateInstitutionProfile,
     updatePassword,
     refreshData,
   };
