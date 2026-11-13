@@ -11,12 +11,36 @@ it('automatically saves before opening learner selection from the direct assign 
  render(<QueryClientProvider client={new QueryClient()}><SaveGeneratedMaterial canAssign courseId="course" conversationId="conversation" messageId="message"/></QueryClientProvider>);
  fireEvent.click(await screen.findByRole('button',{name:'Assign to learners'}));
  expect(await screen.findByRole('region',{name:'Assign saved material'})).toBeInTheDocument();
- expect(screen.getByText('Saved to materials')).toBeInTheDocument();
+ expect(screen.queryByText('Saved to materials')).not.toBeInTheDocument();
  expect(mocks.action.mock.calls.filter(([action])=>action==='save')).toHaveLength(1);
  expect(mocks.action.mock.calls.some(([action])=>action==='allocate')).toBe(false);
  expect(await screen.findByLabelText('Alex')).toBeInTheDocument();
 });
 function show(){return render(<QueryClientProvider client={new QueryClient({defaultOptions:{queries:{retry:false},mutations:{retry:false}}})}><SaveGeneratedMaterial courseId="course" conversationId="conversation" messageId="message"/></QueryClientProvider>);}
+it('keeps the direct-assignment save invisible until learner selection is ready',async()=>{
+ let completeSave!:(value:unknown)=>void;
+ const save=new Promise(resolve=>{completeSave=resolve;});
+ mocks.action.mockImplementation((action:string)=>action==='capabilities'?Promise.resolve({enabled:true}):action==='choice'?Promise.resolve({state:'unanswered'}):action==='save'?save:action==='allocation-learners'?Promise.resolve({learners:[{id:'learner',name:'Alex'}],blockedCount:0}):Promise.resolve({content:{questions:[]},grading_rules:[]}));
+ render(<QueryClientProvider client={new QueryClient()}><SaveGeneratedMaterial canAssign courseId="course" conversationId="conversation" messageId="message"/></QueryClientProvider>);
+ fireEvent.click(await screen.findByRole('button',{name:'Assign to learners'}));
+ await waitFor(()=>expect(mocks.action.mock.calls.filter(([action])=>action==='save')).toHaveLength(1));
+ expect(screen.queryByText('Save to materials')).not.toBeInTheDocument();
+ expect(screen.queryByText('Saving...')).not.toBeInTheDocument();
+ expect(screen.queryByRole('button',{name:'Save'})).not.toBeInTheDocument();
+ expect(screen.queryByRole('region',{name:'Assign saved material'})).not.toBeInTheDocument();
+ completeSave({state:'saved',id:'assignment',kind:'assignment'});
+ expect(await screen.findByRole('region',{name:'Assign saved material'})).toBeInTheDocument();
+ expect(screen.queryByText('Saved to materials')).not.toBeInTheDocument();
+ expect(mocks.action.mock.calls.some(([action])=>action==='allocate')).toBe(false);
+});
+it('restores the direct-assign action and error when background saving fails',async()=>{
+ mocks.action.mockImplementation(async(action:string)=>{if(action==='capabilities')return {enabled:true};if(action==='choice')return {state:'unanswered'};throw new Error('Unable to prepare assignment');});
+ render(<QueryClientProvider client={new QueryClient()}><SaveGeneratedMaterial canAssign courseId="course" conversationId="conversation" messageId="message"/></QueryClientProvider>);
+ fireEvent.click(await screen.findByRole('button',{name:'Assign to learners'}));
+ expect(await screen.findByRole('alert')).toHaveTextContent('Unable to prepare assignment');
+ expect(screen.getByRole('button',{name:'Assign to learners'})).toBeEnabled();
+ expect(screen.queryByText('Saved to materials')).not.toBeInTheDocument();
+});
 it('does not save on generation and confirms only an explicit successful save',async()=>{
  mocks.action.mockImplementation(async(action:string)=>action==='capabilities'?{enabled:true}:action==='choice'?{state:'unanswered'}:{state:'saved',id:'plan',kind:'lesson_plan'});
  show();fireEvent.click(await screen.findByRole('button',{name:'Save'}));

@@ -43,10 +43,13 @@ export default function SaveGeneratedMaterial({ courseId, conversationId, messag
   if (capability.isPending) return <PanelLoadingSkeleton label="Checking material controls"/>;
   if (capability.isError) return <p role="alert" className="mt-2 text-xs text-red-700">Unable to verify material controls. <button type="button" onClick={() => { void capability.refetch(); }} className="underline">Retry</button></p>;
   if (!capability.data?.enabled) return null;
+  // Direct assignment persists its material first, without exposing that
+  // prerequisite as a separate save step in the conversation.
+  if (assignAfterSave && mutation.isPending) return null;
   const data = choice.data;
   return <div className="mt-3 border-t border-slate-100 pt-3 font-sans text-xs leading-5 text-slate-600">
     {choice.isPending ? <PanelLoadingSkeleton label="Checking saved material"/> : data?.id ? <>
-      <div className="flex flex-wrap items-center justify-between gap-3 py-1"><div role="status" className="flex items-center gap-2 text-xs font-medium text-slate-600"><Check aria-hidden="true" className="h-3.5 w-3.5 text-blue-600"/>Saved to materials</div>
+      <div className="flex flex-wrap items-center justify-between gap-3 py-1">{!assignAfterSave && <div role="status" className="flex items-center gap-2 text-xs font-medium text-slate-600"><Check aria-hidden="true" className="h-3.5 w-3.5 text-blue-600"/>Saved to materials</div>}
       {data.kind==='assignment' && <AllocateSavedMaterial courseId={courseId} assignmentId={data.id} initiallyOpen={assignAfterSave} />}
       </div>
     </> : <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 py-1">
