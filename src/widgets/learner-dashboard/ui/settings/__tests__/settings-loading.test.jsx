@@ -4,12 +4,15 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import MainSettings from '../MainSettings';
 import { apiPost } from '@/shared/api/apiClient';
+import toast from 'react-hot-toast';
+vi.mock('react-hot-toast', () => ({ default: { success: vi.fn(), error: vi.fn(), loading: vi.fn(), dismiss: vi.fn() } }));
 
 const mocks = vi.hoisted(() => ({
   notifications: vi.fn(), activities: vi.fn(),
   learner: { id: 'learner-1', email: 'learner@example.test', name: 'Learner', school_id: 'school-1' },
   profileLoading: false, collectionsLoading: false,
   updateProfile: vi.fn(),
+  updateInstitutionProfile: vi.fn(),
 }));
 vi.mock('@/shared/api/apiClient', () => ({ apiPost: vi.fn() }));
 vi.mock('@/shared/model/authStore', () => ({
@@ -18,7 +21,7 @@ vi.mock('@/shared/model/authStore', () => ({
 }));
 vi.mock('@/entities/learner/model/useLearnerRealtimeActivities', () => ({ useLearnerRealtimeActivities: mocks.activities }));
 vi.mock('@/entities/learner', () => ({
-  useLearnerSettings: () => ({ learnerData: mocks.learner, loading: mocks.profileLoading, updateProfile: mocks.updateProfile }),
+  useLearnerSettings: () => ({ learnerData: mocks.learner, loading: mocks.profileLoading, updateProfile: mocks.updateProfile, updateInstitutionProfile: mocks.updateInstitutionProfile }),
   useLearnerDataByEmail: () => ({ learnerData: {}, loading: mocks.collectionsLoading }),
   useLearnerCertificates: () => ({ certificates: [] }),
   useLearnerProjects: () => ({ projects: [] }),
@@ -35,6 +38,7 @@ beforeEach(() => {
   mocks.profileLoading = false;
   mocks.collectionsLoading = false;
   mocks.updateProfile.mockResolvedValue({ success: true });
+  mocks.updateInstitutionProfile.mockResolvedValue({ success: true });
   client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity } } });
   apiPost.mockResolvedValue({ data: {} });
 });
@@ -111,4 +115,23 @@ it('retries failed institution requests without discarding the personal draft', 
   await screen.findByRole('heading', { name: 'Institution Details' });
   fireEvent.click(screen.getByRole('button', { name: /Personal Info/ }));
   expect(screen.getByPlaceholderText('Enter your full name')).toHaveValue('Unsaved draft');
+});
+
+it('reports failed institution saves without showing success', async () => {
+  mocks.updateInstitutionProfile.mockResolvedValue({ success: false, error: 'Institution save denied' });
+  mount({ activeTab: 'profile', activeSubTab: 'institution' });
+  await screen.findByRole('heading', { name: 'Institution Details' });
+  fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
+  await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Institution save denied'));
+  expect(toast.success).not.toHaveBeenCalled();
+  expect(mocks.updateProfile).not.toHaveBeenCalled();
+});
+
+it('acknowledges successful institution saves through the dedicated owner workflow', async () => {
+  mount({ activeTab: 'profile', activeSubTab: 'institution' });
+  await screen.findByRole('heading', { name: 'Institution Details' });
+  fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
+  await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Institution details updated successfully'));
+  expect(mocks.updateInstitutionProfile).toHaveBeenCalledTimes(1);
+  expect(mocks.updateProfile).not.toHaveBeenCalled();
 });

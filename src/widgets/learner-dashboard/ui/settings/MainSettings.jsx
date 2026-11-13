@@ -63,6 +63,7 @@ const MainSettings = () => {
     loading: learnerLoading,
     error: learnerError,
     updateProfile,
+    updateInstitutionProfile,
     updatePassword,
     refreshData: refreshLearnerSettings,
   } = useLearnerSettings(userEmail);
@@ -1150,7 +1151,8 @@ const MainSettings = () => {
         }
       }
 
-      await updateProfile(dataToSave);
+      const result = await updateInstitutionProfile(dataToSave);
+      if (!result?.success) throw new Error(result?.error || 'Failed to update institution details');
       toast.success("Institution details updated successfully");
 
       window.dispatchEvent(new CustomEvent('learner_settings_updated', {
