@@ -56,7 +56,19 @@ test('build selection rejects unknown environments and mismatched branches', () 
   for (const target of [undefined, 'preview', 'unknown', '__proto__', 'constructor']) {
     assert.throws(() => pagesBuildSettings(target, {}), /Choose dev, qa, or production/);
   }
-  assert.throws(() => pagesBuildSettings('qa', { CF_PAGES_BRANCH: 'main' }), /requires branch qa-environment/);
+  assert.throws(() => pagesBuildSettings('production', { CF_PAGES_BRANCH: 'feature/signup' }), /requires branch production/);
+  assert.throws(() => pagesBuildSettings('dev', { CF_PAGES_BRANCH: 'feature/signup' }), /requires branch dev/);
+});
+
+test('QA feature-branch previews keep the QA configuration and database', () => {
+  const settings = pagesBuildSettings('qa', {
+    CF_PAGES_BRANCH: 'feature/signup', SUPABASE_ANON_KEY: publicKey,
+  });
+  assert.equal(settings.file, 'wrangler.qa.toml');
+  assert.equal(settings.mode, 'qa');
+  assert.equal(settings.env.ENVIRONMENT, 'qa');
+  assert.equal(settings.env.VITE_SUPABASE_URL, database);
+  assert.equal(settings.env.CF_PAGES_BRANCH, 'feature/signup');
 });
 
 test('frontend builds cannot silently use a different database', () => {

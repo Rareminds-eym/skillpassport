@@ -14,7 +14,8 @@ const configurations = {
 export function pagesBuildSettings(target, env = process.env) {
   if (!Object.hasOwn(configurations, target)) throw new Error('Choose dev, qa, or production explicitly.');
   const selected = configurations[target];
-  if (env.CF_PAGES_BRANCH && env.CF_PAGES_BRANCH !== selected.branch) {
+  // QA configuration also serves feature-branch Pages previews.
+  if (target !== 'qa' && env.CF_PAGES_BRANCH && env.CF_PAGES_BRANCH !== selected.branch) {
     throw new Error(`The ${target} build requires branch ${selected.branch}.`);
   }
   if (env.VITE_SUPABASE_SERVICE_ROLE_KEY) {
