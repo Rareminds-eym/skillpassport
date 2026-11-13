@@ -1,5 +1,6 @@
 import { withAuth, getContextUser } from '../../lib/auth';
 import { getServiceClient } from '../../lib/supabase';
+import { getCollegeLearnerAcademicYear } from '../../lib/college-learner-academic-year';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { apiSuccess, apiDbError, apiError, apiMethodNotAllowed } from '../../lib/response';
 
@@ -1638,7 +1639,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           department_name: department?.name || '',
           semester: learner.semester || 1,
           section: learner.section || null,
-          academic_year: program?.degree_level || '',
+          academic_year: await getCollegeLearnerAcademicYear(supabase, learner, program?.department_id) || '',
           college_name: college?.name || '',
           current_learners: classInfo?.current_learners || 0,
           max_learners: classInfo?.max_learners || 0,

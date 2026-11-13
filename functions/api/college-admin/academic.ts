@@ -29,6 +29,13 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const { action, ...params } = body;
   if (!action) return apiError(400, 'VALIDATION_ERROR', 'Missing action parameter', context.request);
 
+  if (!action.startsWith('get-') && !action.startsWith('is-')) {
+    const { data: actor, error: actorError } = await supabase.from('users').select('role,isActive').eq('id', user.id).maybeSingle();
+    if (actorError || !actor?.isActive || actor.role !== 'college_admin') {
+      return apiError(403, 'FORBIDDEN', 'Only a college administrator can change course mappings.', context.request);
+    }
+  }
+
   const startTime = Date.now();
 
   try {

@@ -1,3 +1,4 @@
+import { CurriculumNotificationLink } from '@/features/notifications/ui/CurriculumNotificationLink';
 import React, { useState, useEffect, useRef } from 'react'
 import {
     BellIcon,
@@ -41,6 +42,7 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
         error,
     } = useAdminNotifications(userId);
 
+    const panelRef = useRef<HTMLDivElement>(null);
     const [selectedFilter, setSelectedFilter] = useState<FilterKey>('all')
 
     // Track new notifications for animation
@@ -89,6 +91,7 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
     const getNotificationIcon = (type: AdminNotificationType) => {
         const base = 'h-5 w-5'
         switch (type) {
+            case 'curriculum_change_submitted':
             case 'training_submitted':
             case 'experience_submitted':
             case 'project_submitted':
@@ -152,6 +155,7 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
                 return !n.read
             case 'approvals':
                 return [
+                    'curriculum_change_submitted',
                     'training_submitted',
                     'experience_submitted',
                     'project_submitted',
@@ -191,6 +195,7 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
             case 'approvals':
                 return notifications.filter((n) =>
                     [
+                        'curriculum_change_submitted',
                         'training_submitted',
                         'experience_submitted',
                         'project_submitted',
@@ -254,7 +259,7 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
             />
 
             {/* Notification Popup - Fully Mobile Responsive */}
-            <div className="fixed top-16 md:absolute bottom-0 md:bottom-auto left-0 md:left-auto right-0 md:right-0 md:top-14 w-full md:w-[28rem] bg-white shadow-xl z-40 overflow-hidden md:border border-gray-100 md:rounded-xl lg:rounded-t-xl max-h-[85vh] md:max-h-[32rem] flex flex-col">
+            <div ref={panelRef} className="fixed top-16 md:absolute bottom-0 md:bottom-auto left-0 md:left-auto right-0 md:right-0 md:top-14 w-full md:w-[28rem] bg-white shadow-xl z-40 overflow-hidden md:border border-gray-100 md:rounded-xl lg:rounded-t-xl max-h-[85vh] md:max-h-[32rem] flex flex-col">
                 {/* Header */}
                 <div className="px-4 sm:px-5 py-3 sm:py-4 border-b border-gray-100 flex-shrink-0">
                     <div className="flex justify-between items-start">
@@ -373,10 +378,11 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
                                         >
                                             {notification.title}
                                         </p>
-                                        <p className="text-xs text-gray-600 mt-0.5 line-clamp-2">
+                                        <p className={`text-xs text-gray-600 mt-0.5 whitespace-pre-wrap break-words ${notification.type.startsWith('curriculum_change_') ? '' : 'line-clamp-2'}`}>
                                             {notification.message}
                                         </p>
 
+                                        <CurriculumNotificationLink notification={notification} markRead={markRead} onClose={onClose} />
                                         {/* Footer */}
                                         <div className="flex items-center justify-between mt-1.5 sm:mt-2 pt-1.5 sm:pt-2 border-t border-gray-200/50">
                                             <span className="text-[11px] text-gray-400">

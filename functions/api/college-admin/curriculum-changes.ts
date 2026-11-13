@@ -1,6 +1,7 @@
 import { withAuth, getContextUser } from '../../lib/auth';
 import { getServiceClient } from '../../lib/supabase';
 import { hasFeatureEntitlement } from '../../lib/entitlements';
+import { publishCollegeCourseNotifications } from '../../lib/college-course-notifications';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { apiSuccess, apiDbError, apiError, apiMethodNotAllowed } from '../../lib/response';
 
@@ -24,6 +25,34 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
   const { action, ...params } = body;
   if (!action) return apiError(400, 'VALIDATION_ERROR', 'Missing action parameter', context.request);
+
+  // Educator edits must go through the mapping-checked proposal workflow.
+  if (!["requires-approval", "get-all-curriculum-changes", "get-curriculum-change-details", "get-notification-count", "get-pending-changes", "get-change-request-details"].includes(action)) {
+    const { data: actor, error: actorError } = await supabase.from('users').select('role,isActive').eq('id', user.id).maybeSingle();
+    if (actorError || !actor?.isActive || !['college_admin','university_admin','university_admin_dean'].includes(actor.role)) {
+      return apiError(403, 'FORBIDDEN', 'Administrator approval is required. Submit educator edits through Courses.', context.request);
+    }
+  }
+
+  // Reuse the existing review actions for faculty proposals in pending_changes.
+  // Delegate tagged proposals to the atomic reviewer so these legacy actions
+  // cannot skip permission, ownership, or stale-content checks.
+  const reviewActions = ['approve-change', 'reject-change', 'approve-curriculum-by-hod', 'reject-curriculum-by-hod', 'cancel-change-request', 'cancel-curriculum-change'];
+  if (reviewActions.includes(action) && params.curriculum_id && params.change_id) {
+    const { data: curriculum, error: lookupError } = await supabase.from('college_curriculums')
+      .select('pending_changes').eq('id', params.curriculum_id).maybeSingle();
+    if (lookupError) return apiDbError(lookupError, context.request);
+    const proposal = curriculum?.pending_changes?.find((change: { id: string; source?: string }) => change.id === params.change_id && change.source === 'faculty_course');
+    if (proposal) {
+      const { error } = await supabase.rpc('college_course_workflow', {
+        p_actor: user.id, p_action: 'review',
+        p_payload: { requestId: params.change_id, decision: action.startsWith('approve-') ? 'approved' : 'rejected', note: params.review_notes || params.feedback || '' },
+      });
+      if (error) return apiError(error.code === '42501' ? 403 : error.code === '40001' ? 409 : 400, 'REVIEW_FAILED', error.message, context.request);
+      context.waitUntil(publishCollegeCourseNotifications(supabase, context.env, params.change_id, action.startsWith('approve-') ? 'curriculum_change_approved' : 'curriculum_change_rejected'));
+      return apiSuccess({ success: true }, context.request);
+    }
+  }
 
   const startTime = Date.now();
 
@@ -151,6 +180,13 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
       case 'get-all-curriculum-changes': {
         const { university_id, college_id } = params;
+        let historyCollegeId: string | undefined;
+        if (params.faculty_history === true) {
+          const { data: actor, error: actorError } = await supabase.from('users').select('role,isActive,organizationId').eq('id', user.id).maybeSingle();
+          if (actorError) return apiDbError(actorError, context.request, { startTime });
+          if (!actor?.isActive || actor.role !== 'college_admin' || !actor.organizationId) return apiError(403, 'FORBIDDEN', 'College admin required', context.request);
+          historyCollegeId = actor.organizationId;
+        }
         let query = supabase
           .from('college_curriculums')
           .select(`
@@ -160,8 +196,11 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
             departments(name),
             programs(name)
           `);
-        if (university_id) query = query.eq('university_id', university_id);
-        if (college_id) query = query.eq('college_id', college_id);
+        if (historyCollegeId) query = query.eq('college_id', historyCollegeId);
+        else {
+          if (university_id) query = query.eq('university_id', university_id);
+          if (college_id) query = query.eq('college_id', college_id);
+        }
         const { data, error } = await query.order('created_at', { ascending: false });
         if (error) return apiDbError(error, context.request, { startTime });
         return apiSuccess(data || [], context.request, { startTime });

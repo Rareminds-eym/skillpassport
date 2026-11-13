@@ -1,6 +1,8 @@
 import { useAuthStore } from '@/shared/model/authStore';
 import React, { useState, useEffect } from 'react';
-import { Users, Target, FileText, Loader2, AlertCircle, X, Upload, Paperclip, Link as LinkIcon } from 'lucide-react';
+import { Users, Target, FileText, BookOpen, Loader2, AlertCircle, X, Upload, Paperclip, Link as LinkIcon } from 'lucide-react';
+import CollegeCoursesTab from './tabs/CollegeCoursesTab';
+import { useSearchParams } from 'react-router-dom';
 
 import { useLearnerDataByEmail } from '@/entities/learner/model/useLearnerDataByEmail';
 import { ssoClient } from '@/shared/api/ssoClient';
@@ -36,7 +38,7 @@ import {
 import { Assignment } from '@/features/myclass';
 
 import { useUser } from '@/shared/model/authStore';
-type CollegeTabType = 'overview' | 'classmates' | 'assignments';
+type CollegeTabType = 'overview' | 'courses' | 'classmates' | 'assignments';
 
 /**
  * CollegeMyClass - College Learner Class Interface
@@ -54,7 +56,14 @@ const CollegeMyClass: React.FC = () => {
   const effectiveLearnerId = (user?.id || (learnerData as any)?.rawData?.user_id || (learnerData as any)?.user_id || learnerId) as string;
 
   // State management
-  const [activeTab, setActiveTab] = useState<CollegeTabType>('overview');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedTab = searchParams.get('tab');
+  const activeTab: CollegeTabType = ['courses', 'classmates', 'assignments'].includes(requestedTab || '') ? requestedTab as CollegeTabType : 'overview';
+  const setActiveTab = (tab: CollegeTabType) => {
+    const next = new URLSearchParams(searchParams);
+    if (tab === 'overview') next.delete('tab'); else next.set('tab', tab);
+    setSearchParams(next, { replace: true });
+  };
   const [loading, setLoading] = useState(true);
 
   // Data state
@@ -576,6 +585,7 @@ const CollegeMyClass: React.FC = () => {
                 className="block w-full px-4 py-3 text-base border-0 bg-transparent focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
                 <option value="overview">Overview</option>
+                <option value="courses">Courses</option>
                 <option value="classmates">Classmates</option>
                 <option value="assignments">Assignments</option>
               </select>
@@ -585,6 +595,7 @@ const CollegeMyClass: React.FC = () => {
             <nav className="hidden sm:flex -mb-px overflow-x-auto">
               {[
                 { id: 'overview', label: 'Overview', icon: Target },
+                { id: 'courses', label: 'Courses', icon: BookOpen },
                 { id: 'classmates', label: 'Classmates', icon: Users },
                 { id: 'assignments', label: 'Assignments', icon: FileText }
               ].map(tab => (
@@ -606,6 +617,7 @@ const CollegeMyClass: React.FC = () => {
           </div>
 
           <div className="p-4 sm:p-6">
+            {activeTab === 'courses' && <CollegeCoursesTab />}
             {/* Overview Tab */}
             {activeTab === 'overview' && (
               <OverviewTab

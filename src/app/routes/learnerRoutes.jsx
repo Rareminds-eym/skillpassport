@@ -35,6 +35,7 @@ const BrowseJobs = lazy(() => import("@/pages/learner/BrowseJobs"));
 const Messages = lazy(() => import("@/pages/learner/Messages"));
 const LearnerAnalytics = lazy(() => import("@/pages/learner/Analytics"));
 const MyClass = lazy(() => import("@/pages/learner/MyClass"));
+const CollegeCourse = lazy(() => import("@/pages/learner/CollegeCourse"));
 const Clubs = lazy(() => import("@/pages/learner/Clubs"));
 const TimelinePage = lazy(() => import("@/pages/learner/TimelinePage"));
 const AchievementsPage = lazy(() => import("@/pages/learner/AchievementsPage"));
@@ -91,6 +92,7 @@ export const learnerRoutes = (
     <Route path="subscription/add-ons" element={<AddOns />} />
     <Route path="analytics" element={<LearnerAnalytics />} />
     <Route path="my-class" element={<MyClass />} />
+      <Route path="my-class/courses/:curriculumId" element={<CollegeCourse />} />
     <Route path="assignments" element={<Navigate to="/learner/my-class" replace />} />
     <Route path="clubs" element={<Clubs />} />
     <Route path="timeline" element={<TimelinePage />} />

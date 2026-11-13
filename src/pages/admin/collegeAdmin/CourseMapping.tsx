@@ -17,8 +17,10 @@ import {
   XCircleIcon,
   XMarkIcon,
 } from '@heroicons/react/24/outline';
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import toast from 'react-hot-toast';
+import * as Dialog from '@radix-ui/react-dialog';
+import { CourseMappingExcelImport } from '@/features/course-mapping-import';
 import { KPICard } from '@/features/analytics';
 import { formatProgramLabel, getProgramSpecializations } from '@/shared/lib';
 import {
@@ -1018,6 +1020,9 @@ const CourseMapping: React.FC = () => {
     
     // Modal states
     const [showAddModal, setShowAddModal] = useState(false);
+    const [showExcelImport, setShowExcelImport] = useState(false);
+    const excelImportButton = useRef<HTMLButtonElement>(null);
+    const [excelBusy, setExcelBusy] = useState(false);
     const [showCloneModal, setShowCloneModal] = useState(false);
     const [showElectiveModal, setShowElectiveModal] = useState(false);
     const [editingMapping, setEditingMapping] = useState<CourseMapping | null>(null);
@@ -1410,6 +1415,14 @@ const CourseMapping: React.FC = () => {
                     </div>
 
                     <div className="flex flex-wrap gap-3">
+                        <button type="button" onClick={() => setShowExcelImport(true)}
+                            ref={excelImportButton}
+                            disabled={excelBusy || isLocked || !selectedProgramId}
+                            aria-expanded={showExcelImport}
+                            aria-haspopup="dialog"
+                            className="rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50">
+                            Import Excel
+                        </button>
                         <button
                             type="button"
                             onClick={() => {
@@ -1445,6 +1458,36 @@ const CourseMapping: React.FC = () => {
                 </div>
             </div>
 
+            <Dialog.Root open={showExcelImport} onOpenChange={open => { if (!excelBusy) setShowExcelImport(open); }}>
+                <Dialog.Portal>
+                    <Dialog.Overlay className="fixed inset-0 z-50 bg-gray-900/60" />
+                    <Dialog.Content onCloseAutoFocus={event => { event.preventDefault(); excelImportButton.current?.focus(); }} className="fixed left-1/2 top-1/2 z-50 flex max-h-[90dvh] w-[calc(100%-2rem)] max-w-3xl -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl bg-white shadow-xl focus:outline-none">
+                        <div className="flex items-start justify-between gap-4 border-b border-gray-200 px-6 py-5">
+                            <div>
+                                <Dialog.Title className="text-xl font-semibold text-gray-900">Import course mappings</Dialog.Title>
+                                <Dialog.Description className="mt-1 text-sm text-gray-600">Download the Excel template, fill in your courses, then upload and review before importing.</Dialog.Description>
+                            </div>
+                            <Dialog.Close disabled={excelBusy} aria-label="Close Excel import" className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-600 disabled:opacity-50">
+                                <XMarkIcon className="h-5 w-5" />
+                            </Dialog.Close>
+                        </div>
+                        <div className="min-h-0 overflow-y-auto p-4 sm:p-6">
+                            <CourseMappingExcelImport
+                key={`${selectedDeptId}:${selectedProgramId}:${selectedSemester}`}
+                programId={selectedProgramId} semester={selectedSemester} locked={isLocked}
+                label={`${departments.find(dept => dept.id === selectedDeptId)?.name || 'Select department'} / ${programs.find(program => program.id === selectedProgramId)?.name || 'Select program'} / Semester ${selectedSemester}`}
+                faculties={faculties}
+                onBusyChange={setExcelBusy}
+                onSuccess={count => {
+                    toast.success(`${count} course ${count === 1 ? 'mapping' : 'mappings'} imported successfully`);
+                    setShowExcelImport(false);
+                }}
+                onImported={async () => { await Promise.all([loadCourseMappings(), loadFaculty(), getCourses().then(setAvailableCourses)]); }}
+                            />
+                        </div>
+                    </Dialog.Content>
+                </Dialog.Portal>
+            </Dialog.Root>
             <main className="flex flex-1 flex-col lg:flex-row gap-6">
                 {/* LEFT SIDEBAR */}
                 <aside className="w-full lg:w-80 space-y-5 flex-shrink-0">
@@ -1456,6 +1499,7 @@ const CourseMapping: React.FC = () => {
                             </label>
                             <select
                                 id="department-selector"
+                                disabled={excelBusy}
                                 value={selectedDeptId}
                                 onChange={(e) => setSelectedDeptId(e.target.value)}
                                 className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors"
@@ -1477,7 +1521,7 @@ const CourseMapping: React.FC = () => {
                                 id="program-selector"
                                 value={selectedProgramId}
                                 onChange={(e) => setSelectedProgramId(e.target.value)}
-                                disabled={!selectedDeptId}
+                                disabled={excelBusy || !selectedDeptId}
                                 className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors disabled:bg-gray-100"
                             >
                                 <option value="">Select Program</option>
@@ -1499,7 +1543,7 @@ const CourseMapping: React.FC = () => {
                                 id="semester-selector"
                                 value={selectedSemester}
                                 onChange={(e) => setSelectedSemester(Number(e.target.value))}
-                                disabled={!selectedProgramId}
+                                disabled={excelBusy || !selectedProgramId}
                                 className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors disabled:bg-gray-100"
                             >
                                 {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
