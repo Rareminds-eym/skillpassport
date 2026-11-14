@@ -14,7 +14,6 @@ export const APPROVED_ORIGINS: readonly string[] = Object.freeze([
   'https://skillpassport-qa.pages.dev',
   'https://sso-api-dev.subashini.workers.dev',
   'https://lte-dev-b42.pages.dev',
-  'https://*.skillpassport-qa.pages.dev',
   'http://localhost:3000',
   'http://localhost:8787',
   'http://localhost:8788',
