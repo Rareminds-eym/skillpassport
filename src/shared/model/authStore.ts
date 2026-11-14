@@ -46,6 +46,8 @@ interface AuthState {
   loading: boolean;
   isAuthenticated: boolean;
   signupInProgress: boolean;
+  /** True while UnifiedLogin is authenticating and validating the selected role. */
+  loginInProgress: boolean;
 
   role: string | null;
   isLearner: boolean;
@@ -135,6 +137,7 @@ export const useAuthStore = create<AuthState>()(
       loading: true,
       isAuthenticated: false,
       signupInProgress: false,
+      loginInProgress: false,
       role: null,
       isLearner: false,
       isEducator: false,
