@@ -28,7 +28,9 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   // Educator edits must go through the mapping-checked proposal workflow.
   if (!["check-affiliation", "get-approval-requests", "get-approval-statistics", "get-pending-approvals", "get-approval-history", "get-curriculum-status"].includes(action)) {
     const { data: actor, error: actorError } = await supabase.from('users').select('role,isActive').eq('id', user.id).maybeSingle();
-    if (actorError || !actor?.isActive || !['college_admin','university_admin','university_admin_dean'].includes(actor.role)) {
+    const ADMIN_ROLES = ['college_admin','university_admin','university_admin_dean'];
+    const jwtIsAdmin = Array.isArray(user.roles) && ADMIN_ROLES.some(r => user.roles.includes(r));
+    if (actorError || !actor?.isActive || (!ADMIN_ROLES.includes(actor.role) && !jwtIsAdmin)) {
       return apiError(403, 'FORBIDDEN', 'Administrator approval is required. Submit educator edits through Courses.', context.request);
     }
   }
