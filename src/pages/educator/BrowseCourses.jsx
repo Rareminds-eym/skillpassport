@@ -1,3 +1,5 @@
+import { useUser } from '@/shared/model/authStore';
+import { EducatorMappedCourses } from '@/features/college-course-workflow';
 import {useAssignedTeaching} from '@/features/external-teaching/model/teachingContext';
 import {teaching} from '@/features/external-teaching/api/teachingApi';
 import { Fragment, useEffect, useMemo, useState } from 'react';
@@ -23,6 +25,9 @@ const logger = getLogger('BrowseCourses');
 
 const BrowseCourses = () => {
   const assignedTeaching=useAssignedTeaching();
+  const user = useUser();
+  const [sourceTab, setSourceTab] = useState('studio');
+  const isCollegeEducator = [user?.role, ...(user?.roles || [])].some(role => ['college_educator', 'college_lecturer'].includes(role));
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [courses, setCourses] = useState([]);
@@ -237,6 +242,26 @@ const BrowseCourses = () => {
       />
       <div className="min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8">
         <div className="max-w-7xl mx-auto">
+          <div className="mb-6 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+            {isCollegeEducator ? <>
+              <div role="tablist" aria-label="Courses and resources" className="grid grid-cols-1 divide-y divide-gray-200 md:grid-cols-2 md:divide-x md:divide-y-0">
+                {[
+                  ['studio', 'Educator Resource Studio', 'Learning resources for professional development'],
+                  ['course', 'College Course', 'Your assigned courses and curriculum'],
+                ].map(([value, label, description]) => <button key={value} type="button" role="tab" id={`course-source-${value}`} aria-controls="course-source-panel" aria-selected={sourceTab === value} tabIndex={sourceTab === value ? 0 : -1} onClick={() => setSourceTab(value)} onKeyDown={event => {
+                  if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
+                    event.preventDefault(); const next = event.key === 'Home' ? 'studio' : event.key === 'End' ? 'course' : sourceTab === 'studio' ? 'course' : 'studio';
+                    setSourceTab(next); document.getElementById(`course-source-${next}`)?.focus();
+                  }
+                }} className={`relative flex h-full items-center gap-3 p-4 text-left sm:px-5 sm:py-5 transition-colors focus-visible:outline focus-visible:-outline-offset-2 focus-visible:outline-2 focus-visible:outline-indigo-600 ${sourceTab === value ? 'bg-indigo-50/60 shadow-[inset_0_-3px_0_0_#4f46e5]' : 'bg-white hover:bg-gray-50'}`}>
+                  <span className={`shrink-0 rounded-lg p-2 ${sourceTab === value ? 'bg-indigo-600 text-white' : 'bg-indigo-100 text-indigo-600'}`}><BookOpen className="h-6 w-6" /></span>
+                  <span className="min-w-0 flex-1"><span className="block text-base font-semibold text-gray-900 sm:text-lg">{label}</span><span className="mt-1 block text-xs leading-5 text-gray-500">{description}</span></span>
+                </button>)}
+              </div>
+            </> : <div className="flex items-start gap-3 p-6"><div className="rounded-lg bg-indigo-600 p-2"><BookOpen className="h-6 w-6 text-white" /></div><div><h1 className="text-2xl font-bold text-indigo-600">Educator Resource Studio</h1><p className="mt-1 text-sm text-gray-600">Explore our resource library and access learning resources for professional development</p></div></div>}
+          </div>
+          <div id="course-source-panel" role={isCollegeEducator ? "tabpanel" : undefined} aria-labelledby={isCollegeEducator ? `course-source-${sourceTab}` : undefined} tabIndex={0}>
+          {isCollegeEducator && sourceTab === "course" ? <EducatorMappedCourses embedded /> : <>
           {/* Loading State */}
           {loading && (
             <div className="flex flex-col items-center justify-center min-h-[80vh]">
@@ -266,27 +291,6 @@ const BrowseCourses = () => {
                   </p>
                 </motion.div>
               </motion.div>
-            </div>
-          )}
-
-          {/* Header */}
-          {!loading && (
-            <div className="mb-8">
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <div className="flex items-start gap-3">
-                  <div className="p-2 rounded-lg bg-indigo-600">
-                    <BookOpen className="w-6 h-6 text-white" />
-                  </div>
-                  <div className="flex-1">
-                    <h1 className="font-bold text-2xl text-indigo-600">
-                      Educator Resource Studio
-                    </h1>
-                    <p className="text-sm text-gray-600 mt-1">
-                      Explore our resource library and access learning resources for professional development
-                    </p>
-                  </div>
-                </div>
-              </div>
             </div>
           )}
 
@@ -612,6 +616,8 @@ const BrowseCourses = () => {
             </span>
           </motion.div>
         )}
+          </>}
+          </div>
         </div>
       </div>
     </>

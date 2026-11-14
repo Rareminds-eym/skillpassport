@@ -27,6 +27,21 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   try {
     switch (action) {
       case 'create-assignment': {
+        const { data: courseAccess, error: accessError } = await supabase.rpc('college_course_workflow', { p_actor: user.id, p_action: 'courses', p_payload: {} });
+        if (accessError) return apiError(503, 'COURSE_ACCESS_UNAVAILABLE', 'Could not verify course ownership.', context.request);
+        const institutionCourse = (courseAccess?.courses || []).find((course: any) => course.ownership === 'institution'
+          && course.program_id === params.program_id && course.college_id === params.college_id
+          && (params.college_course_id ? course.id === params.college_course_id : course.title === params.course_name && course.code === params.course_code));
+        if (!institutionCourse) return apiError(403, 'FORBIDDEN', 'Assignments can only be created for your mapped institution-owned courses.', context.request);
+        const { data: section, error: sectionError } = await supabase.from('program_sections').select('program_id,department_id,semester').eq('id', params.program_section_id).maybeSingle();
+        if (sectionError || !section || section.program_id !== institutionCourse.program_id || section.department_id !== params.department_id || section.semester !== institutionCourse.semester) {
+          return apiError(403, 'FORBIDDEN', 'Section does not match the mapped course.', context.request);
+        }
+        params.educator_user_id = user.id;
+        params.course_name = institutionCourse.title;
+        params.course_code = institutionCourse.code;
+        params.college_course_id = institutionCourse.id;
+
         const { data: educator } = await supabase.from('college_lecturers').select('first_name, last_name').eq('user_id', params.educator_user_id).maybeSingle();
         let educatorName = educator ? `${educator.first_name || ''} ${educator.last_name || ''}`.trim() : '';
         let isExternalEducator = false;
@@ -143,136 +158,10 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       }
 
       case 'get-educator-courses': {
-        const { educator_user_id, program_id } = params;
-        console.log('[college-admin/assignments] get-educator-courses called', {
-          educator_user_id,
-          program_id,
-          action: 'get-educator-courses'
-        });
-
-        // Fetch college-mapped courses
-        const { data: collegeCourses, error: collegeError } = await supabase
-          .from('college_course_mappings')
-          .select('course_id, semester, college_courses!inner(id, course_name, course_code, college_id)')
-          .eq('faculty_id', educator_user_id)
-          .eq('program_id', program_id);
-
-        console.log('[college-admin/assignments] college courses query result', {
-          success: !collegeError,
-          rowCount: collegeCourses?.length || 0,
-          error: collegeError?.message
-        });
-
-        if (collegeError) {
-          console.error('[college-admin/assignments] college courses database error', collegeError);
-          return apiDbError(collegeError, context.request, { startTime });
-        }
-
-        // Fetch courses from college_attendance_sessions assigned to this educator
-        // 1. Resolve faculty IDs: educator_user_id and college_lecturers.id (since college_attendance_sessions.faculty_id maps to college_lecturers.id)
-        const { data: lecturer } = await supabase
-          .from('college_lecturers')
-          .select('id')
-          .eq('user_id', educator_user_id)
-          .maybeSingle();
-
-        const facultyIds = [educator_user_id];
-        if (lecturer?.id && lecturer.id !== educator_user_id) {
-          facultyIds.push(lecturer.id);
-        }
-
-        // 2. Resolve program name if program_id is present
-        let programName: string | null = null;
-        if (program_id) {
-          const { data: prog } = await supabase
-            .from('programs')
-            .select('name')
-            .eq('id', program_id)
-            .maybeSingle();
-          if (prog?.name) {
-            programName = prog.name;
-          }
-        }
-
-        // 3. Query college_attendance_sessions
-        const { data: attendanceSessions, error: attendanceError } = await supabase
-          .from('college_attendance_sessions')
-          .select('id, subject_name, subject_code, program_id, program_name, college_id, semester, section')
-          .in('faculty_id', facultyIds);
-
-        console.log('[college-admin/assignments] attendance sessions query result', {
-          success: !attendanceError,
-          rowCount: attendanceSessions?.length || 0,
-          error: attendanceError?.message
-        });
-
-        if (attendanceError) {
-          console.warn('[college-admin/assignments] attendance sessions query error (continuing with college courses only)', attendanceError);
-        }
-
-        // Merge both course sources into a single map (deduplicate by ID or code/name)
-        const coursesMap = new Map();
-
-        // Add college courses first (from college_course_mappings)
-        (collegeCourses || []).forEach((m: any) => {
-          const c = Array.isArray(m.college_courses) ? m.college_courses[0] : m.college_courses;
-          if (c && !coursesMap.has(c.id)) {
-            coursesMap.set(c.id, { 
-              id: c.id, 
-              course_name: c.course_name, 
-              course_code: c.course_code, 
-              college_id: c.college_id,
-              semester: m.semester || null
-            });
-          }
-        });
-
-        // Add courses from college_attendance_sessions
-        const filteredSessions = (attendanceSessions || []).filter((s: any) => {
-          if (!program_id) return true;
-          if (s.program_id && s.program_id === program_id) return true;
-          if (programName && s.program_name && s.program_name.trim().toLowerCase() === programName.trim().toLowerCase()) return true;
-          return !s.program_id && !s.program_name;
-        });
-
-        filteredSessions.forEach((session: any) => {
-          const cName = session.subject_name?.trim();
-          if (!cName) return;
-
-          let cCode = session.subject_code?.trim() || '';
-          if (!cCode && cName.includes(' - ')) {
-            cCode = cName.split(' - ')[0].trim();
-          }
-
-          // Check if already in coursesMap by course_name or course_code
-          const alreadyExists = Array.from(coursesMap.values()).some((existing: any) => {
-            const sameName = existing.course_name?.trim().toLowerCase() === cName.toLowerCase();
-            const sameCode = cCode && existing.course_code && existing.course_code?.trim().toLowerCase() === cCode.toLowerCase();
-            return sameName || sameCode;
-          });
-
-          if (!alreadyExists) {
-            const courseId = session.id || `session-${cCode || cName}`;
-            coursesMap.set(courseId, {
-              id: courseId,
-              course_name: cName,
-              course_code: cCode,
-              college_id: session.college_id || null,
-              semester: session.semester || null,
-              section: session.section || null
-            });
-          }
-        });
-
-        const courses = Array.from(coursesMap.values()).sort((a: any, b: any) => a.course_name.localeCompare(b.course_name));
-        console.log('[college-admin/assignments] get-educator-courses final result', {
-          collegeCourseCount: collegeCourses?.length || 0,
-          attendanceSessionCount: filteredSessions.length,
-          uniqueCourseCount: courses.length,
-          courses
-        });
-
-        return apiSuccess(courses, context.request, { startTime });
+        const { data, error } = await supabase.rpc('college_course_workflow', { p_actor: user.id, p_action: 'courses', p_payload: {} });
+        if (error) return apiDbError(error, context.request, { startTime });
+        const courses = (data?.courses || []).filter((course: any) => course.ownership === 'institution' && (!params.program_id || course.program_id === params.program_id));
+        return apiSuccess(courses.map((course: any) => ({ id: course.id, course_name: course.title, course_code: course.code, college_id: course.college_id, semester: course.semester })), context.request, { startTime });
       }
 
       case 'get-section-learners': {
@@ -601,6 +490,14 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
       case 'update-assignment': {
         const { assignment_id, ...updates } = params;
+        const { data: existing, error: existingError } = await supabase.from('college_assignments')
+          .select('college_educator_id,external_educator_id,college_id,college_course_id,course_name,course_code,program_id,department_id,program_section_id')
+          .eq('assignment_id', assignment_id).maybeSingle();
+        if (existingError || !existing || existing.college_educator_id !== user.id) return apiError(403, 'FORBIDDEN', 'Only the assigned educator can edit this institution assignment.', context.request);
+        const immutable = ['college_id','college_course_id','course_name','course_code','program_id','department_id','program_section_id','college_educator_id','external_educator_id'];
+        if (immutable.some(key => key in updates && updates[key] !== existing[key])) return apiError(403, 'FORBIDDEN', 'The course and class of an existing assignment cannot be changed.', context.request);
+        for (const key of immutable) delete updates[key];
+
         const { data, error } = await supabase.from('college_assignments').update(updates).eq('assignment_id', assignment_id).select('*, programs!college_assignments_program_id_fkey(name), departments!college_assignments_department_id_fkey(name)').single();
         if (error) return apiDbError(error, context.request, { startTime });
         return apiSuccess({ ...data, program_name: data.programs?.name, department_name: data.departments?.name, status: data.due_date < new Date().toISOString() ? 'completed' : 'active' }, context.request, { startTime });

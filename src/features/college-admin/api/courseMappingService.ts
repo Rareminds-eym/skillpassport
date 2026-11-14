@@ -180,7 +180,7 @@ export async function updateCourseMapping(id: string, updates: Partial<CourseMap
     throw new Error('VALIDATION_ERROR: Mapping ID is required');
   }
 
-  const response = await apiPost('/college-admin/academic', { action: 'update-course-mapping', id, ...updates });
+  const response = await apiPost('/college-admin/academic', { action: 'update-course-mapping', ...updates, mapping_id: id });
   if (!response.success) throw new Error(response.error || 'Failed to update course mapping');
   return response.data;
 }

@@ -307,8 +307,8 @@ const UnifiedSignup = () => {
   // Keep control until the destination route commits, including concurrent navigation.
   useEffect(() => () => { useAuthStore.setState({ signupInProgress: false }); }, []);
 
-  // Check if running on localhost using utility function
-  const isDevEnvironment = isLocalhost() || isDevelopment();
+  // Development and QA allow signup without a phone; production requires it.
+  const isPhoneOptionalEnvironment = isLocalhost() || isDevelopment() || import.meta.env.MODE === 'qa';
 
   // Get plan context from location.state (if user selected a plan before signing up)
   const planFromState = (location.state as any)?.plan;
@@ -608,13 +608,13 @@ const UnifiedSignup = () => {
     if (!state.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(state.email)) { setState(prev => ({ ...prev, error: 'Please enter a valid email' })); return false; }
 
     // Phone number validation based on environment
-    if (!isDevEnvironment) {
+    if (!isPhoneOptionalEnvironment) {
       // Production: Phone number is required
       if (!state.phone) { setState(prev => ({ ...prev, error: 'Please enter your mobile number' })); return false; }
       if (state.phone.length < 7 || state.phone.length > 15) { setState(prev => ({ ...prev, error: 'Please enter a valid phone number (7-15 digits)' })); return false; }
       if (!state.otpVerified) { setState(prev => ({ ...prev, error: 'Please verify your phone number' })); return false; }
     } else {
-      // Localhost: Phone number is optional, but if provided, must be verified
+      // Development/QA: Phone is optional, but if provided, must be verified
       if (state.phone && (state.phone.length < 7 || state.phone.length > 15)) { setState(prev => ({ ...prev, error: 'Please enter a valid phone number (7-15 digits)' })); return false; }
       if (state.phone && !state.otpVerified) { setState(prev => ({ ...prev, error: 'Please verify your phone number' })); return false; }
     }
@@ -1313,8 +1313,8 @@ const UnifiedSignup = () => {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">
                     Mobile Number
-                    {isDevEnvironment && <span className="text-gray-400 text-xs">(Optional)</span>}
-                    {!isDevEnvironment && <span className="text-red-500">*</span>}
+                    {isPhoneOptionalEnvironment && <span className="text-gray-400 text-xs">(Optional)</span>}
+                    {!isPhoneOptionalEnvironment && <span className="text-red-500">*</span>}
                   </label>
                   <div className="flex items-center gap-3">
                     <div className="flex-1 flex items-center border rounded-xl bg-gray-50 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition-all border-gray-200">

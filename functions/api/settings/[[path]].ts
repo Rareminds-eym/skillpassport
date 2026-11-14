@@ -46,10 +46,12 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
       const [permResult, scopeResult] = await Promise.all([
         supabase
           .from('college_role_module_permissions')
-          .select('role_code, college_setting_modules!inner(id, module_name), college_setting_permissions!inner(id, permission_name)'),
+          .select('role_code, college_setting_modules!inner(id, module_name), college_setting_permissions!inner(id, permission_name)')
+          .in('role_code', ['college_admin', 'college_educator']),
         supabase
           .from('college_role_scope_rules')
           .select('role_code, scope_type, scope_value')
+          .in('role_code', ['college_admin', 'college_educator'])
       ]);
 
       if (permResult.error) throw permResult.error;

@@ -36,6 +36,8 @@ export type NotificationType =
 export type Notification = {
   id: string;
   recipient_id: string;
+  curriculum_change_id?: string | null;
+  action_url?: string | null;
   opportunity_id?: string | null;
   learning_requirements_version?: number | null;
   type: NotificationType;
@@ -142,7 +144,7 @@ export function useNotifications(
           const row = event.payload as Notification;
 
           if (event.event === 'INSERT') {
-            setItems((prev) => [row, ...prev]);
+            setItems((prev) => prev.some(item => item.id === row.id) ? prev : [row, ...prev]);
           } else if (event.event === 'UPDATE') {
             setItems((prev) =>
               prev.map((n) => (n.id === row.id ? row : n))

@@ -2,6 +2,8 @@ import { apiGet, apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('settings-service');
+type ApiEnvelope<T> = { data?: T } & Partial<T>;
+interface StoredRole { roleType: string; moduleAccess: Record<string, string[]>; scopeRules: Record<string, string[]> }
 
 export interface Module {
   id: string;
@@ -54,28 +56,28 @@ const formatRoleName = (roleType: string): string => {
 
 export const getAvailableModules = async (): Promise<Module[]> => {
   try {
-    const response: any = await apiGet('/settings/modules');
+    const response = await apiGet<ApiEnvelope<{ modules: Module[] }>>('/settings/modules');
     return response?.data?.modules ?? response?.modules ?? [];
   } catch (error) {
     logger.error('Error fetching modules', error instanceof Error ? error : new Error(String(error)));
-    return [];
+    throw error;
   }
 };
 
 export const getAvailablePermissions = async (): Promise<Permission[]> => {
   try {
-    const response: any = await apiGet('/settings/permissions');
+    const response = await apiGet<ApiEnvelope<{ permissions: Permission[] }>>('/settings/permissions');
     return response?.data?.permissions ?? response?.permissions ?? [];
   } catch (error) {
     logger.error('Error fetching permissions', error instanceof Error ? error : new Error(String(error)));
-    return [];
+    throw error;
   }
 };
 
 export const getRolesWithPermissions = async (): Promise<Role[]> => {
   try {
-    const response: any = await apiGet('/settings/roles');
-    const roles: any[] = response?.data?.roles ?? response?.roles ?? [];
+    const response = await apiGet<ApiEnvelope<{ roles: StoredRole[] }>>('/settings/roles');
+    const roles: StoredRole[] = response?.data?.roles ?? response?.roles ?? [];
 
     return roles.map(r => {
       const moduleAccess: ModuleAccess[] = Object.entries(r.moduleAccess || {}).map(([module, perms]) => ({
@@ -97,7 +99,7 @@ export const getRolesWithPermissions = async (): Promise<Role[]> => {
     });
   } catch (error) {
     logger.error('Error fetching roles with permissions', error instanceof Error ? error : new Error(String(error)));
-    return [];
+    throw error;
   }
 };
 
@@ -107,13 +109,13 @@ export const saveRolePermissions = async (
   scopeRules: ScopeRule[] = []
 ): Promise<boolean> => {
   try {
-    const response: any = await apiPost('/settings/roles', {
+    const response = await apiPost<ApiEnvelope<{ success: boolean }>>('/settings/roles', {
       action: 'save',
       roleType,
       modulePermissions,
       scopeRules,
     });
-    return response?.data?.success ?? true;
+    return response?.data?.success ?? response?.success ?? false;
   } catch (error) {
     logger.error('Error saving role permissions', error instanceof Error ? error : new Error(String(error)));
     return false;
@@ -122,7 +124,7 @@ export const saveRolePermissions = async (
 
 export const getDepartments = async (): Promise<{ id: string; name: string; code: string }[]> => {
   try {
-    const response: any = await apiGet('/settings/departments');
+    const response = await apiGet<ApiEnvelope<{ departments: { id: string; name: string; code: string }[] }>>('/settings/departments');
     return response?.data?.departments ?? response?.departments ?? [];
   } catch (error) {
     logger.error('Error fetching departments', error instanceof Error ? error : new Error(String(error)));
@@ -132,7 +134,7 @@ export const getDepartments = async (): Promise<{ id: string; name: string; code
 
 export const getPrograms = async (): Promise<{ id: string; name: string; code: string }[]> => {
   try {
-    const response: any = await apiGet('/settings/programs');
+    const response = await apiGet<ApiEnvelope<{ programs: { id: string; name: string; code: string }[] }>>('/settings/programs');
     return response?.data?.programs ?? response?.programs ?? [];
   } catch (error) {
     logger.error('Error fetching programs', error instanceof Error ? error : new Error(String(error)));

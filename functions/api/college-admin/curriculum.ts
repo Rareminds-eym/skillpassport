@@ -38,6 +38,14 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     }
   }
 
+  // Educator edits must go through the mapping-checked proposal workflow.
+  if (!["get-curriculum-by-id", "get-curriculums", "export-curriculum", "get-curriculums-for-cloning", "get-departments", "get-programs", "get-courses", "get-semesters", "get-assessment-types", "get-academic-years"].includes(action)) {
+    const { data: actor, error: actorError } = await supabase.from('users').select('role,isActive').eq('id', user.id).maybeSingle();
+    if (actorError || !actor?.isActive || !['college_admin','university_admin','university_admin_dean'].includes(actor.role)) {
+      return apiError(403, 'FORBIDDEN', 'Administrator approval is required. Submit educator edits through Courses.', context.request);
+    }
+  }
+
   const startTime = Date.now();
 
   try {
@@ -408,7 +416,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
         const { data: units, error: unitsError } = await supabase
           .from('college_curriculum_units')
-          .select('id', { count: 'exact', head: true })
+          .select('id')
           .eq('curriculum_id', id);
 
         if (unitsError) return apiDbError(unitsError, context.request, { startTime });
@@ -419,7 +427,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
         const { data: outcomes, error: outcomesError } = await supabase
           .from('college_curriculum_outcomes')
-          .select('id', { count: 'exact', head: true })
+          .select('id')
           .eq('curriculum_id', id);
 
         if (outcomesError) return apiDbError(outcomesError, context.request, { startTime });
@@ -853,54 +861,24 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
         if (mappedError) return apiDbError(mappedError, context.request, { startTime });
 
-        // Fetch all generic courses from the courses table
-        const { data: genericCourses, error: genericError } = await supabase
-          .from('courses')
-          .select('course_id, code, title, credits, course_type')
-          .or('status.eq.Active,status.eq.Published')
-          .is('deleted_at', null)
-          .order('title');
+        // Curriculum records reference college_courses. Global Resource Studio
+        // courses are not program/semester mappings and cannot be used here.
+        const courses = (mappedCourses || [])
+          .filter((mapping: any) => mapping.course?.id)
+          .map((mapping: any) => ({
+            id: mapping.course.id,
+            mapping_id: mapping.id,
+            course_code: mapping.course.course_code,
+            course_name: mapping.course.course_name,
+            credits: mapping.course.credits,
+            type: mapping.offering_type,
+            course_type: mapping.course.course_type,
+            source: 'college_course',
+          }));
+        const uniqueCourses = Array.from(new Map(courses.map(course => [course.id, course])).values());
+        uniqueCourses.sort((a, b) => (a.course_name || '').localeCompare(b.course_name || ''));
 
-        if (genericError) return apiDbError(genericError, context.request, { startTime });
-
-        // Transform mapped courses
-        const transformedMapped = (mappedCourses || []).map((mapping: any) => ({
-          id: mapping.course?.id,
-          mapping_id: mapping.id,
-          course_code: mapping.course?.course_code,
-          course_name: mapping.course?.course_name,
-          credits: mapping.course?.credits,
-          type: mapping.offering_type,
-          course_type: mapping.course?.course_type,
-          source: 'college_course',
-        }));
-
-        // Transform generic courses
-        const transformedGeneric = (genericCourses || []).map((course: any) => ({
-          id: course.course_id,
-          mapping_id: null,
-          course_code: course.code,
-          course_name: course.title,
-          credits: course.credits,
-          type: 'core',
-          course_type: course.course_type,
-          source: 'generic_course',
-        }));
-
-        // Combine both and remove duplicates (prefer college-specific if exists)
-        const combinedCourses = [...transformedMapped];
-        const mappedIds = new Set(transformedMapped.map((c: any) => c.course_code));
-
-        transformedGeneric.forEach((course: any) => {
-          if (!mappedIds.has(course.course_code)) {
-            combinedCourses.push(course);
-          }
-        });
-
-        // Sort by course name
-        combinedCourses.sort((a, b) => (a.course_name || '').localeCompare(b.course_name || ''));
-
-        return apiSuccess(combinedCourses, context.request, { startTime });
+        return apiSuccess(uniqueCourses, context.request, { startTime });
       }
 
       case 'get-semesters': {

@@ -1,3 +1,5 @@
+import { useQuery } from '@tanstack/react-query';
+import { courseWorkflow } from '@/features/college-course-workflow';
 import { useAuthStore } from '@/shared/model/authStore';
 import { useState, useMemo, useEffect } from "react";
 import {
@@ -116,6 +118,10 @@ const defaultSkills = [
 ];
 
 export default function CollegeSkillTasks() {
+    const actor = useAuthStore(state => state.user);
+    const assignmentCourseAccess = useQuery({ queryKey: ['assignment-course-access', actor?.id], queryFn: courseWorkflow.courses, enabled: Boolean(actor?.id) });
+    const canCreateTasks = Boolean(assignmentCourseAccess.data?.courses.some(course => course.ownership === 'institution'));
+
     // State management
     const [loading, setLoading] = useState(true);
     const [departments, setDepartments] = useState<Department[]>([]);
@@ -840,6 +846,7 @@ export default function CollegeSkillTasks() {
             }
 
             const assignmentData = {
+                college_course_id: courses.find(course => course.course_name === taskForm.course_name && course.course_code === taskForm.course_code)?.id,
                 title: taskForm.title.trim(),
                 description: taskForm.description,
                 instructions: taskForm.instructions,
@@ -1330,9 +1337,13 @@ export default function CollegeSkillTasks() {
                     <div className="flex items-center justify-between">
                         <div>
                             <h1 className="text-2xl font-bold text-gray-900">Skill Tasks</h1>
+                            {!assignmentCourseAccess.isPending && !canCreateTasks && <p role="status" className="text-sm text-gray-600">Assignment creation is available only for mapped institution-owned courses.</p>}
+                            {assignmentCourseAccess.error && <p role="alert">Could not verify course access. <button type="button" onClick={() => { void assignmentCourseAccess.refetch(); }}>Try again</button></p>}
                             <p className="text-gray-600 mt-1">Create, manage, and evaluate skill-based assignments</p>
                         </div>
                         <button
+                            disabled={!canCreateTasks}
+                            title={canCreateTasks ? undefined : "Assignments require a mapped college course"}
                             onClick={() => {
                                 setFormMode('create');
                                 setCreateTaskModal(true);
@@ -1473,7 +1484,9 @@ export default function CollegeSkillTasks() {
                                 <p className="mt-1 text-sm text-gray-500">Get started by creating a new task.</p>
                                 <div className="mt-6">
                                     <button
-                                        onClick={() => {
+                                        disabled={!canCreateTasks}
+                            title={canCreateTasks ? undefined : "Assignments require a mapped college course"}
+                            onClick={() => {
                                             setFormMode('create');
                                             setCreateTaskModal(true);
                                         }}

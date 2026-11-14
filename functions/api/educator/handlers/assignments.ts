@@ -1,3 +1,4 @@
+import { getContextUser } from '../../../lib/auth';
 ﻿import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getServiceClient } from '../../../lib/supabase';
 import { apiSuccess, apiDbError, apiError } from '../../../lib/response';
@@ -15,6 +16,11 @@ const supabase = getSub(context);
 
 export async function handleCreateAssignment(params: any, context: AuthenticatedContext, startTime: number) {
 const supabase = getSub(context);
+  const actor = getContextUser(context);
+  const { data: collegeFaculty, error: affiliationError } = await supabase.from('college_lecturers').select('id').eq('user_id', actor.id).maybeSingle();
+  if (affiliationError) return apiError(503, 'AFFILIATION_UNAVAILABLE', 'Could not verify educator affiliation.', context.request);
+  if (collegeFaculty) return apiError(403, 'FORBIDDEN', 'College educators must create assignments through their mapped institution-owned courses.', context.request);
+
   const { assignmentData } = params;
   if (!assignmentData) return apiError(400, 'VALIDATION_ERROR', 'Missing assignmentData', context.request, { startTime });
   const { data, error } = await supabase.from('assignments').insert([{
@@ -34,6 +40,11 @@ const supabase = getSub(context);
 
 export async function handleCreateAssignmentsForClasses(params: any, context: AuthenticatedContext, startTime: number) {
  const supabase = getSub(context);
+  const actor = getContextUser(context);
+  const { data: collegeFaculty, error: affiliationError } = await supabase.from('college_lecturers').select('id').eq('user_id', actor.id).maybeSingle();
+  if (affiliationError) return apiError(503, 'AFFILIATION_UNAVAILABLE', 'Could not verify educator affiliation.', context.request);
+  if (collegeFaculty) return apiError(403, 'FORBIDDEN', 'College educators must create assignments through their mapped institution-owned courses.', context.request);
+
   const { baseData, classIds } = params;
   if (!baseData || !classIds?.length) return apiError(400, 'VALIDATION_ERROR', 'Missing baseData or classIds', context.request, { startTime });
   const toInsert = classIds.map((classId: string) => ({
