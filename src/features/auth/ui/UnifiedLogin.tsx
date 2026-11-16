@@ -402,7 +402,7 @@ const UnifiedLogin = () => {
 
   return (
     <div className="flex items-center lg:py-8 bg-white">
-      <div className="w-full lg:mx-4 lg:my-8 xl:mx-auto max-w-7xl grid grid-cols-1 lg:grid-cols-2 h-screen lg:h-[700px] overflow-hidden">
+      <div className="w-full lg:mx-4 lg:my-8 xl:mx-auto max-w-7xl grid grid-cols-1 lg:grid-cols-2 min-h-screen lg:min-h-[700px]">
         {/* LEFT SIDE - Illustration */}
         <div className="hidden lg:flex relative p-10 text-white flex-col justify-between rounded-3xl shadow-lg bg-gradient-to-br from-[#0a6aba] to-[#09277f] overflow-hidden">
           <div className="absolute inset-0 z-0">
@@ -423,14 +423,14 @@ const UnifiedLogin = () => {
         </div>
 
         {/* RIGHT SIDE - Login Form */}
-        <div className="relative flex items-center justify-center px-4 sm:px-8 md:px-12 py-8 lg:py-8">
+        <div className="relative flex items-center justify-center px-4 sm:px-8 md:px-12 py-8 lg:py-8 lg:items-stretch lg:pb-0">
           <div
             className="absolute inset-0 lg:hidden bg-gradient-to-br from-[#0a6aba] to-[#09277f]"
             aria-hidden
           />
           <div className="hidden lg:block absolute inset-0 bg-white" />
 
-          <div className="relative w-full max-w-md">
+          <div className="relative w-full max-w-md lg:flex lg:flex-col">
             <div className="text-center mb-8">
               <h3 className="text-3xl font-bold text-white lg:text-gray-900">Sign In</h3>
               <p className="text-sm text-white/80 lg:text-gray-600 mt-2">
@@ -438,7 +438,7 @@ const UnifiedLogin = () => {
               </p>
             </div>
 
-            <div className="rounded-2xl bg-transparent lg:bg-white/95 lg:shadow-xl lg:ring-1 lg:ring-black/5 p-5 sm:p-6 lg:p-8">
+            <div className="rounded-2xl bg-transparent lg:flex-1 lg:bg-white/95 lg:shadow-xl lg:ring-1 lg:ring-black/5 p-5 sm:p-6 lg:p-8">
               {justVerified && (
                 <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-start gap-3">
                   <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
