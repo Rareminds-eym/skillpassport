@@ -26,12 +26,12 @@ const fixture = `CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE servic
  ALTER TABLE public.license_assignments ADD FOREIGN KEY(user_id) REFERENCES public.users(id);
  ALTER TABLE public.license_assignments ADD FOREIGN KEY(license_pool_id) REFERENCES public.license_pools(id) ON DELETE CASCADE;
  CREATE UNIQUE INDEX unique_active_assignment ON public.license_assignments(user_id,organization_subscription_id) WHERE status='active';
- ${read('supabase/migrations/20261116010000_hybrid_seat_integrity.sql')}
+ ${read('supabase/migrations/20270313010000_hybrid_seat_integrity.sql')}
  CREATE TRIGGER trigger_validate_pool_allocation BEFORE INSERT OR UPDATE ON public.license_pools FOR EACH ROW EXECUTE FUNCTION public.validate_pool_allocation();
  CREATE TRIGGER trigger_sync_pool_assigned_seats AFTER INSERT OR UPDATE OR DELETE ON public.license_assignments FOR EACH ROW EXECUTE FUNCTION public.sync_pool_assigned_seats();
  CREATE TRIGGER trigger_auto_assign_license_learners AFTER INSERT ON public.learners FOR EACH ROW EXECUTE FUNCTION public.auto_assign_license_to_member();
  CREATE TABLE public.subscriptions(id uuid PRIMARY KEY,plan_code text,seat_count integer);
- ${read('../sso-worker/supabase/migrations/20261116010000_guard_hybrid_capacity_reductions.sql')}
+ ${read('../sso-worker/supabase/migrations/20270313010000_guard_hybrid_capacity_reductions.sql')}
  ${read('tests/sql/hybrid_seat_integrity.test.sql')}`;
 const shell = `cat > /tmp/seat-test.sql
 initdb -D /tmp/seat-db --auth=trust >/dev/null
