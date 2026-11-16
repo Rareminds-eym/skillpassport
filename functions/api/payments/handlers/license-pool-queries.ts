@@ -1,72 +1,37 @@
-
-import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import { getContextUser } from '../../../lib/auth';
 import { getServiceClient } from '../../../lib/supabase';
+import { authorizeSeatOrganization, type SeatRequestContext } from '../../../lib/seat-access';
 import { apiSuccess, apiError } from '../../../lib/response';
 
-export async function handleLicensePoolQueries(context: AuthenticatedContext): Promise<Response> {
-  const env = context.env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string };
+export async function handleLicensePoolQueries(context: SeatRequestContext): Promise<Response> {
+  const supabase = getServiceClient(context.env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string });
   const url = new URL(context.request.url);
   const action = url.searchParams.get('action');
   const poolId = url.searchParams.get('poolId');
-  const orgId = url.searchParams.get('orgId');
-
+  let orgId = url.searchParams.get('orgId');
   try {
-    const supabase = getServiceClient(env);
-    const user = getContextUser(context);
-
-    // Helper for auth
-    const authorizeOrg = async (checkOrgId: string) => {
-      const { data: membership } = await supabase
-        .from('license_assignments')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('organization_id', checkOrgId)
-        .limit(1)
-        .maybeSingle();
-      return !!membership;
-    };
-
-    if (action === 'getLicensePools' && orgId) {
-      if (!(await authorizeOrg(orgId))) return apiError(403, 'FORBIDDEN', 'Not authorized for this organization', context.request);
-      const { data, error } = await supabase
-        .from('license_pools')
-        .select('*')
-        .eq('organization_id', orgId)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      return apiSuccess(data || [], context.request);
+    if (!['getLicensePools', 'getLicensePoolById', 'getPoolAssignments'].includes(action ?? '')) {
+      return apiError(400, 'VALIDATION_ERROR', 'Invalid seat query action', context.request);
     }
-
-    if (action === 'getLicensePoolById' && poolId) {
-      const { data: poolAuth } = await supabase.from('license_pools').select('organization_id').eq('id', poolId).single();
-      if (!poolAuth || !(await authorizeOrg(poolAuth.organization_id))) return apiError(403, 'FORBIDDEN', 'Not authorized', context.request);
-      const { data, error } = await supabase
-        .from('license_pools')
-        .select('*')
-        .eq('id', poolId)
-        .single();
-
-      if (error) throw error;
-      return apiSuccess(data, context.request);
+    let pool;
+    if (action !== 'getLicensePools') {
+      if (!poolId) return apiError(400, 'VALIDATION_ERROR', 'poolId is required', context.request);
+      const result = await supabase.from('license_pools').select('*').eq('id', poolId).maybeSingle();
+      if (result.error) throw result.error;
+      if (!result.data) return apiError(404, 'NOT_FOUND', 'License pool not found', context.request);
+      pool = result.data;
+      orgId = pool.organization_id;
     }
-
-    if (action === 'getPoolAssignments' && poolId) {
-      const { data: poolAuth } = await supabase.from('license_pools').select('organization_id').eq('id', poolId).single();
-      if (!poolAuth || !(await authorizeOrg(poolAuth.organization_id))) return apiError(403, 'FORBIDDEN', 'Not authorized', context.request);
-      const { data, error } = await supabase
-        .from('license_assignments')
-        .select(`*, users (id, email, full_name)`)
-        .eq('license_pool_id', poolId)
-        .order('assigned_at', { ascending: false });
-
-      if (error) throw error;
-      return apiSuccess(data || [], context.request);
-    }
-
-    return apiError(400, 'VALIDATION_ERROR', 'Invalid action or missing params', context.request);
+    const denied = await authorizeSeatOrganization(supabase, getContextUser(context).id, orgId ?? '', context.request);
+    if (denied) return denied;
+    if (action === 'getLicensePoolById') return apiSuccess(pool, context.request);
+    const result = action === 'getLicensePools'
+      ? await supabase.from('license_pools').select('*').eq('organization_id', orgId).order('created_at', { ascending: false })
+      : await supabase.from('license_assignments').select('*').eq('license_pool_id', poolId).order('assigned_at', { ascending: false });
+    if (result.error) throw result.error;
+    return apiSuccess(result.data, context.request);
   } catch (error) {
-    console.error('[LicensePoolQueries] Error:', error);
-    return apiError(500, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Unknown error', context.request);
+    console.error('[LicensePoolQueries] Failed seat query', error);
+    return apiError(500, 'INTERNAL_ERROR', 'Unable to read license pools', context.request);
   }
 }

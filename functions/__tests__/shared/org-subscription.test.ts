@@ -217,3 +217,12 @@ describe('Subscription validity', () => {
     expect(isSubscriptionCurrent({ status: 'cancelled', billing_cycle: 'lifetime' })).toBe(false);
   });
 });
+
+
+it.each(['inactive', 'suspended', 'expired'])('does not restore removed organization coverage from a stale JWT/profile when membership is %s', async status => {
+  tables.subscription_cache = [coverage];
+  tables.organization_members[0].status = status;
+  tables.learners = [{ user_id: 'user', college_id: 'org', is_deleted: false }];
+  expect(await resolve(['learner'])).toBeNull();
+  expect(await resolve(['college_admin'])).toBeNull();
+});

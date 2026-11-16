@@ -5,6 +5,7 @@ import { getContextUser } from '../../lib/auth';
 import { apiError, apiSuccess } from '../../lib/response';
 import { getServiceClient } from '../../lib/supabase';
 import { createLogger } from '../../lib/logger';
+import { authorizeSeatOrganization, seatRpcError } from '../../lib/seat-access';
 
 const logger = createLogger('organization-handler');
 
@@ -80,10 +81,12 @@ async function createPool(context: AuthenticatedContext, body: any) {
     .from('subscription_cache')
     .select('seat_count, assigned_seats')
     .eq('id', organizationSubscriptionId)
-    .eq('is_org_subscription', true)
+    .eq('organization_id', organizationId)
+    .eq('is_organization_subscription', true)
     .single();
 
-  const availableSeats = subscription ? (subscription.seat_count - subscription.assigned_seats) : 0;
+  if (!Number.isInteger(allocatedSeats) || allocatedSeats < 1) return apiError(400, 'VALIDATION_ERROR', 'Allocated seats must be a positive integer', context.request);
+  const availableSeats = subscription ? subscription.seat_count : 0;
   if (!subscription || availableSeats < allocatedSeats) {
     return apiError(400, 'VALIDATION_ERROR', 'Insufficient available seats in subscription', context.request);
   }
@@ -138,6 +141,9 @@ async function updatePoolAllocation(context: AuthenticatedContext, body: any) {
 
   const { data: pool } = await supabase.from('license_pools').select('*').eq('id', poolId).single();
   if (!pool) return apiError(404, 'NOT_FOUND', 'License pool not found', context.request);
+  const denied = await authorizeSeatOrganization(supabase, getUserId(context), pool.organization_id, context.request, true);
+  if (denied) return denied;
+  if (!Number.isInteger(newAllocation) || newAllocation < 1) return apiError(400, 'VALIDATION_ERROR', 'Allocation must be a positive integer', context.request);
   if (newAllocation < pool.assigned_seats) {
     return apiError(400, 'VALIDATION_ERROR', `Cannot reduce allocation below assigned seats (${pool.assigned_seats})`, context.request);
   }
@@ -147,145 +153,33 @@ async function updatePoolAllocation(context: AuthenticatedContext, body: any) {
   return apiSuccess(data, context.request);
 }
 
-async function adjustSeatCounters(supabase: SupabaseClient, poolId: string, subId: string, delta: number) {
-  const now = new Date().toISOString();
-
-  // Recalculate assigned seats from ground-truth active assignments to eliminate counter drift
-  const [activePoolRes, activeSubRes] = await Promise.all([
-    supabase.from('license_assignments').select('id', { count: 'exact', head: true }).eq('license_pool_id', poolId).eq('status', 'active'),
-    supabase.from('license_assignments').select('id', { count: 'exact', head: true }).eq('organization_subscription_id', subId).eq('status', 'active'),
-  ]);
-
-  const poolCount = activePoolRes.count;
-  const subCount = activeSubRes.count;
-
-  // 🔒 Observability: never silently fall back to the drift-prone delta path —
-  // log the failure so stale seat counters are attributable in production.
-  if (activePoolRes.error) {
-    logger.warn('adjustSeatCounters: license_pool assignment count query failed, falling back to delta adjustment', { poolId, error: activePoolRes.error });
-  }
-  if (activeSubRes.error) {
-    logger.warn('adjustSeatCounters: subscription assignment count query failed, falling back to delta adjustment', { subId, error: activeSubRes.error });
-  }
-
-  let newPoolSeats: number;
-  let newSubSeats: number;
-
-  if (poolCount !== null && subCount !== null) {
-    newPoolSeats = poolCount;
-    newSubSeats = subCount;
-  } else {
-    const [poolRes, subRes] = await Promise.all([
-      supabase.from('license_pools').select('assigned_seats').eq('id', poolId).single(),
-      supabase.from('subscription_cache').select('assigned_seats').eq('id', subId).single(),
-    ]);
-    if (poolRes.error) throw poolRes.error;
-    if (subRes.error) throw subRes.error;
-    newPoolSeats = Math.max(0, (poolRes.data?.assigned_seats || 0) + delta);
-    newSubSeats = Math.max(0, (subRes.data?.assigned_seats || 0) + delta);
-  }
-
-  const [poolUpdate, subUpdate] = await Promise.all([
-    supabase.from('license_pools').update({ assigned_seats: newPoolSeats, updated_at: now }).eq('id', poolId),
-    supabase.from('subscription_cache').update({ assigned_seats: newSubSeats, updated_at: now }).eq('id', subId),
-  ]);
-
-  if (poolUpdate.error) throw poolUpdate.error;
-  if (subUpdate.error) throw subUpdate.error;
-}
-
-async function assignLicense(context: AuthenticatedContext, body: any) {
+async function mutateLicense(context: AuthenticatedContext, body: Record<string, string>, operation: 'assign' | 'revoke' | 'transfer') {
   const supabase = getSupabase(context);
-  const { poolId, userId: targetUserId } = body;
-  const assignedBy = getUserId(context);
-
-  const { data: poolRaw } = await supabase.from('license_pools').select('*').eq('id', poolId).single();
-  if (!poolRaw) return apiError(404, 'NOT_FOUND', 'License pool not found', context.request);
-
-  // 🔒 SECURITY: Only org admins can assign licenses from the org's pools
-  const membership = await verifyOrgMembership(supabase, assignedBy, poolRaw.organization_id);
-  if (!membership) {
-    return apiError(403, 'FORBIDDEN', 'Not a member of this organization', context.request);
+  if ((operation === 'assign' && (!body.poolId || !body.userId)) ||
+      (operation === 'revoke' && !body.assignmentId) ||
+      (operation === 'transfer' && (!body.fromUserId || !body.toUserId || !body.organizationSubscriptionId))) {
+    return apiError(400, 'VALIDATION_ERROR', 'Required license identifiers are missing', context.request);
   }
-  if (!isAdmin(membership.role)) {
-    return apiError(403, 'FORBIDDEN', 'Insufficient permissions. Admin role required.', context.request);
-  }
-
-  const [pool] = await enrichPoolAssignedSeats(supabase, [poolRaw]);
-  if (!pool || (pool.available_seats ?? 0) <= 0) return apiError(400, 'VALIDATION_ERROR', 'No available seats in pool', context.request);
-
-  const { data: existing } = await supabase.from('license_assignments').select('id').eq('user_id', targetUserId).eq('organization_subscription_id', pool.organization_subscription_id).eq('status', 'active').single();
-  if (existing) return apiError(409, 'DUPLICATE', 'User already has an active license assignment', context.request);
-
-  const { data, error } = await supabase.from('license_assignments').insert({ license_pool_id: poolId, organization_subscription_id: pool.organization_subscription_id, user_id: targetUserId, member_type: pool.member_type, status: 'active', assigned_by: assignedBy }).select().single();
-  if (error) throw error;
-
-  await adjustSeatCounters(supabase, poolId, pool.organization_subscription_id, 1);
+  const { data, error } = await supabase.rpc('manage_organization_license', {
+    p_operation: operation, p_actor: getUserId(context), p_pool: body.poolId || null,
+    p_target: operation === 'transfer' ? body.toUserId : body.userId || null,
+    p_assignment: body.assignmentId || null, p_source_user: body.fromUserId || null,
+    p_subscription: body.organizationSubscriptionId || null, p_reason: body.reason || null,
+  });
+  if (error) return seatRpcError(error, context.request);
   return apiSuccess(data, context.request);
 }
 
-async function unassignLicense(context: AuthenticatedContext, body: any) {
-  const supabase = getSupabase(context);
-  const { assignmentId, reason } = body;
-  const revokedBy = getUserId(context);
-
-  const { data: assignment } = await supabase.from('license_assignments').select('id, license_pool_id, organization_subscription_id, status').eq('id', assignmentId).single();
-  if (!assignment) return apiError(404, 'NOT_FOUND', 'License assignment not found', context.request);
-
-  // 🔒 SECURITY: Only org admins can revoke licenses
-  const { data: pool } = await supabase.from('license_pools').select('organization_id').eq('id', assignment.license_pool_id).single();
-  if (!pool) return apiError(404, 'NOT_FOUND', 'License pool not found', context.request);
-  const membership = await verifyOrgMembership(supabase, revokedBy, pool.organization_id);
-  if (!membership) {
-    return apiError(403, 'FORBIDDEN', 'Not a member of this organization', context.request);
-  }
-  if (!isAdmin(membership.role)) {
-    return apiError(403, 'FORBIDDEN', 'Insufficient permissions. Admin role required.', context.request);
-  }
-
-  const { error } = await supabase.from('license_assignments').update({ status: 'revoked', revoked_at: new Date().toISOString(), revoked_by: revokedBy, revocation_reason: reason, updated_at: new Date().toISOString() }).eq('id', assignmentId);
-  if (error) throw error;
-
-  if (assignment && assignment.status === 'active') {
-    await adjustSeatCounters(supabase, assignment.license_pool_id, assignment.organization_subscription_id, -1);
-  }
-
-  return apiSuccess({ success: true }, context.request);
-}
-
-async function transferLicense(context: AuthenticatedContext, body: any) {
-  const supabase = getSupabase(context);
-  const { fromUserId, toUserId, organizationSubscriptionId } = body;
-  const transferredBy = getUserId(context);
-
-  const { data: currentAssignment } = await supabase.from('license_assignments').select('*').eq('user_id', fromUserId).eq('organization_subscription_id', organizationSubscriptionId).eq('status', 'active').single();
-  if (!currentAssignment) return apiError(404, 'NOT_FOUND', 'No active assignment found for source user', context.request);
-
-  // 🔒 SECURITY: Only org admins can transfer licenses
-  const { data: pool } = await supabase.from('license_pools').select('organization_id').eq('id', currentAssignment.license_pool_id).single();
-  if (!pool) return apiError(404, 'NOT_FOUND', 'License pool not found', context.request);
-  const membership = await verifyOrgMembership(supabase, transferredBy, pool.organization_id);
-  if (!membership) {
-    return apiError(403, 'FORBIDDEN', 'Not a member of this organization', context.request);
-  }
-  if (!isAdmin(membership.role)) {
-    return apiError(403, 'FORBIDDEN', 'Insufficient permissions. Admin role required.', context.request);
-  }
-
-  await supabase.from('license_assignments').update({ status: 'revoked', revoked_at: new Date().toISOString(), revoked_by: transferredBy, revocation_reason: 'Transferred to another user', updated_at: new Date().toISOString() }).eq('id', currentAssignment.id);
-
-  const { data: newAssignment, error } = await supabase.from('license_assignments').insert({ license_pool_id: currentAssignment.license_pool_id, organization_subscription_id: currentAssignment.organization_subscription_id, user_id: toUserId, member_type: currentAssignment.member_type, status: 'active', assigned_by: transferredBy, transferred_from: currentAssignment.id }).select().single();
-  if (error) throw error;
-
-  await supabase.from('license_assignments').update({ transferred_to: newAssignment.id }).eq('id', currentAssignment.id);
-  return apiSuccess(newAssignment, context.request);
-}
+const assignLicense = (context: AuthenticatedContext, body: Record<string, string>) => mutateLicense(context, body, 'assign');
+const unassignLicense = (context: AuthenticatedContext, body: Record<string, string>) => mutateLicense(context, body, 'revoke');
+const transferLicense = (context: AuthenticatedContext, body: Record<string, string>) => mutateLicense(context, body, 'transfer');
 
 async function getUserAssignments(context: AuthenticatedContext) {
   const supabase = getSupabase(context);
   const url = new URL(context.request.url);
   const userId = url.searchParams.get('userId');
   if (!userId) return apiError(400, 'VALIDATION_ERROR', 'userId is required', context.request);
+  if (userId !== getUserId(context)) return apiError(403, 'FORBIDDEN', 'Only your own assignments may be requested', context.request);
 
   const { data, error } = await supabase.from('license_assignments').select('*').eq('user_id', userId).order('created_at', { ascending: false });
   if (error) throw error;
@@ -297,6 +191,11 @@ async function getPoolAssignments(context: AuthenticatedContext) {
   const url = new URL(context.request.url);
   const poolId = url.searchParams.get('poolId');
   if (!poolId) return apiError(400, 'VALIDATION_ERROR', 'poolId is required', context.request);
+  const { data: pool, error: poolError } = await supabase.from('license_pools').select('organization_id').eq('id', poolId).maybeSingle();
+  if (poolError) throw poolError;
+  if (!pool) return apiError(404, 'NOT_FOUND', 'License pool not found', context.request);
+  const denied = await authorizeSeatOrganization(supabase, getUserId(context), pool.organization_id, context.request);
+  if (denied) return denied;
 
   const { data, error } = await supabase.from('license_assignments').select('*').eq('license_pool_id', poolId).order('created_at', { ascending: false });
   if (error) throw error;
@@ -306,6 +205,12 @@ async function getPoolAssignments(context: AuthenticatedContext) {
 async function configureAutoAssignment(context: AuthenticatedContext, body: any) {
   const supabase = getSupabase(context);
   const { poolId, criteria, enabled } = body;
+  const { data: pool, error: poolError } = await supabase.from('license_pools').select('organization_id').eq('id', poolId).maybeSingle();
+  if (poolError) throw poolError;
+  if (!pool) return apiError(404, 'NOT_FOUND', 'License pool not found', context.request);
+  const denied = await authorizeSeatOrganization(supabase, getUserId(context), pool.organization_id, context.request, true);
+  if (denied) return denied;
+  if (typeof enabled !== 'boolean') return apiError(400, 'VALIDATION_ERROR', 'enabled must be boolean', context.request);
 
   const { data, error } = await supabase.from('license_pools').update({ auto_assign_new_members: enabled, assignment_criteria: criteria, updated_at: new Date().toISOString() }).eq('id', poolId).select().single();
   if (error) throw error;
@@ -417,6 +322,14 @@ async function acceptInvitation(context: AuthenticatedContext, body: any) {
   if (!user.email || user.email.toLowerCase() !== String(invitation.invitee_email ?? '').toLowerCase()) {
     logger.warn('acceptInvitation: session email does not match invitation', { userId: user.id, invitationId: invitation.id });
     return apiError(403, 'FORBIDDEN', 'This invitation was sent to a different email address', context.request);
+  }
+
+  if (invitation.license_pool_id) {
+    const { data, error: acceptanceError } = await supabase.rpc('accept_organization_learner_invitation', {
+      p_invitation: invitation.id, p_actor: user.id, p_email: user.email,
+    });
+    if (acceptanceError) return seatRpcError(acceptanceError, context.request);
+    return apiSuccess(data, context.request);
   }
 
   // Claim first: only one concurrent request can move the row out of 'pending'.
@@ -1037,70 +950,20 @@ async function getLicensedMembers(context: AuthenticatedContext) {
 // ============================================================================
 
 async function enrichPoolAssignedSeats(supabase: SupabaseClient, pools: Array<Record<string, unknown>>) {
-  if (!pools?.length) return [];
-  const { data: assignments, error: assignmentsError } = await supabase
-    .from('license_assignments')
-    .select('license_pool_id')
-    .in('license_pool_id', pools.map((p) => p.id as string).filter(Boolean))
-    .eq('status', 'active');
-
-  // 🔒 Observability: on enrichment failure the caller silently falls back to
-  // the stored assigned_seats counter — surface that so stale counts are
-  // never silently reported as healthy data (mirrors enrichAssignedSeats).
-  if (assignmentsError) {
-    logger.warn('enrichPoolAssignedSeats: license_assignments query failed, falling back to stored counters', { error: assignmentsError });
-  }
-
-  const counts = (assignments || []).reduce((acc: Record<string, number>, a: any) => {
-    if (a.license_pool_id) acc[a.license_pool_id] = (acc[a.license_pool_id] || 0) + 1;
-    return acc;
-  }, {});
-
-  return pools.map((p) => {
-    const allocated = Number(p.allocated_seats || 0);
-    const assigned = counts[p.id as string] ?? Number(p.assigned_seats || 0);
-    return { ...p, assigned_seats: assigned, available_seats: Math.max(0, allocated - assigned) };
+  if (!pools.length) return [];
+  const { data, error } = await supabase.rpc('organization_seat_usage', { p_pool_ids: pools.map(pool => pool.id), p_subscription_ids: [] });
+  if (error) throw error;
+  return pools.map(pool => {
+    const assigned = Number(data.pools[pool.id as string] ?? 0);
+    return { ...pool, assigned_seats: assigned, available_seats: Math.max(0, Number(pool.allocated_seats) - assigned) };
   });
 }
 
 async function enrichAssignedSeats(supabase: SupabaseClient, subs: Array<Record<string, unknown>>) {
-  if (!subs || subs.length === 0) return [];
-  const subIds = subs.map((s) => s.id as string).filter(Boolean);
-
-  const [assignRes, poolRes] = await Promise.all([
-    supabase.from('license_assignments').select('organization_subscription_id').in('organization_subscription_id', subIds).eq('status', 'active'),
-    supabase.from('license_pools').select('organization_subscription_id, assigned_seats').in('organization_subscription_id', subIds),
-  ]);
-
-  // Seat enrichment is non-critical, but failures must be observable: log
-  // structured details and flag the affected records so stale/zero seat
-  // counts are never silently reported as healthy data.
-  if (assignRes.error) logger.warn('enrichAssignedSeats: license_assignments query failed', { error: assignRes.error });
-  if (poolRes.error) logger.warn('enrichAssignedSeats: license_pools query failed', { error: poolRes.error });
-  const enrichmentFailed = Boolean(assignRes.error || poolRes.error);
-
-  const assignments = assignRes.data || [];
-  const pools = poolRes.data || [];
-
-  const countBySub: Record<string, number> = {};
-  assignments.forEach((a: { organization_subscription_id?: string }) => {
-    if (a.organization_subscription_id) {
-      countBySub[a.organization_subscription_id] = (countBySub[a.organization_subscription_id] || 0) + 1;
-    }
-  });
-
-  const poolSeatsBySub: Record<string, number> = {};
-  pools.forEach((p: { organization_subscription_id?: string; assigned_seats?: number }) => {
-    if (p.organization_subscription_id) {
-      poolSeatsBySub[p.organization_subscription_id] = (poolSeatsBySub[p.organization_subscription_id] || 0) + (p.assigned_seats || 0);
-    }
-  });
-
-  return subs.map((s) => ({
-    ...s,
-    ...(enrichmentFailed ? { seats_enrichment_failed: true } : {}),
-    assigned_seats: Math.max(countBySub[s.id as string] || 0, poolSeatsBySub[s.id as string] || 0, (s.assigned_seats as number) || 0),
-  }));
+  if (!subs.length) return [];
+  const { data, error } = await supabase.rpc('organization_seat_usage', { p_pool_ids: [], p_subscription_ids: subs.map(sub => sub.id) });
+  if (error) throw error;
+  return subs.map(sub => ({ ...sub, assigned_seats: Number(data.subscriptions[sub.id as string] ?? 0) }));
 }
 
 async function getSubscriptions(context: AuthenticatedContext) {
@@ -1112,6 +975,9 @@ async function getSubscriptions(context: AuthenticatedContext) {
   if (subId) {
     const { data, error } = await supabase.from('subscription_cache').select('*').eq('id', subId).single();
     if (error) throw error;
+    if (!data) return apiError(404, 'NOT_FOUND', 'Subscription not found', context.request);
+    const denied = await authorizeSeatOrganization(supabase, user.id, data.organization_id, context.request);
+    if (denied) return denied;
     const [enriched] = await enrichAssignedSeats(supabase, data ? [data] : []);
     return apiSuccess(enriched || data, context.request);
   }
@@ -1126,39 +992,12 @@ async function getSubscriptions(context: AuthenticatedContext) {
   }
 
   // 1. Direct match by organization_id
-  let { data: subs } = await supabase
+  const { data: subs } = await supabase
     .from('subscription_cache')
     .select('*')
     .eq('organization_id', orgId)
     .in('status', ['active', 'pending', 'grace_period'])
     .order('created_at', { ascending: false });
-
-  // 2. Fallback: match by current user (purchased_by or user_id)
-  if ((!subs || subs.length === 0) && user?.id) {
-    const cleanUserId = String(user.id).trim();
-    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanUserId);
-    if (isUuid) {
-      const { data: userSubs } = await supabase
-        .from('subscription_cache')
-        .select('*')
-        .or(`purchased_by.eq.${cleanUserId},user_id.eq.${cleanUserId}`)
-        .in('status', ['active', 'pending', 'grace_period'])
-        .order('created_at', { ascending: false });
-
-      if (userSubs && userSubs.length > 0) {
-        const { error: updateError } = await supabase
-          .from('subscription_cache')
-          .update({ organization_id: orgId, is_organization_subscription: true, updated_at: new Date().toISOString() })
-          .eq('id', userSubs[0].id);
-
-        if (updateError) {
-          logger.error('[getSubscriptions] Failed to update subscription cache:', { error: updateError, subId: userSubs[0].id });
-        }
-
-        subs = userSubs.map((s) => ({ ...s, organization_id: orgId, is_organization_subscription: true }));
-      }
-    }
-  }
 
   // NOTE: No broad fallback across all organizations — an unscoped fallback here would
   // leak other organizations' subscriptions to any authenticated user.
@@ -1246,6 +1085,11 @@ async function getOrganizationEntitlementStatsHandler(context: AuthenticatedCont
   const url = new URL(context.request.url);
   const subId = url.searchParams.get('subscriptionId');
   if (!subId) return apiError(400, 'VALIDATION_ERROR', 'subscriptionId is required', context.request);
+  const { data: subscription, error } = await supabase.from('subscription_cache').select('organization_id').eq('id', subId).maybeSingle();
+  if (error) throw error;
+  if (!subscription) return apiError(404, 'NOT_FOUND', 'Subscription not found', context.request);
+  const denied = await authorizeSeatOrganization(supabase, getUserId(context), subscription.organization_id, context.request);
+  if (denied) return denied;
 
   const { data: entitlements } = await supabase.from('user_entitlements').select('user_id, feature_key').eq('organization_subscription_id', subId).eq('granted_by_organization', true).eq('is_active', true);
   if (!entitlements) return apiSuccess({ totalMembers: 0, activeEntitlements: 0, featureBreakdown: {} }, context.request);
@@ -1260,49 +1104,19 @@ async function getOrganizationEntitlementStatsHandler(context: AuthenticatedCont
 // Subscription Operations
 // ============================================================================
 
-async function removeMemberHandler(context: AuthenticatedContext, body: any) {
+async function removeMemberHandler(context: AuthenticatedContext, body: Record<string, string>) {
   const supabase = getSupabase(context);
-  const { memberId, memberType, organizationType, organizationId, revokedBy } = body;
-
-  if (memberType === 'learner') {
-    const updateData: Record<string, any> = {};
-    if (organizationType === 'school') updateData.school_id = null;
-    else if (organizationType === 'college' || organizationType === 'university') updateData.college_id = null;
-
-    const { data: learner } = await supabase.from('learners').select('id, school_id, college_id, email, name, user_id').eq('id', memberId).single();
-    if (!learner) return apiSuccess({ success: false, message: 'Learner not found' }, context.request);
-
-    const belongsToOrg = (organizationType === 'school' && learner.school_id === organizationId) || ((organizationType === 'college' || organizationType === 'university') && learner.college_id === organizationId);
-    if (!belongsToOrg) return apiSuccess({ success: false, message: 'Learner does not belong to this organization' }, context.request);
-
-    await supabase.from('learners').update(updateData).eq('id', memberId);
-    await revokeMemberLicenses(supabase, learner.user_id || learner.id, organizationId, revokedBy, 'Member removed from organization');
-    return apiSuccess({ success: true, message: `${learner.name || 'Learner'} has been removed from the organization` }, context.request);
+  const denied = await authorizeSeatOrganization(supabase, getUserId(context), body.organizationId, context.request, true);
+  if (denied) return denied;
+  if (!body.memberId || !['learner', 'educator'].includes(body.memberType) || !['school', 'college', 'university'].includes(body.organizationType)) {
+    return apiError(400, 'VALIDATION_ERROR', 'Valid member and organization type are required', context.request);
   }
-
-  if (organizationType === 'school') {
-    const { data: educator } = await supabase.from('school_educators').select('id, school_id, email, first_name, last_name, user_id').eq('id', memberId).single();
-    if (!educator) return apiSuccess({ success: false, message: 'Educator not found' }, context.request);
-    if (educator.school_id !== organizationId) return apiSuccess({ success: false, message: 'Educator does not belong to this organization' }, context.request);
-    await supabase.from('school_educators').update({ school_id: null }).eq('id', memberId);
-    if (educator.user_id) await revokeMemberLicenses(supabase, educator.user_id, organizationId, revokedBy, 'Educator removed from organization');
-    return apiSuccess({ success: true, message: `${educator.first_name || ''} ${educator.last_name || ''}`.trim() || 'Educator' }, context.request);
-  } else if (organizationType === 'college') {
-    const { data: lecturer } = await supabase.from('college_lecturers').select('id, collegeId, email, first_name, last_name, user_id').eq('id', memberId).single();
-    if (!lecturer) return apiSuccess({ success: false, message: 'Lecturer not found' }, context.request);
-    if (lecturer.collegeId !== organizationId) return apiSuccess({ success: false, message: 'Lecturer does not belong to this organization' }, context.request);
-    await supabase.from('college_lecturers').update({ collegeId: null }).eq('id', memberId);
-    if (lecturer.user_id) await revokeMemberLicenses(supabase, lecturer.user_id, organizationId, revokedBy, 'Lecturer removed from organization');
-    return apiSuccess({ success: true, message: `${lecturer.first_name || ''} ${lecturer.last_name || ''}`.trim() || 'Lecturer' }, context.request);
-  }
-  return apiSuccess({ success: false, message: 'Unsupported operation' }, context.request);
-}
-
-async function revokeMemberLicenses(supabase: any, userId: string, organizationId: string, revokedBy?: string, reason = 'Member removed from organization') {
-  const { data: pools } = await supabase.from('license_pools').select('id').eq('organization_id', organizationId);
-  if (!pools || pools.length === 0) return;
-  const poolIds = pools.map((p: any) => p.id);
-  await supabase.from('license_assignments').update({ status: 'revoked', revoked_at: new Date().toISOString(), revoked_by: revokedBy || null, revocation_reason: reason }).eq('user_id', userId).in('license_pool_id', poolIds).eq('status', 'active');
+  const { data, error } = await supabase.rpc('remove_organization_seat_member', {
+    p_actor: getUserId(context), p_organization: body.organizationId, p_member: body.memberId,
+    p_member_type: body.memberType, p_organization_type: body.organizationType,
+  });
+  if (error) return seatRpcError(error, context.request);
+  return apiSuccess(data, context.request);
 }
 
 // ============================================================================
@@ -1316,35 +1130,35 @@ export async function handleOrganizationPost(context: AuthenticatedContext): Pro
 
     switch (action) {
       // License pools
-      case 'createPool': return createPool(context, body);
-      case 'updatePoolAllocation': return updatePoolAllocation(context, body);
-      case 'assignLicense': return assignLicense(context, body);
-      case 'unassignLicense': return unassignLicense(context, body);
-      case 'transferLicense': return transferLicense(context, body);
-      case 'configureAutoAssignment': return configureAutoAssignment(context, body);
+      case 'createPool': return await createPool(context, body);
+      case 'updatePoolAllocation': return await updatePoolAllocation(context, body);
+      case 'assignLicense': return await assignLicense(context, body);
+      case 'unassignLicense': return await unassignLicense(context, body);
+      case 'transferLicense': return await transferLicense(context, body);
+      case 'configureAutoAssignment': return await configureAutoAssignment(context, body);
 
       // Invitations
-      case 'inviteMember': return inviteMember(context, body);
-      case 'resendInvitation': return resendInvitation(context, body);
-      case 'cancelInvitation': return cancelInvitation(context, body);
-      case 'acceptInvitation': return acceptInvitation(context, body);
-      case 'expireOldInvitations': return expireOldInvitations(context);
+      case 'inviteMember': return await inviteMember(context, body);
+      case 'resendInvitation': return await resendInvitation(context, body);
+      case 'cancelInvitation': return await cancelInvitation(context, body);
+      case 'acceptInvitation': return await acceptInvitation(context, body);
+      case 'expireOldInvitations': return await expireOldInvitations(context);
 
       // Organization CRUD
-      case 'createOrganization': return createOrganizationHandler(context, body);
-      case 'updateOrganization': return updateOrganizationHandler(context, body);
-      case 'deleteOrganization': return deleteOrganizationHandler(context, body);
-      case 'createLocalOrganization': return createLocalOrganizationHandler(context, body);
-      case 'createOrganizationRecruitmentSettings': return createOrganizationRecruitmentSettingsHandler(context, body);
+      case 'createOrganization': return await createOrganizationHandler(context, body);
+      case 'updateOrganization': return await updateOrganizationHandler(context, body);
+      case 'deleteOrganization': return await deleteOrganizationHandler(context, body);
+      case 'createLocalOrganization': return await createLocalOrganizationHandler(context, body);
+      case 'createOrganizationRecruitmentSettings': return await createOrganizationRecruitmentSettingsHandler(context, body);
 
       // Member operations
-      case 'removeMember': return removeMemberHandler(context, body);
+      case 'removeMember': return await removeMemberHandler(context, body);
 
       // Entitlements
-      case 'grantEntitlement': return grantEntitlement(context, body);
-      case 'revokeEntitlements': return revokeEntitlements(context, body);
-      case 'bulkGrantEntitlements': return bulkGrantEntitlements(context, body);
-      case 'bulkRevokeEntitlements': return bulkRevokeEntitlements(context, body);
+      case 'grantEntitlement': return await grantEntitlement(context, body);
+      case 'revokeEntitlements': return await revokeEntitlements(context, body);
+      case 'bulkGrantEntitlements': return await bulkGrantEntitlements(context, body);
+      case 'bulkRevokeEntitlements': return await bulkRevokeEntitlements(context, body);
 
       default:
         return apiError(400, 'VALIDATION_ERROR', `Unknown action: ${action}`, context.request);
@@ -1362,42 +1176,42 @@ export async function handleOrganizationGet(context: AuthenticatedContext): Prom
 
     switch (action) {
       // License pools
-      case 'getLicensePools': return getLicensePools(context);
-      case 'getUserAssignments': return getUserAssignments(context);
-      case 'getPoolAssignments': return getPoolAssignments(context);
+      case 'getLicensePools': return await getLicensePools(context);
+      case 'getUserAssignments': return await getUserAssignments(context);
+      case 'getPoolAssignments': return await getPoolAssignments(context);
 
       // Invitations
-      case 'getPendingInvitations': return getPendingInvitations(context);
-      case 'getAllInvitations': return getAllInvitations(context);
-      case 'getInvitationByToken': return getInvitationByToken(context);
-      case 'getInvitationStats': return getInvitationStats(context);
+      case 'getPendingInvitations': return await getPendingInvitations(context);
+      case 'getAllInvitations': return await getAllInvitations(context);
+      case 'getInvitationByToken': return await getInvitationByToken(context);
+      case 'getInvitationStats': return await getInvitationStats(context);
 
       // Organization queries
-      case 'getOrganizationById': return getOrganizationByIdHandler(context);
-      case 'getOrganizationByAdminId': return getOrganizationByAdminIdHandler(context);
-      case 'getOrganizations': return getOrganizationsHandler(context);
-      case 'getOrganizationByEmail': return getOrganizationByEmailHandler(context);
-      case 'checkOrganizationNameExists': return checkOrganizationNameExistsHandler(context);
+      case 'getOrganizationById': return await getOrganizationByIdHandler(context);
+      case 'getOrganizationByAdminId': return await getOrganizationByAdminIdHandler(context);
+      case 'getOrganizations': return await getOrganizationsHandler(context);
+      case 'getOrganizationByEmail': return await getOrganizationByEmailHandler(context);
+      case 'checkOrganizationNameExists': return await checkOrganizationNameExistsHandler(context);
 
       // Members
-      case 'getMemberCounts': return getMemberCountsHandler(context);
-      case 'getLearners': return getLearners(context);
-      case 'getEducators': return getEducators(context);
-      case 'getLicensedMembers': return getLicensedMembers(context);
+      case 'getMemberCounts': return await getMemberCountsHandler(context);
+      case 'getLearners': return await getLearners(context);
+      case 'getEducators': return await getEducators(context);
+      case 'getLicensedMembers': return await getLicensedMembers(context);
 
       // Subscriptions
-      case 'getSubscriptions': return getSubscriptions(context);
-      case 'getPlansCache': return getPlansCache(context);
+      case 'getSubscriptions': return await getSubscriptions(context);
+      case 'getPlansCache': return await getPlansCache(context);
 
       // Organization name
-      case 'getOrganizationName': return getOrganizationNameHandler(context);
+      case 'getOrganizationName': return await getOrganizationNameHandler(context);
 
       // Search
-      case 'searchOrganizations': return searchOrganizationsHandler(context);
+      case 'searchOrganizations': return await searchOrganizationsHandler(context);
 
       // Entitlements
-      case 'getUserEntitlements': return getUserEntitlementsHandler(context);
-      case 'getOrganizationEntitlementStats': return getOrganizationEntitlementStatsHandler(context);
+      case 'getUserEntitlements': return await getUserEntitlementsHandler(context);
+      case 'getOrganizationEntitlementStats': return await getOrganizationEntitlementStatsHandler(context);
 
       default:
         return apiError(400, 'VALIDATION_ERROR', `Unknown action: ${action}`, context.request);

@@ -2,6 +2,7 @@ import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getContextUser, withAuth } from '../../lib/auth';
 import { apiDbError, apiError, apiMethodNotAllowed, apiSuccess } from '../../lib/response';
 import { getServiceClient } from '../../lib/supabase';
+import { authorizeSeatOrganization } from '../../lib/seat-access';
 
 export const onRequest = async (context: any) => {
   if (context.request.method === 'POST') return onRequestPost(context);
@@ -21,6 +22,21 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   }
 
   const { action } = body;
+
+  const orgActions = new Set(['list-license-pools', 'list-license-assignments', 'get-license-assignment-stats', 'create-license-pool']);
+  if (orgActions.has(action)) {
+    const denied = await authorizeSeatOrganization(supabase, user.id, body.organizationId, context.request, action === 'create-license-pool');
+    if (denied) return denied;
+  }
+  const poolActions = new Set(['list-license-assignments-by-pool', 'list-pool-assignments', 'update-license-pool', 'delete-license-pool']);
+  if (poolActions.has(action)) {
+    const { data: pool, error } = await supabase.from('license_pools').select('organization_id').eq('id', body.poolId).maybeSingle();
+    if (error) return apiDbError(error, context.request);
+    if (!pool) return apiError(404, 'NOT_FOUND', 'License pool not found', context.request);
+    const denied = await authorizeSeatOrganization(supabase, user.id, pool.organization_id, context.request, action === 'update-license-pool' || action === 'delete-license-pool');
+    if (denied) return denied;
+  }
+
 
   if (action === 'get-organization-by-name') {
     const { name } = body;
@@ -75,62 +91,24 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     return apiSuccess(data ?? []);
   }
 
-  if (action === 'list-license-assignments') {
-    const { organizationId } = body;
-    const { data, error } = await supabase
-      .from('license_assignments')
-      .select('*')
-      .order('assigned_at', { ascending: false });
+  if (action === 'list-license-assignments' || action === 'get-license-assignment-stats') {
+    const { data: pools, error: poolError } = await supabase.from('license_pools').select('id, allocated_seats').eq('organization_id', body.organizationId);
+    if (poolError) return apiDbError(poolError, context.request);
+    const ids = (pools || []).map(pool => pool.id);
+    const { data, error } = ids.length
+      ? await supabase.from('license_assignments').select('*').in('license_pool_id', ids).eq('status', 'active')
+      : { data: [], error: null };
     if (error) return apiDbError(error, context.request);
-    return apiSuccess(data ?? []);
+    if (action === 'list-license-assignments') return apiSuccess(data, context.request);
+    const totalSeats = (pools || []).reduce((sum, pool) => sum + pool.allocated_seats, 0);
+    const assignedSeats = (data || []).length;
+    return apiSuccess({ totalSeats, assignedSeats, availableSeats: totalSeats - assignedSeats, pools }, context.request);
   }
 
   if (action === 'list-license-assignments-by-pool') {
-    const { poolId } = body;
-    const { data, error } = await supabase
-      .from('license_assignments')
-      .select('*')
-      .eq('pool_id', poolId)
-      .order('assigned_at', { ascending: false });
+    const { data, error } = await supabase.from('license_assignments').select('*').eq('license_pool_id', body.poolId).order('assigned_at', { ascending: false });
     if (error) return apiDbError(error, context.request);
-    return apiSuccess(data ?? []);
-  }
-
-  if (action === 'get-license-assignment-stats') {
-    const { organizationId } = body;
-    const { data: pools, error: poolsError } = await supabase
-      .from('license_pools')
-      .select('id, total_licenses')
-      .eq('organization_id', organizationId);
-    if (poolsError) return apiDbError(poolsError, context.request);
-
-    const poolIds = (pools || []).map((p: any) => p.id);
-    const totalSeats = (pools || []).reduce((sum: number, p: any) => sum + (p.total_licenses || 0), 0);
-
-    const { data: assignments, error: assignError } = await supabase
-      .from('license_assignments')
-      .select('pool_id, id')
-      .in('pool_id', poolIds);
-    if (assignError) return apiDbError(assignError, context.request);
-
-    const assignedSeats = (assignments || []).length;
-    const availableSeats = totalSeats - assignedSeats;
-
-    const poolsWithUtilization = (pools || []).map((pool: any) => {
-      const assigned = (assignments || []).filter((a: any) => a.pool_id === pool.id).length;
-      return {
-        ...pool,
-        assigned,
-        available: (pool.total_licenses || 0) - assigned,
-      };
-    });
-
-    return apiSuccess({
-      totalSeats,
-      assignedSeats,
-      availableSeats,
-      pools: poolsWithUtilization,
-    }, context.request);
+    return apiSuccess(data, context.request);
   }
 
   if (action === 'get-user-by-id') {
@@ -258,7 +236,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   }
 
   if (action === 'create-license-pool') {
-    const { organizationId, organizationType, poolName, memberType, allocatedSeats, autoAssignNewMembers, createdBy } = body;
+    const { organizationId, organizationType, poolName, memberType, allocatedSeats, autoAssignNewMembers } = body;
     let subId = body.organizationSubscriptionId || body.subscriptionId || body.organization_subscription_id;
 
     if (!organizationId) {
@@ -267,7 +245,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     if (!poolName || typeof poolName !== 'string' || !poolName.trim()) {
       return apiError(400, 'VALIDATION_ERROR', 'poolName is required to create a license pool', context.request);
     }
-    if (typeof allocatedSeats !== 'number' || allocatedSeats <= 0) {
+    if (!Number.isInteger(allocatedSeats) || allocatedSeats <= 0) {
       return apiError(400, 'VALIDATION_ERROR', 'allocatedSeats must be a positive number', context.request);
     }
 
@@ -315,7 +293,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         assigned_seats: 0,
         auto_assign_new_members: autoAssignNewMembers ?? false,
         is_active: true,
-        created_by: createdBy,
+        created_by: user.id,
       })
       .select()
       .single();
@@ -324,11 +302,25 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   }
 
   if (action === 'update-license-pool') {
-    const { action: _act, poolId, ...updates } = body;
-    const { error } = await supabase
-      .from('license_pools')
-      .update({ ...updates, updated_at: new Date().toISOString() })
-      .eq('id', poolId);
+    const allowed = new Set(['action', 'poolId', 'poolName', 'allocatedSeats', 'autoAssignNewMembers', 'isActive']);
+    if (Object.keys(body).some(key => !allowed.has(key))) return apiError(400, 'VALIDATION_ERROR', 'Unknown pool update field', context.request);
+    const updates: Record<string, unknown> = {};
+    if (body.poolName !== undefined) {
+      if (typeof body.poolName !== 'string' || !body.poolName.trim()) return apiError(400, 'VALIDATION_ERROR', 'Pool name is required', context.request);
+      updates.pool_name = body.poolName.trim();
+    }
+    if (body.allocatedSeats !== undefined) {
+      if (!Number.isInteger(body.allocatedSeats) || body.allocatedSeats < 1) return apiError(400, 'VALIDATION_ERROR', 'Allocated seats must be a positive integer', context.request);
+      updates.allocated_seats = body.allocatedSeats;
+    }
+    for (const [input, column] of [['autoAssignNewMembers', 'auto_assign_new_members'], ['isActive', 'is_active']]) {
+      if (body[input] !== undefined) {
+        if (typeof body[input] !== 'boolean') return apiError(400, 'VALIDATION_ERROR', `${input} must be boolean`, context.request);
+        updates[column] = body[input];
+      }
+    }
+    if (!Object.keys(updates).length) return apiError(400, 'VALIDATION_ERROR', 'No pool changes provided', context.request);
+    const { error } = await supabase.from('license_pools').update({ ...updates, updated_at: new Date().toISOString() }).eq('id', body.poolId);
     if (error) return apiDbError(error, context.request);
     return apiSuccess({ updated: true }, context.request);
   }

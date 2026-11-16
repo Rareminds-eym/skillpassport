@@ -57,7 +57,7 @@ export async function resolveUserEntitlement(supabase: SupabaseClient, userId: s
   const expectedEntity = scope.endsWith('_admin') ? scope.replace('_admin', '') : scope === 'recruiter' ? 'recruitment' : null;
   const [profile, memberships, seats, learner, owned] = await Promise.all([
     checked<Profile>(supabase.from('users').select('metadata').eq('id', userId).maybeSingle()),
-    checked(supabase.from('organization_members').select('organization_id, role, status').eq('user_id', userId).eq('status', 'active')),
+    checked(supabase.from('organization_members').select('organization_id, role, status').eq('user_id', userId)),
     checked(supabase.from('license_assignments').select('id, organization_subscription_id, status, expires_at').eq('user_id', userId)),
     checked<LearnerOrganization>(supabase.from('learners').select('school_id, college_id, is_deleted, deleted_at').eq('user_id', userId).maybeSingle()),
     checked(supabase.from('organizations').select('id, organization_type, name, email, phone').eq('admin_id', userId)),
@@ -68,7 +68,8 @@ export async function resolveUserEntitlement(supabase: SupabaseClient, userId: s
     : [];
   const assignedSubscriptions: Subscription[] = seatSubscriptionIds.length
     ? await checked(supabase.from('subscription_cache').select('*').in('id', seatSubscriptionIds)) ?? [] : [];
-  const orgIds = new Set<string>((memberships ?? []).map(member => member.organization_id));
+  const inactiveOrgIds = new Set<string>((memberships ?? []).filter(member => member.status !== 'active').map(member => member.organization_id));
+  const orgIds = new Set<string>((memberships ?? []).filter(member => member.status === 'active').map(member => member.organization_id));
   for (const org of owned ?? []) orgIds.add(org.id);
   if (!organizationDashboard && learner && learner.is_deleted !== true && !learner.deleted_at) {
     if (learner.college_id) orgIds.add(learner.college_id);
@@ -78,7 +79,8 @@ export async function resolveUserEntitlement(supabase: SupabaseClient, userId: s
     for (const sub of assignedSubscriptions) if (sub.organization_id) orgIds.add(sub.organization_id);
   }
   if (identity.org_id) orgIds.add(identity.org_id);
-  const scopedOrgIds = organizationDashboard && identity.org_id ? [identity.org_id] : [...orgIds];
+  for (const inactiveOrgId of inactiveOrgIds) orgIds.delete(inactiveOrgId);
+  const scopedOrgIds = organizationDashboard && identity.org_id ? (inactiveOrgIds.has(identity.org_id) ? [] : [identity.org_id]) : [...orgIds];
   const organizations: Organization[] = scopedOrgIds.length
     ? await checked(supabase.from('organizations').select('id, organization_type, name, email, phone').in('id', scopedOrgIds)) ?? [] : [];
   // Retiring a plan from sale does not cancel an already purchased contract.

@@ -336,9 +336,8 @@ function OrganizationSubscriptionPage() {
 
     // Check if there are available seats
     const totalSeats = subscriptions.reduce((sum, s) => sum + (s.totalSeats || 0), 0);
-    const assignedSeats = subscriptions.reduce((sum, s) => sum + (s.assignedSeats || 0), 0);
     const poolAllocatedSeats = licensePools.reduce((sum, p) => sum + (p.allocatedSeats || 0), 0);
-    const availableSeats = totalSeats - assignedSeats - poolAllocatedSeats;
+    const availableSeats = totalSeats - poolAllocatedSeats;
 
     if (availableSeats <= 0) {
       toast.error('No available seats to allocate. Please purchase more seats.');
@@ -779,9 +778,8 @@ function OrganizationSubscriptionPage() {
 
   // Calculate available seats for pool creation
   const totalSeats = subscriptions.reduce((sum, s) => sum + (s.totalSeats || 0), 0);
-  const assignedSeats = subscriptions.reduce((sum, s) => sum + (s.assignedSeats || 0), 0);
   const poolAllocatedSeats = licensePools.reduce((sum, p) => sum + (p.allocatedSeats || 0), 0);
-  const availableSeatsForPool = Math.max(0, totalSeats - assignedSeats - poolAllocatedSeats);
+  const availableSeatsForPool = Math.max(0, totalSeats - poolAllocatedSeats);
 
   // Get active subscription for pool creation
   const activeSubscription = subscriptions.find(s => s.status === 'active');
