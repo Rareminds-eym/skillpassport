@@ -21,3 +21,19 @@ describe('empty generation results', () => {
     await assertion;
   });
 });
+
+it('binds both sections to the selected attempt stream even when the profile course differs', async () => {
+  mocks.aptitude.mockResolvedValue([{ id: 'aptitude' }]);
+  mocks.knowledge.mockResolvedValue([{ id: 'knowledge' }]);
+  const result = loadCareerAssessmentQuestions('bca', 'college', 'learner', 'attempt', 'B.Com');
+  await vi.runAllTimersAsync();
+  await result;
+  expect(mocks.aptitude).toHaveBeenCalledWith('bca', 50, 'learner', 'attempt', 'college');
+  expect(mocks.knowledge).toHaveBeenCalledWith('bca', 20, 'learner', 'attempt', 'college');
+});
+
+it('finishes after10 after aptitude without requesting a knowledge section', async () => {
+  mocks.aptitude.mockResolvedValue([{ id: 'aptitude' }]);
+  await expect(loadCareerAssessmentQuestions('general', 'after10', 'learner', 'attempt')).resolves.toMatchObject({ aptitude: [{ id: 'aptitude' }], knowledge: null });
+  expect(mocks.knowledge).not.toHaveBeenCalled();
+});

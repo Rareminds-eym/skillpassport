@@ -135,3 +135,21 @@ it('acknowledges successful institution saves through the dedicated owner workfl
   expect(mocks.updateInstitutionProfile).toHaveBeenCalledTimes(1);
   expect(mocks.updateProfile).not.toHaveBeenCalled();
 });
+
+
+it('rehydrates the saved custom school section independently of the grade after reload', async () => {
+  Object.assign(mocks.learner, { schoolId: 'school-1', schoolClassId: '', userRole: 'learner', learner_type: 'school_student', grade: 'Grade 10', section: 'QA-A' });
+  mount();
+  fireEvent.click(screen.getByRole('button', { name: /Institution Details/ }));
+  expect(await screen.findByPlaceholderText('Enter your section (e.g., A, B, C, Section-1)')).toHaveValue('QA-A');
+  expect(screen.queryByDisplayValue('10')).toBeNull();
+});
+
+
+it('keeps an assigned school class on the class selector instead of converting its section to custom text', async () => {
+  Object.assign(mocks.learner, { schoolId: 'school-1', schoolClassId: 'class-1', userRole: 'learner', learner_type: 'school_student', grade: 'Grade 10', section: 'QA-A' });
+  mount();
+  fireEvent.click(screen.getByRole('button', { name: /Institution Details/ }));
+  await screen.findByRole('heading', { name: 'Institution Details' });
+  expect(screen.queryByPlaceholderText('Enter your section (e.g., A, B, C, Section-1)')).toBeNull();
+});

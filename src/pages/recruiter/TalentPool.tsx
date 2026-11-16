@@ -1,3 +1,4 @@
+import { loadRecruiterTalentRows } from '@/features/recruiter-pipeline';
 import {
   BookmarkIcon,
   CalendarIcon,
@@ -3247,7 +3248,7 @@ const TalentPoolContent = () => {
   });
 
   const itemsPerPage = 10;
-  const { learners, loading, error } = useLearners();
+  const { learners, loading, error } = useLearners({ loadRows: loadRecruiterTalentRows });
 
   // Debug: Log first learner to see data structure
   useEffect(() => {

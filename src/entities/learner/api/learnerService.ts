@@ -1,5 +1,3 @@
-import { ssoClient } from '@/shared/api/ssoClient';
-import { useAuthStore } from '@/shared/model/authStore';
 /**
  * Consolidated Learner Service
  * Handles all learner-related operations with TypeScript types
@@ -9,14 +7,18 @@ import { apiGet, apiPut, apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 import {
   ServiceResponse,
-  UserCreateData,
   LearnerUpdateData,
-  LearnerApiResponse,
-  Learner,
+  Learner, LearnerDetailRecord, LearnerProfileInput,
+  SkillRecord, EducationRecord, TrainingRecord, CertificateRecord, ExperienceRecord, ProjectRecord,
+  TrainingUpdateDataFull, SkillData, SkillUpdateData, ExperienceUpdateData, EducationUpdateData,
+  CertificateUpdateData, ProjectUpdateData,
 } from '@/entities/learner/model/types';
 
 
 const logger = getLogger('learner-service');
+type LearnerRecord = Pick<Learner, 'id' | 'email'>;
+type DatabaseUpdateData = Record<string, unknown> & { id?: string };
+
 
 function recommendationsChanged(learnerId: string) {
   if (typeof window !== 'undefined' && learnerId) window.dispatchEvent(new CustomEvent('learner-profile-updated', { detail: { learnerId } }));
@@ -62,7 +64,7 @@ const generateUuid = (): string => {
 /**
  * Format phone number with country code
  */
-function formatPhoneNumber(number?: string, dialCode: number = 91): string {
+function formatPhoneNumber(number?: string | null, dialCode: number = 91): string {
   if (!number) return '';
   const code = typeof dialCode === 'number' ? dialCode : 91;
   return `+${code} ${number}`;
@@ -86,7 +88,7 @@ function calculateAge(dateOfBirth?: string): number | null {
 /**
  * Generate avatar URL from name
  */
-function generateAvatar(name?: string): string {
+function generateAvatar(name?: string | null): string {
   if (!name) return 'https://ui-avatars.com/api/?name=Learner&background=4F46E5&color=fff';
   const initials = name.split(' ').map(n => n[0]).join('').substring(0, 2);
   return `https://ui-avatars.com/api/?name=${encodeURIComponent(initials)}&background=4F46E5&color=fff&size=200`;
@@ -142,7 +144,7 @@ export const softDeleteLearner = async (learnerId: string, educatorId: string): 
 /**
  * Transform profile data to consistent format
  */
-function transformProfileData(profile: ProfileInput | null, email: string, learnerRecord: LearnerRecordInput | null = null): TransformedProfile | null {
+function transformProfileData(profile: LearnerProfileInput | null, email: string, learnerRecord: Partial<LearnerDetailRecord> | null = null) {
   if (!profile && !learnerRecord) {
     return null;
   }
@@ -183,6 +185,7 @@ function transformProfileData(profile: ProfileInput | null, email: string, learn
       summary: data.bio || profileData.bio || '',
       github_link: data.github_link || profileData.github_link || '',
       portfolio_link: data.portfolio_link || profileData.portfolio_link || '',
+      youtube_link: data.youtube_link || profileData.youtube_link || '',
       linkedin_link: data.linkedin_link || profileData.linkedin_link || '',
       twitter_link: data.twitter_link || profileData.twitter_link || '',
       instagram_link: data.instagram_link || profileData.instagram_link || '',
@@ -229,20 +232,13 @@ function transformProfileData(profile: ProfileInput | null, email: string, learn
 export const getlearnerByEmail = async (email: string, publicProfileLearnerId?: string): Promise<ServiceResponse> => {
   try {
     // Route through the secure backend endpoint to bypass RLS
-    const user = useAuthStore.getState().user;
 
-    const origin = window.location.origin;
     const params = new URLSearchParams({ email });
     if (publicProfileLearnerId) {
       params.set('learnerId', publicProfileLearnerId);
     }
 
-    const response = await ssoClient.fetch(`${origin}/api/learners/by-email?${params.toString()}`, {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
-    });
-
-    const result = await response.json();
+    const result = await apiGet<{ success: boolean; data: LearnerDetailRecord | null; error?: string }>(`/learners/by-email?${params.toString()}`);
 
     if (!result.success || !result.data) {
       const errorMsg = result.error || 'No data found for this email.';
@@ -251,7 +247,6 @@ export const getlearnerByEmail = async (email: string, publicProfileLearnerId?: 
     }
 
     const data = result.data;
-    const error = null;
 
     // Create profile data from individual columns
     const profileData = {
@@ -411,7 +406,7 @@ export const getlearnerByEmail = async (email: string, publicProfileLearnerId?: 
     // Fetch training certificates and skills
     const trainingIds = approvedTrainings.map((t: TrainingRecord) => t.id).filter(Boolean);
     let trainingCertificates: CertificateRecord[] = [];
-    let trainingSkills: SkillRecord[] = [];
+    let trainingSkills: Pick<SkillRecord, 'training_id' | 'name' | 'type' | 'level' | 'description'>[] = [];
     const fetchLearnerId = (data as any)?.id || (data as any)?.learner_id;
 
     if (trainingIds.length > 0 && fetchLearnerId) {
@@ -549,7 +544,7 @@ export const getlearnerByEmail = async (email: string, publicProfileLearnerId?: 
       id: data.id,
       learner_id: data.learner_id,
       universityId: data.universityId,
-      email: data.email || transformedProfile.email,
+      email: data.email || transformedProfile.profile.email,
       createdAt: data.createdAt,
       updatedAt: data.updatedAt,
 
@@ -558,6 +553,9 @@ export const getlearnerByEmail = async (email: string, publicProfileLearnerId?: 
       learner_type: data.learner_type || null,
 
       school_id: data.school_id,
+      school_name: data.school_name,
+      program_id: data.program_id,
+      course_name: data.course_name,
       university_college_id: data.university_college_id,
       school: data.school || null,
       universityCollege: data.university_colleges || null,
@@ -567,27 +565,26 @@ export const getlearnerByEmail = async (email: string, publicProfileLearnerId?: 
       roll_number: data.roll_number,
       admission_number: data.admission_number,
 
-      profile: transformedProfile,
       ...transformedProfile,
 
-      name: data.name || transformedProfile.name,
+      name: data.name || transformedProfile.profile.name,
       approval_status: data.approval_status,
-      age: data.age || transformedProfile.age,
-      date_of_birth: data.date_of_birth || transformedProfile.date_of_birth,
-      contact_number: data.contact_number || transformedProfile.contact_number,
-      university: data.university || transformedProfile.university,
-      branch_field: data.branch_field || transformedProfile.branch_field,
-      college_school_name: data.college_school_name || transformedProfile.college,
+      age: data.age || transformedProfile.profile.age,
+      date_of_birth: data.date_of_birth || transformedProfile.profile.dateOfBirth,
+      contact_number: data.contact_number || transformedProfile.profile.phone,
+      university: data.university || transformedProfile.profile.university,
+      branch_field: data.branch_field || transformedProfile.profile.department,
+      college_school_name: data.college_school_name || transformedProfile.profile.college,
       college_id: data.college_id,
       bio: data.bio, // Bio field from public.learners table
       summary: data.bio, // Also map to summary for compatibility
-      github_link: data.github_link || transformedProfile.github_link,
-      linkedin_link: data.linkedin_link || transformedProfile.linkedin_link,
-      twitter_link: data.twitter_link || transformedProfile.twitter_link,
-      facebook_link: data.facebook_link || transformedProfile.facebook_link,
-      instagram_link: data.instagram_link || transformedProfile.instagram_link,
-      portfolio_link: data.portfolio_link || transformedProfile.portfolio_link,
-      youtube_link: data.youtube_link || transformedProfile.youtube_link,
+      github_link: data.github_link || transformedProfile.profile.github_link,
+      linkedin_link: data.linkedin_link || transformedProfile.profile.linkedin_link,
+      twitter_link: data.twitter_link || transformedProfile.profile.twitter_link,
+      facebook_link: data.facebook_link || transformedProfile.profile.facebook_link,
+      instagram_link: data.instagram_link || transformedProfile.profile.instagram_link,
+      portfolio_link: data.portfolio_link || transformedProfile.profile.portfolio_link,
+      youtube_link: data.youtube_link || transformedProfile.profile.youtube_link,
 
       projects: Array.isArray(data.projects)
         ? data.projects
@@ -686,9 +683,9 @@ export const getlearnerById = async (learnerId: string): Promise<ServiceResponse
 /**
  * Find learner record by email
  */
-export async function findlearnerByEmail(email: string): Promise<ServiceResponse> {
+export async function findlearnerByEmail(email: string): Promise<{ success: true; data: LearnerRecord; error: null } | { success: false; data: null; error: string }> {
   try {
-    const response: any = await apiGet(`/learners/data/find-by-email?email=${encodeURIComponent(email)}`);
+    const response = await apiGet<{ data?: LearnerRecord; id?: string }>(`/learners/data/find-by-email?email=${encodeURIComponent(email)}`);
     const data = response?.data ?? response;
     if (!data?.id) {
       return { success: false, data: null, error: 'Learner not found' };
@@ -821,7 +818,7 @@ export async function updatelearnerByEmail(email: string, updates: LearnerUpdate
     }
 
     columnUpdates.updated_at = new Date().toISOString();
-    columnUpdates.id = (learnerRecord as LearnerRecord).id;
+    columnUpdates.id = learnerRecord.id;
 
     let updateResult: any;
     try {
@@ -859,7 +856,7 @@ export async function updateTrainingByEmail(email: string, trainingData: Trainin
     const findResult = await findlearnerByEmail(email);
     if (!findResult.success) return findResult;
 
-    const learnerRecord = findResult.data as LearnerRecord;
+    const learnerRecord = findResult.data;
     const learnerId = learnerRecord.id;
 
     const existingResponse: any = await apiGet(`/learners/data/${learnerId}/trainings`);
@@ -977,7 +974,7 @@ export async function updateTrainingByEmail(email: string, trainingData: Trainin
         const trainingId = training.id;
         const originalTrainingData = trainingData.find((t: TrainingUpdateDataFull) => t.id === trainingId);
 
-        let skillsFromTraining: SkillData[] = [];
+        let skillsFromTraining: (SkillData | string)[] = [];
         if (originalTrainingData?.skills && Array.isArray(originalTrainingData.skills)) {
           skillsFromTraining = originalTrainingData.skills;
         } else if (originalTrainingData?.skillsList && Array.isArray(originalTrainingData.skillsList)) {
@@ -991,7 +988,7 @@ export async function updateTrainingByEmail(email: string, trainingData: Trainin
             existingSkillsForTraining.map((s: any) => [`${s.name.toLowerCase().trim()}_${s.type}`, s])
           );
 
-          const skillsToProcess = skillsFromTraining.map((skill: SkillData) => {
+          const skillsToProcess = skillsFromTraining.map((skill: SkillData | string) => {
             if (typeof skill === 'object' && skill && skill.name) {
               return { name: skill.name.trim(), type: skill.type };
             } else if (typeof skill === 'string') {
@@ -1055,7 +1052,7 @@ export async function updateTechnicalSkillsByEmail(email: string, skillsData: Sk
     const findResult = await findlearnerByEmail(email);
     if (!findResult.success) return findResult;
 
-    const learnerRecord = findResult.data as LearnerRecord;
+    const learnerRecord = findResult.data;
     const learnerId = learnerRecord.id;
 
     const existingResponse: any = await apiGet(`/learners/data/${learnerId}/skills?type=technical`);
@@ -1113,7 +1110,7 @@ export async function updateSoftSkillsByEmail(email: string, skillsData: SkillUp
     const findResult = await findlearnerByEmail(email);
     if (!findResult.success) return findResult;
 
-    const learnerRecord = findResult.data as LearnerRecord;
+    const learnerRecord = findResult.data;
     const learnerId = learnerRecord.id;
 
     const existingResponse: any = await apiGet(`/learners/data/${learnerId}/skills?type=soft`);
@@ -1171,7 +1168,7 @@ export async function updateExperienceByEmail(email: string, experienceData: Exp
     const findResult = await findlearnerByEmail(email);
     if (!findResult.success) return findResult;
 
-    const learnerRecord = findResult.data as LearnerRecord;
+    const learnerRecord = findResult.data;
     const learnerId = learnerRecord.id;
 
     const existingResponse: any = await apiGet(`/learners/data/${learnerId}/experience`);
@@ -1230,7 +1227,7 @@ export async function updateEducationByEmail(email: string, educationData: Educa
     const findResult = await findlearnerByEmail(email);
     if (!findResult.success) return findResult;
 
-    const learnerRecord = findResult.data as LearnerRecord;
+    const learnerRecord = findResult.data;
     const learnerId = learnerRecord.id;
 
     const existingResponse: any = await apiGet(`/learners/data/${learnerId}/education`);
@@ -1293,7 +1290,7 @@ export async function updateCertificatesByEmail(email: string, certificatesData:
     const findResult = await findlearnerByEmail(email);
     if (!findResult.success) return findResult;
 
-    const learnerRecord = findResult.data as LearnerRecord;
+    const learnerRecord = findResult.data;
     const learnerId = learnerRecord.id;
 
     const existingResponse: any = await apiGet(`/learners/data/${learnerId}/certificates`);
@@ -1395,7 +1392,7 @@ export async function updateProjectsByEmail(email: string, projectsData: Project
     const findResult = await findlearnerByEmail(email);
     if (!findResult.success) return findResult;
 
-    const learnerRecord = findResult.data as LearnerRecord;
+    const learnerRecord = findResult.data;
     const learnerId = learnerRecord.id;
 
     const existingResponse: any = await apiGet(`/learners/data/${learnerId}/projects`);
@@ -1506,8 +1503,8 @@ export const getLearnerByUserId = async (userId: string): Promise<ServiceRespons
   }
 
   try {
-    const response = await apiGet<LearnerApiResponse>(`/learners?id=${encodeURIComponent(userId)}`);
-    const learnerData: Learner | undefined = response?.learner || (response as Learner);
+    const response = await apiGet<{ data: { learner: Learner | null } }>(`/learners?id=${encodeURIComponent(userId)}`);
+    const learnerData = response?.data?.learner;
 
     if (!learnerData || !learnerData.id) {
       logger.warn('No learner data in response', { userId });

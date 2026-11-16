@@ -42,3 +42,5 @@ export { default as FloatingRecruiterAIButton } from '@/shared/ui/FloatingRecrui
 export { addCandidateToPipeline } from './api/pipelineService';
 
 export { updateNextAction } from './api/pipelineService';
+
+export { loadRecruiterTalentRows } from './api/talentPoolService';

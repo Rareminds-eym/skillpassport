@@ -1,3 +1,4 @@
+import { resolveUserEntitlement, type SubscriptionScope } from '../shared/lib/org-subscription';
 /** Nav catalog and grants resolved using the same organization policy as API requests. */
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { withAuth, getContextUser } from '../lib/auth';
@@ -5,7 +6,7 @@ import { getHybridOrganizationAccess, type AdminOrganizationType } from '../lib/
 import { apiError, apiSuccess } from '../lib/response';
 import { getServiceClient } from '../lib/supabase';
 
-import type { PagesEnv, PagesFunction } from '../lib/types';
+import type { PagesEnv } from '../lib/types';
 
 export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   const role = new URL(context.request.url).searchParams.get('role');
@@ -16,7 +17,11 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   if (!user.roles?.includes(role)) return apiError(403, 'FORBIDDEN', 'Admin role required', context.request);
   try {
     const supabase = getServiceClient(context.env as unknown as PagesEnv);
-    const access = await getHybridOrganizationAccess(supabase, user.id, role.replace('_admin', '') as AdminOrganizationType, user.org_id);
+    const subscription = await resolveUserEntitlement(supabase, user.id, { roles: user.roles, org_id: user.org_id, scope: role as SubscriptionScope });
+    if (!subscription) return apiError(403, 'SUBSCRIPTION_REQUIRED', 'An applicable organization subscription is required.', context.request);
+    if (!subscription.plan_code) throw new Error('Organization plan unavailable');
+    const access = await getHybridOrganizationAccess(supabase, user.id, role.replace('_admin', '') as AdminOrganizationType, user.org_id,
+      { plan_code: subscription.plan_code, features: subscription.features });
     const { data, error } = await supabase.from('feature_keys_cache')
       .select('key, role, nav_group, nav_label, nav_path, display_order, is_active')
       .eq('product_code', 'skillpassport').eq('role', role).order('display_order', { ascending: true });

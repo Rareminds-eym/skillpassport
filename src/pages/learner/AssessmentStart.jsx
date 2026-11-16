@@ -27,7 +27,7 @@ const AssessmentStart = () => {
 
   // Get certificate/course data from navigation state
   const certificateName = location.state?.certificateName || location.state?.courseName || 'General Assessment';
-  const courseId = location.state?.courseId || 'default';
+  const courseId = location.state?.courseId;
   const certificateId = location.state?.certificateId;
   const useDynamicGeneration = location.state?.useDynamicGeneration || false;
   const level = location.state?.level || 'Intermediate';

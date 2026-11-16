@@ -388,7 +388,24 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     }
 
     if (action === 'list-learners') {
-      const { data, error } = await supabase.from('zoho_recruiter_learners').select('*');
+      if (body.include_details !== undefined && typeof body.include_details !== 'boolean') {
+        return apiError(400, 'VALIDATION_ERROR', 'include_details must be a boolean', context.request);
+      }
+      // Recruiter discovery has its own public-profile boundary. Never send this
+      // caller through the academic administrator's rich learner endpoint.
+      const fields = body.include_details ? `
+        id, user_id, name, email, contact_number, university, branch_field,
+        college_school_name, course_name, city, state, country, currentCgpa,
+        expectedGraduationDate, created_at, updated_at, resumeUrl,
+        skills!skills_learner_id_fkey(id, learner_id, name, type, level, enabled, verified),
+        projects!projects_learner_id_fkey(id, learner_id, title, description, status, tech_stack, enabled),
+        certificates!certificates_learner_id_fkey(id, learner_id, title, issuer, issued_on, enabled),
+        experience!experience_learner_id_fkey(id, learner_id, organization, role, start_date, end_date),
+        trainings!trainings_learner_id_fkey(id, learner_id, title, organization, start_date, end_date)
+      ` : '*';
+      let query = supabase.from('zoho_recruiter_learners').select(fields);
+      if (body.include_details) query = query.eq('is_deleted', false).order('updated_at', { ascending: false }).limit(500);
+      const { data, error } = await query;
       if (error) return apiDbError(error, context.request);
 
       // Spec §6/§9: contact details are unlocked, not included by default (C4 — the

@@ -1,3 +1,5 @@
+import { resolveAdmissionsScope, type AdmissionsActor } from '../../../lib/admissions-scope';
+import { requireAdminRequestFeature } from '../../../lib/admin-feature-request';
 /**
  * Authenticated handlers (Admin creates users)
  * - Create learner (admin adds learner)
@@ -22,7 +24,7 @@ import {
 /**
  * Handle admin creating a learner
  */
-export async function handleCreateLearner(request: Request, env: PagesEnv): Promise<Response> {
+export async function handleCreateLearner(request: Request, env: PagesEnv, actor: AdmissionsActor): Promise<Response> {
   const supabaseAdmin = createSupabaseAdminClient(env);
 
   const body = await request.json() as {
@@ -53,89 +55,38 @@ export async function handleCreateLearner(request: Request, env: PagesEnv): Prom
     collegeId?: string;
   };
 
-  const { learner, userEmail, schoolId: requestSchoolId, collegeId: requestCollegeId } = body;
+  const { learner, schoolId: requestSchoolId, collegeId: requestCollegeId } = body;
 
   if (!learner || !learner.name || !learner.email || !learner.contactNumber) {
     return apiError(400, 'VALIDATION_ERROR', 'Missing required fields: name, email, and contactNumber', request);
-  }
-
-  if (!userEmail) {
-    return apiError(400, 'VALIDATION_ERROR', 'No user email provided', request);
   }
 
   if (!validateEmail(learner.email)) {
     return apiError(400, 'VALIDATION_ERROR', 'Invalid email format', request);
   }
 
-  // Get current user data
-  // TODO(12.1 review / §7.3): the acting admin's role is read from the shadow
-  // `users.role` (looked up by the client-supplied `userEmail`, not the verified
-  // JWT) and branched on the SSO roles `college_admin`/`school_admin` below to
-  // decide institution scope. Proper fix is to use `getContextUser(context).roles`,
-  // but this handler is invoked without the auth context (request/env only) and
-  // keys off client-supplied email — threading the verified user requires a
-  // signature change. Deferred for safety; flagged for review.
-  const { data: currentUserData } = await supabaseAdmin
-    .from('users')
-    .select('id, organizationId, role')
-    .eq('email', userEmail)
-    .maybeSingle();
-
-  const userId = currentUserData?.id || null;
-  const userRole = currentUserData?.role || null;
-
-  // Determine institution type
-  let schoolId = requestSchoolId || null;
-  let collegeId = requestCollegeId || null;
-  let institutionType: string | null = null;
-
-  if (collegeId) {
-    institutionType = 'college';
-  } else if (schoolId) {
-    institutionType = 'school';
-  } else {
-    if (userRole === 'college_admin') {
-      // Look up college from organizations table
-      const { data: college } = await supabaseAdmin
-        .from('organizations')
-        .select('id')
-        .eq('organization_type', 'college')
-        .or(`admin_id.eq.${userId},email.ilike.${userEmail}`)
-        .maybeSingle();
-      if (college?.id) {
-        collegeId = college.id;
-        institutionType = 'college';
-      }
-    } else if (userRole === 'school_admin') {
-      // Look up school from organizations table for school_admin
-      const { data: school } = await supabaseAdmin
-        .from('organizations')
-        .select('id')
-        .eq('organization_type', 'school')
-        .or(`admin_id.eq.${userId},email.ilike.${userEmail}`)
-        .maybeSingle();
-      if (school?.id) {
-        schoolId = school.id;
-        institutionType = 'school';
-      }
-    } else {
-      // For educators, try organizationId first, then school_educators table
-      schoolId = currentUserData?.organizationId || null;
-      const { data: educatorData } = await supabaseAdmin
-        .from('school_educators')
-        .select('school_id')
-        .eq('email', userEmail)
-        .maybeSingle();
-      schoolId = educatorData?.school_id || schoolId;
-    }
-    if (schoolId) institutionType = 'school';
+  let scope;
+  try {
+    if (requestSchoolId && requestCollegeId) throw new Error('Specify only one institution');
+    scope = await resolveAdmissionsScope(supabaseAdmin, actor, requestSchoolId || requestCollegeId);
+    if ((requestSchoolId && scope.type !== 'school') || (requestCollegeId && scope.type !== 'college'))
+      throw new Error('Institution type does not match your organization');
+  } catch {
+    return apiError(403, 'FORBIDDEN', 'Unable to authorize the enrollment organization', request);
   }
-
-  if (!schoolId && !collegeId) {
-    return apiError(400, 'VALIDATION_ERROR', 'School/College ID not found', request);
-  }
-
-  const organizationId = schoolId || collegeId;
+  const gateRequest = new Request(new URL('/api/college-admin/admissions', request.url), {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'create-application' }),
+  });
+  const denied = await requireAdminRequestFeature(supabaseAdmin, gateRequest, {
+    sub: actor.id, roles: actor.roles, org_id: scope.organizationId,
+  });
+  if (denied) return denied;
+  const userId = actor.id;
+  const institutionType = scope.type;
+  const organizationId = scope.organizationId;
+  const schoolId = scope.type === 'school' ? organizationId : null;
+  const collegeId = scope.type === 'college' ? organizationId : null;
 
   // NEW APPROACH: Call SSO Worker's createLearnerUser RPC
   // This creates user in SSO, syncs to Skillpassport, and queues invitation email
@@ -157,7 +108,7 @@ export async function handleCreateLearner(request: Request, env: PagesEnv): Prom
         section: learner.section || undefined,
         guardianName: learner.guardianName || undefined,
         guardianPhone: learner.guardianPhone || undefined,
-        rollNumber: learner.rollNumber || undefined,
+        roll_number: learner.rollNumber || undefined,
         category: learner.category || undefined,
         quota: learner.quota || undefined,
         address: learner.address || undefined,
@@ -165,7 +116,7 @@ export async function handleCreateLearner(request: Request, env: PagesEnv): Prom
         state: learner.state || undefined,
         country: learner.country || undefined,
         pincode: learner.pincode || undefined,
-        district: learner.district || undefined,
+        district_name: learner.district || undefined,
         bloodGroup: learner.bloodGroup || undefined,
         school_id: schoolId,
         college_id: collegeId,
@@ -402,11 +353,12 @@ export async function handleCreateTeacher(request: Request, env: PagesEnv, user:
 /**
  * Handle updating learner documents
  */
-export async function handleUpdateLearnerDocuments(request: Request, env: PagesEnv): Promise<Response> {
+export async function handleUpdateLearnerDocuments(request: Request, env: PagesEnv, actor: AdmissionsActor): Promise<Response> {
   const supabaseAdmin = createSupabaseAdminClient(env);
 
   const body = await request.json() as {
-    learnerId: string;
+    learnerId?: string;
+    learnerUserId?: string;
     documents: Array<{
       name: string;
       url: string;
@@ -415,10 +367,10 @@ export async function handleUpdateLearnerDocuments(request: Request, env: PagesE
     }>;
   };
 
-  const { learnerId, documents } = body;
+  const { learnerId, learnerUserId, documents } = body;
 
-  if (!learnerId) {
-    return apiError(400, 'VALIDATION_ERROR', 'Missing required field: learnerId', request);
+  if ((!learnerId && !learnerUserId) || (learnerId && learnerUserId)) {
+    return apiError(400, 'VALIDATION_ERROR', 'Specify exactly one learnerId or learnerUserId', request);
   }
 
   if (!documents || !Array.isArray(documents)) {
@@ -426,15 +378,25 @@ export async function handleUpdateLearnerDocuments(request: Request, env: PagesE
   }
 
   try {
-    // Validate that the learner exists
+    let scope;
+    try { scope = await resolveAdmissionsScope(supabaseAdmin, actor); }
+    catch { return apiError(403, 'FORBIDDEN', 'Unable to authorize the enrollment organization', request); }
+    const gateRequest = new Request(new URL('/api/college-admin/admissions', request.url), {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'create-application' }),
+    });
+    const denied = await requireAdminRequestFeature(supabaseAdmin, gateRequest, { ...actor, sub: actor.id });
+    if (denied) return denied;
     const { data: existingLearner, error: fetchError } = await supabaseAdmin
-      .from('learners')
-      .select('id, documents')
-      .eq('id', learnerId)
-      .single();
-
-    if (fetchError || !existingLearner) {
-      return apiError(404, 'NOT_FOUND', 'Learner not found', request);
+      .from('learners').select('id, documents')
+      .eq(learnerUserId ? 'user_id' : 'id', learnerUserId || learnerId)
+      .eq(scope.type === 'college' ? 'college_id' : 'school_id', scope.organizationId)
+      .maybeSingle();
+    if (fetchError) return apiError(503, 'PROFILE_UNAVAILABLE', 'Learner projection could not be checked.', request);
+    if (!existingLearner) {
+      return learnerUserId
+        ? apiError(409, 'LEARNER_PROJECTION_PENDING', 'The account exists, but its learner record is not ready in this institution. Do not create another account.', request)
+        : apiError(404, 'NOT_FOUND', 'Learner not found in this institution', request);
     }
 
     // Format documents for storage
@@ -448,22 +410,31 @@ export async function handleUpdateLearnerDocuments(request: Request, env: PagesE
 
     // Get existing documents and merge with new ones
     const existingDocuments = existingLearner.documents || [];
-    const updatedDocuments = [...existingDocuments, ...formattedDocuments];
+    const existingUrls = new Set(existingDocuments.map((doc: { url: string }) => doc.url));
+    const newDocuments = formattedDocuments.filter(doc => {
+      if (existingUrls.has(doc.url)) return false;
+      existingUrls.add(doc.url);
+      return true;
+    });
+    const updatedDocuments = [...existingDocuments, ...newDocuments];
 
     // Update learner record with documents
-    const { error: updateError } = await supabaseAdmin
+    const { data: updatedLearner, error: updateError } = await supabaseAdmin
       .from('learners')
       .update({ documents: updatedDocuments })
-      .eq('id', learnerId);
+      .eq('id', existingLearner.id).eq(scope.type === 'college' ? 'college_id' : 'school_id', scope.organizationId)
+      .select('id').maybeSingle();
 
     if (updateError) {
       return apiError(500, 'INTERNAL_ERROR', `Failed to update learner documents: ${updateError.message}`, request);
     }
 
+    if (!updatedLearner) return apiError(409, 'LEARNER_CHANGED', 'The learner record changed before its documents could be linked.', request);
+
     return apiSuccess({
-      message: `Successfully updated documents for learner ${learnerId}`,
+      message: `Successfully updated learner documents`,
       data: {
-        learnerId,
+        learnerId: existingLearner.id,
         documentsCount: formattedDocuments.length,
         totalDocuments: updatedDocuments.length
       }

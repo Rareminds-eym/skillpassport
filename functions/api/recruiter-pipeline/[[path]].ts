@@ -541,34 +541,6 @@ async function handleAction(context: AuthenticatedContext, supabase: any, params
         return apiError(403, 'FORBIDDEN', 'This opportunity does not belong to your organization', context.request);
       }
 
-      const { data: existingCandidate } = await supabase
-        .from('zoho_recruiter_pipeline_candidates')
-        .select('id, stage, status')
-        .eq('opportunity_id', opportunityIdStr)
-        .eq('learner_id', learner_id)
-        .maybeSingle();
-
-      if (existingCandidate) {
-        if (existingCandidate.status === 'active') {
-          return apiSuccess({
-            candidate: null,
-            error: {
-              code: 'DUPLICATE_CANDIDATE',
-              message: `Candidate is already in this pipeline (${existingCandidate.stage} stage)`,
-              details: existingCandidate,
-            },
-          }, context.request);
-        }
-        const { data: reactivated, error: reactivateError } = await supabase
-          .from('zoho_recruiter_pipeline_candidates')
-          .update({ status: 'active', stage: stage || 'sourced', updated_at: new Date().toISOString() })
-          .eq('id', existingCandidate.id)
-          .select()
-          .single();
-        if (reactivateError) return apiDbError(reactivateError, context.request);
-        return apiSuccess({ candidate: reactivated, message: 'Candidate reactivated in pipeline' }, context.request);
-      }
-
       let aiScore = null;
       let employabilityScore = null;
       const { data: learnerData } = await supabase
@@ -587,152 +559,39 @@ async function handleAction(context: AuthenticatedContext, supabase: any, params
         recruiterNotes += recruiterNotes ? ` | Employability Score: ${employabilityScore}/100` : `Employability Score: ${employabilityScore}/100`;
       }
 
-      const candidateStage = stage || 'sourced';
-      const { data, error } = await supabase
-        .from('zoho_recruiter_pipeline_candidates')
-        .insert([{
-          opportunity_id: opportunityIdStr,
-          learner_id,
-          candidate_name,
-          candidate_email: candidate_email || null,
-          candidate_phone: candidate_phone || null,
-          stage: candidateStage,
-          source: source || 'talent_pool',
-          status: 'active',
-          added_by: user.id, // 🔒 server-forced (client added_by ignored)
-          added_by_uuid: user.id, // FK'd shadow column
-          organization_id: orgId, // 🔒 server-forced tenant stamp
-          next_action: next_action || null,
+      const { data: result, error } = await supabase.rpc('recruitment_add_pipeline_candidate', {
+        p_org: orgId, p_actor: user.id, p_opportunity: opportunityIdStr, p_learner: learner_id,
+        p_stage: stage || 'sourced',
+        p_details: {
+          candidate_name, candidate_email: candidate_email || null, candidate_phone: candidate_phone || null,
+          source: source || 'talent_pool', next_action: next_action || null,
           recruiter_notes: recruiterNotes || next_action_notes || null,
-        }])
-        .select()
-        .single();
-
-      if (error) {
-        if (error.code === '23505') {
-          return apiSuccess({
-            candidate: null,
-            error: { code: 'DUPLICATE_CANDIDATE', message: 'Candidate is already in this pipeline' },
-          }, context.request);
-        }
-        return apiDbError(error, context.request);
-      }
-
-      const stageToStatusMap: Record<string, string> = {
-        sourced: 'applied', screened: 'under_review', interview_1: 'interview_scheduled',
-        interview_2: 'interviewed', offer: 'offer_received', hired: 'accepted', rejected: 'rejected',
-      };
-      const applicationStatus = stageToStatusMap[candidateStage];
-      if (applicationStatus && learner_id && opportunityIdStr) {
-        const { data: existingApp } = await supabase
-          .from('zoho_recruiter_applied_jobs')
-          .select('id')
-          .eq('learner_id', learner_id)
-          .eq('opportunity_id', opportunityIdStr)
-          .maybeSingle();
-        if (existingApp) {
-          await supabase
-            .from('zoho_recruiter_applied_jobs')
-            .update({ application_status: applicationStatus, updated_at: new Date().toISOString() })
-            .eq('id', existingApp.id);
-        }
-      }
-
-      if (data) {
-        try {
-          await supabase
-            .from('pipeline_activities')
-            .insert([{
-              candidate_uuid: data.id,
-              activity_type: 'stage_change',
-              from_stage: null,
-              to_stage: data.stage,
-              performed_by: user.id, // 🔒 server-forced actor
-              learner_id: learner_id,
-              activity_details: { ai_score: aiScore, employability_score: employabilityScore },
-            }]);
-        } catch (_) {}
-      }
-
-      return apiSuccess({ candidate: data }, context.request);
+          activity_details: { ai_score: aiScore, employability_score: employabilityScore },
+        },
+      });
+      if (error) return apiDbError(error, context.request);
+      if (!result) return apiError(503, 'DECISION_UNAVAILABLE', 'Pipeline addition was not confirmed', context.request);
+      if (result.code === 'DUPLICATE_CANDIDATE') return apiSuccess({ candidate: null, error: { code: result.code, message: result.message } }, context.request);
+      if (result.code) return apiError(result.code === 'FORBIDDEN' ? 403 : result.code === 'NOT_FOUND' ? 404 : result.code === 'VALIDATION_ERROR' ? 400 : 409, result.code, result.message, context.request);
+      if (!result.candidate?.id) return apiError(503, 'DECISION_UNAVAILABLE', 'Pipeline addition was not confirmed', context.request);
+      return apiSuccess(result, context.request);
     }
 
     case 'move-candidate-to-stage': {
       const { candidate_id, stage: newStage, notes } = params;
       if (!candidate_id || !newStage) return apiError(400, 'VALIDATION_ERROR', 'candidate_id and stage required', context.request);
-      const candidateIdStr = String(candidate_id);
-
-      // 🔒 ORG SCOPING before mutation: candidate must belong to caller's org.
       const user = getContextUser(context);
       const orgId = await getActiveOrgId(supabase, user);
-      if (!orgId) return apiError(400, 'VALIDATION_ERROR', 'Organization ID is required', context.request);
-      const { data: fetched, error: fetchScopedErr } = await supabase
-        .from('zoho_recruiter_pipeline_candidates')
-        .select('id, stage, learner_id, candidate_name, candidate_email, opportunity_id')
-        .eq('id', candidateIdStr)
-        .eq('organization_id', orgId)
-        .limit(1)
-        .maybeSingle();
-      if (fetchScopedErr) return apiDbError(fetchScopedErr, context.request);
-      if (!fetched) return apiError(404, 'NOT_FOUND', 'Candidate not found', context.request);
-      const currentData = fetched;
-
-      if (currentData.opportunity_id) {
-        const { data: opportunityData } = await supabase
-          .from('opportunities')
-          .select('applications_count, status, job_title, company_name')
-          .eq('id', currentData.opportunity_id)
-          .single();
-        if (opportunityData && (opportunityData.status === 'closed' || opportunityData.status === 'filled')) {
-          return apiError(400, 'VALIDATION_ERROR',
-            `Cannot move candidate: All openings for ${opportunityData.job_title} at ${opportunityData.company_name} have been filled.`,
-            context.request);
-        }
-      }
-
-      const previousStage = currentData.stage;
-      const { data, error } = await supabase
-        .from('zoho_recruiter_pipeline_candidates')
-        .update({
-          stage: newStage,
-          previous_stage: previousStage,
-          stage_changed_at: new Date().toISOString(),
-          stage_changed_by: user.id, // 🔒 server-forced actor
-        })
-        .eq('id', candidateIdStr)
-        .select()
-        .single();
+      if (!orgId) return apiError(403, 'FORBIDDEN', 'An active organization is required', context.request);
+      const { data: result, error } = await supabase.rpc('recruitment_move_pipeline_candidates', {
+        p_org: orgId, p_actor: user.id, p_ids: [String(candidate_id)], p_stage: newStage, p_notes: notes ?? null,
+      });
       if (error) return apiDbError(error, context.request);
-
-      const stageToStatusMap: Record<string, string> = {
-        sourced: 'applied', screened: 'under_review', interview_1: 'interview_scheduled',
-        interview_2: 'interviewed', offer: 'offer_received', hired: 'accepted', rejected: 'rejected',
-      };
-      const applicationStatus = stageToStatusMap[newStage];
-      if (applicationStatus && currentData.learner_id && currentData.opportunity_id) {
-        const updateData: any = { application_status: applicationStatus, updated_at: new Date().toISOString() };
-        if (applicationStatus === 'interview_scheduled') updateData.interview_scheduled_at = new Date().toISOString();
-        await supabase
-          .from('zoho_recruiter_applied_jobs')
-          .update(updateData)
-          .eq('learner_id', currentData.learner_id)
-          .eq('opportunity_id', currentData.opportunity_id)
-          .maybeSingle();
-      }
-
-      try {
-        await supabase
-          .from('pipeline_activities')
-          .insert([{
-            candidate_uuid: candidateIdStr,
-            activity_type: 'stage_change',
-            from_stage: previousStage,
-            to_stage: newStage,
-            activity_details: notes ? { notes } : null,
-            performed_by: user.id, // 🔒 server-forced actor
-            learner_id: currentData.learner_id,
-          }]);
-      } catch (_) {}
+      if (!result) return apiError(503, 'DECISION_UNAVAILABLE', 'Stage decision was not confirmed', context.request);
+      if (result.code) return apiError(result.code === 'FORBIDDEN' ? 403 : result.code === 'NOT_FOUND' ? 404 : result.code === 'VALIDATION_ERROR' ? 400 : 409, result.code, result.message, context.request);
+      const data = result.candidates?.[0];
+      if (!data?.id) return apiError(503, 'DECISION_UNAVAILABLE', 'Stage update was not confirmed', context.request);
+      const currentData = data;
 
       // Notify learner of the stage change (preference-gated)
       {
@@ -1000,47 +859,18 @@ async function handleAction(context: AuthenticatedContext, supabase: any, params
 
     case 'bulk-move-candidates': {
       const { candidate_ids, stage: newStage } = params;
-      if (!candidate_ids || !Array.isArray(candidate_ids) || candidate_ids.length === 0 || !newStage) {
-        return apiError(400, 'VALIDATION_ERROR', 'candidate_ids array and stage required', context.request);
-      }
-      // 🔒 ORG SCOPING, all-or-nothing: verify EVERY candidate belongs to the
-      // caller's org BEFORE applying any move (no partial cross-org mutation).
+      if (!Array.isArray(candidate_ids) || !candidate_ids.length || candidate_ids.length > 100 || !newStage)
+        return apiError(400, 'VALIDATION_ERROR', 'Select 1–100 candidates and a stage', context.request);
       const user = getContextUser(context);
       const orgId = await getActiveOrgId(supabase, user);
-      if (!orgId) return apiError(400, 'VALIDATION_ERROR', 'Organization ID is required', context.request);
-      const { data: orgRows, error: scopeErr } = await supabase
-        .from('zoho_recruiter_pipeline_candidates')
-        .select('id, stage, learner_id, opportunity_id')
-        .in('id', candidate_ids.map((id: any) => String(id)))
-        .eq('organization_id', orgId);
-      if (scopeErr) return apiDbError(scopeErr, context.request);
-      const foundIds = new Set((orgRows || []).map((r: any) => r.id));
-      const missing = candidate_ids.filter((id: any) => !foundIds.has(String(id)));
-      if (missing.length > 0) {
-        return apiError(403, 'FORBIDDEN', 'One or more candidates do not belong to your organization', context.request);
-      }
-      const results: any[] = [];
-      const errors: any[] = [];
-      for (const scoped of orgRows || []) {
-        try {
-          const candidateIdStr = String(scoped.id);
-          const previousStage = scoped.stage;
-          const { data: updated, error: updateError } = await supabase
-            .from('zoho_recruiter_pipeline_candidates')
-            .update({ stage: newStage, previous_stage: previousStage, stage_changed_at: new Date().toISOString(), stage_changed_by: user.id }) // 🔒 server-forced actor
-            .eq('id', candidateIdStr)
-            .select()
-            .single();
-          if (updateError) errors.push(updateError);
-          else results.push(updated);
-        } catch (e) {
-          errors.push(e);
-        }
-      }
-      if (errors.length > 0) {
-        return apiSuccess({ candidates: results, errors }, context.request);
-      }
-      return apiSuccess({ candidates: results }, context.request);
+      if (!orgId) return apiError(403, 'FORBIDDEN', 'An active organization is required', context.request);
+      const { data, error } = await supabase.rpc('recruitment_move_pipeline_candidates', {
+        p_org: orgId, p_actor: user.id, p_ids: candidate_ids.map(String), p_stage: newStage, p_notes: null,
+      });
+      if (error) return apiDbError(error, context.request);
+      if (!data?.candidates && !data?.code) return apiError(503, 'DECISION_UNAVAILABLE', 'Stage updates were not confirmed', context.request);
+      if (data.code) return apiError(data.code === 'FORBIDDEN' ? 403 : data.code === 'NOT_FOUND' ? 404 : data.code === 'VALIDATION_ERROR' ? 400 : 409, data.code, data.message, context.request);
+      return apiSuccess({ candidates: data.candidates }, context.request);
     }
 
     case 'bulk-reject-candidates': {

@@ -16,7 +16,7 @@ beforeEach(() => {
     if (body.action === 'get-applications-by-opportunity') { if (failure) throw new Error(failure); return { data: [fixture] }; }
     if (body.action === 'review-application') return { data: { ...fixture, application_status: body.status, notes: body.note, updated_at: '2026-10-19T10:00:00Z' } };
     if (body.action === 'get-shortlists') return { data: { shortlists: [{ id: 'list-1', name: 'Engineering', candidate_count: 3 }] } };
-    if (body.action === 'add-candidate-to-shortlist') return { data: { data: { id: 'junction-1' } } };
+    if (body.action === 'add-application-to-shortlist') return { data: { data: { id: 'junction-1' } } };
     return { data: [] };
   });
 });
@@ -101,12 +101,12 @@ describe('Applications panel', () => {
   it('adds the actual learner identity to a selected shortlist', async () => {
     await mount(); click('Add to shortlist'); await screen.findByRole('option', { name: 'Engineering (3)' });
     fireEvent.change(screen.getByLabelText('Shortlist'), { target: { value: 'list-1' } }); click('Add candidate');
-    await waitFor(() => expect(apiPost).toHaveBeenCalledWith('/opportunities', { action: 'add-candidate-to-shortlist', shortlist_id: 'list-1', learner_id: app.learner_id }));
+    await waitFor(() => expect(apiPost).toHaveBeenCalledWith('/opportunities', { action: 'add-application-to-shortlist', application_id: app.id, shortlist_id: 'list-1', learner_id: app.learner_id }));
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Add to shortlist' })).not.toBeInTheDocument());
   });
   it('surfaces duplicate shortlist membership instead of reporting success', async () => {
     const base = apiPost.getMockImplementation()!;
-    apiPost.mockImplementation((path, body) => body.action === 'add-candidate-to-shortlist' ? Promise.resolve({ data: { data: null, error: { message: 'Candidate is already in this shortlist' } } }) : base(path, body));
+    apiPost.mockImplementation((path, body) => body.action === 'add-application-to-shortlist' ? Promise.resolve({ data: { data: null, error: { message: 'Candidate is already in this shortlist' } } }) : base(path, body));
     await mount(); click('Add to shortlist'); await screen.findByRole('option', { name: 'Engineering (3)' });
     fireEvent.change(screen.getByLabelText('Shortlist'), { target: { value: 'list-1' } }); click('Add candidate');
     expect(await screen.findByRole('alert')).toHaveTextContent('already in this shortlist');
@@ -117,4 +117,10 @@ describe('Applications panel', () => {
     await mount(); click('Add to shortlist'); expect(await screen.findByRole('link', { name: 'Shortlists page' })).toHaveAttribute('href', '/recruitment/shortlists');
     expect(screen.getByRole('button', { name: 'Add candidate' })).toBeDisabled();
   });
+});
+
+it('blocks applicant-context shortlisting after rejection while retaining explicit review reset', async () => {
+  fixture.application_status = 'rejected'; await mount();
+  expect(screen.getAllByRole('button', { name: 'Add to shortlist' })[0]).toBeDisabled();
+  expect(screen.getAllByRole('button', { name: 'Update status' })[0]).toBeEnabled();
 });

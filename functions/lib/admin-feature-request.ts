@@ -103,16 +103,18 @@ export async function requireAdminRequestFeature(
   }
   const policy = resolveAdminFeaturePolicy(url.pathname, body.action, body, type);
   if (policy === null) return null;
+  let subscription;
   try {
-    const subscription = await resolveUserEntitlement(supabase, user.sub, {
+    subscription = await resolveUserEntitlement(supabase, user.sub, {
       roles: user.roles, org_id: user.org_id, scope: `${type}_admin` as SubscriptionScope,
     });
     if (!subscription) return apiError(403, 'SUBSCRIPTION_REQUIRED', 'An applicable organization subscription is required.', request);
   } catch {
     return apiError(503, 'SUBSCRIPTION_UNAVAILABLE', 'Unable to verify organization coverage. Please retry.', request);
   }
+  if (!subscription.plan_code) return apiError(503, 'SUBSCRIPTION_UNAVAILABLE', 'Organization plan could not be verified. Please retry.', request);
   for (const keys of policy) {
-    const denied = await requireHybridFeature(supabase, request, type, keys, user.sub, user.org_id);
+    const denied = await requireHybridFeature(supabase, request, type, keys, user.sub, user.org_id, { plan_code: subscription.plan_code, features: subscription.features });
     if (denied) return denied;
   }
   return null;

@@ -782,7 +782,7 @@ const AssessmentTestPage: React.FC = () => {
   }, [store]);
 
   // Use the sync hook at top level (not conditionally)
-  const syncStatus = useAnswerSync(store.attemptId, showSectionIntro);
+  const syncStatus = useAnswerSync(store.status === 'inProgress' ? store.attemptId : null, showSectionIntro);
 
   // Initialize adaptive test when reaching adaptive section
   useEffect(() => {

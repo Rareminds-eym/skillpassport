@@ -3,13 +3,12 @@ import { ArrowDownTrayIcon, CheckCircleIcon, DocumentArrowUpIcon, ExclamationTri
 import Papa from 'papaparse'
 import React, { useEffect, useRef, useState } from 'react'
 import { apiPost } from '@/shared/api/apiClient'
-import storageService from '@/shared/api/storageService'
+import { uploadFile } from '@/shared/api/storageApiService'
 import userApiService from '@/entities/user/api/userApiService'
-import { validateFileSize, getValidationErrorMessage } from '@/shared/lib/utils/file-validation'
+import { validateFileSize } from '@/shared/lib/utils/file-validation'
 import { getFileSizeLimit } from '@/shared/config/fileSizeLimits'
 import { getLogger } from '@/shared/config/logging'
 import { useAuthStore } from '@/shared/model/authStore'
-import { ssoClient } from '@/shared/api/ssoClient';
 import { learnerAdmissionService, type BulkUploadError } from '@/features/college-admin/api/learnerAdmissionService';
 
 
@@ -20,10 +19,27 @@ interface DocumentUploadProgress {
   error?: string
 }
 
+interface EnrollmentDocument { name: string; url: string; size: number; type: string }
+interface PendingEnrollment {
+  userId: string | null
+  name: string
+  actorEmail: string
+  organizationId: string
+  uploaded: Map<File, EnrollmentDocument>
+  complete: boolean
+}
+
+interface CsvLearnerRow {
+  name?: string;
+  profilepicture?: string;
+  [column: string]: string | null | undefined;
+  schoolClassId?: string | null;
+}
+
 // Validated row interface for enhanced preview
 interface ValidatedLearner {
   rowNumber: number
-  data: any
+  data: CsvLearnerRow
   isValid: boolean
   errors: string[]
 }
@@ -62,6 +78,20 @@ const logger = getLogger('add-learner-modal')
 
 const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
   const [loading, setLoading] = useState(false)
+  const [enrollment, setEnrollment] = useState<PendingEnrollment | null>(null)
+  const enrollmentRef = useRef<PendingEnrollment | null>(null)
+  const submitting = useRef(false)
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const rememberEnrollment = (value: PendingEnrollment | null) => {
+    enrollmentRef.current = value
+    setEnrollment(value)
+  }
+  const requestClose = () => {
+    if (submitting.current) return
+    if (closeTimer.current) clearTimeout(closeTimer.current)
+    onClose()
+  }
+  useEffect(() => () => { if (closeTimer.current) clearTimeout(closeTimer.current) }, [])
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [mode, setMode] = useState<'manual' | 'csv'>('csv')
@@ -69,8 +99,12 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
   const [validatedlearners, setValidatedlearners] = useState<ValidatedLearner[]>([])
   const [showEnhancedPreview, setShowEnhancedPreview] = useState(false)
   const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null)
+  const csvValidation = useRef(0)
   const isMounted = useRef(true)
-  useEffect(() => { return () => { isMounted.current = false } }, [])
+  useEffect(() => {
+    isMounted.current = true
+    return () => { isMounted.current = false; csvValidation.current++ }
+  }, [])
   const [documentUploadProgress, setDocumentUploadProgress] = useState<DocumentUploadProgress[]>([])
   const [isUploadingDocuments, setIsUploadingDocuments] = useState(false)
   const [formData, setFormData] = useState<LearnerFormData>({
@@ -99,6 +133,9 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
 
   useEffect(() => {
     if (!isOpen) {
+      csvValidation.current++
+      if (enrollmentRef.current && !enrollmentRef.current.complete) return
+      rememberEnrollment(null)
       setFormData({
         name: '',
         email: '',
@@ -319,8 +356,10 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
   }
 
   const handleSubmit = async () => {
-    if (!validateForm()) return
+    if (submitting.current || enrollmentRef.current?.complete) return
+    if (!enrollmentRef.current && !validateForm()) return
 
+    submitting.current = true
     setLoading(true)
     setError(null)
     setSuccess(null)
@@ -328,149 +367,87 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
     try {
       // Get current user from localStorage (custom auth - same as teacher onboarding)
       const userEmail = (useAuthStore.getState().user?.email || localStorage.getItem("userEmail"))
-      const userStr = (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user"))
 
       if (!userEmail) {
         throw new Error('You are not logged in. Please login and try again.')
       }
 
-      // Get authenticated user once for reuse
-      const authUser = useAuthStore.getState().user;
+      const context = await apiPost<{ data: { id: string; organization_type: string } }>('/college-admin/admissions', {
+        action: 'get-admission-context',
+      })
+      if (!context?.data?.id) throw new Error('Your enrollment organization could not be verified.')
+      const schoolId = context.data.organization_type === 'school' ? context.data.id : null
+      const collegeId = context.data.organization_type === 'college' ? context.data.id : null
 
-      // Get schoolId or collegeId from localStorage
-      let schoolId = null
-      let collegeId = null
-      let userRole = null
-      try {
-        const userData = JSON.parse(userStr || '{}')
-        schoolId = userData.schoolId || null
-        collegeId = userData.collegeId || null
-        userRole = userData.role || null
-      } catch (e) {
-        logger.error('Error parsing user data from localStorage', e instanceof Error ? e : new Error(String(e)))
+      let pending = enrollmentRef.current
+      if (pending && (pending.actorEmail !== userEmail || pending.organizationId !== context.data.id)) {
+        throw new Error('Enrollment incomplete: sign in to the original administrator and institution before retrying documents.')
       }
+      if (!pending) {
+        // Call Cloudflare Worker via userApiService
 
-      // If schoolId not in localStorage but user is school_admin, fetch from organizations table
-      if (!schoolId && userRole === 'school_admin' && userEmail) {
-        const orgResult = await apiPost<any>('/college-admin/faculty', {
-          action: 'get-organization-by-email',
-          email: userEmail,
-          organization_type: 'school',
-        })
-
-        if (orgResult?.data?.id) {
-          schoolId = orgResult.data.id
-        } else if (authUser?.id) {
-          const educatorResult = await apiPost<any>('/college-admin/faculty', {
-            action: 'get-school-educators',
-            user_id: authUser.id,
-          })
-          const educators = educatorResult?.data || []
-          if (educators[0]?.school_id) {
-            schoolId = educators[0].school_id
+        const data = await userApiService.createLearner({
+          userEmail: userEmail,
+          schoolId: schoolId,
+          collegeId: collegeId,
+          learner: {
+            name: formData.name.trim(),
+            email: formData.email.trim().toLowerCase(),
+            contactNumber: formData.contactNumber.trim(),
+            dateOfBirth: formData.dateOfBirth || null,
+            gender: formData.gender || null,
+            enrollmentNumber: formData.enrollmentNumber.trim() || null,
+            rollNumber: formData.rollNumber.trim() || null,
+            category: formData.category || null,
+            quota: formData.quota || null,
+            guardianName: formData.guardianName.trim() || null,
+            guardianPhone: formData.guardianPhone.trim() || null,
+            guardianEmail: formData.guardianEmail.trim() || null,
+            guardianRelation: formData.guardianRelation.trim() || null,
+            address: formData.address.trim() || null,
+            city: formData.city.trim() || null,
+            state: formData.state.trim() || null,
+            country: formData.country || 'India',
+            pincode: formData.pincode.trim() || null,
+            district: formData.district.trim() || null,
+            bloodGroup: formData.bloodGroup || null,
+            approval_status: 'approved',
+            learner_type: 'educator_added'
+            // Note: No documents sent initially
           }
-        }
-      }
-
-      // If collegeId not in localStorage but user is college_admin, fetch from organizations table
-      if (!collegeId && userRole === 'college_admin' && authUser?.id) {
-        const orgResult = await apiPost<any>('/college-admin/faculty', {
-          action: 'get-organization-by-admin',
-          userId: authUser.id,
         })
 
-        if (orgResult?.data?.id) {
-          collegeId = orgResult.data.id
+        pending = {
+          userId: data.data?.data?.authUserId || null, name: formData.name,
+          actorEmail: userEmail, organizationId: context.data.id, uploaded: new Map(), complete: false,
+        }
+        rememberEnrollment(pending)
+      }
+      if (!pending.userId) throw new Error('Enrollment incomplete: the account was created, but its identity was not confirmed. Contact support; do not create another account.')
+
+      const remaining = formData.documents.filter(file => !pending.uploaded.has(file))
+      if (remaining.length) {
+        const uploaded = await uploadDocumentsAfterlearnerCreation(remaining)
+        for (const { file, document } of uploaded) pending.uploaded.set(file, document)
+        if (pending.uploaded.size !== formData.documents.length) {
+          throw new Error('Enrollment incomplete: document upload failed. Retry documents to upload the remaining files; the account already exists.')
         }
       }
-
-      // Refresh session to ensure we have a valid token
-      const token = ssoClient.getAccessToken();
-
-      if (!token) {
-        throw new Error('No active session. Please login again.')
+      try {
+        await updatelearnerDocuments(pending.userId, [...pending.uploaded.values()])
+      } catch (failure) {
+        throw new Error(`Enrollment incomplete: document linking failed. ${failure instanceof Error ? failure.message : 'Please retry documents.'}`)
       }
-
-      // Call Cloudflare Worker via userApiService
-
-      const data = await userApiService.createLearner({
-        userEmail: userEmail,
-        schoolId: schoolId, // Send schoolId from localStorage (for school admins)
-        collegeId: collegeId, // Send collegeId from localStorage (for college admins)
-        learner: {
-          name: formData.name.trim(),
-          email: formData.email.trim().toLowerCase(),
-          contactNumber: formData.contactNumber.trim(),
-          dateOfBirth: formData.dateOfBirth || null,
-          gender: formData.gender || null,
-          enrollmentNumber: formData.enrollmentNumber.trim() || null,
-          rollNumber: formData.rollNumber.trim() || null,
-          category: formData.category || null,
-          quota: formData.quota || null,
-          guardianName: formData.guardianName.trim() || null,
-          guardianPhone: formData.guardianPhone.trim() || null,
-          guardianEmail: formData.guardianEmail.trim() || null,
-          guardianRelation: formData.guardianRelation.trim() || null,
-          address: formData.address.trim() || null,
-          city: formData.city.trim() || null,
-          state: formData.state.trim() || null,
-          country: formData.country || 'India',
-          pincode: formData.pincode.trim() || null,
-          district: formData.district.trim() || null,
-          bloodGroup: formData.bloodGroup || null,
-          approval_status: 'approved',
-          learner_type: 'educator_added'
-          // Note: No documents sent initially
-        }
-      }, token)
-
-      // Extract learner ID from the response
-      // API returns: { success: true, data: { message, data: { learnerId, authUserId, ... } } }
-      const learnerId = data.data?.data?.learnerId
-      if (!learnerId) {
-        logger.error('No learner ID in response', new Error(JSON.stringify(data)))
-        throw new Error('Learner created but no ID returned')
-      }
-
-      // Step 2: Upload documents if any exist
-      let uploadedDocuments: Array<{ name: string, url: string, size: number, type: string }> = []
-      if (formData.documents.length > 0) {
-
-        try {
-          uploadedDocuments = await uploadDocumentsAfterlearnerCreation(formData.documents, learnerId)
-        } catch (uploadError) {
-          // Don't fail the entire operation if document upload fails
-          setError(`Learner created successfully, but some documents failed to upload: ${uploadError instanceof Error ? uploadError.message : 'Unknown error'}`)
-        }
-      }
-
-      // Step 3: Update learner record with document URLs (if any were uploaded)
-      if (uploadedDocuments.length > 0) {
-        try {
-          await updatelearnerDocuments(learnerId, uploadedDocuments)
-        } catch (updateError) {
-          logger.error('Error updating learner documents', updateError instanceof Error ? updateError : new Error(String(updateError)))
-          // Don't fail the operation, documents are uploaded but not linked
-        }
-      }
-
-      // Show success message
-      const successMsg = uploadedDocuments.length > 0
-        ? `✅ Learner "${formData.name}" created successfully with ${uploadedDocuments.length} document${uploadedDocuments.length > 1 ? 's' : ''}!`
-        : `✅ Learner "${formData.name}" created successfully!`
-
-      setSuccess(successMsg)
+      rememberEnrollment({ ...pending, complete: true })
+      setSuccess(`✅ Learner "${pending.name}" created successfully with ${pending.uploaded.size} document${pending.uploaded.size === 1 ? '' : 's'}!`)
       setError(null)
-
-      // Call onSuccess and close modal after a brief delay
       onSuccess?.()
-      setTimeout(() => {
-        onClose()
-      }, 1500)
-    } catch (err: any) {
-      setError(err.message || 'Failed to create learner. Please try again.')
+      closeTimer.current = setTimeout(() => { if (isMounted.current) onClose() }, 1500)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to create learner. Please try again.')
       setSuccess(null)
     } finally {
+      submitting.current = false
       setLoading(false)
     }
   }
@@ -493,7 +470,7 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
     // - Length between 3-20 characters
     // - Can contain letters, numbers, and hyphens
     if (!rollNumber.trim()) return true // Optional field
-    const rollRegex = /^[A-Za-z0-9\-]{3,20}$/
+    const rollRegex = /^[A-Za-z0-9-]{3,20}$/
     return rollRegex.test(rollNumber.trim())
   }
 
@@ -509,7 +486,7 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
     }
 
     // Handle DD-MM-YYYY or DD/MM/YYYY format
-    const ddmmyyyyRegex = /^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})$/
+    const ddmmyyyyRegex = /^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/
     const match = trimmed.match(ddmmyyyyRegex)
 
     if (match) {
@@ -575,11 +552,11 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
   }
 
   // Upload documents after learner creation
-  const uploadDocumentsAfterlearnerCreation = async (files: File[], learnerId: string): Promise<Array<{ name: string, url: string, size: number, type: string }>> => {
+  const uploadDocumentsAfterlearnerCreation = async (files: File[]): Promise<Array<{ file: File; document: EnrollmentDocument }>> => {
     if (files.length === 0) return []
 
     setIsUploadingDocuments(true)
-    const uploadedDocs: Array<{ name: string, url: string, size: number, type: string }> = []
+    const uploadedDocs: Array<{ file: File; document: EnrollmentDocument }> = []
 
     // Initialize progress tracking
     const progressTracking: DocumentUploadProgress[] = files.map(file => ({
@@ -602,15 +579,15 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
 
         try {
           // Upload to storage service with real learner ID
-          const result = await storageService.uploadlearnerDocument(file, learnerId, 'general')
+          const result = await uploadFile(file, { filename: file.name, context: 'document' })
 
           if (result.success && result.url) {
-            uploadedDocs.push({
+            uploadedDocs.push({ file, document: {
               name: file.name,
               url: result.url,
               size: file.size,
               type: file.type
-            })
+            } })
 
             // Update progress to completed
             setDocumentUploadProgress(prev =>
@@ -655,15 +632,8 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
   // Update learner record with document URLs
   const updatelearnerDocuments = async (learnerId: string, documents: Array<{ name: string, url: string, size: number, type: string }>) => {
     try {
-      // Get fresh token
-      const token = ssoClient.getAccessToken()
-
-      if (!token) {
-        throw new Error('No authentication token available for document update')
-      }
-
       // Use the API service to update documents
-      await userApiService.updatelearnerDocuments(learnerId, documents, token)
+      await userApiService.updatelearnerDocuments({ userId: learnerId }, documents)
     } catch (error: unknown) {
       logger.error('Error updating learner documents', error instanceof Error ? error : new Error(String(error)))
       throw error
@@ -674,7 +644,10 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
     const file = e.target.files?.[0]
     if (!file) return
 
+    const ticket = ++csvValidation.current
+    const current = () => isMounted.current && ticket === csvValidation.current
     setCsvFile(file)
+    setUploadProgress(null)
     setError(null)
     setSuccess(null)
     setValidatedlearners([])
@@ -682,11 +655,12 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
     setLoading(true)
 
     // Parse CSV using PapaParse
-    Papa.parse(file, {
+    Papa.parse<CsvLearnerRow>(file, {
       header: true,
       skipEmptyLines: true,
       transformHeader: (header) => header.trim().toLowerCase().replace(/[^a-z0-9]/g, ''),
       complete: async (results) => {
+        if (!current()) return
         try {
           if (results.errors.length > 0) {
             const errorMsg = results.errors.map(e => `Row ${(e.row ?? 0) + 1}: ${e.message}`).join(', ')
@@ -702,7 +676,7 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
           }
 
           // Validate required columns
-          const firstRow: any = results.data[0]
+          const firstRow = results.data[0]
           const hasName = 'name' in firstRow
           const hasEmail = 'email' in firstRow
           const hasContact = 'contactnumber' in firstRow
@@ -713,73 +687,17 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
             return
           }
 
-          // Get school ID for class validation
-          const userStr = (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user"))
-          const userEmail = (useAuthStore.getState().user?.email || localStorage.getItem("userEmail"))
-          let schoolId: string | null = null
-          let collegeId: string | null = null
-          let userRole: string | null = null
-
-          try {
-            const userData = JSON.parse(userStr || '{}')
-            schoolId = userData.schoolId || null
-            collegeId = userData.collegeId || null
-            userRole = userData.role || null
-          } catch (error: unknown) {
-            logger.error('Error parsing user data', error instanceof Error ? error : new Error(String(error)))
-          }
-
-          // If collegeId not in localStorage but user is college_admin, fetch from organizations table
-          if (!collegeId && userRole === 'college_admin' && userEmail) {
-            const orgResult = await apiPost<any>('/college-admin/faculty', {
-              action: 'get-organization-by-email',
-              email: userEmail,
-              organization_type: 'college',
-            })
-
-            if (orgResult?.data?.id) {
-              collegeId = orgResult.data.id
-            }
-          }
-
-          // If schoolId not in localStorage but user is school_admin, fetch from organizations table
-          if (!schoolId && userRole === 'school_admin' && userEmail) {
-            const orgResult = await apiPost<any>('/college-admin/faculty', {
-              action: 'get-organization-by-email',
-              email: userEmail,
-              organization_type: 'school',
-            })
-
-            if (orgResult?.data?.id) {
-              schoolId = orgResult.data.id
-            }
-          }
-
-          // If schoolId not in localStorage, fetch from database (for educators)
-          if (!schoolId && !collegeId && userEmail) {
-            const educatorResult = await apiPost<any>('/college-admin/faculty', {
-              action: 'get-school-educators',
-              email: userEmail,
-            })
-            const educators = educatorResult?.data || []
-
-            if (educators[0]?.school_id) {
-              schoolId = educators[0].school_id
-            } else {
-              const userResult = await apiPost<any>('/college-admin/faculty', {
-                action: 'get-user-by-email',
-                email: userEmail,
-              })
-
-              if (userResult?.data?.organizationId) {
-                schoolId = userResult.data.organizationId
-              }
-            }
-          }
+          const context = await apiPost<{ data: { id: string; organization_type: string } }>('/college-admin/admissions', {
+            action: 'get-admission-context',
+          })
+          if (!current()) return
+          if (!context?.data?.id) throw new Error('Your enrollment organization could not be verified.')
+          const schoolId = context.data.organization_type === 'school' ? context.data.id : null
+          const collegeId = context.data.organization_type === 'college' ? context.data.id : null
 
           // Collect unique class combinations from CSV
           const classesToCheck = new Map<string, { grade: string; section: string }>()
-            ; (results.data as any[]).forEach((learner) => {
+            ; results.data.forEach((learner) => {
               const grade = learner.grade || learner.class
               const section = learner.section || learner.division
               if (grade && section) {
@@ -796,13 +714,14 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
 
           if ((schoolId || collegeId) && classesToCheck.size > 0) {
             // Use college or school endpoint based on which ID we have
-            const classResult = await apiPost<any>('/college-admin/classes', {
-              action: collegeId ? 'get-college-classes' : 'get-school-classes',
-              ...(collegeId ? { college_id: collegeId } : { school_id: schoolId }),
+            const classResult = await apiPost<{ data: Array<{ id: string; grade: string; section: string }> }>('/college-admin/admissions', {
+              action: 'get-admission-classes',
+              organization_id: context.data.id,
             })
+            if (!current()) return
             const classes = classResult?.data || []
 
-            classes.forEach((cls: any) => {
+            classes.forEach((cls) => {
               const key = `${cls.grade}-${cls.section}`
               existingClasses.add(key)
               classIdMap.set(key, cls.id)
@@ -810,7 +729,7 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
           }
 
           // Validate ALL rows and create enhanced preview
-          const validated: ValidatedLearner[] = (results.data as any[]).map((learner, index) => {
+          const validated: ValidatedLearner[] = results.data.map((learner, index) => {
             const rowNum = index + 2 // +2 for header row and 0-index
             const errors: string[] = []
 
@@ -870,13 +789,14 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
 
           setValidatedlearners(validated)
           setShowEnhancedPreview(true)
-        } catch (err: any) {
-          setError(`Error validating CSV: ${err.message}`)
+        } catch (err: unknown) {
+          if (current()) setError(`Error validating CSV: ${err instanceof Error ? err.message : String(err)}`)
         } finally {
-          setLoading(false)
+          if (current()) setLoading(false)
         }
       },
       error: (error) => {
+        if (!current()) return
         setError(`Failed to parse CSV: ${error.message}`)
         setLoading(false)
       }
@@ -889,56 +809,28 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
       return
     }
 
+    const ticket = csvValidation.current
+    const current = () => isMounted.current && ticket === csvValidation.current
     setLoading(true)
     setError(null)
     setSuccess(null)
 
     try {
-      // Resolve organization ID
-      const userStr = (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user"))
-      const userEmail = (useAuthStore.getState().user?.email || localStorage.getItem("userEmail"))
+      const context = await apiPost<{ data: { id: string } }>('/college-admin/admissions', {
+        action: 'get-admission-context',
+      })
+      if (!current()) return
+      if (!context?.data?.id) throw new Error('Your enrollment organization could not be verified.')
+      const organizationId = context.data.id
 
-      if (!userEmail) {
-        setError('You are not logged in. Please login and try again.')
-        setLoading(false)
-        return
-      }
-
-      let organizationId = ''
-      let userRole = ''
-      try {
-        const userData = JSON.parse(userStr || '{}')
-        organizationId = userData.schoolId || userData.collegeId || ''
-        userRole = userData.role || ''
-      } catch {
-        logger.warn('Failed to parse user data from store/localStorage')
-      }
-
-      if (!organizationId && userEmail) {
-        const orgResult = await apiPost<any>('/college-admin/faculty', {
-          action: 'get-organization-by-email',
-          email: userEmail,
-          organization_type: userRole === 'school_admin' ? 'school' : 'college',
-        })
-        if (!isMounted.current) return
-        if (orgResult?.data?.id) {
-          organizationId = orgResult.data.id
-        }
-      }
-
-      if (!organizationId) {
-        if (!isMounted.current) return
-        setError('Organization ID not found. Please ensure you are logged in as a school or college admin.')
-        setLoading(false)
-        return
-      }
-
-      // Read CSV file as text
-      const csvText = await csvFile.text()
+      // Submit exactly the rows shown as importable; the worker validates them again.
+      const importable = validatedlearners.filter(row => row.isValid).map(row => row.data)
+      if (!importable.length) throw new Error('There are no valid rows to import. Correct the CSV and validate it again.')
+      const csvText = Papa.unparse(importable)
 
       // Queue bulk upload
       const queueResult = await learnerAdmissionService.queueBulkUpload(csvText, organizationId)
-      if (!isMounted.current) return
+      if (!current()) return
       if (!queueResult.success) {
         setError(queueResult.error?.message || 'Failed to queue bulk upload')
         setLoading(false)
@@ -947,7 +839,7 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
 
       const batchId = queueResult.data.batch_id
       if (!batchId) {
-        if (!isMounted.current) return
+        if (!current()) return
         setError('Failed to get batch ID from queue response')
         setLoading(false)
         return
@@ -957,10 +849,10 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
       let pollAttempts = 0
 
       const poll = async () => {
-        if (!isMounted.current) return
+        if (!current()) return
 
         if (pollAttempts >= MAX_POLL_ATTEMPTS) {
-          if (isMounted.current) {
+          if (current()) {
             setError('Upload processing timeout. Please check status manually.')
             setLoading(false)
           }
@@ -970,6 +862,7 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
 
         try {
           const statusResult = await learnerAdmissionService.getBulkStatus(batchId)
+          if (!current()) return
           if (!statusResult.success) {
             setError(statusResult.error?.message || 'Failed to check upload status')
             setLoading(false)
@@ -985,6 +878,7 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
             let errorList: string[] = []
             if (s.failed_count > 0) {
               const errResult = await learnerAdmissionService.getBulkErrors(batchId)
+              if (!current()) return
               if (errResult.success) {
                 errorList = errResult.data.errors.map((e: BulkUploadError) => `Row ${e.row}: ${e.error}`)
               }
@@ -995,7 +889,7 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
             if (s.success_count > 0 && s.failed_count === 0) {
               setSuccess(`Successfully imported ${s.success_count} learner${s.success_count > 1 ? 's' : ''}!`)
               onSuccess?.()
-              setTimeout(() => onClose(), 2000)
+              setTimeout(() => { if (current()) onClose() }, 2000)
             } else if (s.success_count > 0 && s.failed_count > 0) {
               setSuccess(`Imported ${s.success_count} learner${s.success_count > 1 ? 's' : ''} successfully`)
               setError(`${s.failed_count} failed:\n${errorList.slice(0, 5).join('\n')}${errorList.length > 5 ? `\n...and ${errorList.length - 5} more` : ''}`)
@@ -1003,11 +897,11 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
             } else {
               setError(`All imports failed. Errors:\n${errorList.slice(0, 10).join('\n')}${errorList.length > 10 ? `\n...and ${errorList.length - 10} more` : ''}`)
             }
-          } else if (isMounted.current) {
+          } else if (current()) {
             setTimeout(poll, 2000)
           }
         } catch {
-          if (isMounted.current) {
+          if (current()) {
             setError('Failed to check upload status')
             setLoading(false)
           }
@@ -1015,9 +909,9 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
       }
 
       void poll()
-    } catch (err: any) {
-      if (!isMounted.current) return
-      setError(err.message || 'Failed to upload CSV')
+    } catch (err: unknown) {
+      if (!current()) return
+      setError(err instanceof Error ? err.message : 'Failed to upload CSV')
       setLoading(false)
     }
   }
@@ -1027,7 +921,7 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={requestClose}></div>
 
         <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full sm:p-6">
           <div className="flex items-center justify-between mb-6">
@@ -1035,11 +929,12 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
               <h3 className="text-xl font-semibold text-gray-900">Add New Learner</h3>
               <p className="text-sm text-gray-500 mt-1">Add learners manually or bulk upload via CSV</p>
             </div>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <button onClick={requestClose} className="text-gray-400 hover:text-gray-600">
               <XMarkIcon className="h-6 w-6" />
             </button>
           </div>
 
+          {enrollment && !enrollment.complete && <p role="status" className="mb-4 text-sm text-amber-800">The account for {enrollment.name} already exists. Retry documents here; do not enroll this learner again. Keep this page open until document linking completes.</p>}
           {/* Mode Selection */}
           <div className="flex space-x-2 mb-6">
             <button
@@ -1053,6 +948,7 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
               Manual Entry
             </button>
             <button
+              disabled={loading || Boolean(enrollment)}
               onClick={() => setMode('csv')}
               className={`flex-1 px-4 py-2 text-sm font-medium rounded-md ${mode === 'csv'
                 ? 'bg-primary-600 text-white'
@@ -1099,7 +995,7 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
           )}
 
           {mode === 'manual' ? (
-            <div className="max-h-[60vh] px-2 overflow-y-auto">
+            <fieldset disabled={loading || Boolean(enrollment)} className="max-h-[60vh] px-2 overflow-y-auto">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Basic Information */}
                 <div className="md:col-span-2">
@@ -1516,7 +1412,7 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                   )}
                 </div>
               </div>
-            </div>
+            </fieldset>
           ) : (
             <div>
               {/* CSV Format Requirements */}
@@ -1859,7 +1755,7 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
 
           <div className="mt-6 flex items-center justify-end space-x-3">
             <button
-              onClick={onClose}
+              onClick={requestClose}
               className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
               disabled={loading}
             >
@@ -1867,7 +1763,7 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
             </button>
             <button
               onClick={mode === 'manual' ? handleSubmit : handleCSVSubmit}
-              disabled={loading || (mode === 'csv' && !csvFile) || (mode === 'csv' && showEnhancedPreview && validatedlearners.filter(s => s.isValid).length === 0)}
+              disabled={loading || Boolean(enrollment?.complete) || Boolean(enrollment && !enrollment.userId) || (mode === 'csv' && !csvFile) || (mode === 'csv' && showEnhancedPreview && validatedlearners.filter(s => s.isValid).length === 0)}
               className="px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md hover:bg-primary-700 disabled:bg-gray-300 disabled:cursor-not-allowed inline-flex items-center"
             >
               {loading ? (
@@ -1881,7 +1777,7 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
               ) : (
                 <>
                   <UserPlusIcon className="h-4 w-4 mr-1" />
-                  {mode === 'manual' ? 'Add Learner' : (
+                  {mode === 'manual' ? (enrollment ? (enrollment.complete ? 'Enrollment complete' : 'Retry documents') : 'Add Learner') : (
                     showEnhancedPreview && validatedlearners.length > 0
                       ? `Import ${validatedlearners.filter(s => s.isValid).length} Valid Learner${validatedlearners.filter(s => s.isValid).length !== 1 ? 's' : ''}`
                       : 'Upload CSV'

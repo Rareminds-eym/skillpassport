@@ -1,3 +1,4 @@
+import { ApplicationResumeError, validateApplicationResume } from '../../lib/application-resume';
 import { wakeJobIndex } from '../../lib/wake-job-index';
 import { paginationParams, integerParam, readPage } from '../../lib/opportunity-pagination';
 import { opportunitySearchPredicate, workModeVariants, skillsPredicate, parseSalaryBound } from '../../lib/opportunity-search';
@@ -454,7 +455,7 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const supabase = getServiceClient(env as any);
   const body: any = await context.request.json().catch(() => ({}));
   const { action } = body;
-  if(['create-shortlist','update-shortlist','delete-shortlist','add-candidate-to-shortlist','remove-candidate-from-shortlist','update-shortlist-candidate-notes','update-interview','delete-interview','update-scorecard','update-interview-status','update-application-status','bulk-update-applications'].includes(action)){const user=getContextUser(context);const orgId=await getActiveOrgId(supabase,user);if(!orgId||!(await verifyOrgAccess(supabase,user.id,orgId,PERMISSIONS.MANAGE_CANDIDATES)).allowed)return apiError(403,'FORBIDDEN','Candidate management permission is required',context.request);}
+  if(['create-shortlist','update-shortlist','delete-shortlist','add-candidate-to-shortlist','add-application-to-shortlist','remove-candidate-from-shortlist','update-shortlist-candidate-notes','update-interview','delete-interview','update-scorecard','update-interview-status','update-application-status','bulk-update-applications'].includes(action)){const user=getContextUser(context);const orgId=await getActiveOrgId(supabase,user);if(!orgId||!(await verifyOrgAccess(supabase,user.id,orgId,PERMISSIONS.MANAGE_CANDIDATES)).allowed)return apiError(403,'FORBIDDEN','Candidate management permission is required',context.request);}
 
   if (!action) return apiError(400, 'VALIDATION_ERROR', 'action is required', context.request);
 
@@ -964,15 +965,47 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       }, context.request);
     }
 
+    case 'get-application-resume':
+    case 'set-application-resume': {
+      const user = getContextUser(context);
+      const { data: learner, error } = await supabase.from('learners').select('id, resumeUrl')
+        .eq('id', body.learner_id).eq('user_id', user.id).maybeSingle();
+      if (error) return apiError(503, 'PROFILE_UNAVAILABLE', 'Your profile could not be loaded.', context.request);
+      if (!learner) return apiError(403, 'FORBIDDEN', 'Only your own resume may be attached.', context.request);
+      const value = action === 'set-application-resume' ? body.resume_url : learner.resumeUrl;
+      if (action === 'get-application-resume' && !value) return apiSuccess({ resume: null }, context.request);
+      try {
+        const resume = await validateApplicationResume(context.env, user.id, value, context.request.url);
+        if (action === 'set-application-resume') {
+          const { error: saveError } = await supabase.from('learners').update({ resumeUrl: resume.url })
+            .eq('id', learner.id).eq('user_id', user.id);
+          if (saveError) return apiDbError(saveError, context.request);
+        }
+        return apiSuccess({ resume }, context.request);
+      } catch (error) {
+        if (error instanceof ApplicationResumeError) {
+          if (action === 'get-application-resume' && error.status === 400)
+            return apiSuccess({ resume: null, validationMessage: error.message }, context.request);
+          return apiError(error.status, error.code, error.message, context.request);
+        }
+        throw error;
+      }
+    }
+
     // ── applied_jobs / application actions ──
     case 'apply-to-job': {
       const user = getContextUser(context);
       const { learner_id, opportunity_id } = body;
       if (!learner_id || !opportunity_id) return apiError(400, 'VALIDATION_ERROR', 'learner_id and opportunity_id required', context.request);
-      const { data: owner, error: ownerError } = await supabase.from('learners').select('id').eq('id', learner_id).eq('user_id', user.id).maybeSingle();
+      const { data: owner, error: ownerError } = await supabase.from('learners').select('id, resumeUrl').eq('id', learner_id).eq('user_id', user.id).maybeSingle();
       if (ownerError) return apiError(503, 'PROFILE_UNAVAILABLE', 'Learner profile is temporarily unavailable', context.request);
       if (!owner) return apiError(403, 'FORBIDDEN', 'Only your own applications may be submitted', context.request);
-      const available = await findOpportunityById(supabase, opportunity_id, 'id,status,is_active,deadline,learning_requirements,learning_requirements_version');
+      try { await validateApplicationResume(context.env, user.id, owner.resumeUrl, context.request.url); }
+      catch (error) {
+        if (error instanceof ApplicationResumeError) return apiError(error.status, error.code, error.message, context.request);
+        throw error;
+      }
+      const available = await findOpportunityById(supabase, opportunity_id, 'id,organization_id,status,is_active,deadline,learning_requirements,learning_requirements_version');
       if (available.error) return apiError(503, 'OPPORTUNITY_UNAVAILABLE', 'Opportunity could not be verified', context.request);
       if (!isEligibleJob(available.data)) return apiError(409, 'OPPORTUNITY_CLOSED', 'Opportunity is no longer available', context.request);
 
@@ -991,7 +1024,7 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
       try {
         await supabase.from('pipeline_candidates').insert([{
-          opportunity_id, learner_id, candidate_name: learner.name || 'Unknown', candidate_email: learner.email || '',
+          opportunity_id, learner_id, organization_id: available.data.organization_id, candidate_name: learner.name || 'Unknown', candidate_email: learner.email || '',
           candidate_phone: learner.contact_number || '', stage: 'sourced', source: 'direct_application',
           status: 'active', added_at: new Date().toISOString(), stage_changed_at: new Date().toISOString()
         }]);
@@ -1833,6 +1866,7 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       }).filter(Boolean);
       return apiSuccess({ candidates }, context.request);
     }
+    case 'add-application-to-shortlist':
     case 'add-candidate-to-shortlist': {
       const { shortlist_id, learner_id, notes } = body;
       if (!shortlist_id || !learner_id) return apiError(400, 'VALIDATION_ERROR', 'shortlist_id and learner_id required', context.request);
@@ -1845,6 +1879,17 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       // and force added_by to the server-side user id (client value ignored).
       const gated = await loadGatedShortlist(supabase, user, context, shortlist_id);
       if (gated.error) return gated.error;
+      if (action === 'add-application-to-shortlist') {
+        if (!body.application_id) return apiError(400, 'VALIDATION_ERROR', 'Application ID is required', context.request);
+        const { data, error } = await supabase.rpc('recruitment_shortlist_application', {
+          p_org: orgId, p_actor: user.id, p_application: body.application_id,
+          p_shortlist: gated.id, p_learner: learner_id, p_notes: notes ?? null,
+        });
+        if (error) return apiDbError(error, context.request);
+        if (!data) return apiError(503, 'DECISION_UNAVAILABLE', 'Shortlist decision was not confirmed', context.request);
+        if (data.code) return apiError(data.code === 'FORBIDDEN' ? 403 : data.code === 'NOT_FOUND' ? 404 : 409, data.code, data.message, context.request);
+        return apiSuccess(data, context.request);
+      }
       const { data, error } = await supabase.from('shortlist_candidates').insert([{ shortlist_id: gated.id, learner_id, added_by: user.id, notes }]).select().single();
       if (error) {
         if (error.code === '23505') return apiSuccess({ data: null, error: { ...error, message: 'Candidate is already in this shortlist' } }, context.request);

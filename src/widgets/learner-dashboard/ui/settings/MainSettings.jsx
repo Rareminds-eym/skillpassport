@@ -390,16 +390,12 @@ const MainSettings = () => {
         setCustomSchoolName(learnerData.school_name);
       }
 
-      // Custom school class - derive from grade field, NOT from section
-      // Section field should remain independent for roll numbers
-      if (learnerData.grade && (!learnerData.schoolClassId || learnerData.schoolClassId === '') && (learnerData.schoolId || learnerData.school_name) && !isUniversityPath) {
-        // Extract numeric grade from grade field (e.g., "Grade 10" -> "10")
-        const gradeMatch = learnerData.grade.match(/Grade\s*(\d+)/i);
-        if (gradeMatch) {
-          setShowCustomSchoolClass(true);
-          setCustomSchoolClassName(gradeMatch[1]); // Just the number, e.g., "10"
-        }
-      }
+      // Classroom section is saved independently of the academic grade.
+      const hasCustomSchoolSection = Boolean(
+        learnerData.section && !learnerData.schoolClassId && hasSchoolData && !isUniversityPath
+      );
+      setShowCustomSchoolClass(hasCustomSchoolSection);
+      setCustomSchoolClassName(hasCustomSchoolSection ? learnerData.section : '');
 
       // Custom university name
       console.log('🔍 Checking university:', {

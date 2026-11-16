@@ -182,18 +182,21 @@ const LearnerAdmissions = () => {
     maxScore: 100
   });
 
-  const { learners, loading, error, totalCount } = useLearners({
+  const { learners, loading: pageLoading, error: pageError, totalCount } = useLearners({
     searchTerm: debouncedSearch,
     page: currentPage,
     pageSize: itemsPerPage
   });
 
-  // Fetch all learners for filter options (lightweight query - only needed fields)
-  const { learners: alllearnersForFilters } = useLearners({
+  // Load complete filter data through the authorized paginated reader.
+  const { learners: alllearnersForFilters, loading: filterLoading, error: filterError } = useLearners({
     searchTerm: '', // No search filter for getting all filter options
     page: 1,
-    pageSize: 1000 // Get more learners for accurate filter counts
+    loadAll: true
   });
+
+  const loading = pageLoading || filterLoading;
+  const error = pageError || filterError;
 
   useEffect(() => {
     setCurrentPage(1);

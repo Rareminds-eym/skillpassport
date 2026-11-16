@@ -36,8 +36,8 @@ interface UseConversationReturn {
 export function useConversation(
     userId1: string,
     userId2: string,
-    applicationId?: number,
-    opportunityId?: number,
+    applicationId?: string | number,
+    opportunityId?: string | number,
     subject?: string,
     enabled: boolean = true
 ): UseConversationReturn {

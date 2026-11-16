@@ -1,3 +1,4 @@
+import { resolveAdmissionsScope } from '../../lib/admissions-scope';
 /**
  * College Admin - Admissions & Learner Admissions API
  * GET: Fetch admissions (original table)
@@ -56,7 +57,26 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       return apiSuccess({ admission: data }, context.request);
     }
 
+    // Resolve scope before admissions helper reads or provisioning requests.
+    let scope;
+    if (['get-admission-context', 'get-admission-classes', 'create-application', 'bulk-upload-csv', 'bulk-upload-status', 'bulk-upload-errors'].includes(action)) {
+      try {
+        scope = await resolveAdmissionsScope(supabase, { id: user.id, roles: user.roles, org_id: user.org_id }, params.organization_id);
+      } catch {
+        return apiError(403, 'FORBIDDEN', 'Unable to authorize the enrollment organization', context.request);
+      }
+    }
     switch (action) {
+      case 'get-admission-context':
+        return apiSuccess({ id: scope!.organizationId, organization_type: scope!.type }, context.request);
+      case 'get-admission-classes': {
+        const type = scope!.type;
+        const { data, error } = await supabase.from(type === 'college' ? 'college_classes' : 'school_classes')
+          .select('id, grade, section').eq(type === 'college' ? 'college_id' : 'school_id', scope!.organizationId)
+          .eq(type === 'college' ? 'status' : 'account_status', 'active');
+        if (error) return apiDbError(error, context.request);
+        return apiSuccess(data, context.request);
+      }
       case 'create-application': {
         // Create learner via SSO (creates user account + sends invitation)
         const { email, name, organization_id, contact_number, enrollment_number, program_id, metadata } = params;
@@ -268,6 +288,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         if (!metadata) {
           return apiError(404, 'NOT_FOUND', `Batch ${batch_id} not found`, context.request, { startTime });
         }
+        if (metadata.organization_id !== scope!.organizationId) return apiError(403, 'FORBIDDEN', 'Batch does not belong to your organization', context.request);
 
         if (metadata.status === 'pending') {
           return apiSuccess({
@@ -318,6 +339,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         if (!metadata) {
           return apiError(404, 'NOT_FOUND', `Batch ${batch_id} not found`, context.request, { startTime });
         }
+        if (metadata.organization_id !== scope!.organizationId) return apiError(403, 'FORBIDDEN', 'Batch does not belong to your organization', context.request);
         
         return apiSuccess({
           batch_id: metadata.batch_id,

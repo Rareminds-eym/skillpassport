@@ -348,10 +348,11 @@ interface UseLearnersOptions {
   searchTerm?: string
   page?: number
   pageSize?: number
+  loadAll?: boolean
 }
 
 export function useAdminLearners(options: UseLearnersOptions = {}) {
-  const { searchTerm = '', page = 1, pageSize = 500 } = options
+  const { searchTerm = '', page = 1, pageSize = 500, loadAll = false } = options
   const [data, setData] = useState<UICandidate[]>([])
   const [loading, setLoading] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
@@ -363,11 +364,11 @@ export function useAdminLearners(options: UseLearnersOptions = {}) {
       setLoading(true)
       setError(null)
       try {
-        let schoolId: string | null = null;
-        let collegeId: string | null = null;
+        let schoolId: string | undefined;
+        let collegeId: string | undefined;
         let userRole: string | null = null;
         let userId: string | null = null;
-        let universityId: string | null = null;
+        let universityId: string | undefined;
 
         const storedUser = (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user"));
         if (storedUser) {
@@ -441,18 +442,43 @@ export function useAdminLearners(options: UseLearnersOptions = {}) {
         }
 
         let result;
-        try {
-          result = await apiPost('/learner-profile/actions', {
-            action: 'fetch-learners-admin',
-            schoolId, collegeId, universityId, searchTerm, page, pageSize, useSimple: false,
-          });
-        } catch {
-          result = await apiPost('/learner-profile/actions', {
-            action: 'fetch-learners-admin',
-            schoolId, collegeId, universityId, searchTerm, page, pageSize, useSimple: true,
-          });
+        if (loadAll) {
+          const count = countRes?.data?.count;
+          if (!Number.isSafeInteger(count) || count < 0) throw new Error('Learner count unavailable');
+          const rows: LearnerRow[] = [];
+          const batchSize = 500;
+          const seenIds = new Set<string>();
+          for (let batchPage = 1; batchPage <= Math.ceil(count / batchSize); batchPage++) {
+            if (!isMounted) return;
+            const batch = await apiPost('/learner-profile/actions', {
+              action: 'fetch-learners-admin', schoolId, collegeId, universityId, searchTerm,
+              page: batchPage, pageSize: batchSize, useSimple: false,
+            });
+            const expectedRows = Math.min(batchSize, count - rows.length);
+            if (!Array.isArray(batch.data) || batch.data.length !== expectedRows) {
+              throw new Error('Learner list changed while loading. Please reload.');
+            }
+            for (const row of batch.data as LearnerRow[]) {
+              if (!row.id || seenIds.has(row.id)) throw new Error('Learner list changed while loading. Please reload.');
+              seenIds.add(row.id);
+            }
+            rows.push(...batch.data);
+          }
+          result = {data: rows};
+        } else {
+          try {
+            result = await apiPost('/learner-profile/actions', {
+              action: 'fetch-learners-admin',
+              schoolId, collegeId, universityId, searchTerm, page, pageSize, useSimple: false,
+            });
+          } catch {
+            result = await apiPost('/learner-profile/actions', {
+              action: 'fetch-learners-admin',
+              schoolId, collegeId, universityId, searchTerm, page, pageSize, useSimple: true,
+            });
+          }
         }
-        
+
         if (!isMounted) return;
         
         // Log sample data to verify related tables are loaded
@@ -473,6 +499,7 @@ export function useAdminLearners(options: UseLearnersOptions = {}) {
           errorMessage = `Database error: ${e.message}`;
         }
         
+        if (loadAll) setData([]);
         setError(errorMessage);
       } finally {
         if (isMounted) setLoading(false);
@@ -482,7 +509,7 @@ export function useAdminLearners(options: UseLearnersOptions = {}) {
     return () => {
       isMounted = false
     }
-  }, [searchTerm, page, pageSize])
+  }, [searchTerm, page, pageSize, loadAll])
 
   const stats = useMemo(() => ({ 
     count: data.length,

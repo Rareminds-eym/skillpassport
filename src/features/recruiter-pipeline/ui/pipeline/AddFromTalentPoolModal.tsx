@@ -1,3 +1,4 @@
+import { loadRecruiterTalentRows } from '../../api/talentPoolService';
 import React, { useState } from 'react';
 import {
   XMarkIcon,
@@ -23,14 +24,17 @@ interface AddFromTalentPoolModalProps {
   onSuccess?: () => void;
 }
 
-export const AddFromTalentPoolModal: React.FC<AddFromTalentPoolModalProps> = ({
+export const AddFromTalentPoolModal: React.FC<AddFromTalentPoolModalProps> = props =>
+  props.isOpen ? <OpenTalentPoolModal {...props} /> : null;
+
+const OpenTalentPoolModal: React.FC<AddFromTalentPoolModalProps> = ({
   isOpen,
   onClose,
   requisitionId,
   targetStage,
   onSuccess
 }) => {
-  const { learners, loading: learnersLoading } = useLearners();
+  const { learners, loading: learnersLoading, error: discoveryError } = useLearners({ loadRows: loadRecruiterTalentRows });
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedlearners, setSelectedlearners] = useState<any[]>([]);
   const [adding, setAdding] = useState(false);
@@ -149,9 +153,9 @@ export const AddFromTalentPoolModal: React.FC<AddFromTalentPoolModalProps> = ({
             </button>
           </div>
 
-          {error && (
+          {(error || discoveryError) && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
-              <p className="text-sm text-red-800">{error}</p>
+              <p className="text-sm text-red-800">{error || discoveryError}</p>
             </div>
           )}
 
@@ -180,6 +184,8 @@ export const AddFromTalentPoolModal: React.FC<AddFromTalentPoolModalProps> = ({
           <div className="max-h-96 overflow-y-auto border border-gray-200 rounded-md">
             {learnersLoading ? (
               <div className="p-8 text-center text-gray-500">Loading candidates...</div>
+            ) : discoveryError ? (
+              <div role="alert" className="p-8 text-center text-red-700">Candidates could not be loaded.</div>
             ) : filteredlearners.length === 0 ? (
               <div className="p-8 text-center text-gray-500">No candidates found</div>
             ) : (

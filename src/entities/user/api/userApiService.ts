@@ -420,14 +420,14 @@ export async function sendInterviewReminder(params: InterviewReminderParams, tok
 }
 
 export async function updatelearnerDocuments(
-  learnerId: string,
+  learnerId: string | { userId: string },
   documents: any,
   token?: string
 ): Promise<any> {
   const response = await ssoClient.fetch(`${API_URL}/update-learner-documents`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ learnerId, documents }),
+    body: JSON.stringify({ ...(typeof learnerId === 'string' ? { learnerId } : { learnerUserId: learnerId.userId }), documents }),
   });
 
   if (!response.ok) {

@@ -25,7 +25,10 @@ beforeEach(() => {
   vi.resetAllMocks();
   events.length = 0;
   window.addEventListener('learner-profile-updated', onChange);
-  f.get.mockImplementation(async (path: string) => path.includes('find-by-email') ? { data: { id: learnerId } } : { data: [] });
+  f.get.mockImplementation(async (path: string) => {
+    if (path.includes('/learners/by-email?')) return (await f.fetch()).json();
+    return path.includes('find-by-email') ? { data: { id: learnerId } } : { data: [] };
+  });
   f.put.mockResolvedValue({ success: true });
   f.post.mockResolvedValue({ data: { learner: { id: learnerId } } });
   f.fetch.mockRejectedValue(new Error('Profile read unavailable'));

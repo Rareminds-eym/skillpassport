@@ -1,3 +1,4 @@
+import { useResumeApplicationReview } from '@/features/opportunities/ui/ResumeApplicationReview';
 import './Opportunities.css';
 import { apiGet } from '@/shared/api';
 import { OpportunityDialog } from '@/features/opportunities/ui/OpportunityDialog';
@@ -619,7 +620,13 @@ const Opportunities = () => {
     }
   };
 
-  const handleApply = async (opportunity) => {
+  const { requestReview, resumeReview } = useResumeApplicationReview(learnerId);
+  const handleApply = (opportunity) => {
+    if (!canAccessOpportunities || !learnerId || needsProfileCompletion || appliedJobs.has(opportunity.id)) return submitApplication(opportunity);
+    return requestReview(opportunity, () => submitApplication(opportunity));
+  };
+
+  const submitApplication = async (opportunity) => {
     // Check feature access first
     if (!canAccessOpportunities) {
       console.log('[Feature Gating] Blocking job application - Freemium user');
@@ -749,6 +756,7 @@ const Opportunities = () => {
 
   return (
     <div className="opportunities-page min-h-screen bg-gray-50">
+      {resumeReview}
       <OpportunityDialog variant="visit" open={visitDialogOpen} onOpenChange={setVisitDialogOpen} title={selectedIndustrialVisit?.company_name || 'Visit details'} description="Review the visit information and registration details."
         footer={selectedIndustrialVisit && <IndustrialVisitRegistration visit={selectedIndustrialVisit} onRegister={handleRegisterForVisit} isRegistered={registeredVisits.has(selectedIndustrialVisit.id)} isRegistering={isRegistering} error={visitRegistrationError?.id === selectedIndustrialVisit.id ? visitRegistrationError.message : ''} onCompleteProfile={visitRegistrationError?.id === selectedIndustrialVisit.id && /complete your profile/i.test(visitRegistrationError.message) ? () => navigate('/learner/settings') : undefined} />}>
         {selectedIndustrialVisit && <IndustrialVisitPreview inDialog visit={selectedIndustrialVisit} isRegistered={registeredVisits.has(selectedIndustrialVisit.id)} />}

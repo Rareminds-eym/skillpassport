@@ -69,7 +69,7 @@ export async function loadCareerAssessmentQuestions(
   gradeLevel: GradeLevel,
   learnerId: string | null = null,
   attemptId: string | null = null,
-  learnerCourse: string | null = null
+  _learnerCourse: string | null = null
 ): Promise<AssessmentQuestions> {
   const questions: AssessmentQuestions = {
     aptitude: null,
@@ -93,12 +93,10 @@ export async function loadCareerAssessmentQuestions(
           questions.aptitude = savedAptitude;
         }
 
-        // Check for saved knowledge questions. learnerCourse must be normalized the same
-        // way as normalizedStreamId - using it raw (e.g. "BCA") diverges from Aptitude's
-        // normalized value (e.g. "bca"), producing two different stream identities for the
-        // same learner/attempt and failing stream/grade validation downstream.
-        const knowledgeStreamId = (gradeLevel === 'college' && learnerCourse) ? normalizeStreamId(learnerCourse) : normalizedStreamId;
-        const savedKnowledge = await getSavedQuestionsForLearner(learnerId, knowledgeStreamId, 'knowledge', gradeLevel);
+        // Both sections must bind to the attempt's selected stream. A profile course
+        // may differ from that stream and must not change the cache/binding identity.
+        const knowledgeStreamId = normalizedStreamId;
+        const savedKnowledge = gradeLevel === 'after10' ? null : await getSavedQuestionsForLearner(learnerId, knowledgeStreamId, 'knowledge', gradeLevel);
         if (savedKnowledge && savedKnowledge.length > 0) {
           questions.knowledge = savedKnowledge;
         }
@@ -124,6 +122,9 @@ export async function loadCareerAssessmentQuestions(
       }
     }
     
+    // after10 has no AI knowledge section; do not request unsupported general knowledge.
+    if (gradeLevel === 'after10') return questions;
+
     // Add delay between API calls to avoid rate limiting (only if we need to generate knowledge questions)
     if (!questions.knowledge) {
       await new Promise(resolve => setTimeout(resolve, 2000));
@@ -131,7 +132,7 @@ export async function loadCareerAssessmentQuestions(
     
     // Generate missing knowledge questions (if not loaded from cache)
     if (!questions.knowledge) {
-      const knowledgeStreamId = (gradeLevel === 'college' && learnerCourse) ? normalizeStreamId(learnerCourse) : normalizedStreamId;
+      const knowledgeStreamId = normalizedStreamId;
       const aiKnowledge = await generateStreamKnowledgeQuestions(knowledgeStreamId, 20, learnerId, attemptId, gradeLevel);
 
       if (aiKnowledge && aiKnowledge.length > 0) {
