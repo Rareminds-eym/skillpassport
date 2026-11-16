@@ -1,15 +1,15 @@
 import {act,cleanup,fireEvent,render,screen,waitFor} from '@testing-library/react';
 import {afterEach,beforeEach,describe,it,expect,vi} from 'vitest';
-const mocks=vi.hoisted(()=>({user:{id:'owner',email:'owner@example.test'},start:vi.fn(),check:vi.fn(),resume:vi.fn(),ai:vi.fn(),sync:vi.fn()}));
+const mocks=vi.hoisted(()=>({user:{id:'owner',email:'owner@example.test'},start:vi.fn(),check:vi.fn(),resume:vi.fn(),ai:vi.fn(),sync:vi.fn(),legacySubmit:vi.fn()}));
 vi.mock('@/shared/model/authStore',()=>({useUser:()=>mocks.user}));
 vi.mock('react-router-dom',()=>({useNavigate:()=>vi.fn()}));
 vi.mock('../../api/assessmentApiService',()=>({startAssessment:mocks.start,checkInProgress:mocks.check,abandonAttempt:vi.fn(),saveResponse:vi.fn(),submitAssessment:vi.fn(),analyzeAssessment:vi.fn()}));
 vi.mock('../../api/adaptiveAptitudeApiService',()=>({default:{resumeTest:mocks.resume},linkSessionToAttempt:vi.fn()}));
 vi.mock('../../api/careerAssessmentAIService',()=>({normalizeStreamId:()=> 'bca'}));
 vi.mock('../../model/useLearnerGrade',()=>({useLearnerGrade:()=>({learnerId:'learner',learnerProgram:'BCA',loading:false})}));
-vi.mock('../../model',()=>({useAdaptiveAptitude:()=>({startTest:vi.fn(),loading:false}),useAssessmentSubmission:()=>({submit:vi.fn()})}));
+vi.mock('../../model',()=>({useAdaptiveAptitude:()=>({startTest:vi.fn(),loading:false}),useAssessmentSubmission:()=>({submit:mocks.legacySubmit})}));
 vi.mock('../../model/useAIQuestions',()=>({useAIQuestions:(options:any)=>{mocks.ai(options);return {loading:false,aiQuestions:{aptitude:null,knowledge:null},reload:vi.fn()};}}));
-vi.mock('../../hooks/useAnswerSync',()=>({useAnswerSync:(id:any)=>{mocks.sync(id);return {getElapsedSecondsForSection:()=>0,canProceedToNextQuestion:true};}}));
+vi.mock('../../hooks/useAnswerSync',()=>({useAnswerSync:(id:any)=>{mocks.sync(id);return {isOnline:true,getElapsedSecondsForSection:()=>0,canProceedToNextQuestion:true};}}));
 vi.mock('../GradeSelectionScreen',()=>({GradeSelectionScreen:({onGradeSelect}:any)=><button onClick={()=>onGradeSelect('college')}>Choose college</button>}));
 vi.mock('../ResumePromptScreen',()=>({default:({onResume}:any)=><button onClick={onResume}>Resume saved</button>}));
 vi.mock('../screens/SectionIntroScreen',()=>({SectionIntroScreen:({gradeLevel,onStart}:any)=><button onClick={onStart}>Start {gradeLevel}</button>}));
@@ -101,3 +101,14 @@ it.each(['middle','highschool','higher_secondary','after10','after12','college']
   await screen.findByText('q3:');
   expect(store.getState().answers).toEqual({q2:'B'});
  });
+
+it('surfaces a failed final snapshot instead of marking a legacy assessment completed',async()=>{
+  mocks.check.mockResolvedValue({...snapshot(),gradeLevel:'higher_secondary',currentQuestionIndex:2,answers:{q3:'B'}});
+  mocks.legacySubmit.mockRejectedValueOnce(new Error('Final answer snapshot unavailable'));
+  render(<AssessmentTestPage/>);
+  fireEvent.click(await screen.findByText('Resume saved'));
+  await screen.findByText('q3:B');
+  fireEvent.click(screen.getByText('Next'));
+  await screen.findByText('Assessment error');
+  expect(store.getState()).toMatchObject({status:'error',error:'Final answer snapshot unavailable'});
+});

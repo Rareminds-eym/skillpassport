@@ -6,6 +6,8 @@ vi.mock('@/shared/api/ssoClient', () => ({ ssoClient: { fetch: mocks.fetch } }))
 vi.mock('@/shared/api/apiUtils', () => ({ getApiUrl: () => '/api/question-generation' }));
 vi.mock('../assessmentRepository', () => ({ getSavedQuestionsForLearner: vi.fn().mockResolvedValue(null) }));
 import { generateAptitudeQuestions, generateStreamKnowledgeQuestions } from '../questionGeneratorService';
+import {STREAMS_BY_CATEGORY} from '../../lib/config/config';
+import {STREAM_KNOWLEDGE_PROMPTS} from '../../lib/streamPrompts';
 
 beforeEach(() => vi.clearAllMocks());
 
@@ -27,4 +29,16 @@ describe('learner question generation contract', () => {
     expect(result?.[0]).not.toHaveProperty('explanation');
     expect(mocks.fetch).toHaveBeenCalledTimes(1);
   });
+});
+
+it.each(Object.values(STREAMS_BY_CATEGORY).flat())('keeps the canonical after12 knowledge identity for $id',async stream=>{
+  const questions=sanitizeLearnerQuestions(Array.from({length:20},(_,index)=>({
+    id:`knowledge-${index}`,question:`QA knowledge question ${index}`,options:{A:'One',B:'Two',C:'Three',D:'Four'},correct_answer:'A',category:'knowledge',
+  })));
+  mocks.fetch.mockResolvedValue(Response.json({success:true,data:{questions}}));
+  const result=await generateStreamKnowledgeQuestions(stream.id,20,'learner','attempt','after12');
+  expect(result).toHaveLength(20);
+  const body=JSON.parse(mocks.fetch.mock.calls[0][1].body);
+  expect(body).toMatchObject({streamId:stream.id,gradeLevel:'after12',streamName:STREAM_KNOWLEDGE_PROMPTS[stream.id]?.name});
+  expect(STREAM_KNOWLEDGE_PROMPTS[stream.id]?.topics.length).toBeGreaterThan(0);
 });

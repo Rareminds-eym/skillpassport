@@ -37,3 +37,10 @@ it('finishes after10 after aptitude without requesting a knowledge section', asy
   await expect(loadCareerAssessmentQuestions('general', 'after10', 'learner', 'attempt')).resolves.toMatchObject({ aptitude: [{ id: 'aptitude' }], knowledge: null });
   expect(mocks.knowledge).not.toHaveBeenCalled();
 });
+
+it('preserves the catalog after10 stream identity for generation', async () => {
+  mocks.aptitude.mockResolvedValue([{id:'aptitude'}]);
+  await expect(loadCareerAssessmentQuestions('science_pcm_after10','after10','learner','attempt')).resolves.toMatchObject({knowledge:null});
+  expect(mocks.aptitude).toHaveBeenCalledWith('science_pcm_after10',50,'learner','attempt','after10');
+  expect(mocks.knowledge).not.toHaveBeenCalled();
+});

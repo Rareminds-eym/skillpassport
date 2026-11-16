@@ -20,6 +20,7 @@ interface LearnerRow {
   age?: number
   date_of_birth?: string
   contact_number?: string
+  contactNumber?: string | null
   alternate_number?: string
   district_name?: string
   university?: string
@@ -188,12 +189,7 @@ function mapToUICandidate(row: LearnerRow): UICandidate {
   // Use direct fields first, then fallback to profile
   const name = row.name || profile.name || 'Unknown'
   const email = row.email || profile.email
-  const rawDial = row.contact_dial_code || profile.contact_number_dial_code ? String(row.contact_dial_code || profile.contact_number_dial_code).replace(/\.0$/, '') : ''
-  // Remove any existing + from dial code to avoid double ++
-  const dial = rawDial.replace(/^\+/, '')
-  const phoneNum = row.contact_number || profile.contact_number ? String(row.contact_number || profile.contact_number).replace(/\.0$/, '') : ''
-  const altNum = row.alternate_number || profile.alternate_number ? String(row.alternate_number || profile.alternate_number).replace(/\.0$/, '') : ''
-  const phone = phoneNum || altNum ? `${dial ? '+' + dial + ' ' : ''}${phoneNum || altNum}` : undefined
+  const phone = typeof row.contactNumber === 'string' ? row.contactNumber.trim() || undefined : undefined
 
   // Use direct fields for college and department
   const college = row.college_school_name || row.university || profile.college_school_name || profile.university
@@ -273,7 +269,7 @@ function mapToUICandidate(row: LearnerRow): UICandidate {
     email,
     phone,
     contact_number: row.contact_number,
-    contactNumber: row.contact_number,
+    contactNumber: phone,
     college,
     dept,
     class: classValue,

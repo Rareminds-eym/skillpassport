@@ -290,7 +290,6 @@ export const useAssessmentStore = create<AssessmentState>()(
       setAdaptiveTestComplete: (complete) => {
         set((state) => {
           state.adaptiveTestComplete = complete;
-          if (complete) state.status = 'completed';
         });
       },
 

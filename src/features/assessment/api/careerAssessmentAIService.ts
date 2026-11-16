@@ -78,8 +78,8 @@ export async function loadCareerAssessmentQuestions(
 
   // Generate AI questions for after10, after12, higher_secondary AND college grade levels
   if ((gradeLevel === 'after10' || gradeLevel === 'after12' || gradeLevel === 'higher_secondary' || gradeLevel === 'college') && streamId) {
-    // Normalize stream ID for college learners
-    const normalizedStreamId = normalizeStreamId(streamId);
+    // Program names need normalization; selected school streams are canonical IDs.
+    const normalizedStreamId = gradeLevel === 'college' ? normalizeStreamId(streamId) : streamId;
 
     // Check for saved questions first whenever the learner is known.
     // Saved AI questions are keyed by (learner_id, stream_id, question_type) — attempt_id is

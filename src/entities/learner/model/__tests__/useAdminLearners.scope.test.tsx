@@ -4,6 +4,22 @@ const f = vi.hoisted(() => ({post: vi.fn(), user: {id: 'qa-school-owner', role: 
 vi.mock('@/shared/api/apiClient', () => ({apiPost: f.post}));
 vi.mock('@/shared/model/authStore', () => ({useAuthStore: {getState: () => ({user: f.user})}}));
 import {useAdminLearners} from '../useAdminLearners';
+
+it.each([
+  {name: 'canonical only', row: {contactNumber: '+919000000001'}, expected: '+919000000001'},
+  {name: 'conflicting legacy fields', row: {contactNumber: '+919000000001', contact_number: '9000000002', contact_dial_code: '91', profile: {contact_number: '9000000003'}}, expected: '+919000000001'},
+  {name: 'canonical whitespace', row: {contactNumber: ' 9000000001 '}, expected: '9000000001'},
+  {name: 'legacy only', row: {contact_number: '9000000002'}, expected: undefined},
+  {name: 'profile and alternate only', row: {profile: {contact_number: '9000000003'}, alternate_number: '9000000004'}, expected: undefined},
+  {name: 'empty canonical', row: {contactNumber: '  ', contact_number: '9000000002'}, expected: undefined},
+  {name: 'null canonical', row: {contactNumber: null, contact_number: '9000000002'}, expected: undefined},
+])('uses canonical phone without substitution: $name', async ({row, expected}) => {
+  f.post.mockImplementation(async (_path, input) => ({data: input.action === 'fetch-learner-count' ? {count: 1} : [{id: 'qa-phone-learner', name: 'QA learner', ...row}]}));
+  const {result} = renderHook(() => useAdminLearners());
+  await waitFor(() => expect(result.current.learners).toHaveLength(1));
+  expect(result.current.learners[0].phone).toBe(expected);
+  expect(result.current.learners[0].contactNumber).toBe(expected);
+});
 beforeEach(() => {
   vi.clearAllMocks();
   f.post.mockImplementation(async (_path, input) => {
