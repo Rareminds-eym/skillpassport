@@ -20,7 +20,8 @@ import {
   Download,
   X,
   Sparkles,
-  Link as LinkIcon
+  Link as LinkIcon,
+  Filter,
 } from "lucide-react";
 import { useUser } from "@/shared/model/authStore";
 import { apiPost } from "@/shared/api/apiClient";
@@ -43,6 +44,7 @@ import {
   type CollegeAssignmentsMetrics,
   type CollegeLearnerEvaluation
 } from "@/features/college-admin";
+import DatePicker from '@/features/subscription/ui/shared/DatePicker';
 
 const logger = getLogger("college-admin:TasksAssignments");
 
@@ -66,6 +68,7 @@ interface ReadOnlyLearnerListProps {
   educatorType: "internal" | "external";
   educatorRoleLabel: string;
   onOpenFile: (fileUrl: string) => void;
+  emptyMessage?: string;
 }
 
 function ReadOnlyLearnerList({
@@ -74,11 +77,12 @@ function ReadOnlyLearnerList({
   educatorType,
   educatorRoleLabel,
   onOpenFile,
+  emptyMessage,
 }: ReadOnlyLearnerListProps) {
   if (!learners || learners.length === 0) {
     return (
       <p className="text-xs text-gray-500 text-center py-4 bg-gray-50 rounded-lg">
-        No learners assigned to this task yet.
+        {emptyMessage || "No learners assigned to this task yet."}
       </p>
     );
   }
@@ -238,6 +242,29 @@ export default function TasksAssignments() {
   const [searchTerm, setSearchTerm] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [submissionStatusFilter, setSubmissionStatusFilter] = useState<"all" | "todo" | "in-progress" | "submitted" | "graded">("all");
+
+  // Date range filter (From / To)
+  const [fromDate, setFromDate] = useState<string | null>(null); // "YYYY-MM-DD"
+  const [toDate, setToDate] = useState<string | null>(null);     // "YYYY-MM-DD"
+
+  const isAnyFilterActive = Boolean(
+    searchTerm ||
+    departmentFilter !== "all" ||
+    statusFilter !== "all" ||
+    submissionStatusFilter !== "all" ||
+    fromDate ||
+    toDate
+  );
+
+  const clearAllFilters = () => {
+    setSearchTerm("");
+    setDepartmentFilter("all");
+    setStatusFilter("all");
+    setSubmissionStatusFilter("all");
+    setFromDate(null);
+    setToDate(null);
+  };
 
   // Track expanded tasks (accordion state)
   const [expandedTaskIds, setExpandedTaskIds] = useState<Record<string, boolean>>({});
@@ -346,27 +373,40 @@ export default function TasksAssignments() {
   // Handle authenticated file viewing
   const openSubmittedFile = async (fileUrl: string) => {
     try {
+      // External URLs (Google Drive, Docs, Sheets, etc.) → open directly in new tab
+      // Internal storage (storage-sp.rareminds.in, .r2.dev, localhost) → go through authenticated proxy
+      const isExternalUrl = (url: string): boolean => {
+        try {
+          const parsedUrl = new URL(url);
+          return !url.includes('.r2.dev') &&
+                 !url.includes('storage-sp.rareminds.in') &&
+                 !url.includes('rareminds.in') &&
+                 !url.includes('localhost') &&
+                 (parsedUrl.hostname !== window.location.hostname);
+        } catch {
+          return false;
+        }
+      };
+
+      if (isExternalUrl(fileUrl)) {
+        // External URL (Google Drive etc.) → open directly
+        window.open(fileUrl, '_blank');
+        return;
+      }
+
+      // Internal R2 storage → proxy streams file bytes back (authenticated)
       const url = getDocumentUrl(fileUrl, 'inline');
-      
-      // Fetch with authentication using ssoClient
       const response = await ssoClient.fetch(url);
-      
+
       if (!response.ok) {
         console.error('Failed to access file:', response.status);
         toast.error(`Failed to access file: ${response.status}`);
         return;
       }
-      
-      // Get the blob
+
       const blob = await response.blob();
-      
-      // Create object URL
       const blobUrl = URL.createObjectURL(blob);
-      
-      // Open in new tab
       window.open(blobUrl, '_blank');
-      
-      // Clean up blob URL after a delay
       setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
     } catch (e) {
       console.error('Error opening file:', e);
@@ -393,8 +433,37 @@ export default function TasksAssignments() {
       // Department filter
       if (departmentFilter !== "all" && item.department_name !== departmentFilter) return false;
 
-      // Status filter
+      // Deadline status filter (Due date)
       if (statusFilter !== "all" && item.status !== statusFilter) return false;
+
+      // Learner status filter matching database constraint: ('todo' | 'in-progress' | 'submitted' | 'graded')
+      if (submissionStatusFilter !== "all") {
+        const learners = item.learners || [];
+        const hasMatchingLearner = learners.some((l) => l.status === submissionStatusFilter);
+        if (!hasMatchingLearner) return false;
+      }
+
+      // Calendar date range filter (From / To)
+      // Active → checks created_date | Completed → checks due_date | All → checks active by created_date & completed by due_date
+      if (fromDate || toDate) {
+        const isInRange = (dateStr?: string | null) => {
+          if (!dateStr) return false;
+          const d = dateStr.includes("T") ? dateStr.slice(0, 10) : dateStr;
+          if (fromDate && d < fromDate) return false;
+          if (toDate && d > toDate) return false;
+          return true;
+        };
+
+        if (statusFilter === "active") {
+          if (!isInRange(item.created_date)) return false;
+        } else if (statusFilter === "completed") {
+          if (!isInRange(item.due_date)) return false;
+        } else {
+          const matchesActive = item.status === "active" && isInRange(item.created_date);
+          const matchesCompleted = item.status === "completed" && isInRange(item.due_date);
+          if (!matchesActive && !matchesCompleted) return false;
+        }
+      }
 
       // Search term
       if (searchTerm.trim()) {
@@ -414,7 +483,7 @@ export default function TasksAssignments() {
 
       return true;
     });
-  }, [assignments, educatorTypeFilter, departmentFilter, statusFilter, searchTerm]);
+  }, [assignments, educatorTypeFilter, departmentFilter, statusFilter, submissionStatusFilter, searchTerm, fromDate, toDate]);
 
   // Pagination calculations
   const totalItems = filteredAssignments.length;
@@ -426,7 +495,9 @@ export default function TasksAssignments() {
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [educatorTypeFilter, searchTerm, departmentFilter, statusFilter]);
+    setFromDate(null); // clear date selection when status changes
+    setToDate(null);
+  }, [educatorTypeFilter, searchTerm, departmentFilter, statusFilter, submissionStatusFilter]);
 
   // Scroll to top on page change
   const handlePageChange = (page: number) => {
@@ -582,45 +653,118 @@ export default function TasksAssignments() {
         </div>
 
         {/* Secondary Filter Bar */}
-        <div className="p-4 border-b border-gray-200 flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search by task title, course, educator name..."
-              className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
+        <div className="p-4 border-b border-gray-200">
+          {/* Header matching Enrolled Learners: Filters on left, Clear All on right */}
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-gray-500" />
+              <h2 className="text-sm font-semibold text-gray-900">Filters</h2>
+            </div>
+            {isAnyFilterActive && (
+              <button
+                type="button"
+                onClick={clearAllFilters}
+                className="text-sm text-blue-600 hover:text-blue-700 font-medium cursor-pointer"
+              >
+                Clear All
+              </button>
+            )}
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-3">
+            {/* Search Input */}
+            <div className="relative flex-1 min-w-[220px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search by task title, course, educator name..."
+                className="w-full h-10 pl-9 pr-9 text-sm border border-gray-300 rounded-lg bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+              />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => setSearchTerm("")}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 flex items-center justify-center text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-colors"
+                  title="Clear search"
+                  aria-label="Clear search"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+
             {/* Department Filter */}
             {departmentOptions.length > 0 && (
-              <select
-                value={departmentFilter}
-                onChange={(e) => setDepartmentFilter(e.target.value)}
-                className="px-3 py-2 text-xs sm:text-sm border border-gray-300 rounded-lg bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="all">All Departments</option>
-                {departmentOptions.map((dept) => (
-                  <option key={dept} value={dept}>
-                    {dept}
-                  </option>
-                ))}
-              </select>
+              <div className="w-full sm:w-auto sm:min-w-[160px] lg:max-w-[200px] flex-shrink-0">
+                <select
+                  value={departmentFilter}
+                  onChange={(e) => setDepartmentFilter(e.target.value)}
+                  className="w-full h-10 px-3 text-xs sm:text-sm border border-gray-300 rounded-lg bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors cursor-pointer truncate"
+                >
+                  <option value="all">All Departments</option>
+                  {departmentOptions.map((dept) => (
+                    <option key={dept} value={dept}>
+                      {dept}
+                    </option>
+                  ))}
+                </select>
+              </div>
             )}
 
-            {/* Status Filter */}
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-2 text-xs sm:text-sm border border-gray-300 rounded-lg bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="all">All Status</option>
-              <option value="active">Active</option>
-              <option value="completed">Past Due / Completed</option>
-            </select>
+            {/* Task Deadline Status Filter */}
+            <div className="w-full sm:w-auto sm:min-w-[130px] flex-shrink-0">
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="w-full h-10 px-3 text-xs sm:text-sm border border-gray-300 rounded-lg bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors cursor-pointer"
+                title="Filter by assignment deadline status"
+              >
+                <option value="all">All Status</option>
+                <option value="active">Active (Open)</option>
+                <option value="completed">Past Due / Completed</option>
+              </select>
+            </div>
+
+            {/* Learner Submission & Grading Status Filter */}
+            <div className="w-full sm:w-auto sm:min-w-[160px] flex-shrink-0">
+              <select
+                value={submissionStatusFilter}
+                onChange={(e) => setSubmissionStatusFilter(e.target.value as any)}
+                className="w-full h-10 px-3 text-xs sm:text-sm border border-gray-300 rounded-lg bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors cursor-pointer"
+                title="Filter by learner status constraint (todo, in-progress, submitted, graded)"
+              >
+                <option value="all">All Submissions</option>
+                <option value="todo">Todo</option>
+                <option value="in-progress">In-Progress</option>
+                <option value="submitted">Submitted</option>
+                <option value="graded">Graded</option>
+              </select>
+            </div>
+
+            {/* Date Range Filter: From & To using existing DatePicker */}
+            <div className="w-full sm:w-auto sm:w-[155px] lg:w-[160px] flex-shrink-0">
+              <DatePicker
+                value={fromDate || ""}
+                onChange={(e) => setFromDate(e.target.value || null)}
+                name="taskFromDate"
+                label=""
+                placeholder={statusFilter === "completed" ? "Due From Date" : "From Date"}
+                className="text-xs sm:text-sm [&>div:first-of-type]:!h-10 [&>div:first-of-type]:!py-0 [&>div:first-of-type]:!px-2.5 [&>div:first-of-type]:!rounded-lg [&>div:first-of-type]:!bg-white [&>div:first-of-type]:!border-gray-300 hover:[&>div:first-of-type]:!border-blue-400 [&>div:first-of-type]:shadow-none [&>div:first-of-type_svg]:!w-3.5 [&>div:first-of-type_svg]:!h-3.5 [&>div:first-of-type_svg]:!mr-1.5 [&>div:first-of-type>span]:truncate [&>[class*='absolute']]:sm:right-0 [&>[class*='absolute']]:sm:left-auto"
+              />
+            </div>
+
+            <div className="w-full sm:w-auto sm:w-[155px] lg:w-[160px] flex-shrink-0">
+              <DatePicker
+                value={toDate || ""}
+                onChange={(e) => setToDate(e.target.value || null)}
+                name="taskToDate"
+                label=""
+                placeholder={statusFilter === "completed" ? "Due To Date" : "To Date"}
+                className="text-xs sm:text-sm [&>div:first-of-type]:!h-10 [&>div:first-of-type]:!py-0 [&>div:first-of-type]:!px-2.5 [&>div:first-of-type]:!rounded-lg [&>div:first-of-type]:!bg-white [&>div:first-of-type]:!border-gray-300 hover:[&>div:first-of-type]:!border-blue-400 [&>div:first-of-type]:shadow-none [&>div:first-of-type_svg]:!w-3.5 [&>div:first-of-type_svg]:!h-3.5 [&>div:first-of-type_svg]:!mr-1.5 [&>div:first-of-type>span]:truncate [&>[class*='absolute']]:sm:right-0 [&>[class*='absolute']]:sm:left-auto"
+              />
+            </div>
           </div>
         </div>
 
@@ -664,6 +808,9 @@ export default function TasksAssignments() {
                 const isExternal = task.educator_type === "external";
                 const isExpanded = Boolean(expandedTaskIds[task.assignment_id]);
                 const learners = task.learners || [];
+                const displayedLearners = submissionStatusFilter === "all"
+                  ? learners
+                  : learners.filter((l) => l.status === submissionStatusFilter);
                 const stats = task.stats || {
                   totalAssigned: learners.length,
                   submittedCount: 0,
@@ -804,7 +951,14 @@ export default function TasksAssignments() {
                       >
                         <span className="flex items-center gap-1.5">
                           <GraduationCap className="h-4 w-4 text-blue-600" />
-                          <span>Learner Submissions & Evaluations ({learners.length})</span>
+                          <span>
+                            Learner Submissions & Evaluations ({learners.length})
+                            {submissionStatusFilter !== "all" && (
+                              <span className="ml-1 text-[11px] font-medium text-blue-600">
+                                ({displayedLearners.length} shown)
+                              </span>
+                            )}
+                          </span>
                         </span>
                         {isExpanded ? (
                           <ChevronUp className="h-4 w-4 text-gray-400" />
@@ -816,11 +970,12 @@ export default function TasksAssignments() {
                       {isExpanded && (
                         <div className="mt-3 pt-2">
                           <ReadOnlyLearnerList
-                            learners={learners}
+                            learners={displayedLearners}
                             totalPoints={task.total_points || 100}
                             educatorType={task.educator_type}
                             educatorRoleLabel={task.educator_role_label}
                             onOpenFile={openSubmittedFile}
+                            emptyMessage="No learners match the selected submission filter."
                           />
                         </div>
                       )}
