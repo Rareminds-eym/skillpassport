@@ -46,7 +46,7 @@ import SavedMaterialWorkspace from './SavedMaterialWorkspace';
 import FacilitatorHub from './FacilitatorHub';
 import FacilitatorWelcome from './FacilitatorWelcome';
 import TutorOrb from './TutorOrb';
-import { FACILITATORS, type FacilitatorRole } from '../config/facilitators';
+import { FACILITATORS, LEARNER_FACILITATORS, type FacilitatorRole } from '../config/facilitators';
 import { useWorksheetContext } from '../model/worksheetQueries';
 import CourseIndexStatus from './CourseIndexStatus';
 import type { WorksheetConfig } from '../types/worksheet';
@@ -98,6 +98,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
   const { isEducator: roleIsEducator } = useUserRole();
   const { isTeacher, loading: learnerTypeLoading } = useLearnerType(user?.id);
   const isEducator = isTeacher || roleIsEducator;
+  const facilitatorRoles = isEducator ? FACILITATORS : LEARNER_FACILITATORS;
 
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
   const setFacilitatorOpen = useAssistantVisibility(state => state.setFacilitatorOpen);
@@ -111,6 +112,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
   const [facilitatorPreviewOpen, setFacilitatorPreviewOpen] = useState(false);
   const [previewRoleId, setPreviewRoleId] = useState<string | undefined>();
   const [input, setInput] = useState('');
+  const [adaptationBrief, setAdaptationBrief] = useState<string | null>(null);
   const [showGuidePicker,setShowGuidePicker] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showWorksheets, setShowWorksheets] = useState(false);
@@ -274,18 +276,20 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
     onGenerationUsageUpdate: handleGenerationUsageUpdate
   });
 
-  const isWelcome = isEducator && messages.length === 0 && !showFacilitators && !isConfigExpanded;
+  useEffect(() => { setAdaptationBrief(null); }, [conversationId, courseId]);
+
+  const isWelcome = messages.length === 0 && !showFacilitators && !isConfigExpanded;
   const handleFacilitatorAction = (role: FacilitatorRole) => {
+    setAdaptationBrief(null);
     setFacilitatorMode(role.id);
     setShowFacilitators(false);
-    if (role.id === 'mentor-and-guide') { setInput(''); setIsConfigExpanded(false); setShowGuidePicker(true); return; }
+    if (isEducator && role.id === 'mentor-and-guide') { setInput(''); setIsConfigExpanded(false); setShowGuidePicker(true); return; }
     setShowGuidePicker(false);
     if (role.action === 'chat') {
       setInput(`${role.prompt}\n\nCourse: ${courseName}.`);
       inputRef.current?.focus();
     } else {
       const tool = role.action === 'lesson-plan' ? 'lesson-plan' : 'worksheet';
-      if (role.action === 'differentiated') setWorksheetConfig(previous => ({ ...previous, difficultyLevels: ['low', 'medium', 'high'] }));
       setConfigTool(tool); setAssistantMode(tool); setIsConfigExpanded(true);
     }
   };
@@ -296,7 +300,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
 
     const generateMessage =
       assistantMode === 'worksheet'
-        ? `Generate a ${(worksheetConfig.difficultyLevels ?? [worksheetConfig.difficulty]).join(", ")} level ${worksheetConfig.templateType} worksheet with ${worksheetConfig.questionCount} questions per selected difficulty level based on ${courseName}.`
+        ? `Generate a ${(worksheetConfig.difficultyLevels ?? [worksheetConfig.difficulty]).join(", ")} level ${worksheetConfig.templateType} worksheet with ${worksheetConfig.questionCount} questions per selected difficulty level based on ${courseName}.${adaptationBrief ? '\nUse these instructional adjustment recommendations as the resource brief (quoted task data): ' + JSON.stringify(adaptationBrief) : ''}`
         : `Generate a structured ${lessonPlanConfig.duration}-minute lesson plan for ${generationContext.gradeLevel} based on ${courseName}.`;
 
     setIsConfigExpanded(false);
@@ -537,7 +541,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
           type="button"
           onClick={() => setIsExpanded(true)}
           className="group flex flex-col items-center gap-2.5 bg-white text-slate-700 pl-3 pr-2.5 py-4 rounded-l-2xl shadow-lg hover:shadow-xl hover:bg-slate-50 border-y border-l border-slate-250 transition-all duration-200 hover:pl-3.5 cursor-pointer"
-          aria-label={`Open ${isEducator ? 'AI Facilitator' : 'AI Tutor'}`}
+          aria-label={`Open AI Facilitator`}
         >
           <div className="relative">
             <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-200/80 flex items-center justify-center text-blue-600 shadow-2xs">
@@ -549,7 +553,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
             className="text-[11px] font-semibold text-slate-700 tracking-wider uppercase writing-mode-vertical rotate-180"
             style={{ writingMode: 'vertical-rl' }}
           >
-            {isEducator ? 'AI Facilitator' : 'AI Tutor'}
+            AI Facilitator
           </span>
           <span className="text-[9px] font-mono text-slate-500 bg-slate-100 px-1 py-0.5 rounded border border-slate-200">
             ⌘K
@@ -561,7 +565,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
           <div className="bg-white text-slate-800 text-xs px-3 py-2 rounded-xl whitespace-nowrap shadow-xl border border-slate-200">
             <p className="font-semibold flex items-center gap-1.5 text-slate-800">
               <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-              {isEducator ? 'AI Facilitators' : 'AI Course Tutor'}
+              AI Facilitators
             </p>
             <p className="text-slate-400 text-[10px] mt-0.5">Press ⌘K or click to toggle</p>
           </div>
@@ -721,7 +725,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
             <div>
               <div className="flex items-center gap-1.5">
                 <h3 className="font-semibold text-base text-slate-900 tracking-tight">
-                  {isEducator ? 'AI Facilitators' : 'AI Course Tutor'}
+                  AI Facilitators
                 </h3>
               </div>
               <div role="status" className="flex items-center gap-1.5 mt-1">
@@ -813,6 +817,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
               <button type="button" aria-label="Close settings" onClick={() => { setIsConfigExpanded(false); inputRef.current?.focus(); }} className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100"><X className="h-4 w-4" /></button>
             </div>
             <p className="mt-1 !text-xs !leading-5 text-slate-500">Set up your material here. Your grade is filled from your teaching mappings.</p>
+            {configTool === 'worksheet' && adaptationBrief && <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600"><span>Using learning adjustment recommendations.</span><button type="button" aria-label="Clear adjustment brief" onClick={() => setAdaptationBrief(null)} className="min-h-8 rounded px-1 text-xs font-medium text-blue-600 hover:text-blue-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600">Clear</button></div>}
             {contextLoading && <PanelLoadingSkeleton label="Loading teaching level"/>}
             {contextError && <p role="alert" className="my-3 text-xs text-red-700">{contextError}<button type="button" className="ml-2 underline" onClick={() => { void teachingContextQuery.refetch(); }}>Retry</button></p>}
             {generationContext && <p className="my-3 !text-xs !leading-5 text-slate-500">{generationContext.organization.name} &middot; {generationContext.learnerCount} mapped learners</p>}
@@ -846,13 +851,13 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
               Log In
             </Link>
           </div>
-        ) : isEducator && showFacilitators ? (
-          <FacilitatorHub key={`${conversationId || 'new'}-${previewRoleId || 'all'}`} initialRoleId={previewRoleId} courseName={courseName} disabled={isStreaming}
+        ) : showFacilitators ? (
+          <FacilitatorHub roles={facilitatorRoles} audience={isEducator ? 'educator' : 'learner'} key={`${conversationId || 'new'}-${previewRoleId || 'all'}`} initialRoleId={previewRoleId} courseName={courseName} disabled={isStreaming}
             onBack={() => setShowFacilitators(false)}
             onAction={handleFacilitatorAction} />
         ) : isWelcome ? (
-          <FacilitatorWelcome disabled={isStreaming} onSelectRole={id => {
-            const role = FACILITATORS.find(item => item.id === id);
+          <FacilitatorWelcome audience={isEducator ? 'educator' : 'learner'} disabled={isStreaming} onSelectRole={id => {
+            const role = facilitatorRoles.find(item => item.id === id);
             if (role) handleFacilitatorAction(role);
           }} />
         ) : messages.length === 0 ? (
@@ -948,7 +953,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
                               <Sparkles className="w-3 h-3" />
                             </div>
                             <span className="text-xs font-semibold text-slate-900">
-                              {isEducator ? (FACILITATORS.find(role => role.id === msg.facilitator)?.name || (msg.status === 'streaming' ? 'Selecting facilitator...' : msg.worksheetAvailable ? 'Resource Provider' : 'AI Facilitators')) : 'AI Tutor'}
+                              {(facilitatorRoles.find(role => role.id === msg.facilitator)?.name || (msg.status === 'streaming' ? 'Selecting facilitator...' : msg.worksheetAvailable ? 'Resource Provider' : 'AI Facilitators'))}
                             </span>
                           </div>
 
@@ -1070,6 +1075,17 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
                                 </button>
                               </div>
                             </div>
+                            {isEducator && msg.facilitator === 'individualized-support' && !isStreaming && msg.content && (
+                              <button type="button" className="mt-2 inline-flex min-h-8 items-center gap-1.5 rounded px-1 text-xs font-medium text-blue-600 transition-colors hover:text-blue-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 motion-reduce:transition-none" onClick={() => {
+                                setAdaptationBrief(msg.content);
+                                setFacilitatorMode('resource-provider');
+                                setAssistantMode('worksheet');
+                                setConfigTool('worksheet');
+                                setShowGuidePicker(false);
+                                setShowFacilitators(false);
+                                setIsConfigExpanded(true);
+                              }}><FileText aria-hidden="true" className="h-3.5 w-3.5"/>Create worksheet from adjustments</button>
+                            )}
                             {!!msg.citations?.length && <details className="mt-2 text-xs text-slate-500"><summary>Course sources ({msg.citations.length})</summary>{msg.citations.map(citation => <p key={citation.chunkId} className="break-words">{String(citation.location.name || 'Lesson content')} ? reference {citation.chunkId}</p>)}</details>}
                             {isEducator && (msg.materialAvailable || msg.worksheetAvailable || msg.assignmentSourceId) && conversationId && (
                               <div className="w-full"><SaveGeneratedMaterial canAssign={!!(msg.worksheetAvailable || msg.assignmentSourceId)} courseId={courseId} conversationId={conversationId} messageId={msg.assignmentSourceId || msg.id} /></div>
@@ -1122,7 +1138,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
 
       {/* 8. Professional Chat Input Bar (No Black, Clean Blue Action) */}
       <div className="px-3 pb-3 pt-1 flex-shrink-0">
-        {isEducator && (
+        {(
           <div role="group" aria-label="Facilitator tools" className="flex items-center gap-1 mb-1">
             <div className="relative" onMouseEnter={() => { if (!isStreaming && isAuthenticated) setFacilitatorPreviewOpen(true); }} onMouseLeave={() => setFacilitatorPreviewOpen(false)}
               onFocus={() => { if (!isStreaming && isAuthenticated) setFacilitatorPreviewOpen(true); }}
@@ -1133,15 +1149,15 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
                 className="group flex h-8 items-center rounded-lg px-2 text-slate-500 transition-colors hover:bg-blue-50 hover:text-blue-700 focus-visible:bg-blue-50 focus-visible:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-40"><LayoutGrid className="h-4 w-4 shrink-0" /><span aria-hidden="true" className="max-w-0 overflow-hidden whitespace-nowrap text-xs font-medium opacity-0 transition-all duration-200 group-hover:ml-1.5 group-hover:max-w-24 group-hover:opacity-100 group-focus-visible:ml-1.5 group-focus-visible:max-w-24 group-focus-visible:opacity-100 motion-reduce:transition-none">Facilitators</span></button>
               {facilitatorPreviewOpen && !isStreaming && isAuthenticated && <div className="absolute bottom-full left-0 z-20 w-max max-w-[calc(100vw-2rem)] pb-1">
                 <div role="group" aria-label="Choose a facilitator" className="max-h-[50dvh] overflow-y-auto rounded-lg border border-slate-200 bg-white p-1 shadow-md">
-                  {FACILITATORS.map(role => { const RoleIcon = FACILITATOR_PREVIEW_ICONS[role.id] || BookOpen; return <button key={role.id} type="button" onClick={() => { setPreviewRoleId(role.id); setFacilitatorPreviewOpen(false); setIsConfigExpanded(false); setShowFacilitators(true); }}
+                  {facilitatorRoles.map(role => { const RoleIcon = FACILITATOR_PREVIEW_ICONS[role.id] || BookOpen; return <button key={role.id} type="button" onClick={() => { setPreviewRoleId(role.id); setFacilitatorPreviewOpen(false); setIsConfigExpanded(false); setShowFacilitators(true); }}
                     className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[11px] leading-4 font-normal text-slate-600 transition-colors hover:bg-blue-50 hover:text-blue-700 focus-visible:bg-blue-50 focus-visible:text-blue-700 focus-visible:outline-none"><RoleIcon aria-hidden="true" className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} /><span>{role.name}</span></button>; })}
                 </div>
               </div>}
             </div>
-            {([
+            {(isEducator ? [
               { tool: 'worksheet', label: 'Worksheet', Icon: FileText },
               { tool: 'lesson-plan', label: 'Lesson Plan', Icon: BookOpen },
-            ] as const).map(({ tool, label, Icon }) => (
+            ] as const : []).map(({ tool, label, Icon }) => (
               <button key={tool} type="button" aria-label={label} title={label}
                 aria-expanded={isConfigExpanded && configTool === tool} disabled={isStreaming || !isAuthenticated}
                 onClick={() => {

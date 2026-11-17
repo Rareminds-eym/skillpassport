@@ -1,13 +1,14 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { textHash } from './course-index';
+import { EDUCATOR_PROMPT_VERSION } from './facilitator-prompts';
 
 function canonical(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(canonical);
   if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).sort(([a], [b]) => a.localeCompare(b)).map(([key, item]) => [key, canonical(item)]));
   return value;
 }
-export async function materialRequestFingerprint(message: string, config: unknown, lessonId: string | null) {
-  return textHash(JSON.stringify(canonical({ request: message.normalize('NFKC').trim().replace(/\s+/g, ' ').toLowerCase(), config, lessonId })));
+export async function materialRequestFingerprint(message: string, config: unknown, lessonId: string | null, promptVersion: string = EDUCATOR_PROMPT_VERSION) {
+  return textHash(JSON.stringify(canonical({ request: message.normalize('NFKC').trim().replace(/\s+/g, ' ').toLowerCase(), config, lessonId, promptVersion })));
 }
 export async function materialContextFingerprint(db: SupabaseClient, courseId: string) {
   const course = await db.from('courses').select('course_id,title,description,code').eq('course_id', courseId).single();

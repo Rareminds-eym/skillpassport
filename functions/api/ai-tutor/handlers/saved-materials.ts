@@ -17,8 +17,7 @@ export async function handleSavedMaterials(context: Context) {
   const fail = (status: number, message: string) => apiError(status, 'MATERIAL_ERROR', message, request);
   try {
     const body = z.object({ action: z.string() }).passthrough().parse(await request.json());
-    if (body.action === 'capabilities') return apiSuccess({ enabled: env.AI_ASSIGNMENTS_ENABLED === 'true' }, request);
-    if (env.AI_ASSIGNMENTS_ENABLED !== 'true') return fail(503, 'Saved assignments are not enabled yet.');
+    if (body.action === 'capabilities') return apiSuccess({ enabled: true }, request);
     if (body.action === 'resolve-task') {
       const id = uuid.parse(body.allocationId);
       const { data: learner } = await db.from('learners').select('id').eq('user_id', user.id).maybeSingle();

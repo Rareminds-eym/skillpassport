@@ -41,7 +41,7 @@ The educator workspace shows submission/release counts, average released scores 
 
 1. Apply the existing course-index migration first, then `20261103150000_ai_saved_assignments.sql` in staging. The latter expects the existing school/college assignment tables and worksheet educator-mapping RPCs.
 2. Keep the existing `R2_BUCKET` binding available to Pages. Configure `OPENROUTER_API_KEY` and the existing Supabase server credentials.
-3. Set `AI_ASSIGNMENTS_ENABLED=true` after the migration is available. The checked-in default remains false, preserving the existing publication path before activation.
+3. Saved AI assignments are available by default. Apply the required migrations and configure the R2 binding before using submission workflows.
 4. Validate with a mapped educator and learner in staging, including a document submission, manual review and release. No production migrations, provider calls with real learner documents, or deployments were performed during implementation.
 
 ## Checks
@@ -54,6 +54,6 @@ The combined handler test covers explicit save without duplication, allocation, 
 
 ## Local activation on 3 November 2026
 
-Both migrations were checked against the full local Skillpassport schema in a rollback-only transaction, then applied to the configured local Supabase instance on port 54321 and recorded in its migration ledger. `AI_ASSIGNMENTS_ENABLED=true` is set in the ignored local `.dev.vars`; the production default in `wrangler.toml` remains false.
+Both migrations were checked against the full local Skillpassport schema in a rollback-only transaction, then applied to the configured local Supabase instance on port 54321 and recorded in its migration ledger. The assignment feature flag has been removed; local and deployed environments use the same always-available workflow, subject to authorization and required storage configuration.
 
 The local sample school educator has no eligible learners. College profiles have eligible learners, but none currently combine that educator mapping with a valid active section in the same college and accessible course, so a real-account allocation/submission smoke test cannot finish yet. The allocation picker now excludes these incomplete mappings and explains the missing class/section requirement. No learner mappings were changed to force a passing test, and the failed smoke-test writes rolled back. The disposable school/college flow checks passed independently.

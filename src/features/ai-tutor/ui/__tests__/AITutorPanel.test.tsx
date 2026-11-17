@@ -10,7 +10,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   setFacilitatorMode: vi.fn(), sendMessage: vi.fn(), stopGeneration: vi.fn(), refreshSuggestions: vi.fn(), refreshConversations: vi.fn(),
-  worksheet: false, streaming: false, educator: true, empty: false, content: '## Learning objectives\nPractise time management.', user: { id: 'educator' },
+  persona: undefined as string|undefined, worksheet: false, streaming: false, educator: true, empty: false, content: '## Learning objectives\nPractise time management.', user: { id: 'educator' },
 }));
 vi.mock('@/shared/model', () => ({ useUser: () => mocks.user, useUserRole: () => ({ isEducator: mocks.educator }) }));
 vi.mock('../../api/worksheetService', () => ({ worksheetAction: vi.fn().mockResolvedValue({ organization: { name: 'Mapped College' }, gradeLevel: 'College/University', learnerCount: 8 }) }));
@@ -18,7 +18,7 @@ vi.mock('../../api/materialService', () => ({ materialAction: async (action:stri
 vi.mock('@/features/ai-tutor/model', () => ({ useLearnerType: () => ({ isTeacher: false, loading: false }) }));
 vi.mock('@/features/ai-tutor/model/useTutorChat', () => ({ useTutorChat: () => ({
   facilitatorMode: 'auto', setFacilitatorMode: mocks.setFacilitatorMode, activeFacilitator: 'organizer',
-  messages: mocks.empty ? [] : [{ id: '1', role: 'assistant', content: mocks.content, worksheetAvailable: mocks.worksheet, timestamp: new Date() }],
+  messages: mocks.empty ? [] : [{ id: '1', role: 'assistant', facilitator: mocks.persona, content: mocks.content, worksheetAvailable: mocks.worksheet, timestamp: new Date() }],
   conversationId: 'saved-conversation', conversations: [], suggestedQuestions: [], isStreaming: mocks.streaming, isLoading: false,
   isReasoning: false, error: null, sendMessage: mocks.sendMessage, stopGeneration: mocks.stopGeneration,
   refreshSuggestions: mocks.refreshSuggestions, refreshConversations: mocks.refreshConversations,
@@ -35,6 +35,7 @@ import FloatingEducatorAIButton from '@/shared/ui/FloatingEducatorAIButton';
 
 beforeEach(() => {
   mocks.worksheet = false;
+  mocks.persona = undefined;
   mocks.streaming = false;
   mocks.empty = false;
   mocks.educator = true;
@@ -120,14 +121,16 @@ describe('AI facilitator workspace', () => {
     expect(input.style.height).toBe('20px');
     expect(input.style.overflowY).toBe('hidden');
   });
-  it('shows the shared orb in learner welcome without educator role controls', () => {
+  it('shows the animated shared orb in learner welcome and keeps six roles accessible', () => {
     mocks.educator = false;
     mocks.empty = true;
     const { container } = showPanel();
-    expect(screen.getByText('Welcome to AI Tutor')).toBeInTheDocument();
     expect(container.querySelector('.facilitator-orb')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Plan' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Create' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Plan', exact: true })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Explore six facilitators' }));
+    expect(screen.getByRole('region', { name: 'Six AI facilitators' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Organizer' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Worksheet', exact: true })).not.toBeInTheDocument();
   });
   it('renders escaped worksheet comments as clean content rather than implementation markers', () => {
     mocks.content = '```markdown\n&lt;!-- STUDENT_WORKSHEET --&gt;\n## Clean worksheet\nQuestions\n<!-- PRIVATE_SOLUTIONS -->\nAnswer guidance\n<!-- END_WORKSHEET -->\n```';
@@ -285,14 +288,36 @@ describe('AI facilitator workspace', () => {
     await screen.findByText(/Mapped College/);
     expect(mocks.sendMessage).not.toHaveBeenCalled();
   });
-  it('selects all three levels from Individualized Support', async () => {
+  it('uses ADAPT to recommend adjustments without opening a worksheet generator', () => {
     showPanel();
     fireEvent.click(screen.getByRole('button', { name: 'Explore six facilitators' }));
     fireEvent.click(screen.getByRole('button', { name: /Individualized Support/ }));
-    fireEvent.click(screen.getByRole('button', { name: 'Create three difficulty levels' }));
-    expect(screen.getByText('Levels: low, medium, high')).toBeInTheDocument();
-    await screen.findByText(/Mapped College/);
+    fireEvent.click(screen.getByRole('button', { name: 'Recommend learning adjustments' }));
+    expect((screen.getByRole('textbox',{name:'Message the AI facilitator'}) as HTMLTextAreaElement).value).toContain('Recommend instructional support adjustments');
+    expect(screen.queryByText('Worksheet controls')).not.toBeInTheDocument();
     expect(mocks.sendMessage).not.toHaveBeenCalled();
+  });
+  it('opens the existing CREATE worksheet card carrying ADAPT recommendations', async () => {
+    mocks.persona='individualized-support';mocks.content='Use shorter steps and a word bank.';
+    showPanel();
+    fireEvent.click(screen.getByRole('button',{name:'Create worksheet from adjustments'}));
+    expect(mocks.setFacilitatorMode).toHaveBeenCalledWith('resource-provider');
+    expect(screen.getByText('Worksheet controls')).toBeInTheDocument();
+    await screen.findByText(/Mapped College/);
+    fireEvent.click(screen.getByRole('button',{name:'Generate worksheet'}));
+    await waitFor(()=>expect(mocks.sendMessage).toHaveBeenCalledWith(expect.stringContaining('Use shorter steps and a word bank.'),{generate:true}));
+  });
+  it('lets the educator clear the adjustment brief before generating', async () => {
+    mocks.persona='individualized-support';mocks.content='Use a word bank.';
+    showPanel();
+    fireEvent.click(screen.getByRole('button',{name:'Create worksheet from adjustments'}));
+    expect(screen.getByText('Using learning adjustment recommendations.')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button',{name:'Clear adjustment brief'}));
+    expect(screen.queryByText('Using learning adjustment recommendations.')).not.toBeInTheDocument();
+    await screen.findByText(/Mapped College/);
+    fireEvent.click(screen.getByRole('button',{name:'Generate worksheet'}));
+    await waitFor(()=>expect(mocks.sendMessage).toHaveBeenCalled());
+    expect(mocks.sendMessage.mock.calls.at(-1)?.[0]).not.toContain('Use a word bank.');
   });
   it('prepares a guidance question for review instead of generating material', () => {
     showPanel();
@@ -310,9 +335,35 @@ describe('AI facilitator workspace', () => {
     showPanel();
     fireEvent.click(screen.getByRole('button', { name }));
     const input = screen.getByRole('textbox', { name: 'Message the AI facilitator' }) as HTMLTextAreaElement;
-    if(name==='Guide')expect(screen.getByRole('region',{name:'Guide a learner response'})).toBeInTheDocument();else {expect(input.value).toContain('work through a misconception');expect(input).toHaveFocus();}
+    if(name==='Guide')expect(screen.getByRole('region',{name:'Guide a learner response'})).toBeInTheDocument();else {expect(input.value).toContain('diagnose a specific misconception');expect(input).toHaveFocus();}
     expect(mocks.sendMessage).not.toHaveBeenCalled();
     expect(screen.queryByRole('region', { name: 'Six AI facilitators' })).not.toBeInTheDocument();
   });
 
+});
+
+it('offers learner personas in the shared hub without educator generation controls', () => {
+  mocks.educator = false; mocks.empty = true;
+  showPanel();
+  fireEvent.click(screen.getByRole('button', { name: 'Explore six facilitators' }));
+  expect(screen.getByRole('button', { name: 'Organizer' })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Organizer' }));
+  expect(screen.getByText('Your learning team')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Plan my study' }));
+  expect(mocks.setFacilitatorMode).toHaveBeenCalledWith('organizer');
+  expect(screen.queryByRole('button', { name: 'Worksheet', exact: true })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Lesson Plan', exact: true })).not.toBeInTheDocument();
+  expect(screen.queryByText('Lesson plan controls')).not.toBeInTheDocument();
+});
+
+it.each(['Plan', 'Create', 'Guide', 'Solve'])('keeps learner orb %s actions in learner chat', label => {
+  mocks.educator = false; mocks.empty = true;
+  showPanel();
+  fireEvent.click(screen.getByRole('button', { name: label, exact: true }));
+  expect(mocks.setFacilitatorMode).toHaveBeenCalled();
+  expect(screen.getByRole('textbox', { name: 'Message the AI facilitator' })).not.toHaveValue('');
+  expect(screen.queryByText('Worksheet controls')).not.toBeInTheDocument();
+  expect(screen.queryByText('Lesson plan controls')).not.toBeInTheDocument();
+  expect(screen.queryByRole('region', { name: 'Guide a learner response' })).not.toBeInTheDocument();
+  expect(mocks.sendMessage).not.toHaveBeenCalled();
 });

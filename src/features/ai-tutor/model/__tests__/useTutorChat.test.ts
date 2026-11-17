@@ -47,10 +47,10 @@ describe('material completion state', () => {
     expect(sessionStorage.getItem('ai-tutor-active:educator:course')).toBeNull();
   });
 
-  it('restores the saved conversation persona, sends it on each turn and resets for new chat', async () => {
+  it.each([true, false])('restores the persona, sends each turn and resets for new chat (educator=%s)', async isEducator => {
     vi.mocked(getConversation).mockResolvedValue({ id: 'saved', messages: [{ id: 'reply', role: 'assistant', content: 'Feedback', facilitator: 'mentor-and-guide', facilitatorMode: 'mentor-and-guide', timestamp: new Date() }] } as Awaited<ReturnType<typeof getConversation>>);
     mocks.send.mockImplementation(async function* () { yield { type: 'done', conversationId: 'saved', facilitator: 'mentor-and-guide', facilitatorMode: 'mentor-and-guide' }; });
-    const { result } = renderHook(() => useTutorChat({ courseId: 'course', isEducator: true }));
+    const { result } = renderHook(() => useTutorChat({ courseId: 'course', isEducator }));
     await act(async () => { await result.current.loadConversation('saved'); });
     expect(result.current.facilitatorMode).toBe('mentor-and-guide');
     await act(async () => { await result.current.sendMessage('What next?'); });
@@ -59,11 +59,13 @@ describe('material completion state', () => {
     act(() => result.current.startNewConversation());
     expect(result.current.facilitatorMode).toBe('auto');
   });
-  it('does not send educator persona controls for a learner', async () => {
+  it('sends the selected learner persona on learner chat', async () => {
     mocks.send.mockImplementation(async function* () { yield { type: 'done' }; });
     const { result } = renderHook(() => useTutorChat({ courseId: 'course' }));
+    act(() => result.current.setFacilitatorMode('problem-solver'));
     await act(async () => { await result.current.sendMessage('Explain this'); });
-    expect(mocks.send.mock.calls[0][0]).not.toHaveProperty('facilitatorMode');
+    expect(mocks.send.mock.calls[0][0].facilitatorMode).toBe('problem-solver');
+    expect(mocks.send.mock.calls[0][0].worksheetConfig).toBeUndefined();
   });
 
   it('aborts the request and preserves received text as stopped', async () => {

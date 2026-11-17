@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import FacilitatorHub from '../FacilitatorHub';
-import { FACILITATORS } from '../../config/facilitators';
+import { FACILITATORS, LEARNER_FACILITATORS } from '../../config/facilitators';
 afterEach(cleanup);
 describe('six facilitator explorer', () => {
   it('previews a role on hover or keyboard focus without opening it', () => {
@@ -45,4 +45,14 @@ describe('six facilitator explorer', () => {
     view.rerender(<FacilitatorHub courseName="Science" disabled onAction={vi.fn()} />);
     expect(screen.getByRole('button', { name: /Organizer/ })).toBeDisabled();
   });
+});
+
+it.each(LEARNER_FACILITATORS)('uses the shared preview with a learner-specific $name action', role => {
+  const action = vi.fn();
+  render(<FacilitatorHub roles={LEARNER_FACILITATORS} audience="learner" courseName="Time Management" onAction={action} />);
+  fireEvent.click(screen.getByRole('button', { name: role.name }));
+  expect(screen.getByText('Your learning team')).toBeInTheDocument();
+  expect(screen.getByText('Example: Study support')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: role.actionLabel }));
+  expect(action).toHaveBeenCalledWith(expect.objectContaining({ id: role.id, action: 'chat' }));
 });

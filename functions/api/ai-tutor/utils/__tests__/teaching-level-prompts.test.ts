@@ -23,5 +23,19 @@ describe('mapped teaching level prompts', () => {
     expect(prompt).not.toContain('Create high-quality worksheets');
     expect(prompt).toContain('Use verified assignment context only');
   });
+  it('preserves learner instructions and rejects educator-like role strings', () => {
+    for (const role of ['learner', 'not_an_educator']) {
+      const prompt = buildSystemPrompt(context, 'opening', role, DEFAULT_WORKSHEET_CONFIG, DEFAULT_LESSON_PLAN_CONFIG, 'organizer');
+      expect(prompt).toContain('helpful course tutor for learners');
+      expect(prompt).not.toContain('GLOBAL RULES');
+    }
+  });
+  it('retains selected question counts and private-answer format under CREATE', () => {
+    const prompt = buildSystemPrompt(context, 'opening', 'educator', {...DEFAULT_WORKSHEET_CONFIG,questionCount:15,gradeLevel:'Grade 9'}, undefined, 'individualized-support');
+    expect(prompt).toContain('ROLE: CREATE');
+    expect(prompt).toContain('15');
+    expect(prompt).toContain('Teaching level: Grade 9');
+    expect(prompt).not.toContain('ROLE: ADAPT');
+  });
 
 });

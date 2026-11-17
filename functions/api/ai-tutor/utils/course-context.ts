@@ -1,3 +1,4 @@
+import { buildLearnerFacilitatorPrompt } from './learner-facilitator-prompts';
 /**
  * Course Context Builder for AI Tutor
  * 
@@ -15,6 +16,8 @@ import type { WorksheetConfig } from '../types/worksheet';
 import { buildWorksheetPrompt } from './worksheet-templates';
 import type { LessonPlanConfig } from '../types/lesson-plan';
 import { buildLessonPlanPrompt } from './lesson-plan-templates';
+import { buildEducatorFacilitatorPrompt, resolveEducatorFacilitator, type EducatorFacilitator } from './facilitator-prompts';
+import { ROLE_CATEGORIES } from '../../../lib/roleCategories';
 
 // ==================== USER ROLE TYPES ====================
 
@@ -352,7 +355,7 @@ function getCoursePromptByRole(
   // Normalize role to handle variations (educator, school_educator, college_educator)
   const normalizedRole = userRole.toLowerCase();
   
-  if (normalizedRole.includes('educator')) {
+  if ((ROLE_CATEGORIES.educator as readonly string[]).includes(normalizedRole)) {
     return getEducatorChatPrompt(context);
   }
   
@@ -378,20 +381,23 @@ export function buildSystemPrompt(
   phase: ConversationPhase,
   userRole: string = 'learner',
   worksheetConfig?: WorksheetConfig,
-  lessonPlanConfig?: LessonPlanConfig
+  lessonPlanConfig?: LessonPlanConfig,
+  facilitator: EducatorFacilitator = 'facilitator-of-learning'
 ): string {
   const normalizedRole = userRole.toLowerCase();
+  const educator = (ROLE_CATEGORIES.educator as readonly string[]).includes(normalizedRole);
   
   // If educator with lesson plan config, use lesson plan template system
-  if (normalizedRole.includes('educator') && lessonPlanConfig) {
-    return buildLessonPlanPrompt(lessonPlanConfig, context);
+  if (educator && lessonPlanConfig) {
+    return buildEducatorFacilitatorPrompt(resolveEducatorFacilitator(facilitator, 'lesson-plan'), buildLessonPlanPrompt(lessonPlanConfig, context));
   }
   
   // If educator with worksheet config, use worksheet template system
-  if (normalizedRole.includes('educator') && worksheetConfig) {
-    return buildWorksheetPrompt(worksheetConfig, context);
+  if (educator && worksheetConfig) {
+    return buildEducatorFacilitatorPrompt(resolveEducatorFacilitator(facilitator, 'worksheet'), buildWorksheetPrompt(worksheetConfig, context));
   }
   
   // Otherwise use role-based prompts
-  return getCoursePromptByRole(userRole, context, phase);
+  const prompt = getCoursePromptByRole(userRole, context, phase);
+  return educator ? buildEducatorFacilitatorPrompt(facilitator, prompt) : buildLearnerFacilitatorPrompt(facilitator, prompt);
 }

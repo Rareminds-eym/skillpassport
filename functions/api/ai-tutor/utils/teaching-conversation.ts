@@ -1,14 +1,8 @@
 import { DEFAULT_WORKSHEET_CONFIG, type WorksheetConfig } from '../types/worksheet';
 import { DEFAULT_LESSON_PLAN_CONFIG, type LessonPlanConfig } from '../types/lesson-plan';
+import { EDUCATOR_FACILITATOR_PROMPTS, resolveEducatorFacilitator } from './facilitator-prompts';
 
-export const PERSONAS = {
-  organizer: 'Organize practical teaching sequences, timings and classroom logistics.',
-  'facilitator-of-learning': 'Use inquiry, guided questions and discovery to develop understanding.',
-  'individualized-support': 'Offer accessible scaffolds and appropriate challenge without assigning fixed ability labels.',
-  'resource-provider': 'Produce clear, usable teaching materials aligned to the objective.',
-  'problem-solver': 'Diagnose misconceptions, offer staged hints and check understanding.',
-  'mentor-and-guide': 'Give constructive evidence-based feedback and actionable next steps. Never invent learner performance.',
-} as const;
+export const PERSONAS = EDUCATOR_FACILITATOR_PROMPTS;
 export type Persona = keyof typeof PERSONAS;
 export interface TeachingMessage {
   id: string;
@@ -55,14 +49,24 @@ export function routeTeachingMessage(message: string, history: TeachingMessage[]
     /\b(assignment|assign|publish|deadline|due date)\b/i.test(lastReply?.content ?? '');
   const assign = assignmentFollowup || !status && /\b(assign|send|publish|allocate)\b/.test(text) && !/\b(don't|do not|how|can i)\b/.test(text);
   const lastMaterial = previous.find(m => m.worksheetConfig || m.lessonPlanConfig);
+  const revisesMaterial = revision && (/\b(worksheet|quiz|lesson plan|version|resource|material|questions|mcqs?)\b/.test(text) || /\b(it|that|this)\b/.test(text) && !/\b(explanation|learner|support|instruction|pacing|scaffold)\w*\b/.test(text));
+  const supportRequirements = /\b(recommend|suggest|specify|requirements|specifications?|adjustments?)\b/.test(text) &&
+    /\b(scaffold\w*|differentiat\w*|support|adapt\w*)\b/.test(text) &&
+    !/\b(generate|produce|write)\b.{0,40}\b(worksheet|quiz|questions|question set)\b/.test(text);
+  const feedbackRequest = /\b(give|provide|draft|write)\s+(?:(?:me|us|some|targeted|constructive|brief|detailed|specific|formative)\s+){0,4}feedback\b/.test(text) ||
+    /\b(review|evaluate|explain)\b.{0,35}\b(response|submission|answer|feedback|results?|scores?)\b/.test(text);
+  const shortQuestionCount = text.match(/\b(\d{1,2})[ -](?:(?:diagnostic|guided|verification)\s+)?questions?\b/);
+  const resourceRequested = /\b(worksheet|quiz|question paper|question bank|mcqs?)\b/.test(text) || Number(shortQuestionCount?.[1]) >= 5;
+  const diagnosticDiscussion = !resourceRequested && /\b(diagnostic|misconception|intervention|verification|hints?)\b/.test(text);
+  const inquiryDiscussion = !resourceRequested && /\b(inquiry|discovery|investigation|phenomenon|guided questions|exploration)\b/.test(text);
   let worksheetConfig: WorksheetConfig | undefined;
   let lessonPlanConfig: LessonPlanConfig | undefined;
-  if (!negated && !assign && !status && (create || revision)) {
-    if (/\blesson plan\b/.test(text) || (revision && !/\b(worksheet|quiz|questions|question paper|mcqs?)\b/.test(text) && lastMaterial?.lessonPlanConfig)) {
+  if (!negated && !assign && !status && !supportRequirements && !feedbackRequest && !diagnosticDiscussion && !inquiryDiscussion && (create || revisesMaterial)) {
+    if (/\blesson plan\b/.test(text) || (revisesMaterial && !/\b(worksheet|quiz|questions|question paper|mcqs?)\b/.test(text) && lastMaterial?.lessonPlanConfig)) {
       lessonPlanConfig = { ...(lastMaterial?.lessonPlanConfig ?? DEFAULT_LESSON_PLAN_CONFIG) };
       const minutes = text.match(/\b(\d{1,3})[ -]minutes?\b/);
       if (minutes) lessonPlanConfig.duration = Math.max(5, Math.min(180, Number(minutes[1])));
-    } else if (/\b(worksheet|quiz|question paper|questions|mcqs?)\b/.test(text) || (revision && lastMaterial?.worksheetConfig)) {
+    } else if (/\b(worksheet|quiz|question paper|questions|mcqs?)\b/.test(text) || (revisesMaterial && lastMaterial?.worksheetConfig)) {
       worksheetConfig = { ...(lastMaterial?.worksheetConfig ?? DEFAULT_WORKSHEET_CONFIG) };
       const count = text.match(/\b(\d{1,2})[ -](?:(?:multiple[ -]choice|mcq)\s+)?(?:questions?|mcqs?)\b/);
       if (count) worksheetConfig.questionCount = Math.max(5, Math.min(30, Number(count[1])));
@@ -77,10 +81,14 @@ export function routeTeachingMessage(message: string, history: TeachingMessage[]
     }
   }
   const automatic: Persona = status || /\b(feedback|rubric|review|evaluate)\b/.test(text) ? 'mentor-and-guide'
-    : /\b(misconception|confused|struggling|hint|problem)\b/.test(text) ? 'problem-solver'
-    : /\b(differentiat|scaffold|accessible|individual)\w*\b/.test(text) ? 'individualized-support'
+    : supportRequirements ? 'individualized-support'
+    : diagnosticDiscussion ? 'problem-solver'
+    : inquiryDiscussion ? 'facilitator-of-learning'
+    : /\b(misconception|confused|struggling|hint|problem|mistake|incorrect|error)\b/.test(text) ? 'problem-solver'
+    : /\b(differentiat|scaffold|accessible|individual|adapt)\w*\b/.test(text) ? 'individualized-support'
     : lessonPlanConfig || /\b(plan|schedule|organize|timing)\b/.test(text) ? 'organizer'
     : worksheetConfig || assign ? 'resource-provider' : previous.find(m => isPersona(m.facilitator))?.facilitator ?? 'facilitator-of-learning';
-  return { assignmentReviewRequested: assign, mode, facilitator: mode === 'auto' ? automatic : mode, worksheetConfig, lessonPlanConfig,
+  const facilitator = resolveEducatorFacilitator(mode === 'auto' ? automatic : mode, worksheetConfig ? 'worksheet' : lessonPlanConfig ? 'lesson-plan' : 'chat');
+  return { assignmentReviewRequested: assign, mode, facilitator, worksheetConfig, lessonPlanConfig,
     assignmentSourceId: assign ? previous.find(m => m.worksheetVariants?.length)?.id : undefined };
 }

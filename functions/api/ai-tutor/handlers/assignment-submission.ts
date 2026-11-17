@@ -12,7 +12,7 @@ export async function handleAssignmentSubmission(context: Context) {
   const { request, env } = context;
   const user = getContextUser(context), db = getServiceClient(env);
   const fail = (status: number, message: string) => apiError(status, 'SUBMISSION_ERROR', message, request);
-  if (env.AI_ASSIGNMENTS_ENABLED !== 'true' || !env.R2_BUCKET) return fail(503, 'Assignment storage is not configured');
+  if (!env.R2_BUCKET) return fail(503, 'Assignment storage is not configured');
   try {
     if (request.method === 'GET') {
       const id = z.string().uuid().parse(new URL(request.url).searchParams.get('submissionId'));

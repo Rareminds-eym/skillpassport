@@ -4,6 +4,23 @@ import { DEFAULT_WORKSHEET_CONFIG } from '../../types/worksheet';
 import { DEFAULT_LESSON_PLAN_CONFIG } from '../../types/lesson-plan';
 
 describe('continuous teaching conversation', () => {
+  it('routes differentiated worksheet production to CREATE even when ADAPT is pinned', () => {
+    expect(routeTeachingMessage('Generate a scaffolded worksheet with 5 questions', [], 'individualized-support')).toMatchObject({facilitator:'resource-provider',mode:'individualized-support',worksheetConfig:{questionCount:5}});
+  });
+  it('keeps support specifications and explanations out of the worksheet generator', () => {
+    const history = [{id:'worksheet',worksheetConfig:DEFAULT_WORKSHEET_CONFIG}];
+    expect(routeTeachingMessage('Recommend scaffolding requirements for these questions', history)).toMatchObject({facilitator:'individualized-support',worksheetConfig:undefined});
+    expect(routeTeachingMessage('Simplify the explanation for this learner', history, 'individualized-support').worksheetConfig).toBeUndefined();
+  });
+  it('keeps feedback requests out of generation while allowing practice about feedback', () => {
+    expect(routeTeachingMessage('Give me feedback on these 5 questions', []).worksheetConfig).toBeUndefined();
+    expect(routeTeachingMessage('Give me 5 questions about feedback', []).facilitator).toBe('resource-provider');
+  });
+  it('keeps short diagnostic and inquiry questions with SOLVE and EXPLORE', () => {
+    expect(routeTeachingMessage('Give me 2 diagnostic questions for this misconception', [])).toMatchObject({facilitator:'problem-solver',worksheetConfig:undefined});
+    expect(routeTeachingMessage('Create an inquiry activity with 3 guided questions', [])).toMatchObject({facilitator:'facilitator-of-learning',worksheetConfig:undefined});
+    expect(routeTeachingMessage('Create a worksheet with diagnostic questions', []).facilitator).toBe('resource-provider');
+  });
   const history = [{ id: 'worksheet', worksheetConfig: DEFAULT_WORKSHEET_CONFIG, worksheetVariants: [{}] }];
   it.each(['I need a worksheet with 5 multiple-choice questions for beginner and intermediate levels', 'Give me 5 MCQs for beginner and intermediate levels', 'I want 5 questions for beginner and intermediate levels'])('routes conversational resource requests: %s', request => {
     const result = routeTeachingMessage(request, []);

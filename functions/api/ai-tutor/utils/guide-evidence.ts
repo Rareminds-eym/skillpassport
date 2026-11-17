@@ -10,7 +10,7 @@ export class GuideEvidenceError extends Error {
 
 export async function loadGuideEvidence(db:SupabaseClient,env:PagesEnv,userId:string,courseId:string,submissionId:string) {
   if(!z.string().uuid().safeParse(submissionId).success)throw new GuideEvidenceError(400,'Select a valid learner submission.');
-  if(env.AI_ASSIGNMENTS_ENABLED!=='true'||!env.R2_BUCKET)throw new GuideEvidenceError(503,'Learner submission guidance is unavailable.');
+  if(!env.R2_BUCKET)throw new GuideEvidenceError(503,'Learner submission guidance is unavailable.');
   if(!await requireCourseAccess(db,userId,courseId))throw new GuideEvidenceError(403,'Educator course access required.');
   const source=await db.from('ai_assignment_submissions').select('id,file_key,file_name,submitted_at,recipient:ai_assignment_learners!inner(assigned_by,learner:learners!inner(name),assignment:ai_assignments!inner(id,title,course_id,content,grading_rules)),results:ai_assignment_results(status,total_marks,maximum_marks,feedback,question_results)').eq('id',submissionId).eq('recipient.assigned_by',userId).eq('recipient.assignment.course_id',courseId).single();
   if(source.error||!source.data)throw new GuideEvidenceError(404,'Submission not found for this assignment and educator.');
@@ -18,7 +18,8 @@ export async function loadGuideEvidence(db:SupabaseClient,env:PagesEnv,userId:st
   // Also enforce ownership on the returned row, before accessing private storage.
   if(row.recipient?.assigned_by!==userId||row.recipient?.assignment?.course_id!==courseId)throw new GuideEvidenceError(403,'Submission access denied.');
   const object=await env.R2_BUCKET.get(row.file_key);
-  if(!object||object.size>SUBMISSION_MAX_BYTES)throw new GuideEvidenceError(409,'The submitted document is unavailable or exceeds the supported size.');
+  if(!object)throw new GuideEvidenceError(409,'The submitted document could not be found in storage. Restore the original upload or contact support.');
+  if(object.size>SUBMISSION_MAX_BYTES)throw new GuideEvidenceError(413,'The submitted document exceeds the supported size of 5 MiB.');
   let response:string;
   try{response=await extractSubmittedDocument(row.file_name,new Uint8Array(await object.arrayBuffer()),env.OPENROUTER_API_KEY);}catch{throw new GuideEvidenceError(422,'The submitted response could not be read. Ask the learner to provide an accessible document.');}
   const result=Array.isArray(row.results)?row.results[0]:row.results;

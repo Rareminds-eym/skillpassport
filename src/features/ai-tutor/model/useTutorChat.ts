@@ -186,7 +186,7 @@ export function useTutorChat({
         lessonId,
         message: content.trim(),
         ...(options?.guideSubmissionId ? { guideSubmissionId: options.guideSubmissionId } : {}),
-        ...(isEducator ? { facilitatorMode: options?.guideSubmissionId ? 'mentor-and-guide' : facilitatorMode } : {}),
+        facilitatorMode: isEducator && options?.guideSubmissionId ? 'mentor-and-guide' : facilitatorMode,
         ...(options?.generate ? { worksheetConfig, lessonPlanConfig } : {}),
       }, requestController.signal);
 
@@ -334,7 +334,7 @@ export function useTutorChat({
         courseId,
         lessonId,
         message: newContent.trim(),
-        ...(isEducator ? { facilitatorMode } : {}),
+        facilitatorMode,
       }, requestController.signal);
 
       setCurrentReasoning('');

@@ -43,7 +43,7 @@ function query(table:string) {
   return q;
 }
 function context(userId:string,request:Request) {
-  return {request,data:{user:{id:userId}},env:{AI_ASSIGNMENTS_ENABLED:'true',OPENROUTER_API_KEY:'test-only',R2_BUCKET:{
+  return {request,data:{user:{id:userId}},env:{OPENROUTER_API_KEY:'test-only',R2_BUCKET:{
     put:vi.fn(async(key:string,bytes:Uint8Array)=>{objects.set(key,bytes);}),delete:vi.fn(async(key:string)=>{objects.delete(key);}),get:vi.fn(async(key:string)=>{const bytes=objects.get(key);return bytes?{size:bytes.length,body:bytes,arrayBuffer:async()=>bytes.slice().buffer}:null;})}}} as never;
 }
 async function action(userId:string,name:string,data:Record<string,unknown>={}) {

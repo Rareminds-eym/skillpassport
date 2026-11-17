@@ -1,6 +1,9 @@
 // @vitest-environment node
 import {it,expect} from 'vitest';
 import {materialRequestFingerprint,materialContextFingerprint,savedAssignmentMarkdown} from '../saved-materials';
+it('separates generated material caches by prompt version', async()=>{
+ expect(await materialRequestFingerprint('Make questions',{},null,'v1')).not.toBe(await materialRequestFingerprint('Make questions',{},null,'v2'));
+});
 it('matches normalized requests and settings but separates changed contexts',async()=>{
  expect(await materialRequestFingerprint('  Make Questions ',{b:2,a:1},null)).toBe(await materialRequestFingerprint('make questions',{a:1,b:2},null));
  expect(await materialRequestFingerprint('make questions',{a:2},null)).not.toBe(await materialRequestFingerprint('make questions',{a:1},null));
