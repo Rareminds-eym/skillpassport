@@ -1,15 +1,11 @@
-import { requireSelfServePlan, subscriptionForUpgrade } from './salesPlan';
+import { requireSelfServePlan } from './salesPlan';
 import { completePlanSelection } from '../../../shared/lib/org-subscription';
-import { ssoRecordTransaction, ssoRecordBundlePurchase, ssoCreateSubscription, ssoUpdateSubscriptionField, ssoSyncSubscription } from '../../../lib/sso-client';
+import { ssoFulfillSubscriptionPayment, ssoGetSubscriptionPaymentFulfillment, ssoRecordTransaction, ssoRecordBundlePurchase, ssoCreateSubscription, ssoSyncSubscription } from '../../../lib/sso-client';
 import { getServiceClient } from '../../../lib/supabase';
 import { syncUserShadow, syncSubscriptionCache } from '../../../lib/sync-shadow';
-import type { Fetcher } from '@cloudflare/workers-types';
+import type { PagesEnv } from '../../../lib/types';
 
-export interface FulfillmentEnv {
-  SSO_SERVICE: Fetcher;
-  SUPABASE_URL: string;
-  SUPABASE_SERVICE_ROLE_KEY: string;
-}
+export type FulfillmentEnv = PagesEnv;
 
 export async function fulfillAddonPurchase(env: FulfillmentEnv, payload: {
   razorpay_order_id: string; razorpay_payment_id: string; providerOrder?: import('./paymentBinding').RazorpayOrder;
@@ -319,104 +315,38 @@ export async function fulfillLearnerSubscription(
     features?: any[];
   }
 ) {
-  const ssoEnv = env as any;
   const supabase = getServiceClient(env);
-  const catalogPlan = await requireSelfServePlan(supabase, payload);
-  payload = { ...payload, plan_id: catalogPlan.id, plan_code: catalogPlan.plan_code, plan_name: catalogPlan.name };
-  let duplicateCaught = false;
-  let subscription: any = null;
-  let isUpgrade = false;
-
-  const existingCache = await subscriptionForUpgrade(supabase, payload.user_id, catalogPlan, payload.org_id);
-
-  const now = new Date();
-  const endDate = new Date(now);
-  endDate.setMonth(endDate.getMonth() + 12); // Default to annual for learners
-
-  if (existingCache) {
-    isUpgrade = true;
-    try {
-      subscription = await ssoUpdateSubscriptionField(ssoEnv, existingCache.id, {
-        plan_id: payload.plan_id,
-        plan_code: payload.plan_code,
-        plan_type: payload.plan_name,
-        plan_amount: payload.amount,
-        billing_cycle: 'annual',
-        razorpay_order_id: payload.razorpay_order_id,
-        razorpay_payment_id: payload.razorpay_payment_id,
-        subscription_start_date: now.toISOString(),
-        subscription_end_date: endDate.toISOString(),
-        auto_renew: true,
-        status: 'active',
-      });
-    } catch (upgradeError: any) {
-      if (upgradeError.message?.includes('duplicate key') || upgradeError.message?.includes('23505') || upgradeError.status === 409) {
-        console.log('[FulfillmentCore] Subscription already updated (duplicate caught).');
-        duplicateCaught = true;
-      } else {
-        throw upgradeError;
-      }
-    }
-  } else {
-    try {
-      subscription = await ssoCreateSubscription(ssoEnv, {
-        user_id: payload.user_id,
-        organization_id: payload.org_id,
-        organization_type: payload.organization_type,
-        is_organization_subscription: catalogPlan.business_type === 'b2b',
-        plan_id: payload.plan_id,
-        plan_code: payload.plan_code,
-        plan_type: payload.plan_name,
-        plan_amount: payload.amount,
-        billing_cycle: 'annual', 
-        features: payload.features || [],
-        full_name: payload.user_name || payload.user_email || '',
-        email: payload.user_email || '',
-        razorpay_order_id: payload.razorpay_order_id,
-        razorpay_payment_id: payload.razorpay_payment_id,
-      });
-    } catch (createError: any) {
-      if (createError.message?.includes('duplicate key') || createError.message?.includes('23505') || createError.status === 409) {
-        console.log('[FulfillmentCore] Subscription already created (duplicate caught).');
-        duplicateCaught = true;
-      } else {
-        throw createError;
-      }
-    }
-  }
-
-  // If SSO duplicate caught, continue to ensure local shadow sync happens
-  // (the webhook might not have finished syncing the App DB yet)
-
-  try {
-    await ssoRecordTransaction(ssoEnv, {
-      subscription_id: subscription?.id as string,
-      user_id: payload.user_id,
-      razorpay_payment_id: payload.razorpay_payment_id,
-      razorpay_order_id: payload.razorpay_order_id,
-      razorpay_signature: payload.razorpay_signature,
-      amount: payload.amount,
-      currency: payload.currency || 'INR',
-      status: 'completed',
-      transaction_type: isUpgrade ? 'upgrade' : 'subscription',
+  const sso = env as unknown as import('../../../lib/sso-client').SsoEnv;
+  const recorded = await ssoGetSubscriptionPaymentFulfillment(sso, {
+    user_id: payload.user_id, plan_id: payload.plan_id, organization_id: payload.org_id,
+    razorpay_order_id: payload.razorpay_order_id, razorpay_payment_id: payload.razorpay_payment_id,
+    amount: payload.amount, currency: payload.currency || 'INR',
+  });
+  let catalogPlan;
+  let fulfillment = recorded;
+  if (!fulfillment) {
+    catalogPlan = await requireSelfServePlan(supabase, payload);
+    fulfillment = await ssoFulfillSubscriptionPayment(sso, {
+      user_id: payload.user_id, plan_id: catalogPlan.id,
+      organization_id: catalogPlan.business_type === 'b2b' ? payload.org_id : undefined,
+      organization_type: payload.organization_type,
+      razorpay_order_id: payload.razorpay_order_id, razorpay_payment_id: payload.razorpay_payment_id,
+      razorpay_signature: payload.razorpay_signature, amount: payload.amount, currency: payload.currency || 'INR',
+      billing_cycle: 'yearly', full_name: payload.user_name || payload.user_email || '', email: payload.user_email || '',
       payment_method: payload.payment_method,
     });
-  } catch (txError: any) {
-    if (txError.message?.includes('duplicate key') || txError.message?.includes('23505') || txError.status === 409) {
-      console.log('[FulfillmentCore] Transaction already recorded (duplicate caught).');
-    }
   }
-
+  // Sync the authoritative result, including on replay. No second activation,
+  // transaction insertion, receipt or email is performed for this payment.
   try {
     await syncUserShadow(supabase, payload.user_id, payload.user_email || '');
-    const syncData = await ssoSyncSubscription(ssoEnv, payload.user_id);
-    if (syncData.subscription) {
-      await syncSubscriptionCache(supabase, syncData.subscription, syncData.plan);
-    }
+    await syncSubscriptionCache(supabase, fulfillment.subscription, catalogPlan);
   } catch (syncError) {
     console.error('[FulfillmentCore] Shadow sync failed:', syncError);
   }
-
-  await completePlanSelection(supabase, payload.user_id, catalogPlan.id);
-  return { success: true, subscription, isUpgrade, already_fulfilled: duplicateCaught };
+  if (fulfillment.subscription.razorpay_payment_id === payload.razorpay_payment_id) {
+    await completePlanSelection(supabase, payload.user_id, String(fulfillment.subscription.plan_id));
+  }
+  return { success: true, subscription: fulfillment.subscription,
+    isUpgrade: fulfillment.is_upgrade, already_fulfilled: fulfillment.already_fulfilled };
 }
