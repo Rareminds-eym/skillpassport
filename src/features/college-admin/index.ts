@@ -92,3 +92,6 @@ export type { default as SwapRequestModal } from './ui/modals/SwapRequestModal';
 // Note: getFacultyStatistics from facultyService
 export { timetableService, assessmentService } from './api/assessmentService';
 export { CollegeGradingModal } from './ui/CollegeGradingModal';
+
+export { bulkCreateCollegeAssignments } from './api/collegeAssignmentService';
+export type { BulkTaskRow, BulkCreatePayload } from './api/collegeAssignmentService';
