@@ -53,6 +53,15 @@ export const fetchEducatorCoursesByProgram = async (educatorUserId: string, prog
   }
 };
 
+export const fetchEducatorCoursesBySection = async (educatorUserId: string, programId: string, sectionId: string): Promise<ServiceResponse<Course[]>> => {
+  try {
+    const result: any = await apiPost('/college-admin/assignments', { action: 'get-educator-courses', educator_user_id: educatorUserId, program_id: programId, section_id: sectionId });
+    return { data: result.data || [], error: null };
+  } catch (err: any) {
+    return { data: null, error: err.message || 'Failed to fetch courses' };
+  }
+};
+
 export const fetchProgramSectionlearners = async (sectionId: string): Promise<ServiceResponse<CollegeLearner[]>> => {
   try {
     const result: any = await apiPost('/college-admin/assignments', { action: 'get-section-learners', section_id: sectionId });
@@ -247,3 +256,46 @@ export const fetchCollegeAllAssignments = async (
   }
 };
 
+
+// Bulk Task Upload
+export interface BulkTaskRow {
+  title: string;
+  due_date: string;
+  assignment_type?: string;
+  total_points?: number;
+  description?: string;
+  instructions?: string;
+  skill_outcomes?: string[];
+  allow_late_submission?: boolean;
+  instruction_files?: Array<{ name: string; url: string; size: number; type: string }>;
+}
+
+export interface BulkCreatePayload {
+  educator_user_id: string;
+  department_id: string;
+  program_id: string;
+  course_id: string;
+  course_name: string;
+  course_code: string;
+  section_id: string;
+  section: string;
+  semester: number;
+  academic_year: string;
+  college_id: string;
+  auto_assign: boolean;
+  tasks: BulkTaskRow[];
+}
+
+export const bulkCreateCollegeAssignments = async (
+  payload: BulkCreatePayload
+): Promise<ServiceResponse<{ count: number }>> => {
+  try {
+    const result: any = await apiPost('/college-admin/assignments', {
+      action: 'bulk-create-assignments',
+      ...payload,
+    });
+    return { data: result.data, error: null };
+  } catch (err: any) {
+    return { data: null, error: err.message || 'Failed to bulk create assignments' };
+  }
+};
