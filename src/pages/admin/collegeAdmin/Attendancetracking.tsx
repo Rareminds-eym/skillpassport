@@ -16,6 +16,7 @@ import {
   curriculumService,
   Learner as AttendanceLearner,
   SubjectGroup,
+  getFaculty,
 } from '@/features/college-admin';
 import { apiPost } from '@/shared/api/apiClient';
 import { formatProgramLabel } from '@/shared/lib';
@@ -23,33 +24,35 @@ import { getLogger } from "@/shared/config/logging";
 
 const logger = getLogger('college-admin-attendance-tracking');
 import {
-    ArrowDownTrayIcon,
-    ArrowUpTrayIcon,
-    BellAlertIcon,
-    BookOpenIcon,
-    CalendarIcon,
-    ChartBarIcon,
-    ChartPieIcon,
-    CheckCircleIcon,
-    ChevronDownIcon,
-    ClipboardDocumentCheckIcon,
-    ClipboardDocumentListIcon,
-    ClockIcon,
-    ExclamationCircleIcon,
-    FunnelIcon,
-    PlusCircleIcon,
-    ShieldCheckIcon,
-    SparklesIcon,
-    Squares2X2Icon,
-    TableCellsIcon,
-    UserGroupIcon,
-    XCircleIcon,
-    XMarkIcon,
+  ArrowDownTrayIcon,
+  ArrowUpTrayIcon,
+  BellAlertIcon,
+  BookOpenIcon,
+  CalendarIcon,
+  ChartBarIcon,
+  ChartPieIcon,
+  CheckCircleIcon,
+  ChevronDownIcon,
+  ClipboardDocumentCheckIcon,
+  ClipboardDocumentListIcon,
+  ClockIcon,
+  EllipsisVerticalIcon,
+  ExclamationCircleIcon,
+  FunnelIcon,
+  PlusCircleIcon,
+  ShieldCheckIcon,
+  SparklesIcon,
+  Squares2X2Icon,
+  TableCellsIcon,
+  TrashIcon,
+  UserGroupIcon,
+  XCircleIcon,
+  XMarkIcon,
 } from "@heroicons/react/24/outline";
 import React, { useEffect, useMemo, useState, useRef } from "react";
 import ReactApexChart from "react-apexcharts";
 import { KPICard } from '@/features/analytics';
-import { Pagination } from '@/shared/ui';
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious, PaginationEllipsis } from '@/shared/ui';
 import { SearchBar } from '@/shared/ui';
 
 
@@ -147,9 +150,8 @@ const FilterSection = ({ title, children, defaultOpen = false }: any) => {
       >
         <span className="text-sm font-medium text-gray-900">{title}</span>
         <ChevronDownIcon
-          className={`h-4 w-4 transition-transform ${
-            isOpen ? "rotate-180" : ""
-          }`}
+          className={`h-4 w-4 transition-transform ${isOpen ? "rotate-180" : ""
+            }`}
         />
       </button>
       {isOpen && <div className="mt-3 space-y-2">{children}</div>}
@@ -166,10 +168,10 @@ const CheckboxGroup = ({ options, selectedValues, onChange }: any) => (
       >
         <input
           type="checkbox"
-          checked={selectedValues.includes(opt.value)}
+          checked={selectedValues.some((v: any) => String(v) === String(opt.value))}
           onChange={(e) => {
             if (e.target.checked) onChange([...selectedValues, opt.value]);
-            else onChange(selectedValues.filter((v: string) => v !== opt.value));
+            else onChange(selectedValues.filter((v: any) => String(v) !== String(opt.value)));
           }}
           className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
         />
@@ -194,30 +196,43 @@ const StatusBadge = ({ status }: { status: string }) => {
   );
 };
 
-const EnhancedSubjectCard = ({ subjectGroup, onView }: any) => {
+const EnhancedSubjectCard = ({ subjectGroup, onView, onDelete }: any) => {
+  const [menuOpen, setMenuOpen] = React.useState(false);
+  const menuRef = React.useRef<HTMLDivElement>(null);
+
+  // Close menu when clicking outside
+  React.useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    if (menuOpen) document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, [menuOpen]);
+
   const attendanceColor =
     subjectGroup.avgAttendancePercentage >= 75 ? 'from-emerald-500 to-green-500' :
-    subjectGroup.avgAttendancePercentage >= 50 ? 'from-amber-500 to-orange-500' :
-    'from-rose-500 to-red-500';
+      subjectGroup.avgAttendancePercentage >= 50 ? 'from-amber-500 to-orange-500' :
+        'from-rose-500 to-red-500';
 
   return (
     <div
-      role="button"
-      tabIndex={0}
-      onClick={() => onView(subjectGroup)}
-       onKeyDown={(e) => {
-       if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          onView(subjectGroup);
-        }
-    }}
-      className="group relative bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-2xl hover:border-indigo-200 transition-all duration-300 cursor-pointer"
+      className="group relative bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-2xl hover:border-indigo-200 transition-all duration-300"
     >
       <div className={`h-1.5 bg-gradient-to-r ${attendanceColor}`} />
 
       <div className="p-6">
         <div className="flex items-start justify-between mb-4">
-          <div className="flex-1 min-w-0">
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={() => onView(subjectGroup)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onView(subjectGroup); }
+            }}
+            className="flex-1 min-w-0 cursor-pointer"
+          >
             <div className="flex items-center gap-2 mb-2">
               <div className={`p-2 rounded-lg bg-gradient-to-br ${attendanceColor} shadow-md`}>
                 <BookOpenIcon className="h-5 w-5 text-white" />
@@ -230,71 +245,107 @@ const EnhancedSubjectCard = ({ subjectGroup, onView }: any) => {
               </div>
             </div>
           </div>
-          <StatusBadge status={subjectGroup.latestStatus} />
+
+          <div className="flex items-center gap-2 ml-2 flex-shrink-0">
+            <StatusBadge status={subjectGroup.latestStatus} />
+
+            {/* Three-dots menu (Delete commented out) */}
+            {/* <div className="relative" ref={menuRef}>
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setMenuOpen(prev => !prev); }}
+                className="p-1.5 rounded-full hover:bg-gray-100 transition-colors text-gray-500"
+                aria-label="More options"
+              >
+                <EllipsisVerticalIcon className="h-5 w-5" />
+              </button>
+
+              {menuOpen && (
+                <div className="absolute right-0 mt-1 w-44 bg-white rounded-xl shadow-lg border border-gray-200 z-20 py-1">
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setMenuOpen(false); onDelete(subjectGroup); }}
+                    className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded-b-xl"
+                  >
+                    <TrashIcon className="h-4 w-4" />
+                    Delete Sessions
+                  </button>
+                </div>
+              )}
+            </div> */}
+          </div>
         </div>
 
-        <div className="flex flex-wrap gap-3 mb-4 text-sm">
-          <div className="flex items-center gap-1.5 text-gray-600">
-            <CalendarIcon className="h-4 w-4" />
-            <span className="text-xs">
-              {subjectGroup.totalSessions === 1
-                ? formatDate(subjectGroup.dateRange.first)
-                : `${formatDate(subjectGroup.dateRange.first)} - ${formatDate(subjectGroup.dateRange.last)}`
-              }
+        <div
+          role="button"
+          tabIndex={-1}
+          onClick={() => onView(subjectGroup)}
+          className="cursor-pointer"
+        >
+          <div className="flex flex-wrap gap-3 mb-4 text-sm">
+            <div className="flex items-center gap-1.5 text-gray-600">
+              <CalendarIcon className="h-4 w-4" />
+              <span className="text-xs">
+                {subjectGroup.totalSessions === 1
+                  ? formatDate(subjectGroup.dateRange.first)
+                  : `${formatDate(subjectGroup.dateRange.first)} - ${formatDate(subjectGroup.dateRange.last)}`
+                }
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 text-indigo-600 font-medium">
+              <ClipboardDocumentListIcon className="h-4 w-4" />
+              <span>{subjectGroup.totalSessions} Session{subjectGroup.totalSessions !== 1 ? 's' : ''}</span>
+            </div>
+          </div>
+
+          <div className="relative mb-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-gray-700">Average Attendance</span>
+              <span className={`text-2xl font-bold bg-gradient-to-r ${attendanceColor} bg-clip-text text-transparent`}>
+                {subjectGroup.avgAttendancePercentage.toFixed(1)}%
+              </span>
+            </div>
+
+            <div className="relative h-3 bg-gray-100 rounded-full overflow-hidden">
+              <div
+                className={`h-full bg-gradient-to-r ${attendanceColor} rounded-full transition-all duration-500 shadow-lg`}
+                style={{ width: `${subjectGroup.avgAttendancePercentage}%` }}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-4 gap-2 mb-4">
+            <div className="text-center p-3 bg-gradient-to-br from-emerald-50 to-green-50 rounded-xl border border-emerald-100">
+              <p className="text-lg font-bold text-emerald-700">{subjectGroup.totalPresentCount}</p>
+              <p className="text-xs text-emerald-600 font-medium">Present</p>
+            </div>
+            <div className="text-center p-3 bg-gradient-to-br from-rose-50 to-red-50 rounded-xl border border-rose-100">
+              <p className="text-lg font-bold text-rose-700">{subjectGroup.totalAbsentCount}</p>
+              <p className="text-xs text-rose-600 font-medium">Absent</p>
+            </div>
+            <div className="text-center p-3 bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl border border-amber-100">
+              <p className="text-lg font-bold text-amber-700">{subjectGroup.totalLateCount}</p>
+              <p className="text-xs text-amber-600 font-medium">Late</p>
+            </div>
+            <div className="text-center p-3 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
+              <p className="text-lg font-bold text-blue-700">{subjectGroup.totalExcusedCount}</p>
+              <p className="text-xs text-blue-600 font-medium">Excused</p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2 pt-4 border-t border-gray-100">
+            <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-gray-100 text-xs font-medium text-gray-700">
+              {subjectGroup.department}
+            </span>
+            <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-indigo-50 text-xs font-medium text-indigo-700">
+              {subjectGroup.course}
+            </span>
+            <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-purple-50 text-xs font-medium text-purple-700">
+              Sem {subjectGroup.semester} - {subjectGroup.section}
             </span>
           </div>
-          <div className="flex items-center gap-1.5 text-indigo-600 font-medium">
-            <ClipboardDocumentListIcon className="h-4 w-4" />
-            <span>{subjectGroup.totalSessions} Session{subjectGroup.totalSessions !== 1 ? 's' : ''}</span>
-          </div>
-        </div>
 
-        <div className="relative mb-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-gray-700">Average Attendance</span>
-            <span className={`text-2xl font-bold bg-gradient-to-r ${attendanceColor} bg-clip-text text-transparent`}>
-              {subjectGroup.avgAttendancePercentage.toFixed(1)}%
-            </span>
-          </div>
-
-          <div className="relative h-3 bg-gray-100 rounded-full overflow-hidden">
-            <div
-              className={`h-full bg-gradient-to-r ${attendanceColor} rounded-full transition-all duration-500 shadow-lg`}
-              style={{ width: `${subjectGroup.avgAttendancePercentage}%` }}
-            />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-4 gap-2 mb-4">
-          <div className="text-center p-3 bg-gradient-to-br from-emerald-50 to-green-50 rounded-xl border border-emerald-100">
-            <p className="text-lg font-bold text-emerald-700">{subjectGroup.totalPresentCount}</p>
-            <p className="text-xs text-emerald-600 font-medium">Present</p>
-          </div>
-          <div className="text-center p-3 bg-gradient-to-br from-rose-50 to-red-50 rounded-xl border border-rose-100">
-            <p className="text-lg font-bold text-rose-700">{subjectGroup.totalAbsentCount}</p>
-            <p className="text-xs text-rose-600 font-medium">Absent</p>
-          </div>
-          <div className="text-center p-3 bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl border border-amber-100">
-            <p className="text-lg font-bold text-amber-700">{subjectGroup.totalLateCount}</p>
-            <p className="text-xs text-amber-600 font-medium">Late</p>
-          </div>
-          <div className="text-center p-3 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
-            <p className="text-lg font-bold text-blue-700">{subjectGroup.totalExcusedCount}</p>
-            <p className="text-xs text-blue-600 font-medium">Excused</p>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap gap-2 pt-4 border-t border-gray-100">
-          <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-gray-100 text-xs font-medium text-gray-700">
-            {subjectGroup.department}
-          </span>
-          <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-indigo-50 text-xs font-medium text-indigo-700">
-            {subjectGroup.course}
-          </span>
-          <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-purple-50 text-xs font-medium text-purple-700">
-            Sem {subjectGroup.semester} - {subjectGroup.section}
-          </span>
-        </div>
+        </div>{/* end clickable area */}
 
         <div className="absolute inset-0 border-2 border-indigo-500 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
       </div>
@@ -344,30 +395,48 @@ const AttendanceTracking: React.FC = () => {
     totallearners: 0,
   });
 
-  const [trainingSections,setTrainingSections]=useState<any[]>([]);
-  const [trainingSectionId,setTrainingSectionId]=useState('');
-  const [trainingCourses,setTrainingCourses]=useState<any[]>([]);
-  const [trainingError,setTrainingError]=useState('');
-  const [trainingSectionsLoading,setTrainingSectionsLoading]=useState(false);
-  const [trainingCoursesLoading,setTrainingCoursesLoading]=useState(false);
-  const [academicSubjectsLoading,setAcademicSubjectsLoading]=useState(false);
-  const sessionRequestId=useRef(crypto.randomUUID());
-  const [savingSession,setSavingSession]=useState(false);
-  const [sessionCreationError,setSessionCreationError]=useState('');
-  useEffect(()=>{let alive=true;setTrainingSections([]);setTrainingSectionId('');setTrainingCourses([]);setTrainingError('');setTrainingSectionsLoading(false);
-    if(collegeId&&sessionFormData.course&&sessionFormData.semester){
+  const [trainingSections, setTrainingSections] = useState<any[]>([]);
+  const [trainingSectionId, setTrainingSectionId] = useState('');
+  const [trainingCourses, setTrainingCourses] = useState<any[]>([]);
+  const [trainingError, setTrainingError] = useState('');
+  const [trainingSectionsLoading, setTrainingSectionsLoading] = useState(false);
+  const [trainingCoursesLoading, setTrainingCoursesLoading] = useState(false);
+  const [academicSubjectsLoading, setAcademicSubjectsLoading] = useState(false);
+  const sessionRequestId = useRef(crypto.randomUUID());
+  const [savingSession, setSavingSession] = useState(false);
+  const [sessionCreationError, setSessionCreationError] = useState('');
+  const [collegeLecturers, setCollegeLecturers] = useState<{ value: string; label: string }[]>([]);
+  useEffect(() => {
+    if (!collegeId) return;
+    getFaculty(collegeId).then(list => {
+      setCollegeLecturers(
+        (list || [])
+          .filter((f: any) => f.accountStatus === 'active')
+          .map((f: any) => {
+            const name = [f.first_name, f.last_name].filter(Boolean).join(' ').trim()
+              || (f.metadata && [f.metadata.first_name, f.metadata.last_name].filter(Boolean).join(' ').trim())
+              || f.email || 'Unknown';
+            return { value: f.id, label: name };
+          })
+      );
+    }).catch(() => { /* non-critical — silently ignore */ });
+  }, [collegeId]);
+  useEffect(() => {
+    let alive = true; setTrainingSections([]); setTrainingSectionId(''); setTrainingCourses([]); setTrainingError(''); setTrainingSectionsLoading(false);
+    if (collegeId && sessionFormData.course && sessionFormData.semester) {
       setTrainingSectionsLoading(true);
-      teaching('class_sections',{collegeId,programId:sessionFormData.course,semester:Number(sessionFormData.semester)}).then(rows=>{if(alive)setTrainingSections(rows);}).catch(e=>{if(alive)setTrainingError(e.message);}).finally(()=>{if(alive)setTrainingSectionsLoading(false);});
+      teaching('class_sections', { collegeId, programId: sessionFormData.course, semester: Number(sessionFormData.semester) }).then(rows => { if (alive) setTrainingSections(rows); }).catch(e => { if (alive) setTrainingError(e.message); }).finally(() => { if (alive) setTrainingSectionsLoading(false); });
     }
-    return()=>{alive=false;};
-  },[collegeId,sessionFormData.course,sessionFormData.semester]);
-  useEffect(()=>{const matching=trainingSections.filter(x=>x.section===sessionFormData.section);setTrainingSectionId(matching.length===1?matching[0].id:'');},[trainingSections,sessionFormData.section]);
-  useEffect(()=>{let alive=true;setTrainingCourses([]);setTrainingCoursesLoading(false);
-    if(collegeId&&trainingSectionId&&sessionFormData.date){setTrainingError('');setTrainingCoursesLoading(true);teaching('mapped_courses',{collegeId,sectionId:trainingSectionId,date:sessionFormData.date}).then(rows=>{if(alive)setTrainingCourses(rows);}).catch(e=>{if(alive)setTrainingError(e.message);}).finally(()=>{if(alive)setTrainingCoursesLoading(false);});}
-    return()=>{alive=false;};
-  },[collegeId,trainingSectionId,sessionFormData.date]);
-  const trainingCandidates=trainingCourses.filter(x=>`training:${x.course_id}`===sessionFormData.subject);
-  useEffect(()=>{if(sessionFormData.subject.startsWith('training:'))setSessionFormData(prev=>({...prev,faculty:trainingCandidates.length===1?trainingCandidates[0].mapping_id:''}));},[trainingCourses,sessionFormData.subject]);
+    return () => { alive = false; };
+  }, [collegeId, sessionFormData.course, sessionFormData.semester]);
+  useEffect(() => { const matching = trainingSections.filter(x => x.section === sessionFormData.section); setTrainingSectionId(matching.length === 1 ? matching[0].id : ''); }, [trainingSections, sessionFormData.section]);
+  useEffect(() => {
+    let alive = true; setTrainingCourses([]); setTrainingCoursesLoading(false);
+    if (collegeId && trainingSectionId && sessionFormData.date) { setTrainingError(''); setTrainingCoursesLoading(true); teaching('mapped_courses', { collegeId, sectionId: trainingSectionId, date: sessionFormData.date }).then(rows => { if (alive) setTrainingCourses(rows); }).catch(e => { if (alive) setTrainingError(e.message); }).finally(() => { if (alive) setTrainingCoursesLoading(false); }); }
+    return () => { alive = false; };
+  }, [collegeId, trainingSectionId, sessionFormData.date]);
+  const trainingCandidates = trainingCourses.filter(x => `training:${x.course_id}` === sessionFormData.subject);
+  useEffect(() => { if (sessionFormData.subject.startsWith('training:')) setSessionFormData(prev => ({ ...prev, faculty: trainingCandidates.length === 1 ? trainingCandidates[0].mapping_id : '' })); }, [trainingCourses, sessionFormData.subject]);
 
   const selectedTrainingMapping = trainingCandidates.find(x => x.mapping_id === sessionFormData.faculty);
   const mappedTimeSlots = selectedTrainingMapping?.time_slots ?? [];
@@ -379,7 +448,7 @@ const AttendanceTracking: React.FC = () => {
       ...prev,
       ...(fixedTrainingDate ? { date: fixedTrainingDate } : selectedTrainingMapping.start_date && prev.date < selectedTrainingMapping.start_date
         ? { date: selectedTrainingMapping.start_date } : selectedTrainingMapping.end_date && prev.date > selectedTrainingMapping.end_date
-        ? { date: selectedTrainingMapping.end_date } : {}),
+          ? { date: selectedTrainingMapping.end_date } : {}),
       ...(mappedTimeSlots.length === 1 ? {
         startTime: mappedTimeSlots[0].start_time.slice(0, 5),
         endTime: mappedTimeSlots[0].end_time.slice(0, 5),
@@ -389,6 +458,7 @@ const AttendanceTracking: React.FC = () => {
 
   // Dynamic data states
   const [subjectGroups, setSubjectGroups] = useState<SubjectGroup[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
   const [learners, setLearners] = useState<AttendanceLearner[]>([]);
   const [loading, setLoading] = useState(true);
@@ -398,8 +468,8 @@ const AttendanceTracking: React.FC = () => {
     completedSessions: 0,
     avgAttendance: "0",
     totallearners: 0,
-    totalPresent: 0,
-    totalAbsent: 0,
+    totalPresentCount: 0,
+    totalAbsentCount: 0,
     lowAttendanceSessions: 0,
   });
   const [departmentStats, setDepartmentStats] = useState<Array<{ department: string; avgAttendance: number }>>([]);
@@ -412,6 +482,7 @@ const AttendanceTracking: React.FC = () => {
     semesters: [] as any[],
     sections: [] as any[],
     faculty: [] as any[],
+    statuses: [] as any[],
     subjects: [] as any[],
   });
 
@@ -439,7 +510,11 @@ const AttendanceTracking: React.FC = () => {
       const response: any = await apiPost('/college-admin/attendance', {
         action: 'get-subject-groups',
         collegeId,
-        // Fetch the complete group list; filter and paginate it once below.
+        searchQuery,
+        filters,
+        dateRange,
+        currentPage,
+        itemsPerPage,
       });
 
       const transformedGroups = (response.data?.groups || []).map((item: any) => ({
@@ -462,6 +537,7 @@ const AttendanceTracking: React.FC = () => {
       }));
 
       setSubjectGroups(transformedGroups);
+      setTotalCount(response.data?.totalCount ?? transformedGroups.length);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -526,12 +602,13 @@ const AttendanceTracking: React.FC = () => {
       const filterData = response.data;
 
       setFilterOptions({
-        departments: filterData.departments,
-        courses: filterData.courses,
-        semesters: filterData.semesters,
-        sections: filterData.sections,
-        faculty: filterData.faculty,
-        subjects: filterData.subjects,
+        departments: filterData.departments || [],
+        courses: filterData.courses || [],
+        semesters: filterData.semesters || [],
+        sections: filterData.sections || [],
+        faculty: filterData.faculty || [],
+        statuses: filterData.statuses || [],
+        subjects: filterData.subjects || [],
       });
     } catch (err: any) {
       logger.error('Failed to fetch filter options:', err as Error);
@@ -635,9 +712,11 @@ const AttendanceTracking: React.FC = () => {
     if (collegeId) {
       fetchSubjectGroups();
     }
-  }, [collegeId]);
+  }, [collegeId, currentPage, filters, dateRange, searchQuery]);
 
-  useEffect(() => { setCurrentPage(1); }, [searchQuery, filters, dateRange]);
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, filters, dateRange]);
 
   useEffect(() => {
     if (collegeId) {
@@ -669,95 +748,90 @@ const AttendanceTracking: React.FC = () => {
   }, [sessionFormData.course]);
 
   useEffect(() => {
-    let alive=true;
-    setCoursesData([]);setAcademicSubjectsLoading(false);
+    let alive = true;
+    setCoursesData([]); setAcademicSubjectsLoading(false);
     if (sessionFormData.course && sessionFormData.semester) {
       setAcademicSubjectsLoading(true);
-      curriculumService.getCourses(sessionFormData.course,parseInt(sessionFormData.semester,10))
-        .then(rows=>{if(alive)setCoursesData(rows||[]);})
-        .catch(error=>{if(alive){logger.error('Error loading courses:',error as Error);toast.error('Failed to load academic subjects');}})
-        .finally(()=>{if(alive)setAcademicSubjectsLoading(false);});
+      curriculumService.getCourses(sessionFormData.course, parseInt(sessionFormData.semester, 10))
+        .then(rows => { if (alive) setCoursesData(rows || []); })
+        .catch(error => { if (alive) { logger.error('Error loading courses:', error as Error); toast.error('Failed to load academic subjects'); } })
+        .finally(() => { if (alive) setAcademicSubjectsLoading(false); });
     } else {
       setCoursesData([]);
       setSessionFormData(prev => ({ ...prev, subject: '' }));
     }
-    return()=>{alive=false;};
+    return () => { alive = false; };
   }, [sessionFormData.course, sessionFormData.semester]);
 
   // Transform filter options for component use
   const departmentOptions = useMemo(() => {
-    return filterOptions.departments.map(dept => ({
-      value: dept,
-      label: dept,
-      count: subjectGroups.filter(g => g.department === dept).length,
-    }));
-  }, [filterOptions.departments, subjectGroups]);
+    return filterOptions.departments || [];
+  }, [filterOptions.departments]);
 
   const courseOptions = useMemo(() => {
-    return filterOptions.courses.map(course => ({
-      value: course,
-      label: course,
-      count: subjectGroups.filter(g => g.course === course).length,
-    }));
-  }, [filterOptions.courses, subjectGroups]);
+    return filterOptions.courses || [];
+  }, [filterOptions.courses]);
 
   const semesterOptions = useMemo(() => {
-    return filterOptions.semesters.map(sem => ({
-      value: sem,
-      label: `Semester ${sem}`,
-      count: subjectGroups.filter(g => g.semester === sem).length,
-    }));
-  }, [filterOptions.semesters, subjectGroups]);
+    return filterOptions.semesters || [];
+  }, [filterOptions.semesters]);
 
   const sectionOptions = useMemo(() => {
-    return filterOptions.sections.map(sec => ({
-      value: sec,
-      label: `Section ${sec}`,
-      count: subjectGroups.filter(g => g.section === sec).length,
-    }));
-  }, [filterOptions.sections, subjectGroups]);
+    return filterOptions.sections || [];
+  }, [filterOptions.sections]);
 
-  const statusOptions = [
-    { value: "completed", label: "Completed", count: subjectGroups.filter(g => g.latestStatus === "completed").length },
-    { value: "ongoing", label: "Ongoing", count: subjectGroups.filter(g => g.latestStatus === "ongoing").length },
-    { value: "scheduled", label: "Scheduled", count: subjectGroups.filter(g => g.latestStatus === "scheduled").length },
-  ];
+  const statusOptions = useMemo(() => {
+    return filterOptions.statuses?.length ? filterOptions.statuses : [
+      { value: "completed", label: "Completed", count: 0 },
+      { value: "ongoing", label: "Ongoing", count: 0 },
+      { value: "scheduled", label: "Scheduled", count: 0 },
+    ];
+  }, [filterOptions.statuses]);
 
   const facultyFilterOptions = useMemo(() => {
-    return [...new Set(subjectGroups.map(group => group.faculty).filter(Boolean))].map(name => ({
-      value: name,
-      label: name,
-      count: subjectGroups.filter(group => group.faculty === name).length,
-    }));
-  }, [subjectGroups]);
+    return filterOptions.faculty || [];
+  }, [filterOptions.faculty]);
 
-  const filteredSubjectGroups = useMemo(() => {
-    const query = searchQuery.trim().toLocaleLowerCase();
-    const matches = (selected: (string | number)[], value: string | number) =>
-      selected.length === 0 || selected.some(item => String(item) === String(value));
-    return subjectGroups.filter(group =>
-      (!query || [group.subject, group.faculty, group.department, group.course, group.section]
-        .some(value => String(value || '').toLocaleLowerCase().includes(query))) &&
-      matches(filters.departments, group.department) &&
-      matches(filters.courses, group.course) &&
-      matches(filters.semesters, group.semester) &&
-      matches(filters.sections, group.section) &&
-      matches(filters.statuses, group.latestStatus) &&
-      matches(filters.faculty, group.faculty) &&
-      (!dateRange.from || group.dateRange.last >= dateRange.from) &&
-      (!dateRange.to || group.dateRange.first <= dateRange.to)
-    );
-  }, [subjectGroups, searchQuery, filters, dateRange]);
-
-  const totalItems = filteredSubjectGroups.length;
+  const totalItems = totalCount;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const paginatedSubjectGroups = filteredSubjectGroups.slice(startIndex, endIndex);
+  const paginatedSubjectGroups = subjectGroups;
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
     window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const getPageNumbers = () => {
+    const pages: (number | string)[] = [];
+    const maxVisible = 5;
+
+    if (totalPages <= maxVisible) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      if (currentPage <= 3) {
+        for (let i = 1; i <= 4; i++) pages.push(i);
+        pages.push('...');
+        pages.push(totalPages);
+      } else if (currentPage >= totalPages - 2) {
+        pages.push(1);
+        pages.push('...');
+        for (let i = totalPages - 3; i <= totalPages; i++) pages.push(i);
+      } else {
+        pages.push(1);
+        pages.push('...');
+        pages.push(currentPage - 1);
+        pages.push(currentPage);
+        pages.push(currentPage + 1);
+        pages.push('...');
+        pages.push(totalPages);
+      }
+    }
+
+    return pages;
   };
 
   const handleClearFilters = () => {
@@ -788,7 +862,8 @@ const AttendanceTracking: React.FC = () => {
 
       const trainingRows = (await teaching('college_sessions', { collegeId })).filter((row: any) =>
         row.subject_name === subjectGroup.subject && row.department_name === subjectGroup.department &&
-        row.program_name === subjectGroup.course && Number(row.semester) === Number(subjectGroup.semester) && row.section === subjectGroup.section);
+        row.program_name === subjectGroup.course && Number(row.semester) === Number(subjectGroup.semester) && row.section === subjectGroup.section &&
+        row.faculty_name === subjectGroup.faculty);
       if (trainingRows.length) {
         const rosters = await Promise.all(trainingRows.map((row: any) => teaching('session_roster', { sessionId: row.id })));
         const trainingSessions = trainingRows.map((row: any) => ({
@@ -979,13 +1054,44 @@ const AttendanceTracking: React.FC = () => {
     exportToCSV(exportData, `${learner.name}_${learner.id}_attendance_history.csv`);
   };
 
+  const handleExportOverview = () => {
+    if (!subjectGroups || subjectGroups.length === 0) {
+      toast.error('No attendance data available to export');
+      return;
+    }
+
+    const exportData = subjectGroups.map(group => ({
+      'Subject': group.subject,
+      'Faculty': group.faculty,
+      'Department': group.department,
+      'Course': group.course,
+      'Semester': group.semester,
+      'Section': group.section,
+      'Total Sessions': group.totalSessions,
+      'Average Attendance': `${Number(group.avgAttendancePercentage || 0).toFixed(1)}%`,
+      'Total Learners': group.totallearners || 0,
+      'Total Present': group.totalPresentCount || 0,
+      'Total Absent': group.totalAbsentCount || 0,
+      'Total Late': group.totalLateCount || 0,
+      'Total Excused': group.totalExcusedCount || 0,
+      'Date Range': group.dateRange
+        ? `${formatDate(group.dateRange.first)} - ${formatDate(group.dateRange.last)}`
+        : '',
+      'Status': group.latestStatus ? group.latestStatus.charAt(0).toUpperCase() + group.latestStatus.slice(1) : '',
+    }));
+
+    const dateStr = new Date().toISOString().split('T')[0];
+    exportToCSV(exportData, `college_attendance_summary_${dateStr}.csv`);
+    toast.success('Attendance summary exported successfully');
+  };
+
   // Add session handlers
   const handleFormChange = async (field: string, value: any) => {
     setSessionFormData(prev => ({
       ...prev,
       [field]: value,
-      ...(field==='department'?{course:'',semester:'',section:''}:field==='course'?{semester:'',section:''}:field==='semester'?{section:''}:{}),
-      ...(["department","course","semester","section","date"].includes(field)?{subject:"",faculty:""}:field==="subject"?{faculty:"",startTime:"",endTime:""}:field==="faculty"?{startTime:"",endTime:""}:{}),
+      ...(field === 'department' ? { course: '', semester: '', section: '' } : field === 'course' ? { semester: '', section: '' } : field === 'semester' ? { section: '' } : {}),
+      ...(["department", "course", "semester", "section", "date"].includes(field) ? { subject: "", faculty: "" } : field === "subject" ? { faculty: "", startTime: "", endTime: "" } : field === "faculty" ? { startTime: "", endTime: "" } : {}),
     }));
 
     // Auto-update total learners when class details change
@@ -1005,12 +1111,12 @@ const AttendanceTracking: React.FC = () => {
     }
   };
 
-  const handleCreateSession = async (startAttendance=false) => {
-    if(savingSession)return;
+  const handleCreateSession = async (startAttendance = false) => {
+    if (savingSession) return;
     // Basic validation
     if (!sessionFormData.department || !sessionFormData.course || !sessionFormData.semester ||
-        !sessionFormData.section || !sessionFormData.subject || !sessionFormData.faculty ||
-        !sessionFormData.date || !sessionFormData.startTime || !sessionFormData.endTime) {
+      !sessionFormData.section || !sessionFormData.subject || !sessionFormData.faculty ||
+      !sessionFormData.date || !sessionFormData.startTime || !sessionFormData.endTime) {
       toast.error("Please fill in all required fields.");
       return;
     }
@@ -1039,15 +1145,15 @@ const AttendanceTracking: React.FC = () => {
             setTimeout(() => reject(new Error('The server took too long to respond — please retry.')), 30000)
           ),
         ]);
-      if(sessionFormData.subject.startsWith('training:')){
-        const candidate=trainingCandidates.find(x=>x.mapping_id===sessionFormData.faculty);
-        if(!candidate)throw new Error('Refresh the class/date selection and choose a mapped trainer.');
+      if (sessionFormData.subject.startsWith('training:')) {
+        const candidate = trainingCandidates.find(x => x.mapping_id === sessionFormData.faculty);
+        if (!candidate) throw new Error('Refresh the class/date selection and choose a mapped trainer.');
         const scheduled = await withCreateTimeout(teaching('college_sessions', { collegeId }));
-        const conflict = scheduled.find((item: any) => item.organization_staff_id === candidate.staff_id && item.date === sessionFormData.date && item.status !== 'cancelled' && item.start_time.slice(0,5) < sessionFormData.endTime && item.end_time.slice(0,5) > sessionFormData.startTime);
-        if (conflict) throw new Error(`${candidate.staff_name} is already booked for ${conflict.subject_name} from ${conflict.start_time.slice(0,5)} to ${conflict.end_time.slice(0,5)} on ${conflict.date}. Choose another time or trainer.`);
-        const created=await withCreateTimeout(teaching('create_session',{mappingId:candidate.mapping_id,mappingVersion:candidate.assignment_version,courseId:candidate.course_id,date:sessionFormData.date,startTime:sessionFormData.startTime,endTime:sessionFormData.endTime,requestId:sessionRequestId.current,room:sessionFormData.roomNumber,remarks:sessionFormData.remarks}));
-        sessionRequestId.current=crypto.randomUUID();setShowAddSessionModal(false);fetchSubjectGroups();
-        toast.success(startAttendance?'Session created. Mark learner attendance from its subject card.':'Training session created.');return;
+        const conflict = scheduled.find((item: any) => item.organization_staff_id === candidate.staff_id && item.date === sessionFormData.date && item.status !== 'cancelled' && item.start_time.slice(0, 5) < sessionFormData.endTime && item.end_time.slice(0, 5) > sessionFormData.startTime);
+        if (conflict) throw new Error(`${candidate.staff_name} is already booked for ${conflict.subject_name} from ${conflict.start_time.slice(0, 5)} to ${conflict.end_time.slice(0, 5)} on ${conflict.date}. Choose another time or trainer.`);
+        const created = await withCreateTimeout(teaching('create_session', { mappingId: candidate.mapping_id, mappingVersion: candidate.assignment_version, courseId: candidate.course_id, date: sessionFormData.date, startTime: sessionFormData.startTime, endTime: sessionFormData.endTime, requestId: sessionRequestId.current, room: sessionFormData.roomNumber, remarks: sessionFormData.remarks }));
+        sessionRequestId.current = crypto.randomUUID(); setShowAddSessionModal(false); fetchSubjectGroups();
+        toast.success(startAttendance ? 'Session created. Mark learner attendance from its subject card.' : 'Training session created.'); return;
       }
       // Look up faculty member via backend
       const facultyResponse: any = await apiPost('/college-admin/attendance', {
@@ -1071,14 +1177,16 @@ const AttendanceTracking: React.FC = () => {
       const subjectData = coursesData.find(c => c.id === sessionFormData.subject);
       const subjectName = subjectData ? `${subjectData.course_code} - ${subjectData.course_name}` : sessionFormData.subject;
 
-      logger.info('Creating session with CORRECT logic:', { value: {
-        facultyId: sessionFormData.faculty,
-        facultyName,
-        collegeId: facultyCollegeId,
-        departmentName,
-        programName,
-        subjectName,
-      } });
+      logger.info('Creating session with CORRECT logic:', {
+        value: {
+          facultyId: sessionFormData.faculty,
+          facultyName,
+          collegeId: facultyCollegeId,
+          departmentName,
+          programName,
+          subjectName,
+        }
+      });
 
       await apiPost('/college-admin/attendance', {
         action: 'create-session',
@@ -1204,7 +1312,11 @@ const AttendanceTracking: React.FC = () => {
             </p>
           </div>
           <div className="flex gap-2">
-            <button type="button" className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+            <button
+              type="button"
+              onClick={handleExportOverview}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+            >
               <ArrowDownTrayIcon className="h-4 w-4" />
               Export
             </button>
@@ -1219,9 +1331,9 @@ const AttendanceTracking: React.FC = () => {
             <button
               type="button"
               onClick={() => {
-                const today=new Date();
-                const date=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
-                setSessionFormData(prev=>({...prev,date:prev.date||date}));
+                const today = new Date();
+                const date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+                setSessionFormData(prev => ({ ...prev, date: prev.date || date }));
                 setSessionType('single');
                 setShowAddSessionModal(true);
               }}
@@ -1342,22 +1454,20 @@ const AttendanceTracking: React.FC = () => {
             <button
               type="button"
               onClick={() => setViewMode("grid")}
-              className={`px-3 py-2 text-sm font-medium rounded-l-md border ${
-                viewMode === "grid"
-                  ? "bg-indigo-50 border-indigo-300 text-indigo-700"
-                  : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
-              }`}
+              className={`px-3 py-2 text-sm font-medium rounded-l-md border ${viewMode === "grid"
+                ? "bg-indigo-50 border-indigo-300 text-indigo-700"
+                : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
+                }`}
             >
               <Squares2X2Icon className="h-4 w-4" />
             </button>
             <button
               type="button"
               onClick={() => setViewMode("table")}
-              className={`px-3 py-2 text-sm font-medium rounded-r-md border-t border-r border-b ${
-                viewMode === "table"
-                  ? "bg-indigo-50 border-indigo-300 text-indigo-700"
-                  : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
-              }`}
+              className={`px-3 py-2 text-sm font-medium rounded-r-md border-t border-r border-b ${viewMode === "table"
+                ? "bg-indigo-50 border-indigo-300 text-indigo-700"
+                : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
+                }`}
             >
               <TableCellsIcon className="h-4 w-4" />
             </button>
@@ -1397,22 +1507,20 @@ const AttendanceTracking: React.FC = () => {
             <button
               type="button"
               onClick={() => setViewMode("grid")}
-              className={`px-3 py-2 text-sm font-medium rounded-l-md border ${
-                viewMode === "grid"
-                  ? "bg-indigo-50 border-indigo-300 text-indigo-700"
-                  : "bg-white border-gray-300 text-gray-700"
-              }`}
+              className={`px-3 py-2 text-sm font-medium rounded-l-md border ${viewMode === "grid"
+                ? "bg-indigo-50 border-indigo-300 text-indigo-700"
+                : "bg-white border-gray-300 text-gray-700"
+                }`}
             >
               <Squares2X2Icon className="h-4 w-4" />
             </button>
             <button
               type="button"
               onClick={() => setViewMode("table")}
-              className={`px-3 py-2 text-sm font-medium rounded-r-md border-t border-r border-b ${
-                viewMode === "table"
-                  ? "bg-indigo-50 border-indigo-300 text-indigo-700"
-                  : "bg-white border-gray-300 text-gray-700"
-              }`}
+              className={`px-3 py-2 text-sm font-medium rounded-r-md border-t border-r border-b ${viewMode === "table"
+                ? "bg-indigo-50 border-indigo-300 text-indigo-700"
+                : "bg-white border-gray-300 text-gray-700"
+                }`}
             >
               <TableCellsIcon className="h-4 w-4" />
             </button>
@@ -1492,7 +1600,7 @@ const AttendanceTracking: React.FC = () => {
                       options={departmentOptions}
                       selectedValues={filters.departments}
                       onChange={(values: string[]) =>
-                        setFilters({ ...filters, departments: values })
+                        setFilters(prev => ({ ...prev, departments: values }))
                       }
                     />
                   </FilterSection>
@@ -1502,7 +1610,7 @@ const AttendanceTracking: React.FC = () => {
                       options={courseOptions}
                       selectedValues={filters.courses}
                       onChange={(values: string[]) =>
-                        setFilters({ ...filters, courses: values })
+                        setFilters(prev => ({ ...prev, courses: values }))
                       }
                     />
                   </FilterSection>
@@ -1512,7 +1620,7 @@ const AttendanceTracking: React.FC = () => {
                       options={semesterOptions}
                       selectedValues={filters.semesters}
                       onChange={(values: number[]) =>
-                        setFilters({ ...filters, semesters: values })
+                        setFilters(prev => ({ ...prev, semesters: values }))
                       }
                     />
                   </FilterSection>
@@ -1522,7 +1630,7 @@ const AttendanceTracking: React.FC = () => {
                       options={sectionOptions}
                       selectedValues={filters.sections}
                       onChange={(values: string[]) =>
-                        setFilters({ ...filters, sections: values })
+                        setFilters(prev => ({ ...prev, sections: values }))
                       }
                     />
                   </FilterSection>
@@ -1532,7 +1640,7 @@ const AttendanceTracking: React.FC = () => {
                       options={statusOptions}
                       selectedValues={filters.statuses}
                       onChange={(values: string[]) =>
-                        setFilters({ ...filters, statuses: values })
+                        setFilters(prev => ({ ...prev, statuses: values }))
                       }
                     />
                   </FilterSection>
@@ -1542,7 +1650,7 @@ const AttendanceTracking: React.FC = () => {
                       options={facultyFilterOptions}
                       selectedValues={filters.faculty}
                       onChange={(values: string[]) =>
-                        setFilters({ ...filters, faculty: values })
+                        setFilters(prev => ({ ...prev, faculty: values }))
                       }
                     />
                   </FilterSection>
@@ -1587,9 +1695,10 @@ const AttendanceTracking: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 {paginatedSubjectGroups.map((subjectGroup) => (
                   <EnhancedSubjectCard
-                    key={`${subjectGroup.subject}-${subjectGroup.department}-${subjectGroup.course}-${subjectGroup.semester}-${subjectGroup.section}`}
+                    key={`${subjectGroup.subject}-${subjectGroup.faculty}-${subjectGroup.department}-${subjectGroup.course}-${subjectGroup.semester}-${subjectGroup.section}`}
                     subjectGroup={subjectGroup}
                     onView={handleViewDetails}
+                    onDelete={handleDelete}
                   />
                 ))}
               </div>
@@ -1627,7 +1736,7 @@ const AttendanceTracking: React.FC = () => {
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                       {paginatedSubjectGroups.map((subjectGroup) => (
-                        <tr key={`${subjectGroup.subject}-${subjectGroup.department}-${subjectGroup.course}-${subjectGroup.semester}-${subjectGroup.section}`} className="hover:bg-gray-50">
+                        <tr key={`${subjectGroup.subject}-${subjectGroup.faculty}-${subjectGroup.department}-${subjectGroup.course}-${subjectGroup.semester}-${subjectGroup.section}`} className="hover:bg-gray-50">
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm font-medium text-gray-900">
                               {subjectGroup.subject}
@@ -1653,13 +1762,12 @@ const AttendanceTracking: React.FC = () => {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-center">
                             <span
-                              className={`text-sm font-bold ${
-                                subjectGroup.avgAttendancePercentage >= 75
-                                  ? "text-green-600"
-                                  : subjectGroup.avgAttendancePercentage >= 50
+                              className={`text-sm font-bold ${subjectGroup.avgAttendancePercentage >= 75
+                                ? "text-green-600"
+                                : subjectGroup.avgAttendancePercentage >= 50
                                   ? "text-yellow-600"
                                   : "text-red-600"
-                              }`}
+                                }`}
                             >
                               {subjectGroup.avgAttendancePercentage.toFixed(1)}%
                             </span>
@@ -1682,13 +1790,13 @@ const AttendanceTracking: React.FC = () => {
                             >
                               Edit
                             </button>
-                            <button
+                            {/* <button
                               type="button"
                               onClick={() => handleDelete(subjectGroup)}
                               className="text-red-600 hover:text-red-900"
                             >
                               Delete
-                            </button>
+                            </button> */}
                           </td>
                         </tr>
                       ))}
@@ -1712,13 +1820,44 @@ const AttendanceTracking: React.FC = () => {
           </div>
 
           {totalPages > 1 && (
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              totalItems={totalItems}
-              itemsPerPage={itemsPerPage}
-              onPageChange={handlePageChange}
-            />
+            <div className="flex-shrink-0 border-t border-gray-200 bg-white py-4">
+              <Pagination>
+                <PaginationContent className="flex flex-wrap items-center justify-center gap-2">
+                  <PaginationItem>
+                    <PaginationPrevious
+                      href="#"
+                      onClick={(e) => { e.preventDefault(); if (currentPage > 1) handlePageChange(currentPage - 1); }}
+                      className={`w-auto px-3 ${currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}`}
+                    />
+                  </PaginationItem>
+
+                  {getPageNumbers().map((pageNum, index) => (
+                    <PaginationItem key={index}>
+                      {pageNum === '...' ? (
+                        <PaginationEllipsis />
+                      ) : (
+                        <PaginationLink
+                          href="#"
+                          onClick={(e) => { e.preventDefault(); handlePageChange(pageNum as number); }}
+                          isActive={currentPage === pageNum}
+                          className="cursor-pointer"
+                        >
+                          {pageNum}
+                        </PaginationLink>
+                      )}
+                    </PaginationItem>
+                  ))}
+
+                  <PaginationItem>
+                    <PaginationNext
+                      href="#"
+                      onClick={(e) => { e.preventDefault(); if (currentPage < totalPages) handlePageChange(currentPage + 1); }}
+                      className={`w-auto px-3 ${currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}`}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </div>
           )}
         </div>
       </div>
@@ -1766,7 +1905,7 @@ const AttendanceTracking: React.FC = () => {
       <AddAttendanceSessionModal
         isOpen={showAddSessionModal}
         onClose={() => setShowAddSessionModal(false)}
-        onCreateSession={()=>handleCreateSession()}
+        onCreateSession={() => handleCreateSession()}
         onCreateAndStart={handleCreateAndStart}
         sessionType={sessionType}
         onSessionTypeChange={setSessionType}
@@ -1781,27 +1920,29 @@ const AttendanceTracking: React.FC = () => {
           />
         }
         formData={sessionFormData}
-        schedule={{ fixedDate: fixedTrainingDate, minDate: selectedTrainingMapping?.start_date,
-          maxDate: selectedTrainingMapping?.end_date, slots: mappedTimeSlots }}
+        schedule={{
+          fixedDate: fixedTrainingDate, minDate: selectedTrainingMapping?.start_date,
+          maxDate: selectedTrainingMapping?.end_date, slots: mappedTimeSlots
+        }}
         onFormChange={handleFormChange}
         departments={departmentsData.map(dept => ({ value: dept.id, label: dept.name }))}
         courses={programsData.map(prog => ({ value: prog.id, label: formatProgramLabel(prog.name, prog) }))}
         semesters={semestersData.map(sem => ({ value: sem.toString(), label: `Semester ${sem}` }))}
-        sections={Array.from(new Map([...sectionOptions,...trainingSections.map(x=>({value:x.section,label:`Section ${x.section}`,count:0}))].map(x=>[x.value,x])).values())}
-        trainingSections={trainingSections.filter(x=>x.section===sessionFormData.section)}
+        sections={Array.from(new Map([...sectionOptions, ...trainingSections.map(x => ({ value: x.section, label: `Section ${x.section}`, count: 0 }))].map(x => [x.value, x])).values())}
+        trainingSections={trainingSections.filter(x => x.section === sessionFormData.section)}
         trainingSectionId={trainingSectionId}
-        onTrainingSectionChange={id=>{setTrainingSectionId(id);setSessionFormData(prev=>({...prev,subject:'',faculty:''}));}}
+        onTrainingSectionChange={id => { setTrainingSectionId(id); setSessionFormData(prev => ({ ...prev, subject: '', faculty: '' })); }}
         trainingError={trainingError}
         creationError={sessionCreationError}
         saving={savingSession}
-        subjectsLoading={academicSubjectsLoading||trainingSectionsLoading||trainingCoursesLoading}
-        trainingSubjects={Array.from(new Map(trainingCourses.map(x=>[x.course_id,{value:`training:${x.course_id}`,label:x.title}])).values())}
+        subjectsLoading={academicSubjectsLoading || trainingSectionsLoading || trainingCoursesLoading}
+        trainingSubjects={Array.from(new Map(trainingCourses.map(x => [x.course_id, { value: `training:${x.course_id}`, label: x.title }])).values())}
         subjects={coursesData.map(course => ({
           value: course.id,
           label: course.course_code ? `${course.course_code} - ${course.course_name}` : course.course_name,
           source: course.source || 'college_course',
         }))}
-        faculty={sessionFormData.subject.startsWith("training:")?trainingCandidates.map(x=>({value:x.mapping_id,label:x.staff_name})):filterOptions.faculty}
+        faculty={sessionFormData.subject.startsWith("training:") ? trainingCandidates.map(x => ({ value: x.mapping_id, label: x.staff_name })) : collegeLecturers}
         learners={[]}
       />
 
