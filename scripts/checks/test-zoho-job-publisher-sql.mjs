@@ -3,7 +3,7 @@ import {spawn,spawnSync} from 'node:child_process';
 const root=new URL('../../',import.meta.url);
 const read=path=>readFileSync(new URL(path,root),'utf8');
 const flags=process.argv.slice(2).filter(value=>value.startsWith('--'));
-if(flags.length>1||flags.some(value=>!['--publisher','--scope'].includes(value))) throw new Error('Invalid test mode');
+if(flags.length>1||flags.some(value=>!['--simple'].includes(value))) throw new Error('Invalid test mode');
 const mode=flags[0]||'all';
 const container=process.argv.slice(2).find(value=>!value.startsWith('--'))||'supabase_db_skillpassport';
 if(!/^[a-zA-Z0-9_-]+$/.test(container)) throw new Error('Invalid container');
@@ -37,17 +37,80 @@ try{
   if(existsSync(new URL(`supabase/migrations/${migration}`,root)))docker(args,read(`supabase/migrations/${migration}`));
  }
  docker(args,read('supabase/migrations/20270314000000_zoho_scoped_job_review.sql'));
- if(mode==='--scope') {
-  // Install the same application migrations in an independent metadata suite.
+ docker(args,read('supabase/migrations/20270315000000_zoho_job_review_traversal.sql'));
+ function installCurrentImport() {
+  docker(args,read('supabase/migrations/20270316000000_zoho_job_staging_batch_review.sql'));
+  docker(args,read('supabase/migrations/20270317000000_zoho_simple_job_import.sql'));
+ }
+ async function checkCurrentImport() {
+  docker(args,read('functions/__tests__/sql/zoho-simple-job-import.sql'));
+  console.log('Simple job import SQL assertions passed');
+  const fixture=read('functions/__tests__/sql/zoho-simple-job-concurrency.sql').split('-- RUN CONCURRENT OPERATIONS HERE');
+  if(fixture.length!==2)throw new Error('Current quota fixture boundary missing');
+  docker(args,fixture[0]);
+  await currentQuotaRace();
+  docker(args,fixture[1]);
+  console.log('Current-schema concurrent quota assertions passed');
+ }
+ async function currentQuotaRace() {
+  // Hold the shared publisher row until both independent writers are observed
+  // waiting for locks. This proves overlap rather than relying on launch timing.
+  const blocker=spawn('docker',['exec','-i',container,...args,'-At']);
+  let output='',errorOutput='',signalReady;
+  const ready=new Promise(resolve=>{signalReady=resolve;});
+  const timer=setTimeout(()=>blocker.kill(),15000);
+  const finished=new Promise((resolve,reject)=>{
+   blocker.on('error',reject);
+   blocker.on('close',code=>{clearTimeout(timer);code===0?resolve():reject(new Error(errorOutput||'Quota lock process failed'));});
+  });
+  // Observe failures immediately even while the ready marker is awaited.
+  finished.catch(()=>{});
+  blocker.stdout.on('data',chunk=>{output+=chunk;if(output.includes('CURRENT_QUOTA_LOCK_HELD'))signalReady();});
+  blocker.stderr.on('data',chunk=>errorOutput+=chunk);
+  blocker.stdin.on('error',()=>{}); // The process exit below remains authoritative.
+  blocker.stdin.write("BEGIN; SELECT id FROM public.organizations WHERE id='00000000-0000-0000-0000-000000000001' FOR UPDATE; SELECT 'CURRENT_QUOTA_LOCK_HELD';\n");
+  let workers=[],failure;
+  try {
+   await Promise.race([ready,finished.then(()=>{throw new Error('Quota lock process exited before readiness');})]);
+   workers=[1,2].map(n=>new Promise(resolve=>{
+    const sql=`BEGIN; SET LOCAL ROLE service_role; SET LOCAL application_name='fixture_current_quota_${n}'; SELECT public.zoho_apply_job_operation(grant_value) FROM public.fixture_simple_concurrent_grants WHERE n=${n}; COMMIT;`;
+    const child=spawn('docker',['exec',container,...args,'-At','-c',sql]);
+    let stdout='',stderr='';const timeout=setTimeout(()=>child.kill(),15000);
+    child.stdout.on('data',chunk=>stdout+=chunk);child.stderr.on('data',chunk=>stderr+=chunk);
+    child.on('error',error=>{clearTimeout(timeout);resolve({code:1,stderr:error.message});});
+    child.on('close',code=>{clearTimeout(timeout);resolve({code,stdout,stderr});});
+   }));
+   const deadline=Date.now()+5000;
+   let blocked=0;
+   while(Date.now()<deadline) {
+    blocked=Number(docker(args,"SELECT count(*) FROM pg_stat_activity WHERE datname=current_database() AND application_name IN ('fixture_current_quota_1','fixture_current_quota_2') AND wait_event_type='Lock';").match(/\n\s*(\d+)\s*\n/)?.[1]);
+    if(blocked===2)break;
+    await new Promise(resolve=>setTimeout(resolve,25));
+   }
+   if(blocked!==2)throw new Error('Both current-schema writers were not observed contending for the publisher lock');
+  }catch(error){failure=error;}
+  finally {
+   blocker.stdin.end('COMMIT;\n');
+   try{await finished;}catch(error){failure??=error;}
+  }
+  const results=await Promise.all(workers);
+  if(failure)throw failure;
+  if(results.some(result=>result.code!==0))throw new Error(JSON.stringify(results));
+  const outcomes=results.map(result=>JSON.parse(result.stdout.split('\n').find(line=>line.startsWith('{'))||'null'));
+  if(outcomes.filter(result=>result?.state==='completed').length!==1||outcomes.filter(result=>result?.state==='not_applied'&&result.reasonCode==='JOB_REVIEW_REQUIRED').length!==1)
+   throw new Error('Current-schema quota race returned unexpected outcomes');
+ }
+ if(mode==='--simple') {
   docker(args,`ALTER TABLE public.organizations ADD COLUMN name text;
    ALTER TABLE public.tenant_entitlement_overrides ADD COLUMN notes text;
    CREATE UNIQUE INDEX fixture_entitlement_owner_feature ON public.tenant_entitlement_overrides(tenant_id,feature_id);
    INSERT INTO public.organizations(id,name) VALUES('00000000-0000-0000-0000-000000000001','SkillPassport Platform');
    INSERT INTO public.features VALUES('10000000-0000-4000-8000-000000000003','active_job_posts');`);
   for(const migration of ['20270219010000_zoho_console_controls.sql','20270226000000_zoho_discovery_batch_pages.sql','20270228000000_zoho_sync_coordinator.sql','20270301000000_zoho_bulk_capture_coverage.sql','20270302000000_zoho_sync_recovery_fences.sql','20270303000000_zoho_bulk_index_upgrade.sql','20270309000000_zoho_platform_job_ownership.sql','20270310000000_zoho_job_server_write_boundary.sql','20270311000000_zoho_job_staging_deadline.sql']) docker(args,read(`supabase/migrations/${migration}`));
-  docker(['sh','-c','PGPASSWORD="$POSTGRES_PASSWORD" exec psql -U supabase_admin -d "$1" -v ON_ERROR_STOP=1','scope-test',name],read('functions/__tests__/sql/zoho-job-review-scope.sql'));
-  console.log('Scoped job review assertions passed');
+  installCurrentImport();
+  await checkCurrentImport();
  } else {
+ // Upgrade regression fixtures exercise historical RPCs before their replacement.
  docker(args,read('functions/__tests__/sql/zoho-job-publisher.sql'));
  docker(args,read('functions/__tests__/sql/zoho-job-payload-budget.sql'));
  const race=async n=>new Promise((resolve,reject)=>{
@@ -63,7 +126,6 @@ try{
  docker(args,`DO $$ BEGIN ASSERT (SELECT count(*)=1 FROM public.opportunities WHERE status='open' AND is_active); ASSERT (SELECT count(*)=3 FROM public.zoho_job_receipts); ASSERT NOT EXISTS(SELECT 1 FROM public.learning_job_notification_work); END $$;`);
  docker(args,read('functions/__tests__/sql/zoho-job-no-effect.sql'));
  docker(args,read('functions/__tests__/sql/zoho-bulk-source-lifecycle.sql'));
- docker(args,read('functions/__tests__/sql/zoho-operator-audit-fixes.sql'));
  docker(args,read('functions/__tests__/sql/zoho-retry-visibility.sql'));
  for(const migration of ['20270219010000_zoho_console_controls.sql','20270226000000_zoho_discovery_batch_pages.sql','20270228000000_zoho_sync_coordinator.sql','20270301000000_zoho_bulk_capture_coverage.sql']) docker(args,read(`supabase/migrations/${migration}`));
  docker(args,read('functions/__tests__/sql/zoho-sync-coordinator.sql'));
@@ -152,13 +214,11 @@ try{
   ASSERT NOT has_function_privilege('service_role','public.zoho_claim_discovery_batch(uuid)','EXECUTE');
   ASSERT has_function_privilege('zoho_discovery','public.zoho_claim_discovery_batch(uuid)','EXECUTE');
  END $$;`);
- // Custom operator-class regression DDL requires the local superuser role.
- // Keep this confined to the disposable database, with fixture DDL rolled back.
- if(mode==='all') {
-  docker(['sh','-c','PGPASSWORD="$POSTGRES_PASSWORD" exec psql -U supabase_admin -d "$1" -v ON_ERROR_STOP=1','scope-test',name],read('functions/__tests__/sql/zoho-job-review-scope.sql'));
-  console.log('Scoped job review and existing publisher assertions passed');
- }
+ installCurrentImport();
+ await checkCurrentImport();
+ docker(args,read('functions/__tests__/sql/zoho-operator-audit-fixes.sql'));
  console.log('Existing job publisher assertions passed');
  console.log('Zoho job publisher SQL: approval/receipt/version/Platform-only ownership/quota/no-email/browser-write boundary/deadline paging and cross-connection quota-race assertions passed.');
 }
+ console.log('Zoho job publisher SQL checks passed');
 }finally{if(created)docker(['dropdb','-U','postgres','--force',name]);}

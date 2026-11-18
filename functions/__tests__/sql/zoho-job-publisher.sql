@@ -12,18 +12,9 @@ BEGIN
  SELECT id INTO STRICT operation FROM public.zoho_approved_operations WHERE record_id=staged.id AND record_revision=staged.revision;
  RETURN public.zoho_claim_operation(operation,gen_random_uuid());
 END $$;
--- Dormant/local-only markers are defined BEFORE approval so the tests prove
--- post-review wiring drift, not merely detection of a new public function.
-CREATE TABLE public.fixture_job_side_effect_markers(marker text NOT NULL);
-CREATE FUNCTION public.fixture_job_default_marker() RETURNS text LANGUAGE plpgsql AS $body$
-BEGIN INSERT INTO public.fixture_job_side_effect_markers VALUES('default'); RETURN 'marker'; END $body$;
-CREATE SCHEMA fixture_job_helpers;
-CREATE FUNCTION fixture_job_helpers.noop() RETURNS void LANGUAGE plpgsql AS $body$ BEGIN RETURN; END $body$;
-CREATE FUNCTION public.fixture_job_helper_trigger() RETURNS trigger LANGUAGE plpgsql AS $body$
-BEGIN PERFORM fixture_job_helpers.noop(); RETURN NEW; END $body$;
-CREATE TRIGGER fixture_job_helper AFTER INSERT ON public.opportunities FOR EACH ROW EXECUTE FUNCTION public.fixture_job_helper_trigger();
+-- Historical schema upgrade fixture: current pipeline is checked after forward migrations.
 DO $$
-DECLARE connection uuid; g jsonb; result jsonb; target uuid; failed boolean; oldfp text; helper_definition text;
+DECLARE connection uuid; g jsonb; result jsonb; target uuid; failed boolean;
 BEGIN
  INSERT INTO public.organizations(id) VALUES('10000000-0000-4000-8000-000000000001');
  INSERT INTO public.features VALUES('10000000-0000-4000-8000-000000000003','active_job_posts');
@@ -43,36 +34,6 @@ BEGIN
  ASSERT (public.zoho_stage_record(connection,'Job_Openings','99',clock_timestamp(),'{"source_status":"UNKNOWN","employment_type":"Full time"}','[]')->>'revision')='1';
  ASSERT (SELECT jsonb_array_length(validation_errors)=1 FROM public.zoho_staged_records WHERE connection_id=connection AND external_id='99');
  g:=public.fixture_job_grant(connection,'1');
- oldfp:=public.zoho_job_trigger_fingerprint();
- ASSERT EXISTS(SELECT 1 FROM public.zoho_job_executable_surface() surface
-  WHERE surface.kind='routine' AND surface.name LIKE 'fixture_job_helpers.noop%'),'Non-public helper missing from operator review';
- -- Installing a new DEFAULT that calls an already existing marker must fail
- -- before either the marker or target job is written.
- EXECUTE 'ALTER TABLE public.opportunities ALTER COLUMN company_logo SET DEFAULT public.fixture_job_default_marker()';
- ASSERT oldfp IS DISTINCT FROM public.zoho_job_trigger_fingerprint(),'DEFAULT drift left review valid';
- ASSERT NOT public.zoho_job_publisher_ready();
- ASSERT EXISTS(SELECT 1 FROM public.zoho_job_executable_surface() surface
-  WHERE surface.kind='default' AND surface.name='opportunities.company_logo' AND surface.definition LIKE '%fixture_job_default_marker%'),'DEFAULT missing from operator review';
- failed:=false; BEGIN PERFORM public.zoho_apply_job_operation_effect(g); EXCEPTION WHEN SQLSTATE 'ZJ001' THEN failed:=true; END;
- ASSERT failed AND NOT EXISTS(SELECT 1 FROM public.fixture_job_side_effect_markers),'Unreviewed DEFAULT executed';
- EXECUTE 'ALTER TABLE public.opportunities ALTER COLUMN company_logo DROP DEFAULT';
- ASSERT oldfp=public.zoho_job_trigger_fingerprint(),'DEFAULT restoration changed stable surface';
- -- A reviewed trigger's helper can reside outside public. Replacing only that
- -- helper must revoke review, while restoring the exact body restores the digest.
- SELECT pg_get_functiondef('fixture_job_helpers.noop()'::regprocedure) INTO helper_definition;
- EXECUTE 'CREATE OR REPLACE FUNCTION fixture_job_helpers.noop() RETURNS void LANGUAGE plpgsql AS $body$ BEGIN INSERT INTO public.fixture_job_side_effect_markers VALUES(''helper''); END $body$';
- ASSERT oldfp IS DISTINCT FROM public.zoho_job_trigger_fingerprint(),'Non-public helper drift left review valid';
- failed:=false; BEGIN PERFORM public.zoho_apply_job_operation_effect(g); EXCEPTION WHEN SQLSTATE 'ZJ001' THEN failed:=true; END;
- ASSERT failed AND NOT EXISTS(SELECT 1 FROM public.fixture_job_side_effect_markers),'Unreviewed helper executed';
- EXECUTE helper_definition;
- ASSERT oldfp=public.zoho_job_trigger_fingerprint();
- -- Rewrite rules can enqueue effects without changing a trigger or routine.
- EXECUTE 'CREATE RULE fixture_job_rule AS ON INSERT TO public.opportunities DO ALSO INSERT INTO public.fixture_job_side_effect_markers VALUES(''rule'')';
- ASSERT oldfp IS DISTINCT FROM public.zoho_job_trigger_fingerprint(),'Rule drift left review valid';
- failed:=false; BEGIN PERFORM public.zoho_apply_job_operation_effect(g); EXCEPTION WHEN SQLSTATE 'ZJ001' THEN failed:=true; END;
- ASSERT failed AND NOT EXISTS(SELECT 1 FROM public.fixture_job_side_effect_markers),'Unreviewed rewrite rule executed';
- EXECUTE 'DROP RULE fixture_job_rule ON public.opportunities';
- ASSERT oldfp=public.zoho_job_trigger_fingerprint();
  failed:=false;BEGIN PERFORM public.zoho_apply_job_operation(jsonb_set(g,'{data,title}','"Forged"'));EXCEPTION WHEN OTHERS THEN failed:=true; END;ASSERT failed,'Forged approval accepted';
  failed:=false;BEGIN PERFORM public.zoho_apply_job_operation(jsonb_set(g,'{publisherOrganizationId}',to_jsonb(gen_random_uuid())));EXCEPTION WHEN OTHERS THEN failed:=true;END;ASSERT failed,'Publisher override accepted';
  INSERT INTO public.plans_cache(id,plan_code) VALUES('10000000-0000-4000-8000-000000000010','recruiter_fixture');
@@ -124,29 +85,9 @@ BEGIN
  ASSERT NOT has_table_privilege('service_role','public.zoho_job_publisher_policies','INSERT,UPDATE,DELETE');
  ASSERT NOT has_table_privilege('service_role','public.zoho_job_policy_audit','INSERT,UPDATE,DELETE');
 END $$;
--- Trigger replica/origin mode changes must invalidate review too.
-ALTER TABLE public.opportunities ENABLE REPLICA TRIGGER enqueue_learning_opening;
-DO $$ BEGIN ASSERT NOT public.zoho_job_publisher_ready(),'Trigger firing-mode drift accepted'; END $$;
-ALTER TABLE public.opportunities ENABLE TRIGGER enqueue_learning_opening;
-DO $$ BEGIN ASSERT public.zoho_job_publisher_ready(); END $$;
-ALTER TABLE public.opportunities DISABLE TRIGGER enqueue_learning_opening;
-DO $$ BEGIN ASSERT NOT public.zoho_job_publisher_ready(),'Disabled-trigger drift accepted'; END $$;
-ALTER TABLE public.opportunities ENABLE TRIGGER enqueue_learning_opening;
-DO $$ BEGIN ASSERT public.zoho_job_publisher_ready(); END $$;
--- Unknown trigger/function changes revoke no-email readiness immediately.
-CREATE FUNCTION public.fixture_unreviewed_job_hook() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RETURN NEW; END $$;
-CREATE TRIGGER fixture_unknown AFTER INSERT ON public.opportunities FOR EACH ROW EXECUTE FUNCTION public.fixture_unreviewed_job_hook();
-DO $$ BEGIN ASSERT NOT public.zoho_job_publisher_ready(),'Unknown trigger accepted'; END $$;
-DROP TRIGGER fixture_unknown ON public.opportunities;
-DROP FUNCTION public.fixture_unreviewed_job_hook();
-DO $$ BEGIN ASSERT public.zoho_job_publisher_ready(); END $$;
 GRANT UPDATE(title) ON public.opportunities TO authenticated;
 DO $$ BEGIN ASSERT NOT public.zoho_job_publisher_ready(),'Legacy column grants accepted'; END $$;
 REVOKE UPDATE(title) ON public.opportunities FROM authenticated;
-CREATE VIEW public.fixture_job_write_view AS SELECT id,title FROM public.opportunities;
-GRANT UPDATE ON public.fixture_job_write_view TO authenticated;
-DO $$ BEGIN ASSERT NOT public.zoho_job_publisher_ready(),'Legacy dependent-view write grants accepted'; END $$;
-DROP VIEW public.fixture_job_write_view;
 -- Separate source connections share a publisher and must share its last quota slot.
 CREATE TABLE public.fixture_concurrent_job_grants(n integer PRIMARY KEY,grant_value jsonb NOT NULL);
 DO $$ DECLARE connection uuid; n integer; BEGIN

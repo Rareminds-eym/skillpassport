@@ -1,89 +1,84 @@
-# Zoho job publisher review scope
+# Zoho job import
 
-Job publishing still requires a current operator-reviewed policy, live approval,
-current approver authority, destination ownership, available posting capacity and
-a transactional receipt. This change does not approve jobs or enable publishing.
+Jobs use the same staged workflow as candidates:
 
-## Why readiness used to expire
+1. Discover source records through the existing bounded REST queue.
+2. Validate and stage proposals without creating destination jobs.
+3. Review and approve individual records or all eligible staged records.
+4. Process approved revisions through the existing execution queue.
+5. Confirm completion from the transactional destination receipt.
 
-The original fingerprint included executable objects from every application
-schema. A migration for an unrelated feature could therefore invalidate the
-job-publisher review and report Job creation as unavailable.
+## Source mappings
 
-The scoped implementation starts from the approved job writer and opportunities,
-then follows their dependencies. It includes job-related routines, tables,
-triggers and their firing modes, defaults, generated expressions, indexes,
-constraints, rules, policies, types, operators, casts and extension versions.
-Read-only lookups do not bring the lookup table's unrelated write triggers into
-the scope. Cascades, partition routing and writes from transitive helpers do.
-The review machinery itself is also fingerprinted.
+Client Name supplies company and City supplies location. Department is optional.
+Exact source status and employment labels map to the platform's existing enums.
+Unknown labels remain validation issues rather than silently publishing a job.
+Existing mappings are preserved. Where no policy exists, Integration settings
+prefills standard mappings for a one-time save. Policy edits retain the existing
+configuration revision fence, audit reason and explicit no-email acknowledgement.
+Each job still requires approval after the mapping is enabled.
 
-PostgreSQL does not record body dependencies for PL/pgSQL or string-defined SQL.
-The implementation supplements pg_depend with conservative identifier and call
-references from those bodies, across schemas and overloads. This is an
-approximation that favors including an ambiguous dependency over omitting one;
-an executable identifier or overload can require review even if a particular branch
-is not taken. Custom operator overloads and casts affecting built-in types are
-also conservatively included because they can change expression behavior.
-Comments and ordinary text literals are excluded from reference matching.
-Constant catalog references and sequence names remain dependencies. Escaped
-catalog-reference literals require static SQL and fail review explicitly rather
-than being silently omitted. Unicode-escaped identifiers are normalized,
-including custom UESCAPE characters, six-digit escapes and surrogate pairs.
-It does not claim to infer arbitrary dynamically constructed SQL.
+## Ordinary execution checks
 
-Dynamic statements in the reachable PL/pgSQL path cause review to fail closed.
-The code-token scanner distinguishes those statements from comments, quoted
-identifiers, ordinary literals and dollar-quoted literals. Nonstandard string
-semantics are unsupported. A failed or oversized dependency analysis never
-substitutes an old fingerprint or a partial success result.
+The publisher validates the live approval, actor, lease, source revision, immutable
+approved payload, current mapping and expected destination. Imported jobs belong
+to SkillPassport Platform. Existing source links identify updates; titles and
+company names are never used to take over another job. Target fingerprints detect
+concurrent edits to that specific job; these small record hashes remain distinct
+from the removed database-catalogue fingerprint mechanism.
 
-## Rollout
+Organization entitlement/capacity checks, transactional target locks, post-write
+checks and atomic operation receipts remain. Receipt replay does not create a
+second job. Uncertain outcomes continue through receipt reconciliation. No email
+provider or email queue is part of this flow, and imported jobs have no learning
+requirements that would enqueue learning-match notifications.
 
-The migration was applied to local SkillPassport and SkillPassport QA
-(`qidmndjtlbajwswufghf`) with policy attestations and the existing writer preserved.
-Post-deployment QA measurements found an outstanding performance gap: fingerprint
-calculation took 8.76 seconds, and dependency traversal took 10.55 seconds for
-1,287 objects. Both exceed the application's five-second dependency deadline.
-Do not treat passing fixture timings as proof of QA readiness. A separately
-reviewed performance follow-up is required before enabling job publishing.
+## Removed machinery
 
-1. Obtain explicit approval to apply only
-   [the scoped-review migration](../supabase/migrations/20270314000000_zoho_scoped_job_review.sql)
-   to the selected environment. The existing dashboard and RPC response contracts
-   remain compatible; no Worker deployment is required for this migration.
-2. Review the current job-writing effects in Integration settings → Job publication
-   policy. Save the reviewed policy once through the existing audited action.
-   Applying the migration does not automatically refresh this attestation.
-3. Run fresh job discovery and inspect the proposals before approving them.
-   Saving policy increments the configuration revision, invalidating old reviews.
-4. After resolving the QA runtime gap above, confirm job readiness. Confirm actual creation separately through approved
-   execution history and its destination receipt.
+The forward [simple-import migration](../supabase/migrations/20270317000000_zoho_simple_job_import.sql)
+removes runtime SQL tokenization, recursive database-dependency traversal,
+executable-catalogue snapshots, catalogue paging, policy fingerprint storage,
+and the private batch-fingerprint overloads. Staging checks source fields and
+mappings directly. Readiness checks current policy and browser write privileges;
+it does not parse database functions or compute a catalogue digest.
 
-The migration is schema-only and transactional. It does not delete staging,
-change mappings or entitlements, create destination records, send messages, or
-change any stored policy fingerprint. It intentionally invalidates the previous
-review format once. Future unrelated migrations no longer invalidate the review
-unless they intersect the conservative job dependency scope.
-
-Rollback requires a separately approved forward migration restoring the previous
-surface implementation from the operator-audit migration, followed by explicit
-policy review again. Do not edit migration history or silently attest the changed
-surface during either rollout or rollback.
+The dashboard mapping form no longer contains a database executable-surface
+inspector or sends a fingerprint. Source hashes, approval revisions and destination
+record fingerprints remain because they provide duplicate and concurrent-edit
+protection without catalogue scanning. Future database changes follow ordinary
+migration review and testing, as in the candidate flow.
 
 ## Verification
 
-Run `node scripts/checks/test-zoho-job-publisher-sql.mjs` from SkillPassport.
-For runners with a per-check time limit, run the same harness separately with
-`--publisher` and `--scope`. Each mode creates and removes its own database;
-the default command still runs both suites together.
-The harness creates a uniquely named disposable database and removes it in
-finally; it does not migrate the running application's database. Fixtures cover
-unrelated tables, functions, enums, indexes, grants and lookup-table triggers;
-transitive and cross-schema helpers; defaults, rules, trigger drift, expression
-indexes, index support functions, identity sequences, multiple write targets and
-dynamic statements, comment/literal-only references and Unicode-escaped helper
-calls with default and custom escape characters. A scale fixture adds 400 unrelated writers and checks that
-fingerprinting remains within the existing five-second dependency timeout. Existing approval, receipt, quota race,
-Platform-only ownership, no-email and browser-write safeguards run through the
-scoped implementation too.
+Run `node scripts/checks/test-zoho-job-publisher-sql.mjs --simple` from this project.
+The harness creates a disposable database and drops it afterward. It applies the forward migrations, verifies the
+scanner functions are removed, and installs a test-only poison function that
+throws if any active path still calls the retired fingerprint. It then exercises
+readiness, mapping reads and saves, discovery, approval, job creation/update,
+receipt replay, no-email effects, source suppression and full batch rollback.
+
+The default SQL command also runs upgrade regressions before verifying the current
+simple import. The optional --simple flag runs only the current import suite.
+Retired scanner modes and their dedicated fixtures have been removed. Dashboard library
+and rendered tests also cover policy loading, saving and individual/bulk approval
+without scanner response fields.
+
+Both SQL modes also test concurrent publishing after the final migration. Two
+approved jobs from separate source connections contend for the Platform's last
+available slot. The harness observes both writers waiting on locks before releasing
+the publisher, then verifies one completed receipt, one no-effect receipt, replay,
+capacity, ownership links and no notification work.
+
+## Rollout
+
+This replacement is prepared locally and has not been applied to QA or the
+existing local application database. Every target requires explicit approval.
+Apply database migrations in order through the simple-import migration, then
+release the matching dashboard code. The retired policy-configure RPC signature
+is removed: coordinate this short rollout rather than adding an alternate legacy
+execution path. Existing source records, jobs, approvals and receipt history are
+preserved. Old migrations and historical audit JSON remain as migration history.
+
+No policy is automatically approved by the scanner-removal migration. Recovery
+uses the existing source checkpoints and explicit approved operations. A rollback
+requires a separately approved forward migration and matching application version.
