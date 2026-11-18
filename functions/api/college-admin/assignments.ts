@@ -29,18 +29,42 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       case 'create-assignment': {
         const { data: courseAccess, error: accessError } = await supabase.rpc('college_course_workflow', { p_actor: user.id, p_action: 'courses', p_payload: {} });
         if (accessError) return apiError(503, 'COURSE_ACCESS_UNAVAILABLE', 'Could not verify course ownership.', context.request);
-        const institutionCourse = (courseAccess?.courses || []).find((course: any) => course.ownership === 'institution'
-          && course.program_id === params.program_id && course.college_id === params.college_id
-          && (params.college_course_id ? course.id === params.college_course_id : course.title === params.course_name && course.code === params.course_code));
-        if (!institutionCourse) return apiError(403, 'FORBIDDEN', 'Assignments can only be created for your mapped institution-owned courses.', context.request);
-        const { data: section, error: sectionError } = await supabase.from('program_sections').select('program_id,department_id,semester').eq('id', params.program_section_id).maybeSingle();
-        if (sectionError || !section || section.program_id !== institutionCourse.program_id || section.department_id !== params.department_id || section.semester !== institutionCourse.semester) {
-          return apiError(403, 'FORBIDDEN', 'Section does not match the mapped course.', context.request);
+        
+        // Find course - different matching logic for institution vs rareminds
+        let matchedCourse = null;
+        
+        // Try institution course first (has program_id and college_id)
+        matchedCourse = (courseAccess?.courses || []).find((course: any) => 
+          course.ownership === 'institution'
+          && course.program_id === params.program_id 
+          && course.college_id === params.college_id
+          && (params.college_course_id ? course.id === params.college_course_id : course.title === params.course_name && course.code === params.course_code)
+        );
+        
+        // If not found, try rareminds course (program_id and college_id are NULL in RPC result)
+        if (!matchedCourse) {
+          matchedCourse = (courseAccess?.courses || []).find((course: any) => 
+            course.ownership === 'rareminds'
+            && (params.college_course_id ? course.id === params.college_course_id : course.title === params.course_name && course.code === params.course_code)
+          );
         }
+        
+        if (!matchedCourse) return apiError(403, 'FORBIDDEN', 'Assignments can only be created for your mapped courses.', context.request);
+        
+        // Only validate section for institution courses (rareminds already validated by RPC)
+        if (matchedCourse.ownership === 'institution') {
+          const { data: section, error: sectionError } = await supabase.from('program_sections').select('program_id,department_id,semester').eq('id', params.program_section_id).maybeSingle();
+          if (sectionError || !section || section.program_id !== matchedCourse.program_id || section.department_id !== params.department_id || section.semester !== matchedCourse.semester) {
+            return apiError(403, 'FORBIDDEN', 'Section does not match the mapped course.', context.request);
+          }
+        }
+        
         params.educator_user_id = user.id;
-        params.course_name = institutionCourse.title;
-        params.course_code = institutionCourse.code;
-        params.college_course_id = institutionCourse.id;
+        params.course_name = matchedCourse.title;
+        params.course_code = matchedCourse.code;
+        // IMPORTANT: college_course_id is only for institution courses (references college_courses table)
+        // For rareminds courses, set to null because they're in the global courses table
+        params.college_course_id = matchedCourse.ownership === 'institution' ? matchedCourse.id : null;
 
         const { data: educator } = await supabase.from('college_lecturers').select('first_name, last_name').eq('user_id', params.educator_user_id).maybeSingle();
         let educatorName = educator ? `${educator.first_name || ''} ${educator.last_name || ''}`.trim() : '';
@@ -147,21 +171,122 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
       case 'get-educator-sections': {
         const { educator_user_id } = params;
-        const { data, error } = await supabase.from('program_sections').select('id, department_id, program_id, semester, section, academic_year, max_learners, current_learners, faculty_id, status, programs!inner(id, name, code), departments!inner(id, name, code)').eq('faculty_id', educator_user_id).eq('status', 'active').order('semester').order('section');
-        if (error) return apiDbError(error, context.request, { startTime });
-        const sections = (data || []).map((s: any) => ({
-          id: s.id, department_id: s.department_id, program_id: s.program_id, semester: s.semester, section: s.section, academic_year: s.academic_year, max_learners: s.max_learners, current_learners: s.current_learners, faculty_id: s.faculty_id, status: s.status,
-          program: { id: s.programs?.id, name: s.programs?.name, code: s.programs?.code, department_id: s.programs?.department_id || s.department_id, college_id: s.programs?.college_id || '' },
-          department: { id: s.departments?.id, name: s.departments?.name, code: s.departments?.code, college_id: s.departments?.college_id || '' },
-        }));
-        return apiSuccess(sections, context.request, { startTime });
+        console.log('[get-educator-sections] Fetching for user:', educator_user_id);
+        
+        // Fetch sections for internal faculty from program_sections
+        const { data: facultySections, error: facultyError } = await supabase
+          .from('program_sections')
+          .select('id, department_id, program_id, semester, section, academic_year, max_learners, current_learners, faculty_id, status, programs!inner(id, name, code), departments!inner(id, name, code)')
+          .eq('faculty_id', educator_user_id)
+          .eq('status', 'active')
+          .order('semester')
+          .order('section');
+        
+        console.log('[get-educator-sections] Faculty sections:', facultySections?.length || 0, 'Error:', facultyError?.message);
+        
+        // Fetch sections for external trainers - first get staff_id, then get assignments
+        const { data: staff, error: staffError } = await supabase
+          .from('organization_staff')
+          .select('id')
+          .eq('user_id', educator_user_id)
+          .maybeSingle();
+        
+        console.log('[get-educator-sections] Staff lookup:', staff?.id, 'Error:', staffError?.message);
+        
+        let staffSections: any[] = [];
+        if (staff) {
+          const { data: assignments, error: assignError } = await supabase
+            .from('organization_staff_assignments')
+            .select('section_id, program_sections!inner(id, department_id, program_id, semester, section, academic_year, max_learners, current_learners, faculty_id, status, programs(id, name, code), departments(id, name, code))')
+            .eq('staff_id', staff.id)
+            .eq('is_active', true)
+            .eq('program_sections.status', 'active');
+          
+          console.log('[get-educator-sections] Staff assignments:', assignments?.length || 0, 'Error:', assignError?.message);
+          
+          if (assignments) {
+            staffSections = assignments.map((assignment: any) => assignment.program_sections);
+          }
+        }
+        
+        // Combine both sources
+        const allSections: any[] = [];
+        
+        // Add faculty sections
+        if (facultySections) {
+          allSections.push(...facultySections.map((s: any) => ({
+            id: s.id, department_id: s.department_id, program_id: s.program_id, 
+            semester: s.semester, section: s.section, academic_year: s.academic_year, 
+            max_learners: s.max_learners, current_learners: s.current_learners, 
+            faculty_id: s.faculty_id, status: s.status,
+            program: { id: s.programs?.id, name: s.programs?.name, code: s.programs?.code, department_id: s.programs?.department_id || s.department_id, college_id: s.programs?.college_id || '' },
+            department: { id: s.departments?.id, name: s.departments?.name, code: s.departments?.code, college_id: s.departments?.college_id || '' },
+          })));
+        }
+        
+        // Add external trainer sections (from organization_staff_assignments)
+        staffSections.forEach((s: any) => {
+          if (s && !allSections.find(existing => existing.id === s.id)) {
+            allSections.push({
+              id: s.id, department_id: s.department_id, program_id: s.program_id, 
+              semester: s.semester, section: s.section, academic_year: s.academic_year, 
+              max_learners: s.max_learners, current_learners: s.current_learners, 
+              faculty_id: s.faculty_id, status: s.status,
+              program: { id: s.programs?.id, name: s.programs?.name, code: s.programs?.code, department_id: s.programs?.department_id || s.department_id, college_id: s.programs?.college_id || '' },
+              department: { id: s.departments?.id, name: s.departments?.name, code: s.departments?.code, college_id: s.departments?.college_id || '' },
+            });
+          }
+        });
+        
+        if (facultyError && staffSections.length === 0) return apiDbError(facultyError, context.request, { startTime });
+        
+        return apiSuccess(allSections, context.request, { startTime });
       }
 
       case 'get-educator-courses': {
         const { data, error } = await supabase.rpc('college_course_workflow', { p_actor: user.id, p_action: 'courses', p_payload: {} });
         if (error) return apiDbError(error, context.request, { startTime });
-        const courses = (data?.courses || []).filter((course: any) => course.ownership === 'institution' && (!params.program_id || course.program_id === params.program_id));
-        return apiSuccess(courses.map((course: any) => ({ id: course.id, course_name: course.title, course_code: course.code, college_id: course.college_id, semester: course.semester })), context.request, { startTime });
+        
+        // Accept both institution and rareminds courses
+        let courses = (data?.courses || []).filter((course: any) => {
+          // Filter by program_id for institution courses (rareminds courses have NULL program_id)
+          if (course.ownership === 'institution') {
+            return !params.program_id || course.program_id === params.program_id;
+          } else if (course.ownership === 'rareminds') {
+            // For rareminds courses, filter by section_id if provided
+            return true; // Will filter after getting organization_staff_assignments
+          }
+          return false;
+        });
+
+        // If section_id is provided, filter rareminds courses by organization_staff_assignments
+        if (params.section_id) {
+          const { data: staffAssignments, error: assignError } = await supabase
+            .from('organization_staff_assignments')
+            .select('assigned_courses')
+            .eq('organization_staff_id', (await supabase.from('organization_staff').select('id').eq('user_id', user.id).single()).data?.id || '')
+            .eq('section_id', params.section_id)
+            .maybeSingle();
+          
+          if (!assignError && staffAssignments) {
+            const assignedCourseIds = staffAssignments.assigned_courses || [];
+            // Filter rareminds courses to only those assigned to this section
+            courses = courses.filter((course: any) => {
+              if (course.ownership === 'rareminds') {
+                return assignedCourseIds.includes(course.id);
+              }
+              return true; // Keep institution courses
+            });
+          }
+        }
+        
+        return apiSuccess(courses.map((course: any) => ({ 
+          id: course.id, 
+          course_name: course.title, 
+          course_code: course.code, 
+          college_id: course.college_id, 
+          semester: course.semester 
+        })), context.request, { startTime });
       }
 
       case 'get-section-learners': {
@@ -261,42 +386,68 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         let learnersMap = new Map<string, any>();
 
         if (assignmentIds.length > 0) {
-          const { data: subRows } = await supabase
-            .from('college_learner_assignments')
-            .select(`
-              learner_assignment_id,
-              assignment_id,
-              learner_id,
-              status,
-              priority,
-              grade_received,
-              grade_percentage,
-              instructor_feedback,
-              feedback_date,
-              graded_date,
-              submission_date,
-              submission_files,
-              submission_url,
-              submission_content,
-              is_late
-            `)
-            .in('assignment_id', assignmentIds)
-            .eq('is_deleted', false);
+          // Fetch all learner assignments across the selected assignments using range pagination
+          // Supabase PostgREST defaults to a 1,000 row ceiling. Without pagination, any assignments
+          // beyond the first 1,000 rows get truncated, causing newly created tasks to show 0 learners.
+          let subRows: any[] = [];
+          let from = 0;
+          const pageSize = 1000;
+          let hasMore = true;
 
-          const learnerIds = Array.from(new Set((subRows || []).map((s: any) => s.learner_id).filter(Boolean)));
-          if (learnerIds.length > 0) {
-            const { data: learnerRows } = await supabase
-              .from('learners')
-              .select('id, user_id, name, email, roll_number')
-              .or(`id.in.(${learnerIds.join(',')}),user_id.in.(${learnerIds.join(',')})`);
+          while (hasMore) {
+            const { data: batch, error: batchError } = await supabase
+              .from('college_learner_assignments')
+              .select(`
+                learner_assignment_id,
+                assignment_id,
+                learner_id,
+                status,
+                priority,
+                grade_received,
+                grade_percentage,
+                instructor_feedback,
+                feedback_date,
+                graded_date,
+                submission_date,
+                submission_files,
+                submission_url,
+                submission_content,
+                is_late
+              `)
+              .in('assignment_id', assignmentIds)
+              .eq('is_deleted', false)
+              .range(from, from + pageSize - 1);
 
-            (learnerRows || []).forEach((l: any) => {
-              if (l.id) learnersMap.set(l.id, l);
-              if (l.user_id) learnersMap.set(l.user_id, l);
-            });
+            if (batchError) break;
+            if (batch && batch.length > 0) {
+              subRows = subRows.concat(batch);
+            }
+            if (batch.length < pageSize) {
+              hasMore = false;
+            } else {
+              from += pageSize;
+            }
           }
 
-          (subRows || []).forEach((sub: any) => {
+          const learnerIds = Array.from(new Set(subRows.map((s: any) => s.learner_id).filter(Boolean)));
+          if (learnerIds.length > 0) {
+            // Batch learner profile lookups in chunks of 100 to avoid PostgREST URI length limits
+            const chunkSize = 100;
+            for (let i = 0; i < learnerIds.length; i += chunkSize) {
+              const chunk = learnerIds.slice(i, i + chunkSize);
+              const { data: learnerRows } = await supabase
+                .from('learners')
+                .select('id, user_id, name, email, roll_number')
+                .or(`id.in.(${chunk.join(',')}),user_id.in.(${chunk.join(',')})`);
+
+              (learnerRows || []).forEach((l: any) => {
+                if (l.id) learnersMap.set(l.id, l);
+                if (l.user_id) learnersMap.set(l.user_id, l);
+              });
+            }
+          }
+
+          subRows.forEach((sub: any) => {
             if (!statsByAssignment.has(sub.assignment_id)) {
               statsByAssignment.set(sub.assignment_id, {
                 totalAssigned: 0,
@@ -493,7 +644,16 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const { data: existing, error: existingError } = await supabase.from('college_assignments')
           .select('college_educator_id,external_educator_id,college_id,college_course_id,course_name,course_code,program_id,department_id,program_section_id')
           .eq('assignment_id', assignment_id).maybeSingle();
-        if (existingError || !existing || existing.college_educator_id !== user.id) return apiError(403, 'FORBIDDEN', 'Only the assigned educator can edit this institution assignment.', context.request);
+        
+        // Check if user is the assigned educator (internal faculty OR external trainer)
+        const isAssignedEducator = existing && (
+          existing.college_educator_id === user.id || 
+          existing.external_educator_id === user.id
+        );
+        
+        if (existingError || !isAssignedEducator) {
+          return apiError(403, 'FORBIDDEN', 'Only the assigned educator can edit this assignment.', context.request);
+        }
         const immutable = ['college_id','college_course_id','course_name','course_code','program_id','department_id','program_section_id','college_educator_id','external_educator_id'];
         if (immutable.some(key => key in updates && updates[key] !== existing[key])) return apiError(403, 'FORBIDDEN', 'The course and class of an existing assignment cannot be changed.', context.request);
         for (const key of immutable) delete updates[key];
@@ -625,6 +785,134 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         });
 
         return apiSuccess(Array.from(resultMap.values()), context.request, { startTime });
+      }
+
+      case 'bulk-create-assignments': {
+        const {
+          educator_user_id, tasks, section_id, section, semester, academic_year,
+          department_id, program_id, course_name, course_code, college_id, course_id,
+        } = params;
+        const auto_assign = params.auto_assign !== false;
+
+        if (!educator_user_id) return apiError(400, 'VALIDATION_ERROR', 'educator_user_id is required', context.request, { startTime });
+        if (!Array.isArray(tasks) || tasks.length === 0) return apiError(400, 'VALIDATION_ERROR', 'tasks must be a non-empty array', context.request, { startTime });
+        if (!section_id) return apiError(400, 'VALIDATION_ERROR', 'section_id is required', context.request, { startTime });
+        if (!college_id) return apiError(400, 'VALIDATION_ERROR', 'college_id is required', context.request, { startTime });
+
+        const BULK_VALID_TYPES = ['homework', 'project', 'quiz', 'exam', 'lab', 'essay', 'presentation', 'other'];
+        for (const task of tasks) {
+          if (!task.title?.trim()) return apiError(400, 'VALIDATION_ERROR', 'Each task must have a title', context.request, { startTime });
+          if (!task.due_date) return apiError(400, 'VALIDATION_ERROR', 'Task is missing due_date', context.request, { startTime });
+          if (task.assignment_type && !BULK_VALID_TYPES.includes(task.assignment_type)) {
+            return apiError(400, 'VALIDATION_ERROR', 'Invalid assignment_type. Allowed: homework|project|quiz|exam|lab|essay|presentation|other', context.request, { startTime });
+          }
+        }
+
+        // Resolve educator name — internal faculty first, then external trainer
+        const { data: bulkEducator } = await supabase.from('college_lecturers').select('first_name, last_name').eq('user_id', educator_user_id).maybeSingle();
+        let bulkEducatorName = bulkEducator ? `${bulkEducator.first_name || ''} ${bulkEducator.last_name || ''}`.trim() : '';
+        let bulkIsExternal = false;
+        if (!bulkEducatorName) {
+          const { data: staff } = await supabase.from('organization_staff').select('first_name, last_name').eq('user_id', educator_user_id).maybeSingle();
+          if (staff) { bulkEducatorName = `${staff.first_name || ''} ${staff.last_name || ''}`.trim(); bulkIsExternal = true; }
+        }
+        if (!bulkEducatorName) bulkEducatorName = 'Unknown Educator';
+
+        // Validate course access - same logic as create-assignment
+        const { data: courseAccess, error: accessError } = await supabase.rpc('college_course_workflow', { p_actor: user.id, p_action: 'courses', p_payload: {} });
+        if (accessError) return apiError(503, 'COURSE_ACCESS_UNAVAILABLE', 'Could not verify course ownership.', context.request);
+        
+        // Find course - different matching logic for institution vs rareminds
+        let matchedCourse = null;
+        
+        // Try institution course first (has program_id and college_id)
+        matchedCourse = (courseAccess?.courses || []).find((c: any) => 
+          c.ownership === 'institution'
+          && c.program_id === program_id 
+          && c.college_id === college_id
+          && (course_id ? c.id === course_id : c.title === course_name && c.code === course_code)
+        );
+        
+        // If not found, try rareminds course (program_id and college_id are NULL in RPC result)
+        if (!matchedCourse) {
+          matchedCourse = (courseAccess?.courses || []).find((c: any) => 
+            c.ownership === 'rareminds'
+            && (course_id ? c.id === course_id : c.title === course_name && c.code === course_code)
+          );
+        }
+        
+        if (!matchedCourse) return apiError(403, 'FORBIDDEN', 'Bulk assignments can only be created for your mapped courses.', context.request);
+        
+        // Only validate section for institution courses (rareminds already validated by RPC)
+        if (matchedCourse.ownership === 'institution') {
+          const { data: sectionData, error: sectionError } = await supabase.from('program_sections').select('program_id,department_id,semester').eq('id', section_id).maybeSingle();
+          if (sectionError || !sectionData || sectionData.program_id !== matchedCourse.program_id || sectionData.department_id !== department_id || sectionData.semester !== matchedCourse.semester) {
+            return apiError(403, 'FORBIDDEN', 'Section does not match the mapped course.', context.request);
+          }
+        }
+
+        const insertRows = tasks.map((task: any) => ({
+          title: task.title.trim(),
+          description: task.description || '',
+          instructions: task.instructions || '',
+          course_name: matchedCourse.title,
+          course_code: matchedCourse.code,
+          // IMPORTANT: college_course_id is only for institution courses
+          college_course_id: matchedCourse.ownership === 'institution' ? matchedCourse.id : null,
+          college_id,
+          program_section_id: section_id,
+          department_id,
+          program_id,
+          total_points: parseInt(String(task.total_points || 100), 10),
+          assignment_type: task.assignment_type || 'homework',
+          skill_outcomes: Array.isArray(task.skill_outcomes) ? task.skill_outcomes : [],
+          due_date: task.due_date,
+          available_from: new Date().toISOString(),
+          allow_late_submission: task.allow_late_submission !== false,
+          instruction_files: Array.isArray(task.instruction_files) ? task.instruction_files : [],
+          educator_name: bulkEducatorName,
+          college_educator_id: bulkIsExternal ? null : educator_user_id,
+          external_educator_id: bulkIsExternal ? educator_user_id : null,
+        }));
+
+        const { data: inserted, error: insertError } = await supabase
+          .from('college_assignments')
+          .insert(insertRows)
+          .select('assignment_id');
+        if (insertError) return apiDbError(insertError, context.request, { startTime });
+
+        // Auto-assign to all learners in the section if requested
+        if (auto_assign && inserted && inserted.length > 0) {
+          const { data: sectionData } = await supabase
+            .from('program_sections')
+            .select('program_id, semester, section')
+            .eq('id', section_id)
+            .single();
+          if (sectionData) {
+            const { data: learnerRows } = await supabase
+              .from('learners')
+              .select('id')
+              .eq('program_id', sectionData.program_id)
+              .eq('section', sectionData.section)
+              .eq('semester', sectionData.semester)
+              .eq('is_deleted', false);
+            if (learnerRows && learnerRows.length > 0) {
+              const learnerAssignments = inserted.flatMap((a: any) =>
+                learnerRows.map((l: any) => ({
+                  assignment_id: a.assignment_id,
+                  learner_id: l.id,
+                  status: 'todo',
+                  priority: 'medium',
+                }))
+              );
+              await supabase
+                .from('college_learner_assignments')
+                .upsert(learnerAssignments, { onConflict: 'assignment_id,learner_id', ignoreDuplicates: true });
+            }
+          }
+        }
+
+        return apiSuccess({ count: inserted?.length || 0 }, context.request, { startTime });
       }
 
       default:

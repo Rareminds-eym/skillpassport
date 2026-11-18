@@ -5,17 +5,6 @@ ALTER TABLE public.college_course_mappings ADD COLUMN IF NOT EXISTS faculty_acce
 
 ALTER TABLE public.college_assignments ADD COLUMN IF NOT EXISTS college_course_id uuid REFERENCES public.college_courses(id);
 
--- Existing permissive browser policies must not bypass the approval API.
--- Worker service-role writes bypass RLS; reads retain their existing policies.
-DO $$ DECLARE target text; BEGIN
-  FOREACH target IN ARRAY ARRAY['college_curriculums','college_curriculum_units','college_curriculum_outcomes','college_course_mappings','college_courses'] LOOP
-    EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY',target);
-    EXECUTE format('CREATE POLICY course_workflow_insert ON public.%I AS RESTRICTIVE FOR INSERT TO anon,authenticated WITH CHECK(false)',target);
-    EXECUTE format('CREATE POLICY course_workflow_update ON public.%I AS RESTRICTIVE FOR UPDATE TO anon,authenticated USING(false) WITH CHECK(false)',target);
-    EXECUTE format('CREATE POLICY course_workflow_delete ON public.%I AS RESTRICTIVE FOR DELETE TO anon,authenticated USING(false)',target);
-  END LOOP;
-END $$;
-
 -- Faculty proposals reuse college_curriculums.pending_changes and change_history.
 -- No separate request table is needed.
 

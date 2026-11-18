@@ -12,7 +12,7 @@ import {
   User,
   Zap,
 } from 'lucide-react';
-import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { SubscriptionRouteGuard } from '@/features/subscription';
 import { useSubscriptionQuery } from '@/features/subscription/model/useSubscriptionQuery';
@@ -218,12 +218,24 @@ function PaymentCompletion() {
   const { role } = useUserRole();
   const managePath = useMemo(() => getManagePath(role), [role]);
 
-  const { plan, learnerType, isUpgrade, isRenewal, isFreemium, referralCode } = useMemo(() => location.state || {}, [location.state]);
+  const { plan, learnerType, isUpgrade, isRenewal, isFreemium, referralCode, isOrganizationPurchase, isAddOn } = useMemo(() => location.state || {}, [location.state]);
 
   const [loading, setLoading] = useState(false);
+  const activeCheckout = useRef(null);
+  useEffect(() => {
+    setLoading(false);
+    return () => {
+      const attempt = activeCheckout.current;
+      activeCheckout.current = null;
+      attempt?.controller.abort();
+    };
+  }, [user?.id, user?.orgId, isAuthenticated, location.key]);
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
   const [userDetails, setUserDetails] = useState({ name: '', email: '', phone: '' });
+  const [profileIdentity, setProfileIdentity] = useState(null);
+  const buyerIdentity = user ? `${user.id}:${user.orgId || ''}` : null;
+  const profileReady = !!buyerIdentity && profileIdentity === buyerIdentity;
 
   const { subscriptionData, loading: subscriptionLoading } = useSubscriptionQuery();
 
@@ -233,6 +245,14 @@ function PaymentCompletion() {
 
   // Validate user exists in database and redirect if not authenticated
   useEffect(() => {
+    let disposed = false;
+    const expectedIdentity = user ? `${user.id}:${user.orgId || ''}` : null;
+    const isCurrent = () => {
+      const current = useAuthStore.getState().user;
+      return !disposed && !!current && `${current.id}:${current.orgId || ''}` === expectedIdentity;
+    };
+    setProfileIdentity(null);
+    setUserDetails({ name: '', email: '', phone: '' });
     const validateAndFetchUser = async () => {
       if (authLoading) return;
 
@@ -277,6 +297,7 @@ function PaymentCompletion() {
           return null;
         });
         const userData = userResult?.data;
+        if (!isCurrent()) return;
 
         if (!userData) {
           if (DEBUG) console.warn('[PaymentCompletion] User not found in database, may need to complete registration');
@@ -290,6 +311,7 @@ function PaymentCompletion() {
             email: authUser.email || '',
             phone: metadata.phone || '',
           });
+          setProfileIdentity(expectedIdentity);
 
           // Set error to inform user
           setError('Your account setup is incomplete. Please complete payment to finish registration.');
@@ -303,10 +325,12 @@ function PaymentCompletion() {
           email: userData.email || user.email || '',
           phone: userData.phone || '',
         });
+        setProfileIdentity(expectedIdentity);
 
         if (DEBUG) console.log('[PaymentCompletion] User validated successfully');
 
       } catch (err) {
+        if (!isCurrent()) return;
         console.error('❌ Error validating user:', err);
         // On error, try to use available data
         setUserDetails((prev) => ({
@@ -314,10 +338,12 @@ function PaymentCompletion() {
           email: prev.email || user?.email || '',
           phone: prev.phone || '',
         }));
+        setProfileIdentity(expectedIdentity);
       }
     };
 
     validateAndFetchUser();
+    return () => { disposed = true; };
   }, [authLoading, isAuthenticated, user, navigate, plan, learnerType]);
 
   // Redirect if active subscription (including cancelled but not expired)
@@ -385,7 +411,15 @@ function PaymentCompletion() {
   const handleSubmit = useCallback(
     async (e) => {
       e.preventDefault();
-      if (loading) return;
+      if (loading || activeCheckout.current) return;
+      if (authLoading || !isAuthenticated || !profileReady) {
+        setError('Please wait for your current account details to load.');
+        return;
+      }
+      if (isOrganizationPurchase || isAddOn) {
+        setError('This purchase requires its dedicated checkout. Return to the organization or add-on purchase page.');
+        return;
+      }
 
       const errors = {
         name: validateField('name', userDetails.name),
@@ -398,10 +432,34 @@ function PaymentCompletion() {
         return;
       }
 
+      const attempt = { controller: new AbortController() };
+      activeCheckout.current = attempt;
+      const finishAttempt = () => {
+        if (activeCheckout.current !== attempt || attempt.controller.signal.aborted) return false;
+        activeCheckout.current = null;
+        setLoading(false);
+        return true;
+      };
       setLoading(true);
       setError('');
       setFieldErrors({});
 
+      const openCompletion = (result, verificationRequired = false) => {
+        if (!finishAttempt()) return;
+        navigate('/subscription/payment/success', {
+          state: {
+            razorpay_payment_id: result.razorpay_payment_id,
+            razorpay_order_id: result.razorpay_order_id,
+            razorpay_signature: result.razorpay_signature,
+            plan: result.plan,
+            verificationResult: result.verificationResult,
+            verificationRequired,
+            paymentUserId: user.id, paymentOrganizationId: user.orgId || null,
+            learnerType, isUpgrade, isRenewal, isFreemium, referralCode,
+          },
+          replace: true,
+        });
+      };
       try {
         // Unified pipeline for both freemium and paid subscriptions
         await initiateRazorpayPayment({
@@ -409,31 +467,25 @@ function PaymentCompletion() {
           userDetails: { ...userDetails, learnerType },
           isUpgrade,
           referralCode,
-          onSuccess: (result) => {
-            setLoading(false);
-            // Navigate to success page via React Router — no page reload
-            navigate('/subscription/payment/success', {
-              state: {
-                razorpay_payment_id: result.razorpay_payment_id,
-                razorpay_order_id: result.razorpay_order_id,
-                razorpay_signature: result.razorpay_signature,
-                plan: result.plan,
-                verificationResult: result.verificationResult,
-                learnerType,
-              },
-              replace: true,
-            });
-          },
+          signal: attempt.controller.signal,
+          onSuccess: (result) => openCompletion(result),
+          onVerificationRequired: (result) => openCompletion(result, true),
           onFailure: (result) => {
-            setLoading(false);
+            if (!finishAttempt()) return;
 
             // SUBSCRIPTION_EXISTS → navigate to manage page
-            if (result.error_code === 'SUBSCRIPTION_EXISTS') {
+            if (result.error_code === 'SUBSCRIPTION_EXISTS' || result.error_code === 'SUBSCRIPTION_CONFLICT') {
               const targetPath = managePath || `/subscription/plans?type=${learnerType || 'learner'}`;
               navigate(targetPath, {
                 state: { message: result.error_description },
                 replace: true,
               });
+              return;
+            }
+
+            if (result.error_code === 'SUBSCRIPTION_PENDING' || result.error_code === 'UNAUTHORIZED' || result.error_code === 'FORBIDDEN'
+              || result.http_status === 401 || result.http_status === 403) {
+              setError(result.error_description);
               return;
             }
 
@@ -443,30 +495,30 @@ function PaymentCompletion() {
               return;
             }
 
-            // All other failures → show inline error with option to navigate to failure page
+            // Checkout has ended; route to the failure page with the original purchase context.
             navigate('/subscription/payment/failure', {
               state: {
                 error_code: result.error_code,
                 error_description: result.error_description,
                 error_reason: result.error_reason,
+                error_source: result.error_source,
+                error_step: result.error_step,
                 razorpay_order_id: result.razorpay_order_id,
                 razorpay_payment_id: result.razorpay_payment_id,
-                plan,
-                learnerType,
+                plan, learnerType, isUpgrade, isRenewal, isFreemium, referralCode,
               },
             });
           },
           onCancel: () => {
             // User dismissed modal — no error, just reset loading state
-            setLoading(false);
+            finishAttempt();
           },
         });
       } catch (err) {
-        setError(err.message || 'Failed to initiate payment. Please try again.');
-        setLoading(false);
+        if (finishAttempt()) setError(err.message || 'Failed to initiate payment. Please try again.');
       }
     },
-    [loading, userDetails, plan, learnerType, navigate, validateField, isUpgrade, isFreemium, user, managePath, referralCode]
+    [loading, userDetails, plan, learnerType, navigate, validateField, isUpgrade, isRenewal, isFreemium, managePath, referralCode, isOrganizationPurchase, isAddOn, authLoading, isAuthenticated, profileReady, user]
   );
 
   const handleBack = useCallback(() => navigate(plansUrl), [navigate, plansUrl]);

@@ -16,7 +16,6 @@
 
 import paymentsApiService from './paymentsApiService';
 import { getLogger } from '@/shared/config/logging';
-import { useAuthStore } from '@/shared/model/authStore';
 
 const logger = getLogger('payment-verification');
 
@@ -130,17 +129,10 @@ export const clearVerificationCache = () => {
  * @param {Object} transactionData - Failed transaction details
  * @returns {Promise<Object>} Result of logging operation
  */
-export const logFailedTransaction = async (transactionData) => {
-  try {
-    const { razorpay_payment_id, razorpay_order_id, amount, currency, error, error_description } = transactionData;
-    
-    // Get current user from auth store
-    const userId = useAuthStore.getState().user?.id;
-
-    // Optionally log to database if needed
-    
-    return { success: true, logged: true };
-  } catch (err) {
-    return { success: false, logged: false, error: err.message };
+export const logFailedTransaction = async (transactionData: unknown) => {
+  if (!transactionData || typeof transactionData !== 'object') {
+    return { success: false, logged: false, error: 'Invalid payment diagnostic' };
   }
+  // No persistence is configured here. Never claim that a diagnostic was stored.
+  return { success: false, logged: false, error: 'Payment failure persistence is not configured' };
 };

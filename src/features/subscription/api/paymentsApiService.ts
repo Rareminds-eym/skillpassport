@@ -46,6 +46,14 @@ export function extractErrorMessage(errorObj) {
   return errorObj.message || errorObj.details || 'Unknown error';
 }
 
+/** Preserve server decisions without asking checkout callers to parse error messages. */
+export class PaymentApiError extends Error {
+  constructor(message: string, public readonly status: number, public readonly code?: string) {
+    super(message);
+    this.name = 'PaymentApiError';
+  }
+}
+
 // ==================== PAYMENT ENDPOINTS ====================
 
 /**
@@ -69,10 +77,12 @@ export async function createOrder({ amount, currency = 'INR', planId, planName, 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
     const baseMessage = extractErrorMessage(error);
-    const errorMessage = error.razorpay_error
-      ? `${baseMessage}: ${error.razorpay_error}`
+    const errorBody = typeof error === 'object' && error !== null ? error as Record<string, unknown> : {};
+    const detail = typeof errorBody.error === 'object' && errorBody.error !== null ? errorBody.error as Record<string, unknown> : {};
+    const errorMessage = typeof errorBody.razorpay_error === 'string'
+      ? `${baseMessage}: ${errorBody.razorpay_error}`
       : baseMessage;
-    throw new Error(errorMessage);
+    throw new PaymentApiError(errorMessage, response.status, typeof detail.code === 'string' ? detail.code : undefined);
   }
 
   return response.json();

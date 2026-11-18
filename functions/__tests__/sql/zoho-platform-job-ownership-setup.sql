@@ -3,6 +3,11 @@ TRUNCATE public.zoho_connections CASCADE;
 DELETE FROM public.opportunities;
 TRUNCATE public.tenant_entitlement_overrides;
 ALTER TABLE public.organizations ADD COLUMN name text;
+ALTER TABLE public.organizations
+  ADD COLUMN organization_type varchar(50),
+  ADD COLUMN is_active boolean DEFAULT true,
+  ADD COLUMN approval_status varchar(20) DEFAULT 'approved',
+  ADD COLUMN account_status varchar(20) DEFAULT 'active';
 ALTER TABLE public.tenant_entitlement_overrides ADD COLUMN notes text;
 CREATE UNIQUE INDEX fixture_entitlement_owner_feature ON public.tenant_entitlement_overrides(tenant_id,feature_id);
 INSERT INTO public.organizations(id,name) VALUES('00000000-0000-0000-0000-000000000001','SkillPassport Platform');

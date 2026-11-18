@@ -120,6 +120,24 @@ export async function ssoRecordTransaction(env: SsoEnv, data: any): Promise<any>
   return env.SSO_SERVICE.recordTransaction(data);
 }
 
+export interface SubscriptionPaymentInput {
+  user_id: string; plan_id: string; organization_id?: string; organization_type?: string;
+  razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature?: string;
+  amount: number; currency: string; billing_cycle: 'monthly' | 'yearly';
+  full_name: string; email: string; seat_count?: number; payment_method?: string;
+}
+export interface SubscriptionPaymentResult {
+  subscription: Record<string, unknown>; transaction_id: string;
+  already_fulfilled: boolean; is_upgrade: boolean; receipt_url?: string | null;
+}
+export async function ssoFulfillSubscriptionPayment(env: SsoEnv, data: SubscriptionPaymentInput): Promise<SubscriptionPaymentResult> {
+  return env.SSO_SERVICE.fulfillSubscriptionPayment(data);
+}
+export async function ssoGetSubscriptionPaymentFulfillment(env: SsoEnv, data: Pick<SubscriptionPaymentInput,
+  'user_id' | 'plan_id' | 'organization_id' | 'razorpay_order_id' | 'razorpay_payment_id' | 'amount' | 'currency'>): Promise<SubscriptionPaymentResult | null> {
+  return env.SSO_SERVICE.getSubscriptionPaymentFulfillment(data);
+}
+
 export async function ssoUpdateTransaction(env: SsoEnv, transactionId: string, data: any): Promise<any> {
   if (typeof env.SSO_SERVICE.updateTransaction === 'function') {
     return env.SSO_SERVICE.updateTransaction(transactionId, data);

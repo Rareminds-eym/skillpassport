@@ -1,27 +1,27 @@
 /**
  * Error Logging Endpoint
- * 
+ *
  * POST /api/log-error
- * 
+ *
  * Receives error logs from the frontend and stores them in the database
  * for monitoring and analysis.
  */
 
 import type { PagesFunction } from '@cloudflare/workers-types';
-import { withAuth } from '../lib/auth';
-import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import { withAuth, getContextUser } from '../lib/auth';
 import { getServiceClient } from '../lib/supabase';
 import { handleCorsPreflightRequest } from '../lib/cors';
 import { apiSuccess, apiError } from '../lib/response';
 
 interface ErrorLogRequest {
     timestamp: string;
-    userId: string;
+    userId?: string;
     errorType: string;
     errorMessage: string;
-    context: Record<string, any>;
+    context: Record<string, unknown>;
     stackTrace?: string;
 }
+type LogContext = { request: Request; env: unknown } & Parameters<typeof getContextUser>[0];
 
 export const onRequest: PagesFunction = async (context) => {
     // Handle CORS preflight
@@ -34,7 +34,7 @@ export const onRequest: PagesFunction = async (context) => {
         return apiError(405, 'ERROR', 'Method not allowed', context.request);
     }
 
-    return withAuth(async (authContext: AuthenticatedContext) => {
+    return withAuth(async (authContext: LogContext) => {
         const startTime = Date.now();
         const request = authContext.request;
 
@@ -48,9 +48,12 @@ export const onRequest: PagesFunction = async (context) => {
             }
 
             // Validate required fields
-            if (!body.userId || !body.errorType || !body.errorMessage) {
-                return apiError(400, 'VALIDATION_ERROR', 'Missing required fields: userId, errorType, errorMessage', request);
+            if (!body || typeof body.errorType !== 'string' || !body.errorType.trim()
+                || body.errorType.length > 100 || typeof body.errorMessage !== 'string'
+                || !body.errorMessage.trim() || body.errorMessage.length > 2000) {
+                return apiError(400, 'VALIDATION_ERROR', 'A bounded errorType and errorMessage are required', request);
             }
+            const user = getContextUser(authContext);
 
             // Get Supabase client
             const env = authContext.env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string };
@@ -60,7 +63,7 @@ export const onRequest: PagesFunction = async (context) => {
             const { error: dbError } = await supabase
                 .from('error_logs')
                 .insert({
-                    user_id: body.userId,
+                    user_id: user.id,
                     error_type: body.errorType,
                     error_message: body.errorMessage,
                     context: body.context || {},
@@ -69,13 +72,8 @@ export const onRequest: PagesFunction = async (context) => {
                 });
 
             if (dbError) {
-                console.error('[LogError] Database error:', dbError);
-                console.error('[LogError] Failed to store error log:', {
-                    userId: body.userId,
-                    errorType: body.errorType,
-                    errorMessage: body.errorMessage,
-                    dbError: dbError.message,
-                });
+                console.error('[LogError] Unable to store diagnostic');
+                return apiError(503, 'LOG_STORAGE_UNAVAILABLE', 'Unable to store diagnostic', request);
             }
 
             return apiSuccess({ message: 'Error logged successfully', duration: Date.now() - startTime }, request);
