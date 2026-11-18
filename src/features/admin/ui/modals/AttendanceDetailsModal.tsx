@@ -23,6 +23,7 @@ import toast from 'react-hot-toast';
 import { AttendanceRecord, AttendanceSession } from '@/features/college-admin';
 import { Learner } from '@/entities/learner/model/types';
 import { getLogger } from '@/shared/config/logging';
+import { apiPost } from '@/shared/api/apiClient';
 
 const logger = getLogger('attendance-details-modal');
 
@@ -181,12 +182,115 @@ const AttendanceDetailsModal = ({
         return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     });
 
+    // Editable attendance records (keyed by learnerId)
+    const [editedStatuses, setEditedStatuses] = useState<Record<string, { status: string; timeIn: string; remarks: string }>>({});
+    const [savedStatuses, setSavedStatuses] = useState<Record<string, { status: string; timeIn: string; remarks: string }>>({});
+    const [savingAttendance, setSavingAttendance] = useState(false);
+    const [isDirty, setIsDirty] = useState(false);
+    // Locally patched session stats after save (avoids full page refresh).
+    const [patchedSession, setPatchedSession] = useState<any>(null);
+
     // Set default selected session when modal opens
     React.useEffect(() => {
         if (isOpen && subjectGroup && subjectGroup.sessions.length > 0 && !selectedSessionId) {
             setSelectedSessionId(subjectGroup.sessions[0].id);
         }
     }, [isOpen, subjectGroup, selectedSessionId]);
+
+    // Reset edits when session selection changes
+    React.useEffect(() => {
+        setEditedStatuses({});
+        setIsDirty(false);
+        setPatchedSession(null);
+        setSavedStatuses({});
+    }, [selectedSessionId]);
+
+    const markAllAs = (status: 'present' | 'absent') => {
+        const bulk: Record<string, { status: string; timeIn: string; remarks: string }> = {};
+        todaysRecords.forEach(record => {
+            const existing = editedStatuses[record.learnerId];
+            bulk[record.learnerId] = {
+                status,
+                timeIn: status === 'absent' ? '' : (existing?.timeIn ?? record.timeIn ?? ''),
+                remarks: existing?.remarks ?? record.remarks ?? '',
+            };
+        });
+        setEditedStatuses(bulk);
+        setIsDirty(true);
+    };
+
+    const updateLearnerStatus = (learnerId: string, field: 'status' | 'timeIn' | 'remarks', value: string, currentRecord: any) => {
+        setEditedStatuses(prev => ({
+            ...prev,
+            [learnerId]: {
+                status: currentRecord.status === 'not-marked' ? (field === 'status' ? value : 'present') : currentRecord.status,
+                timeIn: currentRecord.timeIn || '',
+                remarks: currentRecord.remarks || '',
+                ...prev[learnerId],
+                [field]: value,
+            }
+        }));
+        setIsDirty(true);
+    };
+
+    const handleSaveAttendance = async () => {
+        if (!session || Object.keys(editedStatuses).length === 0) return;
+        setSavingAttendance(true);
+        try {
+            const records = todaysRecords
+                .filter(r => editedStatuses[r.learnerId] || r.status !== 'not-marked')
+                .map(r => {
+                    const edited = editedStatuses[r.learnerId];
+                    return {
+                        learnerId: r.learnerId,
+                        learnerName: r.learnerName,
+                        rollNumber: r.rollNumber,
+                        status: edited?.status ?? r.status,
+                        timeIn: edited?.timeIn ?? r.timeIn ?? null,
+                        remarks: edited?.remarks ?? r.remarks ?? null,
+                    };
+                })
+                .filter(r => r.status !== 'not-marked');
+
+            if (records.length === 0) {
+                toast.error('Please mark at least one learner before saving.');
+                return;
+            }
+
+            const result: any = await apiPost('/college-admin/attendance', {
+                action: 'submit-attendance',
+                sessionId: session.id,
+                collegeId: (subjectGroup as any).collegeId || session.college_id || undefined,
+                records,
+            });
+
+            toast.success('Attendance saved successfully!');
+            setSavedStatuses(prev => ({ ...prev, ...editedStatuses }));
+            setEditedStatuses({});
+            setIsDirty(false);
+
+            // Update local session stats immediately without page refresh.
+            if (result?.data) {
+                const d = result.data;
+                // Patch the session object in subjectGroup.sessions so stats re-render instantly.
+                const patchedSession = {
+                    ...session,
+                    presentCount: d.present ?? session.presentCount,
+                    absentCount: d.absent ?? session.absentCount,
+                    lateCount: d.late ?? session.lateCount,
+                    excusedCount: d.excused ?? session.excusedCount,
+                    attendancePercentage: d.attendance_percentage ?? session.attendancePercentage,
+                    status: 'completed',
+                };
+                // Force re-render by updating local patched session state.
+                setPatchedSession(patchedSession);
+            }
+        } catch (err: any) {
+            toast.error(err?.message || 'Failed to save attendance');
+        } finally {
+            setSavingAttendance(false);
+        }
+    };
 
     // Local export function for modal
     const exportToCSV = (data: any[], filename: string) => {
@@ -243,7 +347,11 @@ const AttendanceDetailsModal = ({
     if (!isOpen || !subjectGroup || subjectGroup.sessions.length === 0) return null;
 
     // Get the selected session (sessions guaranteed non-empty above)
-    const session = subjectGroup.sessions.find(s => s.id === selectedSessionId) || subjectGroup.sessions[0];
+    const sessionBase = subjectGroup.sessions.find(s => s.id === selectedSessionId) || subjectGroup.sessions[0];
+    // Merge patched stats after save so counts update immediately without page refresh.
+    const session = patchedSession && patchedSession.id === sessionBase.id
+        ? { ...sessionBase, ...patchedSession }
+        : sessionBase;
 
     const specializationLabel = (item: AttendanceSession) => item.combinedGroupId
         ? `Combined${item.combinedSpecializations?.length ? ' - ' + item.combinedSpecializations.join(' + ') : ''} (${item.specializations?.join(', ') || 'Specialization unavailable'})`
@@ -511,73 +619,130 @@ const AttendanceDetailsModal = ({
                     <div className="max-h-96 overflow-y-auto">
                         {activeTab === "today" && (
                             <div className="p-6">
-                                <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                                    Session Attendance Records
-                                </h3>
+                                <div className="flex items-center justify-between mb-4">
+                                    <h3 className="text-lg font-semibold text-gray-900">
+                                        Session Attendance Records
+                                    </h3>
+                                    <div className="flex items-center gap-2">
+                                        {isDirty && (
+                                            <span className="text-xs text-amber-600 font-medium bg-amber-50 border border-amber-200 px-2 py-1 rounded-lg">
+                                                Unsaved changes
+                                            </span>
+                                        )}
+                                        <button
+                                            type="button"
+                                            onClick={() => markAllAs('present')}
+                                            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500 text-white text-xs font-medium rounded-lg hover:bg-emerald-600 transition-colors"
+                                        >
+                                            <CheckCircleIcon className="h-4 w-4" />
+                                            All Present
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => markAllAs('absent')}
+                                            className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-500 text-white text-xs font-medium rounded-lg hover:bg-rose-600 transition-colors"
+                                        >
+                                            <XCircleIcon className="h-4 w-4" />
+                                            All Absent
+                                        </button>
+                                    </div>
+                                </div>
                                 <div className="overflow-x-auto">
                                     <table className="min-w-full divide-y divide-gray-200">
                                         <thead className="bg-gray-50 sticky top-0">
                                             <tr>
-                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    Roll No
-                                                </th>
-                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    Learner Name
-                                                </th>
-                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    Status
-                                                </th>
-                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    Time In
-                                                </th>
-                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    Time Out
-                                                </th>
-                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    Remarks
-                                                </th>
-                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    Actions
-                                                </th>
+                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Roll No</th>
+                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Learner Name</th>
+                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time In</th>
+                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Remarks</th>
+                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                                             </tr>
                                         </thead>
                                         <tbody className="bg-white divide-y divide-gray-200">
-                                            {todaysRecords.map((record) => (
-                                                <tr key={record.id} className="hover:bg-gray-50">
-                                                    <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
-                                                        {record.rollNumber}
-                                                    </td>
-                                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
-                                                        {record.learnerName}
-                                                    </td>
-                                                    <td className="px-4 py-3 whitespace-nowrap">
-                                                        <StatusBadge status={record.status} />
-                                                    </td>
-                                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
-                                                        {record.timeIn || "-"}
-                                                    </td>
-                                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
-                                                        {record.timeOut || "-"}
-                                                    </td>
-                                                    <td className="px-4 py-3 text-sm text-gray-600">
-                                                        {record.remarks || "-"}
-                                                    </td>
-                                                    <td className="px-4 py-3 whitespace-nowrap text-sm">
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => {
-                                                                const learner = classlearners.find(s => s.id === record.learnerId);
-                                                                if (learner) onViewlearnerHistory(learner);
-                                                            }}
-                                                            className="text-indigo-600 hover:text-indigo-900"
-                                                        >
-                                                            View History
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            ))}
+                                            {todaysRecords.map((record) => {
+                                                const edited = editedStatuses[record.learnerId] || savedStatuses[record.learnerId];
+                                                const currentStatus = edited?.status ?? record.status;
+                                                const currentTimeIn = edited?.timeIn ?? record.timeIn ?? '';
+                                                const currentRemarks = edited?.remarks ?? record.remarks ?? '';
+                                                const statusButtons = [
+                                                    { value: 'present', label: 'Present', active: 'bg-emerald-500 text-white border-emerald-500', inactive: 'bg-white text-emerald-700 border-emerald-300 hover:bg-emerald-50' },
+                                                    { value: 'absent',  label: 'Absent',  active: 'bg-rose-500 text-white border-rose-500',    inactive: 'bg-white text-rose-700 border-rose-300 hover:bg-rose-50' },
+                                                    { value: 'late',    label: 'Late',    active: 'bg-amber-500 text-white border-amber-500',   inactive: 'bg-white text-amber-700 border-amber-300 hover:bg-amber-50' },
+                                                    { value: 'excused', label: 'Excused', active: 'bg-blue-500 text-white border-blue-500',     inactive: 'bg-white text-blue-700 border-blue-300 hover:bg-blue-50' },
+                                                ];
+                                                return (
+                                                    <tr key={record.id} className={`hover:bg-gray-50 ${edited ? 'bg-indigo-50/30' : ''}`}>
+                                                        <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{record.rollNumber}</td>
+                                                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{record.learnerName}</td>
+                                                        <td className="px-4 py-3 whitespace-nowrap">
+                                                            <div className="flex gap-1">
+                                                                {statusButtons.map(btn => (
+                                                                    <button
+                                                                        key={btn.value}
+                                                                        type="button"
+                                                                        onClick={() => updateLearnerStatus(record.learnerId, 'status', btn.value, record)}
+                                                                        className={`px-2 py-1 text-xs font-medium border rounded-md transition-colors ${currentStatus === btn.value ? btn.active : btn.inactive}`}
+                                                                    >
+                                                                        {btn.label}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-4 py-3 whitespace-nowrap">
+                                                            <input
+                                                                type="time"
+                                                                value={currentTimeIn}
+                                                                disabled={currentStatus === 'absent'}
+                                                                onChange={e => updateLearnerStatus(record.learnerId, 'timeIn', e.target.value, { ...record, status: currentStatus, timeIn: currentTimeIn, remarks: currentRemarks })}
+                                                                className="px-2 py-1 border border-gray-300 rounded-md text-xs w-28 disabled:bg-gray-100 disabled:cursor-not-allowed focus:ring-2 focus:ring-indigo-500"
+                                                            />
+                                                        </td>
+                                                        <td className="px-4 py-3">
+                                                            <input
+                                                                type="text"
+                                                                value={currentRemarks}
+                                                                placeholder="Note..."
+                                                                onChange={e => updateLearnerStatus(record.learnerId, 'remarks', e.target.value, { ...record, status: currentStatus, timeIn: currentTimeIn, remarks: currentRemarks })}
+                                                                className="px-2 py-1 border border-gray-300 rounded-md text-xs w-32 focus:ring-2 focus:ring-indigo-500"
+                                                            />
+                                                        </td>
+                                                        <td className="px-4 py-3 whitespace-nowrap text-sm">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    const learner = classlearners.find(s => s.id === record.learnerId);
+                                                                    if (learner) onViewlearnerHistory(learner);
+                                                                }}
+                                                                className="text-indigo-600 hover:text-indigo-900 text-xs"
+                                                            >
+                                                                View History
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
                                         </tbody>
                                     </table>
+                                </div>
+                                {/* Save Attendance Button */}
+                                <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-4">
+                                    <p className="text-xs text-gray-500">
+                                        Click Present / Absent / Late / Excused per learner, then save.
+                                    </p>
+                                    <button
+                                        type="button"
+                                        onClick={handleSaveAttendance}
+                                        disabled={savingAttendance || !isDirty}
+                                        className={`flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-medium transition-colors ${
+                                            savingAttendance || !isDirty
+                                                ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                                : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                                        }`}
+                                    >
+                                        <ClipboardDocumentCheckIcon className="h-4 w-4" />
+                                        {savingAttendance ? 'Saving…' : 'Save Attendance'}
+                                    </button>
                                 </div>
                             </div>
                         )}
