@@ -8,6 +8,8 @@ DO $$ BEGIN
  ASSERT has_table_privilege('service_role','public.users','SELECT');
  ASSERT public.zoho_private_boundary_safe_routine('graphql.get_schema_version()'::regprocedure);
  ASSERT public.zoho_private_boundary_safe_routine('graphql.increment_schema_version()'::regprocedure);
+ ASSERT public.zoho_private_boundary_safe_routine('net.http_get(text,jsonb,jsonb,integer)'::regprocedure);
+ ASSERT public.zoho_private_boundary_safe_routine('net.http_post(text,jsonb,jsonb,jsonb,integer)'::regprocedure);
  ASSERT NOT public.zoho_private_boundary_safe_routine('public.fixture_candidate_identity_count()'::regprocedure);
  PERFORM public.zoho_assert_private_projection_boundary();
  BEGIN

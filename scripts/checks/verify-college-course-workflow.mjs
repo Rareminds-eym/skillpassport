@@ -23,7 +23,7 @@ CREATE TABLE assessment_types(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),name
 CREATE TABLE college_assignments(id uuid);
 CREATE FUNCTION external_teaching_mapping_valid(uuid,uuid,uuid,uuid,uuid,date) RETURNS boolean LANGUAGE sql AS 'SELECT true';
 `);
-for (const migration of ['20270311000000_college_course_workflow.sql','20270311000001_faculty_curriculum_additions.sql','20270311000002_faculty_outcome_details.sql','20270311000003_faculty_unit_outcome_bundle.sql','20270311000004_faculty_assessment_types.sql','20270311000005_faculty_curriculum_notifications.sql']) await db.exec(await readFile(new URL('../../supabase/migrations/'+migration,import.meta.url),'utf8'));
+for (const migration of ['20270310153045_college_course_workflow.sql','20270311000001_faculty_curriculum_additions.sql','20270311000002_faculty_outcome_details.sql','20270311000003_faculty_unit_outcome_bundle.sql','20270311000004_faculty_assessment_types.sql','20270311000005_faculty_curriculum_notifications.sql']) await db.exec(await readFile(new URL('../../supabase/migrations/'+migration,import.meta.url),'utf8'));
 const id=n => `00000000-0000-4000-8000-${String(n).padStart(12,'0')}`;
 const [org,admin,educator,lecturer,dept,program,otherOrg,otherAdmin,unmapped] = [1,2,3,4,5,6,7,8,9].map(id);
 await db.query(`INSERT INTO users(id,"organizationId",role,email) VALUES($1,$2,'college_admin','admin@test'),($3,$2,'college_educator','educator@test'),($4,$5,'college_admin','other@test'),($6,$2,'college_educator','unmapped@test')`,[admin,org,educator,otherAdmin,otherOrg,unmapped]);
