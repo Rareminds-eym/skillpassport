@@ -6,6 +6,18 @@ import { jobDescriptionBlocks, jobDescriptionText } from '../../lib/jobDescripti
 
 afterEach(cleanup);
 describe('job description structure', () => {
+  it('decodes plain source entities and separates Zoho arrow bullets and numbered tool headings', () => {
+    render(<JobDescription value={'Requirements Key Responsibilities  Prepare reports.  Coordinate teams. 3. Required Tools &amp; Technical Skills  Excel &amp; Power Query.'} />);
+    expect(screen.getAllByRole('listitem').map(item=>item.textContent)).toEqual(['Prepare reports.','Coordinate teams.','Excel & Power Query.']);
+    expect(screen.getByRole('heading',{name:'3. Required Tools & Technical Skills'})).toBeTruthy();
+  });
+  it('decodes entities once as inert text and preserves mathematical comparisons and line breaks', () => {
+    const {container}=render(<JobDescription value={'A &amp; B\nSalary < 50000 and experience > 2 years\n\n&lt;img src=x onerror=steal()&gt; &amp;lt;script&amp;gt;'} />);
+    expect(container.textContent).toContain('A & B');
+    expect(container.textContent).toContain('Salary < 50000 and experience > 2 years');
+    expect(container.textContent).toContain('<img src=x onerror=steal()> &lt;script&gt;');
+    expect(container.querySelector('img,script,[onerror]')).toBeNull();
+  });
   it('recovers explicit headings and bullets from a flattened export without changing its words', () => {
     const value = 'Job Summary Sell retail solutions. Key Responsibilities Consult customers. Requirements Qualifications & Experience Education • Degree required. • MBA preferred.Experience • Four years of sales. Preferred Industry Exposure • Retail Technology • Supply Chain & Logistics';
     render(<JobDescription value={value} />);

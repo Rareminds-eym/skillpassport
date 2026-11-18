@@ -3,13 +3,16 @@ import { opportunityText } from './presentation';
 type Block = { type: 'heading' | 'paragraph'; text: string } | { type: 'list'; items: string[] };
 const headings = ['Job Summary', 'Job Overview', 'About the Role', 'Key Responsibilities', 'Responsibilities',
   'Requirements', 'Qualifications & Experience', 'Qualifications and Experience', 'Qualifications',
-  'Education', 'Preferred Industry Exposure', 'Skills Required', 'Required Skills', 'Benefits'];
+  'Education', 'Preferred Industry Exposure', 'Skills Required', 'Required Skills', 'Benefits',
+  'Required Tools & Technical Skills', 'Required Tools and Technical Skills'];
 const pattern = headings.slice().sort((a, b) => b.length - a.length).join('|');
-const headingLine = new RegExp(`^(?:${pattern}|Experience)\\s*:?$`);
+const headingLine = new RegExp(`^(?:\\d+[.)]\\s+)?(?:${pattern}|Experience)\\s*:?$`);
 
 /** Read rich source text as inert data. Only React text nodes are ever rendered. */
 function sourceText(value: string): string {
-  if (!/<\/?[a-z][^>]*>/i.test(value) || typeof DOMParser === 'undefined') return value;
+  if (typeof DOMParser === 'undefined') return value;
+  // Parse once even without tags: Zoho also exports entities in plain text.
+  // Encoded markup stays a text node and is never parsed a second time.
   const doc = new DOMParser().parseFromString(value, 'text/html');
   function visit(node: Node): string {
     if (node.nodeType === 3) return node.textContent || '';
@@ -36,12 +39,12 @@ export function jobDescriptionBlocks(value: unknown): Block[] {
   if (!text) return [];
   // Some exports flatten rich text. Recover only explicit, case-sensitive labels
   // when several known section labels exist; never infer new job requirements.
-  const labels = new RegExp(`(^|\\s)(${pattern})(?=\\s|:|$)`, 'g');
+  const labels = new RegExp(`(^|\\s)((?:\\d+[.)]\\s+)?(?:${pattern}))(?=\\s|:|$)`, 'g');
   const matches = [...text.matchAll(labels)];
   if (!rich && (matches.length >= 2 || (matches.length === 1 && matches[0].index === 0)))
     text = text.replace(labels, (_, space, heading) => `\n\n${heading}\n\n`);
   text = text.replace(/(^|\s|[.!?])Experience\s*:?\s*(?=[•●▪])/g, '$1\n\nExperience\n\n');
-  text = text.replace(/[^\S\n]+[•●▪][ \t]*/g, '\n• ');
+  text = text.replace(/[^\S\n]+[•●▪\uF0D8][ \t]*/g, '\n• ');
   const blocks: Block[] = [];
   let paragraph: string[] = [], items: string[] = [];
   const flush = () => {
@@ -52,7 +55,7 @@ export function jobDescriptionBlocks(value: unknown): Block[] {
     const line = raw.trim();
     if (!line) { flush(); continue; }
     if (headingLine.test(line) || /^#{1,6}\s+/.test(line)) { flush(); blocks.push({type:'heading',text:line.replace(/^#{1,6}\s+/, '').replace(/\s*:$/, '')}); continue; }
-    const bullet = line.match(/^(?:[•●▪]|[-*]|\d+[.)])\s+(.+)$/);
+    const bullet = line.match(/^(?:[•●▪\uF0D8]|[-*]|\d+[.)])\s+(.+)$/);
     if (bullet) {
       if (paragraph.length) flush();
       items.push(bullet[1]);
