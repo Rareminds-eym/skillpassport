@@ -70,8 +70,6 @@ bucket_name = "skill-echosystem"
 [vars]
 # Must match EMBEDDING_SERVICE output; each job vector is independently verified.
 MATCHING_EMBEDDING_MODEL = "google/gemini-embedding-2-preview"
-# Enable after the index migration and a successful local course:index import.
-COURSE_INDEX_ENABLED = "false"
 ENVIRONMENT = "production"
 REALTIME_PARTITIONS = "10"
 SUPABASE_URL = "https://dpooleduinyyzxgrcwko.supabase.co"

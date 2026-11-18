@@ -1,24 +1,26 @@
+import { formatAssessmentText } from '../model/formatAssessmentText';
 import PanelLoadingSkeleton from './PanelLoadingSkeleton';
 import { Bookmark, Check, Loader2 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useUser } from '@/shared/model';
 import { materialAction } from '../api/materialService';
 
-export function AllocateSavedMaterial({ courseId, assignmentId, initiallyOpen = false }: { courseId: string; assignmentId: string; initiallyOpen?: boolean }) {
+export function AllocateSavedMaterial({ courseId, assignmentId, initiallyOpen = false, onClose, onAssigned }: { courseId: string; assignmentId: string; initiallyOpen?: boolean; onClose?: () => void; onAssigned?: () => void }) {
   const user = useUser(), client = useQueryClient();
   const [open, setOpen] = useState(initiallyOpen), [due, setDue] = useState(''), [selected, setSelected] = useState<string[]>([]), [reviewed, setReviewed] = useState(false);
+  useEffect(() => { if (initiallyOpen) setOpen(true); }, [initiallyOpen]);
   const learners = useQuery({ queryKey: ['material-learners', user?.id, courseId, assignmentId], enabled: !!user?.id, queryFn: () => materialAction<{ learners: any[]; blockedCount: number; assignedCount?: number; existingDueAt?: string | null }>('allocation-learners', { courseId, assignmentId }), retry: false });
   const rules = useQuery({ queryKey: ['material-rules', user?.id, assignmentId], enabled: open && !!user?.id, queryFn: () => materialAction('review-detail', { courseId, assignmentId }), retry: false });
   const mutation = useMutation({ mutationFn: () => materialAction('allocate', { courseId, assignmentId, learnerIds: selected, dueAt: learners.data?.existingDueAt || new Date(due).toISOString(), reviewed }), retry: false,
-    onSuccess: async () => { setSelected([]); await Promise.all([client.invalidateQueries({ queryKey: ['saved-deliveries', user?.id, courseId] }), client.invalidateQueries({ queryKey: ['material-learners', user?.id, courseId, assignmentId] })]); } });
+    onSuccess: async () => { setSelected([]); onAssigned?.(); await Promise.all([client.invalidateQueries({ queryKey: ['saved-deliveries', user?.id, courseId] }), client.invalidateQueries({ queryKey: ['material-learners', user?.id, courseId, assignmentId] })]); } });
   if (learners.isSuccess && !learners.data.learners.length && !!learners.data.assignedCount) return <span role="status" className="ml-auto inline-flex items-center gap-1.5 text-[11px] font-medium text-slate-500"><Check aria-hidden="true" className="h-3.5 w-3.5 text-blue-600"/>Assigned</span>;
   if (!open && learners.isPending) return <PanelLoadingSkeleton label="Checking assignment"/>;
   if (!open) return <button type="button" className="ml-auto inline-flex shrink-0 items-center justify-center rounded-full bg-blue-600 px-4 py-1.5 text-[11px] font-medium leading-4 text-white transition-colors duration-150 hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 motion-reduce:transition-none" onClick={() => setOpen(true)}>Assign to learners</button>;
   return <section aria-label="Assign saved material" className="mt-1 min-w-0 w-full space-y-4 border-t border-slate-100 pt-4 font-sans text-xs leading-5 text-slate-600 [&_p]:my-0 [&_p]:text-xs [&_p]:leading-5">
-    <div className="flex items-center justify-between gap-3"><span className="text-xs font-semibold text-slate-900">Assign to learners</span><button type="button" onClick={() => setOpen(false)} className="rounded px-2 py-1 text-[11px] text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 motion-reduce:transition-none">Cancel</button></div>
+    <div className="flex items-center justify-between gap-3"><span className="text-xs font-semibold text-slate-900">Assign to learners</span><button type="button" onClick={() => { setOpen(false); onClose?.(); }} className="rounded px-2 py-1 text-[11px] text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 motion-reduce:transition-none">Cancel</button></div>
     {learners.isLoading || rules.isLoading ? <PanelLoadingSkeleton label="Loading learners and grading rules" variant="form"/> : <>
-      <details className="group"><summary className="cursor-pointer rounded text-[11px] font-medium text-slate-500 hover:text-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600">Review questions & grading rules</summary><div className="mt-2 max-h-64 overflow-y-auto overscroll-contain rounded-lg bg-slate-50 px-3 [scrollbar-width:thin]">{rules.data?.content.questions.map((q:any)=>{const rule=rules.data.grading_rules.find((r:any)=>r.questionId===q.id);return <div key={q.id} className="my-3"><p className="font-medium text-slate-800">{q.position}. {q.prompt} ({q.maxMarks} marks)</p>{q.options.map((option:string,i:number)=><p key={i}>{String.fromCharCode(65+i)}) {option}</p>)}<p className="mt-1">Accepted answers: {rule?.acceptedAnswers.join('; ')||'Use the rubric'}</p><p>Rubric: {rule?.rubric}</p></div>;})}</div></details>
+      <details className="group"><summary className="cursor-pointer rounded text-[11px] font-medium text-slate-500 hover:text-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600">Review questions & grading rules</summary><div className="mt-2 max-h-64 overflow-y-auto overscroll-contain rounded-lg bg-slate-50 px-3 [scrollbar-width:thin]">{rules.data?.content.questions.map((q:any)=>{const rule=rules.data.grading_rules.find((r:any)=>r.questionId===q.id);return <div key={q.id} className="my-3"><p className="font-medium text-slate-800">{q.position}. {formatAssessmentText(q.prompt)} ({q.maxMarks} marks)</p>{q.options.map((option:string,i:number)=><p key={i}>{String.fromCharCode(65+i)}) {formatAssessmentText(option)}</p>)}<p className="mt-1">Accepted answers: {formatAssessmentText(rule?.acceptedAnswers?.join('; '))||'Use the rubric'}</p><p>Rubric: {formatAssessmentText(rule?.rubric)}</p></div>;})}</div></details>
       {learners.data?.learners.length===0 ? <div role="status" className="space-y-1 rounded-lg bg-slate-50 px-3 py-3"><p className="font-medium text-slate-800">{learners.data.assignedCount ? 'Already assigned' : 'No eligible learners yet'}</p><p>{learners.data.assignedCount && !learners.data.blockedCount ? 'All eligible learners already have this assignment.' : learners.data.blockedCount ? `${learners.data.blockedCount} learners need a class or active college section mapping before you can assign this material.` : 'Add a class or active college section mapping for your learners to assign this material.'}</p></div> : !!learners.data?.blockedCount && <p role="status" className="text-slate-500">{learners.data.blockedCount} learners excluded: class or section mapping needed.</p>}
       {!!learners.data?.learners.length && <>
         <div className="flex items-center justify-between gap-3"><span className="text-[11px] font-medium text-slate-500">Learners <span className="tabular-nums">({selected.length}/{learners.data.learners.length})</span></span><button type="button" className="rounded py-1 text-[11px] font-medium text-blue-700 hover:text-blue-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600" onClick={() => setSelected(selected.length===learners.data.learners.length ? [] : learners.data.learners.map(l => l.id))}>{selected.length===learners.data.learners.length ? 'Clear selection' : 'Select all'}</button></div>
@@ -35,22 +37,26 @@ export function AllocateSavedMaterial({ courseId, assignmentId, initiallyOpen = 
 
 export default function SaveGeneratedMaterial({ courseId, conversationId, messageId, canAssign = false }: { courseId: string; conversationId: string; messageId: string; canAssign?: boolean }) {
   const user = useUser(), client = useQueryClient();
-  const [assignAfterSave, setAssignAfterSave] = useState(false);
+  const intentKey = ['material-allocation-intent', user?.id, courseId, conversationId, messageId];
+  // Keep the save-to-assignment handoff across message/panel remounts.
+  const intent = useQuery({ queryKey: intentKey, queryFn: async () => false, initialData: false, enabled: false, staleTime: Infinity });
+  const assignAfterSave = intent.data;
+  const setAssignAfterSave = (value: boolean) => client.setQueryData(intentKey, value);
   const capability = useQuery({ queryKey: ['saved-material-capability',user?.id], queryFn: () => materialAction<{enabled:boolean}>('capabilities'), enabled: !!user?.id, retry: false });
   const key = ['saved-material-choice',user?.id,conversationId,messageId];
   const choice = useQuery({ queryKey: key, queryFn: () => materialAction('choice', { courseId,conversationId,messageId }), enabled: !!user?.id && capability.data?.enabled===true, retry: false });
-  const mutation = useMutation({ mutationFn: (action: string) => materialAction(action,{courseId,conversationId,messageId}), retry: false, onSuccess: async data => { await client.cancelQueries({queryKey:key}); client.setQueryData(key,data); void client.invalidateQueries({queryKey:['material-library',user?.id,courseId]}); } });
+  const mutation = useMutation({ mutationFn: (action: string) => materialAction(action,{courseId,conversationId,messageId}), retry: false, onError: () => setAssignAfterSave(false), onSuccess: async data => { await client.cancelQueries({queryKey:key}); client.setQueryData(key,data); void client.invalidateQueries({queryKey:['material-library',user?.id,courseId]}); } });
   if (capability.isPending) return <PanelLoadingSkeleton label="Checking material controls"/>;
   if (capability.isError) return <p role="alert" className="mt-2 text-xs text-red-700">Unable to verify material controls. <button type="button" onClick={() => { void capability.refetch(); }} className="underline">Retry</button></p>;
   if (!capability.data?.enabled) return null;
   // Direct assignment persists its material first, without exposing that
   // prerequisite as a separate save step in the conversation.
-  if (assignAfterSave && mutation.isPending) return null;
+  if (assignAfterSave && mutation.isPending) return <PanelLoadingSkeleton label="Preparing learner selection" variant="form"/>;
   const data = choice.data;
   return <div className="mt-3 border-t border-slate-100 pt-3 font-sans text-xs leading-5 text-slate-600">
     {choice.isPending ? <PanelLoadingSkeleton label="Checking saved material"/> : data?.id ? <>
       <div className="flex flex-wrap items-center justify-between gap-3 py-1">{!assignAfterSave && <div role="status" className="flex items-center gap-2 text-xs font-medium text-slate-600"><Check aria-hidden="true" className="h-3.5 w-3.5 text-blue-600"/>Saved to materials</div>}
-      {data.kind==='assignment' && <AllocateSavedMaterial courseId={courseId} assignmentId={data.id} initiallyOpen={assignAfterSave} />}
+      {data.kind==='assignment' && <AllocateSavedMaterial courseId={courseId} assignmentId={data.id} initiallyOpen={assignAfterSave} onClose={() => setAssignAfterSave(false)} onAssigned={() => setAssignAfterSave(false)} />}
       </div>
     </> : <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 py-1">
       <div className="flex min-w-0 items-center gap-2.5"><Bookmark aria-hidden="true" className="h-4 w-4 shrink-0 text-slate-400"/><div>

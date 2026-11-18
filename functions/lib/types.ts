@@ -26,7 +26,6 @@ export interface PagesEnv {
     getProjectionSnapshot(reference: unknown): Promise<unknown>;
     confirmProjection(proof: unknown): Promise<unknown>;
   };
-  COURSE_INDEX_ENABLED?: string;
   // SSO / Auth configuration
   /** Cloudflare Service Binding to the SSO worker (sso-api) */
   SSO_SERVICE?: SsoWorkerRpc;

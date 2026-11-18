@@ -49,7 +49,7 @@ npm run course:index -- --course-id 810e01c6-d4ec-4ba0-86bf-5f9d43d564c2 --env-f
 
 No educator/user ID is needed; this is a trusted service-role import. The script only claims the selected course. Unchanged ready sources are reused; failed or actively leased sources cause an incomplete exit instead of false success. The two tables retain extracted text, source references, processing status and vectors.
 
-After a successful import, deploy Pages with its existing embedding service binding and set `COURSE_INDEX_ENABLED=true`. The checked-in default is false. The separate course-processing Worker has been removed. Existing embedding-worker remains necessary for chat query vectors.
+After a successful import, deploy Pages with its existing embedding service binding. Indexed course evidence is always enabled; there is no feature flag. The separate course-processing Worker has been removed. Existing embedding-worker remains necessary for chat query vectors.
 
 Verification: local CLI argument/orchestration/provider tests, course-scoped database checks (`node scripts/test-course-ai-db.mjs` against the dedicated disposable test container), resource analysis and chat tests. No actual course has been imported because a target course/database was not supplied for execution.
 

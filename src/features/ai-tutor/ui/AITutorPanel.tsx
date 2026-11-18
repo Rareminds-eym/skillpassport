@@ -1086,7 +1086,6 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
                                 setIsConfigExpanded(true);
                               }}><FileText aria-hidden="true" className="h-3.5 w-3.5"/>Create worksheet from adjustments</button>
                             )}
-                            {!!msg.citations?.length && <details className="mt-2 text-xs text-slate-500"><summary>Course sources ({msg.citations.length})</summary>{msg.citations.map(citation => <p key={citation.chunkId} className="break-words">{String(citation.location.name || 'Lesson content')} ? reference {citation.chunkId}</p>)}</details>}
                             {isEducator && (msg.materialAvailable || msg.worksheetAvailable || msg.assignmentSourceId) && conversationId && (
                               <div className="w-full"><SaveGeneratedMaterial canAssign={!!(msg.worksheetAvailable || msg.assignmentSourceId)} courseId={courseId} conversationId={conversationId} messageId={msg.assignmentSourceId || msg.id} /></div>
                             )}

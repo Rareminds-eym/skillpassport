@@ -101,3 +101,30 @@ it('selects eligible learners, confirms a reviewed assignment and allows closing
  expect(screen.queryByRole('region',{name:'Assign saved material'})).not.toBeInTheDocument();
  expect(await screen.findByRole('button',{name:'Assign to learners'})).toBeInTheDocument();
 });
+
+it('retains the assignment handoff across a panel remount and completes allocation',async()=>{
+ let saved=false;
+ mocks.action.mockImplementation(async(action:string)=>{
+  if(action==='capabilities')return {enabled:true};
+  if(action==='choice')return saved?{state:'saved',id:'assignment',kind:'assignment'}:{state:'unanswered'};
+  if(action==='save'){saved=true;return {state:'saved',id:'assignment',kind:'assignment'};}
+  if(action==='allocation-learners')return {learners:[{id:'learner',name:'Alex'}],blockedCount:0};
+  if(action==='allocate')return {learnerCount:1};
+  return {content:{questions:[]},grading_rules:[]};
+ });
+ const client=new QueryClient({defaultOptions:{queries:{retry:false},mutations:{retry:false}}});
+ const panel=()=> <QueryClientProvider client={client}><SaveGeneratedMaterial canAssign courseId="course" conversationId="conversation" messageId="message"/></QueryClientProvider>;
+ const first=render(panel());
+ fireEvent.click(await screen.findByRole('button',{name:'Assign to learners'}));
+ expect(await screen.findByLabelText('Alex')).toBeInTheDocument();
+ first.unmount();render(panel());
+ expect(await screen.findByRole('region',{name:'Assign saved material'})).toBeInTheDocument();
+ expect(screen.queryByText('Saved to materials')).not.toBeInTheDocument();
+ fireEvent.click(await screen.findByLabelText('Alex'));
+ fireEvent.change(screen.getByLabelText('Assignment deadline'),{target:{value:'2026-12-01T12:00'}});
+ fireEvent.click(screen.getByLabelText('I reviewed the questions, answers and rubrics.'));
+ fireEvent.click(screen.getByRole('button',{name:'Confirm assignment'}));
+ expect(await screen.findByText('Assignment confirmed for 1 learners.')).toBeInTheDocument();
+ expect(mocks.action.mock.calls.filter(([action])=>action==='save')).toHaveLength(1);
+ expect(mocks.action).toHaveBeenCalledWith('allocate',expect.objectContaining({learnerIds:['learner'],assignmentId:'assignment',reviewed:true}));
+});

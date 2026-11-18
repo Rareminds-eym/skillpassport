@@ -5,7 +5,7 @@ vi.mock('@/shared/ui',async()=>({...await import('@/shared/ui/DropdownMenu'),toa
 const exports=vi.hoisted(()=>({exportAs:vi.fn()}));
 vi.mock('../../model/useExport',()=>({useExport:()=>({exportAs:exports.exportAs,isExporting:false})}));
 vi.mock('@/shared/model',()=>({useUser:()=>({id:'student'})}));
-vi.mock('../../api/materialService',()=>({materialAction:async(action:string,data?:{kind?:string})=>action==='capabilities'?{enabled:true}:action==='library'?(data?.kind==='lesson_plan'?[{id:'plan',title:'Saved time management plan',content:{markdown:'Lesson objectives and teaching activities'}}]:[{id:'assignment',title:'Worksheet one',content:{questions:[]}},{id:'other',title:'Worksheet two',content:{questions:[]}}]):[{id:'recipient',due_at:'2099-01-01',learner:{name:'Student'},assignment:{id:'assignment',title:'Time management',content:{questions:[]}},submissions:[{id:'submission',file_name:'answer.pdf',results:[{id:'result',status:'review_required'}]}]}]}));
+vi.mock('../../api/materialService',()=>({materialAction:async(action:string,data?:{kind?:string})=>action==='capabilities'?{enabled:true}:action==='review-detail'?{content:{questions:[{id:'q1',position:1,prompt:'State the discharge equation.'}]},grading_rules:[{questionId:'q1',acceptedAnswers:[String.raw`\(Q = A \times v\)`],rubric:'Use cross-sectional area and average velocity.'}]}:action==='library'?(data?.kind==='lesson_plan'?[{id:'plan',title:'Saved time management plan',content:{markdown:'Lesson objectives and teaching activities'}}]:[{id:'assignment',title:'Worksheet one',content:{questions:[]}},{id:'other',title:'Worksheet two',content:{questions:[]}}]):[{id:'recipient',due_at:'2099-01-01',learner:{name:'Student'},assignment:{id:'assignment',title:'Time management',content:{questions:[]}},submissions:[{id:'submission',file_name:'answer.pdf',results:[{id:'result',status:'review_required'}]}]}]}));
 vi.mock('../SaveGeneratedMaterial',()=>({AllocateSavedMaterial:()=> <span>Assigned</span>}));
 import SavedMaterialWorkspace, {LearnerProgressBrowser,AssignmentOverview,SubmissionCard} from '../SavedMaterialWorkspace';
 afterEach(cleanup);
@@ -152,4 +152,22 @@ it('opens released feedback directly from a result notification',()=>{
  render(<QueryClientProvider client={new QueryClient()}><SubmissionCard row={row} courseId="course" educator={false} openResult/></QueryClientProvider>);
  expect(screen.getByRole('dialog',{name:'Planning'})).toBeInTheDocument();
  expect(screen.getByRole('region',{name:'Evaluation feedback'})).toBeInTheDocument();
+});
+
+it('lets educators open and hide the saved answer key',async()=>{
+ render(<QueryClientProvider client={new QueryClient()}><SavedMaterialWorkspace courseId="course" educator/></QueryClientProvider>);
+ const buttons=await screen.findAllByRole('button',{name:'View answers'});
+ expect(screen.queryByRole('region',{name:'Assignment answer key'})).not.toBeInTheDocument();
+ fireEvent.click(buttons[0]);
+ const answers=await screen.findByRole('region',{name:'Assignment answer key'});
+ expect(await within(answers).findByText('Q = A \u00d7 v')).toBeInTheDocument();
+ expect(within(answers).getByText('Use cross-sectional area and average velocity.')).toBeInTheDocument();
+ fireEvent.click(screen.getByRole('button',{name:'Hide answers'}));
+ expect(screen.queryByRole('region',{name:'Assignment answer key'})).not.toBeInTheDocument();
+});
+it('never renders the educator answer-key action in the learner workspace',async()=>{
+ render(<QueryClientProvider client={new QueryClient()}><SavedMaterialWorkspace courseId="course" educator={false}/></QueryClientProvider>);
+ await screen.findByText('Your assignments');
+ expect(screen.queryByRole('button',{name:'View answers'})).not.toBeInTheDocument();
+ expect(screen.queryByText('Q = A \u00d7 v')).not.toBeInTheDocument();
 });

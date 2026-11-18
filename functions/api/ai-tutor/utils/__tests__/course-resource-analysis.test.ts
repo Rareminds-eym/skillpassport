@@ -20,15 +20,15 @@ function database(authorized = true) {
 }
 beforeEach(() => { vi.clearAllMocks(); mocks.cached.mockReturnValue(null); mocks.analyze.mockResolvedValue({ text: 'Page 2: Resource evidence', storedContent: 'cached' }); });
 describe('resource-backed course context', () => {
-  it('analyzes, caches and includes real evidence plus full lesson/transcript text', async () => {
+  it('keeps extraction available but excludes raw text from chat metadata', async () => {
     const data = context();
     const db = database();
     await enrichCourseResources(data, db, {}, 'course', 'user', false);
     expect(mocks.analyze).toHaveBeenCalledOnce();
     const prompt = formatCourseContextForPrompt(data);
-    expect(prompt).toContain('Important final paragraph');
-    expect(prompt).toContain('Page 2: Resource evidence');
-    expect(prompt).toContain('00:12 The full transcript evidence');
+    expect(prompt).not.toContain('Important final paragraph');
+    expect(prompt).not.toContain('Page 2: Resource evidence');
+    expect(prompt).not.toContain('00:12 The full transcript evidence');
     expect(db.from).toHaveBeenCalledWith('lesson_resources');
   });
   it('reuses cached analysis without another paid model request', async () => {
@@ -49,7 +49,7 @@ describe('resource-backed course context', () => {
     mocks.analyze.mockRejectedValue(new Error('Model unavailable'));
     const data = context();
     await enrichCourseResources(data, database(), {}, 'course', 'user', false);
-    expect(formatCourseContextForPrompt(data)).toContain('Model unavailable');
+    expect(data.availableResources[0].analysisError).toContain('Model unavailable');
     expect(data.availableResources[0].content).toBeNull();
   });
   it('limits new paid analysis to three resources per turn and marks remaining coverage', async () => {

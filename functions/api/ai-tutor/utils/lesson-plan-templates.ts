@@ -196,6 +196,15 @@ Materials: [Accessible materials list]
 // ==================== 5E MODEL (SCIENCE) ====================
 
 function build5ELessonPlan(config: LessonPlanConfig, context: CourseContext): string {
+  // Allocate whole minutes with a one-minute floor, then distribute the remainder.
+  const weights = [0.15, 0.30, 0.25, 0.20, 0.10];
+  const times = weights.map(weight => Math.max(1, Math.floor(config.duration * weight)));
+  for (let left = config.duration - times.reduce((sum, n) => sum + n, 0); left > 0; left--) {
+    const index = weights.map((weight, i) => ({ i, deficit: config.duration * weight - times[i] }))
+      .sort((a, b) => b.deficit - a.deficit)[0].i;
+    times[index]++;
+  }
+
   const courseContextStr = formatCourseContextForPrompt(context);
   const lessonTitle = context.currentLesson?.title ?? context.courseTitle;
   
@@ -216,27 +225,27 @@ Title: [Inquiry-focused title]
 Duration: ${config.duration} minutes
 Learning Objectives: [Science concepts and inquiry skills]
 
-## ENGAGE (${Math.max(Math.round(config.duration * 0.15), 5)} min)
+## ENGAGE (${times[0]} min)
 - Phenomenon: [Surprising or intriguing event]
 - Driving Question: [Open-ended question to investigate]
 - Prior Knowledge: [What students already know]
 
-## EXPLORE (${Math.max(Math.round(config.duration * 0.30), 5)} min)
+## EXPLORE (${times[1]} min)
 - Investigation: [Hands-on activity or experiment]
 - Materials: [Equipment and supplies]
 - Student Role: [What students do - observe, measure, record]
 - Teacher Role: [Facilitate, ask probing questions]
 
-## EXPLAIN (${Math.max(Math.round(config.duration * 0.25), 5)} min)
+## EXPLAIN (${times[2]} min)
 - Student Explanations: [Students share findings]
 - Formalize Concepts: [Introduce scientific terminology]
 - Connect to Evidence: [Link to exploration data]
 
-## ELABORATE (${Math.max(Math.round(config.duration * 0.20), 5)} min)
+## ELABORATE (${times[3]} min)
 - New Context: [Apply concept to different situation]
 - Deepen Understanding: [More complex application]
 
-## EVALUATE (${Math.max(Math.round(config.duration * 0.10), 5)} min)
+## EVALUATE (${times[4]} min)
 - Formative: [Checks throughout each phase]
 - Summative: [Final assessment of understanding]
 
