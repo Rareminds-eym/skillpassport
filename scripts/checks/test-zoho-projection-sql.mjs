@@ -101,6 +101,15 @@ try{
  if(!administrationMigration.startsWith('BEGIN;')||!administrationMigration.endsWith('COMMIT;'))throw new Error('Administration transaction envelope missing');
  // Deployed local schemas also use a text role column without the historical
  // enum. Both supported shapes must execute the same projection/privacy suite.
+ // Install pg_net after the historical boundary, then exercise the forward compatibility migration.
+ docker(['psql','-U','supabase_admin','-d',name,'-v','ON_ERROR_STOP=1'],`CREATE FUNCTION public.fixture_install_pg_net() RETURNS void
+ LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public AS $$ BEGIN
+ CREATE EXTENSION IF NOT EXISTS pg_net;
+ ALTER FUNCTION net.http_get(text,jsonb,jsonb,integer) SECURITY DEFINER SET search_path TO net;
+ ALTER FUNCTION net.http_post(text,jsonb,jsonb,jsonb,integer) SECURITY DEFINER SET search_path TO net;
+ END $$;
+ REVOKE ALL ON FUNCTION public.fixture_install_pg_net() FROM PUBLIC,anon,authenticated;
+ GRANT EXECUTE ON FUNCTION public.fixture_install_pg_net() TO postgres;`);
  for(const textRole of [false,true])docker(psql,['BEGIN;',
   ...(textRole?['ALTER TABLE public.users ALTER COLUMN role TYPE text USING role::text; DROP TYPE public.user_role;']:[]),
   administrationMigration.slice('BEGIN;'.length,-'COMMIT;'.length),
@@ -111,6 +120,8 @@ try{
   read('supabase/migrations/20270218030000_zoho_administration_order.sql').trim().slice('BEGIN;'.length,-'COMMIT;'.length),
   read('functions/__tests__/sql/zoho-administration-order.sql'),'CREATE EXTENSION IF NOT EXISTS pg_graphql;\nGRANT SELECT ON public.users TO service_role;\nCREATE VIEW public.fixture_candidate_identity_reader AS SELECT id,email FROM public.users;\nGRANT SELECT ON public.fixture_candidate_identity_reader TO anon;\nGRANT SELECT(email) ON public.users TO authenticated;\nCREATE FUNCTION public.fixture_candidate_identity_count() RETURNS bigint LANGUAGE sql SECURITY DEFINER\n SET search_path=pg_catalog,public AS $$ SELECT count(*) FROM public.users $$;\nGRANT EXECUTE ON FUNCTION public.fixture_candidate_identity_count() TO PUBLIC;\n',
   read('supabase/migrations/20270312000000_zoho_projection_server_boundary.sql').trim().slice('BEGIN;'.length,-'COMMIT;'.length),
+  'SELECT public.fixture_install_pg_net();',
+  read('supabase/migrations/20270313153045_zoho_projection_pg_net_compatibility.sql').trim().slice('BEGIN;'.length,-'COMMIT;'.length),
   read('functions/__tests__/sql/zoho-server-identity-boundary.sql'),'ROLLBACK;'].join('\n'));
  console.log('Projection SQL atomicity, server-only boundary and filtered-reader privacy, label compatibility, access preservation, version, deletion and two-session idempotency regressions passed.');
 }finally{if(created)docker(['dropdb','-U','postgres',name]);}
